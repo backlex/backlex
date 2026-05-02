@@ -1,0 +1,31 @@
+{
+  "name": "@workeros/db",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./pg": "./src/pg/index.ts",
+    "./sqlite": "./src/sqlite/index.ts",
+    "./schema/pg": "./src/pg/schema.ts",
+    "./schema/sqlite": "./src/sqlite/schema.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "generate:pg": "drizzle-kit generate --config=drizzle.pg.config.ts",
+    "generate:sqlite": "drizzle-kit generate --config=drizzle.sqlite.config.ts",
+    "migrate:pg": "bun run src/pg/migrate.ts",
+    "studio:pg": "drizzle-kit studio --config=drizzle.pg.config.ts"
+  },
+  "dependencies": {
+    "@workeros/core": "workspace:*",
+    "drizzle-orm": "^0.36.4",
+    "postgres": "^3.4.5"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.28.1",
+    "typescript": "^5.6.3"
+  }
+}

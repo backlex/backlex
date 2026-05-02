@@ -1,0 +1,41 @@
+name = "workeros-api"
+main = "src/entry.worker.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+APP_URL = "http://localhost:5173"
+# Override these in `.dev.vars` or via `wrangler secret put`:
+# AUTH_SECRET = "..."
+# DATABASE_URL = "postgres://..." # only if you want PG via Hyperdrive
+# OPENAI_API_KEY = "..."
+
+# D1 (SQLite) — primary edge DB.
+[[d1_databases]]
+binding = "D1"
+database_name = "workeros"
+database_id = "REPLACE_AFTER_wrangler_d1_create"
+
+# R2 — file storage.
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "workeros-files"
+
+# Vectorize — vector index for embeddings (1536 dim, cosine).
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "workeros-embeddings"
+
+# Optional: Hyperdrive proxy in front of Postgres for PG-on-edge.
+# [[hyperdrive]]
+# binding = "HYPERDRIVE"
+# id = "REPLACE_WITH_HYPERDRIVE_ID"
+
+# Durable Object for realtime fan-out.
+[[durable_objects.bindings]]
+name = "REALTIME"
+class_name = "RealtimeRoom"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["RealtimeRoom"]

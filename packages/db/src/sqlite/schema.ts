@@ -20,9 +20,7 @@ export const users = sqliteTable(
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },
-  (t) => ({
-    emailIdx: uniqueIndex("users_email_idx").on(t.email),
-  }),
+  (t) => [uniqueIndex("users_email_idx").on(t.email)],
 );
 
 export const sessions = sqliteTable(
@@ -38,10 +36,10 @@ export const sessions = sqliteTable(
     userAgent: text("user_agent"),
     createdAt: ts("created_at"),
   },
-  (t) => ({
-    tokenIdx: uniqueIndex("sessions_token_idx").on(t.token),
-    userIdx: index("sessions_user_idx").on(t.userId),
-  }),
+  (t) => [
+    uniqueIndex("sessions_token_idx").on(t.token),
+    index("sessions_user_idx").on(t.userId),
+  ],
 );
 
 export const accounts = sqliteTable("accounts", {
@@ -90,10 +88,10 @@ export const records = sqliteTable(
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },
-  (t) => ({
-    collectionIdx: index("records_collection_idx").on(t.collectionSlug),
-    ownerIdx: index("records_owner_idx").on(t.ownerId),
-  }),
+  (t) => [
+    index("records_collection_idx").on(t.collectionSlug),
+    index("records_owner_idx").on(t.ownerId),
+  ],
 );
 
 /**
@@ -111,10 +109,10 @@ export const embeddings = sqliteTable(
     metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
     createdAt: ts("created_at"),
   },
-  (t) => ({
-    nsIdx: index("embeddings_namespace_idx").on(t.namespace),
-    refIdx: index("embeddings_ref_idx").on(t.refId),
-  }),
+  (t) => [
+    index("embeddings_namespace_idx").on(t.namespace),
+    index("embeddings_ref_idx").on(t.refId),
+  ],
 );
 
 export const files = sqliteTable("files", {

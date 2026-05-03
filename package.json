@@ -15,8 +15,10 @@
     "dev:admin": "bun run --cwd apps/admin dev",
     "build": "bun run --filter '*' build",
     "typecheck": "bun run --filter '*' typecheck",
-    "db:generate": "bun run --cwd packages/db generate",
-    "db:migrate": "bun run --cwd packages/db migrate",
+    "db:generate:pg": "bun run --cwd packages/db generate:pg",
+    "db:generate:sqlite": "bun run --cwd packages/db generate:sqlite",
+    "db:migrate:pg": "bun run --cwd packages/db migrate:pg",
+    "db:migrate:sqlite": "bun run --cwd packages/db migrate:sqlite",
     "db:studio": "bun run --cwd packages/db studio",
     "deploy:worker": "bun run --cwd apps/api deploy"
   },

@@ -8,15 +8,16 @@
   "exports": {
     ".": "./src/index.ts",
     "./pg": "./src/pg/index.ts",
+    "./pg/schema": "./src/pg/schema.ts",
     "./sqlite": "./src/sqlite/index.ts",
-    "./schema/pg": "./src/pg/schema.ts",
-    "./schema/sqlite": "./src/sqlite/schema.ts"
+    "./sqlite/schema": "./src/sqlite/schema.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "generate:pg": "drizzle-kit generate --config=drizzle.pg.config.ts",
     "generate:sqlite": "drizzle-kit generate --config=drizzle.sqlite.config.ts",
     "migrate:pg": "bun run src/pg/migrate.ts",
+    "migrate:sqlite": "bun run src/sqlite/migrate.ts",
     "studio:pg": "drizzle-kit studio --config=drizzle.pg.config.ts"
   },
   "dependencies": {

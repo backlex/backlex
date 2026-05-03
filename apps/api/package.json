@@ -1,0 +1,26 @@
+{
+  "name": "@workeros/api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --hot src/entry.bun.ts",
+    "dev:worker": "wrangler dev",
+    "build": "bun build ./src/entry.bun.ts --target=bun --outdir=dist",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@workeros/auth": "workspace:*",
+    "@workeros/core": "workspace:*",
+    "@workeros/db": "workspace:*",
+    "drizzle-orm": "^0.36.4",
+    "hono": "^4.6.12",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "typescript": "^5.6.3",
+    "wrangler": "^3.91.0"
+  }
+}

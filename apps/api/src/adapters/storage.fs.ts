@@ -36,7 +36,7 @@ export const fsStorage = (root: string): StorageAdapter => {
       const target = path(key);
       if (!existsSync(target)) return null;
       const s = await stat(target);
-      const stream = Readable.toWeb(createReadStream(target)) as ReadableStream;
+      const stream = Readable.toWeb(createReadStream(target)) as unknown as ReadableStream;
       return {
         body: stream,
         meta: { key, size: s.size, uploadedAt: new Date(s.mtimeMs) },

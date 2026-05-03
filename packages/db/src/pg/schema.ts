@@ -38,9 +38,7 @@ export const users = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => ({
-    emailIdx: uniqueIndex("users_email_idx").on(t.email),
-  }),
+  (t) => [uniqueIndex("users_email_idx").on(t.email)],
 );
 
 export const sessions = pgTable(
@@ -58,10 +56,10 @@ export const sessions = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => ({
-    tokenIdx: uniqueIndex("sessions_token_idx").on(t.token),
-    userIdx: index("sessions_user_idx").on(t.userId),
-  }),
+  (t) => [
+    uniqueIndex("sessions_token_idx").on(t.token),
+    index("sessions_user_idx").on(t.userId),
+  ],
 );
 
 export const accounts = pgTable("accounts", {
@@ -116,10 +114,10 @@ export const records = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => ({
-    collectionIdx: index("records_collection_idx").on(t.collectionSlug),
-    ownerIdx: index("records_owner_idx").on(t.ownerId),
-  }),
+  (t) => [
+    index("records_collection_idx").on(t.collectionSlug),
+    index("records_owner_idx").on(t.ownerId),
+  ],
 );
 
 /**
@@ -138,14 +136,16 @@ export const embeddings = pgTable(
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => ({
-    nsIdx: index("embeddings_namespace_idx").on(t.namespace),
-    refIdx: index("embeddings_ref_idx").on(t.refId),
-    // pgvector HNSW index for cosine similarity. Created via raw SQL in
-    // migrations because drizzle-kit doesn't generate vector indexes yet.
-    hnsw: index("embeddings_hnsw_idx")
+  (t) => [
+    index("embeddings_namespace_idx").on(t.namespace),
+    index("embeddings_ref_idx").on(t.refId),
+    // pgvector HNSW index for cosine similarity. drizzle-kit may not yet
+    // generate vector indexes; if missing, add manually:
+    //   CREATE INDEX embeddings_hnsw_idx ON embeddings
+    //     USING hnsw (embedding vector_cosine_ops);
+    index("embeddings_hnsw_idx")
       .using("hnsw", sql`embedding vector_cosine_ops`),
-  }),
+  ],
 );
 
 export const files = pgTable("files", {

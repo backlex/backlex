@@ -6,7 +6,7 @@ export type PgDb = PostgresJsDatabase<typeof schema>;
 
 export const createPgClient = (url: string): PgDb => {
   const client = postgres(url, { prepare: false });
-  return drizzle(client, { schema });
+  return drizzle({ client, schema });
 };
 
 export { schema };

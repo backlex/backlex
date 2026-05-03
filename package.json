@@ -1,0 +1,30 @@
+{
+  "name": "workeros",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Bun + Cloudflare Workers backend platform (Supabase/Directus alternative) with Drizzle, better-auth and shadcn admin",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "dev:api": "bun run --cwd apps/api dev",
+    "dev:admin": "bun run --cwd apps/admin dev",
+    "build": "bun run --filter '*' build",
+    "typecheck": "bun run --filter '*' typecheck",
+    "db:generate": "bun run --cwd packages/db generate",
+    "db:migrate": "bun run --cwd packages/db migrate",
+    "db:studio": "bun run --cwd packages/db studio",
+    "deploy:worker": "bun run --cwd apps/api deploy"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "bun": ">=1.1.0"
+  }
+}

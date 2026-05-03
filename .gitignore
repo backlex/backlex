@@ -22,6 +22,9 @@ node_modules.bun
 # drizzle
 drizzle/meta
 
+# local data (sqlite, file storage)
+.data/
+
 # vite/turbo build artifacts
 .turbo
 

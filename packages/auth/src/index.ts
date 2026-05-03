@@ -1,5 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import * as pgSchema from "@workeros/db/pg/schema";
+import * as sqliteSchema from "@workeros/db/sqlite/schema";
 import type { PgDb } from "@workeros/db/pg";
 import type { SqliteDb } from "@workeros/db/sqlite";
 
@@ -8,6 +10,16 @@ export interface AuthConfig {
   secret: string;
   trustedOrigins?: string[];
 }
+
+const authSchemaFor = (provider: "pg" | "sqlite") => {
+  const s = provider === "pg" ? pgSchema : sqliteSchema;
+  return {
+    user: s.users,
+    session: s.sessions,
+    account: s.accounts,
+    verification: s.verifications,
+  };
+};
 
 export const createAuth = (
   db: PgDb | SqliteDb,
@@ -20,6 +32,7 @@ export const createAuth = (
     trustedOrigins: config.trustedOrigins,
     database: drizzleAdapter(db, {
       provider,
+      schema: authSchemaFor(provider),
     }),
     emailAndPassword: {
       enabled: true,

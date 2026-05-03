@@ -35,6 +35,7 @@ export const sessions = sqliteTable(
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
     createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
   },
   (t) => [
     uniqueIndex("sessions_token_idx").on(t.token),
@@ -66,6 +67,7 @@ export const verifications = sqliteTable("verifications", {
   value: text("value").notNull(),
   expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
   createdAt: ts("created_at"),
+  updatedAt: ts("updated_at"),
 });
 
 export const collections = sqliteTable("collections", {

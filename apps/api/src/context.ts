@@ -18,7 +18,8 @@ export interface Ctx {
 }
 
 export const buildContext = (env: Env): Ctx => {
-  const dialect: "pg" | "sqlite" = env.D1 ? "sqlite" : "pg";
+  const dialect: "pg" | "sqlite" =
+    env.D1 ? "sqlite" : env.DATABASE_URL ? "pg" : "sqlite";
 
   const db: PgDb | SqliteDb = env.D1
     ? createD1Client(env.D1)
@@ -36,7 +37,18 @@ export const buildContext = (env: Env): Ctx => {
 
   const vector: VectorAdapter = env.VECTORIZE
     ? vectorizeAdapter(env.VECTORIZE)
-    : pgvectorAdapter(db as PgDb);
+    : dialect === "pg"
+      ? pgvectorAdapter(db as PgDb)
+      : noVectorAdapter();
 
   return { env, dialect, db, auth, storage, vector };
+};
+
+const noVectorAdapter = (): VectorAdapter => {
+  const fail = () => {
+    throw new Error(
+      "No vector backend configured. Set DATABASE_URL (with pgvector) or bind VECTORIZE.",
+    );
+  };
+  return { upsert: fail, query: fail, delete: fail };
 };

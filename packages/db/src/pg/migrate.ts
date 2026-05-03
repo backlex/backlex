@@ -13,7 +13,7 @@ if (!url) {
 }
 
 const client = postgres(url, { max: 1 });
-const db = drizzle(client);
+const db = drizzle({ client });
 
 // Make sure pgvector is available before running drizzle migrations.
 await client`CREATE EXTENSION IF NOT EXISTS vector`;

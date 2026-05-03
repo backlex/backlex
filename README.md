@@ -11,7 +11,7 @@ alternative. Single codebase, two deploy targets:
 | Layer       | Tech                                                        |
 |-------------|-------------------------------------------------------------|
 | API         | [Hono](https://hono.dev) (Bun + Workers + Node compatible)  |
-| ORM         | [Drizzle](https://orm.drizzle.team) — PG + SQLite/D1        |
+| ORM         | [Drizzle](https://orm.drizzle.team) v1 beta — PG + SQLite/D1 |
 | Auth        | [better-auth](https://better-auth.com) (email/password, OAuth-ready) |
 | Storage     | local FS (dev) / Cloudflare R2 (edge)                       |
 | Vectors     | `pgvector` (PG) / Cloudflare Vectorize (edge)               |

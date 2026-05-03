@@ -30,9 +30,6 @@ export const createAuth = (
       expiresIn: 60 * 60 * 24 * 7, // 7d
       updateAge: 60 * 60 * 24, // 1d
     },
-    advanced: {
-      generateId: () => crypto.randomUUID(),
-    },
   });
 
 export type Auth = ReturnType<typeof createAuth>;

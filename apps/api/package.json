@@ -14,7 +14,7 @@
     "@workeros/auth": "workspace:*",
     "@workeros/core": "workspace:*",
     "@workeros/db": "workspace:*",
-    "drizzle-orm": "^0.36.4",
+    "drizzle-orm": "1.0.0-beta.22",
     "hono": "^4.6.12",
     "zod": "^3.23.8"
   },

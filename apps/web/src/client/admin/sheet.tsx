@@ -1,12 +1,10 @@
 // @ts-nocheck
 // Sheet form for create/edit, ConfirmAction dialog
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { I } from "./icons";
 import { type CollectionSchema, type Post } from "./mock";
 import { Badge, Button, IconButton, Switch } from "./ui";
 import { Select } from "./select";
-import { STATUS_VALUES } from "./items";
-import { getAuthors, subscribeAuthors } from "./authors-cache";
 
 export interface ItemSheetProps {
   open: boolean;
@@ -17,55 +15,97 @@ export interface ItemSheetProps {
   onSave: (draft: Partial<Post>) => void;
 }
 
+type SchemaField = {
+  name: string;
+  type?: string;
+  required?: boolean;
+  nullable?: boolean;
+  unique?: boolean;
+};
+
+const SYSTEM_FIELDS = new Set(["id", "owner_id", "created_at", "updated_at", "tenant_id", "deleted_at"]);
+
+const blankFor = (type: string | undefined): unknown => {
+  switch (type) {
+    case "boolean": return false;
+    case "json": return "";
+    case "integer":
+    case "number": return "";
+    case "timestamp": return null;
+    default: return "";
+  }
+};
+
 export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: ItemSheetProps) {
-  // Subscribe to the authors cache so the Select re-renders when the
-  // workspace's user list loads in the background.
-  const authors = useSyncExternalStore(subscribeAuthors, getAuthors, getAuthors);
-  const blank = { title: "", slug: "", status: "draft", body: "", author: authors[0]?.id ?? "", word_count: 0, view_count: 0, tags: "[]", published_at: null as string | null };
-  const [draft, setDraft] = useState<Record<string, unknown>>(blank);
+  const fields = useMemo(() => {
+    const all = (schema?.fields ?? []) as SchemaField[];
+    // Only render user-defined columns; system columns are surfaced read-only
+    // in the footer.
+    return all.filter((f) => !SYSTEM_FIELDS.has(f.name));
+  }, [schema]);
+
+  const buildDefaults = () => {
+    const d: Record<string, unknown> = {};
+    for (const f of fields) d[f.name] = blankFor(f.type);
+    return d;
+  };
+
+  const [draft, setDraft] = useState<Record<string, unknown>>(buildDefaults);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (open) {
-      const init = initial
-        ? { ...blank, ...initial, tags: typeof initial.tags === "string" ? initial.tags : JSON.stringify(initial.tags || []) }
-        : blank;
-      setDraft(init);
-      setErrors({});
-      setTouched({});
+    if (!open) return;
+    const base = buildDefaults();
+    if (initial) {
+      for (const f of fields) {
+        const v = (initial as Record<string, unknown>)[f.name];
+        if (v === undefined) continue;
+        base[f.name] = f.type === "json" && typeof v !== "string" ? JSON.stringify(v) : v;
+      }
     }
-  }, [open, initial]);
+    setDraft(base);
+    setErrors({});
+    setTouched({});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initial, schema?.slug]);
 
-  const updateTitle = (title: string) => {
-    const slugFromTitle = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
-    setDraft((d) => ({ ...d, title, slug: !touched.slug ? slugFromTitle : d.slug }));
+  const updateField = (name: string, value: unknown) => {
+    setDraft((d) => {
+      const next = { ...d, [name]: value };
+      // Auto-derive slug from title until the user touches the slug field.
+      if (
+        name === "title" &&
+        !touched.slug &&
+        fields.some((f) => f.name === "slug" && f.type === "text") &&
+        typeof value === "string"
+      ) {
+        next.slug = value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
+      }
+      return next;
+    });
   };
 
   const validate = () => {
-    // Schema-driven required check. The legacy form hardcoded `title /
-    // slug / status` from the design's mock posts schema, which 422'd on
-    // every other collection ("required slug" but no slug column on
-    // c_<other>). Now we only require fields the active collection
-    // actually marks as required.
     const e: Record<string, string> = {};
-    const schemaFields = (schema?.fields ?? []) as Array<{ name: string; required?: boolean; nullable?: boolean }>;
-    for (const f of schemaFields) {
+    for (const f of fields) {
       if (!(f.required || f.nullable === false)) continue;
-      const v = (draft as Record<string, unknown>)[f.name];
+      const v = draft[f.name];
       if (v === undefined || v === null || (typeof v === "string" && !v.trim())) {
         e[f.name] = `${f.name} is required`;
       }
     }
-    // Slug format check still applies if the collection has a slug column.
-    const slugFromDraft = (draft as Record<string, unknown>).slug;
-    if (typeof slugFromDraft === "string" && slugFromDraft && !/^[a-z0-9-]+$/.test(slugFromDraft)) {
+    // slug format check, only if a slug column exists
+    const slugVal = draft.slug;
+    if (typeof slugVal === "string" && slugVal && !/^[a-z0-9-]+$/.test(slugVal)) {
       e.slug = "lowercase letters, digits, and dashes only";
     }
-    // tags column: validate JSON if present.
-    const tagsFromDraft = (draft as Record<string, unknown>).tags;
-    if (typeof tagsFromDraft === "string" && tagsFromDraft) {
-      try { JSON.parse(tagsFromDraft); } catch { e.tags = "must be valid json"; }
+    // json columns: validate parseable JSON
+    for (const f of fields) {
+      if (f.type !== "json") continue;
+      const raw = draft[f.name];
+      if (typeof raw !== "string" || !raw.trim()) continue;
+      try { JSON.parse(raw); } catch { e[f.name] = "must be valid json"; }
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -73,120 +113,169 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
 
   const submit = () => {
     if (!validate()) return;
-    // Only forward fields the active collection actually defines. The
-    // design's blank{} carries `slug/status/body/author/word_count/
-    // view_count/tags/published_at` because the prototype assumed the
-    // posts schema; on a real c_<slug> with different columns those
-    // would 422 with "Unknown field" from validateBody().
-    const allowed = new Set((schema?.fields ?? []).map((f) => f.name));
     const payload: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(draft)) {
-      if (!allowed.has(k)) continue;
-      if (k === "tags" && typeof v === "string") {
-        try { payload[k] = JSON.parse(v || "[]"); } catch { payload[k] = []; }
-      } else if (k === "word_count" || k === "view_count") {
-        payload[k] = Number(v) || 0;
+    for (const f of fields) {
+      const raw = draft[f.name];
+      if (raw === undefined) continue;
+      if (f.type === "json") {
+        if (typeof raw === "string" && raw.trim()) {
+          try { payload[f.name] = JSON.parse(raw); } catch { payload[f.name] = null; }
+        } else if (typeof raw === "string") {
+          // empty JSON string — leave the column null so PATCH doesn't clobber
+          // an existing value with empty content.
+          continue;
+        } else {
+          payload[f.name] = raw;
+        }
+      } else if (f.type === "integer" || f.type === "number") {
+        if (raw === "" || raw === null) continue;
+        const n = Number(raw);
+        if (!Number.isNaN(n)) payload[f.name] = n;
+      } else if (f.type === "timestamp") {
+        payload[f.name] = raw || null;
+      } else if (f.type === "boolean") {
+        payload[f.name] = !!raw;
       } else {
-        payload[k] = v;
+        payload[f.name] = raw;
       }
     }
     onSave(payload as Partial<Post>);
   };
 
   if (!open) return null;
+
+  const renderField = (f: SchemaField) => {
+    const val = draft[f.name];
+    const err = errors[f.name];
+    const typeLabel = (f.type ?? "text") + (f.unique ? " · unique" : "");
+    const reqMark = f.required || f.nullable === false ? <span style={{ color: "var(--destructive)" }}>*</span> : null;
+    const label = (
+      <label className="field-label">
+        {f.name} <Badge variant="outline" mono>{typeLabel}</Badge> {reqMark}
+      </label>
+    );
+
+    if (f.type === "longtext") {
+      return (
+        <div key={f.name} className="field">
+          {label}
+          <textarea
+            className={`textarea ${err ? "error" : ""}`}
+            rows={6}
+            value={String(val ?? "")}
+            onChange={(e) => { updateField(f.name, e.target.value); setTouched((t) => ({ ...t, [f.name]: true })); }}
+          />
+          {err && <div className="field-error"><I.AlertTriangle size={11} />{err}</div>}
+        </div>
+      );
+    }
+    if (f.type === "json") {
+      return (
+        <div key={f.name} className="field">
+          {label}
+          <textarea
+            className={`textarea ${err ? "error" : ""}`}
+            rows={3}
+            value={String(val ?? "")}
+            placeholder="[] or {}"
+            onChange={(e) => { updateField(f.name, e.target.value); setTouched((t) => ({ ...t, [f.name]: true })); }}
+          />
+          {err && <div className="field-error"><I.AlertTriangle size={11} />{err}</div>}
+        </div>
+      );
+    }
+    if (f.type === "boolean") {
+      return (
+        <div key={f.name} className="field">
+          <div className="field-row">
+            <div>{label}</div>
+            <Switch checked={!!val} onChange={(on) => updateField(f.name, on)} />
+          </div>
+        </div>
+      );
+    }
+    if (f.type === "integer" || f.type === "number") {
+      return (
+        <div key={f.name} className="field">
+          {label}
+          <input
+            className={`input tabular-nums ${err ? "error" : ""}`}
+            type="number"
+            step={f.type === "integer" ? 1 : "any"}
+            value={val === null || val === undefined ? "" : String(val)}
+            onChange={(e) => { updateField(f.name, e.target.value); setTouched((t) => ({ ...t, [f.name]: true })); }}
+          />
+          {err && <div className="field-error"><I.AlertTriangle size={11} />{err}</div>}
+        </div>
+      );
+    }
+    if (f.type === "timestamp") {
+      const iso = typeof val === "string" ? val : "";
+      const localValue = iso ? iso.slice(0, 16) : "";
+      return (
+        <div key={f.name} className="field">
+          {label}
+          <input
+            className={`input ${err ? "error" : ""}`}
+            type="datetime-local"
+            value={localValue}
+            onChange={(e) => { updateField(f.name, e.target.value ? new Date(e.target.value).toISOString() : null); setTouched((t) => ({ ...t, [f.name]: true })); }}
+          />
+          {err && <div className="field-error"><I.AlertTriangle size={11} />{err}</div>}
+        </div>
+      );
+    }
+    // text / uuid (free text fallback)
+    const autoSlug = f.name === "slug" && !touched.slug && fields.some((x) => x.name === "title");
+    return (
+      <div key={f.name} className="field">
+        {label}
+        <input
+          className={`input ${f.name === "slug" ? "font-mono" : ""} ${err ? "error" : ""}`}
+          value={String(val ?? "")}
+          autoFocus={f.name === "title"}
+          onChange={(e) => { updateField(f.name, e.target.value); setTouched((t) => ({ ...t, [f.name]: true })); }}
+          autoComplete="off"
+        />
+        {err
+          ? <div className="field-error"><I.AlertTriangle size={11} />{err}</div>
+          : autoSlug && <div className="field-hint">Auto-derived from title until edited.</div>}
+      </div>
+    );
+  };
+
+  const slug = schema?.slug ?? "";
+  const ownerScoped = !!schema?.ownerScoped;
+
   return (
     <>
       <div className="scrim" onClick={onClose} />
       <div className="sheet" role="dialog" aria-modal="true">
         <div className="sheet-header">
           <div style={{ flex: 1 }}>
-            <h2>{mode === "create" ? "New post" : "Edit post"}</h2>
+            <h2>{mode === "create" ? `New ${slug || "row"}` : `Edit ${slug || "row"}`}</h2>
             <p>
               {mode === "create"
-                ? <>Insert into <span className="font-mono">c_posts</span>. Owner is set to <span className="font-mono">$user.id</span>.</>
-                : <>id <span className="font-mono">{initial?.id}</span></>}
+                ? <>Insert into <span className="font-mono">c_{slug}</span>{ownerScoped ? <>. Owner is set to <span className="font-mono">$user.id</span></> : null}.</>
+                : <>id <span className="font-mono">{(initial as { id?: string })?.id}</span></>}
             </p>
           </div>
           <IconButton icon={I.X} onClick={onClose} title="Close" />
         </div>
 
         <div className="sheet-body">
-          <div className="field">
-            <label className="field-label">title <Badge variant="outline" mono>text</Badge> <span style={{ color: "var(--destructive)" }}>*</span></label>
-            <input
-              className={`input ${errors.title ? "error" : ""}`}
-              value={String(draft.title || "")}
-              autoFocus
-              onChange={(e) => { updateTitle(e.target.value); setTouched((t) => ({ ...t, title: true })); }}
-              autoComplete="off"
-              placeholder="Edge functions are now generally available"
-            />
-            {errors.title && <div className="field-error"><I.AlertTriangle size={11} />{errors.title}</div>}
-          </div>
-
-          <div className="field">
-            <label className="field-label">slug <Badge variant="outline" mono>text · unique</Badge> <span style={{ color: "var(--destructive)" }}>*</span></label>
-            <input
-              className={`input font-mono ${errors.slug ? "error" : ""}`}
-              value={String(draft.slug || "")}
-              onChange={(e) => { setDraft({ ...draft, slug: e.target.value }); setTouched((t) => ({ ...t, slug: true })); }}
-              autoComplete="off"
-            />
-            {errors.slug ? <div className="field-error"><I.AlertTriangle size={11} />{errors.slug}</div> : <div className="field-hint">Auto-derived from title until edited.</div>}
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-            <div className="field">
-              <label className="field-label">status <Badge variant="outline" mono>text</Badge></label>
-              <Select value={String(draft.status)} onChange={(v) => setDraft({ ...draft, status: v })} options={STATUS_VALUES.map((s) => ({ value: s, label: s }))} />
+          {fields.length === 0 && (
+            <div className="muted" style={{ fontSize: 13, padding: 12, background: "var(--muted)", borderRadius: "var(--radius-xl)" }}>
+              No editable fields. Add columns from the Schema tab to capture data on this collection.
             </div>
-            <div className="field">
-              <label className="field-label">author <Badge variant="outline" mono>uuid</Badge></label>
-              <Select value={String(draft.author ?? "")} onChange={(v) => setDraft({ ...draft, author: v })} options={authors.length === 0 ? [{ value: "", label: "(no users yet)", hint: "" }] : authors.map((a) => ({ value: a.id, label: a.name, hint: a.id.slice(0, 6) + "…" }))} />
-            </div>
-          </div>
-
-          <div className="field">
-            <label className="field-label">body <Badge variant="outline" mono>longtext</Badge></label>
-            <textarea
-              className="textarea"
-              rows={6}
-              value={String(draft.body || "")}
-              onChange={(e) => setDraft({ ...draft, body: e.target.value, word_count: e.target.value.trim().split(/\s+/).filter(Boolean).length })}
-              placeholder="Write the body. Markdown is fine — we render it on the consumer side."
-            />
-            <div className="field-hint tabular-nums">{(draft.word_count as number) || 0} words</div>
-          </div>
-
-          <div className="field">
-            <label className="field-label">tags <Badge variant="outline" mono>json</Badge></label>
-            <textarea
-              className={`textarea ${errors.tags ? "error" : ""}`}
-              rows={2}
-              value={String(draft.tags || "")}
-              onChange={(e) => setDraft({ ...draft, tags: e.target.value })}
-            />
-            {errors.tags && <div className="field-error"><I.AlertTriangle size={11} />{errors.tags}</div>}
-          </div>
-
-          <div className="field">
-            <div className="field-row">
-              <div>
-                <div className="field-label">published_at <Badge variant="outline" mono>timestamp</Badge></div>
-                <div className="field-hint">Set automatically when status flips to <span className="font-mono">published</span>.</div>
-              </div>
-              <Switch
-                checked={!!draft.published_at}
-                onChange={(on) => setDraft({ ...draft, published_at: on ? new Date().toISOString() : null, status: on ? "published" : draft.status })}
-              />
-            </div>
-          </div>
+          )}
+          {fields.map(renderField)}
 
           <div className="field" style={{ background: "var(--muted)", padding: 12, borderRadius: "var(--radius-xl)" }}>
             <div className="field-label" style={{ marginBottom: 6 }}>system fields</div>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 12, color: "var(--muted-foreground)" }}>
-              <div><span className="font-mono">id</span>: {mode === "create" ? <span className="font-mono">gen_uuid()</span> : <span className="font-mono">{initial?.id}</span>}</div>
-              <div><span className="font-mono">owner_id</span>: <span className="font-mono">$user.id</span></div>
+              <div><span className="font-mono">id</span>: {mode === "create" ? <span className="font-mono">gen_uuid()</span> : <span className="font-mono">{(initial as { id?: string })?.id}</span>}</div>
+              {ownerScoped && <div><span className="font-mono">owner_id</span>: <span className="font-mono">$user.id</span></div>}
               <div><span className="font-mono">updated_at</span>: <span className="font-mono">now()</span></div>
             </div>
           </div>
@@ -195,7 +284,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
         <div className="sheet-footer">
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
           <Button variant="primary" size="sm" onClick={submit}>
-            {mode === "create" ? "Create post" : "Save"}
+            {mode === "create" ? `Create ${slug || "row"}` : "Save"}
           </Button>
         </div>
       </div>

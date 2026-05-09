@@ -805,21 +805,32 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
     setRunning(true);
     setLogs([{ t: new Date().toISOString().slice(11, 19), lvl: "info", msg: `invoking ${active.name}…` }]);
     try {
-      const r = await api<{ data?: unknown; ms?: number; logs?: { t: string; lvl: string; msg: string }[] }>(
+      // The invoke route returns the SandboxResult directly (no `{data: …}`
+      // wrapper): `{ ok, logs: string[], error?, value?, durationMs }`. Map
+      // each log line into the {t, lvl, msg} shape the UI renders.
+      const r = await api<{ ok: boolean; logs: string[]; value?: unknown; error?: string; durationMs?: number }>(
         `/api/functions/${active.name}/invoke`,
         { method: "POST", body: JSON.stringify({}) },
       );
       const ts = new Date().toISOString().slice(11, 19);
-      const lines = r.logs ?? [
-        { t: ts, lvl: "info", msg: `done · ${r.ms ?? "—"}ms` },
-        { t: ts, lvl: "info", msg: `result: ${JSON.stringify(r.data ?? null).slice(0, 120)}` },
-      ];
-      setLogs((arr) => [...arr, ...lines]);
-      pushToast("Function ran successfully.");
+      const logLines = (r.logs ?? []).map((m) => ({ t: ts, lvl: "info", msg: m }));
+      const summary = r.ok
+        ? { t: ts, lvl: "info", msg: `done · ${r.durationMs ?? "—"}ms · result: ${JSON.stringify(r.value ?? null).slice(0, 200)}` }
+        : { t: ts, lvl: "error", msg: r.error ?? "function failed" };
+      setLogs((arr) => [...arr, ...logLines, summary]);
+      if (r.ok) pushToast("Function ran successfully.");
+      else pushToast(r.error ?? "Function failed");
     } catch (e) {
+      // Non-2xx responses parse the same way: api() throws AppError with the
+      // server's message. For the function endpoint a 500 still carries the
+      // SandboxResult body, so try to surface the sandbox error if present.
       const ts = new Date().toISOString().slice(11, 19);
-      setLogs((arr) => [...arr, { t: ts, lvl: "error", msg: (e as Error).message }]);
-      pushToast((e as Error).message);
+      const msg = (e as Error).message;
+      let parsed: { error?: string; logs?: string[] } | null = null;
+      try { parsed = JSON.parse(msg); } catch { /* not JSON */ }
+      const lines = (parsed?.logs ?? []).map((m) => ({ t: ts, lvl: "info", msg: m }));
+      setLogs((arr) => [...arr, ...lines, { t: ts, lvl: "error", msg: parsed?.error ?? msg }]);
+      pushToast(parsed?.error ?? msg);
     } finally {
       setRunning(false);
     }
@@ -2112,11 +2123,14 @@ export function ApiKeysPage({ pushToast }: { pushToast: (m: string) => void }) {
         description="pak_<8-hex prefix>_<32-hex secret>. Only the SHA-256 of the secret is stored; the plaintext is shown once."
         actions={<Button variant="primary" icon={I.Plus} onClick={async () => {
           try {
-            const r = await api<{ data: { id: string; key: string; prefix: string; name: string } }>("/api/api-keys", {
+            // Backend returns the plaintext as `secret` (and a `warning` we
+            // surface in the reveal pane). Older drafts of the UI read
+            // `key` — that field never existed, so reveal silently failed.
+            const r = await api<{ data: { id: string; secret: string; prefix: string; name: string } }>("/api/api-keys", {
               method: "POST",
               body: JSON.stringify({ name: "New key" }),
             });
-            setRevealed(r.data.key);
+            setRevealed(r.data.secret);
             await reloadKeys();
           } catch (e) {
             pushToast((e as Error).message);

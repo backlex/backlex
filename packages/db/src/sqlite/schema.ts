@@ -64,6 +64,7 @@ export const users = sqliteTable(
     activeTenantId: text("active_tenant_id"),
     status: text("status").notNull().default("active"),
     suspendedAt: integer("suspended_at", { mode: "timestamp_ms" }),
+    isAnonymous: integer("is_anonymous", { mode: "boolean" }).notNull().default(false),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },

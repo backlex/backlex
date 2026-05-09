@@ -67,17 +67,46 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
   const [running, setRunning] = useState(false);
   const [readOnly, setReadOnly] = useState(true);
 
-  const tables = [
-    { name: "c_posts", rows: 12 },
-    { name: "c_comments", rows: 184 },
-    { name: "c_tags", rows: 22 },
-    { name: "c_authors", rows: 5 },
-    { name: "auth_users", rows: 5 },
-    { name: "auth_sessions", rows: 8 },
-    { name: "storage_objects", rows: 89 },
-    { name: "flow_runs", rows: 5680 },
-    { name: "audit_log", rows: 14820 },
+  // Live table list: query sqlite_master once on mount, fall back to mock
+  // names if the call fails (e.g. unauthenticated dev preview).
+  const seedTables = [
+    { name: "c_posts", rows: 0 },
+    { name: "users", rows: 0 },
+    { name: "sessions", rows: 0 },
   ];
+  const [tables, setTables] = useState(seedTables);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await dbAdminApi.runSql(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '\\_\\_drizzle%' ESCAPE '\\' ORDER BY name;",
+        );
+        if (cancelled) return;
+        const names = (r.data?.[0]?.rows ?? []) as { name: string }[];
+        if (!Array.isArray(names) || names.length === 0) return;
+        // Best-effort row count per table — small DB so we run a COUNT per
+        // table in parallel; cap at 50 tables to keep the panel snappy.
+        const limited = names.slice(0, 50);
+        const counts = await Promise.allSettled(
+          limited.map(async (t) => {
+            const c = await dbAdminApi.runSql(`SELECT COUNT(*) AS n FROM "${t.name}";`);
+            const row = (c.data?.[0]?.rows?.[0] ?? {}) as { n?: number };
+            return { name: t.name, rows: Number(row.n ?? 0) };
+          }),
+        );
+        if (cancelled) return;
+        setTables(
+          counts.map((c, i) =>
+            c.status === "fulfilled" ? c.value : { name: limited[i]!.name, rows: 0 },
+          ),
+        );
+      } catch {
+        // keep seed
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const isWrite = /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE)\b/i.test(sql);
   const run = async () => {
@@ -235,7 +264,7 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
   const reload = async () => {
     try {
       const r = await dbAdminApi.backups();
-      if (Array.isArray(r.data) && r.data.length > 0) {
+      if (Array.isArray(r.data)) {
         setBackups(
           r.data.map((b) => ({
             id: b.id,
@@ -526,7 +555,7 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
       try {
         const res = await activityApi.list();
         if (cancelled) return;
-        if (Array.isArray(res.data) && res.data.length > 0) {
+        if (Array.isArray(res.data)) {
           setEvents(
             res.data.map((a) => ({
               t: new Date(a.createdAt).toISOString().replace("T", " ").slice(0, 19),
@@ -608,7 +637,7 @@ export function RevisionsPage() {
         const r = await fetch(`/api/revisions/posts/${encodeURIComponent(activeId)}`, { credentials: "include" });
         if (!r.ok || cancelled) return;
         const j = (await r.json()) as { data?: any[] };
-        if (Array.isArray(j.data) && j.data.length > 0) {
+        if (Array.isArray(j.data)) {
           const mapped = j.data.map((row, i) => ({
             v: j.data.length - i,
             t: new Date(row.createdAt).toISOString().slice(0, 16).replace("T", " "),
@@ -833,7 +862,7 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
       try {
         const res = await emailTemplatesApi.list();
         if (cancelled) return;
-        if (res.data.length > 0) {
+        if (Array.isArray(res.data)) {
           const mapped: Tpl[] = res.data.map((t: ApiEmailTemplate) => ({
             id: t.id,
             key: t.key,

@@ -26,7 +26,7 @@ import { ConfirmDialog, ItemSheet } from "./sheet";
 import { AlterPreview, EmptyItems, Palette, RealtimeTail, SchemaView, type RealtimeEvent } from "./extras";
 import { AddFieldDialog } from "./add-field";
 import { CollectionsIndex, NewCollectionDialog } from "./collections-index";
-import { collectionsApi, itemsApi } from "./api";
+import { collectionsApi, itemsApi, settingsApi } from "./api";
 import { api } from "@/lib/api";
 import { StoragePage } from "./storage";
 import {
@@ -102,11 +102,11 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
       try {
         const res = await itemsApi.list("posts", { limit: 50, sort: "-updated_at" });
         if (cancelled) return;
-        if (Array.isArray(res.data) && res.data.length > 0) {
+        if (Array.isArray(res.data)) {
           setPosts(res.data as unknown as Post[]);
         }
       } catch {
-        // mock seed remains in place
+        // network/auth failure → keep mock seed for the offline demo
       }
     })();
     return () => { cancelled = true; };
@@ -140,9 +140,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
       try {
         const res = await collectionsApi.list();
         if (cancelled) return;
-        if (Array.isArray(res.data) && res.data.length > 0) {
-          // Map the API row shape (only slug/fields/etc.) to the design's
-          // CollectionListItem so the index renders the new rows alongside.
+        if (Array.isArray(res.data)) {
           const mapped = res.data.map((c) => ({
             slug: c.slug,
             count: 0,
@@ -157,7 +155,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
           setCollections(mapped);
         }
       } catch {
-        // keep mock seed
+        // keep mock seed on auth/network failure
       }
     })();
     return () => { cancelled = true; };
@@ -172,6 +170,25 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
     const root = document.documentElement;
     if (tweaks.dark) root.classList.add("dark"); else root.classList.remove("dark");
   }, [tweaks.dark]);
+
+  // Detect the actual runtime profile so the sidebar pill, Health card and
+  // Settings page show truth instead of the design's `bun` default.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await settingsApi.runtime();
+        if (cancelled) return;
+        const adapter = r.data?.adapter;
+        if (adapter === "bun" || adapter === "workers" || adapter === "vercel") {
+          setTweak("adapter", adapter);
+        }
+      } catch {
+        // keep default
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [setTweak]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -595,7 +612,7 @@ function PermissionsPanel({ pushToast }: { pushToast: (m: string) => void }) {
     void (async () => {
       try {
         const r = await api<{ data: { id: string; name: string; description: string | null; admin: boolean }[] }>(`/api/roles`);
-        if (!cancelled && Array.isArray(r.data) && r.data.length > 0) {
+        if (!cancelled && Array.isArray(r.data)) {
           setRoles(
             r.data.map((row) => ({
               name: row.name,

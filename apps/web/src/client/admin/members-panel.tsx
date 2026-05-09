@@ -67,6 +67,14 @@ export interface MembersPanelProps {
 }
 
 export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
+  /**
+   * Workspace-level roles — these live on `tenant_members.role`, not on the
+   * global `roles` table. The system roles (admin/authenticated/public) the
+   * permissions matrix uses are different and intentionally not surfaced
+   * here.
+   */
+  const WORKSPACE_ROLES = ["owner", "admin", "editor", "member"] as const;
+
   const [members, setMembers] = useState<Member[]>([]);
   const [q, setQ] = useState("");
   const [invite, setInvite] = useState("");
@@ -161,7 +169,7 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
           onKeyDown={(e) => { if (e.key === "Enter") sendInvite(); }}
         />
         <select className="mp-invite-role" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
-          {roles.map((r) => <option key={r.name} value={r.name}>{r.name}</option>)}
+          {WORKSPACE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
         </select>
         <Button variant="primary" size="sm" icon={I.Plus} onClick={sendInvite}>Invite</Button>
       </div>
@@ -184,7 +192,7 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
               </div>
             </div>
             <select className="mp-role-select" value={m.role} onChange={(e) => setRole(m.id, e.target.value)}>
-              {roles.map((r) => <option key={r.name} value={r.name}>{r.name}</option>)}
+              {WORKSPACE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
             <span className="muted font-mono" style={{ fontSize: 11.5 }}>{m.last}</span>
             <span>

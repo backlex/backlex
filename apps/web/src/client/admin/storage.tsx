@@ -72,7 +72,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
     void (async () => {
       try {
         const f = await api<{ data: { id: string; name: string }[] }>("/api/folders");
-        if (!cancelled && Array.isArray(f.data) && f.data.length > 0) {
+        if (!cancelled && Array.isArray(f.data)) {
           setFolders(
             f.data.map((x, i) => ({
               id: x.id,
@@ -87,7 +87,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
       }
       try {
         const fs = await api<{ data: any[] }>("/api/storage");
-        if (!cancelled && Array.isArray(fs.data) && fs.data.length > 0) {
+        if (!cancelled && Array.isArray(fs.data)) {
           setFiles(
             fs.data.map((file) => ({
               key: file.key,

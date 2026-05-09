@@ -175,6 +175,13 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
     (slug: string | null) => { navigate(slug ? "/collections/" + slug : "/collections"); },
     [navigate],
   );
+  // Flow detail id lives in segs[1] when activeNav === "flows" — same shape as
+  // collections, so deep links / browser back preserve the selected flow.
+  const activeFlow = activeNav === "flows" && segs[1] ? segs[1] : null;
+  const setActiveFlow = useCallback(
+    (id: string | null) => { navigate(id ? "/flows/" + id : "/flows"); },
+    [navigate],
+  );
   const [newCollectionOpen, setNewCollectionOpen] = useState(false);
 
   // Real items + schema load — both keyed off the active collection so
@@ -459,9 +466,11 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
       <div className="main">
         <Topbar
           crumbs={
-            activeNav === "collections"
-              ? (activeCollection ? ["collections", activeCollection] : ["collections"])
-              : [activeNav]
+            activeNav === "collections" && activeCollection
+              ? ["collections", activeCollection]
+              : activeNav === "flows" && activeFlow
+                ? ["flows", activeFlow]
+                : [activeNav]
           }
           onOpenPalette={() => setPaletteOpen(true)}
           onToggleTheme={() => setTweak("dark", !tweaks.dark)}
@@ -475,7 +484,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             {activeNav === "dashboard" && <OverviewPage adapter={tweaks.adapter} pushToast={pushToast} setActiveNav={setActiveNav} />}
             {activeNav === "database" && <DatabasePage pushToast={pushToast} adapter={tweaks.adapter} />}
             {activeNav === "storage" && <StoragePage pushToast={pushToast} />}
-            {activeNav === "flows" && <FlowsPage pushToast={pushToast} />}
+            {activeNav === "flows" && <FlowsPage pushToast={pushToast} activeFlow={activeFlow} setActiveFlow={setActiveFlow} />}
             {activeNav === "functions" && <FunctionsPage pushToast={pushToast} />}
             {activeNav === "webhooks" && <WebhooksPage pushToast={pushToast} />}
             {activeNav === "realtime" && <RealtimePage events={events} pushToast={pushToast} />}

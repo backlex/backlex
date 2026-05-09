@@ -501,16 +501,6 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                       },
                     })}
                   />
-                  <div className="card">
-                    <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <I.Code size={14} />
-                      <span style={{ fontSize: 13, fontWeight: 500 }}>pending alteration</span>
-                      <span className="font-mono" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>preview only — additive</span>
-                    </div>
-                    <div style={{ padding: 14 }}>
-                      <AlterPreview pendingField={{ name: "reading_time_minutes", type: "integer", nullable: false, default: "0" }} />
-                    </div>
-                  </div>
                 </div>
               )}
 

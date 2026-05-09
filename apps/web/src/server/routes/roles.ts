@@ -163,6 +163,19 @@ export const usersRoutes = new Hono<AppBindings>()
       roleId: string;
       name: string;
     }[];
+    // Last-seen comes from the most recent session row per user. Cheap on
+    // small DBs; on larger deployments this should move to a materialized
+    // `users.last_seen_at` updated by the session middleware.
+    const sessionRows = (await (ctx.db as any)
+      .select({ userId: t.sessions.userId, createdAt: t.sessions.createdAt })
+      .from(t.sessions)) as { userId: string; createdAt: unknown }[];
+    const lastByUser = new Map<string, number>();
+    for (const s of sessionRows) {
+      const ts = typeof s.createdAt === "number" ? s.createdAt : new Date(s.createdAt as string).getTime();
+      const prev = lastByUser.get(s.userId) ?? 0;
+      if (ts > prev) lastByUser.set(s.userId, ts);
+    }
+
     const byUser = new Map<string, { id: string; name: string }[]>();
     for (const r of userRoles) {
       let bucket = byUser.get(r.userId);
@@ -176,6 +189,7 @@ export const usersRoutes = new Hono<AppBindings>()
       data: users.map((u) => ({
         ...u,
         roles: byUser.get(u.id) ?? [],
+        lastSeenAt: lastByUser.get(u.id) ?? null,
       })),
     });
   })

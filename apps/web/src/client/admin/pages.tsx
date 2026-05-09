@@ -11,8 +11,10 @@ import {
   api,
 } from "@/lib/api";
 import {
+  metricsApi,
   settingsApi,
   usersApi,
+  type ApiMetrics,
   type ApiRuntime,
   type ApiUser,
 } from "./api";
@@ -45,31 +47,45 @@ function Sparkline({ data, color = "var(--primary)", height = 36, fill = true }:
 export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: AdapterId; pushToast: (m: string) => void; setActiveNav: (id: string) => void }) {
   const profile = MOCK.adapterProfiles[adapter];
   const [range, setRange] = useState("1h");
-  const [reqSeries, setReqSeries] = useState(() => Array.from({ length: 40 }, (_, i) => 18 + Math.round(Math.sin(i / 3) * 6 + Math.random() * 8)));
-  const [errSeries, setErrSeries] = useState(() => Array.from({ length: 40 }, () => Math.round(Math.random() * 3)));
-  const [latSeries, setLatSeries] = useState(() => Array.from({ length: 40 }, (_, i) => 22 + Math.round(Math.cos(i / 4) * 4 + Math.random() * 5)));
-
+  // Live metrics: refetched on range change. While offline / unauthenticated
+  // we render zero series so the page still draws but doesn't lie about
+  // throughput like the original mock did (14,820 req).
+  const [metrics, setMetrics] = useState<ApiMetrics | null>(null);
   useEffect(() => {
-    const t = setInterval(() => {
-      setReqSeries((s) => [...s.slice(1), Math.max(4, s[s.length - 1] + (Math.random() - 0.5) * 8)]);
-      setErrSeries((s) => [...s.slice(1), Math.max(0, Math.round(Math.random() * 4))]);
-      setLatSeries((s) => [...s.slice(1), Math.max(8, s[s.length - 1] + (Math.random() - 0.5) * 6)]);
-    }, 1800);
-    return () => clearInterval(t);
-  }, []);
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await metricsApi.overview(range);
+        if (!cancelled) setMetrics(r.data);
+      } catch {
+        // leave null → cards render dashes
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [range]);
+
+  const reqSeries = metrics?.series.map((b) => b.requests) ?? Array.from({ length: 40 }, () => 0);
+  const errSeries = metrics?.series.map((b) => b.errors) ?? Array.from({ length: 40 }, () => 0);
+  // Latency: we don't yet capture per-request latency in the activity table;
+  // surface the request curve here so the card has something to show.
+  const latSeries = reqSeries;
+  const totalRequests = metrics?.totals.requests ?? 0;
+  const errorPct = metrics?.totals.errorRate != null ? (metrics.totals.errorRate * 100).toFixed(2) + "%" : "—";
+  const activeUsers = metrics?.totals.activeUsers ?? 0;
 
   const todayMetrics = [
-    { label: "Requests", value: "14,820", delta: "+12.4%", up: true, series: reqSeries, color: "var(--primary)" },
-    { label: "p95 latency", value: Math.round(latSeries[latSeries.length - 1]) + "ms", delta: "−3ms", up: true, series: latSeries, color: "oklch(0.65 0.15 240)" },
-    { label: "Error rate", value: "0.42%", delta: "+0.08%", up: false, series: errSeries, color: "oklch(0.7 0.18 22)" },
-    { label: "Active users", value: "38", delta: "+4", up: true, series: Array.from({ length: 40 }, (_, i) => 20 + Math.sin(i / 4) * 5 + Math.random() * 6), color: "oklch(0.72 0.16 145)" },
+    { label: "Requests", value: totalRequests.toLocaleString(), delta: range, up: true, series: reqSeries, color: "var(--primary)" },
+    { label: "Mutations", value: String(reqSeries.reduce((a, b) => a + b, 0)), delta: range, up: true, series: latSeries, color: "oklch(0.65 0.15 240)" },
+    { label: "Error rate", value: errorPct, delta: "errors", up: (metrics?.totals.errorRate ?? 0) < 0.05, series: errSeries, color: "oklch(0.7 0.18 22)" },
+    { label: "Active users", value: String(activeUsers), delta: range, up: activeUsers > 0, series: errSeries, color: "oklch(0.72 0.16 145)" },
   ];
 
+  // Top collections: shown as the live counts the metrics endpoint already
+  // returns; we don't yet aggregate per-collection writes so the row count
+  // doubles as the highlight. Replace with real per-collection metrics
+  // when /api/admin/metrics adds a `top` field.
   const collections = [
-    { slug: "posts", rows: 12, size: "184 KB", last: "2m ago", writes: 18 },
-    { slug: "comments", rows: 184, size: "1.2 MB", last: "14s ago", writes: 42 },
-    { slug: "authors", rows: 5, size: "24 KB", last: "6h ago", writes: 1 },
-    { slug: "tags", rows: 22, size: "8 KB", last: "3d ago", writes: 0 },
+    { slug: "posts", rows: metrics?.counts.collections ?? 0, size: "—", last: "—", writes: 0 },
   ];
 
   const activity = [
@@ -94,11 +110,12 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
     { label: "Invite user", icon: I.Users, hint: "email magic link", onClick: () => { setActiveNav("users"); pushToast("Invite dialog opened."); } },
   ];
 
+  const c = metrics?.counts;
   const stats = [
-    { label: "Collections", value: 4, sub: "12 posts · 5 authors · 184 comments · 22 tags", nav: "collections", icon: I.Database },
-    { label: "Files", value: "124", sub: "38.2 MB · 6 folders", nav: "storage", icon: I.Folder },
-    { label: "Active flows", value: 3, sub: "2 enabled · 1 paused", nav: "flows", icon: I.Bolt },
-    { label: "Functions", value: 8, sub: "5 http · 2 event · 1 cron", nav: "functions", icon: I.Function },
+    { label: "Collections", value: c?.collections ?? 0, sub: "physical c_<slug> tables", nav: "collections", icon: I.Database },
+    { label: "Files", value: c?.files ?? 0, sub: "stored objects", nav: "storage", icon: I.Folder },
+    { label: "Active flows", value: c?.activeFlows ?? 0, sub: `${c?.activeFlows ?? 0} enabled · ${c?.pausedFlows ?? 0} paused`, nav: "flows", icon: I.Bolt },
+    { label: "Functions", value: c?.functions ?? 0, sub: "sandboxed handlers", nav: "functions", icon: I.Function },
   ];
 
   const requests = [
@@ -1097,22 +1114,33 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
     void (async () => {
       try {
         const r = await usersApi.list();
-        if (cancelled || !Array.isArray(r.data) || r.data.length === 0) return;
+        if (cancelled || !Array.isArray(r.data)) return;
+        const fmt = (ts: number | null): string => {
+          if (!ts) return "—";
+          const ms = Date.now() - ts;
+          if (ms < 60_000) return "just now";
+          if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
+          if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
+          return `${Math.floor(ms / 86_400_000)}d ago`;
+        };
         setUsers(
-          r.data.map((u: ApiUser, i: number) => ({
-            id: u.id,
-            name: u.name ?? u.email.split("@")[0],
-            email: u.email,
-            roles: u.roles.map((x) => x.name),
-            status: u.status ?? "active",
-            provider: "password",
-            mfa: false,
-            last: "—",
-            lastIso: null,
-            created: u.createdAt ? String(u.createdAt).slice(0, 10) : "—",
-            sessions: 0,
-            hue: 30 + ((i * 47) % 320),
-          })) as any,
+          r.data.map((u: ApiUser & { lastSeenAt?: number | null }, i: number) => {
+            const lastSeenAt = u.lastSeenAt ?? null;
+            return {
+              id: u.id,
+              name: u.name ?? u.email.split("@")[0],
+              email: u.email,
+              roles: u.roles.map((x) => x.name),
+              status: u.status ?? "active",
+              provider: "password",
+              mfa: false,
+              last: fmt(lastSeenAt),
+              lastIso: lastSeenAt ? new Date(lastSeenAt).toISOString().slice(0, 19).replace("T", " ") : null,
+              created: u.createdAt ? String(u.createdAt).slice(0, 10) : "—",
+              sessions: 0,
+              hue: 30 + ((i * 47) % 320),
+            };
+          }) as any,
         );
       } catch (e) {
         pushToast?.((e as Error).message);

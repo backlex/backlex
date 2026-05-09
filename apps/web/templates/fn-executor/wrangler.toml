@@ -1,0 +1,14 @@
+name = "workeros-fn-executor"
+main = "index.ts"
+compatibility_date = "2025-01-01"
+
+# Deploy this Worker into your dispatch namespace:
+#   wrangler dispatch-namespace create workeros-functions
+#   wrangler deploy --dispatch-namespace workeros-functions
+#
+# After deploy, bind the namespace in apps/api/wrangler.toml so the main
+# Worker can route to this executor:
+#
+#   [[dispatch_namespaces]]
+#   binding = "FUNCTIONS_DISPATCH"
+#   namespace = "workeros-functions"

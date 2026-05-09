@@ -7,7 +7,8 @@ import { runFunction } from "./sandbox";
 import { buildContext } from "../context";
 import type { Env } from "../env";
 import type { FunctionRow } from "./functions";
-import { listCronFlows, runFlowById } from "./flows";
+import { listCronFlows, runFlowById, resumeContinuation } from "./flows";
+import { claimDueTasks, deleteTask } from "./scheduled-tasks";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.functions : sqlite.schema.functions;
@@ -103,6 +104,35 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
         );
       } catch (e) {
         console.error(`[cron-flow:${f.name}] crashed`, e);
+      }
+    }),
+  );
+
+  // Resume any flow continuations whose run_at has passed. claimDueTasks
+  // marks rows as claimed atomically (PG via RETURNING, SQLite via the
+  // single-process serial tick) so we never run a task twice within one
+  // process — and across processes the claim window stops doubles too.
+  let claimed: Awaited<ReturnType<typeof claimDueTasks>>;
+  try {
+    claimed = await claimDueTasks(ctx);
+  } catch (e) {
+    console.error("[scheduled-tasks] claim failed", e);
+    return;
+  }
+  await Promise.all(
+    claimed.map(async (task) => {
+      try {
+        if (task.payload?.kind !== "flow-continuation") {
+          // Unknown payload kind — drop the row so it doesn't keep getting
+          // claimed forever.
+          await deleteTask(ctx, task.id);
+          return;
+        }
+        await resumeContinuation(ctx, task.payload);
+        await deleteTask(ctx, task.id);
+      } catch (e) {
+        console.error(`[scheduled-task:${task.id}] resume failed`, e);
+        // Leave the row claimed so a human can inspect / re-queue manually.
       }
     }),
   );

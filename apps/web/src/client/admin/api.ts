@@ -75,6 +75,16 @@ export interface ApiEmailTemplate {
   variables: string[] | null;
 }
 
+export interface ApiFunction {
+  id: string;
+  tenantId: string | null;
+  name: string;
+  trigger: "http" | "event" | "cron";
+  pattern: string | null;
+  active: boolean;
+  timeoutMs: number;
+}
+
 export interface ApiI18nString {
   id: string;
   tenantId: string | null;
@@ -231,6 +241,10 @@ export const usersApi = {
     }),
   removeRole: (userId: string, roleId: string) =>
     api<{ ok: true }>(`/api/users/${userId}/roles/${roleId}`, { method: "DELETE" }),
+};
+
+export const functionsApi = {
+  list: () => api<Envelope<ApiFunction[]>>(`/api/functions`),
 };
 
 export const emailTemplatesApi = {

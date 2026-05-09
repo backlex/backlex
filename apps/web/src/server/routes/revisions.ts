@@ -59,10 +59,12 @@ export const revisionsRoutes = new Hono<AppBindings>()
     requirePermission(collectionFromParam, "read"),
     async (c) => {
       const ctx = c.get("ctx");
+      const auth = c.get("auth");
       const rows = await listRevisions(
         ctx,
         c.req.param("collection"),
         c.req.param("itemId"),
+        auth.tenantId,
       );
       return c.json({ data: rows });
     },
@@ -75,7 +77,7 @@ export const revisionsRoutes = new Hono<AppBindings>()
       if (!auth.userId) {
         throw new AppError("UNAUTHORIZED", "Sign in required");
       }
-      const rev = await getRevision(ctx, c.req.param("id"));
+      const rev = await getRevision(ctx, c.req.param("id"), auth.tenantId);
       if (!rev) throw new AppError("NOT_FOUND", "Revision not found");
 
       // Permission check on the target collection (update).
@@ -126,6 +128,7 @@ export const revisionsRoutes = new Hono<AppBindings>()
       void recordRevision(ctx, {
         collection: rev.collection,
         itemId: rev.itemId,
+        tenantId: auth.tenantId ?? null,
         snapshot,
         userId: auth.userId,
       });

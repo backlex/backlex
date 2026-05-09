@@ -97,6 +97,26 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
     return () => { cancelled = true; };
   }, []);
 
+  // Make the browser back button close the builder. We push a sentinel
+  // history entry on mount so a `popstate` event always fires for back —
+  // the SPA URL stays where it was. On programmatic close (Save / Cancel)
+  // we pop the sentinel ourselves so the back stack stays clean and the
+  // address bar's back button doesn't end up needing two presses.
+  useEffect(() => {
+    const sentinel = { __workerosFlowBuilder: true };
+    history.pushState(sentinel, "", location.pathname + location.search);
+    let popped = false;
+    const onPop = () => { popped = true; onClose(); };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      if (!popped) {
+        // Programmatic close — drop the sentinel we pushed.
+        history.back();
+      }
+    };
+  }, [onClose]);
+
   const selected = nodes.find((n) => n.id === selectedId);
 
   const selectNode = (id: string) => setSelectedId(id);

@@ -401,6 +401,10 @@ export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
   useEffect(() => {
     void (async () => {
       const r = await fetchSafely<{ data: { id: string; name: string; trigger: string; active: boolean }[] }>("/api/flows");
+      // Always swap to API data — including empty lists — so the UI
+      // reflects actual workspace state. The empty-state render path
+      // (and the active-flow guard below) handle 0-flow workspaces
+      // without crashing.
       if (Array.isArray(r?.data)) {
         setFlows(
           r.data.map((f) => ({
@@ -415,10 +419,16 @@ export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
       }
     })();
   }, []);
-  const [active, setActive] = useState(flows[0].id);
+  const [active, setActive] = useState(flows[0]?.id ?? "");
+  // Keep `active` in sync with `flows` — if the active flow is deleted or
+  // the list is replaced, fall back to the first available flow.
+  useEffect(() => {
+    if (flows.length === 0) { setActive(""); return; }
+    if (!flows.some((f) => f.id === active)) setActive(flows[0]!.id);
+  }, [flows, active]);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingFlow, setEditingFlow] = useState<any>(null);
-  const flow = flows.find((f) => f.id === active)!;
+  const flow = flows.find((f) => f.id === active);
 
   const openBuilder = (f: any) => { setEditingFlow(f); setBuilderOpen(true); };
   const newFlow = () => { setEditingFlow(null); setBuilderOpen(true); };
@@ -482,10 +492,16 @@ export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
         </div>
 
         <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 18 }}>
+          {!flow ? (
+            <div style={{ padding: 36, textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>
+              No flow selected. Click <strong>+ New flow</strong> to create your first one.
+            </div>
+          ) : (
+          <>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 16, fontWeight: 600 }}>{flow.name}</span>
             <Badge variant={flow.status === "active" ? "default" : "secondary"}>{flow.status}</Badge>
-            <span className="muted tabular-nums" style={{ fontSize: 12 }}>· {flow.runs.toLocaleString()} runs</span>
+            <span className="muted tabular-nums" style={{ fontSize: 12 }}>· {Number(flow.runs ?? 0).toLocaleString()} runs</span>
             <div className="spacer" />
             <Switch checked={flow.status === "active"} onChange={async (next) => {
               setFlows((arr) => arr.map((f) => f.id === flow.id ? { ...f, status: next ? "active" : "paused" } : f));
@@ -532,6 +548,8 @@ export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
               </div>
             ))}
           </div>
+          </>
+          )}
         </div>
       </div>
 

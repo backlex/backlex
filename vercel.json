@@ -1,0 +1,19 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "bun run --cwd apps/web build",
+  "outputDirectory": "apps/web/dist/client",
+  "framework": null,
+  "installCommand": "bun install",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/index" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "functions": {
+    "apps/web/src/server/entries/vercel.ts": {
+      "runtime": "edge"
+    }
+  },
+  "crons": [
+    { "path": "/api/_cron/tick", "schedule": "* * * * *" }
+  ]
+}

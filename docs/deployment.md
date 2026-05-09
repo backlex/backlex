@@ -1,0 +1,162 @@
+# Deployment
+
+workeros runs on four targets from the same source. Pick one based on the
+constraints you need.
+
+|                    | Bun (self-host)   | Cloudflare Workers   | Vercel Edge          | Netlify Edge         |
+|--------------------|-------------------|----------------------|----------------------|----------------------|
+| **Database**       | SQLite or PG      | D1 or Hyperdrive→PG  | PG (Neon HTTP)       | PG (Neon HTTP)       |
+| **Storage**        | local fs / S3 / `Bun.S3Client` | R2 (S3 fallback) | S3 (`aws4fetch`)     | S3 (`aws4fetch`)     |
+| **Realtime**       | in-proc + SSE     | Durable Objects + WS | SSE (single-instance only) | SSE (single-instance only) |
+| **Sandbox**        | Bun worker        | QuickJS / dispatch   | QuickJS              | QuickJS              |
+| **Image**          | `Bun.Image`       | CF Image Resize      | passthrough          | passthrough          |
+| **Cron**           | setInterval       | wrangler triggers    | vercel.json crons    | scheduled functions  |
+| **Cost**           | VPS               | $0–5/mo              | $0–20/mo             | $0–19/mo             |
+
+## Bun (self-host)
+
+```bash
+APP_URL=https://your.app \
+DATABASE_URL=postgres://user:pass@host:5432/workeros \
+AUTH_SECRET=$(openssl rand -hex 32) \
+bun run --cwd apps/api dev
+```
+
+For a managed process: systemd unit, Docker, or `pm2`. The Bun scheduler
+boots inside `entry.bun.ts`; cron functions tick every 30 seconds.
+
+## Cloudflare Workers
+
+`apps/api/wrangler.toml` covers the bindings. First-time setup:
+
+```bash
+cd apps/api
+
+wrangler d1 create workeros          # paste id into wrangler.toml
+wrangler r2 bucket create workeros-files
+wrangler vectorize create workeros-embeddings --dimensions=1536 --metric=cosine
+
+wrangler secret put AUTH_SECRET
+wrangler secret put RESEND_API_KEY        # optional
+wrangler secret put OAUTH_GOOGLE_CLIENT_ID  # optional
+# ...
+
+wrangler d1 migrations apply workeros --remote
+wrangler deploy
+```
+
+### cf-dispatch sandbox (paid plan, optional)
+
+For V8-isolate per-request function execution:
+
+```bash
+wrangler dispatch-namespace create workeros-functions
+cd apps/api/templates/fn-executor && wrangler deploy
+
+# In apps/api/wrangler.toml uncomment:
+# [[dispatch_namespaces]]
+# binding = "FUNCTIONS_DISPATCH"
+# namespace = "workeros-functions"
+
+wrangler secret put SANDBOX_RPC_TOKEN   # generate with `openssl rand -hex 32`
+wrangler secret put SELF_URL            # https://api.your.app
+wrangler deploy
+```
+
+The selector falls back to QuickJS when the dispatch binding is missing,
+so free-tier Workers users get a sandbox too — sync only.
+
+## Vercel
+
+`vercel.json` at the repo root deploys both admin (static SPA from
+`apps/admin/dist`) and API (`apps/api/src/entry.vercel.ts` as Edge
+Function). Cron triggers ping `/api/_cron/tick` once per minute.
+
+```bash
+vercel link
+vercel env add DATABASE_URL    # Neon HTTP recommended for Edge
+vercel env add AUTH_SECRET
+vercel deploy --prod
+```
+
+### Database driver on Edge
+
+Vercel's edge runtime doesn't expose `node:net`, so plain `postgres-js`
+won't connect. Two options:
+
+1. **Neon HTTP** — `@neondatabase/serverless` works over HTTP.
+   ```bash
+   bun add @neondatabase/serverless --workspace=@workeros/db
+   ```
+   Then swap `createPgClient` to use Neon's pooler. (Drizzle has
+   `drizzle-orm/neon-http` adapter.) workeros doesn't ship this swap by
+   default — apply locally if you target Vercel.
+
+2. **Vercel Postgres** — same Neon driver, managed inside Vercel.
+
+### Storage on Edge
+
+Edge functions can't write to disk; set the S3 env vars and the storage
+adapter switches to the S3 path automatically. Works with AWS S3,
+Cloudflare R2, Backblaze B2, MinIO, DigitalOcean Spaces, Wasabi —
+anything that speaks the S3 API.
+
+```bash
+S3_BUCKET=workeros
+S3_REGION=auto                                    # `auto` for R2; AWS region for S3
+S3_ENDPOINT=https://<account>.r2.cloudflarestorage.com   # blank for AWS S3
+S3_ACCESS_KEY_ID=…
+S3_SECRET_ACCESS_KEY=…
+```
+
+Selection priority in `buildContext`:
+
+1. `R2` binding (Cloudflare Workers) — fastest path on the edge.
+2. `S3_BUCKET` set — `Bun.S3Client` when running on Bun, else
+   `aws4fetch` (works in any runtime with WHATWG `fetch`).
+3. otherwise — local `fsStorage` (Bun self-host dev only).
+
+Pre-signed URLs are exposed via the `signedUrl(key, ttlSeconds)` adapter
+method (e.g. for direct browser uploads / public CDN links).
+
+## Netlify
+
+`netlify.toml` at the repo root mirrors Vercel — admin SPA + edge
+function for `/api/*` + scheduled function for cron.
+
+```bash
+netlify init
+netlify env:set DATABASE_URL postgres://...
+netlify env:set AUTH_SECRET $(openssl rand -hex 32)
+netlify deploy --prod
+```
+
+The same edge-runtime caveats apply: Postgres needs an HTTP-friendly
+driver; storage needs S3.
+
+## Environment variables (all targets)
+
+| Var                          | Required? | Notes                                        |
+|------------------------------|-----------|----------------------------------------------|
+| `APP_URL`                    | yes       | Admin UI origin (CORS + auth callbacks)      |
+| `AUTH_SECRET`                | yes       | 32-byte random; signs sessions               |
+| `DATABASE_URL`               | yes¹      | Postgres URL (¹ unless on Workers with D1)   |
+| `RESEND_API_KEY` + `EMAIL_FROM` | no     | Resend transactional email                   |
+| `OAUTH_{GOOGLE,GITHUB}_CLIENT_{ID,SECRET}` | no | enable each provider when both set    |
+| `AUTH_PLUGINS`               | no        | Comma-separated: `passkey,magic-link,email-otp,anonymous` |
+| `FUNCTIONS_FETCH_ALLOW`      | no        | Comma-separated host allow-list for ctx.fetch |
+| `SANDBOX_RPC_TOKEN`          | no        | cf-dispatch only — shared secret             |
+| `SELF_URL`                   | no        | Required for cron-triggered cf-dispatch RPC  |
+| `S3_BUCKET` + `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY` | no¹ | ¹ Required on Vercel/Netlify edge (no fs); optional on Bun (defaults to fsStorage) and Workers (R2 binding preferred) |
+| `S3_ENDPOINT`                | no        | Custom S3 endpoint for R2/B2/MinIO/Spaces    |
+| `S3_REGION`                  | no        | Defaults to `auto`                           |
+
+## Verifying a deploy
+
+```bash
+curl https://your.app/health
+# { "ok": true, "dialect": "pg" | "sqlite", "ts": 1730000000000 }
+```
+
+Then sign up at `https://your.app/sign-up` (or your admin URL); the first
+user gets the `admin` role.

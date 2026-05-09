@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "echo 'no build — entry is TS module'",
+  "outputDirectory": "src",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/src/entry.vercel.ts" }
+  ],
+  "crons": [
+    { "path": "/api/_cron/tick", "schedule": "* * * * *" }
+  ]
+}

@@ -119,14 +119,6 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
     tenantId = await ensureDefaultTenant({ db, dialect });
   }
 
-  // Refresh cookie so the next request resolves quicker.
-  setCookie(c, TENANT_COOKIE, tenantId, {
-    httpOnly: false,
-    sameSite: "Lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30,
-  });
-
   if (auth.userId) {
     // Best-effort persistence; ignore failures.
     void persistActive(db, dialect, auth.userId, tenantId).catch(() => {});
@@ -134,4 +126,15 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
 
   c.set("auth", { ...auth, tenantId });
   await next();
+
+  // Cookie has to be appended *after* next() — better-auth (and any other
+  // downstream handler that returns a fresh Response) replaces the staged
+  // headers, so a setCookie call before next() gets dropped along with the
+  // session cookie. Setting it here merges into the final response.
+  setCookie(c, TENANT_COOKIE, tenantId, {
+    httpOnly: false,
+    sameSite: "Lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
 };

@@ -110,12 +110,34 @@ export const compileGraph = (graph: Graph): CompileResult => {
   // BFS from trigger along edges with `branch == null` (the trigger only has
   // one outgoing path). Branching only kicks in on control "if" nodes.
   const next = nextLinear(graph, trigger.id, null);
-  const operations = walk(graph, next, warnings);
+  let operations = walk(graph, next, warnings);
 
   if (operations.length === 0) {
     throw new FlowCompileError(
       "Flow needs at least one action after the trigger",
     );
+  }
+
+  // Wrap operations in a top-level `condition` when the trigger has a
+  // "When (filter DSL)" expression. The runtime evaluates conditions
+  // against the event payload's `data`, so this gates the whole flow on
+  // the predicate without requiring the admin to drop in an explicit if
+  // step. Empty / whitespace-only when expressions pass through.
+  const whenRaw = String((trigger.config.when ?? "")).trim();
+  if (whenRaw) {
+    let filter;
+    try {
+      filter = parseFilter(whenRaw);
+    } catch (e) {
+      throw new FlowCompileError(
+        e instanceof FilterParseError
+          ? `Trigger filter is invalid: ${e.message}`
+          : (e as Error).message,
+      );
+    }
+    operations = [
+      { type: "condition", filter, then: operations, else: [] },
+    ];
   }
 
   return {
@@ -401,7 +423,23 @@ export const decompileGraph = (input: {
 };
 
 const synthesize = (trigger: string, operations: Operation[]): Graph => {
-  const nodes: GraphNode[] = [parseTrigger(trigger)];
+  const triggerNode = parseTrigger(trigger);
+
+  // Inverse of compileGraph's "trigger.when" wrap: if the first op is a
+  // condition with an empty `else` branch, lift its filter back onto the
+  // trigger and unwrap the `then` so the canvas matches what the admin
+  // originally drew (rather than showing a synthetic If/else node).
+  let ops = operations;
+  if (
+    ops.length === 1 &&
+    ops[0]?.type === "condition" &&
+    (!ops[0].else || ops[0].else.length === 0)
+  ) {
+    triggerNode.config.when = JSON.stringify(ops[0].filter, null, 2);
+    ops = ops[0].then ?? [];
+  }
+
+  const nodes: GraphNode[] = [triggerNode];
   const edges: GraphEdge[] = [];
 
   let counter = 1;
@@ -442,7 +480,7 @@ const synthesize = (trigger: string, operations: Operation[]): Graph => {
     });
   };
 
-  layout(operations, nodes[0]!.id, null, 1, 0);
+  layout(ops, nodes[0]!.id, null, 1, 0);
   return { nodes, edges };
 };
 

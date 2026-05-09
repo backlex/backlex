@@ -20,7 +20,6 @@ import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import {
   compileCondition,
-  physicalTableFor,
   type FieldDef,
   type FieldType,
 } from "@workeros/db";
@@ -31,6 +30,7 @@ import type { Ctx } from "../context";
 
 interface CollectionRow {
   slug: string;
+  physicalTable: string;
   fields: FieldDef[];
   ownerScoped: boolean | number;
 }
@@ -302,7 +302,7 @@ const listResolver = async (
   const perm = await resolvePermission(ctx, auth, collection.slug, "read");
   if (!perm.allowed) denyOrThrow(auth, collection.slug);
 
-  const table = physicalTableFor(collection.slug);
+  const table = collection.physicalTable;
   const userWhere = args.filter ? compileCondition(args.filter, auth) : null;
   const wheres = [userWhere, perm.whereSql].filter((x): x is SQL => x != null);
   const whereClause = wheres.length
@@ -330,7 +330,7 @@ const getResolver = async (
   const perm = await resolvePermission(ctx, auth, collection.slug, "read");
   if (!perm.allowed) denyOrThrow(auth, collection.slug);
 
-  const table = physicalTableFor(collection.slug);
+  const table = collection.physicalTable;
   const wheres: SQL[] = [sql`${sql.identifier("id")} = ${id}`];
   if (perm.whereSql) wheres.push(perm.whereSql);
   const rows = await queryAll<Record<string, unknown>>(
@@ -361,7 +361,7 @@ const createResolver = async (
   }
   validateInput(args.data, collection, perm, false);
 
-  const table = physicalTableFor(collection.slug);
+  const table = collection.physicalTable;
   const id = crypto.randomUUID();
   const now = ctx.dialect === "pg" ? new Date() : Date.now();
 
@@ -418,7 +418,7 @@ const updateResolver = async (
   }
   validateInput(args.data, collection, perm, true);
 
-  const table = physicalTableFor(collection.slug);
+  const table = collection.physicalTable;
   const wheres: SQL[] = [sql`${sql.identifier("id")} = ${args.id}`];
   if (perm.whereSql) wheres.push(perm.whereSql);
   const existing = await queryAll<Record<string, unknown>>(
@@ -473,7 +473,7 @@ const deleteResolver = async (
       { extensions: { code: auth.userId ? "FORBIDDEN" : "UNAUTHORIZED" } },
     );
   }
-  const table = physicalTableFor(collection.slug);
+  const table = collection.physicalTable;
   const wheres: SQL[] = [sql`${sql.identifier("id")} = ${args.id}`];
   if (perm.whereSql) wheres.push(perm.whereSql);
 
@@ -603,7 +603,9 @@ interface CachedSchema {
   hash: string;
   schema: GraphQLSchema;
 }
-let cached: CachedSchema | null = null;
+/** Cached per tenant — collection slugs are now per-workspace, so two
+ *  workspaces with overlapping slugs cannot share a single GraphQL schema. */
+const cached: Map<string, CachedSchema> = new Map();
 
 const hashCollections = (cs: CollectionRow[]): string =>
   JSON.stringify(
@@ -612,12 +614,27 @@ const hashCollections = (cs: CollectionRow[]): string =>
       .sort((a, b) => a.s.localeCompare(b.s)),
   );
 
-export const getSchema = async (ctx: Ctx): Promise<GraphQLSchema> => {
+export const getSchema = async (
+  ctx: Ctx,
+  tenantId: string,
+): Promise<GraphQLSchema> => {
   const t = collectionsTable(ctx.dialect);
-  const collections = (await (ctx.db as any).select().from(t)) as CollectionRow[];
-  const hash = hashCollections(collections);
-  if (cached?.hash === hash) return cached.schema;
-  const schema = buildSchema(collections);
-  cached = { hash, schema };
+  const collections = (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(eq(t.tenantId, tenantId))) as Array<
+    Record<string, unknown>
+  >;
+  const normalized: CollectionRow[] = collections.map((r) => ({
+    slug: r.slug as string,
+    physicalTable: (r.physicalTable ?? r.physical_table) as string,
+    fields: r.fields as FieldDef[],
+    ownerScoped: Boolean(r.ownerScoped ?? r.owner_scoped),
+  }));
+  const hash = hashCollections(normalized);
+  const hit = cached.get(tenantId);
+  if (hit?.hash === hash) return hit.schema;
+  const schema = buildSchema(normalized);
+  cached.set(tenantId, { hash, schema });
   return schema;
 };

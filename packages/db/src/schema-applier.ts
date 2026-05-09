@@ -4,7 +4,6 @@ import type { SqliteDb } from "./sqlite";
 import {
   type FieldDef,
   columnDefSql,
-  physicalTableFor,
   quote,
   sqlTypeFor,
   validateFields,
@@ -36,7 +35,9 @@ const all = async <T>(db: AnyDb, dialect: Dialect, raw: string): Promise<T[]> =>
 };
 
 interface CollectionShape {
-  slug: string;
+  /** Physical table name (e.g. `c_<tenantPrefix>_<slug>`). Caller is
+   *  responsible for deriving and passing it; the applier never recomputes. */
+  table: string;
   fields: FieldDef[];
   ownerScoped?: boolean;
   /** When true (default), the physical table gets a `tenant_id` column and
@@ -124,7 +125,7 @@ export const applyCollection = async (
   def: CollectionShape,
 ): Promise<void> => {
   validateFields(def.fields);
-  const table = physicalTableFor(def.slug);
+  const table = def.table;
   const ownerScoped = Boolean(def.ownerScoped);
   // Default to tenant-scoped: workspaces are the recommended posture and
   // collections that opt out must do so explicitly.
@@ -210,10 +211,9 @@ export const applyCollection = async (
 export const dropField = async (
   db: AnyDb,
   dialect: Dialect,
-  slug: string,
+  table: string,
   fieldName: string,
 ): Promise<void> => {
-  const table = physicalTableFor(slug);
   await exec(
     db,
     dialect,
@@ -224,8 +224,7 @@ export const dropField = async (
 export const dropCollection = async (
   db: AnyDb,
   dialect: Dialect,
-  slug: string,
+  table: string,
 ): Promise<void> => {
-  const table = physicalTableFor(slug);
   await exec(db, dialect, `DROP TABLE IF EXISTS ${quote(table)}`);
 };

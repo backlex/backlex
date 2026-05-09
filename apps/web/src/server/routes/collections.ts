@@ -1,11 +1,12 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { AppError } from "@workeros/core";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import {
   applyCollection,
+  derivePhysicalTable,
   dropCollection,
   validateFields,
 } from "@workeros/db";
@@ -69,7 +70,8 @@ const CollectionInput = z.object({
   displayTemplate: z.string().optional(),
   fields: z.array(FieldSchema).min(1),
   ownerScoped: z.boolean().optional().default(false),
-  /** When true (default), c_<slug> gets a `tenant_id` and is scoped per workspace. */
+  /** When true (default), the physical table gets a `tenant_id` column and
+   *  rows are scoped to the active tenant. */
   tenantScoped: z.boolean().optional().default(true),
   versioned: z.boolean().optional().default(false),
 });
@@ -77,20 +79,32 @@ const CollectionInput = z.object({
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;
 
+/** Pull the active tenant from the request, throwing if it isn't set.
+ *  Collections are workspace-scoped — every route here needs one. */
+const requireTenant = (c: { get: (k: string) => any }): string => {
+  const tenantId = c.get("auth")?.tenantId as string | undefined;
+  if (!tenantId) {
+    throw new AppError("UNAUTHORIZED", "Active tenant required");
+  }
+  return tenantId;
+};
+
 export const collectionsRoutes = new Hono<AppBindings>()
   .get("/", async (c) => {
     const { db, dialect } = c.get("ctx");
+    const tenantId = requireTenant(c);
     const t = tableFor(dialect);
-    const rows = await (db as any).select().from(t);
+    const rows = await (db as any).select().from(t).where(eq(t.tenantId, tenantId));
     return c.json({ data: rows });
   })
   .get("/:slug", async (c) => {
     const { db, dialect } = c.get("ctx");
+    const tenantId = requireTenant(c);
     const t = tableFor(dialect);
     const row = await (db as any)
       .select()
       .from(t)
-      .where(eq(t.slug, c.req.param("slug")))
+      .where(and(eq(t.tenantId, tenantId), eq(t.slug, c.req.param("slug"))))
       .limit(1);
     if (!row[0]) throw new AppError("NOT_FOUND", "Collection not found");
     return c.json({ data: row[0] });
@@ -103,16 +117,22 @@ export const collectionsRoutes = new Hono<AppBindings>()
       throw new AppError("VALIDATION", (e as Error).message);
     }
     const { db, dialect } = c.get("ctx");
+    const tenantId = requireTenant(c);
     const t = tableFor(dialect);
     const existing = await (db as any)
       .select()
       .from(t)
-      .where(eq(t.slug, body.slug))
+      .where(and(eq(t.tenantId, tenantId), eq(t.slug, body.slug)))
       .limit(1);
     if (existing[0]) throw new AppError("CONFLICT", "Slug already exists");
 
+    const id = crypto.randomUUID();
+    const physicalTable = derivePhysicalTable(tenantId, body.slug);
     await (db as any).insert(t).values({
+      id,
       slug: body.slug,
+      tenantId,
+      physicalTable,
       singular: body.singular ?? null,
       plural: body.plural ?? null,
       note: body.note ?? null,
@@ -123,7 +143,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       versioned: body.versioned,
     });
     await applyCollection(db, dialect, {
-      slug: body.slug,
+      table: physicalTable,
       fields: body.fields,
       ownerScoped: body.ownerScoped,
       tenantScoped: body.tenantScoped,
@@ -138,7 +158,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       itemId: body.slug,
       payload: { fields: body.fields.length },
     });
-    return c.json({ data: body }, 201);
+    return c.json({ data: { id, ...body, tenantId, physicalTable } }, 201);
   })
   .patch("/:slug", requireUser, async (c) => {
     const slug = c.req.param("slug");
@@ -151,11 +171,12 @@ export const collectionsRoutes = new Hono<AppBindings>()
       }
     }
     const { db, dialect } = c.get("ctx");
+    const tenantId = requireTenant(c);
     const t = tableFor(dialect);
     const existing = await (db as any)
       .select()
       .from(t)
-      .where(eq(t.slug, slug))
+      .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)))
       .limit(1);
     if (!existing[0]) throw new AppError("NOT_FOUND", "Collection not found");
 
@@ -177,9 +198,12 @@ export const collectionsRoutes = new Hono<AppBindings>()
       ...(body.versioned !== undefined ? { versioned: body.versioned } : {}),
       updatedAt: new Date(),
     };
-    await (db as any).update(t).set(merged).where(eq(t.slug, slug));
+    await (db as any)
+      .update(t)
+      .set(merged)
+      .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)));
     await applyCollection(db, dialect, {
-      slug,
+      table: merged.physicalTable ?? merged.physical_table,
       fields: merged.fields,
       ownerScoped: merged.ownerScoped,
       tenantScoped: merged.tenantScoped ?? merged.tenant_scoped ?? true,
@@ -199,9 +223,19 @@ export const collectionsRoutes = new Hono<AppBindings>()
   .delete("/:slug", requireUser, async (c) => {
     const slug = c.req.param("slug");
     const { db, dialect } = c.get("ctx");
+    const tenantId = requireTenant(c);
     const t = tableFor(dialect);
-    await dropCollection(db, dialect, slug);
-    await (db as any).delete(t).where(eq(t.slug, slug));
+    const existing = await (db as any)
+      .select()
+      .from(t)
+      .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)))
+      .limit(1);
+    if (!existing[0]) throw new AppError("NOT_FOUND", "Collection not found");
+    const physicalTable = (existing[0].physicalTable ?? existing[0].physical_table) as string;
+    await dropCollection(db, dialect, physicalTable);
+    await (db as any)
+      .delete(t)
+      .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)));
     await logActivity(c, {
       action: "delete",
       collection: "system_collections",

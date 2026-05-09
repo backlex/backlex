@@ -373,23 +373,34 @@ export const apiKeys = sqliteTable(
   ],
 );
 
-export const collections = sqliteTable("collections", {
-  slug: text("slug").primaryKey(),
-  tenantId: text("tenant_id"),
-  singular: text("singular"),
-  plural: text("plural"),
-  note: text("note"),
-  displayTemplate: text("display_template"),
-  fields: text("fields", { mode: "json" }).$type<unknown[]>().notNull(),
-  ownerScoped: integer("owner_scoped", { mode: "boolean" }).notNull().default(false),
-  tenantScoped: integer("tenant_scoped", { mode: "boolean" }).notNull().default(true),
-  /** When true, the physical table gains a `_status` ('draft'|'published')
-   *  + `_published_at` column. PATCH writes update the draft; explicit
-   *  `POST /:id/publish` flips status. */
-  versioned: integer("versioned", { mode: "boolean" }).notNull().default(false),
-  createdAt: ts("created_at"),
-  updatedAt: ts("updated_at"),
-});
+export const collections = sqliteTable(
+  "collections",
+  {
+    id: text("id").primaryKey(),
+    slug: text("slug").notNull(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    physicalTable: text("physical_table").notNull(),
+    singular: text("singular"),
+    plural: text("plural"),
+    note: text("note"),
+    displayTemplate: text("display_template"),
+    fields: text("fields", { mode: "json" }).$type<unknown[]>().notNull(),
+    ownerScoped: integer("owner_scoped", { mode: "boolean" }).notNull().default(false),
+    tenantScoped: integer("tenant_scoped", { mode: "boolean" }).notNull().default(true),
+    /** When true, the physical table gains a `_status` ('draft'|'published')
+     *  + `_published_at` column. PATCH writes update the draft; explicit
+     *  `POST /:id/publish` flips status. */
+    versioned: integer("versioned", { mode: "boolean" }).notNull().default(false),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("collections_tenant_slug_idx").on(t.tenantId, t.slug),
+    uniqueIndex("collections_physical_table_idx").on(t.physicalTable),
+  ],
+);
 
 /**
  * SQLite (D1) does not support native vector indexes. On the edge, vectors

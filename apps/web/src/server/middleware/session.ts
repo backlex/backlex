@@ -1,9 +1,49 @@
 import type { MiddlewareHandler } from "hono";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { AppBindings } from "../app";
 import { findApiKey, touchLastUsed } from "../services/api-keys";
+
+const extractIp = (req: Request): string | null => {
+  const h = req.headers;
+  return (
+    h.get("cf-connecting-ip") ||
+    h.get("x-real-ip") ||
+    h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    null
+  );
+};
+
+const stampSessionMeta = async (
+  ctx: { db: unknown; dialect: "pg" | "sqlite" },
+  sessionId: string,
+  req: Request,
+): Promise<void> => {
+  const t = ctx.dialect === "pg" ? pg.schema.sessions : sqlite.schema.sessions;
+  const ip = extractIp(req);
+  const ua = req.headers.get("user-agent");
+  // Only patch when the existing row is missing data — keeps writes off the
+  // hot path for repeat requests in the same session.
+  const set: Record<string, unknown> = {};
+  if (ip) set.ipAddress = ip;
+  if (ua) set.userAgent = ua;
+  if (Object.keys(set).length === 0) return;
+  try {
+    await (ctx.db as any)
+      .update(t)
+      .set(set)
+      .where(
+        and(
+          eq(t.id, sessionId),
+          // Only fill empties — don't churn rows with the same value.
+          ip ? isNull(t.ipAddress) : eq(t.id, sessionId),
+        ),
+      );
+  } catch {
+    // best-effort
+  }
+};
 
 const loadRoleNames = async (
   ctx: { db: unknown; dialect: "pg" | "sqlite" },
@@ -44,6 +84,15 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
   if (session?.user?.id) {
     userId = session.user.id;
     email = session.user.email ?? null;
+    const sessId = (session as { session?: { id?: string } }).session?.id;
+    if (sessId) {
+      // Fire-and-forget — the row only gets touched when ip/ua is missing.
+      void stampSessionMeta(
+        { db: ctx.db, dialect: ctx.dialect },
+        sessId,
+        c.req.raw,
+      );
+    }
   }
 
   if (!userId) {

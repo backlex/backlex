@@ -57,13 +57,11 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
     { name: "Active sessions", sql: "SELECT user_id, count(*)\nFROM auth_sessions\nWHERE expires_at > now()\nGROUP BY user_id;" },
   ];
   const [sql, setSql] = useState(snippets[0].sql);
-  const [result, setResult] = useState<{ rows: Record<string, unknown>[]; ms: number; count: number }>({ rows: [
-    { id: "01HZ7K8M9NPQ", title: "Edge functions are now generally available", status: "published", view_count: 24102 },
-    { id: "01HZ7K8N2RST", title: "A simpler permissions DSL", status: "published", view_count: 9120 },
-    { id: "01HZ7K8P4UVW", title: "Realtime channels: WebSockets vs SSE on the edge", status: "published", view_count: 17430 },
-    { id: "01HZ7K8Q6XYZ", title: "Drizzle 1.0 in production", status: "review", view_count: 0 },
-    { id: "01HZ7K8R8ABC", title: "pgvector → Vectorize migration playbook", status: "review", view_count: 0 },
-  ], ms: 18, count: 5 });
+  const [result, setResult] = useState<{ rows: Record<string, unknown>[]; ms: number; count: number }>({
+    rows: [],
+    ms: 0,
+    count: 0,
+  });
   const [running, setRunning] = useState(false);
   const [readOnly, setReadOnly] = useState(true);
 
@@ -177,16 +175,22 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
             <Button size="sm" variant="ghost" icon={I.Download} onClick={() => pushToast("Exported result.csv.")}>CSV</Button>
             <Button size="sm" variant="ghost" icon={I.Code} onClick={() => pushToast("Copied JSON.")}>JSON</Button>
           </div>
-          <table className="table">
-            <thead><tr>{Object.keys(result.rows[0] || {}).map((k) => <th key={k}>{k}</th>)}</tr></thead>
-            <tbody>
-              {result.rows.map((r, i) => (
-                <tr key={i}>
-                  {Object.entries(r).map(([k, v]) => <td key={k} className={typeof v === "number" ? "tabular-nums font-mono" : "font-mono"} style={{ fontSize: 12 }}>{String(v)}</td>)}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {result.rows.length === 0 ? (
+            <div className="muted" style={{ padding: "24px 16px", fontSize: 12.5, textAlign: "center" }}>
+              {result.ms > 0 ? "Query returned no rows." : "Run a query to see results."}
+            </div>
+          ) : (
+            <table className="table">
+              <thead><tr>{Object.keys(result.rows[0] || {}).map((k) => <th key={k}>{k}</th>)}</tr></thead>
+              <tbody>
+                {result.rows.map((r, i) => (
+                  <tr key={i}>
+                    {Object.entries(r).map(([k, v]) => <td key={k} className={typeof v === "number" ? "tabular-nums font-mono" : "font-mono"} style={{ fontSize: 12 }}>{String(v)}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>
@@ -336,6 +340,9 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
 
 export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void }) {
   type ProviderRow = { id: string; name: string; enabled: boolean; configured: boolean; system?: boolean; clientId?: string | null };
+  // Pretty names — we keep this map purely for label rendering; the actual
+  // list of providers comes from /api/admin/auth/config so unsupported
+  // providers don't appear in the UI on a fresh deploy.
   const PROVIDER_NAMES: Record<string, string> = {
     email: "Email + password",
     magic: "Magic link",
@@ -346,14 +353,7 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
     discord: "Discord",
     passkey: "Passkeys (WebAuthn)",
   };
-  const seedProviders: ProviderRow[] = Object.keys(PROVIDER_NAMES).map((id) => ({
-    id,
-    name: PROVIDER_NAMES[id]!,
-    enabled: id === "email" || id === "magic" || id === "passkey",
-    configured: id === "email" || id === "magic" || id === "passkey",
-    system: id === "email" || id === "magic",
-  }));
-  const [providers, setProviders] = useState<ProviderRow[]>(seedProviders);
+  const [providers, setProviders] = useState<ProviderRow[]>([]);
   const [sessions, setSessions] = useState<{ id: string; user: string; device: string; ip: string; loc: string; created: string; last: string; current: boolean }[]>([]);
 
   useEffect(() => {
@@ -363,16 +363,23 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
         const cfg = await authAdminApi.config();
         if (cancelled) return;
         const data = cfg.data as ApiAuthConfig;
-        if (data?.providers) {
-          setProviders((prev) =>
-            prev.map((p) => {
-              const c = (data.providers as Record<string, { enabled?: boolean; configured?: boolean; clientId?: string | null }>)[p.id];
-              return c ? { ...p, enabled: !!c.enabled, configured: !!c.configured, clientId: c.clientId ?? p.clientId } : p;
-            }),
-          );
-        }
+        const map = (data?.providers ?? {}) as Record<string, { enabled?: boolean; configured?: boolean; clientId?: string | null; system?: boolean }>;
+        const rows: ProviderRow[] = Object.entries(map).map(([id, v]) => ({
+          id,
+          name: PROVIDER_NAMES[id] ?? id,
+          enabled: !!v.enabled,
+          configured: !!v.configured,
+          system: !!v.system,
+          clientId: v.clientId ?? null,
+        }));
+        // Stable order: built-ins first, then alphabetical.
+        rows.sort((a, b) => {
+          if (a.system !== b.system) return a.system ? -1 : 1;
+          return a.id.localeCompare(b.id);
+        });
+        setProviders(rows);
       } catch {
-        // keep seed
+        // leave empty — the list always reflects what the worker actually has
       }
       try {
         const ss = await authAdminApi.sessions();
@@ -711,31 +718,47 @@ export function RevisionsPage() {
 }
 
 export function InsightsPage() {
+  const [panels, setPanels] = useState<ApiPanel[]>([]);
+  const [results, setResults] = useState<Record<string, Record<string, unknown>[]>>({});
+
+  const reload = async () => {
+    try {
+      const r = await panelsApi.list();
+      const list = r.data ?? [];
+      setPanels(list);
+      // Run each SQL panel in parallel; static/aggregate panels are
+      // rendered from their config without a server roundtrip.
+      const runs = await Promise.allSettled(
+        list.filter((p) => p.kind === "sql").map(async (p) => {
+          const out = await panelsApi.run(p.id);
+          return [p.id, out.data] as const;
+        }),
+      );
+      const map: Record<string, Record<string, unknown>[]> = {};
+      for (const r of runs) if (r.status === "fulfilled") map[r.value[0]] = r.value[1] ?? [];
+      setResults(map);
+    } catch {
+      // leave empty
+    }
+  };
+  useEffect(() => { void reload(); }, []);
+
+  // Show seed examples only when the workspace has zero saved panels — this
+  // gives a fresh deploy something to look at while still letting real
+  // panels take over once the user creates them.
   const series = useMemo(() => Array.from({ length: 30 }, (_, i) => 800 + Math.round(Math.sin(i / 3) * 200) + Math.round(Math.random() * 240)), []);
   const max = Math.max(...series);
   const traffic = useMemo(() => Array.from({ length: 24 }, () => 300 + Math.round(Math.random() * 1500)), []);
-  const [panels, setPanels] = useState<ApiPanel[]>([]);
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const r = await panelsApi.list();
-        if (!cancelled) setPanels(r.data ?? []);
-      } catch {
-        // demo seed remains
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader title="Insights" description="Built from saved SQL queries. Drag panels to your own dashboards." actions={<Button variant="primary" icon={I.Plus} onClick={async () => {
         const name = prompt("Panel name", "Untitled panel");
         if (!name) return;
-        const sql = prompt("SQL (read-only SELECT)", "SELECT 1 AS value");
+        const sql = prompt("SQL (read-only SELECT)", "SELECT COUNT(*) AS n FROM users;");
         if (!sql) return;
         try {
-          const r = await panelsApi.create({
+          await panelsApi.create({
             name,
             description: null,
             kind: "sql",
@@ -744,16 +767,23 @@ export function InsightsPage() {
             config: null,
             layout: null,
           });
-          setPanels((arr) => [...arr, r.data]);
+          await reload();
         } catch {
           // toast handled by api
         }
       }}>New panel</Button>} />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
-        <Panel title="API requests · 30d" sub={`peak ${max.toLocaleString()} / day`}>
+      {panels.length > 0 ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
+          {panels.map((p) => (
+            <RealPanel key={p.id} panel={p} rows={results[p.id] ?? []} />
+          ))}
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
+        <Panel title="API requests · 30d" sub={`peak ${max.toLocaleString()} / day · sample`}>
           <Sparkline data={series} height={160} fill />
         </Panel>
-        <Panel title="Top collections by writes" sub="last 7d">
+        <Panel title="Top collections by writes" sub="last 7d · sample">
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {[["comments", 1280, 0.92], ["posts", 168, 0.18], ["newsletter_subs", 84, 0.10], ["tags", 12, 0.02]].map(([k, n, w]) => (
               <div key={k as string} style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -766,10 +796,10 @@ export function InsightsPage() {
             ))}
           </div>
         </Panel>
-        <Panel title="Sign-ups · 24h" sub={`${traffic.reduce((a, b) => a + b, 0).toLocaleString()} requests`}>
+        <Panel title="Sign-ups · 24h" sub={`${traffic.reduce((a, b) => a + b, 0).toLocaleString()} requests · sample`}>
           <Sparkline data={traffic} height={160} bars />
         </Panel>
-        <Panel title="Auth providers" sub="usage share">
+        <Panel title="Auth providers" sub="usage share · sample">
           <div style={{ display: "flex", alignItems: "center", gap: 18, padding: "12px 0" }}>
             <Donut segments={[{ v: 56, color: "var(--primary)" }, { v: 24, color: "oklch(0.7 0.18 260)" }, { v: 12, color: "oklch(0.78 0.16 75)" }, { v: 8, color: "oklch(0.6 0 0)" }]} />
             <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5 }}>
@@ -783,8 +813,86 @@ export function InsightsPage() {
             </div>
           </div>
         </Panel>
-      </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+/**
+ * Renders a saved panel using its viz config and the rows returned by
+ * /api/admin/panels/:id/run. We pick the first numeric column for sparkline
+ * /bars/counter, pair the first two columns for table/donut, and fall back
+ * to JSON for anything we can't auto-detect.
+ */
+function RealPanel({ panel, rows }: { panel: ApiPanel; rows: Record<string, unknown>[] }) {
+  const sub = panel.description ?? `${rows.length} rows · ${panel.kind}`;
+  if (rows.length === 0) {
+    return (
+      <Panel title={panel.name} sub={sub}>
+        <div className="muted" style={{ fontSize: 12, padding: "16px 0" }}>No data yet — run the panel.</div>
+      </Panel>
+    );
+  }
+  const cols = Object.keys(rows[0] ?? {});
+  const numericCol = cols.find((c) => typeof rows[0]![c] === "number");
+  const labelCol = cols.find((c) => c !== numericCol);
+
+  if (panel.viz === "counter") {
+    const v = numericCol ? Number(rows[0]![numericCol]) : rows.length;
+    return (
+      <Panel title={panel.name} sub={sub}>
+        <div className="tabular-nums" style={{ fontSize: 32, fontWeight: 600, padding: "8px 0" }}>
+          {v.toLocaleString()}
+        </div>
+      </Panel>
+    );
+  }
+
+  if (panel.viz === "sparkline" || panel.viz === "bars") {
+    const data = rows.map((r) => Number(r[numericCol ?? cols[0]!]) || 0);
+    return (
+      <Panel title={panel.name} sub={sub}>
+        <Sparkline data={data} height={160} fill={panel.viz === "sparkline"} bars={panel.viz === "bars"} />
+      </Panel>
+    );
+  }
+
+  if (panel.viz === "donut") {
+    const segs = rows.slice(0, 6).map((r, i) => ({
+      v: Number(r[numericCol ?? cols[1]!]) || 0,
+      color: ["var(--primary)", "oklch(0.7 0.18 260)", "oklch(0.78 0.16 75)", "oklch(0.6 0 0)", "oklch(0.7 0.18 22)", "oklch(0.7 0.18 320)"][i]!,
+    }));
+    return (
+      <Panel title={panel.name} sub={sub}>
+        <div style={{ display: "flex", alignItems: "center", gap: 18, padding: "12px 0" }}>
+          <Donut segments={segs} />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5 }}>
+            {rows.slice(0, 6).map((r, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: segs[i]!.color }} />
+                <span className="font-mono" style={{ flex: 1 }}>{String(r[labelCol ?? cols[0]!])}</span>
+                <span className="tabular-nums">{Number(r[numericCol ?? cols[1]!])}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Panel>
+    );
+  }
+
+  // Fallback: small table.
+  return (
+    <Panel title={panel.name} sub={sub}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12 }}>
+        {rows.slice(0, 8).map((r, i) => (
+          <div key={i} className="font-mono" style={{ display: "flex", justifyContent: "space-between", borderBottom: i < Math.min(rows.length, 8) - 1 ? "1px solid var(--border)" : "none", paddingBottom: 4 }}>
+            <span>{String(r[labelCol ?? cols[0]!])}</span>
+            <span className="tabular-nums">{numericCol ? Number(r[numericCol]).toLocaleString() : ""}</span>
+          </div>
+        ))}
+      </div>
+    </Panel>
   );
 }
 

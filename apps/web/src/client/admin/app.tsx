@@ -25,6 +25,7 @@ import {
 import { ConfirmDialog, ItemSheet } from "./sheet";
 import { AlterPreview, EmptyItems, Palette, RealtimeTail, SchemaView, type RealtimeEvent } from "./extras";
 import { AddFieldDialog } from "./add-field";
+import { loadAuthors } from "./authors-cache";
 import { CollectionsIndex, NewCollectionDialog } from "./collections-index";
 import { collectionsApi, itemsApi, settingsApi } from "./api";
 import { api } from "@/lib/api";
@@ -92,7 +93,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
 
   const [activeNav, setActiveNav] = useState(initialNav);
   const [activeTab, setActiveTab] = useState<"items" | "schema" | "permissions">("items");
-  const [posts, setPosts] = useState<Post[]>(MOCK.initialPosts);
+  const [posts, setPosts] = useState<Post[]>([]);
   // Real items load — see effect after activeCollection is declared.
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<FilterCondition[]>([]);
@@ -115,8 +116,17 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
     onConfirm?: () => void;
   } | null>(null);
   const [addFieldOpen, setAddFieldOpen] = useState(false);
-  const [schemaState, setSchemaState] = useState(MOCK.collectionSchema);
-  const [collections, setCollections] = useState(MOCK.collectionsList);
+  // Schema is loaded per-collection from /api/collections/:slug. Initial
+  // value is an empty placeholder so the UI doesn't crash before activeCollection
+  // resolves; the real fields land via the activeCollection effect below.
+  const [schemaState, setSchemaState] = useState<typeof MOCK.collectionSchema>({
+    slug: "",
+    ownerScoped: false,
+    fields: [],
+  });
+  // No mock seed — empty until /api/collections fills in. The Collections
+  // index renders an empty/zero-state path when nothing is loaded yet.
+  const [collections, setCollections] = useState<typeof MOCK.collectionsList>([]);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -146,11 +156,9 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   const [activeCollection, setActiveCollection] = useState<string | null>(null);
   const [newCollectionOpen, setNewCollectionOpen] = useState(false);
 
-  // Real items load — keyed off the active collection so opening
-  // c_<anything> fetches that collection's rows. Empty/missing/auth-fail
-  // falls back to the mock seed (keeps the offline demo intact). When
-  // no collection is active we leave `posts` untouched so the previously
-  // open collection stays cached.
+  // Real items + schema load — both keyed off the active collection so
+  // opening c_<anything> fetches that collection's rows + columns. Empty/
+  // missing/auth-fail falls back to whatever's currently cached.
   useEffect(() => {
     if (!activeCollection) return;
     let cancelled = false;
@@ -163,6 +171,31 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
         }
       } catch {
         // keep whatever is currently in `posts`
+      }
+    })();
+    void (async () => {
+      try {
+        const res = await collectionsApi.get(activeCollection);
+        if (cancelled || !res.data) return;
+        const fields = Array.isArray(res.data.fields) ? res.data.fields : [];
+        // The API returns user-defined fields. The design's prototype layout
+        // also expects `id`, `created_at`, `updated_at`, `owner_id` as system
+        // rows so they render in the Schema view. Inject them when missing.
+        const hasSystem = (name: string) => fields.some((f: any) => f.name === name);
+        const merged = [
+          ...fields,
+          !hasSystem("id") && { name: "id", type: "uuid", system: true, nullable: false, default: "gen_uuid()" },
+          !hasSystem("created_at") && { name: "created_at", type: "timestamp", system: true, nullable: false, default: "now()" },
+          !hasSystem("updated_at") && { name: "updated_at", type: "timestamp", system: true, nullable: false, default: "now()" },
+          res.data.ownerScoped && !hasSystem("owner_id") && { name: "owner_id", type: "uuid", system: true, nullable: false, default: "$user.id" },
+        ].filter(Boolean);
+        setSchemaState({
+          slug: activeCollection,
+          ownerScoped: !!res.data.ownerScoped,
+          fields: merged as any,
+        });
+      } catch {
+        // leave previous schemaState in place
       }
     })();
     return () => { cancelled = true; };
@@ -192,6 +225,9 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
         // keep default
       }
     })();
+    // Populate the workspace authors cache so item rows + the ItemSheet
+    // author Select show real users instead of the design's mock seed.
+    void loadAuthors();
     return () => { cancelled = true; };
   }, [setTweak]);
 
@@ -435,7 +471,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                   <I.Inbox size={13} />Items <span className="count">{posts.length}</span>
                 </button>
                 <button className="tab" data-active={activeTab === "schema"} onClick={() => setActiveTab("schema")}>
-                  <I.Braces size={13} />Schema <span className="count">{MOCK.collectionSchema.fields.length}</span>
+                  <I.Braces size={13} />Schema <span className="count">{schemaState.fields.length}</span>
                 </button>
                 <button className="tab" data-active={activeTab === "permissions"} onClick={() => setActiveTab("permissions")}>
                   <I.Shield size={13} />Permissions <span className="count">3</span>
@@ -448,7 +484,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                     <FilterBar
                       search={search} setSearch={setSearch}
                       filters={filters} setFilters={setFilters}
-                      schema={MOCK.collectionSchema}
+                      schema={schemaState}
                       status={statusTab} setStatus={setStatusTab}
                       total={tweaks.populated ? posts.length : 0}
                     />
@@ -515,7 +551,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
         </div>
       </div>
 
-      <ItemSheet open={sheetOpen} mode={sheetMode} initial={sheetItem} schema={MOCK.collectionSchema} onClose={() => setSheetOpen(false)} onSave={onSave} />
+      <ItemSheet open={sheetOpen} mode={sheetMode} initial={sheetItem} schema={schemaState} onClose={() => setSheetOpen(false)} onSave={onSave} />
       <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onNavigate={onPaletteSelect} items={posts} collections={MOCK.collectionsList} />
       <ConfirmDialog open={!!confirm} {...(confirm || {})} onCancel={() => setConfirm(null)} />
       <NewCollectionDialog

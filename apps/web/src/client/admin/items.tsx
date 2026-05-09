@@ -1,10 +1,11 @@
 // @ts-nocheck
 // Filter DSL builder + Items DataTable for the workeros admin design.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { I } from "./icons";
-import { MOCK, type CollectionSchema, type Post } from "./mock";
+import { type CollectionSchema, type Post } from "./mock";
 import { Badge, Button, Checkbox, IconButton } from "./ui";
 import { Select } from "./select";
+import { getAuthors, subscribeAuthors } from "./authors-cache";
 
 export const FIELD_OPS: Record<string, string[]> = {
   text: ["_eq", "_neq", "_contains", "_starts_with", "_ends_with", "_in", "_null"],
@@ -34,8 +35,11 @@ export function statusVariant(s: string) {
 
 export function authorById(id: string | null | undefined) {
   if (!id) return { name: "—", initials: "—" };
-  return MOCK.POST_AUTHORS.find((a) => a.id === id) || {
-    name: id,
+  const hit = getAuthors().find((a) => a.id === id);
+  if (hit) return { name: hit.name, initials: hit.initials };
+  // Fallback: id might be a stale uuid — show first chars rather than crash.
+  return {
+    name: String(id).slice(0, 8),
     initials: String(id).slice(0, 2).toUpperCase() || "—",
   };
 }
@@ -229,6 +233,8 @@ export interface ItemsTableProps {
 }
 
 export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit }: ItemsTableProps) {
+  // Subscribe so the table re-renders when authors-cache populates.
+  useSyncExternalStore(subscribeAuthors, getAuthors, getAuthors);
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
   const someSelected = rows.some((r) => selected.has(r.id)) && !allSelected;
 

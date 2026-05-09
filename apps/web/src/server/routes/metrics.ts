@@ -59,14 +59,35 @@ export const metricsRoutes = new Hono<AppBindings>()
 
     // Pull recent activity rows once, then bucket client-side. The set is
     // small for live workspaces; if it grows we can group in SQL.
-    const rows = await queryAll<{ action: string; created_at: number | string; tenant_id: string | null }>(
+    const rows = await queryAll<{
+      action: string;
+      created_at: number | string;
+      tenant_id: string | null;
+      duration_ms: number | null;
+      collection: string | null;
+      item_id: string | null;
+      user_id: string | null;
+    }>(
       { db: ctx.db, dialect: ctx.dialect },
       sql.raw(
-        `SELECT action, created_at, tenant_id FROM activity ${
+        `SELECT action, created_at, tenant_id, duration_ms, collection, item_id, user_id FROM activity ${
           auth.tenantId ? `WHERE tenant_id = '${auth.tenantId.replace(/'/g, "''")}' OR tenant_id IS NULL` : ""
         } ORDER BY created_at DESC LIMIT 5000`,
       ),
     );
+
+    // p95 latency over rows that recorded a duration. Computed via simple
+    // percentile-of-sorted-array; cheap for the in-memory set.
+    const durations: number[] = [];
+    for (const r of rows) {
+      const ts = typeof r.created_at === "number" ? r.created_at : new Date(r.created_at).getTime();
+      if (ts < start) continue;
+      if (typeof r.duration_ms === "number" && r.duration_ms > 0) durations.push(r.duration_ms);
+    }
+    durations.sort((a, b) => a - b);
+    const p95Ms = durations.length
+      ? durations[Math.min(durations.length - 1, Math.floor(durations.length * 0.95))]
+      : 0;
 
     const series: MetricsBucket[] = Array.from({ length: buckets }, (_, i) => ({
       ts: Math.floor((start + i * bucketMs) / 1000),
@@ -135,6 +156,58 @@ export const metricsRoutes = new Hono<AppBindings>()
     } catch {}
     counts.pausedFlows = Math.max(0, (counts.flows ?? 0) - (counts.activeFlows ?? 0));
 
+    // Top collections — for each `collections` row, COUNT(*) + MAX(updated_at)
+    // on its physical c_<slug> table. Cheap on the dev set; cap at 10.
+    const topCollections: { slug: string; rows: number; lastWrite: number | null }[] = [];
+    try {
+      const cs = await queryAll<{ slug: string }>(
+        { db: ctx.db, dialect: ctx.dialect },
+        sql.raw(`SELECT slug FROM collections ORDER BY slug LIMIT 10`),
+      );
+      for (const c of cs) {
+        try {
+          const r = await queryAll<{ n: number; m: number | string | null }>(
+            { db: ctx.db, dialect: ctx.dialect },
+            sql.raw(`SELECT COUNT(*) AS n, MAX(updated_at) AS m FROM "c_${c.slug.replace(/"/g, "")}"`),
+          );
+          const m = r[0]?.m;
+          const lastWrite =
+            typeof m === "number" ? m : m ? new Date(m).getTime() : null;
+          topCollections.push({ slug: c.slug, rows: Number(r[0]?.n ?? 0), lastWrite });
+        } catch {
+          topCollections.push({ slug: c.slug, rows: 0, lastWrite: null });
+        }
+      }
+    } catch {}
+
+    // Request log — last N activity rows verbatim. The UI converts these
+    // into the design's "Time / Method / Path / Status / ms" row.
+    const recent = rows.slice(0, 20).map((r) => ({
+      t: typeof r.created_at === "number" ? r.created_at : new Date(r.created_at).getTime(),
+      action: r.action,
+      collection: r.collection ?? undefined,
+      itemId: r.item_id ?? undefined,
+      userId: r.user_id ?? undefined,
+      ms: r.duration_ms ?? undefined,
+    }));
+
+    // Recent errors — same source, but filtered by name pattern. We bucket
+    // by action/resource and emit the top 5 with their counts.
+    const errBuckets = new Map<string, { code: string; resource: string; msg: string; count: number; last: number }>();
+    for (const r of rows) {
+      if (!/error|fail|denied/.test(r.action)) continue;
+      const key = r.action;
+      const ts = typeof r.created_at === "number" ? r.created_at : new Date(r.created_at).getTime();
+      const cur = errBuckets.get(key);
+      if (cur) {
+        cur.count += 1;
+        if (ts > cur.last) cur.last = ts;
+      } else {
+        errBuckets.set(key, { code: "ERR", resource: r.action, msg: r.action, count: 1, last: ts });
+      }
+    }
+    const recentErrors = [...errBuckets.values()].sort((a, b) => b.last - a.last).slice(0, 5);
+
     return c.json({
       data: {
         range,
@@ -146,8 +219,12 @@ export const metricsRoutes = new Hono<AppBindings>()
           errors: totalErrors,
           errorRate: totalRequests > 0 ? totalErrors / totalRequests : 0,
           activeUsers: userSet.size,
+          p95Ms,
         },
         counts,
+        topCollections,
+        recent,
+        recentErrors,
       },
     });
   });

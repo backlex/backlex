@@ -48,11 +48,25 @@ export const functionsRoutes = new Hono<AppBindings>()
     }
     const body = await c.req.json().catch(() => ({}));
     const selfOrigin = new URL(c.req.url).origin;
-    const result = await invokeFunction(
-      fn as FunctionRow,
-      { ctx, auth, selfOrigin },
-      body,
-    );
+    let result;
+    try {
+      result = await invokeFunction(
+        fn as FunctionRow,
+        { ctx, auth, selfOrigin },
+        body,
+      );
+    } catch (err) {
+      // Surface sandbox load failures (e.g. QuickJS-WASM unavailable in CF
+      // Workers without FUNCTIONS_DISPATCH) as a structured 500 with the
+      // sandbox's own error message rather than leaking a stack trace into
+      // the global error handler.
+      result = {
+        ok: false as const,
+        logs: [],
+        error: (err as Error).message ?? "Sandbox failed to start",
+        durationMs: 0,
+      };
+    }
     await logActivity(c, {
       action: "invoke",
       collection: "system_functions",

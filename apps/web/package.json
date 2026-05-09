@@ -33,7 +33,7 @@
     "graphql-yoga": "^5.10.4",
     "hono": "^4.6.12",
     "lucide-react": "^1.14.0",
-    "quickjs-emscripten": "^0.31.0",
+    "quickjs-emscripten": "^0.32.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.0.2",

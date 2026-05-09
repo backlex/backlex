@@ -9,6 +9,24 @@ import type {
   SandboxResult,
 } from "../types";
 
+// QuickJS-WASM works under Bun and Node but the published variants depend on
+// `fetch('quickjs.wasm')` (wasmfile) or `node:fs` (singlefile-mjs) — neither is
+// available inside a Cloudflare Workers V8 isolate. We catch the loader's
+// own failure and re-throw with a developer-actionable message.
+const loadQuickJS = async () => {
+  try {
+    return await getQuickJS();
+  } catch (e) {
+    const msg = (e as Error).message ?? "";
+    if (/wasm|node:fs|fetching/i.test(msg)) {
+      throw new Error(
+        "QuickJS sandbox cannot start in this runtime (likely Cloudflare Workers). Run `bun run dev:bun` to invoke functions locally, or wire FUNCTIONS_DISPATCH for production.",
+      );
+    }
+    throw e;
+  }
+};
+
 const toQuick = (vm: QuickJSContext, value: unknown): QuickJSHandle => {
   if (value === null) return vm.null;
   if (value === undefined) return vm.undefined;
@@ -72,7 +90,7 @@ export const quickjsProvider: SandboxProvider = {
     data: unknown,
     timeoutMs: number,
   ): Promise<SandboxResult> {
-    const QuickJS = await getQuickJS();
+    const QuickJS = await loadQuickJS();
     const runtime = QuickJS.newRuntime();
     const start = Date.now();
     const deadline = start + Math.max(50, Math.min(60_000, timeoutMs));

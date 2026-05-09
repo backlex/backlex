@@ -30,6 +30,41 @@ bun run db:migrate:d1:remote # same, but to the deployed CF D1 (--remote)
 
 There is no test runner configured yet.
 
+## Workflow: branch → merge → auto-deploy
+
+Every working session runs on its own branch. Merging into `main` triggers `.github/workflows/deploy.yml`, which runs `bun run build` and `wrangler deploy` against the `workeros-api` Worker. Required GitHub secrets: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+
+**Branch naming:** `feat/<short-topic>` (e.g. `feat/admin-functions-page`).
+
+**When the user says "publish"** (or "yayınla" / "deploy et"), follow these steps in order — do not skip or reorder:
+
+```bash
+# 1. Make sure the working tree is clean and the topic branch is committed
+git status
+
+# 2. Switch to main and pull the latest
+git checkout main
+git pull origin main
+
+# 3. Direct-merge the feature branch (no PR)
+git merge <feat/branch-name>
+
+# 4. Push — this triggers the Cloudflare deploy workflow
+git push origin main
+
+# 5. Confirm the workflow started
+gh run list --workflow deploy.yml --limit 1
+```
+
+After pushing, report the workflow run URL back to the user. Don't claim "deployed" until the run is green — `gh run watch` or `gh run view <id>` confirms.
+
+If a new working session is starting from a clean `main`, open the branch first:
+
+```bash
+git checkout main && git pull origin main
+git checkout -b feat/<short-topic>
+```
+
 ## Architecture
 
 ### One app, four runtimes

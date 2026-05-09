@@ -1,6 +1,6 @@
 // @ts-nocheck
 // workeros admin — additional pages
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { I, type IconComponent } from "./icons";
 import { MOCK, type AdapterId } from "./mock";
 import { Badge, Button, Checkbox, IconButton, PageHeader, Switch } from "./ui";
@@ -395,12 +395,12 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
 export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
   // Flows load from /api/flows on mount. No mock seed — empty workspace
   // hits the empty-state render path on the right pane.
-  type FlowRow = { id: string; name: string; trigger: string; actions: string[]; status: string; runs: number };
+  type FlowRow = { id: string; name: string; trigger: string; actions: string[]; status: string; runs: number; operations: any[] };
   const [flows, setFlows] = useState<FlowRow[]>([]);
   useEffect(() => {
     void (async () => {
       const [r, m] = await Promise.all([
-        fetchSafely<{ data: { id: string; name: string; trigger: string; active: boolean }[] }>("/api/flows"),
+        fetchSafely<{ data: { id: string; name: string; trigger: string; active: boolean; operations: any[] }[] }>("/api/flows"),
         fetchSafely<{ data: { flows: Record<string, { runs: number; lastRun: number | null }> } }>(`/api/admin/metrics/entities`),
       ]);
       const stats = m?.data?.flows ?? {};
@@ -413,6 +413,7 @@ export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
             actions: ["fn"],
             status: f.active ? "active" : "paused",
             runs: stats[f.id]?.runs ?? 0,
+            operations: Array.isArray(f.operations) ? f.operations : [],
           })),
         );
       }
@@ -472,7 +473,7 @@ export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
         setFlows((arr) =>
           arr.map((f) =>
             f.id === data.id
-              ? { ...f, name: data.name, trigger: compiled.trigger, status: data.enabled ? "active" : "paused" }
+              ? { ...f, name: data.name, trigger: compiled.trigger, status: data.enabled ? "active" : "paused", operations: compiled.operations }
               : f,
           ),
         );
@@ -483,7 +484,7 @@ export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
         });
         const id = res.data.id;
         setFlows((arr) => [
-          { id, name: data.name, trigger: compiled.trigger, actions: [], status: data.enabled ? "active" : "paused", runs: 0 },
+          { id, name: data.name, trigger: compiled.trigger, actions: [], status: data.enabled ? "active" : "paused", runs: 0, operations: compiled.operations },
           ...arr,
         ]);
         setActive(id);
@@ -550,18 +551,7 @@ export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
             <Button variant="primary" size="sm" icon={I.Pencil} onClick={() => openBuilder(flow)}>Edit flow</Button>
           </div>
 
-          <div style={{ position: "relative", height: 220, background: "color-mix(in oklch, var(--muted) 40%, transparent)", borderRadius: "var(--radius-2xl)", border: "1px solid var(--border)", overflow: "hidden", backgroundImage: "radial-gradient(circle, var(--border) 1px, transparent 1px)", backgroundSize: "14px 14px", cursor: "pointer" }} onClick={() => openBuilder(flow)}>
-            <FlowNode x={20} y={80} kind="trigger" title="trigger" sub={flow.trigger} />
-            <FlowConnector x1={196} y1={108} x2={300} y2={108} />
-            <FlowNode x={300} y={40} kind="condition" title="if" sub='post.status _eq "published"' />
-            <FlowConnector x1={476} y1={68} x2={580} y2={68} />
-            <FlowNode x={580} y={20} kind="action" title="email" sub="to: post.author" />
-            <FlowConnector x1={476} y1={92} x2={580} y2={150} />
-            <FlowNode x={580} y={130} kind="action" title="fn:reindex" sub="async · retry × 3" />
-            <div style={{ position: "absolute", top: 12, right: 14, padding: "6px 12px", background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius-3xl)", fontSize: 11.5, color: "var(--muted-foreground)", display: "flex", alignItems: "center", gap: 6 }}>
-              <I.Pencil size={11} /> Click to edit
-            </div>
-          </div>
+          <FlowPreview trigger={flow.trigger} operations={flow.operations} onEdit={() => openBuilder(flow)} />
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
             <FlowStatCard flowId={flow.id} flowRuns={flow.runs} />
@@ -572,6 +562,107 @@ export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
       </div>
 
       {builderOpen && <FlowBuilder initial={editingFlow} onClose={() => setBuilderOpen(false)} onSave={saveFromBuilder} pushToast={pushToast} />}
+    </div>
+  );
+}
+
+/**
+ * One-line summary of a single op for the small list-page preview. Distinct
+ * from the full FlowGraph component (used elsewhere) — this is intentionally
+ * truncated and read-only.
+ */
+function describeOpShort(op: any): string {
+  if (!op || typeof op !== "object") return String(op);
+  const t = op.type as string;
+  switch (t) {
+    case "log": return op.message?.toString().slice(0, 28) ?? "log";
+    case "webhook":
+    case "request": return `${op.method ?? (t === "webhook" ? "POST" : "GET")} ${(op.url ?? "").toString().slice(0, 22)}`;
+    case "email": return `to ${(op.to ?? "").toString().slice(0, 22)}`;
+    case "transform": return "shape";
+    case "run-script": return ((op.code ?? "").toString().split("\n")[0] ?? "").slice(0, 22) || "script";
+    case "condition": {
+      try { return Object.keys(op.filter ?? {})[0] ?? "if"; } catch { return "if"; }
+    }
+    case "notification": return (op.title ?? "").toString().slice(0, 22) || "notify";
+    case "function": return `fn:${(op.name ?? "").toString().slice(0, 18)}`;
+    case "item.create": return `+${op.collection ?? ""}`;
+    case "item.update": return `~${op.collection ?? ""}`;
+    case "delay": return `wait ${op.durationMs}ms`;
+    default: return t ?? "step";
+  }
+}
+
+function FlowPreview({ trigger, operations, onEdit }: { trigger: string; operations: any[]; onEdit: () => void }) {
+  const opKind = (op: any) => (op?.type === "condition" ? "condition" : "action");
+  const visible = operations.slice(0, 3);
+  const overflow = Math.max(0, operations.length - visible.length);
+  const X0 = 20, Y = 80, NODE_W = 176, GAP = 104;
+  return (
+    <div
+      style={{
+        position: "relative",
+        height: 220,
+        background: "color-mix(in oklch, var(--muted) 40%, transparent)",
+        borderRadius: "var(--radius-2xl)",
+        border: "1px solid var(--border)",
+        overflow: "auto",
+        backgroundImage: "radial-gradient(circle, var(--border) 1px, transparent 1px)",
+        backgroundSize: "14px 14px",
+        cursor: "pointer",
+      }}
+      onClick={onEdit}
+    >
+      <FlowNode x={X0} y={Y} kind="trigger" title="trigger" sub={trigger || "—"} />
+      {visible.map((op, i) => {
+        const prevX = X0 + i * (NODE_W + GAP);
+        const x = prevX + NODE_W + GAP;
+        return (
+          <Fragment key={i}>
+            <FlowConnector x1={prevX + NODE_W} y1={Y + 28} x2={x} y2={Y + 28} />
+            <FlowNode x={x} y={Y} kind={opKind(op)} title={op?.type ?? "step"} sub={describeOpShort(op)} />
+          </Fragment>
+        );
+      })}
+      {overflow > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            top: Y + 14,
+            left: X0 + visible.length * (NODE_W + GAP) + NODE_W + GAP + 12,
+            padding: "4px 10px",
+            border: "1px dashed var(--border)",
+            borderRadius: "var(--radius-3xl)",
+            fontSize: 11,
+            color: "var(--muted-foreground)",
+          }}
+        >
+          +{overflow} more
+        </div>
+      )}
+      {operations.length === 0 && (
+        <div style={{ position: "absolute", left: X0 + NODE_W + 24, top: Y + 12, fontSize: 12, color: "var(--muted-foreground)" }}>
+          No actions yet — click to add steps.
+        </div>
+      )}
+      <div
+        style={{
+          position: "absolute",
+          top: 12,
+          right: 14,
+          padding: "6px 12px",
+          background: "var(--card)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-3xl)",
+          fontSize: 11.5,
+          color: "var(--muted-foreground)",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <I.Pencil size={11} /> Click to edit
+      </div>
     </div>
   );
 }

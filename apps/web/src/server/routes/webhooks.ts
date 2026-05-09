@@ -7,6 +7,7 @@ import * as sqlite from "@workeros/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { listDeliveries, retryDelivery } from "../services/webhooks";
+import { logActivity } from "../services/activity";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.webhooks : sqlite.schema.webhooks;
@@ -51,6 +52,7 @@ export const webhooksRoutes = new Hono<AppBindings>()
       secret: body.secret ?? null,
       active: body.active ?? true,
     });
+    await logActivity(c, { action: "create", collection: "system_webhooks", itemId: id, payload: { name: body.name, url: body.url } });
     return c.json({ data: { id, ...body, active: body.active ?? true } }, 201);
   })
   .patch("/:id", async (c) => {
@@ -69,12 +71,14 @@ export const webhooksRoutes = new Hono<AppBindings>()
         updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
       })
       .where(eq(t.id, c.req.param("id")));
+    await logActivity(c, { action: "update", collection: "system_webhooks", itemId: c.req.param("id"), payload: body });
     return c.json({ ok: true });
   })
   .delete("/:id", async (c) => {
     const ctx = c.get("ctx");
     const t = tableFor(ctx.dialect);
     await (ctx.db as any).delete(t).where(eq(t.id, c.req.param("id")));
+    await logActivity(c, { action: "delete", collection: "system_webhooks", itemId: c.req.param("id") });
     return c.json({ ok: true });
   })
   /** List recent deliveries — optional `?webhookId=…` and `?limit=N`. */
@@ -115,5 +119,6 @@ export const webhooksRoutes = new Hono<AppBindings>()
       data: { hookId: h.id, ts: new Date().toISOString() },
     };
     const r = await fireDelivery(ctx, h, "webhook.test", payload);
+    await logActivity(c, { action: "test", collection: "system_webhooks", itemId: h.id, payload: { status: r?.status, error: r?.error } });
     return c.json({ data: r });
   });

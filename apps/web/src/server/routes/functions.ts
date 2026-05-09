@@ -11,6 +11,7 @@ import {
   invokeFunction,
   type FunctionRow,
 } from "../services/functions";
+import { logActivity } from "../services/activity";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.functions : sqlite.schema.functions;
@@ -52,6 +53,12 @@ export const functionsRoutes = new Hono<AppBindings>()
       { ctx, auth, selfOrigin },
       body,
     );
+    await logActivity(c, {
+      action: "invoke",
+      collection: "system_functions",
+      itemId: fn.name,
+      payload: { ok: result.ok },
+    });
     return c.json(result, result.ok ? 200 : 500);
   })
   .use("*", requireUser, async (c, next) => {
@@ -78,6 +85,7 @@ export const functionsRoutes = new Hono<AppBindings>()
       timeoutMs: body.timeoutMs ?? 5000,
       active: body.active ?? true,
     });
+    await logActivity(c, { action: "create", collection: "system_functions", itemId: id, payload: { name: body.name, trigger: body.trigger } });
     return c.json(
       {
         data: {
@@ -106,11 +114,13 @@ export const functionsRoutes = new Hono<AppBindings>()
         updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
       })
       .where(eq(t.id, c.req.param("id")));
+    await logActivity(c, { action: "update", collection: "system_functions", itemId: c.req.param("id"), payload: body });
     return c.json({ ok: true });
   })
   .delete("/:id", async (c) => {
     const ctx = c.get("ctx");
     const t = tableFor(ctx.dialect);
     await (ctx.db as any).delete(t).where(eq(t.id, c.req.param("id")));
+    await logActivity(c, { action: "delete", collection: "system_functions", itemId: c.req.param("id") });
     return c.json({ ok: true });
   });

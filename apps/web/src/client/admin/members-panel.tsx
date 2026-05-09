@@ -42,7 +42,10 @@ const colorFor = (key: string): string =>
   PALETTE[Math.abs([...key].reduce((a, c) => a + c.charCodeAt(0), 0)) % PALETTE.length];
 
 const fromApiMember = (m: ApiTenantMember): Member => {
-  const last = m.joinedAt || m.invitedAt || m.createdAt || null;
+  // Prefer last_seen_at (touched on every authenticated request) — falls
+  // back to joinedAt/invitedAt/createdAt for never-seen members or when
+  // the column is missing on older deployments.
+  const last = (m as any).lastSeenAt || m.joinedAt || m.invitedAt || m.createdAt || null;
   return {
     id: m.id,
     name: m.email.split("@")[0],

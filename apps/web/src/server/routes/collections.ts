@@ -12,6 +12,7 @@ import {
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { seedOwnerScopedPermissions } from "../services/seed";
+import { logActivity } from "../services/activity";
 
 const FieldSchema = z
   .object({
@@ -131,6 +132,12 @@ export const collectionsRoutes = new Hono<AppBindings>()
     if (body.ownerScoped) {
       await seedOwnerScopedPermissions({ db, dialect }, body.slug);
     }
+    await logActivity(c, {
+      action: "create",
+      collection: "system_collections",
+      itemId: body.slug,
+      payload: { fields: body.fields.length },
+    });
     return c.json({ data: body }, 201);
   })
   .patch("/:slug", requireUser, async (c) => {
@@ -181,6 +188,12 @@ export const collectionsRoutes = new Hono<AppBindings>()
     if (merged.ownerScoped) {
       await seedOwnerScopedPermissions({ db, dialect }, slug);
     }
+    await logActivity(c, {
+      action: "update",
+      collection: "system_collections",
+      itemId: slug,
+      payload: body,
+    });
     return c.json({ ok: true });
   })
   .delete("/:slug", requireUser, async (c) => {
@@ -189,5 +202,10 @@ export const collectionsRoutes = new Hono<AppBindings>()
     const t = tableFor(dialect);
     await dropCollection(db, dialect, slug);
     await (db as any).delete(t).where(eq(t.slug, slug));
+    await logActivity(c, {
+      action: "delete",
+      collection: "system_collections",
+      itemId: slug,
+    });
     return c.json({ ok: true });
   });

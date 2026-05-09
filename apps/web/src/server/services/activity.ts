@@ -85,3 +85,38 @@ export const elapsedMs = (
   if (typeof t0 !== "number") return 0;
   return Date.now() - t0;
 };
+
+/**
+ * Convenience wrapper — pulls db/auth/duration/meta from a Hono Context
+ * so route handlers can log an activity in one line:
+ *
+ *   await logActivity(c, { action: "create", collection: "files", itemId: key });
+ *
+ * Anything not specified inline is inferred from the context.
+ */
+export const logActivity = async (
+  c: any,
+  input: {
+    action: string;
+    collection: string;
+    itemId?: string | null;
+    payload?: unknown;
+  },
+): Promise<void> => {
+  const ctx = c.get("ctx");
+  const auth = c.get("auth");
+  const meta = requestMeta(c.req.raw);
+  await recordActivity(
+    { db: ctx.db, dialect: ctx.dialect },
+    {
+      userId: auth?.userId ?? null,
+      tenantId: auth?.tenantId ?? null,
+      action: input.action,
+      collection: input.collection,
+      itemId: input.itemId ?? null,
+      ...meta,
+      payload: input.payload ?? null,
+      durationMs: elapsedMs(c),
+    },
+  );
+};

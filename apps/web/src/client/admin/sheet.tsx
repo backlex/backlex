@@ -17,7 +17,7 @@ export interface ItemSheetProps {
   onSave: (draft: Partial<Post>) => void;
 }
 
-export function ItemSheet({ open, mode, initial, onClose, onSave }: ItemSheetProps) {
+export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: ItemSheetProps) {
   // Subscribe to the authors cache so the Select re-renders when the
   // workspace's user list loads in the background.
   const authors = useSyncExternalStore(subscribeAuthors, getAuthors, getAuthors);
@@ -43,13 +43,29 @@ export function ItemSheet({ open, mode, initial, onClose, onSave }: ItemSheetPro
   };
 
   const validate = () => {
+    // Schema-driven required check. The legacy form hardcoded `title /
+    // slug / status` from the design's mock posts schema, which 422'd on
+    // every other collection ("required slug" but no slug column on
+    // c_<other>). Now we only require fields the active collection
+    // actually marks as required.
     const e: Record<string, string> = {};
-    if (!String(draft.title || "").trim()) e.title = "title is required";
-    if (!String(draft.slug || "").trim()) e.slug = "slug is required";
-    else if (!/^[a-z0-9-]+$/.test(String(draft.slug))) e.slug = "lowercase letters, digits, and dashes only";
-    if (!draft.status) e.status = "status is required";
-    if (draft.tags) {
-      try { JSON.parse(String(draft.tags)); } catch { e.tags = "must be valid json"; }
+    const schemaFields = (schema?.fields ?? []) as Array<{ name: string; required?: boolean; nullable?: boolean }>;
+    for (const f of schemaFields) {
+      if (!(f.required || f.nullable === false)) continue;
+      const v = (draft as Record<string, unknown>)[f.name];
+      if (v === undefined || v === null || (typeof v === "string" && !v.trim())) {
+        e[f.name] = `${f.name} is required`;
+      }
+    }
+    // Slug format check still applies if the collection has a slug column.
+    const slugFromDraft = (draft as Record<string, unknown>).slug;
+    if (typeof slugFromDraft === "string" && slugFromDraft && !/^[a-z0-9-]+$/.test(slugFromDraft)) {
+      e.slug = "lowercase letters, digits, and dashes only";
+    }
+    // tags column: validate JSON if present.
+    const tagsFromDraft = (draft as Record<string, unknown>).tags;
+    if (typeof tagsFromDraft === "string" && tagsFromDraft) {
+      try { JSON.parse(tagsFromDraft); } catch { e.tags = "must be valid json"; }
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -57,11 +73,24 @@ export function ItemSheet({ open, mode, initial, onClose, onSave }: ItemSheetPro
 
   const submit = () => {
     if (!validate()) return;
-    onSave({
-      ...(draft as Partial<Post>),
-      word_count: Number(draft.word_count) || 0,
-      tags: JSON.parse(String(draft.tags || "[]")),
-    });
+    // Only forward fields the active collection actually defines. The
+    // design's blank{} carries `slug/status/body/author/word_count/
+    // view_count/tags/published_at` because the prototype assumed the
+    // posts schema; on a real c_<slug> with different columns those
+    // would 422 with "Unknown field" from validateBody().
+    const allowed = new Set((schema?.fields ?? []).map((f) => f.name));
+    const payload: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(draft)) {
+      if (!allowed.has(k)) continue;
+      if (k === "tags" && typeof v === "string") {
+        try { payload[k] = JSON.parse(v || "[]"); } catch { payload[k] = []; }
+      } else if (k === "word_count" || k === "view_count") {
+        payload[k] = Number(v) || 0;
+      } else {
+        payload[k] = v;
+      }
+    }
+    onSave(payload as Partial<Post>);
   };
 
   if (!open) return null;

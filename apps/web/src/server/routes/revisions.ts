@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { sql, type SQL } from "drizzle-orm";
 import { AppError } from "@workeros/core";
-import { physicalTableFor, type FieldDef } from "@workeros/db";
+import { type FieldDef } from "@workeros/db";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { AppBindings } from "../app";
@@ -11,29 +11,43 @@ import {
   listRevisions,
   recordRevision,
 } from "../services/revisions";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 const collectionsTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;
 
 interface CollectionRow {
   slug: string;
+  physicalTable: string;
   fields: FieldDef[];
   ownerScoped: boolean;
 }
 
 const loadCollection = async (
   ctx: { db: unknown; dialect: "pg" | "sqlite" },
+  tenantId: string | null | undefined,
   slug: string,
 ): Promise<CollectionRow> => {
+  if (!tenantId) {
+    throw new AppError(
+      "UNAUTHORIZED",
+      "Active tenant required to access collections",
+    );
+  }
   const t = collectionsTable(ctx.dialect);
   const rows = await (ctx.db as any)
     .select()
     .from(t)
-    .where(eq(t.slug, slug))
+    .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)))
     .limit(1);
   if (!rows[0]) throw new AppError("NOT_FOUND", `Collection "${slug}" not found`);
-  return rows[0] as CollectionRow;
+  const r = rows[0] as Record<string, unknown>;
+  return {
+    slug: r.slug as string,
+    physicalTable: (r.physicalTable ?? r.physical_table) as string,
+    fields: r.fields as FieldDef[],
+    ownerScoped: Boolean(r.ownerScoped ?? r.owner_scoped),
+  };
 };
 
 const collectionFromParam = (c: Context<AppBindings>) =>
@@ -76,8 +90,8 @@ export const revisionsRoutes = new Hono<AppBindings>()
         );
       }
 
-      const collection = await loadCollection(ctx, rev.collection);
-      const table = physicalTableFor(collection.slug);
+      const collection = await loadCollection(ctx, auth.tenantId, rev.collection);
+      const table = collection.physicalTable;
       const snapshot = rev.snapshot;
 
       // Re-write the snapshot fields back. id stays the same.

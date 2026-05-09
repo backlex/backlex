@@ -1,0 +1,352 @@
+// @ts-nocheck
+// Collections index — grid of all collections + new-collection wizard
+import { useEffect, useMemo, useState } from "react";
+import { I, type IconComponent, type IconKey } from "./icons";
+import type { CollectionListItem } from "./mock";
+import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
+
+export interface CollectionsIndexProps {
+  collections: CollectionListItem[];
+  onOpen: (slug: string) => void;
+  onNew: () => void;
+  pushToast: (msg: string) => void;
+}
+
+export function CollectionsIndex({ collections, onOpen, onNew }: CollectionsIndexProps) {
+  const [search, setSearch] = useState("");
+  const [view, setView] = useState<"grid" | "table">("grid");
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return collections;
+    return collections.filter((c) => c.slug.toLowerCase().includes(q) || (c.group || "").toLowerCase().includes(q));
+  }, [collections, search]);
+
+  const groups = useMemo(() => {
+    const m = new Map<string, CollectionListItem[]>();
+    for (const c of filtered) {
+      const g = c.group || "Other";
+      if (!m.has(g)) m.set(g, []);
+      m.get(g)!.push(c);
+    }
+    return [...m.entries()];
+  }, [filtered]);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <PageHeader
+        title="Collections"
+        description={<>Each collection is a physical <span className="font-mono">c_&lt;slug&gt;</span> table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations.</>}
+        badges={<span style={{ display: "inline-flex", gap: 6, marginLeft: 4 }}>
+          <Badge variant="outline" mono>{collections.length} collections</Badge>
+          <Badge variant="outline" mono>{collections.reduce((a, c) => a + c.count, 0).toLocaleString()} rows</Badge>
+        </span>}
+        actions={<>
+          <Button variant="outline" icon={I.Code}>Schema</Button>
+          <Button variant="outline" icon={I.ExternalLink}>API docs</Button>
+          <Button variant="primary" icon={I.Plus} onClick={onNew}>New collection</Button>
+        </>}
+      />
+
+      <div className="filter-bar">
+        <div className="search-input">
+          <I.Search size={14} />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search collections by slug or group…" />
+        </div>
+        <div className="spacer" />
+        <button className={`chip ${view === "grid" ? "active" : ""}`} onClick={() => setView("grid")}><I.Braces size={12} /> Grid</button>
+        <button className={`chip ${view === "table" ? "active" : ""}`} onClick={() => setView("table")}><I.Inbox size={12} /> Table</button>
+      </div>
+
+      {view === "grid" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+          {groups.map(([g, list]) => (
+            <div key={g} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, color: "var(--muted-foreground)" }}>{g}</span>
+                <span className="muted tabular-nums" style={{ fontSize: 11 }}>{list.length}</span>
+                <div style={{ flex: 1, height: 1, background: "var(--border)", marginLeft: 6 }} />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
+                {list.map((c) => <CollectionCard key={c.slug} c={c} onOpen={() => onOpen(c.slug)} />)}
+                <button onClick={onNew} className="card" style={{ minHeight: 138, border: "1.5px dashed var(--border)", background: "transparent", cursor: "pointer", display: "grid", placeItems: "center", gap: 6, color: "var(--muted-foreground)" }}>
+                  <I.Plus size={18} />
+                  <span style={{ fontSize: 12.5, fontWeight: 500 }}>New collection</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="card">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Slug</th>
+                <th style={{ width: 110 }}>Group</th>
+                <th style={{ width: 90, textAlign: "right" }}>Rows</th>
+                <th style={{ width: 80, textAlign: "right" }}>Fields</th>
+                <th style={{ width: 110, textAlign: "right" }}>Writes 24h</th>
+                <th style={{ width: 110 }}>Last write</th>
+                <th style={{ width: 130 }}>Permissions</th>
+                <th style={{ width: 60 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((c) => {
+                const Ic = (I as Record<string, IconComponent>)[c.icon as IconKey] || I.Database;
+                return (
+                  <tr key={c.slug} onClick={() => onOpen(c.slug)} style={{ cursor: "pointer" }}>
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ width: 24, height: 24, borderRadius: "var(--radius-md)", background: "var(--muted)", display: "grid", placeItems: "center" }}><Ic size={12} /></span>
+                        <span className="font-mono" style={{ fontSize: 13, fontWeight: 500 }}>c_{c.slug}</span>
+                        {c.singleton && <Badge variant="outline">singleton</Badge>}
+                      </div>
+                    </td>
+                    <td className="muted" style={{ fontSize: 12 }}>{c.group}</td>
+                    <td className="tabular-nums" style={{ textAlign: "right" }}>{c.count.toLocaleString()}</td>
+                    <td className="tabular-nums muted" style={{ textAlign: "right" }}>{c.fields}</td>
+                    <td className="tabular-nums" style={{ textAlign: "right" }}>{c.writes24h}</td>
+                    <td className="muted font-mono" style={{ fontSize: 11.5 }}>{c.lastWrite}</td>
+                    <td>{c.ownerScoped ? <Badge variant="default">owner-scoped</Badge> : <Badge variant="secondary">public read</Badge>}</td>
+                    <td onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}><IconButton icon={I.More} /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CollectionCard({ c, onOpen }: { c: CollectionListItem; onOpen: () => void }) {
+  const Ic = (I as Record<string, IconComponent>)[c.icon as IconKey] || I.Database;
+  return (
+    <div
+      className="card"
+      onClick={onOpen}
+      style={{ padding: 16, cursor: "pointer", display: "flex", flexDirection: "column", gap: 12, transition: "border-color 100ms, transform 100ms" }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "color-mix(in oklch, var(--primary) 50%, var(--border))"; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)"; }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ width: 32, height: 32, borderRadius: "var(--radius-lg)", background: "var(--muted)", border: "1px solid var(--border)", display: "grid", placeItems: "center", color: "var(--muted-foreground)" }}><Ic size={15} /></span>
+        <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+          <span className="font-mono" style={{ fontSize: 13.5, fontWeight: 600 }}>c_{c.slug}</span>
+          <span className="muted" style={{ fontSize: 11.5 }}>{c.fields} fields · {c.singleton ? "singleton" : c.ownerScoped ? "owner-scoped" : "public read"}</span>
+        </div>
+        <div style={{ flex: 1 }} />
+        <IconButton icon={I.More} onClick={(e) => { e.stopPropagation(); }} />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+        <Stat k="rows" v={c.count.toLocaleString()} />
+        <Stat k="writes 24h" v={c.writes24h} />
+        <Stat k="last" v={c.lastWrite} mono />
+      </div>
+      <div style={{ display: "flex", gap: 6 }}>
+        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onOpen(); }}>Open</Button>
+        <Button size="sm" variant="ghost" iconRight={I.ExternalLink}>API</Button>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ k, v, mono }: { k: string; v: string | number; mono?: boolean }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <span className="muted" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{k}</span>
+      <span className={`tabular-nums ${mono ? "font-mono" : ""}`} style={{ fontSize: mono ? 11.5 : 14, fontWeight: mono ? 400 : 600 }}>{v}</span>
+    </div>
+  );
+}
+
+export interface NewCollectionDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onCreate: (c: CollectionListItem & Record<string, unknown>) => void;
+  existingSlugs: string[];
+}
+
+export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: NewCollectionDialogProps) {
+  const [step, setStep] = useState(0);
+  const [slug, setSlug] = useState("");
+  const [group, setGroup] = useState("Content");
+  const [singleton, setSingleton] = useState(false);
+  const [ownerScoped, setOwnerScoped] = useState(true);
+  const [timestamps, setTimestamps] = useState(true);
+  const [softDelete, setSoftDelete] = useState(false);
+  const [tenantScoped, setTenantScoped] = useState(true);
+  const [template, setTemplate] = useState("blank");
+
+  useEffect(() => {
+    if (open) {
+      setStep(0);
+      setSlug("");
+      setGroup("Content");
+      setSingleton(false);
+      setOwnerScoped(true);
+      setTimestamps(true);
+      setSoftDelete(false);
+      setTenantScoped(true);
+      setTemplate("blank");
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const slugClean = slug.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_").replace(/^_+|_+$/g, "");
+  const slugError = !slugClean ? null : existingSlugs.includes(slugClean) ? `c_${slugClean} already exists` : !/^[a-z][a-z0-9_]*$/.test(slugClean) ? "must start with a letter" : null;
+
+  const templates = [
+    { id: "blank", name: "Blank", desc: "Just system fields. Add your own columns.", icon: "Braces", fields: 4 },
+    { id: "content", name: "Content", desc: "title · slug · status · body · published_at", icon: "Inbox", fields: 9 },
+    { id: "taxonomy", name: "Taxonomy", desc: "name · slug · description · parent_id", icon: "Hash", fields: 8 },
+    { id: "people", name: "People", desc: "name · email · avatar · bio · links", icon: "Users", fields: 9 },
+  ];
+
+  const sql = `CREATE TABLE c_${slugClean || "<slug>"} (
+  id          uuid PRIMARY KEY DEFAULT gen_uuid(),${tenantScoped ? `\n  tenant_id   uuid NOT NULL REFERENCES tenants(id),` : ""}${ownerScoped ? `\n  owner_id    uuid NOT NULL,` : ""}${timestamps ? `\n  created_at  timestamptz NOT NULL DEFAULT now(),\n  updated_at  timestamptz NOT NULL DEFAULT now(),` : ""}${softDelete ? `\n  deleted_at  timestamptz,` : ""}
+  -- + template columns
+);${tenantScoped ? `\n\n-- RLS auto-injected:\n-- ALTER TABLE c_${slugClean || "<slug>"} ENABLE ROW LEVEL SECURITY;\n-- CREATE POLICY tenant_isolation ON c_${slugClean || "<slug>"}\n--   USING (tenant_id = current_setting('app.tenant_id')::uuid);` : ""}`;
+
+  const submit = () => {
+    if (!slugClean || slugError) return;
+    const tpl = templates.find((t) => t.id === template)!;
+    onCreate({
+      slug: slugClean,
+      group,
+      singleton,
+      ownerScoped,
+      timestamps,
+      softDelete,
+      template,
+      count: 0,
+      fields: tpl.fields,
+      writes24h: 0,
+      lastWrite: "just now",
+      icon: tpl.icon,
+    });
+  };
+
+  return (
+    <div className="dialog-backdrop" onClick={onClose}>
+      <div className="dialog-lg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640, width: "100%", display: "flex", flexDirection: "column", maxHeight: "90vh" }}>
+        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <I.Database size={14} />
+          <span style={{ fontSize: 14, fontWeight: 500 }}>New collection</span>
+          <span className="muted font-mono" style={{ fontSize: 11.5 }}>step {step + 1} of 2</span>
+          <div className="spacer" />
+          <IconButton icon={I.X} onClick={onClose} />
+        </div>
+
+        <div style={{ padding: 22, overflow: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
+          {step === 0 && (
+            <>
+              <div className="field">
+                <label className="field-label">Slug</label>
+                <div className={`input-affix ${slugError ? "error" : ""}`}>
+                  <span className="input-affix-prefix font-mono">c_</span>
+                  <input value={slug} onChange={(e) => setSlug(e.target.value)} autoFocus placeholder="products" className="font-mono" />
+                </div>
+                {slugError && <span className="field-hint" style={{ color: "var(--destructive)" }}>{slugError}</span>}
+                {!slugError && !slugClean && <span className="field-hint">Enter a slug to continue.</span>}
+                {!slugError && slugClean && <span className="field-hint">Table name: <span className="font-mono">c_{slugClean}</span></span>}
+              </div>
+
+              <div className="field">
+                <label className="field-label">Group</label>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {["Content", "Marketing", "System", "Other"].map((g) => (
+                    <button key={g} type="button" className={`chip ${group === g ? "active" : ""}`} onClick={() => setGroup(g)}>{g}</button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="field">
+                <label className="field-label">Start from</label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+                  {templates.map((t) => {
+                    const Ic = (I as Record<string, IconComponent>)[t.icon as IconKey] || I.Braces;
+                    const active = template === t.id;
+                    return (
+                      <button key={t.id} type="button" onClick={() => setTemplate(t.id)} className="card" style={{ padding: 12, textAlign: "left", cursor: "pointer", borderColor: active ? "var(--primary)" : "var(--border)", background: active ? "color-mix(in oklch, var(--primary) 8%, var(--card))" : "var(--card)" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                          <Ic size={13} />
+                          <span style={{ fontSize: 13, fontWeight: 500 }}>{t.name}</span>
+                          <div className="spacer" />
+                          <span className="muted tabular-nums" style={{ fontSize: 11 }}>{t.fields} fields</span>
+                        </div>
+                        <span className="muted" style={{ fontSize: 11.5, lineHeight: 1.4 }}>{t.desc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+
+          {step === 1 && (
+            <>
+              <div className="field-row" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
+                <div>
+                  <div className="field-label">Tenant-scoped <Badge variant="secondary">recommended</Badge></div>
+                  <div className="field-hint">Auto-add <span className="font-mono">tenant_id</span>; row-level security isolates data per workspace. All read/write rules get <span className="font-mono">tenant_id = $user.tenant_id</span> injected.</div>
+                </div>
+                <Switch checked={tenantScoped} onChange={setTenantScoped} />
+              </div>
+              <div className="field-row" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
+                <div>
+                  <div className="field-label">Owner-scoped</div>
+                  <div className="field-hint">Auto-add <span className="font-mono">owner_id</span>; the <span className="font-mono">authenticated</span> role can only read/update its own rows.</div>
+                </div>
+                <Switch checked={ownerScoped} onChange={setOwnerScoped} />
+              </div>
+              <div className="field-row" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
+                <div>
+                  <div className="field-label">Timestamps</div>
+                  <div className="field-hint">Add <span className="font-mono">created_at</span> and <span className="font-mono">updated_at</span>.</div>
+                </div>
+                <Switch checked={timestamps} onChange={setTimestamps} />
+              </div>
+              <div className="field-row" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
+                <div>
+                  <div className="field-label">Soft delete</div>
+                  <div className="field-hint">Add <span className="font-mono">deleted_at</span>; deletes mark rows instead of removing them.</div>
+                </div>
+                <Switch checked={softDelete} onChange={setSoftDelete} />
+              </div>
+              <div className="field-row" style={{ paddingBottom: 4 }}>
+                <div>
+                  <div className="field-label">Singleton</div>
+                  <div className="field-hint">Locked to one row — useful for site settings.</div>
+                </div>
+                <Switch checked={singleton} onChange={setSingleton} />
+              </div>
+
+              <div className="alter-preview" style={{ fontSize: 11.5, marginTop: 4 }}>
+                <pre style={{ margin: 0, fontFamily: "inherit", whiteSpace: "pre-wrap" }}>{sql}</pre>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="card-section" style={{ borderTop: "1px solid var(--border)", borderBottom: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          {step === 1 && <Button variant="ghost" size="sm" icon={I.ChevronLeft} onClick={() => setStep(0)}>Back</Button>}
+          <div className="spacer" />
+          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          {step === 0 ? (
+            <Button variant="primary" size="sm" iconRight={I.ChevronRight} onClick={() => {
+              if (!slugClean || slugError) return;
+              setStep(1);
+            }} title={!slugClean ? "Enter a slug first" : slugError || ""}>Next</Button>
+          ) : (
+            <Button variant="primary" size="sm" icon={I.Plus} onClick={submit}>Create collection</Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

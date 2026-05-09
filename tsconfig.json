@@ -4,6 +4,9 @@
     { "path": "./packages/core" },
     { "path": "./packages/db" },
     { "path": "./packages/auth" },
+    { "path": "./packages/ui" },
+    { "path": "./packages/client" },
+    { "path": "./packages/cli" },
     { "path": "./apps/api" },
     { "path": "./apps/admin" }
   ]

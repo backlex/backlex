@@ -1,0 +1,1 @@
+ALTER TABLE `collections` ADD `versioned` integer DEFAULT false NOT NULL;

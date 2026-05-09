@@ -1,0 +1,34 @@
+# Root config — deploys admin (static SPA) + api (edge function) together.
+
+[build]
+  base = ""
+  command = "bun install && bun run --cwd apps/web build"
+  publish = "apps/web/dist/client"
+
+# Single-page app fallback so client-side routes (/collections, /settings,
+# /functions, etc.) all serve admin's index.html.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/edge-functions/entry/api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Edge function for the entire API surface.
+[[edge_functions]]
+  function = "entry"
+  path = "/api/*"
+
+# Cron — pings the same /_cron/tick the edge entry serves.
+[[scheduled_functions]]
+  function = "cron"
+  cron = "* * * * *"
+
+[functions]
+  directory = "apps/web/netlify/functions"
+
+[edge_functions]
+  directory = "apps/web/netlify/edge-functions"

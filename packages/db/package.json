@@ -18,6 +18,7 @@
     "generate:sqlite": "drizzle-kit generate --config=drizzle.sqlite.config.ts",
     "migrate:pg": "bun run src/pg/migrate.ts",
     "migrate:sqlite": "bun run src/sqlite/migrate.ts",
+    "migrate:d1": "bun run src/sqlite/migrate-d1.ts",
     "studio:pg": "drizzle-kit studio --config=drizzle.pg.config.ts"
   },
   "dependencies": {

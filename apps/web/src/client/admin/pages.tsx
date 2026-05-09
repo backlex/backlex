@@ -1,0 +1,1891 @@
+// @ts-nocheck
+// workeros admin — additional pages
+import { useEffect, useState, type ReactNode } from "react";
+import { I, type IconComponent } from "./icons";
+import { MOCK, type AdapterId } from "./mock";
+import { Badge, Button, Checkbox, IconButton, PageHeader, Switch } from "./ui";
+import { Select } from "./select";
+import { FlowBuilder } from "./flow-builder";
+import { RealtimeTail, type RealtimeEvent } from "./extras";
+import {
+  api,
+} from "@/lib/api";
+import {
+  settingsApi,
+  usersApi,
+  type ApiRuntime,
+  type ApiUser,
+} from "./api";
+
+const fetchSafely = async <T,>(path: string): Promise<T | null> => {
+  try {
+    return await api<T>(path);
+  } catch {
+    return null;
+  }
+};
+
+function Sparkline({ data, color = "var(--primary)", height = 36, fill = true }: { data: number[]; color?: string; height?: number; fill?: boolean }) {
+  const w = 100, h = height;
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const span = max - min || 1;
+  const pts = data.map((v, i) => [i / (data.length - 1) * w, h - ((v - min) / span) * (h - 4) - 2]);
+  const d = pts.map((p, i) => (i === 0 ? "M" : "L") + p[0].toFixed(2) + "," + p[1].toFixed(2)).join(" ");
+  const fillPath = d + ` L ${w},${h} L 0,${h} Z`;
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: "100%", height, display: "block" }}>
+      {fill && <path d={fillPath} fill={color} opacity="0.12" />}
+      <path d={d} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r="2" fill={color} />
+    </svg>
+  );
+}
+
+export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: AdapterId; pushToast: (m: string) => void; setActiveNav: (id: string) => void }) {
+  const profile = MOCK.adapterProfiles[adapter];
+  const [range, setRange] = useState("1h");
+  const [reqSeries, setReqSeries] = useState(() => Array.from({ length: 40 }, (_, i) => 18 + Math.round(Math.sin(i / 3) * 6 + Math.random() * 8)));
+  const [errSeries, setErrSeries] = useState(() => Array.from({ length: 40 }, () => Math.round(Math.random() * 3)));
+  const [latSeries, setLatSeries] = useState(() => Array.from({ length: 40 }, (_, i) => 22 + Math.round(Math.cos(i / 4) * 4 + Math.random() * 5)));
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setReqSeries((s) => [...s.slice(1), Math.max(4, s[s.length - 1] + (Math.random() - 0.5) * 8)]);
+      setErrSeries((s) => [...s.slice(1), Math.max(0, Math.round(Math.random() * 4))]);
+      setLatSeries((s) => [...s.slice(1), Math.max(8, s[s.length - 1] + (Math.random() - 0.5) * 6)]);
+    }, 1800);
+    return () => clearInterval(t);
+  }, []);
+
+  const todayMetrics = [
+    { label: "Requests", value: "14,820", delta: "+12.4%", up: true, series: reqSeries, color: "var(--primary)" },
+    { label: "p95 latency", value: Math.round(latSeries[latSeries.length - 1]) + "ms", delta: "−3ms", up: true, series: latSeries, color: "oklch(0.65 0.15 240)" },
+    { label: "Error rate", value: "0.42%", delta: "+0.08%", up: false, series: errSeries, color: "oklch(0.7 0.18 22)" },
+    { label: "Active users", value: "38", delta: "+4", up: true, series: Array.from({ length: 40 }, (_, i) => 20 + Math.sin(i / 4) * 5 + Math.random() * 6), color: "oklch(0.72 0.16 145)" },
+  ];
+
+  const collections = [
+    { slug: "posts", rows: 12, size: "184 KB", last: "2m ago", writes: 18 },
+    { slug: "comments", rows: 184, size: "1.2 MB", last: "14s ago", writes: 42 },
+    { slug: "authors", rows: 5, size: "24 KB", last: "6h ago", writes: 1 },
+    { slug: "tags", rows: 22, size: "8 KB", last: "3d ago", writes: 0 },
+  ];
+
+  const activity = [
+    { t: "14:23", who: "rana", verb: "updated", what: "posts/01HZ7K8Q6XYZ", icon: I.Pencil },
+    { t: "14:21", who: "flow", verb: "ran", what: "Notify on new comment · 184ms", icon: I.Bolt },
+    { t: "14:18", who: "kai", verb: "created", what: "API key · pak_a4e2b9c1", icon: I.Code },
+    { t: "14:12", who: "fn", verb: "invoked", what: "reindex · 1102 calls today", icon: I.Function },
+    { t: "14:04", who: "priya", verb: "signed up", what: "priya@external.io", icon: I.Users },
+    { t: "13:58", who: "system", verb: "migrated", what: "c_posts · added reading_time", icon: I.Braces },
+  ];
+
+  const recentErrors = [
+    { code: 502, count: 4, hook: "wh_3", msg: "Connection refused", last: "2m ago" },
+    { code: 403, count: 12, hook: "GET /api/items/comments", msg: "permission denied — public.read", last: "8m ago" },
+    { code: 500, count: 1, hook: "fn:digest", msg: 'TypeError: cannot read property "id"', last: "1h ago" },
+  ];
+
+  const quickActions = [
+    { label: "New collection", icon: I.Database, hint: "auto-creates c_<slug> table", onClick: () => { setActiveNav("collections"); pushToast("Collection wizard opened."); } },
+    { label: "New function", icon: I.Function, hint: "http · event · cron", onClick: () => { setActiveNav("functions"); pushToast("Function scaffold ready."); } },
+    { label: "New flow", icon: I.Bolt, hint: "trigger → action graph", onClick: () => { setActiveNav("flows"); pushToast("Flow draft created."); } },
+    { label: "Invite user", icon: I.Users, hint: "email magic link", onClick: () => { setActiveNav("users"); pushToast("Invite dialog opened."); } },
+  ];
+
+  const stats = [
+    { label: "Collections", value: 4, sub: "12 posts · 5 authors · 184 comments · 22 tags", nav: "collections", icon: I.Database },
+    { label: "Files", value: "124", sub: "38.2 MB · 6 folders", nav: "storage", icon: I.Folder },
+    { label: "Active flows", value: 3, sub: "2 enabled · 1 paused", nav: "flows", icon: I.Bolt },
+    { label: "Functions", value: 8, sub: "5 http · 2 event · 1 cron", nav: "functions", icon: I.Function },
+  ];
+
+  const requests = [
+    { t: "14:23:11", m: "GET", p: "/api/items/posts", s: 200, ms: 18 },
+    { t: "14:23:09", m: "POST", p: "/api/items/posts", s: 201, ms: 24 },
+    { t: "14:23:02", m: "GET", p: "/api/storage", s: 200, ms: 11 },
+    { t: "14:22:58", m: "PATCH", p: "/api/items/posts/01HZ7K8Q6XYZ", s: 200, ms: 27 },
+    { t: "14:22:51", m: "GET", p: "/api/items/comments", s: 403, ms: 6 },
+    { t: "14:22:44", m: "POST", p: "/api/auth/sign-in/social", s: 302, ms: 41 },
+  ];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <PageHeader
+        title="Overview"
+        description={<>Adapter auto-selected from bindings/env. <span className="font-mono">{adapter}</span> profile is active.</>}
+        actions={<>
+          <Select size="sm" value={range} onChange={setRange} options={[
+            { value: "15m", label: "Last 15 minutes" },
+            { value: "1h", label: "Last 1 hour" },
+            { value: "24h", label: "Last 24 hours" },
+            { value: "7d", label: "Last 7 days" },
+            { value: "30d", label: "Last 30 days" },
+          ]} style={{ width: 170 }} />
+          <Button variant="outline" icon={I.Refresh} onClick={() => pushToast("Status refreshed.")}>Refresh</Button>
+        </>}
+      />
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        {todayMetrics.map((m) => (
+          <div key={m.label} className="card" style={{ padding: 0, display: "flex", flexDirection: "column", gap: 8, overflow: "hidden" }}>
+            <div style={{ padding: "14px 14px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div className="muted" style={{ fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{m.label}</div>
+              <span className="font-mono tabular-nums" style={{ fontSize: 11, color: m.up ? "oklch(0.55 0.16 145)" : "var(--destructive)" }}>{m.delta}</span>
+            </div>
+            <div className="tabular-nums" style={{ padding: "0 14px", fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em" }}>{m.value}</div>
+            <div style={{ marginTop: 6, display: "block", lineHeight: 0 }}>
+              <Sparkline data={m.series} color={m.color} height={36} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
+        {quickActions.map((a) => {
+          const Icon = a.icon;
+          return (
+            <button key={a.label} onClick={a.onClick} className="card" style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left", border: "1px dashed var(--border)", background: "transparent", font: "inherit", color: "inherit" }}>
+              <span style={{ width: 32, height: 32, borderRadius: "var(--radius-lg)", background: "color-mix(in oklch, var(--primary) 16%, var(--card))", display: "grid", placeItems: "center", color: "var(--primary-foreground)" }}>
+                <Icon size={14} style={{ color: "oklch(0.32 0.06 130)" }} />
+              </span>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: 13, fontWeight: 500 }}>{a.label}</span>
+                <span className="muted" style={{ fontSize: 11.5 }}>{a.hint}</span>
+              </div>
+              <div className="spacer" />
+              <I.ChevronRight size={14} className="muted" />
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        {stats.map((s) => {
+          const Icon = s.icon;
+          return (
+            <div key={s.label} className="card" style={{ padding: 16, cursor: "pointer", display: "flex", flexDirection: "column", gap: 4 }} onClick={() => setActiveNav(s.nav)}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Icon size={13} className="muted" />
+                <div className="muted" style={{ fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{s.label}</div>
+              </div>
+              <div className="tabular-nums" style={{ fontSize: 28, fontWeight: 600, letterSpacing: "-0.02em", marginTop: 2 }}>{s.value}</div>
+              <div className="muted" style={{ fontSize: 12 }}>{s.sub}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="split">
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
+          <div className="card">
+            <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <I.Database size={14} />
+              <span style={{ fontSize: 13, fontWeight: 500 }}>Top collections</span>
+              <div className="spacer" />
+              <Button variant="ghost" size="sm" onClick={() => setActiveNav("collections")} iconRight={I.ChevronRight}>Manage</Button>
+            </div>
+            <table className="table">
+              <thead><tr><th>Slug</th><th style={{ width: 80, textAlign: "right" }}>Rows</th><th style={{ width: 90, textAlign: "right" }}>Size</th><th style={{ width: 110, textAlign: "right" }}>Writes (1h)</th><th style={{ width: 100 }}>Last write</th></tr></thead>
+              <tbody>
+                {collections.map((c) => (
+                  <tr key={c.slug} onClick={() => setActiveNav("collections")}>
+                    <td><span className="font-mono" style={{ fontSize: 12.5 }}>c_{c.slug}</span></td>
+                    <td className="tabular-nums" style={{ textAlign: "right" }}>{c.rows}</td>
+                    <td className="tabular-nums muted" style={{ textAlign: "right" }}>{c.size}</td>
+                    <td className="tabular-nums" style={{ textAlign: "right" }}>{c.writes}</td>
+                    <td className="muted font-mono" style={{ fontSize: 11.5 }}>{c.last}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="card">
+            <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <I.Activity size={14} />
+              <span style={{ fontSize: 13, fontWeight: 500 }}>Request log</span>
+              <span className="font-mono muted" style={{ fontSize: 12 }}>last 60s · 6 of 142</span>
+              <div className="spacer" />
+              <Button variant="ghost" size="sm" iconRight={I.ExternalLink}>Open in logs</Button>
+            </div>
+            <table className="table">
+              <thead><tr><th style={{ width: 90 }}>Time</th><th style={{ width: 70 }}>Method</th><th>Path</th><th style={{ width: 80, textAlign: "right" }}>Status</th><th style={{ width: 70, textAlign: "right" }}>ms</th></tr></thead>
+              <tbody>
+                {requests.map((r, i) => (
+                  <tr key={i}>
+                    <td className="font-mono muted tabular-nums" style={{ fontSize: 11.5 }}>{r.t}</td>
+                    <td><Badge variant="outline" mono>{r.m}</Badge></td>
+                    <td className="font-mono" style={{ fontSize: 12.5 }}>{r.p}</td>
+                    <td className="tabular-nums" style={{ textAlign: "right" }}>
+                      <Badge variant={r.s >= 200 && r.s < 300 ? "default" : r.s >= 400 ? "destructive" : "secondary"}>{r.s}</Badge>
+                    </td>
+                    <td className="tabular-nums muted" style={{ textAlign: "right" }}>{r.ms}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="card">
+            <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <I.AlertTriangle size={14} />
+              <span style={{ fontSize: 13, fontWeight: 500 }}>Recent errors</span>
+              <span className="font-mono muted" style={{ fontSize: 12 }}>last 24h · 17 events</span>
+              <div className="spacer" />
+              <Button variant="ghost" size="sm">View all</Button>
+            </div>
+            {recentErrors.map((e, i) => (
+              <div key={i} style={{ padding: "10px 16px", borderBottom: i < recentErrors.length - 1 ? "1px solid var(--border)" : 0, display: "flex", alignItems: "center", gap: 12 }}>
+                <Badge variant="destructive">{e.code}</Badge>
+                <span className="tabular-nums muted" style={{ fontSize: 12, width: 36 }}>×{e.count}</span>
+                <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
+                  <span className="font-mono" style={{ fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.hook}</span>
+                  <span className="muted" style={{ fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.msg}</span>
+                </div>
+                <span className="muted font-mono" style={{ fontSize: 11.5 }}>{e.last}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div className="card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <I.Globe size={14} /><span style={{ fontSize: 13, fontWeight: 500 }}>Health</span>
+              <div className="spacer" />
+              <span className="adapter-pill"><span className="dot" />{adapter === "workers" ? "cf workers" : adapter}</span>
+            </div>
+            {[
+              ["Database", profile.db, "connected", "12ms"],
+              ["Storage", profile.storage, "connected", "24ms"],
+              ["Realtime", profile.realtime, "connected", "4 conn"],
+              ["Sandbox", profile.sandbox, "idle", "0 jobs"],
+              ["Email", adapter === "bun" ? "console (dev)" : "resend", adapter === "bun" ? "idle" : "connected", adapter === "bun" ? "—" : "sg.io"],
+            ].map(([k, v, status, hint], i, arr) => (
+              <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : 0, paddingBottom: 9 }}>
+                <div>
+                  <div style={{ fontSize: 12.5, fontWeight: 500 }}>{k}</div>
+                  <div className="font-mono muted" style={{ fontSize: 11.5 }}>{v} · {hint}</div>
+                </div>
+                <span className="adapter-pill"><span className={`dot ${status === "idle" ? "amber" : ""}`} />{status}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="card">
+            <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <I.Activity size={14} />
+              <span style={{ fontSize: 13, fontWeight: 500 }}>Activity</span>
+              <div className="spacer" />
+              <Button variant="ghost" size="sm">All events</Button>
+            </div>
+            <div style={{ padding: "4px 0" }}>
+              {activity.map((a, i) => {
+                const Icon = a.icon;
+                return (
+                  <div key={i} style={{ padding: "8px 16px", display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <span style={{ width: 22, height: 22, borderRadius: 999, background: "var(--muted)", display: "grid", placeItems: "center", flexShrink: 0, marginTop: 1 }}>
+                      <Icon size={11} className="muted" />
+                    </span>
+                    <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
+                      <span style={{ fontSize: 12.5 }}>
+                        <span style={{ fontWeight: 500 }}>{a.who}</span>
+                        <span className="muted"> {a.verb} </span>
+                        <span className="font-mono" style={{ fontSize: 12 }}>{a.what}</span>
+                      </span>
+                    </div>
+                    <span className="muted font-mono tabular-nums" style={{ fontSize: 11 }}>{a.t}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
+  const initialFlows = [
+    { id: "fl_1", name: "Notify on new comment", trigger: "items.comments.created", actions: ["email", "webhook"], status: "active", runs: 4280 },
+    { id: "fl_2", name: "Re-index search on post update", trigger: "items.posts.updated", actions: ["fn:reindex"], status: "active", runs: 1102 },
+    { id: "fl_3", name: "Daily digest", trigger: "cron · 0 9 * * *", actions: ["fn:digest", "email"], status: "paused", runs: 184 },
+  ];
+  const [flows, setFlows] = useState(initialFlows);
+  useEffect(() => {
+    void (async () => {
+      const r = await fetchSafely<{ data: { id: string; name: string; trigger: string; active: boolean }[] }>("/api/flows");
+      if (r?.data && r.data.length > 0) {
+        setFlows(
+          r.data.map((f) => ({
+            id: f.id,
+            name: f.name,
+            trigger: f.trigger,
+            actions: ["fn"],
+            status: f.active ? "active" : "paused",
+            runs: 0,
+          })),
+        );
+      }
+    })();
+  }, []);
+  const [active, setActive] = useState(flows[0].id);
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [editingFlow, setEditingFlow] = useState<any>(null);
+  const flow = flows.find((f) => f.id === active)!;
+
+  const openBuilder = (f: any) => { setEditingFlow(f); setBuilderOpen(true); };
+  const newFlow = () => { setEditingFlow(null); setBuilderOpen(true); };
+  const saveFromBuilder = async (data: any) => {
+    try {
+      if (data.id) {
+        await api(`/api/flows/${data.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            name: data.name,
+            active: data.enabled,
+            operations: data.nodes ?? [],
+          }),
+        });
+        setFlows((arr) =>
+          arr.map((f) => (f.id === data.id ? { ...f, name: data.name, status: data.enabled ? "active" : "paused" } : f)),
+        );
+      } else {
+        const res = await api<{ data: { id: string } }>(`/api/flows`, {
+          method: "POST",
+          body: JSON.stringify({
+            name: data.name,
+            trigger: "items.posts.updated",
+            operations: data.nodes ?? [],
+            active: data.enabled,
+          }),
+        });
+        const id = res.data.id;
+        setFlows((arr) => [
+          { id, name: data.name, trigger: "items.posts.updated", actions: ["fn"], status: data.enabled ? "active" : "paused", runs: 0 },
+          ...arr,
+        ]);
+        setActive(id);
+      }
+    } catch (e) {
+      pushToast((e as Error).message);
+    }
+    setBuilderOpen(false);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <PageHeader
+        title="Flows"
+        description="Triggers fire on collection events, schedules, or webhooks. Each step runs in the sandbox."
+        actions={<Button variant="primary" icon={I.Plus} onClick={newFlow}>New flow</Button>}
+      />
+
+      <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: 14, alignItems: "start" }}>
+        <div className="card">
+          {flows.map((f) => (
+            <div key={f.id} onClick={() => setActive(f.id)} className="schema-row" style={{ gridTemplateColumns: "24px 1fr 60px", cursor: "pointer", background: active === f.id ? "var(--accent)" : "transparent" }}>
+              <span><I.Bolt size={14} /></span>
+              <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                <span style={{ fontSize: 13, fontWeight: 500 }}>{f.name}</span>
+                <span className="font-mono muted" style={{ fontSize: 11 }}>{f.trigger}</span>
+              </div>
+              <Badge variant={f.status === "active" ? "default" : "secondary"}>{f.status}</Badge>
+            </div>
+          ))}
+        </div>
+
+        <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 16, fontWeight: 600 }}>{flow.name}</span>
+            <Badge variant={flow.status === "active" ? "default" : "secondary"}>{flow.status}</Badge>
+            <span className="muted tabular-nums" style={{ fontSize: 12 }}>· {flow.runs.toLocaleString()} runs</span>
+            <div className="spacer" />
+            <Switch checked={flow.status === "active"} onChange={async (next) => {
+              setFlows((arr) => arr.map((f) => f.id === flow.id ? { ...f, status: next ? "active" : "paused" } : f));
+              try {
+                await api(`/api/flows/${flow.id}`, { method: "PATCH", body: JSON.stringify({ active: next }) });
+                pushToast(next ? "Flow resumed." : "Flow paused.");
+              } catch (e) {
+                pushToast((e as Error).message);
+              }
+            }} />
+            <Button variant="outline" size="sm" icon={I.Zap} onClick={async () => {
+              try {
+                await api(`/api/flows/${flow.id}/run`, { method: "POST", body: JSON.stringify({}) });
+                pushToast("Test run dispatched.");
+              } catch (e) {
+                pushToast((e as Error).message);
+              }
+            }}>Run now</Button>
+            <Button variant="primary" size="sm" icon={I.Pencil} onClick={() => openBuilder(flow)}>Edit flow</Button>
+          </div>
+
+          <div style={{ position: "relative", height: 220, background: "color-mix(in oklch, var(--muted) 40%, transparent)", borderRadius: "var(--radius-2xl)", border: "1px solid var(--border)", overflow: "hidden", backgroundImage: "radial-gradient(circle, var(--border) 1px, transparent 1px)", backgroundSize: "14px 14px", cursor: "pointer" }} onClick={() => openBuilder(flow)}>
+            <FlowNode x={20} y={80} kind="trigger" title="trigger" sub={flow.trigger} />
+            <FlowConnector x1={196} y1={108} x2={300} y2={108} />
+            <FlowNode x={300} y={40} kind="condition" title="if" sub='post.status _eq "published"' />
+            <FlowConnector x1={476} y1={68} x2={580} y2={68} />
+            <FlowNode x={580} y={20} kind="action" title="email" sub="to: post.author" />
+            <FlowConnector x1={476} y1={92} x2={580} y2={150} />
+            <FlowNode x={580} y={130} kind="action" title="fn:reindex" sub="async · retry × 3" />
+            <div style={{ position: "absolute", top: 12, right: 14, padding: "6px 12px", background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius-3xl)", fontSize: 11.5, color: "var(--muted-foreground)", display: "flex", alignItems: "center", gap: 6 }}>
+              <I.Pencil size={11} /> Click to edit
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+            {[
+              { k: "Last run", v: "14:21 · 184ms", ok: true },
+              { k: "Success rate", v: "99.3%", ok: true },
+              { k: "Failures (24h)", v: "2", ok: false },
+            ].map((s) => (
+              <div key={s.k} className="card" style={{ padding: 12, borderRadius: "var(--radius-xl)" }}>
+                <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{s.k}</div>
+                <div className="tabular-nums" style={{ fontSize: 18, fontWeight: 600, marginTop: 2, color: s.ok ? "var(--foreground)" : "var(--destructive)" }}>{s.v}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {builderOpen && <FlowBuilder initial={editingFlow} onClose={() => setBuilderOpen(false)} onSave={saveFromBuilder} pushToast={pushToast} />}
+    </div>
+  );
+}
+
+function FlowNode({ x, y, kind, title, sub }: { x: number; y: number; kind: string; title: string; sub: string }) {
+  const colors: Record<string, { bg: string; bd: string; ic: IconComponent }> = {
+    trigger: { bg: "color-mix(in oklch, var(--primary) 20%, var(--card))", bd: "color-mix(in oklch, var(--primary) 50%, var(--border))", ic: I.Zap },
+    condition: { bg: "color-mix(in oklch, oklch(0.78 0.16 75) 18%, var(--card))", bd: "color-mix(in oklch, oklch(0.78 0.16 75) 50%, var(--border))", ic: I.Filter },
+    action: { bg: "var(--card)", bd: "var(--border)", ic: I.Function },
+  };
+  const c = colors[kind];
+  const Icon = c.ic;
+  return (
+    <div style={{ position: "absolute", left: x, top: y, width: 176, padding: "10px 12px", background: c.bg, border: `1px solid ${c.bd}`, borderRadius: "var(--radius-xl)", display: "flex", flexDirection: "column", gap: 2, boxShadow: "0 1px 2px oklch(0 0 0 / 0.06)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, color: "var(--muted-foreground)" }}>
+        <Icon size={11} />{title}
+      </div>
+      <div className="font-mono" style={{ fontSize: 11.5, color: "var(--foreground)" }}>{sub}</div>
+    </div>
+  );
+}
+
+function FlowConnector({ x1, y1, x2, y2 }: { x1: number; y1: number; x2: number; y2: number }) {
+  const left = Math.min(x1, x2), top = Math.min(y1, y2);
+  const w = Math.abs(x2 - x1), h = Math.abs(y2 - y1) || 2;
+  return (
+    <svg style={{ position: "absolute", left, top, width: w, height: h, pointerEvents: "none", overflow: "visible" }}>
+      <path d={`M 0 ${y1 - top} C ${w / 2} ${y1 - top} ${w / 2} ${y2 - top} ${w} ${y2 - top}`} fill="none" stroke="var(--border)" strokeWidth="1.5" />
+      <circle cx={w} cy={y2 - top} r="3" fill="var(--muted-foreground)" />
+    </svg>
+  );
+}
+
+export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void }) {
+  const seed = [
+    { name: "reindex", kind: "event", trigger: "items.posts.updated", lang: "js", invocations: 1102, p95: 128 },
+    { name: "digest", kind: "cron", trigger: "0 9 * * *", lang: "js", invocations: 184, p95: 880 },
+    { name: "thumbnail", kind: "http", trigger: "POST /fn/thumbnail", lang: "js", invocations: 3204, p95: 220 },
+    { name: "sync-search", kind: "event", trigger: "items.*.created", lang: "js", invocations: 4810, p95: 92 },
+  ];
+  const [funcs, setFuncs] = useState(seed);
+  useEffect(() => {
+    void (async () => {
+      const r = await fetchSafely<{ data: { name: string; trigger: string; pattern: string | null; active: boolean }[] }>("/api/functions");
+      if (r?.data && r.data.length > 0) {
+        setFuncs(
+          r.data.map((f) => ({
+            name: f.name,
+            kind: f.trigger,
+            trigger: f.pattern ?? f.trigger,
+            lang: "js",
+            invocations: 0,
+            p95: 0,
+          })),
+        );
+      }
+    })();
+  }, []);
+  const [active, setActive] = useState(seed[0]!);
+  const [code, setCode] = useState(`export default async function reindex({ event, ctx }) {
+  const post = event.data;
+  if (post.status !== "published") return;
+  await ctx.vector.upsert("posts", [{
+    id: post.id,
+    text: post.title + "\\n\\n" + post.body,
+    metadata: { slug: post.slug, author: post.author },
+  }]);
+}`);
+  // Pull the actual code for the active function once we know its id.
+  useEffect(() => {
+    void (async () => {
+      try {
+        const r = await api<{ data: { id: string; name: string; code: string }[] }>("/api/functions");
+        const match = r.data?.find((f) => f.name === active.name);
+        if (match?.code) setCode(match.code);
+      } catch {
+        // keep default sample
+      }
+    })();
+  }, [active.name]);
+  const [logs, setLogs] = useState([
+    { t: "14:23:11", lvl: "info", msg: "reindex invoked · post=01HZ7K8M9NPQ" },
+    { t: "14:23:11", lvl: "info", msg: "embedding generated · 1536d" },
+    { t: "14:23:11", lvl: "info", msg: "upsert ok · 184ms" },
+  ]);
+  const [running, setRunning] = useState(false);
+
+  const run = async () => {
+    setRunning(true);
+    setLogs([{ t: new Date().toISOString().slice(11, 19), lvl: "info", msg: `invoking ${active.name}…` }]);
+    try {
+      const r = await api<{ data?: unknown; ms?: number; logs?: { t: string; lvl: string; msg: string }[] }>(
+        `/api/functions/${active.name}/invoke`,
+        { method: "POST", body: JSON.stringify({}) },
+      );
+      const ts = new Date().toISOString().slice(11, 19);
+      const lines = r.logs ?? [
+        { t: ts, lvl: "info", msg: `done · ${r.ms ?? "—"}ms` },
+        { t: ts, lvl: "info", msg: `result: ${JSON.stringify(r.data ?? null).slice(0, 120)}` },
+      ];
+      setLogs((arr) => [...arr, ...lines]);
+      pushToast("Function ran successfully.");
+    } catch (e) {
+      const ts = new Date().toISOString().slice(11, 19);
+      setLogs((arr) => [...arr, { t: ts, lvl: "error", msg: (e as Error).message }]);
+      pushToast((e as Error).message);
+    } finally {
+      setRunning(false);
+    }
+  };
+  const saveCode = async () => {
+    try {
+      const r = await api<{ data: { id: string }[] }>("/api/functions");
+      const match = r.data.find((f: any) => f.name === active.name);
+      if (match) {
+        await api(`/api/functions/${match.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ code }),
+        });
+      } else {
+        await api(`/api/functions`, {
+          method: "POST",
+          body: JSON.stringify({
+            name: active.name,
+            trigger: active.kind,
+            pattern: active.trigger,
+            code,
+            timeoutMs: 5000,
+            active: true,
+          }),
+        });
+      }
+      pushToast("Function saved.");
+    } catch (e) {
+      pushToast((e as Error).message);
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <PageHeader
+        title="Functions"
+        description="Sandboxed JS — HTTP, event-trigger, or cron. Provider auto-selected per runtime."
+        actions={<Button variant="primary" icon={I.Plus} onClick={async () => {
+          const name = prompt("Function name (snake_case)", "new_function");
+          if (!name) return;
+          try {
+            await api("/api/functions", {
+              method: "POST",
+              body: JSON.stringify({
+                name: name.toLowerCase().replace(/[^a-z0-9_]/g, "_"),
+                trigger: "http",
+                pattern: `POST /fn/${name}`,
+                code: "export default async function handler({ event, ctx }) { return { ok: true }; }",
+                timeoutMs: 5000,
+                active: true,
+              }),
+            });
+            pushToast(`Function "${name}" created.`);
+            const r = await api<{ data: any[] }>("/api/functions");
+            if (r.data?.length) {
+              setFuncs(r.data.map((f) => ({ name: f.name, kind: f.trigger, trigger: f.pattern ?? f.trigger, lang: "js", invocations: 0, p95: 0 })));
+            }
+          } catch (e) {
+            pushToast((e as Error).message);
+          }
+        }}>New function</Button>}
+      />
+
+      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 14, alignItems: "start" }}>
+        <div className="card">
+          {funcs.map((f) => (
+            <div key={f.name} onClick={() => setActive(f)} className="schema-row" style={{ gridTemplateColumns: "24px 1fr 70px", cursor: "pointer", background: active.name === f.name ? "var(--accent)" : "transparent" }}>
+              <span><I.Function size={14} /></span>
+              <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                <span className="font-mono" style={{ fontSize: 12.5, fontWeight: 500 }}>{f.name}</span>
+                <span className="font-mono muted" style={{ fontSize: 11 }}>{f.trigger}</span>
+              </div>
+              <Badge variant="outline">{f.kind}</Badge>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span className="font-mono" style={{ fontSize: 18, fontWeight: 600 }}>{active.name}</span>
+            <Badge variant="outline">{active.kind}</Badge>
+            <span className="font-mono muted" style={{ fontSize: 12 }}>· {active.trigger}</span>
+            <div className="spacer" />
+            <span className="muted" style={{ fontSize: 12 }}>{active.invocations.toLocaleString()} invocations · p95 {active.p95}ms</span>
+            <Button variant="outline" size="sm" icon={I.Save} onClick={saveCode}>Save</Button>
+            <Button variant="primary" size="sm" icon={I.Zap} onClick={run} disabled={running}>{running ? "Running…" : "Run"}</Button>
+          </div>
+
+          <textarea
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            spellCheck={false}
+            className="alter-preview"
+            style={{ minHeight: 200, fontSize: 12, width: "100%", border: "none", resize: "vertical", fontFamily: "Geist Mono, monospace", whiteSpace: "pre-wrap" }}
+          />
+
+          <div className="card" style={{ overflow: "hidden" }}>
+            <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <I.Code size={14} /><span style={{ fontSize: 13, fontWeight: 500 }}>Logs</span>
+              <span className="muted font-mono" style={{ fontSize: 11.5 }}>last invocation</span>
+              <div className="spacer" />
+              <Button variant="ghost" size="sm" onClick={() => setLogs([])}>Clear</Button>
+            </div>
+            <div style={{ background: "oklch(0.18 0.01 130)", color: "oklch(0.92 0.02 130)", fontFamily: "Geist Mono, monospace", fontSize: 12, padding: 12, minHeight: 130, maxHeight: 260, overflow: "auto" }}>
+              {logs.length === 0 && <div style={{ color: "oklch(0.6 0.02 130)" }}>No logs yet — click Run.</div>}
+              {logs.map((l, i) => (
+                <div key={i}>
+                  <span style={{ color: "oklch(0.6 0.02 130)" }}>{l.t}</span>{" "}
+                  <span style={{ color: l.lvl === "error" ? "oklch(0.7 0.18 22)" : "oklch(0.78 0.18 95)" }}>{l.lvl.toUpperCase().padEnd(5, " ")}</span>{" "}
+                  {l.msg}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const WH_EVENTS = [
+  "items.*.created", "items.*.updated", "items.*.deleted",
+  "items.posts.created", "items.posts.updated", "items.posts.deleted",
+  "items.comments.created", "items.comments.updated", "items.comments.deleted",
+  "auth.login", "auth.logout", "auth.signup",
+  "files.uploaded", "files.deleted",
+];
+
+export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) {
+  const seedHooks = [
+    { id: "wh_1", name: "Slack #content", url: "https://hooks.slack.com/services/T0…/B0…", events: ["items.posts.created"], method: "POST", secret: "whsec_a4e2b9c1f0", active: true, deliveries: 184, ok: true, successRate: 100, lastDelivery: "2m ago" },
+    { id: "wh_2", name: "analytics-fanout", url: "https://api.example.com/workeros", events: ["items.*.updated", "items.*.deleted"], method: "POST", secret: "whsec_77c3f0e8d2", active: true, deliveries: 4280, ok: true, successRate: 99.8, lastDelivery: "14s ago" },
+    { id: "wh_3", name: "staging-mirror", url: "https://staging.example.com/wh", events: ["items.comments.created"], method: "POST", secret: "whsec_19bd4a7c83", active: false, deliveries: 22, ok: false, successRate: 8.4, lastDelivery: "4m ago" },
+  ];
+  const [hooks, setHooks] = useState(seedHooks);
+  const reloadHooks = async () => {
+    const r = await fetchSafely<{ data: any[] }>("/api/webhooks");
+    if (r?.data && r.data.length > 0) {
+      setHooks(
+        r.data.map((h) => ({
+          id: h.id,
+          name: h.name,
+          url: h.url,
+          events: Array.isArray(h.events) ? h.events : [],
+          method: "POST",
+          secret: h.secret ?? "",
+          active: !!h.active,
+          deliveries: 0,
+          ok: true,
+          successRate: 100,
+          lastDelivery: "—",
+        })),
+      );
+    }
+  };
+  useEffect(() => { void reloadHooks(); }, []);
+  const [editor, setEditor] = useState<{ mode: "create" | "edit"; hook: any } | null>(null);
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = () => setMenuOpen(null);
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, [menuOpen]);
+
+  const seedDeliveries = [
+    { id: "d1", t: "14:23:09", hook: "wh_2", ev: "items.posts.updated", code: 200, ms: 88 },
+    { id: "d2", t: "14:22:52", hook: "wh_1", ev: "items.posts.created", code: 200, ms: 122 },
+  ];
+  const [deliveries, setDeliveries] = useState(seedDeliveries);
+  const reloadDeliveries = async () => {
+    try {
+      const r = await api<{ data: any[] }>("/api/webhooks/_deliveries");
+      if (Array.isArray(r.data) && r.data.length > 0) {
+        setDeliveries(
+          r.data.map((d) => ({
+            id: d.id,
+            t: new Date(d.deliveredAt).toISOString().slice(11, 19),
+            hook: d.webhookId,
+            ev: d.event,
+            code: d.status,
+            ms: d.ms,
+          })),
+        );
+      }
+    } catch {
+      // keep seed
+    }
+  };
+  useEffect(() => { void reloadDeliveries(); }, []);
+
+  const saveHook = async (data: any) => {
+    try {
+      if (editor!.mode === "create") {
+        await api("/api/webhooks", {
+          method: "POST",
+          body: JSON.stringify({ name: data.name, url: data.url, events: data.events, secret: data.secret, active: data.active, headers: null }),
+        });
+        pushToast(`Webhook "${data.name}" created.`);
+      } else {
+        await api(`/api/webhooks/${editor!.hook.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ name: data.name, url: data.url, events: data.events, active: data.active }),
+        });
+        pushToast(`Webhook "${data.name}" updated.`);
+      }
+      await reloadHooks();
+    } catch (e) {
+      pushToast((e as Error).message);
+    }
+    setEditor(null);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <PageHeader
+        title="Webhooks"
+        description="Outgoing HTTP on collection events. Failed deliveries retry with exponential backoff."
+        actions={<Button variant="primary" icon={I.Plus} onClick={() => setEditor({ mode: "create", hook: null })}>New webhook</Button>}
+      />
+      <div className="card">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Endpoint</th>
+              <th>Events</th>
+              <th style={{ textAlign: "right", width: 110 }}>Deliveries</th>
+              <th style={{ width: 110 }}>Success</th>
+              <th style={{ width: 100 }}>Status</th>
+              <th style={{ width: 44 }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {hooks.map((h) => {
+              const isOpen = menuOpen === h.id;
+              return (
+                <tr key={h.id} className="users-row" onClick={() => setEditor({ mode: "edit", hook: h })}>
+                  <td>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                      <span style={{ fontSize: 13, fontWeight: 500 }}>{h.name}</span>
+                      <span className="muted font-mono" style={{ fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 360 }}>{h.method} · {h.url}</span>
+                    </div>
+                  </td>
+                  <td><div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>{h.events.map((e) => <Badge key={e} variant="outline" mono>{e}</Badge>)}</div></td>
+                  <td className="tabular-nums" style={{ textAlign: "right" }}>{h.deliveries.toLocaleString()}</td>
+                  <td>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{ width: 48, height: 4, borderRadius: 999, background: "var(--muted)", overflow: "hidden" }}>
+                        <div style={{ width: `${h.successRate}%`, height: "100%", background: h.successRate > 95 ? "oklch(0.78 0.15 145)" : h.successRate > 50 ? "oklch(0.78 0.15 80)" : "var(--destructive)" }} />
+                      </div>
+                      <span className="font-mono" style={{ fontSize: 11.5 }}>{h.successRate}%</span>
+                    </div>
+                  </td>
+                  <td>
+                    {!h.active ? <Badge variant="secondary">paused</Badge>
+                      : h.ok ? <Badge variant="default">healthy</Badge>
+                        : <Badge variant="destructive">failing</Badge>}
+                  </td>
+                  <td style={{ textAlign: "right", position: "relative" }} onClick={(e) => e.stopPropagation()}>
+                    <IconButton icon={I.More} onClick={(e: any) => { e.stopPropagation(); setMenuOpen(isOpen ? null : h.id); }} />
+                    {isOpen && (
+                      <div className="users-menu" onClick={(e) => e.stopPropagation()}>
+                        <button onClick={() => { setEditor({ mode: "edit", hook: h }); setMenuOpen(null); }}><I.Pencil size={12} />Edit</button>
+                        <button onClick={async () => {
+                          try {
+                            await api(`/api/webhooks/${h.id}/test`, { method: "POST" });
+                            pushToast(`Test event sent to ${h.name}.`);
+                            await reloadDeliveries();
+                          } catch (e) {
+                            pushToast((e as Error).message);
+                          }
+                          setMenuOpen(null);
+                        }}><I.Bolt size={12} />Send test</button>
+                        <button onClick={async () => {
+                          const next = !h.active;
+                          try {
+                            await api(`/api/webhooks/${h.id}`, {
+                              method: "PATCH",
+                              body: JSON.stringify({ active: next }),
+                            });
+                          } catch (e) {
+                            pushToast((e as Error).message);
+                          }
+                          setHooks((arr) => arr.map((x) => x.id === h.id ? { ...x, active: next } : x));
+                          setMenuOpen(null);
+                          pushToast(`${h.name} ${next ? "resumed" : "paused"}.`);
+                        }}>
+                          {h.active ? <><I.Lock size={12} />Pause</> : <><I.Play size={12} />Resume</>}
+                        </button>
+                        <div className="users-menu-sep" />
+                        <button className="danger" onClick={async () => {
+                          try { await api(`/api/webhooks/${h.id}`, { method: "DELETE" }); } catch (e) { pushToast((e as Error).message); }
+                          setHooks((arr) => arr.filter((x) => x.id !== h.id));
+                          setMenuOpen(null);
+                          pushToast(`${h.name} deleted.`);
+                        }}><I.Trash size={12} />Delete</button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {hooks.length === 0 && (
+              <tr><td colSpan={6}>
+                <div className="empty" style={{ padding: "32px 0" }}>
+                  <I.Webhook size={20} />
+                  <h4>No webhooks yet</h4>
+                  <p>Pipe collection events to Slack, your API, or any HTTPS endpoint.</p>
+                </div>
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="card">
+        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <I.Activity size={14} /><span style={{ fontSize: 13, fontWeight: 500 }}>Recent deliveries</span>
+          <div className="spacer" />
+          <Button variant="ghost" size="sm" icon={I.Refresh} onClick={() => pushToast("Refreshed.")}>Refresh</Button>
+        </div>
+        <table className="table">
+          <thead><tr><th style={{ width: 100 }}>Time</th><th style={{ width: 80 }}>Hook</th><th>Event</th><th style={{ width: 90, textAlign: "right" }}>Status</th><th style={{ width: 80, textAlign: "right" }}>ms</th><th style={{ width: 60 }}></th></tr></thead>
+          <tbody>
+            {deliveries.map((d, i) => (
+              <tr key={i}>
+                <td className="font-mono muted tabular-nums" style={{ fontSize: 11.5 }}>{d.t}</td>
+                <td className="font-mono" style={{ fontSize: 12 }}>{d.hook}</td>
+                <td className="font-mono" style={{ fontSize: 12 }}>{d.ev}</td>
+                <td className="tabular-nums" style={{ textAlign: "right" }}><Badge variant={d.code < 300 ? "default" : "destructive"}>{d.code}</Badge></td>
+                <td className="tabular-nums muted" style={{ textAlign: "right" }}>{d.ms}</td>
+                <td style={{ textAlign: "right" }}>
+                  <Button variant="ghost" size="sm" onClick={async () => {
+                    try {
+                      await api(`/api/webhooks/_deliveries/${d.id}/retry`, { method: "POST" });
+                      pushToast("Redelivered.");
+                      await reloadDeliveries();
+                    } catch (e) {
+                      pushToast((e as Error).message);
+                    }
+                  }}>Retry</Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {editor && <WebhookEditorDialog mode={editor.mode} hook={editor.hook} onClose={() => setEditor(null)} onSave={saveHook} pushToast={pushToast} />}
+    </div>
+  );
+}
+
+function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode: "create" | "edit"; hook: any; onClose: () => void; onSave: (data: any) => void; pushToast: (m: string) => void }) {
+  const blank = { name: "", url: "", method: "POST", events: [], secret: "whsec_" + Math.random().toString(16).slice(2, 14), active: true, headers: "" };
+  const [draft, setDraft] = useState<any>(hook ? { headers: "", ...hook } : blank);
+  const [revealSecret, setRevealSecret] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
+  const update = (k: string, v: unknown) => { setDraft((d: any) => ({ ...d, [k]: v })); setErrors((e) => ({ ...e, [k]: undefined })); };
+
+  const toggleEvent = (ev: string) => {
+    setDraft((d: any) => ({ ...d, events: d.events.includes(ev) ? d.events.filter((x: string) => x !== ev) : [...d.events, ev] }));
+  };
+
+  const submit = () => {
+    const e: Record<string, string> = {};
+    if (!String(draft.name || "").trim()) e.name = "name is required";
+    if (!String(draft.url || "").trim()) e.url = "url is required";
+    else if (!/^https?:\/\//.test(draft.url)) e.url = "must start with http:// or https://";
+    if (!draft.events.length) e.events = "pick at least one event";
+    setErrors(e);
+    if (Object.keys(e).length) return;
+    onSave(draft);
+  };
+
+  return (
+    <div className="dialog-backdrop" onClick={onClose}>
+      <div className="dialog-lg" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} style={{ width: 640, maxWidth: "92vw" }}>
+        <div className="sheet-header" style={{ borderBottom: "1px solid var(--border)" }}>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10 }}>
+            <I.Webhook size={16} />
+            <div>
+              <h2>{mode === "create" ? "New webhook" : "Edit webhook"}</h2>
+              <p>{mode === "create" ? "POST to any HTTPS endpoint when collection events fire." : <>id <span className="font-mono">{hook?.id}</span></>}</p>
+            </div>
+          </div>
+          <IconButton icon={I.X} onClick={onClose} title="Close" />
+        </div>
+
+        <div className="dialog-body">
+          <div className="field">
+            <label className="field-label">Name <span style={{ color: "var(--destructive)" }}>*</span></label>
+            <input className={`input ${errors.name ? "error" : ""}`} autoFocus value={draft.name} onChange={(e) => update("name", e.target.value)} placeholder="Slack #content" />
+            {errors.name && <div className="field-error"><I.AlertTriangle size={11} />{errors.name}</div>}
+          </div>
+
+          <div className="field">
+            <label className="field-label">Endpoint URL <span style={{ color: "var(--destructive)" }}>*</span></label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Select size="sm" value={draft.method} onChange={(v) => update("method", v)} style={{ width: 100, height: 36 }} options={["POST", "PUT", "PATCH"]} />
+              <input className={`input font-mono ${errors.url ? "error" : ""}`} style={{ flex: 1, fontSize: 12.5 }} value={draft.url} onChange={(e) => update("url", e.target.value)} placeholder="https://api.example.com/webhooks/workeros" />
+            </div>
+            {errors.url ? <div className="field-error"><I.AlertTriangle size={11} />{errors.url}</div> : <span className="field-hint">Must accept the chosen HTTP method and respond with 2xx within 10s.</span>}
+          </div>
+
+          <div className="field">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <label className="field-label">Events <span style={{ color: "var(--destructive)" }}>*</span></label>
+              <span className="muted" style={{ fontSize: 11.5 }}>{draft.events.length} selected</span>
+            </div>
+            <div className="wh-events">
+              {WH_EVENTS.map((ev) => {
+                const on = draft.events.includes(ev);
+                return (
+                  <button key={ev} type="button" className={`wh-event ${on ? "on" : ""}`} onClick={() => toggleEvent(ev)}>
+                    {on ? <I.Check size={11} /> : <I.Plus size={11} />}
+                    <span className="font-mono" style={{ fontSize: 11.5 }}>{ev}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {errors.events && <div className="field-error"><I.AlertTriangle size={11} />{errors.events}</div>}
+          </div>
+
+          <div className="field">
+            <label className="field-label">Signing secret</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input className="input font-mono" style={{ flex: 1, fontSize: 12.5 }} type={revealSecret ? "text" : "password"} value={draft.secret} readOnly />
+              <Button variant="outline" size="sm" icon={revealSecret ? I.X : I.Eye} onClick={() => setRevealSecret(!revealSecret)}>{revealSecret ? "Hide" : "Show"}</Button>
+              <Button variant="outline" size="sm" icon={I.Refresh} onClick={() => { update("secret", "whsec_" + Math.random().toString(16).slice(2, 14)); pushToast("Secret rotated."); }}>Rotate</Button>
+            </div>
+            <span className="field-hint">Sent as <span className="font-mono">X-Workeros-Signature: sha256=…</span>. Verify on the receiver.</span>
+          </div>
+
+          <div className="field">
+            <label className="field-label">Custom headers</label>
+            <textarea className="textarea font-mono" style={{ minHeight: 70, fontSize: 12 }} value={draft.headers} onChange={(e) => update("headers", e.target.value)} placeholder={"Authorization: Bearer …\nX-Tenant: workeros"} />
+            <span className="field-hint">One per line. <span className="font-mono">Content-Type</span> and <span className="font-mono">X-Workeros-*</span> are reserved.</span>
+          </div>
+
+          <div className="field-row">
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 500 }}>Active</div>
+              <div className="muted" style={{ fontSize: 11.5 }}>Deliveries pause immediately when off; queued events are dropped after 24h.</div>
+            </div>
+            <Switch checked={draft.active} onChange={(v) => update("active", v)} />
+          </div>
+        </div>
+
+        <div className="sheet-footer">
+          {mode === "edit" && <Button variant="ghost" icon={I.Bolt} onClick={async () => {
+            try {
+              await api(`/api/webhooks/${draft.id}/test`, { method: "POST" });
+              pushToast(`Test event sent to ${draft.name}.`);
+            } catch (e) {
+              pushToast((e as Error).message);
+            }
+          }}>Send test</Button>}
+          <div className="spacer" />
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" onClick={submit}>{mode === "create" ? "Create webhook" : "Save changes"}</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function RealtimePage({ events, pushToast }: { events: RealtimeEvent[]; pushToast: (m: string) => void }) {
+  const channels = [
+    { name: "items:posts", subs: 4, filter: "permission · read" },
+    { name: "items:comments", subs: 12, filter: "owner_id _eq $user.id" },
+    { name: "collections", subs: 1, filter: "admin role only" },
+    { name: "presence:editor", subs: 2, filter: "free-form" },
+  ];
+  const [active, setActive] = useState("items:posts");
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <PageHeader
+        title="Realtime"
+        description="In-process pub/sub on Bun, Durable Objects on Workers. Permission filter applies on subscribe + publish."
+        actions={<Button variant="outline" icon={I.Refresh} onClick={() => pushToast("Channels refreshed.")}>Refresh</Button>}
+      />
+      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 14, alignItems: "start" }}>
+        <div className="card">
+          {channels.map((c) => (
+            <div key={c.name} onClick={() => setActive(c.name)} className="schema-row" style={{ gridTemplateColumns: "20px 1fr 60px", cursor: "pointer", background: active === c.name ? "var(--accent)" : "transparent" }}>
+              <span><span className="dot" /></span>
+              <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                <span className="font-mono" style={{ fontSize: 12.5 }}>{c.name}</span>
+                <span className="muted" style={{ fontSize: 11 }}>{c.filter}</span>
+              </div>
+              <Badge variant="outline" mono>{c.subs} sub</Badge>
+            </div>
+          ))}
+        </div>
+
+        <RealtimeTail events={events} channel={active} connected />
+      </div>
+    </div>
+  );
+}
+
+const ProviderGlyph = ({ kind, size = 12 }: { kind: string; size?: number }) => {
+  if (kind === "github") return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a12 12 0 0 0-3.79 23.39c.6.11.82-.26.82-.58v-2.04c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.09 1.85 1.24 1.85 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.95 0-1.31.47-2.39 1.24-3.23-.13-.3-.54-1.52.12-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.3-1.55 3.3-1.23 3.3-1.23.66 1.66.25 2.88.12 3.18.77.84 1.24 1.92 1.24 3.23 0 4.62-2.81 5.64-5.49 5.94.43.37.82 1.1.82 2.22v3.29c0 .32.22.7.83.58A12 12 0 0 0 12 .5Z" /></svg>
+  );
+  if (kind === "google") return (
+    <svg width={size} height={size} viewBox="0 0 24 24"><path fill="#4285F4" d="M22 12.2c0-.8-.07-1.6-.2-2.4H12v4.5h5.6a4.8 4.8 0 0 1-2.1 3.1v2.6h3.4c2-1.8 3.1-4.5 3.1-7.8Z" /><path fill="#34A853" d="M12 22c2.8 0 5.2-.9 6.9-2.5l-3.4-2.6c-.9.6-2.1 1-3.5 1-2.7 0-5-1.8-5.8-4.3H2.7v2.7A10 10 0 0 0 12 22Z" /><path fill="#FBBC05" d="M6.2 13.6a6 6 0 0 1 0-3.8V7.1H2.7a10 10 0 0 0 0 9l3.5-2.5Z" /><path fill="#EA4335" d="M12 5.4c1.5 0 2.9.5 4 1.5l3-3A10 10 0 0 0 2.7 7.1l3.5 2.7C7 7.2 9.3 5.4 12 5.4Z" /></svg>
+  );
+  if (kind === "magic") return <I.Bolt size={size} />;
+  return <I.Lock size={size} />;
+};
+
+const PROVIDER_LABEL: Record<string, string> = { password: "password", github: "github", google: "google", magic: "magic link" };
+
+export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
+  const seedUsers = [
+    { id: "u_01", name: "Rana Marin", email: "rana@workeros.dev", roles: ["admin"], status: "active", provider: "github", mfa: true, last: "2m ago", lastIso: "2026-05-09 14:31", created: "2026-01-12", sessions: 3, hue: 145 },
+    { id: "u_02", name: "Kai Nguyen", email: "kai@workeros.dev", roles: ["authenticated", "editor"], status: "active", provider: "github", mfa: true, last: "14m ago", lastIso: "2026-05-09 14:19", created: "2026-02-04", sessions: 2, hue: 95 },
+    { id: "u_03", name: "Alex Pereira", email: "alex@workeros.dev", roles: ["authenticated"], status: "active", provider: "google", mfa: false, last: "1h ago", lastIso: "2026-05-09 13:25", created: "2026-02-19", sessions: 1, hue: 240 },
+    { id: "u_04", name: "Jules Park", email: "jules@workeros.dev", roles: ["authenticated"], status: "active", provider: "password", mfa: true, last: "3d ago", lastIso: "2026-05-06 09:11", created: "2026-03-02", sessions: 1, hue: 28 },
+    { id: "u_05", name: "Priya Shah", email: "priya@external.io", roles: ["authenticated"], status: "active", provider: "magic", mfa: false, last: "just now", lastIso: "2026-05-09 14:33", created: "2026-04-30", sessions: 1, hue: 320 },
+    { id: "u_06", name: "Mateo Russo", email: "mateo@workeros.dev", roles: ["editor"], status: "active", provider: "github", mfa: true, last: "5m ago", lastIso: "2026-05-09 14:28", created: "2026-02-12", sessions: 2, hue: 200 },
+    { id: "u_07", name: "Ines Carvalho", email: "ines@workeros.dev", roles: ["authenticated"], status: "active", provider: "google", mfa: false, last: "32m ago", lastIso: "2026-05-09 14:01", created: "2026-03-14", sessions: 1, hue: 60 },
+    { id: "u_08", name: "Theo Larsson", email: "theo@workeros.dev", roles: ["authenticated"], status: "invited", provider: "password", mfa: false, last: "—", lastIso: null, created: "2026-05-08", sessions: 0, hue: 175 },
+    { id: "u_09", name: "Sana Ali", email: "sana@external.io", roles: ["authenticated"], status: "invited", provider: "password", mfa: false, last: "—", lastIso: null, created: "2026-05-09", sessions: 0, hue: 12 },
+    { id: "u_10", name: "Davi Costa", email: "davi@workeros.dev", roles: ["authenticated"], status: "suspended", provider: "password", mfa: false, last: "21d ago", lastIso: "2026-04-18 22:09", created: "2025-11-04", sessions: 0, hue: 0 },
+    { id: "u_11", name: "Maya Goldberg", email: "maya@workeros.dev", roles: ["admin"], status: "active", provider: "github", mfa: true, last: "4h ago", lastIso: "2026-05-09 10:30", created: "2025-09-21", sessions: 1, hue: 290 },
+    { id: "u_12", name: "Olu Adegoke", email: "olu@workeros.dev", roles: ["authenticated"], status: "active", provider: "google", mfa: true, last: "2h ago", lastIso: "2026-05-09 12:30", created: "2026-01-30", sessions: 1, hue: 110 },
+  ];
+
+  const [users, setUsers] = useState(seedUsers);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await usersApi.list();
+        if (cancelled || !Array.isArray(r.data) || r.data.length === 0) return;
+        setUsers(
+          r.data.map((u: ApiUser, i: number) => ({
+            id: u.id,
+            name: u.name ?? u.email.split("@")[0],
+            email: u.email,
+            roles: u.roles.map((x) => x.name),
+            status: u.status ?? "active",
+            provider: "password",
+            mfa: false,
+            last: "—",
+            lastIso: null,
+            created: u.createdAt ? String(u.createdAt).slice(0, 10) : "—",
+            sessions: 0,
+            hue: 30 + ((i * 47) % 320),
+          })) as any,
+        );
+      } catch (e) {
+        pushToast?.((e as Error).message);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [pushToast]);
+  const [q, setQ] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [providerFilter, setProviderFilter] = useState("all");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [activeUser, setActiveUser] = useState<any>(null);
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = () => setMenuOpen(null);
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, [menuOpen]);
+
+  const filtered = users.filter((u) => {
+    if (q && !(u.name.toLowerCase().includes(q.toLowerCase()) || u.email.toLowerCase().includes(q.toLowerCase()))) return false;
+    if (roleFilter !== "all" && !u.roles.includes(roleFilter)) return false;
+    if (statusFilter !== "all" && u.status !== statusFilter) return false;
+    if (providerFilter !== "all" && u.provider !== providerFilter) return false;
+    return true;
+  });
+
+  const stats = {
+    total: users.length,
+    active24h: users.filter((u) => /m ago|h ago|just now/.test(u.last)).length,
+    pending: users.filter((u) => u.status === "invited").length,
+    admins: users.filter((u) => u.roles.includes("admin")).length,
+  };
+
+  const toggleAll = () => {
+    if (selected.size === filtered.length) setSelected(new Set());
+    else setSelected(new Set(filtered.map((u) => u.id)));
+  };
+  const toggle = (id: string) => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelected(next);
+  };
+  const allChecked = selected.size > 0 && selected.size === filtered.length;
+  const someChecked = selected.size > 0 && selected.size < filtered.length;
+
+  const statusBadge = (s: string) => {
+    if (s === "active") return <Badge variant="default">active</Badge>;
+    if (s === "invited") return <Badge variant="outline">invited</Badge>;
+    if (s === "suspended") return <Badge variant="destructive">suspended</Badge>;
+    return <Badge variant="secondary">{s}</Badge>;
+  };
+
+  const bulk = async (verb: "delete" | "suspend" | "activate") => {
+    const ids = [...selected];
+    try {
+      if (verb === "delete") {
+        await Promise.allSettled(ids.map((id) => usersApi.remove(id)));
+        setUsers((arr) => arr.filter((u) => !selected.has(u.id)));
+      } else if (verb === "suspend") {
+        await Promise.allSettled(ids.map((id) => usersApi.suspend(id)));
+        setUsers((arr) =>
+          arr.map((u) => (selected.has(u.id) ? { ...u, status: "suspended", sessions: 0 } : u)),
+        );
+      } else if (verb === "activate") {
+        await Promise.allSettled(ids.map((id) => usersApi.activate(id)));
+        setUsers((arr) => arr.map((u) => (selected.has(u.id) ? { ...u, status: "active" } : u)));
+      }
+      pushToast(`${verb === "delete" ? "Deleted" : verb === "suspend" ? "Suspended" : "Activated"} ${ids.length} user${ids.length === 1 ? "" : "s"}.`);
+    } catch (e) {
+      pushToast((e as Error).message);
+    }
+    setSelected(new Set());
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <PageHeader
+        title="Users"
+        description="The first user to sign up becomes admin; everyone else lands in authenticated. Sessions, providers, and 2FA are tracked per account."
+        actions={<Button variant="primary" icon={I.Plus} onClick={() => setInviteOpen(true)}>Invite</Button>}
+      />
+
+      <div className="users-stats">
+        {[
+          { label: "Total users", value: stats.total, hint: `${users.filter((u) => u.status === "active").length} active` },
+          { label: "Active in 24h", value: stats.active24h, hint: `${Math.round((stats.active24h / Math.max(1, stats.total)) * 100)}% of base` },
+          { label: "Pending invites", value: stats.pending, hint: stats.pending ? "awaiting accept" : "none" },
+          { label: "Admins", value: stats.admins, hint: "full access" },
+        ].map((s) => (
+          <div key={s.label} className="users-stat">
+            <span className="users-stat-label">{s.label}</span>
+            <span className="users-stat-value">{s.value}</span>
+            <span className="users-stat-hint muted">{s.hint}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="filter-bar" style={{ gap: 10 }}>
+        <div className="search-input" style={{ minWidth: 280, flex: "0 1 320px" }}>
+          <I.Search size={14} />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or email…" />
+          {q && <button type="button" className="x" onClick={() => setQ("")}><I.X size={11} /></button>}
+        </div>
+        <div className="users-filter">
+          <span className="muted">Role</span>
+          <Select size="sm" value={roleFilter} onChange={setRoleFilter} style={{ width: 140 }}
+            options={[{ value: "all", label: "All roles" }, { value: "admin", label: "admin" }, { value: "editor", label: "editor" }, { value: "authenticated", label: "authenticated" }]} />
+        </div>
+        <div className="users-filter">
+          <span className="muted">Status</span>
+          <Select size="sm" value={statusFilter} onChange={setStatusFilter} style={{ width: 140 }}
+            options={[{ value: "all", label: "All statuses" }, { value: "active", label: "active" }, { value: "invited", label: "invited" }, { value: "suspended", label: "suspended" }]} />
+        </div>
+        <div className="users-filter">
+          <span className="muted">Provider</span>
+          <Select size="sm" value={providerFilter} onChange={setProviderFilter} style={{ width: 150 }}
+            options={[{ value: "all", label: "All providers" }, { value: "password", label: "password" }, { value: "github", label: "github" }, { value: "google", label: "google" }, { value: "magic", label: "magic link" }]} />
+        </div>
+        <div className="spacer" />
+        <span className="muted" style={{ fontSize: 12 }}>{filtered.length} of {users.length}</span>
+      </div>
+
+      {selected.size > 0 && (
+        <div className="users-bulk">
+          <Badge variant="default">{selected.size} selected</Badge>
+          <span className="muted" style={{ fontSize: 12.5 }}>Apply to selection:</span>
+          <Button size="sm" variant="outline" onClick={() => bulk("activate")}>Activate</Button>
+          <Button size="sm" variant="outline" onClick={() => bulk("suspend")}>Suspend</Button>
+          <Button size="sm" variant="outline" onClick={() => pushToast(`Reset link sent to ${selected.size} user${selected.size === 1 ? "" : "s"}.`)}>Reset password</Button>
+          <Button size="sm" variant="outline" onClick={() => bulk("delete")} style={{ color: "var(--destructive)" }}>Delete</Button>
+          <div className="spacer" />
+          <button type="button" className="rb-rm" onClick={() => setSelected(new Set())} title="Clear selection"><I.X size={12} /></button>
+        </div>
+      )}
+
+      <div className="card">
+        <table className="table users-table">
+          <thead>
+            <tr>
+              <th style={{ width: 36 }}>
+                <Checkbox checked={allChecked} indeterminate={someChecked} onChange={toggleAll} />
+              </th>
+              <th>User</th>
+              <th style={{ width: 200 }}>Role</th>
+              <th style={{ width: 130 }}>Status</th>
+              <th style={{ width: 140 }}>Provider</th>
+              <th style={{ width: 70, textAlign: "center" }}>2FA</th>
+              <th style={{ width: 120 }}>Last seen</th>
+              <th style={{ width: 44 }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((u) => {
+              const isOpen = menuOpen === u.id;
+              return (
+                <tr key={u.id} className={`users-row ${selected.has(u.id) ? "on" : ""}`} onClick={() => setActiveUser(u)}>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <Checkbox checked={selected.has(u.id)} onChange={() => toggle(u.id)} />
+                  </td>
+                  <td>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div className="avatar users-avatar" style={{ background: `oklch(0.78 0.14 ${u.hue})`, color: `oklch(0.25 0.06 ${u.hue})` }}>{u.name.split(" ").map((p) => p[0]).slice(0, 2).join("")}</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: 13, fontWeight: 500 }}>{u.name}</span>
+                        <span className="muted" style={{ fontSize: 11.5 }}>{u.email}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {u.roles.map((r) => <Badge key={r} variant={r === "admin" ? "default" : "secondary"}>{r}</Badge>)}
+                    </div>
+                  </td>
+                  <td>{statusBadge(u.status)}</td>
+                  <td>
+                    <span className="users-provider">
+                      <ProviderGlyph kind={u.provider} />
+                      <span style={{ fontSize: 12.5 }}>{PROVIDER_LABEL[u.provider]}</span>
+                    </span>
+                  </td>
+                  <td style={{ textAlign: "center" }}>
+                    {u.mfa
+                      ? <span className="users-mfa on" title="2FA enabled"><I.Shield size={11} /> on</span>
+                      : <span className="users-mfa off" title="2FA disabled">off</span>}
+                  </td>
+                  <td className="muted font-mono" style={{ fontSize: 11.5 }}>{u.last}</td>
+                  <td style={{ textAlign: "right", position: "relative" }} onClick={(e) => e.stopPropagation()}>
+                    <IconButton icon={I.More} onClick={(e: any) => { e.stopPropagation(); setMenuOpen(isOpen ? null : u.id); }} />
+                    {isOpen && (
+                      <div className="users-menu" onClick={(e) => e.stopPropagation()}>
+                        <button onClick={() => { setActiveUser(u); setMenuOpen(null); }}><I.Eye size={12} />View profile</button>
+                        <button onClick={() => { pushToast(`Reset link sent to ${u.email}.`); setMenuOpen(null); }}><I.Mail size={12} />Send reset link</button>
+                        {u.status !== "suspended" ? (
+                          <button onClick={async () => {
+                            try { await usersApi.suspend(u.id); } catch (e) { pushToast((e as Error).message); }
+                            setUsers((arr) => arr.map((x) => x.id === u.id ? { ...x, status: "suspended", sessions: 0 } : x));
+                            setMenuOpen(null);
+                            pushToast(`${u.email} suspended.`);
+                          }}><I.Lock size={12} />Suspend</button>
+                        ) : (
+                          <button onClick={async () => {
+                            try { await usersApi.activate(u.id); } catch (e) { pushToast((e as Error).message); }
+                            setUsers((arr) => arr.map((x) => x.id === u.id ? { ...x, status: "active" } : x));
+                            setMenuOpen(null);
+                            pushToast(`${u.email} activated.`);
+                          }}><I.Check size={12} />Activate</button>
+                        )}
+                        <div className="users-menu-sep" />
+                        <button className="danger" onClick={async () => {
+                          try { await usersApi.remove(u.id); } catch (e) { pushToast((e as Error).message); }
+                          setUsers((arr) => arr.filter((x) => x.id !== u.id));
+                          setMenuOpen(null);
+                          pushToast(`${u.email} deleted.`);
+                        }}><I.Trash size={12} />Delete</button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {filtered.length === 0 && (
+              <tr><td colSpan={8}>
+                <div className="empty" style={{ padding: "32px 0" }}>
+                  <I.Users size={20} />
+                  <h4>No users match</h4>
+                  <p>Adjust your filters or invite a new teammate.</p>
+                </div>
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {activeUser && <UserDrawer user={activeUser} onClose={() => setActiveUser(null)} pushToast={pushToast} />}
+      {inviteOpen && <InviteUserDialog onClose={() => setInviteOpen(false)} onInvite={async (payload: any) => {
+        try {
+          await usersApi.invite(payload.email, payload.role);
+          pushToast(`Invite sent to ${payload.email}.`);
+        } catch (e) {
+          pushToast((e as Error).message);
+        }
+        setInviteOpen(false);
+      }} />}
+    </div>
+  );
+}
+
+function UserDrawer({ user, onClose, pushToast }: { user: any; onClose: () => void; pushToast: (m: string) => void }) {
+  const sessions = user.sessions > 0 ? [
+    { id: "s1", device: "MacBook Pro · Chrome 137", ip: "192.168.1.42 · Berlin, DE", last: user.last, current: true },
+    user.sessions > 1 && { id: "s2", device: "iPhone 16 · Safari", ip: "95.91.20.12 · Berlin, DE", last: "2h ago", current: false },
+    user.sessions > 2 && { id: "s3", device: "Linux · Firefox 132", ip: "10.0.0.3 · localhost", last: "1d ago", current: false },
+  ].filter(Boolean) as any[] : [];
+
+  const activity = [
+    { t: user.lastIso || "—", ev: "session.start", meta: `${user.provider} · ${user.mfa ? "2fa ok" : "no 2fa"}` },
+    { t: "2026-05-08 16:02", ev: "permission.granted", meta: `role.add · ${user.roles[0]}` },
+    { t: user.created + " 09:00", ev: "user.created", meta: `via ${user.provider}` },
+  ];
+
+  return (
+    <>
+      <div className="scrim" onClick={onClose} />
+      <div className="sheet" role="dialog" aria-modal="true">
+        <div className="sheet-header">
+          <div style={{ display: "flex", gap: 12, alignItems: "center", flex: 1, minWidth: 0 }}>
+            <div className="avatar" style={{ width: 40, height: 40, fontSize: 14, background: `oklch(0.78 0.14 ${user.hue})`, color: `oklch(0.25 0.06 ${user.hue})` }}>{user.name.split(" ").map((p: string) => p[0]).slice(0, 2).join("")}</div>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {user.name}
+                {user.status === "active" && <Badge variant="default">active</Badge>}
+                {user.status === "invited" && <Badge variant="outline">invited</Badge>}
+                {user.status === "suspended" && <Badge variant="destructive">suspended</Badge>}
+              </h2>
+              <p>{user.email} · id <span className="font-mono">{user.id}</span></p>
+            </div>
+          </div>
+          <IconButton icon={I.X} onClick={onClose} title="Close" />
+        </div>
+
+        <div className="sheet-body">
+          <div className="user-facts">
+            <div><span className="muted">Roles</span><div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>{user.roles.map((r: string) => <Badge key={r} variant={r === "admin" ? "default" : "secondary"}>{r}</Badge>)}</div></div>
+            <div><span className="muted">Provider</span><span className="users-provider"><ProviderGlyph kind={user.provider} size={12} />{PROVIDER_LABEL[user.provider]}</span></div>
+            <div><span className="muted">2FA</span>{user.mfa ? <span className="users-mfa on"><I.Shield size={11} /> enrolled</span> : <span className="users-mfa off">disabled</span>}</div>
+            <div><span className="muted">Created</span><span className="font-mono" style={{ fontSize: 12 }}>{user.created}</span></div>
+            <div><span className="muted">Last seen</span><span className="font-mono" style={{ fontSize: 12 }}>{user.lastIso || "—"}</span></div>
+            <div><span className="muted">Sessions</span><span className="font-mono" style={{ fontSize: 12 }}>{user.sessions} active</span></div>
+          </div>
+
+          <div>
+            <div className="user-section-head">
+              <span>Active sessions</span>
+              <span className="muted">{sessions.length}</span>
+            </div>
+            {sessions.length === 0 ? (
+              <div className="user-empty">No active sessions.</div>
+            ) : (
+              <div className="user-list">
+                {sessions.map((s) => (
+                  <div key={s.id} className="user-list-row">
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 500, display: "flex", gap: 6, alignItems: "center" }}>
+                        {s.device}
+                        {s.current && <Badge variant="outline">this device</Badge>}
+                      </span>
+                      <span className="muted font-mono" style={{ fontSize: 11.5 }}>{s.ip} · last seen {s.last}</span>
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => pushToast(`Session revoked: ${s.device}`)}>Revoke</Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div className="user-section-head">
+              <span>Recent activity</span>
+              <span className="muted">last 30 days</span>
+            </div>
+            <div className="user-list">
+              {activity.map((a, i) => (
+                <div key={i} className="user-list-row">
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <span className="font-mono" style={{ fontSize: 12 }}>{a.ev}</span>
+                    <span className="muted" style={{ fontSize: 11.5 }}>{a.meta}</span>
+                  </div>
+                  <span className="muted font-mono" style={{ fontSize: 11.5 }}>{a.t}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="user-danger">
+            <div className="user-section-head"><span>Danger zone</span></div>
+            <div className="user-danger-row">
+              <div>
+                <div style={{ fontSize: 12.5, fontWeight: 500 }}>Send password reset</div>
+                <div className="muted" style={{ fontSize: 11.5 }}>Emails a one-time link valid for 30 minutes.</div>
+              </div>
+              <Button size="sm" variant="outline" onClick={async () => {
+                try { await usersApi.invite(user.email, "authenticated"); } catch (e) { pushToast((e as Error).message); }
+                pushToast(`Reset link sent to ${user.email}.`);
+              }}>Send</Button>
+            </div>
+            <div className="user-danger-row">
+              <div>
+                <div style={{ fontSize: 12.5, fontWeight: 500 }}>Revoke all sessions</div>
+                <div className="muted" style={{ fontSize: 11.5 }}>Forces re-login on every device immediately.</div>
+              </div>
+              <Button size="sm" variant="outline" onClick={async () => {
+                try { await usersApi.revokeAll(user.id); } catch (e) { pushToast((e as Error).message); }
+                pushToast(`Sessions revoked for ${user.email}.`);
+              }}>Revoke</Button>
+            </div>
+            <div className="user-danger-row">
+              <div>
+                <div style={{ fontSize: 12.5, fontWeight: 500, color: "var(--destructive)" }}>Delete user</div>
+                <div className="muted" style={{ fontSize: 11.5 }}>Permanent. Owned items remain; ownership is reassigned to admin.</div>
+              </div>
+              <Button size="sm" variant="outline" style={{ color: "var(--destructive)" }} onClick={async () => {
+                try { await usersApi.remove(user.id); } catch (e) { pushToast((e as Error).message); }
+                pushToast(`${user.email} deleted.`);
+                onClose();
+              }}>Delete</Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="sheet-footer">
+          <Button variant="ghost" onClick={onClose}>Close</Button>
+          <Button variant="primary" onClick={() => pushToast("Profile saved.")}>Save changes</Button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function InviteUserDialog({ onClose, onInvite }: { onClose: () => void; onInvite: (data: any) => void }) {
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("authenticated");
+  const [provider, setProvider] = useState("password");
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  return (
+    <div className="dialog-backdrop" onClick={onClose}>
+      <div className="dialog-lg" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} style={{ width: 460, maxWidth: "92vw" }}>
+        <div className="sheet-header" style={{ borderBottom: "1px solid var(--border)" }}>
+          <div style={{ flex: 1 }}>
+            <h2>Invite user</h2>
+            <p>Send an email invite. The user finishes signup themselves.</p>
+          </div>
+          <IconButton icon={I.X} onClick={onClose} title="Close" />
+        </div>
+        <div className="dialog-body">
+          <div className="field">
+            <label className="field-label">Email</label>
+            <input className="input" autoFocus placeholder="teammate@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <span className="field-hint">An invite link will be emailed; valid for 7 days.</span>
+          </div>
+          <div className="field">
+            <label className="field-label">Default role</label>
+            <Select value={role} onChange={setRole}
+              options={[{ value: "authenticated", label: "authenticated", hint: "standard signed-in user" }, { value: "editor", label: "editor", hint: "can publish + manage content" }, { value: "admin", label: "admin", hint: "full access" }]} />
+          </div>
+          <div className="field">
+            <label className="field-label">Sign-in method</label>
+            <Select value={provider} onChange={setProvider}
+              options={[{ value: "password", label: "password", hint: "set on first login" }, { value: "magic", label: "magic link", hint: "email-only, no password" }, { value: "github", label: "github SSO", hint: "OAuth required" }, { value: "google", label: "google SSO", hint: "OAuth required" }]} />
+          </div>
+        </div>
+        <div className="sheet-footer">
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" disabled={!valid} onClick={() => onInvite({ email, role, provider })}>Send invite</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function ApiKeysPage({ pushToast }: { pushToast: (m: string) => void }) {
+  const seed = [
+    { id: "ak_1", prefix: "pak_a4e2b9c1", name: "CI bot", user: "rana@workeros.dev", created: "2026-04-22", lastUsed: "2m ago" },
+    { id: "ak_2", prefix: "pak_77c3f0e8", name: "analytics", user: "kai@workeros.dev", created: "2026-03-14", lastUsed: "1h ago" },
+  ];
+  const [keys, setKeys] = useState(seed);
+  const reloadKeys = async () => {
+    const r = await fetchSafely<{ data: any[] }>("/api/api-keys");
+    if (r?.data && r.data.length > 0) {
+      setKeys(
+        r.data.map((k) => ({
+          id: k.id,
+          prefix: k.prefix,
+          name: k.name,
+          user: k.userId ?? "—",
+          created: k.createdAt ? String(k.createdAt).slice(0, 10) : "—",
+          lastUsed: k.lastUsedAt ? "—" : "never",
+        })),
+      );
+    }
+  };
+  useEffect(() => { void reloadKeys(); }, []);
+  const [revealed, setRevealed] = useState<string | null>(null);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <PageHeader
+        title="API keys"
+        description="pak_<8-hex prefix>_<32-hex secret>. Only the SHA-256 of the secret is stored; the plaintext is shown once."
+        actions={<Button variant="primary" icon={I.Plus} onClick={async () => {
+          try {
+            const r = await api<{ data: { id: string; key: string; prefix: string; name: string } }>("/api/api-keys", {
+              method: "POST",
+              body: JSON.stringify({ name: "New key" }),
+            });
+            setRevealed(r.data.key);
+            await reloadKeys();
+          } catch (e) {
+            pushToast((e as Error).message);
+          }
+        }}>Create key</Button>}
+      />
+      {revealed && (
+        <div className="card" style={{ borderColor: "color-mix(in oklch, var(--primary) 50%, var(--border))", background: "color-mix(in oklch, var(--primary) 8%, var(--card))" }}>
+          <div style={{ padding: 16, display: "flex", alignItems: "center", gap: 12 }}>
+            <I.Info size={16} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>Copy this now — it will not be shown again.</span>
+              <span className="font-mono" style={{ fontSize: 12.5, padding: "4px 8px", background: "var(--background)", borderRadius: "var(--radius-md)", border: "1px solid var(--border)" }}>{revealed}</span>
+            </div>
+            <div className="spacer" />
+            <Button variant="outline" size="sm" onClick={() => { navigator.clipboard?.writeText(revealed); pushToast("Key copied to clipboard."); }}>Copy</Button>
+            <IconButton icon={I.X} onClick={() => setRevealed(null)} />
+          </div>
+        </div>
+      )}
+      <div className="card">
+        <table className="table">
+          <thead><tr><th>Name</th><th style={{ width: 200 }}>Prefix</th><th style={{ width: 200 }}>User</th><th style={{ width: 120 }}>Created</th><th style={{ width: 120 }}>Last used</th><th style={{ width: 60 }}></th></tr></thead>
+          <tbody>
+            {keys.map((k) => (
+              <tr key={k.id}>
+                <td style={{ fontSize: 13, fontWeight: 500 }}>{k.name}</td>
+                <td className="font-mono" style={{ fontSize: 12 }}>{k.prefix}<span className="muted">_••••••••••••••••</span></td>
+                <td>{k.user}</td>
+                <td className="muted font-mono" style={{ fontSize: 11.5 }}>{k.created}</td>
+                <td className="muted font-mono" style={{ fontSize: 11.5 }}>{k.lastUsed}</td>
+                <td style={{ textAlign: "right" }}><IconButton icon={I.Trash} title="Revoke" onClick={async () => {
+                  try { await api(`/api/api-keys/${k.id}`, { method: "DELETE" }); } catch (e) { pushToast((e as Error).message); }
+                  setKeys((arr) => arr.filter((x) => x.id !== k.id));
+                  pushToast(`${k.prefix} revoked.`);
+                }} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushToast: (m: string) => void }) {
+  const [tab, setTab] = useState("general");
+  const [appUrl, setAppUrl] = useState("http://localhost:8787");
+  const [siteName, setSiteName] = useState("workeros");
+  const [from, setFrom] = useState("hello@example.com");
+  const [signupOpen, setSignupOpen] = useState(false);
+  const [telemetry, setTelemetry] = useState(false);
+  const [dirty, setDirty] = useState(false);
+
+  const [bindings, setBindings] = useState([
+    { id: 1, type: "D1", name: "DB", target: "workeros-db", status: "connected", warn: undefined as string | undefined },
+    { id: 2, type: "R2", name: "ASSETS", target: "workeros-assets", status: "connected", warn: undefined },
+  ]);
+  const [envVars, setEnvVars] = useState<{ id: number | string; key: string; value: string; secret: boolean; source: string }[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await settingsApi.runtime();
+        if (cancelled) return;
+        const rt = r.data as ApiRuntime;
+        setBindings(
+          rt.bindings.map((b, i) => ({
+            id: i + 1,
+            type: b.type,
+            name: b.name,
+            target: b.target,
+            status: b.status,
+            warn: b.status === "optional" ? `${b.name} unbound` : undefined,
+          })),
+        );
+        setEnvVars(
+          rt.envVars.map((v, i) => ({
+            id: i + 1,
+            key: v.key,
+            value: v.set ? (v.secret ? "••••••••" : "set") : "(unset)",
+            secret: v.secret,
+            source: v.source,
+          })),
+        );
+      } catch {
+        // keep seed
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  const persistGeneral = async () => {
+    try {
+      await settingsApi.patch({
+        siteName,
+        appUrl,
+        emailFrom: from,
+        openSignup,
+        telemetry,
+      });
+      setDirty(false);
+      pushToast("Settings saved.");
+    } catch (e) {
+      pushToast((e as Error).message);
+    }
+  };
+  const [revealed, setRevealed] = useState<Record<number, boolean>>({});
+  const [newKey, setNewKey] = useState("");
+  const [newVal, setNewVal] = useState("");
+  const [newSecret, setNewSecret] = useState(true);
+
+  const addEnv = async () => {
+    const k = newKey.trim().toUpperCase();
+    if (!k) return;
+    try {
+      await settingsApi.patch({ [`env.${k}`]: newSecret ? "(secret)" : newVal });
+    } catch (e) {
+      pushToast((e as Error).message);
+    }
+    setEnvVars((arr) => [...arr, { id: Date.now(), key: k, value: newSecret ? "••••••••" : newVal, secret: newSecret, source: newSecret ? "wrangler secret" : "wrangler.toml" }]);
+    setNewKey(""); setNewVal(""); setDirty(true);
+    pushToast(`${k} added.`);
+  };
+  const removeEnv = async (id: number | string) => {
+    const target = envVars.find((x) => x.id === id);
+    if (target) {
+      try {
+        await settingsApi.patch({ [`env.${target.key}`]: null });
+      } catch (e) {
+        pushToast((e as Error).message);
+      }
+    }
+    setEnvVars((arr) => arr.filter((x) => x.id !== id));
+    setDirty(true);
+  };
+
+  const bindingIcon = (t: string): IconComponent => (({ D1: I.Database, KV: I.Folder, R2: I.Server, DurableObj: I.Bolt, Queue: I.Webhook, AI: I.Bolt } as Record<string, IconComponent>)[t] || I.Folder);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <PageHeader title="Settings" description="Self-hosted on Cloudflare Workers. Most config lives in wrangler.toml; this page is a live view + UI for runtime-mutable values." />
+      <div className="ce-tabs">
+        {[
+          { id: "general", label: "General", hint: "app · auth" },
+          { id: "bindings", label: "Bindings", hint: `${bindings.length}` },
+          { id: "env", label: "Environment", hint: `${envVars.length}` },
+          { id: "about", label: "About", hint: "v0.9.4" },
+        ].map((t) => (
+          <button key={t.id} type="button" className={`ce-tab ${tab === t.id ? "on" : ""}`} onClick={() => setTab(t.id)}>
+            <span>{t.label}</span>
+            <span className="ce-tab-count">{t.hint}</span>
+          </button>
+        ))}
+      </div>
+
+      {tab === "general" && (
+        <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
+          <div className="field"><label className="field-label">Site name</label><input className="input" value={siteName} onChange={(e) => { setSiteName(e.target.value); setDirty(true); }} /><span className="field-hint">Shown in the sidebar and email templates.</span></div>
+          <div className="field"><label className="field-label">APP_URL</label><input className="input" value={appUrl} onChange={(e) => { setAppUrl(e.target.value); setDirty(true); }} /><span className="field-hint">Public origin of this Worker. Used for OAuth callbacks and absolute links.</span></div>
+          <div className="field"><label className="field-label">EMAIL_FROM</label><input className="input" value={from} onChange={(e) => { setFrom(e.target.value); setDirty(true); }} /></div>
+          <div className="field-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+            <div>
+              <div className="field-label">Open sign-up</div>
+              <div className="field-hint">When off, only invited emails can sign up.</div>
+            </div>
+            <Switch checked={signupOpen} onChange={(v) => { setSignupOpen(v); setDirty(true); }} />
+          </div>
+          <div className="field-row">
+            <div>
+              <div className="field-label">Anonymous telemetry</div>
+              <div className="field-hint">Send aggregated, opt-in usage counts to help prioritise OSS work. No content or identifiers.</div>
+            </div>
+            <Switch checked={telemetry} onChange={(v) => { setTelemetry(v); setDirty(true); }} />
+          </div>
+          <div className="field-row">
+            <div>
+              <div className="field-label">Runtime</div>
+              <div className="field-hint">Auto-detected from <span className="font-mono">env</span> bindings.</div>
+            </div>
+            <span className="adapter-pill"><span className="dot" />{adapter}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 6 }}>
+            <Button variant="ghost" size="sm" disabled={!dirty} onClick={() => setDirty(false)}>Discard</Button>
+            <Button variant="primary" size="sm" disabled={!dirty} onClick={persistGeneral}>Save</Button>
+          </div>
+        </div>
+      )}
+
+      {tab === "bindings" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 920 }}>
+          <div className="card" style={{ padding: 14, display: "flex", alignItems: "flex-start", gap: 10, background: "var(--muted)" }}>
+            <I.Info size={14} style={{ marginTop: 2 }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 500 }}>Bindings are read-only here</span>
+              <span className="muted" style={{ fontSize: 12 }}>Edit them in <span className="font-mono" style={{ color: "var(--foreground)" }}>wrangler.toml</span> and redeploy. This panel reflects the live binding map from <span className="font-mono" style={{ color: "var(--foreground)" }}>env</span>.</span>
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <I.Server size={14} /><span style={{ fontSize: 13, fontWeight: 500 }}>worker bindings</span>
+              <span className="font-mono muted" style={{ fontSize: 12 }}>{bindings.filter((b) => b.status === "connected").length} connected · {bindings.filter((b) => b.status !== "connected").length} optional</span>
+              <div className="spacer" />
+              <Button variant="ghost" size="sm" icon={I.Refresh} onClick={() => pushToast("Bindings refreshed.")}>Refresh</Button>
+            </div>
+            <div className="schema-row" style={{ gridTemplateColumns: "24px 110px 160px 1fr 120px", background: "var(--muted)", fontSize: 11, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: 0.4 }}>
+              <span></span><span>Type</span><span>Name</span><span>Resource</span><span>Status</span>
+            </div>
+            {bindings.map((b) => {
+              const Ic = bindingIcon(b.type);
+              return (
+                <div key={b.id} className="schema-row" style={{ gridTemplateColumns: "24px 110px 160px 1fr 120px" }}>
+                  <span><Ic size={14} /></span>
+                  <span className="font-mono" style={{ fontSize: 12.5 }}>{b.type}</span>
+                  <span className="font-mono" style={{ fontSize: 13 }}>{b.name}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                    <span className="font-mono muted" style={{ fontSize: 12 }}>{b.target}</span>
+                    {b.warn && <span className="muted" style={{ fontSize: 11.5 }}>· {b.warn}</span>}
+                  </div>
+                  <span>
+                    {b.status === "connected" && <Badge variant="default">connected</Badge>}
+                    {b.status === "optional" && <Badge variant="secondary">unbound</Badge>}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="card" style={{ padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <I.Code size={13} />
+              <span style={{ fontSize: 12.5, fontWeight: 500 }}>wrangler.toml snippet</span>
+            </div>
+            <pre className="alter-preview" style={{ fontSize: 11.5, margin: 0, whiteSpace: "pre-wrap" }}>{`[[d1_databases]]
+binding = "DB"
+database_name = "workeros-db"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "…"
+
+[[r2_buckets]]
+binding = "ASSETS"
+bucket_name = "workeros-assets"`}</pre>
+          </div>
+        </div>
+      )}
+
+      {tab === "env" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 920 }}>
+          <div className="card">
+            <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <I.Lock size={14} /><span style={{ fontSize: 13, fontWeight: 500 }}>environment</span>
+              <span className="font-mono muted" style={{ fontSize: 12 }}>{envVars.filter((v) => v.secret).length} secret · {envVars.filter((v) => !v.secret).length} plain</span>
+              <div className="spacer" />
+              <input className="input" placeholder="KEY" value={newKey} onChange={(e) => setNewKey(e.target.value.toUpperCase())} style={{ height: 30, width: 160, fontSize: 12.5 }} />
+              <input className="input" placeholder={newSecret ? "(write-only)" : "value"} value={newVal} onChange={(e) => setNewVal(e.target.value)} disabled={newSecret} style={{ height: 30, width: 200, fontSize: 12.5 }} />
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }}>
+                <Checkbox checked={newSecret} onChange={setNewSecret} /> secret
+              </label>
+              <Button variant="primary" size="sm" icon={I.Plus} onClick={addEnv}>Add</Button>
+            </div>
+            <div className="schema-row" style={{ gridTemplateColumns: "24px 200px 1fr 160px 32px", background: "var(--muted)", fontSize: 11, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: 0.4 }}>
+              <span></span><span>Key</span><span>Value</span><span>Source</span><span></span>
+            </div>
+            {envVars.map((v) => (
+              <div key={v.id} className="schema-row" style={{ gridTemplateColumns: "24px 200px 1fr 160px 32px" }}>
+                <span>{v.secret ? <I.Lock size={13} /> : <I.Hash size={13} />}</span>
+                <span className="font-mono" style={{ fontSize: 12.5 }}>{v.key}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                  <span className="font-mono muted" style={{ fontSize: 12 }}>{v.secret && !revealed[v.id] ? "••••••••••••" : v.value}</span>
+                  {v.secret && (
+                    <IconButton icon={I.Eye} title={revealed[v.id] ? "Hide" : "Reveal"} onClick={() => setRevealed((r) => ({ ...r, [v.id]: !r[v.id] }))} />
+                  )}
+                </div>
+                <span className="font-mono muted" style={{ fontSize: 11.5 }}>{v.source}</span>
+                <IconButton icon={I.Trash} title="Remove" onClick={() => removeEnv(v.id)} />
+              </div>
+            ))}
+          </div>
+          <div className="card" style={{ padding: 14, display: "flex", alignItems: "flex-start", gap: 10, background: "var(--muted)" }}>
+            <I.Info size={14} style={{ marginTop: 2 }} />
+            <span className="muted" style={{ fontSize: 12 }}>Secret values can't be read back from Cloudflare — they're write-only after the initial <span className="font-mono" style={{ color: "var(--foreground)" }}>wrangler secret put</span>. Reveal toggles only the local cache.</span>
+          </div>
+        </div>
+      )}
+
+      {tab === "about" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 720 }}>
+          <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 12 }}>
+            {[
+              ["Version", "v0.9.4 (a8b2f1c)"],
+              ["Released", "2025-10-12"],
+              ["Runtime", adapter],
+              ["Wrangler", "3.78.0"],
+              ["License", "MIT"],
+              ["Repository", "github.com/workeros/workeros"],
+            ].map(([k, v]) => (
+              <div key={k} className="field-row" style={{ paddingTop: 0 }}>
+                <span className="field-label" style={{ marginBottom: 0 }}>{k}</span>
+                <span className="font-mono muted" style={{ fontSize: 12.5 }}>{v}</span>
+              </div>
+            ))}
+          </div>
+          <div className="card" style={{ padding: 18, display: "flex", alignItems: "center", gap: 10 }}>
+            <I.Shield size={14} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>Open-source · MIT licensed</span>
+              <span className="muted" style={{ fontSize: 12 }}>Self-hosted on Cloudflare Workers. No telemetry, no billing — just clone, deploy, run.</span>
+            </div>
+            <div className="spacer" />
+            <Button variant="outline" size="sm" icon={I.Code}>GitHub</Button>
+            <Button variant="ghost" size="sm" icon={I.Folder}>Docs</Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

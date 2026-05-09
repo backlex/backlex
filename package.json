@@ -10,17 +10,19 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "bun run --filter '*' dev",
-    "dev:api": "bun run --cwd apps/api dev",
-    "dev:admin": "bun run --cwd apps/admin dev",
-    "build": "bun run --filter '*' build",
+    "dev": "bun run --cwd apps/web dev",
+    "dev:bun": "bun run --cwd apps/web dev:bun",
+    "build": "bun run --cwd apps/web build",
     "typecheck": "bun run --filter '*' typecheck",
     "db:generate:pg": "bun run --cwd packages/db generate:pg",
     "db:generate:sqlite": "bun run --cwd packages/db generate:sqlite",
     "db:migrate:pg": "bun run --cwd packages/db migrate:pg",
     "db:migrate:sqlite": "bun run --cwd packages/db migrate:sqlite",
+    "db:migrate:d1": "bun run --cwd packages/db migrate:d1",
+    "db:migrate:d1:remote": "bun run --cwd packages/db migrate:d1 -- --remote",
     "db:studio": "bun run --cwd packages/db studio",
-    "deploy:worker": "bun run --cwd apps/api deploy"
+    "deploy": "bun run --cwd apps/web deploy",
+    "workeros": "bun run packages/cli/bin/workeros.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",

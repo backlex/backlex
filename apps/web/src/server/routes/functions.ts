@@ -1,0 +1,116 @@
+import { Hono } from "hono";
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+import { AppError, SYSTEM_ROLES } from "@workeros/core";
+import * as pg from "@workeros/db/pg";
+import * as sqlite from "@workeros/db/sqlite";
+import type { AppBindings } from "../app";
+import { requireUser } from "../middleware/session";
+import {
+  findByName,
+  invokeFunction,
+  type FunctionRow,
+} from "../services/functions";
+
+const tableFor = (dialect: "pg" | "sqlite") =>
+  dialect === "pg" ? pg.schema.functions : sqlite.schema.functions;
+
+const Input = z.object({
+  name: z.string().min(1).regex(/^[a-z][a-z0-9_-]*$/),
+  trigger: z.enum(["http", "event", "cron"]),
+  pattern: z.string().nullable().optional(),
+  code: z.string().min(1),
+  timeoutMs: z.number().int().min(50).max(60_000).optional(),
+  active: z.boolean().optional(),
+});
+
+const requireAdmin = (auth: { roles: string[] }) => {
+  if (!auth.roles.includes(SYSTEM_ROLES.admin)) {
+    throw new AppError("FORBIDDEN", "Admin role required");
+  }
+};
+
+export const functionsRoutes = new Hono<AppBindings>()
+  // Invoke must come before the admin gate so non-admin users can call functions
+  // they're allowed to (but for v1 invoke is admin-only too — defer per-function ACL).
+  .post("/:name/invoke", requireUser, async (c) => {
+    const ctx = c.get("ctx");
+    const auth = c.get("auth");
+    requireAdmin(auth);
+    const fn = await findByName(ctx, c.req.param("name"));
+    if (!fn) throw new AppError("NOT_FOUND", "Function not found");
+    if (fn.trigger !== "http") {
+      throw new AppError("BAD_REQUEST", "Function trigger is not 'http'");
+    }
+    if (!fn.active) {
+      throw new AppError("FORBIDDEN", "Function is inactive");
+    }
+    const body = await c.req.json().catch(() => ({}));
+    const selfOrigin = new URL(c.req.url).origin;
+    const result = await invokeFunction(
+      fn as FunctionRow,
+      { ctx, auth, selfOrigin },
+      body,
+    );
+    return c.json(result, result.ok ? 200 : 500);
+  })
+  .use("*", requireUser, async (c, next) => {
+    requireAdmin(c.get("auth"));
+    await next();
+  })
+  .get("/", async (c) => {
+    const ctx = c.get("ctx");
+    const t = tableFor(ctx.dialect);
+    const rows = await (ctx.db as any).select().from(t);
+    return c.json({ data: rows });
+  })
+  .post("/", async (c) => {
+    const ctx = c.get("ctx");
+    const body = Input.parse(await c.req.json());
+    const t = tableFor(ctx.dialect);
+    const id = crypto.randomUUID();
+    await (ctx.db as any).insert(t).values({
+      id,
+      name: body.name,
+      trigger: body.trigger,
+      pattern: body.pattern ?? null,
+      code: body.code,
+      timeoutMs: body.timeoutMs ?? 5000,
+      active: body.active ?? true,
+    });
+    return c.json(
+      {
+        data: {
+          id,
+          ...body,
+          timeoutMs: body.timeoutMs ?? 5000,
+          active: body.active ?? true,
+        },
+      },
+      201,
+    );
+  })
+  .patch("/:id", async (c) => {
+    const ctx = c.get("ctx");
+    const body = Input.partial().parse(await c.req.json());
+    const t = tableFor(ctx.dialect);
+    await (ctx.db as any)
+      .update(t)
+      .set({
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        ...(body.trigger !== undefined ? { trigger: body.trigger } : {}),
+        ...(body.pattern !== undefined ? { pattern: body.pattern } : {}),
+        ...(body.code !== undefined ? { code: body.code } : {}),
+        ...(body.timeoutMs !== undefined ? { timeoutMs: body.timeoutMs } : {}),
+        ...(body.active !== undefined ? { active: body.active } : {}),
+        updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
+      })
+      .where(eq(t.id, c.req.param("id")));
+    return c.json({ ok: true });
+  })
+  .delete("/:id", async (c) => {
+    const ctx = c.get("ctx");
+    const t = tableFor(ctx.dialect);
+    await (ctx.db as any).delete(t).where(eq(t.id, c.req.param("id")));
+    return c.json({ ok: true });
+  });

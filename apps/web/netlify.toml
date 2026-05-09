@@ -1,0 +1,17 @@
+[build]
+  command = "echo 'no build — edge function is the entry'"
+  publish = "src"
+
+# Edge function claims every request and routes through Hono.
+[[edge_functions]]
+  function = "entry"
+  path = "/*"
+
+# `netlify/edge-functions/entry.ts` is a tiny re-export of the Hono adapter
+# entry, generated below. Netlify expects edge functions in `netlify/edge-functions/`.
+
+# Cron via scheduled function — pings the edge entry's tick route so dedupe
+# and providers stay co-located.
+[[scheduled_functions]]
+  function = "cron"
+  cron = "* * * * *"

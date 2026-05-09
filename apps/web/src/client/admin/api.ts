@@ -341,7 +341,7 @@ export interface ApiMetrics {
   windowMs: number;
   bucketMs: number;
   series: { ts: number; requests: number; errors: number }[];
-  totals: { requests: number; errors: number; errorRate: number; activeUsers: number };
+  totals: { requests: number; errors: number; errorRate: number; activeUsers: number; p95Ms?: number };
   counts: {
     collections: number;
     files: number;
@@ -350,6 +350,9 @@ export interface ApiMetrics {
     activeFlows: number;
     pausedFlows: number;
   };
+  topCollections?: { slug: string; rows: number; lastWrite: number | null }[];
+  recent?: { t: number; action: string; collection?: string; itemId?: string | null; userId?: string | null; ms?: number | null }[];
+  recentErrors?: { code: string; resource: string; msg: string; count: number; last: number }[];
 }
 
 export const metricsApi = {

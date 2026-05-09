@@ -41,6 +41,7 @@ import { panelsRoutes } from "./routes/panels";
 import { i18nRoutes } from "./routes/i18n";
 import { settingsRoutes } from "./routes/settings";
 import { dbAdminRoutes } from "./routes/db-admin";
+import { metricsRoutes } from "./routes/metrics";
 import type { Env } from "./env";
 
 export type AppBindings = {
@@ -102,6 +103,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/i18n", i18nRoutes);
   app.route("/api/admin/settings", settingsRoutes);
   app.route("/api/admin/db", dbAdminRoutes);
+  app.route("/api/admin/metrics", metricsRoutes);
   app.route("/api/api-keys", apiKeysRoutes);
   app.route("/api/collections", collectionsRoutes);
   app.route("/api/items", itemsRoutes);

@@ -335,3 +335,23 @@ export const dbAdminApi = {
 export const activityApi = {
   list: () => api<Envelope<ApiActivity[]>>(`/api/activity`),
 };
+
+export interface ApiMetrics {
+  range: string;
+  windowMs: number;
+  bucketMs: number;
+  series: { ts: number; requests: number; errors: number }[];
+  totals: { requests: number; errors: number; errorRate: number; activeUsers: number };
+  counts: {
+    collections: number;
+    files: number;
+    flows: number;
+    functions: number;
+    activeFlows: number;
+    pausedFlows: number;
+  };
+}
+
+export const metricsApi = {
+  overview: (range = "1h") => api<Envelope<ApiMetrics>>(`/api/admin/metrics/overview?range=${range}`),
+};

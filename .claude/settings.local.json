@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(lsof -i :3000 -sTCP:LISTEN)",
+      "Bash(lsof -i :5173 -sTCP:LISTEN)",
+      "Bash(curl -s -o /dev/null -w \"api: %{http_code}\\\\n\" http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null -w \"admin: %{http_code}\\\\n\" http://localhost:5173/)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(curl -s http://127.0.0.1:3000/)",
+      "Bash(curl -s http://192.168.2.74:3000/)",
+      "Bash(lsof -i :8787 -sTCP:LISTEN)",
+      "Bash(curl -s -o /dev/null -w \"api 8787:    %{http_code}\\\\n\" http://localhost:8787/)",
+      "Bash(curl -s -o /dev/null -w \"admin 5173:  %{http_code}\\\\n\" http://localhost:5173/)",
+      "Bash(curl -s -o /dev/null -w \"admin /api:  %{http_code}\\\\n\" http://localhost:5173/api/)",
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(mkdir -p /tmp/workeros-design)",
+      "Read(//tmp/**)",
+      "Bash(tar -xzf /Users/furkankinyas/.claude/projects/-Users-furkankinyas-Projects-workeros/3a581ea0-2298-4afd-a7e7-2862edd375c6/tool-results/webfetch-1778357226912-2r3s62.bin)"
+    ]
+  }
+}

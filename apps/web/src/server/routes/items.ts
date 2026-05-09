@@ -15,7 +15,7 @@ import { requirePermission } from "../middleware/permission";
 import type { Ctx } from "../context";
 import { parseQuery, resolveProjection } from "../lib/query";
 import { publishEvent } from "../services/events";
-import { recordActivity, requestMeta } from "../services/activity";
+import { elapsedMs, keepAlive, recordActivity, requestMeta } from "../services/activity";
 import { recordRevision } from "../services/revisions";
 
 interface CollectionRow {
@@ -412,15 +412,17 @@ export const itemsRoutes = new Hono<AppBindings>()
       { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx },
     );
     const meta = requestMeta(c.req.raw);
-    void recordActivity(
+    await recordActivity(
       { db: ctx.db, dialect: ctx.dialect },
       {
         userId: auth.userId,
+        tenantId: auth.tenantId ?? null,
         action: "create",
         collection: collection.slug,
         itemId: id,
         ...meta,
         payload: data,
+        durationMs: elapsedMs(c),
       },
     );
     return c.json({ data: projectFields(out, perm.fields) }, 201);
@@ -481,15 +483,17 @@ export const itemsRoutes = new Hono<AppBindings>()
       { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx },
     );
     const meta = requestMeta(c.req.raw);
-    void recordActivity(
+    await recordActivity(
       { db: ctx.db, dialect: ctx.dialect },
       {
         userId: auth.userId,
+        tenantId: auth.tenantId ?? null,
         action: "update",
         collection: collection.slug,
         itemId: id,
         ...meta,
         payload: patch,
+        durationMs: elapsedMs(c),
       },
     );
     void recordRevision(
@@ -535,15 +539,17 @@ export const itemsRoutes = new Hono<AppBindings>()
       { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx },
     );
     const meta = requestMeta(c.req.raw);
-    void recordActivity(
+    await recordActivity(
       { db: ctx.db, dialect: ctx.dialect },
       {
         userId: auth.userId,
+        tenantId: auth.tenantId ?? null,
         action: "delete",
         collection: collection.slug,
         itemId: id,
         ...meta,
         payload: oldRow,
+        durationMs: elapsedMs(c),
       },
     );
     void recordRevision(

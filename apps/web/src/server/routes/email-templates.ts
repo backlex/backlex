@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { and, eq, isNull, or } from "drizzle-orm";
-import { AppError, SYSTEM_ROLES } from "@workeros/core";
+import { AppError, SYSTEM_ROLES, htmlToText, renderTemplate } from "@workeros/core";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { AppBindings } from "../app";
@@ -25,10 +25,19 @@ const requireAdmin = (auth: { roles: string[] }) => {
     throw new AppError("FORBIDDEN", "Admin role required");
 };
 
-const renderTemplate = (
-  body: string,
-  vars: Record<string, string>,
-): string => body.replace(/{{\s*([\w.]+)\s*}}/g, (_, k: string) => vars[k] ?? "");
+const requireTenant = (c: { get: (k: string) => any }): string => {
+  const tenantId = c.get("auth")?.tenantId as string | undefined;
+  if (!tenantId) throw new AppError("UNAUTHORIZED", "Active tenant required");
+  return tenantId;
+};
+
+/** ID match scoped to the active workspace OR a global (tenantId NULL) row. */
+const idScopedToTenant = (
+  t: ReturnType<typeof tableFor>,
+  id: string,
+  tenantId: string,
+) => and(eq(t.id, id), or(eq(t.tenantId, tenantId), isNull(t.tenantId)));
+
 
 export const emailTemplatesRoutes = new Hono<AppBindings>()
   .use("*", requireUser, async (c, next) => {
@@ -52,11 +61,12 @@ export const emailTemplatesRoutes = new Hono<AppBindings>()
   })
   .get("/:id", async (c) => {
     const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
     const t = tableFor(ctx.dialect);
     const rows = await (ctx.db as any)
       .select()
       .from(t)
-      .where(eq(t.id, c.req.param("id")))
+      .where(idScopedToTenant(t, c.req.param("id"), tenantId))
       .limit(1);
     if (!rows[0]) throw new AppError("NOT_FOUND", "Template not found");
     return c.json({ data: rows[0] });
@@ -84,6 +94,7 @@ export const emailTemplatesRoutes = new Hono<AppBindings>()
   .patch("/:id", async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");
+    const tenantId = requireTenant(c);
     const id = c.req.param("id");
     const body = Input.partial().parse(await c.req.json());
     const t = tableFor(ctx.dialect);
@@ -95,13 +106,16 @@ export const emailTemplatesRoutes = new Hono<AppBindings>()
         updatedBy: auth.userId,
         updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
       })
-      .where(eq(t.id, id));
+      .where(idScopedToTenant(t, id, tenantId));
     return c.json({ ok: true });
   })
   .delete("/:id", async (c) => {
     const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
     const t = tableFor(ctx.dialect);
-    await (ctx.db as any).delete(t).where(eq(t.id, c.req.param("id")));
+    await (ctx.db as any)
+      .delete(t)
+      .where(idScopedToTenant(t, c.req.param("id"), tenantId));
     return c.json({ ok: true });
   })
   /**
@@ -112,31 +126,40 @@ export const emailTemplatesRoutes = new Hono<AppBindings>()
   .post("/:id/send-test", async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");
+    const tenantId = requireTenant(c);
     const id = c.req.param("id");
     const body = z
       .object({
         to: z.string().email().optional(),
-        vars: z.record(z.string()).optional(),
+        // Allow nested objects so callers can pass `{ user: { email: "…" } }`
+        // matching the dotted-path placeholders in the template.
+        vars: z.record(z.string(), z.unknown()).optional(),
       })
       .parse(await c.req.json().catch(() => ({})));
     const t = tableFor(ctx.dialect);
-    const rows = await (ctx.db as any).select().from(t).where(eq(t.id, id)).limit(1);
+    const rows = await (ctx.db as any)
+      .select()
+      .from(t)
+      .where(idScopedToTenant(t, id, tenantId))
+      .limit(1);
     const tpl = rows[0];
     if (!tpl) throw new AppError("NOT_FOUND", "Template not found");
 
-    const defaults: Record<string, string> = {
-      "user.email": auth.email ?? "user@example.com",
-      "confirm_url": `${ctx.env.APP_URL}/verify?token=test`,
-      "reset_url": `${ctx.env.APP_URL}/reset?token=test`,
-      "magic_url": `${ctx.env.APP_URL}/magic?token=test`,
-      "site.name": "workeros",
+    // Sample vars so the preview reads naturally even when the caller doesn't
+    // supply their own. Shape mirrors what flow runs use at runtime.
+    const defaults: Record<string, unknown> = {
+      user: { email: auth.email ?? "user@example.com" },
+      confirm_url: `${ctx.env.APP_URL}/verify?token=test`,
+      reset_url: `${ctx.env.APP_URL}/reset?token=test`,
+      magic_url: `${ctx.env.APP_URL}/magic?token=test`,
+      site: { name: "workeros" },
     };
     const vars = { ...defaults, ...(body.vars ?? {}) };
 
     const html = renderTemplate(tpl.bodyHtml as string, vars);
     const text = tpl.bodyText
       ? renderTemplate(tpl.bodyText as string, vars)
-      : html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
+      : htmlToText(html);
     await ctx.email.send({
       to: body.to ?? auth.email ?? "test@example.com",
       from: tpl.fromAddress ?? undefined,

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { eq, isNull, or } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { AppError, SYSTEM_ROLES } from "@workeros/core";
 import * as pg from "@workeros/db/pg";
@@ -32,6 +32,12 @@ const PanelInput = z.object({
 const requireAdmin = (auth: { roles: string[] }) => {
   if (!auth.roles.includes(SYSTEM_ROLES.admin))
     throw new AppError("FORBIDDEN", "Admin role required");
+};
+
+const requireTenant = (c: { get: (k: string) => any }): string => {
+  const tenantId = c.get("auth")?.tenantId as string | undefined;
+  if (!tenantId) throw new AppError("UNAUTHORIZED", "Active tenant required");
+  return tenantId;
 };
 
 /**
@@ -101,6 +107,7 @@ export const panelsRoutes = new Hono<AppBindings>()
   })
   .patch("/:id", async (c) => {
     const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
     const id = c.req.param("id");
     const body = PanelInput.partial().parse(await c.req.json());
     if (body.sql && !isReadOnly(body.sql)) {
@@ -113,23 +120,45 @@ export const panelsRoutes = new Hono<AppBindings>()
         ...body,
         updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
       })
-      .where(eq(t.id, id));
+      // Allow editing global (tenantId NULL) panels too — system-seeded
+      // dashboards belong to no workspace but should still be editable by
+      // admins; admin role is already required above.
+      .where(
+        and(
+          eq(t.id, id),
+          or(eq(t.tenantId, tenantId), isNull(t.tenantId)),
+        ),
+      );
     return c.json({ ok: true });
   })
   .delete("/:id", async (c) => {
     const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
     const t = tableFor(ctx.dialect);
-    await (ctx.db as any).delete(t).where(eq(t.id, c.req.param("id")));
+    await (ctx.db as any)
+      .delete(t)
+      .where(
+        and(
+          eq(t.id, c.req.param("id")),
+          or(eq(t.tenantId, tenantId), isNull(t.tenantId)),
+        ),
+      );
     return c.json({ ok: true });
   })
   /** Run a saved panel — useful when the dashboard renders a sparkline. */
   .post("/:id/run", async (c) => {
     const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
     const t = tableFor(ctx.dialect);
     const rows = await (ctx.db as any)
       .select()
       .from(t)
-      .where(eq(t.id, c.req.param("id")))
+      .where(
+        and(
+          eq(t.id, c.req.param("id")),
+          or(eq(t.tenantId, tenantId), isNull(t.tenantId)),
+        ),
+      )
       .limit(1);
     const panel = rows[0];
     if (!panel) throw new AppError("NOT_FOUND", "Panel not found");

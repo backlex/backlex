@@ -147,7 +147,18 @@ export const i18nRoutes = new Hono<AppBindings>()
   })
   .delete("/:id", async (c) => {
     const ctx = c.get("ctx");
+    const auth = c.get("auth");
+    if (!auth.tenantId) {
+      throw new AppError("UNAUTHORIZED", "Active tenant required");
+    }
     const t = tableFor(ctx.dialect);
-    await (ctx.db as any).delete(t).where(eq(t.id, c.req.param("id")));
+    await (ctx.db as any)
+      .delete(t)
+      .where(
+        and(
+          eq(t.id, c.req.param("id")),
+          or(eq(t.tenantId, auth.tenantId), isNull(t.tenantId)),
+        ),
+      );
     return c.json({ ok: true });
   });

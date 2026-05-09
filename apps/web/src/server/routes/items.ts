@@ -516,6 +516,7 @@ export const itemsRoutes = new Hono<AppBindings>()
         itemId: id,
         snapshot: beforeRow,
         userId: auth.userId,
+        tenantId: auth.tenantId ?? null,
       },
     );
     return c.json({ data: projectFields(refreshedRow, perm.fields) });
@@ -572,6 +573,7 @@ export const itemsRoutes = new Hono<AppBindings>()
         itemId: id,
         snapshot: oldRow,
         userId: auth.userId,
+        tenantId: auth.tenantId ?? null,
       },
     );
     return c.json({ ok: true });

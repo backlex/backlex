@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { DbCtx } from "./seed";
@@ -183,10 +183,23 @@ export const dispatchWebhooks = async (
   payload: { event: string; data: unknown },
 ): Promise<void> => {
   const t = webhooksTable(ctx.dialect);
+  // Pull the originating tenant from the event payload — every
+  // ItemEvent.data carries the row, which on tenant-scoped collections
+  // contains tenant_id/tenantId. When absent (system events with no
+  // tenant), fall through to the unscoped fan-out so global hooks still
+  // fire; the table-level fan-out is otherwise gated.
+  const data = payload.data as Record<string, unknown> | null | undefined;
+  const tenantId =
+    (data && typeof data === "object"
+      ? (data["tenantId"] ?? data["tenant_id"])
+      : null) as string | null | undefined;
+  const where = tenantId
+    ? and(eq(t.active, true), eq(t.tenantId, tenantId))
+    : eq(t.active, true);
   const rows = (await (ctx.db as any)
     .select()
     .from(t)
-    .where(eq(t.active, true))) as WebhookRow[];
+    .where(where)) as WebhookRow[];
   if (rows.length === 0) return;
 
   const body = JSON.stringify({
@@ -212,10 +225,13 @@ export const dispatchWebhooks = async (
   );
 };
 
-/** Re-attempt a single past delivery — finds the original webhook + event. */
+/** Re-attempt a single past delivery — finds the original webhook + event.
+ *  Caller supplies `tenantId` so retry from the admin UI can't reach into
+ *  another workspace's deliveries by guessing an id. */
 export const retryDelivery = async (
   ctx: DbCtx,
   deliveryId: string,
+  tenantId?: string | null,
 ): Promise<{ status: number; ms: number } | null> => {
   const dt = deliveriesTable(ctx.dialect);
   const wt = webhooksTable(ctx.dialect);
@@ -227,10 +243,13 @@ export const retryDelivery = async (
   const delivery = dRows[0];
   if (!delivery) return null;
 
+  const hookWhere = tenantId
+    ? and(eq(wt.id, delivery.webhookId), eq(wt.tenantId, tenantId))
+    : eq(wt.id, delivery.webhookId);
   const wRows = (await (ctx.db as any)
     .select()
     .from(wt)
-    .where(eq(wt.id, delivery.webhookId))) as WebhookRow[];
+    .where(hookWhere)) as WebhookRow[];
   const hook = wRows[0];
   if (!hook) return null;
 
@@ -259,12 +278,33 @@ export const retryDelivery = async (
   return { status: out.status, ms: out.ms };
 };
 
-/** Recent deliveries across one webhook (or all when omitted). */
+/** Recent deliveries across one webhook (or all when omitted). When
+ *  `tenantId` is set, deliveries are restricted to webhooks that belong
+ *  to that workspace via an inner join. */
 export const listDeliveries = async (
   ctx: DbCtx,
-  opts: { webhookId?: string; limit?: number } = {},
+  opts: { webhookId?: string; limit?: number; tenantId?: string | null } = {},
 ): Promise<WebhookDeliveryRow[]> => {
   const t = deliveriesTable(ctx.dialect);
+  const wt = webhooksTable(ctx.dialect);
+  if (opts.tenantId) {
+    // Join through webhooks so a delivery is only visible to its owning
+    // workspace. Drizzle's row shape comes back nested under the table
+    // alias when joining; we project back to the flat WebhookDeliveryRow
+    // shape callers expect.
+    const rows = (await (ctx.db as any)
+      .select({ delivery: t })
+      .from(t)
+      .innerJoin(wt, eq(wt.id, t.webhookId))
+      .where(
+        opts.webhookId
+          ? and(eq(wt.tenantId, opts.tenantId), eq(t.webhookId, opts.webhookId))
+          : eq(wt.tenantId, opts.tenantId),
+      )
+      .orderBy(desc(t.deliveredAt))
+      .limit(opts.limit ?? 50)) as { delivery: WebhookDeliveryRow }[];
+    return rows.map((r) => r.delivery);
+  }
   let q: any = (ctx.db as any).select().from(t);
   if (opts.webhookId) q = q.where(eq(t.webhookId, opts.webhookId));
   q = q.orderBy(desc(t.deliveredAt)).limit(opts.limit ?? 50);

@@ -753,29 +753,30 @@ function FlowConnector({ x1, y1, x2, y2 }: { x1: number; y1: number; x2: number;
 export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void }) {
   type FnRow = { name: string; kind: string; trigger: string; lang: string; invocations: number; p95: number };
   const [funcs, setFuncs] = useState<FnRow[]>([]);
+  const [newOpen, setNewOpen] = useState(false);
   // Pull invocation counts + p95 from /api/admin/metrics/entities so the
   // sidebar + header show real numbers instead of hardcoded `1102 / 128ms`.
-  useEffect(() => {
-    void (async () => {
-      const [r, m] = await Promise.all([
-        fetchSafely<{ data: { name: string; trigger: string; pattern: string | null; active: boolean }[] }>("/api/functions"),
-        fetchSafely<{ data: { functions: Record<string, { invocations: number; p95Ms: number; lastInvoke: number | null }> } }>(`/api/admin/metrics/entities`),
-      ]);
-      const stats = m?.data?.functions ?? {};
-      if (Array.isArray(r?.data)) {
-        setFuncs(
-          r.data.map((f) => ({
-            name: f.name,
-            kind: f.trigger,
-            trigger: f.pattern ?? f.trigger,
-            lang: "js",
-            invocations: stats[f.name]?.invocations ?? 0,
-            p95: stats[f.name]?.p95Ms ?? 0,
-          })),
-        );
-      }
-    })();
-  }, []);
+  const reloadFuncs = async () => {
+    const [r, m] = await Promise.all([
+      fetchSafely<{ data: { name: string; trigger: string; pattern: string | null; active: boolean }[] }>("/api/functions"),
+      fetchSafely<{ data: { functions: Record<string, { invocations: number; p95Ms: number; lastInvoke: number | null }> } }>(`/api/admin/metrics/entities`),
+    ]);
+    const stats = m?.data?.functions ?? {};
+    if (Array.isArray(r?.data)) {
+      setFuncs(
+        r.data.map((f) => ({
+          name: f.name,
+          kind: f.trigger,
+          trigger: f.pattern ?? f.trigger,
+          lang: "js",
+          invocations: stats[f.name]?.invocations ?? 0,
+          p95: stats[f.name]?.p95Ms ?? 0,
+        })),
+      );
+    }
+    return r?.data ?? [];
+  };
+  useEffect(() => { void reloadFuncs(); }, []);
   const [active, setActive] = useState<FnRow | null>(null);
   // Auto-select first function once funcs are loaded.
   useEffect(() => {
@@ -857,30 +858,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
       <PageHeader
         title="Functions"
         description="Sandboxed JS — HTTP, event-trigger, or cron. Provider auto-selected per runtime."
-        actions={<Button variant="primary" icon={I.Plus} onClick={async () => {
-          const name = prompt("Function name (snake_case)", "new_function");
-          if (!name) return;
-          try {
-            await api("/api/functions", {
-              method: "POST",
-              body: JSON.stringify({
-                name: name.toLowerCase().replace(/[^a-z0-9_]/g, "_"),
-                trigger: "http",
-                pattern: `POST /fn/${name}`,
-                code: "export default async function handler({ event, ctx }) { return { ok: true }; }",
-                timeoutMs: 5000,
-                active: true,
-              }),
-            });
-            pushToast(`Function "${name}" created.`);
-            const r = await api<{ data: any[] }>("/api/functions");
-            if (r.data?.length) {
-              setFuncs(r.data.map((f) => ({ name: f.name, kind: f.trigger, trigger: f.pattern ?? f.trigger, lang: "js", invocations: 0, p95: 0 })));
-            }
-          } catch (e) {
-            pushToast((e as Error).message);
-          }
-        }}>New function</Button>}
+        actions={<Button variant="primary" icon={I.Plus} onClick={() => setNewOpen(true)}>New function</Button>}
       />
 
       <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 14, alignItems: "start" }}>
@@ -945,6 +923,229 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
           </div>
           </>
           )}
+        </div>
+      </div>
+
+      {newOpen && (
+        <NewFunctionDialog
+          existing={funcs.map((f) => f.name)}
+          onClose={() => setNewOpen(false)}
+          onCreated={async (created) => {
+            const all = await reloadFuncs();
+            const fresh = all.find((f) => f.name === created.name);
+            if (fresh) {
+              setActive({
+                name: fresh.name,
+                kind: fresh.trigger,
+                trigger: fresh.pattern ?? fresh.trigger,
+                lang: "js",
+                invocations: 0,
+                p95: 0,
+              });
+            }
+            setNewOpen(false);
+            pushToast(`Function "${created.name}" created.`);
+          }}
+          onError={(msg) => pushToast(msg)}
+        />
+      )}
+    </div>
+  );
+}
+
+const SAMPLE_HTTP = `// ctx.data is the request body, ctx.user has the caller
+console.log("invoked by", ctx.user.email);
+return { greeting: "hello " + (ctx.data.name || "world") };`;
+
+const SAMPLE_EVENT = `// For event triggers, ctx.data = { event, data }
+console.log("event", ctx.data.event, "on", ctx.data.data.id);`;
+
+const SAMPLE_CRON = `// For cron, ctx.data = { firedAt, pattern }
+console.log("cron tick at", ctx.data.firedAt);`;
+
+function NewFunctionDialog({
+  existing,
+  onClose,
+  onCreated,
+  onError,
+}: {
+  existing: string[];
+  onClose: () => void;
+  onCreated: (created: { name: string; trigger: string; pattern: string | null }) => void;
+  onError: (msg: string) => void;
+}) {
+  type Trigger = "http" | "event" | "cron";
+  const [name, setName] = useState("");
+  const [trigger, setTrigger] = useState<Trigger>("http");
+  const [pattern, setPattern] = useState("");
+  const [code, setCode] = useState(SAMPLE_HTTP);
+  const [timeoutMs, setTimeoutMs] = useState(5000);
+  const [active, setActiveFlag] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  const sampleFor = (t: Trigger): string =>
+    t === "http" ? SAMPLE_HTTP : t === "event" ? SAMPLE_EVENT : SAMPLE_CRON;
+
+  const onTriggerChange = (next: string) => {
+    const t = next as Trigger;
+    setTrigger(t);
+    setCode(sampleFor(t));
+    if (t === "cron") setPattern("*/5 * * * *");
+    else if (t === "event") setPattern("items:*:*");
+    else setPattern("");
+  };
+
+  const nameRegex = /^[a-z][a-z0-9_-]*$/;
+  const nameError = name.length === 0
+    ? "Required."
+    : !nameRegex.test(name)
+      ? "Lowercase letters, digits, _ or -; must start with a letter."
+      : existing.includes(name)
+        ? "A function with that name already exists."
+        : null;
+  const patternRequired = trigger !== "http";
+  const patternError = patternRequired && !pattern.trim() ? "Required." : null;
+  const codeError = code.trim().length === 0 ? "Required." : null;
+  const timeoutError =
+    !Number.isFinite(timeoutMs) || timeoutMs < 50 || timeoutMs > 60_000
+      ? "Must be between 50 and 60000."
+      : null;
+  const valid = !nameError && !patternError && !codeError && !timeoutError;
+
+  const submit = async () => {
+    if (!valid || busy) return;
+    setBusy(true);
+    try {
+      await api("/api/functions", {
+        method: "POST",
+        body: JSON.stringify({
+          name,
+          trigger,
+          pattern: trigger === "http" ? null : pattern,
+          code,
+          timeoutMs,
+          active,
+        }),
+      });
+      onCreated({ name, trigger, pattern: trigger === "http" ? null : pattern });
+    } catch (e) {
+      onError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="dialog-backdrop" onClick={onClose}>
+      <div
+        className="dialog-lg"
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: 640, maxWidth: "94vw", maxHeight: "90vh", display: "flex", flexDirection: "column" }}
+      >
+        <div className="sheet-header" style={{ borderBottom: "1px solid var(--border)" }}>
+          <div style={{ flex: 1 }}>
+            <h2>New function</h2>
+            <p>Sandboxed JS. HTTP for manual invoke, event for pub-sub triggers, or cron for scheduled runs.</p>
+          </div>
+          <IconButton icon={I.X} onClick={onClose} title="Close" />
+        </div>
+
+        <div className="dialog-body" style={{ overflow: "auto" }}>
+          <div className="field">
+            <label className="field-label">Name <span style={{ color: "var(--destructive)" }}>*</span></label>
+            <input
+              className={`input font-mono ${nameError && name ? "error" : ""}`}
+              autoFocus
+              placeholder="my_function"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            {nameError && name ? (
+              <div className="field-error"><I.AlertTriangle size={11} />{nameError}</div>
+            ) : (
+              <span className="field-hint">Lowercase, digits, <span className="font-mono">_</span> or <span className="font-mono">-</span>. Cannot be changed later.</span>
+            )}
+          </div>
+
+          <div className="field-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div className="field">
+              <label className="field-label">Trigger</label>
+              <Select
+                value={trigger}
+                onChange={onTriggerChange}
+                options={[
+                  { value: "http", label: "http", hint: "manual invoke via POST /api/functions/:name/invoke" },
+                  { value: "event", label: "event", hint: "fires on matching pub-sub channel events" },
+                  { value: "cron", label: "cron", hint: "scheduled — granularity is 1 minute" },
+                ]}
+              />
+            </div>
+            <div className="field">
+              <label className="field-label">Timeout (ms)</label>
+              <input
+                className={`input ${timeoutError ? "error" : ""}`}
+                type="number"
+                min={50}
+                max={60000}
+                value={timeoutMs}
+                onChange={(e) => setTimeoutMs(Number(e.target.value))}
+              />
+              {timeoutError && <div className="field-error"><I.AlertTriangle size={11} />{timeoutError}</div>}
+            </div>
+          </div>
+
+          {trigger !== "http" && (
+            <div className="field">
+              <label className="field-label">{trigger === "cron" ? "Cron expression" : "Event pattern"} <span style={{ color: "var(--destructive)" }}>*</span></label>
+              <input
+                className={`input font-mono ${patternError ? "error" : ""}`}
+                value={pattern}
+                onChange={(e) => setPattern(e.target.value)}
+                placeholder={trigger === "cron" ? "*/5 * * * *" : "items:posts:*"}
+              />
+              {patternError ? (
+                <div className="field-error"><I.AlertTriangle size={11} />{patternError}</div>
+              ) : (
+                <span className="field-hint">
+                  {trigger === "cron"
+                    ? "5-field cron (minute hour day month weekday)."
+                    : "Examples: items:posts:created, items:posts:*, items:*:*"}
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="field">
+            <label className="field-label">Code <span style={{ color: "var(--destructive)" }}>*</span></label>
+            <textarea
+              className={`textarea font-mono ${codeError ? "error" : ""}`}
+              style={{ minHeight: 200, fontSize: 12, whiteSpace: "pre" }}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              spellCheck={false}
+            />
+            <span className="field-hint">
+              Globals: <span className="font-mono">ctx.data</span>, <span className="font-mono">ctx.user</span>, <span className="font-mono">console.log</span>. Sync-only in v1; runs in QuickJS-WASM sandbox.
+            </span>
+          </div>
+
+          <div className="field-row">
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 500 }}>Active</div>
+              <div className="muted" style={{ fontSize: 11.5 }}>When paused, triggers stop firing and HTTP invokes are rejected.</div>
+            </div>
+            <Switch checked={active} onChange={setActiveFlag} />
+          </div>
+        </div>
+
+        <div className="sheet-footer">
+          <div className="spacer" />
+          <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button variant="primary" onClick={submit} disabled={!valid || busy}>
+            {busy ? "Creating…" : "Create function"}
+          </Button>
         </div>
       </div>
     </div>

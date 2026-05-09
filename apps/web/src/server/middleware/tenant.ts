@@ -125,6 +125,11 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   }
 
   c.set("auth", { ...auth, tenantId });
+  // Stamp the request start so route handlers can pass duration_ms to
+  // recordActivity without each one having to remember to capture Date.now().
+  // Use Hono's typed `set` — assigning to `c.var` directly hits a Proxy that
+  // doesn't persist arbitrary keys.
+  (c as unknown as { set: (k: string, v: unknown) => void }).set("__startedAt", Date.now());
   await next();
 
   // Cookie has to be appended *after* next() — better-auth (and any other

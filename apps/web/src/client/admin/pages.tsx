@@ -51,6 +51,19 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
   // we render zero series so the page still draws but doesn't lie about
   // throughput like the original mock did (14,820 req).
   const [metrics, setMetrics] = useState<ApiMetrics | null>(null);
+  const [runtime, setRuntime] = useState<ApiRuntime | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await settingsApi.runtime();
+        if (!cancelled) setRuntime(r.data);
+      } catch {
+        // unauthenticated — Health card falls back to design profile labels
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -73,35 +86,62 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
   const errorPct = metrics?.totals.errorRate != null ? (metrics.totals.errorRate * 100).toFixed(2) + "%" : "—";
   const activeUsers = metrics?.totals.activeUsers ?? 0;
 
+  const p95 = metrics?.totals.p95Ms ?? 0;
   const todayMetrics = [
     { label: "Requests", value: totalRequests.toLocaleString(), delta: range, up: true, series: reqSeries, color: "var(--primary)" },
-    { label: "Mutations", value: String(reqSeries.reduce((a, b) => a + b, 0)), delta: range, up: true, series: latSeries, color: "oklch(0.65 0.15 240)" },
+    { label: "p95 latency", value: p95 ? `${p95}ms` : "—", delta: "duration_ms", up: p95 < 500, series: latSeries, color: "oklch(0.65 0.15 240)" },
     { label: "Error rate", value: errorPct, delta: "errors", up: (metrics?.totals.errorRate ?? 0) < 0.05, series: errSeries, color: "oklch(0.7 0.18 22)" },
     { label: "Active users", value: String(activeUsers), delta: range, up: activeUsers > 0, series: errSeries, color: "oklch(0.72 0.16 145)" },
   ];
 
-  // Top collections: shown as the live counts the metrics endpoint already
-  // returns; we don't yet aggregate per-collection writes so the row count
-  // doubles as the highlight. Replace with real per-collection metrics
-  // when /api/admin/metrics adds a `top` field.
-  const collections = [
-    { slug: "posts", rows: metrics?.counts.collections ?? 0, size: "—", last: "—", writes: 0 },
-  ];
+  const fmtAgo = (ts: number | null | undefined): string => {
+    if (!ts) return "—";
+    const ms = Date.now() - ts;
+    if (ms < 60_000) return "just now";
+    if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
+    if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
+    return `${Math.floor(ms / 86_400_000)}d ago`;
+  };
+  const fmtBytes = (n: number) => {
+    if (!n) return "—";
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
-  const activity = [
-    { t: "14:23", who: "rana", verb: "updated", what: "posts/01HZ7K8Q6XYZ", icon: I.Pencil },
-    { t: "14:21", who: "flow", verb: "ran", what: "Notify on new comment · 184ms", icon: I.Bolt },
-    { t: "14:18", who: "kai", verb: "created", what: "API key · pak_a4e2b9c1", icon: I.Code },
-    { t: "14:12", who: "fn", verb: "invoked", what: "reindex · 1102 calls today", icon: I.Function },
-    { t: "14:04", who: "priya", verb: "signed up", what: "priya@external.io", icon: I.Users },
-    { t: "13:58", who: "system", verb: "migrated", what: "c_posts · added reading_time", icon: I.Braces },
-  ];
+  const collections = (metrics?.topCollections ?? []).map((c) => ({
+    slug: c.slug,
+    rows: c.rows,
+    size: "—",
+    last: fmtAgo(c.lastWrite),
+    writes: 0,
+  }));
 
-  const recentErrors = [
-    { code: 502, count: 4, hook: "wh_3", msg: "Connection refused", last: "2m ago" },
-    { code: 403, count: 12, hook: "GET /api/items/comments", msg: "permission denied — public.read", last: "8m ago" },
-    { code: 500, count: 1, hook: "fn:digest", msg: 'TypeError: cannot read property "id"', last: "1h ago" },
-  ];
+  const iconForAction = (a: string) => {
+    if (a.startsWith("create")) return I.Plus;
+    if (a.startsWith("update") || a.startsWith("schema")) return I.Pencil;
+    if (a.startsWith("delete")) return I.Trash;
+    if (a.startsWith("auth.")) return I.Users;
+    if (a.startsWith("flow")) return I.Bolt;
+    if (a.startsWith("storage")) return I.Folder;
+    if (a.startsWith("webhook")) return I.Webhook;
+    return I.Activity;
+  };
+  const activity = (metrics?.recent ?? []).slice(0, 6).map((r) => ({
+    t: new Date(r.t).toISOString().slice(11, 16),
+    who: r.userId ?? "system",
+    verb: r.action,
+    what: r.itemId ? `${r.collection}/${r.itemId.slice(0, 12)}` : (r.collection ?? "—"),
+    icon: iconForAction(r.action),
+  }));
+
+  const recentErrors = (metrics?.recentErrors ?? []).map((e) => ({
+    code: e.code,
+    count: e.count,
+    hook: e.resource,
+    msg: e.msg,
+    last: fmtAgo(e.last),
+  }));
 
   const quickActions = [
     { label: "New collection", icon: I.Database, hint: "auto-creates c_<slug> table", onClick: () => { setActiveNav("collections"); pushToast("Collection wizard opened."); } },
@@ -118,14 +158,17 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
     { label: "Functions", value: c?.functions ?? 0, sub: "sandboxed handlers", nav: "functions", icon: I.Function },
   ];
 
-  const requests = [
-    { t: "14:23:11", m: "GET", p: "/api/items/posts", s: 200, ms: 18 },
-    { t: "14:23:09", m: "POST", p: "/api/items/posts", s: 201, ms: 24 },
-    { t: "14:23:02", m: "GET", p: "/api/storage", s: 200, ms: 11 },
-    { t: "14:22:58", m: "PATCH", p: "/api/items/posts/01HZ7K8Q6XYZ", s: 200, ms: 27 },
-    { t: "14:22:51", m: "GET", p: "/api/items/comments", s: 403, ms: 6 },
-    { t: "14:22:44", m: "POST", p: "/api/auth/sign-in/social", s: 302, ms: 41 },
-  ];
+  // Real recent activity → "Request log" panel. Activity rows don't carry
+  // HTTP method/status (those live at the edge) so we surface action and
+  // collection in the slot the design used for method/path. ms is filled
+  // when Sprint 5's duration capture lands.
+  const requests = (metrics?.recent ?? []).slice(0, 6).map((r) => ({
+    t: new Date(r.t).toISOString().slice(11, 19),
+    m: r.action.split(".")[0]?.toUpperCase() ?? "—",
+    p: r.collection ? `/${r.collection}${r.itemId ? "/" + r.itemId.slice(0, 10) : ""}` : `/api/${r.action}`,
+    s: /error|fail|denied/.test(r.action) ? 500 : 200,
+    ms: r.ms ?? 0,
+  }));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -274,13 +317,36 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
               <div className="spacer" />
               <span className="adapter-pill"><span className="dot" />{adapter === "workers" ? "cf workers" : adapter}</span>
             </div>
-            {[
-              ["Database", profile.db, "connected", "12ms"],
-              ["Storage", profile.storage, "connected", "24ms"],
-              ["Realtime", profile.realtime, "connected", "4 conn"],
-              ["Sandbox", profile.sandbox, "idle", "0 jobs"],
-              ["Email", adapter === "bun" ? "console (dev)" : "resend", adapter === "bun" ? "idle" : "connected", adapter === "bun" ? "—" : "sg.io"],
-            ].map(([k, v, status, hint], i, arr) => (
+            {(() => {
+              // Live health rows derived from /api/admin/settings/runtime.
+              // Each row's status reflects whether the binding/adapter is
+              // actually present at runtime — no fake latency numbers.
+              const bindByName = new Map(
+                (runtime?.bindings ?? []).map((b) => [b.name, b]),
+              );
+              const envSet = new Set(
+                (runtime?.envVars ?? [])
+                  .filter((v) => v.set)
+                  .map((v) => v.key),
+              );
+              const dbBinding = bindByName.get("D1") ?? bindByName.get("DB");
+              const storageBinding = bindByName.get("R2") ?? bindByName.get("ASSETS");
+              const realtimeBinding = bindByName.get("REALTIME");
+              const vectorizeBinding = bindByName.get("VECTORIZE");
+              const dbStatus = dbBinding ? dbBinding.status : adapter === "vercel" ? (envSet.has("DATABASE_URL") ? "connected" : "optional") : "connected";
+              const storageStatus = storageBinding ? storageBinding.status : adapter === "bun" ? "connected" : (envSet.has("S3_BUCKET") ? "connected" : "optional");
+              const realtimeStatus = realtimeBinding ? realtimeBinding.status : adapter === "bun" ? "connected" : "optional";
+              const emailConnected = envSet.has("RESEND_API_KEY") && envSet.has("EMAIL_FROM");
+              const rows = [
+                ["Database", profile.db, dbStatus === "connected" ? "connected" : "optional", dbBinding?.target ?? profile.db],
+                ["Storage", profile.storage, storageStatus === "connected" ? "connected" : "optional", storageBinding?.target ?? profile.storage],
+                ["Realtime", profile.realtime, realtimeStatus === "connected" ? "connected" : "optional", realtimeBinding?.target ?? profile.realtime],
+                ["Sandbox", profile.sandbox, "idle", profile.sandbox],
+                ["Vectorize", "vector index", vectorizeBinding ? "connected" : "optional", vectorizeBinding?.target ?? "—"],
+                ["Email", emailConnected ? "resend" : "console (dev)", emailConnected ? "connected" : "idle", emailConnected ? "EMAIL_FROM set" : "no provider"],
+              ];
+              return rows;
+            })().map(([k, v, status, hint], i, arr) => (
               <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : 0, paddingBottom: 9 }}>
                 <div>
                   <div style={{ fontSize: 12.5, fontWeight: 500 }}>{k}</div>

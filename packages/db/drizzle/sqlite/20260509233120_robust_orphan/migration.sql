@@ -1,0 +1,1 @@
+ALTER TABLE `activity` ADD `duration_ms` integer;

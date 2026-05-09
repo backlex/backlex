@@ -318,7 +318,7 @@ export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
   useEffect(() => {
     void (async () => {
       const r = await fetchSafely<{ data: { id: string; name: string; trigger: string; active: boolean }[] }>("/api/flows");
-      if (r?.data && r.data.length > 0) {
+      if (Array.isArray(r?.data)) {
         setFlows(
           r.data.map((f) => ({
             id: f.id,
@@ -497,7 +497,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
   useEffect(() => {
     void (async () => {
       const r = await fetchSafely<{ data: { name: string; trigger: string; pattern: string | null; active: boolean }[] }>("/api/functions");
-      if (r?.data && r.data.length > 0) {
+      if (Array.isArray(r?.data)) {
         setFuncs(
           r.data.map((f) => ({
             name: f.name,
@@ -696,7 +696,7 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
   const [hooks, setHooks] = useState(seedHooks);
   const reloadHooks = async () => {
     const r = await fetchSafely<{ data: any[] }>("/api/webhooks");
-    if (r?.data && r.data.length > 0) {
+    if (Array.isArray(r?.data)) {
       setHooks(
         r.data.map((h) => ({
           id: h.id,
@@ -733,7 +733,7 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
   const reloadDeliveries = async () => {
     try {
       const r = await api<{ data: any[] }>("/api/webhooks/_deliveries");
-      if (Array.isArray(r.data) && r.data.length > 0) {
+      if (Array.isArray(r.data)) {
         setDeliveries(
           r.data.map((d) => ({
             id: d.id,
@@ -1545,7 +1545,7 @@ export function ApiKeysPage({ pushToast }: { pushToast: (m: string) => void }) {
   const [keys, setKeys] = useState(seed);
   const reloadKeys = async () => {
     const r = await fetchSafely<{ data: any[] }>("/api/api-keys");
-    if (r?.data && r.data.length > 0) {
+    if (Array.isArray(r?.data)) {
       setKeys(
         r.data.map((k) => ({
           id: k.id,
@@ -1625,6 +1625,27 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
   const [signupOpen, setSignupOpen] = useState(false);
   const [telemetry, setTelemetry] = useState(false);
   const [dirty, setDirty] = useState(false);
+  // Hydrate the General-tab form from /api/admin/settings on mount. The
+  // backend merges defaults from env (APP_URL, EMAIL_FROM) so a fresh
+  // workspace lands with the actual deploy URL pre-filled.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await settingsApi.load();
+        if (cancelled) return;
+        const d = r.data as Record<string, unknown>;
+        if (typeof d.siteName === "string") setSiteName(d.siteName);
+        if (typeof d.appUrl === "string") setAppUrl(d.appUrl);
+        if (typeof d.emailFrom === "string") setFrom(d.emailFrom);
+        if (typeof d.openSignup === "boolean") setSignupOpen(d.openSignup);
+        if (typeof d.telemetry === "boolean") setTelemetry(d.telemetry);
+      } catch {
+        // keep seed
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const [bindings, setBindings] = useState([
     { id: 1, type: "D1", name: "DB", target: "workeros-db", status: "connected", warn: undefined as string | undefined },

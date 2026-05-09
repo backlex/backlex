@@ -87,6 +87,9 @@ export const users = pgTable(
     /** active | suspended. */
     status: text("status").notNull().default("active"),
     suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+    /** Required by better-auth's `anonymous` plugin (AUTH_PLUGINS list).
+     *  False for normal sign-ups; flips on anonymous-session promotion. */
+    isAnonymous: boolean("is_anonymous").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

@@ -161,17 +161,31 @@ export function RealtimeTail({ events, channel, connected }: { events: RealtimeE
 }
 
 export function SchemaView({ schema, onAddField, onDropField }: { schema: CollectionSchema; onAddField: () => void; onDropField: (name: string) => void }) {
+  // schema.fields contains ONLY user-defined columns (the API's source of
+  // truth). The schema page also wants to surface the implicit system
+  // columns (id / created_at / updated_at / owner_id) so users can see
+  // they exist — synthesize them here for display only. They're never
+  // sent back to the server (PATCH would 422 on reserved names).
+  const userFields = schema.fields;
+  const has = (n: string) => userFields.some((f) => f.name === n);
+  const systemRows = [
+    !has("id") && { name: "id", type: "uuid", system: true, nullable: false, default: "gen_uuid()" },
+    !has("created_at") && { name: "created_at", type: "timestamp", system: true, nullable: false, default: "now()" },
+    !has("updated_at") && { name: "updated_at", type: "timestamp", system: true, nullable: false, default: "now()" },
+    schema.ownerScoped && !has("owner_id") && { name: "owner_id", type: "uuid", system: true, nullable: false, default: "$user.id" },
+  ].filter(Boolean) as typeof userFields;
+  const allFields = [...userFields, ...systemRows];
   return (
     <div className="card">
       <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <I.Braces size={14} />
         <span style={{ fontSize: 13, fontWeight: 500 }}>fields</span>
-        <span className="font-mono" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{schema.fields.length} total · {schema.fields.filter((f) => !f.system).length} editable</span>
+        <span className="font-mono" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{allFields.length} total · {userFields.length} editable</span>
         <div className="spacer" />
         <Button variant="primary" size="sm" icon={I.Plus} onClick={onAddField}>Add field</Button>
       </div>
       <div>
-        {schema.fields.map((f) => (
+        {allFields.map((f) => (
           <div key={f.name} className="schema-row">
             <span className="grip"><I.Grip size={14} /></span>
             <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>

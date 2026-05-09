@@ -165,7 +165,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
           setCollections(mapped);
         }
       } catch {
-        // keep mock seed on auth/network failure
+        // leave collections empty on auth/network failure
       }
     })();
     return () => { cancelled = true; };
@@ -663,12 +663,6 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
 
 function RolesPageWithMembers({ pushToast }: { pushToast: (m: string) => void }) {
   const [tab, setTab] = useState<"members" | "roles">("members");
-  const initialRoles: RoleData[] = [
-    { name: "admin", system: true, description: "Full access" },
-    { name: "editor", system: false, description: "Content editing" },
-    { name: "authenticated", system: true, description: "Default for signed-in" },
-    { name: "public", system: true, description: "Anonymous read" },
-  ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div className="ce-tabs" style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius-xl)", padding: 4 }}>
@@ -681,19 +675,14 @@ function RolesPageWithMembers({ pushToast }: { pushToast: (m: string) => void })
           </button>
         ))}
       </div>
-      {tab === "members" && <MembersPanel roles={initialRoles} pushToast={pushToast} />}
+      {tab === "members" && <MembersPanel roles={[]} pushToast={pushToast} />}
       {tab === "roles" && <PermissionsPanel pushToast={pushToast} />}
     </div>
   );
 }
 
 function PermissionsPanel({ pushToast }: { pushToast: (m: string) => void }) {
-  const initial: RoleData[] = [
-    { name: "admin", system: true, badges: ["bypass"], description: "Full access — bypasses all rules.", matrix: { read: "all", create: "all", update: "all", delete: "all" }, rule: "— all actions on all collections" },
-    { name: "authenticated", system: true, badges: ["additive"], description: "Default for signed-in users.", matrix: { read: "auth", create: "auth", update: "owner", delete: "owner" }, rule: '{ owner_id: { _eq: "$user.id" } } on read/update/delete' },
-    { name: "public", system: true, badges: [], description: "Anonymous read-only access.", matrix: { read: "published", create: "none", update: "none", delete: "none" }, rule: 'read on { status: { _eq: "published" } }, no fields restriction' },
-  ];
-  const [roles, setRoles] = useState<RoleData[]>(initial);
+  const [roles, setRoles] = useState<RoleData[]>([]);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -712,7 +701,7 @@ function PermissionsPanel({ pushToast }: { pushToast: (m: string) => void }) {
           );
         }
       } catch {
-        // keep seed
+        // leave roles empty
       }
     })();
     return () => { cancelled = true; };

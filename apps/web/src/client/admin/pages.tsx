@@ -6,6 +6,7 @@ import { MOCK, type AdapterId } from "./mock";
 import { Badge, Button, Checkbox, IconButton, PageHeader, Switch } from "./ui";
 import { Select } from "./select";
 import { FlowBuilder } from "./flow-builder";
+import { compileGraph, decompileGraph, FlowCompileError, type Graph } from "./flow-graph";
 import { RealtimeTail, type RealtimeEvent } from "./extras";
 import {
   api,
@@ -428,43 +429,71 @@ export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
   const [editingFlow, setEditingFlow] = useState<any>(null);
   const flow = flows.find((f) => f.id === active);
 
-  const openBuilder = (f: any) => { setEditingFlow(f); setBuilderOpen(true); };
+  // Edit path fetches the full row so we can rehydrate the builder graph
+  // from the persisted layout (or fall back to op-only synthesis).
+  const openBuilder = async (f: any) => {
+    try {
+      const res = await api<{ data: { id: string; name: string; trigger: string; operations: any[]; layout: Graph | null; active: boolean } }>(`/api/flows/${f.id}`);
+      const row = res.data;
+      const graph = decompileGraph({
+        trigger: row.trigger,
+        operations: row.operations ?? [],
+        layout: row.layout ?? null,
+      });
+      setEditingFlow({
+        id: row.id,
+        name: row.name,
+        enabled: row.active,
+        nodes: graph.nodes,
+        edges: graph.edges,
+      });
+      setBuilderOpen(true);
+    } catch (e) {
+      pushToast((e as Error).message);
+    }
+  };
   const newFlow = () => { setEditingFlow(null); setBuilderOpen(true); };
   const saveFromBuilder = async (data: any) => {
     try {
+      const compiled = compileGraph({ nodes: data.nodes ?? [], edges: data.edges ?? [] });
+      compiled.warnings.forEach((w) => pushToast(`⚠ ${w}`));
+      const payload = {
+        name: data.name,
+        trigger: compiled.trigger,
+        operations: compiled.operations,
+        layout: compiled.layout,
+        active: data.enabled,
+      };
       if (data.id) {
         await api(`/api/flows/${data.id}`, {
           method: "PATCH",
-          body: JSON.stringify({
-            name: data.name,
-            active: data.enabled,
-            operations: data.nodes ?? [],
-          }),
+          body: JSON.stringify(payload),
         });
         setFlows((arr) =>
-          arr.map((f) => (f.id === data.id ? { ...f, name: data.name, status: data.enabled ? "active" : "paused" } : f)),
+          arr.map((f) =>
+            f.id === data.id
+              ? { ...f, name: data.name, trigger: compiled.trigger, status: data.enabled ? "active" : "paused" }
+              : f,
+          ),
         );
       } else {
         const res = await api<{ data: { id: string } }>(`/api/flows`, {
           method: "POST",
-          body: JSON.stringify({
-            name: data.name,
-            trigger: "items.posts.updated",
-            operations: data.nodes ?? [],
-            active: data.enabled,
-          }),
+          body: JSON.stringify(payload),
         });
         const id = res.data.id;
         setFlows((arr) => [
-          { id, name: data.name, trigger: "items.posts.updated", actions: ["fn"], status: data.enabled ? "active" : "paused", runs: 0 },
+          { id, name: data.name, trigger: compiled.trigger, actions: [], status: data.enabled ? "active" : "paused", runs: 0 },
           ...arr,
         ]);
         setActive(id);
       }
+      setBuilderOpen(false);
     } catch (e) {
-      pushToast((e as Error).message);
+      // Compile errors stay in the builder so the user can fix without losing
+      // the canvas; only show a toast and DON'T close the modal.
+      pushToast(e instanceof FlowCompileError ? `Cannot save: ${e.message}` : (e as Error).message);
     }
-    setBuilderOpen(false);
   };
 
   return (

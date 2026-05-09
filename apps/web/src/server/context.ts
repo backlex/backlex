@@ -25,6 +25,7 @@ import {
   ensureTenantMembership,
   userCount,
 } from "./services/seed";
+import { publishEvent } from "./services/events";
 import type { Env } from "./env";
 
 export interface Ctx {
@@ -80,6 +81,10 @@ export const buildContext = (env: Env): Ctx => {
         p === "passkey",
     );
 
+  // Holds the fully assembled Ctx so hooks set up before the assignment can
+  // still reach storage/vector/image once they're built.
+  let fullCtx: Ctx | undefined;
+
   const auth = createAuth(db, dialect, {
     baseURL: env.APP_URL,
     secret: env.AUTH_SECRET,
@@ -104,6 +109,16 @@ export const buildContext = (env: Env): Ctx => {
           user.email,
           total <= 1 ? "owner" : "member",
         );
+        // Fan out to flows + webhooks. `fullCtx` is set at the bottom of
+        // buildContext so it's available by the time a hook can fire.
+        if (fullCtx) {
+          await publishEvent(
+            env,
+            "auth",
+            { event: "signup", data: { id: user.id, email: user.email, tenantId } },
+            { db, dialect, email: fullCtx.email, fullCtx },
+          );
+        }
       },
     },
   });
@@ -143,7 +158,11 @@ export const buildContext = (env: Env): Ctx => {
   // back to passthrough so the route still works (just without resizing).
   const image: ImageAdapter = bunImage() ?? passthroughImage();
 
-  return { env, dialect, db, auth, email, storage, vector, image };
+  const ctx: Ctx = { env, dialect, db, auth, email, storage, vector, image };
+  // Late-bind so the `onUserCreated` closure can publish events through the
+  // fully assembled Ctx (runFlows + webhook dispatch need `fullCtx`).
+  fullCtx = ctx;
+  return ctx;
 };
 
 const noVectorAdapter = (): VectorAdapter => {

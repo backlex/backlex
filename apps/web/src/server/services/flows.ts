@@ -1,10 +1,18 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import { matchesCondition } from "@workeros/db";
 import type { AuthSubject, Condition, Operation } from "@workeros/core";
 import type { Ctx } from "../context";
 import { runFunction } from "./sandbox";
+import { sendTemplatedEmail } from "./email";
+import { createItem, updateItem } from "./items-helpers";
+import { enqueueTask, type ResumePayload } from "./scheduled-tasks";
+
+/** Inline-sleep cap. Anything longer is enqueued so the worker isn't
+ *  blocked for minutes/hours at a time. */
+const MAX_INLINE_DELAY_MS = 30_000;
+const sleep = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
 
 export type { Operation };
 
@@ -83,6 +91,13 @@ const interpolate = (value: unknown, ctx: RunCtx): unknown => {
 
 class FlowOpError extends Error {}
 
+/** Sentinel thrown by long `delay` ops at the top of a flow. The runner
+ *  unwinds, persists the rest of the work to `scheduled_tasks`, and the
+ *  scheduler picks it back up when the clock catches up. */
+class FlowDeferred {
+  constructor(public readonly durationMs: number) {}
+}
+
 const buildUrl = (
   url: string,
   query?: Record<string, string>,
@@ -147,12 +162,37 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
   }
 
   if (op.type === "email") {
-    await ctx.ctx.email.send({
-      to: interpolate(op.to, ctx) as string,
-      subject: interpolate(op.subject, ctx) as string,
-      text: interpolate(op.text, ctx) as string,
+    const to = interpolate(op.to, ctx) as string;
+    // Render context for `{{ ... }}` placeholders inside the template body.
+    // Top-level `data` plus the flow user/last so templates can reach
+    // `{{ data.title }}`, `{{ $user.email }}`, `{{ $last.status }}`.
+    const renderVars: Record<string, unknown> = {
+      data: ctx.data,
+      $user: {
+        id: ctx.authSubject.userId,
+        email: ctx.authSubject.email,
+        roles: ctx.authSubject.roles,
+      },
+      $last: ctx.last,
+      ...((op.vars ? (interpolate(op.vars, ctx) as Record<string, unknown>) : {})),
+    };
+    // Tenant scope: fall back to the row's own tenantId if the runtime didn't
+    // supply one (event triggers don't carry an authSubject).
+    const tenantId =
+      ctx.authSubject.tenantId ??
+      ((ctx.data as { tenantId?: string | null } | undefined)?.tenantId ?? null);
+    const result = await sendTemplatedEmail(ctx.ctx, {
+      to,
+      templateKey: op.templateKey,
+      tenantId,
+      vars: renderVars,
+      fallback: {
+        subject: op.subject,
+        html: op.html,
+        text: op.text,
+      },
     });
-    return { sent: true };
+    return result;
   }
 
   if (op.type === "transform") {
@@ -220,6 +260,105 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
     }
   }
 
+  if (op.type === "function") {
+    const name = interpolate(op.name, ctx) as string;
+    const dialect = ctx.ctx.dialect;
+    const t =
+      dialect === "pg" ? pg.schema.functions : sqlite.schema.functions;
+    // Tenant-scoped lookup. Flows execute under the runtime's authSubject;
+    // when no tenant is bound (event triggers without auth), we fall back
+    // to the row's own tenantId if the payload carries one — matching the
+    // email template lookup behavior.
+    const tenantId =
+      ctx.authSubject.tenantId ??
+      ((ctx.data as { tenantId?: string | null } | undefined)?.tenantId ?? null);
+    const where =
+      tenantId == null
+        ? eq(t.name, name)
+        : and(eq(t.name, name), eq(t.tenantId, tenantId));
+    const rows = (await (ctx.ctx.db as any)
+      .select()
+      .from(t)
+      .where(where)
+      .limit(1)) as Array<{
+        code: string;
+        timeoutMs: number;
+        active: boolean | number;
+      }>;
+    const fn = rows[0];
+    if (!fn) throw new FlowOpError(`function "${name}" not found`);
+    if (!fn.active) throw new FlowOpError(`function "${name}" is inactive`);
+    const input = op.input !== undefined ? interpolate(op.input, ctx) : ctx.data;
+    const result = await runFunction(
+      fn.code,
+      { ctx: ctx.ctx, auth: ctx.authSubject },
+      { data: input, last: ctx.last },
+      fn.timeoutMs,
+    );
+    if (!result.ok) {
+      throw new FlowOpError(result.error ?? `function "${name}" failed`);
+    }
+    return result.value;
+  }
+
+  if (op.type === "item.create" || op.type === "item.update") {
+    // Tenant resolution: prefer the running auth subject, fall back to the
+    // event row's tenantId. Items are tenant-scoped at the DB layer, so an
+    // unresolvable tenant is a hard error rather than a silent skip.
+    const tenantId =
+      ctx.authSubject.tenantId ??
+      ((ctx.data as { tenantId?: string | null } | undefined)?.tenantId ?? null);
+    if (!tenantId) {
+      throw new FlowOpError(
+        `${op.type} requires a tenant — none on auth subject or event payload`,
+      );
+    }
+    const slug = interpolate(op.collection, ctx) as string;
+    const rawData = interpolate(op.data, ctx);
+    let data: Record<string, unknown>;
+    if (typeof rawData === "string") {
+      try {
+        data = JSON.parse(rawData) as Record<string, unknown>;
+      } catch {
+        throw new FlowOpError(
+          `${op.type} data did not parse as JSON: "${rawData.slice(0, 80)}…"`,
+        );
+      }
+    } else if (rawData && typeof rawData === "object") {
+      data = rawData as Record<string, unknown>;
+    } else {
+      throw new FlowOpError(
+        `${op.type} data must be an object or a JSON string`,
+      );
+    }
+    if (op.type === "item.create") {
+      const result = await createItem(ctx.ctx, {
+        slug,
+        tenantId,
+        ownerId: ctx.authSubject.userId,
+        data,
+      });
+      return result;
+    }
+    const id = interpolate(op.id, ctx) as string;
+    if (!id) throw new FlowOpError("item.update needs an id");
+    await updateItem(ctx.ctx, { slug, tenantId, id, data });
+    return { id, updated: true };
+  }
+
+  if (op.type === "delay") {
+    if (op.durationMs <= MAX_INLINE_DELAY_MS) {
+      await sleep(op.durationMs);
+      return { delayed: op.durationMs, persisted: false };
+    }
+    // Long delay — bubble out so runFlowOps can checkpoint the remaining
+    // ops to scheduled_tasks. Inside nested branches (onSuccess/condition),
+    // there's no checkpoint scope so this is rejected and we fall back to
+    // an inline sleep at the cap (best-effort) — the compiler warns when
+    // it sees nested long delays.
+    throw new FlowDeferred(op.durationMs);
+  }
+
   return undefined;
 };
 
@@ -228,6 +367,9 @@ const runOperation = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
   try {
     result = await executeOp(op, ctx);
   } catch (e) {
+    // Always bubble FlowDeferred — onError handlers shouldn't swallow a
+    // checkpoint signal.
+    if (e instanceof FlowDeferred) throw e;
     const errResult = {
       ok: false,
       error: e instanceof Error ? e.message : String(e),
@@ -252,16 +394,70 @@ const runOperation = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
 };
 
 const runFlowOps = async (
-  flow: Pick<FlowRow, "name" | "operations">,
+  flow: Pick<FlowRow, "id" | "name" | "operations">,
   runCtx: RunCtx,
 ): Promise<void> => {
-  try {
-    for (const op of flow.operations) {
-      runCtx.last = await runOperation(op as Operation, runCtx);
+  for (let i = 0; i < flow.operations.length; i++) {
+    const op = flow.operations[i] as Operation;
+    try {
+      runCtx.last = await runOperation(op, runCtx);
+    } catch (e) {
+      if (e instanceof FlowDeferred) {
+        const remainingOps = flow.operations.slice(i + 1) as Operation[];
+        if (remainingOps.length === 0) return; // nothing to resume to
+        const runAt = new Date(Date.now() + e.durationMs);
+        const payload: ResumePayload = {
+          kind: "flow-continuation",
+          flowName: flow.name,
+          remainingOps,
+          data: runCtx.data,
+          authSubject: runCtx.authSubject,
+          last: runCtx.last,
+        };
+        try {
+          await enqueueTask(runCtx.ctx, {
+            flowId: (flow as { id?: string }).id ?? null,
+            tenantId: runCtx.authSubject.tenantId ?? null,
+            runAt,
+            payload,
+          });
+          console.log(
+            `[flow] ${flow.name} paused for ${e.durationMs}ms — ${remainingOps.length} op(s) queued`,
+          );
+        } catch (err) {
+          console.error(
+            `[flow] ${flow.name} pause-enqueue failed`,
+            err,
+          );
+        }
+        return;
+      }
+      console.error(`[flow] ${flow.name} failed`, e);
+      return;
     }
-  } catch (e) {
-    console.error(`[flow] ${flow.name} failed`, e);
   }
+};
+
+/** Resume a previously checkpointed flow. Called by the scheduler tick
+ *  after `claimDueTasks` returns a row. The continuation re-enters the
+ *  same delay-aware runner so chained delays still checkpoint cleanly. */
+export const resumeContinuation = async (
+  ctx: Ctx,
+  payload: ResumePayload,
+): Promise<void> => {
+  const runCtx: RunCtx = {
+    data: payload.data,
+    authSubject: payload.authSubject,
+    ctx,
+    last: payload.last,
+  };
+  await runFlowOps(
+    {
+      name: payload.flowName ?? "(scheduled)",
+      operations: payload.remainingOps,
+    } as Pick<FlowRow, "id" | "name" | "operations">,
+    runCtx,
+  );
 };
 
 /**

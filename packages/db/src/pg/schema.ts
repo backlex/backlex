@@ -245,6 +245,32 @@ export const functions = pgTable(
   ],
 );
 
+/**
+ * Persistent task queue for delayed flow continuations. The flow runtime
+ * pauses on `delay` ops longer than ~30s by enqueuing the remaining ops
+ * and resuming on the next scheduler tick whose clock has caught up.
+ *
+ * `claimed_at` is the idempotency hook — the scheduler does an atomic
+ * `UPDATE ... WHERE claimed_at IS NULL ... RETURNING *` to win each row
+ * exactly once. After successful resumption the row is deleted.
+ */
+export const scheduledTasks = pgTable(
+  "scheduled_tasks",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    flowId: text("flow_id"),
+    payload: jsonb("payload").$type<unknown>().notNull(),
+    runAt: timestamp("run_at", { withTimezone: true }).notNull(),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("scheduled_tasks_run_idx").on(t.runAt, t.claimedAt),
+    index("scheduled_tasks_flow_idx").on(t.flowId),
+  ],
+);
+
 export const flows = pgTable(
   "flows",
   {
@@ -253,6 +279,10 @@ export const flows = pgTable(
     name: text("name").notNull(),
     trigger: text("trigger").notNull(),
     operations: jsonb("operations").$type<unknown[]>().notNull(),
+    /** Builder graph metadata: nodes (positions, types, configs) + edges.
+     *  The compiler reduces this to `operations` for runtime; layout is kept
+     *  so admins reopen the flow without losing their canvas. */
+    layout: jsonb("layout").$type<unknown>(),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

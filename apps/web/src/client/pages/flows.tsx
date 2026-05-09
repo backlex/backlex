@@ -68,6 +68,14 @@ const blankOperation = (type: OperationType): Operation => {
       return { type: "condition", filter: {}, then: [], else: [] };
     case "notification":
       return { type: "notification", title: "" };
+    case "function":
+      return { type: "function", name: "" };
+    case "item.create":
+      return { type: "item.create", collection: "", data: {} };
+    case "item.update":
+      return { type: "item.update", collection: "", id: "", data: {} };
+    case "delay":
+      return { type: "delay", durationMs: 5000 };
   }
 };
 

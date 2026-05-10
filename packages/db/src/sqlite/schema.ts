@@ -448,10 +448,14 @@ export const folders = sqliteTable(
     name: text("name").notNull(),
     parentId: text("parent_id"),
     ownerId: text("owner_id"),
+    tenantId: text("tenant_id"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },
-  (t) => [index("folders_parent_idx").on(t.parentId)],
+  (t) => [
+    index("folders_parent_idx").on(t.parentId),
+    index("folders_tenant_idx").on(t.tenantId),
+  ],
 );
 
 export const files = sqliteTable(

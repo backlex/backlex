@@ -1,6 +1,7 @@
 // @ts-nocheck
 // workeros admin — main app
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import "./admin.css";
 import "./flow-builder.css";
 import { I } from "./icons";
@@ -91,7 +92,23 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
     setTweaks((t) => ({ ...t, [k]: v }));
   }, []);
 
-  const [activeNav, setActiveNav] = useState(initialNav);
+  // activeNav + activeCollection are URL-driven so the address bar shows the
+  // current admin location and deep links work. Nav ids are mapped 1:1 to the
+  // first path segment; the collection slug (when on `collections`) lives in
+  // the second segment.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const NAV_IDS = useMemo(
+    () =>
+      new Set<string>([
+        ...MOCK.navItems.map((n) => n.id),
+        ...MOCK.navSettings.map((n) => n.id),
+      ]),
+    [],
+  );
+  const segs = location.pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+  const activeNav = segs[0] && NAV_IDS.has(segs[0]) ? segs[0] : initialNav;
+  const setActiveNav = useCallback((id: string) => { navigate("/" + id); }, [navigate]);
   const [activeTab, setActiveTab] = useState<"items" | "schema" | "permissions">("items");
   const [posts, setPosts] = useState<Post[]>([]);
   // Real items load — see effect after activeCollection is declared.
@@ -153,7 +170,11 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
     })();
     return () => { cancelled = true; };
   }, []);
-  const [activeCollection, setActiveCollection] = useState<string | null>(null);
+  const activeCollection = activeNav === "collections" && segs[1] ? segs[1] : null;
+  const setActiveCollection = useCallback(
+    (slug: string | null) => { navigate(slug ? "/collections/" + slug : "/collections"); },
+    [navigate],
+  );
   const [newCollectionOpen, setNewCollectionOpen] = useState(false);
 
   // Real items + schema load — both keyed off the active collection so

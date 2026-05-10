@@ -207,8 +207,8 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
           const Icon = a.icon;
           return (
             <button key={a.label} onClick={a.onClick} className="card" style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left", border: "1px dashed var(--border)", background: "transparent", font: "inherit", color: "inherit" }}>
-              <span style={{ width: 32, height: 32, borderRadius: "var(--radius-lg)", background: "color-mix(in oklch, var(--primary) 16%, var(--card))", display: "grid", placeItems: "center", color: "var(--primary-foreground)" }}>
-                <Icon size={14} style={{ color: "oklch(0.32 0.06 130)" }} />
+              <span style={{ width: 32, height: 32, borderRadius: "var(--radius-lg)", background: "color-mix(in oklch, var(--primary) 16%, var(--card))", display: "grid", placeItems: "center", color: "var(--primary)" }}>
+                <Icon size={14} />
               </span>
               <div style={{ display: "flex", flexDirection: "column" }}>
                 <span style={{ fontSize: 13, fontWeight: 500 }}>{a.label}</span>
@@ -1869,10 +1869,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
     return () => { cancelled = true; };
   }, []);
 
-  const [bindings, setBindings] = useState([
-    { id: 1, type: "D1", name: "DB", target: "workeros-db", status: "connected", warn: undefined as string | undefined },
-    { id: 2, type: "R2", name: "ASSETS", target: "workeros-assets", status: "connected", warn: undefined },
-  ]);
+  const [bindings, setBindings] = useState<{ id: number; type: string; name: string; target: string; status: string; warn: string | undefined }[]>([]);
   const [envVars, setEnvVars] = useState<{ id: number | string; key: string; value: string; secret: boolean; source: string }[]>([]);
   useEffect(() => {
     let cancelled = false;

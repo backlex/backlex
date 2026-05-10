@@ -198,12 +198,14 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
 }
 
 function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
-  const seedMigs = [
-    { id: "20260506_142210_add_reading_time", applied: true, t: "2026-05-06 14:22", author: "rana", sql: "ALTER TABLE c_posts ADD COLUMN reading_time_minutes INTEGER NOT NULL DEFAULT 0;" },
-    { id: "20260504_103105_index_published_at", applied: true, t: "2026-05-04 10:31", author: "kai", sql: "CREATE INDEX c_posts_published_at_idx ON c_posts (published_at DESC);" },
-  ];
-  const [migs, setMigs] = useState(seedMigs);
-  const [active, setActive] = useState(seedMigs[0]!);
+  type Mig = { id: string; applied: boolean; t: string; author: string; sql: string };
+  const [migs, setMigs] = useState<Mig[]>([]);
+  const [active, setActive] = useState<Mig | null>(null);
+  // Auto-select first when migs load
+  useEffect(() => {
+    if (active && migs.some((m) => m.id === active.id)) return;
+    setActive(migs[0] ?? null);
+  }, [migs]);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -220,7 +222,7 @@ function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
           sql: "",
         }));
         setMigs(mapped);
-        setActive(mapped[0]!);
+        setActive(mapped[0] ?? null);
       } catch (e) {
         pushToast?.((e as Error).message);
       }
@@ -235,8 +237,11 @@ function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
           <div className="spacer" />
           <Button size="sm" variant="primary" icon={I.Plus} onClick={() => pushToast("New migration drafted.")}>New</Button>
         </div>
+        {migs.length === 0 && (
+          <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>No migrations applied yet.</div>
+        )}
         {migs.map((m) => (
-          <div key={m.id} onClick={() => setActive(m)} className="schema-row" style={{ gridTemplateColumns: "20px 1fr 70px", cursor: "pointer", background: active.id === m.id ? "var(--accent)" : "transparent" }}>
+          <div key={m.id} onClick={() => setActive(m)} className="schema-row" style={{ gridTemplateColumns: "20px 1fr 70px", cursor: "pointer", background: active?.id === m.id ? "var(--accent)" : "transparent" }}>
             <span>{m.applied ? <I.Check size={13} style={{ color: "oklch(0.55 0.16 145)" }} /> : <I.Clock size={13} className="muted" />}</span>
             <div style={{ minWidth: 0 }}>
               <div className="font-mono" style={{ fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.id}</div>
@@ -247,6 +252,10 @@ function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
         ))}
       </div>
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        {!active ? (
+          <div className="muted" style={{ padding: 36, textAlign: "center", fontSize: 13 }}>Pick a migration to inspect its SQL.</div>
+        ) : (
+        <>
         <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span className="font-mono" style={{ fontSize: 12, fontWeight: 500 }}>{active.id}</span>
           <div className="spacer" />
@@ -254,17 +263,16 @@ function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
           {active.applied && <Button size="sm" variant="outline" icon={I.History} onClick={() => pushToast("Rollback queued.")}>Rollback</Button>}
         </div>
         <div className="alter-preview" style={{ borderRadius: 0, border: 0, fontSize: 12, padding: 16, minHeight: 140 }}>{active.sql || "-- this migration has been collapsed; see source repo"}</div>
+        </>
+        )}
       </div>
     </div>
   );
 }
 
 function Backups({ pushToast }: { pushToast: (m: string) => void }) {
-  const seed = [
-    { id: "bk_20260506", t: "2026-05-06 03:00", size: "184 MB", kind: "auto", tables: 14, label: undefined as string | undefined },
-    { id: "bk_20260503_pre_drop", t: "2026-05-03 18:42", size: "180 MB", kind: "manual", tables: 14, label: "pre-drop-legacy-meta" },
-  ];
-  const [backups, setBackups] = useState(seed);
+  type Backup = { id: string; t: string; size: string; kind: string; tables: number; label: string | undefined };
+  const [backups, setBackups] = useState<Backup[]>([]);
   const reload = async () => {
     try {
       const r = await dbAdminApi.backups();
@@ -549,12 +557,8 @@ function PolicyRow({ label, desc, defaultOn, policyKey, onPersist }: { label: st
 }
 
 export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) {
-  const seed = [
-    { t: "2026-05-06 14:23:11", actor: "rana@workeros.dev", action: "item.update", resource: "c_posts/01HZ7K8M9NPQ", diff: '{ status: "review" → "published" }', ip: "192.168.1.4" },
-    { t: "2026-05-06 14:22:58", actor: "kai@workeros.dev", action: "item.create", resource: "c_comments/01HZ8R…", diff: "+ 1 row", ip: "85.96.x.x" },
-    { t: "2026-05-06 14:21:40", actor: "system", action: "flow.run", resource: "fl_2 (re-index)", diff: "ok · 184ms", ip: "—" },
-  ];
-  const [events, setEvents] = useState(seed);
+  type Evt = { t: string; actor: string; action: string; resource: string; diff: string; ip: string };
+  const [events, setEvents] = useState<Evt[]>([]);
   const [filter, setFilter] = useState("all");
   useEffect(() => {
     let cancelled = false;
@@ -624,29 +628,55 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
 }
 
 export function RevisionsPage() {
-  const items = MOCK.initialPosts.slice(0, 6);
-  const [activeId, setActiveId] = useState(items[0].id);
+  // Real items from the first available collection. Revisions are scoped
+  // to a (collection, itemId) pair, so we need both to query the API.
+  type RowItem = { id: string; title: string };
+  const [items, setItems] = useState<RowItem[]>([]);
+  const [collectionSlug, setCollectionSlug] = useState<string>("posts");
+  const [activeId, setActiveId] = useState<string>("");
   const item = items.find((x) => x.id === activeId);
-  const seedRevs = [
-    { v: 6, t: "2026-05-06 14:23", author: "rana", label: "published", changes: [["status", "review", "published"]] },
-    { v: 5, t: "2026-05-05 10:41", author: "kai", label: "edit", changes: [["title", "Edge functions are GA", "Edge functions are now generally available"]] },
-    { v: 1, t: "2026-05-03 22:14", author: "rana", label: "created", changes: [] },
-  ];
-  const [revs, setRevs] = useState(seedRevs);
-  const [activeRev, setActiveRev] = useState<typeof seedRevs[number] | null>(seedRevs[0] ?? null);
+
+  // Pick the first existing collection on mount, then load its items.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        // Backend `/api/revisions` returns a flat list; filter client-side
-        // to the active item. Versioning here is just an index — the design
-        // shows monotonic v# labels so we synthesize them from the count.
-        const r = await fetch(`/api/revisions/posts/${encodeURIComponent(activeId)}`, { credentials: "include" });
+        const cr = await fetch("/api/collections", { credentials: "include" });
+        if (!cr.ok) return;
+        const cj = (await cr.json()) as { data?: { slug: string }[] };
+        const slug = cj.data?.[0]?.slug ?? "posts";
+        if (cancelled) return;
+        setCollectionSlug(slug);
+        const ir = await fetch(`/api/items/${encodeURIComponent(slug)}?limit=20&sort=-updated_at`, { credentials: "include" });
+        if (!ir.ok || cancelled) return;
+        const ij = (await ir.json()) as { data?: any[] };
+        const rows = (ij.data ?? []).map((r) => ({
+          id: r.id,
+          title: String(r.title ?? r.name ?? r.slug ?? r.id ?? "").slice(0, 48) || r.id,
+        }));
+        setItems(rows);
+        if (rows[0]) setActiveId(rows[0].id);
+      } catch {
+        // leave items empty
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  type RevRow = { v: number; t: string; author: string; label: string; changes: any[] };
+  const [revs, setRevs] = useState<RevRow[]>([]);
+  const [activeRev, setActiveRev] = useState<RevRow | null>(null);
+  useEffect(() => {
+    if (!activeId) { setRevs([]); setActiveRev(null); return; }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await fetch(`/api/revisions/${encodeURIComponent(collectionSlug)}/${encodeURIComponent(activeId)}`, { credentials: "include" });
         if (!r.ok || cancelled) return;
         const j = (await r.json()) as { data?: any[] };
-        if (Array.isArray(j.data) && j.data.length > 0) {
-          const mapped = j.data.map((row, i) => ({
-            v: j.data!.length - i,
+        if (Array.isArray(j.data)) {
+          const mapped: RevRow[] = j.data.map((row, i) => ({
+            v: (j.data?.length ?? 1) - i,
             t: new Date(row.createdAt).toISOString().slice(0, 16).replace("T", " "),
             author: row.createdBy ?? "system",
             label: i === 0 ? "current" : "edit",
@@ -654,27 +684,26 @@ export function RevisionsPage() {
           }));
           setRevs(mapped);
           setActiveRev(mapped[0] ?? null);
-        } else if (Array.isArray(j.data) && j.data.length === 0) {
-          // Real workspace, just no revisions for this item — show empty.
-          setRevs([]);
-          setActiveRev(null);
         }
       } catch {
-        // keep seed
+        setRevs([]); setActiveRev(null);
       }
     })();
     return () => { cancelled = true; };
-  }, [activeId]);
+  }, [collectionSlug, activeId]);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader title="Revisions" description="Every write is versioned. Inspect, diff, or revert any prior state." />
       <div style={{ display: "grid", gridTemplateColumns: "280px 220px 1fr", gap: 14, alignItems: "start" }}>
         <div className="card">
-          <div className="card-section" style={{ fontSize: 12, fontWeight: 500 }}>Items</div>
+          <div className="card-section" style={{ fontSize: 12, fontWeight: 500 }}>Items <span className="muted font-mono" style={{ fontSize: 11 }}>· c_{collectionSlug}</span></div>
+          {items.length === 0 && (
+            <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>No items in this collection yet.</div>
+          )}
           {items.map((it) => (
             <div key={it.id} onClick={() => setActiveId(it.id)} style={{ padding: "8px 12px", borderTop: "1px solid var(--border)", cursor: "pointer", background: activeId === it.id ? "var(--accent)" : "transparent" }}>
               <div style={{ fontSize: 12.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.title}</div>
-              <div className="font-mono muted" style={{ fontSize: 10.5 }}>{it.id}</div>
+              <div className="font-mono muted" style={{ fontSize: 10.5 }}>{it.id.slice(0, 14)}…</div>
             </div>
           ))}
         </div>
@@ -758,13 +787,6 @@ export function InsightsPage() {
   };
   useEffect(() => { void reload(); }, []);
 
-  // Show seed examples only when the workspace has zero saved panels — this
-  // gives a fresh deploy something to look at while still letting real
-  // panels take over once the user creates them.
-  const series = useMemo(() => Array.from({ length: 30 }, (_, i) => 800 + Math.round(Math.sin(i / 3) * 200) + Math.round(Math.random() * 240)), []);
-  const max = Math.max(...series);
-  const traffic = useMemo(() => Array.from({ length: 24 }, () => 300 + Math.round(Math.random() * 1500)), []);
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader title="Insights" description="Built from saved SQL queries. Drag panels to your own dashboards." actions={<Button variant="primary" icon={I.Plus} onClick={async () => {
@@ -794,40 +816,13 @@ export function InsightsPage() {
           ))}
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
-        <Panel title="API requests · 30d" sub={`peak ${max.toLocaleString()} / day · sample`}>
-          <Sparkline data={series} height={160} fill />
-        </Panel>
-        <Panel title="Top collections by writes" sub="last 7d · sample">
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {[["comments", 1280, 0.92], ["posts", 168, 0.18], ["newsletter_subs", 84, 0.10], ["tags", 12, 0.02]].map(([k, n, w]) => (
-              <div key={k as string} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span className="font-mono" style={{ fontSize: 12, width: 130 }}>{k as string}</span>
-                <div style={{ flex: 1, height: 8, background: "var(--muted)", borderRadius: 4, overflow: "hidden" }}>
-                  <div style={{ width: `${(w as number) * 100}%`, height: "100%", background: "var(--primary)" }} />
-                </div>
-                <span className="tabular-nums" style={{ fontSize: 12, width: 60, textAlign: "right" }}>{(n as number).toLocaleString()}</span>
-              </div>
-            ))}
+        <div className="card" style={{ padding: 48, textAlign: "center", color: "var(--muted-foreground)", display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
+          <I.BarChart size={28} className="muted" />
+          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--foreground)" }}>No insight panels yet</div>
+          <div style={{ fontSize: 12.5, maxWidth: 460, lineHeight: 1.5 }}>
+            Insight panels are saved SQL queries rendered as counters, sparklines, bars, donuts, or tables.
+            Click <strong>+ New panel</strong> to write your first read-only SELECT against the workspace database.
           </div>
-        </Panel>
-        <Panel title="Sign-ups · 24h" sub={`${traffic.reduce((a, b) => a + b, 0).toLocaleString()} requests · sample`}>
-          <Sparkline data={traffic} height={160} bars />
-        </Panel>
-        <Panel title="Auth providers" sub="usage share · sample">
-          <div style={{ display: "flex", alignItems: "center", gap: 18, padding: "12px 0" }}>
-            <Donut segments={[{ v: 56, color: "var(--primary)" }, { v: 24, color: "oklch(0.7 0.18 260)" }, { v: 12, color: "oklch(0.78 0.16 75)" }, { v: 8, color: "oklch(0.6 0 0)" }]} />
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5 }}>
-              {[["email", 56, "var(--primary)"], ["github", 24, "oklch(0.7 0.18 260)"], ["google", 12, "oklch(0.78 0.16 75)"], ["passkey", 8, "oklch(0.6 0 0)"]].map(([k, v, c]) => (
-                <div key={k as string} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: 2, background: c as string }} />
-                  <span className="font-mono" style={{ flex: 1 }}>{k as string}</span>
-                  <span className="tabular-nums">{v as number}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Panel>
         </div>
       )}
     </div>

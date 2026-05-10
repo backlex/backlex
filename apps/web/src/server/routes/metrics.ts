@@ -241,4 +241,88 @@ export const metricsRoutes = new Hono<AppBindings>()
         recentErrors,
       },
     });
+  })
+  /**
+   * Per-entity activity stats — turns the `runs: 4280`, `invocations: 1102`,
+   * `deliveries: 184` placeholders on Flows/Functions/Webhooks pages into
+   * actual numbers from the activity table. One round-trip serves all three
+   * lists; the UI keys by id (flows/webhooks) or name (functions).
+   *
+   * Shape:
+   *   {
+   *     flows:     { [id]: { runs, lastRun }      },
+   *     functions: { [name]: { invocations, p95Ms, lastInvoke } },
+   *     webhooks:  { [id]: { deliveries, lastDelivery } },
+   *   }
+   */
+  .get("/entities", async (c) => {
+    const ctx = c.get("ctx");
+    const dialectIs = ctx.dialect;
+
+    const flows: Record<string, { runs: number; lastRun: number | null }> = {};
+    const functions: Record<string, { invocations: number; p95Ms: number; lastInvoke: number | null }> = {};
+    const webhooks: Record<string, { deliveries: number; lastDelivery: number | null }> = {};
+
+    // Flow runs — one row per `flow.run` activity entry.
+    try {
+      const rows = await queryAll<{ item_id: string; n: number; last: number | string | null }>(
+        { db: ctx.db, dialect: dialectIs },
+        sql.raw(`SELECT item_id, COUNT(*) AS n, MAX(created_at) AS last FROM activity WHERE collection = 'system_flows' AND action = 'run' GROUP BY item_id`),
+      );
+      for (const r of rows) {
+        if (!r.item_id) continue;
+        flows[r.item_id] = {
+          runs: Number(r.n),
+          lastRun:
+            typeof r.last === "number" ? r.last : r.last ? new Date(r.last).getTime() : null,
+        };
+      }
+    } catch {}
+
+    // Function invocations + p95 — itemId here is the function name.
+    // GROUP_CONCAT is SQLite/D1; PG uses string_agg.
+    const concatExpr = dialectIs === "pg"
+      ? "string_agg(duration_ms::text, ',')"
+      : "GROUP_CONCAT(duration_ms)";
+    try {
+      const rows = await queryAll<{ item_id: string; n: number; last: number | string | null; durations: string }>(
+        { db: ctx.db, dialect: dialectIs },
+        sql.raw(`SELECT item_id, COUNT(*) AS n, MAX(created_at) AS last, ${concatExpr} AS durations FROM activity WHERE collection = 'system_functions' AND action = 'invoke' GROUP BY item_id`),
+      );
+      for (const r of rows) {
+        if (!r.item_id) continue;
+        const arr = String(r.durations ?? "")
+          .split(",")
+          .map((x) => Number(x))
+          .filter((x) => Number.isFinite(x))
+          .sort((a, b) => a - b);
+        const p95 = arr.length ? arr[Math.floor(arr.length * 0.95)] ?? arr[arr.length - 1] ?? 0 : 0;
+        functions[r.item_id] = {
+          invocations: Number(r.n),
+          p95Ms: Math.round(p95),
+          lastInvoke:
+            typeof r.last === "number" ? r.last : r.last ? new Date(r.last).getTime() : null,
+        };
+      }
+    } catch {}
+
+    // Webhook deliveries — counts both successful and test deliveries since
+    // both fire the same physical request. The Webhooks page already has a
+    // separate panel for delivery status detail.
+    try {
+      const rows = await queryAll<{ item_id: string; n: number; last: number | string | null }>(
+        { db: ctx.db, dialect: dialectIs },
+        sql.raw(`SELECT item_id, COUNT(*) AS n, MAX(created_at) AS last FROM activity WHERE collection = 'system_webhooks' AND action IN ('test', 'delivery') GROUP BY item_id`),
+      );
+      for (const r of rows) {
+        if (!r.item_id) continue;
+        webhooks[r.item_id] = {
+          deliveries: Number(r.n),
+          lastDelivery:
+            typeof r.last === "number" ? r.last : r.last ? new Date(r.last).getTime() : null,
+        };
+      }
+    } catch {}
+
+    return c.json({ data: { flows, functions, webhooks } });
   });

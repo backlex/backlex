@@ -392,19 +392,17 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
 }
 
 export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
-  const initialFlows = [
-    { id: "fl_1", name: "Notify on new comment", trigger: "items.comments.created", actions: ["email", "webhook"], status: "active", runs: 4280 },
-    { id: "fl_2", name: "Re-index search on post update", trigger: "items.posts.updated", actions: ["fn:reindex"], status: "active", runs: 1102 },
-    { id: "fl_3", name: "Daily digest", trigger: "cron · 0 9 * * *", actions: ["fn:digest", "email"], status: "paused", runs: 184 },
-  ];
-  const [flows, setFlows] = useState(initialFlows);
+  // Flows load from /api/flows on mount. No mock seed — empty workspace
+  // hits the empty-state render path on the right pane.
+  type FlowRow = { id: string; name: string; trigger: string; actions: string[]; status: string; runs: number };
+  const [flows, setFlows] = useState<FlowRow[]>([]);
   useEffect(() => {
     void (async () => {
-      const r = await fetchSafely<{ data: { id: string; name: string; trigger: string; active: boolean }[] }>("/api/flows");
-      // Always swap to API data — including empty lists — so the UI
-      // reflects actual workspace state. The empty-state render path
-      // (and the active-flow guard below) handle 0-flow workspaces
-      // without crashing.
+      const [r, m] = await Promise.all([
+        fetchSafely<{ data: { id: string; name: string; trigger: string; active: boolean }[] }>("/api/flows"),
+        fetchSafely<{ data: { flows: Record<string, { runs: number; lastRun: number | null }> } }>(`/api/admin/metrics/entities`),
+      ]);
+      const stats = m?.data?.flows ?? {};
       if (Array.isArray(r?.data)) {
         setFlows(
           r.data.map((f) => ({
@@ -413,7 +411,7 @@ export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
             trigger: f.trigger,
             actions: ["fn"],
             status: f.active ? "active" : "paused",
-            runs: 0,
+            runs: stats[f.id]?.runs ?? 0,
           })),
         );
       }
@@ -537,16 +535,7 @@ export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-            {[
-              { k: "Last run", v: "14:21 · 184ms", ok: true },
-              { k: "Success rate", v: "99.3%", ok: true },
-              { k: "Failures (24h)", v: "2", ok: false },
-            ].map((s) => (
-              <div key={s.k} className="card" style={{ padding: 12, borderRadius: "var(--radius-xl)" }}>
-                <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{s.k}</div>
-                <div className="tabular-nums" style={{ fontSize: 18, fontWeight: 600, marginTop: 2, color: s.ok ? "var(--foreground)" : "var(--destructive)" }}>{s.v}</div>
-              </div>
-            ))}
+            <FlowStatCard flowId={flow.id} flowRuns={flow.runs} />
           </div>
           </>
           )}
@@ -555,6 +544,58 @@ export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
 
       {builderOpen && <FlowBuilder initial={editingFlow} onClose={() => setBuilderOpen(false)} onSave={saveFromBuilder} pushToast={pushToast} />}
     </div>
+  );
+}
+
+/**
+ * Per-flow KPI strip — replaces the hardcoded "14:21 · 184ms / 99.3% / 2"
+ * placeholder. Fetches the activity rows for this specific flow id and
+ * derives last-run timestamp + duration, success rate (rows without
+ * action='error' / payload.error), and last-24h failure count.
+ */
+function FlowStatCard({ flowId, flowRuns }: { flowId: string; flowRuns: number }) {
+  const [stats, setStats] = useState<{ lastRun: string; success: string; failures24h: number }>({
+    lastRun: "—", success: "—", failures24h: 0,
+  });
+  useEffect(() => {
+    if (!flowId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await fetch(`/api/activity?collection=system_flows&itemId=${encodeURIComponent(flowId)}&limit=200`, { credentials: "include" });
+        if (!r.ok || cancelled) return;
+        const j = (await r.json()) as { data?: any[] };
+        const rows = (j.data ?? []).filter((a) => a.action === "run");
+        const last = rows[0];
+        const lastRunText = last
+          ? `${new Date(last.createdAt ?? last.created_at).toISOString().slice(11, 16)} · ${last.durationMs ?? last.duration_ms ?? 0}ms`
+          : "—";
+        const errs = rows.filter((a) => {
+          const p = a.payload;
+          return (typeof p === "object" && p && (p as any).error) || a.action === "error";
+        });
+        const successPct = rows.length === 0 ? "—" : `${Math.round(((rows.length - errs.length) / rows.length) * 100)}%`;
+        const cutoff = Date.now() - 86_400_000;
+        const failures24h = errs.filter((a) => new Date(a.createdAt ?? a.created_at).getTime() >= cutoff).length;
+        if (!cancelled) setStats({ lastRun: lastRunText, success: successPct, failures24h });
+      } catch {
+        // leave default
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [flowId, flowRuns]);
+  const tile = (k: string, v: string, ok: boolean) => (
+    <div key={k} className="card" style={{ padding: 12, borderRadius: "var(--radius-xl)" }}>
+      <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{k}</div>
+      <div className="tabular-nums" style={{ fontSize: 18, fontWeight: 600, marginTop: 2, color: ok ? "var(--foreground)" : "var(--destructive)" }}>{v}</div>
+    </div>
+  );
+  return (
+    <>
+      {tile("Last run", stats.lastRun, true)}
+      {tile("Success rate", stats.success, stats.failures24h === 0)}
+      {tile("Failures (24h)", String(stats.failures24h), stats.failures24h === 0)}
+    </>
   );
 }
 
@@ -588,16 +629,17 @@ function FlowConnector({ x1, y1, x2, y2 }: { x1: number; y1: number; x2: number;
 }
 
 export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void }) {
-  const seed = [
-    { name: "reindex", kind: "event", trigger: "items.posts.updated", lang: "js", invocations: 1102, p95: 128 },
-    { name: "digest", kind: "cron", trigger: "0 9 * * *", lang: "js", invocations: 184, p95: 880 },
-    { name: "thumbnail", kind: "http", trigger: "POST /fn/thumbnail", lang: "js", invocations: 3204, p95: 220 },
-    { name: "sync-search", kind: "event", trigger: "items.*.created", lang: "js", invocations: 4810, p95: 92 },
-  ];
-  const [funcs, setFuncs] = useState(seed);
+  type FnRow = { name: string; kind: string; trigger: string; lang: string; invocations: number; p95: number };
+  const [funcs, setFuncs] = useState<FnRow[]>([]);
+  // Pull invocation counts + p95 from /api/admin/metrics/entities so the
+  // sidebar + header show real numbers instead of hardcoded `1102 / 128ms`.
   useEffect(() => {
     void (async () => {
-      const r = await fetchSafely<{ data: { name: string; trigger: string; pattern: string | null; active: boolean }[] }>("/api/functions");
+      const [r, m] = await Promise.all([
+        fetchSafely<{ data: { name: string; trigger: string; pattern: string | null; active: boolean }[] }>("/api/functions"),
+        fetchSafely<{ data: { functions: Record<string, { invocations: number; p95Ms: number; lastInvoke: number | null }> } }>(`/api/admin/metrics/entities`),
+      ]);
+      const stats = m?.data?.functions ?? {};
       if (Array.isArray(r?.data)) {
         setFuncs(
           r.data.map((f) => ({
@@ -605,43 +647,38 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
             kind: f.trigger,
             trigger: f.pattern ?? f.trigger,
             lang: "js",
-            invocations: 0,
-            p95: 0,
+            invocations: stats[f.name]?.invocations ?? 0,
+            p95: stats[f.name]?.p95Ms ?? 0,
           })),
         );
       }
     })();
   }, []);
-  const [active, setActive] = useState(seed[0]!);
-  const [code, setCode] = useState(`export default async function reindex({ event, ctx }) {
-  const post = event.data;
-  if (post.status !== "published") return;
-  await ctx.vector.upsert("posts", [{
-    id: post.id,
-    text: post.title + "\\n\\n" + post.body,
-    metadata: { slug: post.slug, author: post.author },
-  }]);
-}`);
-  // Pull the actual code for the active function once we know its id.
+  const [active, setActive] = useState<FnRow | null>(null);
+  // Auto-select first function once funcs are loaded.
   useEffect(() => {
+    if (active && funcs.some((f) => f.name === active.name)) return;
+    setActive(funcs[0] ?? null);
+  }, [funcs]);
+  const [code, setCode] = useState("");
+  // Pull the actual code for the active function once we know its name.
+  useEffect(() => {
+    if (!active) { setCode(""); return; }
     void (async () => {
       try {
         const r = await api<{ data: { id: string; name: string; code: string }[] }>("/api/functions");
         const match = r.data?.find((f) => f.name === active.name);
         if (match?.code) setCode(match.code);
       } catch {
-        // keep default sample
+        // keep what's in the editor
       }
     })();
-  }, [active.name]);
-  const [logs, setLogs] = useState([
-    { t: "14:23:11", lvl: "info", msg: "reindex invoked · post=01HZ7K8M9NPQ" },
-    { t: "14:23:11", lvl: "info", msg: "embedding generated · 1536d" },
-    { t: "14:23:11", lvl: "info", msg: "upsert ok · 184ms" },
-  ]);
+  }, [active?.name]);
+  const [logs, setLogs] = useState<{ t: string; lvl: string; msg: string }[]>([]);
   const [running, setRunning] = useState(false);
 
   const run = async () => {
+    if (!active) { pushToast("Select a function to run."); return; }
     setRunning(true);
     setLogs([{ t: new Date().toISOString().slice(11, 19), lvl: "info", msg: `invoking ${active.name}…` }]);
     try {
@@ -665,6 +702,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
     }
   };
   const saveCode = async () => {
+    if (!active) { pushToast("Select a function to save."); return; }
     try {
       const r = await api<{ data: { id: string }[] }>("/api/functions");
       const match = r.data.find((f: any) => f.name === active.name);
@@ -725,8 +763,11 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
 
       <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 14, alignItems: "start" }}>
         <div className="card">
+          {funcs.length === 0 && (
+            <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>No functions yet — click + New function.</div>
+          )}
           {funcs.map((f) => (
-            <div key={f.name} onClick={() => setActive(f)} className="schema-row" style={{ gridTemplateColumns: "24px 1fr 70px", cursor: "pointer", background: active.name === f.name ? "var(--accent)" : "transparent" }}>
+            <div key={f.name} onClick={() => setActive(f)} className="schema-row" style={{ gridTemplateColumns: "24px 1fr 70px", cursor: "pointer", background: active?.name === f.name ? "var(--accent)" : "transparent" }}>
               <span><I.Function size={14} /></span>
               <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                 <span className="font-mono" style={{ fontSize: 12.5, fontWeight: 500 }}>{f.name}</span>
@@ -738,12 +779,18 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {!active ? (
+            <div className="card" style={{ padding: 36, textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>
+              No function selected. Click <strong>+ New function</strong> to create one.
+            </div>
+          ) : (
+          <>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span className="font-mono" style={{ fontSize: 18, fontWeight: 600 }}>{active.name}</span>
             <Badge variant="outline">{active.kind}</Badge>
             <span className="font-mono muted" style={{ fontSize: 12 }}>· {active.trigger}</span>
             <div className="spacer" />
-            <span className="muted" style={{ fontSize: 12 }}>{active.invocations.toLocaleString()} invocations · p95 {active.p95}ms</span>
+            <span className="muted" style={{ fontSize: 12 }}>{Number(active.invocations ?? 0).toLocaleString()} invocations · p95 {active.p95 ?? 0}ms</span>
             <Button variant="outline" size="sm" icon={I.Save} onClick={saveCode}>Save</Button>
             <Button variant="primary" size="sm" icon={I.Zap} onClick={run} disabled={running}>{running ? "Running…" : "Run"}</Button>
           </div>
@@ -774,6 +821,8 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
               ))}
             </div>
           </div>
+          </>
+          )}
         </div>
       </div>
     </div>
@@ -789,14 +838,22 @@ const WH_EVENTS = [
 ];
 
 export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) {
-  const seedHooks = [
-    { id: "wh_1", name: "Slack #content", url: "https://hooks.slack.com/services/T0…/B0…", events: ["items.posts.created"], method: "POST", secret: "whsec_a4e2b9c1f0", active: true, deliveries: 184, ok: true, successRate: 100, lastDelivery: "2m ago" },
-    { id: "wh_2", name: "analytics-fanout", url: "https://api.example.com/workeros", events: ["items.*.updated", "items.*.deleted"], method: "POST", secret: "whsec_77c3f0e8d2", active: true, deliveries: 4280, ok: true, successRate: 99.8, lastDelivery: "14s ago" },
-    { id: "wh_3", name: "staging-mirror", url: "https://staging.example.com/wh", events: ["items.comments.created"], method: "POST", secret: "whsec_19bd4a7c83", active: false, deliveries: 22, ok: false, successRate: 8.4, lastDelivery: "4m ago" },
-  ];
-  const [hooks, setHooks] = useState(seedHooks);
+  type HookRow = { id: string; name: string; url: string; events: string[]; method: string; secret: string; active: boolean; deliveries: number; ok: boolean; successRate: number; lastDelivery: string };
+  const [hooks, setHooks] = useState<HookRow[]>([]);
   const reloadHooks = async () => {
-    const r = await fetchSafely<{ data: any[] }>("/api/webhooks");
+    const [r, m] = await Promise.all([
+      fetchSafely<{ data: any[] }>("/api/webhooks"),
+      fetchSafely<{ data: { webhooks: Record<string, { deliveries: number; lastDelivery: number | null }> } }>(`/api/admin/metrics/entities`),
+    ]);
+    const stats = m?.data?.webhooks ?? {};
+    const fmtAgo = (ms: number | null): string => {
+      if (!ms) return "—";
+      const diff = Date.now() - ms;
+      if (diff < 60_000) return "just now";
+      if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+      if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+      return `${Math.floor(diff / 86_400_000)}d ago`;
+    };
     if (Array.isArray(r?.data)) {
       setHooks(
         r.data.map((h) => ({
@@ -807,10 +864,10 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
           method: "POST",
           secret: h.secret ?? "",
           active: !!h.active,
-          deliveries: 0,
+          deliveries: stats[h.id]?.deliveries ?? 0,
           ok: true,
           successRate: 100,
-          lastDelivery: "—",
+          lastDelivery: fmtAgo(stats[h.id]?.lastDelivery ?? null),
         })),
       );
     }
@@ -826,11 +883,8 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
     return () => window.removeEventListener("click", close);
   }, [menuOpen]);
 
-  const seedDeliveries = [
-    { id: "d1", t: "14:23:09", hook: "wh_2", ev: "items.posts.updated", code: 200, ms: 88 },
-    { id: "d2", t: "14:22:52", hook: "wh_1", ev: "items.posts.created", code: 200, ms: 122 },
-  ];
-  const [deliveries, setDeliveries] = useState(seedDeliveries);
+  type DeliveryRow = { id: string; t: string; hook: string; ev: string; code: number; ms: number };
+  const [deliveries, setDeliveries] = useState<DeliveryRow[]>([]);
   const reloadDeliveries = async () => {
     try {
       const r = await api<{ data: any[] }>("/api/webhooks/_deliveries");
@@ -1129,13 +1183,40 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
 }
 
 export function RealtimePage({ events, pushToast }: { events: RealtimeEvent[]; pushToast: (m: string) => void }) {
-  const channels = [
-    { name: "items:posts", subs: 4, filter: "permission · read" },
-    { name: "items:comments", subs: 12, filter: "owner_id _eq $user.id" },
-    { name: "collections", subs: 1, filter: "admin role only" },
-    { name: "presence:editor", subs: 2, filter: "free-form" },
-  ];
-  const [active, setActive] = useState("items:posts");
+  // Channels are derived from real collections — `items:<slug>` per
+  // collection plus the system `collections` channel. Subscriber counts
+  // aren't exposed by the API yet so we hide that column rather than
+  // showing fabricated numbers.
+  type Channel = { name: string; subs: number | null; filter: string };
+  const [channels, setChannels] = useState<Channel[]>([{ name: "collections", subs: null, filter: "admin role only" }]);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await fetch("/api/collections", { credentials: "include" });
+        if (!r.ok || cancelled) return;
+        const j = (await r.json()) as { data?: { slug: string; ownerScoped?: boolean }[] };
+        const slugs = j.data ?? [];
+        const built: Channel[] = slugs.map((c) => ({
+          name: `items:${c.slug}`,
+          subs: null,
+          filter: c.ownerScoped ? "owner_id _eq $user.id" : "permission · read",
+        }));
+        // Always include the system `collections` channel (admin-only schema events).
+        built.push({ name: "collections", subs: null, filter: "admin role only" });
+        if (!cancelled) setChannels(built);
+      } catch {
+        // keep default
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  const [active, setActive] = useState<string>("collections");
+  // Lock onto the first channel once derived.
+  useEffect(() => {
+    if (channels.length === 0) return;
+    if (!channels.some((c) => c.name === active)) setActive(channels[0]!.name);
+  }, [channels]);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader
@@ -1145,14 +1226,17 @@ export function RealtimePage({ events, pushToast }: { events: RealtimeEvent[]; p
       />
       <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 14, alignItems: "start" }}>
         <div className="card">
+          {channels.length === 0 && (
+            <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>No channels — create a collection to get one.</div>
+          )}
           {channels.map((c) => (
-            <div key={c.name} onClick={() => setActive(c.name)} className="schema-row" style={{ gridTemplateColumns: "20px 1fr 60px", cursor: "pointer", background: active === c.name ? "var(--accent)" : "transparent" }}>
+            <div key={c.name} onClick={() => setActive(c.name)} className="schema-row" style={{ gridTemplateColumns: "20px 1fr auto", cursor: "pointer", background: active === c.name ? "var(--accent)" : "transparent" }}>
               <span><span className="dot" /></span>
               <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
                 <span className="font-mono" style={{ fontSize: 12.5 }}>{c.name}</span>
                 <span className="muted" style={{ fontSize: 11 }}>{c.filter}</span>
               </div>
-              <Badge variant="outline" mono>{c.subs} sub</Badge>
+              {c.subs != null && <Badge variant="outline" mono>{c.subs} sub</Badge>}
             </div>
           ))}
         </div>
@@ -1177,22 +1261,8 @@ const ProviderGlyph = ({ kind, size = 12 }: { kind: string; size?: number }) => 
 const PROVIDER_LABEL: Record<string, string> = { password: "password", github: "github", google: "google", magic: "magic link" };
 
 export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
-  const seedUsers = [
-    { id: "u_01", name: "Rana Marin", email: "rana@workeros.dev", roles: ["admin"], status: "active", provider: "github", mfa: true, last: "2m ago", lastIso: "2026-05-09 14:31", created: "2026-01-12", sessions: 3, hue: 145 },
-    { id: "u_02", name: "Kai Nguyen", email: "kai@workeros.dev", roles: ["authenticated", "editor"], status: "active", provider: "github", mfa: true, last: "14m ago", lastIso: "2026-05-09 14:19", created: "2026-02-04", sessions: 2, hue: 95 },
-    { id: "u_03", name: "Alex Pereira", email: "alex@workeros.dev", roles: ["authenticated"], status: "active", provider: "google", mfa: false, last: "1h ago", lastIso: "2026-05-09 13:25", created: "2026-02-19", sessions: 1, hue: 240 },
-    { id: "u_04", name: "Jules Park", email: "jules@workeros.dev", roles: ["authenticated"], status: "active", provider: "password", mfa: true, last: "3d ago", lastIso: "2026-05-06 09:11", created: "2026-03-02", sessions: 1, hue: 28 },
-    { id: "u_05", name: "Priya Shah", email: "priya@external.io", roles: ["authenticated"], status: "active", provider: "magic", mfa: false, last: "just now", lastIso: "2026-05-09 14:33", created: "2026-04-30", sessions: 1, hue: 320 },
-    { id: "u_06", name: "Mateo Russo", email: "mateo@workeros.dev", roles: ["editor"], status: "active", provider: "github", mfa: true, last: "5m ago", lastIso: "2026-05-09 14:28", created: "2026-02-12", sessions: 2, hue: 200 },
-    { id: "u_07", name: "Ines Carvalho", email: "ines@workeros.dev", roles: ["authenticated"], status: "active", provider: "google", mfa: false, last: "32m ago", lastIso: "2026-05-09 14:01", created: "2026-03-14", sessions: 1, hue: 60 },
-    { id: "u_08", name: "Theo Larsson", email: "theo@workeros.dev", roles: ["authenticated"], status: "invited", provider: "password", mfa: false, last: "—", lastIso: null, created: "2026-05-08", sessions: 0, hue: 175 },
-    { id: "u_09", name: "Sana Ali", email: "sana@external.io", roles: ["authenticated"], status: "invited", provider: "password", mfa: false, last: "—", lastIso: null, created: "2026-05-09", sessions: 0, hue: 12 },
-    { id: "u_10", name: "Davi Costa", email: "davi@workeros.dev", roles: ["authenticated"], status: "suspended", provider: "password", mfa: false, last: "21d ago", lastIso: "2026-04-18 22:09", created: "2025-11-04", sessions: 0, hue: 0 },
-    { id: "u_11", name: "Maya Goldberg", email: "maya@workeros.dev", roles: ["admin"], status: "active", provider: "github", mfa: true, last: "4h ago", lastIso: "2026-05-09 10:30", created: "2025-09-21", sessions: 1, hue: 290 },
-    { id: "u_12", name: "Olu Adegoke", email: "olu@workeros.dev", roles: ["authenticated"], status: "active", provider: "google", mfa: true, last: "2h ago", lastIso: "2026-05-09 12:30", created: "2026-01-30", sessions: 1, hue: 110 },
-  ];
-
-  const [users, setUsers] = useState(seedUsers);
+  type UserRow = { id: string; name: string; email: string; roles: string[]; status: string; provider: string; mfa: boolean; last: string; lastIso: string | null; created: string; sessions: number; hue: number };
+  const [users, setUsers] = useState<UserRow[]>([]);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -1478,17 +1548,60 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
 }
 
 function UserDrawer({ user, onClose, pushToast }: { user: any; onClose: () => void; pushToast: (m: string) => void }) {
-  const sessions = user.sessions > 0 ? [
-    { id: "s1", device: "MacBook Pro · Chrome 137", ip: "192.168.1.42 · Berlin, DE", last: user.last, current: true },
-    user.sessions > 1 && { id: "s2", device: "iPhone 16 · Safari", ip: "95.91.20.12 · Berlin, DE", last: "2h ago", current: false },
-    user.sessions > 2 && { id: "s3", device: "Linux · Firefox 132", ip: "10.0.0.3 · localhost", last: "1d ago", current: false },
-  ].filter(Boolean) as any[] : [];
-
-  const activity = [
-    { t: user.lastIso || "—", ev: "session.start", meta: `${user.provider} · ${user.mfa ? "2fa ok" : "no 2fa"}` },
-    { t: "2026-05-08 16:02", ev: "permission.granted", meta: `role.add · ${user.roles[0]}` },
-    { t: user.created + " 09:00", ev: "user.created", meta: `via ${user.provider}` },
-  ];
+  // Live sessions for this user — pulled from /api/users/:id/sessions which
+  // surfaces sessions.user_agent + sessions.ip_address. Falls back to a
+  // single placeholder row when the API returns nothing.
+  const [sessions, setSessions] = useState<any[]>([]);
+  // Real activity rows for this user (admin sees all; non-admin would only
+  // see their own rows by virtue of the activity route's permission gate).
+  const [activity, setActivity] = useState<{ t: string; ev: string; meta: string }[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await fetch(`/api/users/${encodeURIComponent(user.id)}/sessions`, { credentials: "include" });
+        if (!r.ok || cancelled) return;
+        const j = (await r.json()) as { data?: any[] };
+        const fmtAgo = (ms: number | null): string => {
+          if (!ms) return "—";
+          const d = Date.now() - ms;
+          if (d < 60_000) return "just now";
+          if (d < 3_600_000) return `${Math.floor(d / 60_000)}m ago`;
+          if (d < 86_400_000) return `${Math.floor(d / 3_600_000)}h ago`;
+          return `${Math.floor(d / 86_400_000)}d ago`;
+        };
+        setSessions(
+          (j.data ?? []).map((s, i) => ({
+            id: s.id ?? `s${i}`,
+            device: s.userAgent ?? "Unknown device",
+            ip: s.ipAddress ?? "—",
+            last: fmtAgo(s.updatedAt ?? s.createdAt ?? null),
+            current: i === 0,
+          })),
+        );
+      } catch {
+        // leave empty
+      }
+    })();
+    void (async () => {
+      try {
+        const r = await fetch(`/api/activity?limit=20`, { credentials: "include" });
+        if (!r.ok || cancelled) return;
+        const j = (await r.json()) as { data?: any[] };
+        const filtered = (j.data ?? []).filter((a) => a.userId === user.id || a.user_id === user.id);
+        setActivity(
+          filtered.slice(0, 6).map((a) => ({
+            t: new Date(a.createdAt ?? a.created_at).toISOString().slice(0, 16).replace("T", " "),
+            ev: `${a.collection ?? "?"}.${a.action}`,
+            meta: a.itemId ? `id ${String(a.itemId).slice(0, 12)}` : "—",
+          })),
+        );
+      } catch {
+        // leave empty
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user.id]);
 
   return (
     <>
@@ -1650,11 +1763,8 @@ function InviteUserDialog({ onClose, onInvite }: { onClose: () => void; onInvite
 }
 
 export function ApiKeysPage({ pushToast }: { pushToast: (m: string) => void }) {
-  const seed = [
-    { id: "ak_1", prefix: "pak_a4e2b9c1", name: "CI bot", user: "rana@workeros.dev", created: "2026-04-22", lastUsed: "2m ago" },
-    { id: "ak_2", prefix: "pak_77c3f0e8", name: "analytics", user: "kai@workeros.dev", created: "2026-03-14", lastUsed: "1h ago" },
-  ];
-  const [keys, setKeys] = useState(seed);
+  type KeyRow = { id: string; prefix: string; name: string; user: string; created: string; lastUsed: string };
+  const [keys, setKeys] = useState<KeyRow[]>([]);
   const reloadKeys = async () => {
     const r = await fetchSafely<{ data: any[] }>("/api/api-keys");
     if (Array.isArray(r?.data)) {

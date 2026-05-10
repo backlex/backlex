@@ -177,22 +177,20 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
       try {
         const res = await collectionsApi.get(activeCollection);
         if (cancelled || !res.data) return;
-        const fields = Array.isArray(res.data.fields) ? res.data.fields : [];
-        // The API returns user-defined fields. The design's prototype layout
-        // also expects `id`, `created_at`, `updated_at`, `owner_id` as system
-        // rows so they render in the Schema view. Inject them when missing.
-        const hasSystem = (name: string) => fields.some((f: any) => f.name === name);
-        const merged = [
-          ...fields,
-          !hasSystem("id") && { name: "id", type: "uuid", system: true, nullable: false, default: "gen_uuid()" },
-          !hasSystem("created_at") && { name: "created_at", type: "timestamp", system: true, nullable: false, default: "now()" },
-          !hasSystem("updated_at") && { name: "updated_at", type: "timestamp", system: true, nullable: false, default: "now()" },
-          res.data.ownerScoped && !hasSystem("owner_id") && { name: "owner_id", type: "uuid", system: true, nullable: false, default: "$user.id" },
-        ].filter(Boolean);
+        // Store ONLY user-defined fields in schemaState. SchemaView
+        // synthesizes system rows (id / created_at / updated_at /
+        // owner_id) for display. System rows must never round-trip
+        // through PATCH — validateFields() rejects reserved names with
+        // 422 VALIDATION, which is exactly what made earlier edits
+        // appear to apply locally but revert on refresh.
+        const RESERVED = new Set(["id", "created_at", "updated_at", "owner_id"]);
+        const fields = (Array.isArray(res.data.fields) ? res.data.fields : []).filter(
+          (f: any) => f && !RESERVED.has(f.name) && !f.system,
+        );
         setSchemaState({
           slug: activeCollection,
           ownerScoped: !!res.data.ownerScoped,
-          fields: merged as any,
+          fields: fields as any,
         });
       } catch {
         // leave previous schemaState in place
@@ -619,15 +617,15 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
         }}
       />
       <AddFieldDialog open={addFieldOpen} schema={schemaState} onClose={() => setAddFieldOpen(false)} onCreate={async (field) => {
+        // schemaState.fields contains only user-defined columns now, so
+        // the merged set is just append-the-new-one. System columns are
+        // synthesized for display in SchemaView and must never round-trip
+        // through PATCH (validateFields rejects reserved names).
         const merged = {
           ...schemaState,
-          fields: [
-            ...schemaState.fields.filter((f) => !f.system || f.name === "id" || f.name === "created_at" || f.name === "updated_at" || f.name === "owner_id"),
-            field as never,
-          ].sort((a: any, b: any) => (a.system ? 1 : 0) - (b.system ? 1 : 0)),
+          fields: [...schemaState.fields, field as never],
         };
         try {
-          // Slug fallback: design uses 'posts' as the demo collection.
           const slug = activeCollection || "posts";
           await collectionsApi.patch(slug, { fields: merged.fields as any });
           setSchemaState(merged);

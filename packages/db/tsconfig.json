@@ -4,5 +4,5 @@
     "noEmit": true,
     "types": ["bun"]
   },
-  "include": ["src/**/*", "drizzle.pg.config.ts", "drizzle.sqlite.config.ts"]
+  "include": ["src/**/*", "scripts/**/*", "drizzle.pg.config.ts", "drizzle.sqlite.config.ts"]
 }

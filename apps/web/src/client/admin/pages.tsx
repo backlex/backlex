@@ -392,7 +392,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
   );
 }
 
-export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
+export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast: (m: string) => void; activeFlow?: string | null; setActiveFlow?: (id: string | null) => void }) {
   // Flows load from /api/flows on mount. No mock seed — empty workspace
   // hits the empty-state render path on the right pane.
   type FlowRow = { id: string; name: string; trigger: string; actions: string[]; status: string; runs: number; operations: any[] };
@@ -419,13 +419,15 @@ export function FlowsPage({ pushToast }: { pushToast: (m: string) => void }) {
       }
     })();
   }, []);
-  const [active, setActive] = useState(flows[0]?.id ?? "");
-  // Keep `active` in sync with `flows` — if the active flow is deleted or
-  // the list is replaced, fall back to the first available flow.
-  useEffect(() => {
-    if (flows.length === 0) { setActive(""); return; }
-    if (!flows.some((f) => f.id === active)) setActive(flows[0]!.id);
-  }, [flows, active]);
+  // The selected flow id is URL-driven (`/flows/:id`). Parent passes activeFlow
+  // + setActiveFlow; we expose a thin local wrapper so the rest of the file
+  // keeps the existing `active` / `setActive` API. When the URL points at a
+  // flow that doesn't exist (deleted, stale link), we just render the empty
+  // state — we never silently rewrite the URL.
+  const active = activeFlow ?? "";
+  const setActive = (id: string) => {
+    setActiveFlow?.(id || null);
+  };
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingFlow, setEditingFlow] = useState<any>(null);
   const flow = flows.find((f) => f.id === active);

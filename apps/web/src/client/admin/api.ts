@@ -358,7 +358,15 @@ export const dbAdminApi = {
 };
 
 export const activityApi = {
-  list: () => api<Envelope<ApiActivity[]>>(`/api/activity`),
+  list: (opts?: { limit?: number; offset?: number }) => {
+    const qs = new URLSearchParams();
+    if (opts?.limit != null) qs.set("limit", String(opts.limit));
+    if (opts?.offset != null) qs.set("offset", String(opts.offset));
+    const tail = qs.toString();
+    return api<Envelope<ApiActivity[]> & { limit: number; offset: number }>(
+      `/api/activity${tail ? `?${tail}` : ""}`,
+    );
+  },
 };
 
 export interface ApiMetrics {

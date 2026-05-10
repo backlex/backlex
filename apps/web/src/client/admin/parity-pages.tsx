@@ -633,7 +633,7 @@ export function RevisionsPage() {
     { v: 1, t: "2026-05-03 22:14", author: "rana", label: "created", changes: [] },
   ];
   const [revs, setRevs] = useState(seedRevs);
-  const [activeRev, setActiveRev] = useState(seedRevs[0]!);
+  const [activeRev, setActiveRev] = useState<typeof seedRevs[number] | null>(seedRevs[0] ?? null);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -644,16 +644,20 @@ export function RevisionsPage() {
         const r = await fetch(`/api/revisions/posts/${encodeURIComponent(activeId)}`, { credentials: "include" });
         if (!r.ok || cancelled) return;
         const j = (await r.json()) as { data?: any[] };
-        if (Array.isArray(j.data)) {
+        if (Array.isArray(j.data) && j.data.length > 0) {
           const mapped = j.data.map((row, i) => ({
-            v: j.data.length - i,
+            v: j.data!.length - i,
             t: new Date(row.createdAt).toISOString().slice(0, 16).replace("T", " "),
             author: row.createdBy ?? "system",
             label: i === 0 ? "current" : "edit",
             changes: row.snapshot ? Object.entries(row.snapshot).slice(0, 4).map(([k, v]) => [k, "—", v]) : [],
           }));
           setRevs(mapped);
-          setActiveRev(mapped[0]!);
+          setActiveRev(mapped[0] ?? null);
+        } else if (Array.isArray(j.data) && j.data.length === 0) {
+          // Real workspace, just no revisions for this item — show empty.
+          setRevs([]);
+          setActiveRev(null);
         }
       } catch {
         // keep seed
@@ -675,9 +679,12 @@ export function RevisionsPage() {
           ))}
         </div>
         <div className="card">
-          <div className="card-section" style={{ fontSize: 12, fontWeight: 500 }}>Timeline · {item?.title.slice(0, 18)}…</div>
+          <div className="card-section" style={{ fontSize: 12, fontWeight: 500 }}>Timeline · {item?.title?.slice(0, 18) ?? "—"}…</div>
+          {revs.length === 0 && (
+            <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>No revisions yet for this item.</div>
+          )}
           {revs.map((r) => (
-            <div key={r.v} onClick={() => setActiveRev(r)} style={{ padding: "8px 12px", borderTop: "1px solid var(--border)", cursor: "pointer", background: activeRev.v === r.v ? "var(--accent)" : "transparent", display: "flex", flexDirection: "column", gap: 2 }}>
+            <div key={r.v} onClick={() => setActiveRev(r)} style={{ padding: "8px 12px", borderTop: "1px solid var(--border)", cursor: "pointer", background: activeRev?.v === r.v ? "var(--accent)" : "transparent", display: "flex", flexDirection: "column", gap: 2 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span className="font-mono" style={{ fontSize: 12, fontWeight: 500 }}>v{r.v}</span>
                 <Badge variant={r.label === "published" ? "default" : "secondary"}>{r.label}</Badge>
@@ -687,6 +694,12 @@ export function RevisionsPage() {
           ))}
         </div>
         <div className="card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
+          {!activeRev ? (
+            <div style={{ padding: 36, textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>
+              Pick a revision from the timeline to inspect, diff, or revert.
+            </div>
+          ) : (
+          <>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 14, fontWeight: 600 }}>Revision v{activeRev.v}</span>
             <Badge variant="secondary">{activeRev.label}</Badge>
@@ -711,6 +724,8 @@ export function RevisionsPage() {
               </div>
             ))}
           </div>
+          </>
+          )}
         </div>
       </div>
     </div>

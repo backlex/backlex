@@ -93,24 +93,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   const [activeNav, setActiveNav] = useState(initialNav);
   const [activeTab, setActiveTab] = useState<"items" | "schema" | "permissions">("items");
   const [posts, setPosts] = useState<Post[]>(MOCK.initialPosts);
-  // Real-API loaders. When the request fails (typically because the
-  // collection/items tables are still empty), we silently fall back to the
-  // mock seed so the design keeps demoing well.
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await itemsApi.list("posts", { limit: 50, sort: "-updated_at" });
-        if (cancelled) return;
-        if (Array.isArray(res.data)) {
-          setPosts(res.data as unknown as Post[]);
-        }
-      } catch {
-        // network/auth failure → keep mock seed for the offline demo
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+  // Real items load — see effect after activeCollection is declared.
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<FilterCondition[]>([]);
   const [statusTab, setStatusTab] = useState("all");
@@ -162,6 +145,28 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   }, []);
   const [activeCollection, setActiveCollection] = useState<string | null>(null);
   const [newCollectionOpen, setNewCollectionOpen] = useState(false);
+
+  // Real items load — keyed off the active collection so opening
+  // c_<anything> fetches that collection's rows. Empty/missing/auth-fail
+  // falls back to the mock seed (keeps the offline demo intact). When
+  // no collection is active we leave `posts` untouched so the previously
+  // open collection stays cached.
+  useEffect(() => {
+    if (!activeCollection) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await itemsApi.list(activeCollection, { limit: 50, sort: "-updated_at" });
+        if (cancelled) return;
+        if (Array.isArray(res.data)) {
+          setPosts(res.data as unknown as Post[]);
+        }
+      } catch {
+        // keep whatever is currently in `posts`
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [activeCollection]);
 
   const [events, setEvents] = useState<RealtimeEvent[]>([]);
   const [toastNode, pushToast] = useToasts();
@@ -292,7 +297,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
         ...(draft as Post),
       };
       try {
-        const res = await itemsApi.create("posts", draft as Record<string, unknown>);
+        const res = await itemsApi.create(activeCollection || "posts", draft as Record<string, unknown>);
         nu = { ...nu, ...(res.data as unknown as Post) };
       } catch {
         // optimistic insert remains
@@ -302,7 +307,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
       pushToast(`Post "${nu.title.slice(0, 38)}${nu.title.length > 38 ? "…" : ""}" created.`);
     } else if (sheetItem) {
       try {
-        await itemsApi.patch("posts", sheetItem.id, draft as Record<string, unknown>);
+        await itemsApi.patch(activeCollection || "posts", sheetItem.id, draft as Record<string, unknown>);
       } catch {
         // optimistic patch
       }
@@ -327,7 +332,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
       onConfirm: async () => {
         const titles = posts.filter((p) => selected.has(p.id)).map((p) => p.title);
         const ids = [...selected];
-        await Promise.allSettled(ids.map((id) => itemsApi.remove("posts", id)));
+        await Promise.allSettled(ids.map((id) => itemsApi.remove(activeCollection || "posts", id)));
         setPosts((p) => p.filter((x) => !selected.has(x.id)));
         setEvents((e) => [...titles.map((title) => ({ event: "deleted" as const, title, who: "rana", t: "just now", id: "e" + Math.random().toString(36).slice(2) })), ...e]);
         pushToast(`${selected.size} posts deleted.`);

@@ -432,6 +432,11 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
   const setActive = (id: string) => {
     setActiveFlow?.(id || null);
   };
+  useEffect(() => {
+    if (active || flows.length === 0) return;
+    const first = flows[0];
+    if (first) setActiveFlow?.(first.id);
+  }, [flows, active, setActiveFlow]);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [editingFlow, setEditingFlow] = useState<any>(null);
   const flow = flows.find((f) => f.id === active);

@@ -125,7 +125,7 @@ export const revisionsRoutes = new Hono<AppBindings>()
       );
 
       // Record a new revision documenting the revert.
-      void recordRevision(ctx, {
+      await recordRevision(ctx, {
         collection: rev.collection,
         itemId: rev.itemId,
         tenantId: auth.tenantId ?? null,

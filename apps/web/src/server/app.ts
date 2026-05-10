@@ -54,6 +54,10 @@ export type AppBindings = {
       roles: string[];
       /** Resolved by tenantMiddleware. Null only on /api/auth and /health. */
       tenantId?: string | null;
+      /** Set by sessionMiddleware when the request authenticates with a
+       *  bearer API key — the key's home tenant wins over user.activeTenantId
+       *  so machine-to-machine calls always land in the right workspace. */
+      apiKeyTenantId?: string | null;
     };
     permission: PermissionVar;
   };
@@ -81,9 +85,9 @@ export const createApp = (env: Env) => {
     c.set("ctx", ctx);
     if (!rolesSeeded) {
       const dbCtx = { db: ctx.db, dialect: ctx.dialect };
-      await ensureSystemRoles(dbCtx);
-      await ensureDefaultTenant(dbCtx);
-      await seedOwnerScopedPermissions(dbCtx, FILES_COLLECTION);
+      const defaultTenantId = await ensureDefaultTenant(dbCtx);
+      await ensureSystemRoles(dbCtx, defaultTenantId);
+      await seedOwnerScopedPermissions(dbCtx, defaultTenantId, FILES_COLLECTION);
       rolesSeeded = true;
     }
     await next();

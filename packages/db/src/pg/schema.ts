@@ -180,13 +180,19 @@ export const roles = pgTable(
   "roles",
   {
     id: text("id").primaryKey(),
+    tenantId: text("tenant_id").references(() => tenants.id, {
+      onDelete: "cascade",
+    }),
     name: text("name").notNull(),
     description: text("description"),
     admin: boolean("admin").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("roles_name_idx").on(t.name)],
+  (t) => [
+    uniqueIndex("roles_tenant_name_idx").on(t.tenantId, t.name),
+    index("roles_tenant_idx").on(t.tenantId),
+  ],
 );
 
 export const userRoles = pgTable(
@@ -418,6 +424,9 @@ export const apiKeys = pgTable(
   "api_keys",
   {
     id: text("id").primaryKey(),
+    tenantId: text("tenant_id").references(() => tenants.id, {
+      onDelete: "cascade",
+    }),
     prefix: text("prefix").notNull(),
     hashedKey: text("hashed_key").notNull(),
     name: text("name").notNull(),
@@ -433,6 +442,7 @@ export const apiKeys = pgTable(
     uniqueIndex("api_keys_hashed_idx").on(t.hashedKey),
     index("api_keys_prefix_idx").on(t.prefix),
     index("api_keys_user_idx").on(t.userId),
+    index("api_keys_tenant_idx").on(t.tenantId),
   ],
 );
 

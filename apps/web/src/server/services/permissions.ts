@@ -40,15 +40,28 @@ const tablesFor = (dialect: "pg" | "sqlite") =>
 export const loadRolesForUser = async (
   ctx: DbCtx,
   userId: string | null,
+  tenantId: string | null,
 ): Promise<RoleRow[]> => {
   const t = tablesFor(ctx.dialect);
+  // Without an active tenant we can't pick the right copy of public/admin/etc.,
+  // so deny everything by returning no roles. This is the safe default — the
+  // request just hits the public-deny branch in resolvePermission.
+  if (!tenantId) return [];
   if (!userId) {
     const rows = await (ctx.db as any)
       .select()
       .from(t.roles)
-      .where(eq(t.roles.name, SYSTEM_ROLES.public));
+      .where(
+        and(
+          eq(t.roles.tenantId, tenantId),
+          eq(t.roles.name, SYSTEM_ROLES.public),
+        ),
+      );
     return rows as RoleRow[];
   }
+  // Only consider roles that belong to the active tenant. A user can have
+  // role X in tenant A and role Y in tenant B; each request only sees the
+  // role bundle for the workspace they're acting in.
   const userAssigned = await (ctx.db as any)
     .select({
       id: t.roles.id,
@@ -57,11 +70,18 @@ export const loadRolesForUser = async (
     })
     .from(t.userRoles)
     .innerJoin(t.roles, eq(t.userRoles.roleId, t.roles.id))
-    .where(eq(t.userRoles.userId, userId));
+    .where(
+      and(eq(t.userRoles.userId, userId), eq(t.roles.tenantId, tenantId)),
+    );
   const builtin = await (ctx.db as any)
     .select()
     .from(t.roles)
-    .where(eq(t.roles.name, SYSTEM_ROLES.authenticated));
+    .where(
+      and(
+        eq(t.roles.tenantId, tenantId),
+        eq(t.roles.name, SYSTEM_ROLES.authenticated),
+      ),
+    );
   return [...(userAssigned as RoleRow[]), ...(builtin as RoleRow[])];
 };
 
@@ -88,7 +108,7 @@ export const resolvePermission = async (
   collection: string,
   action: Action,
 ): Promise<ResolvedPermission> => {
-  const roles = await loadRolesForUser(ctx, auth.userId);
+  const roles = await loadRolesForUser(ctx, auth.userId, auth.tenantId ?? null);
   if (roles.some((r) => r.admin)) {
     return {
       allowed: true,

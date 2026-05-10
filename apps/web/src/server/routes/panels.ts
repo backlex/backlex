@@ -13,11 +13,11 @@ const tableFor = (dialect: "pg" | "sqlite") =>
 
 const PanelInput = z.object({
   name: z.string().min(1).max(80),
-  description: z.string().max(500).optional(),
+  description: z.string().max(500).nullable().optional(),
   kind: z.enum(["sql", "items-aggregate", "static"]).default("sql"),
-  sql: z.string().optional(),
+  sql: z.string().nullable().optional(),
   viz: z.enum(["sparkline", "bars", "donut", "counter", "table"]).default("sparkline"),
-  config: z.record(z.unknown()).optional(),
+  config: z.record(z.unknown()).nullable().optional(),
   layout: z
     .object({
       x: z.number().int(),

@@ -439,8 +439,8 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
         <Topbar
           crumbs={
             activeNav === "collections"
-              ? (activeCollection ? ["Collections", activeCollection] : ["Collections"])
-              : [(MOCK.navItems.concat(MOCK.navSettings).find((n) => n.id === activeNav)?.label) || "Overview"]
+              ? (activeCollection ? ["collections", activeCollection] : ["collections"])
+              : [activeNav]
           }
           onOpenPalette={() => setPaletteOpen(true)}
           onToggleTheme={() => setTweak("dark", !tweaks.dark)}

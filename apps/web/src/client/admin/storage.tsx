@@ -89,6 +89,10 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
   const [compare, setCompare] = useState(50);
   const [uploads, setUploads] = useState<UploadJob[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderBusy, setNewFolderBusy] = useState(false);
+  const newFolderInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dropFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -211,11 +215,21 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
     }
   };
 
-  const newFolder = async () => {
-    const name = prompt("Folder name", "drafts");
-    if (!name) return;
-    const clean = name.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "_");
-    if (folders.some((f) => f.name === clean)) { pushToast(`Folder "${clean}" already exists.`); return; }
+  const openNewFolder = () => {
+    setNewFolderName("");
+    setNewFolderOpen(true);
+    setTimeout(() => newFolderInputRef.current?.focus(), 30);
+  };
+
+  const submitNewFolder = async () => {
+    const raw = newFolderName.trim();
+    if (!raw) return;
+    const clean = raw.toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+    if (folders.some((f) => f.name === clean)) {
+      pushToast(`Folder "${clean}" already exists.`);
+      return;
+    }
+    setNewFolderBusy(true);
     try {
       const res = await api<{ data: { id: string; name: string } }>("/api/folders", {
         method: "POST",
@@ -223,8 +237,11 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
       });
       setFolders((arr) => [...arr, { id: res.data.id, name: clean, count: 0, public: false }]);
       pushToast(`Folder "${clean}" created.`);
+      setNewFolderOpen(false);
     } catch (e) {
       pushToast((e as Error).message);
+    } finally {
+      setNewFolderBusy(false);
     }
   };
 
@@ -279,7 +296,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
           <Badge variant="outline" mono>{fmtSize(totalBytes)}</Badge>
         </span>}
         actions={<>
-          <Button variant="outline" icon={I.Folder} onClick={newFolder}>New folder</Button>
+          <Button variant="outline" icon={I.Folder} onClick={openNewFolder}>New folder</Button>
           <Button variant="primary" icon={I.Plus} onClick={() => fileInputRef.current?.click()}>Upload</Button>
           <input ref={fileInputRef} type="file" multiple style={{ display: "none" }} onChange={(e) => queueUploads(Array.from(e.target.files || []))} />
         </>}
@@ -359,12 +376,12 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
             <span style={{ fontSize: 12.5, fontWeight: 500 }}>Folders</span>
             <span className="muted tabular-nums" style={{ fontSize: 11 }}>{folders.length}</span>
             <div className="spacer" />
-            <IconButton icon={I.Plus} title="New folder" onClick={newFolder} />
+            <IconButton icon={I.Plus} title="New folder" onClick={openNewFolder} />
           </div>
           <div style={{ padding: "8px 10px 6px", borderBottom: "1px solid var(--border)" }}>
-            <div className="search-input" style={{ height: 28 }}>
+            <div className="search-input" style={{ height: 28, minWidth: 0, padding: "0 10px" }}>
               <I.Search size={12} />
-              <input value={folderQuery} onChange={(e) => setFolderQuery(e.target.value)} placeholder="Filter folders…" style={{ fontSize: 12 }} />
+              <input value={folderQuery} onChange={(e) => setFolderQuery(e.target.value)} placeholder="Filter folders…" style={{ fontSize: 12, minWidth: 0 }} />
             </div>
           </div>
           <div style={{ overflowY: "auto", flex: 1, padding: "6px 6px 8px" }}>
@@ -378,7 +395,11 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
               <span className="muted tabular-nums" style={{ marginLeft: "auto", fontSize: 11 }}>{files.length}</span>
             </button>
             {folderTreeFiltered.length === 0 && (
-              <div className="muted" style={{ padding: "12px 10px", fontSize: 11.5 }}>No folders match.</div>
+              <div className="muted" style={{ padding: "12px 10px", fontSize: 11.5 }}>
+                {folders.length === 0
+                  ? <>No folders yet. <button onClick={openNewFolder} style={{ background: "none", border: 0, padding: 0, color: "var(--primary)", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Create one</button>.</>
+                  : "No folders match."}
+              </div>
             )}
             {folderTreeFiltered.map((node: any) => {
               const hasKids = node.children.size > 0;
@@ -469,6 +490,39 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
           onClose={() => setDetailOpen(false)}
           pushToast={pushToast}
         />
+      )}
+
+      {newFolderOpen && (
+        <>
+          <div className="scrim" onClick={() => !newFolderBusy && setNewFolderOpen(false)} />
+          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="new-folder-title">
+            <div>
+              <h3 id="new-folder-title">New folder</h3>
+              <p style={{ marginTop: 6 }}>
+                Lowercase letters, digits, <span className="font-mono">_</span> and <span className="font-mono">-</span>. Use <span className="font-mono">/</span> in the name to nest under an existing folder.
+              </p>
+            </div>
+            <input
+              ref={newFolderInputRef}
+              className="input"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); void submitNewFolder(); }
+                if (e.key === "Escape") { e.preventDefault(); setNewFolderOpen(false); }
+              }}
+              placeholder="drafts"
+              disabled={newFolderBusy}
+              autoFocus
+            />
+            <div className="actions">
+              <Button variant="ghost" size="sm" onClick={() => setNewFolderOpen(false)} disabled={newFolderBusy}>Cancel</Button>
+              <Button variant="primary" size="sm" onClick={submitNewFolder} disabled={newFolderBusy || !newFolderName.trim()}>
+                {newFolderBusy ? "Creating…" : "Create folder"}
+              </Button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

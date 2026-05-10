@@ -30,7 +30,7 @@ import { loadAuthors } from "./authors-cache";
 import { CollectionsIndex, NewCollectionDialog } from "./collections-index";
 import { EditFieldDialog } from "./edit-field";
 import { CollectionSettings } from "./collection-settings";
-import { collectionsApi, itemsApi, settingsApi } from "./api";
+import { collectionsApi, itemsApi, metricsApi, settingsApi } from "./api";
 import { api } from "@/lib/api";
 import { StoragePage } from "./storage";
 import {
@@ -149,24 +149,43 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   const [collections, setCollections] = useState<typeof MOCK.collectionsList>([]);
   useEffect(() => {
     let cancelled = false;
+    // Card stats (rows / writes 24h / last write) come from the metrics
+    // overview's per-collection bucket. Card layout is keyed off the
+    // collections list, so we merge the two responses by slug.
     void (async () => {
+      const fmtAgo = (ts: number | null | undefined): string => {
+        if (!ts) return "—";
+        const ms = Date.now() - ts;
+        if (ms < 60_000) return "just now";
+        if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
+        if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
+        return `${Math.floor(ms / 86_400_000)}d ago`;
+      };
       try {
-        const res = await collectionsApi.list();
+        const [listRes, metricsRes] = await Promise.all([
+          collectionsApi.list(),
+          metricsApi.overview("24h").catch(() => null),
+        ]);
         if (cancelled) return;
-        if (Array.isArray(res.data)) {
-          const mapped = res.data.map((c) => ({
+        if (!Array.isArray(listRes.data)) return;
+        const statsBySlug = new Map(
+          (metricsRes?.data?.topCollections ?? []).map((s) => [s.slug, s]),
+        );
+        const mapped = listRes.data.map((c) => {
+          const stats = statsBySlug.get(c.slug);
+          return {
             slug: c.slug,
-            count: 0,
+            count: stats?.rows ?? 0,
             ownerScoped: c.ownerScoped,
             fields: Array.isArray(c.fields) ? c.fields.length : 0,
             icon: "Database" as const,
-            writes24h: 0,
-            lastWrite: "—",
+            writes24h: stats?.writes24h ?? 0,
+            lastWrite: fmtAgo(stats?.lastWrite ?? null),
             singleton: false,
             group: "Content",
-          }));
-          setCollections(mapped);
-        }
+          };
+        });
+        setCollections(mapped);
       } catch {
         // leave collections empty on auth/network failure
       }

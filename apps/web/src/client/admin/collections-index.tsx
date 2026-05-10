@@ -69,7 +69,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete }: Colle
                 <div style={{ flex: 1, height: 1, background: "var(--border)", marginLeft: 6 }} />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
-                {list.map((c) => <CollectionCard key={c.slug} c={c} onOpen={() => onOpen(c.slug)} onDelete={onDelete ? () => onDelete(c.slug) : undefined} />)}
+                {list.map((c) => <CollectionCard key={c.slug} c={c} onOpen={() => onOpen(c.slug)} />)}
                 <button onClick={onNew} className="card" style={{ minHeight: 138, border: "1.5px dashed var(--border)", background: "transparent", cursor: "pointer", display: "grid", placeItems: "center", gap: 6, color: "var(--muted-foreground)" }}>
                   <I.Plus size={18} />
                   <span style={{ fontSize: 12.5, fontWeight: 500 }}>New collection</span>
@@ -127,7 +127,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete }: Colle
   );
 }
 
-function CollectionCard({ c, onOpen, onDelete }: { c: CollectionListItem; onOpen: () => void; onDelete?: () => void }) {
+function CollectionCard({ c, onOpen }: { c: CollectionListItem; onOpen: () => void }) {
   const Ic = (I as Record<string, IconComponent>)[c.icon as IconKey] || I.Database;
   return (
     <div
@@ -152,19 +152,6 @@ function CollectionCard({ c, onOpen, onDelete }: { c: CollectionListItem; onOpen
       <div style={{ display: "flex", gap: 6 }}>
         <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onOpen(); }}>Open</Button>
         <Button size="sm" variant="ghost" iconRight={I.ExternalLink}>API</Button>
-        <div className="spacer" />
-        {onDelete && (
-          <Button
-            size="sm"
-            variant="ghost"
-            icon={I.Trash}
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            style={{ color: "var(--destructive)" }}
-            title="Delete collection"
-          >
-            Delete
-          </Button>
-        )}
       </div>
     </div>
   );

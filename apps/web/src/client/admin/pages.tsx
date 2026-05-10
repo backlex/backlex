@@ -1207,8 +1207,27 @@ const WH_EVENTS = [
   "files.uploaded", "files.deleted",
 ];
 
+/** `Header: value` lines ⇄ a `{ [name]: value }` map. Headers are optional —
+ * an empty textarea means "no custom headers", so we send `null` rather than
+ * an empty object the API would have to special-case. */
+function parseHeaderLines(text: string): Record<string, string> | null {
+  const out: Record<string, string> = {};
+  for (const raw of String(text ?? "").split("\n")) {
+    const line = raw.trim();
+    if (!line) continue;
+    const idx = line.indexOf(":");
+    if (idx <= 0) continue;
+    const key = line.slice(0, idx).trim();
+    if (key) out[key] = line.slice(idx + 1).trim();
+  }
+  return Object.keys(out).length ? out : null;
+}
+function formatHeaderLines(headers: Record<string, string> | null | undefined): string {
+  return headers ? Object.entries(headers).map(([k, v]) => `${k}: ${v}`).join("\n") : "";
+}
+
 export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) {
-  type HookRow = { id: string; name: string; url: string; events: string[]; method: string; secret: string; active: boolean; deliveries: number; ok: boolean; successRate: number; lastDelivery: string };
+  type HookRow = { id: string; name: string; url: string; events: string[]; method: string; secret: string; headers: Record<string, string> | null; active: boolean; deliveries: number; ok: boolean; successRate: number; lastDelivery: string };
   const [hooks, setHooks] = useState<HookRow[]>([]);
   const reloadHooks = async () => {
     const [r, m] = await Promise.all([
@@ -1233,6 +1252,7 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
           events: Array.isArray(h.events) ? h.events : [],
           method: "POST",
           secret: h.secret ?? "",
+          headers: h.headers ?? null,
           active: !!h.active,
           deliveries: stats[h.id]?.deliveries ?? 0,
           ok: true,
@@ -1278,16 +1298,17 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
 
   const saveHook = async (data: any) => {
     try {
+      const headers = parseHeaderLines(data.headers);
       if (editor!.mode === "create") {
         await api("/api/webhooks", {
           method: "POST",
-          body: JSON.stringify({ name: data.name, url: data.url, events: data.events, secret: data.secret, active: data.active, headers: null }),
+          body: JSON.stringify({ name: data.name, url: data.url, events: data.events, secret: data.secret, active: data.active, headers }),
         });
         pushToast(`Webhook "${data.name}" created.`);
       } else {
         await api(`/api/webhooks/${editor!.hook.id}`, {
           method: "PATCH",
-          body: JSON.stringify({ name: data.name, url: data.url, events: data.events, active: data.active }),
+          body: JSON.stringify({ name: data.name, url: data.url, events: data.events, active: data.active, headers }),
         });
         pushToast(`Webhook "${data.name}" updated.`);
       }
@@ -1444,7 +1465,7 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
 
 function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode: "create" | "edit"; hook: any; onClose: () => void; onSave: (data: any) => void; pushToast: (m: string) => void }) {
   const blank = { name: "", url: "", method: "POST", events: [], secret: "whsec_" + Math.random().toString(16).slice(2, 14), active: true, headers: "" };
-  const [draft, setDraft] = useState<any>(hook ? { headers: "", ...hook } : blank);
+  const [draft, setDraft] = useState<any>(hook ? { ...hook, headers: formatHeaderLines(hook.headers) } : blank);
   const [revealSecret, setRevealSecret] = useState(false);
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
   const update = (k: string, v: unknown) => { setDraft((d: any) => ({ ...d, [k]: v })); setErrors((e) => ({ ...e, [k]: undefined })); };

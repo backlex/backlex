@@ -34,6 +34,17 @@ const wrangler = (extraArgs: string[]) => {
   return spawnSync(cmd[0]!, cmd.slice(1), { cwd, encoding: "utf8" });
 };
 
+// Trim stderr/stdout for log output: first N non-empty lines, single line.
+const trimOutput = (s: string, lines = 3, max = 400): string => {
+  const compact = s.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, lines).join(" | ");
+  return compact.length > max ? compact.slice(0, max) + "…" : compact;
+};
+
+const logFailure = (label: string, r: { stdout: string; stderr: string }) => {
+  if (r.stderr) console.warn(`    ${label} stderr: ${trimOutput(r.stderr)}`);
+  if (r.stdout) console.warn(`    ${label} stdout: ${trimOutput(r.stdout)}`);
+};
+
 const execFile = (file: string) => {
   const r = wrangler([
     "d1", "execute", dbName, remoteFlag, persistFlag,
@@ -134,14 +145,16 @@ for (const tag of order) {
     // exists" / "duplicate column" — those are noise. Fall through and
     // record the hash so we don't repeat the noise on the next run.
     console.warn(`    (wrangler exit ≠ 0 — likely partial replay, recording hash anyway)`);
+    if (tag === order[0]) logFailure("DDL[first]", r);
   }
   const ts = Date.now();
   // Don't gate on exit status here either — wrangler can exit ≠ 0 even when
   // the INSERT was committed. We re-read the ledger after the loop and
   // report the actual recorded delta.
-  execSql(
+  const ins = execSql(
     `INSERT INTO __drizzle_migrations (hash, created_at) VALUES ('${hash}', ${ts});`,
   );
+  if (tag === order[0]) logFailure(`INSERT[first]`, ins);
   attemptedHashes.push(hash);
 }
 
@@ -153,4 +166,19 @@ const missing = attemptedHashes.length - newlyRecorded;
 console.log(`✓ Done — ${newlyRecorded} new migration(s) recorded.`);
 if (missing > 0) {
   console.warn(`  (${missing} hash(es) attempted but not visible in ledger — admin Migrations page will be incomplete)`);
+}
+
+// Diagnostic: if nothing was visible, dump the raw verifying SELECT and a
+// table-introspection call so we can see what wrangler actually returned.
+// Removed in a follow-up commit once we know the failure mode.
+if (missing > 0 && attemptedHashes.length > 0) {
+  console.warn(`  --- diagnostic dump (workeros-fix/migrate-d1) ---`);
+  const verify = execSql(`SELECT hash, created_at FROM __drizzle_migrations ORDER BY id DESC LIMIT 5;`, { json: true });
+  console.warn(`    verify-select exit=${verify.ok ? 0 : "≠0"}`);
+  if (verify.stderr) console.warn(`    stderr: ${trimOutput(verify.stderr, 6, 800)}`);
+  if (verify.stdout) console.warn(`    stdout: ${trimOutput(verify.stdout, 6, 800)}`);
+  const tables = execSql(`SELECT name, sql FROM sqlite_master WHERE type='table' AND name='__drizzle_migrations';`, { json: true });
+  console.warn(`    table-list exit=${tables.ok ? 0 : "≠0"}`);
+  if (tables.stderr) console.warn(`    stderr: ${trimOutput(tables.stderr, 6, 800)}`);
+  if (tables.stdout) console.warn(`    stdout: ${trimOutput(tables.stdout, 6, 800)}`);
 }

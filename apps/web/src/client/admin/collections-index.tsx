@@ -180,6 +180,7 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
   const [softDelete, setSoftDelete] = useState(false);
   const [tenantScoped, setTenantScoped] = useState(true);
   const [template, setTemplate] = useState("blank");
+  const [withStatus, setWithStatus] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -192,13 +193,36 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
       setSoftDelete(false);
       setTenantScoped(true);
       setTemplate("blank");
+      setWithStatus(false);
     }
   }, [open]);
+
+  // "Content" template implies a status field; flip the toggle ON when picked
+  // so the user sees what they're getting (still editable in step 2).
+  useEffect(() => {
+    if (template === "content") setWithStatus(true);
+  }, [template]);
 
   if (!open) return null;
 
   const slugClean = slug.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_").replace(/^_+|_+$/g, "");
   const slugError = !slugClean ? null : existingSlugs.includes(slugClean) ? `c_${slugClean} already exists` : !/^[a-z][a-z0-9_]*$/.test(slugClean) ? "must start with a letter" : null;
+
+  // Default status choices when the wizard injects a status field — Directus-
+  // shaped (value/label/color). Keep these aligned with the badge palette in
+  // admin/items.tsx so the table cell colors match the editor swatches.
+  const DEFAULT_STATUS_CHOICES = [
+    { value: "draft", label: "Draft", color: "#A1A6B8" },
+    { value: "review", label: "In review", color: "#F5A524" },
+    { value: "published", label: "Published", color: "#2ECDA7" },
+    { value: "archived", label: "Archived", color: "#E35169" },
+  ];
+  const STATUS_FIELD_DEF = {
+    name: "status",
+    type: "text" as const,
+    interface: "dropdown" as const,
+    options: { choices: DEFAULT_STATUS_CHOICES },
+  };
 
   // Each preset's `fields` are user-defined columns; system columns (id,
   // owner_id, timestamps) are added by the backend per the toggles below.
@@ -208,7 +232,14 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
     name: string;
     desc: string;
     icon: string;
-    fields: Array<{ name: string; type: "text" | "longtext" | "boolean" | "timestamp" | "json"; required?: boolean; unique?: boolean }>;
+    fields: Array<{
+      name: string;
+      type: "text" | "longtext" | "boolean" | "timestamp" | "json";
+      required?: boolean;
+      unique?: boolean;
+      interface?: "dropdown";
+      options?: { choices?: typeof DEFAULT_STATUS_CHOICES };
+    }>;
   }> = [
     { id: "blank", name: "Blank", desc: "Just system fields. Add your own columns.", icon: "Braces", fields: [] },
     {
@@ -219,7 +250,8 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
       fields: [
         { name: "title", type: "text", required: true },
         { name: "slug", type: "text", required: true, unique: true },
-        { name: "status", type: "text" },
+        // status is added by the wizard's "Add status field" toggle (auto-on
+        // for this template) so the choices stay in one place.
         { name: "body", type: "longtext" },
         { name: "published_at", type: "timestamp" },
       ],
@@ -259,6 +291,11 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
   const submit = () => {
     if (!slugClean || slugError) return;
     const tpl = templates.find((t) => t.id === template)!;
+    // Inject status with default choices when the toggle is on, unless the
+    // template already provides one (defensive — current presets don't).
+    const finalFields = withStatus && !tpl.fields.some((f) => f.name === "status")
+      ? [...tpl.fields, STATUS_FIELD_DEF]
+      : tpl.fields;
     onCreate({
       slug: slugClean,
       group,
@@ -268,11 +305,11 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
       softDelete,
       tenantScoped,
       template,
-      templateFields: tpl.fields,
+      templateFields: finalFields,
       count: 0,
       // Card stat: number of user-defined fields. Real total (incl. system
       // columns) is computed by the backend and surfaced once we re-load.
-      fields: tpl.fields.length,
+      fields: finalFields.length,
       writes24h: 0,
       lastWrite: "just now",
       icon: tpl.icon,
@@ -365,6 +402,17 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
                   <div className="field-hint">Add <span className="font-mono">deleted_at</span>; deletes mark rows instead of removing them.</div>
                 </div>
                 <Switch checked={softDelete} onChange={setSoftDelete} />
+              </div>
+              <div className="field-row" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
+                <div>
+                  <div className="field-label">Status field</div>
+                  <div className="field-hint">
+                    Add a <span className="font-mono">status</span> dropdown with{" "}
+                    <span className="font-mono">draft / review / published / archived</span>{" "}
+                    + per-option color. List view auto-shows status tabs and badges.
+                  </div>
+                </div>
+                <Switch checked={withStatus} onChange={setWithStatus} />
               </div>
               <div className="field-row" style={{ paddingBottom: 4 }}>
                 <div>

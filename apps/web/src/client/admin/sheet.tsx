@@ -225,6 +225,26 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
         </div>
       );
     }
+    if (f.name === "status" && (f.type === "text" || !f.type)) {
+      const STATUS_VALUES = ["draft", "review", "published", "archived"];
+      const current = String(val ?? "");
+      const options = current && !STATUS_VALUES.includes(current)
+        ? [...STATUS_VALUES, current]
+        : STATUS_VALUES;
+      return (
+        <div key={f.name} className="field">
+          {label}
+          <Select
+            value={current}
+            onChange={(v) => { updateField(f.name, v); setTouched((t) => ({ ...t, [f.name]: true })); }}
+            options={options}
+            placeholder="Pick a status…"
+          />
+          {err && <div className="field-error"><I.AlertTriangle size={11} />{err}</div>}
+        </div>
+      );
+    }
+
     // text / uuid (free text fallback)
     const autoSlug = f.name === "slug" && !touched.slug && fields.some((x) => x.name === "title");
     return (

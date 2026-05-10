@@ -48,30 +48,30 @@ process.on("exit", () => {
   try { rmSync(tmpRoot, { recursive: true, force: true }); } catch {}
 });
 
-// Inline SQL goes through a temp file + `--file=` (R2 upload + import API)
-// rather than `--command=`. We adopted this while chasing a permission
-// issue; the comment is kept because --file= turned out to also be the
-// path that lets us parse JSON output reliably with the tryParseJsonTail
-// helper below (wrangler prefixes the JSON with progress lines that
-// `JSON.parse` chokes on, but the same noise exists for --command anyway
-// so consolidating on --file= keeps the code paths symmetric).
-const execSql = (sql: string, opts: { json?: boolean } = {}) => {
+// Writes go through `--file=` (R2 upload + /import API). The /import
+// endpoint executes the SQL but only returns import statistics — never
+// row data — so it's fine for CREATE/INSERT but useless for SELECT.
+const execSqlWrite = (sql: string) => {
   const path = join(tmpRoot, `q-${randomBytes(6).toString("hex")}.sql`);
   writeFileSync(path, sql);
-  const args = ["d1", "execute", dbName, remoteFlag, persistFlag];
-  if (opts.json) args.push("--json");
-  args.push(`--file=${path}`);
+  const args = ["d1", "execute", dbName, remoteFlag, persistFlag, `--file=${path}`];
   const r = wrangler(args);
   try { rmSync(path, { force: true }); } catch {}
   return { ok: r.status === 0, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
 };
 
-// wrangler `--file=` interleaves stdout with progress noise like
-// "├ Checking if file needs uploading", "🌀 Uploading complete." before
-// AND sometimes after the JSON payload, so a raw JSON.parse(stdout)
-// fails. Walk both ends: try each candidate '['/'{' start, then for each
-// start try each matching ']'/'}' end from rightmost to leftmost. First
-// slice that JSON.parses wins.
+// Reads go through `--command=` (the /query API), which returns full row
+// data. With --json wrangler emits clean JSON on stdout for this path.
+const execSqlRead = (sql: string) => {
+  const args = ["d1", "execute", dbName, remoteFlag, persistFlag, "--json", `--command=${sql}`];
+  const r = wrangler(args);
+  return { ok: r.status === 0, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
+};
+
+// wrangler may interleave stdout with progress noise around the JSON
+// payload, so a raw JSON.parse(stdout) can fail. Walk both ends: each
+// candidate '['/'{' start × each ']'/'}' end (rightmost first) until
+// JSON.parse succeeds.
 const tryParseJsonTail = (stdout: string): unknown | null => {
   const tryShape = (open: string, close: string) => {
     for (let i = stdout.indexOf(open); i >= 0; i = stdout.indexOf(open, i + 1)) {
@@ -106,10 +106,10 @@ const parseLedgerHashes = (stdout: string): Set<string> | null => {
 };
 
 const readLedger = (): Set<string> => {
-  const r = execSql(`SELECT hash FROM __drizzle_migrations;`, { json: true });
-  // Don't trust the exit code: wrangler frequently exits ≠ 0 on remote D1
-  // (stderr noise like "fetch failed") even when the SELECT itself succeeded
-  // and stdout carries the JSON payload. Try to parse stdout regardless.
+  const r = execSqlRead(`SELECT hash FROM __drizzle_migrations;`);
+  // Don't trust the exit code: wrangler can exit ≠ 0 on remote D1 even
+  // when the SELECT itself succeeded and stdout carries the JSON payload.
+  // Try to parse stdout regardless.
   const parsed = parseLedgerHashes(r.stdout);
   if (parsed) return parsed;
   if (!r.ok && r.stderr) {
@@ -121,7 +121,7 @@ const readLedger = (): Set<string> => {
 // Bootstrap drizzle's tracking table — schema must match what
 // drizzle-orm/bun-sqlite/migrator creates so the admin /migrations endpoint
 // can read both.
-execSql(
+execSqlWrite(
   `CREATE TABLE IF NOT EXISTS __drizzle_migrations (
      id INTEGER PRIMARY KEY AUTOINCREMENT,
      hash TEXT NOT NULL,
@@ -156,7 +156,7 @@ for (const tag of order) {
   // Don't gate on exit status here either — wrangler can exit ≠ 0 even when
   // the INSERT was committed. We re-read the ledger after the loop and
   // report the actual recorded delta.
-  execSql(
+  execSqlWrite(
     `INSERT INTO __drizzle_migrations (hash, created_at) VALUES ('${hash}', ${ts});`,
   );
   attemptedHashes.push(hash);
@@ -170,17 +170,4 @@ const missing = attemptedHashes.length - newlyRecorded;
 console.log(`✓ Done — ${newlyRecorded} new migration(s) recorded.`);
 if (missing > 0) {
   console.warn(`  (${missing} hash(es) attempted but not visible in ledger — admin Migrations page will be incomplete)`);
-}
-
-// One-shot diagnostic: when nothing was visible, run one more SELECT and
-// dump the raw stdout + stderr in full (no truncation) so we can see what
-// wrangler is actually returning. Removed in a follow-up commit.
-if (missing > 0 && attemptedHashes.length > 0) {
-  console.warn(`  --- diagnostic raw dump ---`);
-  const r = execSql(`SELECT hash FROM __drizzle_migrations LIMIT 3;`, { json: true });
-  console.warn(`exit=${r.ok ? 0 : "≠0"}`);
-  console.warn(`stdout(len=${r.stdout.length}):`);
-  console.warn(r.stdout);
-  console.warn(`stderr(len=${r.stderr.length}):`);
-  console.warn(r.stderr);
 }

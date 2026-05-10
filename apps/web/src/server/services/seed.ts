@@ -103,7 +103,10 @@ export const ensureTenantMembership = async (
   });
 };
 
-export const ensureSystemRoles = async (ctx: DbCtx): Promise<void> => {
+export const ensureSystemRoles = async (
+  ctx: DbCtx,
+  tenantId: string,
+): Promise<void> => {
   const t = tablesFor(ctx.dialect);
   const want: { name: string; description: string; admin: boolean }[] = [
     {
@@ -126,11 +129,12 @@ export const ensureSystemRoles = async (ctx: DbCtx): Promise<void> => {
     const exists = await (ctx.db as any)
       .select({ id: t.roles.id })
       .from(t.roles)
-      .where(eq(t.roles.name, r.name))
+      .where(and(eq(t.roles.tenantId, tenantId), eq(t.roles.name, r.name)))
       .limit(1);
     if (exists[0]) continue;
     await (ctx.db as any).insert(t.roles).values({
       id: crypto.randomUUID(),
+      tenantId,
       name: r.name,
       description: r.description,
       admin: r.admin,
@@ -140,23 +144,25 @@ export const ensureSystemRoles = async (ctx: DbCtx): Promise<void> => {
 
 export const getRoleByName = async (
   ctx: DbCtx,
+  tenantId: string,
   name: string,
 ): Promise<{ id: string; admin: boolean } | null> => {
   const t = tablesFor(ctx.dialect);
   const rows = await (ctx.db as any)
     .select({ id: t.roles.id, admin: t.roles.admin })
     .from(t.roles)
-    .where(eq(t.roles.name, name))
+    .where(and(eq(t.roles.tenantId, tenantId), eq(t.roles.name, name)))
     .limit(1);
   return rows[0] ?? null;
 };
 
 export const assignRoleByName = async (
   ctx: DbCtx,
+  tenantId: string,
   userId: string,
   roleName: string,
 ): Promise<void> => {
-  const role = await getRoleByName(ctx, roleName);
+  const role = await getRoleByName(ctx, tenantId, roleName);
   if (!role) return;
   const t = tablesFor(ctx.dialect);
   const existing = await (ctx.db as any)
@@ -183,9 +189,10 @@ const OWNER_CONDITION: Condition = {
 
 export const seedOwnerScopedPermissions = async (
   ctx: DbCtx,
+  tenantId: string,
   collectionSlug: string,
 ): Promise<void> => {
-  const role = await getRoleByName(ctx, SYSTEM_ROLES.authenticated);
+  const role = await getRoleByName(ctx, tenantId, SYSTEM_ROLES.authenticated);
   if (!role) return;
   const t = tablesFor(ctx.dialect);
 

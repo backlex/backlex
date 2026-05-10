@@ -145,13 +145,19 @@ export const roles = sqliteTable(
   "roles",
   {
     id: text("id").primaryKey(),
+    tenantId: text("tenant_id").references(() => tenants.id, {
+      onDelete: "cascade",
+    }),
     name: text("name").notNull(),
     description: text("description"),
     admin: integer("admin", { mode: "boolean" }).notNull().default(false),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },
-  (t) => [uniqueIndex("roles_name_idx").on(t.name)],
+  (t) => [
+    uniqueIndex("roles_tenant_name_idx").on(t.tenantId, t.name),
+    index("roles_tenant_idx").on(t.tenantId),
+  ],
 );
 
 export const userRoles = sqliteTable(
@@ -373,6 +379,9 @@ export const apiKeys = sqliteTable(
   "api_keys",
   {
     id: text("id").primaryKey(),
+    tenantId: text("tenant_id").references(() => tenants.id, {
+      onDelete: "cascade",
+    }),
     prefix: text("prefix").notNull(),
     hashedKey: text("hashed_key").notNull(),
     name: text("name").notNull(),
@@ -388,6 +397,7 @@ export const apiKeys = sqliteTable(
     uniqueIndex("api_keys_hashed_idx").on(t.hashedKey),
     index("api_keys_prefix_idx").on(t.prefix),
     index("api_keys_user_idx").on(t.userId),
+    index("api_keys_tenant_idx").on(t.tenantId),
   ],
 );
 

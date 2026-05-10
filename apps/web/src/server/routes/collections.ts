@@ -163,7 +163,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       versioned: body.versioned,
     });
     if (body.ownerScoped) {
-      await seedOwnerScopedPermissions({ db, dialect }, body.slug);
+      await seedOwnerScopedPermissions({ db, dialect }, tenantId, body.slug);
     }
     await logActivity(c, {
       action: "create",
@@ -248,7 +248,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       versioned: merged.versioned,
     });
     if (merged.ownerScoped) {
-      await seedOwnerScopedPermissions({ db, dialect }, nextSlug);
+      await seedOwnerScopedPermissions({ db, dialect }, tenantId, nextSlug);
     }
     await logActivity(c, {
       action: "update",

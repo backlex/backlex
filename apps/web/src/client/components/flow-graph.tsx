@@ -33,6 +33,14 @@ const describeOp = (op: Operation): string => {
       return truncate(JSON.stringify(op.filter ?? {}));
     case "notification":
       return truncate(op.title || "(no title)");
+    case "function":
+      return `fn: ${truncate(op.name || "(no name)")}`;
+    case "item.create":
+      return `→ ${truncate(op.collection || "(no collection)")}`;
+    case "item.update":
+      return `~ ${truncate(op.collection || "(no collection)")}`;
+    case "delay":
+      return `wait ${op.durationMs}ms`;
   }
 };
 
@@ -45,6 +53,10 @@ const opColor: Record<Operation["type"], string> = {
   "run-script": "color-mix(in oklab, var(--primary) 22%, transparent)",
   condition: "color-mix(in oklab, var(--accent) 18%, transparent)",
   notification: "color-mix(in oklab, var(--primary) 14%, transparent)",
+  function: "color-mix(in oklab, var(--primary) 22%, transparent)",
+  "item.create": "color-mix(in oklab, var(--accent) 16%, transparent)",
+  "item.update": "color-mix(in oklab, var(--accent) 16%, transparent)",
+  delay: "color-mix(in oklab, var(--muted) 60%, transparent)",
 };
 
 interface BuildState {

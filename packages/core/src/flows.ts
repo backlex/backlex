@@ -29,8 +29,16 @@ export type Operation =
   | {
       type: "email";
       to: string;
-      subject: string;
-      text: string;
+      /** When set, the email body is rendered from the matching `email_templates`
+       *  row (tenant override → global). `subject` / `html` / `text` then act as
+       *  fallback if no template row is found. */
+      templateKey?: string;
+      /** Extra vars merged into the render context on top of the flow `data`
+       *  payload. Values may be templates themselves (`{{ data.author.email }}`). */
+      vars?: Record<string, unknown>;
+      subject?: string;
+      html?: string;
+      text?: string;
       onSuccess?: Operation[];
       onError?: Operation[];
     }
@@ -65,6 +73,45 @@ export type Operation =
       userId?: string | null;
       onSuccess?: Operation[];
       onError?: Operation[];
+    }
+  /** Invoke a saved workeros function by name, tenant-scoped. The
+   *  function's stored `code` is run in the same sandbox as `run-script`
+   *  but the body lives in the `functions` table so it's reusable across
+   *  flows and the HTTP `/api/functions/:name/invoke` endpoint. */
+  | {
+      type: "function";
+      name: string;
+      input?: unknown;
+      onSuccess?: Operation[];
+      onError?: Operation[];
+    }
+  /** Insert a row into a dynamic collection. Tenant-scoped via the running
+   *  flow's auth context. Permission checks are bypassed — flows are
+   *  admin-authored, so the trust boundary lives at flow creation time. */
+  | {
+      type: "item.create";
+      collection: string;
+      data: Record<string, unknown> | string;
+      onSuccess?: Operation[];
+      onError?: Operation[];
+    }
+  /** Patch an existing row in a dynamic collection by id. Same trust
+   *  boundary as item.create. */
+  | {
+      type: "item.update";
+      collection: string;
+      id: string;
+      data: Record<string, unknown> | string;
+      onSuccess?: Operation[];
+      onError?: Operation[];
+    }
+  /** Pause execution. Short delays (≤ 30s) sleep inline; longer ones are
+   *  persisted to `scheduled_tasks` and resumed by the scheduler tick. */
+  | {
+      type: "delay";
+      durationMs: number;
+      onSuccess?: Operation[];
+      onError?: Operation[];
     };
 
 export type OperationType = Operation["type"];
@@ -78,6 +125,10 @@ export const OPERATION_TYPES: OperationType[] = [
   "run-script",
   "condition",
   "notification",
+  "function",
+  "item.create",
+  "item.update",
+  "delay",
 ];
 
 export const ConditionSchema: z.ZodType<Condition> = z.lazy(() =>
@@ -126,8 +177,11 @@ export const OperationSchema: z.ZodType<Operation> = z.lazy(() =>
     z.object({
       type: z.literal("email"),
       to: z.string(),
-      subject: z.string(),
-      text: z.string(),
+      templateKey: z.string().optional(),
+      vars: z.record(z.string(), z.unknown()).optional(),
+      subject: z.string().optional(),
+      html: z.string().optional(),
+      text: z.string().optional(),
       onSuccess: z.array(OperationSchema).optional(),
       onError: z.array(OperationSchema).optional(),
     }),
@@ -158,6 +212,37 @@ export const OperationSchema: z.ZodType<Operation> = z.lazy(() =>
       body: z.string().optional(),
       url: z.string().optional(),
       userId: z.string().nullable().optional(),
+      onSuccess: z.array(OperationSchema).optional(),
+      onError: z.array(OperationSchema).optional(),
+    }),
+    z.object({
+      type: z.literal("function"),
+      name: z.string().min(1),
+      input: z.unknown().optional(),
+      onSuccess: z.array(OperationSchema).optional(),
+      onError: z.array(OperationSchema).optional(),
+    }),
+    z.object({
+      type: z.literal("item.create"),
+      collection: z.string().min(1),
+      // Accept the raw object OR a template string that interpolates to JSON
+      // — the executor parses strings at run time.
+      data: z.union([z.record(z.string(), z.unknown()), z.string()]),
+      onSuccess: z.array(OperationSchema).optional(),
+      onError: z.array(OperationSchema).optional(),
+    }),
+    z.object({
+      type: z.literal("item.update"),
+      collection: z.string().min(1),
+      id: z.string().min(1),
+      data: z.union([z.record(z.string(), z.unknown()), z.string()]),
+      onSuccess: z.array(OperationSchema).optional(),
+      onError: z.array(OperationSchema).optional(),
+    }),
+    z.object({
+      type: z.literal("delay"),
+      // Cap at 30 days — anything longer is almost certainly a typo.
+      durationMs: z.number().int().nonnegative().max(30 * 24 * 60 * 60 * 1000),
       onSuccess: z.array(OperationSchema).optional(),
       onError: z.array(OperationSchema).optional(),
     }),

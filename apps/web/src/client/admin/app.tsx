@@ -257,29 +257,67 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tweaks.dark, setTweak, pushToast]);
 
+  // Real-time subscription to the active collection's events channel.
+  // - Workers (env.REALTIME bound): WebSocket via Durable Object
+  // - Bun: SSE via streamSSE
+  // We detect once via settingsApi.runtime() and pick the right transport.
+  // Each incoming event is mapped into the design's RealtimeEvent shape so
+  // RealtimeTail keeps rendering identically — only the data source changes.
   useEffect(() => {
     if (!tweaks.showRealtime) return;
+    if (!activeCollection) { setEvents([]); return; }
+    const channel = `items:${activeCollection}`;
+    let cleanup: (() => void) | null = null;
     let alive = true;
-    const seed: RealtimeEvent[] = [
-      { event: "updated", itemId: "01HZ7K8Q6XYZ", title: "Drizzle 1.0 in production", field: "word_count", who: "jules", t: "just now", id: "e1" },
-      { event: "created", itemId: "01HZ7K8Z4YZA", title: "New post draft", who: "kai", t: "12s ago", id: "e2" },
-      { event: "updated", itemId: "01HZ7K8R8ABC", title: "pgvector → Vectorize migration playbook", field: "status", who: "kai", t: "38s ago", id: "e3" },
-    ];
-    setEvents(seed);
-    const tick = () => {
+    const onMsg = (raw: string) => {
       if (!alive) return;
-      const samples: Omit<RealtimeEvent, "t" | "id">[] = [
-        { event: "updated", title: "Edge functions are now generally available", field: "view_count", who: "system" },
-        { event: "updated", title: "Realtime channels: WebSockets vs SSE on the edge", field: "view_count", who: "system" },
-        { event: "created", title: "Fresh draft", who: "priya" },
-        { event: "updated", title: "A simpler permissions DSL", field: "tags", who: "rana" },
-      ];
-      const pick = samples[Math.floor(Math.random() * samples.length)];
-      setEvents((arr) => [{ ...pick, t: "just now", id: "e" + Math.random().toString(36).slice(2) }, ...arr.map((e, i) => i === 0 ? { ...e, t: ageBump(e.t) } : { ...e, t: ageBump(e.t) }).slice(0, 30)]);
+      try {
+        const parsed = JSON.parse(raw) as { event?: string; data?: any };
+        const ev = parsed.event ?? "updated";
+        const data = parsed.data ?? {};
+        const next: RealtimeEvent = {
+          event: ev as RealtimeEvent["event"],
+          itemId: data.id ?? undefined,
+          title: data.title ?? data.name ?? data.slug ?? data.id ?? "(item)",
+          field: data._changed ?? undefined,
+          who: data.ownerId ?? data.owner_id ?? "system",
+          t: "just now",
+          id: "e" + Math.random().toString(36).slice(2),
+        };
+        setEvents((arr) => [next, ...arr.map((e) => ({ ...e, t: ageBump(e.t) })).slice(0, 30)]);
+      } catch {
+        // malformed payload — ignore
+      }
     };
-    const t = setInterval(tick, 5500);
-    return () => { alive = false; clearInterval(t); };
-  }, [tweaks.showRealtime]);
+    void (async () => {
+      const adapter = tweaks.adapter;
+      if (adapter === "workers") {
+        // Workers — WebSocket through the Durable Object.
+        const proto = location.protocol === "https:" ? "wss:" : "ws:";
+        const url = `${proto}//${location.host}/api/realtime/${encodeURIComponent(channel)}/subscribe`;
+        try {
+          const ws = new WebSocket(url);
+          ws.addEventListener("message", (ev) => onMsg(typeof ev.data === "string" ? ev.data : ""));
+          cleanup = () => { try { ws.close(); } catch {} };
+        } catch {
+          // browser refused — leave events empty
+        }
+      } else {
+        // Bun (or any non-DO runtime) — SSE.
+        try {
+          const es = new EventSource(`/api/realtime/${encodeURIComponent(channel)}/subscribe`, { withCredentials: true });
+          es.addEventListener("message", (ev) => onMsg((ev as MessageEvent).data));
+          cleanup = () => es.close();
+        } catch {
+          // EventSource unsupported — leave events empty
+        }
+      }
+    })();
+    return () => {
+      alive = false;
+      if (cleanup) cleanup();
+    };
+  }, [tweaks.showRealtime, tweaks.adapter, activeCollection]);
 
   const itemsForView = useMemo(() => {
     let rows = tweaks.populated ? posts : [];
@@ -339,8 +377,10 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
         // optimistic insert remains
       }
       setPosts((p) => [nu, ...p]);
-      setEvents((e) => [{ event: "created", title: nu.title, who: "rana", t: "just now", id: "e" + Math.random().toString(36).slice(2) }, ...e]);
-      pushToast(`Post "${nu.title.slice(0, 38)}${nu.title.length > 38 ? "…" : ""}" created.`);
+      // Backend's publishEvent on items create/update/delete will push the
+      // matching realtime message into the events feed via the SSE/WS
+      // subscription — no optimistic local push needed.
+      pushToast(`Post "${(nu.title ?? "").slice(0, 38)}${(nu.title ?? "").length > 38 ? "…" : ""}" created.`);
     } else if (sheetItem) {
       try {
         await itemsApi.patch(activeCollection || "posts", sheetItem.id, draft as Record<string, unknown>);
@@ -348,7 +388,6 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
         // optimistic patch
       }
       setPosts((p) => p.map((x) => x.id === sheetItem.id ? { ...x, ...draft, updated_at: new Date().toISOString() } as Post : x));
-      setEvents((e) => [{ event: "updated", title: draft.title || sheetItem.title, field: "title", who: "rana", t: "just now", id: "e" + Math.random().toString(36).slice(2) }, ...e]);
       pushToast("Post saved.");
     }
     setSheetOpen(false);
@@ -366,11 +405,9 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
       actionLabel: "Delete",
       destructive: true,
       onConfirm: async () => {
-        const titles = posts.filter((p) => selected.has(p.id)).map((p) => p.title);
         const ids = [...selected];
         await Promise.allSettled(ids.map((id) => itemsApi.remove(activeCollection || "posts", id)));
         setPosts((p) => p.filter((x) => !selected.has(x.id)));
-        setEvents((e) => [...titles.map((title) => ({ event: "deleted" as const, title, who: "rana", t: "just now", id: "e" + Math.random().toString(36).slice(2) })), ...e]);
         pushToast(`${selected.size} posts deleted.`);
         setSelected(new Set());
         setConfirm(null);
@@ -513,7 +550,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                     </div>
                   </div>
                   {tweaks.showRealtime && (
-                    <RealtimeTail events={events} channel="items:posts" connected />
+                    <RealtimeTail events={events} channel={`items:${activeCollection ?? ""}`} connected />
                   )}
                 </div>
               )}

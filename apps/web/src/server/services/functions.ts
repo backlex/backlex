@@ -13,7 +13,7 @@ import type { DbCtx } from "./seed";
 export interface FunctionRow {
   id: string;
   name: string;
-  trigger: "http" | "event";
+  trigger: "http" | "event" | "cron";
   pattern: string | null;
   code: string;
   timeoutMs: number;

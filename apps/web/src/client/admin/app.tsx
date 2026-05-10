@@ -488,7 +488,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             {activeNav === "functions" && <FunctionsPage pushToast={pushToast} />}
             {activeNav === "webhooks" && <WebhooksPage pushToast={pushToast} />}
             {activeNav === "realtime" && <RealtimePage events={events} pushToast={pushToast} />}
-            {activeNav === "insights" && <InsightsPage />}
+            {activeNav === "insights" && <InsightsPage pushToast={pushToast} />}
             {activeNav === "activity" && <ActivityPage pushToast={pushToast} />}
             {activeNav === "revisions" && <RevisionsPage />}
             {activeNav === "translations" && <TranslationsPage pushToast={pushToast} />}

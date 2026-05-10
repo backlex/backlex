@@ -5,6 +5,8 @@ import { I } from "./icons";
 import { MOCK, type AdapterId } from "./mock";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
 import { Select } from "./select";
+import { ConfirmDialog } from "./sheet";
+import { ApiError } from "@/lib/api";
 import {
   activityApi,
   authAdminApi,
@@ -762,7 +764,9 @@ export function RevisionsPage() {
 export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } = {}) {
   const [panels, setPanels] = useState<ApiPanel[]>([]);
   const [results, setResults] = useState<Record<string, Record<string, unknown>[]>>({});
-  const [newOpen, setNewOpen] = useState(false);
+  const [runErrors, setRunErrors] = useState<Record<string, string>>({});
+  const [editor, setEditor] = useState<{ mode: "create" } | { mode: "edit"; panel: ApiPanel } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<ApiPanel | null>(null);
 
   const reload = async () => {
     try {
@@ -773,13 +777,23 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
       // rendered from their config without a server roundtrip.
       const runs = await Promise.allSettled(
         list.filter((p) => p.kind === "sql").map(async (p) => {
-          const out = await panelsApi.run(p.id);
-          return [p.id, out.data] as const;
+          try {
+            const out = await panelsApi.run(p.id);
+            return { id: p.id, data: out.data, error: null as string | null };
+          } catch (e) {
+            return { id: p.id, data: null, error: (e as Error).message };
+          }
         }),
       );
-      const map: Record<string, Record<string, unknown>[]> = {};
-      for (const r of runs) if (r.status === "fulfilled") map[r.value[0]] = r.value[1] ?? [];
-      setResults(map);
+      const data: Record<string, Record<string, unknown>[]> = {};
+      const errs: Record<string, string> = {};
+      for (const r of runs) {
+        if (r.status !== "fulfilled") continue;
+        if (r.value.error) errs[r.value.id] = r.value.error;
+        else if (r.value.data) data[r.value.id] = r.value.data;
+      }
+      setResults(data);
+      setRunErrors(errs);
     } catch {
       // leave empty
     }
@@ -791,7 +805,7 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
       <PageHeader
         title="Insights"
         description="Built from saved SQL queries. Drag panels to your own dashboards."
-        actions={<Button variant="primary" icon={I.Plus} onClick={() => setNewOpen(true)}>New panel</Button>}
+        actions={<Button variant="primary" icon={I.Plus} onClick={() => setEditor({ mode: "create" })}>New panel</Button>}
       />
       {panels.length > 0 ? (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
@@ -800,16 +814,9 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
               key={p.id}
               panel={p}
               rows={results[p.id] ?? []}
-              onDelete={async () => {
-                if (!confirm(`Delete panel "${p.name}"?`)) return;
-                try {
-                  await panelsApi.remove(p.id);
-                  await reload();
-                  pushToast?.(`Panel "${p.name}" deleted.`);
-                } catch (e) {
-                  pushToast?.((e as Error).message);
-                }
-              }}
+              error={runErrors[p.id] ?? null}
+              onEdit={() => setEditor({ mode: "edit", panel: p })}
+              onDelete={() => setConfirmDelete(p)}
             />
           ))}
         </div>
@@ -824,72 +831,186 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
         </div>
       )}
 
-      {newOpen && (
-        <NewPanelDialog
+      {editor && (
+        <PanelEditorDialog
+          mode={editor.mode}
+          panel={editor.mode === "edit" ? editor.panel : null}
           existing={panels.map((p) => p.name)}
-          onClose={() => setNewOpen(false)}
-          onCreated={async (name) => {
-            setNewOpen(false);
+          onClose={() => setEditor(null)}
+          onSaved={async (name, mode) => {
+            setEditor(null);
             await reload();
-            pushToast?.(`Panel "${name}" created.`);
+            pushToast?.(mode === "create" ? `Panel "${name}" created.` : `Panel "${name}" saved.`);
           }}
-          onError={(msg) => pushToast?.(msg)}
         />
       )}
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title={confirmDelete ? `Delete "${confirmDelete.name}"?` : ""}
+        description={
+          <>
+            This removes the panel from <span className="font-mono">saved_panels</span> and any dashboards that reference it.
+            The query itself isn't run again. This action can't be undone.
+          </>
+        }
+        actionLabel="Delete panel"
+        destructive
+        onCancel={() => setConfirmDelete(null)}
+        onConfirm={async () => {
+          if (!confirmDelete) return;
+          const name = confirmDelete.name;
+          try {
+            await panelsApi.remove(confirmDelete.id);
+            setConfirmDelete(null);
+            await reload();
+            pushToast?.(`Panel "${name}" deleted.`);
+          } catch (e) {
+            setConfirmDelete(null);
+            pushToast?.((e as Error).message);
+          }
+        }}
+      />
     </div>
   );
 }
 
-const SAMPLE_PANEL_SQL = "SELECT COUNT(*) AS n FROM users;";
+const SAMPLE_PANEL_SQL = "SELECT COUNT(*) AS n FROM user;";
 
-function NewPanelDialog({
+type PanelKind = "sql" | "items-aggregate" | "static";
+type PanelViz = "counter" | "sparkline" | "bars" | "donut" | "table";
+
+const VIZ_DESCRIPTIONS: Record<PanelViz, string> = {
+  counter: "single number",
+  sparkline: "filled line over a numeric series",
+  bars: "vertical bars over a numeric series",
+  donut: "donut chart over up to 6 segments",
+  table: "small key/value table",
+};
+
+/** Same SELECT-only check the server uses, kept in sync. */
+const isReadOnlySelect = (s: string): { ok: boolean; reason?: string } => {
+  const trimmed = s.trim().replace(/;$/, "");
+  if (trimmed.length === 0) return { ok: false, reason: "SQL is empty." };
+  if (!/^select\b/i.test(trimmed)) return { ok: false, reason: "Must start with SELECT." };
+  if (/\b(insert|update|delete|drop|alter|create|truncate|grant|revoke|attach|detach)\b/i.test(trimmed)) {
+    return { ok: false, reason: "Writes (INSERT / UPDATE / DELETE / DROP / …) are blocked." };
+  }
+  return { ok: true };
+};
+
+/**
+ * Map a Zod-style ApiError details list into per-field error messages keyed by
+ * the form field id. The server's PanelInput uses the same field names as the
+ * dialog's state, so the path's first segment is the lookup key.
+ */
+const distributeApiErrors = (
+  err: unknown,
+): { fieldErrors: Record<string, string>; topLevel: string | null } => {
+  if (!(err instanceof ApiError)) {
+    return { fieldErrors: {}, topLevel: err instanceof Error ? err.message : String(err) };
+  }
+  const fieldErrors: Record<string, string> = {};
+  let topLevel: string | null = null;
+  for (const d of err.details ?? []) {
+    const key = d.path?.[0];
+    if (typeof key === "string" && d.message) {
+      fieldErrors[key] = d.message;
+    } else if (d.message) {
+      topLevel = topLevel ? `${topLevel} · ${d.message}` : d.message;
+    }
+  }
+  if (Object.keys(fieldErrors).length === 0 && !topLevel) topLevel = err.message;
+  return { fieldErrors, topLevel };
+};
+
+function PanelEditorDialog({
+  mode,
+  panel,
   existing,
   onClose,
-  onCreated,
-  onError,
+  onSaved,
 }: {
+  mode: "create" | "edit";
+  panel: ApiPanel | null;
   existing: string[];
   onClose: () => void;
-  onCreated: (name: string) => void;
-  onError: (msg: string) => void;
+  onSaved: (name: string, mode: "create" | "edit") => void;
 }) {
-  type Kind = "sql" | "items-aggregate" | "static";
-  type Viz = "counter" | "sparkline" | "bars" | "donut" | "table";
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [kind, setKind] = useState<Kind>("sql");
-  const [viz, setViz] = useState<Viz>("counter");
-  const [sqlText, setSqlText] = useState(SAMPLE_PANEL_SQL);
+  const [name, setName] = useState(panel?.name ?? "");
+  const [description, setDescription] = useState(panel?.description ?? "");
+  const [kind, setKind] = useState<PanelKind>((panel?.kind as PanelKind) ?? "sql");
+  const [viz, setViz] = useState<PanelViz>((panel?.viz as PanelViz) ?? "counter");
+  const [sqlText, setSqlText] = useState<string>(panel?.sql ?? SAMPLE_PANEL_SQL);
   const [busy, setBusy] = useState(false);
+  const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
+  const [topError, setTopError] = useState<string | null>(null);
+
+  // Live preview state.
+  type PreviewResult = { rows: Record<string, unknown>[]; ms: number };
+  const [preview, setPreview] = useState<PreviewResult | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
 
   const trimmedName = name.trim();
-  const nameError = trimmedName.length === 0
-    ? "Required."
-    : trimmedName.length > 80
-      ? "Max 80 characters."
-      : existing.includes(trimmedName)
-        ? "A panel with that name already exists."
-        : null;
+  const otherNames = mode === "edit" && panel ? existing.filter((n) => n !== panel.name) : existing;
+  const nameError =
+    serverErrors.name ??
+    (trimmedName.length === 0
+      ? "Required."
+      : trimmedName.length > 80
+        ? "Max 80 characters."
+        : otherNames.includes(trimmedName)
+          ? "A panel with that name already exists."
+          : null);
 
-  const trimmedSql = sqlText.trim().replace(/;$/, "");
-  const sqlError = kind === "sql"
-    ? (trimmedSql.length === 0
-        ? "Required."
-        : !/^select\b/i.test(trimmedSql)
-          ? "Must be a single SELECT — writes are blocked."
-          : /\b(insert|update|delete|drop|alter|create|truncate|grant|revoke|attach|detach)\b/i.test(trimmedSql)
-            ? "Must be a single SELECT — writes are blocked."
-            : null)
-    : null;
+  const sqlCheck = isReadOnlySelect(sqlText);
+  const sqlError =
+    serverErrors.sql ??
+    (kind === "sql" && !sqlCheck.ok ? sqlCheck.reason ?? "Invalid SQL." : null);
 
-  const descError = description.length > 500 ? "Max 500 characters." : null;
+  const descError = serverErrors.description ?? (description.length > 500 ? "Max 500 characters." : null);
   const valid = !nameError && !sqlError && !descError;
+
+  const clearServerError = (key: string) => {
+    if (!serverErrors[key]) return;
+    setServerErrors((s) => {
+      const next = { ...s };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const runPreview = async () => {
+    if (kind !== "sql") return;
+    if (!sqlCheck.ok) {
+      setPreview(null);
+      setPreviewError(sqlCheck.reason ?? "Invalid SQL.");
+      return;
+    }
+    setPreviewBusy(true);
+    setPreviewError(null);
+    try {
+      const start = performance.now();
+      const r = await dbAdminApi.runSql(sqlText);
+      const last = r.data?.[r.data.length - 1];
+      const rows = (last?.rows ?? []) as Record<string, unknown>[];
+      setPreview({ rows, ms: r.ms ?? Math.round(performance.now() - start) });
+    } catch (e) {
+      setPreview(null);
+      setPreviewError((e as Error).message);
+    } finally {
+      setPreviewBusy(false);
+    }
+  };
 
   const submit = async () => {
     if (!valid || busy) return;
     setBusy(true);
+    setServerErrors({});
+    setTopError(null);
     try {
-      await panelsApi.create({
+      const body = {
         name: trimmedName,
         description: description.trim() || null,
         kind,
@@ -897,14 +1018,23 @@ function NewPanelDialog({
         viz,
         config: null,
         layout: null,
-      });
-      onCreated(trimmedName);
+      };
+      if (mode === "create") {
+        await panelsApi.create(body);
+      } else if (panel) {
+        await panelsApi.update(panel.id, body);
+      }
+      onSaved(trimmedName, mode);
     } catch (e) {
-      onError((e as Error).message);
+      const { fieldErrors, topLevel } = distributeApiErrors(e);
+      setServerErrors(fieldErrors);
+      setTopError(topLevel);
     } finally {
       setBusy(false);
     }
   };
+
+  const titleId = "panel-editor-title";
 
   return (
     <div className="dialog-backdrop" onClick={onClose}>
@@ -912,33 +1042,44 @@ function NewPanelDialog({
         className="dialog-lg"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="new-panel-title"
+        aria-labelledby={titleId}
         onClick={(e) => e.stopPropagation()}
-        style={{ width: 640, maxWidth: "94vw", maxHeight: "90vh", display: "flex", flexDirection: "column" }}
+        style={{ width: 720, maxWidth: "94vw", maxHeight: "90vh", display: "flex", flexDirection: "column" }}
       >
         <div className="sheet-header" style={{ borderBottom: "1px solid var(--border)" }}>
           <div style={{ flex: 1 }}>
-            <h2 id="new-panel-title">New insight panel</h2>
-            <p>Saved as a row in <span className="font-mono">saved_panels</span>. SQL panels run a read-only SELECT against the workspace database.</p>
+            <h2 id={titleId}>{mode === "create" ? "New insight panel" : `Edit panel`}</h2>
+            <p>
+              {mode === "create"
+                ? <>Saved as a row in <span className="font-mono">saved_panels</span>. SQL panels run a read-only SELECT against the workspace database.</>
+                : <>Editing <span className="font-mono">{panel?.id}</span>.</>}
+            </p>
           </div>
           <IconButton icon={I.X} onClick={onClose} title="Close" />
         </div>
 
         <div className="dialog-body" style={{ overflow: "auto" }}>
+          {topError && (
+            <div className="field" style={{ background: "color-mix(in oklch, var(--destructive) 8%, var(--card))", border: "1px solid color-mix(in oklch, var(--destructive) 35%, var(--border))", padding: 10, borderRadius: "var(--radius-md)", color: "var(--destructive)", fontSize: 12.5, display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <I.AlertTriangle size={13} style={{ marginTop: 1, flex: "0 0 auto" }} />
+              <span style={{ flex: 1, wordBreak: "break-word" }}>{topError}</span>
+            </div>
+          )}
+
           <div className="field">
             <label className="field-label" htmlFor="panel-name">
               Name <span style={{ color: "var(--destructive)" }}>*</span>
             </label>
             <input
               id="panel-name"
-              className={`input ${nameError && name ? "error" : ""}`}
+              className={`input ${nameError && (name || serverErrors.name) ? "error" : ""}`}
               autoFocus
               autoComplete="off"
               placeholder="Active users (24h)"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => { setName(e.target.value); clearServerError("name"); }}
             />
-            {nameError && name ? (
+            {nameError && (name || serverErrors.name) ? (
               <div className="field-error"><I.AlertTriangle size={11} />{nameError}</div>
             ) : (
               <span className="field-hint">Shown as the panel title on the dashboard.</span>
@@ -955,7 +1096,7 @@ function NewPanelDialog({
               autoComplete="off"
               placeholder="Distinct users with a session in the last 24h"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => { setDescription(e.target.value); clearServerError("description"); }}
             />
             {descError && <div className="field-error"><I.AlertTriangle size={11} />{descError}</div>}
           </div>
@@ -965,58 +1106,91 @@ function NewPanelDialog({
               <label className="field-label">Kind</label>
               <Select
                 value={kind}
-                onChange={(v) => setKind(v as Kind)}
+                onChange={(v) => { setKind(v as PanelKind); setPreview(null); setPreviewError(null); clearServerError("kind"); }}
                 options={[
                   { value: "sql", label: "sql", hint: "read-only SELECT against the workspace database" },
                   { value: "items-aggregate", label: "items-aggregate", hint: "aggregate over a collection (no SQL)" },
                   { value: "static", label: "static", hint: "config-only panel rendered from props" },
                 ]}
               />
+              {serverErrors.kind && <div className="field-error"><I.AlertTriangle size={11} />{serverErrors.kind}</div>}
             </div>
             <div className="field">
               <label className="field-label">Visualization</label>
               <Select
                 value={viz}
-                onChange={(v) => setViz(v as Viz)}
-                options={[
-                  { value: "counter", label: "counter", hint: "single number" },
-                  { value: "sparkline", label: "sparkline", hint: "filled line over a numeric series" },
-                  { value: "bars", label: "bars", hint: "vertical bars over a numeric series" },
-                  { value: "donut", label: "donut", hint: "donut chart over up to 6 segments" },
-                  { value: "table", label: "table", hint: "small key/value table" },
-                ]}
+                onChange={(v) => { setViz(v as PanelViz); clearServerError("viz"); }}
+                options={(Object.keys(VIZ_DESCRIPTIONS) as PanelViz[]).map((v) => ({
+                  value: v,
+                  label: v,
+                  hint: VIZ_DESCRIPTIONS[v],
+                }))}
               />
+              {serverErrors.viz && <div className="field-error"><I.AlertTriangle size={11} />{serverErrors.viz}</div>}
             </div>
           </div>
 
           {kind === "sql" && (
-            <div className="field">
-              <label className="field-label" htmlFor="panel-sql">
-                SQL <Badge variant="outline" mono>SELECT only</Badge> <span style={{ color: "var(--destructive)" }}>*</span>
-              </label>
-              <textarea
-                id="panel-sql"
-                className={`textarea font-mono ${sqlError ? "error" : ""}`}
-                style={{ minHeight: 160, fontSize: 12, whiteSpace: "pre" }}
-                spellCheck={false}
-                value={sqlText}
-                onChange={(e) => setSqlText(e.target.value)}
-              />
-              {sqlError ? (
-                <div className="field-error"><I.AlertTriangle size={11} />{sqlError}</div>
-              ) : (
-                <span className="field-hint">
-                  Counter uses the first numeric column of the first row. Sparkline / bars use the first numeric column across all rows. Donut / table pair the first two columns.
-                </span>
+            <>
+              <div className="field">
+                <label className="field-label" htmlFor="panel-sql">
+                  SQL <Badge variant="outline" mono>SELECT only</Badge> <span style={{ color: "var(--destructive)" }}>*</span>
+                  <div style={{ flex: 1 }} />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    icon={I.Play}
+                    onClick={runPreview}
+                    disabled={previewBusy || !sqlCheck.ok}
+                    style={{ marginLeft: "auto", float: "right" }}
+                  >
+                    {previewBusy ? "Running…" : "Run preview"}
+                  </Button>
+                </label>
+                <textarea
+                  id="panel-sql"
+                  className={`textarea font-mono ${sqlError ? "error" : ""}`}
+                  style={{ minHeight: 140, fontSize: 12, whiteSpace: "pre" }}
+                  spellCheck={false}
+                  value={sqlText}
+                  onChange={(e) => { setSqlText(e.target.value); clearServerError("sql"); setPreviewError(null); }}
+                />
+                {sqlError ? (
+                  <div className="field-error"><I.AlertTriangle size={11} />{sqlError}</div>
+                ) : (
+                  <span className="field-hint">
+                    Counter uses the first numeric column of the first row. Sparkline / bars use the first numeric column across all rows. Donut / table pair the first two columns.
+                  </span>
+                )}
+              </div>
+
+              {(preview || previewError) && (
+                <div className="field" style={{ background: "var(--muted)", padding: 10, borderRadius: "var(--radius-md)" }}>
+                  <div className="field-label" style={{ marginBottom: 6 }}>
+                    {previewError
+                      ? <><I.AlertTriangle size={12} style={{ color: "var(--destructive)" }} /> Preview error</>
+                      : <><I.Activity size={12} /> Preview · {preview?.rows.length ?? 0} rows · {preview?.ms ?? 0}ms</>}
+                  </div>
+                  {previewError ? (
+                    <div className="font-mono" style={{ fontSize: 11.5, color: "var(--destructive)", whiteSpace: "pre-wrap" }}>{previewError}</div>
+                  ) : preview && preview.rows.length > 0 ? (
+                    <PreviewTable rows={preview.rows} />
+                  ) : (
+                    <div className="muted" style={{ fontSize: 12 }}>No rows returned.</div>
+                  )}
+                </div>
               )}
-            </div>
+            </>
           )}
 
           {kind !== "sql" && (
-            <div className="field" style={{ background: "var(--muted)", padding: 12, borderRadius: "var(--radius-xl)", fontSize: 12.5, color: "var(--muted-foreground)" }}>
-              <I.AlertTriangle size={12} /> {kind === "items-aggregate"
-                ? "items-aggregate panels need a config object — set it from the API once the panel exists."
-                : "static panels render their config object verbatim — set it from the API once the panel exists."}
+            <div className="field" style={{ background: "var(--muted)", padding: 12, borderRadius: "var(--radius-xl)", fontSize: 12.5, color: "var(--muted-foreground)", display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <I.AlertTriangle size={12} style={{ marginTop: 2, flex: "0 0 auto" }} />
+              <span>
+                {kind === "items-aggregate"
+                  ? "items-aggregate panels need a config object — set it from the API once the panel exists. (Coming soon: builder UI.)"
+                  : "static panels render their config object verbatim — set it from the API once the panel exists."}
+              </span>
             </div>
           )}
         </div>
@@ -1024,11 +1198,41 @@ function NewPanelDialog({
         <div className="sheet-footer">
           <div className="spacer" />
           <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button variant="primary" icon={I.Plus} onClick={submit} disabled={!valid || busy}>
-            {busy ? "Creating…" : "Create panel"}
+          <Button variant="primary" icon={mode === "create" ? I.Plus : I.Save} onClick={submit} disabled={!valid || busy}>
+            {busy ? (mode === "create" ? "Creating…" : "Saving…") : mode === "create" ? "Create panel" : "Save changes"}
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PreviewTable({ rows }: { rows: Record<string, unknown>[] }) {
+  const cols = Object.keys(rows[0] ?? {}).slice(0, 6);
+  const max = 5;
+  return (
+    <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", background: "var(--card)" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5 }}>
+        <thead>
+          <tr>
+            {cols.map((c) => (
+              <th key={c} className="font-mono" style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--border)", color: "var(--muted-foreground)", fontWeight: 500 }}>{c}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.slice(0, max).map((r, i) => (
+            <tr key={i}>
+              {cols.map((c) => (
+                <td key={c} className="font-mono" style={{ padding: "6px 8px", borderTop: i === 0 ? "none" : "1px solid var(--border)", whiteSpace: "nowrap", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {r[c] === null || r[c] === undefined ? <span className="muted">∅</span> : typeof r[c] === "object" ? JSON.stringify(r[c]) : String(r[c])}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {rows.length > max && <div className="muted" style={{ padding: "6px 8px", fontSize: 11, borderTop: "1px solid var(--border)" }}>… and {rows.length - max} more</div>}
     </div>
   );
 }
@@ -1039,11 +1243,35 @@ function NewPanelDialog({
  * /bars/counter, pair the first two columns for table/donut, and fall back
  * to JSON for anything we can't auto-detect.
  */
-function RealPanel({ panel, rows, onDelete }: { panel: ApiPanel; rows: Record<string, unknown>[]; onDelete?: () => void }) {
+function RealPanel({
+  panel,
+  rows,
+  error,
+  onEdit,
+  onDelete,
+}: {
+  panel: ApiPanel;
+  rows: Record<string, unknown>[];
+  error?: string | null;
+  onEdit?: () => void;
+  onDelete?: () => void;
+}) {
   const sub = panel.description ?? `${rows.length} rows · ${panel.kind}`;
+
+  if (error) {
+    return (
+      <Panel title={panel.name} sub={panel.description ?? panel.kind} onEdit={onEdit} onDelete={onDelete}>
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "10px 12px", borderRadius: "var(--radius-md)", background: "color-mix(in oklch, var(--destructive) 8%, var(--card))", border: "1px solid color-mix(in oklch, var(--destructive) 35%, var(--border))", color: "var(--destructive)", fontSize: 12 }}>
+          <I.AlertTriangle size={13} style={{ marginTop: 1, flex: "0 0 auto" }} />
+          <span style={{ flex: 1, wordBreak: "break-word" }}>{error}</span>
+        </div>
+      </Panel>
+    );
+  }
+
   if (rows.length === 0) {
     return (
-      <Panel title={panel.name} sub={sub} onDelete={onDelete}>
+      <Panel title={panel.name} sub={sub} onEdit={onEdit} onDelete={onDelete}>
         <div className="muted" style={{ fontSize: 12, padding: "16px 0" }}>No data yet — run the panel.</div>
       </Panel>
     );
@@ -1055,7 +1283,7 @@ function RealPanel({ panel, rows, onDelete }: { panel: ApiPanel; rows: Record<st
   if (panel.viz === "counter") {
     const v = numericCol ? Number(rows[0]![numericCol]) : rows.length;
     return (
-      <Panel title={panel.name} sub={sub} onDelete={onDelete}>
+      <Panel title={panel.name} sub={sub} onEdit={onEdit} onDelete={onDelete}>
         <div className="tabular-nums" style={{ fontSize: 32, fontWeight: 600, padding: "8px 0" }}>
           {v.toLocaleString()}
         </div>
@@ -1066,7 +1294,7 @@ function RealPanel({ panel, rows, onDelete }: { panel: ApiPanel; rows: Record<st
   if (panel.viz === "sparkline" || panel.viz === "bars") {
     const data = rows.map((r) => Number(r[numericCol ?? cols[0]!]) || 0);
     return (
-      <Panel title={panel.name} sub={sub} onDelete={onDelete}>
+      <Panel title={panel.name} sub={sub} onEdit={onEdit} onDelete={onDelete}>
         <Sparkline data={data} height={160} fill={panel.viz === "sparkline"} bars={panel.viz === "bars"} />
       </Panel>
     );
@@ -1078,7 +1306,7 @@ function RealPanel({ panel, rows, onDelete }: { panel: ApiPanel; rows: Record<st
       color: ["var(--primary)", "oklch(0.7 0.18 260)", "oklch(0.78 0.16 75)", "oklch(0.6 0 0)", "oklch(0.7 0.18 22)", "oklch(0.7 0.18 320)"][i]!,
     }));
     return (
-      <Panel title={panel.name} sub={sub} onDelete={onDelete}>
+      <Panel title={panel.name} sub={sub} onEdit={onEdit} onDelete={onDelete}>
         <div style={{ display: "flex", alignItems: "center", gap: 18, padding: "12px 0" }}>
           <Donut segments={segs} />
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5 }}>
@@ -1097,7 +1325,7 @@ function RealPanel({ panel, rows, onDelete }: { panel: ApiPanel; rows: Record<st
 
   // Fallback: small table.
   return (
-    <Panel title={panel.name} sub={sub} onDelete={onDelete}>
+    <Panel title={panel.name} sub={sub} onEdit={onEdit} onDelete={onDelete}>
       <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12 }}>
         {rows.slice(0, 8).map((r, i) => (
           <div key={i} className="font-mono" style={{ display: "flex", justifyContent: "space-between", borderBottom: i < Math.min(rows.length, 8) - 1 ? "1px solid var(--border)" : "none", paddingBottom: 4 }}>
@@ -1110,12 +1338,25 @@ function RealPanel({ panel, rows, onDelete }: { panel: ApiPanel; rows: Record<st
   );
 }
 
-function Panel({ title, sub, children, onDelete }: { title: string; sub: string; children: ReactNode; onDelete?: () => void }) {
+function Panel({
+  title,
+  sub,
+  children,
+  onEdit,
+  onDelete,
+}: {
+  title: string;
+  sub: string;
+  children: ReactNode;
+  onEdit?: () => void;
+  onDelete?: () => void;
+}) {
   return (
     <div className="card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
         <span style={{ fontSize: 13, fontWeight: 500 }}>{title}</span>
         <span className="muted" style={{ fontSize: 11.5, flex: 1 }}>{sub}</span>
+        {onEdit && <IconButton icon={I.Pencil} onClick={onEdit} title="Edit panel" />}
         {onDelete && <IconButton icon={I.Trash} onClick={onDelete} title="Delete panel" />}
       </div>
       {children}

@@ -1,0 +1,9 @@
+APP_URL = "http://localhost:5173"
+AUTH_SECRET = "dev-only-secret-not-for-prod-please-rotate"
+
+# Local-only seeded admin used by smoke tests / Claude debug runs.
+# Sign in or POST /api/auth/sign-up/email with these on a fresh DB; if
+# they are not the first user, manually insert into user_roles to grant
+# the admin role (see CLAUDE.md "Local test admin").
+TEST_ADMIN_EMAIL = "admin@example.com"
+TEST_ADMIN_PASSWORD = "correct-horse-battery"

@@ -863,6 +863,28 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
       pushToast((e as Error).message);
     }
   };
+  const removeFunction = async (name: string) => {
+    if (!confirm(`Delete function "${name}"? This cannot be undone.`)) return;
+    try {
+      const r = await api<{ data: { id: string; name: string }[] }>("/api/functions");
+      const match = r.data.find((f) => f.name === name);
+      if (!match) {
+        pushToast("Function not found on server.");
+        await reloadFuncs();
+        return;
+      }
+      await api(`/api/functions/${match.id}`, { method: "DELETE" });
+      if (active?.name === name) {
+        setActive(null);
+        setCode("");
+        setLogs([]);
+      }
+      await reloadFuncs();
+      pushToast(`Function "${name}" deleted.`);
+    } catch (e) {
+      pushToast((e as Error).message);
+    }
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -902,6 +924,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
             <span className="font-mono muted" style={{ fontSize: 12 }}>· {active.trigger}</span>
             <div className="spacer" />
             <span className="muted" style={{ fontSize: 12 }}>{Number(active.invocations ?? 0).toLocaleString()} invocations · p95 {active.p95 ?? 0}ms</span>
+            <Button variant="outline" size="sm" icon={I.Trash} onClick={() => active && removeFunction(active.name)} style={{ color: "var(--destructive)" }}>Delete</Button>
             <Button variant="outline" size="sm" icon={I.Save} onClick={saveCode}>Save</Button>
             <Button variant="primary" size="sm" icon={I.Zap} onClick={run} disabled={running}>{running ? "Running…" : "Run"}</Button>
           </div>

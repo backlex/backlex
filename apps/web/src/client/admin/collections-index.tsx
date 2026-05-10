@@ -143,14 +143,6 @@ function CollectionCard({ c, onOpen, onDelete }: { c: CollectionListItem; onOpen
           <span className="font-mono" style={{ fontSize: 13.5, fontWeight: 600 }}>c_{c.slug}</span>
           <span className="muted" style={{ fontSize: 11.5 }}>{c.fields} fields · {c.singleton ? "singleton" : c.ownerScoped ? "owner-scoped" : "public read"}</span>
         </div>
-        <div style={{ flex: 1 }} />
-        {onDelete && (
-          <IconButton
-            icon={I.Trash}
-            title="Delete collection"
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          />
-        )}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
         <Stat k="rows" v={c.count.toLocaleString()} />
@@ -160,6 +152,19 @@ function CollectionCard({ c, onOpen, onDelete }: { c: CollectionListItem; onOpen
       <div style={{ display: "flex", gap: 6 }}>
         <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onOpen(); }}>Open</Button>
         <Button size="sm" variant="ghost" iconRight={I.ExternalLink}>API</Button>
+        <div className="spacer" />
+        {onDelete && (
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={I.Trash}
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            style={{ color: "var(--destructive)" }}
+            title="Delete collection"
+          >
+            Delete
+          </Button>
+        )}
       </div>
     </div>
   );

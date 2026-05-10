@@ -656,6 +656,36 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
               {activeTab === "settings" && (
                 <CollectionSettings
                   schema={schemaState}
+                  existingSlugs={collections.map((c) => c.slug)}
+                  onRename={async (nextSlug) => {
+                    const slug = activeCollection || "posts";
+                    setConfirm({
+                      title: <>Rename <span className="font-mono">c_{slug}</span> → <span className="font-mono">c_{nextSlug}</span>?</>,
+                      description: <>Permission rules, webhook patterns, function triggers, flow steps, revisions, comments, and audit log entries that reference <span className="font-mono">{slug}</span> will be updated. The physical table is not renamed.</>,
+                      actionLabel: "Rename collection",
+                      destructive: false,
+                      onConfirm: async () => {
+                        try {
+                          const resp = await collectionsApi.patch(slug, { slug: nextSlug } as any) as { ok?: boolean; slug?: string; renamed?: Record<string, number> };
+                          // Reload collections + swap active slug + URL.
+                          const list = await collectionsApi.list();
+                          setCollections((list.data ?? []) as any);
+                          setActiveCollection(nextSlug);
+                          setSchemaState((s) => ({ ...s, slug: nextSlug }));
+                          const totals = resp.renamed
+                            ? Object.entries(resp.renamed)
+                              .filter(([, n]) => n > 0)
+                              .map(([k, n]) => `${n} ${k}`)
+                              .join(", ")
+                            : "";
+                          pushToast(`Renamed to c_${nextSlug}${totals ? ` (${totals} updated)` : ""}.`);
+                        } catch (e) {
+                          pushToast((e as Error).message, "error");
+                        }
+                        setConfirm(null);
+                      },
+                    });
+                  }}
                   onPatch={async (patch) => {
                     const slug = activeCollection || "posts";
                     const prev = schemaState;

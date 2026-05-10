@@ -9,6 +9,36 @@ import { logActivity } from "../services/activity";
 
 export const FILES_COLLECTION = "system_files";
 
+/**
+ * Reserved physical-key prefix that namespaces every uploaded object under
+ * `tenants/<tenant-id>/`. Stored on disk + in `files.key`; never exposed to
+ * API clients (we strip it on read and re-add it on write). Two tenants can
+ * therefore reuse the same logical key (e.g. "logo.png") without colliding
+ * either in the bucket or in the DB primary key.
+ */
+const TENANT_PREFIX = "tenants/";
+
+const physicalKey = (tenantId: string, logical: string): string =>
+  `${TENANT_PREFIX}${tenantId}/${logical}`;
+
+const stripTenantPrefix = (tenantId: string, physical: string): string => {
+  const prefix = `${TENANT_PREFIX}${tenantId}/`;
+  return physical.startsWith(prefix) ? physical.slice(prefix.length) : physical;
+};
+
+const requireTenantId = (auth: { tenantId?: string | null }): string => {
+  if (!auth.tenantId) {
+    throw new AppError("VALIDATION", "Active tenant is required for storage operations");
+  }
+  return auth.tenantId;
+};
+
+const guardLogicalKey = (key: string) => {
+  if (key.startsWith(TENANT_PREFIX)) {
+    throw new AppError("VALIDATION", `Key prefix "${TENANT_PREFIX}" is reserved`);
+  }
+};
+
 const filesTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.files : sqlite.schema.files;
 
@@ -26,21 +56,27 @@ interface FileRow {
 export const storageRoutes = new Hono<AppBindings>()
   .get("/", requirePermission(filesCollection, "read"), async (c) => {
     const ctx = c.get("ctx");
+    const auth = c.get("auth");
     const perm = c.get("permission");
+    const tenantId = requireTenantId(auth);
     const t = filesTable(ctx.dialect);
     const prefix = c.req.query("prefix") ?? "";
+    const physicalPrefix = physicalKey(tenantId, prefix);
 
-    const conds: SQL[] = [];
+    const conds: SQL[] = [
+      eq(t.tenantId, tenantId),
+      sql`${sql.identifier("key")} LIKE ${`${physicalPrefix}%`}`,
+    ];
     if (perm.whereSql) conds.push(perm.whereSql);
-    if (prefix) conds.push(sql`${sql.identifier("key")} LIKE ${`${prefix}%`}`);
 
-    let qb = (ctx.db as any).select().from(t);
-    if (conds.length) qb = qb.where(conds.length === 1 ? conds[0] : and(...conds));
-    const rows = (await qb) as FileRow[];
+    const rows = (await (ctx.db as any)
+      .select()
+      .from(t)
+      .where(and(...conds))) as FileRow[];
 
     return c.json({
       data: rows.map((r) => ({
-        key: r.key,
+        key: stripTenantPrefix(tenantId, r.key),
         folderId: r.folderId,
         size: r.size,
         contentType: r.contentType ?? undefined,
@@ -55,7 +91,10 @@ export const storageRoutes = new Hono<AppBindings>()
   .put("/:key{.+}", requirePermission(filesCollection, "create"), async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");
-    const key = c.req.param("key");
+    const tenantId = requireTenantId(auth);
+    const logicalKey = c.req.param("key");
+    guardLogicalKey(logicalKey);
+    const key = physicalKey(tenantId, logicalKey);
     const contentType = c.req.header("content-type") ?? undefined;
     const folderId = c.req.query("folderId") ?? null;
     const body = c.req.raw.body;
@@ -68,6 +107,7 @@ export const storageRoutes = new Hono<AppBindings>()
         key,
         folderId,
         ownerId: auth.userId,
+        tenantId,
         size: obj.size,
         contentType: obj.contentType ?? null,
       })
@@ -76,6 +116,7 @@ export const storageRoutes = new Hono<AppBindings>()
         set: {
           folderId,
           ownerId: auth.userId,
+          tenantId,
           size: obj.size,
           contentType: obj.contentType ?? null,
         },
@@ -83,23 +124,37 @@ export const storageRoutes = new Hono<AppBindings>()
     await logActivity(c, {
       action: "upload",
       collection: FILES_COLLECTION,
-      itemId: key,
+      itemId: logicalKey,
       payload: { size: obj.size, contentType: obj.contentType, folderId },
     });
-    return c.json({ data: { ...obj, folderId, ownerId: auth.userId } }, 201);
+    return c.json(
+      {
+        data: {
+          ...obj,
+          key: logicalKey,
+          folderId,
+          ownerId: auth.userId,
+        },
+      },
+      201,
+    );
   })
   .get("/:key{.+}", requirePermission(filesCollection, "read"), async (c) => {
     const ctx = c.get("ctx");
+    const auth = c.get("auth");
     const perm = c.get("permission");
-    const key = c.req.param("key");
+    const tenantId = requireTenantId(auth);
+    const logicalKey = c.req.param("key");
+    guardLogicalKey(logicalKey);
+    const key = physicalKey(tenantId, logicalKey);
     const t = filesTable(ctx.dialect);
 
-    const conds: SQL[] = [eq(t.key, key)];
+    const conds: SQL[] = [eq(t.key, key), eq(t.tenantId, tenantId)];
     if (perm.whereSql) conds.push(perm.whereSql);
     const rows = (await (ctx.db as any)
       .select()
       .from(t)
-      .where(conds.length === 1 ? conds[0] : and(...conds))
+      .where(and(...conds))
       .limit(1)) as FileRow[];
     if (!rows[0]) throw new AppError("NOT_FOUND", "Object not found");
     const obj = await ctx.storage.get(key);
@@ -114,25 +169,31 @@ export const storageRoutes = new Hono<AppBindings>()
   })
   .delete("/:key{.+}", requirePermission(filesCollection, "delete"), async (c) => {
     const ctx = c.get("ctx");
+    const auth = c.get("auth");
     const perm = c.get("permission");
-    const key = c.req.param("key");
+    const tenantId = requireTenantId(auth);
+    const logicalKey = c.req.param("key");
+    guardLogicalKey(logicalKey);
+    const key = physicalKey(tenantId, logicalKey);
     const t = filesTable(ctx.dialect);
 
-    const conds: SQL[] = [eq(t.key, key)];
+    const conds: SQL[] = [eq(t.key, key), eq(t.tenantId, tenantId)];
     if (perm.whereSql) conds.push(perm.whereSql);
     const rows = (await (ctx.db as any)
       .select({ key: t.key })
       .from(t)
-      .where(conds.length === 1 ? conds[0] : and(...conds))
+      .where(and(...conds))
       .limit(1)) as { key: string }[];
     if (!rows[0]) throw new AppError("NOT_FOUND", "Object not found");
 
     await ctx.storage.delete(key);
-    await (ctx.db as any).delete(t).where(eq(t.key, key));
+    await (ctx.db as any)
+      .delete(t)
+      .where(and(eq(t.key, key), eq(t.tenantId, tenantId)));
     await logActivity(c, {
       action: "delete",
       collection: FILES_COLLECTION,
-      itemId: key,
+      itemId: logicalKey,
     });
     return c.json({ ok: true });
   })
@@ -143,30 +204,37 @@ export const storageRoutes = new Hono<AppBindings>()
    */
   .patch("/:key{.+}", requirePermission(filesCollection, "update"), async (c) => {
     const ctx = c.get("ctx");
+    const auth = c.get("auth");
     const perm = c.get("permission");
-    const key = c.req.param("key");
+    const tenantId = requireTenantId(auth);
+    const logicalKey = c.req.param("key");
+    guardLogicalKey(logicalKey);
+    const key = physicalKey(tenantId, logicalKey);
     const body = (await c.req.json().catch(() => ({}))) as {
       acl?: "public" | "private";
       folderId?: string | null;
     };
     const t = filesTable(ctx.dialect);
-    const conds: SQL[] = [eq(t.key, key)];
+    const conds: SQL[] = [eq(t.key, key), eq(t.tenantId, tenantId)];
     if (perm.whereSql) conds.push(perm.whereSql);
     const rows = (await (ctx.db as any)
       .select({ key: t.key })
       .from(t)
-      .where(conds.length === 1 ? conds[0] : and(...conds))
+      .where(and(...conds))
       .limit(1)) as { key: string }[];
     if (!rows[0]) throw new AppError("NOT_FOUND", "Object not found");
     const patch: Record<string, unknown> = {};
     if (body.acl) patch.acl = body.acl;
     if (body.folderId !== undefined) patch.folderId = body.folderId;
-    await (ctx.db as any).update(t).set(patch).where(eq(t.key, key));
+    await (ctx.db as any)
+      .update(t)
+      .set(patch)
+      .where(and(eq(t.key, key), eq(t.tenantId, tenantId)));
     await logActivity(c, {
       action: "update",
       collection: FILES_COLLECTION,
-      itemId: key,
+      itemId: logicalKey,
       payload: patch,
     });
-    return c.json({ ok: true, data: { key, ...patch } });
+    return c.json({ ok: true, data: { key: logicalKey, ...patch } });
   });

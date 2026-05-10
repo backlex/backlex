@@ -369,6 +369,38 @@ const renderInput = (
       />
     );
   }
+  if (field.name === "status" && field.type === "text") {
+    const current = (value as string | null | undefined) ?? "";
+    const options = STATUS_VALUES.includes(current)
+      ? STATUS_VALUES
+      : current
+        ? [...STATUS_VALUES, current]
+        : STATUS_VALUES;
+    return (
+      <Select
+        value={current}
+        onValueChange={(next) => onChange(next || null)}
+      >
+        <SelectTrigger>
+          <SelectValue
+            placeholder={required ? "Pick a status…" : "(none)"}
+          />
+        </SelectTrigger>
+        <SelectContent>
+          {!required && (
+            <SelectItem value="">
+              <span className="text-muted-foreground">(none)</span>
+            </SelectItem>
+          )}
+          {options.map((opt) => (
+            <SelectItem key={opt} value={opt}>
+              {opt}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
   return (
     <Input
       value={(value as string | null | undefined) ?? ""}

@@ -398,7 +398,7 @@ const createResolver = async (
     ctx.env,
     `items:${collection.slug}`,
     { event: "created", data: out },
-    { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx },
+    { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
   );
   return out;
 };
@@ -455,7 +455,7 @@ const updateResolver = async (
     ctx.env,
     `items:${collection.slug}`,
     { event: "updated", data: refreshedRow },
-    { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx },
+    { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
   );
   return refreshedRow;
 };
@@ -498,7 +498,7 @@ const deleteResolver = async (
     ctx.env,
     `items:${collection.slug}`,
     { event: "deleted", data: oldRow },
-    { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx },
+    { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
   );
   return true;
 };

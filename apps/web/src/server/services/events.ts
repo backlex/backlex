@@ -107,6 +107,10 @@ export const publishEvent = async (
     dialect: "pg" | "sqlite";
     email?: EmailAdapter;
     fullCtx?: Ctx;
+    /** Active workspace for the originating request. Required for downstream
+     *  fan-out (event functions/flows) so triggers from one workspace never
+     *  fire handlers in another. */
+    tenantId?: string | null;
   },
 ): Promise<void> => {
   if (env.REALTIME) {
@@ -133,11 +137,12 @@ export const publishEvent = async (
       void runFlows(serverCtx.fullCtx, channel, evt);
       void runEventFunctions(
         serverCtx.fullCtx,
+        serverCtx.tenantId ?? null,
         channel,
         evt,
         // Functions triggered by events run with the system principal — admin
         // can toggle the function active flag for trust gating.
-        { userId: null, email: null, roles: [] },
+        { userId: null, email: null, roles: [], tenantId: serverCtx.tenantId ?? null },
       );
     }
   }

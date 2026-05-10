@@ -116,7 +116,7 @@ export const buildContext = (env: Env): Ctx => {
             env,
             "auth",
             { event: "signup", data: { id: user.id, email: user.email, tenantId } },
-            { db, dialect, email: fullCtx.email, fullCtx },
+            { db, dialect, email: fullCtx.email, fullCtx, tenantId },
           );
         }
       },

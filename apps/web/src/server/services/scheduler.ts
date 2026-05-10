@@ -62,9 +62,13 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
   await Promise.all(
     due.map(async (fn) => {
       try {
+        // Cron rows live in `functions` across every workspace, so each
+        // invocation has to carry its own row's tenantId — otherwise the
+        // function's ctx.db calls would either land in the wrong workspace
+        // or no workspace at all.
         const result = await runFunction(
           fn.code,
-          { ctx, auth: SYSTEM_AUTH },
+          { ctx, auth: { ...SYSTEM_AUTH, tenantId: fn.tenantId } },
           { firedAt: now.toISOString(), pattern: fn.pattern },
           fn.timeoutMs,
         );

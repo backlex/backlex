@@ -109,7 +109,7 @@ export function AddFieldDialog({ open, schema, onClose, onCreate }: AddFieldDial
         )}
 
         {step === 2 && (
-          <div className="addfield-body" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div className="addfield-body cols-2">
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div className="field">
                 <label className="field-label">Name</label>

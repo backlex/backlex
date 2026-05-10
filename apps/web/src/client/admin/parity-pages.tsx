@@ -10,12 +10,14 @@ import { ApiError } from "@/lib/api";
 import {
   activityApi,
   authAdminApi,
+  collectionsApi,
   dbAdminApi,
   emailTemplatesApi,
   i18nApi,
   panelsApi,
   type ApiActivity,
   type ApiAuthConfig,
+  type ApiCollection,
   type ApiEmailTemplate,
   type ApiPanel,
   type ApiSession,
@@ -924,6 +926,26 @@ const distributeApiErrors = (
   return { fieldErrors, topLevel };
 };
 
+type ItemsAggFunc = "count" | "sum" | "avg" | "min" | "max";
+
+interface ItemsAggregateState {
+  collection: string;
+  agg: ItemsAggFunc;
+  field: string;
+  groupBy: string;
+  filter: string; // raw JSON; parsed at submit
+  limit: string;  // string for input control; parsed at submit
+}
+
+const DEFAULT_AGG_STATE: ItemsAggregateState = {
+  collection: "",
+  agg: "count",
+  field: "",
+  groupBy: "",
+  filter: "",
+  limit: "",
+};
+
 function PanelEditorDialog({
   mode,
   panel,
@@ -945,6 +967,45 @@ function PanelEditorDialog({
   const [busy, setBusy] = useState(false);
   const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
   const [topError, setTopError] = useState<string | null>(null);
+
+  // items-aggregate state. Hydrate from panel.config if present.
+  const [agg, setAgg] = useState<ItemsAggregateState>(() => {
+    const cfg = (panel?.config ?? {}) as Partial<ItemsAggregateState> & { filter?: unknown };
+    return {
+      collection: cfg.collection ?? "",
+      agg: (cfg.agg as ItemsAggFunc) ?? "count",
+      field: cfg.field ?? "",
+      groupBy: cfg.groupBy ?? "",
+      filter: cfg.filter ? JSON.stringify(cfg.filter, null, 2) : "",
+      limit: cfg.limit !== undefined ? String(cfg.limit) : "",
+    };
+  });
+
+  // Collections list for the items-aggregate selectors. Loaded once on mount;
+  // per-collection schema is fetched on demand below.
+  const [collections, setCollections] = useState<ApiCollection[]>([]);
+  const [collectionSchema, setCollectionSchema] = useState<ApiCollection | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await collectionsApi.list();
+        if (!cancelled) setCollections(r.data ?? []);
+      } catch { /* leave empty; the editor will show a hint */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  useEffect(() => {
+    if (!agg.collection) { setCollectionSchema(null); return; }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await collectionsApi.get(agg.collection);
+        if (!cancelled) setCollectionSchema(r.data ?? null);
+      } catch { setCollectionSchema(null); }
+    })();
+    return () => { cancelled = true; };
+  }, [agg.collection]);
 
   // Live preview state.
   type PreviewResult = { rows: Record<string, unknown>[]; ms: number };
@@ -970,7 +1031,61 @@ function PanelEditorDialog({
     (kind === "sql" && !sqlCheck.ok ? sqlCheck.reason ?? "Invalid SQL." : null);
 
   const descError = serverErrors.description ?? (description.length > 500 ? "Max 500 characters." : null);
-  const valid = !nameError && !sqlError && !descError;
+
+  // items-aggregate validation. Field/groupBy must reference real columns;
+  // sum/avg/min/max require a numeric field; filter must parse as JSON.
+  const numericFields = (collectionSchema?.fields ?? []).filter((f) => f.type === "integer" || f.type === "number");
+  const allFieldsList = (collectionSchema?.fields ?? []).map((f) => f.name);
+  const SYSTEM_GROUP_COLUMNS = ["created_at", "updated_at", "owner_id"];
+  const groupByOptions = ["", ...allFieldsList, ...SYSTEM_GROUP_COLUMNS];
+  let aggError: { collection?: string; agg?: string; field?: string; groupBy?: string; filter?: string; limit?: string } = {};
+  if (kind === "items-aggregate") {
+    if (!agg.collection) aggError.collection = "Required.";
+    if (agg.agg !== "count") {
+      if (!agg.field) aggError.field = "Required for sum/avg/min/max.";
+      else if (numericFields.length > 0 && !numericFields.some((f) => f.name === agg.field)) {
+        aggError.field = "Must be an integer or number column.";
+      }
+    }
+    if (agg.groupBy && !groupByOptions.includes(agg.groupBy)) {
+      aggError.groupBy = `"${agg.groupBy}" is not a column on this collection.`;
+    }
+    if (agg.filter.trim()) {
+      try {
+        const parsed = JSON.parse(agg.filter);
+        if (typeof parsed !== "object" || parsed === null) {
+          aggError.filter = "Must be a JSON object.";
+        }
+      } catch (e) {
+        aggError.filter = `JSON parse error: ${(e as Error).message}`;
+      }
+    }
+    if (agg.limit && (!/^\d+$/.test(agg.limit) || Number(agg.limit) < 1 || Number(agg.limit) > 200)) {
+      aggError.limit = "Integer between 1 and 200.";
+    }
+  }
+  // Merge server-side aggregate errors back in (server returns flat strings).
+  if (serverErrors.config) aggError = { ...aggError, agg: serverErrors.config };
+
+  const valid =
+    !nameError &&
+    !descError &&
+    (kind !== "sql" || !sqlError) &&
+    (kind !== "items-aggregate" || Object.keys(aggError).length === 0);
+
+  /** Compose the items-aggregate config payload. Returns null if not applicable. */
+  const composeAggregateConfig = (): Record<string, unknown> | null => {
+    if (kind !== "items-aggregate") return null;
+    const cfg: Record<string, unknown> = {
+      collection: agg.collection,
+      agg: agg.agg,
+    };
+    if (agg.agg !== "count" && agg.field) cfg.field = agg.field;
+    if (agg.groupBy) cfg.groupBy = agg.groupBy;
+    if (agg.filter.trim()) cfg.filter = JSON.parse(agg.filter);
+    if (agg.limit) cfg.limit = Number(agg.limit);
+    return cfg;
+  };
 
   const clearServerError = (key: string) => {
     if (!serverErrors[key]) return;
@@ -982,25 +1097,48 @@ function PanelEditorDialog({
   };
 
   const runPreview = async () => {
-    if (kind !== "sql") return;
-    if (!sqlCheck.ok) {
-      setPreview(null);
-      setPreviewError(sqlCheck.reason ?? "Invalid SQL.");
+    if (kind === "sql") {
+      if (!sqlCheck.ok) {
+        setPreview(null);
+        setPreviewError(sqlCheck.reason ?? "Invalid SQL.");
+        return;
+      }
+      setPreviewBusy(true);
+      setPreviewError(null);
+      try {
+        const start = performance.now();
+        const r = await dbAdminApi.runSql(sqlText);
+        const last = r.data?.[r.data.length - 1];
+        const rows = (last?.rows ?? []) as Record<string, unknown>[];
+        setPreview({ rows, ms: r.ms ?? Math.round(performance.now() - start) });
+      } catch (e) {
+        setPreview(null);
+        setPreviewError((e as Error).message);
+      } finally {
+        setPreviewBusy(false);
+      }
       return;
     }
-    setPreviewBusy(true);
-    setPreviewError(null);
-    try {
-      const start = performance.now();
-      const r = await dbAdminApi.runSql(sqlText);
-      const last = r.data?.[r.data.length - 1];
-      const rows = (last?.rows ?? []) as Record<string, unknown>[];
-      setPreview({ rows, ms: r.ms ?? Math.round(performance.now() - start) });
-    } catch (e) {
-      setPreview(null);
-      setPreviewError((e as Error).message);
-    } finally {
-      setPreviewBusy(false);
+    if (kind === "items-aggregate") {
+      if (Object.keys(aggError).length > 0) {
+        setPreview(null);
+        const first = Object.values(aggError)[0];
+        setPreviewError(first ?? "Invalid aggregate config.");
+        return;
+      }
+      const cfg = composeAggregateConfig();
+      if (!cfg) return;
+      setPreviewBusy(true);
+      setPreviewError(null);
+      try {
+        const r = await panelsApi.preview({ kind: "items-aggregate", config: cfg });
+        setPreview({ rows: r.data ?? [], ms: r.ms ?? 0 });
+      } catch (e) {
+        setPreview(null);
+        setPreviewError((e as Error).message);
+      } finally {
+        setPreviewBusy(false);
+      }
     }
   };
 
@@ -1016,7 +1154,7 @@ function PanelEditorDialog({
         kind,
         sql: kind === "sql" ? sqlText : null,
         viz,
-        config: null,
+        config: kind === "items-aggregate" ? composeAggregateConfig() : null,
         layout: null,
       };
       if (mode === "create") {
@@ -1183,14 +1321,142 @@ function PanelEditorDialog({
             </>
           )}
 
-          {kind !== "sql" && (
+          {kind === "items-aggregate" && (
+            <>
+              <div className="field-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div className="field">
+                  <label className="field-label">Collection <span style={{ color: "var(--destructive)" }}>*</span></label>
+                  <Select
+                    value={agg.collection}
+                    onChange={(v) => setAgg((s) => ({ ...s, collection: v, field: "", groupBy: "" }))}
+                    placeholder={collections.length === 0 ? "No collections" : "Pick a collection…"}
+                    options={collections.map((c) => ({ value: c.slug, label: c.slug, hint: `${c.fields.length} fields` }))}
+                  />
+                  {aggError.collection && <div className="field-error"><I.AlertTriangle size={11} />{aggError.collection}</div>}
+                </div>
+                <div className="field">
+                  <label className="field-label">Aggregate function</label>
+                  <Select
+                    value={agg.agg}
+                    onChange={(v) => setAgg((s) => ({ ...s, agg: v as ItemsAggFunc, field: v === "count" ? "" : s.field }))}
+                    options={[
+                      { value: "count", label: "count", hint: "row count (no field needed)" },
+                      { value: "sum", label: "sum", hint: "numeric column total" },
+                      { value: "avg", label: "avg", hint: "numeric column average" },
+                      { value: "min", label: "min", hint: "numeric column minimum" },
+                      { value: "max", label: "max", hint: "numeric column maximum" },
+                    ]}
+                  />
+                </div>
+              </div>
+
+              <div className="field-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div className="field">
+                  <label className="field-label">
+                    Field {agg.agg !== "count" && <span style={{ color: "var(--destructive)" }}>*</span>}
+                  </label>
+                  <Select
+                    value={agg.field}
+                    onChange={(v) => setAgg((s) => ({ ...s, field: v }))}
+                    placeholder={agg.agg === "count" ? "Not needed for count" : numericFields.length === 0 ? "No numeric columns" : "Pick a numeric field…"}
+                    disabled={agg.agg === "count" || !agg.collection || numericFields.length === 0}
+                    options={numericFields.map((f) => ({ value: f.name, label: f.name, hint: f.type }))}
+                  />
+                  {aggError.field && <div className="field-error"><I.AlertTriangle size={11} />{aggError.field}</div>}
+                </div>
+                <div className="field">
+                  <label className="field-label">Group by <span className="muted" style={{ fontWeight: 400 }}>· optional</span></label>
+                  <Select
+                    value={agg.groupBy}
+                    onChange={(v) => setAgg((s) => ({ ...s, groupBy: v }))}
+                    placeholder={!agg.collection ? "Pick a collection first" : "(none)"}
+                    disabled={!agg.collection}
+                    options={[
+                      { value: "", label: "(none)", hint: "single scalar value" },
+                      ...allFieldsList.map((n) => ({ value: n, label: n })),
+                      ...SYSTEM_GROUP_COLUMNS.map((n) => ({ value: n, label: n, hint: "system" })),
+                    ]}
+                  />
+                  {aggError.groupBy && <div className="field-error"><I.AlertTriangle size={11} />{aggError.groupBy}</div>}
+                </div>
+              </div>
+
+              <div className="field">
+                <label className="field-label">
+                  Filter <Badge variant="outline" mono>JSON DSL</Badge> <span className="muted" style={{ fontWeight: 400 }}>· optional</span>
+                </label>
+                <textarea
+                  className={`textarea font-mono ${aggError.filter ? "error" : ""}`}
+                  style={{ minHeight: 80, fontSize: 12, whiteSpace: "pre" }}
+                  spellCheck={false}
+                  placeholder={`{ "status": { "_eq": "published" } }`}
+                  value={agg.filter}
+                  onChange={(e) => setAgg((s) => ({ ...s, filter: e.target.value }))}
+                />
+                {aggError.filter ? (
+                  <div className="field-error"><I.AlertTriangle size={11} />{aggError.filter}</div>
+                ) : (
+                  <span className="field-hint">
+                    Same DSL as roles &amp; permissions. Operators: <span className="font-mono">_eq</span>, <span className="font-mono">_in</span>, <span className="font-mono">_gte</span>, … Variables: <span className="font-mono">$user.id</span>, <span className="font-mono">$now</span>, …
+                  </span>
+                )}
+              </div>
+
+              {agg.groupBy && (
+                <div className="field">
+                  <label className="field-label">Limit <span className="muted" style={{ fontWeight: 400 }}>· optional</span></label>
+                  <input
+                    className={`input tabular-nums ${aggError.limit ? "error" : ""}`}
+                    type="number"
+                    min={1}
+                    max={200}
+                    placeholder="50"
+                    value={agg.limit}
+                    onChange={(e) => setAgg((s) => ({ ...s, limit: e.target.value }))}
+                  />
+                  {aggError.limit ? (
+                    <div className="field-error"><I.AlertTriangle size={11} />{aggError.limit}</div>
+                  ) : (
+                    <span className="field-hint">Caps the number of grouped rows returned (default 50, max 200).</span>
+                  )}
+                </div>
+              )}
+
+              <div className="field" style={{ display: "flex", justifyContent: "flex-end" }}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  icon={I.Play}
+                  onClick={runPreview}
+                  disabled={previewBusy || Object.keys(aggError).length > 0 || !agg.collection}
+                >
+                  {previewBusy ? "Running…" : "Run preview"}
+                </Button>
+              </div>
+
+              {(preview || previewError) && (
+                <div className="field" style={{ background: "var(--muted)", padding: 10, borderRadius: "var(--radius-md)" }}>
+                  <div className="field-label" style={{ marginBottom: 6 }}>
+                    {previewError
+                      ? <><I.AlertTriangle size={12} style={{ color: "var(--destructive)" }} /> Preview error</>
+                      : <><I.Activity size={12} /> Preview · {preview?.rows.length ?? 0} rows · {preview?.ms ?? 0}ms</>}
+                  </div>
+                  {previewError ? (
+                    <div className="font-mono" style={{ fontSize: 11.5, color: "var(--destructive)", whiteSpace: "pre-wrap" }}>{previewError}</div>
+                  ) : preview && preview.rows.length > 0 ? (
+                    <PreviewTable rows={preview.rows} />
+                  ) : (
+                    <div className="muted" style={{ fontSize: 12 }}>No rows returned.</div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {kind === "static" && (
             <div className="field" style={{ background: "var(--muted)", padding: 12, borderRadius: "var(--radius-xl)", fontSize: 12.5, color: "var(--muted-foreground)", display: "flex", gap: 8, alignItems: "flex-start" }}>
               <I.AlertTriangle size={12} style={{ marginTop: 2, flex: "0 0 auto" }} />
-              <span>
-                {kind === "items-aggregate"
-                  ? "items-aggregate panels need a config object — set it from the API once the panel exists. (Coming soon: builder UI.)"
-                  : "static panels render their config object verbatim — set it from the API once the panel exists."}
-              </span>
+              <span>static panels render their config object verbatim — set it from the API once the panel exists.</span>
             </div>
           )}
         </div>

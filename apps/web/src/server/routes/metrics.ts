@@ -156,19 +156,27 @@ export const metricsRoutes = new Hono<AppBindings>()
     } catch {}
     counts.pausedFlows = Math.max(0, (counts.flows ?? 0) - (counts.activeFlows ?? 0));
 
-    // Top collections — for each `collections` row, COUNT(*) + MAX(updated_at)
-    // on its physical c_<slug> table. Cheap on the dev set; cap at 10.
+    // Top collections — for each `collections` row in the active tenant,
+    // COUNT(*) + MAX(updated_at) on the physical table named in
+    // `physical_table`. Cheap on the dev set; cap at 10.
     const topCollections: { slug: string; rows: number; bytes: number; lastWrite: number | null }[] = [];
     try {
-      const cs = await queryAll<{ slug: string }>(
+      const tenantClause = auth.tenantId
+        ? `WHERE tenant_id = '${auth.tenantId.replace(/'/g, "''")}'`
+        : "";
+      const cs = await queryAll<{ slug: string; physical_table: string }>(
         { db: ctx.db, dialect: ctx.dialect },
-        sql.raw(`SELECT slug FROM collections ORDER BY slug LIMIT 10`),
+        sql.raw(
+          `SELECT slug, physical_table FROM collections ${tenantClause} ORDER BY slug LIMIT 10`,
+        ),
       );
       for (const c of cs) {
+        const safeTable = (c.physical_table ?? "").replace(/"/g, "");
+        if (!safeTable) continue;
         try {
           const r = await queryAll<{ n: number; m: number | string | null }>(
             { db: ctx.db, dialect: ctx.dialect },
-            sql.raw(`SELECT COUNT(*) AS n, MAX(updated_at) AS m FROM "c_${c.slug.replace(/"/g, "")}"`),
+            sql.raw(`SELECT COUNT(*) AS n, MAX(updated_at) AS m FROM "${safeTable}"`),
           );
           const m = r[0]?.m;
           const lastWrite =
@@ -182,7 +190,7 @@ export const metricsRoutes = new Hono<AppBindings>()
             try {
               const sz = await queryAll<{ s: number }>(
                 { db: ctx.db, dialect: ctx.dialect },
-                sql.raw(`SELECT pg_total_relation_size('"c_${c.slug.replace(/"/g, "")}"') AS s`),
+                sql.raw(`SELECT pg_total_relation_size('"${safeTable}"') AS s`),
               );
               if (sz[0]?.s != null) bytes = Number(sz[0].s);
             } catch {}

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { sql, eq, type SQL } from "drizzle-orm";
+import { sql, and, eq, type SQL } from "drizzle-orm";
 import { AppError } from "@workeros/core";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
@@ -8,7 +8,6 @@ import {
   type FieldDef,
   validateValue,
   type FieldType,
-  physicalTableFor,
 } from "@workeros/db";
 import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
@@ -20,10 +19,12 @@ import { recordRevision } from "../services/revisions";
 
 interface CollectionRow {
   slug: string;
+  /** Physical table backing the dynamic data (e.g. `c_<tenantPrefix>_<slug>`). */
+  physicalTable: string;
   fields: FieldDef[];
   ownerScoped: boolean;
-  /** Default true. When true, c_<slug> has a tenant_id column and reads/writes
-   *  are scoped to the active tenant. */
+  /** Default true. When true, the physical table has a tenant_id column and
+   *  reads/writes are scoped to the active tenant. */
   tenantScoped: boolean;
   versioned?: boolean;
 }
@@ -33,14 +34,26 @@ const collectionsTable = (dialect: "pg" | "sqlite") =>
 
 const loadCollection = async (
   ctx: Ctx,
+  tenantId: string | null | undefined,
   slug: string,
 ): Promise<CollectionRow> => {
+  if (!tenantId) {
+    throw new AppError(
+      "UNAUTHORIZED",
+      "Active tenant required to access collections",
+    );
+  }
   const t = collectionsTable(ctx.dialect);
-  const rows = await (ctx.db as any).select().from(t).where(eq(t.slug, slug)).limit(1);
+  const rows = await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)))
+    .limit(1);
   if (!rows[0]) throw new AppError("NOT_FOUND", `Collection "${slug}" not found`);
   const r = rows[0] as Record<string, unknown>;
   return {
     slug: r.slug as string,
+    physicalTable: (r.physicalTable ?? r.physical_table) as string,
     fields: r.fields as FieldDef[],
     ownerScoped: Boolean(r.ownerScoped ?? r.owner_scoped),
     tenantScoped: r.tenantScoped ?? r.tenant_scoped ?? true ? true : false,
@@ -245,11 +258,11 @@ export const itemsRoutes = new Hono<AppBindings>()
     const ctx = c.get("ctx");
     const auth = c.get("auth");
     const perm = c.get("permission");
-    const collection = await loadCollection(ctx, c.req.param("slug"));
+    const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
     const params = new URL(c.req.url).searchParams;
     const q = parseQuery(params, collection.fields, collection.ownerScoped, perm.fields);
 
-    const table = physicalTableFor(collection.slug);
+    const table = collection.physicalTable;
     const userWhere = q.filter ? compileCondition(q.filter, auth) : null;
     const tenantWhere = tenantFilter(collection, auth);
     const wheres = [userWhere, perm.whereSql, tenantWhere].filter(
@@ -332,8 +345,8 @@ export const itemsRoutes = new Hono<AppBindings>()
     const ctx = c.get("ctx");
     const auth = c.get("auth");
     const perm = c.get("permission");
-    const collection = await loadCollection(ctx, c.req.param("slug"));
-    const table = physicalTableFor(collection.slug);
+    const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
+    const table = collection.physicalTable;
     const rows = await queryAll<Record<string, unknown>>(
       ctx,
       sql`SELECT * FROM ${sql.identifier(table)} ${whereOf(idEq(c.req.param("id")), perm.whereSql, tenantFilter(collection, auth))} LIMIT 1`,
@@ -355,11 +368,11 @@ export const itemsRoutes = new Hono<AppBindings>()
     const ctx = c.get("ctx");
     const auth = c.get("auth");
     const perm = c.get("permission");
-    const collection = await loadCollection(ctx, c.req.param("slug"));
+    const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
     const data = (await c.req.json()) as Record<string, unknown>;
     validateBody(data, collection.fields, false, perm.fields);
 
-    const table = physicalTableFor(collection.slug);
+    const table = collection.physicalTable;
     const id = crypto.randomUUID();
     const now = nowFor(ctx.dialect);
 
@@ -431,12 +444,12 @@ export const itemsRoutes = new Hono<AppBindings>()
     const ctx = c.get("ctx");
     const auth = c.get("auth");
     const perm = c.get("permission");
-    const collection = await loadCollection(ctx, c.req.param("slug"));
+    const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
     const id = c.req.param("id");
     const patch = (await c.req.json()) as Record<string, unknown>;
     validateBody(patch, collection.fields, true, perm.fields);
 
-    const table = physicalTableFor(collection.slug);
+    const table = collection.physicalTable;
     const tenantWhere = tenantFilter(collection, auth);
     const existing = await queryAll<Record<string, unknown>>(
       ctx,
@@ -511,9 +524,9 @@ export const itemsRoutes = new Hono<AppBindings>()
     const ctx = c.get("ctx");
     const auth = c.get("auth");
     const perm = c.get("permission");
-    const collection = await loadCollection(ctx, c.req.param("slug"));
+    const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
     const id = c.req.param("id");
-    const table = physicalTableFor(collection.slug);
+    const table = collection.physicalTable;
     const tenantWhere = tenantFilter(collection, auth);
 
     const existing = await queryAll<Record<string, unknown>>(
@@ -572,7 +585,7 @@ export const itemsRoutes = new Hono<AppBindings>()
     const ctx = c.get("ctx");
     const auth = c.get("auth");
     const perm = c.get("permission");
-    const collection = await loadCollection(ctx, c.req.param("slug"));
+    const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
     if (!collection.versioned) {
       throw new AppError(
         "VALIDATION",
@@ -580,7 +593,7 @@ export const itemsRoutes = new Hono<AppBindings>()
       );
     }
     const id = c.req.param("id");
-    const table = physicalTableFor(collection.slug);
+    const table = collection.physicalTable;
     const tenantWhere = tenantFilter(collection, auth);
     const unpublish = c.req.query("unpublish") === "1";
     const now = nowFor(ctx.dialect);

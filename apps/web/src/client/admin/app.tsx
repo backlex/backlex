@@ -28,6 +28,8 @@ import { AlterPreview, EmptyItems, Palette, RealtimeTail, SchemaView, type Realt
 import { AddFieldDialog } from "./add-field";
 import { loadAuthors } from "./authors-cache";
 import { CollectionsIndex, NewCollectionDialog } from "./collections-index";
+import { EditFieldDialog } from "./edit-field";
+import { CollectionSettings } from "./collection-settings";
 import { collectionsApi, itemsApi, settingsApi } from "./api";
 import { api } from "@/lib/api";
 import { StoragePage } from "./storage";
@@ -109,7 +111,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   const segs = location.pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
   const activeNav = segs[0] && NAV_IDS.has(segs[0]) ? segs[0] : initialNav;
   const setActiveNav = useCallback((id: string) => { navigate("/" + id); }, [navigate]);
-  const [activeTab, setActiveTab] = useState<"items" | "schema" | "permissions">("items");
+  const [activeTab, setActiveTab] = useState<"items" | "schema" | "permissions" | "settings">("items");
   const [posts, setPosts] = useState<Post[]>([]);
   // Real items load — see effect after activeCollection is declared.
   const [search, setSearch] = useState("");
@@ -133,6 +135,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
     onConfirm?: () => void;
   } | null>(null);
   const [addFieldOpen, setAddFieldOpen] = useState(false);
+  const [editFieldName, setEditFieldName] = useState<string | null>(null);
   // Schema is loaded per-collection from /api/collections/:slug. Initial
   // value is an empty placeholder so the UI doesn't crash before activeCollection
   // resolves; the real fields land via the activeCollection effect below.
@@ -508,6 +511,23 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                 collections={collections}
                 onOpen={(slug) => { setActiveCollection(slug); setActiveTab("items"); }}
                 onNew={() => setNewCollectionOpen(true)}
+                onDelete={(slug) => setConfirm({
+                  title: <>Delete collection <span className="font-mono">c_{slug}</span>?</>,
+                  description: <>The physical table and all rows are dropped. This is irreversible. Permissions, revisions, and webhooks tied to this collection are removed too.</>,
+                  actionLabel: "Delete collection",
+                  destructive: true,
+                  onConfirm: async () => {
+                    try {
+                      await collectionsApi.remove(slug);
+                      setCollections((arr) => arr.filter((c) => c.slug !== slug));
+                      if (activeCollection === slug) setActiveCollection(null);
+                      pushToast(`Collection c_${slug} dropped.`);
+                    } catch (e) {
+                      pushToast((e as Error).message, "error");
+                    }
+                    setConfirm(null);
+                  },
+                })}
                 pushToast={pushToast}
               />
             )}
@@ -540,6 +560,9 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                 </button>
                 <button className="tab" data-active={activeTab === "permissions"} onClick={() => setActiveTab("permissions")}>
                   <I.Shield size={13} />Permissions <span className="count">3</span>
+                </button>
+                <button className="tab" data-active={activeTab === "settings"} onClick={() => setActiveTab("settings")}>
+                  <I.Settings size={13} />Settings
                 </button>
               </div>
 
@@ -588,6 +611,24 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                   <SchemaView
                     schema={schemaState}
                     onAddField={() => setAddFieldOpen(true)}
+                    onEditField={(name) => setEditFieldName(name)}
+                    onReorderFields={async (from, to) => {
+                      const slug = activeCollection || "posts";
+                      const next = [...schemaState.fields];
+                      const [moved] = next.splice(from, 1);
+                      if (!moved) return;
+                      next.splice(to, 0, moved);
+                      // Optimistic — repaint immediately, then PATCH. Roll
+                      // back on error so the row order doesn't lie.
+                      const prev = schemaState.fields;
+                      setSchemaState((s) => ({ ...s, fields: next }));
+                      try {
+                        await collectionsApi.patch(slug, { fields: next as any });
+                      } catch (e) {
+                        setSchemaState((s) => ({ ...s, fields: prev }));
+                        pushToast((e as Error).message, "error");
+                      }
+                    }}
                     onDropField={(name) => setConfirm({
                       title: `Drop column "${name}"?`,
                       description: <>This <span className="font-mono">ALTER TABLE c_posts DROP COLUMN "{name}"</span> is irreversible. Existing data in the column is lost.</>,
@@ -611,6 +652,42 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
               )}
 
               {activeTab === "permissions" && <PermissionsPanel pushToast={pushToast} />}
+
+              {activeTab === "settings" && (
+                <CollectionSettings
+                  schema={schemaState}
+                  onPatch={async (patch) => {
+                    const slug = activeCollection || "posts";
+                    const prev = schemaState;
+                    setSchemaState((s) => ({ ...s, ...patch }));
+                    try {
+                      await collectionsApi.patch(slug, patch as any);
+                      pushToast(`Collection settings saved.`);
+                    } catch (e) {
+                      setSchemaState(prev);
+                      pushToast((e as Error).message, "error");
+                    }
+                  }}
+                  onDelete={() => setConfirm({
+                    title: <>Delete collection <span className="font-mono">c_{activeCollection}</span>?</>,
+                    description: <>The physical table and all rows are dropped. This is irreversible.</>,
+                    actionLabel: "Delete collection",
+                    destructive: true,
+                    onConfirm: async () => {
+                      const slug = activeCollection || "posts";
+                      try {
+                        await collectionsApi.remove(slug);
+                        setCollections((arr) => arr.filter((c) => c.slug !== slug));
+                        setActiveCollection(null);
+                        pushToast(`Collection c_${slug} dropped.`);
+                      } catch (e) {
+                        pushToast((e as Error).message, "error");
+                      }
+                      setConfirm(null);
+                    },
+                  })}
+                />
+              )}
             </>}
           </div>
         </div>
@@ -642,6 +719,27 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
           }
           setNewCollectionOpen(false);
           setActiveCollection(c.slug);
+        }}
+      />
+      <EditFieldDialog
+        open={editFieldName !== null}
+        field={schemaState.fields.find((f) => (f as { name?: string }).name === editFieldName) ?? null}
+        onClose={() => setEditFieldName(null)}
+        onSave={async (next) => {
+          const slug = activeCollection || "posts";
+          const merged = schemaState.fields.map((f) =>
+            (f as { name?: string }).name === editFieldName ? (next as never) : f,
+          );
+          const prev = schemaState.fields;
+          setSchemaState((s) => ({ ...s, fields: merged }));
+          try {
+            await collectionsApi.patch(slug, { fields: merged as any });
+            pushToast(`Field "${(next as { name?: string }).name}" updated.`);
+          } catch (e) {
+            setSchemaState((s) => ({ ...s, fields: prev }));
+            pushToast((e as Error).message, "error");
+          }
+          setEditFieldName(null);
         }}
       />
       <AddFieldDialog open={addFieldOpen} schema={schemaState} onClose={() => setAddFieldOpen(false)} onCreate={async (field) => {

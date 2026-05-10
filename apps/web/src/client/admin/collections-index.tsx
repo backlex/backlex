@@ -9,10 +9,11 @@ export interface CollectionsIndexProps {
   collections: CollectionListItem[];
   onOpen: (slug: string) => void;
   onNew: () => void;
+  onDelete?: (slug: string) => void;
   pushToast: (msg: string) => void;
 }
 
-export function CollectionsIndex({ collections, onOpen, onNew }: CollectionsIndexProps) {
+export function CollectionsIndex({ collections, onOpen, onNew, onDelete }: CollectionsIndexProps) {
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"grid" | "table">("grid");
 
@@ -68,7 +69,7 @@ export function CollectionsIndex({ collections, onOpen, onNew }: CollectionsInde
                 <div style={{ flex: 1, height: 1, background: "var(--border)", marginLeft: 6 }} />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
-                {list.map((c) => <CollectionCard key={c.slug} c={c} onOpen={() => onOpen(c.slug)} />)}
+                {list.map((c) => <CollectionCard key={c.slug} c={c} onOpen={() => onOpen(c.slug)} onDelete={onDelete ? () => onDelete(c.slug) : undefined} />)}
                 <button onClick={onNew} className="card" style={{ minHeight: 138, border: "1.5px dashed var(--border)", background: "transparent", cursor: "pointer", display: "grid", placeItems: "center", gap: 6, color: "var(--muted-foreground)" }}>
                   <I.Plus size={18} />
                   <span style={{ fontSize: 12.5, fontWeight: 500 }}>New collection</span>
@@ -110,7 +111,11 @@ export function CollectionsIndex({ collections, onOpen, onNew }: CollectionsInde
                     <td className="tabular-nums" style={{ textAlign: "right" }}>{c.writes24h}</td>
                     <td className="muted font-mono" style={{ fontSize: 11.5 }}>{c.lastWrite}</td>
                     <td>{c.ownerScoped ? <Badge variant="default">owner-scoped</Badge> : <Badge variant="secondary">public read</Badge>}</td>
-                    <td onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}><IconButton icon={I.More} /></td>
+                    <td onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}>
+                      {onDelete && (
+                        <IconButton icon={I.Trash} title="Delete collection" onClick={() => onDelete(c.slug)} />
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -122,7 +127,7 @@ export function CollectionsIndex({ collections, onOpen, onNew }: CollectionsInde
   );
 }
 
-function CollectionCard({ c, onOpen }: { c: CollectionListItem; onOpen: () => void }) {
+function CollectionCard({ c, onOpen, onDelete }: { c: CollectionListItem; onOpen: () => void; onDelete?: () => void }) {
   const Ic = (I as Record<string, IconComponent>)[c.icon as IconKey] || I.Database;
   return (
     <div
@@ -139,7 +144,13 @@ function CollectionCard({ c, onOpen }: { c: CollectionListItem; onOpen: () => vo
           <span className="muted" style={{ fontSize: 11.5 }}>{c.fields} fields · {c.singleton ? "singleton" : c.ownerScoped ? "owner-scoped" : "public read"}</span>
         </div>
         <div style={{ flex: 1 }} />
-        <IconButton icon={I.More} onClick={(e) => { e.stopPropagation(); }} />
+        {onDelete && (
+          <IconButton
+            icon={I.Trash}
+            title="Delete collection"
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          />
+        )}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
         <Stat k="rows" v={c.count.toLocaleString()} />

@@ -398,10 +398,11 @@ export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onToggleSid
   return (
     <div className="topbar">
       <IconButton icon={I.Sidebar} onClick={onToggleSidebar} title="Toggle sidebar" />
-      <div className="crumbs">
+      <div className="crumbs path">
+        <span className="sep">/</span>
         {crumbs.map((c, i) => (
           <Fragment key={i}>
-            {i > 0 && <span className="sep"><I.ChevronRight size={12} /></span>}
+            {i > 0 && <span className="sep">/</span>}
             <span className={i === crumbs.length - 1 ? "here" : ""}>{c}</span>
           </Fragment>
         ))}

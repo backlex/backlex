@@ -290,9 +290,10 @@ body {
   border-bottom: 1px solid var(--border);
   background: var(--background);
 }
-.crumbs { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted-foreground); }
+.crumbs { display: flex; align-items: center; gap: 2px; font-size: 13px; color: var(--muted-foreground); }
+.crumbs.path { font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace); }
 .crumbs .here { color: var(--foreground); font-weight: 500; }
-.crumbs .sep { color: var(--muted-foreground); opacity: 0.5; }
+.crumbs .sep { color: var(--muted-foreground); opacity: 0.6; }
 .kbar {
   margin-left: auto;
   display: flex;

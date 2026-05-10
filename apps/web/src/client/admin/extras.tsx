@@ -160,7 +160,19 @@ export function RealtimeTail({ events, channel, connected }: { events: RealtimeE
   );
 }
 
-export function SchemaView({ schema, onAddField, onDropField }: { schema: CollectionSchema; onAddField: () => void; onDropField: (name: string) => void }) {
+export function SchemaView({
+  schema,
+  onAddField,
+  onDropField,
+  onEditField,
+  onReorderFields,
+}: {
+  schema: CollectionSchema;
+  onAddField: () => void;
+  onDropField: (name: string) => void;
+  onEditField?: (name: string) => void;
+  onReorderFields?: (fromIndex: number, toIndex: number) => void;
+}) {
   // schema.fields contains ONLY user-defined columns (the API's source of
   // truth). The schema page also wants to surface the implicit system
   // columns (id / created_at / updated_at / owner_id) so users can see
@@ -175,36 +187,92 @@ export function SchemaView({ schema, onAddField, onDropField }: { schema: Collec
     schema.ownerScoped && !has("owner_id") && { name: "owner_id", type: "uuid", system: true, nullable: false, default: "$user.id" },
   ].filter(Boolean) as typeof userFields;
   const allFields = [...userFields, ...systemRows];
+
+  // Drag state — tracks the source index in the user-fields array (system
+  // rows can't be dragged or be drop targets, so indices stay aligned).
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+
   return (
     <div className="card">
       <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <I.Braces size={14} />
         <span style={{ fontSize: 13, fontWeight: 500 }}>fields</span>
-        <span className="font-mono" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{allFields.length} total · {userFields.length} editable</span>
+        <span className="font-mono" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{allFields.length} total · {userFields.length} editable · drag the grip to reorder</span>
         <div className="spacer" />
         <Button variant="primary" size="sm" icon={I.Plus} onClick={onAddField}>Add field</Button>
       </div>
       <div>
-        {allFields.map((f) => (
-          <div key={f.name} className="schema-row">
-            <span className="grip"><I.Grip size={14} /></span>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-              <span className="name">{f.name}</span>
-              {f.system && <Badge variant="secondary">system</Badge>}
-              {f.unique && <Badge variant="outline">unique</Badge>}
-              {!f.nullable && !f.system && <Badge variant="outline">required</Badge>}
+        {allFields.map((f, idx) => {
+          // System rows always render after user-defined fields and are
+          // never reorderable; dnd handlers only fire for user rows.
+          const userIdx = idx < userFields.length ? idx : -1;
+          const isUser = !f.system && userIdx >= 0;
+          const isDragging = dragIndex === userIdx;
+          const isOver = overIndex === userIdx && dragIndex !== null && dragIndex !== userIdx;
+          return (
+            <div
+              key={f.name}
+              className="schema-row"
+              draggable={isUser}
+              style={{
+                opacity: isDragging ? 0.4 : 1,
+                borderTop: isOver && (dragIndex ?? 0) > userIdx ? "2px solid var(--primary)" : undefined,
+                borderBottom: isOver && (dragIndex ?? 0) < userIdx ? "2px solid var(--primary)" : undefined,
+                transition: "opacity 80ms",
+              }}
+              onDragStart={isUser ? (e) => {
+                setDragIndex(userIdx);
+                e.dataTransfer.effectAllowed = "move";
+                // Required for Firefox to actually start the drag.
+                e.dataTransfer.setData("text/plain", f.name);
+              } : undefined}
+              onDragOver={isUser ? (e) => {
+                if (dragIndex === null || dragIndex === userIdx) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                if (overIndex !== userIdx) setOverIndex(userIdx);
+              } : undefined}
+              onDragLeave={isUser ? () => {
+                if (overIndex === userIdx) setOverIndex(null);
+              } : undefined}
+              onDrop={isUser ? (e) => {
+                e.preventDefault();
+                if (dragIndex !== null && dragIndex !== userIdx) {
+                  onReorderFields?.(dragIndex, userIdx);
+                }
+                setDragIndex(null);
+                setOverIndex(null);
+              } : undefined}
+              onDragEnd={() => {
+                setDragIndex(null);
+                setOverIndex(null);
+              }}
+            >
+              <span className="grip" style={{ cursor: isUser ? "grab" : "default", opacity: isUser ? 1 : 0.3 }}>
+                <I.Grip size={14} />
+              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <span className="name">{f.name}</span>
+                {f.system && <Badge variant="secondary">system</Badge>}
+                {f.unique && <Badge variant="outline">unique</Badge>}
+                {!f.nullable && !f.system && <Badge variant="outline">required</Badge>}
+              </div>
+              <Badge variant="outline" mono>{f.type}</Badge>
+              <span className="font-mono" style={{ fontSize: 11.5, color: "var(--muted-foreground)" }}>
+                {f.default ?? <span style={{ opacity: 0.5 }}>—</span>}
+              </span>
+              <span style={{ display: "flex", justifyContent: "flex-end", gap: 4 }}>
+                {!f.system && onEditField && (
+                  <IconButton icon={I.Pencil} onClick={() => onEditField(f.name)} title="Edit field" />
+                )}
+                {!f.system && (
+                  <IconButton icon={I.Trash} onClick={() => onDropField(f.name)} title="Drop column" />
+                )}
+              </span>
             </div>
-            <Badge variant="outline" mono>{f.type}</Badge>
-            <span className="font-mono" style={{ fontSize: 11.5, color: "var(--muted-foreground)" }}>
-              {f.default ?? <span style={{ opacity: 0.5 }}>—</span>}
-            </span>
-            <span style={{ display: "flex", justifyContent: "flex-end" }}>
-              {!f.system && (
-                <IconButton icon={I.Trash} onClick={() => onDropField(f.name)} title="Drop column" />
-              )}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

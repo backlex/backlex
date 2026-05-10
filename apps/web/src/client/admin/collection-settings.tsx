@@ -19,11 +19,16 @@ interface SchemaLike {
 
 export interface CollectionSettingsProps {
   schema: SchemaLike;
+  // Existing slugs in the workspace, used to validate the rename target
+  // before the PATCH round-trip lights up a 409.
+  existingSlugs: string[];
   onPatch: (patch: Partial<SchemaLike>) => void | Promise<void>;
+  onRename: (nextSlug: string) => void | Promise<void>;
   onDelete: () => void;
 }
 
-export function CollectionSettings({ schema, onPatch, onDelete }: CollectionSettingsProps) {
+export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, onDelete }: CollectionSettingsProps) {
+  const [slug, setSlug] = useState(schema.slug);
   const [singular, setSingular] = useState(schema.singular ?? "");
   const [plural, setPlural] = useState(schema.plural ?? "");
   const [note, setNote] = useState(schema.note ?? "");
@@ -31,11 +36,25 @@ export function CollectionSettings({ schema, onPatch, onDelete }: CollectionSett
 
   // Reseed when the user navigates between collections (or hits Refresh).
   useEffect(() => {
+    setSlug(schema.slug);
     setSingular(schema.singular ?? "");
     setPlural(schema.plural ?? "");
     setNote(schema.note ?? "");
     setDisplayTemplate(schema.displayTemplate ?? "");
   }, [schema.slug]);
+
+  const slugClean = slug.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_").replace(/^_+|_+$/g, "");
+  const slugError =
+    slugClean === schema.slug
+      ? null
+      : !slugClean
+        ? "slug is required"
+        : !/^[a-z][a-z0-9_]*$/.test(slugClean)
+          ? "must start with a letter; snake_case only"
+          : existingSlugs.some((s) => s !== schema.slug && s === slugClean)
+            ? `c_${slugClean} already exists`
+            : null;
+  const slugDirty = slugClean !== schema.slug;
 
   const dirty =
     (schema.singular ?? "") !== singular ||
@@ -54,6 +73,33 @@ export function CollectionSettings({ schema, onPatch, onDelete }: CollectionSett
           </span>
         </div>
         <div style={{ padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="field" style={{ gridColumn: "1 / -1" }}>
+            <label className="field-label">Slug</label>
+            <div className={`input-affix ${slugError ? "error" : ""}`}>
+              <span className="input-affix-prefix font-mono">c_</span>
+              <input
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                placeholder={schema.slug}
+                className="font-mono"
+              />
+              {slugDirty && !slugError && (
+                <Button
+                  size="xs"
+                  variant="primary"
+                  onClick={() => onRename(slugClean)}
+                >
+                  Rename
+                </Button>
+              )}
+            </div>
+            <span className="field-hint" style={slugError ? { color: "var(--destructive)" } : undefined}>
+              {slugError ??
+                (slugDirty
+                  ? <>Will rename <span className="font-mono">c_{schema.slug}</span> → <span className="font-mono">c_{slugClean}</span> and update permission rules, webhooks, function patterns, flow steps, revisions, comments, and audit log.</>
+                  : <>URL identifier and physical table prefix. Renaming cascades through all references.</>)}
+            </span>
+          </div>
           <div className="field">
             <label className="field-label">Singular</label>
             <input className="input" value={singular} onChange={(e) => setSingular(e.target.value)} placeholder="post" />

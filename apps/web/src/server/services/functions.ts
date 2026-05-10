@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { AuthSubject } from "@workeros/core";
@@ -12,6 +12,7 @@ import type { DbCtx } from "./seed";
 
 export interface FunctionRow {
   id: string;
+  tenantId: string | null;
   name: string;
   trigger: "http" | "event" | "cron";
   pattern: string | null;
@@ -43,13 +44,14 @@ const matchesPattern = (
 
 export const findByName = async (
   ctx: DbCtx,
+  tenantId: string,
   name: string,
 ): Promise<FunctionRow | null> => {
   const t = tableFor(ctx.dialect);
   const rows = (await (ctx.db as any)
     .select()
     .from(t)
-    .where(eq(t.name, name))
+    .where(and(eq(t.tenantId, tenantId), eq(t.name, name)))
     .limit(1)) as FunctionRow[];
   return rows[0] ?? null;
 };
@@ -64,15 +66,19 @@ export const invokeFunction = async (
 
 export const runEventFunctions = async (
   ctx: Ctx,
+  tenantId: string | null,
   channel: string,
   payload: { event: string; data: Record<string, unknown> },
   auth: AuthSubject,
 ): Promise<void> => {
+  // Without a tenant scope, an event from one workspace would fan out to
+  // every other workspace's event functions. Refuse rather than leak.
+  if (!tenantId) return;
   const t = tableFor(ctx.dialect);
   const rows = (await (ctx.db as any)
     .select()
     .from(t)
-    .where(eq(t.trigger, "event"))) as FunctionRow[];
+    .where(and(eq(t.trigger, "event"), eq(t.tenantId, tenantId)))) as FunctionRow[];
   const matches = rows.filter(
     (f) => f.active && matchesPattern(f.pattern, channel, payload.event),
   );
@@ -82,7 +88,7 @@ export const runEventFunctions = async (
       try {
         const result = await runFunction(
           fn.code,
-          { ctx, auth },
+          { ctx, auth: { ...auth, tenantId } },
           payload,
           fn.timeoutMs,
         );

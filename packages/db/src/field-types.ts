@@ -123,7 +123,28 @@ export const assertIdent = (name: string): string => {
 
 export const quote = (name: string): string => `"${assertIdent(name)}"`;
 
-export const physicalTableFor = (slug: string): string => `c_${assertIdent(slug)}`;
+/**
+ * Compute the physical table name for a collection in a given tenant.
+ * Format: `c_<tenantPrefix12>_<slug>` so two workspaces can independently
+ * own a collection with the same slug. The tenant prefix is the first 12
+ * hex chars of the tenant id (dashes stripped) — 48 bits is plenty given
+ * realistic workspace counts, and keeps the table name well under PG's
+ * 63-char identifier cap.
+ *
+ * Legacy rows created before per-workspace collections (when the table
+ * was `c_<slug>` globally) keep their original name in `collections.
+ * physical_table`. Always read that column rather than recomputing.
+ */
+export const derivePhysicalTable = (tenantId: string, slug: string): string => {
+  const prefix = tenantId.replace(/-/g, "").slice(0, 12).toLowerCase();
+  if (!/^[a-f0-9]{12}$/.test(prefix)) {
+    throw new Error(`Invalid tenant id for physical table: ${tenantId}`);
+  }
+  return `c_${prefix}_${assertIdent(slug)}`;
+};
+
+/** @deprecated Pre-tenant naming. Used only by the migration backfill. */
+export const legacyPhysicalTableFor = (slug: string): string => `c_${assertIdent(slug)}`;
 
 const RESERVED = new Set([
   "id",

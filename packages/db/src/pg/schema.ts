@@ -408,27 +408,42 @@ export const apiKeys = pgTable(
 
 /**
  * `collections` is the directus-like meta table. Each row defines a dynamic
- * collection whose actual data lives in a physical table `c_<slug>` created
- * at runtime via the schema applier (packages/db/src/schema-applier.ts).
+ * collection whose actual data lives in a physical table whose name is
+ * stored in `physical_table` and created at runtime via the schema applier
+ * (packages/db/src/schema-applier.ts). Each collection belongs to exactly
+ * one tenant — `(tenant_id, slug)` is unique, but two tenants may reuse
+ * the same slug independently.
  */
-export const collections = pgTable("collections", {
-  slug: text("slug").primaryKey(),
-  /** When non-null, only this tenant sees the collection in its sidebar. */
-  tenantId: text("tenant_id"),
-  singular: text("singular"),
-  plural: text("plural"),
-  note: text("note"),
-  displayTemplate: text("display_template"),
-  fields: jsonb("fields").$type<unknown[]>().notNull(),
-  ownerScoped: boolean("owner_scoped").notNull().default(false),
-  /** When true, the physical c_<slug> table gains a `tenant_id` column and
-   *  reads/writes are auto-scoped by the active tenant. */
-  tenantScoped: boolean("tenant_scoped").notNull().default(true),
-  /** When true, c_<slug> has `_status` + `_published_at` columns. */
-  versioned: boolean("versioned").notNull().default(false),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const collections = pgTable(
+  "collections",
+  {
+    id: text("id").primaryKey(),
+    slug: text("slug").notNull(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    /** Physical table name (e.g. `c_<tenantPrefix>_<slug>`). Stored so we
+     *  never have to re-derive it; legacy rows may still be `c_<slug>`. */
+    physicalTable: text("physical_table").notNull(),
+    singular: text("singular"),
+    plural: text("plural"),
+    note: text("note"),
+    displayTemplate: text("display_template"),
+    fields: jsonb("fields").$type<unknown[]>().notNull(),
+    ownerScoped: boolean("owner_scoped").notNull().default(false),
+    /** When true, the physical table gains a `tenant_id` column and
+     *  reads/writes are auto-scoped by the active tenant. */
+    tenantScoped: boolean("tenant_scoped").notNull().default(true),
+    /** When true, the physical table has `_status` + `_published_at` columns. */
+    versioned: boolean("versioned").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("collections_tenant_slug_idx").on(t.tenantId, t.slug),
+    uniqueIndex("collections_physical_table_idx").on(t.physicalTable),
+  ],
+);
 
 /**
  * Embeddings are kept in a dedicated table so the vector dimension can be

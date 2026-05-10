@@ -81,7 +81,7 @@ const CollectionInput = z.object({
   plural: z.string().optional(),
   note: z.string().optional(),
   displayTemplate: z.string().optional(),
-  fields: z.array(FieldSchema).min(1),
+  fields: z.array(FieldSchema),
   ownerScoped: z.boolean().optional().default(false),
   /** When true (default), the physical table gets a `tenant_id` column and
    *  rows are scoped to the active tenant. */

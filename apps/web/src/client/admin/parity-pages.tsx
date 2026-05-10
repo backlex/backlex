@@ -564,32 +564,43 @@ function PolicyRow({ label, desc, defaultOn, policyKey, onPersist }: { label: st
 
 export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) {
   type Evt = { t: string; actor: string; action: string; resource: string; diff: string; ip: string };
+  const PAGE_SIZE = 50;
   const [events, setEvents] = useState<Evt[]>([]);
   const [filter, setFilter] = useState("all");
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await activityApi.list();
-        if (cancelled) return;
-        if (Array.isArray(res.data)) {
-          setEvents(
-            res.data.map((a) => ({
-              t: new Date(a.createdAt).toISOString().replace("T", " ").slice(0, 19),
-              actor: a.userId ?? "system",
-              action: a.action,
-              resource: `${a.collection}${a.itemId ? "/" + a.itemId : ""}`,
-              diff: typeof a.payload === "string" ? a.payload : JSON.stringify(a.payload ?? {}).slice(0, 80),
-              ip: a.ip ?? "—",
-            })),
-          );
-        }
-      } catch (e) {
-        pushToast?.((e as Error).message);
+  const [loading, setLoading] = useState(false);
+  // hasMore stays true until a fetch returns fewer rows than requested.
+  const [hasMore, setHasMore] = useState(true);
+
+  const mapRow = (a: ApiActivity): Evt => ({
+    t: new Date(a.createdAt).toISOString().replace("T", " ").slice(0, 19),
+    actor: a.userId ?? "system",
+    action: a.action,
+    resource: `${a.collection}${a.itemId ? "/" + a.itemId : ""}`,
+    diff: typeof a.payload === "string" ? a.payload : JSON.stringify(a.payload ?? {}).slice(0, 80),
+    ip: a.ip ?? "—",
+  });
+
+  const fetchPage = async (offset: number, append: boolean) => {
+    setLoading(true);
+    try {
+      const res = await activityApi.list({ limit: PAGE_SIZE, offset });
+      if (Array.isArray(res.data)) {
+        const mapped = res.data.map(mapRow);
+        setEvents((prev) => (append ? [...prev, ...mapped] : mapped));
+        setHasMore(res.data.length === PAGE_SIZE);
       }
-    })();
-    return () => { cancelled = true; };
-  }, [pushToast]);
+    } catch (e) {
+      pushToast?.((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchPage(0, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const visible = filter === "all" ? events : events.filter((e) => e.action.startsWith(filter));
   const actionColor = (a: string) => a.startsWith("item.") ? "default" as const : a.startsWith("auth.") ? "secondary" as const : a.startsWith("schema.") ? "destructive" as const : "outline" as const;
   return (
@@ -608,7 +619,7 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
         pushToast("Exported as activity.csv.");
       }}>Export</Button>} />
       <div className="filter-bar">
-        {["all", "item", "auth", "schema", "role", "storage", "flow", "webhook", "backup"].map((k) => (
+        {["all", "item", "auth", "schema", "role", "storage", "flow", "function", "webhook", "backup"].map((k) => (
           <button key={k} className={`chip ${filter === k ? "active" : ""}`} onClick={() => setFilter(k)}>{k} <span className="muted tabular-nums">{k === "all" ? events.length : events.filter((e) => e.action.startsWith(k)).length}</span></button>
         ))}
       </div>
@@ -628,6 +639,20 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
             ))}
           </tbody>
         </table>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderTop: "1px solid var(--border)" }}>
+          <span className="muted tabular-nums" style={{ fontSize: 12 }}>
+            {filter === "all"
+              ? `${events.length} loaded${hasMore ? "" : " · end"}`
+              : `${visible.length} of ${events.length} loaded${hasMore ? "" : " · end"}`}
+          </span>
+          <Button
+            variant="outline"
+            disabled={!hasMore || loading}
+            onClick={() => void fetchPage(events.length, true)}
+          >
+            {loading ? "Loading…" : hasMore ? "Load more" : "No more rows"}
+          </Button>
+        </div>
       </div>
     </div>
   );

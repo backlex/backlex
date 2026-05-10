@@ -66,18 +66,24 @@ const execSql = (sql: string, opts: { json?: boolean } = {}) => {
   return { ok: r.status === 0, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
 };
 
-// wrangler `--file=` prefixes stdout with progress lines like
-// "├ Checking if file needs uploading", "🌀 Uploading complete." before the
-// JSON payload, so a raw JSON.parse(stdout) fails. Find the first '[' or
-// '{' that successfully parses as JSON to the end of the buffer.
+// wrangler `--file=` interleaves stdout with progress noise like
+// "├ Checking if file needs uploading", "🌀 Uploading complete." before
+// AND sometimes after the JSON payload, so a raw JSON.parse(stdout)
+// fails. Walk both ends: try each candidate '['/'{' start, then for each
+// start try each matching ']'/'}' end from rightmost to leftmost. First
+// slice that JSON.parses wins.
 const tryParseJsonTail = (stdout: string): unknown | null => {
-  const tryFrom = (ch: string) => {
-    for (let i = stdout.indexOf(ch); i >= 0; i = stdout.indexOf(ch, i + 1)) {
-      try { return JSON.parse(stdout.slice(i)); } catch {}
+  const tryShape = (open: string, close: string) => {
+    for (let i = stdout.indexOf(open); i >= 0; i = stdout.indexOf(open, i + 1)) {
+      let j = stdout.lastIndexOf(close);
+      while (j > i) {
+        try { return JSON.parse(stdout.slice(i, j + 1)); } catch {}
+        j = stdout.lastIndexOf(close, j - 1);
+      }
     }
     return null;
   };
-  return tryFrom("[") ?? tryFrom("{");
+  return tryShape("[", "]") ?? tryShape("{", "}");
 };
 
 // Parse a wrangler `--json` SELECT result. Returns null when the payload
@@ -164,4 +170,17 @@ const missing = attemptedHashes.length - newlyRecorded;
 console.log(`✓ Done — ${newlyRecorded} new migration(s) recorded.`);
 if (missing > 0) {
   console.warn(`  (${missing} hash(es) attempted but not visible in ledger — admin Migrations page will be incomplete)`);
+}
+
+// One-shot diagnostic: when nothing was visible, run one more SELECT and
+// dump the raw stdout + stderr in full (no truncation) so we can see what
+// wrangler is actually returning. Removed in a follow-up commit.
+if (missing > 0 && attemptedHashes.length > 0) {
+  console.warn(`  --- diagnostic raw dump ---`);
+  const r = execSql(`SELECT hash FROM __drizzle_migrations LIMIT 3;`, { json: true });
+  console.warn(`exit=${r.ok ? 0 : "≠0"}`);
+  console.warn(`stdout(len=${r.stdout.length}):`);
+  console.warn(r.stdout);
+  console.warn(`stderr(len=${r.stderr.length}):`);
+  console.warn(r.stderr);
 }

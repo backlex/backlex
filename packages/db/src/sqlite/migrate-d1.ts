@@ -9,9 +9,10 @@
  *   bun run packages/db/src/sqlite/migrate-d1.ts --remote   # production D1
  */
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { resolve } from "node:path";
+import { createHash, randomBytes } from "node:crypto";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const args = process.argv.slice(2);
@@ -41,14 +42,27 @@ const execFile = (file: string) => {
   return { ok: r.status === 0, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
 };
 
-const execCommand = (sql: string, opts: { json?: boolean } = {}) => {
-  // wrangler `--json` produces "fetch failed" on remote INSERTs even when
-  // the write succeeds at the DB layer — only request JSON when we need to
-  // parse the result (i.e. for SELECTs).
+// Holds temp .sql files used by execSql below; cleaned up on exit.
+const tmpRoot = mkdtempSync(join(tmpdir(), "workeros-migrate-d1-"));
+process.on("exit", () => {
+  try { rmSync(tmpRoot, { recursive: true, force: true }); } catch {}
+});
+
+// We pipe inline SQL through a temp file + `--file=` instead of `--command=`.
+// `wrangler d1 execute --remote --command=` hits a known wrangler bug
+// (workers-sdk#9099) where the local D1 UUID is sent to the remote API and
+// the call silently 4xxs — so ledger reads/writes never persisted. The
+// `--file=` code path uses R2 upload + import and resolves the binding
+// correctly against `--remote`, which is also why our migration DDL files
+// have always reached production while inline ledger ops didn't.
+const execSql = (sql: string, opts: { json?: boolean } = {}) => {
+  const path = join(tmpRoot, `q-${randomBytes(6).toString("hex")}.sql`);
+  writeFileSync(path, sql);
   const args = ["d1", "execute", dbName, remoteFlag, persistFlag];
   if (opts.json) args.push("--json");
-  args.push(`--command=${sql}`);
+  args.push(`--file=${path}`);
   const r = wrangler(args);
+  try { rmSync(path, { force: true }); } catch {}
   return { ok: r.status === 0, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
 };
 
@@ -75,7 +89,7 @@ const parseLedgerHashes = (stdout: string): Set<string> | null => {
 };
 
 const readLedger = (): Set<string> => {
-  const r = execCommand(`SELECT hash FROM __drizzle_migrations;`, { json: true });
+  const r = execSql(`SELECT hash FROM __drizzle_migrations;`, { json: true });
   // Don't trust the exit code: wrangler frequently exits ≠ 0 on remote D1
   // (stderr noise like "fetch failed") even when the SELECT itself succeeded
   // and stdout carries the JSON payload. Try to parse stdout regardless.
@@ -90,7 +104,7 @@ const readLedger = (): Set<string> => {
 // Bootstrap drizzle's tracking table — schema must match what
 // drizzle-orm/bun-sqlite/migrator creates so the admin /migrations endpoint
 // can read both.
-execCommand(
+execSql(
   `CREATE TABLE IF NOT EXISTS __drizzle_migrations (
      id INTEGER PRIMARY KEY AUTOINCREMENT,
      hash TEXT NOT NULL,
@@ -125,7 +139,7 @@ for (const tag of order) {
   // Don't gate on exit status here either — wrangler can exit ≠ 0 even when
   // the INSERT was committed. We re-read the ledger after the loop and
   // report the actual recorded delta.
-  execCommand(
+  execSql(
     `INSERT INTO __drizzle_migrations (hash, created_at) VALUES ('${hash}', ${ts});`,
   );
   attemptedHashes.push(hash);

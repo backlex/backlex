@@ -160,6 +160,9 @@ export const tenantsRoutes = new Hono<AppBindings>()
       .update(t.users)
       .set({ activeTenantId: target.id, updatedAt: new Date() })
       .where(eq(t.users.id, auth.userId!));
+    // Tell tenantMiddleware to keep this value when it re-stamps the cookie
+    // post-next (otherwise its closed-over old tenantId overwrites ours).
+    c.set("auth", { ...auth, tenantId: target.id });
     return c.json({ data: { id: target.id, slug: target.slug } });
   })
   /** Members of a workspace. Caller must be a member (admins bypass). */

@@ -41,11 +41,14 @@ const execFile = (file: string) => {
   return { ok: r.status === 0, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
 };
 
-const execCommand = (sql: string) => {
-  const r = wrangler([
-    "d1", "execute", dbName, remoteFlag, persistFlag,
-    "--json", `--command=${sql}`,
-  ]);
+const execCommand = (sql: string, opts: { json?: boolean } = {}) => {
+  // wrangler `--json` produces "fetch failed" on remote INSERTs even when
+  // the write succeeds at the DB layer — only request JSON when we need to
+  // parse the result (i.e. for SELECTs).
+  const args = ["d1", "execute", dbName, remoteFlag, persistFlag];
+  if (opts.json) args.push("--json");
+  args.push(`--command=${sql}`);
+  const r = wrangler(args);
   return { ok: r.status === 0, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
 };
 
@@ -63,7 +66,7 @@ execCommand(
 // Pull the set of already-recorded hashes so we can skip them.
 const applied = new Set<string>();
 {
-  const r = execCommand(`SELECT hash FROM __drizzle_migrations;`);
+  const r = execCommand(`SELECT hash FROM __drizzle_migrations;`, { json: true });
   if (r.ok) {
     // wrangler's --json output is `[ { results: [{hash}], ... } ]`; on remote
     // it sometimes wraps in an extra array. Be lenient.

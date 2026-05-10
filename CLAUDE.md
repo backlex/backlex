@@ -30,6 +30,22 @@ bun run db:migrate:d1:remote # same, but to the deployed CF D1 (--remote)
 
 There is no test runner configured yet.
 
+## Local test admin
+
+For smoke tests / Claude debug runs against the local dev server (`bun run dev` on http://localhost:5173):
+
+- **Email:** `admin@example.com`
+- **Password:** `correct-horse-battery`
+
+Mirrored in `apps/web/.dev.vars.example` (`TEST_ADMIN_EMAIL` / `TEST_ADMIN_PASSWORD`). Sign in via `POST /api/auth/sign-in/email` (always send `Origin: http://localhost:5173` — better-auth rejects requests without it). If the local D1/SQLite is fresh and this account isn't the first user, sign it up via `POST /api/auth/sign-up/email`, then grant the admin role manually:
+
+```sql
+INSERT INTO user_roles (user_id, role_id, created_at)
+VALUES ('<user-id>', (SELECT id FROM roles WHERE name='admin'), strftime('%s','now')*1000);
+```
+
+(`user_roles` has a composite PK on `(user_id, role_id)` — there's no `id` column.)
+
 ## Workflow: branch → merge → auto-deploy
 
 Every working session runs on its own branch. Merging into `main` triggers `.github/workflows/deploy.yml`, which runs `bun run build` and `wrangler deploy` against the `workeros-api` Worker. Required GitHub secrets: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.

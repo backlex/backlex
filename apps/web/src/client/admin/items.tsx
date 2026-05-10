@@ -26,6 +26,39 @@ export interface FilterCondition {
   value: unknown;
 }
 
+interface StatusChoice {
+  value: string;
+  label?: string;
+  color?: string;
+  icon?: string;
+}
+
+/**
+ * Resolves the per-collection status field config. Returns the choices when
+ * the schema declares a `status` (or any) field with `interface: dropdown`,
+ * else null. The first matching dropdown field wins so the table can hide
+ * the column when nothing is configured.
+ */
+export function resolveStatusField(schema?: { fields?: Array<Record<string, unknown>> } | null): {
+  name: string;
+  choices: StatusChoice[];
+} | null {
+  const fields = schema?.fields ?? [];
+  // Prefer a field literally named "status" so existing presets light up;
+  // fall back to any dropdown-interface field.
+  const named = fields.find((f) => (f as { name?: string }).name === "status" && (f as { interface?: string }).interface === "dropdown");
+  const fallback = !named ? fields.find((f) => (f as { interface?: string }).interface === "dropdown") : null;
+  const f = (named ?? fallback) as
+    | { name?: string; options?: { choices?: StatusChoice[]; values?: string[] } }
+    | undefined;
+  if (!f?.name) return null;
+  const choices: StatusChoice[] = f.options?.choices?.length
+    ? f.options.choices
+    : (f.options?.values ?? []).map((v) => ({ value: v }));
+  if (!choices.length) return null;
+  return { name: f.name, choices };
+}
+
 export function statusVariant(s: string) {
   if (s === "published") return "default" as const;
   if (s === "archived") return "secondary" as const;
@@ -166,14 +199,27 @@ export function FilterBar({ search, setSearch, filters, setFilters, schema, stat
         {search && <span className="x" onClick={() => setSearch("")}><I.X size={13} /></span>}
       </div>
 
-      <div className="tabs">
-        {[{ id: "all", label: "All", count: total }, { id: "published", label: "Published" }, { id: "review", label: "In review" }, { id: "draft", label: "Drafts" }].map((t) => (
-          <button key={t.id} className="tab" data-active={status === t.id} onClick={() => setStatus(t.id)}>
-            {t.label}
-            {t.count != null && <span className="count">{t.count}</span>}
-          </button>
-        ))}
-      </div>
+      {(() => {
+        const cfg = resolveStatusField(schema as any);
+        // Skip the tabs row entirely when the collection has no status field
+        // — Directus parity: don't surface status UI on schemas that don't
+        // declare it.
+        if (!cfg) return null;
+        const tabs = [
+          { id: "all", label: "All", count: total } as { id: string; label: string; count?: number },
+          ...cfg.choices.map((c) => ({ id: c.value, label: c.label ?? c.value })),
+        ];
+        return (
+          <div className="tabs">
+            {tabs.map((t) => (
+              <button key={t.id} className="tab" data-active={status === t.id} onClick={() => setStatus(t.id)}>
+                {t.label}
+                {t.count != null && <span className="count">{t.count}</span>}
+              </button>
+            ))}
+          </div>
+        );
+      })()}
 
       <div ref={wrapRef} style={{ position: "relative" }}>
         <Button variant="outline" size="sm" icon={I.Filter} onClick={() => setPopOpen((v) => !v)}>
@@ -230,9 +276,11 @@ export interface ItemsTableProps {
   setSort: (s: string) => void;
   onEdit: (it: Post) => void;
   onDelete?: (it: Post) => void;
+  /** Pass the current collection schema to derive the status field config. */
+  schema?: CollectionSchema;
 }
 
-export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit }: ItemsTableProps) {
+export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit, schema }: ItemsTableProps) {
   // Subscribe so the table re-renders when authors-cache populates.
   useSyncExternalStore(subscribeAuthors, getAuthors, getAuthors);
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
@@ -270,13 +318,17 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit 
 
   // Detect which optional columns are actually present on the rows. Real
   // c_<slug> tables won't have author/word_count/view_count unless the user
-  // defined them. We always render Title + Status (synthesized from common
-  // fields if absent) and Updated. Optional columns stay rendered so the
-  // design layout is preserved, but show "—" when the field is missing.
+  // defined them. Status is now schema-driven — only shown when the
+  // collection declares a dropdown field (typically named "status").
+  const statusField = resolveStatusField(schema as any);
+  const choiceByValue = new Map(
+    statusField?.choices.map((c) => [c.value, c]) ?? [],
+  );
   const has = {
     author: rows.some((r) => r.author != null),
     words: rows.some((r) => r.word_count != null),
     views: rows.some((r) => r.view_count != null),
+    status: !!statusField,
   };
 
   return (
@@ -287,7 +339,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit 
             <Checkbox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} />
           </th>
           <SortHead id="title" label="Title" />
-          <SortHead id="status" label="Status" />
+          {has.status && <SortHead id={statusField!.name} label="Status" />}
           {has.author && <th style={{ width: 110 }}>Author</th>}
           {has.words && <SortHead id="word_count" label="Words" num />}
           {has.views && <SortHead id="view_count" label="Views" num />}
@@ -302,7 +354,9 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit 
           // collections without a `title` column render readable rows.
           const displayTitle = r.title ?? r.name ?? r.slug ?? r.id ?? "—";
           const displaySlug = r.slug ?? r.id ?? "";
-          const displayStatus = r.status ?? "draft";
+          const rawStatus = statusField ? (r as Record<string, unknown>)[statusField.name] : null;
+          const displayStatus = rawStatus != null ? String(rawStatus) : null;
+          const choice = displayStatus ? choiceByValue.get(displayStatus) : null;
           return (
             <tr key={r.id} data-selected={selected.has(r.id)} onClick={() => onEdit(r)}>
               <td onClick={(e) => e.stopPropagation()}>
@@ -314,12 +368,29 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit 
                   {displaySlug && <span className="font-mono" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>/{String(displaySlug).slice(0, 24)}</span>}
                 </div>
               </td>
-              <td>
-                <Badge variant={statusVariant(displayStatus)}>
-                  {displayStatus === "published" && <span style={{ width: 6, height: 6, borderRadius: 999, background: "currentColor", display: "inline-block", marginRight: 2 }} />}
-                  {displayStatus}
-                </Badge>
-              </td>
+              {has.status && (
+                <td>
+                  {displayStatus ? (
+                    <Badge variant={choice?.color ? "outline" : statusVariant(displayStatus)}>
+                      {choice?.color && (
+                        <span
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: 999,
+                            background: choice.color,
+                            display: "inline-block",
+                            marginRight: 4,
+                          }}
+                        />
+                      )}
+                      {choice?.label ?? displayStatus}
+                    </Badge>
+                  ) : (
+                    <span className="muted">—</span>
+                  )}
+                </td>
+              )}
               {has.author && (
                 <td>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

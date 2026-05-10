@@ -225,12 +225,30 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
         </div>
       );
     }
-    if (f.name === "status" && (f.type === "text" || !f.type)) {
-      const STATUS_VALUES = ["draft", "review", "published", "archived"];
+    // Directus-style: any field marked interface=dropdown renders a Select.
+    // Choices come from f.options.choices (preferred) or legacy f.options.values.
+    if (f.interface === "dropdown") {
+      const rawChoices = (f.options?.choices?.length
+        ? f.options.choices
+        : (f.options?.values ?? []).map((v: string) => ({ value: v }))) as Array<{
+        value: string;
+        label?: string;
+        color?: string;
+        icon?: string;
+      }>;
       const current = String(val ?? "");
-      const options = current && !STATUS_VALUES.includes(current)
-        ? [...STATUS_VALUES, current]
-        : STATUS_VALUES;
+      // Preserve a current value that's no longer in the choice list (e.g.
+      // imported data) so the user can see and re-pick.
+      const choices = current && !rawChoices.some((c) => c.value === current)
+        ? [...rawChoices, { value: current }]
+        : rawChoices;
+      const options = choices.map((c) => ({
+        value: c.value,
+        label: c.label ?? c.value,
+        icon: c.color
+          ? <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 999, background: c.color }} />
+          : undefined,
+      }));
       return (
         <div key={f.name} className="field">
           {label}
@@ -238,7 +256,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
             value={current}
             onChange={(v) => { updateField(f.name, v); setTouched((t) => ({ ...t, [f.name]: true })); }}
             options={options}
-            placeholder="Pick a status…"
+            placeholder={f.name === "status" ? "Pick a status…" : "Pick…"}
           />
           {err && <div className="field-error"><I.AlertTriangle size={11} />{err}</div>}
         </div>

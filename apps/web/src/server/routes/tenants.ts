@@ -2,12 +2,13 @@ import { Hono } from "hono";
 import { setCookie } from "hono/cookie";
 import { z } from "zod";
 import { and, desc, eq } from "drizzle-orm";
-import { AppError } from "@workeros/core";
+import { AppError, SYSTEM_ROLES } from "@workeros/core";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { TENANT_COOKIE } from "../middleware/tenant";
+import { assignRoleByName, ensureSystemRoles } from "../services/seed";
 
 const tablesFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg"
@@ -116,6 +117,12 @@ export const tenantsRoutes = new Hono<AppBindings>()
       status: "active",
       joinedAt: new Date(),
     });
+    // Seed system roles for the new workspace so admin/authenticated/public
+    // exist on day one, then make the creator an admin in the RBAC sense
+    // (the membership-level "owner" role is orthogonal to the role system).
+    const dbCtx = { db: ctx.db, dialect: ctx.dialect };
+    await ensureSystemRoles(dbCtx, id);
+    await assignRoleByName(dbCtx, id, auth.userId!, SYSTEM_ROLES.admin);
     return c.json({ data: { id, slug, name: body.name } }, 201);
   })
   /** Switch the active tenant cookie for the next requests. */
@@ -283,5 +290,15 @@ export const tenantsRoutes = new Hono<AppBindings>()
         inviteExpiresAt: null,
       })
       .where(eq(t.members.id, inv.id));
+    // Make sure system roles exist for the workspace (in case it was
+    // created before per-tenant seeding shipped), then bind the invitee
+    // to an RBAC role mirroring their membership level.
+    const dbCtx = { db: ctx.db, dialect: ctx.dialect };
+    await ensureSystemRoles(dbCtx, inv.tenantId);
+    const rbacRole =
+      inv.role === "owner" || inv.role === "admin"
+        ? SYSTEM_ROLES.admin
+        : SYSTEM_ROLES.authenticated;
+    await assignRoleByName(dbCtx, inv.tenantId, auth.userId!, rbacRole);
     return c.json({ data: { tenantId: inv.tenantId } });
   });

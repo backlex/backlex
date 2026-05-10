@@ -18,28 +18,34 @@ const Input = z.object({
 
 const filesPerm = () => FILES_COLLECTION;
 
+const requireTenantId = (auth: { tenantId?: string | null }): string => {
+  if (!auth.tenantId) {
+    throw new AppError("VALIDATION", "Active tenant is required for folder operations");
+  }
+  return auth.tenantId;
+};
+
 export const foldersRoutes = new Hono<AppBindings>()
   .get("/", requirePermission(filesPerm, "read"), async (c) => {
     const ctx = c.get("ctx");
+    const auth = c.get("auth");
     const perm = c.get("permission");
+    const tenantId = requireTenantId(auth);
     const t = tableFor(ctx.dialect);
-    const parentId = c.req.query("parentId") ?? null;
 
-    const conds: SQL[] = [];
+    const conds: SQL[] = [eq(t.tenantId, tenantId)];
     if (perm.whereSql) conds.push(perm.whereSql);
-    if (parentId === "root" || parentId === null) {
-      // Drizzle's eq with null produces "IS NULL"
-      // For both dialects, use raw SQL
-    }
 
-    let qb = (ctx.db as any).select().from(t);
-    if (conds.length) qb = qb.where(conds.length === 1 ? conds[0] : and(...conds));
-    const rows = await qb;
+    const rows = await (ctx.db as any)
+      .select()
+      .from(t)
+      .where(and(...conds));
     return c.json({ data: rows });
   })
   .post("/", requirePermission(filesPerm, "create"), async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");
+    const tenantId = requireTenantId(auth);
     const body = Input.parse(await c.req.json());
     const t = tableFor(ctx.dialect);
     const id = crypto.randomUUID();
@@ -48,6 +54,7 @@ export const foldersRoutes = new Hono<AppBindings>()
       name: body.name,
       parentId: body.parentId ?? null,
       ownerId: auth.userId,
+      tenantId,
     });
     return c.json(
       {
@@ -56,6 +63,7 @@ export const foldersRoutes = new Hono<AppBindings>()
           name: body.name,
           parentId: body.parentId ?? null,
           ownerId: auth.userId,
+          tenantId,
         },
       },
       201,
@@ -63,15 +71,18 @@ export const foldersRoutes = new Hono<AppBindings>()
   })
   .patch("/:id", requirePermission(filesPerm, "update"), async (c) => {
     const ctx = c.get("ctx");
+    const auth = c.get("auth");
     const perm = c.get("permission");
+    const tenantId = requireTenantId(auth);
     const body = Input.partial().parse(await c.req.json());
     const t = tableFor(ctx.dialect);
-    const conds: SQL[] = [eq(t.id, c.req.param("id"))];
+    const id = c.req.param("id");
+    const conds: SQL[] = [eq(t.id, id), eq(t.tenantId, tenantId)];
     if (perm.whereSql) conds.push(perm.whereSql);
     const existing = await (ctx.db as any)
       .select()
       .from(t)
-      .where(conds.length === 1 ? conds[0] : and(...conds))
+      .where(and(...conds))
       .limit(1);
     if (!existing[0]) throw new AppError("NOT_FOUND", "Folder not found");
     await (ctx.db as any)
@@ -81,21 +92,26 @@ export const foldersRoutes = new Hono<AppBindings>()
         ...(body.parentId !== undefined ? { parentId: body.parentId } : {}),
         updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
       })
-      .where(eq(t.id, c.req.param("id")));
+      .where(and(eq(t.id, id), eq(t.tenantId, tenantId)));
     return c.json({ ok: true });
   })
   .delete("/:id", requirePermission(filesPerm, "delete"), async (c) => {
     const ctx = c.get("ctx");
+    const auth = c.get("auth");
     const perm = c.get("permission");
+    const tenantId = requireTenantId(auth);
     const t = tableFor(ctx.dialect);
-    const conds: SQL[] = [eq(t.id, c.req.param("id"))];
+    const id = c.req.param("id");
+    const conds: SQL[] = [eq(t.id, id), eq(t.tenantId, tenantId)];
     if (perm.whereSql) conds.push(perm.whereSql);
     const existing = await (ctx.db as any)
       .select({ id: t.id })
       .from(t)
-      .where(conds.length === 1 ? conds[0] : and(...conds))
+      .where(and(...conds))
       .limit(1);
     if (!existing[0]) throw new AppError("NOT_FOUND", "Folder not found");
-    await (ctx.db as any).delete(t).where(eq(t.id, c.req.param("id")));
+    await (ctx.db as any)
+      .delete(t)
+      .where(and(eq(t.id, id), eq(t.tenantId, tenantId)));
     return c.json({ ok: true });
   });

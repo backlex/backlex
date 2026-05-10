@@ -33,6 +33,7 @@ import { CollectionSettings } from "./collection-settings";
 import { collectionsApi, itemsApi, metricsApi, settingsApi } from "./api";
 import { api } from "@/lib/api";
 import { useTheme } from "@/components/theme-provider";
+import { useIsMobile } from "@workeros/ui/hooks/use-mobile";
 import { StoragePage } from "./storage";
 import {
   ActivityPage,
@@ -116,6 +117,15 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   const segs = location.pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
   const activeNav = segs[0] && NAV_IDS.has(segs[0]) ? segs[0] : initialNav;
   const setActiveNav = useCallback((id: string) => { navigate("/" + id); }, [navigate]);
+
+  // Mobile off-canvas sidebar. Below 768px the sidebar is a drawer that slides
+  // over the content; the topbar toggle opens/closes it instead of toggling the
+  // desktop icon-rail collapse.
+  const isMobile = useIsMobile();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  useEffect(() => { setMobileNavOpen(false); }, [location.pathname]);
+  useEffect(() => { if (!isMobile) setMobileNavOpen(false); }, [isMobile]);
+  const navTo = useCallback((id: string) => { navigate("/" + id); setMobileNavOpen(false); }, [navigate]);
   const [activeTab, setActiveTab] = useState<"items" | "schema" | "permissions" | "settings">("items");
   const [posts, setPosts] = useState<Post[]>([]);
   // Real items load — see effect after activeCollection is declared.
@@ -480,8 +490,9 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   };
 
   return (
-    <div className="app" data-collapsed={tweaks.sidebarCollapsed} data-density={tweaks.density}>
-      <Sidebar activeNav={activeNav} setActiveNav={setActiveNav} adapter={tweaks.adapter} collapsed={tweaks.sidebarCollapsed} pushToast={pushToast} collectionsCount={collections.length} />
+    <div className="app" data-collapsed={tweaks.sidebarCollapsed} data-density={tweaks.density} data-mobile-open={mobileNavOpen}>
+      <Sidebar activeNav={activeNav} setActiveNav={navTo} adapter={tweaks.adapter} collapsed={tweaks.sidebarCollapsed} pushToast={pushToast} collectionsCount={collections.length} />
+      {mobileNavOpen && <div className="sidebar-backdrop" onClick={() => setMobileNavOpen(false)} />}
 
       <div className="main">
         <Topbar
@@ -495,7 +506,10 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
           onOpenPalette={() => setPaletteOpen(true)}
           onToggleTheme={toggleDark}
           dark={dark}
-          onToggleSidebar={() => setTweak("sidebarCollapsed", !tweaks.sidebarCollapsed)}
+          onToggleSidebar={() => {
+            if (isMobile) setMobileNavOpen((v) => !v);
+            else setTweak("sidebarCollapsed", !tweaks.sidebarCollapsed);
+          }}
           onSignOut={onSignOut}
         />
 

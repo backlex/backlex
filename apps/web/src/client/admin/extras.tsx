@@ -202,7 +202,7 @@ export function SchemaView({
         <div className="spacer" />
         <Button variant="primary" size="sm" icon={I.Plus} onClick={onAddField}>Add field</Button>
       </div>
-      <div>
+      <div className="table-scroll">
         {allFields.map((f, idx) => {
           // System rows always render after user-defined fields and are
           // never reorderable; dnd handlers only fire for user rows.

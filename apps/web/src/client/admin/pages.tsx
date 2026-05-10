@@ -247,6 +247,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
               <div className="spacer" />
               <Button variant="ghost" size="sm" onClick={() => setActiveNav("collections")} iconRight={I.ChevronRight}>Manage</Button>
             </div>
+            <div className="table-scroll">
             <table className="table">
               <thead><tr><th>Slug</th><th style={{ width: 80, textAlign: "right" }}>Rows</th><th style={{ width: 90, textAlign: "right" }}>Size</th><th style={{ width: 110, textAlign: "right" }}>Writes (1h)</th><th style={{ width: 100 }}>Last write</th></tr></thead>
               <tbody>
@@ -261,6 +262,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
 
           <div className="card">
@@ -271,6 +273,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
               <div className="spacer" />
               <Button variant="ghost" size="sm" iconRight={I.ExternalLink}>Open in logs</Button>
             </div>
+            <div className="table-scroll">
             <table className="table">
               <thead><tr><th style={{ width: 90 }}>Time</th><th style={{ width: 70 }}>Method</th><th>Path</th><th style={{ width: 80, textAlign: "right" }}>Status</th><th style={{ width: 70, textAlign: "right" }}>ms</th></tr></thead>
               <tbody>
@@ -287,6 +290,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
 
           <div className="card">
@@ -516,7 +520,7 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
         actions={<Button variant="primary" icon={I.Plus} onClick={newFlow}>New flow</Button>}
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: 14, alignItems: "start" }}>
+      <div className="master-detail" style={{ "--md-aside": "320px" }}>
         <div className="card">
           {flows.map((f) => (
             <div key={f.id} onClick={() => setActive(f.id)} className="schema-row" style={{ gridTemplateColumns: "24px 1fr 60px", cursor: "pointer", background: active === f.id ? "var(--accent)" : "transparent" }}>
@@ -564,7 +568,7 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
 
           <FlowPreview trigger={flow.trigger} operations={flow.operations} onEdit={() => openBuilder(flow)} />
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+          <div className="cols-3">
             <FlowStatCard flowId={flow.id} flowRuns={flow.runs} />
           </div>
           </>
@@ -903,7 +907,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
         actions={<Button variant="primary" icon={I.Plus} onClick={() => setNewOpen(true)}>New function</Button>}
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 14, alignItems: "start" }}>
+      <div className="master-detail" style={{ "--md-aside": "300px" }}>
         <div className="card">
           {funcs.length === 0 && (
             <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>No functions yet — click + New function.</div>
@@ -1112,7 +1116,7 @@ function NewFunctionDialog({
             )}
           </div>
 
-          <div className="field-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="cols-2">
             <div className="field">
               <label className="field-label">Trigger</label>
               <Select
@@ -1302,6 +1306,7 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
         actions={<Button variant="primary" icon={I.Plus} onClick={() => setEditor({ mode: "create", hook: null })}>New webhook</Button>}
       />
       <div className="card">
+        <div className="table-scroll">
         <table className="table">
           <thead>
             <tr>
@@ -1394,6 +1399,7 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       <div className="card">
@@ -1402,6 +1408,7 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
           <div className="spacer" />
           <Button variant="ghost" size="sm" icon={I.Refresh} onClick={() => pushToast("Refreshed.")}>Refresh</Button>
         </div>
+        <div className="table-scroll">
         <table className="table">
           <thead><tr><th style={{ width: 100 }}>Time</th><th style={{ width: 80 }}>Hook</th><th>Event</th><th style={{ width: 90, textAlign: "right" }}>Status</th><th style={{ width: 80, textAlign: "right" }}>ms</th><th style={{ width: 60 }}></th></tr></thead>
           <tbody>
@@ -1427,6 +1434,7 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {editor && <WebhookEditorDialog mode={editor.mode} hook={editor.hook} onClose={() => setEditor(null)} onSave={saveHook} pushToast={pushToast} />}
@@ -1590,7 +1598,7 @@ export function RealtimePage({ events, pushToast }: { events: RealtimeEvent[]; p
         description="In-process pub/sub on Bun, Durable Objects on Workers. Permission filter applies on subscribe + publish."
         actions={<Button variant="outline" icon={I.Refresh} onClick={() => pushToast("Channels refreshed.")}>Refresh</Button>}
       />
-      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 14, alignItems: "start" }}>
+      <div className="master-detail" style={{ "--md-aside": "300px" }}>
         <div className="card">
           {channels.length === 0 && (
             <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>No channels — create a collection to get one.</div>
@@ -1802,6 +1810,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
       )}
 
       <div className="card">
+        <div className="table-scroll">
         <table className="table users-table">
           <thead>
             <tr>
@@ -1897,6 +1906,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {activeUser && <UserDrawer user={activeUser} onClose={() => setActiveUser(null)} pushToast={pushToast} />}
@@ -2184,6 +2194,7 @@ export function ApiKeysPage({ pushToast }: { pushToast: (m: string) => void }) {
         </div>
       )}
       <div className="card">
+        <div className="table-scroll">
         <table className="table">
           <thead><tr><th>Name</th><th style={{ width: 200 }}>Prefix</th><th style={{ width: 200 }}>User</th><th style={{ width: 120 }}>Created</th><th style={{ width: 120 }}>Last used</th><th style={{ width: 60 }}></th></tr></thead>
           <tbody>
@@ -2203,6 +2214,7 @@ export function ApiKeysPage({ pushToast }: { pushToast: (m: string) => void }) {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -2385,6 +2397,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
               <div className="spacer" />
               <Button variant="ghost" size="sm" icon={I.Refresh} onClick={() => pushToast("Bindings refreshed.")}>Refresh</Button>
             </div>
+            <div className="table-scroll">
             <div className="schema-row" style={{ gridTemplateColumns: "24px 110px 160px 1fr 120px", background: "var(--muted)", fontSize: 11, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: 0.4 }}>
               <span></span><span>Type</span><span>Name</span><span>Resource</span><span>Status</span>
             </div>
@@ -2406,6 +2419,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
                 </div>
               );
             })}
+            </div>
           </div>
           <div className="card" style={{ padding: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -2441,6 +2455,7 @@ bucket_name = "workeros-assets"`}</pre>
               </label>
               <Button variant="primary" size="sm" icon={I.Plus} onClick={addEnv}>Add</Button>
             </div>
+            <div className="table-scroll">
             <div className="schema-row" style={{ gridTemplateColumns: "24px 200px 1fr 160px 32px", background: "var(--muted)", fontSize: 11, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: 0.4 }}>
               <span></span><span>Key</span><span>Value</span><span>Source</span><span></span>
             </div>
@@ -2458,6 +2473,7 @@ bucket_name = "workeros-assets"`}</pre>
                 <IconButton icon={I.Trash} title="Remove" onClick={() => removeEnv(v.id)} />
               </div>
             ))}
+            </div>
           </div>
           <div className="card" style={{ padding: 14, display: "flex", alignItems: "flex-start", gap: 10, background: "var(--muted)" }}>
             <I.Info size={14} style={{ marginTop: 2 }} />

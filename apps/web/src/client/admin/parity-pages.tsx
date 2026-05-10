@@ -19,6 +19,8 @@ import {
   type ApiSession,
 } from "./api";
 
+const I18N_KEY_PATTERN = /^[a-z0-9][a-z0-9._-]*$/i;
+
 const fmtRelative = (iso: string | null): string => {
   if (!iso) return "—";
   const ms = Date.now() - new Date(iso).getTime();
@@ -1100,6 +1102,7 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
   const [data, setData] = useState<Record<string, string>[]>([]);
   const [base, setBase] = useState("en");
   const [showOnly, setShowOnly] = useState("all");
+  const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -1151,21 +1154,30 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
             URL.revokeObjectURL(url);
             pushToast("Exported translations.json.");
           }}>Export</Button>
-          <Button variant="primary" icon={I.Plus} onClick={async () => {
-            const key = prompt("New i18n key (e.g. common.cancel)", "common.cancel");
-            if (!key) return;
+          <Button variant="primary" icon={I.Plus} onClick={() => setAddOpen(true)}>New key</Button>
+        </>}
+      />
+      {addOpen && (
+        <AddTranslationKeyDialog
+          base={base}
+          locales={[...locales]}
+          existingKeys={data.map((r) => r.key)}
+          onClose={() => setAddOpen(false)}
+          onCreate={async ({ key, value }) => {
             const seed: Record<string, string> = { key };
             for (const l of locales) seed[l] = "";
+            if (value) seed[base] = value;
             setData((arr) => [...arr, seed]);
             try {
-              await i18nApi.upsert(key, base, "");
-              pushToast(`Key "${key}" added.`);
+              await i18nApi.upsert(key, base, value);
+              pushToast(value ? `Key "${key}" added with ${base} value.` : `Key "${key}" added.`);
             } catch (e) {
               pushToast((e as Error).message);
             }
-          }}>New key</Button>
-        </>}
-      />
+            setAddOpen(false);
+          }}
+        />
+      )}
       <div className="card" style={{ padding: 14, display: "grid", gridTemplateColumns: `repeat(${locales.length}, 1fr)`, gap: 12 }}>
         {completion.map((c) => (
           <div key={c.l}>
@@ -1206,6 +1218,134 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+interface AddTranslationKeyDialogProps {
+  base: string;
+  locales: string[];
+  existingKeys: string[];
+  onClose: () => void;
+  onCreate: (input: { key: string; value: string }) => Promise<void>;
+}
+
+function AddTranslationKeyDialog({ base, locales, existingKeys, onClose, onCreate }: AddTranslationKeyDialogProps) {
+  const [key, setKey] = useState("");
+  const [value, setValue] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const trimmedKey = key.trim();
+  const duplicate = useMemo(
+    () => existingKeys.includes(trimmedKey),
+    [existingKeys, trimmedKey],
+  );
+  const tooLong = trimmedKey.length > 120;
+  const badFormat = trimmedKey.length > 0 && !I18N_KEY_PATTERN.test(trimmedKey);
+  const error = !trimmedKey
+    ? null
+    : duplicate
+      ? "A key with this name already exists."
+      : tooLong
+        ? "Key must be 120 characters or fewer."
+        : badFormat
+          ? "Use letters, digits, dots, dashes, or underscores. Must start with a letter or digit."
+          : null;
+  const valid = trimmedKey.length > 0 && !error;
+
+  const submit = async () => {
+    if (!valid || submitting) return;
+    setSubmitting(true);
+    try {
+      await onCreate({ key: trimmedKey, value: value.trim() });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="dialog-backdrop" onClick={onClose}>
+      <div
+        className="dialog-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-i18n-key-title"
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: 480, maxWidth: "92vw" }}
+      >
+        <div className="sheet-header" style={{ borderBottom: "1px solid var(--border)" }}>
+          <div style={{ flex: 1 }}>
+            <h2 id="add-i18n-key-title">New translation key</h2>
+            <p>Adds a row to <span className="font-mono">i18n_strings</span>. The key is shared across all locales; values are filled per locale.</p>
+          </div>
+          <IconButton icon={I.X} onClick={onClose} title="Close" />
+        </div>
+        <div className="dialog-body">
+          <div className="field">
+            <label className="field-label" htmlFor="i18n-new-key">
+              Key <Badge variant="outline" mono>text</Badge> <span style={{ color: "var(--destructive)" }}>*</span>
+            </label>
+            <input
+              id="i18n-new-key"
+              className={`input font-mono ${error ? "error" : ""}`}
+              autoFocus
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="common.cancel"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && valid && !submitting) {
+                  e.preventDefault();
+                  void submit();
+                }
+              }}
+            />
+            {error ? (
+              <div className="field-error"><I.AlertTriangle size={11} />{error}</div>
+            ) : (
+              <div className="field-hint">Dotted namespaces are conventional, e.g. <span className="font-mono">common.cancel</span>, <span className="font-mono">auth.signin.title</span>.</div>
+            )}
+          </div>
+
+          <div className="field">
+            <label className="field-label" htmlFor="i18n-new-value">
+              Base value <Badge variant="outline" mono>{base}</Badge> <span className="muted" style={{ fontWeight: 400 }}>· optional</span>
+            </label>
+            <textarea
+              id="i18n-new-value"
+              className="textarea"
+              rows={2}
+              placeholder={`Translation for ${base}`}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+            />
+            <div className="field-hint">Leave blank to create the key with empty values across all locales.</div>
+          </div>
+
+          <div className="field" style={{ background: "var(--muted)", padding: 12, borderRadius: "var(--radius-xl)" }}>
+            <div className="field-label" style={{ marginBottom: 6 }}>
+              <I.Globe size={12} /> Locales
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {locales.map((l) => (
+                <Badge key={l} variant={l === base ? "default" : "outline"} mono>
+                  {l}{l === base && " · base"}
+                </Badge>
+              ))}
+            </div>
+            <div className="field-hint" style={{ marginTop: 6 }}>
+              Other locales stay empty until filled in the matrix.
+            </div>
+          </div>
+        </div>
+        <div className="sheet-footer">
+          <Button variant="ghost" onClick={onClose} disabled={submitting}>Cancel</Button>
+          <Button variant="primary" icon={I.Plus} onClick={submit} disabled={!valid || submitting}>
+            {submitting ? "Creating…" : "Create key"}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -200,11 +200,55 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
   const slugClean = slug.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_").replace(/^_+|_+$/g, "");
   const slugError = !slugClean ? null : existingSlugs.includes(slugClean) ? `c_${slugClean} already exists` : !/^[a-z][a-z0-9_]*$/.test(slugClean) ? "must start with a letter" : null;
 
-  const templates = [
-    { id: "blank", name: "Blank", desc: "Just system fields. Add your own columns.", icon: "Braces", fields: 4 },
-    { id: "content", name: "Content", desc: "title · slug · status · body · published_at", icon: "Inbox", fields: 9 },
-    { id: "taxonomy", name: "Taxonomy", desc: "name · slug · description · parent_id", icon: "Hash", fields: 8 },
-    { id: "people", name: "People", desc: "name · email · avatar · bio · links", icon: "Users", fields: 9 },
+  // Each preset's `fields` are user-defined columns; system columns (id,
+  // owner_id, timestamps) are added by the backend per the toggles below.
+  // The `Blank` preset is empty on purpose — onCreate maps it to `[]`.
+  const templates: Array<{
+    id: string;
+    name: string;
+    desc: string;
+    icon: string;
+    fields: Array<{ name: string; type: "text" | "longtext" | "boolean" | "timestamp" | "json"; required?: boolean; unique?: boolean }>;
+  }> = [
+    { id: "blank", name: "Blank", desc: "Just system fields. Add your own columns.", icon: "Braces", fields: [] },
+    {
+      id: "content",
+      name: "Content",
+      desc: "title · slug · status · body · published_at",
+      icon: "Inbox",
+      fields: [
+        { name: "title", type: "text", required: true },
+        { name: "slug", type: "text", required: true, unique: true },
+        { name: "status", type: "text" },
+        { name: "body", type: "longtext" },
+        { name: "published_at", type: "timestamp" },
+      ],
+    },
+    {
+      id: "taxonomy",
+      name: "Taxonomy",
+      desc: "name · slug · description · parent_id",
+      icon: "Hash",
+      fields: [
+        { name: "name", type: "text", required: true },
+        { name: "slug", type: "text", required: true, unique: true },
+        { name: "description", type: "longtext" },
+        { name: "parent_id", type: "text" },
+      ],
+    },
+    {
+      id: "people",
+      name: "People",
+      desc: "name · email · avatar · bio · links",
+      icon: "Users",
+      fields: [
+        { name: "name", type: "text", required: true },
+        { name: "email", type: "text", unique: true },
+        { name: "avatar", type: "text" },
+        { name: "bio", type: "longtext" },
+        { name: "links", type: "json" },
+      ],
+    },
   ];
 
   const sql = `CREATE TABLE c_${slugClean || "<slug>"} (
@@ -222,9 +266,13 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
       ownerScoped,
       timestamps,
       softDelete,
+      tenantScoped,
       template,
+      templateFields: tpl.fields,
       count: 0,
-      fields: tpl.fields,
+      // Card stat: number of user-defined fields. Real total (incl. system
+      // columns) is computed by the backend and surfaced once we re-load.
+      fields: tpl.fields.length,
       writes24h: 0,
       lastWrite: "just now",
       icon: tpl.icon,
@@ -277,7 +325,7 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
                           <Ic size={13} />
                           <span style={{ fontSize: 13, fontWeight: 500 }}>{t.name}</span>
                           <div className="spacer" />
-                          <span className="muted tabular-nums" style={{ fontSize: 11 }}>{t.fields} fields</span>
+                          <span className="muted tabular-nums" style={{ fontSize: 11 }}>{t.fields.length} fields</span>
                         </div>
                         <span className="muted" style={{ fontSize: 11.5, lineHeight: 1.4 }}>{t.desc}</span>
                       </button>

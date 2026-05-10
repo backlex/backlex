@@ -72,8 +72,11 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
     let cancelled = false;
     void (async () => {
       try {
+        // _cf_METADATA is a Cloudflare D1 reserved table that rejects
+        // user-issued SELECTs — exclude it alongside sqlite_* and drizzle's
+        // migration tracker so the COUNT(*) loop below doesn't error out.
         const r = await dbAdminApi.runSql(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '\\_\\_drizzle%' ESCAPE '\\' ORDER BY name;",
+          "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '\\_\\_drizzle%' AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\' ORDER BY name;",
         );
         if (cancelled) return;
         const names = (r.data?.[0]?.rows ?? []) as { name: string }[];

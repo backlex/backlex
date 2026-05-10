@@ -507,6 +507,28 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
 
 function FileGlyph({ f, size = 64 }: { f: StoredFile; size?: number }) {
   const isImg = Boolean(f.type && f.type.startsWith("image/"));
+  const [imgFailed, setImgFailed] = useState(false);
+  if (isImg && !imgFailed) {
+    // Try the real R2 thumbnail first; if the GET 404s (mock seed) fall back
+    // to the gradient placeholder.
+    return (
+      <img
+        src={`/api/storage/${encodeURI(f.key)}`}
+        alt=""
+        loading="lazy"
+        onError={() => setImgFailed(true)}
+        style={{
+          width: size,
+          height: size,
+          objectFit: "cover",
+          borderRadius: "var(--radius-md)",
+          flexShrink: 0,
+          display: "block",
+          background: "var(--muted)",
+        }}
+      />
+    );
+  }
   if (isImg) {
     const hue = f.hue ?? 200;
     const px = typeof size === "number" ? size : 64;
@@ -540,11 +562,20 @@ function ImageMock({ hue = 200, focal, style = {} as CSSProperties }: { hue?: nu
 
 function FileTile({ f, active, onSelect }: { f: StoredFile; active: boolean; onSelect: () => void }) {
   const isImg = Boolean(f.type && f.type.startsWith("image/"));
+  const [imgFailed, setImgFailed] = useState(false);
   const sizeStr = f.size > 1024 * 1024 ? (f.size / 1024 / 1024).toFixed(1) + " MB" : (f.size / 1024).toFixed(1) + " KB";
   return (
     <div onClick={onSelect} style={{ display: "flex", alignItems: "center", gap: 10, padding: 8, borderRadius: "var(--radius-md)", border: `1px solid ${active ? "var(--primary)" : "var(--border)"}`, background: active ? "color-mix(in oklch, var(--primary) 6%, transparent)" : "var(--card)", cursor: "pointer", transition: "background 100ms", minWidth: 0 }}>
       <div style={{ width: 36, height: 36, position: "relative", borderRadius: "var(--radius-sm)", overflow: "hidden", background: "var(--muted)", flexShrink: 0 }}>
-        {isImg ? (
+        {isImg && !imgFailed ? (
+          <img
+            src={`/api/storage/${encodeURI(f.key)}`}
+            alt=""
+            loading="lazy"
+            onError={() => setImgFailed(true)}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
+        ) : isImg ? (
           <ImageMock hue={f.hue ?? 200} />
         ) : (
           <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
@@ -627,6 +658,14 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
       <div className="img-preview" onClick={onPreviewClick} style={{ aspectRatio: "16 / 9", cursor: isImage ? "crosshair" : "default", borderRadius: 0 }}>
         {isImage ? (
           <>
+            {/* Real preview — falls back to ImageMock via the <img onError>
+                handler when the file 404s (mock seed data) */}
+            <img
+              src={`/api/storage/${encodeURI(f.key)}`}
+              alt=""
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: fit === "contain" ? "contain" : "cover", display: "block", background: "var(--muted)" }}
+            />
             <ImageMock hue={f.hue ?? 200} focal={{ x: 50, y: 50 }} />
             <div style={{ position: "absolute", inset: 0, clipPath: `inset(0 0 0 ${compare}%)` }}>
               <ImageMock

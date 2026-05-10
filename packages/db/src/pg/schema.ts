@@ -64,6 +64,9 @@ export const tenantMembers = pgTable(
     /** One-time invite token; null after accept. */
     inviteToken: text("invite_token"),
     inviteExpiresAt: timestamp("invite_expires_at", { withTimezone: true }),
+    /** Touched by tenantMiddleware on every authenticated request — drives
+     *  Members panel "last active" without needing a separate sessions join. */
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

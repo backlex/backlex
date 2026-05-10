@@ -1,11 +1,12 @@
 // @ts-nocheck
 // Sheet form for create/edit, ConfirmAction dialog
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { I } from "./icons";
-import { MOCK, type CollectionSchema, type Post } from "./mock";
+import { type CollectionSchema, type Post } from "./mock";
 import { Badge, Button, IconButton, Switch } from "./ui";
 import { Select } from "./select";
 import { STATUS_VALUES } from "./items";
+import { getAuthors, subscribeAuthors } from "./authors-cache";
 
 export interface ItemSheetProps {
   open: boolean;
@@ -17,7 +18,10 @@ export interface ItemSheetProps {
 }
 
 export function ItemSheet({ open, mode, initial, onClose, onSave }: ItemSheetProps) {
-  const blank = { title: "", slug: "", status: "draft", body: "", author: "u_1", word_count: 0, view_count: 0, tags: "[]", published_at: null as string | null };
+  // Subscribe to the authors cache so the Select re-renders when the
+  // workspace's user list loads in the background.
+  const authors = useSyncExternalStore(subscribeAuthors, getAuthors, getAuthors);
+  const blank = { title: "", slug: "", status: "draft", body: "", author: authors[0]?.id ?? "", word_count: 0, view_count: 0, tags: "[]", published_at: null as string | null };
   const [draft, setDraft] = useState<Record<string, unknown>>(blank);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -109,7 +113,7 @@ export function ItemSheet({ open, mode, initial, onClose, onSave }: ItemSheetPro
             </div>
             <div className="field">
               <label className="field-label">author <Badge variant="outline" mono>uuid</Badge></label>
-              <Select value={String(draft.author)} onChange={(v) => setDraft({ ...draft, author: v })} options={MOCK.POST_AUTHORS.map((a) => ({ value: a.id, label: a.name, hint: a.id.slice(0, 6) + "…" }))} />
+              <Select value={String(draft.author ?? "")} onChange={(v) => setDraft({ ...draft, author: v })} options={authors.length === 0 ? [{ value: "", label: "(no users yet)", hint: "" }] : authors.map((a) => ({ value: a.id, label: a.name, hint: a.id.slice(0, 6) + "…" }))} />
             </div>
           </div>
 

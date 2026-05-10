@@ -158,7 +158,7 @@ export const metricsRoutes = new Hono<AppBindings>()
 
     // Top collections — for each `collections` row, COUNT(*) + MAX(updated_at)
     // on its physical c_<slug> table. Cheap on the dev set; cap at 10.
-    const topCollections: { slug: string; rows: number; lastWrite: number | null }[] = [];
+    const topCollections: { slug: string; rows: number; bytes: number; lastWrite: number | null }[] = [];
     try {
       const cs = await queryAll<{ slug: string }>(
         { db: ctx.db, dialect: ctx.dialect },
@@ -173,9 +173,23 @@ export const metricsRoutes = new Hono<AppBindings>()
           const m = r[0]?.m;
           const lastWrite =
             typeof m === "number" ? m : m ? new Date(m).getTime() : null;
-          topCollections.push({ slug: c.slug, rows: Number(r[0]?.n ?? 0), lastWrite });
+          const rowCount = Number(r[0]?.n ?? 0);
+          // Cheap row-size estimate. PG: pg_total_relation_size when available;
+          // SQLite/D1: fall back to rows × 256 bytes (median row width across
+          // our default field types). Ugly but unblocks the UI.
+          let bytes = rowCount * 256;
+          if (ctx.dialect === "pg") {
+            try {
+              const sz = await queryAll<{ s: number }>(
+                { db: ctx.db, dialect: ctx.dialect },
+                sql.raw(`SELECT pg_total_relation_size('"c_${c.slug.replace(/"/g, "")}"') AS s`),
+              );
+              if (sz[0]?.s != null) bytes = Number(sz[0].s);
+            } catch {}
+          }
+          topCollections.push({ slug: c.slug, rows: rowCount, bytes, lastWrite });
         } catch {
-          topCollections.push({ slug: c.slug, rows: 0, lastWrite: null });
+          topCollections.push({ slug: c.slug, rows: 0, bytes: 0, lastWrite: null });
         }
       }
     } catch {}

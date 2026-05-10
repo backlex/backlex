@@ -76,6 +76,26 @@ const persistActive = async (
     .where(eq(u.id, userId));
 };
 
+/** Touch tenant_members.last_seen_at on every authenticated request so the
+ *  Members panel can show "active 2m ago" without joining sessions. */
+const touchMember = async (
+  db: unknown,
+  dialect: "pg" | "sqlite",
+  tenantId: string,
+  userId: string,
+): Promise<void> => {
+  const m = tablesFor(dialect).members;
+  try {
+    await (db as any)
+      .update(m)
+      .set({ lastSeenAt: dialect === "pg" ? new Date() : Date.now() })
+      .where(and(eq(m.tenantId, tenantId), eq(m.userId, userId)));
+  } catch {
+    // If the column doesn't exist yet (pre-migration deploy) just skip —
+    // the next deploy applies the migration and this resumes working.
+  }
+};
+
 /**
  * Resolve the active tenant for the request:
  *   1. `X-Workeros-Tenant` header (slug or id)
@@ -122,6 +142,7 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   if (auth.userId) {
     // Best-effort persistence; ignore failures.
     void persistActive(db, dialect, auth.userId, tenantId).catch(() => {});
+    void touchMember(db, dialect, tenantId, auth.userId).catch(() => {});
   }
 
   c.set("auth", { ...auth, tenantId });

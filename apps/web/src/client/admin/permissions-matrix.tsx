@@ -66,7 +66,6 @@ const persistMatrixCell = async (
   });
 };
 
-const PM_COLLECTIONS = ["posts", "comments", "authors", "tags"];
 const PM_ACTIONS = [
   { v: "create", label: "C", title: "Create" },
   { v: "read", label: "R", title: "Read" },
@@ -78,21 +77,18 @@ type CellState = "all" | "none" | "custom";
 
 type Matrix = Record<string, Record<string, Record<string, CellState>>>;
 
-function seedMatrix(roles: RoleData[]): Matrix {
+function defaultRow(roleName: string): Record<string, CellState> {
+  if (roleName === "admin") return { create: "all", read: "all", update: "all", delete: "all" };
+  if (roleName === "public") return { create: "none", read: "none", update: "none", delete: "none" };
+  if (roleName === "authenticated") return { create: "none", read: "none", update: "none", delete: "none" };
+  return { create: "none", read: "none", update: "none", delete: "none" };
+}
+
+function emptyMatrix(roles: RoleData[], collections: string[]): Matrix {
   const out: Matrix = {};
   for (const r of roles) {
     out[r.name] = {};
-    for (const c of PM_COLLECTIONS) {
-      if (r.name === "admin") {
-        out[r.name][c] = { create: "all", read: "all", update: "all", delete: "all" };
-      } else if (r.name === "public") {
-        out[r.name][c] = { create: "none", read: c === "posts" ? "custom" : "all", update: "none", delete: "none" };
-      } else if (r.name === "authenticated") {
-        out[r.name][c] = { create: "all", read: "all", update: "custom", delete: "custom" };
-      } else {
-        out[r.name][c] = { create: "none", read: "all", update: "none", delete: "none" };
-      }
-    }
+    for (const c of collections) out[r.name][c] = defaultRow(r.name);
   }
   return out;
 }
@@ -135,20 +131,67 @@ export interface PermissionsMatrixProps {
 
 export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) {
   const [activeRole, setActiveRole] = useState(roles[1]?.name || "authenticated");
-  const [matrix, setMatrix] = useState<Matrix>(() => seedMatrix(roles));
+  const [collections, setCollections] = useState<string[]>([]);
+  const [matrix, setMatrix] = useState<Matrix>(() => emptyMatrix(roles, []));
   const [pop, setPop] = useState<{ role: string; collection: string; action: string; x: number; y: number } | null>(null);
   const popRef = useRef<HTMLDivElement | null>(null);
 
+  // Load live collections (c_<slug> tables) once.
   useEffect(() => {
-    setMatrix((m) => {
-      const next = { ...m };
-      for (const r of roles) if (!next[r.name]) {
-        next[r.name] = {};
-        for (const c of PM_COLLECTIONS) next[r.name][c] = { create: "none", read: "all", update: "none", delete: "none" };
+    let cancelled = false;
+    api<{ data: { slug: string }[] }>("/api/collections")
+      .then((res) => {
+        if (cancelled) return;
+        const slugs = (res.data ?? []).map((c) => c.slug).sort();
+        setCollections(slugs);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  // Load per-role permissions and derive matrix cell states from real rows.
+  // No more "seedMatrix" — empty cells = "none" until we discover a row.
+  useEffect(() => {
+    let cancelled = false;
+    if (roles.length === 0 || collections.length === 0) {
+      setMatrix(emptyMatrix(roles, collections));
+      return;
+    }
+    Promise.all(
+      roles.map(async (r) => {
+        if (r.name === "admin") return [r.name, null] as const;
+        try {
+          const res = await api<{ data: { collection: string; action: string; condition: unknown }[] }>(
+            `/api/roles/${r.id}/permissions`,
+          );
+          return [r.name, res.data ?? []] as const;
+        } catch {
+          return [r.name, []] as const;
+        }
+      }),
+    ).then((entries) => {
+      if (cancelled) return;
+      const next: Matrix = {};
+      for (const [roleName, rows] of entries) {
+        next[roleName] = {};
+        for (const c of collections) {
+          if (roleName === "admin") {
+            next[roleName][c] = { create: "all", read: "all", update: "all", delete: "all" };
+            continue;
+          }
+          const row: Record<string, CellState> = { create: "none", read: "none", update: "none", delete: "none" };
+          for (const p of rows ?? []) {
+            if (p.collection !== c) continue;
+            if (!(p.action in row)) continue;
+            row[p.action] = p.condition == null ? "all" : "custom";
+          }
+          next[roleName][c] = row;
+        }
       }
-      return next;
+      setMatrix(next);
     });
-  }, [roles.length]);
+    return () => { cancelled = true; };
+  }, [roles, collections]);
 
   useEffect(() => {
     if (!pop) return;
@@ -202,12 +245,12 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
   const stats = useMemo(() => {
     const m = matrix[activeRole] || {};
     let all = 0, none = 0, custom = 0;
-    for (const c of PM_COLLECTIONS) for (const a of PM_ACTIONS) {
+    for (const c of collections) for (const a of PM_ACTIONS) {
       const v = m[c]?.[a.v] || "none";
       if (v === "all") all++; else if (v === "none") none++; else custom++;
     }
     return { all, none, custom };
-  }, [matrix, activeRole]);
+  }, [matrix, activeRole, collections]);
 
   return (
     <div className="card">
@@ -246,7 +289,12 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
             </div>
           ))}
 
-          {PM_COLLECTIONS.map((c) => (
+          {collections.length === 0 && (
+            <div className="pm-empty" style={{ gridColumn: "1 / -1", padding: 24, textAlign: "center", color: "var(--muted-foreground)", fontSize: 12 }}>
+              No collections yet — create one in the Schema tab to manage permissions here.
+            </div>
+          )}
+          {collections.map((c) => (
             <Fragment key={c}>
               <div className="pm-row-head">
                 <I.Database size={12} />

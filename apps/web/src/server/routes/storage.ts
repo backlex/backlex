@@ -5,6 +5,7 @@ import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
+import { logActivity } from "../services/activity";
 
 export const FILES_COLLECTION = "system_files";
 
@@ -79,6 +80,12 @@ export const storageRoutes = new Hono<AppBindings>()
           contentType: obj.contentType ?? null,
         },
       });
+    await logActivity(c, {
+      action: "upload",
+      collection: FILES_COLLECTION,
+      itemId: key,
+      payload: { size: obj.size, contentType: obj.contentType, folderId },
+    });
     return c.json({ data: { ...obj, folderId, ownerId: auth.userId } }, 201);
   })
   .get("/:key{.+}", requirePermission(filesCollection, "read"), async (c) => {
@@ -122,6 +129,11 @@ export const storageRoutes = new Hono<AppBindings>()
 
     await ctx.storage.delete(key);
     await (ctx.db as any).delete(t).where(eq(t.key, key));
+    await logActivity(c, {
+      action: "delete",
+      collection: FILES_COLLECTION,
+      itemId: key,
+    });
     return c.json({ ok: true });
   })
   /**
@@ -150,5 +162,11 @@ export const storageRoutes = new Hono<AppBindings>()
     if (body.acl) patch.acl = body.acl;
     if (body.folderId !== undefined) patch.folderId = body.folderId;
     await (ctx.db as any).update(t).set(patch).where(eq(t.key, key));
+    await logActivity(c, {
+      action: "update",
+      collection: FILES_COLLECTION,
+      itemId: key,
+      payload: patch,
+    });
     return c.json({ ok: true, data: { key, ...patch } });
   });

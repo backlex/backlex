@@ -1,0 +1,1 @@
+ALTER TABLE `tenant_members` ADD `last_seen_at` integer;

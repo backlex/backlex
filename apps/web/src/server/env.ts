@@ -56,4 +56,7 @@ export interface Env {
   S3_ENDPOINT?: string;
   S3_ACCESS_KEY_ID?: string;
   S3_SECRET_ACCESS_KEY?: string;
+  /** Days of audit-log history to keep. Rows older than this are pruned by
+   *  the daily cron tick. Defaults to 90. Set to `0` to disable pruning. */
+  ACTIVITY_RETENTION_DAYS?: string;
 }

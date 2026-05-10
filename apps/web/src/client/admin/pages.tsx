@@ -1432,6 +1432,15 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
                 </td>
               </tr>
             ))}
+            {deliveries.length === 0 && (
+              <tr><td colSpan={6}>
+                <div className="empty" style={{ padding: "32px 0" }}>
+                  <I.Activity size={20} />
+                  <h4>No deliveries yet</h4>
+                  <p>Outgoing webhook deliveries will show up here once a collection event fires.</p>
+                </div>
+              </td></tr>
+            )}
           </tbody>
         </table>
         </div>

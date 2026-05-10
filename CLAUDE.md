@@ -50,6 +50,15 @@ VALUES ('<user-id>', (SELECT id FROM roles WHERE name='admin'), strftime('%s','n
 
 Every working session runs on its own branch. Merging into `main` triggers `.github/workflows/deploy.yml`, which runs `bun run build` and `wrangler deploy` against the `workeros-api` Worker. Required GitHub secrets: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
 
+**Always create a new branch BEFORE doing any work.** This is mandatory — do not edit files, run commands that mutate state, or otherwise begin a task while still checked out on `main` (or any other unrelated branch). The very first step of every new task is:
+
+```bash
+git checkout main && git pull origin main
+git checkout -b feat/<short-topic>
+```
+
+Only after the new branch exists may you proceed with edits, commits, etc. If you find yourself on `main` with uncommitted changes when a task begins, stop and create the branch first (a `git stash` + branch + `git stash pop` is fine).
+
 **Branch naming:** `feat/<short-topic>` (e.g. `feat/admin-functions-page`).
 
 **When the user says "publish"** (or "yayınla" / "deploy et"), follow these steps in order — do not skip or reorder:
@@ -75,13 +84,6 @@ gh run list --workflow deploy.yml --limit 1
 After pushing, report the workflow run URL back to the user. Don't claim "deployed" until the run is green — `gh run watch` or `gh run view <id>` confirms.
 
 **After the deploy run goes green**, smoke-test the change against the live URL with the puppeteer MCP server (`mcp__puppeteer__puppeteer_*` tools). The default target is the production deploy unless the user names a specific URL. Drive the relevant flow end-to-end (sign in, exercise the feature touched by this branch, watch for console/network errors via `puppeteer_evaluate`) and screenshot the result. Report what you tested and what you saw — don't call it shipped without that pass.
-
-If a new working session is starting from a clean `main`, open the branch first:
-
-```bash
-git checkout main && git pull origin main
-git checkout -b feat/<short-topic>
-```
 
 ## Architecture
 

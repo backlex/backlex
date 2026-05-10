@@ -127,7 +127,8 @@ export const metricsRoutes = new Hono<AppBindings>()
       // sessions table missing on dev; ignore
     }
 
-    // Resource counts — design's middle row tiles.
+    // Resource counts — design's middle row tiles. Every table here has
+    // a `tenant_id` column, so scope counts to the active workspace.
     const counts: Record<string, number> = {
       collections: 0,
       files: 0,
@@ -136,11 +137,14 @@ export const metricsRoutes = new Hono<AppBindings>()
       activeFlows: 0,
       pausedFlows: 0,
     };
+    const tenantClause = auth.tenantId
+      ? `WHERE tenant_id = '${auth.tenantId.replace(/'/g, "''")}'`
+      : "";
     for (const t of ["collections", "files", "flows", "functions"] as const) {
       try {
         const r = await queryAll<{ n: number }>(
           { db: ctx.db, dialect: ctx.dialect },
-          sql.raw(`SELECT COUNT(*) AS n FROM ${t}`),
+          sql.raw(`SELECT COUNT(*) AS n FROM ${t} ${tenantClause}`),
         );
         counts[t] = Number(r[0]?.n ?? 0);
       } catch {
@@ -148,9 +152,12 @@ export const metricsRoutes = new Hono<AppBindings>()
       }
     }
     try {
+      const activeWhere = auth.tenantId
+        ? `WHERE active = 1 AND tenant_id = '${auth.tenantId.replace(/'/g, "''")}'`
+        : "WHERE active = 1";
       const fa = await queryAll<{ n: number }>(
         { db: ctx.db, dialect: ctx.dialect },
-        sql.raw(`SELECT COUNT(*) AS n FROM flows WHERE active = 1`),
+        sql.raw(`SELECT COUNT(*) AS n FROM flows ${activeWhere}`),
       );
       counts.activeFlows = Number(fa[0]?.n ?? 0);
     } catch {}
@@ -265,7 +272,11 @@ export const metricsRoutes = new Hono<AppBindings>()
    */
   .get("/entities", async (c) => {
     const ctx = c.get("ctx");
+    const auth = c.get("auth");
     const dialectIs = ctx.dialect;
+    const tenantAnd = auth.tenantId
+      ? ` AND tenant_id = '${auth.tenantId.replace(/'/g, "''")}'`
+      : "";
 
     const flows: Record<string, { runs: number; lastRun: number | null }> = {};
     const functions: Record<string, { invocations: number; p95Ms: number; lastInvoke: number | null }> = {};
@@ -275,7 +286,7 @@ export const metricsRoutes = new Hono<AppBindings>()
     try {
       const rows = await queryAll<{ item_id: string; n: number; last: number | string | null }>(
         { db: ctx.db, dialect: dialectIs },
-        sql.raw(`SELECT item_id, COUNT(*) AS n, MAX(created_at) AS last FROM activity WHERE collection = 'system_flows' AND action = 'run' GROUP BY item_id`),
+        sql.raw(`SELECT item_id, COUNT(*) AS n, MAX(created_at) AS last FROM activity WHERE collection = 'system_flows' AND action = 'run'${tenantAnd} GROUP BY item_id`),
       );
       for (const r of rows) {
         if (!r.item_id) continue;
@@ -295,7 +306,7 @@ export const metricsRoutes = new Hono<AppBindings>()
     try {
       const rows = await queryAll<{ item_id: string; n: number; last: number | string | null; durations: string }>(
         { db: ctx.db, dialect: dialectIs },
-        sql.raw(`SELECT item_id, COUNT(*) AS n, MAX(created_at) AS last, ${concatExpr} AS durations FROM activity WHERE collection = 'system_functions' AND action = 'invoke' GROUP BY item_id`),
+        sql.raw(`SELECT item_id, COUNT(*) AS n, MAX(created_at) AS last, ${concatExpr} AS durations FROM activity WHERE collection = 'system_functions' AND action = 'invoke'${tenantAnd} GROUP BY item_id`),
       );
       for (const r of rows) {
         if (!r.item_id) continue;
@@ -320,7 +331,7 @@ export const metricsRoutes = new Hono<AppBindings>()
     try {
       const rows = await queryAll<{ item_id: string; n: number; last: number | string | null }>(
         { db: ctx.db, dialect: dialectIs },
-        sql.raw(`SELECT item_id, COUNT(*) AS n, MAX(created_at) AS last FROM activity WHERE collection = 'system_webhooks' AND action IN ('test', 'delivery') GROUP BY item_id`),
+        sql.raw(`SELECT item_id, COUNT(*) AS n, MAX(created_at) AS last FROM activity WHERE collection = 'system_webhooks' AND action IN ('test', 'delivery')${tenantAnd} GROUP BY item_id`),
       );
       for (const r of rows) {
         if (!r.item_id) continue;

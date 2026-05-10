@@ -8,6 +8,7 @@ const tableFor = (dialect: "pg" | "sqlite") =>
 
 export interface RevisionRow {
   id: string;
+  tenantId: string | null;
   collection: string;
   itemId: string;
   parentRevisionId: string | null;
@@ -23,18 +24,30 @@ export const recordRevision = async (
     itemId: string;
     snapshot: Record<string, unknown>;
     userId: string | null;
+    tenantId?: string | null;
   },
 ): Promise<void> => {
   const t = tableFor(ctx.dialect);
   try {
+    // "Latest" parent must also live in the same workspace — otherwise we
+    // could chain a revision under another tenant's row when slugs collide
+    // across workspaces.
+    const latestWhere = input.tenantId
+      ? and(
+          eq(t.collection, input.collection),
+          eq(t.itemId, input.itemId),
+          eq(t.tenantId, input.tenantId),
+        )
+      : and(eq(t.collection, input.collection), eq(t.itemId, input.itemId));
     const latest = await (ctx.db as any)
       .select({ id: t.id })
       .from(t)
-      .where(and(eq(t.collection, input.collection), eq(t.itemId, input.itemId)))
+      .where(latestWhere)
       .orderBy(desc(t.createdAt))
       .limit(1);
     await (ctx.db as any).insert(t).values({
       id: crypto.randomUUID(),
+      tenantId: input.tenantId ?? null,
       collection: input.collection,
       itemId: input.itemId,
       parentRevisionId: latest[0]?.id ?? null,
@@ -50,24 +63,36 @@ export const listRevisions = async (
   ctx: DbCtx,
   collection: string,
   itemId: string,
+  tenantId?: string | null,
 ): Promise<RevisionRow[]> => {
   const t = tableFor(ctx.dialect);
+  const where = tenantId
+    ? and(
+        eq(t.collection, collection),
+        eq(t.itemId, itemId),
+        eq(t.tenantId, tenantId),
+      )
+    : and(eq(t.collection, collection), eq(t.itemId, itemId));
   return (await (ctx.db as any)
     .select()
     .from(t)
-    .where(and(eq(t.collection, collection), eq(t.itemId, itemId)))
+    .where(where)
     .orderBy(desc(t.createdAt))) as RevisionRow[];
 };
 
 export const getRevision = async (
   ctx: DbCtx,
   id: string,
+  tenantId?: string | null,
 ): Promise<RevisionRow | null> => {
   const t = tableFor(ctx.dialect);
+  const where = tenantId
+    ? and(eq(t.id, id), eq(t.tenantId, tenantId))
+    : eq(t.id, id);
   const rows = (await (ctx.db as any)
     .select()
     .from(t)
-    .where(eq(t.id, id))
+    .where(where)
     .limit(1)) as RevisionRow[];
   return rows[0] ?? null;
 };

@@ -16,6 +16,9 @@ const Input = z.object({
   name: z.string().min(1),
   trigger: z.string().min(1),
   operations: OperationsSchema,
+  // Builder graph snapshot — purely presentational, validated as opaque
+  // JSON so the runtime never accidentally trusts it for execution.
+  layout: z.unknown().optional(),
   active: z.boolean().optional(),
 });
 
@@ -43,6 +46,18 @@ export const flowsRoutes = new Hono<AppBindings>()
     const rows = await (ctx.db as any).select().from(t).where(eq(t.tenantId, tenantId));
     return c.json({ data: rows });
   })
+  .get("/:id", async (c) => {
+    const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
+    const t = tableFor(ctx.dialect);
+    const rows = await (ctx.db as any)
+      .select()
+      .from(t)
+      .where(and(eq(t.id, c.req.param("id")), eq(t.tenantId, tenantId)))
+      .limit(1);
+    if (!rows[0]) throw new AppError("NOT_FOUND", "Flow not found");
+    return c.json({ data: rows[0] });
+  })
   .post("/", async (c) => {
     const ctx = c.get("ctx");
     const tenantId = requireTenant(c);
@@ -55,6 +70,7 @@ export const flowsRoutes = new Hono<AppBindings>()
       name: body.name,
       trigger: body.trigger,
       operations: body.operations,
+      layout: body.layout ?? null,
       active: body.active ?? true,
     });
     await logActivity(c, { action: "create", collection: "system_flows", itemId: id, payload: { name: body.name, trigger: body.trigger } });
@@ -71,6 +87,7 @@ export const flowsRoutes = new Hono<AppBindings>()
         ...(body.name !== undefined ? { name: body.name } : {}),
         ...(body.trigger !== undefined ? { trigger: body.trigger } : {}),
         ...(body.operations !== undefined ? { operations: body.operations } : {}),
+        ...(body.layout !== undefined ? { layout: body.layout } : {}),
         ...(body.active !== undefined ? { active: body.active } : {}),
         updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
       })

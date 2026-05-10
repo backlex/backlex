@@ -14,6 +14,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { seedOwnerScopedPermissions } from "../services/seed";
 import { logActivity } from "../services/activity";
+import { cascadeSlugRename } from "../services/collection-rename";
 
 const FieldSchema = z
   .object({
@@ -192,8 +193,28 @@ export const collectionsRoutes = new Hono<AppBindings>()
       .limit(1);
     if (!existing[0]) throw new AppError("NOT_FOUND", "Collection not found");
 
+    // Slug rename: only when the body explicitly sends a different slug.
+    // Validate target uniqueness within the tenant before touching anything,
+    // then cascade the slug to every place it's stored as data (permissions,
+    // revisions, comments, activity, webhook patterns, function patterns,
+    // flow ops). The physical table name is not touched.
+    let renameCounts: Awaited<ReturnType<typeof cascadeSlugRename>> | null = null;
+    let nextSlug = slug;
+    if (body.slug && body.slug !== slug) {
+      const conflict = await (db as any)
+        .select({ slug: t.slug })
+        .from(t)
+        .where(and(eq(t.tenantId, tenantId), eq(t.slug, body.slug)))
+        .limit(1);
+      if (conflict[0]) {
+        throw new AppError("CONFLICT", `Collection slug "${body.slug}" already exists in this workspace`);
+      }
+      nextSlug = body.slug;
+    }
+
     const merged = {
       ...existing[0],
+      ...(nextSlug !== slug ? { slug: nextSlug } : {}),
       ...(body.singular !== undefined ? { singular: body.singular } : {}),
       ...(body.plural !== undefined ? { plural: body.plural } : {}),
       ...(body.note !== undefined ? { note: body.note } : {}),
@@ -214,6 +235,11 @@ export const collectionsRoutes = new Hono<AppBindings>()
       .update(t)
       .set(merged)
       .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)));
+
+    if (nextSlug !== slug) {
+      renameCounts = await cascadeSlugRename(db, dialect, tenantId, slug, nextSlug);
+    }
+
     await applyCollection(db, dialect, {
       table: merged.physicalTable ?? merged.physical_table,
       fields: merged.fields,
@@ -222,15 +248,15 @@ export const collectionsRoutes = new Hono<AppBindings>()
       versioned: merged.versioned,
     });
     if (merged.ownerScoped) {
-      await seedOwnerScopedPermissions({ db, dialect }, slug);
+      await seedOwnerScopedPermissions({ db, dialect }, nextSlug);
     }
     await logActivity(c, {
       action: "update",
       collection: "system_collections",
-      itemId: slug,
-      payload: body,
+      itemId: nextSlug,
+      payload: renameCounts ? { ...body, _rename: { from: slug, to: nextSlug, ...renameCounts } } : body,
     });
-    return c.json({ ok: true });
+    return c.json({ ok: true, slug: nextSlug, renamed: renameCounts });
   })
   .delete("/:slug", requireUser, async (c) => {
     const slug = c.req.param("slug");

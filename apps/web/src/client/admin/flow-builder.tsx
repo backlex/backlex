@@ -172,14 +172,20 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
           <Button variant="outline" size="sm" icon={I.Zap} onClick={() => setTestOpen(true)}>Test run</Button>
           <Switch checked={enabled} onChange={setEnabled} />
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
-          <Button
-            variant="primary"
-            size="sm"
-            icon={I.Check}
-            disabled={nodes.filter((n) => n.kind !== "trigger").length === 0}
-            title={nodes.filter((n) => n.kind !== "trigger").length === 0 ? "Add at least one step before saving" : undefined}
-            onClick={() => onSave({ id: initial?.id, name, enabled, nodes, edges })}
-          >Save flow</Button>
+          {(() => {
+            const isEmpty = nodes.filter((n) => n.kind !== "trigger").length === 0;
+            return (
+              <Button
+                variant="primary"
+                size="sm"
+                icon={I.Check}
+                disabled={isEmpty}
+                style={isEmpty ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+                title={isEmpty ? "Add at least one step before saving" : undefined}
+                onClick={() => { if (!isEmpty) onSave({ id: initial?.id, name, enabled, nodes, edges }); }}
+              >Save flow</Button>
+            );
+          })()}
         </div>
 
         <div className="fb-body">

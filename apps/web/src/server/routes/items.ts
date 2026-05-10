@@ -509,7 +509,7 @@ export const itemsRoutes = new Hono<AppBindings>()
         durationMs: elapsedMs(c),
       },
     );
-    void recordRevision(
+    await recordRevision(
       { db: ctx.db, dialect: ctx.dialect },
       {
         collection: collection.slug,
@@ -566,7 +566,7 @@ export const itemsRoutes = new Hono<AppBindings>()
         durationMs: elapsedMs(c),
       },
     );
-    void recordRevision(
+    await recordRevision(
       { db: ctx.db, dialect: ctx.dialect },
       {
         collection: collection.slug,

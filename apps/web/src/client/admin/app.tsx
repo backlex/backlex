@@ -32,6 +32,7 @@ import { EditFieldDialog } from "./edit-field";
 import { CollectionSettings } from "./collection-settings";
 import { collectionsApi, itemsApi, metricsApi, settingsApi } from "./api";
 import { api } from "@/lib/api";
+import { useTheme } from "@/components/theme-provider";
 import { StoragePage } from "./storage";
 import {
   ActivityPage,
@@ -63,7 +64,6 @@ interface AdminAppOptions {
 }
 
 const DEFAULTS = {
-  dark: false,
   density: "comfortable" as "compact" | "cozy" | "comfortable",
   sidebarCollapsed: false,
   adapter: "bun" as AdapterId,
@@ -93,6 +93,11 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   const setTweak = useCallback(<K extends keyof typeof DEFAULTS>(k: K, v: (typeof DEFAULTS)[K]) => {
     setTweaks((t) => ({ ...t, [k]: v }));
   }, []);
+  const { theme, setTheme } = useTheme();
+  const dark = theme === "dark";
+  const toggleDark = useCallback(() => {
+    setTheme(dark ? "light" : "dark");
+  }, [dark, setTheme]);
 
   // activeNav + activeCollection are URL-driven so the address bar shows the
   // current admin location and deep links work. Nav ids are mapped 1:1 to the
@@ -252,11 +257,6 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   const [events, setEvents] = useState<RealtimeEvent[]>([]);
   const [toastNode, pushToast] = useToasts();
 
-  useEffect(() => {
-    const root = document.documentElement;
-    if (tweaks.dark) root.classList.add("dark"); else root.classList.remove("dark");
-  }, [tweaks.dark]);
-
   // Detect the actual runtime profile so the sidebar pill, Health card and
   // Settings page show truth instead of the design's `bun` default.
   useEffect(() => {
@@ -290,9 +290,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
         return;
       }
       if (inEditable) return;
-      if (e.key.toLowerCase() === "d" && !e.metaKey && !e.ctrlKey) {
-        setTweak("dark", !tweaks.dark);
-      } else if (e.key.toLowerCase() === "c" && !e.metaKey && !e.ctrlKey) {
+      if (e.key.toLowerCase() === "c" && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
         openCreate();
       } else if (e.key.toLowerCase() === "r" && !e.metaKey && !e.ctrlKey) {
@@ -303,7 +301,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tweaks.dark, setTweak, pushToast]);
+  }, [pushToast]);
 
   // Real-time subscription to the active collection's events channel.
   // - Workers (env.REALTIME bound): WebSocket via Durable Object
@@ -473,7 +471,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
     } else if (sel.kind === "action") {
       if (sel.id === "new-post") openCreate();
       if (sel.id === "refresh") refresh();
-      if (sel.id === "toggle-theme") setTweak("dark", !tweaks.dark);
+      if (sel.id === "toggle-theme") toggleDark();
     } else if (sel.kind === "page") {
       setActiveNav(sel.id);
     } else if (sel.kind === "collection") {
@@ -495,8 +493,8 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                 : [activeNav]
           }
           onOpenPalette={() => setPaletteOpen(true)}
-          onToggleTheme={() => setTweak("dark", !tweaks.dark)}
-          dark={tweaks.dark}
+          onToggleTheme={toggleDark}
+          dark={dark}
           onToggleSidebar={() => setTweak("sidebarCollapsed", !tweaks.sidebarCollapsed)}
           onSignOut={onSignOut}
         />

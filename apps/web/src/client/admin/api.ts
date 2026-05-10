@@ -292,6 +292,11 @@ export const panelsApi = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  update: (id: string, body: Partial<Omit<ApiPanel, "id">>) =>
+    api<Envelope<ApiPanel>>(`/api/admin/panels/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
   remove: (id: string) =>
     api<{ ok: true }>(`/api/admin/panels/${id}`, { method: "DELETE" }),
   run: (id: string) =>

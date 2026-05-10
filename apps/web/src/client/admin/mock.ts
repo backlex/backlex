@@ -117,9 +117,11 @@ export const collectionsList: CollectionListItem[] = [
   { slug: "newsletter_subs", count: 4280, ownerScoped: false, fields: 6, icon: "Mail", writes24h: 41, lastWrite: "11m ago", singleton: false, group: "Marketing" },
 ];
 
+// Nav ids double as URL slugs — keep them human-readable (not "api" or "email")
+// because they're rendered into the address bar by AdminApp's URL-driven nav.
 export const navItems: NavItem[] = [
-  { id: "dashboard", label: "Overview", icon: "Activity" },
-  { id: "collections", label: "Collections", icon: "Database", badge: 4 },
+  { id: "overview", label: "Overview", icon: "Activity" },
+  { id: "collections", label: "Collections", icon: "Database" },
   { id: "database", label: "Database", icon: "Server" },
   { id: "storage", label: "Storage", icon: "Folder" },
   { id: "flows", label: "Flows", icon: "Bolt" },
@@ -133,11 +135,11 @@ export const navItems: NavItem[] = [
 ];
 
 export const navSettings: NavItem[] = [
-  { id: "authsettings", label: "Authentication", icon: "Shield" },
+  { id: "authentication", label: "Authentication", icon: "Shield" },
   { id: "roles", label: "Roles & permissions", icon: "Shield" },
   { id: "users", label: "Users", icon: "Users" },
-  { id: "api", label: "API keys", icon: "Code" },
-  { id: "email", label: "Email templates", icon: "Mail" },
+  { id: "api-keys", label: "API keys", icon: "Code" },
+  { id: "email-templates", label: "Email templates", icon: "Mail" },
   { id: "settings", label: "Settings", icon: "Settings" },
 ];
 

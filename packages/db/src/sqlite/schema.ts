@@ -43,6 +43,7 @@ export const tenantMembers = sqliteTable(
     joinedAt: integer("joined_at", { mode: "timestamp_ms" }),
     inviteToken: text("invite_token"),
     inviteExpiresAt: integer("invite_expires_at", { mode: "timestamp_ms" }),
+    lastSeenAt: integer("last_seen_at", { mode: "timestamp_ms" }),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },

@@ -112,7 +112,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
   const collections = (metrics?.topCollections ?? []).map((c) => ({
     slug: c.slug,
     rows: c.rows,
-    size: "—",
+    size: fmtBytes((c as any).bytes ?? 0),
     last: fmtAgo(c.lastWrite),
     writes: 0,
   }));
@@ -292,7 +292,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
             <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <I.AlertTriangle size={14} />
               <span style={{ fontSize: 13, fontWeight: 500 }}>Recent errors</span>
-              <span className="font-mono muted" style={{ fontSize: 12 }}>last 24h · 17 events</span>
+              <span className="font-mono muted" style={{ fontSize: 12 }}>last {range} · {(metrics?.totals?.errors ?? recentErrors.reduce((a, e) => a + (e.count ?? 0), 0))} {(metrics?.totals?.errors ?? 0) === 1 ? "event" : "events"}</span>
               <div className="spacer" />
               <Button variant="ghost" size="sm">View all</Button>
             </div>
@@ -343,7 +343,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
                 ["Realtime", profile.realtime, realtimeStatus === "connected" ? "connected" : "optional", realtimeBinding?.target ?? profile.realtime],
                 ["Sandbox", profile.sandbox, "idle", profile.sandbox],
                 ["Vectorize", "vector index", vectorizeBinding ? "connected" : "optional", vectorizeBinding?.target ?? "—"],
-                ["Email", emailConnected ? "resend" : "console (dev)", emailConnected ? "connected" : "idle", emailConnected ? "EMAIL_FROM set" : "no provider"],
+                ["Email", emailConnected ? "resend" : adapter === "bun" ? "console (dev)" : "not configured", emailConnected ? "connected" : "idle", emailConnected ? "EMAIL_FROM set" : adapter === "bun" ? "logs to stdout" : "set RESEND_API_KEY + EMAIL_FROM"],
               ];
               return rows;
             })().map(([k, v, status, hint], i, arr) => (

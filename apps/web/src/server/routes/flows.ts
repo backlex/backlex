@@ -7,6 +7,7 @@ import * as sqlite from "@workeros/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { runFlowById } from "../services/flows";
+import { logActivity } from "../services/activity";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.flows : sqlite.schema.flows;
@@ -47,6 +48,7 @@ export const flowsRoutes = new Hono<AppBindings>()
       operations: body.operations,
       active: body.active ?? true,
     });
+    await logActivity(c, { action: "create", collection: "system_flows", itemId: id, payload: { name: body.name, trigger: body.trigger } });
     return c.json({ data: { id, ...body, active: body.active ?? true } }, 201);
   })
   .patch("/:id", async (c) => {
@@ -63,12 +65,14 @@ export const flowsRoutes = new Hono<AppBindings>()
         updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
       })
       .where(eq(t.id, c.req.param("id")));
+    await logActivity(c, { action: "update", collection: "system_flows", itemId: c.req.param("id"), payload: body });
     return c.json({ ok: true });
   })
   .delete("/:id", async (c) => {
     const ctx = c.get("ctx");
     const t = tableFor(ctx.dialect);
     await (ctx.db as any).delete(t).where(eq(t.id, c.req.param("id")));
+    await logActivity(c, { action: "delete", collection: "system_flows", itemId: c.req.param("id") });
     return c.json({ ok: true });
   })
   .post("/:id/run", async (c) => {
@@ -84,5 +88,6 @@ export const flowsRoutes = new Hono<AppBindings>()
       email: auth.email,
       roles: auth.roles,
     });
+    await logActivity(c, { action: "run", collection: "system_flows", itemId: id });
     return c.json({ ok: true });
   });

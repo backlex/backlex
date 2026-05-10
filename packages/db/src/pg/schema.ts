@@ -510,10 +510,14 @@ export const folders = pgTable(
     name: text("name").notNull(),
     parentId: text("parent_id"),
     ownerId: text("owner_id"),
+    tenantId: text("tenant_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("folders_parent_idx").on(t.parentId)],
+  (t) => [
+    index("folders_parent_idx").on(t.parentId),
+    index("folders_tenant_idx").on(t.tenantId),
+  ],
 );
 
 export const files = pgTable(

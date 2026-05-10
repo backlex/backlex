@@ -355,6 +355,13 @@ export interface ApiMetrics {
   recentErrors?: { code: string; resource: string; msg: string; count: number; last: number }[];
 }
 
+export interface ApiEntityMetrics {
+  flows: Record<string, { runs: number; lastRun: number | null }>;
+  functions: Record<string, { invocations: number; p95Ms: number; lastInvoke: number | null }>;
+  webhooks: Record<string, { deliveries: number; lastDelivery: number | null }>;
+}
+
 export const metricsApi = {
   overview: (range = "1h") => api<Envelope<ApiMetrics>>(`/api/admin/metrics/overview?range=${range}`),
+  entities: () => api<Envelope<ApiEntityMetrics>>(`/api/admin/metrics/entities`),
 };

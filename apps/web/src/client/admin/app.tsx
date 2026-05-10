@@ -387,34 +387,34 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
 
   const onSave = async (draft: Partial<Post>) => {
     if (sheetMode === "create") {
-      let nu: Post = {
-        id: "01HZ" + Math.random().toString(36).slice(2, 10).toUpperCase(),
-        updated_at: new Date().toISOString(),
-        view_count: 0,
-        word_count: 0,
-        published_at: null,
-        title: "",
-        slug: "",
-        status: "draft",
-        author: "u_1",
-        ...(draft as Post),
-      };
+      let nu: Post;
       try {
         const res = await itemsApi.create(activeCollection || "posts", draft as Record<string, unknown>);
-        nu = { ...nu, ...(res.data as unknown as Post) };
-      } catch {
-        // optimistic insert remains
+        nu = {
+          id: "",
+          updated_at: new Date().toISOString(),
+          view_count: 0,
+          word_count: 0,
+          published_at: null,
+          title: "",
+          slug: "",
+          status: "draft",
+          author: "u_1",
+          ...(draft as Post),
+          ...(res.data as unknown as Post),
+        };
+      } catch (e) {
+        pushToast((e as Error).message, "error");
+        return;
       }
       setPosts((p) => [nu, ...p]);
-      // Backend's publishEvent on items create/update/delete will push the
-      // matching realtime message into the events feed via the SSE/WS
-      // subscription — no optimistic local push needed.
       pushToast(`Post "${(nu.title ?? "").slice(0, 38)}${(nu.title ?? "").length > 38 ? "…" : ""}" created.`);
     } else if (sheetItem) {
       try {
         await itemsApi.patch(activeCollection || "posts", sheetItem.id, draft as Record<string, unknown>);
-      } catch {
-        // optimistic patch
+      } catch (e) {
+        pushToast((e as Error).message, "error");
+        return;
       }
       setPosts((p) => p.map((x) => x.id === sheetItem.id ? { ...x, ...draft, updated_at: new Date().toISOString() } as Post : x));
       pushToast("Post saved.");

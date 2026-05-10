@@ -94,14 +94,14 @@ export const buildContext = (env: Env): Ctx => {
     plugins: pluginList,
     hooks: {
       onUserCreated: async (user) => {
-        await ensureSystemRoles(dbCtx);
-        const total = await userCount(dbCtx);
-        const role =
-          total <= 1 ? SYSTEM_ROLES.admin : SYSTEM_ROLES.authenticated;
-        await assignRoleByName(dbCtx, user.id, role);
         // Land every new user in the default tenant. The first user becomes
         // owner; subsequent ones land as members until invited elsewhere.
         const tenantId = await ensureDefaultTenant(dbCtx);
+        await ensureSystemRoles(dbCtx, tenantId);
+        const total = await userCount(dbCtx);
+        const role =
+          total <= 1 ? SYSTEM_ROLES.admin : SYSTEM_ROLES.authenticated;
+        await assignRoleByName(dbCtx, tenantId, user.id, role);
         await ensureTenantMembership(
           dbCtx,
           tenantId,

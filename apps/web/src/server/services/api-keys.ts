@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { DbCtx } from "./seed";
@@ -26,6 +26,7 @@ export const hashKey = async (raw: string): Promise<string> => {
 
 export interface ApiKeyRow {
   id: string;
+  tenantId: string | null;
   prefix: string;
   hashedKey: string;
   name: string;
@@ -37,7 +38,12 @@ export interface ApiKeyRow {
 
 export const createApiKey = async (
   ctx: DbCtx,
-  input: { name: string; userId: string; expiresAt?: Date | null },
+  input: {
+    name: string;
+    userId: string;
+    tenantId: string;
+    expiresAt?: Date | null;
+  },
 ): Promise<{ row: ApiKeyRow; secret: string }> => {
   const prefix = `${KEY_PREFIX}_${randomHex(PREFIX_LEN / 2)}`;
   const secretPart = randomHex(SECRET_LEN);
@@ -52,6 +58,7 @@ export const createApiKey = async (
     : null;
   await (ctx.db as any).insert(t).values({
     id,
+    tenantId: input.tenantId,
     prefix,
     hashedKey: hashed,
     name: input.name,
@@ -61,6 +68,7 @@ export const createApiKey = async (
   return {
     row: {
       id,
+      tenantId: input.tenantId,
       prefix,
       hashedKey: hashed,
       name: input.name,
@@ -117,20 +125,19 @@ export const touchLastUsed = async (
 
 export const listApiKeys = async (
   ctx: DbCtx,
+  tenantId: string,
   userId: string | null,
 ): Promise<ApiKeyRow[]> => {
   const t = tableFor(ctx.dialect);
-  if (userId) {
-    return (await (ctx.db as any)
-      .select()
-      .from(t)
-      .where(eq(t.userId, userId))) as ApiKeyRow[];
-  }
-  return (await (ctx.db as any).select().from(t)) as ApiKeyRow[];
+  const where = userId
+    ? and(eq(t.tenantId, tenantId), eq(t.userId, userId))
+    : eq(t.tenantId, tenantId);
+  return (await (ctx.db as any).select().from(t).where(where)) as ApiKeyRow[];
 };
 
 export const revokeApiKey = async (
   ctx: DbCtx,
+  tenantId: string,
   id: string,
 ): Promise<void> => {
   const t = tableFor(ctx.dialect);
@@ -138,5 +145,5 @@ export const revokeApiKey = async (
   await (ctx.db as any)
     .update(t)
     .set({ revokedAt: now })
-    .where(eq(t.id, id));
+    .where(and(eq(t.tenantId, tenantId), eq(t.id, id)));
 };

@@ -5,28 +5,12 @@ import { I } from "./icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
 import { api } from "@/lib/api";
 
-const STORAGE_INITIAL_FOLDERS = [
-  { id: "f1", name: "avatars", count: 24, public: false },
-  { id: "f2", name: "post-covers", count: 38, public: true },
-  { id: "f2a", name: "post-covers/2024", count: 14, public: true },
-  { id: "f2b", name: "post-covers/2025", count: 18, public: true },
-  { id: "f2c", name: "post-covers/2026", count: 6, public: true },
-  { id: "f3", name: "exports", count: 6, public: false },
-  { id: "f3a", name: "exports/csv", count: 4, public: false },
-  { id: "f3b", name: "exports/parquet", count: 2, public: false },
-  { id: "f4", name: "uploads", count: 14, public: false },
-  { id: "f5", name: "attachments", count: 88, public: false },
-  { id: "f5a", name: "attachments/email", count: 42, public: false },
-  { id: "f5b", name: "attachments/support-tickets", count: 36, public: false },
-  { id: "f5c", name: "attachments/contracts", count: 10, public: false },
-  { id: "f6", name: "product-images", count: 220, public: true },
-  { id: "f6a", name: "product-images/thumbnails", count: 220, public: true },
-  { id: "f6b", name: "product-images/originals", count: 220, public: false },
-  { id: "f7", name: "invoices", count: 304, public: false },
-  { id: "f8", name: "logs", count: 1812, public: false },
-  { id: "f9", name: "backups", count: 12, public: false },
-  { id: "f10", name: "temp", count: 3, public: false },
-];
+interface StoredFolder {
+  id: string;
+  name: string;
+  count: number;
+  public: boolean;
+}
 
 interface StoredFile {
   key: string;
@@ -40,21 +24,6 @@ interface StoredFile {
   h?: number;
 }
 
-const STORAGE_INITIAL_FILES: StoredFile[] = [
-  { key: "avatars/u_1.png", size: 18432, type: "image/png", folder: "avatars", updated: "2h ago", acl: "private", hue: 230, w: 256, h: 256 },
-  { key: "avatars/u_2.png", size: 22904, type: "image/png", folder: "avatars", updated: "6h ago", acl: "private", hue: 290, w: 256, h: 256 },
-  { key: "avatars/u_3.png", size: 19840, type: "image/png", folder: "avatars", updated: "1d ago", acl: "private", hue: 60, w: 256, h: 256 },
-  { key: "post-covers/edge-functions-ga.jpg", size: 248110, type: "image/jpeg", folder: "post-covers", updated: "1d ago", acl: "public", hue: 130, w: 1920, h: 1080 },
-  { key: "post-covers/permissions-dsl.jpg", size: 184220, type: "image/jpeg", folder: "post-covers", updated: "3d ago", acl: "public", hue: 22, w: 1920, h: 1080 },
-  { key: "post-covers/realtime-edge-tradeoffs.jpg", size: 320880, type: "image/jpeg", folder: "post-covers", updated: "4d ago", acl: "public", hue: 200, w: 2400, h: 1350 },
-  { key: "post-covers/oauth-parallel-flow.jpg", size: 198440, type: "image/jpeg", folder: "post-covers", updated: "6d ago", acl: "public", hue: 320, w: 1920, h: 1080 },
-  { key: "exports/posts-2026-04.csv", size: 12410, type: "text/csv", folder: "exports", updated: "6d ago", acl: "private" },
-  { key: "exports/users-2026-04.csv", size: 84210, type: "text/csv", folder: "exports", updated: "6d ago", acl: "private" },
-  { key: "uploads/contract.pdf", size: 482010, type: "application/pdf", folder: "uploads", updated: "2d ago", acl: "private" },
-  { key: "uploads/notes.md", size: 4810, type: "text/markdown", folder: "uploads", updated: "5d ago", acl: "private" },
-  { key: "README.md", size: 2210, type: "text/markdown", folder: null, updated: "1w ago", acl: "public" },
-];
-
 interface UploadJob {
   id: string;
   name: string;
@@ -65,8 +34,8 @@ interface UploadJob {
 }
 
 export function StoragePage({ pushToast }: { pushToast: (msg: string) => void }) {
-  const [folders, setFolders] = useState(STORAGE_INITIAL_FOLDERS);
-  const [files, setFiles] = useState<StoredFile[]>(STORAGE_INITIAL_FILES);
+  const [folders, setFolders] = useState<StoredFolder[]>([]);
+  const [files, setFiles] = useState<StoredFile[]>([]);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -74,7 +43,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         const f = await api<{ data: { id: string; name: string }[] }>("/api/folders");
         if (!cancelled && Array.isArray(f.data)) {
           setFolders(
-            f.data.map((x, i) => ({
+            f.data.map((x) => ({
               id: x.id,
               name: x.name,
               count: 0,
@@ -83,7 +52,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
           );
         }
       } catch {
-        // keep mock seed
+        // leave folders empty
       }
       try {
         const fs = await api<{ data: any[] }>("/api/storage");
@@ -100,7 +69,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
           );
         }
       } catch {
-        // keep mock
+        // leave files empty
       }
     })();
     return () => { cancelled = true; };
@@ -509,8 +478,6 @@ function FileGlyph({ f, size = 64 }: { f: StoredFile; size?: number }) {
   const isImg = Boolean(f.type && f.type.startsWith("image/"));
   const [imgFailed, setImgFailed] = useState(false);
   if (isImg && !imgFailed) {
-    // Try the real R2 thumbnail first; if the GET 404s (mock seed) fall back
-    // to the gradient placeholder.
     return (
       <img
         src={`/api/storage/${encodeURI(f.key)}`}
@@ -658,8 +625,6 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
       <div className="img-preview" onClick={onPreviewClick} style={{ aspectRatio: "16 / 9", cursor: isImage ? "crosshair" : "default", borderRadius: 0 }}>
         {isImage ? (
           <>
-            {/* Real preview — falls back to ImageMock via the <img onError>
-                handler when the file 404s (mock seed data) */}
             <img
               src={`/api/storage/${encodeURI(f.key)}`}
               alt=""

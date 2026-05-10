@@ -243,6 +243,18 @@ export const validateFields = (fields: FieldDef[]): void => {
  */
 export const validateValue = (field: FieldDef, value: unknown): void => {
   if (value === null || value === undefined || value === "") return;
+
+  // Dropdown choice membership is enforced for any field with the interface
+  // set, even when no `validation` block is configured.
+  if (field.interface === "dropdown") {
+    const allowed = getChoiceValues(field);
+    if (allowed.length && !allowed.includes(String(value))) {
+      throw new Error(
+        `${field.name}: must be one of ${allowed.join(", ")}`,
+      );
+    }
+  }
+
   const v = field.validation;
   if (!v) return;
 
@@ -278,15 +290,6 @@ export const validateValue = (field: FieldDef, value: unknown): void => {
     }
     if (v.max !== undefined && value > v.max) {
       throw new Error(`${field.name}: must be ≤ ${v.max}`);
-    }
-  }
-
-  if (field.interface === "dropdown") {
-    const allowed = getChoiceValues(field);
-    if (allowed.length && !allowed.includes(String(value))) {
-      throw new Error(
-        `${field.name}: must be one of ${allowed.join(", ")}`,
-      );
     }
   }
 };

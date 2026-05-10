@@ -173,16 +173,24 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
           <Switch checked={enabled} onChange={setEnabled} />
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
           {(() => {
+            // Don't disable the native button — leave it clickable so the
+            // user gets a toast explaining *why* it's a no-op. (A disabled
+            // button with no feedback was the original UX bug.)
             const isEmpty = nodes.filter((n) => n.kind !== "trigger").length === 0;
             return (
               <Button
                 variant="primary"
                 size="sm"
                 icon={I.Check}
-                disabled={isEmpty}
-                style={isEmpty ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+                style={isEmpty ? { opacity: 0.5 } : undefined}
                 title={isEmpty ? "Add at least one step before saving" : undefined}
-                onClick={() => { if (!isEmpty) onSave({ id: initial?.id, name, enabled, nodes, edges }); }}
+                onClick={() => {
+                  if (isEmpty) {
+                    pushToast("Add at least one step before saving");
+                    return;
+                  }
+                  onSave({ id: initial?.id, name, enabled, nodes, edges });
+                }}
               >Save flow</Button>
             );
           })()}

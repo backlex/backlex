@@ -230,13 +230,14 @@ export function AlterPreview({ pendingField }: { pendingField?: Partial<SchemaFi
   );
 }
 
-export function EmptyItems({ onCreate }: { onCreate: () => void }) {
+export function EmptyItems({ onCreate, slug }: { onCreate: () => void; slug?: string }) {
+  const tableName = slug ? `c_${slug}` : "this collection";
   return (
     <div className="empty">
       <div className="ico"><I.Inbox size={20} /></div>
       <h4>No items yet</h4>
-      <p>Create the first row in <span className="font-mono">c_posts</span> via the API or use the New post button.</p>
-      <Button variant="primary" size="sm" icon={I.Plus} onClick={onCreate}>New post</Button>
+      <p>Create the first row in <span className="font-mono">{tableName}</span> via the API or use the New row button.</p>
+      <Button variant="primary" size="sm" icon={I.Plus} onClick={onCreate}>New row</Button>
     </div>
   );
 }

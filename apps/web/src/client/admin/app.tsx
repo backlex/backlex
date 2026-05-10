@@ -461,7 +461,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
 
   return (
     <div className="app" data-collapsed={tweaks.sidebarCollapsed} data-density={tweaks.density}>
-      <Sidebar activeNav={activeNav} setActiveNav={setActiveNav} adapter={tweaks.adapter} collapsed={tweaks.sidebarCollapsed} pushToast={pushToast} />
+      <Sidebar activeNav={activeNav} setActiveNav={setActiveNav} adapter={tweaks.adapter} collapsed={tweaks.sidebarCollapsed} pushToast={pushToast} collectionsCount={collections.length} />
 
       <div className="main">
         <Topbar
@@ -481,7 +481,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
 
         <div className="scrollarea" style={{ flex: 1 }}>
           <div className="page">
-            {activeNav === "dashboard" && <OverviewPage adapter={tweaks.adapter} pushToast={pushToast} setActiveNav={setActiveNav} />}
+            {activeNav === "overview" && <OverviewPage adapter={tweaks.adapter} pushToast={pushToast} setActiveNav={setActiveNav} />}
             {activeNav === "database" && <DatabasePage pushToast={pushToast} adapter={tweaks.adapter} />}
             {activeNav === "storage" && <StoragePage pushToast={pushToast} />}
             {activeNav === "flows" && <FlowsPage pushToast={pushToast} activeFlow={activeFlow} setActiveFlow={setActiveFlow} />}
@@ -492,10 +492,10 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             {activeNav === "activity" && <ActivityPage pushToast={pushToast} />}
             {activeNav === "revisions" && <RevisionsPage />}
             {activeNav === "translations" && <TranslationsPage pushToast={pushToast} />}
-            {activeNav === "authsettings" && <AuthSettingsPage pushToast={pushToast} />}
+            {activeNav === "authentication" && <AuthSettingsPage pushToast={pushToast} />}
             {activeNav === "users" && <UsersPage pushToast={pushToast} />}
-            {activeNav === "api" && <ApiKeysPage pushToast={pushToast} />}
-            {activeNav === "email" && <EmailTemplatesPage pushToast={pushToast} />}
+            {activeNav === "api-keys" && <ApiKeysPage pushToast={pushToast} />}
+            {activeNav === "email-templates" && <EmailTemplatesPage pushToast={pushToast} />}
             {activeNav === "settings" && <SettingsPage adapter={tweaks.adapter} pushToast={pushToast} />}
             {activeNav === "roles" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -562,7 +562,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                         onDelete={onBulkDelete}
                       />
                       {pageRows.length === 0 ? (
-                        <EmptyItems onCreate={openCreate} />
+                        <EmptyItems onCreate={openCreate} slug={activeCollection ?? undefined} />
                       ) : (
                         <ItemsTable rows={pageRows} selected={selected} setSelected={setSelected} sort={sort} setSort={setSort} onEdit={openEdit} />
                       )}
@@ -624,17 +624,15 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
         onClose={() => setNewCollectionOpen(false)}
         existingSlugs={collections.map((c) => c.slug)}
         onCreate={async (c) => {
-          // Persist a minimal but valid collection via the API. The design
-          // wizard collects extras (group, template) we don't ship to the
-          // backend yet; they stay client-side until the server schema grows
-          // matching columns.
+          // The wizard now passes `templateFields` derived from the chosen
+          // preset (Blank → [], Content → title+slug+status+body+published_at,
+          // …). System columns (id, owner_id, created_at, updated_at) are
+          // added by the backend per the ownerScoped flag.
           try {
+            const tplFields = (c as { templateFields?: Array<{ name: string; type: string; required?: boolean; unique?: boolean }> }).templateFields ?? [];
             await collectionsApi.create({
               slug: c.slug,
-              fields: [
-                { name: "title", type: "text", required: true },
-                { name: "slug", type: "text", required: true, unique: true },
-              ],
+              fields: tplFields,
               ownerScoped: c.ownerScoped,
             } as any);
             setCollections((arr) => [...arr, c]);

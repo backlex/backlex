@@ -49,6 +49,11 @@ const loadRoleNames = async (
   ctx: { db: unknown; dialect: "pg" | "sqlite" },
   userId: string,
 ): Promise<string[]> => {
+  // Role names are loaded without a tenant filter here because the tenant
+  // hasn't been resolved yet at this point in the pipeline. The downstream
+  // permission resolver re-loads roles scoped to the active tenant; this
+  // list is only used by the legacy `auth.roles` array, which the admin
+  // routes filter by tenant themselves.
   const t =
     ctx.dialect === "pg"
       ? { roles: pg.schema.roles, userRoles: pg.schema.userRoles }
@@ -79,6 +84,11 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
 
   let userId: string | null = null;
   let email: string | null = null;
+  // When a request authenticates with an API key, the key carries the tenant
+  // it was issued for. Surface it so tenantMiddleware can pin the request to
+  // that workspace — header/cookie/user-pref resolution would otherwise miss
+  // it on machine-to-machine calls that don't send the X-Workeros-Tenant.
+  let apiKeyTenantId: string | null = null;
 
   const session = await ctx.auth.api.getSession({ headers: c.req.raw.headers });
   if (session?.user?.id) {
@@ -103,6 +113,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
       if (key) {
         userId = key.userId;
         email = await loadUserEmail(ctx, key.userId);
+        apiKeyTenantId = key.tenantId ?? null;
         // fire-and-forget last-used update
         void touchLastUsed(ctx, key.id);
       }
@@ -111,7 +122,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
 
   const roles = userId ? await loadRoleNames(ctx, userId) : [];
 
-  c.set("auth", { userId, email, roles });
+  c.set("auth", { userId, email, roles, apiKeyTenantId });
   await next();
 };
 

@@ -11,8 +11,38 @@ export const TENANT_HEADER = "x-workeros-tenant";
 
 const tablesFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg"
-    ? { tenants: pg.schema.tenants, members: pg.schema.tenantMembers, users: pg.schema.users }
-    : { tenants: sqlite.schema.tenants, members: sqlite.schema.tenantMembers, users: sqlite.schema.users };
+    ? {
+        tenants: pg.schema.tenants,
+        members: pg.schema.tenantMembers,
+        users: pg.schema.users,
+        roles: pg.schema.roles,
+        userRoles: pg.schema.userRoles,
+      }
+    : {
+        tenants: sqlite.schema.tenants,
+        members: sqlite.schema.tenantMembers,
+        users: sqlite.schema.users,
+        roles: sqlite.schema.roles,
+        userRoles: sqlite.schema.userRoles,
+      };
+
+/** Roles the user holds *within this tenant*. Used by tenantMiddleware to
+ *  rewrite auth.roles after the active tenant is known — sessionMiddleware
+ *  can't filter by tenant because resolution hasn't happened yet there. */
+const loadTenantRoleNames = async (
+  db: unknown,
+  dialect: "pg" | "sqlite",
+  tenantId: string,
+  userId: string,
+): Promise<string[]> => {
+  const t = tablesFor(dialect);
+  const rows = (await (db as any)
+    .select({ name: t.roles.name })
+    .from(t.userRoles)
+    .innerJoin(t.roles, eq(t.userRoles.roleId, t.roles.id))
+    .where(and(eq(t.userRoles.userId, userId), eq(t.roles.tenantId, tenantId)))) as { name: string }[];
+  return rows.map((r) => r.name);
+};
 
 const tenantBySlugOrId = async (
   db: unknown,
@@ -119,6 +149,12 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   if (headerKey) {
     tenantId = await tenantBySlugOrId(db, dialect, headerKey);
   }
+  // API-key requests pin to the key's home tenant unless the caller sent an
+  // explicit override header. Cookie/user-pref are irrelevant here — the
+  // request might be a CI job with no session at all.
+  if (!tenantId && auth.apiKeyTenantId) {
+    tenantId = auth.apiKeyTenantId;
+  }
   if (!tenantId) {
     const cookieKey = getCookie(c, TENANT_COOKIE);
     if (cookieKey) tenantId = await tenantBySlugOrId(db, dialect, cookieKey);
@@ -139,13 +175,19 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
     tenantId = await ensureDefaultTenant({ db, dialect });
   }
 
+  // Re-scope auth.roles to roles the user actually holds *in this tenant*.
+  // sessionMiddleware loaded an unfiltered union earlier (it doesn't know
+  // the tenant yet); we replace it here so requireAdmin and friends evaluate
+  // against the active workspace.
+  let tenantRoles = auth.roles;
   if (auth.userId) {
+    tenantRoles = await loadTenantRoleNames(db, dialect, tenantId, auth.userId);
     // Best-effort persistence; ignore failures.
     void persistActive(db, dialect, auth.userId, tenantId).catch(() => {});
     void touchMember(db, dialect, tenantId, auth.userId).catch(() => {});
   }
 
-  c.set("auth", { ...auth, tenantId });
+  c.set("auth", { ...auth, roles: tenantRoles, tenantId });
   // Stamp the request start so route handlers can pass duration_ms to
   // recordActivity without each one having to remember to capture Date.now().
   // Use Hono's typed `set` — assigning to `c.var` directly hits a Proxy that

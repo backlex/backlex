@@ -65,14 +65,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
   const [running, setRunning] = useState(false);
   const [readOnly, setReadOnly] = useState(true);
 
-  // Live table list: query sqlite_master once on mount, fall back to mock
-  // names if the call fails (e.g. unauthenticated dev preview).
-  const seedTables = [
-    { name: "c_posts", rows: 0 },
-    { name: "users", rows: 0 },
-    { name: "sessions", rows: 0 },
-  ];
-  const [tables, setTables] = useState(seedTables);
+  const [tables, setTables] = useState<{ name: string; rows: number }[]>([]);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -100,7 +93,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
           ),
         );
       } catch {
-        // keep seed
+        // leave tables empty
       }
     })();
     return () => { cancelled = true; };
@@ -961,18 +954,11 @@ function Donut({ segments }: { segments: { v: number; color: string }[] }) {
 
 export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => void }) {
   type Tpl = { id: string; key?: string; name: string; subject: string; vars: string[]; bodyHtml?: string };
-  const SEED: Tpl[] = [
-    { id: "verify", key: "verify", name: "Email verification", subject: "Confirm your email", vars: ["user.email", "confirm_url"] },
-    { id: "reset", key: "reset", name: "Password reset", subject: "Reset your password", vars: ["user.email", "reset_url"] },
-    { id: "magic", key: "magic", name: "Magic link", subject: "Your sign-in link", vars: ["user.email", "magic_url"] },
-    { id: "invite", key: "invite", name: "Invite", subject: "You've been invited to {{site.name}}", vars: ["inviter.email", "accept_url"] },
-    { id: "change_email", key: "change_email", name: "Change email", subject: "Confirm your new email", vars: ["user.email", "confirm_url"] },
-  ];
-  const [templates, setTemplates] = useState<Tpl[]>(SEED);
-  const [active, setActive] = useState<Tpl>(SEED[0]!);
-  const [body, setBody] = useState(`<h1>Hi {{ user.email }},</h1>\n<p>Click the button below to confirm your email address. The link expires in 1 hour.</p>\n<a href="{{ confirm_url }}" class="btn">Confirm email</a>\n<p>If you didn't request this, you can safely ignore this email.</p>`);
-  const [subject, setSubject] = useState(active.subject);
-  const [fromAddress, setFromAddress] = useState("hello@workeros.dev");
+  const [templates, setTemplates] = useState<Tpl[]>([]);
+  const [active, setActive] = useState<Tpl | null>(null);
+  const [body, setBody] = useState("");
+  const [subject, setSubject] = useState("");
+  const [fromAddress, setFromAddress] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -998,7 +984,7 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
           }
         }
       } catch {
-        // keep seed
+        // leave templates empty
       }
     })();
     return () => { cancelled = true; };
@@ -1022,6 +1008,7 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
   };
 
   const onSave = async () => {
+    if (!active) return;
     try {
       if (active.key) {
         await emailTemplatesApi.patch(active.id, {
@@ -1047,6 +1034,7 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
   };
 
   const onSendTest = async () => {
+    if (!active) return;
     try {
       await emailTemplatesApi.sendTest(active.id);
       pushToast("Test email sent.");
@@ -1065,8 +1053,11 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
       <PageHeader title="Email templates" description={<>Variables use Liquid-style <span className="font-mono">{"{{ user.email }}"}</span>. Template renders run through the Functions sandbox.</>} />
       <div style={{ display: "grid", gridTemplateColumns: "240px 1fr 1fr", gap: 14, alignItems: "start" }}>
         <div className="card">
+          {templates.length === 0 && (
+            <div className="muted" style={{ padding: "12px 14px", fontSize: 12 }}>No templates yet.</div>
+          )}
           {templates.map((t) => (
-            <div key={t.id} onClick={() => void onSelect(t)} style={{ padding: "10px 12px", borderTop: "1px solid var(--border)", cursor: "pointer", background: active.id === t.id ? "var(--accent)" : "transparent" }}>
+            <div key={t.id} onClick={() => void onSelect(t)} style={{ padding: "10px 12px", borderTop: "1px solid var(--border)", cursor: "pointer", background: active?.id === t.id ? "var(--accent)" : "transparent" }}>
               <div style={{ fontSize: 12.5, fontWeight: 500 }}>{t.name}</div>
               <div className="font-mono muted" style={{ fontSize: 11 }}>{t.key ?? t.id}</div>
             </div>
@@ -1087,7 +1078,7 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
               <textarea value={body} onChange={(e) => setBody(e.target.value)} spellCheck={false} style={{ width: "100%", minHeight: 220, padding: 12, border: "1px solid var(--border)", borderRadius: "var(--radius-xl)", background: "oklch(0.18 0.01 130)", color: "oklch(0.92 0.02 130)", fontFamily: "Geist Mono, monospace", fontSize: 12.5, lineHeight: 1.55, resize: "vertical" }} />
             </div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {active.vars.map((v) => (
+              {(active?.vars ?? []).map((v) => (
                 <button key={v} onClick={() => setBody((b) => b + `{{ ${v} }}`)} className="chip"><I.Code size={11} /> {`{{ ${v} }}`}</button>
               ))}
             </div>
@@ -1106,17 +1097,7 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
 
 export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void }) {
   const locales = ["en", "tr", "de", "es", "fr", "ja"] as const;
-  const initialKeys = [
-    { key: "app.title", en: "workeros", tr: "workeros", de: "workeros", es: "workeros", fr: "workeros", ja: "workeros" },
-    { key: "auth.sign_in", en: "Sign in", tr: "Giriş yap", de: "Anmelden", es: "Iniciar sesión", fr: "Se connecter", ja: "サインイン" },
-    { key: "auth.sign_up", en: "Sign up", tr: "Kayıt ol", de: "Registrieren", es: "Registrarse", fr: "S'inscrire", ja: "サインアップ" },
-    { key: "collections.posts.title", en: "Posts", tr: "Yazılar", de: "Beiträge", es: "Publicaciones", fr: "Articles", ja: "投稿" },
-    { key: "collections.posts.new", en: "New post", tr: "Yeni yazı", de: "Neuer Beitrag", es: "Nueva publicación", fr: "Nouvel article", ja: "" },
-    { key: "storage.upload", en: "Upload", tr: "Yükle", de: "Hochladen", es: "Subir", fr: "Téléverser", ja: "アップロード" },
-    { key: "common.save", en: "Save", tr: "Kaydet", de: "Speichern", es: "", fr: "Enregistrer", ja: "保存" },
-    { key: "common.delete", en: "Delete", tr: "Sil", de: "Löschen", es: "Eliminar", fr: "Supprimer", ja: "削除" },
-  ] as Record<string, string>[];
-  const [data, setData] = useState(initialKeys);
+  const [data, setData] = useState<Record<string, string>[]>([]);
   const [base, setBase] = useState("en");
   const [showOnly, setShowOnly] = useState("all");
 
@@ -1136,7 +1117,7 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
           setData(rows);
         }
       } catch {
-        // keep seed
+        // leave translations empty
       }
     })();
     return () => { cancelled = true; };
@@ -1146,7 +1127,7 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
     void i18nApi.upsert(key, locale, value).catch((e: Error) => pushToast?.(e.message));
   };
   const visible = showOnly === "missing" ? data.filter((r) => locales.some((l) => !r[l])) : data;
-  const completion = locales.map((l) => ({ l, pct: Math.round(data.filter((r) => r[l]).length / data.length * 100) }));
+  const completion = locales.map((l) => ({ l, pct: data.length === 0 ? 0 : Math.round(data.filter((r) => r[l]).length / data.length * 100) }));
   const update = (key: string, locale: string, value: string) => {
     setData((arr) => arr.map((r) => r.key === key ? { ...r, [locale]: value } : r));
     persist(key, locale, value);

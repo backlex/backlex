@@ -163,10 +163,25 @@ export const metricsRoutes = new Hono<AppBindings>()
     } catch {}
     counts.pausedFlows = Math.max(0, (counts.flows ?? 0) - (counts.activeFlows ?? 0));
 
-    // Top collections — for each `collections` row in the active tenant,
+    // Per-collection writes in the last 24h — counted from the activity rows
+    // we already loaded. Only rows with a `collection` and a mutating action
+    // qualify. Independent of the user-requested `range` (cards always show
+    // 24h, even when the dashboard window is 1h/7d/etc.).
+    const writes24hBySlug = new Map<string, number>();
+    const day = now - 24 * 60 * 60 * 1000;
+    for (const r of rows) {
+      if (!r.collection) continue;
+      if (!/^(create|update|delete|patch|insert)/i.test(r.action)) continue;
+      const ts = typeof r.created_at === "number" ? r.created_at : new Date(r.created_at).getTime();
+      if (ts < day) continue;
+      writes24hBySlug.set(r.collection, (writes24hBySlug.get(r.collection) ?? 0) + 1);
+    }
+
+    // Per-collection stats — for each `collections` row in the active tenant,
     // COUNT(*) + MAX(updated_at) on the physical table named in
-    // `physical_table`. Cheap on the dev set; cap at 10.
-    const topCollections: { slug: string; rows: number; bytes: number; lastWrite: number | null }[] = [];
+    // `physical_table`. Cheap on the dev set; returned for every collection so
+    // the index page can render real numbers on every card.
+    const topCollections: { slug: string; rows: number; bytes: number; lastWrite: number | null; writes24h: number }[] = [];
     try {
       const tenantClause = auth.tenantId
         ? `WHERE tenant_id = '${auth.tenantId.replace(/'/g, "''")}'`
@@ -174,11 +189,12 @@ export const metricsRoutes = new Hono<AppBindings>()
       const cs = await queryAll<{ slug: string; physical_table: string }>(
         { db: ctx.db, dialect: ctx.dialect },
         sql.raw(
-          `SELECT slug, physical_table FROM collections ${tenantClause} ORDER BY slug LIMIT 10`,
+          `SELECT slug, physical_table FROM collections ${tenantClause} ORDER BY slug`,
         ),
       );
       for (const c of cs) {
         const safeTable = (c.physical_table ?? "").replace(/"/g, "");
+        const writes24h = writes24hBySlug.get(c.slug) ?? 0;
         if (!safeTable) continue;
         try {
           const r = await queryAll<{ n: number; m: number | string | null }>(
@@ -202,9 +218,9 @@ export const metricsRoutes = new Hono<AppBindings>()
               if (sz[0]?.s != null) bytes = Number(sz[0].s);
             } catch {}
           }
-          topCollections.push({ slug: c.slug, rows: rowCount, bytes, lastWrite });
+          topCollections.push({ slug: c.slug, rows: rowCount, bytes, lastWrite, writes24h });
         } catch {
-          topCollections.push({ slug: c.slug, rows: 0, bytes: 0, lastWrite: null });
+          topCollections.push({ slug: c.slug, rows: 0, bytes: 0, lastWrite: null, writes24h });
         }
       }
     } catch {}

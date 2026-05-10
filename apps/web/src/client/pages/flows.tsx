@@ -627,6 +627,12 @@ export const Flows = () => {
   const [selectedFlowId, setSelectedFlowId] = useState<string | null>(null);
   const selectedFlow = items.find((f) => f.id === selectedFlowId) ?? null;
 
+  useEffect(() => {
+    if (selectedFlowId || items.length === 0) return;
+    const first = items[0];
+    if (first) setSelectedFlowId(first.id);
+  }, [items, selectedFlowId]);
+
   const runFlow = async () => {
     if (!runningFlow) return;
     let body: unknown;

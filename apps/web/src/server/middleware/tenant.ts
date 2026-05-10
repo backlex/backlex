@@ -157,7 +157,12 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   // downstream handler that returns a fresh Response) replaces the staged
   // headers, so a setCookie call before next() gets dropped along with the
   // session cookie. Setting it here merges into the final response.
-  setCookie(c, TENANT_COOKIE, tenantId, {
+  //
+  // Re-read auth.tenantId after next() so handlers like /api/tenants/switch
+  // (which mutate auth to point at the new workspace) win — otherwise the
+  // closed-over `tenantId` from the pre-next phase clobbers their cookie.
+  const finalTenantId = (c.get("auth")?.tenantId as string | undefined) ?? tenantId;
+  setCookie(c, TENANT_COOKIE, finalTenantId, {
     httpOnly: false,
     sameSite: "Lax",
     path: "/",

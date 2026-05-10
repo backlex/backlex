@@ -40,7 +40,7 @@ const initialsFor = (input: string): string => {
  */
 export const loadAuthors = async (): Promise<void> => {
   try {
-    const res = await fetch("/api/admin/users", { credentials: "include" });
+    const res = await fetch("/api/users", { credentials: "include" });
     if (!res.ok) return;
     const json = (await res.json()) as { data?: Array<{ id: string; name?: string | null; email?: string | null }> };
     const users = json.data ?? [];

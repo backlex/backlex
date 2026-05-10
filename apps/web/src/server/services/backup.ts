@@ -2,7 +2,6 @@ import { sql } from "drizzle-orm";
 import { eq } from "drizzle-orm";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
-import { physicalTableFor } from "@workeros/db";
 import type { Ctx } from "../context";
 
 /**
@@ -102,13 +101,20 @@ export const runBackup = async (
     slug: string;
     tenantId?: string | null;
     tenant_id?: string | null;
+    physicalTable?: string;
+    physical_table?: string;
   }>;
-  const includedCollections = allCollections.filter(
-    (c) =>
-      !options.tenantId ||
-      !(c.tenantId ?? c.tenant_id) ||
-      (c.tenantId ?? c.tenant_id) === options.tenantId,
-  );
+  const includedCollections = allCollections
+    .filter(
+      (c) =>
+        !options.tenantId ||
+        !(c.tenantId ?? c.tenant_id) ||
+        (c.tenantId ?? c.tenant_id) === options.tenantId,
+    )
+    .map((c) => ({
+      slug: c.slug,
+      physicalTable: (c.physicalTable ?? c.physical_table) as string,
+    }));
 
   const lines: string[] = [];
   let rowCount = 0;
@@ -148,7 +154,7 @@ export const runBackup = async (
 
   // Dynamic c_* tables.
   for (const c of includedCollections) {
-    const table = physicalTableFor(c.slug);
+    const table = c.physicalTable;
     let rows: Record<string, unknown>[];
     try {
       if (options.tenantId) {

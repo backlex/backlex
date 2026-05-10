@@ -1,9 +1,8 @@
-import { eq, sql, type SQL } from "drizzle-orm";
+import { and, eq, sql, type SQL } from "drizzle-orm";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import {
   compileCondition,
-  physicalTableFor,
   type FieldDef,
   type FieldType,
 } from "@workeros/db";
@@ -17,21 +16,31 @@ const collectionsTable = (dialect: "pg" | "sqlite") =>
 
 interface CollectionShape {
   slug: string;
+  physicalTable: string;
   fields: FieldDef[];
   ownerScoped: boolean | number;
 }
 
 const loadCollection = async (
   ctx: Ctx,
+  tenantId: string | null | undefined,
   slug: string,
 ): Promise<CollectionShape | null> => {
+  if (!tenantId) return null;
   const t = collectionsTable(ctx.dialect);
   const rows = await (ctx.db as any)
     .select()
     .from(t)
-    .where(eq(t.slug, slug))
+    .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)))
     .limit(1);
-  return rows[0] ?? null;
+  const r = rows[0];
+  if (!r) return null;
+  return {
+    slug: r.slug,
+    physicalTable: r.physicalTable ?? r.physical_table,
+    fields: r.fields,
+    ownerScoped: r.ownerScoped ?? r.owner_scoped,
+  };
 };
 
 const queryAll = async <T>(ctx: Ctx, q: SQL): Promise<T[]> => {
@@ -128,7 +137,7 @@ export const dispatchRpc = async (
       limit?: number;
       offset?: number;
     };
-    const collection = await loadCollection(bindings.ctx, slug);
+    const collection = await loadCollection(bindings.ctx, bindings.auth.tenantId, slug);
     if (!collection) throw new Error(`Collection "${slug}" not found`);
     const perm = await resolvePermission(
       bindings.ctx,
@@ -137,7 +146,7 @@ export const dispatchRpc = async (
       "read",
     );
     if (!perm.allowed) throw new Error(`No read permission on "${slug}"`);
-    const table = physicalTableFor(slug);
+    const table = collection.physicalTable;
     const userWhere = query.filter
       ? compileCondition(query.filter, bindings.auth)
       : null;
@@ -166,7 +175,7 @@ export const dispatchRpc = async (
   if (op === "db.one") {
     const slug = String(args.slug ?? "");
     const id = String(args.id ?? "");
-    const collection = await loadCollection(bindings.ctx, slug);
+    const collection = await loadCollection(bindings.ctx, bindings.auth.tenantId, slug);
     if (!collection) throw new Error(`Collection "${slug}" not found`);
     const perm = await resolvePermission(
       bindings.ctx,
@@ -175,7 +184,7 @@ export const dispatchRpc = async (
       "read",
     );
     if (!perm.allowed) throw new Error(`No read permission on "${slug}"`);
-    const table = physicalTableFor(slug);
+    const table = collection.physicalTable;
     const wheres: SQL[] = [sql`${sql.identifier("id")} = ${id}`];
     if (perm.whereSql) wheres.push(perm.whereSql);
     const rows = await queryAll<Record<string, unknown>>(

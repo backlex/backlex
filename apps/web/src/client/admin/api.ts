@@ -303,6 +303,11 @@ export const panelsApi = {
     api<Envelope<Record<string, unknown>[]> & { ms: number }>(`/api/admin/panels/${id}/run`, {
       method: "POST",
     }),
+  preview: (body: { kind: "sql" | "items-aggregate"; sql?: string; config?: unknown }) =>
+    api<Envelope<Record<string, unknown>[]> & { ms: number }>(`/api/admin/panels/preview`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 };
 
 export const authAdminApi = {

@@ -735,6 +735,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
           // preset (Blank → [], Content → title+slug+status+body+published_at,
           // …). System columns (id, owner_id, created_at, updated_at) are
           // added by the backend per the ownerScoped flag.
+          let created = false;
           try {
             const tplFields = (c as { templateFields?: Array<{ name: string; type: string; required?: boolean; unique?: boolean }> }).templateFields ?? [];
             await collectionsApi.create({
@@ -744,11 +745,12 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             } as any);
             setCollections((arr) => [...arr, c]);
             pushToast(`Collection c_${c.slug} created.`);
+            created = true;
           } catch (e) {
             pushToast((e as Error).message, "error");
           }
           setNewCollectionOpen(false);
-          setActiveCollection(c.slug);
+          if (created) setActiveCollection(c.slug);
         }}
       />
       <EditFieldDialog

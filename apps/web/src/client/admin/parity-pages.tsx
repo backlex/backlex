@@ -759,9 +759,10 @@ export function RevisionsPage() {
   );
 }
 
-export function InsightsPage() {
+export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } = {}) {
   const [panels, setPanels] = useState<ApiPanel[]>([]);
   const [results, setResults] = useState<Record<string, Record<string, unknown>[]>>({});
+  const [newOpen, setNewOpen] = useState(false);
 
   const reload = async () => {
     try {
@@ -787,30 +788,29 @@ export function InsightsPage() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-      <PageHeader title="Insights" description="Built from saved SQL queries. Drag panels to your own dashboards." actions={<Button variant="primary" icon={I.Plus} onClick={async () => {
-        const name = prompt("Panel name", "Untitled panel");
-        if (!name) return;
-        const sql = prompt("SQL (read-only SELECT)", "SELECT COUNT(*) AS n FROM users;");
-        if (!sql) return;
-        try {
-          await panelsApi.create({
-            name,
-            description: null,
-            kind: "sql",
-            sql,
-            viz: "counter",
-            config: null,
-            layout: null,
-          });
-          await reload();
-        } catch {
-          // toast handled by api
-        }
-      }}>New panel</Button>} />
+      <PageHeader
+        title="Insights"
+        description="Built from saved SQL queries. Drag panels to your own dashboards."
+        actions={<Button variant="primary" icon={I.Plus} onClick={() => setNewOpen(true)}>New panel</Button>}
+      />
       {panels.length > 0 ? (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
           {panels.map((p) => (
-            <RealPanel key={p.id} panel={p} rows={results[p.id] ?? []} />
+            <RealPanel
+              key={p.id}
+              panel={p}
+              rows={results[p.id] ?? []}
+              onDelete={async () => {
+                if (!confirm(`Delete panel "${p.name}"?`)) return;
+                try {
+                  await panelsApi.remove(p.id);
+                  await reload();
+                  pushToast?.(`Panel "${p.name}" deleted.`);
+                } catch (e) {
+                  pushToast?.((e as Error).message);
+                }
+              }}
+            />
           ))}
         </div>
       ) : (
@@ -823,6 +823,212 @@ export function InsightsPage() {
           </div>
         </div>
       )}
+
+      {newOpen && (
+        <NewPanelDialog
+          existing={panels.map((p) => p.name)}
+          onClose={() => setNewOpen(false)}
+          onCreated={async (name) => {
+            setNewOpen(false);
+            await reload();
+            pushToast?.(`Panel "${name}" created.`);
+          }}
+          onError={(msg) => pushToast?.(msg)}
+        />
+      )}
+    </div>
+  );
+}
+
+const SAMPLE_PANEL_SQL = "SELECT COUNT(*) AS n FROM users;";
+
+function NewPanelDialog({
+  existing,
+  onClose,
+  onCreated,
+  onError,
+}: {
+  existing: string[];
+  onClose: () => void;
+  onCreated: (name: string) => void;
+  onError: (msg: string) => void;
+}) {
+  type Kind = "sql" | "items-aggregate" | "static";
+  type Viz = "counter" | "sparkline" | "bars" | "donut" | "table";
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [kind, setKind] = useState<Kind>("sql");
+  const [viz, setViz] = useState<Viz>("counter");
+  const [sqlText, setSqlText] = useState(SAMPLE_PANEL_SQL);
+  const [busy, setBusy] = useState(false);
+
+  const trimmedName = name.trim();
+  const nameError = trimmedName.length === 0
+    ? "Required."
+    : trimmedName.length > 80
+      ? "Max 80 characters."
+      : existing.includes(trimmedName)
+        ? "A panel with that name already exists."
+        : null;
+
+  const trimmedSql = sqlText.trim().replace(/;$/, "");
+  const sqlError = kind === "sql"
+    ? (trimmedSql.length === 0
+        ? "Required."
+        : !/^select\b/i.test(trimmedSql)
+          ? "Must be a single SELECT — writes are blocked."
+          : /\b(insert|update|delete|drop|alter|create|truncate|grant|revoke|attach|detach)\b/i.test(trimmedSql)
+            ? "Must be a single SELECT — writes are blocked."
+            : null)
+    : null;
+
+  const descError = description.length > 500 ? "Max 500 characters." : null;
+  const valid = !nameError && !sqlError && !descError;
+
+  const submit = async () => {
+    if (!valid || busy) return;
+    setBusy(true);
+    try {
+      await panelsApi.create({
+        name: trimmedName,
+        description: description.trim() || null,
+        kind,
+        sql: kind === "sql" ? sqlText : null,
+        viz,
+        config: null,
+        layout: null,
+      });
+      onCreated(trimmedName);
+    } catch (e) {
+      onError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="dialog-backdrop" onClick={onClose}>
+      <div
+        className="dialog-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-panel-title"
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: 640, maxWidth: "94vw", maxHeight: "90vh", display: "flex", flexDirection: "column" }}
+      >
+        <div className="sheet-header" style={{ borderBottom: "1px solid var(--border)" }}>
+          <div style={{ flex: 1 }}>
+            <h2 id="new-panel-title">New insight panel</h2>
+            <p>Saved as a row in <span className="font-mono">saved_panels</span>. SQL panels run a read-only SELECT against the workspace database.</p>
+          </div>
+          <IconButton icon={I.X} onClick={onClose} title="Close" />
+        </div>
+
+        <div className="dialog-body" style={{ overflow: "auto" }}>
+          <div className="field">
+            <label className="field-label" htmlFor="panel-name">
+              Name <span style={{ color: "var(--destructive)" }}>*</span>
+            </label>
+            <input
+              id="panel-name"
+              className={`input ${nameError && name ? "error" : ""}`}
+              autoFocus
+              autoComplete="off"
+              placeholder="Active users (24h)"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            {nameError && name ? (
+              <div className="field-error"><I.AlertTriangle size={11} />{nameError}</div>
+            ) : (
+              <span className="field-hint">Shown as the panel title on the dashboard.</span>
+            )}
+          </div>
+
+          <div className="field">
+            <label className="field-label" htmlFor="panel-desc">
+              Description <span className="muted" style={{ fontWeight: 400 }}>· optional</span>
+            </label>
+            <input
+              id="panel-desc"
+              className={`input ${descError ? "error" : ""}`}
+              autoComplete="off"
+              placeholder="Distinct users with a session in the last 24h"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+            {descError && <div className="field-error"><I.AlertTriangle size={11} />{descError}</div>}
+          </div>
+
+          <div className="field-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div className="field">
+              <label className="field-label">Kind</label>
+              <Select
+                value={kind}
+                onChange={(v) => setKind(v as Kind)}
+                options={[
+                  { value: "sql", label: "sql", hint: "read-only SELECT against the workspace database" },
+                  { value: "items-aggregate", label: "items-aggregate", hint: "aggregate over a collection (no SQL)" },
+                  { value: "static", label: "static", hint: "config-only panel rendered from props" },
+                ]}
+              />
+            </div>
+            <div className="field">
+              <label className="field-label">Visualization</label>
+              <Select
+                value={viz}
+                onChange={(v) => setViz(v as Viz)}
+                options={[
+                  { value: "counter", label: "counter", hint: "single number" },
+                  { value: "sparkline", label: "sparkline", hint: "filled line over a numeric series" },
+                  { value: "bars", label: "bars", hint: "vertical bars over a numeric series" },
+                  { value: "donut", label: "donut", hint: "donut chart over up to 6 segments" },
+                  { value: "table", label: "table", hint: "small key/value table" },
+                ]}
+              />
+            </div>
+          </div>
+
+          {kind === "sql" && (
+            <div className="field">
+              <label className="field-label" htmlFor="panel-sql">
+                SQL <Badge variant="outline" mono>SELECT only</Badge> <span style={{ color: "var(--destructive)" }}>*</span>
+              </label>
+              <textarea
+                id="panel-sql"
+                className={`textarea font-mono ${sqlError ? "error" : ""}`}
+                style={{ minHeight: 160, fontSize: 12, whiteSpace: "pre" }}
+                spellCheck={false}
+                value={sqlText}
+                onChange={(e) => setSqlText(e.target.value)}
+              />
+              {sqlError ? (
+                <div className="field-error"><I.AlertTriangle size={11} />{sqlError}</div>
+              ) : (
+                <span className="field-hint">
+                  Counter uses the first numeric column of the first row. Sparkline / bars use the first numeric column across all rows. Donut / table pair the first two columns.
+                </span>
+              )}
+            </div>
+          )}
+
+          {kind !== "sql" && (
+            <div className="field" style={{ background: "var(--muted)", padding: 12, borderRadius: "var(--radius-xl)", fontSize: 12.5, color: "var(--muted-foreground)" }}>
+              <I.AlertTriangle size={12} /> {kind === "items-aggregate"
+                ? "items-aggregate panels need a config object — set it from the API once the panel exists."
+                : "static panels render their config object verbatim — set it from the API once the panel exists."}
+            </div>
+          )}
+        </div>
+
+        <div className="sheet-footer">
+          <div className="spacer" />
+          <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button variant="primary" icon={I.Plus} onClick={submit} disabled={!valid || busy}>
+            {busy ? "Creating…" : "Create panel"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -833,11 +1039,11 @@ export function InsightsPage() {
  * /bars/counter, pair the first two columns for table/donut, and fall back
  * to JSON for anything we can't auto-detect.
  */
-function RealPanel({ panel, rows }: { panel: ApiPanel; rows: Record<string, unknown>[] }) {
+function RealPanel({ panel, rows, onDelete }: { panel: ApiPanel; rows: Record<string, unknown>[]; onDelete?: () => void }) {
   const sub = panel.description ?? `${rows.length} rows · ${panel.kind}`;
   if (rows.length === 0) {
     return (
-      <Panel title={panel.name} sub={sub}>
+      <Panel title={panel.name} sub={sub} onDelete={onDelete}>
         <div className="muted" style={{ fontSize: 12, padding: "16px 0" }}>No data yet — run the panel.</div>
       </Panel>
     );
@@ -849,7 +1055,7 @@ function RealPanel({ panel, rows }: { panel: ApiPanel; rows: Record<string, unkn
   if (panel.viz === "counter") {
     const v = numericCol ? Number(rows[0]![numericCol]) : rows.length;
     return (
-      <Panel title={panel.name} sub={sub}>
+      <Panel title={panel.name} sub={sub} onDelete={onDelete}>
         <div className="tabular-nums" style={{ fontSize: 32, fontWeight: 600, padding: "8px 0" }}>
           {v.toLocaleString()}
         </div>
@@ -860,7 +1066,7 @@ function RealPanel({ panel, rows }: { panel: ApiPanel; rows: Record<string, unkn
   if (panel.viz === "sparkline" || panel.viz === "bars") {
     const data = rows.map((r) => Number(r[numericCol ?? cols[0]!]) || 0);
     return (
-      <Panel title={panel.name} sub={sub}>
+      <Panel title={panel.name} sub={sub} onDelete={onDelete}>
         <Sparkline data={data} height={160} fill={panel.viz === "sparkline"} bars={panel.viz === "bars"} />
       </Panel>
     );
@@ -872,7 +1078,7 @@ function RealPanel({ panel, rows }: { panel: ApiPanel; rows: Record<string, unkn
       color: ["var(--primary)", "oklch(0.7 0.18 260)", "oklch(0.78 0.16 75)", "oklch(0.6 0 0)", "oklch(0.7 0.18 22)", "oklch(0.7 0.18 320)"][i]!,
     }));
     return (
-      <Panel title={panel.name} sub={sub}>
+      <Panel title={panel.name} sub={sub} onDelete={onDelete}>
         <div style={{ display: "flex", alignItems: "center", gap: 18, padding: "12px 0" }}>
           <Donut segments={segs} />
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5 }}>
@@ -891,7 +1097,7 @@ function RealPanel({ panel, rows }: { panel: ApiPanel; rows: Record<string, unkn
 
   // Fallback: small table.
   return (
-    <Panel title={panel.name} sub={sub}>
+    <Panel title={panel.name} sub={sub} onDelete={onDelete}>
       <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12 }}>
         {rows.slice(0, 8).map((r, i) => (
           <div key={i} className="font-mono" style={{ display: "flex", justifyContent: "space-between", borderBottom: i < Math.min(rows.length, 8) - 1 ? "1px solid var(--border)" : "none", paddingBottom: 4 }}>
@@ -904,12 +1110,13 @@ function RealPanel({ panel, rows }: { panel: ApiPanel; rows: Record<string, unkn
   );
 }
 
-function Panel({ title, sub, children }: { title: string; sub: string; children: ReactNode }) {
+function Panel({ title, sub, children, onDelete }: { title: string; sub: string; children: ReactNode; onDelete?: () => void }) {
   return (
     <div className="card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
         <span style={{ fontSize: 13, fontWeight: 500 }}>{title}</span>
-        <span className="muted" style={{ fontSize: 11.5 }}>{sub}</span>
+        <span className="muted" style={{ fontSize: 11.5, flex: 1 }}>{sub}</span>
+        {onDelete && <IconButton icon={I.Trash} onClick={onDelete} title="Delete panel" />}
       </div>
       {children}
     </div>

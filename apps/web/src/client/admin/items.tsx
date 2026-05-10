@@ -32,8 +32,12 @@ export function statusVariant(s: string) {
   return "outline" as const;
 }
 
-export function authorById(id: string) {
-  return MOCK.POST_AUTHORS.find((a) => a.id === id) || { name: id, initials: id.slice(0, 2).toUpperCase() };
+export function authorById(id: string | null | undefined) {
+  if (!id) return { name: "—", initials: "—" };
+  return MOCK.POST_AUTHORS.find((a) => a.id === id) || {
+    name: id,
+    initials: String(id).slice(0, 2).toUpperCase() || "—",
+  };
 }
 
 export function fmtDate(iso: string | null | undefined) {
@@ -258,6 +262,17 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit 
     );
   };
 
+  // Detect which optional columns are actually present on the rows. Real
+  // c_<slug> tables won't have author/word_count/view_count unless the user
+  // defined them. We always render Title + Status (synthesized from common
+  // fields if absent) and Updated. Optional columns stay rendered so the
+  // design layout is preserved, but show "—" when the field is missing.
+  const has = {
+    author: rows.some((r) => r.author != null),
+    words: rows.some((r) => r.word_count != null),
+    views: rows.some((r) => r.view_count != null),
+  };
+
   return (
     <table className="table">
       <thead>
@@ -267,9 +282,9 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit 
           </th>
           <SortHead id="title" label="Title" />
           <SortHead id="status" label="Status" />
-          <th style={{ width: 110 }}>Author</th>
-          <SortHead id="word_count" label="Words" num />
-          <SortHead id="view_count" label="Views" num />
+          {has.author && <th style={{ width: 110 }}>Author</th>}
+          {has.words && <SortHead id="word_count" label="Words" num />}
+          {has.views && <SortHead id="view_count" label="Views" num />}
           <SortHead id="updated_at" label="Updated" />
           <th style={{ width: 60, textAlign: "right" }}></th>
         </tr>
@@ -277,6 +292,11 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit 
       <tbody>
         {rows.map((r) => {
           const a = authorById(r.author);
+          // Fall back to slug/name/id for the display label so even
+          // collections without a `title` column render readable rows.
+          const displayTitle = r.title ?? r.name ?? r.slug ?? r.id ?? "—";
+          const displaySlug = r.slug ?? r.id ?? "";
+          const displayStatus = r.status ?? "draft";
           return (
             <tr key={r.id} data-selected={selected.has(r.id)} onClick={() => onEdit(r)}>
               <td onClick={(e) => e.stopPropagation()}>
@@ -284,25 +304,31 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit 
               </td>
               <td>
                 <div style={{ display: "flex", flexDirection: "column" }}>
-                  <span style={{ fontWeight: 500, color: "var(--foreground)" }}>{r.title}</span>
-                  <span className="font-mono" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>/{r.slug}</span>
+                  <span style={{ fontWeight: 500, color: "var(--foreground)" }}>{String(displayTitle)}</span>
+                  {displaySlug && <span className="font-mono" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>/{String(displaySlug).slice(0, 24)}</span>}
                 </div>
               </td>
               <td>
-                <Badge variant={statusVariant(r.status)}>
-                  {r.status === "published" && <span style={{ width: 6, height: 6, borderRadius: 999, background: "currentColor", display: "inline-block", marginRight: 2 }} />}
-                  {r.status}
+                <Badge variant={statusVariant(displayStatus)}>
+                  {displayStatus === "published" && <span style={{ width: 6, height: 6, borderRadius: 999, background: "currentColor", display: "inline-block", marginRight: 2 }} />}
+                  {displayStatus}
                 </Badge>
               </td>
-              <td>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div className="avatar" style={{ width: 22, height: 22, fontSize: 10 }}>{a.initials}</div>
-                  <span className="font-mono" style={{ fontSize: 12 }}>{a.name}</span>
-                </div>
-              </td>
-              <td className="tabular-nums" style={{ textAlign: "right" }}>{r.word_count}</td>
-              <td className="tabular-nums" style={{ textAlign: "right", color: r.view_count ? "var(--foreground)" : "var(--muted-foreground)" }}>{r.view_count ? r.view_count.toLocaleString() : "—"}</td>
-              <td style={{ color: "var(--muted-foreground)" }} className="font-mono tabular-nums">{fmtDate(r.updated_at)}</td>
+              {has.author && (
+                <td>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div className="avatar" style={{ width: 22, height: 22, fontSize: 10 }}>{a.initials}</div>
+                    <span className="font-mono" style={{ fontSize: 12 }}>{a.name}</span>
+                  </div>
+                </td>
+              )}
+              {has.words && (
+                <td className="tabular-nums" style={{ textAlign: "right" }}>{r.word_count ?? "—"}</td>
+              )}
+              {has.views && (
+                <td className="tabular-nums" style={{ textAlign: "right", color: r.view_count ? "var(--foreground)" : "var(--muted-foreground)" }}>{r.view_count ? Number(r.view_count).toLocaleString() : "—"}</td>
+              )}
+              <td style={{ color: "var(--muted-foreground)" }} className="font-mono tabular-nums">{fmtDate(r.updated_at ?? r.updatedAt)}</td>
               <td onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}>
                 <IconButton icon={I.Pencil} onClick={() => onEdit(r)} title="Edit" />
               </td>

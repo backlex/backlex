@@ -52,6 +52,41 @@ const execCommand = (sql: string, opts: { json?: boolean } = {}) => {
   return { ok: r.status === 0, stdout: r.stdout ?? "", stderr: r.stderr ?? "" };
 };
 
+// Parse a wrangler `--json` SELECT result. Returns null when the payload
+// isn't recognisable (caller decides what to do — usually treat as empty).
+const parseLedgerHashes = (stdout: string): Set<string> | null => {
+  const out = new Set<string>();
+  try {
+    const parsed = JSON.parse(stdout) as unknown;
+    const flatten = (v: unknown): unknown[] =>
+      Array.isArray(v) ? v.flatMap(flatten) : [v];
+    let sawResults = false;
+    for (const item of flatten(parsed)) {
+      if (item && typeof item === "object" && "results" in item) {
+        sawResults = true;
+        const rows = (item as { results?: { hash?: string }[] }).results ?? [];
+        for (const row of rows) if (row?.hash) out.add(row.hash);
+      }
+    }
+    return sawResults ? out : null;
+  } catch {
+    return null;
+  }
+};
+
+const readLedger = (): Set<string> => {
+  const r = execCommand(`SELECT hash FROM __drizzle_migrations;`, { json: true });
+  // Don't trust the exit code: wrangler frequently exits ≠ 0 on remote D1
+  // (stderr noise like "fetch failed") even when the SELECT itself succeeded
+  // and stdout carries the JSON payload. Try to parse stdout regardless.
+  const parsed = parseLedgerHashes(r.stdout);
+  if (parsed) return parsed;
+  if (!r.ok && r.stderr) {
+    console.warn(`  (could not parse ledger; wrangler stderr: ${r.stderr.trim().split("\n")[0]})`);
+  }
+  return new Set();
+};
+
 // Bootstrap drizzle's tracking table — schema must match what
 // drizzle-orm/bun-sqlite/migrator creates so the admin /migrations endpoint
 // can read both.
@@ -64,32 +99,12 @@ execCommand(
 );
 
 // Pull the set of already-recorded hashes so we can skip them.
-const applied = new Set<string>();
-{
-  const r = execCommand(`SELECT hash FROM __drizzle_migrations;`, { json: true });
-  if (r.ok) {
-    // wrangler's --json output is `[ { results: [{hash}], ... } ]`; on remote
-    // it sometimes wraps in an extra array. Be lenient.
-    try {
-      const parsed = JSON.parse(r.stdout) as unknown;
-      const flatten = (v: unknown): unknown[] =>
-        Array.isArray(v) ? v.flatMap(flatten) : [v];
-      for (const item of flatten(parsed)) {
-        if (item && typeof item === "object" && "results" in item) {
-          const rows = (item as { results?: { hash?: string }[] }).results ?? [];
-          for (const row of rows) if (row?.hash) applied.add(row.hash);
-        }
-      }
-    } catch {
-      // ignore — treat as empty ledger
-    }
-  }
-}
+const applied = readLedger();
 
 console.log(`▸ Applying ${order.length} migration(s) to ${remote ? "remote" : "local"} D1 "${dbName}"`);
 console.log(`  ${applied.size} already recorded; ${order.length - applied.size} pending.`);
 
-let appliedNow = 0;
+const attemptedHashes: string[] = [];
 for (const tag of order) {
   const file = resolve(root, tag, "migration.sql");
   const sqlText = readFileSync(file, "utf8");
@@ -107,13 +122,21 @@ for (const tag of order) {
     console.warn(`    (wrangler exit ≠ 0 — likely partial replay, recording hash anyway)`);
   }
   const ts = Date.now();
-  const ins = execCommand(
+  // Don't gate on exit status here either — wrangler can exit ≠ 0 even when
+  // the INSERT was committed. We re-read the ledger after the loop and
+  // report the actual recorded delta.
+  execCommand(
     `INSERT INTO __drizzle_migrations (hash, created_at) VALUES ('${hash}', ${ts});`,
   );
-  if (!ins.ok) {
-    console.warn(`    (failed to record hash for ${tag} — admin Migrations page will not show it)`);
-  } else {
-    appliedNow += 1;
-  }
+  attemptedHashes.push(hash);
 }
-console.log(`✓ Done — ${appliedNow} new migration(s) recorded.`);
+
+// Verify the recorded delta by re-reading the ledger once. This is the
+// authoritative answer — a non-zero wrangler exit during INSERT is not.
+const after = readLedger();
+const newlyRecorded = attemptedHashes.filter((h) => after.has(h)).length;
+const missing = attemptedHashes.length - newlyRecorded;
+console.log(`✓ Done — ${newlyRecorded} new migration(s) recorded.`);
+if (missing > 0) {
+  console.warn(`  (${missing} hash(es) attempted but not visible in ledger — admin Migrations page will be incomplete)`);
+}

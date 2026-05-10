@@ -564,7 +564,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                       {pageRows.length === 0 ? (
                         <EmptyItems onCreate={openCreate} slug={activeCollection ?? undefined} />
                       ) : (
-                        <ItemsTable rows={pageRows} selected={selected} setSelected={setSelected} sort={sort} setSort={setSort} onEdit={openEdit} />
+                        <ItemsTable rows={pageRows} selected={selected} setSelected={setSelected} sort={sort} setSort={setSort} onEdit={openEdit} schema={schemaState} />
                       )}
                       {pageRows.length > 0 && (
                         <div className="pagination">

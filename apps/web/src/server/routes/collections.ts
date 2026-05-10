@@ -37,7 +37,19 @@ const FieldSchema = z
       .optional(),
     interface: z.enum(["dropdown", "richtext", "color"]).optional(),
     options: z
-      .object({ values: z.array(z.string()).optional() })
+      .object({
+        values: z.array(z.string()).optional(),
+        choices: z
+          .array(
+            z.object({
+              value: z.string().min(1),
+              label: z.string().optional(),
+              color: z.string().optional(),
+              icon: z.string().optional(),
+            }),
+          )
+          .optional(),
+      })
       .optional(),
     validation: z
       .object({

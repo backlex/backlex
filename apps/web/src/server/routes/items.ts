@@ -422,7 +422,7 @@ export const itemsRoutes = new Hono<AppBindings>()
       ctx.env,
       `items:${collection.slug}`,
       { event: "created", data: out },
-      { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx },
+      { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
     );
     const meta = requestMeta(c.req.raw);
     await recordActivity(
@@ -493,7 +493,7 @@ export const itemsRoutes = new Hono<AppBindings>()
       ctx.env,
       `items:${collection.slug}`,
       { event: "updated", data: refreshedRow },
-      { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx },
+      { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
     );
     const meta = requestMeta(c.req.raw);
     await recordActivity(
@@ -550,7 +550,7 @@ export const itemsRoutes = new Hono<AppBindings>()
       ctx.env,
       `items:${collection.slug}`,
       { event: "deleted", data: oldRow },
-      { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx },
+      { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
     );
     const meta = requestMeta(c.req.raw);
     await recordActivity(
@@ -616,7 +616,7 @@ export const itemsRoutes = new Hono<AppBindings>()
       ctx.env,
       `items:${collection.slug}`,
       { event: unpublish ? "unpublished" : "published", data: after },
-      { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx },
+      { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
     );
     return c.json({ data: after });
   });

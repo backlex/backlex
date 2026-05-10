@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { AppError, SYSTEM_ROLES } from "@workeros/core";
 import * as pg from "@workeros/db/pg";
@@ -31,6 +31,12 @@ const requireAdmin = (auth: { roles: string[] }) => {
   }
 };
 
+const requireTenant = (c: { get: (k: string) => any }): string => {
+  const tenantId = c.get("auth")?.tenantId as string | undefined;
+  if (!tenantId) throw new AppError("UNAUTHORIZED", "Active tenant required");
+  return tenantId;
+};
+
 export const functionsRoutes = new Hono<AppBindings>()
   // Invoke must come before the admin gate so non-admin users can call functions
   // they're allowed to (but for v1 invoke is admin-only too — defer per-function ACL).
@@ -38,7 +44,8 @@ export const functionsRoutes = new Hono<AppBindings>()
     const ctx = c.get("ctx");
     const auth = c.get("auth");
     requireAdmin(auth);
-    const fn = await findByName(ctx, c.req.param("name"));
+    const tenantId = requireTenant(c);
+    const fn = await findByName(ctx, tenantId, c.req.param("name"));
     if (!fn) throw new AppError("NOT_FOUND", "Function not found");
     if (fn.trigger !== "http") {
       throw new AppError("BAD_REQUEST", "Function trigger is not 'http'");
@@ -81,17 +88,23 @@ export const functionsRoutes = new Hono<AppBindings>()
   })
   .get("/", async (c) => {
     const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
     const t = tableFor(ctx.dialect);
-    const rows = await (ctx.db as any).select().from(t);
+    const rows = await (ctx.db as any)
+      .select()
+      .from(t)
+      .where(eq(t.tenantId, tenantId));
     return c.json({ data: rows });
   })
   .post("/", async (c) => {
     const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
     const body = Input.parse(await c.req.json());
     const t = tableFor(ctx.dialect);
     const id = crypto.randomUUID();
     await (ctx.db as any).insert(t).values({
       id,
+      tenantId,
       name: body.name,
       trigger: body.trigger,
       pattern: body.pattern ?? null,
@@ -114,6 +127,7 @@ export const functionsRoutes = new Hono<AppBindings>()
   })
   .patch("/:id", async (c) => {
     const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
     const body = Input.partial().parse(await c.req.json());
     const t = tableFor(ctx.dialect);
     await (ctx.db as any)
@@ -127,14 +141,17 @@ export const functionsRoutes = new Hono<AppBindings>()
         ...(body.active !== undefined ? { active: body.active } : {}),
         updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
       })
-      .where(eq(t.id, c.req.param("id")));
+      .where(and(eq(t.id, c.req.param("id")), eq(t.tenantId, tenantId)));
     await logActivity(c, { action: "update", collection: "system_functions", itemId: c.req.param("id"), payload: body });
     return c.json({ ok: true });
   })
   .delete("/:id", async (c) => {
     const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
     const t = tableFor(ctx.dialect);
-    await (ctx.db as any).delete(t).where(eq(t.id, c.req.param("id")));
+    await (ctx.db as any)
+      .delete(t)
+      .where(and(eq(t.id, c.req.param("id")), eq(t.tenantId, tenantId)));
     await logActivity(c, { action: "delete", collection: "system_functions", itemId: c.req.param("id") });
     return c.json({ ok: true });
   });

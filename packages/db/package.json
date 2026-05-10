@@ -14,8 +14,9 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "generate:pg": "drizzle-kit generate --config=drizzle.pg.config.ts",
-    "generate:sqlite": "drizzle-kit generate --config=drizzle.sqlite.config.ts",
+    "generate:pg": "drizzle-kit generate --config=drizzle.pg.config.ts && bun run scripts/build-manifest.ts",
+    "generate:sqlite": "drizzle-kit generate --config=drizzle.sqlite.config.ts && bun run scripts/build-manifest.ts",
+    "manifest": "bun run scripts/build-manifest.ts",
     "migrate:pg": "bun run src/pg/migrate.ts",
     "migrate:sqlite": "bun run src/sqlite/migrate.ts",
     "migrate:d1": "bun run src/sqlite/migrate-d1.ts",

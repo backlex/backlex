@@ -346,8 +346,9 @@ export const dbAdminApi = {
         body: JSON.stringify({ sql }),
       },
     ),
+  tables: () => api<Envelope<{ name: string; rows: number }[]>>(`/api/admin/db/tables`),
   migrations: () =>
-    api<Envelope<{ id: string | number; hash: string; created_at: string | number; applied: boolean }[]>>(`/api/admin/db/migrations`),
+    api<Envelope<{ id: string | number; hash: string; created_at: string | number; tag: string | null; applied: boolean }[]>>(`/api/admin/db/migrations`),
   backups: () => api<Envelope<ApiBackup[]>>(`/api/admin/db/backups`),
   backupNow: (label?: string) =>
     api<Envelope<{ id: string; storageKey: string; status: string }>>(`/api/admin/db/backups/now`, {

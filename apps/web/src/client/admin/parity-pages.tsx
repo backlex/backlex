@@ -36,6 +36,22 @@ const fmtRelative = (iso: string | null): string => {
 
 export function DatabasePage({ pushToast, adapter }: { pushToast: (m: string) => void; adapter: AdapterId }) {
   const [tab, setTab] = useState("sql");
+  const [migCount, setMigCount] = useState<number | null>(null);
+  const [backupCount, setBackupCount] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [m, b] = await Promise.all([dbAdminApi.migrations(), dbAdminApi.backups()]);
+        if (cancelled) return;
+        setMigCount(Array.isArray(m.data) ? m.data.length : 0);
+        setBackupCount(Array.isArray(b.data) ? b.data.length : 0);
+      } catch {
+        // leave counts null — tab badges hide when null
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader
@@ -45,8 +61,14 @@ export function DatabasePage({ pushToast, adapter }: { pushToast: (m: string) =>
       />
       <div className="tabs">
         <button className="tab" data-active={tab === "sql"} onClick={() => setTab("sql")}><I.Code size={13} />SQL editor</button>
-        <button className="tab" data-active={tab === "migrations"} onClick={() => setTab("migrations")}><I.History size={13} />Migrations <span className="count">12</span></button>
-        <button className="tab" data-active={tab === "backups"} onClick={() => setTab("backups")}><I.Save size={13} />Backups <span className="count">8</span></button>
+        <button className="tab" data-active={tab === "migrations"} onClick={() => setTab("migrations")}>
+          <I.History size={13} />Migrations
+          {migCount !== null && <span className="count">{migCount}</span>}
+        </button>
+        <button className="tab" data-active={tab === "backups"} onClick={() => setTab("backups")}>
+          <I.Save size={13} />Backups
+          {backupCount !== null && <span className="count">{backupCount}</span>}
+        </button>
       </div>
       {tab === "sql" && <SqlEditor pushToast={pushToast} />}
       {tab === "migrations" && <Migrations pushToast={pushToast} />}
@@ -76,31 +98,9 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
     let cancelled = false;
     void (async () => {
       try {
-        // _cf_METADATA is a Cloudflare D1 reserved table that rejects
-        // user-issued SELECTs — exclude it alongside sqlite_* and drizzle's
-        // migration tracker so the COUNT(*) loop below doesn't error out.
-        const r = await dbAdminApi.runSql(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '\\_\\_drizzle%' AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\' ORDER BY name;",
-        );
+        const r = await dbAdminApi.tables();
         if (cancelled) return;
-        const names = (r.data?.[0]?.rows ?? []) as { name: string }[];
-        if (!Array.isArray(names) || names.length === 0) return;
-        // Best-effort row count per table — small DB so we run a COUNT per
-        // table in parallel; cap at 50 tables to keep the panel snappy.
-        const limited = names.slice(0, 50);
-        const counts = await Promise.allSettled(
-          limited.map(async (t) => {
-            const c = await dbAdminApi.runSql(`SELECT COUNT(*) AS n FROM "${t.name}";`);
-            const row = (c.data?.[0]?.rows?.[0] ?? {}) as { n?: number };
-            return { name: t.name, rows: Number(row.n ?? 0) };
-          }),
-        );
-        if (cancelled) return;
-        setTables(
-          counts.map((c, i) =>
-            c.status === "fulfilled" ? c.value : { name: limited[i]!.name, rows: 0 },
-          ),
-        );
+        if (Array.isArray(r.data)) setTables(r.data);
       } catch {
         // leave tables empty
       }
@@ -200,12 +200,11 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
 }
 
 function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
-  type Mig = { id: string; applied: boolean; t: string; author: string; sql: string };
+  type Mig = { hash: string; tag: string | null; applied: boolean; t: string };
   const [migs, setMigs] = useState<Mig[]>([]);
   const [active, setActive] = useState<Mig | null>(null);
-  // Auto-select first when migs load
   useEffect(() => {
-    if (active && migs.some((m) => m.id === active.id)) return;
+    if (active && migs.some((m) => m.hash === active.hash)) return;
     setActive(migs[0] ?? null);
   }, [migs]);
   useEffect(() => {
@@ -214,14 +213,13 @@ function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
       try {
         const r = await dbAdminApi.migrations();
         if (cancelled || !Array.isArray(r.data) || r.data.length === 0) return;
-        const mapped = r.data.map((m) => ({
-          id: String(m.hash ?? m.id),
+        const mapped: Mig[] = r.data.map((m) => ({
+          hash: String(m.hash ?? m.id),
+          tag: m.tag ?? null,
           applied: true,
           t: typeof m.created_at === "number"
             ? new Date(m.created_at).toISOString().replace("T", " ").slice(0, 16)
             : String(m.created_at),
-          author: "system",
-          sql: "",
         }));
         setMigs(mapped);
         setActive(mapped[0] ?? null);
@@ -237,35 +235,41 @@ function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
         <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 12, fontWeight: 500 }}>Migrations</span>
           <div className="spacer" />
-          <Button size="sm" variant="primary" icon={I.Plus} onClick={() => pushToast("New migration drafted.")}>New</Button>
+          <span className="muted font-mono" style={{ fontSize: 11 }}>{migs.length}</span>
         </div>
         {migs.length === 0 && (
           <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>No migrations applied yet.</div>
         )}
         {migs.map((m) => (
-          <div key={m.id} onClick={() => setActive(m)} className="schema-row" style={{ gridTemplateColumns: "20px 1fr 70px", cursor: "pointer", background: active?.id === m.id ? "var(--accent)" : "transparent" }}>
-            <span>{m.applied ? <I.Check size={13} style={{ color: "oklch(0.55 0.16 145)" }} /> : <I.Clock size={13} className="muted" />}</span>
+          <div key={m.hash} onClick={() => setActive(m)} className="schema-row" style={{ gridTemplateColumns: "20px 1fr 70px", cursor: "pointer", background: active?.hash === m.hash ? "var(--accent)" : "transparent" }}>
+            <span><I.Check size={13} style={{ color: "oklch(0.55 0.16 145)" }} /></span>
             <div style={{ minWidth: 0 }}>
-              <div className="font-mono" style={{ fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.id}</div>
-              <div className="muted" style={{ fontSize: 11 }}>{m.t} · {m.author}</div>
+              <div className="font-mono" style={{ fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {m.tag ?? m.hash.slice(0, 12)}
+              </div>
+              <div className="muted" style={{ fontSize: 11 }}>{m.t}</div>
             </div>
-            <Badge variant={m.applied ? "default" : "secondary"}>{m.applied ? "applied" : "pending"}</Badge>
+            <Badge variant="default">applied</Badge>
           </div>
         ))}
       </div>
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         {!active ? (
-          <div className="muted" style={{ padding: 36, textAlign: "center", fontSize: 13 }}>Pick a migration to inspect its SQL.</div>
+          <div className="muted" style={{ padding: 36, textAlign: "center", fontSize: 13 }}>Pick a migration to inspect its details.</div>
         ) : (
-        <>
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span className="font-mono" style={{ fontSize: 12, fontWeight: 500 }}>{active.id}</span>
-          <div className="spacer" />
-          {!active.applied && <Button size="sm" variant="primary" icon={I.Play} onClick={() => pushToast(`Applied ${active.id}.`)}>Apply</Button>}
-          {active.applied && <Button size="sm" variant="outline" icon={I.History} onClick={() => pushToast("Rollback queued.")}>Rollback</Button>}
-        </div>
-        <div className="alter-preview" style={{ borderRadius: 0, border: 0, fontSize: 12, padding: 16, minHeight: 140 }}>{active.sql || "-- this migration has been collapsed; see source repo"}</div>
-        </>
+          <>
+            <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span className="font-mono" style={{ fontSize: 12, fontWeight: 500 }}>{active.tag ?? active.hash.slice(0, 12)}</span>
+            </div>
+            <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8, fontSize: 12 }}>
+              <div><span className="muted">Folder tag</span><div className="font-mono">{active.tag ?? <em className="muted">unknown — manifest out of sync, run <code>bun run --cwd packages/db manifest</code></em>}</div></div>
+              <div><span className="muted">Hash</span><div className="font-mono" style={{ wordBreak: "break-all" }}>{active.hash}</div></div>
+              <div><span className="muted">Applied at</span><div className="font-mono">{active.t}</div></div>
+              <div className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>
+                Migrations are applied via <code>bun run db:migrate:&lt;dialect&gt;</code> at deploy time. Drizzle tracks them by content hash; the folder tag comes from the build-time manifest. Rollbacks are not supported — write a forward migration instead.
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

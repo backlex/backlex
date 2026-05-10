@@ -210,6 +210,23 @@ export const functions = sqliteTable(
   ],
 );
 
+export const scheduledTasks = sqliteTable(
+  "scheduled_tasks",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    flowId: text("flow_id"),
+    payload: text("payload", { mode: "json" }).$type<unknown>().notNull(),
+    runAt: integer("run_at").notNull(),
+    claimedAt: integer("claimed_at"),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    index("scheduled_tasks_run_idx").on(t.runAt, t.claimedAt),
+    index("scheduled_tasks_flow_idx").on(t.flowId),
+  ],
+);
+
 export const flows = sqliteTable(
   "flows",
   {
@@ -218,6 +235,7 @@ export const flows = sqliteTable(
     name: text("name").notNull(),
     trigger: text("trigger").notNull(),
     operations: text("operations", { mode: "json" }).$type<unknown[]>().notNull(),
+    layout: text("layout", { mode: "json" }).$type<unknown>(),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),

@@ -4,41 +4,46 @@ import { useEffect, useRef, useState } from "react";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { Badge, Button, IconButton, Switch } from "./ui";
 import { Select } from "./select";
+import { emailTemplatesApi, functionsApi, collectionsApi, type ApiEmailTemplate, type ApiFunction, type ApiCollection } from "./api";
 
+// `pending` marks steps the runtime doesn't execute yet. The compiler will
+// drop them with a warning, so the palette disables the entries entirely
+// until the matching backend phase lands (see flow-graph.ts PHASE_PENDING).
 const TRIGGERS = [
   { id: "item.created", label: "Item created", desc: "Fires when a row is inserted in a collection", icon: "Plus", tag: "event" },
   { id: "item.updated", label: "Item updated", desc: "Fires when a row is updated", icon: "Pencil", tag: "event" },
   { id: "item.deleted", label: "Item deleted", desc: "Fires when a row is deleted", icon: "Trash", tag: "event" },
   { id: "cron", label: "Schedule (cron)", desc: "Run on a recurring schedule", icon: "Clock", tag: "cron" },
-  { id: "webhook", label: "Incoming webhook", desc: "Trigger via signed POST", icon: "Webhook", tag: "http" },
+  { id: "webhook", label: "Incoming webhook", desc: "POST /api/webhook/:flowId fires this flow", icon: "Webhook", tag: "http" },
   { id: "auth.signup", label: "User signed up", desc: "Fires after sign-up succeeds", icon: "Users", tag: "auth" },
 ];
 const ACTIONS = [
-  { id: "email", label: "Send email", desc: "Resend / SES / console", icon: "Mail" },
-  { id: "webhook", label: "HTTP request", desc: "Call an external URL", icon: "Globe" },
-  { id: "fn", label: "Run function", desc: "Invoke a workeros function", icon: "Function" },
+  { id: "email", label: "Send email", desc: "Templated mail via Resend / console", icon: "Mail" },
+  { id: "webhook", label: "Webhook (POST)", desc: "Forward the event to a URL", icon: "Webhook" },
+  { id: "request", label: "HTTP request", desc: "GET/POST/PUT — read response into $last", icon: "Globe" },
+  { id: "log", label: "Log", desc: "Write a line to the server log", icon: "Function" },
+  { id: "notification", label: "In-app notification", desc: "Drop a row in the notifications table", icon: "Bell" },
+  { id: "transform", label: "Transform", desc: "Compute a value and pipe it into $last", icon: "Function" },
+  { id: "run-script", label: "Run script", desc: "Sandboxed JS — full ctx, `data`, `last`", icon: "Code" },
+  { id: "fn", label: "Run function", desc: "Invoke a saved workeros function", icon: "Function" },
   { id: "item.create", label: "Create item", desc: "Insert into a collection", icon: "Plus" },
   { id: "item.update", label: "Update item", desc: "Patch an existing row", icon: "Pencil" },
-  { id: "slack", label: "Slack message", desc: "Post to a channel", icon: "Webhook" },
-  { id: "delay", label: "Delay", desc: "Wait before continuing", icon: "Clock" },
+  { id: "slack", label: "Slack message", desc: "Post to a channel", icon: "Webhook", pending: "phase 2" },
+  { id: "delay", label: "Delay", desc: "Wait inline (≤ 30s) or persist to scheduler", icon: "Clock" },
 ];
 const CONTROLS = [
   { id: "if", label: "If / else", desc: "Branch on a filter DSL", icon: "Filter" },
-  { id: "foreach", label: "For each", desc: "Iterate over an array", icon: "Braces" },
-  { id: "try", label: "Try / catch", desc: "Recover from failures", icon: "Shield" },
+  { id: "foreach", label: "For each", desc: "Iterate over an array", icon: "Braces", pending: "future" },
+  { id: "try", label: "Try / catch", desc: "Recover from failures", icon: "Shield", pending: "future" },
 ];
 
+// New-flow seed: just a trigger node. The user adds steps via the +
+// affordance on the trigger's outgoing port. Avoid mock action nodes —
+// they confuse the save validator and the compile path.
 const STARTER_NODES = [
-  { id: "n1", kind: "trigger", type: "item.updated", x: 60, y: 160, config: { collection: "posts", when: '{ status: { _eq: "published" } }' } },
-  { id: "n2", kind: "control", type: "if", x: 320, y: 160, config: { test: 'item.tags _contains "release"' } },
-  { id: "n3", kind: "action", type: "fn", x: 580, y: 80, config: { fn: "reindex", async: true, retries: 3 } },
-  { id: "n4", kind: "action", type: "email", x: 580, y: 240, config: { to: "{{ item.author.email }}", template: "post-published" } },
+  { id: "n1", kind: "trigger", type: "item.updated", x: 60, y: 160, config: { collection: "posts", when: "" } },
 ];
-const STARTER_EDGES = [
-  { from: "n1", to: "n2" },
-  { from: "n2", to: "n3", branch: "true" },
-  { from: "n2", to: "n4", branch: "false" },
-];
+const STARTER_EDGES: any[] = [];
 
 function nodeMeta(n: any) {
   if (n.kind === "trigger") return TRIGGERS.find((t) => t.id === n.type);
@@ -67,6 +72,30 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const [drag, setDrag] = useState<{ id: string; dx: number; dy: number } | null>(null);
+  // Live email-template catalog. The inspector picks templateKey from this so
+  // the same key the flow runtime resolves at execution is what the admin saw.
+  const [emailTemplates, setEmailTemplates] = useState<ApiEmailTemplate[]>([]);
+  const [fns, setFns] = useState<ApiFunction[]>([]);
+  const [collections, setCollections] = useState<ApiCollection[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [tpls, funcs, cols] = await Promise.all([
+          emailTemplatesApi.list().catch(() => ({ data: [] as ApiEmailTemplate[] })),
+          functionsApi.list().catch(() => ({ data: [] as ApiFunction[] })),
+          collectionsApi.list().catch(() => ({ data: [] as ApiCollection[] })),
+        ]);
+        if (cancelled) return;
+        if (Array.isArray(tpls.data)) setEmailTemplates(tpls.data);
+        if (Array.isArray(funcs.data)) setFns(funcs.data);
+        if (Array.isArray(cols.data)) setCollections(cols.data);
+      } catch {
+        // keep empty — UI falls back to "no items" hints
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const selected = nodes.find((n) => n.id === selectedId);
 
@@ -143,7 +172,14 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
           <Button variant="outline" size="sm" icon={I.Zap} onClick={() => setTestOpen(true)}>Test run</Button>
           <Switch checked={enabled} onChange={setEnabled} />
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" size="sm" icon={I.Check} onClick={() => { onSave({ id: initial?.id, name, enabled, nodes, edges }); pushToast("Flow saved."); }}>Save flow</Button>
+          <Button
+            variant="primary"
+            size="sm"
+            icon={I.Check}
+            disabled={nodes.filter((n) => n.kind !== "trigger").length === 0}
+            title={nodes.filter((n) => n.kind !== "trigger").length === 0 ? "Add at least one step before saving" : undefined}
+            onClick={() => onSave({ id: initial?.id, name, enabled, nodes, edges })}
+          >Save flow</Button>
         </div>
 
         <div className="fb-body">
@@ -251,7 +287,10 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
                           <><span className="muted">fn:</span> <span className="font-mono">{n.config.fn}</span>{n.config.async && <span className="muted"> · async</span>}</>
                         )}
                         {n.kind === "action" && n.type === "email" && (
-                          <><span className="muted">to</span> <span className="font-mono">{n.config.to}</span></>
+                          <>
+                            <span className="muted">to</span> <span className="font-mono">{n.config.to}</span>
+                            {n.config.templateKey && <span className="muted"> · tpl <span className="font-mono">{n.config.templateKey}</span></span>}
+                          </>
                         )}
                         {n.kind === "action" && n.type === "webhook" && (
                           <><span className="muted">POST</span> <span className="font-mono">{n.config.url || "https://…"}</span></>
@@ -280,7 +319,13 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
             </div>
           </div>
 
-          <FlowInspector node={selected} onChange={(patch: any) => selected && updateNode(selected.id, patch)} />
+          <FlowInspector
+            node={selected}
+            onChange={(patch: any) => selected && updateNode(selected.id, patch)}
+            emailTemplates={emailTemplates}
+            fns={fns}
+            collections={collections}
+          />
         </div>
       </div>
 
@@ -292,17 +337,23 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
 
 function defaultConfigFor(kind: string, type: string) {
   if (kind === "trigger") return { collection: "posts", when: "" };
-  if (kind === "control" && type === "if") return { test: 'item.status _eq "published"' };
-  if (kind === "action" && type === "email") return { to: "{{ item.author.email }}", template: "default", subject: "Notification" };
-  if (kind === "action" && type === "fn") return { fn: "noop", async: true, retries: 3 };
-  if (kind === "action" && type === "webhook") return { url: "https://api.example.com/hook", method: "POST", body: "{{ event }}" };
+  if (kind === "control" && type === "if") return { test: 'status _eq "published"' };
+  if (kind === "action" && type === "email") return { to: "{{ data.author.email }}", templateKey: "", subject: "", text: "" };
+  if (kind === "action" && type === "webhook") return { url: "https://api.example.com/hook", method: "POST", body: "" };
+  if (kind === "action" && type === "request") return { url: "https://api.example.com/data", method: "GET", body: "" };
+  if (kind === "action" && type === "log") return { message: "{{ data }}" };
+  if (kind === "action" && type === "notification") return { title: "New event", body: "", url: "", userId: null };
+  if (kind === "action" && type === "transform") return { value: "" };
+  if (kind === "action" && type === "run-script") return { code: "// data, last, ctx, auth available\nreturn data;", timeoutMs: 5000 };
+  if (kind === "action" && type === "fn") return { fn: "", async: true, retries: 3 };
   if (kind === "action" && type === "delay") return { duration: "5m" };
-  if (kind === "action" && type === "item.create") return { collection: "audit_log", data: "{{ event.data }}" };
-  if (kind === "action" && type === "slack") return { channel: "#general", text: "New event: {{ event.type }}" };
+  if (kind === "action" && type === "item.create") return { collection: "", data: "{{ data }}" };
+  if (kind === "action" && type === "item.update") return { collection: "", id: "{{ data.id }}", data: "{{ data }}" };
+  if (kind === "action" && type === "slack") return { channel: "#general", text: "New event" };
   return {};
 }
 
-function FlowInspector({ node, onChange }: { node?: any; onChange: (patch: any) => void }) {
+function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collections = [] }: { node?: any; onChange: (patch: any) => void; emailTemplates?: ApiEmailTemplate[]; fns?: ApiFunction[]; collections?: ApiCollection[] }) {
   if (!node) return (
     <div className="fb-inspector">
       <div className="fb-inspector-empty">
@@ -328,7 +379,7 @@ function FlowInspector({ node, onChange }: { node?: any; onChange: (patch: any) 
           <>
             <div className="field">
               <label className="field-label">Event</label>
-              <Select value={node.type} onChange={(v) => onChange({ type: v })} options={TRIGGERS.map((t) => ({ value: t.id, label: t.label }))} />
+              <Select value={node.type} onChange={(v) => onChange({ type: v })} options={TRIGGERS.map((t) => ({ value: t.id, label: t.pending ? `${t.label} (${t.pending})` : t.label }))} />
             </div>
             {node.type.startsWith("item.") && (
               <div className="field">
@@ -366,43 +417,111 @@ function FlowInspector({ node, onChange }: { node?: any; onChange: (patch: any) 
         )}
         {node.kind === "action" && node.type === "email" && (
           <>
-            <div className="field"><label className="field-label">To</label><input className="input" value={node.config.to} onChange={(e) => onChange({ config: { to: e.target.value } })} /></div>
-            <div className="field"><label className="field-label">Subject</label><input className="input" value={node.config.subject || ""} onChange={(e) => onChange({ config: { subject: e.target.value } })} /></div>
+            <div className="field"><label className="field-label">To</label><input className="input" value={node.config.to} onChange={(e) => onChange({ config: { to: e.target.value } })} placeholder="{{ data.author.email }}" /></div>
             <div className="field">
               <label className="field-label">Template</label>
-              <Select value={node.config.template} onChange={(v) => onChange({ config: { template: v } })} options={["default", "post-published", "comment-mention", "welcome", "reset-password"]} />
+              <Select
+                value={node.config.templateKey || ""}
+                onChange={(v) => onChange({ config: { templateKey: v } })}
+                options={[
+                  { value: "", label: emailTemplates.length === 0 ? "(none — no templates yet)" : "(none — use literal subject/body)" },
+                  ...emailTemplates.map((t) => ({ value: t.key, label: `${t.name} · ${t.key}` })),
+                ]}
+              />
+              <span className="field-hint">When set, body is rendered from the stored template at run time. Otherwise the literal Subject + Body fields below are used.</span>
             </div>
+            {!node.config.templateKey && (
+              <>
+                <div className="field"><label className="field-label">Subject</label><input className="input" value={node.config.subject || ""} onChange={(e) => onChange({ config: { subject: e.target.value } })} /></div>
+                <div className="field"><label className="field-label">Body (text)</label><textarea className="input" rows={4} value={node.config.text || ""} onChange={(e) => onChange({ config: { text: e.target.value } })} placeholder="Hi {{ data.author.name }}, …" /></div>
+              </>
+            )}
           </>
         )}
         {node.kind === "action" && node.type === "fn" && (
           <>
             <div className="field">
               <label className="field-label">Function</label>
-              <Select value={node.config.fn} onChange={(v) => onChange({ config: { fn: v } })} options={["reindex", "digest", "thumbnail", "sync-search"]} />
-            </div>
-            <div className="field-row">
-              <div><div className="field-label">Async</div><div className="field-hint">Don't wait for completion.</div></div>
-              <Switch checked={!!node.config.async} onChange={(v) => onChange({ config: { async: v } })} />
+              <Select
+                value={node.config.fn || ""}
+                onChange={(v) => onChange({ config: { fn: v } })}
+                options={[
+                  { value: "", label: fns.length === 0 ? "(none — no functions yet)" : "Select a function…" },
+                  ...fns.map((f) => ({ value: f.name, label: `${f.name}${f.active ? "" : " (inactive)"}` })),
+                ]}
+              />
+              <span className="field-hint">Tenant-scoped lookup at run time. Inactive functions throw at execution.</span>
             </div>
             <div className="field">
-              <label className="field-label">Retries <span className="muted tabular-nums">{node.config.retries ?? 3}</span></label>
-              <input type="range" min={0} max={10} value={node.config.retries ?? 3} onChange={(e) => onChange({ config: { retries: Number(e.target.value) } })} style={{ width: "100%" }} />
-              <span className="field-hint">Exponential backoff · max 30s.</span>
+              <label className="field-label">Input</label>
+              <textarea className="input font-mono" rows={3} value={node.config.input || ""} onChange={(e) => onChange({ config: { input: e.target.value } })} placeholder="leave empty to pass the trigger payload" />
+              <span className="field-hint">JSON or template string. Becomes <span className="font-mono">data</span> inside the function.</span>
             </div>
           </>
         )}
-        {node.kind === "action" && node.type === "webhook" && (
+        {node.kind === "action" && (node.type === "webhook" || node.type === "request") && (
           <>
             <div className="field">
               <label className="field-label">Method</label>
-              <Select value={node.config.method || "POST"} onChange={(v) => onChange({ config: { method: v } })} options={["POST", "PUT", "PATCH", "DELETE"]} />
+              <Select
+                value={node.config.method || (node.type === "request" ? "GET" : "POST")}
+                onChange={(v) => onChange({ config: { method: v } })}
+                options={["GET", "POST", "PUT", "PATCH", "DELETE"]}
+              />
             </div>
             <div className="field"><label className="field-label">URL</label><input className="input" value={node.config.url} onChange={(e) => onChange({ config: { url: e.target.value } })} /></div>
-            <div className="field"><label className="field-label">Body</label><textarea className="input" rows={3} value={node.config.body} onChange={(e) => onChange({ config: { body: e.target.value } })} /></div>
+            <div className="field"><label className="field-label">Body</label><textarea className="input font-mono" rows={3} value={node.config.body || ""} onChange={(e) => onChange({ config: { body: e.target.value } })} placeholder='{ "key": "{{ data.title }}" }' /><span className="field-hint">JSON or template string. Webhook defaults to the event payload when empty.</span></div>
+          </>
+        )}
+        {node.kind === "action" && node.type === "log" && (
+          <div className="field"><label className="field-label">Message</label><input className="input" value={node.config.message || ""} onChange={(e) => onChange({ config: { message: e.target.value } })} /><span className="field-hint">Server log line. Use <span className="font-mono">{"{{ data.* }}"}</span> for interpolation.</span></div>
+        )}
+        {node.kind === "action" && node.type === "notification" && (
+          <>
+            <div className="field"><label className="field-label">Title</label><input className="input" value={node.config.title || ""} onChange={(e) => onChange({ config: { title: e.target.value } })} /></div>
+            <div className="field"><label className="field-label">Body</label><textarea className="input" rows={2} value={node.config.body || ""} onChange={(e) => onChange({ config: { body: e.target.value } })} /></div>
+            <div className="field"><label className="field-label">URL</label><input className="input" value={node.config.url || ""} onChange={(e) => onChange({ config: { url: e.target.value } })} placeholder="/posts/{{ data.id }}" /></div>
+            <div className="field"><label className="field-label">Recipient (userId)</label><input className="input" value={node.config.userId ?? ""} onChange={(e) => onChange({ config: { userId: e.target.value || null } })} placeholder="leave empty for admins" /></div>
+          </>
+        )}
+        {node.kind === "action" && node.type === "transform" && (
+          <div className="field"><label className="field-label">Value</label><textarea className="input font-mono" rows={3} value={node.config.value || ""} onChange={(e) => onChange({ config: { value: e.target.value } })} placeholder="{{ data.title }}" /><span className="field-hint">Result is piped into <span className="font-mono">$last</span> for the next step.</span></div>
+        )}
+        {node.kind === "action" && node.type === "run-script" && (
+          <>
+            <div className="field"><label className="field-label">Code</label><textarea className="input font-mono" rows={6} value={node.config.code || ""} onChange={(e) => onChange({ config: { code: e.target.value } })} /><span className="field-hint">Sandboxed JS. Returns into <span className="font-mono">$last</span>.</span></div>
+            <div className="field"><label className="field-label">Timeout (ms)</label><input className="input" type="number" value={node.config.timeoutMs ?? 5000} onChange={(e) => onChange({ config: { timeoutMs: Number(e.target.value) || 5000 } })} /></div>
+          </>
+        )}
+        {node.kind === "action" && (node.type === "item.create" || node.type === "item.update") && (
+          <>
+            <div className="field">
+              <label className="field-label">Collection</label>
+              <Select
+                value={node.config.collection || ""}
+                onChange={(v) => onChange({ config: { collection: v } })}
+                options={[
+                  { value: "", label: collections.length === 0 ? "(none — no collections)" : "Select a collection…" },
+                  ...collections.map((c) => ({ value: c.slug, label: c.slug })),
+                ]}
+              />
+            </div>
+            {node.type === "item.update" && (
+              <div className="field"><label className="field-label">Row id</label><input className="input" value={node.config.id || ""} onChange={(e) => onChange({ config: { id: e.target.value } })} placeholder="{{ data.id }}" /></div>
+            )}
+            <div className="field">
+              <label className="field-label">Data</label>
+              <textarea className="input font-mono" rows={5} value={node.config.data || ""} onChange={(e) => onChange({ config: { data: e.target.value } })} placeholder='{ "title": "{{ data.title }}" }' />
+              <span className="field-hint">JSON object — template strings are interpolated before insert/update.</span>
+            </div>
           </>
         )}
         {node.kind === "action" && node.type === "delay" && (
-          <div className="field"><label className="field-label">Duration</label><input className="input" value={node.config.duration} onChange={(e) => onChange({ config: { duration: e.target.value } })} /><span className="field-hint">e.g. 30s, 5m, 1h, 2d.</span></div>
+          <div className="field">
+            <label className="field-label">Duration</label>
+            <input className="input" value={node.config.duration || ""} onChange={(e) => onChange({ config: { duration: e.target.value } })} placeholder="5m" />
+            <span className="field-hint">e.g. 30s, 5m, 1h, 2d. ≤ 30s sleeps inline; longer waits persist to the scheduler.</span>
+          </div>
         )}
 
         <div className="fb-section-divider"><span>Error handling</span></div>
@@ -433,14 +552,22 @@ function NodePalette({ onSelect, onClose, branch }: { onSelect: (cat: any) => vo
         <div className="fb-palette-grid">
           {list.map((x) => {
             const Icon = (I as Record<string, IconComponent>)[x.icon as IconKey] || I.Function;
+            const pending = (x as any).pending as string | undefined;
             return (
-              <button key={x.id + x.kind} className="fb-palette-item" onClick={() => onSelect(x)}>
+              <button
+                key={x.id + x.kind}
+                className="fb-palette-item"
+                disabled={!!pending}
+                onClick={() => { if (!pending) onSelect(x); }}
+                style={pending ? { opacity: 0.55, cursor: "not-allowed" } : undefined}
+                title={pending ? `Lands in ${pending}` : undefined}
+              >
                 <span className={`fb-kind fb-kind-${x.kind}`}><Icon size={13} /></span>
                 <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1, alignItems: "flex-start" }}>
                   <span style={{ fontSize: 13, fontWeight: 500 }}>{x.label}</span>
                   <span className="muted" style={{ fontSize: 11.5 }}>{x.desc}</span>
                 </div>
-                <span className="muted font-mono" style={{ fontSize: 10.5 }}>{x.kind}</span>
+                {pending ? <Badge variant="outline">{pending}</Badge> : <span className="muted font-mono" style={{ fontSize: 10.5 }}>{x.kind}</span>}
               </button>
             );
           })}

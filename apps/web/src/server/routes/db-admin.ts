@@ -4,6 +4,7 @@ import { sql, desc, eq } from "drizzle-orm";
 import { AppError, SYSTEM_ROLES } from "@workeros/core";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
+import { MIGRATION_TAGS_PG, MIGRATION_TAGS_SQLITE } from "@workeros/db";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { recordAndRunBackup } from "../services/backup";
@@ -96,26 +97,85 @@ export const dbAdminRoutes = new Hono<AppBindings>()
     }
     return c.json({ data: results, ms: Date.now() - t0, count: stmts.length });
   })
-  /** Lists migrations recorded in the dialect-specific drizzle table. */
+  /**
+   * Dialect-aware list of user-visible tables with row counts. Excludes
+   * drizzle's migration tracker, sqlite system tables, and Cloudflare D1's
+   * `_cf_*` reserved tables (which reject user SELECTs). Counts run in
+   * parallel and are best-effort — a count failure on one table doesn't
+   * fail the whole response.
+   */
+  .get("/tables", async (c) => {
+    const ctx = c.get("ctx");
+    const limit = Math.min(Math.max(Number(c.req.query("limit") ?? 200), 1), 500);
+    let names: string[];
+    if (ctx.dialect === "pg") {
+      const rows = await queryAll<{ name: string }>(
+        { db: ctx.db, dialect: ctx.dialect },
+        `SELECT tablename AS name FROM pg_tables
+         WHERE schemaname = 'public'
+           AND tablename NOT LIKE '\\_\\_drizzle%' ESCAPE '\\'
+         ORDER BY tablename
+         LIMIT ${limit}`,
+      );
+      names = rows.map((r) => r.name);
+    } else {
+      // ESCAPE only applies to the immediately preceding LIKE, so every
+      // pattern that uses an escaped underscore needs its own ESCAPE clause.
+      // sqlite_% doesn't need one because there's no literal underscore in
+      // the pattern we want to match.
+      const rows = await queryAll<{ name: string }>(
+        { db: ctx.db, dialect: ctx.dialect },
+        `SELECT name FROM sqlite_master
+         WHERE type = 'table'
+           AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\'
+           AND name NOT LIKE '\\_\\_drizzle%' ESCAPE '\\'
+           AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\'
+         ORDER BY name
+         LIMIT ${limit}`,
+      );
+      names = rows.map((r) => r.name);
+    }
+    const quote = ctx.dialect === "pg" ? '"' : '"';
+    const counts = await Promise.allSettled(
+      names.map(async (n) => {
+        const safe = n.replace(/"/g, '""');
+        const r = await queryAll<{ n: number | string }>(
+          { db: ctx.db, dialect: ctx.dialect },
+          `SELECT COUNT(*) AS n FROM ${quote}${safe}${quote}`,
+        );
+        const row = r[0];
+        return { name: n, rows: Number(row?.n ?? 0) };
+      }),
+    );
+    return c.json({
+      data: counts.map((r, i) =>
+        r.status === "fulfilled" ? r.value : { name: names[i] ?? "", rows: 0 },
+      ),
+    });
+  })
+  /**
+   * Lists migrations recorded in the dialect-specific drizzle table. Joins
+   * each row with the build-time manifest so the UI can show the human-
+   * readable folder tag (`20260510150000_folders_tenant_id`) instead of
+   * the raw sha256 hash that drizzle persists.
+   */
   .get("/migrations", async (c) => {
     const ctx = c.get("ctx");
-    if (ctx.dialect === "pg") {
-      try {
-        const rows = await queryAll<{ id: number | string; hash: string; created_at: number | string }>(
-          { db: ctx.db, dialect: ctx.dialect },
-          `SELECT id, hash, created_at FROM drizzle.__drizzle_migrations ORDER BY id DESC LIMIT 200`,
-        );
-        return c.json({ data: rows.map((r) => ({ ...r, applied: true })) });
-      } catch {
-        return c.json({ data: [], note: "Drizzle migrations table not present yet." });
-      }
-    }
+    const tags = ctx.dialect === "pg" ? MIGRATION_TAGS_PG : MIGRATION_TAGS_SQLITE;
+    const tableExpr =
+      ctx.dialect === "pg" ? "drizzle.__drizzle_migrations" : "__drizzle_migrations";
     try {
       const rows = await queryAll<{ id: number | string; hash: string; created_at: number | string }>(
         { db: ctx.db, dialect: ctx.dialect },
-        `SELECT id, hash, created_at FROM __drizzle_migrations ORDER BY id DESC LIMIT 200`,
+        `SELECT id, hash, created_at FROM ${tableExpr} ORDER BY id DESC LIMIT 200`,
       );
-      return c.json({ data: rows.map((r) => ({ ...r, applied: true })) });
+      return c.json({
+        data: rows.map((r) => ({
+          ...r,
+          tag: tags[r.hash] ?? null,
+          applied: true,
+        })),
+      });
     } catch {
       return c.json({ data: [], note: "Drizzle migrations table not present yet." });
     }

@@ -9,3 +9,4 @@ export const detectDialect = (env: { DATABASE_URL?: string; D1?: unknown }): Dia
 export * from "./field-types";
 export * from "./schema-applier";
 export * from "./permission";
+export * from "./migrations-manifest.generated";

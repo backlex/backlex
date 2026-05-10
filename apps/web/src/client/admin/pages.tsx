@@ -295,9 +295,13 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
               <span style={{ fontSize: 13, fontWeight: 500 }}>Recent errors</span>
               <span className="font-mono muted" style={{ fontSize: 12 }}>last {range} · {(metrics?.totals?.errors ?? recentErrors.reduce((a, e) => a + (e.count ?? 0), 0))} {(metrics?.totals?.errors ?? 0) === 1 ? "event" : "events"}</span>
               <div className="spacer" />
-              <Button variant="ghost" size="sm">View all</Button>
+              <Button variant="ghost" size="sm" onClick={() => setActiveNav("activity")}>View all</Button>
             </div>
-            {recentErrors.map((e, i) => (
+            {recentErrors.length === 0 ? (
+              <div style={{ padding: "20px 16px", textAlign: "center" }}>
+                <span className="muted" style={{ fontSize: 12.5 }}>No errors recorded.</span>
+              </div>
+            ) : recentErrors.map((e, i) => (
               <div key={i} style={{ padding: "10px 16px", borderBottom: i < recentErrors.length - 1 ? "1px solid var(--border)" : 0, display: "flex", alignItems: "center", gap: 12 }}>
                 <Badge variant="destructive">{e.code}</Badge>
                 <span className="tabular-nums muted" style={{ fontSize: 12, width: 36 }}>×{e.count}</span>

@@ -39,10 +39,51 @@ export type FieldInterface =
   | "richtext"
   | "color";
 
-export interface FieldOptions {
-  /** Allowed values for `interface: dropdown`. */
-  values?: string[];
+/**
+ * One option in a dropdown — Directus-shaped. `value` is what the column
+ * stores and what filters compare against. `label` is the human label
+ * (defaults to value). `color` is a CSS color string applied to the badge
+ * in lists. `icon` is a lucide icon name (UI-only).
+ */
+export interface FieldChoice {
+  value: string;
+  label?: string;
+  color?: string;
+  icon?: string;
 }
+
+export interface FieldOptions {
+  /**
+   * @deprecated Use `choices` instead. Kept for back-compat with collections
+   * created before the choices model existed; the helper `getChoiceValues`
+   * coerces either shape to a string list.
+   */
+  values?: string[];
+  /** Per-choice metadata for `interface: dropdown` (Directus-shaped). */
+  choices?: FieldChoice[];
+}
+
+/** Returns the allowed values list, regardless of legacy `values` vs `choices`. */
+export const getChoiceValues = (field: FieldDef): string[] => {
+  if (field.options?.choices?.length) {
+    return field.options.choices.map((c) => c.value);
+  }
+  if (field.options?.values?.length) {
+    return field.options.values;
+  }
+  return [];
+};
+
+/** Returns choices in normalized shape — synthesizes from legacy `values` if needed. */
+export const getChoices = (field: FieldDef): FieldChoice[] => {
+  if (field.options?.choices?.length) {
+    return field.options.choices;
+  }
+  if (field.options?.values?.length) {
+    return field.options.values.map((v) => ({ value: v }));
+  }
+  return [];
+};
 
 /** Show this field in the editor only when another field matches a value. */
 export interface FieldVisibility {
@@ -175,9 +216,9 @@ export const validateFields = (fields: FieldDef[]): void => {
       }
       assertIdent(f.to);
     }
-    if (f.interface === "dropdown" && (!f.options?.values || f.options.values.length === 0)) {
+    if (f.interface === "dropdown" && getChoiceValues(f).length === 0) {
       throw new Error(
-        `Field "${f.name}": dropdown interface requires options.values`,
+        `Field "${f.name}": dropdown interface requires options.choices (or legacy options.values)`,
       );
     }
     if (f.visibleWhen) {
@@ -240,10 +281,11 @@ export const validateValue = (field: FieldDef, value: unknown): void => {
     }
   }
 
-  if (field.interface === "dropdown" && field.options?.values) {
-    if (!field.options.values.includes(String(value))) {
+  if (field.interface === "dropdown") {
+    const allowed = getChoiceValues(field);
+    if (allowed.length && !allowed.includes(String(value))) {
       throw new Error(
-        `${field.name}: must be one of ${field.options.values.join(", ")}`,
+        `${field.name}: must be one of ${allowed.join(", ")}`,
       );
     }
   }

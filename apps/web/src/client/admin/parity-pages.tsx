@@ -1,6 +1,6 @@
 // @ts-nocheck
 // directus/supabase parity pages — Database, Auth, Activity, Revisions, Insights, Email, Translations
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { I } from "./icons";
 import { MOCK, type AdapterId } from "./mock";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
@@ -763,22 +763,242 @@ export function RevisionsPage() {
   );
 }
 
+/**
+ * 12-column drag/resize grid for the Insights dashboard. Pure DOM (no
+ * react-grid-layout dep) — each cell is absolute-positioned over a
+ * `position: relative` container, sized by `colW` (computed from the
+ * container width / 12) and a fixed row height.
+ *
+ * In edit mode (`editing`):
+ *  - The whole tile area becomes a move handle. Mouse drag changes the
+ *    tile's grid origin in 1-col / 1-row steps.
+ *  - A 14×14 corner square in the bottom-right is a resize handle —
+ *    same conversion, but applied to (w, h).
+ *  - On mouseup the parent gets `onLayoutChange(id, layout)` and is
+ *    expected to PATCH the server. While dragging we keep the active
+ *    tile on a local transform so the rest of the page doesn't reflow.
+ */
+function DashboardGrid({
+  panels,
+  layouts,
+  editing,
+  onLayoutChange,
+  renderPanel,
+}: {
+  panels: ApiPanel[];
+  layouts: Record<string, { x: number; y: number; w: number; h: number }>;
+  editing: boolean;
+  onLayoutChange: (id: string, layout: { x: number; y: number; w: number; h: number }) => void;
+  renderPanel: (panel: ApiPanel) => ReactNode;
+}) {
+  const COLS = 12;
+  const ROW_H = 84;
+  const GAP = 12;
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [width, setWidth] = useState(0);
+
+  useLayoutEffect(() => {
+    const update = () => setWidth(containerRef.current?.clientWidth ?? 0);
+    update();
+    if (typeof ResizeObserver === "undefined" || !containerRef.current) return;
+    const obs = new ResizeObserver(update);
+    obs.observe(containerRef.current);
+    return () => obs.disconnect();
+  }, []);
+
+  const colW = width > 0 ? (width - GAP * (COLS - 1)) / COLS : 0;
+
+  // Auto-place panels that don't have a saved layout yet — left-to-right
+  // packing in 6×4 tiles. Existing layouts win.
+  const finalLayouts = useMemo(() => {
+    const out: Record<string, { x: number; y: number; w: number; h: number }> = {};
+    let cx = 0;
+    let cy = 0;
+    for (const p of panels) {
+      const saved = layouts[p.id];
+      if (saved) {
+        out[p.id] = saved;
+      } else {
+        out[p.id] = { x: cx, y: cy, w: 6, h: 4 };
+        cx += 6;
+        if (cx >= COLS) { cx = 0; cy += 4; }
+      }
+    }
+    return out;
+  }, [panels, layouts]);
+
+  type Drag = {
+    panelId: string;
+    mode: "move" | "resize";
+    startX: number;
+    startY: number;
+    base: { x: number; y: number; w: number; h: number };
+    delta: { dx: number; dy: number };
+  };
+  const [drag, setDrag] = useState<Drag | null>(null);
+
+  useEffect(() => {
+    if (!drag) return;
+    const onMove = (e: MouseEvent) => {
+      if (colW <= 0) return;
+      const dx = Math.round((e.clientX - drag.startX) / (colW + GAP));
+      const dy = Math.round((e.clientY - drag.startY) / (ROW_H + GAP));
+      setDrag((d) => (d ? { ...d, delta: { dx, dy } } : d));
+    };
+    const onUp = () => {
+      const dx = drag.delta.dx;
+      const dy = drag.delta.dy;
+      const next = drag.mode === "move"
+        ? {
+            x: Math.max(0, Math.min(COLS - drag.base.w, drag.base.x + dx)),
+            y: Math.max(0, drag.base.y + dy),
+            w: drag.base.w,
+            h: drag.base.h,
+          }
+        : {
+            x: drag.base.x,
+            y: drag.base.y,
+            w: Math.max(2, Math.min(COLS - drag.base.x, drag.base.w + dx)),
+            h: Math.max(2, drag.base.h + dy),
+          };
+      const changed =
+        next.x !== drag.base.x ||
+        next.y !== drag.base.y ||
+        next.w !== drag.base.w ||
+        next.h !== drag.base.h;
+      if (changed) onLayoutChange(drag.panelId, next);
+      setDrag(null);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    // colW dependency is intentional — drag conversion uses the current width
+    // so the grid stays accurate during a window resize mid-drag.
+  }, [drag, colW, onLayoutChange]);
+
+  const totalRows = panels.reduce((max, p) => {
+    const l = finalLayouts[p.id]!;
+    const isActive = drag?.panelId === p.id;
+    const dy = isActive && drag.mode === "move" ? drag.delta.dy : 0;
+    const dh = isActive && drag.mode === "resize" ? drag.delta.dy : 0;
+    return Math.max(max, l.y + dy + l.h + dh);
+  }, 0);
+  const containerHeight = totalRows > 0 ? totalRows * ROW_H + (totalRows - 1) * GAP : 200;
+
+  return (
+    <div
+      ref={containerRef}
+      style={{ position: "relative", width: "100%", height: containerHeight, transition: drag ? "none" : "height 200ms ease" }}
+    >
+      {panels.map((p) => {
+        const base = finalLayouts[p.id]!;
+        const isActive = drag?.panelId === p.id;
+        const dxApplied = isActive && drag.mode === "move" ? drag.delta.dx : 0;
+        const dyApplied = isActive && drag.mode === "move" ? drag.delta.dy : 0;
+        const dwApplied = isActive && drag.mode === "resize" ? drag.delta.dx : 0;
+        const dhApplied = isActive && drag.mode === "resize" ? drag.delta.dy : 0;
+        const xv = Math.max(0, Math.min(COLS - base.w, base.x + dxApplied));
+        const yv = Math.max(0, base.y + dyApplied);
+        const wv = Math.max(2, Math.min(COLS - xv, base.w + dwApplied));
+        const hv = Math.max(2, base.h + dhApplied);
+        return (
+          <div
+            key={p.id}
+            style={{
+              position: "absolute",
+              left: xv * (colW + GAP),
+              top: yv * (ROW_H + GAP),
+              width: Math.max(0, wv * colW + (wv - 1) * GAP),
+              height: hv * ROW_H + (hv - 1) * GAP,
+              transition: isActive ? "none" : "left 200ms ease, top 200ms ease, width 200ms ease, height 200ms ease",
+              boxShadow: isActive ? "0 8px 24px color-mix(in oklch, var(--primary) 25%, transparent)" : "none",
+              zIndex: isActive ? 2 : 1,
+            }}
+          >
+            <div style={{ position: "absolute", inset: 0, overflow: "auto", pointerEvents: editing ? "none" : "auto" }}>
+              {renderPanel(p)}
+            </div>
+            {editing && (
+              <>
+                <div
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setDrag({ panelId: p.id, mode: "move", startX: e.clientX, startY: e.clientY, base, delta: { dx: 0, dy: 0 } });
+                  }}
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    cursor: "move",
+                    background: "color-mix(in oklch, var(--primary) 6%, transparent)",
+                    border: "1.5px dashed color-mix(in oklch, var(--primary) 55%, transparent)",
+                    borderRadius: "var(--radius-md)",
+                    zIndex: 3,
+                  }}
+                  title="Drag to move"
+                >
+                  <div style={{ position: "absolute", top: 6, left: 6, fontSize: 10.5, fontWeight: 500, color: "var(--primary)", background: "var(--card)", padding: "2px 6px", borderRadius: 4, display: "flex", alignItems: "center", gap: 4 }}>
+                    <I.Pencil size={10} />{xv},{yv} · {wv}×{hv}
+                  </div>
+                </div>
+                <div
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDrag({ panelId: p.id, mode: "resize", startX: e.clientX, startY: e.clientY, base, delta: { dx: 0, dy: 0 } });
+                  }}
+                  style={{
+                    position: "absolute",
+                    right: 4,
+                    bottom: 4,
+                    width: 16,
+                    height: 16,
+                    background: "var(--primary)",
+                    borderRadius: 4,
+                    cursor: "nwse-resize",
+                    zIndex: 4,
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.25)",
+                  }}
+                  title="Drag to resize"
+                />
+              </>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } = {}) {
   const [panels, setPanels] = useState<ApiPanel[]>([]);
   const [results, setResults] = useState<Record<string, Record<string, unknown>[]>>({});
   const [runErrors, setRunErrors] = useState<Record<string, string>>({});
   const [editor, setEditor] = useState<{ mode: "create" } | { mode: "edit"; panel: ApiPanel } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ApiPanel | null>(null);
+  const [editingLayout, setEditingLayout] = useState(false);
+  // Local copy of each panel's grid layout. Updated optimistically on drag/
+  // resize, then PATCHed back to the server. Falls back to an auto-laid-out
+  // default for panels that have never been positioned.
+  type Layout = { x: number; y: number; w: number; h: number };
+  const [layouts, setLayouts] = useState<Record<string, Layout>>({});
 
   const reload = async () => {
     try {
       const r = await panelsApi.list();
       const list = r.data ?? [];
       setPanels(list);
-      // Run each SQL panel in parallel; static/aggregate panels are
-      // rendered from their config without a server roundtrip.
+      // Hydrate the local layouts map from the server's authoritative copy.
+      // We replace rather than merge so panels deleted server-side fall out.
+      const nextLayouts: Record<string, Layout> = {};
+      for (const p of list) if (p.layout) nextLayouts[p.id] = p.layout;
+      setLayouts(nextLayouts);
+      // Run each SQL/items-aggregate panel in parallel; static panels render
+      // from their config without a server roundtrip.
       const runs = await Promise.allSettled(
-        list.filter((p) => p.kind === "sql").map(async (p) => {
+        list.filter((p) => p.kind === "sql" || p.kind === "items-aggregate").map(async (p) => {
           try {
             const out = await panelsApi.run(p.id);
             return { id: p.id, data: out.data, error: null as string | null };
@@ -802,26 +1022,55 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
   };
   useEffect(() => { void reload(); }, []);
 
+  const saveLayout = async (id: string, layout: Layout) => {
+    // Optimistic — flip the local layout immediately so the drag preview
+    // doesn't jump. If the PATCH errors we surface it via toast and reload.
+    setLayouts((s) => ({ ...s, [id]: layout }));
+    try {
+      await panelsApi.update(id, { layout });
+    } catch (e) {
+      pushToast?.((e as Error).message);
+      void reload();
+    }
+  };
+
+  const renderPanelCard = (p: ApiPanel) => (
+    <RealPanel
+      panel={p}
+      rows={results[p.id] ?? []}
+      error={runErrors[p.id] ?? null}
+      onEdit={editingLayout ? undefined : () => setEditor({ mode: "edit", panel: p })}
+      onDelete={editingLayout ? undefined : () => setConfirmDelete(p)}
+    />
+  );
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader
         title="Insights"
-        description="Built from saved SQL queries. Drag panels to your own dashboards."
-        actions={<Button variant="primary" icon={I.Plus} onClick={() => setEditor({ mode: "create" })}>New panel</Button>}
+        description="Built from saved SQL queries and collection aggregates. Drag panels to lay out your dashboard."
+        actions={
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button
+              variant={editingLayout ? "primary" : "outline"}
+              icon={editingLayout ? I.Check : I.Pencil}
+              onClick={() => setEditingLayout((v) => !v)}
+              disabled={panels.length === 0}
+            >
+              {editingLayout ? "Done" : "Edit layout"}
+            </Button>
+            <Button variant="primary" icon={I.Plus} onClick={() => setEditor({ mode: "create" })}>New panel</Button>
+          </div>
+        }
       />
       {panels.length > 0 ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
-          {panels.map((p) => (
-            <RealPanel
-              key={p.id}
-              panel={p}
-              rows={results[p.id] ?? []}
-              error={runErrors[p.id] ?? null}
-              onEdit={() => setEditor({ mode: "edit", panel: p })}
-              onDelete={() => setConfirmDelete(p)}
-            />
-          ))}
-        </div>
+        <DashboardGrid
+          panels={panels}
+          layouts={layouts}
+          editing={editingLayout}
+          onLayoutChange={saveLayout}
+          renderPanel={renderPanelCard}
+        />
       ) : (
         <div className="card" style={{ padding: 48, textAlign: "center", color: "var(--muted-foreground)", display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
           <I.BarChart size={28} className="muted" />

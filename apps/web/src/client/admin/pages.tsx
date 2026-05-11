@@ -167,7 +167,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
     t: new Date(r.t).toISOString().slice(11, 19),
     m: r.action.split(".")[0]?.toUpperCase() ?? "—",
     p: r.collection ? `/${r.collection}${r.itemId ? "/" + r.itemId.slice(0, 10) : ""}` : `/api/${r.action}`,
-    s: /error|fail|denied/.test(r.action) ? 500 : 200,
+    s: r.error || /error|fail|denied/.test(r.action) ? 500 : 200,
     ms: r.ms ?? 0,
   }));
 
@@ -269,9 +269,9 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
             <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <I.Activity size={14} />
               <span style={{ fontSize: 13, fontWeight: 500 }}>Request log</span>
-              <span className="font-mono muted" style={{ fontSize: 12 }}>last 60s · 6 of 142</span>
+              <span className="font-mono muted" style={{ fontSize: 12 }}>last {range} · {requests.length} of {(metrics?.totals?.requests ?? requests.length).toLocaleString()}</span>
               <div className="spacer" />
-              <Button variant="ghost" size="sm" iconRight={I.ExternalLink}>Open in logs</Button>
+              <Button variant="ghost" size="sm" iconRight={I.ChevronRight} onClick={() => setActiveNav("activity")}>Open in logs</Button>
             </div>
             <div className="table-scroll">
             <table className="table">
@@ -371,7 +371,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
               <I.Activity size={14} />
               <span style={{ fontSize: 13, fontWeight: 500 }}>Activity</span>
               <div className="spacer" />
-              <Button variant="ghost" size="sm">All events</Button>
+              <Button variant="ghost" size="sm" iconRight={I.ChevronRight} onClick={() => setActiveNav("activity")}>All events</Button>
             </div>
             <div style={{ padding: "4px 0" }}>
               {activity.map((a, i) => {

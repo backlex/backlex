@@ -2,7 +2,7 @@
 // workeros admin — additional pages
 import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { I, type IconComponent } from "./icons";
-import { MOCK, type AdapterId } from "./mock";
+import { ADAPTER_PROFILES, type AdapterId } from "./config";
 import { Badge, Button, Checkbox, IconButton, PageHeader, Switch } from "./ui";
 import { Select } from "./select";
 import { FlowBuilder } from "./flow-builder";
@@ -19,6 +19,7 @@ import {
   type ApiRuntime,
   type ApiUser,
 } from "./api";
+import { ConfirmDialog } from "./sheet";
 
 const fetchSafely = async <T,>(path: string): Promise<T | null> => {
   try {
@@ -46,7 +47,7 @@ function Sparkline({ data, color = "var(--primary)", height = 36, fill = true }:
 }
 
 export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: AdapterId; pushToast: (m: string) => void; setActiveNav: (id: string) => void }) {
-  const profile = MOCK.adapterProfiles[adapter];
+  const profile = ADAPTER_PROFILES[adapter];
   const [range, setRange] = useState("1h");
   // Live metrics: refetched on range change. While offline / unauthenticated
   // we render zero series so the page still draws but doesn't lie about
@@ -119,16 +120,19 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
   }));
 
   const iconForAction = (a: string) => {
-    if (a.startsWith("create")) return I.Plus;
-    if (a.startsWith("update") || a.startsWith("schema")) return I.Pencil;
-    if (a.startsWith("delete")) return I.Trash;
+    if (/error|fail|denied/i.test(a)) return I.AlertTriangle;
     if (a.startsWith("auth.")) return I.Users;
-    if (a.startsWith("flow")) return I.Bolt;
+    if (a.startsWith("flow") || a.startsWith("function")) return I.Bolt;
     if (a.startsWith("storage")) return I.Folder;
     if (a.startsWith("webhook")) return I.Webhook;
+    if (a.startsWith("schema")) return I.Pencil;
+    const verb = a.includes(".") ? a.slice(a.indexOf(".") + 1) : a;
+    if (verb.startsWith("create") || verb.startsWith("insert")) return I.Plus;
+    if (verb.startsWith("update") || verb.startsWith("patch")) return I.Pencil;
+    if (verb.startsWith("delete") || verb.startsWith("remove")) return I.Trash;
     return I.Activity;
   };
-  const activity = (metrics?.recent ?? []).slice(0, 6).map((r) => ({
+  const activity = (metrics?.recent ?? []).slice(0, 8).map((r) => ({
     t: new Date(r.t).toISOString().slice(11, 16),
     who: r.userId ?? "system",
     verb: r.action,
@@ -158,18 +162,6 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
     { label: "Active flows", value: c?.activeFlows ?? 0, sub: `${c?.activeFlows ?? 0} enabled · ${c?.pausedFlows ?? 0} paused`, nav: "flows", icon: I.Bolt },
     { label: "Functions", value: c?.functions ?? 0, sub: "sandboxed handlers", nav: "functions", icon: I.Function },
   ];
-
-  // Real recent activity → "Request log" panel. Activity rows don't carry
-  // HTTP method/status (those live at the edge) so we surface action and
-  // collection in the slot the design used for method/path. ms is filled
-  // when Sprint 5's duration capture lands.
-  const requests = (metrics?.recent ?? []).slice(0, 6).map((r) => ({
-    t: new Date(r.t).toISOString().slice(11, 19),
-    m: r.action.split(".")[0]?.toUpperCase() ?? "—",
-    p: r.collection ? `/${r.collection}${r.itemId ? "/" + r.itemId.slice(0, 10) : ""}` : `/api/${r.action}`,
-    s: /error|fail|denied/.test(r.action) ? 500 : 200,
-    ms: r.ms ?? 0,
-  }));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -267,34 +259,6 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
 
           <div className="card">
             <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <I.Activity size={14} />
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Request log</span>
-              <span className="font-mono muted" style={{ fontSize: 12 }}>last 60s · 6 of 142</span>
-              <div className="spacer" />
-              <Button variant="ghost" size="sm" iconRight={I.ExternalLink}>Open in logs</Button>
-            </div>
-            <div className="table-scroll">
-            <table className="table">
-              <thead><tr><th style={{ width: 90 }}>Time</th><th style={{ width: 70 }}>Method</th><th>Path</th><th style={{ width: 80, textAlign: "right" }}>Status</th><th style={{ width: 70, textAlign: "right" }}>ms</th></tr></thead>
-              <tbody>
-                {requests.map((r, i) => (
-                  <tr key={i}>
-                    <td className="font-mono muted tabular-nums" style={{ fontSize: 11.5 }}>{r.t}</td>
-                    <td><Badge variant="outline" mono>{r.m}</Badge></td>
-                    <td className="font-mono" style={{ fontSize: 12.5 }}>{r.p}</td>
-                    <td className="tabular-nums" style={{ textAlign: "right" }}>
-                      <Badge variant={r.s >= 200 && r.s < 300 ? "default" : r.s >= 400 ? "destructive" : "secondary"}>{r.s}</Badge>
-                    </td>
-                    <td className="tabular-nums muted" style={{ textAlign: "right" }}>{r.ms}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <I.AlertTriangle size={14} />
               <span style={{ fontSize: 13, fontWeight: 500 }}>Recent errors</span>
               <span className="font-mono muted" style={{ fontSize: 12 }}>last {range} · {(metrics?.totals?.errors ?? recentErrors.reduce((a, e) => a + (e.count ?? 0), 0))} {(metrics?.totals?.errors ?? 0) === 1 ? "event" : "events"}</span>
@@ -371,7 +335,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
               <I.Activity size={14} />
               <span style={{ fontSize: 13, fontWeight: 500 }}>Activity</span>
               <div className="spacer" />
-              <Button variant="ghost" size="sm">All events</Button>
+              <Button variant="ghost" size="sm" iconRight={I.ChevronRight} onClick={() => setActiveNav("activity")}>All events</Button>
             </div>
             <div style={{ padding: "4px 0" }}>
               {activity.map((a, i) => {
@@ -814,6 +778,24 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
   }, [active?.name]);
   const [logs, setLogs] = useState<{ t: string; lvl: string; msg: string }[]>([]);
   const [running, setRunning] = useState(false);
+  // Name of the function pending a delete confirmation (null = no dialog open).
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  // Draft value while inline-editing the active function's name (null = not editing).
+  const [renameDraft, setRenameDraft] = useState<string | null>(null);
+  const [renameBusy, setRenameBusy] = useState(false);
+  // Leaving the rename editor open across function switches would be confusing.
+  useEffect(() => { setRenameDraft(null); }, [active?.name]);
+
+  const nameRegex = /^[a-z][a-z0-9_-]*$/;
+  const renameError = renameDraft === null
+    ? null
+    : renameDraft.trim().length === 0
+      ? "Required."
+      : !nameRegex.test(renameDraft.trim())
+        ? "Lowercase letters, digits, _ or -; must start with a letter."
+        : renameDraft.trim() !== active?.name && funcs.some((f) => f.name === renameDraft.trim())
+          ? "A function with that name already exists."
+          : null;
 
   const run = async () => {
     if (!active) { pushToast("Select a function to run."); return; }
@@ -879,7 +861,6 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
     }
   };
   const removeFunction = async (name: string) => {
-    if (!confirm(`Delete function "${name}"? This cannot be undone.`)) return;
     try {
       const r = await api<{ data: { id: string; name: string }[] }>("/api/functions");
       const match = r.data.find((f) => f.name === name);
@@ -898,6 +879,32 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
       pushToast(`Function "${name}" deleted.`);
     } catch (e) {
       pushToast((e as Error).message);
+    }
+  };
+  const renameFunction = async (oldName: string, nextName: string) => {
+    const target = nextName.trim();
+    if (!target || target === oldName) { setRenameDraft(null); return; }
+    setRenameBusy(true);
+    try {
+      const r = await api<{ data: { id: string; name: string }[] }>("/api/functions");
+      const match = r.data.find((f) => f.name === oldName);
+      if (!match) {
+        pushToast("Function not found on server.");
+        await reloadFuncs();
+        return;
+      }
+      await api(`/api/functions/${match.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name: target }),
+      });
+      setActive((a) => (a && a.name === oldName ? { ...a, name: target } : a));
+      setRenameDraft(null);
+      await reloadFuncs();
+      pushToast(`Function renamed to "${target}".`);
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setRenameBusy(false);
     }
   };
 
@@ -933,16 +940,37 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
             </div>
           ) : (
           <>
+          {renameDraft !== null ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <I.Pencil size={16} />
+              <input
+                className={`input font-mono ${renameError ? "error" : ""}`}
+                style={{ fontSize: 14, width: 260 }}
+                autoFocus
+                value={renameDraft}
+                onChange={(e) => setRenameDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !renameError && !renameBusy) void renameFunction(active.name, renameDraft);
+                  else if (e.key === "Escape" && !renameBusy) setRenameDraft(null);
+                }}
+              />
+              <Button variant="primary" size="sm" icon={I.Check} disabled={!!renameError || renameBusy || renameDraft.trim() === active.name} onClick={() => void renameFunction(active.name, renameDraft)}>{renameBusy ? "Renaming…" : "Rename"}</Button>
+              <Button variant="ghost" size="sm" icon={I.X} onClick={() => setRenameDraft(null)} disabled={renameBusy}>Cancel</Button>
+              {renameError && <span className="field-error"><I.AlertTriangle size={11} />{renameError}</span>}
+            </div>
+          ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span className="font-mono" style={{ fontSize: 18, fontWeight: 600 }}>{active.name}</span>
+            <IconButton icon={I.Pencil} title="Rename function" onClick={() => setRenameDraft(active.name)} />
             <Badge variant="outline">{active.kind}</Badge>
             <span className="font-mono muted" style={{ fontSize: 12 }}>· {active.trigger}</span>
             <div className="spacer" />
             <span className="muted" style={{ fontSize: 12 }}>{Number(active.invocations ?? 0).toLocaleString()} invocations · p95 {active.p95 ?? 0}ms</span>
-            <Button variant="outline" size="sm" icon={I.Trash} onClick={() => active && removeFunction(active.name)} style={{ color: "var(--destructive)" }}>Delete</Button>
+            <Button variant="outline" size="sm" icon={I.Trash} onClick={() => active && setConfirmDelete(active.name)} style={{ color: "var(--destructive)" }}>Delete</Button>
             <Button variant="outline" size="sm" icon={I.Save} onClick={saveCode}>Save</Button>
             <Button variant="primary" size="sm" icon={I.Zap} onClick={run} disabled={running}>{running ? "Running…" : "Run"}</Button>
           </div>
+          )}
 
           <textarea
             value={code}
@@ -998,6 +1026,20 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
           onError={(msg) => pushToast(msg)}
         />
       )}
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title={confirmDelete ? <>Delete function <span className="font-mono">{confirmDelete}</span>?</> : "Delete function?"}
+        description="This permanently removes the function and its code. Triggers, flow steps, or callers that reference it will stop working. This can't be undone."
+        actionLabel="Delete function"
+        destructive
+        onCancel={() => setConfirmDelete(null)}
+        onConfirm={() => {
+          const name = confirmDelete;
+          setConfirmDelete(null);
+          if (name) void removeFunction(name);
+        }}
+      />
     </div>
   );
 }
@@ -1114,7 +1156,7 @@ function NewFunctionDialog({
             {nameError && name ? (
               <div className="field-error"><I.AlertTriangle size={11} />{nameError}</div>
             ) : (
-              <span className="field-hint">Lowercase, digits, <span className="font-mono">_</span> or <span className="font-mono">-</span>. Cannot be changed later.</span>
+              <span className="field-hint">Lowercase, digits, <span className="font-mono">_</span> or <span className="font-mono">-</span>. You can rename it later.</span>
             )}
           </div>
 
@@ -2257,12 +2299,11 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
   const [appUrl, setAppUrl] = useState("http://localhost:8787");
   const [siteName, setSiteName] = useState("workeros");
   const [from, setFrom] = useState("hello@example.com");
-  const [signupOpen, setSignupOpen] = useState(false);
-  const [telemetry, setTelemetry] = useState(false);
+  const [signupOpen, setSignupOpen] = useState(true);
   const [dirty, setDirty] = useState(false);
-  // Hydrate the General-tab form from /api/admin/settings on mount. The
-  // backend merges defaults from env (APP_URL, EMAIL_FROM) so a fresh
-  // workspace lands with the actual deploy URL pre-filled.
+  // Hydrate the General-tab form from /api/admin/settings on mount. APP_URL
+  // and EMAIL_FROM come from env (read-only here); siteName + openSignup are
+  // the runtime-mutable settings persisted in app_settings.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -2274,7 +2315,6 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
         if (typeof d.appUrl === "string") setAppUrl(d.appUrl);
         if (typeof d.emailFrom === "string") setFrom(d.emailFrom);
         if (typeof d.openSignup === "boolean") setSignupOpen(d.openSignup);
-        if (typeof d.telemetry === "boolean") setTelemetry(d.telemetry);
       } catch {
         // keep seed
       }
@@ -2318,86 +2358,56 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
   }, []);
   const persistGeneral = async () => {
     try {
-      await settingsApi.patch({
-        siteName,
-        appUrl,
-        emailFrom: from,
-        openSignup,
-        telemetry,
-      });
+      await settingsApi.patch({ siteName, openSignup: signupOpen });
       setDirty(false);
       pushToast("Settings saved.");
     } catch (e) {
       pushToast((e as Error).message);
     }
   };
-  const [revealed, setRevealed] = useState<Record<number, boolean>>({});
-  const [newKey, setNewKey] = useState("");
-  const [newVal, setNewVal] = useState("");
-  const [newSecret, setNewSecret] = useState(true);
 
-  const addEnv = async () => {
-    const k = newKey.trim().toUpperCase();
-    if (!k) return;
-    try {
-      await settingsApi.patch({ [`env.${k}`]: newSecret ? "(secret)" : newVal });
-    } catch (e) {
-      pushToast((e as Error).message);
-    }
-    setEnvVars((arr) => [...arr, { id: Date.now(), key: k, value: newSecret ? "••••••••" : newVal, secret: newSecret, source: newSecret ? "wrangler secret" : "wrangler.toml" }]);
-    setNewKey(""); setNewVal(""); setDirty(true);
-    pushToast(`${k} added.`);
-  };
-  const removeEnv = async (id: number | string) => {
-    const target = envVars.find((x) => x.id === id);
-    if (target) {
-      try {
-        await settingsApi.patch({ [`env.${target.key}`]: null });
-      } catch (e) {
-        pushToast((e as Error).message);
-      }
-    }
-    setEnvVars((arr) => arr.filter((x) => x.id !== id));
-    setDirty(true);
-  };
-
-  const bindingIcon = (t: string): IconComponent => (({ D1: I.Database, KV: I.Folder, R2: I.Server, DurableObj: I.Bolt, Queue: I.Webhook, AI: I.Bolt } as Record<string, IconComponent>)[t] || I.Folder);
+  const bindingIcon = (t: string): IconComponent => (({ D1: I.Database, KV: I.Folder, R2: I.Server, DurableObj: I.Bolt, Vectorize: I.Bolt, Hyperdrive: I.Database, Dispatch: I.Bolt, Queue: I.Webhook, AI: I.Bolt } as Record<string, IconComponent>)[t] || I.Folder);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader title="Settings" description="Self-hosted on Cloudflare Workers. Most config lives in wrangler.toml; this page is a live view + UI for runtime-mutable values." />
       <div className="ce-tabs">
         {[
-          { id: "general", label: "General", hint: "app · auth" },
-          { id: "bindings", label: "Bindings", hint: `${bindings.length}` },
-          { id: "env", label: "Environment", hint: `${envVars.length}` },
-          { id: "about", label: "About", hint: "v0.9.4" },
+          { id: "general", label: "General" },
+          { id: "bindings", label: "Bindings", count: bindings.length },
+          { id: "env", label: "Environment", count: envVars.length },
+          { id: "about", label: "About" },
         ].map((t) => (
           <button key={t.id} type="button" className={`ce-tab ${tab === t.id ? "on" : ""}`} onClick={() => setTab(t.id)}>
             <span>{t.label}</span>
-            <span className="ce-tab-count">{t.hint}</span>
+            {t.count !== undefined && <span className="ce-tab-count">{t.count}</span>}
           </button>
         ))}
       </div>
 
       {tab === "general" && (
         <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
-          <div className="field"><label className="field-label">Site name</label><input className="input" value={siteName} onChange={(e) => { setSiteName(e.target.value); setDirty(true); }} /><span className="field-hint">Shown in the sidebar and email templates.</span></div>
-          <div className="field"><label className="field-label">APP_URL</label><input className="input" value={appUrl} onChange={(e) => { setAppUrl(e.target.value); setDirty(true); }} /><span className="field-hint">Public origin of this Worker. Used for OAuth callbacks and absolute links.</span></div>
-          <div className="field"><label className="field-label">EMAIL_FROM</label><input className="input" value={from} onChange={(e) => { setFrom(e.target.value); setDirty(true); }} /></div>
+          <div className="field"><label className="field-label">Site name</label><input className="input" value={siteName} onChange={(e) => { setSiteName(e.target.value); setDirty(true); }} /><span className="field-hint">Display name for this instance.</span></div>
           <div className="field-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
             <div>
-              <div className="field-label">Open sign-up</div>
-              <div className="field-hint">When off, only invited emails can sign up.</div>
+              <div className="field-label">APP_URL</div>
+              <div className="field-hint">Public origin of this Worker — set via <span className="font-mono">wrangler.toml [vars]</span> (or <span className="font-mono">.env</span> on self-host). Used for CORS, OAuth callbacks and absolute links. Read-only here.</div>
             </div>
-            <Switch checked={signupOpen} onChange={(v) => { setSignupOpen(v); setDirty(true); }} />
+            <span className="font-mono muted" style={{ fontSize: 12.5, maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={appUrl}>{appUrl}</span>
           </div>
           <div className="field-row">
             <div>
-              <div className="field-label">Anonymous telemetry</div>
-              <div className="field-hint">Send aggregated, opt-in usage counts to help prioritise OSS work. No content or identifiers.</div>
+              <div className="field-label">EMAIL_FROM</div>
+              <div className="field-hint">Sender address for transactional email — set via <span className="font-mono">wrangler secret put</span> / <span className="font-mono">.env</span>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here.</div>
             </div>
-            <Switch checked={telemetry} onChange={(v) => { setTelemetry(v); setDirty(true); }} />
+            <span className="font-mono muted" style={{ fontSize: 12.5 }}>{from || "(not set)"}</span>
+          </div>
+          <div className="field-row">
+            <div>
+              <div className="field-label">Open sign-up</div>
+              <div className="field-hint">When off, new account creation is rejected on every path (email/password, social, magic-link). The first user is always allowed so a fresh instance can bootstrap its admin.</div>
+            </div>
+            <Switch checked={signupOpen} onChange={(v) => { setSignupOpen(v); setDirty(true); }} />
           </div>
           <div className="field-row">
             <div>
@@ -2459,57 +2469,51 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
               <span style={{ fontSize: 12.5, fontWeight: 500 }}>wrangler.toml snippet</span>
             </div>
             <pre className="alter-preview" style={{ fontSize: 11.5, margin: 0, whiteSpace: "pre-wrap" }}>{`[[d1_databases]]
-binding = "DB"
-database_name = "workeros-db"
-
-[[kv_namespaces]]
-binding = "CACHE"
-id = "…"
+binding = "D1"
+database_name = "workeros"
 
 [[r2_buckets]]
-binding = "ASSETS"
-bucket_name = "workeros-assets"`}</pre>
+binding = "R2"
+bucket_name = "workeros-files"
+
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "workeros-embeddings"
+
+[[durable_objects.bindings]]
+name = "REALTIME"
+class_name = "RealtimeRoom"`}</pre>
           </div>
         </div>
       )}
 
       {tab === "env" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 920 }}>
+          <div className="card" style={{ padding: 14, display: "flex", alignItems: "flex-start", gap: 10, background: "var(--muted)" }}>
+            <I.Info size={14} style={{ marginTop: 2 }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 500 }}>Environment variables are read-only here</span>
+              <span className="muted" style={{ fontSize: 12 }}>Set them in <span className="font-mono" style={{ color: "var(--foreground)" }}>wrangler.toml [vars]</span> / <span className="font-mono" style={{ color: "var(--foreground)" }}>wrangler secret put</span> (or <span className="font-mono" style={{ color: "var(--foreground)" }}>apps/web/.env</span> on self-host) and redeploy. This panel only reports which keys are present — secret values are never sent to the browser.</span>
+            </div>
+          </div>
           <div className="card">
             <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <I.Lock size={14} /><span style={{ fontSize: 13, fontWeight: 500 }}>environment</span>
-              <span className="font-mono muted" style={{ fontSize: 12 }}>{envVars.filter((v) => v.secret).length} secret · {envVars.filter((v) => !v.secret).length} plain</span>
-              <div className="spacer" />
-              <input className="input" placeholder="KEY" value={newKey} onChange={(e) => setNewKey(e.target.value.toUpperCase())} style={{ height: 30, width: 160, fontSize: 12.5 }} />
-              <input className="input" placeholder={newSecret ? "(write-only)" : "value"} value={newVal} onChange={(e) => setNewVal(e.target.value)} disabled={newSecret} style={{ height: 30, width: 200, fontSize: 12.5 }} />
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }}>
-                <Checkbox checked={newSecret} onChange={setNewSecret} /> secret
-              </label>
-              <Button variant="primary" size="sm" icon={I.Plus} onClick={addEnv}>Add</Button>
+              <span className="font-mono muted" style={{ fontSize: 12 }}>{envVars.filter((v) => v.value !== "(unset)").length} set · {envVars.filter((v) => v.value === "(unset)").length} unset</span>
             </div>
             <div className="table-scroll">
-            <div className="schema-row" style={{ gridTemplateColumns: "24px 200px 1fr 160px 32px", background: "var(--muted)", fontSize: 11, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: 0.4 }}>
-              <span></span><span>Key</span><span>Value</span><span>Source</span><span></span>
+            <div className="schema-row" style={{ gridTemplateColumns: "24px 1fr 120px 110px", background: "var(--muted)", fontSize: 11, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: 0.4 }}>
+              <span></span><span>Key</span><span>Kind</span><span>Status</span>
             </div>
             {envVars.map((v) => (
-              <div key={v.id} className="schema-row" style={{ gridTemplateColumns: "24px 200px 1fr 160px 32px" }}>
+              <div key={v.id} className="schema-row" style={{ gridTemplateColumns: "24px 1fr 120px 110px" }}>
                 <span>{v.secret ? <I.Lock size={13} /> : <I.Hash size={13} />}</span>
                 <span className="font-mono" style={{ fontSize: 12.5 }}>{v.key}</span>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                  <span className="font-mono muted" style={{ fontSize: 12 }}>{v.secret && !revealed[v.id] ? "••••••••••••" : v.value}</span>
-                  {v.secret && (
-                    <IconButton icon={I.Eye} title={revealed[v.id] ? "Hide" : "Reveal"} onClick={() => setRevealed((r) => ({ ...r, [v.id]: !r[v.id] }))} />
-                  )}
-                </div>
-                <span className="font-mono muted" style={{ fontSize: 11.5 }}>{v.source}</span>
-                <IconButton icon={I.Trash} title="Remove" onClick={() => removeEnv(v.id)} />
+                <span className="muted" style={{ fontSize: 11.5 }}>{v.secret ? "secret" : "plain"}</span>
+                <span>{v.value === "(unset)" ? <Badge variant="secondary">unset</Badge> : <Badge variant="default">set</Badge>}</span>
               </div>
             ))}
             </div>
-          </div>
-          <div className="card" style={{ padding: 14, display: "flex", alignItems: "flex-start", gap: 10, background: "var(--muted)" }}>
-            <I.Info size={14} style={{ marginTop: 2 }} />
-            <span className="muted" style={{ fontSize: 12 }}>Secret values can't be read back from Cloudflare — they're write-only after the initial <span className="font-mono" style={{ color: "var(--foreground)" }}>wrangler secret put</span>. Reveal toggles only the local cache.</span>
           </div>
         </div>
       )}

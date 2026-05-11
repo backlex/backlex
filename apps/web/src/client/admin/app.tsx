@@ -5,7 +5,15 @@ import { useLocation, useNavigate } from "react-router-dom";
 import "./admin.css";
 import "./flow-builder.css";
 import { I } from "./icons";
-import { MOCK, type AdapterId, type Post } from "./mock";
+import {
+  ADAPTER_PROFILES,
+  NAV_ITEMS,
+  NAV_SETTINGS,
+  type AdapterId,
+  type CollectionListItem,
+  type CollectionSchema,
+  type Post,
+} from "./config";
 import {
   Badge,
   Button,
@@ -109,8 +117,8 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   const NAV_IDS = useMemo(
     () =>
       new Set<string>([
-        ...MOCK.navItems.map((n) => n.id),
-        ...MOCK.navSettings.map((n) => n.id),
+        ...NAV_ITEMS.map((n) => n.id),
+        ...NAV_SETTINGS.map((n) => n.id),
       ]),
     [],
   );
@@ -154,14 +162,14 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   // Schema is loaded per-collection from /api/collections/:slug. Initial
   // value is an empty placeholder so the UI doesn't crash before activeCollection
   // resolves; the real fields land via the activeCollection effect below.
-  const [schemaState, setSchemaState] = useState<typeof MOCK.collectionSchema>({
+  const [schemaState, setSchemaState] = useState<CollectionSchema>({
     slug: "",
     ownerScoped: false,
     fields: [],
   });
   // No mock seed — empty until /api/collections fills in. The Collections
   // index renders an empty/zero-state path when nothing is loaded yet.
-  const [collections, setCollections] = useState<typeof MOCK.collectionsList>([]);
+  const [collections, setCollections] = useState<CollectionListItem[]>([]);
   useEffect(() => {
     let cancelled = false;
     // Card stats (rows / writes 24h / last write) come from the metrics
@@ -569,8 +577,8 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                 description={<>Dynamic schema. Each collection becomes a physical <span className="font-mono">c_&lt;slug&gt;</span> table at runtime; drop or alter via this UI.</>}
                 badges={
                   <span style={{ display: "inline-flex", gap: 6, marginLeft: 4 }}>
-                    <Badge variant="default">owner-scoped</Badge>
-                    <Badge variant="outline" mono>{MOCK.adapterProfiles[tweaks.adapter].db}</Badge>
+                    {schemaState.ownerScoped && <Badge variant="default">owner-scoped</Badge>}
+                    <Badge variant="outline" mono>{ADAPTER_PROFILES[tweaks.adapter].db}</Badge>
                   </span>
                 }
                 actions={
@@ -582,17 +590,17 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                 }
               />
 
-              <div className="tabs">
-                <button className="tab" data-active={activeTab === "items"} onClick={() => setActiveTab("items")}>
-                  <I.Inbox size={13} />Items <span className="count">{posts.length}</span>
+              <div className="ce-tabs">
+                <button className={`ce-tab ${activeTab === "items" ? "on" : ""}`} onClick={() => setActiveTab("items")}>
+                  <I.Inbox size={13} />Items <span className="ce-tab-count">{posts.length}</span>
                 </button>
-                <button className="tab" data-active={activeTab === "schema"} onClick={() => setActiveTab("schema")}>
-                  <I.Braces size={13} />Schema <span className="count">{schemaState.fields.length}</span>
+                <button className={`ce-tab ${activeTab === "schema" ? "on" : ""}`} onClick={() => setActiveTab("schema")}>
+                  <I.Braces size={13} />Schema <span className="ce-tab-count">{schemaState.fields.length}</span>
                 </button>
-                <button className="tab" data-active={activeTab === "permissions"} onClick={() => setActiveTab("permissions")}>
-                  <I.Shield size={13} />Permissions <span className="count">3</span>
+                <button className={`ce-tab ${activeTab === "permissions" ? "on" : ""}`} onClick={() => setActiveTab("permissions")}>
+                  <I.Shield size={13} />Permissions <span className="ce-tab-count">3</span>
                 </button>
-                <button className="tab" data-active={activeTab === "settings"} onClick={() => setActiveTab("settings")}>
+                <button className={`ce-tab ${activeTab === "settings" ? "on" : ""}`} onClick={() => setActiveTab("settings")}>
                   <I.Settings size={13} />Settings
                 </button>
               </div>
@@ -755,7 +763,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
       </div>
 
       <ItemSheet open={sheetOpen} mode={sheetMode} initial={sheetItem} schema={schemaState} onClose={() => setSheetOpen(false)} onSave={onSave} />
-      <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onNavigate={onPaletteSelect} items={posts} collections={MOCK.collectionsList} />
+      <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onNavigate={onPaletteSelect} items={posts} collections={collections} />
       <ConfirmDialog open={!!confirm} {...(confirm || {})} onCancel={() => setConfirm(null)} />
       <NewCollectionDialog
         open={newCollectionOpen}
@@ -833,7 +841,7 @@ function RolesPageWithMembers({ pushToast }: { pushToast: (m: string) => void })
   const [tab, setTab] = useState<"members" | "roles">("members");
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div className="ce-tabs" style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--radius-xl)", padding: 4 }}>
+      <div className="ce-tabs">
         {[
           { id: "members" as const, label: "Members", icon: I.Users },
           { id: "roles" as const, label: "Roles & permissions", icon: I.Shield },

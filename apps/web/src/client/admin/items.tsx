@@ -332,6 +332,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
   };
 
   return (
+    <div className="table-scroll">
     <table className="table">
       <thead>
         <tr>
@@ -414,6 +415,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
         })}
       </tbody>
     </table>
+    </div>
   );
 }
 

@@ -22,7 +22,9 @@ export interface SubscriptionMeta {
 }
 
 export interface Subscriber {
-  send: (msg: string) => void;
+  /** `id` is the monotonic per-channel sequence number for SSE `Last-Event-ID`
+   *  resumption; `0` (or omitted) means the message is not replayable. */
+  send: (msg: string, id?: number) => void;
   meta?: SubscriptionMeta;
 }
 
@@ -45,6 +47,12 @@ export const projectEventData = (
   return out;
 };
 
+const isItemPayload = (payload: unknown): payload is ItemEventPayload =>
+  typeof payload === "object" &&
+  payload !== null &&
+  "event" in payload &&
+  "data" in payload;
+
 const passesFilter = (
   data: Record<string, unknown>,
   meta: SubscriptionMeta,
@@ -54,7 +62,55 @@ const passesFilter = (
   return meta.conditions.some((c) => matchesCondition(data, c, meta.authSubject));
 };
 
+/** Serialize `payload` for a single subscriber, applying the permission filter
+ *  + field projection for ItemEvent-shaped payloads. Returns `null` when the
+ *  subscriber must not see this event. */
+const renderFor = (
+  sub: Subscriber,
+  payload: unknown,
+  isItem: boolean,
+): string | null => {
+  if (sub.meta && isItem) {
+    const p = payload as ItemEventPayload;
+    if (!passesFilter(p.data, sub.meta)) return null;
+    const out = sub.meta.fields
+      ? { ...p, data: projectEventData(p.data, sub.meta.fields) }
+      : p;
+    return JSON.stringify(out);
+  }
+  return JSON.stringify(payload);
+};
+
 const subscribers = new Map<string, Set<Subscriber>>();
+
+/** Bounded per-channel ring buffer of recent events so a reconnecting SSE
+ *  subscriber can replay anything it missed (via `Last-Event-ID`). */
+interface RecentEntry {
+  id: number;
+  /** JSON.stringify of the raw published payload — re-rendered per subscriber
+   *  on replay so the permission filter still applies. */
+  raw: string;
+}
+const RECENT_LIMIT = 50;
+const recent = new Map<string, { seq: number; entries: RecentEntry[] }>();
+
+const recordRecent = (channel: string, payload: unknown): number => {
+  let r = recent.get(channel);
+  if (!r) {
+    r = { seq: 0, entries: [] };
+    recent.set(channel, r);
+  }
+  r.seq += 1;
+  r.entries.push({ id: r.seq, raw: JSON.stringify(payload) });
+  if (r.entries.length > RECENT_LIMIT) {
+    r.entries.splice(0, r.entries.length - RECENT_LIMIT);
+  }
+  return r.seq;
+};
+
+/** Highest sequence number currently recorded for `channel` (0 if none). */
+export const currentSeq = (channel: string): number =>
+  recent.get(channel)?.seq ?? 0;
 
 export const subscribeLocal = (
   channel: string,
@@ -72,26 +128,43 @@ export const subscribeLocal = (
   };
 };
 
+/** Replay events `after < id <= upTo` from the ring buffer to a single
+ *  subscriber, applying its permission filter. */
+export const replayLocal = (
+  channel: string,
+  sub: Subscriber,
+  after: number,
+  upTo: number,
+): void => {
+  const r = recent.get(channel);
+  if (!r) return;
+  for (const e of r.entries) {
+    if (e.id <= after || e.id > upTo) continue;
+    let payload: unknown;
+    try {
+      payload = JSON.parse(e.raw);
+    } catch {
+      payload = e.raw;
+    }
+    const msg = renderFor(sub, payload, isItemPayload(payload));
+    if (msg === null) continue;
+    try {
+      sub.send(msg, e.id);
+    } catch {
+      // ignore per-subscriber errors
+    }
+  }
+};
+
 export const publishLocal = (channel: string, payload: unknown): void => {
+  const id = recordRecent(channel, payload);
   const set = subscribers.get(channel);
   if (!set) return;
-  const isItem =
-    typeof payload === "object" &&
-    payload !== null &&
-    "event" in payload &&
-    "data" in payload;
+  const isItem = isItemPayload(payload);
   for (const sub of set) {
     try {
-      if (sub.meta && isItem) {
-        const p = payload as ItemEventPayload;
-        if (!passesFilter(p.data, sub.meta)) continue;
-        const out = sub.meta.fields
-          ? { ...p, data: projectEventData(p.data, sub.meta.fields) }
-          : p;
-        sub.send(JSON.stringify(out));
-      } else {
-        sub.send(JSON.stringify(payload));
-      }
+      const msg = renderFor(sub, payload, isItem);
+      if (msg !== null) sub.send(msg, id);
     } catch {
       // ignore per-subscriber errors
     }

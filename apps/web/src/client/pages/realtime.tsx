@@ -86,15 +86,20 @@ export const Realtime = () => {
   useEffect(() => {
     setMessages([]);
     setConn("connecting");
+    // EventSource auto-reconnects (honouring the server's `retry:` hint) and
+    // re-fires `open`; we just mirror its state so the badge stays honest.
     const es = new EventSource(`/api/realtime/${channel}/subscribe`);
     es.addEventListener("open", () => setConn("open"));
+    es.addEventListener("ready", () => setConn("open"));
     es.addEventListener("message", (e) => {
       setMessages((m) => [
         { ts: new Date().toLocaleTimeString(), data: e.data },
         ...m,
       ].slice(0, 200));
     });
-    es.addEventListener("error", () => setConn("closed"));
+    es.addEventListener("error", () => {
+      setConn(es.readyState === EventSource.CLOSED ? "closed" : "connecting");
+    });
     esRef.current = es;
     return () => {
       es.close();

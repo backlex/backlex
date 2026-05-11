@@ -41,12 +41,33 @@ export const loadRolesForUser = async (
   ctx: DbCtx,
   userId: string | null,
   tenantId: string | null,
+  apiKeyRoleId: string | null = null,
 ): Promise<RoleRow[]> => {
   const t = tablesFor(ctx.dialect);
   // Without an active tenant we can't pick the right copy of public/admin/etc.,
   // so deny everything by returning no roles. This is the safe default — the
   // request just hits the public-deny branch in resolvePermission.
   if (!tenantId) return [];
+  // Role-scoped API key: the effective role set is exactly the bound role —
+  // no implicit `authenticated`, no other roles the owner happens to have —
+  // and only while the owner still holds it. If they lost it (or it was
+  // deleted), the key resolves to no roles → denied. A scoped key therefore
+  // can never grant more than its owner currently has.
+  if (apiKeyRoleId) {
+    if (!userId) return [];
+    const rows = (await (ctx.db as any)
+      .select({ id: t.roles.id, name: t.roles.name, admin: t.roles.admin })
+      .from(t.userRoles)
+      .innerJoin(t.roles, eq(t.userRoles.roleId, t.roles.id))
+      .where(
+        and(
+          eq(t.userRoles.userId, userId),
+          eq(t.roles.tenantId, tenantId),
+          eq(t.roles.id, apiKeyRoleId),
+        ),
+      )) as RoleRow[];
+    return rows;
+  }
   if (!userId) {
     const rows = await (ctx.db as any)
       .select()
@@ -108,7 +129,12 @@ export const resolvePermission = async (
   collection: string,
   action: Action,
 ): Promise<ResolvedPermission> => {
-  const roles = await loadRolesForUser(ctx, auth.userId, auth.tenantId ?? null);
+  const roles = await loadRolesForUser(
+    ctx,
+    auth.userId,
+    auth.tenantId ?? null,
+    auth.apiKeyRoleId ?? null,
+  );
   if (roles.some((r) => r.admin)) {
     return {
       allowed: true,

@@ -1,10 +1,16 @@
 import { and, eq } from "drizzle-orm";
+import { AppError } from "@workeros/core";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { DbCtx } from "./seed";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.apiKeys : sqlite.schema.apiKeys;
+
+const roleTablesFor = (dialect: "pg" | "sqlite") =>
+  dialect === "pg"
+    ? { roles: pg.schema.roles, userRoles: pg.schema.userRoles }
+    : { roles: sqlite.schema.roles, userRoles: sqlite.schema.userRoles };
 
 const PREFIX_LEN = 8;
 const SECRET_LEN = 32;
@@ -31,10 +37,74 @@ export interface ApiKeyRow {
   hashedKey: string;
   name: string;
   userId: string;
+  roleId: string | null;
   expiresAt: Date | number | null;
   lastUsedAt: Date | number | null;
   revokedAt: Date | number | null;
 }
+
+/**
+ * Validate that `roleId` can legitimately be bound to a key owned by
+ * `ownerUserId` in `tenantId`. Throws `AppError` otherwise. The rule: the
+ * role must exist in the active workspace *and* the owner must currently
+ * hold it — so a key can never grant more than its owner already has.
+ */
+export const assertRoleBindable = async (
+  ctx: DbCtx,
+  tenantId: string,
+  ownerUserId: string,
+  roleId: string,
+): Promise<void> => {
+  const t = roleTablesFor(ctx.dialect);
+  const exists = (await (ctx.db as any)
+    .select({ id: t.roles.id })
+    .from(t.roles)
+    .where(and(eq(t.roles.id, roleId), eq(t.roles.tenantId, tenantId)))
+    .limit(1)) as { id: string }[];
+  if (!exists[0]) throw new AppError("NOT_FOUND", "Role not found in this workspace");
+  const held = (await (ctx.db as any)
+    .select({ roleId: t.userRoles.roleId })
+    .from(t.userRoles)
+    .where(and(eq(t.userRoles.userId, ownerUserId), eq(t.userRoles.roleId, roleId)))
+    .limit(1)) as { roleId: string }[];
+  if (!held[0]) {
+    throw new AppError(
+      "FORBIDDEN",
+      "Cannot scope a key to a role the owner does not hold",
+    );
+  }
+};
+
+/** Roles the caller may bind to a new key, for the active workspace.
+ *  Admins see every role in the workspace; everyone else sees only the
+ *  roles they hold (a key can't widen its owner's access). */
+export const bindableRoles = async (
+  ctx: DbCtx,
+  tenantId: string,
+  userId: string,
+  isAdmin: boolean,
+): Promise<{ id: string; name: string; admin: boolean }[]> => {
+  const t = roleTablesFor(ctx.dialect);
+  if (isAdmin) {
+    return (await (ctx.db as any)
+      .select({ id: t.roles.id, name: t.roles.name, admin: t.roles.admin })
+      .from(t.roles)
+      .where(eq(t.roles.tenantId, tenantId))) as {
+      id: string;
+      name: string;
+      admin: boolean;
+    }[];
+  }
+  return (await (ctx.db as any)
+    .select({ id: t.roles.id, name: t.roles.name, admin: t.roles.admin })
+    .from(t.userRoles)
+    .innerJoin(t.roles, eq(t.userRoles.roleId, t.roles.id))
+    .where(and(eq(t.userRoles.userId, userId), eq(t.roles.tenantId, tenantId)))) as {
+    id: string;
+    name: string;
+    admin: boolean;
+  }[];
+};
 
 export const createApiKey = async (
   ctx: DbCtx,
@@ -42,6 +112,7 @@ export const createApiKey = async (
     name: string;
     userId: string;
     tenantId: string;
+    roleId?: string | null;
     expiresAt?: Date | null;
   },
 ): Promise<{ row: ApiKeyRow; secret: string }> => {
@@ -51,6 +122,7 @@ export const createApiKey = async (
   const hashed = await hashKey(secretPart);
   const id = crypto.randomUUID();
   const t = tableFor(ctx.dialect);
+  const roleId = input.roleId ?? null;
   const expiresAt = input.expiresAt
     ? ctx.dialect === "pg"
       ? input.expiresAt
@@ -63,6 +135,7 @@ export const createApiKey = async (
     hashedKey: hashed,
     name: input.name,
     userId: input.userId,
+    roleId,
     expiresAt,
   });
   return {
@@ -73,6 +146,7 @@ export const createApiKey = async (
       hashedKey: hashed,
       name: input.name,
       userId: input.userId,
+      roleId,
       expiresAt,
       lastUsedAt: null,
       revokedAt: null,

@@ -421,6 +421,9 @@ type AuthProviderRow = {
   configured: boolean;
   system?: boolean;
   clientId?: string | null;
+  /** True if this workspace has a client secret stored (encrypted) for the
+   *  provider. The plaintext is never returned. */
+  hasSecret?: boolean;
   discoveryUrl?: string | null;
 };
 
@@ -464,6 +467,7 @@ const mapAuthProviders = (map: Record<string, any> | undefined): AuthProviderRow
     configured: !!(v && v.configured),
     system: !!(v && v.system),
     clientId: (v && v.clientId) ?? null,
+    hasSecret: !!(v && v.hasSecret),
     discoveryUrl: (v && v.discoveryUrl) ?? null,
   }));
   // Stable order: built-ins first, then alphabetical.
@@ -746,27 +750,31 @@ function ProviderConfigDialog({ provider, kind, onClose, onSave }: {
   const [enabled, setEnabled] = useState(provider.enabled);
   const [name, setName] = useState(provider.name ?? "");
   const [clientId, setClientId] = useState(provider.clientId ?? "");
+  const [clientSecret, setClientSecret] = useState("");
   const [discoveryUrl, setDiscoveryUrl] = useState(provider.discoveryUrl ?? "");
 
-  const usesClientId = kind === "oauth" || kind === "custom";
-  const needsClientId = usesClientId && !clientId.trim();
+  // A secret is "available" if one is already stored, or the admin just typed one.
+  const hasSecret = !!provider.hasSecret || !!clientSecret.trim();
   const discoveryBad = !!discoveryUrl.trim() && !isHttpUrl(discoveryUrl.trim());
   const valid = kind === "custom" ? name.trim().length >= 2 && !discoveryBad : !discoveryBad;
 
   const submit = () => {
     if (!valid) return;
     const hasClientId = !!clientId.trim();
+    // Fully configured = has both id AND a secret (stored or freshly entered).
+    const fullyConfigured = hasClientId && hasSecret;
     const patch: Record<string, unknown> = {};
-    if (kind === "oauth") {
+    if (kind === "oauth" || kind === "custom") {
       patch.clientId = clientId.trim() || null;
-      patch.configured = hasClientId;
-      patch.enabled = hasClientId ? enabled : false;
-    } else if (kind === "custom") {
-      patch.name = name.trim();
-      patch.clientId = clientId.trim() || null;
-      patch.discoveryUrl = discoveryUrl.trim() || null;
-      patch.configured = hasClientId;
-      patch.enabled = hasClientId ? enabled : false;
+      // Only send the secret when the admin actually typed one — leaving the
+      // field blank keeps the stored secret untouched.
+      if (clientSecret.trim()) patch.clientSecret = clientSecret.trim();
+      patch.configured = fullyConfigured;
+      patch.enabled = fullyConfigured ? enabled : false;
+      if (kind === "custom") {
+        patch.name = name.trim();
+        patch.discoveryUrl = discoveryUrl.trim() || null;
+      }
     } else {
       patch.enabled = enabled;
     }
@@ -786,13 +794,18 @@ function ProviderConfigDialog({ provider, kind, onClose, onSave }: {
           <IconButton icon={I.X} onClick={onClose} />
         </div>
         <div className="dialog-body">
-          <div className="field-row">
-            <div>
-              <div className="field-label">Enabled</div>
-              <div className="field-hint">{needsClientId ? "Add a Client ID below first." : "Show this option on the sign-in screen."}</div>
-            </div>
-            <Switch checked={enabled && !needsClientId} disabled={needsClientId} title={needsClientId ? "Add a Client ID first" : undefined} onChange={setEnabled} />
-          </div>
+          {(() => {
+            const blocked = (kind === "oauth" || kind === "custom") && !(clientId.trim() && hasSecret);
+            return (
+              <div className="field-row">
+                <div>
+                  <div className="field-label">Enabled</div>
+                  <div className="field-hint">{blocked ? "Add a Client ID and secret below first." : "Show this option on the sign-in screen."}</div>
+                </div>
+                <Switch checked={enabled && !blocked} disabled={blocked} title={blocked ? "Add a Client ID and secret first" : undefined} onChange={setEnabled} />
+              </div>
+            );
+          })()}
           {kind === "custom" && (
             <div className="field">
               <label className="field-label">Display name</label>
@@ -805,6 +818,12 @@ function ProviderConfigDialog({ provider, kind, onClose, onSave }: {
               <input className="input font-mono" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="123456789-abc.apps.example.com" />
             </div>
           )}
+          {(kind === "oauth" || kind === "custom") && (
+            <div className="field">
+              <label className="field-label">Client secret {provider.hasSecret && <span className="muted">· stored, leave blank to keep</span>}</label>
+              <input type="password" className="input font-mono" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} placeholder={provider.hasSecret ? "••••••••••••••••" : "paste from the provider"} autoComplete="new-password" />
+            </div>
+          )}
           {kind === "custom" && (
             <div className="field">
               <label className="field-label">Discovery URL <span className="muted">(optional)</span></label>
@@ -814,7 +833,10 @@ function ProviderConfigDialog({ provider, kind, onClose, onSave }: {
           )}
           {(kind === "oauth" || kind === "custom") && (
             <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.5 }}>
-              The client secret is read from the <span className="font-mono">OAUTH_{provider.id.toUpperCase()}_CLIENT_SECRET</span> environment variable — it is never stored or shown here.
+              The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the{" "}
+              <span className="font-mono">OAUTH_{provider.id.toUpperCase()}_CLIENT_ID</span> /{" "}
+              <span className="font-mono">_CLIENT_SECRET</span> environment variables. Register{" "}
+              <span className="font-mono">{"{app-url}"}/api/t/{"{workspace}"}/auth/callback/{provider.id}</span> as the redirect URI with the provider.
             </div>
           )}
           {kind === "builtin" && (

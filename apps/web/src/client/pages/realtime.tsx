@@ -1,10 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { RadioIcon, SendIcon, PlusIcon, ShieldIcon } from "lucide-react";
+import {
+  RadioIcon,
+  SendIcon,
+  PlusIcon,
+  ShieldIcon,
+  UsersIcon,
+  FlaskConicalIcon,
+} from "lucide-react";
 import { Card, CardContent } from "@workeros/ui/components/card";
 import { Input } from "@workeros/ui/components/input";
+import { Textarea } from "@workeros/ui/components/textarea";
 import { Button } from "@workeros/ui/components/button";
 import { Label } from "@workeros/ui/components/label";
 import { Badge } from "@workeros/ui/components/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workeros/ui/components/select";
 import {
   Dialog,
   DialogContent,
@@ -20,17 +35,24 @@ import { api } from "@/lib/api";
 import { cn } from "@workeros/ui/lib/utils";
 
 type ConnState = "connecting" | "open" | "closed";
+type ItemEventType = "created" | "updated" | "deleted";
 
 interface Entry {
   ts: string;
   data: string;
 }
 
+interface PresenceMember {
+  userId: string;
+  email: string | null;
+}
+
+type ChannelKind = "items" | "collections" | "presence" | "free-form";
+
 interface ChannelEntry {
   name: string;
   description: string;
-  /** "system" channels reject external POST /publish (server-side gate). */
-  kind: "items" | "collections" | "free-form";
+  kind: ChannelKind;
 }
 
 interface Collection {
@@ -45,19 +67,33 @@ const SYSTEM_CHANNELS: ChannelEntry[] = [
   },
 ];
 
+const ALWAYS_VISIBLE_PRESENCE: ChannelEntry[] = [
+  { name: "presence:lobby", description: "Presence · who's connected", kind: "presence" },
+];
+
 const ALWAYS_VISIBLE_FREEFORM: ChannelEntry[] = [
   { name: "demo", description: "Free-form · open", kind: "free-form" },
 ];
+
+const kindForChannel = (name: string): ChannelKind => {
+  if (name.startsWith("items:")) return "items";
+  if (name.startsWith("presence:")) return "presence";
+  if (name === "collections") return "collections";
+  return "free-form";
+};
 
 export const Realtime = () => {
   const [channelInput, setChannelInput] = useState("demo");
   const [channel, setChannel] = useState("demo");
   const [messages, setMessages] = useState<Entry[]>([]);
+  const [members, setMembers] = useState<PresenceMember[]>([]);
   const [text, setText] = useState("");
   const [conn, setConn] = useState<ConnState>("connecting");
   const [adHoc, setAdHoc] = useState<ChannelEntry[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [addOpen, setAddOpen] = useState(false);
+  const [testEvent, setTestEvent] = useState<ItemEventType>("created");
+  const [testData, setTestData] = useState('{\n  "id": "demo-1",\n  "owner_id": "..."\n}');
   const esRef = useRef<EventSource | null>(null);
 
   // Fetch known collections so items:<slug> channels appear in the browser.
@@ -74,27 +110,50 @@ export const Realtime = () => {
       kind: "items",
     }));
     const seen = new Set<string>();
-    return [...items, ...SYSTEM_CHANNELS, ...ALWAYS_VISIBLE_FREEFORM, ...adHoc].filter(
-      (c) => {
-        if (seen.has(c.name)) return false;
-        seen.add(c.name);
-        return true;
-      },
-    );
+    return [
+      ...items,
+      ...SYSTEM_CHANNELS,
+      ...ALWAYS_VISIBLE_PRESENCE,
+      ...ALWAYS_VISIBLE_FREEFORM,
+      ...adHoc,
+    ].filter((c) => {
+      if (seen.has(c.name)) return false;
+      seen.add(c.name);
+      return true;
+    });
   }, [collections, adHoc]);
 
   useEffect(() => {
     setMessages([]);
+    setMembers([]);
     setConn("connecting");
+    // EventSource auto-reconnects (honouring the server's `retry:` hint) and
+    // re-fires `open`; we just mirror its state so the badge stays honest.
     const es = new EventSource(`/api/realtime/${channel}/subscribe`);
     es.addEventListener("open", () => setConn("open"));
+    es.addEventListener("ready", () => setConn("open"));
     es.addEventListener("message", (e) => {
-      setMessages((m) => [
-        { ts: new Date().toLocaleTimeString(), data: e.data },
-        ...m,
-      ].slice(0, 200));
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(e.data);
+      } catch {
+        parsed = null;
+      }
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        (parsed as { event?: unknown }).event === "presence"
+      ) {
+        const list = (parsed as { data?: { members?: unknown } }).data?.members;
+        if (Array.isArray(list)) setMembers(list as PresenceMember[]);
+      }
+      setMessages((m) =>
+        [{ ts: new Date().toLocaleTimeString(), data: e.data }, ...m].slice(0, 200),
+      );
     });
-    es.addEventListener("error", () => setConn("closed"));
+    es.addEventListener("error", () => {
+      setConn(es.readyState === EventSource.CLOSED ? "closed" : "connecting");
+    });
     esRef.current = es;
     return () => {
       es.close();
@@ -118,6 +177,32 @@ export const Realtime = () => {
     }
   };
 
+  const sendTestEvent = async () => {
+    let data: unknown;
+    try {
+      data = JSON.parse(testData);
+    } catch {
+      notifyError(new Error("`data` must be valid JSON"), "Sending test event");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/realtime/${channel}/test-publish`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ event: testEvent, data }),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as
+          | { error?: { message?: string } }
+          | null;
+        throw new Error(body?.error?.message ?? `HTTP ${res.status}`);
+      }
+    } catch (e) {
+      notifyError(e, "Sending test event");
+    }
+  };
+
   const connBadge =
     conn === "open" ? (
       <Badge className="gap-1.5 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400">
@@ -134,15 +219,21 @@ export const Realtime = () => {
       </Badge>
     );
 
-  const isSystem = channel.startsWith("items:") || channel === "collections";
+  const kind = kindForChannel(channel);
+  const isItems = kind === "items";
+  const isPresence = kind === "presence";
+  const isPermissionAware = isItems || kind === "collections" || isPresence;
+  const canPublish = kind === "free-form";
 
-  const groupedChannels = useMemo(() => {
-    return {
+  const groupedChannels = useMemo(
+    () => ({
       items: channels.filter((c) => c.kind === "items"),
       system: channels.filter((c) => c.kind === "collections"),
+      presence: channels.filter((c) => c.kind === "presence"),
       freeForm: channels.filter((c) => c.kind === "free-form"),
-    };
-  }, [channels]);
+    }),
+    [channels],
+  );
 
   return (
     <div>
@@ -181,6 +272,12 @@ export const Realtime = () => {
             onSelect={setChannel}
           />
           <ChannelGroup
+            title="Presence"
+            entries={groupedChannels.presence}
+            active={channel}
+            onSelect={setChannel}
+          />
+          <ChannelGroup
             title="Free-form"
             entries={groupedChannels.freeForm}
             active={channel}
@@ -194,9 +291,14 @@ export const Realtime = () => {
             <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
               <RadioIcon className="size-4" />
               <span className="font-mono text-sm">{channel}</span>
-              {isSystem && (
+              {isPermissionAware && (
                 <Badge variant="outline" className="gap-1 text-[10px]">
                   <ShieldIcon className="size-3" /> permission-aware
+                </Badge>
+              )}
+              {isPresence && (
+                <Badge variant="outline" className="gap-1 text-[10px]">
+                  <UsersIcon className="size-3" /> {members.length} online
                 </Badge>
               )}
               <div className="flex-1" />
@@ -205,7 +307,7 @@ export const Realtime = () => {
               </span>
             </div>
 
-            {!isSystem && (
+            {canPublish && (
               <div className="border-b border-border px-4 py-3">
                 <form
                   className="flex items-end gap-2"
@@ -226,13 +328,75 @@ export const Realtime = () => {
                       className="font-mono text-xs"
                     />
                   </div>
-                  <Button
-                    type="submit"
-                    disabled={!text.trim() || conn !== "open"}
-                  >
+                  <Button type="submit" disabled={!text.trim() || conn !== "open"}>
                     <SendIcon /> Publish
                   </Button>
                 </form>
+              </div>
+            )}
+
+            {isItems && (
+              <div className="space-y-2 border-b border-border px-4 py-3">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <FlaskConicalIcon className="size-3.5" />
+                  Send synthetic event (admin) — verifies per-subscriber filtering
+                </div>
+                <form
+                  className="space-y-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    sendTestEvent();
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={testEvent}
+                      onValueChange={(v) => setTestEvent(v as ItemEventType)}
+                    >
+                      <SelectTrigger className="h-8 w-32 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="created">created</SelectItem>
+                        <SelectItem value="updated">updated</SelectItem>
+                        <SelectItem value="deleted">deleted</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="flex-1" />
+                    <Button type="submit" size="sm" disabled={conn !== "open"}>
+                      <SendIcon /> Send test event
+                    </Button>
+                  </div>
+                  <Textarea
+                    value={testData}
+                    onChange={(e) => setTestData(e.target.value)}
+                    rows={4}
+                    spellCheck={false}
+                    placeholder='{ "id": "...", "owner_id": "..." }'
+                    className="font-mono text-xs"
+                  />
+                </form>
+              </div>
+            )}
+
+            {isPresence && (
+              <div className="border-b border-border px-4 py-3">
+                <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <UsersIcon className="size-3.5" /> Members
+                </div>
+                {members.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No one here yet.</p>
+                ) : (
+                  <ul className="flex flex-wrap gap-1.5">
+                    {members.map((m) => (
+                      <li key={m.userId}>
+                        <Badge variant="secondary" className="font-mono text-[11px]">
+                          {m.email ?? m.userId}
+                        </Badge>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
 
@@ -240,11 +404,21 @@ export const Realtime = () => {
               {messages.length === 0 ? (
                 <EmptyState
                   icon={RadioIcon}
-                  title={isSystem ? "Subscribed" : "Waiting for messages"}
+                  title={
+                    isPresence
+                      ? "Connected"
+                      : isPermissionAware
+                        ? "Subscribed"
+                        : "Waiting for messages"
+                  }
                   description={
-                    isSystem
-                      ? `Subscribed to ${channel}. CRUD on this collection will publish events here.`
-                      : `Subscribed to ${channel}. Publish above or wait for events.`
+                    isPresence
+                      ? `Joined ${channel}. Open this page in another tab/window to see the roster grow.`
+                      : isItems
+                        ? `Subscribed to ${channel}. CRUD on this collection — or the test-event form above — will publish events here.`
+                        : isPermissionAware
+                          ? `Subscribed to ${channel}. Schema changes will publish events here.`
+                          : `Subscribed to ${channel}. Publish above or wait for events.`
                   }
                 />
               ) : (
@@ -257,9 +431,7 @@ export const Realtime = () => {
                       <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
                         {m.ts}
                       </span>
-                      <code className="break-all font-mono text-xs">
-                        {m.data}
-                      </code>
+                      <code className="break-all font-mono text-xs">{m.data}</code>
                     </li>
                   ))}
                 </ul>
@@ -267,11 +439,22 @@ export const Realtime = () => {
             </CardContent>
           </Card>
 
-          {isSystem && (
+          {isPermissionAware && (
             <p className="text-xs text-muted-foreground">
-              System channels (<code className="font-mono">items:*</code>,{" "}
-              <code className="font-mono">collections</code>) reject external
-              POST publish — events come from the CRUD routes themselves.
+              {isPresence ? (
+                <>
+                  <code className="font-mono">presence:*</code> channels require a
+                  signed-in user and broadcast the roster automatically — client
+                  publish is disabled.
+                </>
+              ) : (
+                <>
+                  System channels (<code className="font-mono">items:*</code>,{" "}
+                  <code className="font-mono">collections</code>) reject external
+                  POST publish — events come from the CRUD routes (or the admin
+                  test-event injector).
+                </>
+              )}
             </p>
           )}
         </div>
@@ -282,9 +465,9 @@ export const Realtime = () => {
           <DialogHeader>
             <DialogTitle>Subscribe to channel</DialogTitle>
             <DialogDescription>
-              Free-form channel name — any string works. System channels (
-              <code className="font-mono">items:*</code>,{" "}
-              <code className="font-mono">collections</code>) appear automatically.
+              Any channel name works. <code className="font-mono">presence:*</code>{" "}
+              tracks connected members; <code className="font-mono">items:*</code> and{" "}
+              <code className="font-mono">collections</code> appear automatically.
             </DialogDescription>
           </DialogHeader>
           <form
@@ -299,8 +482,11 @@ export const Realtime = () => {
                       ...prev,
                       {
                         name: trimmed,
-                        description: "Free-form · open",
-                        kind: "free-form",
+                        description:
+                          kindForChannel(trimmed) === "presence"
+                            ? "Presence · who's connected"
+                            : "Free-form · open",
+                        kind: kindForChannel(trimmed),
                       },
                     ],
               );
@@ -321,11 +507,7 @@ export const Realtime = () => {
               />
             </div>
             <DialogFooter>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setAddOpen(false)}
-              >
+              <Button type="button" variant="ghost" onClick={() => setAddOpen(false)}>
                 Cancel
               </Button>
               <Button type="submit">Subscribe</Button>

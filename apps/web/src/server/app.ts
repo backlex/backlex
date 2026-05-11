@@ -14,6 +14,10 @@ import {
   seedOwnerScopedPermissions,
   seedEmailTemplates,
 } from "./services/seed";
+import {
+  isWorkspaceAllowedOrigin,
+  refreshAllowedOriginsIfStale,
+} from "./services/cors-origins";
 import { activityRoutes } from "./routes/activity";
 import { revisionsRoutes } from "./routes/revisions";
 import { authRoutes } from "./routes/auth";
@@ -91,16 +95,11 @@ export const createApp = (env: Env) => {
 
   app.use("*", logger());
   app.use("*", secureHeaders());
-  app.use(
-    "*",
-    cors({
-      origin: env.APP_URL,
-      credentials: true,
-      allowHeaders: ["Content-Type", "Authorization"],
-      allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-    }),
-  );
 
+  // Build the per-request context *before* CORS so the CORS origin check can
+  // read the active workspace set. `buildContext` is synchronous and cheap
+  // (it only constructs adapters); the one-time role/seed bootstrap is gated
+  // by a module flag.
   app.use("*", async (c, next) => {
     const ctx = buildContext(env);
     c.set("ctx", ctx);
@@ -114,6 +113,26 @@ export const createApp = (env: Env) => {
     }
     await next();
   });
+
+  app.use(
+    "*",
+    cors({
+      // Allow `APP_URL` always; allow any origin in `EXTRA_TRUSTED_ORIGINS`
+      // or derived from a workspace's `auth_config.redirectUrls` (so a
+      // customer's app on a different domain can call its workspace's auth
+      // surface + the data API with credentials). Anything else gets a
+      // non-matching ACAO header → blocked by the browser.
+      origin: (origin, c) => {
+        if (!origin || origin === env.APP_URL) return env.APP_URL;
+        const ctx = c.get("ctx");
+        if (ctx) refreshAllowedOriginsIfStale({ db: ctx.db, dialect: ctx.dialect });
+        return isWorkspaceAllowedOrigin(origin, env) ? origin : env.APP_URL;
+      },
+      credentials: true,
+      allowHeaders: ["Content-Type", "Authorization", "X-Workeros-Tenant"],
+      allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    }),
+  );
 
   app.use("*", sessionMiddleware);
   app.use("*", tenantMiddleware);

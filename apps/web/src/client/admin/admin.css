@@ -1994,3 +1994,118 @@ body {
   border-color: color-mix(in oklch, var(--primary) 50%, var(--border));
   color: var(--foreground);
 }
+
+/* ─── Responsive helpers ─── */
+/* Horizontal-scroll wrapper for fixed-width tables / grid "tables" so they
+   never push the page wider than the viewport. */
+.table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+/* Master/detail two-pane layout — fixed-width aside + fluid content; stacks on
+   narrow screens. Override the aside width with `style="--md-aside: 320px"`. */
+.master-detail {
+  display: grid;
+  grid-template-columns: var(--md-aside, 280px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+/* Three-pane (list / list / detail) layout — stacks earlier since it needs
+   more room. */
+.master-detail-3 {
+  display: grid;
+  grid-template-columns: var(--md-a, 280px) var(--md-b, 220px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+/* Equal-column field rows that collapse to a single column on phones. */
+.cols-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.cols-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+
+@media (max-width: 1024px) {
+  .master-detail-3 { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 900px) {
+  .master-detail { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .cols-2, .cols-3 { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ─── Off-canvas sidebar (phones / small tablets) ─── */
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: oklch(0 0 0 / 0.45);
+  z-index: 55;
+  animation: sidebar-backdrop-in 160ms ease-out;
+}
+@keyframes sidebar-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+
+@media (max-width: 768px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  /* The drawer always shows full labels — undo the icon-rail collapse. */
+  .app[data-collapsed="true"] .nav-label,
+  .app[data-collapsed="true"] .brand-text,
+  .app[data-collapsed="true"] .nav-end,
+  .app[data-collapsed="true"] .adapter-card { display: revert; }
+  .app[data-collapsed="true"] .sidebar-section-label { opacity: 1; }
+  .app[data-collapsed="true"] .ws-trigger .ws-chev { display: revert; }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(280px, 84vw);
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform 200ms ease;
+    z-index: 60;
+  }
+  .app[data-mobile-open="true"] .sidebar {
+    transform: translateX(0);
+    box-shadow: 6px 0 28px oklch(0 0 0 / 0.28);
+  }
+
+  .topbar { padding: 10px 14px; gap: 8px; }
+  .topbar .kbar {
+    min-width: 0;
+    flex: 0 0 auto;
+    padding: 6px;
+  }
+  .topbar .kbar > span:not(.kbd) { display: none; }
+  .topbar .kbar .kbd { display: none; }
+  .crumbs { min-width: 0; flex: 1; overflow: hidden; }
+  .crumbs .here, .crumbs > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .page { padding: 16px 14px 56px; gap: 14px; }
+  .page-header { gap: 12px; }
+  .page-actions { flex-wrap: wrap; }
+  .page-title { font-size: 20px; }
+  .page-title .slug { font-size: 18px; }
+
+  .tabs { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tabs .tab { flex: 0 0 auto; }
+
+  .split { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .search-input { min-width: 0; }
+  .filter-bar { gap: 6px; }
+
+  /* Multi-column tables / grid "tables" stay readable and scroll horizontally
+     instead of squishing into the viewport. */
+  .table-scroll .table,
+  .table-scroll .schema-row { min-width: 540px; }
+
+  /* Wide internal grids → horizontal scroll instead of viewport overflow. */
+  .pm-grid-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .pm-grid { min-width: 480px; }
+  .mp-table { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .mp-head, .mp-row { min-width: 480px; }
+  .field-grid { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .field-grid .fg-head, .field-grid .fg-row, .field-grid .fg-foot { min-width: 320px; }
+}
+
+@media (max-width: 560px) {
+  .users-stats { grid-template-columns: minmax(0, 1fr); }
+}

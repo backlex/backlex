@@ -72,7 +72,7 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
             how this collection shows up in nav and lists
           </span>
         </div>
-        <div style={{ padding: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div className="cols-2" style={{ padding: 16 }}>
           <div className="field" style={{ gridColumn: "1 / -1" }}>
             <label className="field-label">Slug</label>
             <div className={`input-affix ${slugError ? "error" : ""}`}>

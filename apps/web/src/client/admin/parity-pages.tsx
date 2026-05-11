@@ -77,14 +77,27 @@ export function DatabasePage({ pushToast, adapter }: { pushToast: (m: string) =>
   );
 }
 
+const SNIPPET_TABLE_DEPS: Record<string, string> = {
+  "Recent users": "users",
+  "Active sessions": "sessions",
+  "Recent activity": "activity",
+  "Collections": "collections",
+  "Largest files": "files",
+  "API keys": "api_keys",
+};
+const SNIPPET_SQL: Record<string, string> = {
+  "Recent users": 'SELECT id, email, name, created_at\nFROM "users"\nORDER BY created_at DESC\nLIMIT 20;',
+  "Active sessions": 'SELECT user_id, ip_address, expires_at\nFROM "sessions"\nORDER BY created_at DESC\nLIMIT 20;',
+  "Recent activity": 'SELECT action, collection, item_id, created_at\nFROM "activity"\nORDER BY created_at DESC\nLIMIT 50;',
+  "Collections": 'SELECT slug, physical_table, owner_scoped\nFROM "collections"\nORDER BY slug;',
+  "Largest files": 'SELECT key, content_type, size\nFROM "files"\nORDER BY size DESC\nLIMIT 20;',
+  "API keys": 'SELECT prefix, name, user_id, last_used_at\nFROM "api_keys"\nORDER BY created_at DESC\nLIMIT 20;',
+};
+const quoteIdent = (n: string) => `"${n.replace(/"/g, '""')}"`;
+const browseSql = (table: string) => `SELECT *\nFROM ${quoteIdent(table)}\nLIMIT 50;`;
+
 function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
-  const snippets = [
-    { name: "Recent posts", sql: "SELECT id, title, status, view_count\nFROM c_posts\nORDER BY updated_at DESC\nLIMIT 20;" },
-    { name: "Top authors", sql: "SELECT author, count(*) as posts\nFROM c_posts\nGROUP BY author\nORDER BY posts DESC;" },
-    { name: "Storage size", sql: "SELECT folder, count(*), sum(size) as bytes\nFROM storage_objects\nGROUP BY folder;" },
-    { name: "Active sessions", sql: "SELECT user_id, count(*)\nFROM auth_sessions\nWHERE expires_at > now()\nGROUP BY user_id;" },
-  ];
-  const [sql, setSql] = useState(snippets[0].sql);
+  const [sql, setSql] = useState("SELECT 1;");
   const [result, setResult] = useState<{ rows: Record<string, unknown>[]; ms: number; count: number }>({
     rows: [],
     ms: 0,
@@ -94,6 +107,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
   const [readOnly, setReadOnly] = useState(true);
 
   const [tables, setTables] = useState<{ name: string; rows: number }[]>([]);
+  const [tableFilter, setTableFilter] = useState("");
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -107,6 +121,31 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  const filteredTables = useMemo(() => {
+    const q = tableFilter.trim().toLowerCase();
+    return q ? tables.filter((t) => t.name.toLowerCase().includes(q)) : tables;
+  }, [tables, tableFilter]);
+
+  // Snippets are derived from the tables that actually exist in this database,
+  // so every one of them runs without "no such table" errors.
+  const snippets = useMemo<{ name: string; sql: string }[]>(() => {
+    const names = new Set(tables.map((t) => t.name));
+    const out: { name: string; sql: string }[] = [];
+    for (const [name, dep] of Object.entries(SNIPPET_TABLE_DEPS)) {
+      if (names.has(dep)) out.push({ name, sql: SNIPPET_SQL[name]! });
+    }
+    for (const t of tables.filter((t) => t.name.startsWith("c_")).slice(0, 5)) {
+      out.push({ name: `Browse ${t.name}`, sql: browseSql(t.name) });
+    }
+    if (tables.length > 0) {
+      const union = tables
+        .map((t) => `SELECT '${t.name.replace(/'/g, "''")}' AS table_name, COUNT(*) AS rows FROM ${quoteIdent(t.name)}`)
+        .join("\nUNION ALL\n");
+      out.push({ name: "Row counts (all tables)", sql: `${union}\nORDER BY rows DESC;` });
+    }
+    return out;
+  }, [tables]);
 
   const isWrite = /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE)\b/i.test(sql);
   const run = async () => {
@@ -131,20 +170,37 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
           <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <I.Database size={13} /><span style={{ fontSize: 12, fontWeight: 500 }}>Tables</span>
             <div className="spacer" />
-            <span className="muted font-mono" style={{ fontSize: 11 }}>{tables.length}</span>
+            <span className="muted font-mono" style={{ fontSize: 11 }}>{filteredTables.length === tables.length ? tables.length : `${filteredTables.length}/${tables.length}`}</span>
           </div>
-          {tables.map((t) => (
-            <div key={t.name} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", borderTop: "1px solid var(--border)", cursor: "pointer" }} onClick={() => setSql(`SELECT * FROM ${t.name} LIMIT 50;`)}>
-              <I.Braces size={11} className="muted" />
-              <span className="font-mono" style={{ fontSize: 11.5, flex: 1 }}>{t.name}</span>
-              <span className="muted tabular-nums" style={{ fontSize: 10.5 }}>{t.rows.toLocaleString()}</span>
-            </div>
-          ))}
+          <div style={{ padding: "6px 8px", borderTop: "1px solid var(--border)" }}>
+            <input
+              value={tableFilter}
+              onChange={(e) => setTableFilter(e.target.value)}
+              placeholder="Filter tables…"
+              spellCheck={false}
+              style={{ width: "100%", padding: "5px 8px", fontSize: 11.5, borderRadius: 6, border: "1px solid var(--border)", background: "var(--background)", color: "inherit", outline: 0 }}
+            />
+          </div>
+          <div style={{ maxHeight: 280, overflowY: "auto" }}>
+            {filteredTables.length === 0 ? (
+              <div className="muted" style={{ padding: "12px", fontSize: 11.5, textAlign: "center" }}>
+                {tables.length === 0 ? "Loading…" : "No tables match."}
+              </div>
+            ) : filteredTables.map((t) => (
+              <div key={t.name} title={browseSql(t.name)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", borderTop: "1px solid var(--border)", cursor: "pointer" }} onClick={() => setSql(browseSql(t.name))}>
+                <I.Braces size={11} className="muted" />
+                <span className="font-mono" style={{ fontSize: 11.5, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
+                <span className="muted tabular-nums" style={{ fontSize: 10.5 }}>{t.rows.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
         </div>
         <div className="card">
           <div className="card-section" style={{ fontSize: 12, fontWeight: 500 }}>Snippets</div>
-          {snippets.map((s) => (
-            <div key={s.name} onClick={() => setSql(s.sql)} style={{ padding: "8px 12px", borderTop: "1px solid var(--border)", cursor: "pointer", fontSize: 12 }}>{s.name}</div>
+          {snippets.length === 0 ? (
+            <div className="muted" style={{ padding: "10px 12px", fontSize: 11.5, borderTop: "1px solid var(--border)" }}>No tables yet.</div>
+          ) : snippets.map((s) => (
+            <div key={s.name} title={s.sql} onClick={() => setSql(s.sql)} style={{ padding: "8px 12px", borderTop: "1px solid var(--border)", cursor: "pointer", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
           ))}
         </div>
       </div>

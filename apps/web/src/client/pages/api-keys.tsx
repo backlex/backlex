@@ -6,6 +6,13 @@ import { Input } from "@workeros/ui/components/input";
 import { Label } from "@workeros/ui/components/label";
 import { Badge } from "@workeros/ui/components/badge";
 import { Skeleton } from "@workeros/ui/components/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workeros/ui/components/select";
 import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
@@ -17,40 +24,72 @@ interface ApiKey {
   prefix: string;
   name: string;
   userId: string;
-  expiresAt: string | null;
-  lastUsedAt: string | null;
-  revokedAt: string | null;
-  createdAt: string;
+  roleId: string | null;
+  roleName: string | null;
+  expiresAt: string | number | null;
+  lastUsedAt: string | number | null;
+  revokedAt: string | number | null;
+  createdAt: string | number;
 }
+
+interface BindableRole {
+  id: string;
+  name: string;
+  admin: boolean;
+}
+
+const isExpired = (v: string | number | null): boolean =>
+  v != null && new Date(v).getTime() <= Date.now();
+
+// Radix <SelectItem> can't carry an empty value — use a sentinel for the
+// "no role restriction" choice and translate it on submit.
+const NO_ROLE = "__none__";
 
 export const ApiKeys = () => {
   const [items, setItems] = useState<ApiKey[]>([]);
+  const [roles, setRoles] = useState<BindableRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
+  const [roleId, setRoleId] = useState<string>(NO_ROLE);
   const [secret, setSecret] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const refresh = () => {
     setLoading(true);
-    api<{ data: ApiKey[] }>("/api/api-keys")
-      .then((r) => setItems(r.data))
+    Promise.all([
+      api<{ data: ApiKey[] }>("/api/api-keys").then((r) => setItems(r.data)),
+      api<{ data: BindableRole[] }>("/api/api-keys/available-roles")
+        .then((r) => setRoles(r.data))
+        .catch(() => setRoles([])),
+    ])
       .catch((e) => notifyError(e, "Loading API keys"))
       .finally(() => setLoading(false));
   };
 
   useEffect(refresh, []);
 
+  const resetForm = () => {
+    setName("");
+    setExpiresAt("");
+    setRoleId(NO_ROLE);
+  };
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     try {
+      const body: Record<string, unknown> = {};
+      if (name.trim()) body.name = name.trim();
+      if (expiresAt) body.expiresAt = new Date(expiresAt).toISOString();
+      if (roleId && roleId !== NO_ROLE) body.roleId = roleId;
       const r = await api<{ data: ApiKey & { secret: string } }>(
         "/api/api-keys",
-        { method: "POST", body: JSON.stringify({ name }) },
+        { method: "POST", body: JSON.stringify(body) },
       );
       setSecret(r.data.secret);
-      setName("");
+      resetForm();
       setShowForm(false);
       refresh();
     } catch (e) {
@@ -73,7 +112,7 @@ export const ApiKeys = () => {
     <div>
       <PageHeader
         title="API Keys"
-        description="Long-lived bearer tokens (`pak_…`) for CI, scripts, third-party integrations. Each key impersonates its owner's roles and permissions."
+        description="Long-lived bearer tokens (`pak_…`) for CI, scripts, third-party integrations. A key impersonates its owner — optionally narrowed to a single role and/or given an expiry date."
         actions={
           <>
             <Button variant="outline" size="sm" onClick={refresh}>
@@ -124,9 +163,46 @@ export const ApiKeys = () => {
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="ci-bot"
-                  required
+                  placeholder="ci-bot (optional)"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Optional — a timestamped name is generated if you leave this blank.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="role">Scope to role</Label>
+                <Select value={roleId} onValueChange={setRoleId}>
+                  <SelectTrigger id="role">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_ROLE}>
+                      Owner&rsquo;s full access (no restriction)
+                    </SelectItem>
+                    {roles.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.name}
+                        {r.admin ? " (admin)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  When set, requests made with this key get only this role&rsquo;s
+                  permissions — and only while the owner still holds it.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="expires">Expires</Label>
+                <Input
+                  id="expires"
+                  type="datetime-local"
+                  value={expiresAt}
+                  onChange={(e) => setExpiresAt(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Optional — the key stops working after this time.
+                </p>
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="submit" disabled={busy}>
@@ -165,43 +241,59 @@ export const ApiKeys = () => {
             />
           ) : (
             <ul className="divide-y">
-              {items.map((k) => (
-                <li
-                  key={k.id}
-                  className="flex items-start justify-between gap-4 py-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{k.name}</span>
-                      {k.revokedAt && (
-                        <Badge variant="outline" className="text-destructive">
-                          revoked
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="font-mono text-xs text-muted-foreground">
-                      {k.prefix}_…
-                    </div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      created {new Date(k.createdAt).toLocaleString()}
-                      {k.lastUsedAt
-                        ? ` · last used ${new Date(k.lastUsedAt).toLocaleString()}`
-                        : " · never used"}
-                    </div>
-                  </div>
-                  <ConfirmAction
-                    title="Revoke this API key?"
-                    description={`The key "${k.name}" will stop working immediately. This cannot be undone.`}
-                    actionLabel="Revoke"
-                    destructive
-                    onConfirm={() => revoke(k.id)}
+              {items.map((k) => {
+                const expired = !k.revokedAt && isExpired(k.expiresAt);
+                return (
+                  <li
+                    key={k.id}
+                    className="flex items-start justify-between gap-4 py-3"
                   >
-                    <Button variant="ghost" size="icon-sm" disabled={!!k.revokedAt}>
-                      <Trash2Icon />
-                    </Button>
-                  </ConfirmAction>
-                </li>
-              ))}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{k.name}</span>
+                        {k.revokedAt && (
+                          <Badge variant="outline" className="text-destructive">
+                            revoked
+                          </Badge>
+                        )}
+                        {expired && (
+                          <Badge variant="outline" className="text-destructive">
+                            expired
+                          </Badge>
+                        )}
+                        {k.roleId && (
+                          <Badge variant="secondary">
+                            role: {k.roleName ?? k.roleId}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="font-mono text-xs text-muted-foreground">
+                        {k.prefix}_…
+                      </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        created {new Date(k.createdAt).toLocaleString()}
+                        {k.expiresAt
+                          ? ` · ${expired ? "expired" : "expires"} ${new Date(k.expiresAt).toLocaleString()}`
+                          : " · no expiry"}
+                        {k.lastUsedAt
+                          ? ` · last used ${new Date(k.lastUsedAt).toLocaleString()}`
+                          : " · never used"}
+                      </div>
+                    </div>
+                    <ConfirmAction
+                      title="Revoke this API key?"
+                      description={`The key "${k.name}" will stop working immediately. This cannot be undone.`}
+                      actionLabel="Revoke"
+                      destructive
+                      onConfirm={() => revoke(k.id)}
+                    >
+                      <Button variant="ghost" size="icon-sm" disabled={!!k.revokedAt}>
+                        <Trash2Icon />
+                      </Button>
+                    </ConfirmAction>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CardContent>

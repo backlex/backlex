@@ -2,7 +2,7 @@
 // directus/supabase parity pages — Database, Auth, Activity, Revisions, Insights, Email, Translations
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { I } from "./icons";
-import { MOCK, type AdapterId } from "./mock";
+import { ADAPTER_PROFILES, type AdapterId } from "./config";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
 import { Select } from "./select";
 import { ConfirmDialog } from "./sheet";
@@ -56,18 +56,18 @@ export function DatabasePage({ pushToast, adapter }: { pushToast: (m: string) =>
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader
         title="Database"
-        description={<>Direct access to the underlying engine. Adapter: <span className="font-mono">{MOCK.adapterProfiles[adapter].db}</span>. SQL editor runs through the same permission layer as the API.</>}
-        badges={<Badge variant="outline" mono>{MOCK.adapterProfiles[adapter].db}</Badge>}
+        description={<>Direct access to the underlying engine. Adapter: <span className="font-mono">{ADAPTER_PROFILES[adapter].db}</span>. SQL editor runs through the same permission layer as the API.</>}
+        badges={<Badge variant="outline" mono>{ADAPTER_PROFILES[adapter].db}</Badge>}
       />
-      <div className="tabs">
-        <button className="tab" data-active={tab === "sql"} onClick={() => setTab("sql")}><I.Code size={13} />SQL editor</button>
-        <button className="tab" data-active={tab === "migrations"} onClick={() => setTab("migrations")}>
+      <div className="ce-tabs">
+        <button className={`ce-tab ${tab === "sql" ? "on" : ""}`} onClick={() => setTab("sql")}><I.Code size={13} />SQL editor</button>
+        <button className={`ce-tab ${tab === "migrations" ? "on" : ""}`} onClick={() => setTab("migrations")}>
           <I.History size={13} />Migrations
-          {migCount !== null && <span className="count">{migCount}</span>}
+          {migCount !== null && <span className="ce-tab-count">{migCount}</span>}
         </button>
-        <button className="tab" data-active={tab === "backups"} onClick={() => setTab("backups")}>
+        <button className={`ce-tab ${tab === "backups" ? "on" : ""}`} onClick={() => setTab("backups")}>
           <I.Save size={13} />Backups
-          {backupCount !== null && <span className="count">{backupCount}</span>}
+          {backupCount !== null && <span className="ce-tab-count">{backupCount}</span>}
         </button>
       </div>
       {tab === "sql" && <SqlEditor pushToast={pushToast} />}
@@ -178,7 +178,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
               onChange={(e) => setTableFilter(e.target.value)}
               placeholder="Filter tables…"
               spellCheck={false}
-              style={{ width: "100%", padding: "5px 8px", fontSize: 11.5, borderRadius: 6, border: "1px solid var(--border)", background: "var(--background)", color: "inherit", outline: 0 }}
+              style={{ width: "100%", padding: "5px 10px", fontSize: 11.5, borderRadius: "var(--radius-3xl)", border: "1px solid var(--border)", background: "var(--background)", color: "inherit", outline: 0 }}
             />
           </div>
           <div className="scrollarea" style={{ maxHeight: 280, overflowY: "auto" }}>
@@ -2545,12 +2545,24 @@ function Donut({ segments }: { segments: { v: number; color: string }[] }) {
 }
 
 export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => void }) {
-  type Tpl = { id: string; key?: string; name: string; subject: string; vars: string[]; bodyHtml?: string };
+  type Tpl = { id: string; key: string; name: string; subject: string; vars: string[]; bodyHtml?: string; fromAddress?: string | null; isNew?: boolean };
   const [templates, setTemplates] = useState<Tpl[]>([]);
   const [active, setActive] = useState<Tpl | null>(null);
+  const [keyDraft, setKeyDraft] = useState("");
+  const [name, setName] = useState("");
   const [body, setBody] = useState("");
   const [subject, setSubject] = useState("");
   const [fromAddress, setFromAddress] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const loadInto = (t: Tpl) => {
+    setActive(t);
+    setKeyDraft(t.key);
+    setName(t.name);
+    setSubject(t.subject);
+    setBody(t.bodyHtml ?? "");
+    setFromAddress(t.fromAddress ?? "");
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -2566,14 +2578,10 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
             subject: t.subject,
             vars: t.variables ?? [],
             bodyHtml: t.bodyHtml,
+            fromAddress: t.fromAddress,
           }));
           setTemplates(mapped);
-          if (mapped[0]) {
-            setActive(mapped[0]);
-            setSubject(mapped[0].subject);
-            setBody(mapped[0].bodyHtml ?? body);
-            if (res.data[0]?.fromAddress) setFromAddress(res.data[0].fromAddress);
-          }
+          if (mapped[0]) loadInto(mapped[0]);
         }
       } catch {
         // leave templates empty
@@ -2584,49 +2592,67 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
   }, []);
 
   const onSelect = async (t: Tpl) => {
-    setActive(t);
-    setSubject(t.subject);
-    if (t.bodyHtml) {
-      setBody(t.bodyHtml);
-      return;
-    }
+    loadInto(t);
+    if (t.bodyHtml !== undefined || t.isNew) return;
     try {
       const res = await emailTemplatesApi.get(t.id);
       setBody(res.data.bodyHtml);
-      if (res.data.fromAddress) setFromAddress(res.data.fromAddress);
+      setFromAddress(res.data.fromAddress ?? "");
+      setTemplates((arr) => arr.map((x) => x.id === t.id ? { ...x, bodyHtml: res.data.bodyHtml, fromAddress: res.data.fromAddress } : x));
     } catch {
       // keep current body
     }
   };
 
+  const onNew = () => {
+    loadInto({ id: crypto.randomUUID(), key: "", name: "", subject: "", vars: [], bodyHtml: "", isNew: true });
+  };
+
   const onSave = async () => {
-    if (!active) return;
+    if (!active || saving) return;
+    const trimmedKey = keyDraft.trim();
+    const trimmedName = name.trim();
+    const trimmedFrom = fromAddress.trim();
+    if (active.isNew) {
+      if (!/^[a-z0-9_-]{2,40}$/i.test(trimmedKey)) { pushToast("Key must be 2–40 chars (letters, digits, dash, underscore)."); return; }
+      if (templates.some((t) => !t.isNew && t.key === trimmedKey)) { pushToast(`A template with key "${trimmedKey}" already exists.`); return; }
+    }
+    if (!subject.trim()) { pushToast("Subject is required."); return; }
+    setSaving(true);
     try {
-      if (active.key) {
-        await emailTemplatesApi.patch(active.id, {
+      if (active.isNew) {
+        const res = await emailTemplatesApi.create({
+          key: trimmedKey,
+          name: trimmedName || trimmedKey,
           subject,
-          bodyHtml: body,
-          fromAddress,
-        });
-      } else {
-        await emailTemplatesApi.create({
-          key: active.id,
-          name: active.name,
-          subject,
-          fromAddress,
+          fromAddress: trimmedFrom || null,
           bodyHtml: body,
           bodyText: null,
           variables: active.vars,
         });
+        const saved: Tpl = { id: res.data.id, key: res.data.key, name: res.data.name, subject: res.data.subject, vars: res.data.variables ?? [], bodyHtml: res.data.bodyHtml, fromAddress: res.data.fromAddress };
+        setTemplates((arr) => [saved, ...arr.filter((t) => t.id !== active.id)]);
+        loadInto(saved);
+      } else {
+        const newName = trimmedName || active.name;
+        const fromVal = trimmedFrom || null;
+        await emailTemplatesApi.patch(active.id, { name: newName, subject, bodyHtml: body, fromAddress: fromVal });
+        const patch = { name: newName, subject, bodyHtml: body, fromAddress: fromVal };
+        setTemplates((arr) => arr.map((t) => t.id === active.id ? { ...t, ...patch } : t));
+        setActive((a) => a ? { ...a, ...patch } : a);
+        setName(newName);
       }
       pushToast("Template saved.");
     } catch (e) {
       pushToast((e as Error).message);
+    } finally {
+      setSaving(false);
     }
   };
 
   const onSendTest = async () => {
     if (!active) return;
+    if (active.isNew) { pushToast("Save the template before sending a test."); return; }
     try {
       await emailTemplatesApi.sendTest(active.id);
       pushToast("Test email sent.");
@@ -2642,16 +2668,22 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
     .replace(/{{\s*site\.name\s*}}/g, "workeros");
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-      <PageHeader title="Email templates" description={<>Variables use Liquid-style <span className="font-mono">{"{{ user.email }}"}</span>. Template renders run through the Functions sandbox.</>} />
+      <PageHeader title="Email templates" description={<>Variables use Liquid-style <span className="font-mono">{"{{ user.email }}"}</span>. Template renders run through the Functions sandbox.</>} actions={<Button size="sm" variant="outline" icon={I.Plus} onClick={onNew}>New template</Button>} />
       <div className="master-detail-3" style={{ "--md-a": "240px", "--md-b": "minmax(0, 1fr)" }}>
         <div className="card">
-          {templates.length === 0 && (
-            <div className="muted" style={{ padding: "12px 14px", fontSize: 12 }}>No templates yet.</div>
+          {templates.length === 0 && !active?.isNew && (
+            <div className="muted" style={{ padding: "12px 14px", fontSize: 12 }}>No templates yet — use “New template” to add one.</div>
+          )}
+          {active?.isNew && !templates.some((t) => t.id === active.id) && (
+            <div style={{ padding: "10px 12px", borderTop: "1px solid var(--border)", background: "var(--accent)" }}>
+              <div style={{ fontSize: 12.5, fontWeight: 500 }}>{name.trim() || "(new template)"}</div>
+              <div className="font-mono muted" style={{ fontSize: 11 }}>{keyDraft.trim() || "unsaved"}</div>
+            </div>
           )}
           {templates.map((t) => (
             <div key={t.id} onClick={() => void onSelect(t)} style={{ padding: "10px 12px", borderTop: "1px solid var(--border)", cursor: "pointer", background: active?.id === t.id ? "var(--accent)" : "transparent" }}>
-              <div style={{ fontSize: 12.5, fontWeight: 500 }}>{t.name}</div>
-              <div className="font-mono muted" style={{ fontSize: 11 }}>{t.key ?? t.id}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 500 }}>{t.name || "(unnamed)"}</div>
+              <div className="font-mono muted" style={{ fontSize: 11 }}>{t.key || t.id}</div>
             </div>
           ))}
         </div>
@@ -2659,12 +2691,16 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
           <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 12, fontWeight: 500 }}>Editor</span>
             <div className="spacer" />
-            <Button size="sm" variant="outline" icon={I.Mail} onClick={onSendTest}>Send test</Button>
-            <Button size="sm" variant="primary" icon={I.Save} onClick={onSave}>Save</Button>
+            <Button size="sm" variant="outline" icon={I.Mail} onClick={onSendTest} disabled={!active || active.isNew}>Send test</Button>
+            <Button size="sm" variant="primary" icon={I.Save} onClick={onSave} disabled={!active || saving}>Save</Button>
           </div>
           <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", gap: 10 }}>
+              <div className="field" style={{ flex: 1 }}><label className="field-label">Name</label><input className="input" value={name} placeholder="Verify email" onChange={(e) => setName(e.target.value)} /></div>
+              <div className="field" style={{ flex: 1 }}><label className="field-label">Key</label><input className="input font-mono" value={keyDraft} placeholder="verify" disabled={!active?.isNew} spellCheck={false} autoComplete="off" onChange={(e) => setKeyDraft(e.target.value)} /></div>
+            </div>
             <div className="field"><label className="field-label">Subject</label><input className="input" value={subject} onChange={(e) => setSubject(e.target.value)} /></div>
-            <div className="field"><label className="field-label">From</label><input className="input" value={fromAddress} onChange={(e) => setFromAddress(e.target.value)} /></div>
+            <div className="field"><label className="field-label">From</label><input className="input" value={fromAddress} placeholder="(use the configured default)" onChange={(e) => setFromAddress(e.target.value)} /></div>
             <div className="field">
               <label className="field-label">Body (HTML)</label>
               <textarea value={body} onChange={(e) => setBody(e.target.value)} spellCheck={false} style={{ width: "100%", minHeight: 220, padding: 12, border: "1px solid var(--border)", borderRadius: "var(--radius-xl)", background: "oklch(0.18 0.01 130)", color: "oklch(0.92 0.02 130)", fontFamily: "Geist Mono, monospace", fontSize: 12.5, lineHeight: 1.55, resize: "vertical" }} />

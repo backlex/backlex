@@ -59,6 +59,11 @@ export type AppBindings = {
        *  bearer API key — the key's home tenant wins over user.activeTenantId
        *  so machine-to-machine calls always land in the right workspace. */
       apiKeyTenantId?: string | null;
+      /** Set by sessionMiddleware when the bearer API key is scoped to a
+       *  single role. tenantMiddleware narrows `roles` to that role and the
+       *  permission resolver evaluates against it alone. Null/absent = the
+       *  key carries the owner's full role set. */
+      apiKeyRoleId?: string | null;
     };
     permission: PermissionVar;
   };

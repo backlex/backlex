@@ -2,7 +2,7 @@
 // Collections index — grid of all collections + new-collection wizard
 import { useEffect, useMemo, useState } from "react";
 import { I, type IconComponent, type IconKey } from "./icons";
-import type { CollectionListItem } from "./mock";
+import type { CollectionListItem } from "./config";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
 
 export interface CollectionsIndexProps {

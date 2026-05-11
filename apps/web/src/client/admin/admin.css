@@ -385,7 +385,9 @@ body {
 .btn-icon { width: 32px; padding: 0; }
 .btn-icon-sm { width: 28px; height: 28px; padding: 0; }
 
-/* ─── Tabs ─── */
+/* ─── Tabs ─── (pill segment; used for both page-section sub-nav and inline
+   list filters. .ce-tabs below is kept only for in-panel use by the condition
+   editor. .rb-toggle further down is the binary mode toggle.) */
 .tabs { display: flex; gap: 2px; padding: 3px; background: var(--muted); border-radius: var(--radius-3xl); width: fit-content; }
 .tab {
   padding: 5px 14px;
@@ -673,7 +675,6 @@ body {
 .input, .textarea, .select {
   width: 100%;
   height: 36px;
-  border-radius: var(--radius-md) !important;
   padding: 0 14px;
   background: var(--card);
   border: 1px solid var(--border);
@@ -687,10 +688,9 @@ body {
   height: auto;
   min-height: 96px;
   padding: 12px 14px 12px 14px;
-  border-radius: var(--radius-md) !important;
+  border-radius: var(--radius-xl);
   font-family: 'Geist Mono', monospace;
   font-size: 12.5px;
-  line-height: 1.55;
   line-height: 1.5;
   resize: vertical;
 }
@@ -1185,14 +1185,19 @@ body {
 }
 .link-btn:hover { color: var(--foreground); text-decoration: underline; }
 
-/* Condition / permission editor — Directus-style */
+/* ─── In-panel section tabs ─── (underline strip; used inside the condition /
+   permission editor sheet. The colored underline overlaps the strip's bottom
+   border via margin-bottom:-1px — keep on a flat strip, never wrap in a
+   bordered/rounded box. For top-level page sub-nav use .tabs/.tab above.) */
 .ce-tabs {
   display: flex; gap: 4px;
   padding: 0 14px;
   border-bottom: 1px solid var(--border);
   background: color-mix(in oklch, var(--muted) 25%, var(--card));
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
 }
 .ce-tab {
+  flex: 0 0 auto;
   display: inline-flex; align-items: center; gap: 8px;
   padding: 10px 14px;
   font-size: 12.5px; font-weight: 500;
@@ -1229,6 +1234,8 @@ body {
   padding: 8px 10px;
   border-bottom: 1px solid var(--border);
 }
+/* Binary/few-state mode toggle inside a widget (e.g. AND/OR, Builder/JSON) —
+   not page navigation and not a list filter. */
 .rb-toggle {
   display: inline-flex;
   border: 1px solid var(--border);

@@ -118,9 +118,9 @@ Selection rules — keep these consistent if you add a new adapter:
 | db        | D1 client / `postgres-js` / Bun SQLite at `./.data/workeros.sqlite`   |
 | storage   | `R2` binding → `r2Storage`; else `fsStorage("./.data/files")`         |
 | vector    | `VECTORIZE` → `vectorizeAdapter`; pg dialect → `pgvectorAdapter`; else throws |
-| realtime  | `REALTIME` (DO) → WS forward; else in-process pub/sub + SSE           |
+| realtime  | `REALTIME` (DO) → SSE-over-DO-WebSocket bridge; else in-process pub/sub + SSE |
 
-Adapter contracts live in `packages/core/src/adapters/{storage,vector,realtime}.ts`. Concrete implementations live in `apps/web/src/server/adapters/*` (e.g. `storage.fs.ts` vs `storage.r2.ts`).
+Adapter contracts live in `packages/core/src/adapters/{storage,vector,email,image}.ts`. Concrete implementations live in `apps/web/src/server/adapters/*` (e.g. `storage.fs.ts` vs `storage.r2.ts`). Realtime is **not** behind a `Ctx` adapter — it branches on `env.REALTIME` directly in `routes/realtime.ts` + `services/events.ts` (see the Realtime section below).
 
 ### Dual-dialect Drizzle (system tables only)
 
@@ -132,7 +132,7 @@ When changing schema, **always edit both files** and regenerate both migration s
 
 ### API keys + Email + OAuth (Phase 5)
 
-- **API keys**: `api_keys` table; full key format is `pak_<8-hex prefix>_<32-hex secret>`. Only the SHA-256 of the secret is stored; the plaintext is returned exactly once on POST and never retrievable. `apps/web/src/server/services/api-keys.ts` handles create/list/revoke + lookup. Auth middleware (`middleware/session.ts`) tries the better-auth cookie session first, then falls back to `Authorization: Bearer pak_...`. Resolved key impersonates its `user_id` so the request inherits that user's roles + permissions.
+- **API keys**: `api_keys` table; full key format is `pak_<8-hex prefix>_<32-hex secret>`. Only the SHA-256 of the secret is stored; the plaintext is returned exactly once on POST and never retrievable. `apps/web/src/server/services/api-keys.ts` handles create/list/revoke + lookup. Auth middleware (`middleware/session.ts`) tries the better-auth cookie session first, then falls back to `Authorization: Bearer pak_...`. Resolved key impersonates its `user_id` so the request inherits that user's roles + permissions, and pins the request to the key's `tenant_id`. **`name` is optional** on POST (a timestamped default is generated) and **`expires_at` is optional** (lookup rejects expired keys). **Role scoping**: a key may set `role_id` — when present, the request resolves permissions against *only* that role (no implicit `authenticated`), and only while the owner still holds it (`loadRolesForUser`/`loadTenantRoleNames` both gate on `(user_roles ⋈ roles) WHERE role.id = key.role_id`). So a scoped key can never grant more than its owner currently has. Creation rejects a `role_id` the owner doesn't hold (admins included — grant yourself the role first if you want a narrow self-key). `GET /api/api-keys/available-roles` lists the roles the caller may bind (admins: every workspace role; others: only roles they hold). `auth.apiKeyRoleId` carries the scope through the middleware chain (set in `app.ts` `AppBindings` and `AuthSubject` in `@workeros/core`).
 - **EmailAdapter**: interface in `packages/core/src/adapters/email.ts` (`send({to, subject, text, html?, from?})`). Implementations live in `apps/web/src/server/adapters/email.{console,resend}.ts`. `buildContext` picks Resend when `RESEND_API_KEY` + `EMAIL_FROM` are set; otherwise falls back to the console adapter (logs to stdout — fine for dev). Use `ctx.email.send(...)` from any route — never reach for SMTP/Resend SDKs directly.
 - **OAuth providers**: `OAUTH_GOOGLE_CLIENT_ID/SECRET` and `OAUTH_GITHUB_CLIENT_ID/SECRET` env vars. If both id+secret are present for a provider, it's wired into better-auth's `socialProviders` automatically. Endpoints follow better-auth conventions (`/api/auth/sign-in/social`, `/api/auth/callback/<provider>`).
 
@@ -140,16 +140,18 @@ When adding a new auth surface, prefer extending the better-auth plugin set (pas
 
 ### Realtime (permission-aware change feed)
 
-`apps/web/src/server/services/events.ts` is the publish/subscribe core. Item CRUD routes call `publishEvent(env, "items:<slug>", { event, data })` after a successful write. Subscribers receive only events that pass their permission filter.
+`apps/web/src/server/services/events.ts` is the publish/subscribe core. Item CRUD routes call `publishEvent(env, "items:<slug>", { event, data })` after a successful write. Subscribers receive only events that pass their permission filter. **The client transport is always SSE (`EventSource`)** — on Workers the route bridges the DO WebSocket into an SSE response, so admin/client code never speaks raw WebSocket.
 
-- **Channels**: `items:<slug>` (per-collection change feed), `collections` (admin-only schema events), and any other free-form name (legacy user channels with no auth/filter).
-- **Subscribe gate** in `apps/web/src/server/routes/realtime.ts::gateForChannel`: for `items:*` resolves `read` permission and bundles `{authSubject, conditions, fields}` as `SubscriptionMeta`. For `collections` requires the `admin` role. For user channels, no gate (back-compat). System channels reject external `POST /:channel/publish`.
+- **Channels**: `items:<slug>` (per-collection change feed, permission-filtered), `collections` (admin-only schema events), `presence:<name>` (signed-in members roster), and any other free-form name (no auth/filter).
+- **Subscribe gate** in `apps/web/src/server/routes/realtime.ts::gateForChannel`: `items:*` resolves `read` permission and bundles `{authSubject, conditions, fields}` as `SubscriptionMeta`; `collections` requires the `admin` role; `presence:*` requires a signed-in user; free-form channels have no gate. All non-free-form channels reject external `POST /:channel/publish`.
+- **`POST /:channel/test-publish`** — admin-only synthetic `{event,data}` injector for `items:*` channels (no webhook/flow side effects); used to verify per-subscriber filtering. `POST /:channel/publish` (free-form only) is rate-limited per `(channel, ip)` via `lib/rate-limit.ts`.
 - **Filter evaluation** uses `matchesCondition` (in-memory, dialect-free) from `packages/db/src/permission.ts` — same DSL the SQL compiler uses. `lookup` tries snake_case first, then camelCase fallback so it works against both raw rows and deserialized API payloads.
 - **Per-subscriber projection**: if the role's `fields` allow-list is set, the event payload is filtered to that list (system fields `id, createdAt, updatedAt, ownerId` are always kept).
-- **Bun**: `subscribeLocal`/`publishLocal` keep a module-level `Map<channel, Set<Subscriber>>`. SSE handler uses a queue + wakeable promise so writes from external request handlers reliably flush — don't `void stream.writeSSE(...)` from sync callbacks; queue and let the SSE async loop `await` each write.
-- **Workers**: `RealtimeRoom` Durable Object holds `Map<WebSocket, Meta | null>`. Subscriber meta is base64(JSON)-encoded into the subscribe URL; DO applies the same `matchesCondition` + projection on the publish path.
+- **SSE niceties** (both paths): `: ping` comment frame every 25s (proxy keep-alive), `retry:` hint on the `ready` event, and `Last-Event-ID` resumption — each event carries a monotonic per-channel `seq` as the SSE `id`; reconnecting subscribers replay the gap (a bounded ring buffer on Bun, a `storage`-backed log on the DO).
+- **Bun**: `subscribeLocal`/`publishLocal` keep module-level `Map<channel, Set<Subscriber>>`. SSE handler uses a queue + wakeable promise so writes from external request handlers reliably flush — don't `void stream.writeSSE(...)` from sync callbacks; queue and let the SSE async loop `await` each write. Presence rooms live in a parallel `Map` (`joinPresence`).
+- **Workers**: `RealtimeRoom` Durable Object accepts sockets via the **WebSocket Hibernation API** (`state.acceptWebSocket`, per-socket `serializeAttachment({meta, presence})`); `seq` + recent-event log persist in `state.storage`. The DO applies the same `matchesCondition` + projection on publish, broadcasts the presence roster on join/leave, and wraps every outgoing frame as `{__seq, msg}` so the SSE bridge can echo the id.
 
-When emitting events from a new resource, follow `items.ts`: fetch the existing row before DELETE so the `deleted` event carries the last known state.
+When emitting events from a new resource, follow `items.ts`: fetch the existing row before DELETE so the `deleted` event carries the last known state. If you change the wire shape, change it in `events.ts`, `realtime-room.ts`, the bridge in `routes/realtime.ts`, **and** `client/pages/realtime.tsx`.
 
 ### Query API for items (Directus-style)
 
@@ -189,15 +191,6 @@ When adding a new field type: extend `FieldType` union, add entries to `PG_TYPES
 ### Auth
 
 `packages/auth` wraps `better-auth` with `drizzleAdapter`. `createAuth(db, dialect, config)` picks the right schema (`users`/`sessions`/`accounts`/`verifications`) per dialect — auth tables must stay aligned across both schemas. The whole better-auth router is mounted at `/api/auth/*` (`apps/web/src/server/routes/auth.ts` just delegates to `ctx.auth.handler`). On the admin side, use `@workeros/auth/client` (`createAuthClient` from `better-auth/react`) — never import the server `@workeros/auth` package from the admin app.
-
-### Realtime: same route, different transport
-
-`apps/web/src/server/routes/realtime.ts` checks `env.REALTIME`:
-
-- Workers: forwards to the `RealtimeRoom` Durable Object (`apps/web/src/server/durable-objects/realtime-room.ts`) which fans out via WebSocket.
-- Bun: in-process `Map<channel, Set<Listener>>` plus Hono's `streamSSE` for subscribers.
-
-If you change the message shape, change it in both paths and in any admin client code.
 
 ### Errors
 

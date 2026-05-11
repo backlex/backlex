@@ -1,9 +1,6 @@
 // Module-level cache for the workspace's real users, used by ItemsTable's
 // author column and the ItemSheet author Select. Loaded once on mount via
 // `loadAuthors()` from the admin app shell; consumers read synchronously.
-//
-// The shape mirrors the legacy MOCK.POST_AUTHORS interface so the existing
-// callers don't need to know whether the data is real or mocked.
 
 export interface AuthorEntry {
   id: string;

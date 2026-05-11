@@ -19,6 +19,7 @@ import {
   type ApiRuntime,
   type ApiUser,
 } from "./api";
+import { ConfirmDialog } from "./sheet";
 
 const fetchSafely = async <T,>(path: string): Promise<T | null> => {
   try {
@@ -814,6 +815,24 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
   }, [active?.name]);
   const [logs, setLogs] = useState<{ t: string; lvl: string; msg: string }[]>([]);
   const [running, setRunning] = useState(false);
+  // Name of the function pending a delete confirmation (null = no dialog open).
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  // Draft value while inline-editing the active function's name (null = not editing).
+  const [renameDraft, setRenameDraft] = useState<string | null>(null);
+  const [renameBusy, setRenameBusy] = useState(false);
+  // Leaving the rename editor open across function switches would be confusing.
+  useEffect(() => { setRenameDraft(null); }, [active?.name]);
+
+  const nameRegex = /^[a-z][a-z0-9_-]*$/;
+  const renameError = renameDraft === null
+    ? null
+    : renameDraft.trim().length === 0
+      ? "Required."
+      : !nameRegex.test(renameDraft.trim())
+        ? "Lowercase letters, digits, _ or -; must start with a letter."
+        : renameDraft.trim() !== active?.name && funcs.some((f) => f.name === renameDraft.trim())
+          ? "A function with that name already exists."
+          : null;
 
   const run = async () => {
     if (!active) { pushToast("Select a function to run."); return; }
@@ -879,7 +898,6 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
     }
   };
   const removeFunction = async (name: string) => {
-    if (!confirm(`Delete function "${name}"? This cannot be undone.`)) return;
     try {
       const r = await api<{ data: { id: string; name: string }[] }>("/api/functions");
       const match = r.data.find((f) => f.name === name);
@@ -898,6 +916,32 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
       pushToast(`Function "${name}" deleted.`);
     } catch (e) {
       pushToast((e as Error).message);
+    }
+  };
+  const renameFunction = async (oldName: string, nextName: string) => {
+    const target = nextName.trim();
+    if (!target || target === oldName) { setRenameDraft(null); return; }
+    setRenameBusy(true);
+    try {
+      const r = await api<{ data: { id: string; name: string }[] }>("/api/functions");
+      const match = r.data.find((f) => f.name === oldName);
+      if (!match) {
+        pushToast("Function not found on server.");
+        await reloadFuncs();
+        return;
+      }
+      await api(`/api/functions/${match.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ name: target }),
+      });
+      setActive((a) => (a && a.name === oldName ? { ...a, name: target } : a));
+      setRenameDraft(null);
+      await reloadFuncs();
+      pushToast(`Function renamed to "${target}".`);
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setRenameBusy(false);
     }
   };
 
@@ -933,16 +977,37 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
             </div>
           ) : (
           <>
+          {renameDraft !== null ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <I.Pencil size={16} />
+              <input
+                className={`input font-mono ${renameError ? "error" : ""}`}
+                style={{ fontSize: 14, width: 260 }}
+                autoFocus
+                value={renameDraft}
+                onChange={(e) => setRenameDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !renameError && !renameBusy) void renameFunction(active.name, renameDraft);
+                  else if (e.key === "Escape" && !renameBusy) setRenameDraft(null);
+                }}
+              />
+              <Button variant="primary" size="sm" icon={I.Check} disabled={!!renameError || renameBusy || renameDraft.trim() === active.name} onClick={() => void renameFunction(active.name, renameDraft)}>{renameBusy ? "Renaming…" : "Rename"}</Button>
+              <Button variant="ghost" size="sm" icon={I.X} onClick={() => setRenameDraft(null)} disabled={renameBusy}>Cancel</Button>
+              {renameError && <span className="field-error"><I.AlertTriangle size={11} />{renameError}</span>}
+            </div>
+          ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span className="font-mono" style={{ fontSize: 18, fontWeight: 600 }}>{active.name}</span>
+            <IconButton icon={I.Pencil} title="Rename function" onClick={() => setRenameDraft(active.name)} />
             <Badge variant="outline">{active.kind}</Badge>
             <span className="font-mono muted" style={{ fontSize: 12 }}>· {active.trigger}</span>
             <div className="spacer" />
             <span className="muted" style={{ fontSize: 12 }}>{Number(active.invocations ?? 0).toLocaleString()} invocations · p95 {active.p95 ?? 0}ms</span>
-            <Button variant="outline" size="sm" icon={I.Trash} onClick={() => active && removeFunction(active.name)} style={{ color: "var(--destructive)" }}>Delete</Button>
+            <Button variant="outline" size="sm" icon={I.Trash} onClick={() => active && setConfirmDelete(active.name)} style={{ color: "var(--destructive)" }}>Delete</Button>
             <Button variant="outline" size="sm" icon={I.Save} onClick={saveCode}>Save</Button>
             <Button variant="primary" size="sm" icon={I.Zap} onClick={run} disabled={running}>{running ? "Running…" : "Run"}</Button>
           </div>
+          )}
 
           <textarea
             value={code}
@@ -998,6 +1063,20 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
           onError={(msg) => pushToast(msg)}
         />
       )}
+
+      <ConfirmDialog
+        open={!!confirmDelete}
+        title={confirmDelete ? <>Delete function <span className="font-mono">{confirmDelete}</span>?</> : "Delete function?"}
+        description="This permanently removes the function and its code. Triggers, flow steps, or callers that reference it will stop working. This can't be undone."
+        actionLabel="Delete function"
+        destructive
+        onCancel={() => setConfirmDelete(null)}
+        onConfirm={() => {
+          const name = confirmDelete;
+          setConfirmDelete(null);
+          if (name) void removeFunction(name);
+        }}
+      />
     </div>
   );
 }
@@ -1114,7 +1193,7 @@ function NewFunctionDialog({
             {nameError && name ? (
               <div className="field-error"><I.AlertTriangle size={11} />{nameError}</div>
             ) : (
-              <span className="field-hint">Lowercase, digits, <span className="font-mono">_</span> or <span className="font-mono">-</span>. Cannot be changed later.</span>
+              <span className="field-hint">Lowercase, digits, <span className="font-mono">_</span> or <span className="font-mono">-</span>. You can rename it later.</span>
             )}
           </div>
 

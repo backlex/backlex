@@ -41,6 +41,7 @@ export const loadRolesForUser = async (
   ctx: DbCtx,
   userId: string | null,
   tenantId: string | null,
+  plane: "platform" | "app" = "platform",
 ): Promise<RoleRow[]> => {
   const t = tablesFor(ctx.dialect);
   // Without an active tenant we can't pick the right copy of public/admin/etc.,
@@ -58,6 +59,24 @@ export const loadRolesForUser = async (
         ),
       );
     return rows as RoleRow[];
+  }
+  // App-plane identities (workspace end-users from `app_users`) never
+  // participate in control-plane RBAC: the `user_roles` table references
+  // `users.id`, not `app_users.id`. We deliberately skip that join — a UUID
+  // collision must not yield platform-admin powers to a customer's end-user.
+  // They get exactly the workspace's `authenticated` role; admin bypass is
+  // therefore impossible for them by construction.
+  if (plane === "app") {
+    const builtin = await (ctx.db as any)
+      .select()
+      .from(t.roles)
+      .where(
+        and(
+          eq(t.roles.tenantId, tenantId),
+          eq(t.roles.name, SYSTEM_ROLES.authenticated),
+        ),
+      );
+    return builtin as RoleRow[];
   }
   // Only consider roles that belong to the active tenant. A user can have
   // role X in tenant A and role Y in tenant B; each request only sees the
@@ -108,7 +127,12 @@ export const resolvePermission = async (
   collection: string,
   action: Action,
 ): Promise<ResolvedPermission> => {
-  const roles = await loadRolesForUser(ctx, auth.userId, auth.tenantId ?? null);
+  const roles = await loadRolesForUser(
+    ctx,
+    auth.userId,
+    auth.tenantId ?? null,
+    auth.plane ?? "platform",
+  );
   if (roles.some((r) => r.admin)) {
     return {
       allowed: true,

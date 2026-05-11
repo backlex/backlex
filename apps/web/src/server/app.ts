@@ -17,6 +17,7 @@ import { activityRoutes } from "./routes/activity";
 import { revisionsRoutes } from "./routes/revisions";
 import { authRoutes } from "./routes/auth";
 import { authProvidersHandler } from "./routes/auth-public";
+import { tenantAuthRoutes } from "./routes/tenant-auth";
 import { apiKeysRoutes } from "./routes/api-keys";
 import { collectionsRoutes } from "./routes/collections";
 import { foldersRoutes } from "./routes/folders";
@@ -66,6 +67,11 @@ export type AppBindings = {
        *  bearer API key — the key's home tenant wins over user.activeTenantId
        *  so machine-to-machine calls always land in the right workspace. */
       apiKeyTenantId?: string | null;
+      /** Set by sessionMiddleware when the request authenticates with a
+       *  workspace end-user bearer token (plane = "app"). The session row
+       *  carries the issuing workspace; we pin the request to it so the
+       *  customer's app never needs to send `X-Workeros-Tenant`. */
+      appSessionTenantId?: string | null;
     };
     permission: PermissionVar;
   };
@@ -112,6 +118,10 @@ export const createApp = (env: Env) => {
   // catch-all (`/api/auth/*`) so it isn't shadowed by it.
   app.get("/api/auth/providers", authProvidersHandler);
   app.route("/api/auth", authRoutes);
+  // Workspace end-user auth (the "auth as a service" surface) — each tenant
+  // gets its own better-auth instance under /api/t/<slug>/auth/*, backed by
+  // the app_* tables and the tenant-scoped adapter wrapper.
+  app.route("/api/t", tenantAuthRoutes);
   app.route("/api/tenants", tenantsRoutes);
   app.route("/api/admin/email-templates", emailTemplatesRoutes);
   app.route("/api/admin/auth", authAdminRoutes);

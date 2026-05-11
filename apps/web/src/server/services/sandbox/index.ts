@@ -1,6 +1,7 @@
 import { bunWorkerProvider } from "./providers/bun-worker";
 import { cfDispatchProvider } from "./providers/cf-dispatch";
 import { quickjsProvider } from "./providers/quickjs";
+import { remoteHttpProvider } from "./providers/remote-http";
 import type {
   SandboxBindings,
   SandboxProvider,
@@ -14,21 +15,24 @@ const isBun = (): boolean =>
 
 /**
  * Provider selection priority:
- *   1. cf-dispatch — Workers paid plan with FUNCTIONS_DISPATCH binding (V8
- *      isolate per request via dispatch namespace).
- *   2. bun-worker — Bun runtime (full async + RPC bridge to db/fetch/email).
- *   3. quickjs — anywhere else (sync-only WASM fallback; the cross-runtime
- *      safety net for free-tier Workers and any environment where the other
- *      two aren't available).
+ *   1. cf-dispatch  — Cloudflare Workers for Platforms with FUNCTIONS_DISPATCH
+ *                     binding (V8 isolate per request via dispatch namespace).
+ *   2. remote-http  — FUNCTIONS_EXEC_URL set: out-of-isolate Bun/Node executor
+ *                     over HTTP. Works from any runtime (CF Workers, Vercel
+ *                     Edge, Netlify Edge, …) and supports ctx.* host I/O.
+ *   3. bun-worker   — Bun self-host: worker thread + RPC bridge to
+ *                     db / fetch / email.
+ *   4. quickjs      — everywhere else: in-isolate QuickJS-WASM (sync only, no
+ *                     host I/O). The cross-runtime safety net — runs on CF
+ *                     Workers, Vercel Edge, Netlify Edge and Node without any
+ *                     external infra.
  */
 const selectProvider = (bindings: SandboxBindings): SandboxProvider => {
   if (bindings.ctx.env.FUNCTIONS_DISPATCH !== undefined) {
     return cfDispatchProvider;
   }
-  if (bindings.ctx.env.D1 !== undefined) {
-    // On Workers without a dispatch namespace, fall through to QuickJS —
-    // bun-worker isn't usable here.
-    return quickjsProvider;
+  if (bindings.ctx.env.FUNCTIONS_EXEC_URL) {
+    return remoteHttpProvider;
   }
   if (isBun()) return bunWorkerProvider;
   return quickjsProvider;

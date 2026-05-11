@@ -412,81 +412,189 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
   );
 }
 
+type AuthProviderRow = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  configured: boolean;
+  system?: boolean;
+  clientId?: string | null;
+  discoveryUrl?: string | null;
+};
+
+const AUTH_PROVIDER_NAMES: Record<string, string> = {
+  email: "Email + password",
+  magic: "Magic link",
+  github: "GitHub",
+  google: "Google",
+  apple: "Apple",
+  microsoft: "Microsoft",
+  discord: "Discord",
+  passkey: "Passkeys (WebAuthn)",
+};
+const AUTH_OAUTH_IDS = new Set(["github", "google", "apple", "microsoft", "discord"]);
+const SESSION_LIFETIMES = ["1h", "24h", "7d", "30d", "90d"];
+const POLICY_ROWS: { key: string; label: string; desc: string; fallback: boolean }[] = [
+  { key: "requireEmailVerification", label: "Require email verification", desc: "Users must confirm their email before sign-in.", fallback: true },
+  { key: "mfaTotp", label: "Multi-factor (TOTP)", desc: "Users can enroll an authenticator app.", fallback: true },
+  { key: "mfaRequiredForAdmins", label: "Multi-factor required for admins", desc: "Force admins to enroll MFA.", fallback: false },
+  { key: "passkeys", label: "Passkeys", desc: "WebAuthn-based passwordless sign-in.", fallback: true },
+  { key: "openSignup", label: "Open sign-up", desc: "Anyone can create an account.", fallback: true },
+];
+
+const isHttpUrl = (s: string) => {
+  try {
+    const u = new URL(s);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
+const providerKind = (p: AuthProviderRow): "oauth" | "builtin" | "custom" =>
+  p.system ? (AUTH_OAUTH_IDS.has(p.id) ? "oauth" : "builtin") : "custom";
+
+const mapAuthProviders = (map: Record<string, any> | undefined): AuthProviderRow[] => {
+  const rows: AuthProviderRow[] = Object.entries(map ?? {}).map(([id, v]) => ({
+    id,
+    name: (v && v.name) || AUTH_PROVIDER_NAMES[id] || id,
+    enabled: !!(v && v.enabled),
+    configured: !!(v && v.configured),
+    system: !!(v && v.system),
+    clientId: (v && v.clientId) ?? null,
+    discoveryUrl: (v && v.discoveryUrl) ?? null,
+  }));
+  // Stable order: built-ins first, then alphabetical.
+  rows.sort((a, b) => (a.system !== b.system ? (a.system ? -1 : 1) : a.id.localeCompare(b.id)));
+  return rows;
+};
+
 export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void }) {
-  type ProviderRow = { id: string; name: string; enabled: boolean; configured: boolean; system?: boolean; clientId?: string | null };
-  // Pretty names — we keep this map purely for label rendering; the actual
-  // list of providers comes from /api/admin/auth/config so unsupported
-  // providers don't appear in the UI on a fresh deploy.
-  const PROVIDER_NAMES: Record<string, string> = {
-    email: "Email + password",
-    magic: "Magic link",
-    github: "GitHub",
-    google: "Google",
-    apple: "Apple",
-    microsoft: "Microsoft",
-    discord: "Discord",
-    passkey: "Passkeys (WebAuthn)",
-  };
-  const [providers, setProviders] = useState<ProviderRow[]>([]);
+  const [providers, setProviders] = useState<AuthProviderRow[]>([]);
+  const [policy, setPolicy] = useState<Record<string, boolean>>({});
+  const [sessionLifetime, setSessionLifetime] = useState("30d");
+  const [redirectText, setRedirectText] = useState("");
+  const redirectSavedRef = useRef("");
   const [sessions, setSessions] = useState<{ id: string; user: string; device: string; ip: string; loc: string; created: string; last: string; current: boolean }[]>([]);
+  const [configuring, setConfiguring] = useState<AuthProviderRow | null>(null);
+  const [adding, setAdding] = useState(false);
+
+  const loadConfig = async () => {
+    const cfg = await authAdminApi.config();
+    const data = (cfg.data ?? {}) as ApiAuthConfig;
+    setProviders(mapAuthProviders(data.providers as Record<string, any>));
+    setPolicy((data.policy ?? {}) as Record<string, boolean>);
+    setSessionLifetime(data.sessionLifetime || "30d");
+    const text = (data.redirectUrls ?? []).join("\n");
+    setRedirectText(text);
+    redirectSavedRef.current = text;
+  };
+
+  const mapSession = (s: ApiSession) => ({
+    id: s.id,
+    user: s.userEmail,
+    device: (s.userAgent ?? "unknown agent").slice(0, 48),
+    ip: s.ipAddress ?? "—",
+    loc: "—",
+    created: new Date(s.createdAt).toISOString().replace("T", " ").slice(0, 19),
+    last: fmtRelative(s.updatedAt ?? s.createdAt),
+    current: !!s.current,
+  });
+  const loadSessions = async () => {
+    const ss = await authAdminApi.sessions();
+    setSessions((ss.data ?? []).map(mapSession));
+  };
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const cfg = await authAdminApi.config();
-        if (cancelled) return;
-        const data = cfg.data as ApiAuthConfig;
-        const map = (data?.providers ?? {}) as Record<string, { enabled?: boolean; configured?: boolean; clientId?: string | null; system?: boolean }>;
-        const rows: ProviderRow[] = Object.entries(map).map(([id, v]) => ({
-          id,
-          name: PROVIDER_NAMES[id] ?? id,
-          enabled: !!v.enabled,
-          configured: !!v.configured,
-          system: !!v.system,
-          clientId: v.clientId ?? null,
-        }));
-        // Stable order: built-ins first, then alphabetical.
-        rows.sort((a, b) => {
-          if (a.system !== b.system) return a.system ? -1 : 1;
-          return a.id.localeCompare(b.id);
-        });
-        setProviders(rows);
+        await loadConfig();
       } catch {
-        // leave empty — the list always reflects what the worker actually has
+        // keep defaults — the providers list reflects what the worker actually has
       }
+      if (cancelled) return;
       try {
-        const ss = await authAdminApi.sessions();
-        if (cancelled) return;
-        setSessions(
-          ss.data.map((s: ApiSession) => ({
-            id: s.id,
-            user: s.userEmail,
-            device: (s.userAgent ?? "unknown agent").slice(0, 40),
-            ip: s.ipAddress ?? "—",
-            loc: "—",
-            created: new Date(s.createdAt).toISOString().replace("T", " ").slice(0, 19),
-            last: fmtRelative(s.createdAt),
-            current: false,
-          })),
-        );
+        await loadSessions();
       } catch (e) {
         pushToast?.((e as Error).message);
       }
     })();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pushToast]);
 
   const toggleProvider = async (id: string, enabled: boolean) => {
     setProviders((arr) => arr.map((p) => (p.id === id ? { ...p, enabled } : p)));
     try {
-      const all = providers.map((p) =>
-        p.id === id ? { ...p, enabled } : p,
-      );
-      const obj: Record<string, { enabled: boolean; configured: boolean; clientId?: string | null }> = {};
-      for (const p of all)
-        obj[p.id] = { enabled: p.enabled, configured: p.configured, clientId: p.clientId };
-      await authAdminApi.patch({ providers: obj });
+      await authAdminApi.patch({ providers: { [id]: { enabled } } });
+    } catch (e) {
+      pushToast?.((e as Error).message);
+      setProviders((arr) => arr.map((p) => (p.id === id ? { ...p, enabled: !enabled } : p)));
+    }
+  };
+
+  const saveProviderConfig = async (id: string, patch: Record<string, unknown>) => {
+    try {
+      await authAdminApi.patch({ providers: { [id]: patch } });
+      await loadConfig();
+      pushToast?.(`${AUTH_PROVIDER_NAMES[id] ?? id} settings saved.`);
+      setConfiguring(null);
+    } catch (e) {
+      pushToast?.((e as Error).message);
+    }
+  };
+
+  const addProvider = async (id: string, patch: Record<string, unknown>) => {
+    if (providers.some((p) => p.id === id)) {
+      pushToast?.(`A provider with id "${id}" already exists.`);
+      return;
+    }
+    try {
+      await authAdminApi.patch({ providers: { [id]: { enabled: false, configured: false, system: false, ...patch } } });
+      await loadConfig();
+      pushToast?.(`Added provider "${id}".`);
+      setAdding(false);
+    } catch (e) {
+      pushToast?.((e as Error).message);
+    }
+  };
+
+  const setPolicyFlag = async (key: string, on: boolean) => {
+    setPolicy((p) => ({ ...p, [key]: on }));
+    try {
+      await authAdminApi.patch({ policy: { [key]: on } });
+    } catch (e) {
+      pushToast?.((e as Error).message);
+      setPolicy((p) => ({ ...p, [key]: !on }));
+    }
+  };
+
+  const saveSessionLifetime = async (v: string) => {
+    const prev = sessionLifetime;
+    setSessionLifetime(v);
+    try {
+      await authAdminApi.patch({ sessionLifetime: v });
+      pushToast?.(`Session lifetime set to ${v}.`);
+    } catch (e) {
+      pushToast?.((e as Error).message);
+      setSessionLifetime(prev);
+    }
+  };
+
+  const saveRedirects = async () => {
+    const urls = redirectText.split("\n").map((s) => s.trim()).filter(Boolean);
+    const joined = urls.join("\n");
+    if (joined === redirectSavedRef.current) return;
+    const bad = urls.find((u) => !isHttpUrl(u));
+    if (bad) {
+      pushToast?.(`"${bad}" isn't a valid URL — use e.g. https://app.example.com/auth/callback.`);
+      return;
+    }
+    try {
+      await authAdminApi.patch({ redirectUrls: urls });
+      redirectSavedRef.current = joined;
+      pushToast?.(`Saved ${urls.length} redirect URL${urls.length === 1 ? "" : "s"}.`);
     } catch (e) {
       pushToast?.((e as Error).message);
     }
@@ -504,24 +612,15 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
   const revokeOthers = async () => {
     try {
       const r = await authAdminApi.revokeOthers();
-      pushToast?.(`Revoked ${r.removed} other session(s).`);
-      const ss = await authAdminApi.sessions();
-      setSessions(
-        ss.data.map((s: ApiSession) => ({
-          id: s.id,
-          user: s.userEmail,
-          device: (s.userAgent ?? "unknown agent").slice(0, 40),
-          ip: s.ipAddress ?? "—",
-          loc: "—",
-          created: new Date(s.createdAt).toISOString().replace("T", " ").slice(0, 19),
-          last: fmtRelative(s.createdAt),
-          current: false,
-        })),
-      );
+      pushToast?.(`Revoked ${r.removed} other session${r.removed === 1 ? "" : "s"}.`);
+      await loadSessions();
     } catch (e) {
       pushToast?.((e as Error).message);
     }
   };
+
+  const userCount = new Set(sessions.map((s) => s.user)).size;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader title="Authentication" description={<>Configure sign-in methods, MFA, and session policy. Tokens are signed with <span className="font-mono">$AUTH_SECRET</span>.</>} />
@@ -530,49 +629,51 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
           <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 13, fontWeight: 500 }}>Providers</span>
             <div className="spacer" />
-            <Button size="sm" variant="outline" icon={I.Plus} onClick={() => pushToast("Add custom OIDC provider.")}>Add</Button>
+            <Button size="sm" variant="outline" icon={I.Plus} onClick={() => setAdding(true)}>Add</Button>
           </div>
+          {providers.length === 0 && <div className="card-section muted" style={{ fontSize: 12.5 }}>Couldn't load auth config.</div>}
           {providers.map((p) => (
             <div key={p.id} className="schema-row" style={{ gridTemplateColumns: "24px 1fr auto auto auto" }}>
               <span><I.Shield size={13} /></span>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 500 }}>{p.name}</div>
-                {p.clientId && <div className="font-mono muted" style={{ fontSize: 11 }}>{p.clientId}</div>}
+                {p.clientId && <div className="font-mono muted" style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis" }}>{p.clientId}</div>}
+                {!p.clientId && p.discoveryUrl && <div className="font-mono muted" style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis" }}>{p.discoveryUrl}</div>}
                 {p.system && <div className="muted" style={{ fontSize: 11 }}>built-in</div>}
               </div>
               {!p.configured && <Badge variant="secondary">not configured</Badge>}
-              <Button size="sm" variant="ghost" onClick={() => pushToast(`${p.name} settings.`)}>Configure</Button>
+              <Button size="sm" variant="ghost" onClick={() => setConfiguring(p)}>Configure</Button>
               <Switch checked={p.enabled} onChange={(v) => toggleProvider(p.id, v)} />
             </div>
           ))}
         </div>
         <div className="card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
           <span style={{ fontSize: 13, fontWeight: 500 }}>Policy</span>
-          {(() => {
-            const persist = async (key: string, on: boolean) => {
-              try {
-                const cur = await authAdminApi.config();
-                const policy = { ...(cur.data?.policy ?? {}), [key]: on };
-                await authAdminApi.patch({ policy });
-              } catch (e) {
-                pushToast?.((e as Error).message);
-              }
-            };
-            return <>
-              <PolicyRow label="Require email verification" desc="Users must confirm their email before sign-in." defaultOn policyKey="requireEmailVerification" onPersist={persist} />
-              <PolicyRow label="Multi-factor (TOTP)" desc="Users can enroll an authenticator app." defaultOn policyKey="mfaTotp" onPersist={persist} />
-              <PolicyRow label="Multi-factor required for admins" desc="Force admins to enroll MFA." policyKey="mfaRequiredForAdmins" onPersist={persist} />
-              <PolicyRow label="Passkeys" desc="WebAuthn-based passwordless sign-in." defaultOn policyKey="passkeys" onPersist={persist} />
-              <PolicyRow label="Open sign-up" desc="Anyone can create an account." defaultOn policyKey="openSignup" onPersist={persist} />
-            </>;
-          })()}
+          {POLICY_ROWS.map((r) => (
+            <div key={r.key} className="field-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+              <div>
+                <div className="field-label">{r.label}</div>
+                <div className="field-hint">{r.desc}</div>
+              </div>
+              <Switch checked={policy[r.key] ?? r.fallback} onChange={(v) => setPolicyFlag(r.key, v)} />
+            </div>
+          ))}
           <div className="field" style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
             <label className="field-label">Session lifetime</label>
-            <Select value="30d" onChange={() => {}} options={["1h", "24h", "7d", "30d", "90d"]} />
+            <Select value={sessionLifetime} onChange={(v) => void saveSessionLifetime(v)} options={SESSION_LIFETIMES} />
           </div>
           <div className="field">
             <label className="field-label">Allowed redirect URLs</label>
-            <textarea className="input" rows={3} defaultValue={"https://workeros.dev/auth/callback\nhttp://localhost:3000/auth/callback"} style={{ height: "auto", fontFamily: "Geist Mono, monospace", fontSize: 12 }} />
+            <textarea
+              className="input"
+              rows={3}
+              value={redirectText}
+              onChange={(e) => setRedirectText(e.target.value)}
+              onBlur={() => void saveRedirects()}
+              placeholder={"https://app.example.com/auth/callback\nhttp://localhost:5173/auth/callback"}
+              style={{ height: "auto", fontFamily: "Geist Mono, monospace", fontSize: 12 }}
+            />
+            <span className="field-hint">One URL per line — saved when you click away.</span>
           </div>
         </div>
       </div>
@@ -581,7 +682,7 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
         <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <I.Activity size={13} />
           <span style={{ fontSize: 13, fontWeight: 500 }}>Active sessions</span>
-          <span className="muted font-mono" style={{ fontSize: 11.5 }}>{sessions.length} sessions · {new Set(sessions.map((s) => s.user)).size} users</span>
+          <span className="muted font-mono" style={{ fontSize: 11.5 }}>{sessions.length} session{sessions.length === 1 ? "" : "s"} · {userCount} user{userCount === 1 ? "" : "s"}</span>
           <div className="spacer" />
           <Button size="sm" variant="outline" icon={I.LogOut} onClick={revokeOthers}>Revoke others</Button>
         </div>
@@ -589,6 +690,7 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
         <table className="table">
           <thead><tr><th>User</th><th>Device</th><th>Location</th><th>IP</th><th>Created</th><th>Last seen</th><th></th></tr></thead>
           <tbody>
+            {sessions.length === 0 && <tr><td colSpan={7} className="muted" style={{ padding: 14 }}>No active sessions.</td></tr>}
             {sessions.map((s) => (
               <tr key={s.id}>
                 <td>{s.user}{s.current && <Badge variant="default" style={{ marginLeft: 6 }}>current</Badge>}</td>
@@ -604,22 +706,181 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
         </table>
         </div>
       </div>
+
+      {configuring && (
+        <ProviderConfigDialog
+          provider={configuring}
+          kind={providerKind(configuring)}
+          onClose={() => setConfiguring(null)}
+          onSave={(patch) => void saveProviderConfig(configuring.id, patch)}
+        />
+      )}
+      {adding && (
+        <AddProviderDialog
+          existingIds={providers.map((p) => p.id)}
+          onClose={() => setAdding(false)}
+          onAdd={(id, patch) => void addProvider(id, patch)}
+        />
+      )}
     </div>
   );
 }
 
-function PolicyRow({ label, desc, defaultOn, policyKey, onPersist }: { label: string; desc: string; defaultOn?: boolean; policyKey?: string; onPersist?: (key: string, on: boolean) => void }) {
-  const [on, setOn] = useState(!!defaultOn);
+function ProviderConfigDialog({ provider, kind, onClose, onSave }: {
+  provider: AuthProviderRow;
+  kind: "oauth" | "builtin" | "custom";
+  onClose: () => void;
+  onSave: (patch: Record<string, unknown>) => void;
+}) {
+  const [enabled, setEnabled] = useState(provider.enabled);
+  const [name, setName] = useState(provider.name ?? "");
+  const [clientId, setClientId] = useState(provider.clientId ?? "");
+  const [discoveryUrl, setDiscoveryUrl] = useState(provider.discoveryUrl ?? "");
+
+  const discoveryBad = !!discoveryUrl.trim() && !isHttpUrl(discoveryUrl.trim());
+  const valid = kind === "custom" ? name.trim().length >= 2 && !discoveryBad : !discoveryBad;
+
+  const submit = () => {
+    if (!valid) return;
+    const patch: Record<string, unknown> = { enabled };
+    if (kind === "oauth") {
+      patch.clientId = clientId.trim() || null;
+      patch.configured = !!clientId.trim();
+    } else if (kind === "custom") {
+      patch.name = name.trim();
+      patch.clientId = clientId.trim() || null;
+      patch.discoveryUrl = discoveryUrl.trim() || null;
+      patch.configured = !!clientId.trim();
+    }
+    onSave(patch);
+  };
+
   return (
-    <div className="field-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-      <div>
-        <div className="field-label">{label}</div>
-        <div className="field-hint">{desc}</div>
+    <div className="dialog-backdrop" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, width: "92vw" }}>
+        <div className="dialog-head">
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>Configure {provider.name}</div>
+            <div className="muted" style={{ fontSize: 12.5 }}>
+              {kind === "oauth" ? "OAuth 2.0 / OIDC sign-in provider." : kind === "custom" ? "Custom OpenID Connect provider." : "Built-in sign-in method."}
+            </div>
+          </div>
+          <IconButton icon={I.X} onClick={onClose} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "4px 0 2px" }}>
+          <div className="field-row">
+            <div>
+              <div className="field-label">Enabled</div>
+              <div className="field-hint">Show this option on the sign-in screen.</div>
+            </div>
+            <Switch checked={enabled} onChange={setEnabled} />
+          </div>
+          {kind === "custom" && (
+            <div className="field">
+              <label className="field-label">Display name</label>
+              <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme SSO" />
+            </div>
+          )}
+          {(kind === "oauth" || kind === "custom") && (
+            <div className="field">
+              <label className="field-label">Client ID</label>
+              <input className="input font-mono" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="123456789-abc.apps.example.com" />
+            </div>
+          )}
+          {kind === "custom" && (
+            <div className="field">
+              <label className="field-label">Discovery URL <span className="muted">(optional)</span></label>
+              <input className="input font-mono" value={discoveryUrl} onChange={(e) => setDiscoveryUrl(e.target.value)} placeholder="https://issuer.example.com/.well-known/openid-configuration" />
+              {discoveryBad && <span className="field-hint" style={{ color: "var(--destructive)" }}>Must be a full http(s) URL.</span>}
+            </div>
+          )}
+          {(kind === "oauth" || kind === "custom") && (
+            <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.5 }}>
+              The client secret is read from the <span className="font-mono">OAUTH_{provider.id.toUpperCase()}_CLIENT_SECRET</span> environment variable — it is never stored or shown here.
+            </div>
+          )}
+          {kind === "builtin" && (
+            <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.5 }}>
+              {provider.id === "email"
+                ? "Email + password is always available — toggle it off to hide the form from the sign-in screen."
+                : provider.id === "passkey"
+                  ? "Users enrol a passkey after signing in once with another method."
+                  : "Sends a one-time sign-in link by email — requires a configured email adapter (set RESEND_API_KEY + EMAIL_FROM)."}
+            </div>
+          )}
+        </div>
+        <div className="dialog-foot">
+          <div className="spacer" />
+          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" size="sm" icon={I.Check} disabled={!valid} onClick={submit}>Save</Button>
+        </div>
       </div>
-      <Switch checked={on} onChange={(v) => {
-        setOn(v);
-        if (policyKey && onPersist) onPersist(policyKey, v);
-      }} />
+    </div>
+  );
+}
+
+function AddProviderDialog({ existingIds, onClose, onAdd }: {
+  existingIds: string[];
+  onClose: () => void;
+  onAdd: (id: string, patch: Record<string, unknown>) => void;
+}) {
+  const [name, setName] = useState("");
+  const [clientId, setClientId] = useState("");
+  const [discoveryUrl, setDiscoveryUrl] = useState("");
+  const slug = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const idTaken = !!slug && existingIds.includes(slug);
+  const discoveryBad = !!discoveryUrl.trim() && !isHttpUrl(discoveryUrl.trim());
+  const valid = slug.length >= 2 && !idTaken && !discoveryBad;
+
+  const submit = () => {
+    if (!valid) return;
+    onAdd(slug, {
+      name: name.trim(),
+      clientId: clientId.trim() || null,
+      discoveryUrl: discoveryUrl.trim() || null,
+      configured: !!clientId.trim(),
+    });
+  };
+
+  return (
+    <div className="dialog-backdrop" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, width: "92vw" }}>
+        <div className="dialog-head">
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>Add OIDC provider</div>
+            <div className="muted" style={{ fontSize: 12.5 }}>Register a custom OpenID Connect identity provider.</div>
+          </div>
+          <IconButton icon={I.X} onClick={onClose} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "4px 0 2px" }}>
+          <div className="field">
+            <label className="field-label">Display name</label>
+            <input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme SSO" />
+            <span className="field-hint font-mono" style={{ fontSize: 11 }}>
+              id: <span style={{ color: idTaken ? "var(--destructive)" : "var(--foreground)" }}>{slug || "—"}</span>
+              {idTaken && <span style={{ color: "var(--destructive)" }}> · already exists</span>}
+            </span>
+          </div>
+          <div className="field">
+            <label className="field-label">Client ID <span className="muted">(optional)</span></label>
+            <input className="input font-mono" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="abc123" />
+          </div>
+          <div className="field">
+            <label className="field-label">Discovery URL <span className="muted">(optional)</span></label>
+            <input className="input font-mono" value={discoveryUrl} onChange={(e) => setDiscoveryUrl(e.target.value)} placeholder="https://issuer.example.com/.well-known/openid-configuration" />
+            {discoveryBad && <span className="field-hint" style={{ color: "var(--destructive)" }}>Must be a full http(s) URL.</span>}
+          </div>
+          <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.5 }}>
+            The provider is added disabled. Set its client secret server-side, then enable it here.
+          </div>
+        </div>
+        <div className="dialog-foot">
+          <span className="muted" style={{ fontSize: 12 }}>{valid ? "Will be added disabled." : idTaken ? "Pick a unique name." : "Enter a name to continue."}</span>
+          <div className="spacer" />
+          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" size="sm" icon={I.Plus} disabled={!valid} onClick={submit}>Add provider</Button>
+        </div>
+      </div>
     </div>
   );
 }

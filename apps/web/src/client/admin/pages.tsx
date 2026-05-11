@@ -700,14 +700,16 @@ function FlowStatCard({ flowId, flowRuns }: { flowId: string; flowRuns: number }
         const r = await fetch(`/api/activity?collection=system_flows&itemId=${encodeURIComponent(flowId)}&limit=200`, { credentials: "include" });
         if (!r.ok || cancelled) return;
         const j = (await r.json()) as { data?: any[] };
-        const rows = (j.data ?? []).filter((a) => a.action === "run");
+        // `recordActivity` namespaces the stored action — flow runs land as
+        // `flow.run` (not bare `run`). Failed runs carry `payload.error`.
+        const rows = (j.data ?? []).filter((a) => a.action === "flow.run" || a.action === "run");
         const last = rows[0];
         const lastRunText = last
           ? `${new Date(last.createdAt ?? last.created_at).toISOString().slice(11, 16)} · ${last.durationMs ?? last.duration_ms ?? 0}ms`
           : "—";
         const errs = rows.filter((a) => {
           const p = a.payload;
-          return (typeof p === "object" && p && (p as any).error) || a.action === "error";
+          return !!(p && typeof p === "object" && (p as any).error);
         });
         const successPct = rows.length === 0 ? "—" : `${Math.round(((rows.length - errs.length) / rows.length) * 100)}%`;
         const cutoff = Date.now() - 86_400_000;

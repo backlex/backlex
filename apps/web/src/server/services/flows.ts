@@ -8,6 +8,7 @@ import { runFunction } from "./sandbox";
 import { sendTemplatedEmail } from "./email";
 import { createItem, updateItem } from "./items-helpers";
 import { enqueueTask, type ResumePayload } from "./scheduled-tasks";
+import { recordActivity } from "./activity";
 
 /** Inline-sleep cap. Anything longer is enqueued so the worker isn't
  *  blocked for minutes/hours at a time. */
@@ -16,11 +17,21 @@ const sleep = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
 
 export type { Operation };
 
+/** Outcome of a flow execution. `ok: false` means the run halted on an
+ *  unhandled op error; `error` carries the first failure message. A run
+ *  that checkpointed on a long `delay` still counts as `ok` — the rest is
+ *  queued, not failed. */
+export interface FlowRunResult {
+  ok: boolean;
+  error: string | null;
+}
+
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.flows : sqlite.schema.flows;
 
 interface FlowRow {
   id: string;
+  tenantId: string | null;
   name: string;
   trigger: string;
   operations: Operation[];
@@ -396,7 +407,7 @@ const runOperation = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
 const runFlowOps = async (
   flow: Pick<FlowRow, "id" | "name" | "operations">,
   runCtx: RunCtx,
-): Promise<void> => {
+): Promise<FlowRunResult> => {
   for (let i = 0; i < flow.operations.length; i++) {
     const op = flow.operations[i] as Operation;
     try {
@@ -404,7 +415,7 @@ const runFlowOps = async (
     } catch (e) {
       if (e instanceof FlowDeferred) {
         const remainingOps = flow.operations.slice(i + 1) as Operation[];
-        if (remainingOps.length === 0) return; // nothing to resume to
+        if (remainingOps.length === 0) return { ok: true, error: null }; // nothing to resume to
         const runAt = new Date(Date.now() + e.durationMs);
         const payload: ResumePayload = {
           kind: "flow-continuation",
@@ -424,18 +435,43 @@ const runFlowOps = async (
           console.log(
             `[flow] ${flow.name} paused for ${e.durationMs}ms — ${remainingOps.length} op(s) queued`,
           );
+          return { ok: true, error: null };
         } catch (err) {
           console.error(
             `[flow] ${flow.name} pause-enqueue failed`,
             err,
           );
+          return { ok: false, error: err instanceof Error ? err.message : String(err) };
         }
-        return;
       }
       console.error(`[flow] ${flow.name} failed`, e);
-      return;
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
   }
+  return { ok: true, error: null };
+};
+
+/** Fire-and-forget activity row for a flow run so the per-flow KPI cards
+ *  (last run / success rate / failures) have something to chew on. Failures
+ *  carry `payload.error`; the `durationMs` is the wall-clock op time. */
+const logFlowRun = async (
+  ctx: Ctx,
+  flow: Pick<FlowRow, "id" | "tenantId">,
+  result: FlowRunResult,
+  durationMs: number,
+): Promise<void> => {
+  await recordActivity(
+    { db: ctx.db, dialect: ctx.dialect },
+    {
+      userId: null,
+      tenantId: flow.tenantId ?? null,
+      action: "run",
+      collection: "system_flows",
+      itemId: flow.id,
+      payload: result.ok ? null : { error: result.error },
+      durationMs,
+    },
+  );
 };
 
 /** Resume a previously checkpointed flow. Called by the scheduler tick
@@ -493,7 +529,9 @@ export const runFlows = async (
       ctx,
       last: undefined,
     };
-    await runFlowOps(flow, runCtx);
+    const startedAt = Date.now();
+    const result = await runFlowOps(flow, runCtx);
+    await logFlowRun(ctx, flow, result, Date.now() - startedAt);
   }
 };
 
@@ -506,22 +544,25 @@ export const runFlowById = async (
   flowId: string,
   data: Record<string, unknown>,
   authSubject: AuthSubject = { userId: null, email: null, roles: [] },
-): Promise<void> => {
+): Promise<FlowRunResult> => {
   const t = tableFor(ctx.dialect);
   const rows = (await (ctx.db as any)
     .select()
     .from(t)
     .where(eq(t.id, flowId))) as FlowRow[];
   const flow = rows[0];
-  if (!flow) return;
-  if (!flow.active) return;
+  if (!flow) return { ok: false, error: "flow not found" };
+  if (!flow.active) return { ok: false, error: "flow is paused" };
   const runCtx: RunCtx = {
     data,
     authSubject,
     ctx,
     last: undefined,
   };
-  await runFlowOps(flow, runCtx);
+  const startedAt = Date.now();
+  const result = await runFlowOps(flow, runCtx);
+  await logFlowRun(ctx, flow, result, Date.now() - startedAt);
+  return result;
 };
 
 /**

@@ -197,11 +197,13 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
         </div>
         <div className="card">
           <div className="card-section" style={{ fontSize: 12, fontWeight: 500 }}>Snippets</div>
-          {snippets.length === 0 ? (
-            <div className="muted" style={{ padding: "10px 12px", fontSize: 11.5, borderTop: "1px solid var(--border)" }}>No tables yet.</div>
-          ) : snippets.map((s) => (
-            <div key={s.name} title={s.sql} onClick={() => setSql(s.sql)} style={{ padding: "8px 12px", borderTop: "1px solid var(--border)", cursor: "pointer", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
-          ))}
+          <div className="scrollarea" style={{ maxHeight: 220, overflowY: "auto" }}>
+            {snippets.length === 0 ? (
+              <div className="muted" style={{ padding: "10px 12px", fontSize: 11.5, borderTop: "1px solid var(--border)" }}>No tables yet.</div>
+            ) : snippets.map((s) => (
+              <div key={s.name} title={s.sql} onClick={() => setSql(s.sql)} style={{ padding: "8px 12px", borderTop: "1px solid var(--border)", cursor: "pointer", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
+            ))}
+          </div>
         </div>
       </div>
 

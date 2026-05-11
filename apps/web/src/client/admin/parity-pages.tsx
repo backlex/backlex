@@ -178,7 +178,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
               onChange={(e) => setTableFilter(e.target.value)}
               placeholder="Filter tables…"
               spellCheck={false}
-              style={{ width: "100%", padding: "5px 8px", fontSize: 11.5, borderRadius: 6, border: "1px solid var(--border)", background: "var(--background)", color: "inherit", outline: 0 }}
+              style={{ width: "100%", padding: "5px 10px", fontSize: 11.5, borderRadius: "var(--radius-3xl)", border: "1px solid var(--border)", background: "var(--background)", color: "inherit", outline: 0 }}
             />
           </div>
           <div className="scrollarea" style={{ maxHeight: 280, overflowY: "auto" }}>

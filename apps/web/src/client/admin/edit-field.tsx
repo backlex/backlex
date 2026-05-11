@@ -1,13 +1,16 @@
 // @ts-nocheck
 // Edit-field dialog: change a user-defined column's settings without
 // renaming or retyping it (those need DDL changes the backend doesn't yet
-// support). Covers required/unique flags, the interface override, and the
-// per-choice metadata used by the dropdown interface — same shape that
-// admin/sheet.tsx and admin/items.tsx consume to render Selects + badges.
-import { useEffect, useState } from "react";
+// support). Covers required/unique flags, the interface override (drawn from
+// the Directus-style catalog, filtered to interfaces compatible with this
+// column's storage type), and the per-choice metadata used by selection
+// interfaces — same shape that admin/sheet.tsx and admin/items.tsx consume to
+// render Selects + badges.
+import { useEffect, useMemo, useState } from "react";
 import { I } from "./icons";
 import { Badge, Button, IconButton, Switch } from "./ui";
 import { Select } from "./select";
+import { getInterface, interfacesForType } from "./interfaces";
 
 interface FieldChoice {
   value: string;
@@ -20,7 +23,7 @@ interface FieldDraft {
   type: string;
   required?: boolean;
   unique?: boolean;
-  interface?: "dropdown" | "richtext" | "color";
+  interface?: string;
   options?: { choices?: FieldChoice[]; values?: string[] };
 }
 
@@ -30,13 +33,6 @@ export interface EditFieldDialogProps {
   onClose: () => void;
   onSave: (next: FieldDraft) => void;
 }
-
-const INTERFACE_OPTS = [
-  { value: "", label: "Default (auto)" },
-  { value: "dropdown", label: "Dropdown — fixed choices" },
-  { value: "richtext", label: "Rich text" },
-  { value: "color", label: "Color picker" },
-];
 
 export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialogProps) {
   const [draft, setDraft] = useState<FieldDraft | null>(field);
@@ -61,9 +57,27 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
     setDraft(seeded);
   }, [open, field]);
 
+  // Interface-override options: "Default (auto)" plus every catalog interface
+  // whose storage type matches this column. Always keep the field's current
+  // interface available even if it predates the catalog.
+  const interfaceOpts = useMemo(() => {
+    if (!draft) return [{ value: "", label: "Default (auto)" }];
+    const compatible = interfacesForType(draft.type);
+    const cur = draft.interface ? getInterface(draft.interface) : undefined;
+    const all = cur && !compatible.some((i) => i.id === cur.id) ? [cur, ...compatible] : compatible;
+    return [
+      { value: "", label: "Default (auto)" },
+      ...all.map((i) => ({
+        value: i.id,
+        label: `${i.label} — ${i.sub}`,
+        ...(i.hasChoices ? { badge: <Badge variant="outline">choices</Badge> } : {}),
+      })),
+    ];
+  }, [draft?.type, draft?.interface]);
+
   if (!open || !draft) return null;
 
-  const isDropdown = draft.interface === "dropdown";
+  const wantsChoices = !!getInterface(draft.interface)?.hasChoices;
   const choices = draft.options?.choices ?? [];
 
   const setChoice = (i: number, patch: Partial<FieldChoice>) => {
@@ -88,11 +102,12 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
 
   const submit = () => {
     if (!draft) return;
-    // Strip empty-value choices on save so a half-typed row doesn't fail
-    // the server validator.
+    // Strip empty-value choices on save so a half-typed row doesn't fail the
+    // server validator; drop options entirely for interfaces that don't use
+    // choices.
     const cleaned: FieldDraft = {
       ...draft,
-      options: draft.interface === "dropdown"
+      options: wantsChoices
         ? { choices: (draft.options?.choices ?? []).filter((c) => c.value.trim()) }
         : undefined,
       interface: draft.interface || undefined,
@@ -134,18 +149,19 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
           </div>
 
           <div className="field">
-            <label className="field-label">Interface override</label>
+            <label className="field-label">Interface</label>
             <Select
               value={draft.interface ?? ""}
-              onChange={(v) => setDraft((d) => d ? { ...d, interface: (v || undefined) as FieldDraft["interface"] } : d)}
-              options={INTERFACE_OPTS}
+              onChange={(v) => setDraft((d) => d ? { ...d, interface: (v || undefined) } : d)}
+              options={interfaceOpts}
+              searchable
             />
             <span className="field-hint">
-              Changes how the value is edited. Dropdown also enforces choices server-side.
+              Changes how the value is edited in the item form. Selection interfaces (dropdown, radio, checkboxes…) also enforce their choices server-side.
             </span>
           </div>
 
-          {isDropdown && (
+          {wantsChoices && (
             <div className="field" style={{ background: "var(--muted)", padding: 12, borderRadius: "var(--radius-xl)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <span className="field-label" style={{ marginBottom: 0 }}>Choices</span>

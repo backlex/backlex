@@ -6,6 +6,7 @@ import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { loadAppSettings } from "../services/settings";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.appSettings : sqlite.schema.appSettings;
@@ -15,41 +16,46 @@ const requireAdmin = (auth: { roles: string[] }) => {
     throw new AppError("FORBIDDEN", "Admin role required");
 };
 
-const SettingsInput = z.record(z.unknown());
+/**
+ * Whitelist of runtime-mutable settings. Anything not here is deploy-time
+ * config (env vars / wrangler bindings) and is read-only via `/runtime` —
+ * we deliberately reject writes to keys like `appUrl`, `emailFrom`, or
+ * `env.*` so the Settings UI can't pretend it manages those.
+ */
+const SettingsInput = z
+  .object({
+    siteName: z.string().min(1).max(120).optional(),
+    openSignup: z.boolean().optional(),
+  })
+  .strict();
 
 export const settingsRoutes = new Hono<AppBindings>()
   .use("*", requireUser, async (c, next) => {
     requireAdmin(c.get("auth"));
     await next();
   })
-  /** Returns all settings for the active tenant as a flat key→value map. */
+  /** Returns the active tenant's settings plus the env-derived values the
+   *  UI shows read-only (`appUrl`, `emailFrom`). */
   .get("/", async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");
-    const t = tableFor(ctx.dialect);
-    const rows = (await (ctx.db as any)
-      .select()
-      .from(t)
-      .where(
-        auth.tenantId ? eq(t.tenantId, auth.tenantId) : isNull(t.tenantId),
-      )) as { key: string; value: unknown }[];
-    const data: Record<string, unknown> = {
-      siteName: "workeros",
-      appUrl: ctx.env.APP_URL,
-      emailFrom: ctx.env.EMAIL_FROM ?? null,
-      openSignup: true,
-      telemetry: false,
-    };
-    for (const r of rows) data[r.key] = r.value;
-    return c.json({ data });
+    const settings = await loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null);
+    return c.json({
+      data: {
+        ...settings,
+        appUrl: ctx.env.APP_URL,
+        emailFrom: ctx.env.EMAIL_FROM ?? null,
+      },
+    });
   })
-  /** Patch a settings bundle; merges into the existing key/value rows. */
+  /** Patch the whitelisted settings; merges into the existing key/value rows. */
   .patch("/", async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");
     const body = SettingsInput.parse(await c.req.json());
     const t = tableFor(ctx.dialect);
     for (const [key, value] of Object.entries(body)) {
+      if (value === undefined) continue;
       const existing = (await (ctx.db as any)
         .select({ id: t.id })
         .from(t)
@@ -80,30 +86,37 @@ export const settingsRoutes = new Hono<AppBindings>()
    * Read-only runtime info: which env vars are set, which bindings are
    * present, package version. The Settings → Bindings/Environment tabs
    * read this — they never write back (those changes happen via
-   * `wrangler.toml` + redeploy).
+   * `wrangler.toml` + `wrangler secret` + redeploy).
    */
   .get("/runtime", async (c) => {
     const ctx = c.get("ctx");
     const env = ctx.env as unknown as Record<string, unknown>;
-    const present = (k: string) => env[k] !== undefined && env[k] !== null && env[k] !== "";
+    const present = (k: string) =>
+      env[k] !== undefined && env[k] !== null && env[k] !== "";
     const bindings = [
-      { type: "D1", name: "D1", target: "workeros-db", status: env.D1 ? "connected" : "optional" },
-      { type: "R2", name: "R2", target: "workeros-assets", status: env.R2 ? "connected" : "optional" },
+      { type: "D1", name: "D1", target: "workeros (D1)", status: env.D1 ? "connected" : "optional" },
+      { type: "R2", name: "R2", target: "workeros-files (R2)", status: env.R2 ? "connected" : "optional" },
       { type: "DurableObj", name: "REALTIME", target: "RealtimeRoom", status: env.REALTIME ? "connected" : "optional" },
-      { type: "Vectorize", name: "VECTORIZE", target: "embeddings-1536", status: env.VECTORIZE ? "connected" : "optional" },
+      { type: "Vectorize", name: "VECTORIZE", target: "workeros-embeddings", status: env.VECTORIZE ? "connected" : "optional" },
       { type: "Hyperdrive", name: "HYPERDRIVE", target: "pg-pool", status: env.HYPERDRIVE ? "connected" : "optional" },
+      { type: "Dispatch", name: "FUNCTIONS_DISPATCH", target: "workeros-functions", status: env.FUNCTIONS_DISPATCH ? "connected" : "optional" },
     ];
     const envVars = [
       { key: "APP_URL", set: present("APP_URL"), source: "env", secret: false },
       { key: "DATABASE_URL", set: present("DATABASE_URL"), source: "env", secret: true },
       { key: "AUTH_SECRET", set: present("AUTH_SECRET"), source: "env", secret: true },
+      { key: "AUTH_PLUGINS", set: present("AUTH_PLUGINS"), source: "env", secret: false },
       { key: "RESEND_API_KEY", set: present("RESEND_API_KEY"), source: "env", secret: true },
       { key: "EMAIL_FROM", set: present("EMAIL_FROM"), source: "env", secret: false },
+      { key: "OPENAI_API_KEY", set: present("OPENAI_API_KEY"), source: "env", secret: true },
       { key: "OAUTH_GOOGLE_CLIENT_ID", set: present("OAUTH_GOOGLE_CLIENT_ID"), source: "env", secret: false },
       { key: "OAUTH_GOOGLE_CLIENT_SECRET", set: present("OAUTH_GOOGLE_CLIENT_SECRET"), source: "env", secret: true },
       { key: "OAUTH_GITHUB_CLIENT_ID", set: present("OAUTH_GITHUB_CLIENT_ID"), source: "env", secret: false },
       { key: "OAUTH_GITHUB_CLIENT_SECRET", set: present("OAUTH_GITHUB_CLIENT_SECRET"), source: "env", secret: true },
       { key: "S3_BUCKET", set: present("S3_BUCKET"), source: "env", secret: false },
+      { key: "FUNCTIONS_FETCH_ALLOW", set: present("FUNCTIONS_FETCH_ALLOW"), source: "env", secret: false },
+      { key: "FUNCTIONS_EXEC_URL", set: present("FUNCTIONS_EXEC_URL"), source: "env", secret: false },
+      { key: "SANDBOX_RPC_TOKEN", set: present("SANDBOX_RPC_TOKEN"), source: "env", secret: true },
     ];
     const adapter = env.D1 ? "workers" : env.DATABASE_URL ? "vercel" : "bun";
     return c.json({

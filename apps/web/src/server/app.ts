@@ -11,6 +11,7 @@ import {
   ensureDefaultTenant,
   ensureSystemRoles,
   seedOwnerScopedPermissions,
+  seedEmailTemplates,
 } from "./services/seed";
 import { activityRoutes } from "./routes/activity";
 import { revisionsRoutes } from "./routes/revisions";
@@ -93,6 +94,7 @@ export const createApp = (env: Env) => {
       const defaultTenantId = await ensureDefaultTenant(dbCtx);
       await ensureSystemRoles(dbCtx, defaultTenantId);
       await seedOwnerScopedPermissions(dbCtx, defaultTenantId, FILES_COLLECTION);
+      await seedEmailTemplates(dbCtx);
       rolesSeeded = true;
     }
     await next();

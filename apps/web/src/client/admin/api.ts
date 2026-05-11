@@ -397,7 +397,7 @@ export interface ApiMetrics {
     pausedFlows: number;
   };
   topCollections?: { slug: string; rows: number; bytes?: number; lastWrite: number | null; writes24h?: number }[];
-  recent?: { t: number; action: string; collection?: string; itemId?: string | null; userId?: string | null; ms?: number | null }[];
+  recent?: { t: number; action: string; collection?: string; itemId?: string | null; userId?: string | null; ms?: number | null; error?: boolean }[];
   recentErrors?: { code: string; resource: string; msg: string; count: number; last: number }[];
 }
 

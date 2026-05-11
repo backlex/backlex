@@ -48,4 +48,5 @@ export const MIGRATION_TAGS_PG: Record<string, string> = {
   "a27a378fe0b27fc5526c931b0ee40b8b410549803295de98f61fc6f798067d9d": "20260510160000_roles_apikeys_tenant_id",
   "eed685629f6cf67685fc19d6cfef3c4e0ecd6429864ce9580bdc189c254da307": "20260510170000_seed_tenant_roles",
   "aab063f885a48e920c6f8167dbf27c7288a7d45ad8e1130be8c4f638d30da188": "20260511000000_api_key_role_scope",
+  "d4c0d690fe258c71c8086f237f4abf7a7d4e71251eb3cbc335dcad147e54a738": "20260511120000_email_templates_pg",
 };

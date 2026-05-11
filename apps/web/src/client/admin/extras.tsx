@@ -2,7 +2,7 @@
 // Cmd+K palette + Realtime event tail + Schema view + Empty states
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { I, type IconComponent, type IconKey } from "./icons";
-import { MOCK, type CollectionListItem, type CollectionSchema, type Post, type SchemaField } from "./mock";
+import { NAV_ITEMS, NAV_SETTINGS, type CollectionListItem, type CollectionSchema, type Post, type SchemaField } from "./config";
 import { Badge, Button, IconButton } from "./ui";
 
 export type PaletteSelection =
@@ -34,7 +34,7 @@ export function Palette({ open, onClose, onNavigate, items, collections }: Palet
 
   const groups = useMemo(() => {
     const ql = q.toLowerCase().trim();
-    const nav: PaletteSelection[] = MOCK.navItems.concat(MOCK.navSettings).map((n) => ({ kind: "page", id: n.id, label: n.label, icon: String(n.icon), meta: "goto" })).filter((x) => !ql || x.label.toLowerCase().includes(ql));
+    const nav: PaletteSelection[] = NAV_ITEMS.concat(NAV_SETTINGS).map((n) => ({ kind: "page", id: n.id, label: n.label, icon: String(n.icon), meta: "goto" })).filter((x) => !ql || x.label.toLowerCase().includes(ql));
     const cols: PaletteSelection[] = collections.map((c) => ({ kind: "collection", id: c.slug, label: c.slug, icon: "Database", meta: `${c.count} items` })).filter((x) => !ql || x.label.toLowerCase().includes(ql));
     const its: PaletteSelection[] = ql
       ? items.filter((i) => i.title.toLowerCase().includes(ql) || i.slug.toLowerCase().includes(ql)).slice(0, 8).map((i) => ({ kind: "item", id: i.id, label: i.title, sub: i.slug, icon: "Inbox", meta: i.status }))

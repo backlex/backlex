@@ -7,6 +7,17 @@ interface Meta {
   fields: string[] | null;
 }
 
+interface PresenceIdentity {
+  userId: string;
+  email: string | null;
+}
+
+/** What we hang off each hibernatable socket via serializeAttachment. */
+interface Attachment {
+  meta: Meta | null;
+  presence: PresenceIdentity | null;
+}
+
 interface StoredEvent {
   seq: number;
   /** Raw text of the published payload (JSON or plain string). */
@@ -22,6 +33,8 @@ const SYSTEM_FIELDS = new Set([
 
 /** How many recent events to retain for `?since=` replay on reconnect. */
 const REPLAY_LIMIT = 50;
+/** Presence roster frames carry seq 0 — never replayed, never an SSE id. */
+const PRESENCE_SEQ = 0;
 
 const project = (
   data: Record<string, unknown>,
@@ -43,6 +56,9 @@ const isItemPayload = (
   "event" in (payload as object) &&
   "data" in (payload as object);
 
+const frame = (seq: number, text: string): string =>
+  JSON.stringify({ __seq: seq, msg: text });
+
 /**
  * Durable Object that fans out messages to subscribed WebSockets in a single
  * channel, optionally applying a per-subscriber permission filter.
@@ -50,10 +66,11 @@ const isItemPayload = (
  * - Subscribers attach a base64(JSON) `meta=` query param; if present, each
  *   published item event is evaluated against the subscriber's conditions
  *   before being forwarded.
+ * - `presence=1` marks the socket as a presence member; join/leave re-broadcast
+ *   the deduplicated roster as `{ event: "presence", data: { members } }`.
  * - Sockets are accepted via the WebSocket Hibernation API so the DO can be
- *   evicted from memory between messages (no idle billing); subscriber `meta`
- *   rides along as a serialized attachment and `seq`/event-log survive in
- *   storage.
+ *   evicted from memory between messages (no idle billing); the per-socket
+ *   `Attachment` rides along serialized and `seq`/event-log survive in storage.
  * - A `?since=<seq>` query param replays buffered events the client missed.
  * - Outgoing frames are wrapped as `{ "__seq": <n>, "msg": <text> }` so the
  *   Worker-side SSE bridge can echo the sequence number as the SSE event id.
@@ -87,12 +104,16 @@ export class RealtimeRoom {
           // ignore malformed meta; treat as unfiltered
         }
       }
+      const presence: PresenceIdentity | null =
+        url.searchParams.get("presence") === "1" && meta?.authSubject.userId
+          ? { userId: meta.authSubject.userId, email: meta.authSubject.email ?? null }
+          : null;
 
       this.state.acceptWebSocket(server);
       try {
-        server.serializeAttachment(meta);
+        server.serializeAttachment({ meta, presence } satisfies Attachment);
       } catch {
-        // attachment too large (>2KB) — fall back to in-memory-only filtering
+        // Attachment too large (>2KB). Falling back to in-memory-only filtering
         // would be unsafe (the socket would see everything after hibernation),
         // so close it instead.
         server.close(1011, "subscription metadata too large");
@@ -106,6 +127,7 @@ export class RealtimeRoom {
           this.deliver(server, meta, ev);
         }
       }
+      if (presence) this.broadcastPresence();
       return new Response(null, { status: 101, webSocket: client });
     }
 
@@ -120,8 +142,7 @@ export class RealtimeRoom {
       await this.state.storage.put({ seq: this.seq, log: this.log });
 
       for (const ws of this.state.getWebSockets()) {
-        const meta = (ws.deserializeAttachment() as Meta | null) ?? null;
-        this.deliver(ws, meta, ev);
+        this.deliver(ws, this.attachment(ws).meta, ev);
       }
       return new Response("ok");
     }
@@ -135,23 +156,55 @@ export class RealtimeRoom {
   async webSocketMessage(_ws: WebSocket, _message: ArrayBuffer | string) {}
 
   async webSocketClose(ws: WebSocket) {
+    const wasPresence = this.attachment(ws).presence !== null;
     try {
       // Peer close codes like 1006 can't be echoed; 1000 is the safe substitute.
       ws.close(1000);
     } catch {
       // already closed
     }
+    if (wasPresence) this.broadcastPresence(ws);
   }
 
   async webSocketError(ws: WebSocket) {
+    const wasPresence = this.attachment(ws).presence !== null;
     try {
       ws.close(1011, "socket error");
     } catch {
       // already closed
     }
+    if (wasPresence) this.broadcastPresence(ws);
   }
 
   // ---------------------------------------------------------------------------
+
+  private attachment(ws: WebSocket): Attachment {
+    const a = ws.deserializeAttachment() as Attachment | null;
+    return a ?? { meta: null, presence: null };
+  }
+
+  private broadcastPresence(exclude?: WebSocket): void {
+    const sockets = this.state.getWebSockets();
+    const byId = new Map<string, PresenceIdentity>();
+    for (const ws of sockets) {
+      if (ws === exclude) continue;
+      const p = this.attachment(ws).presence;
+      if (p) byId.set(p.userId, p);
+    }
+    const members = [...byId.values()].sort((a, b) =>
+      (a.email ?? a.userId).localeCompare(b.email ?? b.userId),
+    );
+    const text = JSON.stringify({ event: "presence", data: { members } });
+    for (const ws of sockets) {
+      if (ws === exclude) continue;
+      if (!this.attachment(ws).presence) continue;
+      try {
+        ws.send(frame(PRESENCE_SEQ, text));
+      } catch {
+        // socket is gone; the hibernation runtime will fire webSocketClose
+      }
+    }
+  }
 
   private deliver(ws: WebSocket, meta: Meta | null, ev: StoredEvent) {
     let payload: unknown;
@@ -179,7 +232,7 @@ export class RealtimeRoom {
       outText = ev.text;
     }
     try {
-      ws.send(JSON.stringify({ __seq: ev.seq, msg: outText }));
+      ws.send(frame(ev.seq, outText));
     } catch {
       // socket is gone; the hibernation runtime will fire webSocketClose
     }

@@ -120,16 +120,19 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
   }));
 
   const iconForAction = (a: string) => {
-    if (a.startsWith("create")) return I.Plus;
-    if (a.startsWith("update") || a.startsWith("schema")) return I.Pencil;
-    if (a.startsWith("delete")) return I.Trash;
+    if (/error|fail|denied/i.test(a)) return I.AlertTriangle;
     if (a.startsWith("auth.")) return I.Users;
-    if (a.startsWith("flow")) return I.Bolt;
+    if (a.startsWith("flow") || a.startsWith("function")) return I.Bolt;
     if (a.startsWith("storage")) return I.Folder;
     if (a.startsWith("webhook")) return I.Webhook;
+    if (a.startsWith("schema")) return I.Pencil;
+    const verb = a.includes(".") ? a.slice(a.indexOf(".") + 1) : a;
+    if (verb.startsWith("create") || verb.startsWith("insert")) return I.Plus;
+    if (verb.startsWith("update") || verb.startsWith("patch")) return I.Pencil;
+    if (verb.startsWith("delete") || verb.startsWith("remove")) return I.Trash;
     return I.Activity;
   };
-  const activity = (metrics?.recent ?? []).slice(0, 6).map((r) => ({
+  const activity = (metrics?.recent ?? []).slice(0, 8).map((r) => ({
     t: new Date(r.t).toISOString().slice(11, 16),
     who: r.userId ?? "system",
     verb: r.action,
@@ -159,18 +162,6 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
     { label: "Active flows", value: c?.activeFlows ?? 0, sub: `${c?.activeFlows ?? 0} enabled · ${c?.pausedFlows ?? 0} paused`, nav: "flows", icon: I.Bolt },
     { label: "Functions", value: c?.functions ?? 0, sub: "sandboxed handlers", nav: "functions", icon: I.Function },
   ];
-
-  // Real recent activity → "Request log" panel. Activity rows don't carry
-  // HTTP method/status (those live at the edge) so we surface action and
-  // collection in the slot the design used for method/path. ms is filled
-  // when Sprint 5's duration capture lands.
-  const requests = (metrics?.recent ?? []).slice(0, 6).map((r) => ({
-    t: new Date(r.t).toISOString().slice(11, 19),
-    m: r.action.split(".")[0]?.toUpperCase() ?? "—",
-    p: r.collection ? `/${r.collection}${r.itemId ? "/" + r.itemId.slice(0, 10) : ""}` : `/api/${r.action}`,
-    s: /error|fail|denied/.test(r.action) ? 500 : 200,
-    ms: r.ms ?? 0,
-  }));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -268,34 +259,6 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
 
           <div className="card">
             <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <I.Activity size={14} />
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Request log</span>
-              <span className="font-mono muted" style={{ fontSize: 12 }}>last 60s · 6 of 142</span>
-              <div className="spacer" />
-              <Button variant="ghost" size="sm" iconRight={I.ExternalLink}>Open in logs</Button>
-            </div>
-            <div className="table-scroll">
-            <table className="table">
-              <thead><tr><th style={{ width: 90 }}>Time</th><th style={{ width: 70 }}>Method</th><th>Path</th><th style={{ width: 80, textAlign: "right" }}>Status</th><th style={{ width: 70, textAlign: "right" }}>ms</th></tr></thead>
-              <tbody>
-                {requests.map((r, i) => (
-                  <tr key={i}>
-                    <td className="font-mono muted tabular-nums" style={{ fontSize: 11.5 }}>{r.t}</td>
-                    <td><Badge variant="outline" mono>{r.m}</Badge></td>
-                    <td className="font-mono" style={{ fontSize: 12.5 }}>{r.p}</td>
-                    <td className="tabular-nums" style={{ textAlign: "right" }}>
-                      <Badge variant={r.s >= 200 && r.s < 300 ? "default" : r.s >= 400 ? "destructive" : "secondary"}>{r.s}</Badge>
-                    </td>
-                    <td className="tabular-nums muted" style={{ textAlign: "right" }}>{r.ms}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <I.AlertTriangle size={14} />
               <span style={{ fontSize: 13, fontWeight: 500 }}>Recent errors</span>
               <span className="font-mono muted" style={{ fontSize: 12 }}>last {range} · {(metrics?.totals?.errors ?? recentErrors.reduce((a, e) => a + (e.count ?? 0), 0))} {(metrics?.totals?.errors ?? 0) === 1 ? "event" : "events"}</span>
@@ -372,7 +335,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
               <I.Activity size={14} />
               <span style={{ fontSize: 13, fontWeight: 500 }}>Activity</span>
               <div className="spacer" />
-              <Button variant="ghost" size="sm">All events</Button>
+              <Button variant="ghost" size="sm" iconRight={I.ChevronRight} onClick={() => setActiveNav("activity")}>All events</Button>
             </div>
             <div style={{ padding: "4px 0" }}>
               {activity.map((a, i) => {

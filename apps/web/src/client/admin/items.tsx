@@ -2,7 +2,7 @@
 // Filter DSL builder + Items DataTable for the workeros admin design.
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { I } from "./icons";
-import { type CollectionSchema, type Post } from "./mock";
+import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button, Checkbox, IconButton } from "./ui";
 import { Select } from "./select";
 import { getAuthors, subscribeAuthors } from "./authors-cache";

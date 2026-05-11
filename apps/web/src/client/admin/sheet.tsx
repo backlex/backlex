@@ -2,7 +2,7 @@
 // Sheet form for create/edit, ConfirmAction dialog
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { I } from "./icons";
-import { type CollectionSchema, type Post } from "./mock";
+import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button, IconButton, Switch } from "./ui";
 import { Select } from "./select";
 

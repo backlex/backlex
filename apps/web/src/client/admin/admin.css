@@ -385,7 +385,8 @@ body {
 .btn-icon { width: 32px; padding: 0; }
 .btn-icon-sm { width: 28px; height: 28px; padding: 0; }
 
-/* ─── Tabs ─── */
+/* ─── Segmented control ─── (inline list filter — a form control, not page nav.
+   For page-section tabs use .ce-tabs / .ce-tab below.) */
 .tabs { display: flex; gap: 2px; padding: 3px; background: var(--muted); border-radius: var(--radius-3xl); width: fit-content; }
 .tab {
   padding: 5px 14px;
@@ -1185,14 +1186,19 @@ body {
 }
 .link-btn:hover { color: var(--foreground); text-decoration: underline; }
 
-/* Condition / permission editor — Directus-style */
+/* ─── Page-section tabs ─── (underline strip beneath a page header; switches the
+   page's main content between major sub-views. The colored underline overlaps
+   the strip's bottom border via margin-bottom:-1px — keep this on a flat strip,
+   never wrap it in a bordered/rounded box.) */
 .ce-tabs {
   display: flex; gap: 4px;
   padding: 0 14px;
   border-bottom: 1px solid var(--border);
   background: color-mix(in oklch, var(--muted) 25%, var(--card));
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
 }
 .ce-tab {
+  flex: 0 0 auto;
   display: inline-flex; align-items: center; gap: 8px;
   padding: 10px 14px;
   font-size: 12.5px; font-weight: 500;
@@ -1229,6 +1235,8 @@ body {
   padding: 8px 10px;
   border-bottom: 1px solid var(--border);
 }
+/* Binary/few-state mode toggle inside a widget (e.g. AND/OR, Builder/JSON) —
+   not page navigation and not a list filter. */
 .rb-toggle {
   display: inline-flex;
   border: 1px solid var(--border);

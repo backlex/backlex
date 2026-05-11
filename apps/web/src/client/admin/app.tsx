@@ -524,7 +524,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             {activeNav === "realtime" && <RealtimePage events={events} pushToast={pushToast} />}
             {activeNav === "insights" && <InsightsPage pushToast={pushToast} />}
             {activeNav === "activity" && <ActivityPage pushToast={pushToast} />}
-            {activeNav === "revisions" && <RevisionsPage />}
+            {activeNav === "revisions" && <RevisionsPage pushToast={pushToast} />}
             {activeNav === "translations" && <TranslationsPage pushToast={pushToast} />}
             {activeNav === "authentication" && <AuthSettingsPage pushToast={pushToast} />}
             {activeNav === "users" && <UsersPage pushToast={pushToast} />}

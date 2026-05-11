@@ -181,7 +181,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
               style={{ width: "100%", padding: "5px 8px", fontSize: 11.5, borderRadius: 6, border: "1px solid var(--border)", background: "var(--background)", color: "inherit", outline: 0 }}
             />
           </div>
-          <div style={{ maxHeight: 280, overflowY: "auto" }}>
+          <div className="scrollarea" style={{ maxHeight: 280, overflowY: "auto" }}>
             {filteredTables.length === 0 ? (
               <div className="muted" style={{ padding: "12px", fontSize: 11.5, textAlign: "center" }}>
                 {tables.length === 0 ? "Loading…" : "No tables match."}

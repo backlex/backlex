@@ -258,6 +258,18 @@ body {
 .nav-end { margin-left: auto; font-size: 11px; color: var(--muted-foreground); font-family: 'Geist Mono', monospace; }
 .nav-item .nav-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* Scrollable region between the brand header and the pinned adapter card —
+   keeps the nav usable when the viewport is too short to show every item. */
+.sidebar-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .adapter-card {
   margin-top: auto;
   border: 1px solid var(--sidebar-border);
@@ -1483,10 +1495,10 @@ body {
 @keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ─── Hide native scrollbars subtly ─── */
-.scrollarea::-webkit-scrollbar, .palette-results::-webkit-scrollbar, .tail-list::-webkit-scrollbar, .sheet-body::-webkit-scrollbar {
+.scrollarea::-webkit-scrollbar, .palette-results::-webkit-scrollbar, .tail-list::-webkit-scrollbar, .sheet-body::-webkit-scrollbar, .sidebar-scroll::-webkit-scrollbar {
   width: 10px; height: 10px;
 }
-.scrollarea::-webkit-scrollbar-thumb, .palette-results::-webkit-scrollbar-thumb, .tail-list::-webkit-scrollbar-thumb, .sheet-body::-webkit-scrollbar-thumb {
+.scrollarea::-webkit-scrollbar-thumb, .palette-results::-webkit-scrollbar-thumb, .tail-list::-webkit-scrollbar-thumb, .sheet-body::-webkit-scrollbar-thumb, .sidebar-scroll::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 999px;
   border: 2px solid var(--background);

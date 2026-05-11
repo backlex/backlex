@@ -388,6 +388,11 @@ export const apiKeys = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    /** Optional role this key is scoped to. When set, requests made with the
+     *  key resolve permissions against *only* this role (no implicit
+     *  `authenticated`) — and only while the owner still holds it. Null = the
+     *  key inherits the owner's full role set (legacy behaviour). */
+    roleId: text("role_id").references(() => roles.id, { onDelete: "cascade" }),
     expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
     lastUsedAt: integer("last_used_at", { mode: "timestamp_ms" }),
     revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
@@ -397,6 +402,7 @@ export const apiKeys = sqliteTable(
     uniqueIndex("api_keys_hashed_idx").on(t.hashedKey),
     index("api_keys_prefix_idx").on(t.prefix),
     index("api_keys_user_idx").on(t.userId),
+    index("api_keys_role_idx").on(t.roleId),
     index("api_keys_tenant_idx").on(t.tenantId),
   ],
 );

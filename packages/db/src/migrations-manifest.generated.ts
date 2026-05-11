@@ -27,6 +27,7 @@ export const MIGRATION_TAGS_SQLITE: Record<string, string> = {
   "5feae494c77a83c546abc12eb25f7c371c0a5766544bb12ebb62b2cf4a5c0f31": "20260510150000_folders_tenant_id",
   "c053886e962843ca18e495b4202a3939e0ccc46c04c1c9a1a6114785c2fc634d": "20260510160000_roles_apikeys_tenant_id",
   "a4aa467a61987f6403a252b55480f2c433da370879cbe1cf3175f6f5b7e08e6a": "20260510170000_seed_tenant_roles",
+  "ddde589877fa37f48d7fcdd27836c4707558938cb135a5dcf034c797ff15dc74": "20260511000000_api_key_role_scope",
 };
 
 export const MIGRATION_TAGS_PG: Record<string, string> = {
@@ -46,5 +47,6 @@ export const MIGRATION_TAGS_PG: Record<string, string> = {
   "9f96748bf9fda8f7d0c2d8a1e453ce8e5026e6156ad22fe4338cf74ceb23c376": "20260510150000_folders_tenant_id",
   "a27a378fe0b27fc5526c931b0ee40b8b410549803295de98f61fc6f798067d9d": "20260510160000_roles_apikeys_tenant_id",
   "eed685629f6cf67685fc19d6cfef3c4e0ecd6429864ce9580bdc189c254da307": "20260510170000_seed_tenant_roles",
+  "aab063f885a48e920c6f8167dbf27c7288a7d45ad8e1130be8c4f638d30da188": "20260511000000_api_key_role_scope",
   "d4c0d690fe258c71c8086f237f4abf7a7d4e71251eb3cbc335dcad147e54a738": "20260511120000_email_templates_pg",
 };

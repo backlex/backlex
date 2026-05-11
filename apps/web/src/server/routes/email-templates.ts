@@ -14,11 +14,17 @@ const Input = z.object({
   key: z.string().min(2).max(40),
   name: z.string().min(1).max(80),
   subject: z.string().min(1).max(200),
-  fromAddress: z.string().email().optional(),
+  // Accept an empty string from the form's "From" field — it's normalized to
+  // NULL on write. Without `.or("")` the editor's blank input fails `.email()`
+  // and the whole save 422s.
+  fromAddress: z.union([z.string().email(), z.literal("")]).nullish(),
   bodyHtml: z.string(),
-  bodyText: z.string().optional(),
-  variables: z.array(z.string()).optional(),
+  bodyText: z.string().nullish(),
+  variables: z.array(z.string()).nullish(),
 });
+
+/** Map an optional email field to a stored value: "" / null / undefined → null. */
+const normAddr = (v: string | null | undefined) => (v ? v : null);
 
 const requireAdmin = (auth: { roles: string[] }) => {
   if (!auth.roles.includes(SYSTEM_ROLES.admin))
@@ -77,19 +83,19 @@ export const emailTemplatesRoutes = new Hono<AppBindings>()
     const body = Input.parse(await c.req.json());
     const t = tableFor(ctx.dialect);
     const id = crypto.randomUUID();
-    await (ctx.db as any).insert(t).values({
+    const row = {
       id,
       tenantId: auth.tenantId ?? null,
       key: body.key,
       name: body.name,
       subject: body.subject,
-      fromAddress: body.fromAddress ?? null,
+      fromAddress: normAddr(body.fromAddress),
       bodyHtml: body.bodyHtml,
       bodyText: body.bodyText ?? null,
       variables: body.variables ?? null,
-      updatedBy: auth.userId,
-    });
-    return c.json({ data: { id, ...body } }, 201);
+    };
+    await (ctx.db as any).insert(t).values({ ...row, updatedBy: auth.userId });
+    return c.json({ data: row }, 201);
   })
   .patch("/:id", async (c) => {
     const ctx = c.get("ctx");
@@ -98,14 +104,22 @@ export const emailTemplatesRoutes = new Hono<AppBindings>()
     const id = c.req.param("id");
     const body = Input.partial().parse(await c.req.json());
     const t = tableFor(ctx.dialect);
+    // Only touch the columns the caller actually sent — a PATCH that updates
+    // just the subject must not blank out from_address / variables.
+    const set: Record<string, unknown> = {
+      updatedBy: auth.userId,
+      updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
+    };
+    if (body.key !== undefined) set.key = body.key;
+    if (body.name !== undefined) set.name = body.name;
+    if (body.subject !== undefined) set.subject = body.subject;
+    if (body.fromAddress !== undefined) set.fromAddress = normAddr(body.fromAddress);
+    if (body.bodyHtml !== undefined) set.bodyHtml = body.bodyHtml;
+    if (body.bodyText !== undefined) set.bodyText = body.bodyText ?? null;
+    if (body.variables !== undefined) set.variables = body.variables ?? null;
     await (ctx.db as any)
       .update(t)
-      .set({
-        ...body,
-        fromAddress: body.fromAddress ?? null,
-        updatedBy: auth.userId,
-        updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
-      })
+      .set(set)
       .where(idScopedToTenant(t, id, tenantId));
     return c.json({ ok: true });
   })

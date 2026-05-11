@@ -385,8 +385,9 @@ body {
 .btn-icon { width: 32px; padding: 0; }
 .btn-icon-sm { width: 28px; height: 28px; padding: 0; }
 
-/* ─── Segmented control ─── (inline list filter — a form control, not page nav.
-   For page-section tabs use .ce-tabs / .ce-tab below.) */
+/* ─── Tabs ─── (pill segment; used for both page-section sub-nav and inline
+   list filters. .ce-tabs below is kept only for in-panel use by the condition
+   editor. .rb-toggle further down is the binary mode toggle.) */
 .tabs { display: flex; gap: 2px; padding: 3px; background: var(--muted); border-radius: var(--radius-3xl); width: fit-content; }
 .tab {
   padding: 5px 14px;
@@ -1184,10 +1185,10 @@ body {
 }
 .link-btn:hover { color: var(--foreground); text-decoration: underline; }
 
-/* ─── Page-section tabs ─── (underline strip beneath a page header; switches the
-   page's main content between major sub-views. The colored underline overlaps
-   the strip's bottom border via margin-bottom:-1px — keep this on a flat strip,
-   never wrap it in a bordered/rounded box.) */
+/* ─── In-panel section tabs ─── (underline strip; used inside the condition /
+   permission editor sheet. The colored underline overlaps the strip's bottom
+   border via margin-bottom:-1px — keep on a flat strip, never wrap in a
+   bordered/rounded box. For top-level page sub-nav use .tabs/.tab above.) */
 .ce-tabs {
   display: flex; gap: 4px;
   padding: 0 14px;

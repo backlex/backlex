@@ -1,6 +1,7 @@
 // @ts-nocheck
 // directus/supabase parity pages — Database, Auth, Activity, Revisions, Insights, Email, Translations
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useIsMobile } from "@workeros/ui/hooks/use-mobile";
 import { I } from "./icons";
 import { ADAPTER_PROFILES, type AdapterId } from "./config";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
@@ -967,12 +968,12 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
       <div className="card">
         <div className="table-scroll">
         <table className="table">
-          <thead><tr><th style={{ width: 160 }}>Time</th><th style={{ width: 200 }}>Actor</th><th style={{ width: 140 }}>Action</th><th>Resource</th><th>Diff</th><th style={{ width: 130 }}>IP</th></tr></thead>
+          <thead><tr><th style={{ width: 160, whiteSpace: "nowrap" }}>Time</th><th style={{ width: 200 }}>Actor</th><th style={{ width: 140 }}>Action</th><th>Resource</th><th>Diff</th><th style={{ width: 130 }}>IP</th></tr></thead>
           <tbody>
             {visible.map((e, i) => (
               <tr key={i}>
-                <td className="font-mono muted tabular-nums" style={{ fontSize: 11.5 }}>{e.t}</td>
-                <td>{e.actor}</td>
+                <td className="font-mono muted tabular-nums" style={{ fontSize: 11.5, whiteSpace: "nowrap" }}>{e.t}</td>
+                <td style={{ wordBreak: "break-all" }}>{e.actor}</td>
                 <td><Badge variant={actionColor(e.action)} mono>{e.action}</Badge></td>
                 <td className="font-mono" style={{ fontSize: 12 }}>{e.resource}</td>
                 <td className="font-mono muted" style={{ fontSize: 11.5 }}>{e.diff}</td>
@@ -1352,6 +1353,11 @@ function DashboardGrid({
   const GAP = 12;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState(0);
+  // On narrow viewports the 12-column drag grid is unusable (cells get a
+  // dozen pixels wide and there's no mouse for the drag handles). Fall back
+  // to a single full-width column so panels stay readable; layout editing is
+  // hidden upstream in that case.
+  const stacked = width > 0 && width < 640;
 
   useLayoutEffect(() => {
     const update = () => setWidth(containerRef.current?.clientWidth ?? 0);
@@ -1360,7 +1366,7 @@ function DashboardGrid({
     const obs = new ResizeObserver(update);
     obs.observe(containerRef.current);
     return () => obs.disconnect();
-  }, []);
+  }, [stacked]);
 
   const colW = width > 0 ? (width - GAP * (COLS - 1)) / COLS : 0;
 
@@ -1443,6 +1449,18 @@ function DashboardGrid({
     return Math.max(max, l.y + dy + l.h + dh);
   }, 0);
   const containerHeight = totalRows > 0 ? totalRows * ROW_H + (totalRows - 1) * GAP : 200;
+
+  if (stacked) {
+    return (
+      <div ref={containerRef} style={{ display: "flex", flexDirection: "column", gap: GAP, width: "100%" }}>
+        {panels.map((p) => (
+          <div key={p.id} style={{ width: "100%", minWidth: 0 }}>
+            {renderPanel(p)}
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -1535,6 +1553,10 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
   const [editor, setEditor] = useState<{ mode: "create" } | { mode: "edit"; panel: ApiPanel } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ApiPanel | null>(null);
   const [editingLayout, setEditingLayout] = useState(false);
+  const isMobile = useIsMobile();
+  // The drag/resize layout editor needs a pointer and a wide grid — neither
+  // exists on phones, where DashboardGrid falls back to a stacked column.
+  const editing = editingLayout && !isMobile;
   // Local copy of each panel's grid layout. Updated optimistically on drag/
   // resize, then PATCHed back to the server. Falls back to an auto-laid-out
   // default for panels that have never been positioned.
@@ -1595,8 +1617,8 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
       panel={p}
       rows={results[p.id] ?? []}
       error={runErrors[p.id] ?? null}
-      onEdit={editingLayout ? undefined : () => setEditor({ mode: "edit", panel: p })}
-      onDelete={editingLayout ? undefined : () => setConfirmDelete(p)}
+      onEdit={editing ? undefined : () => setEditor({ mode: "edit", panel: p })}
+      onDelete={editing ? undefined : () => setConfirmDelete(p)}
     />
   );
 
@@ -1606,15 +1628,17 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
         title="Insights"
         description="Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard."
         actions={
-          <div style={{ display: "flex", gap: 8 }}>
-            <Button
-              variant={editingLayout ? "primary" : "outline"}
-              icon={editingLayout ? I.Check : I.Pencil}
-              onClick={() => setEditingLayout((v) => !v)}
-              disabled={panels.length === 0}
-            >
-              {editingLayout ? "Done" : "Edit layout"}
-            </Button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {!isMobile && (
+              <Button
+                variant={editing ? "primary" : "outline"}
+                icon={editing ? I.Check : I.Pencil}
+                onClick={() => setEditingLayout((v) => !v)}
+                disabled={panels.length === 0}
+              >
+                {editing ? "Done" : "Edit layout"}
+              </Button>
+            )}
             <Button variant="primary" icon={I.Plus} onClick={() => setEditor({ mode: "create" })}>New panel</Button>
           </div>
         }
@@ -1623,7 +1647,7 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
         <DashboardGrid
           panels={panels}
           layouts={layouts}
-          editing={editingLayout}
+          editing={editing}
           onLayoutChange={saveLayout}
           renderPanel={renderPanelCard}
         />

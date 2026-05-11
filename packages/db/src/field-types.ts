@@ -30,14 +30,15 @@ export interface FieldValidation {
 }
 
 /**
- * Optional UI hint that overrides the default editor for a field. Storage
- * shape is unchanged — `dropdown` still stores TEXT, `richtext` still
- * stores TEXT, `color` still stores TEXT.
+ * Optional UI hint that picks the editor for a field — purely cosmetic, the
+ * storage type is what actually matters. The admin ships a Directus-style
+ * catalog of these in `apps/web/src/client/admin/interfaces.ts` (`input`,
+ * `markdown`, `richtext`, `dropdown`, `toggle`, `datetime`, `color`,
+ * `relation`, …); the server treats the value as an opaque string and only
+ * special-cases `dropdown` (choice membership is enforced). New interfaces
+ * can be added to the catalog without touching this package.
  */
-export type FieldInterface =
-  | "dropdown"
-  | "richtext"
-  | "color";
+export type FieldInterface = string;
 
 /**
  * One option in a dropdown — Directus-shaped. `value` is what the column

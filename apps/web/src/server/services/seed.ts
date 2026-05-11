@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { PgDb } from "@workeros/db/pg";
 import type { SqliteDb } from "@workeros/db/sqlite";
 import * as pg from "@workeros/db/pg";
@@ -181,6 +181,123 @@ export const userCount = async (ctx: DbCtx): Promise<number> => {
   const t = tablesFor(ctx.dialect);
   const rows = await (ctx.db as any).select({ id: t.users.id }).from(t.users);
   return rows.length;
+};
+
+/**
+ * Platform-default email templates. Seeded with `tenant_id = NULL` so they act
+ * as the cross-tenant fallback the Email Templates admin page and
+ * `sendTemplatedEmail` resolve against. Seeding is additive only — once a row
+ * exists it's never overwritten, so admin edits survive a redeploy.
+ */
+export const DEFAULT_EMAIL_TEMPLATES: {
+  key: string;
+  name: string;
+  subject: string;
+  bodyHtml: string;
+  bodyText: string;
+  variables: string[];
+}[] = [
+  {
+    key: "verify",
+    name: "Verify email",
+    subject: "Confirm your {{ site.name }} email",
+    bodyHtml:
+      `<p>Welcome to {{ site.name }}!</p>\n` +
+      `<p>Confirm your email address to finish setting up your account.</p>\n` +
+      `<p><a href="{{ confirm_url }}">Confirm email</a></p>\n` +
+      `<p>If you didn't create an account you can safely ignore this message.</p>`,
+    bodyText:
+      `Welcome to {{ site.name }}!\n\n` +
+      `Confirm your email address: {{ confirm_url }}\n\n` +
+      `If you didn't create an account you can safely ignore this message.`,
+    variables: ["user.email", "confirm_url", "site.name"],
+  },
+  {
+    key: "reset",
+    name: "Reset password",
+    subject: "Reset your {{ site.name }} password",
+    bodyHtml:
+      `<p>We received a request to reset the password for {{ user.email }}.</p>\n` +
+      `<p><a href="{{ reset_url }}">Choose a new password</a></p>\n` +
+      `<p>This link expires soon. If you didn't ask for this, no action is needed.</p>`,
+    bodyText:
+      `We received a request to reset the password for {{ user.email }}.\n\n` +
+      `Choose a new password: {{ reset_url }}\n\n` +
+      `This link expires soon. If you didn't ask for this, no action is needed.`,
+    variables: ["user.email", "reset_url", "site.name"],
+  },
+  {
+    key: "magic",
+    name: "Magic sign-in link",
+    subject: "Your {{ site.name }} sign-in link",
+    bodyHtml:
+      `<p>Click below to sign in to {{ site.name }}.</p>\n` +
+      `<p><a href="{{ magic_url }}">Sign in</a></p>\n` +
+      `<p>This link works once and expires soon.</p>`,
+    bodyText:
+      `Click to sign in to {{ site.name }}: {{ magic_url }}\n\n` +
+      `This link works once and expires soon.`,
+    variables: ["user.email", "magic_url", "site.name"],
+  },
+  {
+    key: "invite",
+    name: "Workspace invite",
+    subject: "You've been invited to {{ site.name }}",
+    bodyHtml:
+      `<p>{{ inviter.email }} invited you to join their workspace on {{ site.name }}.</p>\n` +
+      `<p><a href="{{ invite_url }}">Accept invite</a></p>`,
+    bodyText:
+      `{{ inviter.email }} invited you to join their workspace on {{ site.name }}.\n\n` +
+      `Accept invite: {{ invite_url }}`,
+    variables: ["user.email", "inviter.email", "invite_url", "site.name"],
+  },
+  {
+    key: "change_email",
+    name: "Confirm email change",
+    subject: "Confirm your new {{ site.name }} email",
+    bodyHtml:
+      `<p>Confirm that you want to use this address for your {{ site.name }} account.</p>\n` +
+      `<p><a href="{{ confirm_url }}">Confirm new email</a></p>\n` +
+      `<p>If this wasn't you, contact support right away.</p>`,
+    bodyText:
+      `Confirm that you want to use this address for your {{ site.name }} account.\n\n` +
+      `Confirm new email: {{ confirm_url }}\n\n` +
+      `If this wasn't you, contact support right away.`,
+    variables: ["user.email", "confirm_url", "site.name"],
+  },
+];
+
+export const seedEmailTemplates = async (ctx: DbCtx): Promise<void> => {
+  const t =
+    ctx.dialect === "pg" ? pg.schema.emailTemplates : sqlite.schema.emailTemplates;
+  for (const tpl of DEFAULT_EMAIL_TEMPLATES) {
+    try {
+      const exists = await (ctx.db as any)
+        .select({ id: t.id })
+        .from(t)
+        .where(and(isNull(t.tenantId), eq(t.key, tpl.key)))
+        .limit(1);
+      if (exists[0]) continue;
+      await (ctx.db as any).insert(t).values({
+        id: crypto.randomUUID(),
+        tenantId: null,
+        key: tpl.key,
+        name: tpl.name,
+        subject: tpl.subject,
+        fromAddress: null,
+        bodyHtml: tpl.bodyHtml,
+        bodyText: tpl.bodyText,
+        variables: tpl.variables,
+        updatedBy: null,
+      });
+    } catch {
+      // The email_templates table may not exist yet (a Postgres deploy that
+      // predates the admin-tables migration, or a fresh D1/SQLite db that
+      // hasn't run its migrations). Bail quietly — the next migration run
+      // makes this work; the route handles the missing table on its own.
+      return;
+    }
+  }
 };
 
 const OWNER_CONDITION: Condition = {

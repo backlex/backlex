@@ -2371,16 +2371,16 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader title="Settings" description="Self-hosted on Cloudflare Workers. Most config lives in wrangler.toml; this page is a live view + UI for runtime-mutable values." />
-      <div className="ce-tabs">
+      <div className="tabs">
         {[
           { id: "general", label: "General" },
           { id: "bindings", label: "Bindings", count: bindings.length },
           { id: "env", label: "Environment", count: envVars.length },
           { id: "about", label: "About" },
         ].map((t) => (
-          <button key={t.id} type="button" className={`ce-tab ${tab === t.id ? "on" : ""}`} onClick={() => setTab(t.id)}>
+          <button key={t.id} type="button" className="tab" data-active={tab === t.id} onClick={() => setTab(t.id)}>
             <span>{t.label}</span>
-            {t.count !== undefined && <span className="ce-tab-count">{t.count}</span>}
+            {t.count !== undefined && <span className="count">{t.count}</span>}
           </button>
         ))}
       </div>

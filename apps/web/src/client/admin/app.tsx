@@ -590,17 +590,17 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                 }
               />
 
-              <div className="ce-tabs">
-                <button className={`ce-tab ${activeTab === "items" ? "on" : ""}`} onClick={() => setActiveTab("items")}>
-                  <I.Inbox size={13} />Items <span className="ce-tab-count">{posts.length}</span>
+              <div className="tabs">
+                <button className="tab" data-active={activeTab === "items"} onClick={() => setActiveTab("items")}>
+                  <I.Inbox size={13} />Items <span className="count">{posts.length}</span>
                 </button>
-                <button className={`ce-tab ${activeTab === "schema" ? "on" : ""}`} onClick={() => setActiveTab("schema")}>
-                  <I.Braces size={13} />Schema <span className="ce-tab-count">{schemaState.fields.length}</span>
+                <button className="tab" data-active={activeTab === "schema"} onClick={() => setActiveTab("schema")}>
+                  <I.Braces size={13} />Schema <span className="count">{schemaState.fields.length}</span>
                 </button>
-                <button className={`ce-tab ${activeTab === "permissions" ? "on" : ""}`} onClick={() => setActiveTab("permissions")}>
-                  <I.Shield size={13} />Permissions <span className="ce-tab-count">3</span>
+                <button className="tab" data-active={activeTab === "permissions"} onClick={() => setActiveTab("permissions")}>
+                  <I.Shield size={13} />Permissions <span className="count">3</span>
                 </button>
-                <button className={`ce-tab ${activeTab === "settings" ? "on" : ""}`} onClick={() => setActiveTab("settings")}>
+                <button className="tab" data-active={activeTab === "settings"} onClick={() => setActiveTab("settings")}>
                   <I.Settings size={13} />Settings
                 </button>
               </div>
@@ -841,12 +841,12 @@ function RolesPageWithMembers({ pushToast }: { pushToast: (m: string) => void })
   const [tab, setTab] = useState<"members" | "roles">("members");
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div className="ce-tabs">
+      <div className="tabs">
         {[
           { id: "members" as const, label: "Members", icon: I.Users },
           { id: "roles" as const, label: "Roles & permissions", icon: I.Shield },
         ].map((t) => (
-          <button key={t.id} type="button" className={`ce-tab ${tab === t.id ? "on" : ""}`} onClick={() => setTab(t.id)}>
+          <button key={t.id} type="button" className="tab" data-active={tab === t.id} onClick={() => setTab(t.id)}>
             <t.icon size={13} /><span>{t.label}</span>
           </button>
         ))}

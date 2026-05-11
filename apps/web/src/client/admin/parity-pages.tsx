@@ -59,15 +59,15 @@ export function DatabasePage({ pushToast, adapter }: { pushToast: (m: string) =>
         description={<>Direct access to the underlying engine. Adapter: <span className="font-mono">{ADAPTER_PROFILES[adapter].db}</span>. SQL editor runs through the same permission layer as the API.</>}
         badges={<Badge variant="outline" mono>{ADAPTER_PROFILES[adapter].db}</Badge>}
       />
-      <div className="ce-tabs">
-        <button className={`ce-tab ${tab === "sql" ? "on" : ""}`} onClick={() => setTab("sql")}><I.Code size={13} />SQL editor</button>
-        <button className={`ce-tab ${tab === "migrations" ? "on" : ""}`} onClick={() => setTab("migrations")}>
+      <div className="tabs">
+        <button className="tab" data-active={tab === "sql"} onClick={() => setTab("sql")}><I.Code size={13} />SQL editor</button>
+        <button className="tab" data-active={tab === "migrations"} onClick={() => setTab("migrations")}>
           <I.History size={13} />Migrations
-          {migCount !== null && <span className="ce-tab-count">{migCount}</span>}
+          {migCount !== null && <span className="count">{migCount}</span>}
         </button>
-        <button className={`ce-tab ${tab === "backups" ? "on" : ""}`} onClick={() => setTab("backups")}>
+        <button className="tab" data-active={tab === "backups"} onClick={() => setTab("backups")}>
           <I.Save size={13} />Backups
-          {backupCount !== null && <span className="ce-tab-count">{backupCount}</span>}
+          {backupCount !== null && <span className="count">{backupCount}</span>}
         </button>
       </div>
       {tab === "sql" && <SqlEditor pushToast={pushToast} />}

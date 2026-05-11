@@ -1085,7 +1085,7 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader
         title="Insights"
-        description="Built from saved SQL queries and collection aggregates. Drag panels to lay out your dashboard."
+        description="Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard."
         actions={
           <div style={{ display: "flex", gap: 8 }}>
             <Button
@@ -1113,8 +1113,8 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
           <I.BarChart size={28} className="muted" />
           <div style={{ fontSize: 14, fontWeight: 500, color: "var(--foreground)" }}>No insight panels yet</div>
           <div style={{ fontSize: 12.5, maxWidth: 460, lineHeight: 1.5 }}>
-            Insight panels are saved SQL queries rendered as counters, sparklines, bars, donuts, or tables.
-            Click <strong>+ New panel</strong> to write your first read-only SELECT against the workspace database.
+            Insight panels chart a collection aggregate (count / sum / average …) or a saved SQL query as a counter, sparkline, bars, donut, or table.
+            Click <strong>+ New panel</strong> to build your first one — pick a collection, no SQL required.
           </div>
         </div>
       )}
@@ -1247,7 +1247,7 @@ function PanelEditorDialog({
 }) {
   const [name, setName] = useState(panel?.name ?? "");
   const [description, setDescription] = useState(panel?.description ?? "");
-  const [kind, setKind] = useState<PanelKind>((panel?.kind as PanelKind) ?? "sql");
+  const [kind, setKind] = useState<PanelKind>((panel?.kind as PanelKind) ?? "items-aggregate");
   const [viz, setViz] = useState<PanelViz>((panel?.viz as PanelViz) ?? "counter");
   const [sqlText, setSqlText] = useState<string>(panel?.sql ?? SAMPLE_PANEL_SQL);
   const [busy, setBusy] = useState(false);
@@ -1270,6 +1270,7 @@ function PanelEditorDialog({
   // Collections list for the items-aggregate selectors. Loaded once on mount;
   // per-collection schema is fetched on demand below.
   const [collections, setCollections] = useState<ApiCollection[]>([]);
+  const [collectionsLoaded, setCollectionsLoaded] = useState(false);
   const [collectionSchema, setCollectionSchema] = useState<ApiCollection | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -1278,6 +1279,7 @@ function PanelEditorDialog({
         const r = await collectionsApi.list();
         if (!cancelled) setCollections(r.data ?? []);
       } catch { /* leave empty; the editor will show a hint */ }
+      finally { if (!cancelled) setCollectionsLoaded(true); }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -1358,6 +1360,16 @@ function PanelEditorDialog({
     !descError &&
     (kind !== "sql" || !sqlError) &&
     (kind !== "items-aggregate" || Object.keys(aggError).length === 0);
+
+  // One-line "what feeds the chart" hint shown under the Visualization picker.
+  const vizHint =
+    kind === "items-aggregate"
+      ? agg.groupBy
+        ? `One row per "${agg.groupBy}" — bars / donut / table show the breakdown; counter shows only the first.`
+        : "A single value — counter fits best; sparkline / bars need multiple rows."
+      : kind === "sql"
+        ? "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
+        : `${VIZ_DESCRIPTIONS[viz]}.`;
 
   /** Compose the items-aggregate config payload. Returns null if not applicable. */
   const composeAggregateConfig = (): Record<string, unknown> | null => {
@@ -1475,7 +1487,7 @@ function PanelEditorDialog({
             <h2 id={titleId}>{mode === "create" ? "New insight panel" : `Edit panel`}</h2>
             <p>
               {mode === "create"
-                ? <>Saved as a row in <span className="font-mono">saved_panels</span>. SQL panels run a read-only SELECT against the workspace database.</>
+                ? <>Saved as a row in <span className="font-mono">saved_panels</span>. Collection panels aggregate one collection (count / sum / average …); SQL panels run a read-only SELECT against the workspace database.</>
                 : <>Editing <span className="font-mono">{panel?.id}</span>.</>}
             </p>
           </div>
@@ -1532,12 +1544,14 @@ function PanelEditorDialog({
                 value={kind}
                 onChange={(v) => { setKind(v as PanelKind); setPreview(null); setPreviewError(null); clearServerError("kind"); }}
                 options={[
+                  { value: "items-aggregate", label: "collection", hint: "count / sum / average over a collection — no SQL" },
                   { value: "sql", label: "sql", hint: "read-only SELECT against the workspace database" },
-                  { value: "items-aggregate", label: "items-aggregate", hint: "aggregate over a collection (no SQL)" },
                   { value: "static", label: "static", hint: "config-only panel rendered from props" },
                 ]}
               />
-              {serverErrors.kind && <div className="field-error"><I.AlertTriangle size={11} />{serverErrors.kind}</div>}
+              {serverErrors.kind
+                ? <div className="field-error"><I.AlertTriangle size={11} />{serverErrors.kind}</div>
+                : <span className="field-hint">{kind === "items-aggregate" ? "Pick a collection and an aggregate below — no query to write." : kind === "sql" ? "Write a read-only SELECT below." : "Set the config object via the API once the panel exists."}</span>}
             </div>
             <div className="field">
               <label className="field-label">Visualization</label>
@@ -1550,7 +1564,9 @@ function PanelEditorDialog({
                   hint: VIZ_DESCRIPTIONS[v],
                 }))}
               />
-              {serverErrors.viz && <div className="field-error"><I.AlertTriangle size={11} />{serverErrors.viz}</div>}
+              {serverErrors.viz
+                ? <div className="field-error"><I.AlertTriangle size={11} />{serverErrors.viz}</div>
+                : <span className="field-hint">{vizHint}</span>}
             </div>
           </div>
 
@@ -1583,27 +1599,12 @@ function PanelEditorDialog({
                   <div className="field-error"><I.AlertTriangle size={11} />{sqlError}</div>
                 ) : (
                   <span className="field-hint">
-                    Counter uses the first numeric column of the first row. Sparkline / bars use the first numeric column across all rows. Donut / table pair the first two columns.
+                    The query runs verbatim. The visualization hint above explains how its columns map to the chart.
                   </span>
                 )}
               </div>
 
-              {(preview || previewError) && (
-                <div className="field" style={{ background: "var(--muted)", padding: 10, borderRadius: "var(--radius-md)" }}>
-                  <div className="field-label" style={{ marginBottom: 6 }}>
-                    {previewError
-                      ? <><I.AlertTriangle size={12} style={{ color: "var(--destructive)" }} /> Preview error</>
-                      : <><I.Activity size={12} /> Preview · {preview?.rows.length ?? 0} rows · {preview?.ms ?? 0}ms</>}
-                  </div>
-                  {previewError ? (
-                    <div className="font-mono" style={{ fontSize: 11.5, color: "var(--destructive)", whiteSpace: "pre-wrap" }}>{previewError}</div>
-                  ) : preview && preview.rows.length > 0 ? (
-                    <PreviewTable rows={preview.rows} />
-                  ) : (
-                    <div className="muted" style={{ fontSize: 12 }}>No rows returned.</div>
-                  )}
-                </div>
-              )}
+              <PreviewBlock viz={viz} preview={preview} previewError={previewError} />
             </>
           )}
 
@@ -1618,7 +1619,10 @@ function PanelEditorDialog({
                     placeholder={collections.length === 0 ? "No collections" : "Pick a collection…"}
                     options={collections.map((c) => ({ value: c.slug, label: c.slug, hint: `${c.fields.length} fields` }))}
                   />
-                  {aggError.collection && <div className="field-error"><I.AlertTriangle size={11} />{aggError.collection}</div>}
+                  {aggError.collection && collections.length > 0 && <div className="field-error"><I.AlertTriangle size={11} />{aggError.collection}</div>}
+                  {collectionsLoaded && collections.length === 0 && (
+                    <span className="field-hint">No collections in this workspace yet — create one first, or switch <strong>Kind</strong> to <span className="font-mono">sql</span>.</span>
+                  )}
                 </div>
                 <div className="field">
                   <label className="field-label">Aggregate function</label>
@@ -1720,22 +1724,7 @@ function PanelEditorDialog({
                 </Button>
               </div>
 
-              {(preview || previewError) && (
-                <div className="field" style={{ background: "var(--muted)", padding: 10, borderRadius: "var(--radius-md)" }}>
-                  <div className="field-label" style={{ marginBottom: 6 }}>
-                    {previewError
-                      ? <><I.AlertTriangle size={12} style={{ color: "var(--destructive)" }} /> Preview error</>
-                      : <><I.Activity size={12} /> Preview · {preview?.rows.length ?? 0} rows · {preview?.ms ?? 0}ms</>}
-                  </div>
-                  {previewError ? (
-                    <div className="font-mono" style={{ fontSize: 11.5, color: "var(--destructive)", whiteSpace: "pre-wrap" }}>{previewError}</div>
-                  ) : preview && preview.rows.length > 0 ? (
-                    <PreviewTable rows={preview.rows} />
-                  ) : (
-                    <div className="muted" style={{ fontSize: 12 }}>No rows returned.</div>
-                  )}
-                </div>
-              )}
+              <PreviewBlock viz={viz} preview={preview} previewError={previewError} />
             </>
           )}
 
@@ -1790,6 +1779,85 @@ function PreviewTable({ rows }: { rows: Record<string, unknown>[] }) {
 }
 
 /**
+ * Concrete "this column drives the chart" line, given the rows a preview/run
+ * actually returned. Mirrors the auto-detection in RealPanel so the editor and
+ * the dashboard agree on what each viz reads.
+ */
+function describeVizMapping(viz: PanelViz, rows: Record<string, unknown>[]): string {
+  const first = rows[0] ?? {};
+  const cols = Object.keys(first);
+  const numericCol = cols.find((c) => typeof first[c] === "number");
+  const labelCol = cols.find((c) => c !== numericCol);
+  if (viz === "counter") {
+    return numericCol
+      ? `Counter → "${numericCol}" from the first row (${Number(first[numericCol]).toLocaleString()}).`
+      : `Counter → no numeric column, so it shows the row count (${rows.length}).`;
+  }
+  if (viz === "sparkline" || viz === "bars") {
+    const col = numericCol ?? cols[0];
+    const label = viz === "bars" ? "Bars" : "Sparkline";
+    return col
+      ? `${label} → "${col}" across all ${rows.length} row${rows.length === 1 ? "" : "s"}.`
+      : `${label} → the first numeric column across all rows.`;
+  }
+  // donut | table
+  const lc = labelCol ?? cols[0];
+  const vc = numericCol ?? cols[1];
+  const label = viz === "donut" ? "Donut" : "Table";
+  return lc && vc
+    ? `${label} → "${lc}" (label) paired with "${vc}" (value).`
+    : `${label} → the first two columns: label, then value.`;
+}
+
+/** Shared preview panel for the editor (SQL + collection kinds use the same UI). */
+function PreviewBlock({
+  viz,
+  preview,
+  previewError,
+}: {
+  viz: PanelViz;
+  preview: { rows: Record<string, unknown>[]; ms: number } | null;
+  previewError: string | null;
+}) {
+  if (!preview && !previewError) return null;
+  return (
+    <div className="field" style={{ background: "var(--muted)", padding: 10, borderRadius: "var(--radius-md)" }}>
+      <div className="field-label" style={{ marginBottom: 6 }}>
+        {previewError
+          ? <><I.AlertTriangle size={12} style={{ color: "var(--destructive)" }} /> Preview error</>
+          : <><I.Activity size={12} /> Preview · {preview?.rows.length ?? 0} rows · {preview?.ms ?? 0}ms</>}
+      </div>
+      {previewError ? (
+        <div className="font-mono" style={{ fontSize: 11.5, color: "var(--destructive)", whiteSpace: "pre-wrap" }}>{previewError}</div>
+      ) : preview && preview.rows.length > 0 ? (
+        <>
+          <PreviewTable rows={preview.rows} />
+          <div className="muted" style={{ fontSize: 11.5, marginTop: 6, display: "flex", gap: 6, alignItems: "center" }}>
+            <I.BarChart size={11} style={{ flex: "0 0 auto" }} />
+            <span>{describeVizMapping(viz, preview.rows)}</span>
+          </div>
+        </>
+      ) : (
+        <div className="muted" style={{ fontSize: 12 }}>No rows returned.</div>
+      )}
+    </div>
+  );
+}
+
+/** One-line summary of what a saved panel shows, used as the card subtitle when
+ *  the author didn't write a description. */
+function panelSubtitle(panel: ApiPanel, rowCount: number): string {
+  if (panel.description) return panel.description;
+  if (panel.kind === "items-aggregate") {
+    const cfg = (panel.config ?? {}) as { collection?: string; agg?: string; field?: string; groupBy?: string };
+    const fn = !cfg.agg || cfg.agg === "count" ? "count" : `${cfg.agg}(${cfg.field ?? "?"})`;
+    return `${cfg.collection ?? "collection"} · ${fn}${cfg.groupBy ? ` by ${cfg.groupBy}` : ""}`;
+  }
+  if (panel.kind === "sql") return `${rowCount} row${rowCount === 1 ? "" : "s"} · sql`;
+  return panel.kind;
+}
+
+/**
  * Renders a saved panel using its viz config and the rows returned by
  * /api/admin/panels/:id/run. We pick the first numeric column for sparkline
  * /bars/counter, pair the first two columns for table/donut, and fall back
@@ -1808,11 +1876,11 @@ function RealPanel({
   onEdit?: () => void;
   onDelete?: () => void;
 }) {
-  const sub = panel.description ?? `${rows.length} rows · ${panel.kind}`;
+  const sub = panelSubtitle(panel, rows.length);
 
   if (error) {
     return (
-      <Panel title={panel.name} sub={panel.description ?? panel.kind} onEdit={onEdit} onDelete={onDelete}>
+      <Panel title={panel.name} sub={sub} onEdit={onEdit} onDelete={onDelete}>
         <div style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "10px 12px", borderRadius: "var(--radius-md)", background: "color-mix(in oklch, var(--destructive) 8%, var(--card))", border: "1px solid color-mix(in oklch, var(--destructive) 35%, var(--border))", color: "var(--destructive)", fontSize: 12 }}>
           <I.AlertTriangle size={13} style={{ marginTop: 1, flex: "0 0 auto" }} />
           <span style={{ flex: 1, wordBreak: "break-word" }}>{error}</span>

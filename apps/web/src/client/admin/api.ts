@@ -60,7 +60,9 @@ export interface ApiSession {
   ipAddress: string | null;
   userAgent: string | null;
   createdAt: string;
+  updatedAt: string;
   expiresAt: string;
+  current?: boolean;
 }
 
 export interface ApiEmailTemplate {
@@ -104,9 +106,20 @@ export interface ApiPanel {
   layout: { x: number; y: number; w: number; h: number } | null;
 }
 
+export interface ApiAuthConfigProvider {
+  enabled?: boolean;
+  configured?: boolean;
+  clientId?: string | null;
+  system?: boolean;
+  /** Display name for custom OIDC providers. */
+  name?: string;
+  /** OIDC discovery / issuer URL for custom providers. */
+  discoveryUrl?: string | null;
+}
+
 export interface ApiAuthConfig {
   tenantId: string;
-  providers: Record<string, { enabled?: boolean; configured?: boolean; clientId?: string | null; system?: boolean }>;
+  providers: Record<string, ApiAuthConfigProvider>;
   policy: Record<string, boolean>;
   sessionLifetime: string;
   redirectUrls: string[];

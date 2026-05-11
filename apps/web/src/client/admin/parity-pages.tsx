@@ -632,7 +632,9 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
             <Button size="sm" variant="outline" icon={I.Plus} onClick={() => setAdding(true)}>Add</Button>
           </div>
           {providers.length === 0 && <div className="card-section muted" style={{ fontSize: 12.5 }}>Couldn't load auth config.</div>}
-          {providers.map((p) => (
+          {providers.map((p) => {
+            const lockedOff = !p.configured && !p.enabled;
+            return (
             <div key={p.id} className="schema-row" style={{ gridTemplateColumns: "24px 1fr auto auto auto" }}>
               <span><I.Shield size={13} /></span>
               <div style={{ minWidth: 0 }}>
@@ -640,12 +642,19 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
                 {p.clientId && <div className="font-mono muted" style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis" }}>{p.clientId}</div>}
                 {!p.clientId && p.discoveryUrl && <div className="font-mono muted" style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis" }}>{p.discoveryUrl}</div>}
                 {p.system && <div className="muted" style={{ fontSize: 11 }}>built-in</div>}
+                {p.enabled && !p.configured && <div style={{ fontSize: 11, color: "var(--destructive)" }}>enabled but not configured — won't appear on sign-in</div>}
               </div>
-              {!p.configured && <Badge variant="secondary">not configured</Badge>}
+              {!p.configured && <Badge variant={p.enabled ? "destructive" : "secondary"}>not configured</Badge>}
               <Button size="sm" variant="ghost" onClick={() => setConfiguring(p)}>Configure</Button>
-              <Switch checked={p.enabled} onChange={(v) => toggleProvider(p.id, v)} />
+              <Switch
+                checked={p.enabled}
+                disabled={lockedOff}
+                title={lockedOff ? "Configure this provider (add a Client ID) before enabling it" : undefined}
+                onChange={(v) => toggleProvider(p.id, v)}
+              />
             </div>
-          ))}
+            );
+          })}
         </div>
         <div className="card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
           <span style={{ fontSize: 13, fontWeight: 500 }}>Policy</span>
@@ -737,43 +746,50 @@ function ProviderConfigDialog({ provider, kind, onClose, onSave }: {
   const [clientId, setClientId] = useState(provider.clientId ?? "");
   const [discoveryUrl, setDiscoveryUrl] = useState(provider.discoveryUrl ?? "");
 
+  const usesClientId = kind === "oauth" || kind === "custom";
+  const needsClientId = usesClientId && !clientId.trim();
   const discoveryBad = !!discoveryUrl.trim() && !isHttpUrl(discoveryUrl.trim());
   const valid = kind === "custom" ? name.trim().length >= 2 && !discoveryBad : !discoveryBad;
 
   const submit = () => {
     if (!valid) return;
-    const patch: Record<string, unknown> = { enabled };
+    const hasClientId = !!clientId.trim();
+    const patch: Record<string, unknown> = {};
     if (kind === "oauth") {
       patch.clientId = clientId.trim() || null;
-      patch.configured = !!clientId.trim();
+      patch.configured = hasClientId;
+      patch.enabled = hasClientId ? enabled : false;
     } else if (kind === "custom") {
       patch.name = name.trim();
       patch.clientId = clientId.trim() || null;
       patch.discoveryUrl = discoveryUrl.trim() || null;
-      patch.configured = !!clientId.trim();
+      patch.configured = hasClientId;
+      patch.enabled = hasClientId ? enabled : false;
+    } else {
+      patch.enabled = enabled;
     }
     onSave(patch);
   };
 
   return (
     <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, width: "92vw" }}>
+      <div className="dialog dialog-lg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, width: "92vw" }}>
         <div className="dialog-head">
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <div>
             <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>Configure {provider.name}</div>
-            <div className="muted" style={{ fontSize: 12.5 }}>
+            <div className="muted" style={{ fontSize: 12.5, marginTop: 3 }}>
               {kind === "oauth" ? "OAuth 2.0 / OIDC sign-in provider." : kind === "custom" ? "Custom OpenID Connect provider." : "Built-in sign-in method."}
             </div>
           </div>
           <IconButton icon={I.X} onClick={onClose} />
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "4px 0 2px" }}>
+        <div className="dialog-body">
           <div className="field-row">
             <div>
               <div className="field-label">Enabled</div>
-              <div className="field-hint">Show this option on the sign-in screen.</div>
+              <div className="field-hint">{needsClientId ? "Add a Client ID below first." : "Show this option on the sign-in screen."}</div>
             </div>
-            <Switch checked={enabled} onChange={setEnabled} />
+            <Switch checked={enabled && !needsClientId} disabled={needsClientId} title={needsClientId ? "Add a Client ID first" : undefined} onChange={setEnabled} />
           </div>
           {kind === "custom" && (
             <div className="field">
@@ -844,15 +860,15 @@ function AddProviderDialog({ existingIds, onClose, onAdd }: {
 
   return (
     <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, width: "92vw" }}>
+      <div className="dialog dialog-lg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, width: "92vw" }}>
         <div className="dialog-head">
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <div>
             <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>Add OIDC provider</div>
-            <div className="muted" style={{ fontSize: 12.5 }}>Register a custom OpenID Connect identity provider.</div>
+            <div className="muted" style={{ fontSize: 12.5, marginTop: 3 }}>Register a custom OpenID Connect identity provider.</div>
           </div>
           <IconButton icon={I.X} onClick={onClose} />
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "4px 0 2px" }}>
+        <div className="dialog-body">
           <div className="field">
             <label className="field-label">Display name</label>
             <input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme SSO" />

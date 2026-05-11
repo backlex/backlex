@@ -135,3 +135,6 @@ export const createAuth = (
   });
 
 export type Auth = ReturnType<typeof createAuth>;
+
+export { createTenantAuth, type TenantAuth, type TenantAuthConfig } from "./tenant";
+export { withTenantScope } from "./tenant-adapter";

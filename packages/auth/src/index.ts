@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { emailOTP } from "better-auth/plugins/email-otp";
@@ -11,6 +12,12 @@ import type { PgDb } from "@workeros/db/pg";
 import type { SqliteDb } from "@workeros/db/sqlite";
 
 export interface AuthHooks {
+  /** Runs before a user row is created (any sign-up path: email/password,
+   *  social, magic-link, anonymous). Return `{ allow: false }` to reject the
+   *  sign-up — the auth handler turns it into a 403 with `reason` as message. */
+  onBeforeUserCreated?: () =>
+    | Promise<{ allow: boolean; reason?: string }>
+    | { allow: boolean; reason?: string };
   onUserCreated?: (user: { id: string; email: string }) => Promise<void> | void;
 }
 
@@ -119,17 +126,34 @@ export const createAuth = (
       expiresIn: 60 * 60 * 24 * 7, // 7d
       updateAge: 60 * 60 * 24, // 1d
     },
-    databaseHooks: config.hooks?.onUserCreated
-      ? {
-          user: {
-            create: {
-              after: async (user: { id: string; email: string }) => {
-                await config.hooks!.onUserCreated!(user);
+    databaseHooks:
+      config.hooks?.onUserCreated || config.hooks?.onBeforeUserCreated
+        ? {
+            user: {
+              create: {
+                ...(config.hooks?.onBeforeUserCreated
+                  ? {
+                      before: async () => {
+                        const r = await config.hooks!.onBeforeUserCreated!();
+                        if (!r.allow)
+                          throw new APIError("FORBIDDEN", {
+                            message: r.reason ?? "Sign-up is disabled",
+                          });
+                        // Returning nothing keeps the original user data.
+                      },
+                    }
+                  : {}),
+                ...(config.hooks?.onUserCreated
+                  ? {
+                      after: async (user: { id: string; email: string }) => {
+                        await config.hooks!.onUserCreated!(user);
+                      },
+                    }
+                  : {}),
               },
             },
-          },
-        }
-      : undefined,
+          }
+        : undefined,
     socialProviders: config.socialProviders,
     plugins: buildPlugins(config),
   });

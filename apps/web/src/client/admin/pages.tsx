@@ -2257,12 +2257,11 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
   const [appUrl, setAppUrl] = useState("http://localhost:8787");
   const [siteName, setSiteName] = useState("workeros");
   const [from, setFrom] = useState("hello@example.com");
-  const [signupOpen, setSignupOpen] = useState(false);
-  const [telemetry, setTelemetry] = useState(false);
+  const [signupOpen, setSignupOpen] = useState(true);
   const [dirty, setDirty] = useState(false);
-  // Hydrate the General-tab form from /api/admin/settings on mount. The
-  // backend merges defaults from env (APP_URL, EMAIL_FROM) so a fresh
-  // workspace lands with the actual deploy URL pre-filled.
+  // Hydrate the General-tab form from /api/admin/settings on mount. APP_URL
+  // and EMAIL_FROM come from env (read-only here); siteName + openSignup are
+  // the runtime-mutable settings persisted in app_settings.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -2274,7 +2273,6 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
         if (typeof d.appUrl === "string") setAppUrl(d.appUrl);
         if (typeof d.emailFrom === "string") setFrom(d.emailFrom);
         if (typeof d.openSignup === "boolean") setSignupOpen(d.openSignup);
-        if (typeof d.telemetry === "boolean") setTelemetry(d.telemetry);
       } catch {
         // keep seed
       }
@@ -2318,50 +2316,15 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
   }, []);
   const persistGeneral = async () => {
     try {
-      await settingsApi.patch({
-        siteName,
-        appUrl,
-        emailFrom: from,
-        openSignup,
-        telemetry,
-      });
+      await settingsApi.patch({ siteName, openSignup: signupOpen });
       setDirty(false);
       pushToast("Settings saved.");
     } catch (e) {
       pushToast((e as Error).message);
     }
   };
-  const [revealed, setRevealed] = useState<Record<number, boolean>>({});
-  const [newKey, setNewKey] = useState("");
-  const [newVal, setNewVal] = useState("");
-  const [newSecret, setNewSecret] = useState(true);
 
-  const addEnv = async () => {
-    const k = newKey.trim().toUpperCase();
-    if (!k) return;
-    try {
-      await settingsApi.patch({ [`env.${k}`]: newSecret ? "(secret)" : newVal });
-    } catch (e) {
-      pushToast((e as Error).message);
-    }
-    setEnvVars((arr) => [...arr, { id: Date.now(), key: k, value: newSecret ? "••••••••" : newVal, secret: newSecret, source: newSecret ? "wrangler secret" : "wrangler.toml" }]);
-    setNewKey(""); setNewVal(""); setDirty(true);
-    pushToast(`${k} added.`);
-  };
-  const removeEnv = async (id: number | string) => {
-    const target = envVars.find((x) => x.id === id);
-    if (target) {
-      try {
-        await settingsApi.patch({ [`env.${target.key}`]: null });
-      } catch (e) {
-        pushToast((e as Error).message);
-      }
-    }
-    setEnvVars((arr) => arr.filter((x) => x.id !== id));
-    setDirty(true);
-  };
-
-  const bindingIcon = (t: string): IconComponent => (({ D1: I.Database, KV: I.Folder, R2: I.Server, DurableObj: I.Bolt, Queue: I.Webhook, AI: I.Bolt } as Record<string, IconComponent>)[t] || I.Folder);
+  const bindingIcon = (t: string): IconComponent => (({ D1: I.Database, KV: I.Folder, R2: I.Server, DurableObj: I.Bolt, Vectorize: I.Bolt, Hyperdrive: I.Database, Dispatch: I.Bolt, Queue: I.Webhook, AI: I.Bolt } as Record<string, IconComponent>)[t] || I.Folder);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -2382,22 +2345,27 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
 
       {tab === "general" && (
         <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
-          <div className="field"><label className="field-label">Site name</label><input className="input" value={siteName} onChange={(e) => { setSiteName(e.target.value); setDirty(true); }} /><span className="field-hint">Shown in the sidebar and email templates.</span></div>
-          <div className="field"><label className="field-label">APP_URL</label><input className="input" value={appUrl} onChange={(e) => { setAppUrl(e.target.value); setDirty(true); }} /><span className="field-hint">Public origin of this Worker. Used for OAuth callbacks and absolute links.</span></div>
-          <div className="field"><label className="field-label">EMAIL_FROM</label><input className="input" value={from} onChange={(e) => { setFrom(e.target.value); setDirty(true); }} /></div>
+          <div className="field"><label className="field-label">Site name</label><input className="input" value={siteName} onChange={(e) => { setSiteName(e.target.value); setDirty(true); }} /><span className="field-hint">Display name for this instance.</span></div>
           <div className="field-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
             <div>
-              <div className="field-label">Open sign-up</div>
-              <div className="field-hint">When off, only invited emails can sign up.</div>
+              <div className="field-label">APP_URL</div>
+              <div className="field-hint">Public origin of this Worker — set via <span className="font-mono">wrangler.toml [vars]</span> (or <span className="font-mono">.env</span> on self-host). Used for CORS, OAuth callbacks and absolute links. Read-only here.</div>
             </div>
-            <Switch checked={signupOpen} onChange={(v) => { setSignupOpen(v); setDirty(true); }} />
+            <span className="font-mono muted" style={{ fontSize: 12.5, maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={appUrl}>{appUrl}</span>
           </div>
           <div className="field-row">
             <div>
-              <div className="field-label">Anonymous telemetry</div>
-              <div className="field-hint">Send aggregated, opt-in usage counts to help prioritise OSS work. No content or identifiers.</div>
+              <div className="field-label">EMAIL_FROM</div>
+              <div className="field-hint">Sender address for transactional email — set via <span className="font-mono">wrangler secret put</span> / <span className="font-mono">.env</span>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here.</div>
             </div>
-            <Switch checked={telemetry} onChange={(v) => { setTelemetry(v); setDirty(true); }} />
+            <span className="font-mono muted" style={{ fontSize: 12.5 }}>{from || "(not set)"}</span>
+          </div>
+          <div className="field-row">
+            <div>
+              <div className="field-label">Open sign-up</div>
+              <div className="field-hint">When off, new account creation is rejected on every path (email/password, social, magic-link). The first user is always allowed so a fresh instance can bootstrap its admin.</div>
+            </div>
+            <Switch checked={signupOpen} onChange={(v) => { setSignupOpen(v); setDirty(true); }} />
           </div>
           <div className="field-row">
             <div>
@@ -2459,57 +2427,51 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
               <span style={{ fontSize: 12.5, fontWeight: 500 }}>wrangler.toml snippet</span>
             </div>
             <pre className="alter-preview" style={{ fontSize: 11.5, margin: 0, whiteSpace: "pre-wrap" }}>{`[[d1_databases]]
-binding = "DB"
-database_name = "workeros-db"
-
-[[kv_namespaces]]
-binding = "CACHE"
-id = "…"
+binding = "D1"
+database_name = "workeros"
 
 [[r2_buckets]]
-binding = "ASSETS"
-bucket_name = "workeros-assets"`}</pre>
+binding = "R2"
+bucket_name = "workeros-files"
+
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "workeros-embeddings"
+
+[[durable_objects.bindings]]
+name = "REALTIME"
+class_name = "RealtimeRoom"`}</pre>
           </div>
         </div>
       )}
 
       {tab === "env" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 920 }}>
+          <div className="card" style={{ padding: 14, display: "flex", alignItems: "flex-start", gap: 10, background: "var(--muted)" }}>
+            <I.Info size={14} style={{ marginTop: 2 }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 500 }}>Environment variables are read-only here</span>
+              <span className="muted" style={{ fontSize: 12 }}>Set them in <span className="font-mono" style={{ color: "var(--foreground)" }}>wrangler.toml [vars]</span> / <span className="font-mono" style={{ color: "var(--foreground)" }}>wrangler secret put</span> (or <span className="font-mono" style={{ color: "var(--foreground)" }}>apps/web/.env</span> on self-host) and redeploy. This panel only reports which keys are present — secret values are never sent to the browser.</span>
+            </div>
+          </div>
           <div className="card">
             <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <I.Lock size={14} /><span style={{ fontSize: 13, fontWeight: 500 }}>environment</span>
-              <span className="font-mono muted" style={{ fontSize: 12 }}>{envVars.filter((v) => v.secret).length} secret · {envVars.filter((v) => !v.secret).length} plain</span>
-              <div className="spacer" />
-              <input className="input" placeholder="KEY" value={newKey} onChange={(e) => setNewKey(e.target.value.toUpperCase())} style={{ height: 30, width: 160, fontSize: 12.5 }} />
-              <input className="input" placeholder={newSecret ? "(write-only)" : "value"} value={newVal} onChange={(e) => setNewVal(e.target.value)} disabled={newSecret} style={{ height: 30, width: 200, fontSize: 12.5 }} />
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }}>
-                <Checkbox checked={newSecret} onChange={setNewSecret} /> secret
-              </label>
-              <Button variant="primary" size="sm" icon={I.Plus} onClick={addEnv}>Add</Button>
+              <span className="font-mono muted" style={{ fontSize: 12 }}>{envVars.filter((v) => v.value !== "(unset)").length} set · {envVars.filter((v) => v.value === "(unset)").length} unset</span>
             </div>
             <div className="table-scroll">
-            <div className="schema-row" style={{ gridTemplateColumns: "24px 200px 1fr 160px 32px", background: "var(--muted)", fontSize: 11, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: 0.4 }}>
-              <span></span><span>Key</span><span>Value</span><span>Source</span><span></span>
+            <div className="schema-row" style={{ gridTemplateColumns: "24px 1fr 120px 110px", background: "var(--muted)", fontSize: 11, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: 0.4 }}>
+              <span></span><span>Key</span><span>Kind</span><span>Status</span>
             </div>
             {envVars.map((v) => (
-              <div key={v.id} className="schema-row" style={{ gridTemplateColumns: "24px 200px 1fr 160px 32px" }}>
+              <div key={v.id} className="schema-row" style={{ gridTemplateColumns: "24px 1fr 120px 110px" }}>
                 <span>{v.secret ? <I.Lock size={13} /> : <I.Hash size={13} />}</span>
                 <span className="font-mono" style={{ fontSize: 12.5 }}>{v.key}</span>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                  <span className="font-mono muted" style={{ fontSize: 12 }}>{v.secret && !revealed[v.id] ? "••••••••••••" : v.value}</span>
-                  {v.secret && (
-                    <IconButton icon={I.Eye} title={revealed[v.id] ? "Hide" : "Reveal"} onClick={() => setRevealed((r) => ({ ...r, [v.id]: !r[v.id] }))} />
-                  )}
-                </div>
-                <span className="font-mono muted" style={{ fontSize: 11.5 }}>{v.source}</span>
-                <IconButton icon={I.Trash} title="Remove" onClick={() => removeEnv(v.id)} />
+                <span className="muted" style={{ fontSize: 11.5 }}>{v.secret ? "secret" : "plain"}</span>
+                <span>{v.value === "(unset)" ? <Badge variant="secondary">unset</Badge> : <Badge variant="default">set</Badge>}</span>
               </div>
             ))}
             </div>
-          </div>
-          <div className="card" style={{ padding: 14, display: "flex", alignItems: "flex-start", gap: 10, background: "var(--muted)" }}>
-            <I.Info size={14} style={{ marginTop: 2 }} />
-            <span className="muted" style={{ fontSize: 12 }}>Secret values can't be read back from Cloudflare — they're write-only after the initial <span className="font-mono" style={{ color: "var(--foreground)" }}>wrangler secret put</span>. Reveal toggles only the local cache.</span>
           </div>
         </div>
       )}

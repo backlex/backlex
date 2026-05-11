@@ -130,19 +130,24 @@ export const resolveAuthSurface = async (
   const fallbackEnabled = defaultEnabledProviders(env);
 
   // A provider is serveable for this workspace if the running worker has it
-  // (env) OR the workspace stored its own credentials (`clientId` +
-  // `clientSecretEnc`).
+  // (env) OR the workspace opted in via its stored config: OAuth providers
+  // need their own `clientId` + `clientSecretEnc`; `magic` just needs to be
+  // explicitly enabled (it sends through the deployment's email adapter).
   const isConfigured = (key: AuthProviderKey): boolean => {
     if (envConfigured[key]) return true;
     const e = stored?.providers?.[key] as
-      | { clientId?: unknown; clientSecretEnc?: unknown }
+      | { enabled?: unknown; clientId?: unknown; clientSecretEnc?: unknown }
       | undefined;
-    return Boolean(
-      e &&
+    if (!e) return false;
+    if (key === "github" || key === "google") {
+      return Boolean(
         typeof e.clientId === "string" &&
-        e.clientId.trim() &&
-        typeof e.clientSecretEnc === "string",
-    );
+          e.clientId.trim() &&
+          typeof e.clientSecretEnc === "string",
+      );
+    }
+    if (key === "magic") return e.enabled === true;
+    return false;
   };
 
   const providers: PublicProvider[] = (

@@ -536,6 +536,90 @@ const parseTrigger = (raw: string): { kind: FlowTriggerKind; value: string } => 
   return { kind: "event", value: raw };
 };
 
+interface FlowActivityRow {
+  action: string;
+  payload: unknown;
+  durationMs: number | null;
+  createdAt: string;
+}
+
+/**
+ * Per-flow KPI strip — reads the flow's activity log (`flow.run` rows
+ * written by the runner on every manual/cron/webhook/event execution) and
+ * derives last-run time + duration, success rate, and last-24h failures.
+ * Failed runs carry `payload.error`.
+ */
+const FlowStats = ({ flowId }: { flowId: string }) => {
+  const [stats, setStats] = useState<{
+    lastRun: string;
+    success: string;
+    failures24h: number;
+  }>({ lastRun: "—", success: "—", failures24h: 0 });
+
+  useEffect(() => {
+    let cancelled = false;
+    api<{ data: FlowActivityRow[] }>(
+      `/api/activity?collection=system_flows&itemId=${encodeURIComponent(flowId)}&limit=200`,
+    )
+      .then((r) => {
+        if (cancelled) return;
+        const runs = (r.data ?? []).filter(
+          (a) => a.action === "flow.run" || a.action === "run",
+        );
+        const last = runs[0];
+        const errs = runs.filter(
+          (a) =>
+            !!(a.payload &&
+              typeof a.payload === "object" &&
+              (a.payload as { error?: unknown }).error),
+        );
+        const cutoff = Date.now() - 86_400_000;
+        setStats({
+          lastRun: last
+            ? `${new Date(last.createdAt).toISOString().slice(11, 16)} · ${last.durationMs ?? 0}ms`
+            : "—",
+          success:
+            runs.length === 0
+              ? "—"
+              : `${Math.round(((runs.length - errs.length) / runs.length) * 100)}%`,
+          failures24h: errs.filter(
+            (a) => new Date(a.createdAt).getTime() >= cutoff,
+          ).length,
+        });
+      })
+      .catch(() => {
+        /* leave defaults — empty / unreachable activity log */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [flowId]);
+
+  const tiles = [
+    { k: "Last run", v: stats.lastRun, bad: false },
+    { k: "Success rate", v: stats.success, bad: stats.failures24h > 0 },
+    { k: "Failures (24h)", v: String(stats.failures24h), bad: stats.failures24h > 0 },
+  ];
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {tiles.map((s) => (
+        <Card key={s.k}>
+          <CardContent className="p-4">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {s.k}
+            </div>
+            <div
+              className={`mt-1 text-xl font-semibold tabular-nums ${s.bad ? "text-destructive" : ""}`}
+            >
+              {s.v}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+};
+
 export const Flows = () => {
   const [items, setItems] = useState<Flow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -962,29 +1046,12 @@ export const Flows = () => {
                 </CardContent>
               </Card>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                {[
-                  { k: "Last run", v: "—" },
-                  { k: "Success rate", v: "—" },
-                  { k: "Failures (24h)", v: "—" },
-                ].map((s) => (
-                  <Card key={s.k}>
-                    <CardContent className="p-4">
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        {s.k}
-                      </div>
-                      <div className="mt-1 text-xl font-semibold tabular-nums">
-                        {s.v}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <FlowStats flowId={selectedFlow.id} />
 
               <p className="text-xs text-muted-foreground">
-                Per-flow run metrics are not yet recorded server-side; the
-                cards above will populate once flow execution observability
-                lands.
+                Derived from this flow's activity log — runs dispatched
+                through this server (manual, cron, webhook, or event) count
+                toward the numbers above.
               </p>
             </>
           )}

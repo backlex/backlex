@@ -88,9 +88,51 @@ const loadUserEmail = async (
   return rows[0]?.email ?? null;
 };
 
+/**
+ * Look up a workspace end-user session by its bearer token. The token format
+ * is exactly what better-auth's `bearer` plugin issues (the value of
+ * `app_sessions.token`). Returns `null` for unknown / expired tokens — the
+ * caller treats that as "no app session" and falls through.
+ */
+const findAppSession = async (
+  ctx: { db: unknown; dialect: "pg" | "sqlite" },
+  token: string,
+): Promise<{ userId: string; tenantId: string; email: string | null } | null> => {
+  const t =
+    ctx.dialect === "pg"
+      ? { sessions: pg.schema.appSessions, users: pg.schema.appUsers }
+      : { sessions: sqlite.schema.appSessions, users: sqlite.schema.appUsers };
+  const rows = (await (ctx.db as any)
+    .select({
+      userId: t.sessions.userId,
+      tenantId: t.sessions.tenantId,
+      expiresAt: t.sessions.expiresAt,
+      email: t.users.email,
+      status: t.users.status,
+    })
+    .from(t.sessions)
+    .innerJoin(t.users, eq(t.sessions.userId, t.users.id))
+    .where(eq(t.sessions.token, token))
+    .limit(1)) as Array<{
+      userId: string;
+      tenantId: string;
+      expiresAt: Date | number;
+      email: string | null;
+      status: string;
+    }>;
+  const row = rows[0];
+  if (!row) return null;
+  if (row.status !== "active") return null; // suspended end-users get no access
+  const exp =
+    row.expiresAt instanceof Date ? row.expiresAt.getTime() : Number(row.expiresAt);
+  if (exp <= Date.now()) return null;
+  return { userId: row.userId, tenantId: row.tenantId, email: row.email };
+};
+
 export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next) => {
   const ctx = c.get("ctx");
 
+  let plane: "platform" | "app" = "platform";
   let userId: string | null = null;
   let email: string | null = null;
   // When a request authenticates with an API key, the key carries the tenant
@@ -100,6 +142,10 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
   let apiKeyTenantId: string | null = null;
   // A role-scoped key narrows the request to a single role (see api_keys.role_id).
   let apiKeyRoleId: string | null = null;
+  // Workspace end-user sessions (`Authorization: Bearer <app-session-token>`)
+  // similarly pin the request to the workspace that issued the session — the
+  // app's frontend doesn't send a tenant header, it just uses its token.
+  let appSessionTenantId: string | null = null;
 
   const session = await ctx.auth.api.getSession({ headers: c.req.raw.headers });
   if (session?.user?.id) {
@@ -129,12 +175,39 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
         // fire-and-forget last-used update
         void touchLastUsed(ctx, key.id);
       }
+    } else if (authHeader.toLowerCase().startsWith("bearer ")) {
+      // Any non-`pak_` bearer is treated as a workspace end-user session token
+      // (issued by /api/t/:slug/auth/* via better-auth's bearer plugin).
+      // Unknown tokens fall through → unauthenticated.
+      const token = authHeader.slice("bearer ".length).trim();
+      const appSess = await findAppSession({ db: ctx.db, dialect: ctx.dialect }, token);
+      if (appSess) {
+        plane = "app";
+        userId = appSess.userId;
+        email = appSess.email;
+        appSessionTenantId = appSess.tenantId;
+      }
     }
   }
 
-  const roles = userId ? await loadRoleNames(ctx, userId, apiKeyRoleId) : [];
+  // For app-plane identities we deliberately skip the control-plane
+  // `user_roles` join — those rows reference `users.id`, not `app_users.id`,
+  // and an accidental UUID collision must not yield platform-admin powers.
+  // The permission resolver fills in the workspace's `authenticated` role.
+  const roles =
+    plane === "platform" && userId
+      ? await loadRoleNames(ctx, userId, apiKeyRoleId)
+      : [];
 
-  c.set("auth", { userId, email, roles, apiKeyTenantId, apiKeyRoleId });
+  c.set("auth", {
+    plane,
+    userId,
+    email,
+    roles,
+    apiKeyTenantId,
+    apiKeyRoleId,
+    appSessionTenantId,
+  });
   await next();
 };
 

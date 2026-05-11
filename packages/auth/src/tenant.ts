@@ -3,6 +3,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { bearer } from "better-auth/plugins/bearer";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { emailOTP } from "better-auth/plugins/email-otp";
+import { and, eq } from "drizzle-orm";
 import type { EmailAdapter } from "@workeros/core";
 import * as pgSchema from "@workeros/db/pg/schema";
 import * as sqliteSchema from "@workeros/db/sqlite/schema";
@@ -158,17 +159,42 @@ export const createTenantAuth = (
     advanced: {
       cookiePrefix: `wo_${config.tenantSlug}`,
     },
-    databaseHooks: config.hooks?.onUserCreated
-      ? {
-          user: {
-            create: {
-              after: async (user: { id: string; email: string }) => {
-                await config.hooks!.onUserCreated!(user);
+    databaseHooks: {
+      ...(config.hooks?.onUserCreated
+        ? {
+            user: {
+              create: {
+                after: async (user: { id: string; email: string }) => {
+                  await config.hooks!.onUserCreated!(user);
+                },
               },
             },
+          }
+        : {}),
+      session: {
+        create: {
+          // Block sign-in for suspended end-users: aborting the session
+          // create makes the sign-in flow fail. `sessionMiddleware` also
+          // rejects sessions whose owner is suspended, so even a session that
+          // slipped through is useless — this just makes the rejection happen
+          // at the source.
+          before: async (session: { userId?: string }) => {
+            const userId = session.userId;
+            if (userId) {
+              const appUsers = appAuthSchemaFor(provider).user;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const rows = (await (db as any)
+                .select({ status: appUsers.status })
+                .from(appUsers)
+                .where(and(eq(appUsers.id, userId), eq(appUsers.tenantId, config.tenantId)))
+                .limit(1)) as Array<{ status: string }>;
+              if (rows[0] && rows[0].status === "suspended") return false;
+            }
+            return { data: session };
           },
-        }
-      : undefined,
+        },
+      },
+    },
     socialProviders: config.socialProviders,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     plugins: buildPlugins(config) as any,

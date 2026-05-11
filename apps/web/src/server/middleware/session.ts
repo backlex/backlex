@@ -122,7 +122,11 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
 
   const roles = userId ? await loadRoleNames(ctx, userId) : [];
 
-  c.set("auth", { userId, email, roles, apiKeyTenantId });
+  // Everything that flows through this middleware is a control-plane identity:
+  // an admin-app cookie session or a `pak_…` API key impersonating a platform
+  // user. Workspace end-users ("app" plane) authenticate on a separate, tenant-
+  // scoped surface — see {@link AuthPlane}.
+  c.set("auth", { plane: "platform", userId, email, roles, apiKeyTenantId });
   await next();
 };
 

@@ -176,6 +176,116 @@ export const passkeys = pgTable(
   ],
 );
 
+/* ─────────────────────────────────────────────────────────────────────
+ * Workspace end-user auth pool ("auth as a service").
+ *
+ * These mirror the control-plane `users`/`sessions`/`accounts`/`verifications`
+ * tables but back a *separate* identity pool: the end-users of an application
+ * built on a workspace, who authenticate against that workspace's own auth
+ * surface (`/api/t/<slug>/auth/*`) rather than the admin app. Every row is
+ * scoped to one tenant; `(tenant_id, email)` is unique on `app_users`, so the
+ * same email can exist in different workspaces as distinct accounts.
+ *
+ * Not wired into request handling yet — the per-tenant better-auth router that
+ * uses them lands in a follow-up. That router must wrap better-auth's adapter
+ * so its lookups stay inside one workspace (and so creates fill `tenant_id`).
+ * ───────────────────────────────────────────────────────────────────── */
+
+export const appUsers = pgTable(
+  "app_users",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    emailVerified: boolean("email_verified").notNull().default(false),
+    name: text("name"),
+    image: text("image"),
+    /** active | suspended. */
+    status: text("status").notNull().default("active"),
+    suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+    isAnonymous: boolean("is_anonymous").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("app_users_tenant_email_idx").on(t.tenantId, t.email),
+    index("app_users_tenant_idx").on(t.tenantId),
+  ],
+);
+
+export const appSessions = pgTable(
+  "app_sessions",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => appUsers.id, { onDelete: "cascade" }),
+    token: text("token").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("app_sessions_token_idx").on(t.token),
+    index("app_sessions_user_idx").on(t.userId),
+    index("app_sessions_tenant_idx").on(t.tenantId),
+  ],
+);
+
+export const appAccounts = pgTable(
+  "app_accounts",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => appUsers.id, { onDelete: "cascade" }),
+    providerId: text("provider_id").notNull(),
+    accountId: text("account_id").notNull(),
+    password: text("password"),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
+    scope: text("scope"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("app_accounts_user_idx").on(t.userId),
+    index("app_accounts_tenant_idx").on(t.tenantId),
+  ],
+);
+
+export const appVerifications = pgTable(
+  "app_verifications",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("app_verifications_tenant_idx").on(t.tenantId),
+    index("app_verifications_identifier_idx").on(t.identifier),
+  ],
+);
+
 export const roles = pgTable(
   "roles",
   {

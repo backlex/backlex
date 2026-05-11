@@ -16,7 +16,7 @@ const Input = z.object({
   name: z.string().min(1),
   url: z.string().url(),
   events: z.array(z.string().min(1)).min(1),
-  headers: z.record(z.string()).optional(),
+  headers: z.record(z.string()).nullish(),
   secret: z.string().optional(),
   active: z.boolean().optional(),
 });

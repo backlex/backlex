@@ -39,6 +39,8 @@ export interface TenantAuthConfig {
   /** Whether email+password sign-in is offered. Defaults to `true`. A
    *  workspace can turn it off (via its `auth_config`) to be OAuth/SSO-only. */
   emailAndPasswordEnabled?: boolean;
+  /** Session lifetime in seconds. Defaults to 7 days. */
+  sessionExpiresInSeconds?: number;
   hooks?: AuthHooks;
   socialProviders?: {
     google?: OAuthProviderConfig;
@@ -132,7 +134,7 @@ export const createTenantAuth = (
     // forging it via the API; the wrapper supplies the value from
     // `config.tenantId` on every create.
     session: {
-      expiresIn: 60 * 60 * 24 * 7,
+      expiresIn: config.sessionExpiresInSeconds ?? 60 * 60 * 24 * 7,
       updateAge: 60 * 60 * 24,
       additionalFields: {
         tenantId: { type: "string", required: false, input: false },

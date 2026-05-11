@@ -125,7 +125,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
   };
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 14, alignItems: "start" }}>
+    <div className="master-detail" style={{ "--md-aside": "240px" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <div className="card">
           <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -182,6 +182,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
               {result.ms > 0 ? "Query returned no rows." : "Run a query to see results."}
             </div>
           ) : (
+            <div className="table-scroll">
             <table className="table">
               <thead><tr>{Object.keys(result.rows[0] || {}).map((k) => <th key={k}>{k}</th>)}</tr></thead>
               <tbody>
@@ -192,6 +193,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>
@@ -230,7 +232,7 @@ function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
     return () => { cancelled = true; };
   }, [pushToast]);
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "380px 1fr", gap: 14, alignItems: "start" }}>
+    <div className="master-detail" style={{ "--md-aside": "380px" }}>
       <div className="card">
         <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 12, fontWeight: 500 }}>Migrations</span>
@@ -310,7 +312,7 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
   };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div className="card" style={{ padding: 14, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+      <div className="card cols-3" style={{ padding: 14 }}>
         <div><div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Schedule</div><div style={{ fontWeight: 500 }}>Daily 03:00 UTC</div></div>
         <div><div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Retention</div><div style={{ fontWeight: 500 }}>30 days</div></div>
         <div><div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Destination</div><div className="font-mono" style={{ fontWeight: 500, fontSize: 12 }}>r2://workeros-backups/</div></div>
@@ -321,6 +323,7 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
           <div className="spacer" />
           <Button size="sm" variant="primary" icon={I.Save} onClick={backupNow}>Back up now</Button>
         </div>
+        <div className="table-scroll">
         <table className="table">
           <thead><tr><th>ID</th><th>Created</th><th>Tables</th><th>Size</th><th>Kind</th><th></th></tr></thead>
           <tbody>
@@ -347,6 +350,7 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -525,6 +529,7 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
           <div className="spacer" />
           <Button size="sm" variant="outline" icon={I.LogOut} onClick={revokeOthers}>Revoke others</Button>
         </div>
+        <div className="table-scroll">
         <table className="table">
           <thead><tr><th>User</th><th>Device</th><th>Location</th><th>IP</th><th>Created</th><th>Last seen</th><th></th></tr></thead>
           <tbody>
@@ -541,6 +546,7 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -624,6 +630,7 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
         ))}
       </div>
       <div className="card">
+        <div className="table-scroll">
         <table className="table">
           <thead><tr><th style={{ width: 160 }}>Time</th><th style={{ width: 200 }}>Actor</th><th style={{ width: 140 }}>Action</th><th>Resource</th><th>Diff</th><th style={{ width: 130 }}>IP</th></tr></thead>
           <tbody>
@@ -639,6 +646,7 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
             ))}
           </tbody>
         </table>
+        </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderTop: "1px solid var(--border)" }}>
           <span className="muted tabular-nums" style={{ fontSize: 12 }}>
             {filter === "all"
@@ -725,7 +733,7 @@ export function RevisionsPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader title="Revisions" description="Every write is versioned. Inspect, diff, or revert any prior state." />
-      <div style={{ display: "grid", gridTemplateColumns: "280px 220px 1fr", gap: 14, alignItems: "start" }}>
+      <div className="master-detail-3">
         <div className="card">
           <div className="card-section" style={{ fontSize: 12, fontWeight: 500 }}>Items <span className="muted font-mono" style={{ fontSize: 11 }}>· c_{collectionSlug}</span></div>
           {items.length === 0 && (
@@ -1517,7 +1525,7 @@ function PanelEditorDialog({
             {descError && <div className="field-error"><I.AlertTriangle size={11} />{descError}</div>}
           </div>
 
-          <div className="field-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div className="cols-2">
             <div className="field">
               <label className="field-label">Kind</label>
               <Select
@@ -1601,7 +1609,7 @@ function PanelEditorDialog({
 
           {kind === "items-aggregate" && (
             <>
-              <div className="field-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="cols-2">
                 <div className="field">
                   <label className="field-label">Collection <span style={{ color: "var(--destructive)" }}>*</span></label>
                   <Select
@@ -1628,7 +1636,7 @@ function PanelEditorDialog({
                 </div>
               </div>
 
-              <div className="field-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="cols-2">
                 <div className="field">
                   <label className="field-label">
                     Field {agg.agg !== "count" && <span style={{ color: "var(--destructive)" }}>*</span>}
@@ -2048,7 +2056,7 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader title="Email templates" description={<>Variables use Liquid-style <span className="font-mono">{"{{ user.email }}"}</span>. Template renders run through the Functions sandbox.</>} />
-      <div style={{ display: "grid", gridTemplateColumns: "240px 1fr 1fr", gap: 14, alignItems: "start" }}>
+      <div className="master-detail-3" style={{ "--md-a": "240px", "--md-b": "minmax(0, 1fr)" }}>
         <div className="card">
           {templates.length === 0 && (
             <div className="muted" style={{ padding: "12px 14px", fontSize: 12 }}>No templates yet.</div>

@@ -38,9 +38,16 @@ export interface Env {
    *  per request). Optional — falls back to bun-worker / quickjs when
    *  unbound. */
   FUNCTIONS_DISPATCH?: DispatchNamespace;
-  /** Shared secret authenticating sub-Worker → main Worker RPC calls
-   *  (`/api/_internal/sandbox-rpc`). Required for cf-dispatch ctx.* host
-   *  bridges. Generate with `openssl rand -hex 32`. */
+  /** HTTP base URL of an out-of-isolate function executor (e.g. the
+   *  `templates/fn-exec-server` Bun process on Fly / Railway / a VM). When
+   *  set, the `remote-http` sandbox provider POSTs invocations to
+   *  `${FUNCTIONS_EXEC_URL}/run` — lets the API run on an edge runtime (CF
+   *  Workers / Vercel Edge / Netlify Edge) while still offering DB-aware
+   *  functions. Pairs with `SANDBOX_RPC_TOKEN` + `SELF_URL` for `ctx.*`. */
+  FUNCTIONS_EXEC_URL?: string;
+  /** Shared secret authenticating executor → main Worker RPC calls
+   *  (`/api/_internal/sandbox-rpc`). Required for cf-dispatch / remote-http
+   *  ctx.* host bridges. Generate with `openssl rand -hex 32`. */
   SANDBOX_RPC_TOKEN?: string;
   /** Public origin of the main Worker — used by the executor to call back
    *  for ctx.* RPC. Defaults to the request origin when invoked over HTTP;

@@ -123,11 +123,13 @@ export const flowsRoutes = new Hono<AppBindings>()
       .limit(1);
     if (!own[0]) throw new AppError("NOT_FOUND", "Flow not found");
     const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-    await runFlowById(ctx, id, body, {
+    // runFlowById records its own `flow.run` activity row (so cron- and
+    // webhook-triggered runs are logged too), including the failure message
+    // in payload.error — don't double-log here.
+    const result = await runFlowById(ctx, id, body, {
       userId: auth.userId,
       email: auth.email,
       roles: auth.roles,
     });
-    await logActivity(c, { action: "run", collection: "system_flows", itemId: id });
-    return c.json({ ok: true });
+    return c.json({ ok: result.ok, error: result.error ?? undefined });
   });

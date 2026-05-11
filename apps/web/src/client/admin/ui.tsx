@@ -98,10 +98,23 @@ export function Badge({ variant = "default", mono, children, className = "", sty
 export interface SwitchProps {
   checked: boolean;
   onChange: (next: boolean) => void;
+  disabled?: boolean;
+  title?: string;
 }
 
-export function Switch({ checked, onChange }: SwitchProps) {
-  return <div className="switch" data-on={checked} onClick={() => onChange(!checked)} role="switch" aria-checked={checked} />;
+export function Switch({ checked, onChange, disabled, title }: SwitchProps) {
+  return (
+    <div
+      className="switch"
+      data-on={checked}
+      data-disabled={disabled || undefined}
+      onClick={() => { if (!disabled) onChange(!checked); }}
+      role="switch"
+      aria-checked={checked}
+      aria-disabled={disabled || undefined}
+      title={title}
+    />
+  );
 }
 
 export interface CheckboxProps {

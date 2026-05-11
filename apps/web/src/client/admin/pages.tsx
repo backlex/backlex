@@ -700,14 +700,16 @@ function FlowStatCard({ flowId, flowRuns }: { flowId: string; flowRuns: number }
         const r = await fetch(`/api/activity?collection=system_flows&itemId=${encodeURIComponent(flowId)}&limit=200`, { credentials: "include" });
         if (!r.ok || cancelled) return;
         const j = (await r.json()) as { data?: any[] };
-        const rows = (j.data ?? []).filter((a) => a.action === "run");
+        // `recordActivity` namespaces the stored action — flow runs land as
+        // `flow.run` (not bare `run`). Failed runs carry `payload.error`.
+        const rows = (j.data ?? []).filter((a) => a.action === "flow.run" || a.action === "run");
         const last = rows[0];
         const lastRunText = last
           ? `${new Date(last.createdAt ?? last.created_at).toISOString().slice(11, 16)} · ${last.durationMs ?? last.duration_ms ?? 0}ms`
           : "—";
         const errs = rows.filter((a) => {
           const p = a.payload;
-          return (typeof p === "object" && p && (p as any).error) || a.action === "error";
+          return !!(p && typeof p === "object" && (p as any).error);
         });
         const successPct = rows.length === 0 ? "—" : `${Math.round(((rows.length - errs.length) / rows.length) * 100)}%`;
         const cutoff = Date.now() - 86_400_000;
@@ -743,11 +745,11 @@ function FlowNode({ x, y, kind, title, sub }: { x: number; y: number; kind: stri
   const c = colors[kind];
   const Icon = c.ic;
   return (
-    <div style={{ position: "absolute", left: x, top: y, width: 176, padding: "10px 12px", background: c.bg, border: `1px solid ${c.bd}`, borderRadius: "var(--radius-xl)", display: "flex", flexDirection: "column", gap: 2, boxShadow: "0 1px 2px oklch(0 0 0 / 0.06)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, color: "var(--muted-foreground)" }}>
-        <Icon size={11} />{title}
+    <div style={{ position: "absolute", left: x, top: y, width: 176, padding: "10px 12px", background: c.bg, border: `1px solid ${c.bd}`, borderRadius: "var(--radius-xl)", display: "flex", flexDirection: "column", gap: 2, boxShadow: "0 1px 2px oklch(0 0 0 / 0.06)", overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, color: "var(--muted-foreground)", minWidth: 0 }}>
+        <Icon size={11} /><span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</span>
       </div>
-      <div className="font-mono" style={{ fontSize: 11.5, color: "var(--foreground)" }}>{sub}</div>
+      <div className="font-mono" title={sub} style={{ fontSize: 11.5, color: "var(--foreground)", wordBreak: "break-all", overflowWrap: "anywhere" }}>{sub}</div>
     </div>
   );
 }

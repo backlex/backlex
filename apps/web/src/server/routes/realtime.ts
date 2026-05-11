@@ -3,24 +3,40 @@ import { streamSSE } from "hono/streaming";
 import type { SSEStreamingApi } from "hono/streaming";
 import { AppError, SYSTEM_ROLES } from "@workeros/core";
 import type { AppBindings } from "../app";
+import type { Env } from "../env";
 import { resolvePermission } from "../services/permissions";
 import {
   currentSeq,
+  joinPresence,
   publishLocal,
   replayLocal,
   subscribeLocal,
+  type ItemEventPayload,
   type SubscriptionMeta,
 } from "../services/events";
+import { rateLimitOk } from "../lib/rate-limit";
 
 const ITEMS_PREFIX = "items:";
+const PRESENCE_PREFIX = "presence:";
 /** Comment-frame keep-alive so idle SSE connections survive proxy timeouts. */
 const HEARTBEAT_MS = 25_000;
 /** Hint the browser's EventSource reconnect delay (ms). */
 const RECONNECT_HINT_MS = 3_000;
+/** Free-form publish budget per (channel, client) in a 10s window. */
+const PUBLISH_RATE_MAX = 30;
+const PUBLISH_RATE_WINDOW_MS = 10_000;
+const ITEM_EVENTS = new Set<ItemEventPayload["event"]>(["created", "updated", "deleted"]);
 
 interface Gate {
   meta?: SubscriptionMeta;
+  /** true for `presence:*` channels — the subscribe handler joins the roster. */
+  presence?: boolean;
 }
+
+const clientIp = (c: { req: { header: (n: string) => string | undefined } }): string =>
+  c.req.header("cf-connecting-ip") ??
+  c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
+  "local";
 
 const gateForChannel = async (
   ctx: Parameters<typeof resolvePermission>[0] & { dialect: "pg" | "sqlite" },
@@ -70,6 +86,21 @@ const gateForChannel = async (
       meta: { authSubject: auth, conditions: null, fields: null },
     };
   }
+  if (channel.startsWith(PRESENCE_PREFIX)) {
+    if (isPublish) {
+      throw new AppError(
+        "FORBIDDEN",
+        "presence:* channels broadcast the roster automatically; client publish is disabled",
+      );
+    }
+    if (!auth.userId) {
+      throw new AppError("UNAUTHORIZED", "Sign in required for presence channels");
+    }
+    return {
+      meta: { authSubject: auth, conditions: null, fields: null },
+      presence: true,
+    };
+  }
   // user-defined channel: no auth, no filter
   return {};
 };
@@ -116,6 +147,22 @@ const pumpSSE = async (
   }
 };
 
+const publishToChannel = async (
+  env: Env,
+  channel: string,
+  payload: unknown,
+): Promise<void> => {
+  if (env.REALTIME) {
+    const stub = env.REALTIME.get(env.REALTIME.idFromName(channel));
+    await stub.fetch("https://do/publish", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  } else {
+    publishLocal(channel, payload);
+  }
+};
+
 export const realtimeRoutes = new Hono<AppBindings>()
   .post("/:channel/publish", async (c) => {
     const ctx = c.get("ctx");
@@ -123,17 +170,43 @@ export const realtimeRoutes = new Hono<AppBindings>()
     const channel = c.req.param("channel");
     await gateForChannel(ctx, auth, channel, true);
 
-    const payload = await c.req.json();
-    if (ctx.env.REALTIME) {
-      const id = ctx.env.REALTIME.idFromName(channel);
-      const stub = ctx.env.REALTIME.get(id);
-      await stub.fetch("https://do/publish", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-    } else {
-      publishLocal(channel, payload);
+    if (!rateLimitOk(`pub:${channel}:${clientIp(c)}`, PUBLISH_RATE_MAX, PUBLISH_RATE_WINDOW_MS)) {
+      throw new AppError("RATE_LIMITED", "Too many publishes — slow down");
     }
+    const payload = await c.req.json();
+    await publishToChannel(ctx.env, channel, payload);
+    return c.json({ ok: true });
+  })
+  // Admin-only synthetic event injector — lets you fire a fake ItemEvent at an
+  // `items:*` channel to verify per-subscriber permission filtering / field
+  // projection without performing real CRUD. No webhook/flow side effects.
+  .post("/:channel/test-publish", async (c) => {
+    const auth = c.get("auth");
+    const ctx = c.get("ctx");
+    const channel = c.req.param("channel");
+    if (!auth.roles.includes(SYSTEM_ROLES.admin)) {
+      throw new AppError(
+        auth.userId ? "FORBIDDEN" : "UNAUTHORIZED",
+        "Admin only",
+      );
+    }
+    if (!channel.startsWith(ITEMS_PREFIX)) {
+      throw new AppError("VALIDATION", "test-publish is only for items:* channels");
+    }
+    const body = (await c.req.json().catch(() => null)) as
+      | { event?: unknown; data?: unknown }
+      | null;
+    const event = body?.event as ItemEventPayload["event"] | undefined;
+    if (typeof event !== "string" || !ITEM_EVENTS.has(event)) {
+      throw new AppError("VALIDATION", "event must be one of created|updated|deleted");
+    }
+    if (body?.data == null || typeof body.data !== "object" || Array.isArray(body.data)) {
+      throw new AppError("VALIDATION", "data must be an object");
+    }
+    await publishToChannel(ctx.env, channel, {
+      event,
+      data: body.data as Record<string, unknown>,
+    } satisfies ItemEventPayload);
     return c.json({ ok: true });
   })
   .get("/:channel/subscribe", async (c) => {
@@ -149,6 +222,7 @@ export const realtimeRoutes = new Hono<AppBindings>()
       const url = new URL("https://do/subscribe");
       if (gate.meta) url.searchParams.set("meta", btoa(JSON.stringify(gate.meta)));
       if (since > 0) url.searchParams.set("since", String(since));
+      if (gate.presence) url.searchParams.set("presence", "1");
       const id = ctx.env.REALTIME.idFromName(channel);
       const stub = ctx.env.REALTIME.get(id);
       const upstream = await stub.fetch(url.toString(), {
@@ -266,6 +340,13 @@ export const realtimeRoutes = new Hono<AppBindings>()
         wakeUp();
       }, HEARTBEAT_MS);
       if (since > 0 && since < snapshot) replayLocal(channel, sub, since, snapshot);
+      const leavePresence =
+        gate.presence && gate.meta?.authSubject.userId
+          ? joinPresence(channel, sub, {
+              userId: gate.meta.authSubject.userId,
+              email: gate.meta.authSubject.email ?? null,
+            })
+          : null;
       try {
         await pumpSSE(
           stream,
@@ -278,6 +359,7 @@ export const realtimeRoutes = new Hono<AppBindings>()
         );
       } finally {
         clearInterval(hb);
+        leavePresence?.();
         unsub();
       }
     });

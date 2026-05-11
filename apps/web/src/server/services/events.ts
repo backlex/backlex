@@ -171,6 +171,58 @@ export const publishLocal = (channel: string, payload: unknown): void => {
   }
 };
 
+// --- Presence (in-process / Bun) -------------------------------------------
+
+export interface PresenceMember {
+  userId: string;
+  email: string | null;
+}
+
+export interface PresencePayload {
+  event: "presence";
+  data: { members: PresenceMember[] };
+}
+
+const presenceRooms = new Map<string, Map<Subscriber, PresenceMember>>();
+
+const presenceMembers = (channel: string): PresenceMember[] => {
+  const room = presenceRooms.get(channel);
+  if (!room) return [];
+  const byId = new Map<string, PresenceMember>();
+  for (const m of room.values()) byId.set(m.userId, m);
+  return [...byId.values()].sort((a, b) =>
+    (a.email ?? a.userId).localeCompare(b.email ?? b.userId),
+  );
+};
+
+const broadcastPresenceLocal = (channel: string): void => {
+  publishLocal(channel, {
+    event: "presence",
+    data: { members: presenceMembers(channel) },
+  } satisfies PresencePayload);
+};
+
+/** Register `sub` as a member of a `presence:*` channel and announce the
+ *  updated roster. Returns a leave fn that deregisters + re-announces. */
+export const joinPresence = (
+  channel: string,
+  sub: Subscriber,
+  member: PresenceMember,
+): (() => void) => {
+  let room = presenceRooms.get(channel);
+  if (!room) {
+    room = new Map();
+    presenceRooms.set(channel, room);
+  }
+  room.set(sub, member);
+  broadcastPresenceLocal(channel);
+  return () => {
+    room!.delete(sub);
+    if (room!.size === 0) presenceRooms.delete(channel);
+    broadcastPresenceLocal(channel);
+  };
+};
+
 export const publishEvent = async (
   env: Env,
   channel: string,

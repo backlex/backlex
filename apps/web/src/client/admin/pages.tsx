@@ -2,7 +2,7 @@
 // workeros admin — additional pages
 import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { I, type IconComponent } from "./icons";
-import { MOCK, type AdapterId } from "./mock";
+import { ADAPTER_PROFILES, type AdapterId } from "./config";
 import { Badge, Button, Checkbox, IconButton, PageHeader, Switch } from "./ui";
 import { Select } from "./select";
 import { FlowBuilder } from "./flow-builder";
@@ -47,7 +47,7 @@ function Sparkline({ data, color = "var(--primary)", height = 36, fill = true }:
 }
 
 export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: AdapterId; pushToast: (m: string) => void; setActiveNav: (id: string) => void }) {
-  const profile = MOCK.adapterProfiles[adapter];
+  const profile = ADAPTER_PROFILES[adapter];
   const [range, setRange] = useState("1h");
   // Live metrics: refetched on range change. While offline / unauthenticated
   // we render zero series so the page still draws but doesn't lie about

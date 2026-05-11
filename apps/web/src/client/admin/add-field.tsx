@@ -6,7 +6,7 @@
 // (dropdown choices, relation target) and the NOT NULL / UNIQUE flags.
 import { useEffect, useMemo, useState } from "react";
 import { I, type IconComponent, type IconKey } from "./icons";
-import { MOCK, type CollectionSchema } from "./mock";
+import { type CollectionSchema } from "./config";
 import { Badge, Button, IconButton, Switch } from "./ui";
 import { Select } from "./select";
 import { AlterPreview } from "./extras";
@@ -71,7 +71,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const Icon = (I as Record<string, IconComponent>)[def.icon as IconKey] || I.Code;
 
   const relationOptions = useMemo(() => {
-    const list = (collections && collections.length ? collections : MOCK.collectionsList) || [];
+    const list = collections ?? [];
     return list.map((c) => ({
       value: c.slug,
       label: c.slug,

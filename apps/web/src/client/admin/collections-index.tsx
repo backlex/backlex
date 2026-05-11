@@ -80,6 +80,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete }: Colle
         </div>
       ) : (
         <div className="card">
+          <div className="table-scroll">
           <table className="table">
             <thead>
               <tr>
@@ -121,6 +122,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete }: Colle
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

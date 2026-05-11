@@ -322,6 +322,27 @@ export const userRoles = pgTable(
   ],
 );
 
+/** Role assignments for workspace end-users (the `app_users` pool). Parallel
+ *  to `user_roles` but keyed by `app_users.id`. A role assigned here only
+ *  matters within its own tenant; the permission resolver also drops any role
+ *  flagged `admin` — app-users never get the workspace's admin bypass. */
+export const appUserRoles = pgTable(
+  "app_user_roles",
+  {
+    appUserId: text("app_user_id")
+      .notNull()
+      .references(() => appUsers.id, { onDelete: "cascade" }),
+    roleId: text("role_id")
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("app_user_roles_pk").on(t.appUserId, t.roleId),
+    index("app_user_roles_role_idx").on(t.roleId),
+  ],
+);
+
 export const permissions = pgTable(
   "permissions",
   {

@@ -264,6 +264,25 @@ export const userRoles = sqliteTable(
   ],
 );
 
+/** Role assignments for workspace end-users (the `app_users` pool). See the
+ *  PG schema for the rationale. */
+export const appUserRoles = sqliteTable(
+  "app_user_roles",
+  {
+    appUserId: text("app_user_id")
+      .notNull()
+      .references(() => appUsers.id, { onDelete: "cascade" }),
+    roleId: text("role_id")
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    uniqueIndex("app_user_roles_pk").on(t.appUserId, t.roleId),
+    index("app_user_roles_role_idx").on(t.roleId),
+  ],
+);
+
 export const permissions = sqliteTable(
   "permissions",
   {

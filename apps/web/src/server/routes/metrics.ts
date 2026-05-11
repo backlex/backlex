@@ -36,6 +36,66 @@ const RANGE_TO_MS: Record<string, number> = {
   "30d": 30 * 24 * 60 * 60 * 1000,
 };
 
+// Activity rows that are bookkeeping for a *system* surface — their payload
+// is shaped by us, so an `error` marker there is a real failure. User
+// collection writes store arbitrary item data as the payload, so a stray
+// `error` field on those must NOT be mistaken for a failed request.
+const SYSTEM_ACTIVITY_COLLECTIONS = new Set([
+  "system_collections",
+  "system_webhooks",
+  "system_flows",
+  "system_functions",
+  "system_roles",
+  "files",
+  "http",
+]);
+
+// Raw SQL bypasses Drizzle's column codecs, so `payload` comes back as a JSON
+// string on SQLite/D1 and as an already-parsed object on Postgres.
+const parsePayload = (raw: unknown): Record<string, unknown> | null => {
+  if (raw == null) return null;
+  if (typeof raw === "object") return raw as Record<string, unknown>;
+  if (typeof raw === "string") {
+    try {
+      const v = JSON.parse(raw);
+      return v && typeof v === "object" ? (v as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
+const isErrorRow = (
+  action: string,
+  collection: string | null,
+  payload: Record<string, unknown> | null,
+): boolean => {
+  if (/error|fail|denied/i.test(action)) return true;
+  if (!payload) return false;
+  if (collection && !SYSTEM_ACTIVITY_COLLECTIONS.has(collection)) return false;
+  if (payload.error != null && payload.error !== false && payload.error !== "") return true;
+  if (payload.failed === true) return true;
+  if (payload.ok === false) return true;
+  return false;
+};
+
+const errorMessageOf = (
+  payload: Record<string, unknown> | null,
+  fallback: string,
+): string => {
+  const m = payload?.message ?? payload?.error;
+  if (typeof m === "string" && m) return m;
+  if (m != null) {
+    try {
+      return JSON.stringify(m);
+    } catch {
+      return String(m);
+    }
+  }
+  return fallback;
+};
+
 /**
  * Overview-page metrics. Everything we expose is derived from `activity`
  * rows the API writes on every mutating request — there's no separate
@@ -67,10 +127,11 @@ export const metricsRoutes = new Hono<AppBindings>()
       collection: string | null;
       item_id: string | null;
       user_id: string | null;
+      payload: unknown;
     }>(
       { db: ctx.db, dialect: ctx.dialect },
       sql.raw(
-        `SELECT action, created_at, tenant_id, duration_ms, collection, item_id, user_id FROM activity ${
+        `SELECT action, created_at, tenant_id, duration_ms, collection, item_id, user_id, payload FROM activity ${
           auth.tenantId ? `WHERE tenant_id = '${auth.tenantId.replace(/'/g, "''")}' OR tenant_id IS NULL` : ""
         } ORDER BY created_at DESC LIMIT 5000`,
       ),
@@ -104,7 +165,7 @@ export const metricsRoutes = new Hono<AppBindings>()
       const idx = Math.min(buckets - 1, Math.floor((ts - start) / bucketMs));
       series[idx]!.requests += 1;
       totalRequests += 1;
-      if (/error|fail|denied/.test(r.action)) {
+      if (isErrorRow(r.action, r.collection, parsePayload(r.payload))) {
         series[idx]!.errors += 1;
         totalErrors += 1;
       }
@@ -234,21 +295,34 @@ export const metricsRoutes = new Hono<AppBindings>()
       itemId: r.item_id ?? undefined,
       userId: r.user_id ?? undefined,
       ms: r.duration_ms ?? undefined,
+      error: isErrorRow(r.action, r.collection, parsePayload(r.payload)),
     }));
 
-    // Recent errors — same source, but filtered by name pattern. We bucket
-    // by action/resource and emit the top 5 with their counts.
+    // Recent errors — same source, filtered to rows that actually represent a
+    // failure (action name pattern, or an `error`/`failed`/`ok:false` marker on
+    // a system-activity payload). Bucketed by action+code; the top 5 surface
+    // with their counts, last-seen, and a human message pulled from the payload.
     const errBuckets = new Map<string, { code: string; resource: string; msg: string; count: number; last: number }>();
     for (const r of rows) {
-      if (!/error|fail|denied/.test(r.action)) continue;
-      const key = r.action;
+      const payload = parsePayload(r.payload);
+      if (!isErrorRow(r.action, r.collection, payload)) continue;
+      const code = typeof payload?.code === "string" && payload.code ? payload.code : "ERR";
+      const resource = r.collection
+        ? `${r.collection}${r.item_id ? "/" + r.item_id : ""}`
+        : r.action;
+      const msg = errorMessageOf(payload, r.action);
+      const key = `${r.action}::${code}`;
       const ts = typeof r.created_at === "number" ? r.created_at : new Date(r.created_at).getTime();
       const cur = errBuckets.get(key);
       if (cur) {
         cur.count += 1;
-        if (ts > cur.last) cur.last = ts;
+        if (ts > cur.last) {
+          cur.last = ts;
+          cur.resource = resource;
+          cur.msg = msg;
+        }
       } else {
-        errBuckets.set(key, { code: "ERR", resource: r.action, msg: r.action, count: 1, last: ts });
+        errBuckets.set(key, { code, resource, msg, count: 1, last: ts });
       }
     }
     const recentErrors = [...errBuckets.values()].sort((a, b) => b.last - a.last).slice(0, 5);

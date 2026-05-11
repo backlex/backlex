@@ -48,12 +48,17 @@ const stampSessionMeta = async (
 const loadRoleNames = async (
   ctx: { db: unknown; dialect: "pg" | "sqlite" },
   userId: string,
+  restrictRoleId: string | null,
 ): Promise<string[]> => {
   // Role names are loaded without a tenant filter here because the tenant
   // hasn't been resolved yet at this point in the pipeline. The downstream
   // permission resolver re-loads roles scoped to the active tenant; this
   // list is only used by the legacy `auth.roles` array, which the admin
   // routes filter by tenant themselves.
+  //
+  // When the request authenticated with a role-scoped API key, restrict to
+  // that single role (still gated on the owner actually holding it) so the
+  // narrowing is in effect from the very first middleware.
   const t =
     ctx.dialect === "pg"
       ? { roles: pg.schema.roles, userRoles: pg.schema.userRoles }
@@ -62,7 +67,11 @@ const loadRoleNames = async (
     .select({ name: t.roles.name })
     .from(t.userRoles)
     .innerJoin(t.roles, eq(t.userRoles.roleId, t.roles.id))
-    .where(eq(t.userRoles.userId, userId))) as { name: string }[];
+    .where(
+      restrictRoleId
+        ? and(eq(t.userRoles.userId, userId), eq(t.roles.id, restrictRoleId))
+        : eq(t.userRoles.userId, userId),
+    )) as { name: string }[];
   return rows.map((r) => r.name);
 };
 
@@ -131,6 +140,8 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
   // that workspace — header/cookie/user-pref resolution would otherwise miss
   // it on machine-to-machine calls that don't send the X-Workeros-Tenant.
   let apiKeyTenantId: string | null = null;
+  // A role-scoped key narrows the request to a single role (see api_keys.role_id).
+  let apiKeyRoleId: string | null = null;
   // Workspace end-user sessions (`Authorization: Bearer <app-session-token>`)
   // similarly pin the request to the workspace that issued the session — the
   // app's frontend doesn't send a tenant header, it just uses its token.
@@ -160,6 +171,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
         userId = key.userId;
         email = await loadUserEmail(ctx, key.userId);
         apiKeyTenantId = key.tenantId ?? null;
+        apiKeyRoleId = key.roleId ?? null;
         // fire-and-forget last-used update
         void touchLastUsed(ctx, key.id);
       }
@@ -182,7 +194,10 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
   // `user_roles` join — those rows reference `users.id`, not `app_users.id`,
   // and an accidental UUID collision must not yield platform-admin powers.
   // The permission resolver fills in the workspace's `authenticated` role.
-  const roles = plane === "platform" && userId ? await loadRoleNames(ctx, userId) : [];
+  const roles =
+    plane === "platform" && userId
+      ? await loadRoleNames(ctx, userId, apiKeyRoleId)
+      : [];
 
   c.set("auth", {
     plane,
@@ -190,6 +205,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
     email,
     roles,
     apiKeyTenantId,
+    apiKeyRoleId,
     appSessionTenantId,
   });
   await next();

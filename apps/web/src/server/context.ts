@@ -25,6 +25,7 @@ import {
   ensureTenantMembership,
   userCount,
 } from "./services/seed";
+import { loadAppSettings } from "./services/settings";
 import { publishEvent } from "./services/events";
 import type { Env } from "./env";
 
@@ -93,6 +94,15 @@ export const buildContext = (env: Env): Ctx => {
     email,
     plugins: pluginList,
     hooks: {
+      onBeforeUserCreated: async () => {
+        // The first user always gets in — that's how a fresh instance
+        // bootstraps its admin. After that, honour the `openSignup` setting.
+        const total = await userCount(dbCtx);
+        if (total === 0) return { allow: true };
+        const tenantId = await ensureDefaultTenant(dbCtx);
+        const { openSignup } = await loadAppSettings(db, dialect, tenantId);
+        return { allow: openSignup, reason: "Sign-up is disabled" };
+      },
       onUserCreated: async (user) => {
         // Land every new user in the default tenant. The first user becomes
         // owner; subsequent ones land as members until invited elsewhere.

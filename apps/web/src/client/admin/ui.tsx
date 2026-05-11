@@ -281,34 +281,36 @@ export function Sidebar({ activeNav, setActiveNav, adapter, pushToast, collectio
         )}
       </div>
 
-      <div className="sidebar-section-label">Workspace</div>
-      <div className="nav">
-        {items.map((it) => {
-          const IconComp = (I as Record<string, IconComponent>)[it.icon as IconKey];
-          // Collections gets a live badge from the parent; other items use the
-          // (currently empty) static `badge` field on the nav definition.
-          const liveBadge = it.id === "collections" ? collectionsCount : it.badge;
-          return (
-            <div key={it.id} className="nav-item" data-active={activeNav === it.id} onClick={() => setActiveNav(it.id)}>
-              {IconComp && <IconComp size={15} />}
-              <span className="nav-label">{it.label}</span>
-              {liveBadge != null && <span className="nav-end tabular-nums">{liveBadge}</span>}
-            </div>
-          );
-        })}
-      </div>
+      <div className="sidebar-scroll">
+        <div className="sidebar-section-label">Workspace</div>
+        <div className="nav">
+          {items.map((it) => {
+            const IconComp = (I as Record<string, IconComponent>)[it.icon as IconKey];
+            // Collections gets a live badge from the parent; other items use the
+            // (currently empty) static `badge` field on the nav definition.
+            const liveBadge = it.id === "collections" ? collectionsCount : it.badge;
+            return (
+              <div key={it.id} className="nav-item" data-active={activeNav === it.id} onClick={() => setActiveNav(it.id)}>
+                {IconComp && <IconComp size={15} />}
+                <span className="nav-label">{it.label}</span>
+                {liveBadge != null && <span className="nav-end tabular-nums">{liveBadge}</span>}
+              </div>
+            );
+          })}
+        </div>
 
-      <div className="sidebar-section-label">Admin</div>
-      <div className="nav">
-        {settings.map((it) => {
-          const IconComp = (I as Record<string, IconComponent>)[it.icon as IconKey];
-          return (
-            <div key={it.id} className="nav-item" data-active={activeNav === it.id} onClick={() => setActiveNav(it.id)}>
-              {IconComp && <IconComp size={15} />}
-              <span className="nav-label">{it.label}</span>
-            </div>
-          );
-        })}
+        <div className="sidebar-section-label">Admin</div>
+        <div className="nav">
+          {settings.map((it) => {
+            const IconComp = (I as Record<string, IconComponent>)[it.icon as IconKey];
+            return (
+              <div key={it.id} className="nav-item" data-active={activeNav === it.id} onClick={() => setActiveNav(it.id)}>
+                {IconComp && <IconComp size={15} />}
+                <span className="nav-label">{it.label}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="adapter-card">

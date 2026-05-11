@@ -722,6 +722,7 @@ body {
 }
 .switch[data-on="true"] { background: var(--primary); }
 .switch[data-on="true"]::after { transform: translateX(16px); }
+.switch[data-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
 
 /* ─── Schema view ─── */
 .schema-row {

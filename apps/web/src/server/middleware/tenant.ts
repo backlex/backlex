@@ -155,6 +155,12 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   if (!tenantId && auth.apiKeyTenantId) {
     tenantId = auth.apiKeyTenantId;
   }
+  // App-plane sessions are bound to the workspace that issued them; ignore
+  // any header/cookie overrides so a customer's frontend can't accidentally
+  // walk into another workspace's data.
+  if (auth.plane === "app" && auth.appSessionTenantId) {
+    tenantId = auth.appSessionTenantId;
+  }
   if (!tenantId) {
     const cookieKey = getCookie(c, TENANT_COOKIE);
     if (cookieKey) tenantId = await tenantBySlugOrId(db, dialect, cookieKey);

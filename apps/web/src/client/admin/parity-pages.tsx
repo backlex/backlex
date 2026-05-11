@@ -2,7 +2,7 @@
 // directus/supabase parity pages — Database, Auth, Activity, Revisions, Insights, Email, Translations
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { I } from "./icons";
-import { MOCK, type AdapterId } from "./mock";
+import { ADAPTER_PROFILES, type AdapterId } from "./config";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
 import { Select } from "./select";
 import { ConfirmDialog } from "./sheet";
@@ -56,8 +56,8 @@ export function DatabasePage({ pushToast, adapter }: { pushToast: (m: string) =>
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader
         title="Database"
-        description={<>Direct access to the underlying engine. Adapter: <span className="font-mono">{MOCK.adapterProfiles[adapter].db}</span>. SQL editor runs through the same permission layer as the API.</>}
-        badges={<Badge variant="outline" mono>{MOCK.adapterProfiles[adapter].db}</Badge>}
+        description={<>Direct access to the underlying engine. Adapter: <span className="font-mono">{ADAPTER_PROFILES[adapter].db}</span>. SQL editor runs through the same permission layer as the API.</>}
+        badges={<Badge variant="outline" mono>{ADAPTER_PROFILES[adapter].db}</Badge>}
       />
       <div className="tabs">
         <button className="tab" data-active={tab === "sql"} onClick={() => setTab("sql")}><I.Code size={13} />SQL editor</button>

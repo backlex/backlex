@@ -805,7 +805,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
           setEditFieldName(null);
         }}
       />
-      <AddFieldDialog open={addFieldOpen} schema={schemaState} onClose={() => setAddFieldOpen(false)} onCreate={async (field) => {
+      <AddFieldDialog open={addFieldOpen} schema={schemaState} collections={collections} onClose={() => setAddFieldOpen(false)} onCreate={async (field) => {
         // schemaState.fields contains only user-defined columns now, so
         // the merged set is just append-the-new-one. System columns are
         // synthesized for display in SchemaView and must never round-trip

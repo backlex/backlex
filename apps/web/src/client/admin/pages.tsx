@@ -263,26 +263,32 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
               <div className="spacer" />
               <Button variant="ghost" size="sm" iconRight={I.ChevronRight} onClick={() => setActiveNav("activity")}>All events</Button>
             </div>
-            <div style={{ padding: "4px 0" }}>
-              {activity.map((a, i) => {
-                const Icon = a.icon;
-                return (
-                  <div key={i} style={{ padding: "8px 16px", display: "flex", alignItems: "flex-start", gap: 10 }}>
-                    <span style={{ width: 22, height: 22, borderRadius: 999, background: "var(--muted)", display: "grid", placeItems: "center", flexShrink: 0, marginTop: 1 }}>
-                      <Icon size={11} className="muted" />
-                    </span>
-                    <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
-                      <span style={{ fontSize: 12.5 }}>
-                        <span style={{ fontWeight: 500 }}>{a.who}</span>
-                        <span className="muted"> {a.verb} </span>
-                        <span className="font-mono" style={{ fontSize: 12 }}>{a.what}</span>
+            {activity.length === 0 ? (
+              <div style={{ padding: "20px 16px", textAlign: "center" }}>
+                <span className="muted" style={{ fontSize: 12.5 }}>No activity recorded.</span>
+              </div>
+            ) : (
+              <div style={{ padding: "4px 0" }}>
+                {activity.map((a, i) => {
+                  const Icon = a.icon;
+                  return (
+                    <div key={i} style={{ padding: "8px 16px", display: "flex", alignItems: "flex-start", gap: 10 }}>
+                      <span style={{ width: 22, height: 22, borderRadius: 999, background: "var(--muted)", display: "grid", placeItems: "center", flexShrink: 0, marginTop: 1 }}>
+                        <Icon size={11} className="muted" />
                       </span>
+                      <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
+                        <span style={{ fontSize: 12.5 }}>
+                          <span style={{ fontWeight: 500 }}>{a.who}</span>
+                          <span className="muted"> {a.verb} </span>
+                          <span className="font-mono" style={{ fontSize: 12 }}>{a.what}</span>
+                        </span>
+                      </div>
+                      <span className="muted font-mono tabular-nums" style={{ fontSize: 11 }}>{a.t}</span>
                     </div>
-                    <span className="muted font-mono tabular-nums" style={{ fontSize: 11 }}>{a.t}</span>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="card">

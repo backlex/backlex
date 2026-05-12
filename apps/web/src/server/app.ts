@@ -47,6 +47,7 @@ import {
 import { appUsersRoutes } from "./routes/app-users";
 import { tenantsRoutes } from "./routes/tenants";
 import { emailTemplatesRoutes } from "./routes/email-templates";
+import { emailConfigRoutes } from "./routes/email-config";
 import { authAdminRoutes } from "./routes/auth-admin";
 import { panelsRoutes } from "./routes/panels";
 import { i18nRoutes } from "./routes/i18n";
@@ -156,6 +157,7 @@ export const createApp = (env: Env) => {
   app.route("/api/t", tenantAuthRoutes);
   app.route("/api/tenants", tenantsRoutes);
   app.route("/api/admin/email-templates", emailTemplatesRoutes);
+  app.route("/api/admin/email-config", emailConfigRoutes);
   app.route("/api/admin/auth", authAdminRoutes);
   app.route("/api/admin/panels", panelsRoutes);
   app.route("/api/admin/i18n", i18nRoutes);

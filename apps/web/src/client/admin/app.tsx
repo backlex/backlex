@@ -361,6 +361,8 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
           who: data.ownerId ?? data.owner_id ?? "system",
           t: "just now",
           id: "e" + Math.random().toString(36).slice(2),
+          raw: data,
+          receivedAt: Date.now(),
         };
         setEvents((arr) => [next, ...arr.map((e) => ({ ...e, t: ageBump(e.t) })).slice(0, 30)]);
       } catch {

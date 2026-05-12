@@ -22,12 +22,27 @@ const requireAdmin = (auth: { roles: string[] }) => {
  * we deliberately reject writes to keys like `appUrl`, `emailFrom`, or
  * `env.*` so the Settings UI can't pretend it manages those.
  */
+const LocaleCode = z
+  .string()
+  .min(2)
+  .max(8)
+  .regex(/^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})?$/, "Invalid locale code");
+
 const SettingsInput = z
   .object({
     siteName: z.string().min(1).max(120).optional(),
     openSignup: z.boolean().optional(),
+    i18nLocales: z.array(LocaleCode).min(1).max(50).optional(),
+    i18nDefaultLocale: LocaleCode.optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (v) =>
+      !v.i18nDefaultLocale ||
+      !v.i18nLocales ||
+      v.i18nLocales.includes(v.i18nDefaultLocale),
+    { message: "i18nDefaultLocale must be in i18nLocales", path: ["i18nDefaultLocale"] },
+  );
 
 export const settingsRoutes = new Hono<AppBindings>()
   .use("*", requireUser, async (c, next) => {

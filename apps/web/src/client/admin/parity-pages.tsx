@@ -18,6 +18,7 @@ import {
   i18nApi,
   panelsApi,
   rolesApi,
+  settingsApi,
   tenantsApi,
   type ApiActivity,
   type ApiAppUser,
@@ -2873,11 +2874,12 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
 }
 
 export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void }) {
-  const locales = ["en", "tr", "de", "es", "fr", "ja"] as const;
+  const [locales, setLocales] = useState<string[]>(["en"]);
   const [data, setData] = useState<Record<string, string>[]>([]);
   const [base, setBase] = useState("en");
   const [showOnly, setShowOnly] = useState("all");
   const [addOpen, setAddOpen] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -2885,11 +2887,14 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
       try {
         const res = await i18nApi.matrix();
         if (cancelled) return;
+        const cols = res.configuredLocales?.length ? res.configuredLocales : res.locales;
+        setLocales(cols);
+        setBase(res.defaultLocale || cols[0] || "en");
         const keys = Object.keys(res.data || {});
         if (keys.length > 0) {
           const rows = keys.map((k) => {
             const row: Record<string, string> = { key: k };
-            for (const l of locales) row[l] = res.data[k]?.[l] ?? "";
+            for (const l of cols) row[l] = res.data[k]?.[l] ?? "";
             return row;
           });
           setData(rows);
@@ -2899,7 +2904,6 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
       }
     })();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const persist = (key: string, locale: string, value: string) => {
     void i18nApi.upsert(key, locale, value).catch((e: Error) => pushToast?.(e.message));
@@ -2971,7 +2975,33 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
         <Select value={base} onChange={setBase} options={[...locales]} />
         <button className={`chip ${showOnly === "all" ? "active" : ""}`} onClick={() => setShowOnly("all")}>All ({data.length})</button>
         <button className={`chip ${showOnly === "missing" ? "active" : ""}`} onClick={() => setShowOnly("missing")}>Missing ({data.filter((r) => locales.some((l) => !r[l])).length})</button>
+        <div style={{ marginLeft: "auto" }}>
+          <Button variant="outline" icon={I.Globe} onClick={() => setManageOpen(true)}>Manage locales</Button>
+        </div>
       </div>
+      {manageOpen && (
+        <ManageLocalesDialog
+          locales={locales}
+          defaultLocale={base}
+          onClose={() => setManageOpen(false)}
+          onSave={async ({ locales: next, defaultLocale }) => {
+            try {
+              await settingsApi.patch({ i18nLocales: next, i18nDefaultLocale: defaultLocale });
+              setLocales(next);
+              setBase(defaultLocale);
+              setData((arr) => arr.map((r) => {
+                const row: Record<string, string> = { key: r.key };
+                for (const l of next) row[l] = r[l] ?? "";
+                return row;
+              }));
+              pushToast("Locales updated.");
+              setManageOpen(false);
+            } catch (e) {
+              pushToast((e as Error).message);
+            }
+          }}
+        />
+      )}
       <div className="card" style={{ padding: 0, overflow: "auto" }}>
         <table className="table" style={{ minWidth: 100 + locales.length * 160 }}>
           <thead>
@@ -3119,6 +3149,115 @@ function AddTranslationKeyDialog({ base, locales, existingKeys, onClose, onCreat
           <Button variant="ghost" onClick={onClose} disabled={submitting}>Cancel</Button>
           <Button variant="primary" icon={I.Plus} onClick={submit} disabled={!valid || submitting}>
             {submitting ? "Creating…" : "Create key"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface ManageLocalesDialogProps {
+  locales: string[];
+  defaultLocale: string;
+  onClose: () => void;
+  onSave: (input: { locales: string[]; defaultLocale: string }) => Promise<void>;
+}
+
+const LOCALE_PATTERN = /^[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})?$/;
+
+function ManageLocalesDialog({ locales, defaultLocale, onClose, onSave }: ManageLocalesDialogProps) {
+  const [list, setList] = useState<string[]>(locales);
+  const [def, setDef] = useState(defaultLocale);
+  const [draft, setDraft] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const add = () => {
+    const v = draft.trim().toLowerCase();
+    if (!v || !LOCALE_PATTERN.test(v) || list.includes(v)) return;
+    setList((arr) => [...arr, v]);
+    setDraft("");
+  };
+  const remove = (l: string) => {
+    if (list.length <= 1) return;
+    setList((arr) => arr.filter((x) => x !== l));
+    if (def === l) setDef(list.find((x) => x !== l) || "en");
+  };
+  const submit = async () => {
+    if (submitting || list.length === 0 || !list.includes(def)) return;
+    setSubmitting(true);
+    try {
+      await onSave({ locales: list, defaultLocale: def });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="dialog-backdrop" onClick={onClose}>
+      <div
+        className="dialog-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="manage-locales-title"
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: 480, maxWidth: "92vw" }}
+      >
+        <div className="sheet-header" style={{ borderBottom: "1px solid var(--border)" }}>
+          <div style={{ flex: 1 }}>
+            <h2 id="manage-locales-title">Manage locales</h2>
+            <p>Active languages for this workspace. The default is returned by the public API when a requested locale has no string.</p>
+          </div>
+          <IconButton icon={I.X} onClick={onClose} title="Close" />
+        </div>
+        <div className="dialog-body">
+          <div className="field">
+            <label className="field-label">
+              <I.Globe size={12} /> Active locales
+            </label>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+              {list.map((l) => (
+                <span key={l} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 6px 2px 8px", border: "1px solid var(--border)", borderRadius: 6, background: l === def ? "var(--primary)" : "transparent", color: l === def ? "var(--primary-foreground)" : "inherit", fontSize: 11, fontFamily: "var(--font-mono)" }}>
+                  {l}{l === def && " · default"}
+                  <button
+                    aria-label={`Remove ${l}`}
+                    onClick={() => remove(l)}
+                    disabled={list.length <= 1}
+                    style={{ background: "transparent", border: 0, padding: 0, cursor: list.length <= 1 ? "not-allowed" : "pointer", color: "inherit", display: "inline-flex" }}
+                  >
+                    <I.X size={11} />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <input
+                className="input font-mono"
+                placeholder="tr, en-GB, …"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    add();
+                  }
+                }}
+                style={{ flex: 1 }}
+              />
+              <Button variant="outline" icon={I.Plus} onClick={add} disabled={!draft.trim() || !LOCALE_PATTERN.test(draft.trim().toLowerCase()) || list.includes(draft.trim().toLowerCase())}>Add</Button>
+            </div>
+            <div className="field-hint" style={{ marginTop: 6 }}>BCP-47 short codes — e.g. <span className="font-mono">tr</span>, <span className="font-mono">en-GB</span>, <span className="font-mono">pt-BR</span>.</div>
+          </div>
+
+          <div className="field">
+            <label className="field-label">Default locale</label>
+            <Select value={def} onChange={setDef} options={list} />
+            <div className="field-hint">Used as fallback when the requested locale has no string for a key.</div>
+          </div>
+        </div>
+        <div className="sheet-footer">
+          <Button variant="ghost" onClick={onClose} disabled={submitting}>Cancel</Button>
+          <Button variant="primary" icon={I.Check} onClick={submit} disabled={submitting || list.length === 0}>
+            {submitting ? "Saving…" : "Save"}
           </Button>
         </div>
       </div>

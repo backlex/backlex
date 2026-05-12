@@ -19,11 +19,13 @@ const tablesFor = (dialect: "pg" | "sqlite") =>
     ? {
         appUsers: pg.schema.appUsers,
         appUserRoles: pg.schema.appUserRoles,
+        appSessions: pg.schema.appSessions,
         roles: pg.schema.roles,
       }
     : {
         appUsers: sqlite.schema.appUsers,
         appUserRoles: sqlite.schema.appUserRoles,
+        appSessions: sqlite.schema.appSessions,
         roles: sqlite.schema.roles,
       };
 
@@ -33,6 +35,23 @@ const requireAdmin = (auth: { roles: string[] }) => {
 };
 
 const SetRolesInput = z.object({ roleIds: z.array(z.string().min(1)) });
+const PatchInput = z.object({ status: z.enum(["active", "suspended"]).optional() });
+
+/** Confirm an `app_users` row exists in the active workspace. */
+const requireAppUser = async (
+  db: unknown,
+  dialect: "pg" | "sqlite",
+  tenantId: string,
+  appUserId: string,
+): Promise<void> => {
+  const t = tablesFor(dialect);
+  const rows = (await (db as any)
+    .select({ id: t.appUsers.id })
+    .from(t.appUsers)
+    .where(and(eq(t.appUsers.id, appUserId), eq(t.appUsers.tenantId, tenantId)))
+    .limit(1)) as Array<{ id: string }>;
+  if (!rows[0]) throw new AppError("NOT_FOUND", "End-user not found in this workspace");
+};
 
 export const appUsersRoutes = new Hono<AppBindings>()
   .use("*", requireUser, async (c, next) => {
@@ -95,13 +114,7 @@ export const appUsersRoutes = new Hono<AppBindings>()
     const appUserId = c.req.param("id");
     const body = SetRolesInput.parse(await c.req.json());
     const t = tablesFor(ctx.dialect);
-
-    const owner = (await (ctx.db as any)
-      .select({ id: t.appUsers.id })
-      .from(t.appUsers)
-      .where(and(eq(t.appUsers.id, appUserId), eq(t.appUsers.tenantId, tenantId)))
-      .limit(1)) as Array<{ id: string }>;
-    if (!owner[0]) throw new AppError("NOT_FOUND", "End-user not found in this workspace");
+    await requireAppUser(ctx.db, ctx.dialect, tenantId, appUserId);
 
     const wanted = Array.from(new Set(body.roleIds));
     let valid: Array<{ id: string; name: string; admin: boolean }> = [];
@@ -131,4 +144,62 @@ export const appUsersRoutes = new Hono<AppBindings>()
         .values({ appUserId, roleId: r.id });
     }
     return c.json({ ok: true, roleIds: valid.map((r) => r.id) });
+  })
+  /**
+   * Update an end-user. Currently only `status` ("active" | "suspended").
+   * Suspending also drops the user's `app_sessions` so existing tokens stop
+   * working immediately, and the tenant-auth instance blocks fresh sign-ins
+   * for suspended users.
+   */
+  .patch("/:id", async (c) => {
+    const ctx = c.get("ctx");
+    const tenantId = c.get("auth").tenantId;
+    if (!tenantId) throw new AppError("VALIDATION", "No active workspace");
+    const appUserId = c.req.param("id");
+    const body = PatchInput.parse(await c.req.json());
+    const t = tablesFor(ctx.dialect);
+    await requireAppUser(ctx.db, ctx.dialect, tenantId, appUserId);
+    if (body.status !== undefined) {
+      await (ctx.db as any)
+        .update(t.appUsers)
+        .set({
+          status: body.status,
+          suspendedAt:
+            body.status === "suspended"
+              ? ctx.dialect === "pg"
+                ? new Date()
+                : Date.now()
+              : null,
+          updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
+        })
+        .where(and(eq(t.appUsers.id, appUserId), eq(t.appUsers.tenantId, tenantId)));
+      if (body.status === "suspended") {
+        await (ctx.db as any)
+          .delete(t.appSessions)
+          .where(eq(t.appSessions.userId, appUserId));
+      }
+    }
+    return c.json({ ok: true });
+  })
+  /** Delete an end-user along with their sessions, OAuth accounts, and role
+   *  assignments. Done explicitly (not via FK ON DELETE CASCADE) so it works
+   *  the same on SQLite/D1, which don't enforce foreign keys by default. */
+  .delete("/:id", async (c) => {
+    const ctx = c.get("ctx");
+    const tenantId = c.get("auth").tenantId;
+    if (!tenantId) throw new AppError("VALIDATION", "No active workspace");
+    const appUserId = c.req.param("id");
+    const t = tablesFor(ctx.dialect);
+    await requireAppUser(ctx.db, ctx.dialect, tenantId, appUserId);
+    const accounts =
+      ctx.dialect === "pg" ? pg.schema.appAccounts : sqlite.schema.appAccounts;
+    await (ctx.db as any).delete(t.appUserRoles).where(eq(t.appUserRoles.appUserId, appUserId));
+    await (ctx.db as any).delete(t.appSessions).where(eq(t.appSessions.userId, appUserId));
+    await (ctx.db as any).delete(accounts).where(eq(accounts.userId, appUserId));
+    // `app_verifications` keys on the identifier (email/token), not a user id —
+    // those short-lived rows just expire on their own.
+    await (ctx.db as any)
+      .delete(t.appUsers)
+      .where(and(eq(t.appUsers.id, appUserId), eq(t.appUsers.tenantId, tenantId)));
+    return c.json({ ok: true });
   });

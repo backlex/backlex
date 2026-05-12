@@ -63,10 +63,10 @@ export const functionsRoutes = new Hono<AppBindings>()
         body,
       );
     } catch (err) {
-      // Surface sandbox load failures (e.g. QuickJS-WASM unavailable in CF
-      // Workers without FUNCTIONS_DISPATCH) as a structured 500 with the
-      // sandbox's own error message rather than leaking a stack trace into
-      // the global error handler.
+      // Surface sandbox load failures (e.g. QuickJS-WASM unavailable in a
+      // runtime with no variant) as a structured 500 with the sandbox's own
+      // error message rather than leaking a stack trace into the global
+      // error handler.
       result = {
         ok: false as const,
         logs: [],

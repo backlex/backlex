@@ -37,12 +37,6 @@ export interface Env {
   /** Comma-separated host allow-list for `ctx.fetch` inside functions.
    *  `*` allows any host (development only). Empty disables outbound fetch. */
   FUNCTIONS_FETCH_ALLOW?: string;
-  /** Cloudflare Workers-for-Platforms dispatch namespace. When bound, the
-   *  cf-dispatch sandbox provider routes function invocations to the
-   *  `workeros-fn-executor` sub-Worker in this namespace (V8 isolate
-   *  per request). Optional — falls back to bun-worker / quickjs when
-   *  unbound. */
-  FUNCTIONS_DISPATCH?: DispatchNamespace;
   /** HTTP base URL of an out-of-isolate function executor (e.g. the
    *  `templates/fn-exec-server` Bun process on Fly / Railway / a VM). When
    *  set, the `remote-http` sandbox provider POSTs invocations to
@@ -51,8 +45,8 @@ export interface Env {
    *  functions. Pairs with `SANDBOX_RPC_TOKEN` + `SELF_URL` for `ctx.*`. */
   FUNCTIONS_EXEC_URL?: string;
   /** Shared secret authenticating executor → main Worker RPC calls
-   *  (`/api/_internal/sandbox-rpc`). Required for cf-dispatch / remote-http
-   *  ctx.* host bridges. Generate with `openssl rand -hex 32`. */
+   *  (`/api/_internal/sandbox-rpc`). Required for the `remote-http`
+   *  provider's ctx.* host bridge. Generate with `openssl rand -hex 32`. */
   SANDBOX_RPC_TOKEN?: string;
   /** Public origin of the main Worker — used by the executor to call back
    *  for ctx.* RPC. Defaults to the request origin when invoked over HTTP;

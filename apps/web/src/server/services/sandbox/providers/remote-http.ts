@@ -5,7 +5,7 @@ import type {
 } from "../types";
 
 /**
- * Generic out-of-isolate sandbox provider — the HTTP twin of `cf-dispatch`.
+ * Generic out-of-isolate sandbox provider.
  *
  * When `env.FUNCTIONS_EXEC_URL` is set, function invocations are POSTed to
  * `${FUNCTIONS_EXEC_URL}/run` on a separate executor service (e.g. the
@@ -16,13 +16,12 @@ import type {
  * `${mainOrigin}/api/_internal/sandbox-rpc`, Bearer-authenticated with
  * `env.SANDBOX_RPC_TOKEN`.
  *
- * Wire format matches the cf-dispatch executor exactly:
+ * Wire format:
  *   POST /run  { code, data, user, timeoutMs, mainOrigin, rpcToken }
  *   ->         { ok, value?, logs, error? }
  *
  * This lets the API stay on an edge runtime (CF Workers / Vercel Edge /
- * Netlify Edge) while still offering DB-aware functions, without paying for
- * Workers for Platforms.
+ * Netlify Edge) while still offering DB-aware functions.
  */
 export const remoteHttpProvider: SandboxProvider = {
   name: "remote-http",

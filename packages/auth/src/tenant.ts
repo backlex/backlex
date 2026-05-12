@@ -36,6 +36,9 @@ export interface TenantAuthConfig {
   /** Origins allowed to send credentialled requests. Always includes the
    *  appURL; the workspace's own redirect-allowlist can extend it. */
   trustedOrigins?: string[];
+  /** Whether email+password sign-in is offered. Defaults to `true`. A
+   *  workspace can turn it off (via its `auth_config`) to be OAuth/SSO-only. */
+  emailAndPasswordEnabled?: boolean;
   hooks?: AuthHooks;
   socialProviders?: {
     google?: OAuthProviderConfig;
@@ -118,7 +121,7 @@ export const createTenantAuth = (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     database: withTenantScope(baseAdapter as any, config.tenantId) as any,
     emailAndPassword: {
-      enabled: true,
+      enabled: config.emailAndPasswordEnabled ?? true,
       autoSignIn: true,
       minPasswordLength: 8,
     },

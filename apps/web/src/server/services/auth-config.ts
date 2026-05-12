@@ -126,13 +126,29 @@ export const resolveAuthSurface = async (
   tenantId: string | null | undefined,
 ): Promise<ResolvedAuthSurface> => {
   const stored = await loadAuthConfigRow(ctx, tenantId);
-  const configured = envConfiguredProviders(env);
+  const envConfigured = envConfiguredProviders(env);
   const fallbackEnabled = defaultEnabledProviders(env);
+
+  // A provider is serveable for this workspace if the running worker has it
+  // (env) OR the workspace stored its own credentials (`clientId` +
+  // `clientSecretEnc`).
+  const isConfigured = (key: AuthProviderKey): boolean => {
+    if (envConfigured[key]) return true;
+    const e = stored?.providers?.[key] as
+      | { clientId?: unknown; clientSecretEnc?: unknown }
+      | undefined;
+    return Boolean(
+      e &&
+        typeof e.clientId === "string" &&
+        e.clientId.trim() &&
+        typeof e.clientSecretEnc === "string",
+    );
+  };
 
   const providers: PublicProvider[] = (
     Object.keys(PROVIDER_META) as AuthProviderKey[]
   )
-    .filter((key) => configured[key])
+    .filter((key) => isConfigured(key))
     .map((key) => {
       const entry = stored?.providers?.[key] as { enabled?: unknown } | undefined;
       const enabled =

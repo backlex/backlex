@@ -8,6 +8,8 @@ import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { Env } from "../env";
 import type { DbCtx } from "./seed";
+import { decryptSecret } from "../lib/crypto";
+import { loadAuthConfigRow } from "./auth-config";
 
 /**
  * Resolve the workspace end-user auth instance for a given tenant slug — the
@@ -64,13 +66,29 @@ export const findTenantBySlugOrId = async (
   return (bySlug[0] as { id: string; slug: string } | undefined) ?? null;
 };
 
+const providerEntry = (
+  providers: Record<string, unknown> | null | undefined,
+  key: string,
+): { enabled?: unknown; clientId?: unknown; clientSecretEnc?: unknown } => {
+  const v = (providers ?? {})[key];
+  return v && typeof v === "object"
+    ? (v as { enabled?: unknown; clientId?: unknown; clientSecretEnc?: unknown })
+    : {};
+};
+
 /**
  * Build (or fetch from cache) the better-auth instance for a workspace.
  *
- * Social providers and plugin set are sourced from env for v1. The stored
- * `auth_config` row only governs the public discovery endpoint right now —
- * runtime provider toggles + customer-supplied OAuth secrets land in a
- * follow-up alongside encryption-at-rest for the secrets.
+ * Provider configuration is sourced from the workspace's stored `auth_config`
+ * row when present:
+ *   - an OAuth provider is wired iff it's not disabled AND has a `clientId`
+ *     plus a decryptable `clientSecretEnc`; otherwise it falls back to the
+ *     env-level OAuth credentials (unless the stored config explicitly
+ *     disables it);
+ *   - email+password is enabled unless `providers.email.enabled === false`.
+ *
+ * Per-workspace magic-link / email-otp and a config-driven session lifetime
+ * are not wired yet (would need an email adapter handed through here).
  */
 export const getTenantAuth = async (
   ctx: DbCtx,
@@ -83,19 +101,29 @@ export const getTenantAuth = async (
     return existing.auth;
   }
 
+  const storedRow = await loadAuthConfigRow(ctx, tenant.id);
+  const stored = (storedRow?.providers ?? null) as Record<string, unknown> | null;
+
   const social: { google?: OAuthProviderConfig; github?: OAuthProviderConfig } = {};
-  if (env.OAUTH_GOOGLE_CLIENT_ID && env.OAUTH_GOOGLE_CLIENT_SECRET) {
-    social.google = {
-      clientId: env.OAUTH_GOOGLE_CLIENT_ID,
-      clientSecret: env.OAUTH_GOOGLE_CLIENT_SECRET,
-    };
+  for (const [key, envId, envSecret] of [
+    ["google", env.OAUTH_GOOGLE_CLIENT_ID, env.OAUTH_GOOGLE_CLIENT_SECRET],
+    ["github", env.OAUTH_GITHUB_CLIENT_ID, env.OAUTH_GITHUB_CLIENT_SECRET],
+  ] as const) {
+    const cfg = providerEntry(stored, key);
+    if (cfg.enabled === false) continue; // workspace turned this provider off
+    // Prefer the workspace's own credentials.
+    if (typeof cfg.clientId === "string" && cfg.clientId.trim() && typeof cfg.clientSecretEnc === "string") {
+      const secret = await decryptSecret(cfg.clientSecretEnc, env.AUTH_SECRET);
+      if (secret) {
+        social[key] = { clientId: cfg.clientId.trim(), clientSecret: secret };
+        continue;
+      }
+    }
+    // Fall back to env-level OAuth.
+    if (envId && envSecret) social[key] = { clientId: envId, clientSecret: envSecret };
   }
-  if (env.OAUTH_GITHUB_CLIENT_ID && env.OAUTH_GITHUB_CLIENT_SECRET) {
-    social.github = {
-      clientId: env.OAUTH_GITHUB_CLIENT_ID,
-      clientSecret: env.OAUTH_GITHUB_CLIENT_SECRET,
-    };
-  }
+
+  const emailEnabled = providerEntry(stored, "email").enabled !== false;
 
   const pluginList = (env.AUTH_PLUGINS ?? "")
     .split(",")
@@ -111,6 +139,7 @@ export const getTenantAuth = async (
     appURL: env.APP_URL,
     secret: env.AUTH_SECRET,
     trustedOrigins: [env.APP_URL],
+    emailAndPasswordEnabled: emailEnabled,
     socialProviders: Object.keys(social).length > 0 ? social : undefined,
     plugins: pluginList,
   });

@@ -14,10 +14,12 @@ export interface Env {
   D1?: D1Database;
   R2?: R2Bucket;
   /** One Vectorize index per embedding model — see packages/core/src/embedding-models.ts.
-   *  `VECTORIZE_OPENAI` (1536, cosine) holds OpenAI text-embedding-3-small vectors;
-   *  `VECTORIZE_BGE_M3` (1024, cosine) holds Workers AI bge-m3 vectors. Either may
-   *  be unbound — the model is unavailable until its index is added. */
+   *  `VECTORIZE_OPENAI` (1536, cosine) — OpenAI text-embedding-3-small;
+   *  `VECTORIZE_OPENAI_LARGE` (3072, cosine) — OpenAI text-embedding-3-large;
+   *  `VECTORIZE_BGE_M3` (1024, cosine) — Workers AI bge-m3.
+   *  Each is optional; a model whose index isn't bound errors on use. */
   VECTORIZE_OPENAI?: VectorizeIndex;
+  VECTORIZE_OPENAI_LARGE?: VectorizeIndex;
   VECTORIZE_BGE_M3?: VectorizeIndex;
   HYPERDRIVE?: Hyperdrive;
   REALTIME?: DurableObjectNamespace;

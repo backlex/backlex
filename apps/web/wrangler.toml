@@ -75,10 +75,15 @@ bucket_name = "workeros-files"
 # dimension; the routes/adapter pick the right index by model name.
 # Create the indexes once with the matching dimensions:
 #   wrangler vectorize create workeros-openai-1536 --dimensions=1536 --metric=cosine
+#   wrangler vectorize create workeros-openai-3072 --dimensions=3072 --metric=cosine
 #   wrangler vectorize create workeros-bge-m3      --dimensions=1024 --metric=cosine
 [[vectorize]]
 binding = "VECTORIZE_OPENAI"
 index_name = "workeros-openai-1536"
+
+[[vectorize]]
+binding = "VECTORIZE_OPENAI_LARGE"
+index_name = "workeros-openai-3072"
 
 [[vectorize]]
 binding = "VECTORIZE_BGE_M3"

@@ -98,6 +98,7 @@ export const settingsRoutes = new Hono<AppBindings>()
       { type: "R2", name: "R2", target: "workeros-files (R2)", status: env.R2 ? "connected" : "optional" },
       { type: "DurableObj", name: "REALTIME", target: "RealtimeRoom", status: env.REALTIME ? "connected" : "optional" },
       { type: "Vectorize", name: "VECTORIZE_OPENAI", target: "workeros-openai-1536", status: env.VECTORIZE_OPENAI ? "connected" : "optional" },
+      { type: "Vectorize", name: "VECTORIZE_OPENAI_LARGE", target: "workeros-openai-3072", status: env.VECTORIZE_OPENAI_LARGE ? "connected" : "optional" },
       { type: "Vectorize", name: "VECTORIZE_BGE_M3", target: "workeros-bge-m3", status: env.VECTORIZE_BGE_M3 ? "connected" : "optional" },
       { type: "WorkersAI", name: "AI", target: "@cf/baai/bge-m3", status: env.AI ? "connected" : "optional" },
       { type: "Hyperdrive", name: "HYPERDRIVE", target: "pg-pool", status: env.HYPERDRIVE ? "connected" : "optional" },

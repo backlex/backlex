@@ -567,6 +567,22 @@ export const embeddingsOpenai1536 = sqliteTable(
   ],
 );
 
+export const embeddingsOpenai3072 = sqliteTable(
+  "embeddings_openai_3072",
+  {
+    id: text("id").primaryKey(),
+    namespace: text("namespace").notNull().default("default"),
+    refId: text("ref_id"),
+    content: text("content"),
+    metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    index("embeddings_openai_3072_namespace_idx").on(t.namespace),
+    index("embeddings_openai_3072_ref_idx").on(t.refId),
+  ],
+);
+
 export const embeddingsBgeM3 = sqliteTable(
   "embeddings_bge_m3",
   {

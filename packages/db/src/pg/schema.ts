@@ -655,6 +655,28 @@ export const embeddingsOpenai1536 = pgTable(
   ],
 );
 
+export const embeddingsOpenai3072 = pgTable(
+  "embeddings_openai_3072",
+  {
+    id: text("id").primaryKey(),
+    namespace: text("namespace").notNull().default("default"),
+    refId: text("ref_id"),
+    content: text("content"),
+    embedding: vector("embedding", 3072).notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("embeddings_openai_3072_namespace_idx").on(t.namespace),
+    index("embeddings_openai_3072_ref_idx").on(t.refId),
+    // NOTE: pgvector's HNSW index caps at 2000 dimensions. For 3072-dim
+    // vectors use IVFFlat instead (slightly slower build, comparable recall
+    // at the right `lists` setting). Add manually once the table has rows:
+    //   CREATE INDEX embeddings_openai_3072_ivfflat_idx ON embeddings_openai_3072
+    //     USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+  ],
+);
+
 export const embeddingsBgeM3 = pgTable(
   "embeddings_bge_m3",
   {

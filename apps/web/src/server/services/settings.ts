@@ -16,12 +16,23 @@ export interface AppSettings {
   /** When false, account creation is rejected (any sign-up path). The very
    *  first user is always allowed so a fresh instance can bootstrap. */
   openSignup: boolean;
+  /** Active locales for this workspace. Drives the Translations admin grid
+   *  and the public `/api/i18n` endpoint. First entry is the default. */
+  i18nLocales: string[];
+  /** Locale returned by the public endpoint when the requested one has no
+   *  string. Must exist in `i18nLocales`. */
+  i18nDefaultLocale: string;
 }
 
 export const APP_SETTINGS_DEFAULTS: AppSettings = {
   siteName: "workeros",
   openSignup: true,
+  i18nLocales: ["en", "tr", "de", "es", "fr", "ja"],
+  i18nDefaultLocale: "en",
 };
+
+const isStringArray = (v: unknown): v is string[] =>
+  Array.isArray(v) && v.every((x) => typeof x === "string");
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.appSettings : sqlite.schema.appSettings;
@@ -45,6 +56,13 @@ export const loadAppSettings = async (
       if (r.key === "siteName" && typeof r.value === "string") out.siteName = r.value;
       else if (r.key === "openSignup" && typeof r.value === "boolean")
         out.openSignup = r.value;
+      else if (r.key === "i18nLocales" && isStringArray(r.value) && r.value.length > 0)
+        out.i18nLocales = r.value;
+      else if (r.key === "i18nDefaultLocale" && typeof r.value === "string")
+        out.i18nDefaultLocale = r.value;
+    }
+    if (!out.i18nLocales.includes(out.i18nDefaultLocale)) {
+      out.i18nDefaultLocale = out.i18nLocales[0] ?? "en";
     }
     return out;
   } catch {

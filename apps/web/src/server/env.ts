@@ -32,6 +32,10 @@ export interface Env {
   AI?: Ai;
   // Optional AI provider keys.
   OPENAI_API_KEY?: string;
+  /** Anthropic API key — powers the "Auto-translate missing" action in the
+   *  Translations admin page. When unset, the endpoint returns 503 with a
+   *  hint to set this. */
+  ANTHROPIC_API_KEY?: string;
   /** Base URL of a self-hosted, OpenAI-compatible embeddings container
    *  (e.g. HuggingFace TEI, Ollama, vLLM, LiteLLM). The adapter posts to
    *  `${EMBEDDING_HTTP_URL}/v1/embeddings`. Required to use any model whose

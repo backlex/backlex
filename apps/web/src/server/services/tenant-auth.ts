@@ -143,13 +143,16 @@ export const getTenantAuth = async (
 
   const emailEnabled = providerEntry(stored, "email").enabled !== false;
   const magicEnabled = providerEntry(stored, "magic").enabled === true;
+  const otpEnabled = providerEntry(stored, "emailOtp").enabled === true;
 
   const pluginList: AuthPlugin[] = [];
-  // env-level baseline (email-otp stays env-only for now)
+  // env-level baseline, then workspace opt-ins (both send through the
+  // deployment's email adapter, which is handed to createTenantAuth).
   for (const p of (env.AUTH_PLUGINS ?? "").split(",").map((s) => s.trim())) {
     if (p === "magic-link" || p === "email-otp") pluginList.push(p);
   }
   if (magicEnabled && !pluginList.includes("magic-link")) pluginList.push("magic-link");
+  if (otpEnabled && !pluginList.includes("email-otp")) pluginList.push("email-otp");
 
   const sessionExpiresInSeconds = parseLifetimeSeconds(storedRow?.sessionLifetime);
   // better-auth uses trustedOrigins to validate `callbackURL`/`Origin` (CSRF)

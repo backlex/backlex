@@ -8,7 +8,7 @@ constraints you need.
 | **Database**       | SQLite or PG      | D1 or Hyperdrive→PG  | PG (Neon HTTP)       | PG (Neon HTTP)       |
 | **Storage**        | local fs / S3 / `Bun.S3Client` | R2 (S3 fallback) | S3 (`aws4fetch`)     | S3 (`aws4fetch`)     |
 | **Realtime**       | in-proc + SSE     | Durable Objects + WS | SSE (single-instance only) | SSE (single-instance only) |
-| **Sandbox**        | Bun worker        | QuickJS / dispatch   | QuickJS              | QuickJS              |
+| **Sandbox**        | Bun worker        | QuickJS / remote HTTP | QuickJS / remote HTTP | QuickJS / remote HTTP |
 | **Image**          | `Bun.Image`       | CF Image Resize      | passthrough          | passthrough          |
 | **Cron**           | setInterval       | wrangler triggers    | vercel.json crons    | scheduled functions  |
 | **Cost**           | VPS               | $0–5/mo              | $0–20/mo             | $0–19/mo             |
@@ -45,26 +45,29 @@ wrangler d1 migrations apply workeros --remote
 wrangler deploy
 ```
 
-### cf-dispatch sandbox (paid plan, optional)
+### remote-http sandbox (optional, DB-aware functions on edge)
 
-For V8-isolate per-request function execution:
+QuickJS-WASM runs functions in-isolate everywhere but is sync-only with no
+`ctx.*` host I/O. For DB/fetch/email-aware functions on an edge runtime, run
+the out-of-isolate executor (`apps/web/templates/fn-exec-server`) somewhere
+`eval` / `new Function` are allowed — Fly.io, Railway, Render, a plain VM,
+Cloudflare Containers:
 
 ```bash
-wrangler dispatch-namespace create workeros-functions
-cd apps/api/templates/fn-executor && wrangler deploy
+bun run apps/web/templates/fn-exec-server/index.ts   # listens on :8790
+```
 
-# In apps/api/wrangler.toml uncomment:
-# [[dispatch_namespaces]]
-# binding = "FUNCTIONS_DISPATCH"
-# namespace = "workeros-functions"
+Then point the Worker at it:
 
-wrangler secret put SANDBOX_RPC_TOKEN   # generate with `openssl rand -hex 32`
+```bash
+wrangler secret put FUNCTIONS_EXEC_URL  # https://your-exec-host (base URL, no /run)
+wrangler secret put SANDBOX_RPC_TOKEN   # generate with `openssl rand -hex 32` (same on both)
 wrangler secret put SELF_URL            # https://api.your.app
 wrangler deploy
 ```
 
-The selector falls back to QuickJS when the dispatch binding is missing,
-so free-tier Workers users get a sandbox too — sync only.
+The selector falls back to QuickJS when `FUNCTIONS_EXEC_URL` is unset, so
+Workers users still get a sandbox — sync only.
 
 ## Vercel
 
@@ -145,8 +148,9 @@ driver; storage needs S3.
 | `OAUTH_{GOOGLE,GITHUB}_CLIENT_{ID,SECRET}` | no | enable each provider when both set    |
 | `AUTH_PLUGINS`               | no        | Comma-separated: `passkey,magic-link,email-otp,anonymous` |
 | `FUNCTIONS_FETCH_ALLOW`      | no        | Comma-separated host allow-list for ctx.fetch |
-| `SANDBOX_RPC_TOKEN`          | no        | cf-dispatch only — shared secret             |
-| `SELF_URL`                   | no        | Required for cron-triggered cf-dispatch RPC  |
+| `FUNCTIONS_EXEC_URL`         | no        | Base URL of a remote-http function executor  |
+| `SANDBOX_RPC_TOKEN`          | no        | remote-http only — shared secret for ctx.* RPC |
+| `SELF_URL`                   | no        | Required for cron-triggered remote-http RPC  |
 | `S3_BUCKET` + `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY` | no¹ | ¹ Required on Vercel/Netlify edge (no fs); optional on Bun (defaults to fsStorage) and Workers (R2 binding preferred) |
 | `S3_ENDPOINT`                | no        | Custom S3 endpoint for R2/B2/MinIO/Spaces    |
 | `S3_REGION`                  | no        | Defaults to `auto`                           |

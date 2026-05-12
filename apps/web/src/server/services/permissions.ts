@@ -29,11 +29,13 @@ const tablesFor = (dialect: "pg" | "sqlite") =>
     ? {
         roles: pg.schema.roles,
         userRoles: pg.schema.userRoles,
+        appUserRoles: pg.schema.appUserRoles,
         permissions: pg.schema.permissions,
       }
     : {
         roles: sqlite.schema.roles,
         userRoles: sqlite.schema.userRoles,
+        appUserRoles: sqlite.schema.appUserRoles,
         permissions: sqlite.schema.permissions,
       };
 
@@ -42,6 +44,7 @@ export const loadRolesForUser = async (
   userId: string | null,
   tenantId: string | null,
   apiKeyRoleId: string | null = null,
+  plane: "platform" | "app" = "platform",
 ): Promise<RoleRow[]> => {
   const t = tablesFor(ctx.dialect);
   // Without an active tenant we can't pick the right copy of public/admin/etc.,
@@ -79,6 +82,32 @@ export const loadRolesForUser = async (
         ),
       );
     return rows as RoleRow[];
+  }
+  // App-plane identities (workspace end-users from `app_users`) get the
+  // workspace's `authenticated` role plus whatever custom roles a workspace
+  // admin assigned via `app_user_roles`. They never touch the control-plane
+  // `user_roles` table, and any role flagged `admin` is dropped here — a
+  // customer can grant broad access only through explicit permissions, never
+  // the admin bypass (and a UUID collision with a control-plane user can't
+  // leak platform-admin powers either).
+  if (plane === "app") {
+    const assigned = (await (ctx.db as any)
+      .select({ id: t.roles.id, name: t.roles.name, admin: t.roles.admin })
+      .from(t.appUserRoles)
+      .innerJoin(t.roles, eq(t.appUserRoles.roleId, t.roles.id))
+      .where(
+        and(eq(t.appUserRoles.appUserId, userId), eq(t.roles.tenantId, tenantId)),
+      )) as RoleRow[];
+    const builtin = (await (ctx.db as any)
+      .select()
+      .from(t.roles)
+      .where(
+        and(
+          eq(t.roles.tenantId, tenantId),
+          eq(t.roles.name, SYSTEM_ROLES.authenticated),
+        ),
+      )) as RoleRow[];
+    return [...assigned.filter((r) => !r.admin), ...builtin];
   }
   // Only consider roles that belong to the active tenant. A user can have
   // role X in tenant A and role Y in tenant B; each request only sees the
@@ -134,6 +163,7 @@ export const resolvePermission = async (
     auth.userId,
     auth.tenantId ?? null,
     auth.apiKeyRoleId ?? null,
+    auth.plane ?? "platform",
   );
   if (roles.some((r) => r.admin)) {
     return {

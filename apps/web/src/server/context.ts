@@ -192,6 +192,7 @@ export const buildContext = (env: Env): Ctx => {
   // routing per-table. Otherwise (SQLite without Vectorize) fail loud.
   const vectorizeBindings: VectorizeIndexMap = {};
   if (env.VECTORIZE_OPENAI) vectorizeBindings["openai-3-small"] = env.VECTORIZE_OPENAI;
+  if (env.VECTORIZE_OPENAI_LARGE) vectorizeBindings["openai-3-large"] = env.VECTORIZE_OPENAI_LARGE;
   if (env.VECTORIZE_BGE_M3) vectorizeBindings["bge-m3"] = env.VECTORIZE_BGE_M3;
   const hasAnyVectorize =
     Object.keys(vectorizeBindings).length > 0;

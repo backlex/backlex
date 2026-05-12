@@ -104,6 +104,11 @@ function envAuthDefaults(env: any) {
         configured: true,
         system: true,
       },
+      emailOtp: {
+        enabled: Boolean(env.AUTH_PLUGINS?.includes("email-otp")),
+        configured: true,
+        system: true,
+      },
       passkey: {
         enabled: Boolean(env.AUTH_PLUGINS?.includes("passkey")),
         configured: true,

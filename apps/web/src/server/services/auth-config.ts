@@ -13,15 +13,21 @@ export const GLOBAL_AUTH_CONFIG_ID = "_global";
 
 /** Provider keys recognised by the auth-config layer — same keys the admin
  *  "Auth Settings" page reads/writes under `providers.<key>`. */
-export type AuthProviderKey = "email" | "magic" | "passkey" | "github" | "google";
+export type AuthProviderKey =
+  | "email"
+  | "magic"
+  | "emailOtp"
+  | "passkey"
+  | "github"
+  | "google";
 
 export interface PublicProvider {
-  /** Identifier a frontend app passes to the client SDK — `auth.signIn.email()`
-   *  for `"email"`, `auth.signIn.magicLink()` for `"magic"`,
-   *  `auth.signIn.passkey()` for `"passkey"`, `auth.signIn.social("github")`
-   *  for the OAuth providers. */
+  /** Identifier a frontend app passes to the client SDK — `auth.signIn()` for
+   *  `"email"`, `auth.signInMagicLink()` for `"magic"`, the email-OTP flow for
+   *  `"emailOtp"`, the WebAuthn flow for `"passkey"`,
+   *  `auth.signInSocial("github")` for the OAuth providers. */
   id: AuthProviderKey;
-  kind: "credential" | "magic-link" | "passkey" | "social";
+  kind: "credential" | "magic-link" | "email-otp" | "passkey" | "social";
   label: string;
   /** Whether sign-in with this provider is currently offered for this
    *  workspace. The list itself only contains providers the running worker is
@@ -57,6 +63,7 @@ const PROVIDER_META: Record<
 > = {
   email: { kind: "credential", label: "Email & password" },
   magic: { kind: "magic-link", label: "Magic link" },
+  emailOtp: { kind: "email-otp", label: "Email code (OTP)" },
   passkey: { kind: "passkey", label: "Passkey" },
   github: { kind: "social", label: "GitHub" },
   google: { kind: "social", label: "Google" },
@@ -74,6 +81,7 @@ const tableFor = (dialect: "pg" | "sqlite") =>
 const envConfiguredProviders = (env: Env): Record<AuthProviderKey, boolean> => ({
   email: true,
   magic: Boolean(env.AUTH_PLUGINS?.includes("magic-link")),
+  emailOtp: Boolean(env.AUTH_PLUGINS?.includes("email-otp")),
   passkey: Boolean(env.AUTH_PLUGINS?.includes("passkey")),
   github: Boolean(env.OAUTH_GITHUB_CLIENT_ID && env.OAUTH_GITHUB_CLIENT_SECRET),
   google: Boolean(env.OAUTH_GOOGLE_CLIENT_ID && env.OAUTH_GOOGLE_CLIENT_SECRET),
@@ -131,8 +139,9 @@ export const resolveAuthSurface = async (
 
   // A provider is serveable for this workspace if the running worker has it
   // (env) OR the workspace opted in via its stored config: OAuth providers
-  // need their own `clientId` + `clientSecretEnc`; `magic` just needs to be
-  // explicitly enabled (it sends through the deployment's email adapter).
+  // need their own `clientId` + `clientSecretEnc`; `magic` / `emailOtp` just
+  // need to be explicitly enabled (they send through the deployment's email
+  // adapter).
   const isConfigured = (key: AuthProviderKey): boolean => {
     if (envConfigured[key]) return true;
     const e = stored?.providers?.[key] as
@@ -146,7 +155,7 @@ export const resolveAuthSurface = async (
           typeof e.clientSecretEnc === "string",
       );
     }
-    if (key === "magic") return e.enabled === true;
+    if (key === "magic" || key === "emailOtp") return e.enabled === true;
     return false;
   };
 

@@ -20,13 +20,10 @@
  * `rpcToken`). When `mainOrigin` or `rpcToken` is missing the `ctx.*` proxies
  * throw a clear error instead of silently failing.
  *
- * Wire format is identical to `templates/fn-executor` (the Cloudflare
- * Workers-for-Platforms variant), so the two are drop-in interchangeable.
- *
  * Security note: this is a SOFT sandbox — the worker shares the process's
  * globals. Run it as an isolated, least-privilege service (its own host /
- * container, no extra secrets, restricted egress). For hard isolation use the
- * cf-dispatch provider (V8 isolate per request) or a microVM-backed runner.
+ * container, no extra secrets, restricted egress). For hard isolation back it
+ * with a microVM-backed runner.
  */
 
 const PORT = Number(globalThis.process?.env?.PORT ?? 8790);

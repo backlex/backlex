@@ -67,14 +67,14 @@ combinators. A filter that works in one place works in the others.
 Three providers, one selector:
 
 ```
-priority 1: cf-dispatch  → env.FUNCTIONS_DISPATCH bound (Workers paid plan)
+priority 1: remote-http  → env.FUNCTIONS_EXEC_URL set (out-of-isolate executor)
 priority 2: bun-worker   → Bun runtime
-priority 3: quickjs      → anywhere else (free Workers, Vercel, Netlify)
+priority 3: quickjs      → anywhere else (Workers, Vercel, Netlify, Node)
 ```
 
-The host bridge (`apps/api/src/services/sandbox/host-bridge.ts`) is the
+The host bridge (`apps/web/src/server/services/sandbox/host-bridge.ts`) is the
 single dispatcher for `ctx.fetch / ctx.db / ctx.email`. bun-worker calls
-it in-process; cf-dispatch calls it over HTTP at
+it in-process; remote-http calls it over HTTP at
 `/api/_internal/sandbox-rpc` with a Bearer token. Both paths funnel
 through the same permission pipeline.
 

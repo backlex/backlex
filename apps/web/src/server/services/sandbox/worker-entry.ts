@@ -8,8 +8,8 @@
  * user code, and posts back logs + the final result.
  *
  * Security note: the worker still has access to Bun globals (fs, process,
- * Bun, …) even after deletion — this is a SOFT sandbox. Phase 9 v3.5 will
- * use a true OS-level sandbox (Cloudflare dispatch / process isolation).
+ * Bun, …) even after deletion — this is a SOFT sandbox. For hard isolation
+ * run an out-of-isolate executor (the `remote-http` provider) instead.
  */
 
 import type {

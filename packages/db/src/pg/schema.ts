@@ -677,6 +677,29 @@ export const embeddingsOpenai3072 = pgTable(
   ],
 );
 
+/** Self-hosted bge-m3 vectors (TEI/Ollama/etc). Same dimension as the
+ * Workers AI variant, but vectors live in a separate space — a different
+ * build/quantization of the same model yields shifted outputs that aren't
+ * comparable across stores. Keep them isolated. */
+export const embeddingsSelfHostBgeM3 = pgTable(
+  "embeddings_self_host_bge_m3",
+  {
+    id: text("id").primaryKey(),
+    namespace: text("namespace").notNull().default("default"),
+    refId: text("ref_id"),
+    content: text("content"),
+    embedding: vector("embedding", 1024).notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("embeddings_self_host_bge_m3_namespace_idx").on(t.namespace),
+    index("embeddings_self_host_bge_m3_ref_idx").on(t.refId),
+    index("embeddings_self_host_bge_m3_hnsw_idx")
+      .using("hnsw", sql`embedding vector_cosine_ops`),
+  ],
+);
+
 export const embeddingsBgeM3 = pgTable(
   "embeddings_bge_m3",
   {

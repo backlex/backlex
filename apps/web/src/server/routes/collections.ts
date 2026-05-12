@@ -1,13 +1,14 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
-import { AppError } from "@workeros/core";
+import { and, eq, sql, type SQL } from "drizzle-orm";
+import { AppError, EMBEDDING_MODEL_NAMES, type EmbeddingModel } from "@workeros/core";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import {
   applyCollection,
   derivePhysicalTable,
   dropCollection,
+  type FieldDef,
   validateFields,
 } from "@workeros/db";
 import type { AppBindings } from "../app";
@@ -15,6 +16,7 @@ import { requireUser } from "../middleware/session";
 import { seedOwnerScopedPermissions } from "../services/seed";
 import { logActivity } from "../services/activity";
 import { cascadeSlugRename } from "../services/collection-rename";
+import { embedAndUpsertBatch, isVectorizable } from "../services/vectorize";
 
 const FieldSchema = z
   .object({
@@ -72,11 +74,18 @@ const FieldSchema = z
       })
       .optional(),
     group: z.string().optional(),
+    /** Include this field in the embed text when the collection has
+     *  `vectorize: true`. Only meaningful on text/longtext fields. */
+    vectorize: z.boolean().optional(),
   })
   .refine((f) => f.type !== "relation" || !!f.to, {
     message: "relation field must specify `to` (target collection slug)",
     path: ["to"],
   });
+
+const ModelEnum = z.enum(
+  EMBEDDING_MODEL_NAMES as [EmbeddingModel, ...EmbeddingModel[]],
+);
 
 const CollectionInput = z.object({
   slug: z.string().min(1).regex(/^[a-z][a-z0-9_]*$/),
@@ -90,6 +99,11 @@ const CollectionInput = z.object({
    *  rows are scoped to the active tenant. */
   tenantScoped: z.boolean().optional().default(true),
   versioned: z.boolean().optional().default(false),
+  /** Master switch — when true, item writes auto-embed fields with
+   *  `vectorize: true` and the bulk endpoint backfills existing rows. */
+  vectorize: z.boolean().optional().default(false),
+  /** Embedding model key. Null → fall back to env.EMBEDDING_DEFAULT_MODEL. */
+  vectorizeModel: ModelEnum.nullable().optional(),
 });
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -157,6 +171,8 @@ export const collectionsRoutes = new Hono<AppBindings>()
       ownerScoped: body.ownerScoped,
       tenantScoped: body.tenantScoped,
       versioned: body.versioned,
+      vectorize: body.vectorize,
+      vectorizeModel: body.vectorizeModel ?? null,
     });
     await applyCollection(db, dialect, {
       table: physicalTable,
@@ -232,6 +248,10 @@ export const collectionsRoutes = new Hono<AppBindings>()
         ? { tenantScoped: body.tenantScoped }
         : {}),
       ...(body.versioned !== undefined ? { versioned: body.versioned } : {}),
+      ...(body.vectorize !== undefined ? { vectorize: body.vectorize } : {}),
+      ...(body.vectorizeModel !== undefined
+        ? { vectorizeModel: body.vectorizeModel ?? null }
+        : {}),
       updatedAt: new Date(),
     };
     await (db as any)
@@ -283,4 +303,97 @@ export const collectionsRoutes = new Hono<AppBindings>()
       itemId: slug,
     });
     return c.json({ ok: true });
+  })
+  /**
+   * Backfill: embed every existing row in the collection's physical table
+   * and upsert into the vector store. Synchronous + paginated (100 rows per
+   * batch, one provider call per batch). The collection must have
+   * `vectorize: true` and at least one text/longtext field with
+   * `vectorize: true`.
+   *
+   * Returns `{ processed, total, skipped }` — `skipped` counts rows whose
+   * vectorize fields are all empty (nothing to embed).
+   */
+  .post("/:slug/vectorize", requireUser, async (c) => {
+    const slug = c.req.param("slug");
+    const ctx = c.get("ctx");
+    const { db, dialect } = ctx;
+    const tenantId = requireTenant(c);
+    const t = tableFor(dialect);
+    const rows = await (db as any)
+      .select()
+      .from(t)
+      .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)))
+      .limit(1);
+    if (!rows[0]) throw new AppError("NOT_FOUND", "Collection not found");
+    const r = rows[0] as Record<string, unknown>;
+    const meta = {
+      slug,
+      vectorize: Boolean(r.vectorize),
+      vectorizeModel:
+        ((r.vectorizeModel ?? r.vectorize_model) as string | null | undefined) ??
+        null,
+      fields: r.fields as FieldDef[],
+    };
+    if (!meta.vectorize) {
+      throw new AppError(
+        "VALIDATION",
+        `Collection "${slug}" has vectorize disabled. Enable it on the collection first.`,
+      );
+    }
+    if (!isVectorizable(meta, ctx.env)) {
+      throw new AppError(
+        "VALIDATION",
+        "No embedding model resolves for this collection, or no field is marked `vectorize: true`. " +
+          "Pick a model (or set EMBEDDING_DEFAULT_MODEL) and flag at least one text/longtext field.",
+      );
+    }
+    const physicalTable = (r.physicalTable ?? r.physical_table) as string;
+    const tenantWhere: SQL = sql`${sql.identifier("tenant_id")} = ${tenantId}`;
+    const totalRow = await runQuery<{ count: number | string | bigint }>(
+      ctx,
+      sql`SELECT COUNT(*) AS count FROM ${sql.identifier(physicalTable)} WHERE ${tenantWhere}`,
+    );
+    const total = Number(totalRow[0]?.count ?? 0);
+
+    let processed = 0;
+    let skipped = 0;
+    let offset = 0;
+    const batchSize = 100;
+    while (offset < total) {
+      const batch = await runQuery<Record<string, unknown>>(
+        ctx,
+        sql`SELECT * FROM ${sql.identifier(physicalTable)} WHERE ${tenantWhere} ORDER BY ${sql.identifier("id")} LIMIT ${batchSize} OFFSET ${offset}`,
+      );
+      if (batch.length === 0) break;
+      const upserted = await embedAndUpsertBatch(
+        ctx,
+        meta,
+        tenantId,
+        batch.map((row) => ({ id: row.id as string, row })),
+      );
+      processed += upserted;
+      skipped += batch.length - upserted;
+      offset += batch.length;
+    }
+    await logActivity(c, {
+      action: "vectorize",
+      collection: "system_collections",
+      itemId: slug,
+      payload: { processed, skipped, total },
+    });
+    return c.json({ ok: true, processed, skipped, total });
   });
+
+const runQuery = async <T>(
+  ctx: { db: unknown; dialect: "pg" | "sqlite" },
+  query: SQL,
+): Promise<T[]> => {
+  if (ctx.dialect === "pg") {
+    const r = await (ctx.db as any).execute(query);
+    if (Array.isArray(r)) return r as T[];
+    if (r && typeof r === "object" && "rows" in r) return r.rows as T[];
+    return r as T[];
+  }
+  return (await (ctx.db as any).all(query)) as T[];
+};

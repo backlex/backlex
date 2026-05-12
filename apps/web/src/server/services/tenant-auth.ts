@@ -3,13 +3,29 @@ import {
   createTenantAuth,
   type TenantAuth,
   type OAuthProviderConfig,
+  type AuthPlugin,
 } from "@workeros/auth";
+import type { EmailAdapter } from "@workeros/core";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { Env } from "../env";
 import type { DbCtx } from "./seed";
 import { decryptSecret } from "../lib/crypto";
 import { loadAuthConfigRow } from "./auth-config";
+
+/** Parse a session-lifetime string like `30d` / `24h` / `90m` / `3600s` into
+ *  seconds. Returns `undefined` for unrecognised input so callers fall back to
+ *  the built-in default. */
+const parseLifetimeSeconds = (v: string | null | undefined): number | undefined => {
+  if (!v) return undefined;
+  const m = /^(\d+)\s*([smhd])$/i.exec(v.trim());
+  if (!m) return undefined;
+  const n = Number(m[1]);
+  if (!Number.isFinite(n) || n <= 0) return undefined;
+  const unit = m[2]!.toLowerCase();
+  const mult = unit === "s" ? 1 : unit === "m" ? 60 : unit === "h" ? 3600 : 86400;
+  return n * mult;
+};
 
 /**
  * Resolve the workspace end-user auth instance for a given tenant slug — the
@@ -85,14 +101,15 @@ const providerEntry = (
  *     plus a decryptable `clientSecretEnc`; otherwise it falls back to the
  *     env-level OAuth credentials (unless the stored config explicitly
  *     disables it);
- *   - email+password is enabled unless `providers.email.enabled === false`.
- *
- * Per-workspace magic-link / email-otp and a config-driven session lifetime
- * are not wired yet (would need an email adapter handed through here).
+ *   - email+password is enabled unless `providers.email.enabled === false`;
+ *   - magic-link is enabled when `providers.magic.enabled === true` (it sends
+ *     through the deployment's email adapter);
+ *   - the session lifetime comes from `sessionLifetime` (`30d` / `24h` / …).
  */
 export const getTenantAuth = async (
   ctx: DbCtx,
   env: Env,
+  email: EmailAdapter,
   tenant: { id: string; slug: string },
 ): Promise<TenantAuth> => {
   const existing = cache.get(tenant.id);
@@ -124,14 +141,16 @@ export const getTenantAuth = async (
   }
 
   const emailEnabled = providerEntry(stored, "email").enabled !== false;
+  const magicEnabled = providerEntry(stored, "magic").enabled === true;
 
-  const pluginList = (env.AUTH_PLUGINS ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(
-      (p): p is "magic-link" | "email-otp" =>
-        p === "magic-link" || p === "email-otp",
-    );
+  const pluginList: AuthPlugin[] = [];
+  // env-level baseline (email-otp stays env-only for now)
+  for (const p of (env.AUTH_PLUGINS ?? "").split(",").map((s) => s.trim())) {
+    if (p === "magic-link" || p === "email-otp") pluginList.push(p);
+  }
+  if (magicEnabled && !pluginList.includes("magic-link")) pluginList.push("magic-link");
+
+  const sessionExpiresInSeconds = parseLifetimeSeconds(storedRow?.sessionLifetime);
 
   const auth = createTenantAuth(ctx.db, ctx.dialect, {
     tenantId: tenant.id,
@@ -140,6 +159,8 @@ export const getTenantAuth = async (
     secret: env.AUTH_SECRET,
     trustedOrigins: [env.APP_URL],
     emailAndPasswordEnabled: emailEnabled,
+    sessionExpiresInSeconds,
+    email,
     socialProviders: Object.keys(social).length > 0 ? social : undefined,
     plugins: pluginList,
   });

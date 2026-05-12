@@ -68,7 +68,6 @@ export interface AdapterProfile {
   db: string;
   storage: string;
   realtime: string;
-  sandbox: string;
 }
 
 export type AdapterId = "bun" | "workers" | "vercel";
@@ -102,7 +101,7 @@ export const NAV_SETTINGS: NavItem[] = [
 ];
 
 export const ADAPTER_PROFILES: Record<AdapterId, AdapterProfile> = {
-  bun: { db: "sqlite", storage: "fs", realtime: "in-proc + SSE", sandbox: "worker" },
-  workers: { db: "d1", storage: "r2", realtime: "durable object", sandbox: "quickjs / remote-http" },
-  vercel: { db: "pg (neon)", storage: "s3", realtime: "sse", sandbox: "quickjs" },
+  bun: { db: "sqlite", storage: "fs", realtime: "in-proc + SSE" },
+  workers: { db: "d1", storage: "r2", realtime: "durable object" },
+  vercel: { db: "pg (neon)", storage: "s3", realtime: "sse" },
 };

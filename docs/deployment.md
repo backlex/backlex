@@ -37,9 +37,12 @@ wrangler r2 bucket create workeros-files
 wrangler vectorize create workeros-embeddings --dimensions=1536 --metric=cosine
 
 wrangler secret put AUTH_SECRET
-wrangler secret put RESEND_API_KEY        # optional
+wrangler secret put RESEND_API_KEY        # optional — email provider key
+                                          # (or SENDGRID_API_KEY / MAILGUN_API_KEY / SES_*)
 wrangler secret put OAUTH_GOOGLE_CLIENT_ID  # optional
 # ...
+# EMAIL_FROM (and EMAIL_PROVIDER) aren't secrets — put them in wrangler.toml [vars].
+# smtp is not available on Workers; use an HTTP provider here.
 
 wrangler d1 migrations apply workeros --remote
 wrangler deploy
@@ -144,7 +147,8 @@ driver; storage needs S3.
 | `APP_URL`                    | yes       | Admin UI origin (CORS + auth callbacks)      |
 | `AUTH_SECRET`                | yes       | 32-byte random; signs sessions               |
 | `DATABASE_URL`               | yes¹      | Postgres URL (¹ unless on Workers with D1)   |
-| `RESEND_API_KEY` + `EMAIL_FROM` | no     | Resend transactional email                   |
+| `EMAIL_PROVIDER` + `EMAIL_FROM` | no     | Email transport: `console`/`resend`/`sendgrid`/`mailgun`/`ses`/`smtp` (auto-detected from creds if `EMAIL_PROVIDER` unset; `smtp` not on Workers) |
+| `RESEND_API_KEY` \| `SENDGRID_API_KEY` \| `MAILGUN_API_KEY`+`MAILGUN_DOMAIN` \| `SES_REGION`+`SES_ACCESS_KEY_ID`+`SES_SECRET_ACCESS_KEY` \| `SMTP_HOST`+`SMTP_PORT`+`SMTP_USER`+`SMTP_PASSWORD` | no | Credentials for the chosen email provider |
 | `OAUTH_{GOOGLE,GITHUB}_CLIENT_{ID,SECRET}` | no | enable each provider when both set    |
 | `AUTH_PLUGINS`               | no        | Comma-separated: `passkey,magic-link,email-otp,anonymous` |
 | `FUNCTIONS_FETCH_ALLOW`      | no        | Comma-separated host allow-list for ctx.fetch |

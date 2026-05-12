@@ -32,9 +32,15 @@ run_worker_first = ["/api/*", "/health"]
 # AUTH_SECRET = "..."
 # DATABASE_URL = "postgres://..." # only if you want PG via Hyperdrive
 # OPENAI_API_KEY = "..."
-# RESEND_API_KEY = "re_..."       # transactional email via Resend; pair with
-# EMAIL_FROM = "onboarding@resend.dev" # EMAIL_FROM (own verified domain in prod).
-#                                 # If unset, email is logged to stdout instead.
+# Email — EMAIL_PROVIDER picks one (console | resend | sendgrid | mailgun |
+# ses); unset = auto-detect from whichever provider's keys are set, else log
+# to stdout. All providers need EMAIL_FROM (use a verified domain in prod).
+# EMAIL_PROVIDER = "resend"
+# EMAIL_FROM = "onboarding@resend.dev"
+# RESEND_API_KEY = "re_..."
+# SENDGRID_API_KEY = "SG...."
+# MAILGUN_API_KEY = "key-..." ; MAILGUN_DOMAIN = "mg.example.com" ; MAILGUN_HOST = "api.eu.mailgun.net"
+# SES_REGION = "us-east-1" ; SES_ACCESS_KEY_ID = "AKIA..." ; SES_SECRET_ACCESS_KEY = "..."
 # FUNCTIONS_EXEC_URL = "https://fn-exec.example.com" # out-of-isolate executor;
 #   see templates/fn-exec-server. When set, the `remote-http` sandbox provider
 #   runs functions there (with ctx.db/fetch/email) instead of the in-isolate

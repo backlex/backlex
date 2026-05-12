@@ -19,6 +19,12 @@ APP_URL = "https://workeros-api.kinyasfurkan.workers.dev"
 # Comma-separated better-auth plugins enabled at boot. Mirrored in
 # packages/auth/src/client.ts (passkey + magic-link plugin clients).
 AUTH_PLUGINS = "passkey,magic-link,email-otp,anonymous"
+# Transactional email. EMAIL_FROM isn't a secret so it lives here; the
+# provider API key is a secret — set it with `wrangler secret put RESEND_API_KEY`.
+# Use a verified domain address here once DNS is set up (onboarding@resend.dev
+# is Resend's shared test sender — fine to start, rate-limited for real use).
+EMAIL_PROVIDER = "resend"
+EMAIL_FROM = "onboarding@resend.dev"
 # Extra origins allowed to make cross-origin, credentialled requests (on top
 # of APP_URL and the origins derived from each workspace's
 # auth_config.redirectUrls). Set this if customer apps live on other domains:

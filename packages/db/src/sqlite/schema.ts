@@ -583,6 +583,22 @@ export const embeddingsOpenai3072 = sqliteTable(
   ],
 );
 
+export const embeddingsSelfHostBgeM3 = sqliteTable(
+  "embeddings_self_host_bge_m3",
+  {
+    id: text("id").primaryKey(),
+    namespace: text("namespace").notNull().default("default"),
+    refId: text("ref_id"),
+    content: text("content"),
+    metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    index("embeddings_self_host_bge_m3_namespace_idx").on(t.namespace),
+    index("embeddings_self_host_bge_m3_ref_idx").on(t.refId),
+  ],
+);
+
 export const embeddingsBgeM3 = sqliteTable(
   "embeddings_bge_m3",
   {

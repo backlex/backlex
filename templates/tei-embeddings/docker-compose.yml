@@ -1,0 +1,38 @@
+# HuggingFace Text Embeddings Inference — serves an OpenAI-compatible
+# `/v1/embeddings` endpoint that the Workeros `self-host` adapter calls.
+# Point `EMBEDDING_HTTP_URL` at this container's public/internal URL.
+#
+# CPU image:  ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+# CUDA 12.x:  ghcr.io/huggingface/text-embeddings-inference:1.5
+# Apple M-series (host arm64): pull the `cpu-1.5` tag and let buildx route.
+#
+# Run with:
+#   docker compose up -d
+# Smoke test:
+#   curl -s localhost:8080/health
+#   curl -s localhost:8080/v1/embeddings \
+#     -H 'content-type: application/json' \
+#     -d '{"model":"BAAI/bge-m3","input":["merhaba dünya"]}' | jq '.data[0].embedding | length'
+# (expects 1024)
+
+services:
+  embeddings:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      # Auth — if set, clients must send `Authorization: Bearer <value>`.
+      # Match Workeros's EMBEDDING_HTTP_TOKEN.
+      # HF_API_TOKEN: ${HF_API_TOKEN:-}
+      RUST_LOG: text_embeddings_inference=info
+    command:
+      - --model-id=BAAI/bge-m3
+      - --max-client-batch-size=64
+      - --max-batch-tokens=16384
+      # Pooling defaults to the model's config; bge-m3 ships with `cls`.
+    volumes:
+      - tei-data:/data
+
+volumes:
+  tei-data:

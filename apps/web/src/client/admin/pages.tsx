@@ -505,29 +505,30 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
             </div>
           ) : (
           <>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             <span style={{ fontSize: 16, fontWeight: 600 }}>{flow.name}</span>
             <Badge variant={flow.status === "active" ? "default" : "secondary"}>{flow.status}</Badge>
             <span className="muted tabular-nums" style={{ fontSize: 12 }}>· {Number(flow.runs ?? 0).toLocaleString()} runs</span>
-            <div className="spacer" />
-            <Switch checked={flow.status === "active"} onChange={async (next) => {
-              setFlows((arr) => arr.map((f) => f.id === flow.id ? { ...f, status: next ? "active" : "paused" } : f));
-              try {
-                await api(`/api/flows/${flow.id}`, { method: "PATCH", body: JSON.stringify({ active: next }) });
-                pushToast(next ? "Flow resumed." : "Flow paused.");
-              } catch (e) {
-                pushToast((e as Error).message);
-              }
-            }} />
-            <Button variant="outline" size="sm" icon={I.Zap} onClick={async () => {
-              try {
-                await api(`/api/flows/${flow.id}/run`, { method: "POST", body: JSON.stringify({}) });
-                pushToast("Test run dispatched.");
-              } catch (e) {
-                pushToast((e as Error).message);
-              }
-            }}>Run now</Button>
-            <Button variant="primary" size="sm" icon={I.Pencil} onClick={() => openBuilder(flow)}>Edit flow</Button>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginLeft: "auto" }}>
+              <Switch checked={flow.status === "active"} onChange={async (next) => {
+                setFlows((arr) => arr.map((f) => f.id === flow.id ? { ...f, status: next ? "active" : "paused" } : f));
+                try {
+                  await api(`/api/flows/${flow.id}`, { method: "PATCH", body: JSON.stringify({ active: next }) });
+                  pushToast(next ? "Flow resumed." : "Flow paused.");
+                } catch (e) {
+                  pushToast((e as Error).message);
+                }
+              }} />
+              <Button variant="outline" size="sm" icon={I.Zap} onClick={async () => {
+                try {
+                  await api(`/api/flows/${flow.id}/run`, { method: "POST", body: JSON.stringify({}) });
+                  pushToast("Test run dispatched.");
+                } catch (e) {
+                  pushToast((e as Error).message);
+                }
+              }}>Run now</Button>
+              <Button variant="primary" size="sm" icon={I.Pencil} onClick={() => openBuilder(flow)}>Edit flow</Button>
+            </div>
           </div>
 
           <FlowPreview trigger={flow.trigger} operations={flow.operations} onEdit={() => openBuilder(flow)} />
@@ -959,16 +960,17 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
               {renameError && <span className="field-error"><I.AlertTriangle size={11} />{renameError}</span>}
             </div>
           ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <span className="font-mono" style={{ fontSize: 18, fontWeight: 600 }}>{active.name}</span>
             <IconButton icon={I.Pencil} title="Rename function" onClick={() => setRenameDraft(active.name)} />
             <Badge variant="outline">{active.kind}</Badge>
             <span className="font-mono muted" style={{ fontSize: 12 }}>· {active.trigger}</span>
-            <div className="spacer" />
-            <span className="muted" style={{ fontSize: 12 }}>{Number(active.invocations ?? 0).toLocaleString()} invocations · p95 {active.p95 ?? 0}ms</span>
-            <Button variant="outline" size="sm" icon={I.Trash} onClick={() => active && setConfirmDelete(active.name)} style={{ color: "var(--destructive)" }}>Delete</Button>
-            <Button variant="outline" size="sm" icon={I.Save} onClick={saveCode}>Save</Button>
-            <Button variant="primary" size="sm" icon={I.Zap} onClick={run} disabled={running}>{running ? "Running…" : "Run"}</Button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginLeft: "auto" }}>
+              <span className="muted" style={{ fontSize: 12 }}>{Number(active.invocations ?? 0).toLocaleString()} invocations · p95 {active.p95 ?? 0}ms</span>
+              <Button variant="outline" size="sm" icon={I.Trash} onClick={() => active && setConfirmDelete(active.name)} style={{ color: "var(--destructive)" }}>Delete</Button>
+              <Button variant="outline" size="sm" icon={I.Save} onClick={saveCode}>Save</Button>
+              <Button variant="primary" size="sm" icon={I.Zap} onClick={run} disabled={running}>{running ? "Running…" : "Run"}</Button>
+            </div>
           </div>
           )}
 

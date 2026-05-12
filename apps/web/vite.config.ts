@@ -24,6 +24,12 @@ export default defineConfig({
       "bun:sqlite": fileURLToPath(
         new URL("./src/server/shims/bun-sqlite-shim.ts", import.meta.url),
       ),
+      // nodemailer (the SMTP email adapter) pulls in node:net/node:tls, which
+      // the Workers bundle can't resolve. SMTP is never selected on Workers —
+      // this stub keeps the bundler happy and throws if anything calls it.
+      nodemailer: fileURLToPath(
+        new URL("./src/server/shims/nodemailer-shim.ts", import.meta.url),
+      ),
     },
   },
   server: {

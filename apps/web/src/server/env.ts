@@ -39,6 +39,14 @@ export interface Env {
   SES_REGION?: string;
   SES_ACCESS_KEY_ID?: string;
   SES_SECRET_ACCESS_KEY?: string;
+  // Generic SMTP (via nodemailer). Works on Bun / Vercel / Netlify / self-host
+  // — NOT on Cloudflare Workers (no raw TCP sockets). `SMTP_SECURE=true` for
+  // implicit TLS (port 465); leave false for 587/25 (STARTTLS auto-upgraded).
+  SMTP_HOST?: string;
+  SMTP_PORT?: string;
+  SMTP_USER?: string;
+  SMTP_PASSWORD?: string;
+  SMTP_SECURE?: string;
   // OAuth providers. Each provider is enabled iff both id+secret are set.
   OAUTH_GOOGLE_CLIENT_ID?: string;
   OAUTH_GOOGLE_CLIENT_SECRET?: string;

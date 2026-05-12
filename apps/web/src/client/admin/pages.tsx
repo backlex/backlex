@@ -350,6 +350,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
                 : envSet.has("EMAIL_FROM") && envSet.has("SENDGRID_API_KEY") ? "sendgrid"
                 : envSet.has("EMAIL_FROM") && envSet.has("MAILGUN_API_KEY") && envSet.has("MAILGUN_DOMAIN") ? "mailgun"
                 : envSet.has("EMAIL_FROM") && envSet.has("SES_ACCESS_KEY_ID") && envSet.has("SES_SECRET_ACCESS_KEY") && envSet.has("SES_REGION") ? "ses"
+                : envSet.has("EMAIL_FROM") && envSet.has("SMTP_HOST") && adapter !== "workers" ? "smtp"
                 : null;
               const emailConnected = emailProvider !== null;
               const remoteExec = envSet.has("FUNCTIONS_EXEC_URL");

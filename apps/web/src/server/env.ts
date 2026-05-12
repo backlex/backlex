@@ -29,6 +29,11 @@ export interface Env {
   OAUTH_GITHUB_CLIENT_SECRET?: string;
   /** Comma-separated better-auth plugin names: `magic-link,email-otp,anonymous`. */
   AUTH_PLUGINS?: string;
+  /** Comma-separated extra origins (scheme://host[:port]) allowed to make
+   *  cross-origin requests with credentials — on top of `APP_URL` and the
+   *  origins derived from each workspace's `auth_config.redirectUrls`. Set
+   *  this for customer apps hosted on a different domain than the API. */
+  EXTRA_TRUSTED_ORIGINS?: string;
   /** Comma-separated host allow-list for `ctx.fetch` inside functions.
    *  `*` allows any host (development only). Empty disables outbound fetch. */
   FUNCTIONS_FETCH_ALLOW?: string;

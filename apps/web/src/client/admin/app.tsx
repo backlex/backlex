@@ -45,6 +45,7 @@ import { useIsMobile } from "@workeros/ui/hooks/use-mobile";
 import { StoragePage } from "./storage";
 import {
   ActivityPage,
+  AppUsersPage,
   AuthSettingsPage,
   DatabasePage,
   EmailTemplatesPage,
@@ -536,6 +537,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             {activeNav === "translations" && <TranslationsPage pushToast={pushToast} />}
             {activeNav === "authentication" && <AuthSettingsPage pushToast={pushToast} />}
             {activeNav === "users" && <UsersPage pushToast={pushToast} />}
+            {activeNav === "app-users" && <AppUsersPage pushToast={pushToast} />}
             {activeNav === "api-keys" && <ApiKeysPage pushToast={pushToast} />}
             {activeNav === "email-templates" && <EmailTemplatesPage pushToast={pushToast} />}
             {activeNav === "settings" && <SettingsPage adapter={tweaks.adapter} pushToast={pushToast} />}

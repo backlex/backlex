@@ -8,10 +8,20 @@ AUTH_SECRET = "dev-only-secret-not-for-prod-please-rotate"
 TEST_ADMIN_EMAIL = "admin@example.com"
 TEST_ADMIN_PASSWORD = "correct-horse-battery"
 
-# Email transport. buildContext switches to the Resend adapter only when BOTH
-# RESEND_API_KEY and EMAIL_FROM are set; otherwise transactional mail is logged
-# to stdout via the console adapter (fine for local dev).
-# RESEND_API_KEY = "re_..."
+# Email transport. EMAIL_PROVIDER picks one explicitly (console | resend |
+# sendgrid | mailgun | ses); when unset it's auto-detected from whichever
+# provider's credentials are present (priority: resend → sendgrid → mailgun →
+# ses), else logged to stdout via the console adapter. Every provider needs
+# EMAIL_FROM too.
+# EMAIL_PROVIDER = "resend"
 # EMAIL_FROM = "onboarding@resend.dev"   # Resend's test sender (no domain
 #                                          verification); use your own verified
-#                                          domain in production.
+#                                          domain/address in production.
+# --- pick ONE provider's block ---
+# RESEND_API_KEY = "re_..."
+# SENDGRID_API_KEY = "SG...."
+# MAILGUN_API_KEY = "key-..."
+# MAILGUN_DOMAIN = "mg.example.com"      # MAILGUN_HOST = "api.eu.mailgun.net" for EU
+# SES_REGION = "us-east-1"
+# SES_ACCESS_KEY_ID = "AKIA..."
+# SES_SECRET_ACCESS_KEY = "..."

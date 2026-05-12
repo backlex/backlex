@@ -18,10 +18,35 @@ export interface Env {
   REALTIME?: DurableObjectNamespace;
   // Optional AI provider keys.
   OPENAI_API_KEY?: string;
-  // Email transport. If RESEND_API_KEY is set, transactional emails go via
-  // Resend; otherwise messages are logged to stdout (dev console adapter).
-  RESEND_API_KEY?: string;
+  // Email transport. `EMAIL_PROVIDER` picks one explicitly: `console`,
+  // `resend`, `sendgrid`, `mailgun`, or `ses`. When unset, the adapter is
+  // auto-detected from whichever provider's credentials are present
+  // (priority: resend → sendgrid → mailgun → ses), falling back to the
+  // console adapter (logs to stdout). Every provider also needs `EMAIL_FROM`.
+  EMAIL_PROVIDER?: string;
   EMAIL_FROM?: string;
+  // Resend — https://resend.com
+  RESEND_API_KEY?: string;
+  // SendGrid — https://sendgrid.com (Mail Send v3 API)
+  SENDGRID_API_KEY?: string;
+  // Mailgun — https://mailgun.com. `MAILGUN_DOMAIN` is the sending domain;
+  // `MAILGUN_HOST` is `api.mailgun.net` (default) or `api.eu.mailgun.net`.
+  MAILGUN_API_KEY?: string;
+  MAILGUN_DOMAIN?: string;
+  MAILGUN_HOST?: string;
+  // Amazon SES v2 — needs an IAM key with `ses:SendEmail` in a region where
+  // SES is enabled and `EMAIL_FROM`'s address/domain is verified.
+  SES_REGION?: string;
+  SES_ACCESS_KEY_ID?: string;
+  SES_SECRET_ACCESS_KEY?: string;
+  // Generic SMTP (via nodemailer). Works on Bun / Vercel / Netlify / self-host
+  // — NOT on Cloudflare Workers (no raw TCP sockets). `SMTP_SECURE=true` for
+  // implicit TLS (port 465); leave false for 587/25 (STARTTLS auto-upgraded).
+  SMTP_HOST?: string;
+  SMTP_PORT?: string;
+  SMTP_USER?: string;
+  SMTP_PASSWORD?: string;
+  SMTP_SECURE?: string;
   // OAuth providers. Each provider is enabled iff both id+secret are set.
   OAUTH_GOOGLE_CLIENT_ID?: string;
   OAUTH_GOOGLE_CLIENT_SECRET?: string;

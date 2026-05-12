@@ -9,10 +9,10 @@ TEST_ADMIN_EMAIL = "admin@example.com"
 TEST_ADMIN_PASSWORD = "correct-horse-battery"
 
 # Email transport. EMAIL_PROVIDER picks one explicitly (console | resend |
-# sendgrid | mailgun | ses); when unset it's auto-detected from whichever
-# provider's credentials are present (priority: resend → sendgrid → mailgun →
-# ses), else logged to stdout via the console adapter. Every provider needs
-# EMAIL_FROM too.
+# sendgrid | mailgun | ses | smtp); when unset it's auto-detected from
+# whichever provider's credentials are present (priority: resend → sendgrid →
+# mailgun → ses → smtp), else logged to stdout via the console adapter. Every
+# provider needs EMAIL_FROM too.
 # EMAIL_PROVIDER = "resend"
 # EMAIL_FROM = "onboarding@resend.dev"   # Resend's test sender (no domain
 #                                          verification); use your own verified
@@ -25,3 +25,11 @@ TEST_ADMIN_PASSWORD = "correct-horse-battery"
 # SES_REGION = "us-east-1"
 # SES_ACCESS_KEY_ID = "AKIA..."
 # SES_SECRET_ACCESS_KEY = "..."
+# SMTP — NOTE: works on Bun / Vercel / Netlify / self-host, NOT Cloudflare
+# Workers (no raw TCP). SMTP_SECURE=true for implicit TLS on 465; leave unset
+# for 587/25 (STARTTLS auto-negotiated).
+# SMTP_HOST = "smtp.example.com"
+# SMTP_PORT = "587"
+# SMTP_USER = "apikey-or-username"
+# SMTP_PASSWORD = "..."
+# SMTP_SECURE = "false"

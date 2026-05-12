@@ -33,6 +33,7 @@ const SYSTEM_TABLES_PG: Record<string, unknown> = {
   app_settings: pg.schema.appSettings,
   saved_panels: pg.schema.savedPanels,
   auth_config: pg.schema.authConfig,
+  email_config: pg.schema.emailConfig,
 };
 
 const SYSTEM_TABLES_SQLITE: Record<string, unknown> = {
@@ -58,6 +59,7 @@ const SYSTEM_TABLES_SQLITE: Record<string, unknown> = {
   app_settings: sqlite.schema.appSettings,
   saved_panels: sqlite.schema.savedPanels,
   auth_config: sqlite.schema.authConfig,
+  email_config: sqlite.schema.emailConfig,
 };
 
 const queryRows = async <T>(

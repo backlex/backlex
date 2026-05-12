@@ -22,7 +22,7 @@ const loadQuickJS = async () => {
     const msg = (e as Error).message ?? "";
     if (/wasm|node:fs|fetching|module/i.test(msg)) {
       throw new Error(
-        "QuickJS sandbox cannot start in this runtime. Set FUNCTIONS_EXEC_URL (external Bun/Node executor) or FUNCTIONS_DISPATCH (Cloudflare Workers for Platforms), or run `bun run dev:bun` locally.",
+        "QuickJS sandbox cannot start in this runtime. Set FUNCTIONS_EXEC_URL (external Bun/Node executor) or run `bun run dev:bun` locally.",
       );
     }
     throw e;
@@ -84,8 +84,8 @@ const fromQuick = (vm: QuickJSContext, handle: QuickJSHandle): unknown => {
  * (WASM sandbox) but cannot do `ctx.fetch` / `ctx.db` / `ctx.email`. This is
  * the cross-runtime fallback that runs in-isolate everywhere (Cloudflare
  * Workers, Vercel Edge, Netlify Edge, Bun, Node). For functions that need
- * `ctx.*` host I/O, point `FUNCTIONS_EXEC_URL` (or `FUNCTIONS_DISPATCH` on CF)
- * at an out-of-isolate executor instead.
+ * `ctx.*` host I/O, point `FUNCTIONS_EXEC_URL` at an out-of-isolate executor
+ * instead.
  */
 export const quickjsProvider: SandboxProvider = {
   name: "quickjs",

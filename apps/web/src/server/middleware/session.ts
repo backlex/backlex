@@ -99,6 +99,7 @@ const findAppSession = async (
       tenantId: t.sessions.tenantId,
       expiresAt: t.sessions.expiresAt,
       email: t.users.email,
+      status: t.users.status,
     })
     .from(t.sessions)
     .innerJoin(t.users, eq(t.sessions.userId, t.users.id))
@@ -108,9 +109,11 @@ const findAppSession = async (
       tenantId: string;
       expiresAt: Date | number;
       email: string | null;
+      status: string;
     }>;
   const row = rows[0];
   if (!row) return null;
+  if (row.status !== "active") return null; // suspended end-users get no access
   const exp =
     row.expiresAt instanceof Date ? row.expiresAt.getTime() : Number(row.expiresAt);
   if (exp <= Date.now()) return null;

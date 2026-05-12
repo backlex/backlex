@@ -345,7 +345,14 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
               const dbStatus = dbBinding ? dbBinding.status : adapter === "vercel" ? (envSet.has("DATABASE_URL") ? "connected" : "optional") : "connected";
               const storageStatus = storageBinding ? storageBinding.status : adapter === "bun" ? "connected" : (envSet.has("S3_BUCKET") ? "connected" : "optional");
               const realtimeStatus = realtimeBinding ? realtimeBinding.status : adapter === "bun" ? "connected" : "optional";
-              const emailConnected = envSet.has("RESEND_API_KEY") && envSet.has("EMAIL_FROM");
+              const emailProvider =
+                envSet.has("EMAIL_FROM") && envSet.has("RESEND_API_KEY") ? "resend"
+                : envSet.has("EMAIL_FROM") && envSet.has("SENDGRID_API_KEY") ? "sendgrid"
+                : envSet.has("EMAIL_FROM") && envSet.has("MAILGUN_API_KEY") && envSet.has("MAILGUN_DOMAIN") ? "mailgun"
+                : envSet.has("EMAIL_FROM") && envSet.has("SES_ACCESS_KEY_ID") && envSet.has("SES_SECRET_ACCESS_KEY") && envSet.has("SES_REGION") ? "ses"
+                : envSet.has("EMAIL_FROM") && envSet.has("SMTP_HOST") && adapter !== "workers" ? "smtp"
+                : null;
+              const emailConnected = emailProvider !== null;
               const remoteExec = envSet.has("FUNCTIONS_EXEC_URL");
               const sandboxValue = remoteExec ? "remote-http" : adapter === "bun" ? "bun-worker" : "quickjs";
               const sandboxHint = remoteExec ? "FUNCTIONS_EXEC_URL set" : adapter === "bun" ? "worker thread + RPC" : "in-isolate, sync only";
@@ -355,7 +362,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
                 ["Realtime", profile.realtime, realtimeStatus === "connected" ? "connected" : "optional", realtimeBinding?.target ?? profile.realtime],
                 ["Sandbox", sandboxValue, remoteExec || adapter === "bun" ? "connected" : "idle", sandboxHint],
                 ["Vectorize", "vector index", vectorizeBinding ? "connected" : "optional", vectorizeBinding?.target ?? "—"],
-                ["Email", emailConnected ? "resend" : adapter === "bun" ? "console (dev)" : "not configured", emailConnected ? "connected" : "idle", emailConnected ? "EMAIL_FROM set" : adapter === "bun" ? "logs to stdout" : "set RESEND_API_KEY + EMAIL_FROM"],
+                ["Email", emailProvider ?? (adapter === "bun" ? "console (dev)" : "not configured"), emailConnected ? "connected" : "idle", emailConnected ? "EMAIL_FROM set" : adapter === "bun" ? "logs to stdout" : "set EMAIL_FROM + a provider key"],
               ];
               return rows;
             })().map(([k, v, status, hint], i, arr) => (

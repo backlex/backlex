@@ -19,7 +19,7 @@ Admin UI · Typed SDK · CLI · Type generation
 | Storage     | local FS (Bun dev) / Cloudflare R2 (Workers) / S3-compatible (any runtime: AWS, R2, B2, MinIO, Spaces, Wasabi) |
 | Vectors     | `pgvector` (PG) / Cloudflare Vectorize (Workers)                      |
 | Realtime    | SSE in Bun / Durable Objects on Workers                               |
-| Sandbox     | Bun worker thread / Cloudflare dispatch namespace / QuickJS-WASM      |
+| Sandbox     | Bun worker thread / QuickJS-WASM / remote HTTP executor               |
 | Image       | `Bun.Image` (Bun) / Cloudflare Image Resizing (Workers) / passthrough |
 | GraphQL     | graphql-yoga, schema auto-generated from collections                  |
 | Admin UI    | Vite + React + shadcn/ui + Tailwind v4                                |
@@ -71,7 +71,7 @@ The API picks a database based on bindings/env in this order:
 | Target           | Database                | Storage                       | Realtime        | Sandbox        |
 |------------------|-------------------------|-------------------------------|-----------------|----------------|
 | Bun (self-host)  | SQLite or Postgres      | local fs / S3 (`Bun.S3Client`)| in-proc + SSE   | Worker thread  |
-| Cloudflare Workers | D1 or Hyperdrive→PG  | R2 / S3 (`aws4fetch`)         | Durable Objects | QuickJS / dispatch |
+| Cloudflare Workers | D1 or Hyperdrive→PG  | R2 / S3 (`aws4fetch`)         | Durable Objects | QuickJS / remote HTTP |
 | Vercel Edge      | Postgres (Neon HTTP)    | S3 (`aws4fetch`)              | SSE             | QuickJS        |
 | Netlify Edge     | Postgres (Neon HTTP)    | S3 (`aws4fetch`)              | SSE             | QuickJS        |
 
@@ -99,13 +99,11 @@ wrangler d1 migrations apply workeros --remote
 wrangler deploy
 ```
 
-Optional: deploy the function executor sub-Worker for cf-dispatch sandbox:
-
-```bash
-wrangler dispatch-namespace create workeros-functions
-cd apps/api/templates/fn-executor && wrangler deploy
-# then uncomment [[dispatch_namespaces]] in apps/api/wrangler.toml
-```
+Optional: run the out-of-isolate function executor (`templates/fn-exec-server`)
+on Fly / Railway / a VM for DB-aware functions, then set `FUNCTIONS_EXEC_URL`
++ `SANDBOX_RPC_TOKEN` + `SELF_URL` on the Worker so the `remote-http` sandbox
+provider routes there. Without it, functions run in the in-isolate QuickJS-WASM
+sandbox (sync only, no `ctx.*` host I/O).
 
 ### Vercel
 
@@ -177,7 +175,7 @@ GET    /api/users               admin
 POST   /api/users/:id/roles     admin
 *      /api/graphql             GraphQL (queries + mutations)
 GET    /api/_cron/tick          internal — used by Vercel/Netlify cron
-POST   /api/_internal/sandbox-rpc   internal — Bearer-auth, used by cf-dispatch executor
+POST   /api/_internal/sandbox-rpc   internal — Bearer-auth, used by the remote-http executor
 ```
 
 ## Documentation

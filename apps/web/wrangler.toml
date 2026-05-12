@@ -72,13 +72,3 @@ new_classes = ["RealtimeRoom"]
 # multiple expressions but minimum granularity is 1 minute).
 [triggers]
 crons = ["* * * * *"]
-
-# Optional: Workers-for-Platforms dispatch namespace for the cf-dispatch
-# sandbox provider. Enables function execution in V8 isolates per request.
-# Setup:
-#   wrangler dispatch-namespace create workeros-functions
-#   cd templates/fn-executor && wrangler deploy
-# Then uncomment:
-# [[dispatch_namespaces]]
-# binding = "FUNCTIONS_DISPATCH"
-# namespace = "workeros-functions"

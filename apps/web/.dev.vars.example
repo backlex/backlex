@@ -7,3 +7,11 @@ AUTH_SECRET = "dev-only-secret-not-for-prod-please-rotate"
 # the admin role (see CLAUDE.md "Local test admin").
 TEST_ADMIN_EMAIL = "admin@example.com"
 TEST_ADMIN_PASSWORD = "correct-horse-battery"
+
+# Email transport. buildContext switches to the Resend adapter only when BOTH
+# RESEND_API_KEY and EMAIL_FROM are set; otherwise transactional mail is logged
+# to stdout via the console adapter (fine for local dev).
+# RESEND_API_KEY = "re_..."
+# EMAIL_FROM = "onboarding@resend.dev"   # Resend's test sender (no domain
+#                                          verification); use your own verified
+#                                          domain in production.

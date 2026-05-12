@@ -533,6 +533,11 @@ export const collections = sqliteTable(
      *  + `_published_at` column. PATCH writes update the draft; explicit
      *  `POST /:id/publish` flips status. */
     versioned: integer("versioned", { mode: "boolean" }).notNull().default(false),
+    /** When true, item writes auto-generate embeddings from fields flagged
+     *  `vectorize: true` on the field definition. */
+    vectorize: integer("vectorize", { mode: "boolean" }).notNull().default(false),
+    /** Embedding model key (e.g. `bge-m3`). Null → env default → skip. */
+    vectorizeModel: text("vectorize_model"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },

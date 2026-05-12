@@ -322,17 +322,30 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pushToast]);
 
-  // Real-time subscription to the active collection's events channel.
-  // - Workers (env.REALTIME bound): WebSocket via Durable Object
-  // - Bun: SSE via streamSSE
-  // We detect once via settingsApi.runtime() and pick the right transport.
+  // Realtime page selection lifted here so the subscription can follow whichever
+  // channel that page has active — otherwise navigating to /realtime never opens
+  // a connection (activeCollection is null there) and the tail stays empty.
+  const [realtimeChannel, setRealtimeChannel] = useState<string>("collections");
+
+  // Channel actually being subscribed: the Realtime page's selection when that
+  // page is visible, otherwise the open collection's items channel.
+  const subscriptionChannel: string | null =
+    activeNav === "realtime"
+      ? realtimeChannel
+      : activeNav === "collections" && activeCollection
+        ? `items:${activeCollection}`
+        : null;
+
+  // Real-time subscription to `subscriptionChannel`. The server route always
+  // returns SSE (on Workers it bridges the DO WebSocket into the response), so
+  // EventSource is the right transport on both runtimes — opening a raw
+  // WebSocket against the same URL was the cause of the silent tail.
   // Each incoming event is mapped into the design's RealtimeEvent shape so
-  // RealtimeTail keeps rendering identically — only the data source changes.
+  // RealtimeTail keeps rendering identically.
   useEffect(() => {
     if (!tweaks.showRealtime) return;
-    if (!activeCollection) { setEvents([]); return; }
-    const channel = `items:${activeCollection}`;
-    let cleanup: (() => void) | null = null;
+    if (!subscriptionChannel) { setEvents([]); return; }
+    const channel = subscriptionChannel;
     let alive = true;
     const onMsg = (raw: string) => {
       if (!alive) return;
@@ -354,35 +367,21 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
         // malformed payload — ignore
       }
     };
-    void (async () => {
-      const adapter = tweaks.adapter;
-      if (adapter === "workers") {
-        // Workers — WebSocket through the Durable Object.
-        const proto = location.protocol === "https:" ? "wss:" : "ws:";
-        const url = `${proto}//${location.host}/api/realtime/${encodeURIComponent(channel)}/subscribe`;
-        try {
-          const ws = new WebSocket(url);
-          ws.addEventListener("message", (ev) => onMsg(typeof ev.data === "string" ? ev.data : ""));
-          cleanup = () => { try { ws.close(); } catch {} };
-        } catch {
-          // browser refused — leave events empty
-        }
-      } else {
-        // Bun (or any non-DO runtime) — SSE.
-        try {
-          const es = new EventSource(`/api/realtime/${encodeURIComponent(channel)}/subscribe`, { withCredentials: true });
-          es.addEventListener("message", (ev) => onMsg((ev as MessageEvent).data));
-          cleanup = () => es.close();
-        } catch {
-          // EventSource unsupported — leave events empty
-        }
-      }
-    })();
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource(`/api/realtime/${encodeURIComponent(channel)}/subscribe`, { withCredentials: true });
+      es.addEventListener("message", (ev) => onMsg((ev as MessageEvent).data));
+    } catch {
+      // EventSource unsupported — leave events empty
+    }
+    // Reset the tail whenever the channel changes so stale events from the
+    // previous subscription don't sit on top of the new feed.
+    setEvents([]);
     return () => {
       alive = false;
-      if (cleanup) cleanup();
+      es?.close();
     };
-  }, [tweaks.showRealtime, tweaks.adapter, activeCollection]);
+  }, [tweaks.showRealtime, subscriptionChannel]);
 
   const itemsForView = useMemo(() => {
     let rows = tweaks.populated ? posts : [];
@@ -530,7 +529,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             {activeNav === "flows" && <FlowsPage pushToast={pushToast} activeFlow={activeFlow} setActiveFlow={setActiveFlow} />}
             {activeNav === "functions" && <FunctionsPage pushToast={pushToast} />}
             {activeNav === "webhooks" && <WebhooksPage pushToast={pushToast} />}
-            {activeNav === "realtime" && <RealtimePage events={events} pushToast={pushToast} />}
+            {activeNav === "realtime" && <RealtimePage events={events} active={realtimeChannel} onActiveChange={setRealtimeChannel} pushToast={pushToast} />}
             {activeNav === "insights" && <InsightsPage pushToast={pushToast} />}
             {activeNav === "activity" && <ActivityPage pushToast={pushToast} />}
             {activeNav === "revisions" && <RevisionsPage pushToast={pushToast} />}

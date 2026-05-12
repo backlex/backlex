@@ -28,19 +28,32 @@ const tablesFor = (dialect: "pg" | "sqlite") =>
 
 /** Roles the user holds *within this tenant*. Used by tenantMiddleware to
  *  rewrite auth.roles after the active tenant is known — sessionMiddleware
- *  can't filter by tenant because resolution hasn't happened yet there. */
+ *  can't filter by tenant because resolution hasn't happened yet there.
+ *
+ *  `restrictRoleId` (set when the request authenticated with a role-scoped
+ *  API key) narrows the result to that single role — and only while the
+ *  owner still holds it, so a scoped key can never out-live the grant. */
 const loadTenantRoleNames = async (
   db: unknown,
   dialect: "pg" | "sqlite",
   tenantId: string,
   userId: string,
+  restrictRoleId: string | null,
 ): Promise<string[]> => {
   const t = tablesFor(dialect);
   const rows = (await (db as any)
     .select({ name: t.roles.name })
     .from(t.userRoles)
     .innerJoin(t.roles, eq(t.userRoles.roleId, t.roles.id))
-    .where(and(eq(t.userRoles.userId, userId), eq(t.roles.tenantId, tenantId)))) as { name: string }[];
+    .where(
+      restrictRoleId
+        ? and(
+            eq(t.userRoles.userId, userId),
+            eq(t.roles.tenantId, tenantId),
+            eq(t.roles.id, restrictRoleId),
+          )
+        : and(eq(t.userRoles.userId, userId), eq(t.roles.tenantId, tenantId)),
+    )) as { name: string }[];
   return rows.map((r) => r.name);
 };
 
@@ -194,7 +207,13 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   // permission resolver loads their workspace roles separately.
   let tenantRoles = auth.roles;
   if (auth.userId && auth.plane !== "app" && tenantId) {
-    tenantRoles = await loadTenantRoleNames(db, dialect, tenantId, auth.userId);
+    tenantRoles = await loadTenantRoleNames(
+      db,
+      dialect,
+      tenantId,
+      auth.userId,
+      auth.apiKeyRoleId ?? null,
+    );
     // Best-effort persistence; ignore failures.
     void persistActive(db, dialect, auth.userId, tenantId).catch(() => {});
     void touchMember(db, dialect, tenantId, auth.userId).catch(() => {});

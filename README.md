@@ -197,7 +197,7 @@ Cross-runtime concerns live behind interfaces in `@workeros/core/adapters`:
 - `StorageAdapter` — `fsStorage` (Bun dev) / `r2Storage` (Workers) / `bunS3Storage` (Bun + S3) / `s3FetchStorage` (any runtime + S3)
 - `VectorAdapter` — `pgvectorAdapter` (PG) / `vectorizeAdapter` (Workers)
 - `RealtimeAdapter` — in-proc + SSE (Bun) / Durable Object + WS (Workers)
-- `EmailAdapter` — `consoleEmail` (dev) / `resendEmail` (Resend HTTP)
+- `EmailAdapter` — `consoleEmail` (dev) / `resendEmail` / `sendgridEmail` / `mailgunEmail` / `sesEmail` (HTTP APIs, any runtime) / `smtpEmail` (nodemailer, not on Workers) — pick via `EMAIL_PROVIDER`
 - `ImageAdapter` — `bunImage` (`Bun.Image`) / `cfImage` (CF Image Resize) / `passthroughImage`
 
 `apps/api/src/context.ts` picks the right adapter based on bindings/env.

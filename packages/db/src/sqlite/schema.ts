@@ -543,12 +543,16 @@ export const collections = sqliteTable(
 );
 
 /**
- * SQLite (D1) does not support native vector indexes. On the edge, vectors
- * live in Cloudflare Vectorize (bound separately). This table only mirrors
- * the metadata so we can list/delete embeddings transactionally.
+ * SQLite (D1) has no native vector indexes — on the edge the actual vectors
+ * live in Cloudflare Vectorize (bound separately, one binding per model).
+ * These tables mirror only the metadata so we can list/delete transactionally
+ * alongside the rest of the workspace state.
+ *
+ * One table per embedding model — see the PG schema for rationale.
  */
-export const embeddings = sqliteTable(
-  "embeddings",
+
+export const embeddingsOpenai1536 = sqliteTable(
+  "embeddings_openai_1536",
   {
     id: text("id").primaryKey(),
     namespace: text("namespace").notNull().default("default"),
@@ -558,8 +562,24 @@ export const embeddings = sqliteTable(
     createdAt: ts("created_at"),
   },
   (t) => [
-    index("embeddings_namespace_idx").on(t.namespace),
-    index("embeddings_ref_idx").on(t.refId),
+    index("embeddings_openai_1536_namespace_idx").on(t.namespace),
+    index("embeddings_openai_1536_ref_idx").on(t.refId),
+  ],
+);
+
+export const embeddingsBgeM3 = sqliteTable(
+  "embeddings_bge_m3",
+  {
+    id: text("id").primaryKey(),
+    namespace: text("namespace").notNull().default("default"),
+    refId: text("ref_id"),
+    content: text("content"),
+    metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    index("embeddings_bge_m3_namespace_idx").on(t.namespace),
+    index("embeddings_bge_m3_ref_idx").on(t.refId),
   ],
 );
 

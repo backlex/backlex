@@ -232,13 +232,17 @@ export const tenantsRoutes = new Hono<AppBindings>()
       inviteToken: token,
       inviteExpiresAt: expires,
     });
-    // Best-effort send. Email adapter handles dev console.
-    void ctx.email
-      .send({
-        to: body.email,
-        subject: `You've been invited to a workeros workspace`,
-        text: `Open ${ctx.env.APP_URL}/invite?token=${token} to accept.`,
-      })
+    // Best-effort send through the target workspace's transport. Email adapter
+    // handles dev console.
+    void ctx
+      .emailFor(id)
+      .then((transport) =>
+        transport.send({
+          to: body.email,
+          subject: `You've been invited to a workeros workspace`,
+          text: `Open ${ctx.env.APP_URL}/invite?token=${token} to accept.`,
+        }),
+      )
       .catch(() => {});
     return c.json({ data: { id: memberId, token } }, 201);
   })

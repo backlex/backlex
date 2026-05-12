@@ -95,6 +95,7 @@ export const NAV_SETTINGS: NavItem[] = [
   { id: "authentication", label: "Authentication", icon: "Shield" },
   { id: "roles", label: "Roles & permissions", icon: "Shield" },
   { id: "users", label: "Users", icon: "Users" },
+  { id: "app-users", label: "App users", icon: "Users" },
   { id: "api-keys", label: "API keys", icon: "Code" },
   { id: "email-templates", label: "Email templates", icon: "Mail" },
   { id: "settings", label: "Settings", icon: "Settings" },

@@ -4,10 +4,10 @@ import type { Ctx } from "../../context";
 export interface SandboxBindings {
   ctx: Ctx;
   auth: AuthSubject;
-  /** Public origin of the main Worker — required by cf-dispatch so the
-   *  executor sub-Worker can call back over HTTP for ctx.* RPC. Derived
-   *  from the request URL by route handlers; for cron triggers falls back
-   *  to `env.SELF_URL`. Other providers ignore it. */
+  /** Public origin of the main Worker — required by the `remote-http`
+   *  provider so the executor service can call back over HTTP for ctx.*
+   *  RPC. Derived from the request URL by route handlers; for cron triggers
+   *  falls back to `env.SELF_URL`. Other providers ignore it. */
   selfOrigin?: string;
 }
 

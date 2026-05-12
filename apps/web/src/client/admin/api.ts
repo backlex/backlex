@@ -53,6 +53,25 @@ export interface ApiUser {
   roles: { id: string; name: string }[];
 }
 
+/** A workspace end-user (the `app_users` pool — the customers of the app
+ *  built on this workspace, distinct from the control-plane `ApiUser`). */
+export interface ApiAppUser {
+  id: string;
+  email: string;
+  name: string | null;
+  emailVerified: boolean;
+  status: "active" | "suspended";
+  createdAt: string | number;
+  roles: { id: string; name: string }[];
+}
+
+export interface ApiRole {
+  id: string;
+  name: string;
+  description?: string | null;
+  admin: boolean;
+}
+
 export interface ApiSession {
   id: string;
   userId: string;
@@ -254,6 +273,28 @@ export const usersApi = {
     }),
   removeRole: (userId: string, roleId: string) =>
     api<{ ok: true }>(`/api/users/${userId}/roles/${roleId}`, { method: "DELETE" }),
+};
+
+export const rolesApi = {
+  list: () => api<Envelope<ApiRole[]>>(`/api/roles`),
+};
+
+/** Workspace end-user pool admin (the `app_users` table). All endpoints are
+ *  admin-only and scoped to the active workspace. */
+export const appUsersApi = {
+  list: () => api<Envelope<ApiAppUser[]>>(`/api/app-users`),
+  setRoles: (id: string, roleIds: string[]) =>
+    api<{ ok: true; roleIds: string[] }>(`/api/app-users/${id}/roles`, {
+      method: "PUT",
+      body: JSON.stringify({ roleIds }),
+    }),
+  patch: (id: string, body: { status?: "active" | "suspended" }) =>
+    api<{ ok: true }>(`/api/app-users/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  remove: (id: string) =>
+    api<{ ok: true }>(`/api/app-users/${id}`, { method: "DELETE" }),
 };
 
 export const functionsApi = {

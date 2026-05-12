@@ -623,12 +623,21 @@ export const collections = pgTable(
 );
 
 /**
- * Embeddings are kept in a dedicated table so the vector dimension can be
- * fixed at schema time.  Default 1536 (OpenAI/text-embedding-3-small).  If
- * you need multiple models, create one table per model.
+ * Embeddings — one table per embedding model. Vectors from different models
+ * live in disjoint vector spaces and have different dimensions, so mixing
+ * them in one table would force `vector(N)` to compromise on N and would
+ * yield meaningless cosine results across models. Adding a new model means
+ * adding a sibling table here, registering it in
+ * `packages/core/src/embedding-models.ts`, and (on Workers) binding a
+ * matching `[[vectorize]]` index in wrangler.toml.
+ *
+ * drizzle-kit may not generate the `USING hnsw` part — if a generated
+ * migration omits it, add manually:
+ *   CREATE INDEX <name>_hnsw_idx ON <table> USING hnsw (embedding vector_cosine_ops);
  */
-export const embeddings = pgTable(
-  "embeddings",
+
+export const embeddingsOpenai1536 = pgTable(
+  "embeddings_openai_1536",
   {
     id: text("id").primaryKey(),
     namespace: text("namespace").notNull().default("default"),
@@ -639,13 +648,73 @@ export const embeddings = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    index("embeddings_namespace_idx").on(t.namespace),
-    index("embeddings_ref_idx").on(t.refId),
-    // pgvector HNSW index for cosine similarity. drizzle-kit may not yet
-    // generate vector indexes; if missing, add manually:
-    //   CREATE INDEX embeddings_hnsw_idx ON embeddings
-    //     USING hnsw (embedding vector_cosine_ops);
-    index("embeddings_hnsw_idx")
+    index("embeddings_openai_1536_namespace_idx").on(t.namespace),
+    index("embeddings_openai_1536_ref_idx").on(t.refId),
+    index("embeddings_openai_1536_hnsw_idx")
+      .using("hnsw", sql`embedding vector_cosine_ops`),
+  ],
+);
+
+export const embeddingsOpenai3072 = pgTable(
+  "embeddings_openai_3072",
+  {
+    id: text("id").primaryKey(),
+    namespace: text("namespace").notNull().default("default"),
+    refId: text("ref_id"),
+    content: text("content"),
+    embedding: vector("embedding", 3072).notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("embeddings_openai_3072_namespace_idx").on(t.namespace),
+    index("embeddings_openai_3072_ref_idx").on(t.refId),
+    // NOTE: pgvector's HNSW index caps at 2000 dimensions. For 3072-dim
+    // vectors use IVFFlat instead (slightly slower build, comparable recall
+    // at the right `lists` setting). Add manually once the table has rows:
+    //   CREATE INDEX embeddings_openai_3072_ivfflat_idx ON embeddings_openai_3072
+    //     USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+  ],
+);
+
+/** Self-hosted bge-m3 vectors (TEI/Ollama/etc). Same dimension as the
+ * Workers AI variant, but vectors live in a separate space — a different
+ * build/quantization of the same model yields shifted outputs that aren't
+ * comparable across stores. Keep them isolated. */
+export const embeddingsSelfHostBgeM3 = pgTable(
+  "embeddings_self_host_bge_m3",
+  {
+    id: text("id").primaryKey(),
+    namespace: text("namespace").notNull().default("default"),
+    refId: text("ref_id"),
+    content: text("content"),
+    embedding: vector("embedding", 1024).notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("embeddings_self_host_bge_m3_namespace_idx").on(t.namespace),
+    index("embeddings_self_host_bge_m3_ref_idx").on(t.refId),
+    index("embeddings_self_host_bge_m3_hnsw_idx")
+      .using("hnsw", sql`embedding vector_cosine_ops`),
+  ],
+);
+
+export const embeddingsBgeM3 = pgTable(
+  "embeddings_bge_m3",
+  {
+    id: text("id").primaryKey(),
+    namespace: text("namespace").notNull().default("default"),
+    refId: text("ref_id"),
+    content: text("content"),
+    embedding: vector("embedding", 1024).notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("embeddings_bge_m3_namespace_idx").on(t.namespace),
+    index("embeddings_bge_m3_ref_idx").on(t.refId),
+    index("embeddings_bge_m3_hnsw_idx")
       .using("hnsw", sql`embedding vector_cosine_ops`),
   ],
 );

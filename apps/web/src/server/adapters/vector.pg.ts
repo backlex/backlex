@@ -1,15 +1,43 @@
 import { sql } from "drizzle-orm";
 import type { PgDb } from "@workeros/db/pg";
 import { schema } from "@workeros/db/pg";
+import { AppError } from "@workeros/core";
 import type { VectorAdapter } from "@workeros/core/adapters";
+import { getEmbeddingModel, type EmbeddingModel } from "@workeros/core";
+
+/**
+ * One Postgres table per embedding model — table name comes from the model
+ * registry (`EMBEDDING_MODELS[model].pgTable`). Storing different-dim vectors
+ * in different tables keeps each HNSW index type-correct and lets pgvector's
+ * `<=>` operator stay statically valid.
+ */
+
+const tableFor = (model: EmbeddingModel): string =>
+  getEmbeddingModel(model).pgTable;
+
+const assertDim = (
+  model: EmbeddingModel,
+  values: number[],
+  what: "Vector" | "Query vector",
+) => {
+  const def = getEmbeddingModel(model);
+  if (values.length !== def.dimensions) {
+    throw new AppError(
+      "VALIDATION",
+      `${what} for model '${model}' must have ${def.dimensions} dimensions, got ${values.length}`,
+    );
+  }
+};
 
 export const pgvectorAdapter = (db: PgDb): VectorAdapter => ({
-  async upsert(records) {
+  async upsert(model, records) {
     if (records.length === 0) return;
+    const table = tableFor(model);
+    for (const r of records) assertDim(model, r.values, "Vector");
     await db.transaction(async (tx) => {
       for (const r of records) {
         await tx.execute(sql`
-          INSERT INTO embeddings (id, namespace, ref_id, content, embedding, metadata)
+          INSERT INTO ${sql.identifier(table)} (id, namespace, ref_id, content, embedding, metadata)
           VALUES (
             ${r.id},
             ${r.namespace ?? "default"},
@@ -25,26 +53,36 @@ export const pgvectorAdapter = (db: PgDb): VectorAdapter => ({
       }
     });
   },
-  async query({ values, topK = 10, namespace = "default" }) {
-    const rows = await db.execute<{ id: string; score: number; metadata: unknown }>(sql`
+  async query(model, { values, topK = 10, namespace = "default" }) {
+    assertDim(model, values, "Query vector");
+    const table = tableFor(model);
+    const lit = `[${values.join(",")}]`;
+    const rows = await db.execute<{
+      id: string;
+      score: number;
+      metadata: unknown;
+    }>(sql`
       SELECT id,
-             1 - (embedding <=> ${`[${values.join(",")}]`}::vector) AS score,
+             1 - (embedding <=> ${lit}::vector) AS score,
              metadata
-      FROM embeddings
+      FROM ${sql.identifier(table)}
       WHERE namespace = ${namespace}
-      ORDER BY embedding <=> ${`[${values.join(",")}]`}::vector
+      ORDER BY embedding <=> ${lit}::vector
       LIMIT ${topK}
     `);
     return rows.map((r) => ({
       id: r.id,
       score: Number(r.score),
-      metadata: (r.metadata ?? undefined) as Record<string, unknown> | undefined,
+      metadata: (r.metadata ?? undefined) as
+        | Record<string, unknown>
+        | undefined,
     }));
   },
-  async delete(ids, namespace = "default") {
+  async delete(model, ids, namespace = "default") {
     if (ids.length === 0) return;
+    const table = tableFor(model);
     await db.execute(sql`
-      DELETE FROM embeddings
+      DELETE FROM ${sql.identifier(table)}
       WHERE namespace = ${namespace} AND id = ANY(${ids})
     `);
   },

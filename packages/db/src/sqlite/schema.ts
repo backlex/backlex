@@ -141,6 +141,93 @@ export const passkeys = sqliteTable(
   ],
 );
 
+/* ─────────────────────────────────────────────────────────────────────
+ * Workspace end-user auth pool ("auth as a service"). See the matching block
+ * in ../pg/schema.ts — these mirror `users`/`sessions`/`accounts`/
+ * `verifications` but back a separate, per-tenant identity pool for the
+ * end-users of apps built on a workspace. Not wired into request handling yet.
+ * ───────────────────────────────────────────────────────────────────── */
+
+export const appUsers = sqliteTable(
+  "app_users",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
+    name: text("name"),
+    image: text("image"),
+    status: text("status").notNull().default("active"),
+    suspendedAt: integer("suspended_at", { mode: "timestamp_ms" }),
+    isAnonymous: integer("is_anonymous", { mode: "boolean" }).notNull().default(false),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("app_users_tenant_email_idx").on(t.tenantId, t.email),
+    index("app_users_tenant_idx").on(t.tenantId),
+  ],
+);
+
+export const appSessions = sqliteTable(
+  "app_sessions",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => appUsers.id, { onDelete: "cascade" }),
+    token: text("token").notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("app_sessions_token_idx").on(t.token),
+    index("app_sessions_user_idx").on(t.userId),
+    index("app_sessions_tenant_idx").on(t.tenantId),
+  ],
+);
+
+export const appAccounts = sqliteTable("app_accounts", {
+  id: text("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => appUsers.id, { onDelete: "cascade" }),
+  providerId: text("provider_id").notNull(),
+  accountId: text("account_id").notNull(),
+  password: text("password"),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  idToken: text("id_token"),
+  accessTokenExpiresAt: integer("access_token_expires_at", { mode: "timestamp_ms" }),
+  refreshTokenExpiresAt: integer("refresh_token_expires_at", { mode: "timestamp_ms" }),
+  scope: text("scope"),
+  createdAt: ts("created_at"),
+  updatedAt: ts("updated_at"),
+});
+
+export const appVerifications = sqliteTable("app_verifications", {
+  id: text("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  identifier: text("identifier").notNull(),
+  value: text("value").notNull(),
+  expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+  createdAt: ts("created_at"),
+  updatedAt: ts("updated_at"),
+});
+
 export const roles = sqliteTable(
   "roles",
   {
@@ -174,6 +261,25 @@ export const userRoles = sqliteTable(
   (t) => [
     uniqueIndex("user_roles_pk").on(t.userId, t.roleId),
     index("user_roles_role_idx").on(t.roleId),
+  ],
+);
+
+/** Role assignments for workspace end-users (the `app_users` pool). See the
+ *  PG schema for the rationale. */
+export const appUserRoles = sqliteTable(
+  "app_user_roles",
+  {
+    appUserId: text("app_user_id")
+      .notNull()
+      .references(() => appUsers.id, { onDelete: "cascade" }),
+    roleId: text("role_id")
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    uniqueIndex("app_user_roles_pk").on(t.appUserId, t.roleId),
+    index("app_user_roles_role_idx").on(t.roleId),
   ],
 );
 

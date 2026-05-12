@@ -431,6 +431,7 @@ type AuthProviderRow = {
 const AUTH_PROVIDER_NAMES: Record<string, string> = {
   email: "Email + password",
   magic: "Magic link",
+  emailOtp: "Email code (OTP)",
   github: "GitHub",
   google: "Google",
   apple: "Apple",

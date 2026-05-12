@@ -16,6 +16,10 @@ import { pgvectorAdapter } from "./adapters/vector.pg";
 import { vectorizeAdapter } from "./adapters/vector.cf";
 import { consoleEmail } from "./adapters/email.console";
 import { resendEmail } from "./adapters/email.resend";
+import { sendgridEmail } from "./adapters/email.sendgrid";
+import { mailgunEmail } from "./adapters/email.mailgun";
+import { sesEmail } from "./adapters/email.ses";
+import { smtpEmail } from "./adapters/email.smtp";
 import { bunImage } from "./adapters/image.bun";
 import { passthroughImage } from "./adapters/image.passthrough";
 import {
@@ -66,10 +70,7 @@ export const buildContext = (env: Env): Ctx => {
     };
   }
 
-  const email: EmailAdapter =
-    env.RESEND_API_KEY && env.EMAIL_FROM
-      ? resendEmail(env.RESEND_API_KEY, env.EMAIL_FROM)
-      : consoleEmail();
+  const email: EmailAdapter = selectEmailAdapter(env);
 
   const pluginList = (env.AUTH_PLUGINS ?? "")
     .split(",")
@@ -173,6 +174,82 @@ export const buildContext = (env: Env): Ctx => {
   // fully assembled Ctx (runFlows + webhook dispatch need `fullCtx`).
   fullCtx = ctx;
   return ctx;
+};
+
+type EmailProvider = "console" | "resend" | "sendgrid" | "mailgun" | "ses" | "smtp";
+
+const onCloudflareWorkers = (): boolean =>
+  typeof navigator !== "undefined" &&
+  (navigator as { userAgent?: string }).userAgent === "Cloudflare-Workers";
+
+/**
+ * Resolve the email adapter. `EMAIL_PROVIDER` forces a specific transport;
+ * when unset we auto-detect from whichever provider has complete credentials
+ * (priority: resend → sendgrid → mailgun → ses → smtp) and otherwise log to
+ * stdout. `smtp` only works off Cloudflare Workers (it needs raw TCP); on
+ * Workers it's skipped with a warning. If an explicitly-requested provider is
+ * missing config we warn and fall back to the console adapter rather than
+ * crash the whole runtime.
+ */
+const selectEmailAdapter = (env: Env): EmailAdapter => {
+  const from = env.EMAIL_FROM;
+  const builders: Record<Exclude<EmailProvider, "console">, () => EmailAdapter | undefined> = {
+    resend: () =>
+      from && env.RESEND_API_KEY ? resendEmail(env.RESEND_API_KEY, from) : undefined,
+    sendgrid: () =>
+      from && env.SENDGRID_API_KEY ? sendgridEmail(env.SENDGRID_API_KEY, from) : undefined,
+    mailgun: () =>
+      from && env.MAILGUN_API_KEY && env.MAILGUN_DOMAIN
+        ? mailgunEmail(env.MAILGUN_API_KEY, env.MAILGUN_DOMAIN, from, env.MAILGUN_HOST)
+        : undefined,
+    ses: () =>
+      from && env.SES_ACCESS_KEY_ID && env.SES_SECRET_ACCESS_KEY && env.SES_REGION
+        ? sesEmail(env.SES_ACCESS_KEY_ID, env.SES_SECRET_ACCESS_KEY, env.SES_REGION, from)
+        : undefined,
+    smtp: () => {
+      if (!from || !env.SMTP_HOST) return undefined;
+      if (onCloudflareWorkers()) {
+        console.warn(
+          "[email] SMTP is not supported on Cloudflare Workers (no raw TCP) — use resend/sendgrid/mailgun/ses instead",
+        );
+        return undefined;
+      }
+      const port = env.SMTP_PORT ? Number(env.SMTP_PORT) : 587;
+      return smtpEmail(
+        {
+          host: env.SMTP_HOST,
+          port,
+          secure: env.SMTP_SECURE === "true" || port === 465,
+          user: env.SMTP_USER,
+          pass: env.SMTP_PASSWORD,
+        },
+        from,
+      );
+    },
+  };
+
+  const explicit = env.EMAIL_PROVIDER?.trim().toLowerCase();
+  if (explicit === "console") return consoleEmail();
+  if (explicit && explicit in builders) {
+    const adapter = builders[explicit as Exclude<EmailProvider, "console">]();
+    if (adapter) return adapter;
+    console.warn(
+      `[email] EMAIL_PROVIDER=${explicit} but its config (+ EMAIL_FROM) is not usable here — falling back to console adapter`,
+    );
+    return consoleEmail();
+  }
+  if (explicit) {
+    console.warn(`[email] unknown EMAIL_PROVIDER=${explicit} — falling back to auto-detect`);
+  }
+
+  return (
+    builders.resend() ??
+    builders.sendgrid() ??
+    builders.mailgun() ??
+    builders.ses() ??
+    builders.smtp() ??
+    consoleEmail()
+  );
 };
 
 const noVectorAdapter = (): VectorAdapter => {

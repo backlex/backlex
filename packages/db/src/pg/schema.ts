@@ -613,6 +613,14 @@ export const collections = pgTable(
     tenantScoped: boolean("tenant_scoped").notNull().default(true),
     /** When true, the physical table has `_status` + `_published_at` columns. */
     versioned: boolean("versioned").notNull().default(false),
+    /** When true, item writes auto-generate embeddings from fields flagged
+     *  `vectorize: true` on the field definition. Drives both the on-write
+     *  hook in routes/items.ts and the bulk `POST /:slug/vectorize` route. */
+    vectorize: boolean("vectorize").notNull().default(false),
+    /** Embedding model key from `EMBEDDING_MODELS`. When null, falls back
+     *  to `env.EMBEDDING_DEFAULT_MODEL`; when neither is set, vectorization
+     *  is silently skipped for this collection. */
+    vectorizeModel: text("vectorize_model"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

@@ -6,6 +6,8 @@ import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { encryptSecret } from "../lib/crypto";
+import { invalidateTenantAuth } from "../services/tenant-auth";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg"
@@ -31,6 +33,61 @@ const ConfigInput = z.object({
   sessionLifetime: z.string().optional(),
   redirectUrls: z.array(z.string().url()).optional(),
 });
+
+/**
+ * Strip secret material from a stored `providers` map before sending it to the
+ * admin client: `clientSecretEnc` (ciphertext) is removed and replaced with a
+ * boolean `hasSecret`; a stray plaintext `clientSecret` (shouldn't ever land
+ * in storage, but belt-and-braces) is dropped too.
+ */
+function sanitizeProvidersForRead(
+  providers: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(providers ?? {})) {
+    if (v && typeof v === "object") {
+      const { clientSecretEnc, clientSecret: _drop, ...rest } = v as Record<
+        string,
+        unknown
+      >;
+      out[k] = { ...rest, hasSecret: typeof clientSecretEnc === "string" };
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
+/**
+ * Pre-process an incoming `providers` patch: any `clientSecret` string is
+ * encrypted into `clientSecretEnc` (and the plaintext dropped); an empty /
+ * null `clientSecret` clears the stored secret. `null` provider values (delete
+ * a provider) and primitives pass through unchanged.
+ */
+async function encryptIncomingProviderSecrets(
+  incoming: Record<string, unknown>,
+  appSecret: string,
+): Promise<Record<string, unknown>> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(incoming)) {
+    if (v === null || typeof v !== "object") {
+      out[k] = v;
+      continue;
+    }
+    const obj = { ...(v as Record<string, unknown>) };
+    if ("clientSecret" in obj) {
+      const raw = obj.clientSecret;
+      delete obj.clientSecret;
+      if (typeof raw === "string" && raw.trim()) {
+        obj.clientSecretEnc = await encryptSecret(raw.trim(), appSecret);
+      } else {
+        obj.clientSecretEnc = null; // explicit clear
+      }
+    }
+    out[k] = obj;
+  }
+  return out;
+}
 
 /**
  * Defaults derived from environment — used when a tenant has no stored
@@ -90,7 +147,14 @@ export const authAdminRoutes = new Hono<AppBindings>()
       .from(t.config)
       .where(eq(t.config.tenantId, tenantId))
       .limit(1);
-    if (rows[0]) return c.json({ data: rows[0] });
+    if (rows[0]) {
+      return c.json({
+        data: {
+          ...rows[0],
+          providers: sanitizeProvidersForRead(rows[0].providers),
+        },
+      });
+    }
 
     const d = envAuthDefaults(ctx.env);
     return c.json({
@@ -133,18 +197,33 @@ export const authAdminRoutes = new Hono<AppBindings>()
 
     // Merge providers per-key so partial updates (toggling one provider,
     // editing one provider's clientId) don't wipe sibling keys. A `null`
-    // value removes that provider.
+    // value removes that provider. Incoming `clientSecret` is encrypted into
+    // `clientSecretEnc` first — plaintext never reaches storage.
     let providers = base.providers as Record<string, unknown>;
     if (body.providers !== undefined) {
+      const incoming = await encryptIncomingProviderSecrets(
+        body.providers as Record<string, unknown>,
+        ctx.env.AUTH_SECRET,
+      );
       providers = { ...providers };
-      for (const [k, v] of Object.entries(body.providers as Record<string, unknown>)) {
-        if (v === null) delete providers[k];
-        else if (v && typeof v === "object")
-          providers[k] = {
+      for (const [k, v] of Object.entries(incoming)) {
+        if (v === null) {
+          delete providers[k];
+          continue;
+        }
+        if (v && typeof v === "object") {
+          const merged = {
             ...((providers[k] as Record<string, unknown>) ?? {}),
             ...(v as Record<string, unknown>),
           };
-        else providers[k] = v;
+          // An explicit `clientSecretEnc: null` clears the stored secret.
+          if (merged.clientSecretEnc == null) delete merged.clientSecretEnc;
+          // Never persist a plaintext secret under any name.
+          delete (merged as Record<string, unknown>).clientSecret;
+          providers[k] = merged;
+        } else {
+          providers[k] = v;
+        }
       }
     }
     const policy =
@@ -174,6 +253,9 @@ export const authAdminRoutes = new Hono<AppBindings>()
         redirectUrls,
       });
     }
+    // The workspace's end-user auth instance is cached per isolate — drop it
+    // so the next /api/t/<slug>/auth/* request rebuilds from the new config.
+    if (auth.tenantId) invalidateTenantAuth(auth.tenantId);
     return c.json({ ok: true });
   })
   /** All currently-active sessions, joined with the user's email. */

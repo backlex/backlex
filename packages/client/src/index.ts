@@ -12,10 +12,45 @@ export { WorkerosError } from "./types";
 export interface ClientOptions {
   url: string;
   /** Static API key (`pak_...`) for server-to-server calls. Browser apps
-   *  should rely on the cookie session and omit this. */
+   *  should rely on the cookie session / a workspace session token and omit
+   *  this. */
   apiKey?: string;
+  /**
+   * Workspace slug. When set, the client operates in **app mode**: `auth.*`
+   * targets that workspace's own auth surface (`/api/t/<slug>/auth/*`, the
+   * "auth as a service" pool — distinct from the admin/control-plane auth),
+   * and the session token returned by `auth.signUp` / `auth.signIn` is
+   * captured and sent as `Authorization: Bearer <token>` on every subsequent
+   * request (data + auth). Persist it across page loads with `auth.getToken()`
+   * / restore it with `auth.setToken()`.
+   */
+  workspace?: string;
+  /** Restore a previously-saved workspace session token (app mode). */
+  token?: string;
   /** Optional fetch override (testing / Node polyfill). */
   fetch?: typeof fetch;
+}
+
+interface AuthUser {
+  id: string;
+  email: string;
+  name?: string | null;
+  image?: string | null;
+}
+interface AuthResult {
+  user: AuthUser;
+  token?: string;
+}
+interface PublicProvider {
+  id: string;
+  kind: "credential" | "magic-link" | "passkey" | "social";
+  label: string;
+  enabled: boolean;
+}
+interface AuthSurface {
+  tenantId: string | null;
+  providers: PublicProvider[];
+  policy: { openSignup: boolean; requireEmailVerification: boolean } & Record<string, unknown>;
 }
 
 const buildSearch = (q: ListQuery | undefined): string => {
@@ -37,6 +72,18 @@ const buildSearch = (q: ListQuery | undefined): string => {
 
 export const createClient = (opts: ClientOptions) => {
   const f = opts.fetch ?? globalThis.fetch.bind(globalThis);
+  // App-mode workspace session token, captured from sign-in/up and replayed
+  // as a bearer on later calls.
+  let appToken: string | null = opts.token ?? null;
+  const authBase = opts.workspace
+    ? `/api/t/${encodeURIComponent(opts.workspace)}/auth`
+    : "/api/auth";
+
+  const authHeader = (): Record<string, string> => {
+    if (opts.apiKey) return { authorization: `Bearer ${opts.apiKey}` };
+    if (appToken) return { authorization: `Bearer ${appToken}` };
+    return {};
+  };
 
   const request = async <T>(
     method: string,
@@ -46,7 +93,7 @@ export const createClient = (opts: ClientOptions) => {
   ): Promise<T> => {
     const headers: Record<string, string> = {
       "content-type": "application/json",
-      ...(opts.apiKey ? { authorization: `Bearer ${opts.apiKey}` } : {}),
+      ...authHeader(),
       ...(extraHeaders ?? {}),
     };
     const res = await f(`${opts.url}${path}`, {
@@ -96,25 +143,57 @@ export const createClient = (opts: ClientOptions) => {
     return () => es.close();
   };
 
+  const captureToken = (r: AuthResult): AuthResult => {
+    if (opts.workspace && typeof r.token === "string") appToken = r.token;
+    return r;
+  };
+
   const auth = {
+    /** Email + password sign-up. In app mode this creates a *workspace* end-
+     *  user (in `app_users`), not a control-plane account. */
     signUp: (input: { email: string; password: string; name?: string }) =>
-      request<{ user: { id: string; email: string }; token?: string }>(
-        "POST",
-        "/api/auth/sign-up/email",
-        input,
-      ),
+      request<AuthResult>("POST", `${authBase}/sign-up/email`, input).then(captureToken),
+    /** Email + password sign-in. */
     signIn: (input: { email: string; password: string }) =>
-      request<{ user: { id: string; email: string }; token?: string }>(
-        "POST",
-        "/api/auth/sign-in/email",
-        input,
-      ),
-    signOut: () => request<{ success: boolean }>("POST", "/api/auth/sign-out"),
-    session: () =>
-      request<{ user: { id: string; email: string } | null }>(
-        "GET",
-        "/api/auth/get-session",
-      ),
+      request<AuthResult>("POST", `${authBase}/sign-in/email`, input).then(captureToken),
+    /**
+     * Begin an OAuth sign-in. Returns `{ url }` — the provider's authorize
+     * page — which a browser app should navigate to (`location.href = url`).
+     * `provider` must be one of the ids returned by `auth.providers()`.
+     */
+    signInSocial: (
+      provider: string,
+      input?: { callbackURL?: string; errorCallbackURL?: string },
+    ) =>
+      request<{ url: string; redirect: boolean }>("POST", `${authBase}/sign-in/social`, {
+        provider,
+        ...input,
+        // ask better-auth for the URL instead of a 302, so the caller controls
+        // the navigation.
+        disableRedirect: true,
+      }),
+    /** Send a one-time sign-in link by email (requires the `magic` provider
+     *  to be enabled for the workspace). */
+    signInMagicLink: (input: { email: string; callbackURL?: string }) =>
+      request<{ status: boolean }>("POST", `${authBase}/sign-in/magic-link`, input),
+    signOut: () => request<{ success: boolean }>("POST", `${authBase}/sign-out`).then((r) => {
+      if (opts.workspace) appToken = null;
+      return r;
+    }),
+    /** Current session, or `{ user: null }`. */
+    getSession: () =>
+      request<{ user: AuthUser | null } & Record<string, unknown>>("GET", `${authBase}/get-session`),
+    /** Public description of this workspace's auth surface (provider list +
+     *  policy flags) — what a sign-in screen needs to render. No secrets. */
+    providers: () =>
+      request<{ data: AuthSurface }>("GET", `${authBase}/providers`).then((r) => r.data),
+    /** The current workspace session token (app mode) — persist this across
+     *  reloads and pass it back via `createClient({ token })`. */
+    getToken: (): string | null => appToken,
+    /** Restore a workspace session token (app mode). */
+    setToken: (token: string | null): void => {
+      appToken = token;
+    },
   };
 
   const storage = {
@@ -138,7 +217,7 @@ export const createClient = (opts: ClientOptions) => {
       folderId?: string,
     ) => {
       const headers: Record<string, string> = {
-        ...(opts.apiKey ? { authorization: `Bearer ${opts.apiKey}` } : {}),
+        ...authHeader(),
         ...(contentType ? { "content-type": contentType } : {}),
       };
       const url = `${opts.url}/api/storage/${encodeURIComponent(key)}${folderId ? `?folderId=${folderId}` : ""}`;
@@ -157,12 +236,9 @@ export const createClient = (opts: ClientOptions) => {
       return res.json();
     },
     download: async (key: string): Promise<Response> => {
-      const headers: Record<string, string> = opts.apiKey
-        ? { authorization: `Bearer ${opts.apiKey}` }
-        : {};
       const res = await f(`${opts.url}/api/storage/${encodeURIComponent(key)}`, {
         credentials: "include",
-        headers,
+        headers: authHeader(),
       });
       if (!res.ok) {
         throw new WorkerosError(res.status, undefined);

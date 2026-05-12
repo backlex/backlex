@@ -16,6 +16,7 @@ import { parseQuery, resolveProjection } from "../lib/query";
 import { publishEvent } from "../services/events";
 import { elapsedMs, keepAlive, recordActivity, requestMeta } from "../services/activity";
 import { recordRevision } from "../services/revisions";
+import { embedAndUpsert, deleteVector } from "../services/vectorize";
 
 interface CollectionRow {
   slug: string;
@@ -27,6 +28,12 @@ interface CollectionRow {
    *  reads/writes are scoped to the active tenant. */
   tenantScoped: boolean;
   versioned?: boolean;
+  /** Auto-vectorize items on write (POST/PATCH) and clear on delete. The
+   *  fields that contribute to the embed text are the ones whose `FieldDef`
+   *  has `vectorize: true` (text/longtext only). */
+  vectorize: boolean;
+  /** Embedding model key (`EMBEDDING_MODELS` keys). Null → env default. */
+  vectorizeModel: string | null;
 }
 
 const collectionsTable = (dialect: "pg" | "sqlite") =>
@@ -58,6 +65,8 @@ const loadCollection = async (
     ownerScoped: Boolean(r.ownerScoped ?? r.owner_scoped),
     tenantScoped: r.tenantScoped ?? r.tenant_scoped ?? true ? true : false,
     versioned: Boolean(r.versioned),
+    vectorize: Boolean(r.vectorize),
+    vectorizeModel: ((r.vectorizeModel ?? r.vectorize_model) as string | null | undefined) ?? null,
   };
 };
 
@@ -418,6 +427,13 @@ export const itemsRoutes = new Hono<AppBindings>()
       ...data,
     };
     if (collection.ownerScoped) out.ownerId = auth.userId;
+    await embedAndUpsert(
+      ctx,
+      collection,
+      auth.tenantId ?? null,
+      id,
+      data,
+    );
     await publishEvent(
       ctx.env,
       `items:${collection.slug}`,
@@ -489,6 +505,13 @@ export const itemsRoutes = new Hono<AppBindings>()
       ctx.dialect,
       collection.ownerScoped,
     );
+    await embedAndUpsert(
+      ctx,
+      collection,
+      auth.tenantId ?? null,
+      id,
+      refreshedRow,
+    );
     await publishEvent(
       ctx.env,
       `items:${collection.slug}`,
@@ -546,6 +569,7 @@ export const itemsRoutes = new Hono<AppBindings>()
       ctx,
       sql`DELETE FROM ${sql.identifier(table)} ${whereOf(idEq(id), perm.whereSql, tenantWhere)}`,
     );
+    await deleteVector(ctx, collection, id);
     await publishEvent(
       ctx.env,
       `items:${collection.slug}`,

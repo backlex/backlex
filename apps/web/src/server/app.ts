@@ -38,6 +38,7 @@ import {
   permissionsRoutes,
   usersRoutes,
 } from "./routes/roles";
+import { appUsersRoutes } from "./routes/app-users";
 import { tenantsRoutes } from "./routes/tenants";
 import { emailTemplatesRoutes } from "./routes/email-templates";
 import { authAdminRoutes } from "./routes/auth-admin";
@@ -150,6 +151,7 @@ export const createApp = (env: Env) => {
   app.route("/api/roles", rolesRoutes);
   app.route("/api/permissions", permissionsRoutes);
   app.route("/api/users", usersRoutes);
+  app.route("/api/app-users", appUsersRoutes);
   app.route("/api/functions", functionsRoutes);
   app.route("/api/graphql", graphqlRoutes);
   app.route("/api/_internal/sandbox-rpc", sandboxRpcRoutes);

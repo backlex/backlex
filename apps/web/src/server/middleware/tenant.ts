@@ -165,10 +165,13 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
     const cookieKey = getCookie(c, TENANT_COOKIE);
     if (cookieKey) tenantId = await tenantBySlugOrId(db, dialect, cookieKey);
   }
-  if (auth.userId) {
+  // Control-plane users: confirm the requested tenant is one they belong to
+  // (admins bypass). App-plane users are bound to the workspace their session
+  // was issued for — that's authoritative, and they have no `tenant_members`
+  // row, so the membership check (and the `tenant_members`/`users` fallbacks
+  // and writes below) don't apply to them.
+  if (auth.userId && auth.plane !== "app") {
     if (tenantId) {
-      // Ensure the requested tenant is one the user belongs to. Admins
-      // bypass — they can inspect any workspace.
       const allow = auth.roles.includes("admin") ||
         (await isMember(db, dialect, tenantId, auth.userId));
       if (!allow) tenantId = null;
@@ -177,16 +180,20 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
       tenantId = await firstUserTenant(db, dialect, auth.userId);
     }
   }
-  if (!tenantId) {
+  // For app-plane there's no fallback workspace — if the session's tenant
+  // didn't resolve, leave it null and let permission resolution deny.
+  if (!tenantId && auth.plane !== "app") {
     tenantId = await ensureDefaultTenant({ db, dialect });
   }
 
   // Re-scope auth.roles to roles the user actually holds *in this tenant*.
   // sessionMiddleware loaded an unfiltered union earlier (it doesn't know
   // the tenant yet); we replace it here so requireAdmin and friends evaluate
-  // against the active workspace.
+  // against the active workspace. App-plane identities don't participate in
+  // control-plane RBAC, so `auth.roles` stays empty for them — the data-plane
+  // permission resolver loads their workspace roles separately.
   let tenantRoles = auth.roles;
-  if (auth.userId) {
+  if (auth.userId && auth.plane !== "app" && tenantId) {
     tenantRoles = await loadTenantRoleNames(db, dialect, tenantId, auth.userId);
     // Best-effort persistence; ignore failures.
     void persistActive(db, dialect, auth.userId, tenantId).catch(() => {});
@@ -209,11 +216,13 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   // Re-read auth.tenantId after next() so handlers like /api/tenants/switch
   // (which mutate auth to point at the new workspace) win — otherwise the
   // closed-over `tenantId` from the pre-next phase clobbers their cookie.
-  const finalTenantId = (c.get("auth")?.tenantId as string | undefined) ?? tenantId;
-  setCookie(c, TENANT_COOKIE, finalTenantId, {
-    httpOnly: false,
-    sameSite: "Lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30,
+  const finalTenantId =
+    (c.get("auth")?.tenantId as string | null | undefined) ?? tenantId;
+  if (finalTenantId)
+    setCookie(c, TENANT_COOKIE, finalTenantId, {
+      httpOnly: false,
+      sameSite: "Lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
   });
 };

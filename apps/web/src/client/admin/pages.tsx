@@ -346,11 +346,14 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
               const storageStatus = storageBinding ? storageBinding.status : adapter === "bun" ? "connected" : (envSet.has("S3_BUCKET") ? "connected" : "optional");
               const realtimeStatus = realtimeBinding ? realtimeBinding.status : adapter === "bun" ? "connected" : "optional";
               const emailConnected = envSet.has("RESEND_API_KEY") && envSet.has("EMAIL_FROM");
+              const remoteExec = envSet.has("FUNCTIONS_EXEC_URL");
+              const sandboxValue = remoteExec ? "remote-http" : adapter === "bun" ? "bun-worker" : "quickjs";
+              const sandboxHint = remoteExec ? "FUNCTIONS_EXEC_URL set" : adapter === "bun" ? "worker thread + RPC" : "in-isolate, sync only";
               const rows = [
                 ["Database", profile.db, dbStatus === "connected" ? "connected" : "optional", dbBinding?.target ?? profile.db],
                 ["Storage", profile.storage, storageStatus === "connected" ? "connected" : "optional", storageBinding?.target ?? profile.storage],
                 ["Realtime", profile.realtime, realtimeStatus === "connected" ? "connected" : "optional", realtimeBinding?.target ?? profile.realtime],
-                ["Sandbox", profile.sandbox, "idle", profile.sandbox],
+                ["Sandbox", sandboxValue, remoteExec || adapter === "bun" ? "connected" : "idle", sandboxHint],
                 ["Vectorize", "vector index", vectorizeBinding ? "connected" : "optional", vectorizeBinding?.target ?? "—"],
                 ["Email", emailConnected ? "resend" : adapter === "bun" ? "console (dev)" : "not configured", emailConnected ? "connected" : "idle", emailConnected ? "EMAIL_FROM set" : adapter === "bun" ? "logs to stdout" : "set RESEND_API_KEY + EMAIL_FROM"],
               ];

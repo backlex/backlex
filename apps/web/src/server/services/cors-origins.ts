@@ -71,6 +71,18 @@ export const refreshAllowedOriginsIfStale = (ctx: DbCtx): void => {
     });
 };
 
+/** Populate the cache up front (awaitable, errors swallowed). Called once per
+ *  isolate during boot so the very first cross-origin request — even on a cold
+ *  isolate — sees the workspace origin set instead of an empty cache. */
+export const warmAllowedOrigins = async (ctx: DbCtx): Promise<void> => {
+  try {
+    await refresh(ctx);
+  } catch {
+    // table may not be migrated yet on a fresh DB — the lazy refresh in the
+    // CORS middleware will pick it up later.
+  }
+};
+
 /** True if `origin` is allowed cross-origin (env extras + cached workspace
  *  redirect-URL origins). `APP_URL` itself is the caller's responsibility. */
 export const isWorkspaceAllowedOrigin = (origin: string, env: Env): boolean => {

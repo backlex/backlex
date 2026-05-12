@@ -12,6 +12,7 @@ import type { Env } from "../env";
 import type { DbCtx } from "./seed";
 import { decryptSecret } from "../lib/crypto";
 import { loadAuthConfigRow } from "./auth-config";
+import { resolveEmailAdapter } from "./email-config";
 import { envExtraOrigins, redirectUrlOrigins } from "./cors-origins";
 
 /** Parse a session-lifetime string like `30d` / `24h` / `90m` / `3600s` into
@@ -154,6 +155,16 @@ export const getTenantAuth = async (
   if (magicEnabled && !pluginList.includes("magic-link")) pluginList.push("magic-link");
   if (otpEnabled && !pluginList.includes("email-otp")) pluginList.push("email-otp");
 
+  // End-user auth mail (verification, magic-link, OTP, reset) goes through the
+  // workspace's own email transport when it has one — falling back to the
+  // deployment adapter. Cache is dropped via `invalidateTenantAuth` when the
+  // email-config route changes it.
+  const tenantEmail = await resolveEmailAdapter(
+    { db: ctx.db, dialect: ctx.dialect, env },
+    email,
+    tenant.id,
+  );
+
   const sessionExpiresInSeconds = parseLifetimeSeconds(storedRow?.sessionLifetime);
   // better-auth uses trustedOrigins to validate `callbackURL`/`Origin` (CSRF)
   // — include the workspace's own redirect-URL origins + the deployment-wide
@@ -174,7 +185,7 @@ export const getTenantAuth = async (
     trustedOrigins,
     emailAndPasswordEnabled: emailEnabled,
     sessionExpiresInSeconds,
-    email,
+    email: tenantEmail,
     socialProviders: Object.keys(social).length > 0 ? social : undefined,
     plugins: pluginList,
   });

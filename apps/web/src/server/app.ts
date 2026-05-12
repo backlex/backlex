@@ -17,6 +17,7 @@ import {
 import {
   isWorkspaceAllowedOrigin,
   refreshAllowedOriginsIfStale,
+  warmAllowedOrigins,
 } from "./services/cors-origins";
 import { activityRoutes } from "./routes/activity";
 import { revisionsRoutes } from "./routes/revisions";
@@ -109,6 +110,10 @@ export const createApp = (env: Env) => {
       await ensureSystemRoles(dbCtx, defaultTenantId);
       await seedOwnerScopedPermissions(dbCtx, defaultTenantId, FILES_COLLECTION);
       await seedEmailTemplates(dbCtx);
+      // Prime the cross-origin allow-list before the CORS middleware runs on
+      // this same first request — otherwise the first cross-origin call after
+      // a cold isolate start would miss the workspace redirect-URL origins.
+      await warmAllowedOrigins(dbCtx);
       rolesSeeded = true;
     }
     await next();

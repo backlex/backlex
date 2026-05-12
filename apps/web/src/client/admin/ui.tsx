@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { I, type IconComponent, type IconKey } from "./icons";
-import { MOCK, type AdapterId } from "./mock";
+import { ADAPTER_PROFILES, NAV_ITEMS, NAV_SETTINGS, type AdapterId } from "./config";
 import { tenantsApi, type ApiTenant } from "./api";
 
 export interface BrandMarkProps {
@@ -183,9 +183,9 @@ export interface SidebarProps {
 }
 
 export function Sidebar({ activeNav, setActiveNav, adapter, pushToast, collectionsCount }: SidebarProps) {
-  const items = MOCK.navItems;
-  const settings = MOCK.navSettings;
-  const profile = MOCK.adapterProfiles[adapter];
+  const items = NAV_ITEMS;
+  const settings = NAV_SETTINGS;
+  const profile = ADAPTER_PROFILES[adapter];
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [tenantId, setTenantId] = useState<string | null>(null);

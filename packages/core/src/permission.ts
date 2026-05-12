@@ -45,6 +45,10 @@ export interface AuthSubject {
   roles: string[];
   /** Active workspace/tenant id for this request; null = single-tenant mode. */
   tenantId?: string | null;
+  /** When the request authenticated with a role-scoped API key, the id of
+   *  that role. Permission resolution then considers *only* this role (and
+   *  only while the owner still holds it). Absent/null = no key scoping. */
+  apiKeyRoleId?: string | null;
 }
 
 export const SYSTEM_ROLES = {

@@ -15,6 +15,10 @@ APP_URL = "https://workeros-api.kinyasfurkan.workers.dev"
 # Comma-separated better-auth plugins enabled at boot. Mirrored in
 # packages/auth/src/client.ts (passkey + magic-link plugin clients).
 AUTH_PLUGINS = "passkey,magic-link,email-otp,anonymous"
+# Extra origins allowed to make cross-origin, credentialled requests (on top
+# of APP_URL and the origins derived from each workspace's
+# auth_config.redirectUrls). Set this if customer apps live on other domains:
+# EXTRA_TRUSTED_ORIGINS = "https://app.customer-a.com,https://app.customer-b.com"
 
 # Serve the Vite SPA build (./dist) as static assets from the same Worker.
 # SPA fallback returns index.html for unknown paths so React Router handles

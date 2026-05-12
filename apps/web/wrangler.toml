@@ -75,26 +75,34 @@ bucket_name = "workeros-files"
 # Vectorize — one index per embedding model. The model registry in
 # packages/core/src/embedding-models.ts pins each binding to a specific
 # dimension; the routes/adapter pick the right index by model name.
-# Bind ONLY the models you actually use — Cloudflare rejects deploys that
-# reference an index that doesn't exist in your account. Create with:
+#
+# All bindings are OPT-IN. Cloudflare validates every binding at deploy
+# time, so referencing an index that doesn't exist in your account breaks
+# the deploy. Uncomment ONLY the models you actually want, and create
+# their indexes first with:
 #   wrangler vectorize create workeros-openai-1536        --dimensions=1536 --metric=cosine
 #   wrangler vectorize create workeros-openai-3072        --dimensions=3072 --metric=cosine
 #   wrangler vectorize create workeros-bge-m3             --dimensions=1024 --metric=cosine
 #   wrangler vectorize create workeros-self-host-bge-m3   --dimensions=1024 --metric=cosine
-[[vectorize]]
-binding = "VECTORIZE_OPENAI"
-index_name = "workeros-openai-1536"
 
-[[vectorize]]
-binding = "VECTORIZE_OPENAI_LARGE"
-index_name = "workeros-openai-3072"
+# OpenAI text-embedding-3-small (1536). Needs OPENAI_API_KEY.
+# [[vectorize]]
+# binding = "VECTORIZE_OPENAI"
+# index_name = "workeros-openai-1536"
 
-[[vectorize]]
-binding = "VECTORIZE_BGE_M3"
-index_name = "workeros-bge-m3"
+# OpenAI text-embedding-3-large (3072). Needs OPENAI_API_KEY.
+# Note: pgvector HNSW caps at 2000 dims — use IVFFlat for the PG table.
+# [[vectorize]]
+# binding = "VECTORIZE_OPENAI_LARGE"
+# index_name = "workeros-openai-3072"
 
-# Self-hosted bge-m3 (TEI/Ollama container). Uncomment + create the index
-# only if you want data-residency embeddings via your own container.
+# Workers AI bge-m3 (1024, multilingual). Needs the [ai] binding below.
+# [[vectorize]]
+# binding = "VECTORIZE_BGE_M3"
+# index_name = "workeros-bge-m3"
+
+# Self-hosted bge-m3 (TEI/Ollama container). Needs EMBEDDING_HTTP_URL.
+# Data never leaves your infrastructure.
 # [[vectorize]]
 # binding = "VECTORIZE_SELF_HOST_BGE_M3"
 # index_name = "workeros-self-host-bge-m3"

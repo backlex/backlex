@@ -13,6 +13,7 @@ import {
 } from "@/lib/api";
 import {
   metricsApi,
+  rolesApi,
   settingsApi,
   usersApi,
   type ApiMetrics,
@@ -1758,6 +1759,23 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
     })();
     return () => { cancelled = true; };
   }, [pushToast]);
+  // Real workspace roles for the invite dialog + the role filter — keeps both
+  // in sync with whatever exists under Roles & permissions (no hardcoded list).
+  const [roleNames, setRoleNames] = useState<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await rolesApi.list();
+        if (!cancelled && Array.isArray(r.data)) {
+          setRoleNames(r.data.map((x) => x.name).filter((n) => n !== "public"));
+        }
+      } catch {
+        /* leave empty — the dialog/filter fall back to `authenticated` */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   const [q, setQ] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -1862,7 +1880,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
         <div className="users-filter">
           <span className="muted">Role</span>
           <Select size="sm" value={roleFilter} onChange={setRoleFilter} style={{ width: 140 }}
-            options={[{ value: "all", label: "All roles" }, { value: "admin", label: "admin" }, { value: "editor", label: "editor" }, { value: "authenticated", label: "authenticated" }]} />
+            options={[{ value: "all", label: "All roles" }, ...roleNames.map((n) => ({ value: n, label: n }))]} />
         </div>
         <div className="users-filter">
           <span className="muted">Status</span>
@@ -1992,7 +2010,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
       </div>
 
       {activeUser && <UserDrawer user={activeUser} onClose={() => setActiveUser(null)} pushToast={pushToast} />}
-      {inviteOpen && <InviteUserDialog onClose={() => setInviteOpen(false)} onInvite={async (payload: any) => {
+      {inviteOpen && <InviteUserDialog roles={roleNames} onClose={() => setInviteOpen(false)} onInvite={async (payload: any) => {
         try {
           await usersApi.invite(payload.email, payload.role);
           pushToast(`Invite sent to ${payload.email}.`);
@@ -2179,9 +2197,20 @@ function UserDrawer({ user, onClose, pushToast }: { user: any; onClose: () => vo
   );
 }
 
-function InviteUserDialog({ onClose, onInvite }: { onClose: () => void; onInvite: (data: any) => void }) {
+const ROLE_HINTS: Record<string, string> = {
+  admin: "full access — bypasses permission checks",
+  authenticated: "standard signed-in user",
+};
+function InviteUserDialog({ roles, onClose, onInvite }: { roles: string[]; onClose: () => void; onInvite: (data: any) => void }) {
+  const roleOptions = (roles.length ? roles : ["authenticated"]).map((name) => ({
+    value: name,
+    label: name,
+    hint: ROLE_HINTS[name] ?? "custom role",
+  }));
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("authenticated");
+  const [role, setRole] = useState(
+    roleOptions.some((o) => o.value === "authenticated") ? "authenticated" : roleOptions[0]!.value,
+  );
   const [provider, setProvider] = useState("password");
   const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   return (
@@ -2202,8 +2231,8 @@ function InviteUserDialog({ onClose, onInvite }: { onClose: () => void; onInvite
           </div>
           <div className="field">
             <label className="field-label">Default role</label>
-            <Select value={role} onChange={setRole}
-              options={[{ value: "authenticated", label: "authenticated", hint: "standard signed-in user" }, { value: "editor", label: "editor", hint: "can publish + manage content" }, { value: "admin", label: "admin", hint: "full access" }]} />
+            <Select value={role} onChange={setRole} options={roleOptions} />
+            <span className="field-hint">Roles come from <strong>Roles &amp; permissions</strong>. The user also implicitly gets <span className="font-mono">authenticated</span>.</span>
           </div>
           <div className="field">
             <label className="field-label">Sign-in method</label>

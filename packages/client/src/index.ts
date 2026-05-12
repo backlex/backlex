@@ -43,7 +43,7 @@ interface AuthResult {
 }
 interface PublicProvider {
   id: string;
-  kind: "credential" | "magic-link" | "passkey" | "social";
+  kind: "credential" | "magic-link" | "email-otp" | "passkey" | "social";
   label: string;
   enabled: boolean;
 }

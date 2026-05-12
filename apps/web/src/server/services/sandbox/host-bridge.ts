@@ -201,7 +201,8 @@ export const dispatchRpc = async (
   }
 
   if (op === "email.send") {
-    await bindings.ctx.email.send(
+    const transport = await bindings.ctx.emailFor(bindings.auth.tenantId);
+    await transport.send(
       args as { to: string; subject: string; text: string; html?: string },
     );
     return true;

@@ -64,7 +64,7 @@ const buildAdapterRows = (health: Health | null): AdapterEntry[] => {
     },
     {
       label: "Sandbox",
-      value: onWorkers ? "cf-dispatch / quickjs" : "bun-worker",
+      value: onWorkers ? "quickjs / remote-http" : "bun-worker",
       status: "idle",
       icon: ZapIcon,
     },

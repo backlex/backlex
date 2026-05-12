@@ -30,6 +30,7 @@ export const MIGRATION_TAGS_SQLITE: Record<string, string> = {
   "ddde589877fa37f48d7fcdd27836c4707558938cb135a5dcf034c797ff15dc74": "20260511000000_api_key_role_scope",
   "fc96844d21fe0b2fb90fa3a5327e9c57a57a0d5078f4dc2922d7bfc9d756db30": "20260511120000_app_user_pool",
   "36c8e811bfbb5253b38200e0bfa7e76d5bb14929405f6dd52012fa10e11b8106": "20260511130000_app_user_roles",
+  "02ac9cc1728fc934696e6e5f21048702dd119480ea58a3dbedcdc62a5cd84541": "20260512000000_email_config",
 };
 
 export const MIGRATION_TAGS_PG: Record<string, string> = {
@@ -53,4 +54,5 @@ export const MIGRATION_TAGS_PG: Record<string, string> = {
   "7bfd4e0c4ccf2b8af3082eb71d4456358451718d073311ad77653a20b20f54cb": "20260511120000_app_user_pool",
   "d4c0d690fe258c71c8086f237f4abf7a7d4e71251eb3cbc335dcad147e54a738": "20260511120000_email_templates_pg",
   "ff261b9a92ee5471c385d1ebc86dad237fae6cba6ff972389532c2cd95887890": "20260511130000_app_user_roles",
+  "8583d14cdd6bf14d27d2e0c965d912f865e59d3905d27ea134305b942bbcaac8": "20260512000000_email_config",
 };

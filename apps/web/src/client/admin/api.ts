@@ -84,6 +84,23 @@ export interface ApiSession {
   current?: boolean;
 }
 
+/** Per-workspace email transport config (`/api/admin/email-config`). Secret
+ *  values are never sent to the browser — only the `secretsSet` flags. */
+export interface ApiEmailConfig {
+  tenantId: string;
+  /** inherit | console | resend | sendgrid | mailgun | ses | smtp */
+  provider: string;
+  fromAddress: string | null;
+  /** Non-secret provider params (mailgun: domain/host; ses: region/accessKeyId;
+   *  smtp: host/port/secure/user). */
+  config: Record<string, unknown>;
+  secretsSet: { apiKey: boolean; secretAccessKey: boolean; pass: boolean };
+  updatedAt: number | string | null;
+  /** Deployment-level fallback, for context in the UI. */
+  env: { provider: string | null; from: string | null };
+  providerIds: readonly string[];
+}
+
 export interface ApiEmailTemplate {
   id: string;
   tenantId: string | null;
@@ -320,6 +337,25 @@ export const emailTemplatesApi = {
     api<{ ok: true }>(`/api/admin/email-templates/${id}/send-test`, {
       method: "POST",
       body: JSON.stringify({ vars }),
+    }),
+};
+
+export const emailConfigApi = {
+  get: () => api<Envelope<ApiEmailConfig>>(`/api/admin/email-config`),
+  put: (body: {
+    provider: string;
+    fromAddress?: string | null;
+    config?: Record<string, unknown>;
+    secrets?: Record<string, string | null>;
+  }) =>
+    api<{ ok: true }>(`/api/admin/email-config`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  sendTest: (to?: string) =>
+    api<{ ok: true; to: string }>(`/api/admin/email-config/test`, {
+      method: "POST",
+      body: JSON.stringify({ to }),
     }),
 };
 

@@ -174,7 +174,8 @@ export const emailTemplatesRoutes = new Hono<AppBindings>()
     const text = tpl.bodyText
       ? renderTemplate(tpl.bodyText as string, vars)
       : htmlToText(html);
-    await ctx.email.send({
+    const transport = await ctx.emailFor(tenantId);
+    await transport.send({
       to: body.to ?? auth.email ?? "test@example.com",
       from: tpl.fromAddress ?? undefined,
       subject: renderTemplate(tpl.subject as string, vars),

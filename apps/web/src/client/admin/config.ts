@@ -103,6 +103,6 @@ export const NAV_SETTINGS: NavItem[] = [
 
 export const ADAPTER_PROFILES: Record<AdapterId, AdapterProfile> = {
   bun: { db: "sqlite", storage: "fs", realtime: "in-proc + SSE", sandbox: "worker" },
-  workers: { db: "d1", storage: "r2", realtime: "durable object", sandbox: "cf-dispatch" },
+  workers: { db: "d1", storage: "r2", realtime: "durable object", sandbox: "quickjs / remote-http" },
   vercel: { db: "pg (neon)", storage: "s3", realtime: "sse", sandbox: "quickjs" },
 };

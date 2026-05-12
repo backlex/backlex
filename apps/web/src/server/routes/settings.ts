@@ -99,7 +99,6 @@ export const settingsRoutes = new Hono<AppBindings>()
       { type: "DurableObj", name: "REALTIME", target: "RealtimeRoom", status: env.REALTIME ? "connected" : "optional" },
       { type: "Vectorize", name: "VECTORIZE", target: "workeros-embeddings", status: env.VECTORIZE ? "connected" : "optional" },
       { type: "Hyperdrive", name: "HYPERDRIVE", target: "pg-pool", status: env.HYPERDRIVE ? "connected" : "optional" },
-      { type: "Dispatch", name: "FUNCTIONS_DISPATCH", target: "workeros-functions", status: env.FUNCTIONS_DISPATCH ? "connected" : "optional" },
     ];
     const envVars = [
       { key: "APP_URL", set: present("APP_URL"), source: "env", secret: false },

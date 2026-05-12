@@ -76,6 +76,7 @@ export const sendTemplatedEmail = async (
 ): Promise<SendTemplatedResult> => {
   const vars = opts.vars ?? {};
   const tenantId = opts.tenantId ?? null;
+  const transport = await ctx.emailFor(tenantId);
 
   let tpl: TemplateRow | null = null;
   if (opts.templateKey) {
@@ -88,7 +89,7 @@ export const sendTemplatedEmail = async (
     const text = tpl.bodyText
       ? renderTemplate(tpl.bodyText, vars)
       : htmlToText(html);
-    await ctx.email.send({
+    await transport.send({
       to: opts.to,
       from: tpl.fromAddress ?? opts.fallback?.from ?? undefined,
       subject,
@@ -115,7 +116,7 @@ export const sendTemplatedEmail = async (
     );
   }
 
-  await ctx.email.send({
+  await transport.send({
     to: opts.to,
     from: fb.from,
     subject,

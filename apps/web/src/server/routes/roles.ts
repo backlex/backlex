@@ -324,7 +324,8 @@ export const usersRoutes = new Hono<AppBindings>()
         role: z.string().optional(),
       })
       .parse(await c.req.json());
-    const sent = await ctx.email
+    const transport = await ctx.emailFor(c.get("auth")?.tenantId ?? null);
+    const sent = await transport
       .send({
         to: body.email,
         subject: "You've been invited to workeros",

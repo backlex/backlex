@@ -679,6 +679,26 @@ export const authConfig = sqliteTable(
   },
 );
 
+/**
+ * Per-workspace email transport. `tenant_id` is the workspace id, or the
+ * `_global` sentinel for the instance-wide override row. `provider = "inherit"`
+ * (or no usable config) falls through to the next level and ultimately to the
+ * deployment's env-derived adapter. `config` holds non-secret provider params;
+ * `secrets` holds the same keys but AES-256-GCM ciphertext (see lib/crypto).
+ */
+export const emailConfig = sqliteTable(
+  "email_config",
+  {
+    tenantId: text("tenant_id").primaryKey(),
+    /** inherit | console | resend | sendgrid | mailgun | ses | smtp */
+    provider: text("provider").notNull().default("inherit"),
+    fromAddress: text("from_address"),
+    config: text("config", { mode: "json" }).$type<Record<string, unknown>>().notNull().default({}),
+    secrets: text("secrets", { mode: "json" }).$type<Record<string, string>>().notNull().default({}),
+    updatedAt: ts("updated_at"),
+  },
+);
+
 export const backups = sqliteTable(
   "backups",
   {

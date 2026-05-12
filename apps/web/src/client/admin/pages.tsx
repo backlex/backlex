@@ -16,6 +16,7 @@ import {
   rolesApi,
   settingsApi,
   usersApi,
+  emailConfigApi,
   type ApiMetrics,
   type ApiRuntime,
   type ApiUser,
@@ -2341,6 +2342,155 @@ export function ApiKeysPage({ pushToast }: { pushToast: (m: string) => void }) {
   );
 }
 
+const EMAIL_PROVIDER_OPTIONS = [
+  { value: "inherit", label: "Inherit — deployment default" },
+  { value: "console", label: "Console (log to stdout)" },
+  { value: "resend", label: "Resend" },
+  { value: "sendgrid", label: "SendGrid" },
+  { value: "mailgun", label: "Mailgun" },
+  { value: "ses", label: "Amazon SES" },
+  { value: "smtp", label: "SMTP" },
+];
+
+// [key, label, placeholder, type] for config fields; [key, label] for secrets.
+const EMAIL_PROVIDER_FIELDS: Record<string, { hint: string; config: [string, string, string, string][]; secrets: [string, string][] }> = {
+  inherit: { hint: "Falls through to the instance-wide override, then EMAIL_PROVIDER / *_API_KEY / EMAIL_FROM on the Worker.", config: [], secrets: [] },
+  console: { hint: "Doesn't send anything — writes the message to the Worker log. Dev only.", config: [], secrets: [] },
+  resend: { hint: "HTTP API — works on every runtime, including Cloudflare Workers.", config: [], secrets: [["apiKey", "API key"]] },
+  sendgrid: { hint: "HTTP API — works on every runtime, including Cloudflare Workers.", config: [], secrets: [["apiKey", "API key"]] },
+  mailgun: { hint: "HTTP API — works on every runtime, including Cloudflare Workers.", config: [["domain", "Sending domain", "mg.example.com", "text"], ["host", "API host (optional)", "api.mailgun.net / api.eu.mailgun.net", "text"]], secrets: [["apiKey", "API key"]] },
+  ses: { hint: "SigV4-signed — works on every runtime. The from address/domain must be verified in SES.", config: [["region", "Region", "us-east-1", "text"], ["accessKeyId", "Access key ID", "AKIA…", "text"]], secrets: [["secretAccessKey", "Secret access key"]] },
+  smtp: { hint: "nodemailer — NOT supported on Cloudflare Workers (no raw TCP). Use an HTTP-API provider there.", config: [["host", "Host", "smtp.example.com", "text"], ["port", "Port", "587", "number"], ["user", "Username", "", "text"], ["secure", "Implicit TLS (port 465)", "", "checkbox"]], secrets: [["pass", "Password"]] },
+};
+
+function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
+  const [cfg, setCfg] = useState<any>(null);
+  const [provider, setProvider] = useState("inherit");
+  const [from, setFrom] = useState("");
+  const [config, setConfig] = useState<Record<string, any>>({});
+  const [secrets, setSecrets] = useState<Record<string, string>>({});
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  const load = async () => {
+    try {
+      const r = await emailConfigApi.get();
+      const d = r.data as any;
+      setCfg(d);
+      setProvider(d.provider || "inherit");
+      setFrom(d.fromAddress ?? "");
+      setConfig({ ...(d.config || {}) });
+      setSecrets({});
+      setDirty(false);
+    } catch (e) {
+      pushToast((e as Error).message);
+    }
+  };
+  useEffect(() => { void load(); }, []);
+
+  const fields = EMAIL_PROVIDER_FIELDS[provider] ?? EMAIL_PROVIDER_FIELDS.inherit;
+  const mark = () => setDirty(true);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const cfgOut: Record<string, any> = {};
+      for (const [key, , , type] of fields.config) {
+        const v = config[key];
+        if (type === "number") cfgOut[key] = v === "" || v == null ? undefined : Number(v);
+        else if (type === "checkbox") cfgOut[key] = !!v;
+        else cfgOut[key] = v == null ? "" : String(v);
+      }
+      await emailConfigApi.put({ provider, fromAddress: from || null, config: cfgOut, secrets });
+      pushToast("Email settings saved.");
+      await load();
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const sendTest = async () => {
+    setTesting(true);
+    try {
+      const r = await emailConfigApi.sendTest();
+      pushToast(`Test email sent to ${r.to}.`);
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const envHint =
+    cfg && (cfg.env?.provider || cfg.env?.from)
+      ? ` · deployment env: ${cfg.env.provider ?? "(auto)"}${cfg.env.from ? ` from ${cfg.env.from}` : ""}`
+      : "";
+
+  return (
+    <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+        <I.Info size={14} style={{ marginTop: 2 }} />
+        <span className="muted" style={{ fontSize: 12 }}>
+          Email transport for <b>this workspace</b>. Resolution order: this config → the instance-wide
+          default → the deployment’s <span className="font-mono">EMAIL_PROVIDER</span> / env keys. Secret
+          values are encrypted at rest and never shown again.
+        </span>
+      </div>
+      <div className="field">
+        <label className="field-label">Provider</label>
+        <Select value={provider} onChange={(v: string) => { setProvider(v); mark(); }} options={EMAIL_PROVIDER_OPTIONS} />
+        <span className="field-hint">{fields.hint}{envHint}</span>
+      </div>
+      {provider !== "inherit" && provider !== "console" && (
+        <div className="field">
+          <label className="field-label">From address</label>
+          <input className="input" placeholder="hello@yourdomain.com" value={from} onChange={(e) => { setFrom(e.target.value); mark(); }} />
+          <span className="field-hint">Required for every provider — must be a verified sender/domain for the chosen transport.</span>
+        </div>
+      )}
+      {fields.config.map(([key, label, placeholder, type]) => (
+        <div className="field" key={key}>
+          {type === "checkbox" ? (
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input type="checkbox" checked={!!config[key]} onChange={(e) => { setConfig((c) => ({ ...c, [key]: e.target.checked })); mark(); }} />
+              <span className="field-label" style={{ marginBottom: 0 }}>{label}</span>
+            </label>
+          ) : (
+            <>
+              <label className="field-label">{label}</label>
+              <input className="input" type={type === "number" ? "number" : "text"} placeholder={placeholder} value={config[key] ?? ""} onChange={(e) => { setConfig((c) => ({ ...c, [key]: e.target.value })); mark(); }} />
+            </>
+          )}
+        </div>
+      ))}
+      {fields.secrets.map(([key, label]) => (
+        <div className="field" key={key}>
+          <label className="field-label">{label}</label>
+          <input
+            className="input"
+            type="password"
+            autoComplete="new-password"
+            placeholder={cfg?.secretsSet?.[key] ? "•••••••• (stored — leave blank to keep)" : ""}
+            value={secrets[key] ?? ""}
+            onChange={(e) => { setSecrets((s) => ({ ...s, [key]: e.target.value })); mark(); }}
+          />
+          {cfg?.secretsSet?.[key] && <span className="field-hint">A value is stored. Type a new one to replace it, or leave blank to keep it.</span>}
+        </div>
+      ))}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
+        <Button variant="outline" size="sm" disabled={testing} onClick={() => void sendTest()}>{testing ? "Sending…" : "Send test email"}</Button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button variant="ghost" size="sm" disabled={!dirty || saving} onClick={() => void load()}>Discard</Button>
+          <Button variant="primary" size="sm" disabled={!dirty || saving} onClick={() => void save()}>{saving ? "Saving…" : "Save"}</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushToast: (m: string) => void }) {
   const [tab, setTab] = useState("general");
   const [appUrl, setAppUrl] = useState("http://localhost:8787");
@@ -2421,6 +2571,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
       <div className="tabs">
         {[
           { id: "general", label: "General" },
+          { id: "email", label: "Email" },
           { id: "bindings", label: "Bindings", count: bindings.length },
           { id: "env", label: "Environment", count: envVars.length },
           { id: "about", label: "About" },
@@ -2469,6 +2620,8 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
           </div>
         </div>
       )}
+
+      {tab === "email" && <EmailSettingsCard pushToast={pushToast} />}
 
       {tab === "bindings" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 920 }}>

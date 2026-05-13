@@ -470,6 +470,7 @@ export const activity = sqliteTable(
     ip: text("ip"),
     userAgent: text("user_agent"),
     payload: text("payload", { mode: "json" }).$type<unknown | null>(),
+    response: text("response", { mode: "json" }).$type<unknown | null>(),
     durationMs: integer("duration_ms"),
     createdAt: ts("created_at"),
   },

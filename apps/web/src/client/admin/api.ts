@@ -178,6 +178,7 @@ export interface ApiActivity {
   ip: string | null;
   userAgent: string | null;
   payload: unknown;
+  response: unknown;
   durationMs: number | null;
   createdAt: string;
 }

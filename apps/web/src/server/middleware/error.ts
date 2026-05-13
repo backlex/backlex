@@ -49,6 +49,7 @@ const logServerError = (
         itemId: `${c.req.method} ${path}`.slice(0, 200),
         ...meta,
         payload: { code, message, status },
+        response: { error: { code, message }, status },
       },
     ),
   );

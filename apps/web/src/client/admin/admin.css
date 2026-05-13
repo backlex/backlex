@@ -806,9 +806,19 @@ body {
   border-radius: var(--radius-xl);
   box-shadow: 0 12px 30px -8px oklch(0 0 0 / 0.18), 0 2px 8px oklch(0 0 0 / 0.06);
   z-index: 50;
-  min-width: 320px;
+  width: 320px;
+  max-width: calc(100vw - 16px);
   padding: 8px;
   display: flex; flex-direction: column; gap: 6px;
+}
+/* On narrow viewports anchor the popover to the right edge of its trigger
+   so the 320px width doesn't push past the screen. The component sets
+   `left: 0` inline; this overrides to `right: 0` below the md breakpoint. */
+@media (max-width: 640px) {
+  .popover {
+    left: auto !important;
+    right: 0;
+  }
 }
 .popover-row { display: flex; gap: 6px; align-items: center; }
 .popover-row .input, .popover-row .select { height: 32px; font-size: 12.5px; }

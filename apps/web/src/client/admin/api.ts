@@ -176,7 +176,9 @@ export interface ApiActivity {
   collection: string;
   itemId: string | null;
   ip: string | null;
+  userAgent: string | null;
   payload: unknown;
+  durationMs: number | null;
   createdAt: string;
 }
 

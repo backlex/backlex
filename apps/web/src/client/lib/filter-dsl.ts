@@ -1,4 +1,8 @@
+import type { Condition } from "@workeros/core";
+
 export interface FilterEntry {
+  /** Stable id so the UI can key/remove rows even when two chips share the same field+op. */
+  id: string;
   field: string;
   op: string;
   value: unknown;
@@ -17,42 +21,58 @@ export const FIELD_OPS: Record<string, string[]> = {
   relation: ["_eq", "_neq", "_in", "_null"],
 };
 
-/** Merge a list of `{ field, op, value }` entries back into the workeros DSL shape. */
-export const buildFilterDSL = (
-  filters: FilterEntry[],
-): Record<string, Record<string, unknown>> => {
-  const out: Record<string, Record<string, unknown>> = {};
-  for (const f of filters) {
-    out[f.field] = { ...(out[f.field] ?? {}), [f.op]: f.value };
-  }
-  return out;
+/** Generate a stable id for a new chip. Falls back to a counter on older runtimes. */
+let _filterIdCounter = 0;
+export const newFilterId = (): string =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `f${Date.now()}-${++_filterIdCounter}`;
+
+const entryToCondition = (f: FilterEntry): Condition =>
+  ({ [f.field]: { [f.op]: f.value } }) as Condition;
+
+/**
+ * Build a server-shaped {@link Condition} from a list of chip entries.
+ *
+ * Each chip becomes its own `{ field: { _op: value } }` clause. Multiple chips
+ * (including duplicates on the same field+op) are AND-ed together via a top-level
+ * `$and` so nothing gets silently overwritten — the previous shape used object
+ * keys for each field, which collapsed `tags _contains "a"` + `tags _contains "b"`
+ * into a single clause.
+ */
+export const buildFilterDSL = (filters: FilterEntry[]): Condition | null => {
+  if (filters.length === 0) return null;
+  if (filters.length === 1) return entryToCondition(filters[0]!);
+  return { $and: filters.map(entryToCondition) };
 };
 
 /**
- * Combine multiple DSL fragments into one — used to mix the chip-based filter
- * list with the quick search and the status quick-filter without losing any
- * field+op pairs (last wins on conflict, which is rare since each fragment
- * uses different fields).
+ * Combine multiple {@link Condition} fragments into one via `$and`. Nested
+ * `$and` clauses are flattened so the URL stays readable. Returns null if every
+ * fragment is empty.
  */
 export const mergeFilters = (
-  ...parts: (Record<string, Record<string, unknown>> | null | undefined)[]
-): Record<string, Record<string, unknown>> | null => {
-  const out: Record<string, Record<string, unknown>> = {};
-  let any = false;
+  ...parts: (Condition | null | undefined)[]
+): Condition | null => {
+  const flat: Condition[] = [];
   for (const p of parts) {
     if (!p) continue;
-    for (const [field, ops] of Object.entries(p)) {
-      out[field] = { ...(out[field] ?? {}), ...ops };
-      any = true;
+    const c = p as Record<string, unknown>;
+    if (Array.isArray(c.$and)) {
+      for (const sub of c.$and as Condition[]) flat.push(sub);
+    } else {
+      flat.push(p);
     }
   }
-  return any ? out : null;
+  if (flat.length === 0) return null;
+  if (flat.length === 1) return flat[0]!;
+  return { $and: flat };
 };
 
 /** Friendly URL (used in the live preview) — non-encoded JSON for readability. */
 export const previewFilterUrl = (
   slug: string,
-  dsl: Record<string, Record<string, unknown>> | null,
+  dsl: Condition | null,
 ): string => {
   if (!dsl) return `GET /api/items/${slug}`;
   return `GET /api/items/${slug}?filter=${encodeURIComponent(JSON.stringify(dsl))}`;

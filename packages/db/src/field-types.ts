@@ -119,6 +119,12 @@ export interface FieldDef {
    * routes reject writes to this field. Read-only end-to-end.
    */
   computed?: { formula: string };
+  /**
+   * When true (and the collection has `vectorize: true`), this field's
+   * value is concatenated into the embed text on item write. Only
+   * meaningful for `text` / `longtext` types — ignored otherwise.
+   */
+  vectorize?: boolean;
 }
 
 const PG_TYPES: Record<FieldType, string> = {

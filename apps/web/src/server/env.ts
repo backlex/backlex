@@ -41,6 +41,12 @@ export interface Env {
   /** Optional bearer token for the self-host embeddings endpoint. Leave
    *  unset for un-authed containers on a private network. */
   EMBEDDING_HTTP_TOKEN?: string;
+  /** Default embedding model for collections that have `vectorize: true`
+   *  but no per-collection `vectorize_model` set. Must be a key from
+   *  `EMBEDDING_MODELS` (`bge-m3`, `openai-3-small`, `openai-3-large`,
+   *  `self-host-bge-m3`). When unset, vectorize-enabled collections without
+   *  a model are silently skipped. */
+  EMBEDDING_DEFAULT_MODEL?: string;
   // Email transport. `EMAIL_PROVIDER` picks one explicitly: `console`,
   // `resend`, `sendgrid`, `mailgun`, or `ses`. When unset, the adapter is
   // auto-detected from whichever provider's credentials are present

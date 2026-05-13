@@ -31,6 +31,7 @@ export const MIGRATION_TAGS_SQLITE: Record<string, string> = {
   "fc96844d21fe0b2fb90fa3a5327e9c57a57a0d5078f4dc2922d7bfc9d756db30": "20260511120000_app_user_pool",
   "36c8e811bfbb5253b38200e0bfa7e76d5bb14929405f6dd52012fa10e11b8106": "20260511130000_app_user_roles",
   "02ac9cc1728fc934696e6e5f21048702dd119480ea58a3dbedcdc62a5cd84541": "20260512000000_email_config",
+  "0e1b9a254d21ba0e2cb74165d105a7c4b4db209fe118eb9ed200da481502a450": "20260513120000_collections_vectorize",
 };
 
 export const MIGRATION_TAGS_PG: Record<string, string> = {
@@ -55,4 +56,5 @@ export const MIGRATION_TAGS_PG: Record<string, string> = {
   "d4c0d690fe258c71c8086f237f4abf7a7d4e71251eb3cbc335dcad147e54a738": "20260511120000_email_templates_pg",
   "ff261b9a92ee5471c385d1ebc86dad237fae6cba6ff972389532c2cd95887890": "20260511130000_app_user_roles",
   "8583d14cdd6bf14d27d2e0c965d912f865e59d3905d27ea134305b942bbcaac8": "20260512000000_email_config",
+  "dd574277a9f28a60513e9c5c37d66d0e9df38b3fff52b0e88f873d48413bea80": "20260513120000_collections_vectorize",
 };

@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { NAV_ITEMS, NAV_SETTINGS, type CollectionListItem, type CollectionSchema, type Post, type SchemaField } from "./config";
-import { Badge, Button, IconButton } from "./ui";
+import { Badge, Button, IconButton, JsonBlock } from "./ui";
 
 export type PaletteSelection =
   | { kind: "page"; id: string; label: string; icon: string; meta: string }
@@ -136,23 +136,6 @@ const formatFullTs = (ms: number | undefined): string => {
 };
 
 function RealtimeEventDialog({ ev, channel, onClose }: { ev: RealtimeEvent; channel: string; onClose: () => void }) {
-  const json = useMemo(() => {
-    try {
-      return JSON.stringify(ev.raw ?? {}, null, 2);
-    } catch {
-      return "{}";
-    }
-  }, [ev.raw]);
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(json);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1400);
-    } catch {
-      // clipboard unavailable — silent
-    }
-  };
   // Close on ESC for keyboard parity with the other admin dialogs.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -214,32 +197,9 @@ function RealtimeEventDialog({ ev, channel, onClose }: { ev: RealtimeEvent; chan
               </>
             )}
           </div>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, color: "var(--muted-foreground)", fontSize: 11.5 }}>
-              <I.Braces size={12} />
-              <span style={{ textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Payload</span>
-            </div>
-            <pre
-              className="font-mono"
-              style={{
-                margin: 0,
-                padding: 12,
-                background: "color-mix(in oklch, var(--muted) 40%, var(--card))",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                fontSize: 11.5,
-                lineHeight: 1.55,
-                maxHeight: 360,
-                overflow: "auto",
-                whiteSpace: "pre",
-              }}
-            >
-              {json}
-            </pre>
-          </div>
+          <JsonBlock label="Payload" value={ev.raw ?? {}} />
         </div>
         <div className="dialog-foot">
-          <Button variant="outline" size="sm" onClick={copy}>{copied ? "Copied" : "Copy JSON"}</Button>
           <div className="spacer" style={{ flex: 1 }} />
           <Button variant="ghost" size="sm" onClick={onClose}>Close</Button>
         </div>

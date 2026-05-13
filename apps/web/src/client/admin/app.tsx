@@ -389,13 +389,36 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
     let rows = tweaks.populated ? posts : [];
     if (statusTab !== "all") rows = rows.filter((r) => r.status === statusTab);
     if (search.trim()) {
+      // Resilient text search: title/slug if present, otherwise every string
+      // field on the row. Without the guards `(r.title ?? "").toLowerCase()`
+      // throws on collections that don't declare a `title` column — that
+      // crashes the whole items view (the parent has no error boundary).
       const qq = search.toLowerCase();
-      rows = rows.filter((r) => r.title.toLowerCase().includes(qq) || r.slug.toLowerCase().includes(qq));
+      rows = rows.filter((r) => {
+        const t = (r as { title?: unknown }).title;
+        const s = (r as { slug?: unknown }).slug;
+        if (typeof t === "string" && t.toLowerCase().includes(qq)) return true;
+        if (typeof s === "string" && s.toLowerCase().includes(qq)) return true;
+        if (typeof t !== "string" && typeof s !== "string") {
+          for (const v of Object.values(r as Record<string, unknown>)) {
+            if (typeof v === "string" && v.toLowerCase().includes(qq)) return true;
+          }
+        }
+        return false;
+      });
     }
     if (filters.length) {
-      const combined: Record<string, Record<string, unknown>> = {};
-      for (const f of filters) combined[f.field] = { ...(combined[f.field] || {}), [f.op]: f.value };
-      rows = rows.filter((r) => evaluateFilter(r as Record<string, unknown>, combined));
+      // AND-combine each chip as its own clause so duplicate field+op pairs
+      // (e.g. body _contains "a" AND body _contains "b") survive — the old
+      // `combined[field] = {...combined[field], [op]: value}` shape silently
+      // overwrote on conflicts.
+      rows = rows.filter((r) =>
+        filters.every((f) =>
+          evaluateFilter(r as Record<string, unknown>, {
+            [f.field]: { [f.op]: f.value },
+          }),
+        ),
+      );
     }
     if (sort) {
       const dir = sort.startsWith("-") ? -1 : 1;

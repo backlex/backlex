@@ -798,7 +798,10 @@ body {
 .palette-footer { display: flex; gap: 14px; padding: 8px 14px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted-foreground); font-family: 'Geist Mono', monospace; align-items: center; }
 .palette-footer .kbd { padding: 1px 5px; background: var(--muted); border-radius: var(--radius-sm); border: 1px solid var(--border); }
 
-/* Filter popover */
+/* Filter popover — always right-anchored. The Filter button is the last
+   item in the filter bar, so anchoring at its right edge lets the 320px
+   popover grow leftward into the bar's available space rather than off
+   the right edge of the card. */
 .popover {
   position: absolute;
   background: var(--popover);
@@ -810,15 +813,6 @@ body {
   max-width: calc(100vw - 16px);
   padding: 8px;
   display: flex; flex-direction: column; gap: 6px;
-}
-/* On narrow viewports anchor the popover to the right edge of its trigger
-   so the 320px width doesn't push past the screen. The component sets
-   `left: 0` inline; this overrides to `right: 0` below the md breakpoint. */
-@media (max-width: 640px) {
-  .popover {
-    left: auto !important;
-    right: 0;
-  }
 }
 .popover-row { display: flex; gap: 6px; align-items: center; }
 .popover-row .input, .popover-row .select { height: 32px; font-size: 12.5px; }

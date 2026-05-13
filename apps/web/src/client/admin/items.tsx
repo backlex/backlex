@@ -145,7 +145,7 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
   };
 
   return (
-    <div className="popover" style={{ top: 44, left: 0 }}>
+    <div className="popover" style={{ top: 44, right: 0 }}>
       <div className="popover-row">
         <Select value={field} onChange={setField} options={editable.map((f) => ({ value: f.name, label: f.name, hint: f.type }))} className="" style={{ flex: 1 }} />
         <Select value={op} onChange={setOp} options={ops} style={{ flex: "0 0 110px" }} />

@@ -690,7 +690,7 @@ export const Items = () => {
   // The DSL we send + the URL preview both use this combined object.
   const combinedFilter = useMemo(() => {
     return mergeFilters(
-      filters.length ? buildFilterDSL(filters) : null,
+      buildFilterDSL(filters),
       search.trim() && firstTextField
         ? { [firstTextField.name]: { _contains: search.trim() } }
         : null,
@@ -734,6 +734,20 @@ export const Items = () => {
   useEffect(() => {
     setPage(0);
   }, [slug]);
+
+  // Filter/search/status changes invalidate the current page index — otherwise
+  // a narrow filter on page 3 produces an empty result instead of the matches.
+  useEffect(() => {
+    setPage(0);
+  }, [combinedFilter, sort]);
+
+  // Debounce the search box so typing doesn't fire a request per keystroke,
+  // while blur/Enter still flush immediately via setSearch directly.
+  useEffect(() => {
+    if (searchInput === search) return;
+    const t = setTimeout(() => setSearch(searchInput), 300);
+    return () => clearTimeout(t);
+  }, [searchInput, search]);
 
   // Pull permissions + roles when the user clicks the Permissions tab —
   // lazy so we don't hit the API for every collection load.

@@ -1,6 +1,6 @@
 // @ts-nocheck
 // workeros admin — additional pages
-import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { I, type IconComponent } from "./icons";
 import { ADAPTER_PROFILES, type AdapterId } from "./config";
 import { Badge, Button, Checkbox, IconButton, PageHeader, Switch } from "./ui";
@@ -17,11 +17,22 @@ import {
   settingsApi,
   usersApi,
   emailConfigApi,
+  workspaceConfigApi,
   type ApiMetrics,
   type ApiRuntime,
   type ApiUser,
 } from "./api";
 import { ConfirmDialog } from "./sheet";
+import { useTheme } from "@/components/theme-provider";
+
+/** Mirror of `services/workspace-config.ts::isValidColor` — keep in sync. */
+const isValidColor = (v: string): boolean => {
+  const s = v.trim();
+  if (/^#[0-9a-fA-F]{3,8}$/.test(s)) {
+    return s.length === 4 || s.length === 5 || s.length === 7 || s.length === 9;
+  }
+  return /^(rgb|hsl|oklch|oklab)a?\(\s*[\d\s%.,/-]+\s*\)$/i.test(s);
+};
 
 const fetchSafely = async <T,>(path: string): Promise<T | null> => {
   try {
@@ -2492,6 +2503,341 @@ function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
   );
 }
 
+/**
+ * Per-workspace branding form. Reads its workspace's own row (no `_global`
+ * fallback) so the admin edits *this* workspace's overrides explicitly. Logo
+ * and favicon upload via the existing storage route with fixed logical keys
+ * (`branding/logo` / `branding/favicon`) — re-uploading replaces.
+ */
+function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
+  const { theme: userTheme, setTheme: setUserTheme } = useTheme();
+  const [workspaceName, setWorkspaceName] = useState("");
+  const [description, setDescription] = useState("");
+  const [logoFileKey, setLogoFileKey] = useState<string | null>(null);
+  const [faviconFileKey, setFaviconFileKey] = useState<string | null>(null);
+  const [primaryColor, setPrimaryColor] = useState("");
+  const [defaultTheme, setDefaultTheme] = useState<"" | "light" | "dark" | "system">("");
+  // Per-asset nonce appended to the preview URL so a re-upload to the same
+  // logical key busts the browser cache.
+  const [logoBust, setLogoBust] = useState<string>("");
+  const [faviconBust, setFaviconBust] = useState<string>("");
+  const [dirty, setDirty] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingFavicon, setUploadingFavicon] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const faviconInputRef = useRef<HTMLInputElement | null>(null);
+
+  const primaryColorOk = primaryColor.trim() === "" || isValidColor(primaryColor);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await workspaceConfigApi.getRaw();
+      const d = r.data;
+      setWorkspaceName(d.workspaceName ?? "");
+      setDescription(d.description ?? "");
+      setLogoFileKey(d.logoFileKey ?? null);
+      setFaviconFileKey(d.faviconFileKey ?? null);
+      setPrimaryColor(d.primaryColor ?? "");
+      setDefaultTheme(
+        d.defaultTheme === "light" || d.defaultTheme === "dark" || d.defaultTheme === "system"
+          ? d.defaultTheme
+          : "",
+      );
+      const v = String(d.updatedAt ?? Date.now());
+      setLogoBust(v);
+      setFaviconBust(v);
+      setDirty(false);
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [pushToast]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const uploadFile = async (kind: "logo" | "favicon", file: File): Promise<string> => {
+    const key = `branding/${kind}`;
+    const res = await fetch(`/api/storage/${encodeURIComponent(key)}`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "content-type": file.type || "application/octet-stream" },
+      body: file,
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`Upload failed (${res.status}): ${txt.slice(0, 200)}`);
+    }
+    return key;
+  };
+
+  const onPickLogo = async (file: File | null) => {
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const key = await uploadFile("logo", file);
+      setLogoFileKey(key);
+      setLogoBust(String(Date.now()));
+      setDirty(true);
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const onPickFavicon = async (file: File | null) => {
+    if (!file) return;
+    setUploadingFavicon(true);
+    try {
+      const key = await uploadFile("favicon", file);
+      setFaviconFileKey(key);
+      setFaviconBust(String(Date.now()));
+      setDirty(true);
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setUploadingFavicon(false);
+    }
+  };
+
+  const save = async () => {
+    if (!primaryColorOk) {
+      pushToast("Primary color must be a hex (#rrggbb) or a CSS color function.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await workspaceConfigApi.put({
+        workspaceName: workspaceName.trim() || null,
+        description: description.trim() || null,
+        logoFileKey,
+        faviconFileKey,
+        primaryColor: primaryColor.trim() || null,
+        defaultTheme: defaultTheme || null,
+      });
+      setDirty(false);
+      pushToast("Branding saved.");
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const previewUrl = (key: string | null, bust: string): string | null =>
+    key ? `/api/storage/${encodeURIComponent(key)}${bust ? `?v=${bust}` : ""}` : null;
+
+  const logoSrc = previewUrl(logoFileKey, logoBust);
+  const faviconSrc = previewUrl(faviconFileKey, faviconBust);
+
+  return (
+    <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
+      <div className="field">
+        <label className="field-label">Workspace name</label>
+        <input
+          className="input"
+          value={workspaceName}
+          disabled={loading}
+          onChange={(e) => { setWorkspaceName(e.target.value); setDirty(true); }}
+        />
+        <span className="field-hint">Shown in the sidebar and the browser title.</span>
+      </div>
+      <div className="field">
+        <label className="field-label">Description</label>
+        <textarea
+          className="input"
+          rows={3}
+          value={description}
+          disabled={loading}
+          onChange={(e) => { setDescription(e.target.value); setDirty(true); }}
+        />
+        <span className="field-hint">Short tagline for the workspace.</span>
+      </div>
+      <div className="field-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+        <div>
+          <div className="field-label">Logo</div>
+          <div className="field-hint">PNG, JPG, SVG or WebP. Replaces any previous upload.</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {logoSrc && (
+            <img
+              src={logoSrc}
+              alt="workspace logo"
+              style={{ width: 56, height: 56, objectFit: "contain", borderRadius: 6, background: "var(--muted)", padding: 4 }}
+            />
+          )}
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/svg+xml,image/webp"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const f = e.target.files?.[0] ?? null;
+              e.target.value = "";
+              void onPickLogo(f);
+            }}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={uploadingLogo || loading}
+            onClick={() => logoInputRef.current?.click()}
+          >
+            {uploadingLogo ? "Uploading…" : logoFileKey ? "Replace" : "Upload"}
+          </Button>
+          {logoFileKey && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={uploadingLogo || loading}
+              onClick={() => { setLogoFileKey(null); setDirty(true); }}
+            >
+              Remove
+            </Button>
+          )}
+        </div>
+      </div>
+      <div className="field-row">
+        <div>
+          <div className="field-label">Favicon</div>
+          <div className="field-hint">PNG or ICO recommended (≤ 64 KB).</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {faviconSrc && (
+            <img
+              src={faviconSrc}
+              alt="workspace favicon"
+              style={{ width: 32, height: 32, objectFit: "contain", borderRadius: 6, background: "var(--muted)", padding: 2 }}
+            />
+          )}
+          <input
+            ref={faviconInputRef}
+            type="file"
+            accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const f = e.target.files?.[0] ?? null;
+              e.target.value = "";
+              void onPickFavicon(f);
+            }}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={uploadingFavicon || loading}
+            onClick={() => faviconInputRef.current?.click()}
+          >
+            {uploadingFavicon ? "Uploading…" : faviconFileKey ? "Replace" : "Upload"}
+          </Button>
+          {faviconFileKey && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={uploadingFavicon || loading}
+              onClick={() => { setFaviconFileKey(null); setDirty(true); }}
+            >
+              Remove
+            </Button>
+          )}
+        </div>
+      </div>
+      <div className="field" style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+        <label className="field-label">Primary color</label>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span
+            aria-hidden
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 6,
+              border: "1px solid var(--border)",
+              background: primaryColorOk && primaryColor.trim() ? primaryColor : "var(--primary)",
+            }}
+          />
+          <input
+            type="color"
+            value={/^#[0-9a-fA-F]{6}$/.test(primaryColor.trim()) ? primaryColor.trim() : "#000000"}
+            disabled={loading}
+            onChange={(e) => { setPrimaryColor(e.target.value); setDirty(true); }}
+            style={{ width: 40, height: 28, padding: 0, border: "1px solid var(--border)", borderRadius: 6, background: "transparent" }}
+            aria-label="Pick primary color"
+          />
+          <input
+            className="input"
+            value={primaryColor}
+            placeholder="#3b82f6 or oklch(0.84 0.23 128.85)"
+            disabled={loading}
+            onChange={(e) => { setPrimaryColor(e.target.value); setDirty(true); }}
+            style={{ flex: 1, fontFamily: "var(--font-mono)" }}
+          />
+          {primaryColor && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={loading}
+              onClick={() => { setPrimaryColor(""); setDirty(true); }}
+            >
+              Reset
+            </Button>
+          )}
+        </div>
+        <span className="field-hint">
+          {primaryColorOk
+            ? "Overrides the `--primary` token used across the admin and any published surfaces."
+            : "Use a hex value (#rrggbb), or a CSS color function: rgb(), hsl(), oklch(), oklab()."}
+        </span>
+      </div>
+      <div className="field-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 14, alignItems: "flex-start" }}>
+        <div>
+          <div className="field-label">Workspace default theme</div>
+          <div className="field-hint">Applied to users with no local override yet.</div>
+        </div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {(["", "light", "dark", "system"] as const).map((opt) => (
+            <Button
+              key={opt || "user"}
+              variant={defaultTheme === opt ? "primary" : "outline"}
+              size="sm"
+              disabled={loading}
+              onClick={() => { setDefaultTheme(opt); setDirty(true); }}
+            >
+              {opt === "" ? "Leave to user" : opt === "light" ? "Light" : opt === "dark" ? "Dark" : "System"}
+            </Button>
+          ))}
+        </div>
+      </div>
+      <div className="field-row" style={{ alignItems: "flex-start" }}>
+        <div>
+          <div className="field-label">My theme</div>
+          <div className="field-hint">Your own preference — stored locally, not synced.</div>
+        </div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {(["light", "dark", "system"] as const).map((opt) => (
+            <Button
+              key={opt}
+              variant={userTheme === opt ? "primary" : "outline"}
+              size="sm"
+              onClick={() => setUserTheme(opt)}
+            >
+              {opt === "light" ? "Light" : opt === "dark" ? "Dark" : "System"}
+            </Button>
+          ))}
+        </div>
+      </div>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 6 }}>
+        <Button variant="ghost" size="sm" disabled={!dirty || saving || loading} onClick={() => void load()}>Discard</Button>
+        <Button variant="primary" size="sm" disabled={!dirty || saving || loading} onClick={() => void save()}>
+          {saving ? "Saving…" : "Save"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushToast: (m: string) => void }) {
   const [tab, setTab] = useState("general");
   const [appUrl, setAppUrl] = useState("http://localhost:8787");
@@ -2572,6 +2918,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
       <div className="tabs">
         {[
           { id: "general", label: "General" },
+          { id: "appearance", label: "Appearance" },
           { id: "email", label: "Email" },
           { id: "bindings", label: "Bindings", count: bindings.length },
           { id: "env", label: "Environment", count: envVars.length },
@@ -2621,6 +2968,8 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
           </div>
         </div>
       )}
+
+      {tab === "appearance" && <AppearanceSettingsCard pushToast={pushToast} />}
 
       {tab === "email" && <EmailSettingsCard pushToast={pushToast} />}
 

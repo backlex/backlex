@@ -13,9 +13,17 @@ export interface Env {
   // Cloudflare bindings — present only when running on Workers.
   D1?: D1Database;
   R2?: R2Bucket;
-  VECTORIZE?: VectorizeIndex;
+  /** One Vectorize index per embedding model — see packages/core/src/embedding-models.ts.
+   *  `VECTORIZE_OPENAI` (1536, cosine) holds OpenAI text-embedding-3-small vectors;
+   *  `VECTORIZE_BGE_M3` (1024, cosine) holds Workers AI bge-m3 vectors. Either may
+   *  be unbound — the model is unavailable until its index is added. */
+  VECTORIZE_OPENAI?: VectorizeIndex;
+  VECTORIZE_BGE_M3?: VectorizeIndex;
   HYPERDRIVE?: Hyperdrive;
   REALTIME?: DurableObjectNamespace;
+  /** Cloudflare Workers AI binding. Required for the `bge-m3` model
+   *  (`@cf/baai/bge-m3`). Add `[ai] binding = "AI"` in wrangler.toml. */
+  AI?: Ai;
   // Optional AI provider keys.
   OPENAI_API_KEY?: string;
   // Email transport. `EMAIL_PROVIDER` picks one explicitly: `console`,

@@ -70,10 +70,25 @@ database_id = "5053e4b4-bd46-4bde-b4c2-48dbaed12ce2"
 binding = "R2"
 bucket_name = "workeros-files"
 
-# Vectorize — vector index for embeddings (1536 dim, cosine).
+# Vectorize — one index per embedding model. The model registry in
+# packages/core/src/embedding-models.ts pins each binding to a specific
+# dimension; the routes/adapter pick the right index by model name.
+# Create the indexes once with the matching dimensions:
+#   wrangler vectorize create workeros-openai-1536 --dimensions=1536 --metric=cosine
+#   wrangler vectorize create workeros-bge-m3      --dimensions=1024 --metric=cosine
 [[vectorize]]
-binding = "VECTORIZE"
-index_name = "workeros-embeddings"
+binding = "VECTORIZE_OPENAI"
+index_name = "workeros-openai-1536"
+
+[[vectorize]]
+binding = "VECTORIZE_BGE_M3"
+index_name = "workeros-bge-m3"
+
+# Workers AI — required for the bge-m3 embedding model
+# (`@cf/baai/bge-m3`). No keys needed; daily Neuron quota covers small/
+# medium use. Remove this block if you only use OpenAI embeddings.
+[ai]
+binding = "AI"
 
 # Optional: Hyperdrive proxy in front of Postgres for PG-on-edge.
 # [[hyperdrive]]

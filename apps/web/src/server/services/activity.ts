@@ -34,11 +34,39 @@ export interface ActivityInput {
   ip?: string | null;
   userAgent?: string | null;
   payload?: unknown;
+  /** Response body for the request that produced this row. Stored as JSON;
+   *  redacted on write (see `redact`) so tokens/secrets never hit the audit
+   *  log. Surfaced in the admin Activity modal alongside `payload`. */
+  response?: unknown;
   /** Optional millisecond-precision duration for the request that produced
    *  this row. Populated by route handlers via `Date.now() - start` so the
    *  metrics endpoint can compute p95 latency without a separate pipeline. */
   durationMs?: number | null;
 }
+
+/** Keys that should never reach the audit log verbatim. Match is
+ *  case-insensitive and matches anywhere in the key — `client_secret`,
+ *  `apiKey`, `x-auth-token`, etc. all hit the same redactor. */
+const REDACT_PATTERN = /token|secret|password|api[-_]?key|authorization|cookie|session/i;
+
+/** Walks a JSON-ish value and replaces redactable leaves with the marker
+ *  string. Returns a new structure — never mutates input. Arrays and plain
+ *  objects recurse; everything else (primitives, Dates, etc.) is returned
+ *  as-is unless the parent key matched the pattern. */
+export const redact = (value: unknown): unknown => {
+  if (value === null || value === undefined) return value;
+  if (Array.isArray(value)) return value.map((v) => redact(v));
+  if (typeof value !== "object") return value;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (REDACT_PATTERN.test(k)) {
+      out[k] = "[redacted]";
+      continue;
+    }
+    out[k] = redact(v);
+  }
+  return out;
+};
 
 export const recordActivity = async (
   ctx: DbCtx,
@@ -55,7 +83,8 @@ export const recordActivity = async (
       itemId: input.itemId ?? null,
       ip: input.ip ?? null,
       userAgent: input.userAgent ?? null,
-      payload: input.payload ?? null,
+      payload: input.payload === undefined ? null : redact(input.payload),
+      response: input.response === undefined ? null : redact(input.response),
       durationMs: input.durationMs ?? null,
     });
   } catch (e) {
@@ -146,6 +175,7 @@ export const logActivity = async (
     collection: string;
     itemId?: string | null;
     payload?: unknown;
+    response?: unknown;
   },
 ): Promise<void> => {
   const ctx = c.get("ctx");
@@ -161,6 +191,7 @@ export const logActivity = async (
       itemId: input.itemId ?? null,
       ...meta,
       payload: input.payload ?? null,
+      response: input.response ?? null,
       durationMs: elapsedMs(c),
     },
   );

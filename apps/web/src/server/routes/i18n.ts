@@ -6,6 +6,7 @@ import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { loadMatrix } from "../services/i18n";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.i18nStrings : sqlite.schema.i18nStrings;
@@ -49,25 +50,15 @@ export const i18nRoutes = new Hono<AppBindings>()
       )) as I18nRow[];
     return c.json({ data: rows });
   })
-  /** Convenience: full key×locale matrix. */
+  /** Convenience: full key×locale matrix. Locales include every column the
+   *  workspace has data in, plus every configured locale from settings (so
+   *  the admin grid shows empty columns for languages the workspace activated
+   *  but hasn't translated yet). */
   .get("/_matrix", async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");
-    const t = tableFor(ctx.dialect);
-    const rows = (await (ctx.db as any)
-      .select()
-      .from(t)
-      .where(
-        or(eq(t.tenantId, auth.tenantId ?? ""), isNull(t.tenantId)),
-      )) as I18nRow[];
-    const out: Record<string, Record<string, string>> = {};
-    const locales = new Set<string>();
-    for (const r of rows) {
-      locales.add(r.locale);
-      if (!out[r.key]) out[r.key] = {};
-      out[r.key]![r.locale] = r.value;
-    }
-    return c.json({ data: out, locales: [...locales].sort() });
+    const result = await loadMatrix(ctx.db, ctx.dialect, auth.tenantId ?? null);
+    return c.json(result);
   })
   .put("/", async (c) => {
     const ctx = c.get("ctx");

@@ -362,7 +362,12 @@ export const emailConfigApi = {
 export const i18nApi = {
   list: () => api<Envelope<ApiI18nString[]>>(`/api/admin/i18n`),
   matrix: () =>
-    api<{ data: Record<string, Record<string, string>>; locales: string[] }>(`/api/admin/i18n/_matrix`),
+    api<{
+      data: Record<string, Record<string, string>>;
+      locales: string[];
+      configuredLocales: string[];
+      defaultLocale: string;
+    }>(`/api/admin/i18n/_matrix`),
   upsert: (key: string, locale: string, value: string) =>
     api<Envelope<ApiI18nString>>(`/api/admin/i18n`, {
       method: "PUT",

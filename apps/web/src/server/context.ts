@@ -4,6 +4,7 @@ import { createAuth, type Auth, type OAuthProviderConfig } from "@workeros/auth"
 import { SYSTEM_ROLES } from "@workeros/core";
 import type {
   EmailAdapter,
+  EmbeddingAdapter,
   ImageAdapter,
   StorageAdapter,
   VectorAdapter,
@@ -13,7 +14,17 @@ import { r2Storage } from "./adapters/storage.r2";
 import { bunS3Storage } from "./adapters/storage.s3.bun";
 import { s3FetchStorage } from "./adapters/storage.s3.fetch";
 import { pgvectorAdapter } from "./adapters/vector.pg";
-import { vectorizeAdapter } from "./adapters/vector.cf";
+import {
+  vectorizeAdapter,
+  type VectorizeIndexMap,
+} from "./adapters/vector.cf";
+import { workersAiEmbeddingAdapter } from "./adapters/embedding.workers-ai";
+import { openaiEmbeddingAdapter } from "./adapters/embedding.openai";
+import { selfHostEmbeddingAdapter } from "./adapters/embedding.self-host";
+import {
+  embeddingRouter,
+  noEmbeddingAdapter,
+} from "./adapters/embedding.router";
 import { selectEmailAdapter } from "./lib/email-select";
 import { resolveEmailAdapter } from "./services/email-config";
 import { bunImage } from "./adapters/image.bun";
@@ -43,6 +54,10 @@ export interface Ctx {
   emailFor: (tenantId: string | null | undefined) => Promise<EmailAdapter>;
   storage: StorageAdapter;
   vector: VectorAdapter;
+  /** Text → vector embedding. Routes to Workers AI or OpenAI based on the
+   *  requested model (see `EMBEDDING_MODELS`). Throws if the model's
+   *  provider isn't configured. */
+  embedding: EmbeddingAdapter;
   image: ImageAdapter;
 }
 
@@ -173,17 +188,60 @@ export const buildContext = (env: Env): Ctx => {
     storage = fsStorage("./.data/files");
   }
 
-  const vector: VectorAdapter = env.VECTORIZE
-    ? vectorizeAdapter(env.VECTORIZE)
+  // Vector storage: prefer Vectorize on Workers (one binding per model so
+  // each index keeps its own dimension). On Postgres, pgvector handles the
+  // routing per-table. Otherwise (SQLite without Vectorize) fail loud.
+  const vectorizeBindings: VectorizeIndexMap = {};
+  if (env.VECTORIZE_OPENAI) vectorizeBindings["openai-3-small"] = env.VECTORIZE_OPENAI;
+  if (env.VECTORIZE_OPENAI_LARGE) vectorizeBindings["openai-3-large"] = env.VECTORIZE_OPENAI_LARGE;
+  if (env.VECTORIZE_BGE_M3) vectorizeBindings["bge-m3"] = env.VECTORIZE_BGE_M3;
+  if (env.VECTORIZE_SELF_HOST_BGE_M3) vectorizeBindings["self-host-bge-m3"] = env.VECTORIZE_SELF_HOST_BGE_M3;
+  const hasAnyVectorize =
+    Object.keys(vectorizeBindings).length > 0;
+  const vector: VectorAdapter = hasAnyVectorize
+    ? vectorizeAdapter(vectorizeBindings)
     : dialect === "pg"
       ? pgvectorAdapter(db as PgDb)
       : noVectorAdapter();
+
+  // Embedding (text → vector). Models are routed to providers by the
+  // registry: bge-m3 → Workers AI, openai-3-small → OpenAI. A model whose
+  // provider isn't configured here fails loudly when invoked.
+  const hasAnyEmbeddingProvider =
+    env.AI || env.OPENAI_API_KEY || env.EMBEDDING_HTTP_URL;
+  const embedding: EmbeddingAdapter = hasAnyEmbeddingProvider
+    ? embeddingRouter({
+        ...(env.AI ? { "workers-ai": workersAiEmbeddingAdapter(env.AI) } : {}),
+        ...(env.OPENAI_API_KEY
+          ? { openai: openaiEmbeddingAdapter(env.OPENAI_API_KEY) }
+          : {}),
+        ...(env.EMBEDDING_HTTP_URL
+          ? {
+              "self-host": selfHostEmbeddingAdapter({
+                baseUrl: env.EMBEDDING_HTTP_URL,
+                token: env.EMBEDDING_HTTP_TOKEN,
+              }),
+            }
+          : {}),
+      })
+    : noEmbeddingAdapter();
 
   // Image transform: prefer Bun's built-in image API when available; fall
   // back to passthrough so the route still works (just without resizing).
   const image: ImageAdapter = bunImage() ?? passthroughImage();
 
-  const ctx: Ctx = { env, dialect, db, auth, email, emailFor, storage, vector, image };
+  const ctx: Ctx = {
+    env,
+    dialect,
+    db,
+    auth,
+    email,
+    emailFor,
+    storage,
+    vector,
+    embedding,
+    image,
+  };
   // Late-bind so the `onUserCreated` closure can publish events through the
   // fully assembled Ctx (runFlows + webhook dispatch need `fullCtx`).
   fullCtx = ctx;
@@ -193,7 +251,7 @@ export const buildContext = (env: Env): Ctx => {
 const noVectorAdapter = (): VectorAdapter => {
   const fail = () => {
     throw new Error(
-      "No vector backend configured. Set DATABASE_URL (with pgvector) or bind VECTORIZE.",
+      "No vector backend configured. Set DATABASE_URL (with pgvector) or bind VECTORIZE_OPENAI / VECTORIZE_BGE_M3.",
     );
   };
   return { upsert: fail, query: fail, delete: fail };

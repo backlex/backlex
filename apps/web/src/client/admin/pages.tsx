@@ -1650,7 +1650,7 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
   );
 }
 
-export function RealtimePage({ events, pushToast }: { events: RealtimeEvent[]; pushToast: (m: string) => void }) {
+export function RealtimePage({ events, active, onActiveChange, pushToast }: { events: RealtimeEvent[]; active: string; onActiveChange: (name: string) => void; pushToast: (m: string) => void }) {
   // Channels are derived from real collections — `items:<slug>` per
   // collection plus the system `collections` channel. Subscriber counts
   // aren't exposed by the API yet so we hide that column rather than
@@ -1679,12 +1679,13 @@ export function RealtimePage({ events, pushToast }: { events: RealtimeEvent[]; p
     })();
     return () => { cancelled = true; };
   }, []);
-  const [active, setActive] = useState<string>("collections");
-  // Lock onto the first channel once derived.
+  // Lock onto the first channel once derived if the parent's selection no
+  // longer matches any known channel.
   useEffect(() => {
     if (channels.length === 0) return;
-    if (!channels.some((c) => c.name === active)) setActive(channels[0]!.name);
-  }, [channels]);
+    if (!channels.some((c) => c.name === active)) onActiveChange(channels[0]!.name);
+  }, [channels, active, onActiveChange]);
+  const setActive = onActiveChange;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader

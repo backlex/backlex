@@ -1,18 +1,71 @@
+import { AppError } from "@workeros/core";
 import type { VectorAdapter } from "@workeros/core/adapters";
+import {
+  EMBEDDING_MODELS,
+  getEmbeddingModel,
+  type EmbeddingModel,
+} from "@workeros/core";
 
-export const vectorizeAdapter = (index: VectorizeIndex): VectorAdapter => ({
-  async upsert(records) {
+/**
+ * One Vectorize index per embedding model. The map keys are model names
+ * (`bge-m3`, `openai-3-small`); values are the bound `VectorizeIndex` from
+ * Cloudflare. Models without a bound index error on use — never silently
+ * fall through to a wrong-dimension store.
+ */
+export type VectorizeIndexMap = Partial<Record<EmbeddingModel, VectorizeIndex>>;
+
+const indexFor = (
+  bindings: VectorizeIndexMap,
+  model: EmbeddingModel,
+): VectorizeIndex => {
+  const idx = bindings[model];
+  if (!idx) {
+    const def = getEmbeddingModel(model);
+    throw new AppError(
+      "INTERNAL",
+      `Vectorize index for model '${model}' is not bound. ` +
+        `Add a [[vectorize]] block with binding="${def.vectorizeBinding}" ` +
+        `(dimensions=${def.dimensions}) in wrangler.toml.`,
+    );
+  }
+  return idx;
+};
+
+export const vectorizeAdapter = (
+  bindings: VectorizeIndexMap,
+): VectorAdapter => ({
+  async upsert(model, records) {
     if (records.length === 0) return;
+    const def = getEmbeddingModel(model);
+    for (const r of records) {
+      if (r.values.length !== def.dimensions) {
+        throw new AppError(
+          "VALIDATION",
+          `Vector for model '${model}' must have ${def.dimensions} dimensions, got ${r.values.length}`,
+        );
+      }
+    }
+    const index = indexFor(bindings, model);
     await index.upsert(
       records.map((r) => ({
         id: r.id,
         values: r.values,
         namespace: r.namespace,
-        metadata: r.metadata as Record<string, VectorizeVectorMetadata> | undefined,
+        metadata: r.metadata as
+          | Record<string, VectorizeVectorMetadata>
+          | undefined,
       })),
     );
   },
-  async query({ values, topK = 10, namespace, filter }) {
+  async query(model, { values, topK = 10, namespace, filter }) {
+    const def = getEmbeddingModel(model);
+    if (values.length !== def.dimensions) {
+      throw new AppError(
+        "VALIDATION",
+        `Query vector for model '${model}' must have ${def.dimensions} dimensions, got ${values.length}`,
+      );
+    }
+    const index = indexFor(bindings, model);
     const res = await index.query(values, {
       topK,
       namespace,
@@ -25,8 +78,13 @@ export const vectorizeAdapter = (index: VectorizeIndex): VectorAdapter => ({
       metadata: m.metadata as Record<string, unknown> | undefined,
     }));
   },
-  async delete(ids) {
+  async delete(model, ids) {
     if (ids.length === 0) return;
+    const index = indexFor(bindings, model);
     await index.deleteByIds(ids);
   },
 });
+
+/** Convenience used by docs/tests. Lists every model the registry knows. */
+export const allModelNames = (): EmbeddingModel[] =>
+  Object.keys(EMBEDDING_MODELS) as EmbeddingModel[];

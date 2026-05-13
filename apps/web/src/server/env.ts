@@ -13,11 +13,34 @@ export interface Env {
   // Cloudflare bindings — present only when running on Workers.
   D1?: D1Database;
   R2?: R2Bucket;
-  VECTORIZE?: VectorizeIndex;
+  /** One Vectorize index per embedding model — see packages/core/src/embedding-models.ts.
+   *  `VECTORIZE_OPENAI` (1536, cosine) — OpenAI text-embedding-3-small;
+   *  `VECTORIZE_OPENAI_LARGE` (3072, cosine) — OpenAI text-embedding-3-large;
+   *  `VECTORIZE_BGE_M3` (1024, cosine) — Workers AI bge-m3;
+   *  `VECTORIZE_SELF_HOST_BGE_M3` (1024, cosine) — self-hosted bge-m3
+   *  (TEI/Ollama/etc); separate index because vectors from a different
+   *  build of the same model still live in a disjoint space.
+   *  Each is optional; a model whose index isn't bound errors on use. */
+  VECTORIZE_OPENAI?: VectorizeIndex;
+  VECTORIZE_OPENAI_LARGE?: VectorizeIndex;
+  VECTORIZE_BGE_M3?: VectorizeIndex;
+  VECTORIZE_SELF_HOST_BGE_M3?: VectorizeIndex;
   HYPERDRIVE?: Hyperdrive;
   REALTIME?: DurableObjectNamespace;
+  /** Cloudflare Workers AI binding. Required for the `bge-m3` model
+   *  (`@cf/baai/bge-m3`). Add `[ai] binding = "AI"` in wrangler.toml. */
+  AI?: Ai;
   // Optional AI provider keys.
   OPENAI_API_KEY?: string;
+  /** Base URL of a self-hosted, OpenAI-compatible embeddings container
+   *  (e.g. HuggingFace TEI, Ollama, vLLM, LiteLLM). The adapter posts to
+   *  `${EMBEDDING_HTTP_URL}/v1/embeddings`. Required to use any model whose
+   *  registry entry has `provider: "self-host"`. Text never leaves the
+   *  user's infrastructure. */
+  EMBEDDING_HTTP_URL?: string;
+  /** Optional bearer token for the self-host embeddings endpoint. Leave
+   *  unset for un-authed containers on a private network. */
+  EMBEDDING_HTTP_TOKEN?: string;
   // Email transport. `EMAIL_PROVIDER` picks one explicitly: `console`,
   // `resend`, `sendgrid`, `mailgun`, or `ses`. When unset, the adapter is
   // auto-detected from whichever provider's credentials are present

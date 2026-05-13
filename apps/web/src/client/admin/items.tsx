@@ -248,11 +248,11 @@ export function FilterDSLPreview({ filters, sort, fields }: { filters: FilterCon
   const dsl = useMemo(() => {
     const out: Record<string, unknown> = {};
     if (filters.length) {
-      const f: Record<string, Record<string, unknown>> = {};
-      for (const c of filters) {
-        f[c.field] = { ...(f[c.field] || {}), [c.op]: c.value };
-      }
-      out.filter = f;
+      // Each chip becomes its own clause; `$and` combines them. The previous
+      // `{ field: { ...prev, [op]: v } }` shape silently dropped duplicate
+      // field+op pairs (two `body _contains` chips collapsed into one).
+      const clauses = filters.map((c) => ({ [c.field]: { [c.op]: c.value } }));
+      out.filter = clauses.length === 1 ? clauses[0] : { $and: clauses };
     }
     if (sort) out.sort = sort;
     if (fields && fields.length) out.fields = fields;

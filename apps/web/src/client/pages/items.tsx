@@ -64,6 +64,7 @@ import {
   mergeFilters,
   previewFilterUrl,
   type FilterEntry,
+  type FilterMode,
 } from "@/lib/filter-dsl";
 import { notifyError } from "@/lib/error";
 import { toast } from "@workeros/ui/components/sonner";
@@ -668,6 +669,7 @@ export const Items = () => {
   const [searchInput, setSearchInput] = useState("");
   const [sort, setSort] = useState<string>("-created_at");
   const [filters, setFilters] = useState<FilterEntry[]>([]);
+  const [filterMode, setFilterMode] = useState<FilterMode>("and");
   const [statusTab, setStatusTab] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<{
@@ -687,18 +689,17 @@ export const Items = () => {
     (f) => f.type === "text" || f.type === "longtext",
   );
 
-  // The DSL we send + the URL preview both use this combined object.
+  // Free-text search hits the dedicated `q` server param (searches every
+  // text/longtext field). The structured DSL only carries chip + status
+  // filters now, so it stays clean in the URL preview.
   const combinedFilter = useMemo(() => {
     return mergeFilters(
-      buildFilterDSL(filters),
-      search.trim() && firstTextField
-        ? { [firstTextField.name]: { _contains: search.trim() } }
-        : null,
+      buildFilterDSL(filters, filterMode),
       statusTab !== "all" && statusField
         ? { [statusField.name]: { _eq: statusTab } }
         : null,
     );
-  }, [filters, search, firstTextField, statusTab, statusField]);
+  }, [filters, filterMode, statusTab, statusField]);
 
   const refresh = async () => {
     setLoading(true);
@@ -712,6 +713,9 @@ export const Items = () => {
       params.set("meta", "filter_count");
       if (combinedFilter) {
         params.set("filter", JSON.stringify(combinedFilter));
+      }
+      if (search.trim()) {
+        params.set("q", search.trim());
       }
       const i = await api<{
         data: Item[];
@@ -729,7 +733,7 @@ export const Items = () => {
   useEffect(() => {
     refresh();
     setSelected(new Set());
-  }, [slug, page, sort, combinedFilter]);
+  }, [slug, page, sort, combinedFilter, search]);
 
   useEffect(() => {
     setPage(0);
@@ -739,7 +743,7 @@ export const Items = () => {
   // a narrow filter on page 3 produces an empty result instead of the matches.
   useEffect(() => {
     setPage(0);
-  }, [combinedFilter, sort]);
+  }, [combinedFilter, search, sort]);
 
   // Debounce the search box so typing doesn't fire a request per keystroke,
   // while blur/Enter still flush immediately via setSearch directly.
@@ -1263,9 +1267,7 @@ export const Items = () => {
                   }
                 }}
                 placeholder={
-                  firstTextField
-                    ? `Search by ${firstTextField.name}…`
-                    : "Search…"
+                  firstTextField ? "Search text fields…" : "Search…"
                 }
                 className="h-7 min-w-0 flex-1 border-0 bg-transparent p-0 focus-visible:ring-0"
               />
@@ -1304,6 +1306,8 @@ export const Items = () => {
                   fields={collection.fields}
                   filters={filters}
                   onChange={setFilters}
+                  mode={filterMode}
+                  onModeChange={setFilterMode}
                 />
               )}
 
@@ -1333,11 +1337,11 @@ export const Items = () => {
           </div>
 
           {/* Live filter URL preview — shown only when a query is active */}
-          {combinedFilter && (
+          {(combinedFilter || search.trim()) && (
             <div className="overflow-hidden rounded-2xl border border-border bg-muted/40 px-4 py-2 font-mono text-[11px] text-muted-foreground">
               <span className="font-medium text-foreground">GET</span>{" "}
               <span className="break-all">
-                {previewFilterUrl(slug, combinedFilter)}
+                {previewFilterUrl(slug, combinedFilter, search)}
               </span>
             </div>
           )}

@@ -24,15 +24,18 @@ export interface WorkspaceConfigRow {
 /** Resolved view: the workspace row layered onto the `_global` row layered
  *  onto an empty record. Used by the public bootstrap endpoint.
  *
- *  `logoFileKey` / `faviconFileKey` are the **logical** keys stored in
- *  `files.key` (minus the `tenants/<id>/` physical prefix). Wiring the public
- *  asset serving endpoint is deferred to PR-2 — until then the client either
- *  ignores them or builds an authenticated `/api/storage/<key>` URL itself. */
+ *  `logoUrl` / `faviconUrl` point at the public asset endpoint
+ *  (`/api/workspace-config/asset/:kind`) and are non-null only when the
+ *  active workspace's own row has the corresponding `*_file_key` set
+ *  (asset files are per-tenant, so we don't fall back to `_global` for
+ *  them). A short `assetsVersion` query param busts the browser cache when
+ *  the row is re-saved. */
 export interface ResolvedWorkspaceConfig {
   workspaceName: string | null;
   description: string | null;
-  logoFileKey: string | null;
-  faviconFileKey: string | null;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  /** OKLCH / hex / rgb() / hsl() — applied verbatim as the `--primary` token. */
   primaryColor: string | null;
   defaultTheme: "light" | "dark" | "system" | null;
 }
@@ -70,13 +73,30 @@ export const loadWorkspaceConfigRow = async (
 ): Promise<WorkspaceConfigRow | undefined> =>
   readRow(ctx, tenantId && tenantId !== GLOBAL_WORKSPACE_CONFIG_ID ? tenantId : GLOBAL_WORKSPACE_CONFIG_ID);
 
-export const isOklch = (v: string): boolean => /^\s*oklch\s*\(/i.test(v.trim());
+/**
+ * Accept any of: `#rgb` / `#rgba` / `#rrggbb` / `#rrggbbaa`, or a CSS color
+ * function call (`rgb()`, `hsl()`, `oklch()`, `oklab()`) with only the
+ * characters that legitimately appear inside one. Strict enough to keep
+ * `</style>` etc. out of the boot-time `<style>` injection regardless of who
+ * wrote the row.
+ */
+export const isValidColor = (v: string): boolean => {
+  const s = v.trim();
+  if (/^#[0-9a-fA-F]{3,8}$/.test(s)) return s.length === 4 || s.length === 5 || s.length === 7 || s.length === 9;
+  return /^(rgb|hsl|oklch|oklab)a?\(\s*[\d\s%.,/-]+\s*\)$/i.test(s);
+};
 
 const cleanKey = (v: string | null | undefined): string | null =>
   typeof v === "string" && v.trim() ? v.trim() : null;
 
 const validTheme = (v: string | null): ResolvedWorkspaceConfig["defaultTheme"] =>
   v === "light" || v === "dark" || v === "system" ? v : null;
+
+const toVersionToken = (v: Date | number | null | undefined): string => {
+  if (v === null || v === undefined) return "";
+  if (v instanceof Date) return String(v.getTime());
+  return String(v);
+};
 
 /**
  * Resolve the active workspace config: the tenant's own row layered onto the
@@ -104,13 +124,21 @@ export const resolveWorkspaceConfig = async (
   };
 
   const primary = pick("primaryColor");
+  // Asset URLs are built from the workspace's own row only — files live under
+  // `tenants/<id>/…` and the asset endpoint serves from the active tenant's
+  // bucket, so a `_global` file key wouldn't resolve here anyway.
+  const ownLogo = cleanKey(own?.logoFileKey ?? null);
+  const ownFavicon = cleanKey(own?.faviconFileKey ?? null);
+  const version = toVersionToken(own?.updatedAt ?? null);
+  const assetUrl = (kind: "logo" | "favicon"): string =>
+    `/api/workspace-config/asset/${kind}${version ? `?v=${encodeURIComponent(version)}` : ""}`;
   return {
     workspaceName: (pick("workspaceName") as string | null) ?? null,
     description: (pick("description") as string | null) ?? null,
-    logoFileKey: cleanKey(pick("logoFileKey") as string | null),
-    faviconFileKey: cleanKey(pick("faviconFileKey") as string | null),
+    logoUrl: ownLogo ? assetUrl("logo") : null,
+    faviconUrl: ownFavicon ? assetUrl("favicon") : null,
     primaryColor:
-      typeof primary === "string" && isOklch(primary) ? primary : null,
+      typeof primary === "string" && isValidColor(primary) ? primary : null,
     defaultTheme: validTheme(pick("defaultTheme") as string | null),
   };
 };

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { DatabaseIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { DatabaseIcon, PlusIcon, SparklesIcon, Trash2Icon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@workeros/ui/components/card";
 import { Button } from "@workeros/ui/components/button";
 import { Input } from "@workeros/ui/components/input";
@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { notifyError } from "@/lib/error";
 import { api } from "@/lib/api";
+import { toast } from "@workeros/ui/components/sonner";
 
 type FieldType =
   | "text"
@@ -41,13 +42,30 @@ interface Field {
   type: FieldType;
   required?: boolean;
   to?: string;
+  /** Include this field in the embed text. Only meaningful for text/longtext. */
+  vectorize?: boolean;
 }
 
 interface Collection {
   slug: string;
   fields: Field[];
   ownerScoped: boolean | number;
+  vectorize?: boolean | number;
+  vectorizeModel?: string | null;
 }
+
+/** Mirrors EMBEDDING_MODELS in packages/core. Kept inline so the admin
+ *  bundle doesn't pull the whole core package for one label list. */
+const EMBEDDING_MODEL_CHOICES: Array<{ id: string; label: string }> = [
+  { id: "", label: "Default (env)" },
+  { id: "bge-m3", label: "BGE-M3 (Workers AI, 1024)" },
+  { id: "openai-3-small", label: "OpenAI text-embedding-3-small (1536)" },
+  { id: "openai-3-large", label: "OpenAI text-embedding-3-large (3072)" },
+  { id: "self-host-bge-m3", label: "Self-host bge-m3 (1024)" },
+];
+
+const isVectorizableType = (t: FieldType): boolean =>
+  t === "text" || t === "longtext";
 
 export const Collections = () => {
   const [items, setItems] = useState<Collection[]>([]);
@@ -55,10 +73,13 @@ export const Collections = () => {
   const [showForm, setShowForm] = useState(false);
   const [slug, setSlug] = useState("");
   const [ownerScoped, setOwnerScoped] = useState(false);
+  const [vectorize, setVectorize] = useState(false);
+  const [vectorizeModel, setVectorizeModel] = useState("");
   const [fields, setFields] = useState<Field[]>([
     { name: "title", type: "text", required: true },
   ]);
   const [busy, setBusy] = useState(false);
+  const [vectorizingSlug, setVectorizingSlug] = useState<string | null>(null);
 
   const refresh = () => {
     setLoading(true);
@@ -85,14 +106,23 @@ export const Collections = () => {
         method: "POST",
         body: JSON.stringify({
           slug,
-          fields: fields.filter((f) => f.name),
+          fields: fields
+            .filter((f) => f.name)
+            // Strip `vectorize` on non-text types — only relevant for text/longtext.
+            .map((f) =>
+              isVectorizableType(f.type) ? f : { ...f, vectorize: undefined },
+            ),
           ownerScoped,
+          vectorize,
+          vectorizeModel: vectorizeModel || null,
         }),
       });
       setShowForm(false);
       setSlug("");
       setFields([{ name: "title", type: "text", required: true }]);
       setOwnerScoped(false);
+      setVectorize(false);
+      setVectorizeModel("");
       refresh();
     } catch (e) {
       notifyError(e, "Saving collection");
@@ -107,6 +137,24 @@ export const Collections = () => {
       refresh();
     } catch (e) {
       notifyError(e, "Dropping collection");
+    }
+  };
+
+  const vectorizeAll = async (s: string) => {
+    setVectorizingSlug(s);
+    try {
+      const res = await api<{
+        processed: number;
+        skipped: number;
+        total: number;
+      }>(`/api/collections/${s}/vectorize`, { method: "POST" });
+      toast.success(
+        `Vectorized ${res.processed}/${res.total} item(s)${res.skipped ? ` — ${res.skipped} skipped (no text)` : ""}`,
+      );
+    } catch (e) {
+      notifyError(e, "Vectorizing collection");
+    } finally {
+      setVectorizingSlug(null);
     }
   };
 
@@ -156,6 +204,34 @@ export const Collections = () => {
                 </label>
               </div>
 
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={vectorize}
+                    onChange={(e) => setVectorize(e.target.checked)}
+                  />
+                  Vectorize records (auto-embed selected text fields on write)
+                </label>
+                {vectorize && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="vectorize-model">Embedding model</Label>
+                    <select
+                      id="vectorize-model"
+                      className="h-9 w-full rounded-3xl border border-input bg-background px-3 text-sm"
+                      value={vectorizeModel}
+                      onChange={(e) => setVectorizeModel(e.target.value)}
+                    >
+                      {EMBEDDING_MODEL_CHOICES.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <Label>Fields</Label>
@@ -200,6 +276,18 @@ export const Collections = () => {
                           />
                           required
                         </label>
+                        {vectorize && isVectorizableType(f.type) && (
+                          <label className="flex items-center gap-1 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={f.vectorize ?? false}
+                              onChange={(e) =>
+                                updateField(i, { vectorize: e.target.checked })
+                              }
+                            />
+                            vectorize
+                          </label>
+                        )}
                         <Button
                           type="button"
                           variant="ghost"
@@ -263,46 +351,70 @@ export const Collections = () => {
         />
       )}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {items.map((c) => (
-          <Card key={c.slug}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="font-mono text-sm">
-                  <Link to={`/collections/${c.slug}`} className="hover:underline">
-                    {c.slug}
-                  </Link>
-                </CardTitle>
-                <ConfirmAction
-                  title={`Drop collection "${c.slug}"?`}
-                  description="The physical table and all rows will be removed. This cannot be undone."
-                  actionLabel="Drop collection"
-                  destructive
-                  onConfirm={() => remove(c.slug)}
-                >
-                  <Button variant="ghost" size="icon-sm">
-                    <Trash2Icon />
-                  </Button>
-                </ConfirmAction>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-1 text-sm text-muted-foreground">
-                {c.fields.map((f) => (
-                  <li key={f.name}>
-                    <span className="font-medium text-foreground">{f.name}</span>{" "}
-                    <span className="text-xs">({f.type})</span>
-                    {f.required && <span className="ml-1 text-xs">required</span>}
-                  </li>
-                ))}
-              </ul>
-              {c.ownerScoped ? (
-                <Badge variant="secondary" className="mt-2">
-                  owner-scoped
-                </Badge>
-              ) : null}
-            </CardContent>
-          </Card>
-        ))}
+        {items.map((c) => {
+          const vec = Boolean(c.vectorize);
+          return (
+            <Card key={c.slug}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="font-mono text-sm">
+                    <Link to={`/collections/${c.slug}`} className="hover:underline">
+                      {c.slug}
+                    </Link>
+                  </CardTitle>
+                  <div className="flex items-center gap-1">
+                    {vec && (
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        title="Vectorize all existing records"
+                        disabled={vectorizingSlug === c.slug}
+                        onClick={() => vectorizeAll(c.slug)}
+                      >
+                        <SparklesIcon />
+                      </Button>
+                    )}
+                    <ConfirmAction
+                      title={`Drop collection "${c.slug}"?`}
+                      description="The physical table and all rows will be removed. This cannot be undone."
+                      actionLabel="Drop collection"
+                      destructive
+                      onConfirm={() => remove(c.slug)}
+                    >
+                      <Button variant="ghost" size="icon-sm">
+                        <Trash2Icon />
+                      </Button>
+                    </ConfirmAction>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                  {c.fields.map((f) => (
+                    <li key={f.name}>
+                      <span className="font-medium text-foreground">{f.name}</span>{" "}
+                      <span className="text-xs">({f.type})</span>
+                      {f.required && <span className="ml-1 text-xs">required</span>}
+                      {vec && f.vectorize && (
+                        <span className="ml-1 text-xs text-primary">vectorize</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {c.ownerScoped ? (
+                    <Badge variant="secondary">owner-scoped</Badge>
+                  ) : null}
+                  {vec ? (
+                    <Badge variant="secondary">
+                      vectorize{c.vectorizeModel ? ` · ${c.vectorizeModel}` : ""}
+                    </Badge>
+                  ) : null}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

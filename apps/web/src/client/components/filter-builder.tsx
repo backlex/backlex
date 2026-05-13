@@ -19,6 +19,7 @@ import { cn } from "@workeros/ui/lib/utils";
 import {
   FIELD_OPS,
   formatChipValue,
+  newFilterId,
   parseFilterValue,
   type FilterEntry,
 } from "@/lib/filter-dsl";
@@ -51,7 +52,7 @@ const FilterChip = ({ entry, onRemove }: FilterChipProps) => (
 
 interface AddFilterProps {
   fields: SchemaField[];
-  onAdd: (entry: FilterEntry) => void;
+  onAdd: (entry: Omit<FilterEntry, "id">) => void;
 }
 
 const AddFilter = ({ fields, onAdd }: AddFilterProps) => {
@@ -177,12 +178,15 @@ export const FilterBuilder = ({
   className,
 }: FilterBuilderProps) => (
   <div className={cn("flex flex-wrap items-center gap-2", className)}>
-    <AddFilter fields={fields} onAdd={(f) => onChange([...filters, f])} />
-    {filters.map((f, i) => (
+    <AddFilter
+      fields={fields}
+      onAdd={(f) => onChange([...filters, { ...f, id: newFilterId() }])}
+    />
+    {filters.map((f) => (
       <FilterChip
-        key={`${f.field}-${f.op}-${i}`}
+        key={f.id}
         entry={f}
-        onRemove={() => onChange(filters.filter((_, j) => j !== i))}
+        onRemove={() => onChange(filters.filter((x) => x.id !== f.id))}
       />
     ))}
     {filters.length > 0 && (

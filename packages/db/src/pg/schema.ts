@@ -877,6 +877,31 @@ export const emailConfig = pgTable(
   },
 );
 
+/**
+ * Per-workspace branding & appearance. `tenant_id` is the workspace id, or the
+ * `_global` sentinel for the instance-wide override row used as a fallback
+ * (same pattern as `email_config` / `auth_config`). `logo_file_key` and
+ * `favicon_file_key` reference `files.key`. `primary_color` stores a raw OKLCH
+ * string (e.g. `oklch(0.84 0.23 128.85)`); when set it overrides the UI's
+ * default `--primary` token at boot. `default_theme` is the workspace's
+ * suggested theme — each user can still override locally.
+ */
+export const workspaceConfig = pgTable(
+  "workspace_config",
+  {
+    tenantId: text("tenant_id").primaryKey(),
+    workspaceName: text("workspace_name"),
+    description: text("description"),
+    logoFileKey: text("logo_file_key"),
+    faviconFileKey: text("favicon_file_key"),
+    /** Raw OKLCH string applied to `:root { --primary }` at boot. */
+    primaryColor: text("primary_color"),
+    /** light | dark | system | null (= leave to user). */
+    defaultTheme: text("default_theme"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+);
+
 export const backups = pgTable(
   "backups",
   {

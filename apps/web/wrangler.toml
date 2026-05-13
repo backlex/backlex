@@ -75,7 +75,8 @@ bucket_name = "workeros-files"
 # Vectorize — one index per embedding model. The model registry in
 # packages/core/src/embedding-models.ts pins each binding to a specific
 # dimension; the routes/adapter pick the right index by model name.
-# Create the indexes once with the matching dimensions:
+# Bind ONLY the models you actually use — Cloudflare rejects deploys that
+# reference an index that doesn't exist in your account. Create with:
 #   wrangler vectorize create workeros-openai-1536        --dimensions=1536 --metric=cosine
 #   wrangler vectorize create workeros-openai-3072        --dimensions=3072 --metric=cosine
 #   wrangler vectorize create workeros-bge-m3             --dimensions=1024 --metric=cosine
@@ -92,11 +93,11 @@ index_name = "workeros-openai-3072"
 binding = "VECTORIZE_BGE_M3"
 index_name = "workeros-bge-m3"
 
-# Self-hosted bge-m3 (TEI/Ollama container). Separate index because vectors
-# from a different model build aren't comparable to Workers AI's bge-m3.
-[[vectorize]]
-binding = "VECTORIZE_SELF_HOST_BGE_M3"
-index_name = "workeros-self-host-bge-m3"
+# Self-hosted bge-m3 (TEI/Ollama container). Uncomment + create the index
+# only if you want data-residency embeddings via your own container.
+# [[vectorize]]
+# binding = "VECTORIZE_SELF_HOST_BGE_M3"
+# index_name = "workeros-self-host-bge-m3"
 
 # Workers AI — required for the bge-m3 embedding model
 # (`@cf/baai/bge-m3`). No keys needed; daily Neuron quota covers small/

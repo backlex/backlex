@@ -42,6 +42,8 @@ run_worker_first = ["/api/*", "/health"]
 # AUTH_SECRET = "..."
 # DATABASE_URL = "postgres://..." # only if you want PG via Hyperdrive
 # OPENAI_API_KEY = "..."
+# EMBEDDING_HTTP_URL = "https://embed.internal.example.com" # TEI/Ollama container
+# EMBEDDING_HTTP_TOKEN = "..." # optional bearer for the embeddings endpoint
 # Email — EMAIL_PROVIDER picks one (console | resend | sendgrid | mailgun |
 # ses); unset = auto-detect from whichever provider's keys are set, else log
 # to stdout. All providers need EMAIL_FROM (use a verified domain in prod).
@@ -70,10 +72,37 @@ database_id = "5053e4b4-bd46-4bde-b4c2-48dbaed12ce2"
 binding = "R2"
 bucket_name = "workeros-files"
 
-# Vectorize — vector index for embeddings (1536 dim, cosine).
+# Vectorize — one index per embedding model. The model registry in
+# packages/core/src/embedding-models.ts pins each binding to a specific
+# dimension; the routes/adapter pick the right index by model name.
+# Create the indexes once with the matching dimensions:
+#   wrangler vectorize create workeros-openai-1536        --dimensions=1536 --metric=cosine
+#   wrangler vectorize create workeros-openai-3072        --dimensions=3072 --metric=cosine
+#   wrangler vectorize create workeros-bge-m3             --dimensions=1024 --metric=cosine
+#   wrangler vectorize create workeros-self-host-bge-m3   --dimensions=1024 --metric=cosine
 [[vectorize]]
-binding = "VECTORIZE"
-index_name = "workeros-embeddings"
+binding = "VECTORIZE_OPENAI"
+index_name = "workeros-openai-1536"
+
+[[vectorize]]
+binding = "VECTORIZE_OPENAI_LARGE"
+index_name = "workeros-openai-3072"
+
+[[vectorize]]
+binding = "VECTORIZE_BGE_M3"
+index_name = "workeros-bge-m3"
+
+# Self-hosted bge-m3 (TEI/Ollama container). Separate index because vectors
+# from a different model build aren't comparable to Workers AI's bge-m3.
+[[vectorize]]
+binding = "VECTORIZE_SELF_HOST_BGE_M3"
+index_name = "workeros-self-host-bge-m3"
+
+# Workers AI — required for the bge-m3 embedding model
+# (`@cf/baai/bge-m3`). No keys needed; daily Neuron quota covers small/
+# medium use. Remove this block if you only use OpenAI embeddings.
+[ai]
+binding = "AI"
 
 # Optional: Hyperdrive proxy in front of Postgres for PG-on-edge.
 # [[hyperdrive]]

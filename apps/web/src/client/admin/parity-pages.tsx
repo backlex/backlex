@@ -1031,13 +1031,15 @@ function AddProviderDialog({ existingIds, onClose, onAdd }: {
 }
 
 export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) {
-  type Evt = { t: string; actor: string; action: string; resource: string; diff: string; ip: string };
+  type Evt = { t: string; actor: string; action: string; resource: string; diff: string; ip: string; raw: ApiActivity };
   const PAGE_SIZE = 50;
   const [events, setEvents] = useState<Evt[]>([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(false);
   // hasMore stays true until a fetch returns fewer rows than requested.
   const [hasMore, setHasMore] = useState(true);
+  // Selected row for the detail modal.
+  const [openEvt, setOpenEvt] = useState<Evt | null>(null);
 
   const mapRow = (a: ApiActivity): Evt => ({
     t: new Date(a.createdAt).toISOString().replace("T", " ").slice(0, 19),
@@ -1046,6 +1048,7 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
     resource: `${a.collection}${a.itemId ? "/" + a.itemId : ""}`,
     diff: typeof a.payload === "string" ? a.payload : JSON.stringify(a.payload ?? {}).slice(0, 80),
     ip: a.ip ?? "—",
+    raw: a,
   });
 
   const fetchPage = async (offset: number, append: boolean) => {
@@ -1097,7 +1100,12 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
           <thead><tr><th style={{ width: 160, whiteSpace: "nowrap" }}>Time</th><th style={{ width: 200 }}>Actor</th><th style={{ width: 140 }}>Action</th><th>Resource</th><th>Diff</th><th style={{ width: 130 }}>IP</th></tr></thead>
           <tbody>
             {visible.map((e, i) => (
-              <tr key={i}>
+              <tr
+                key={i}
+                onClick={() => setOpenEvt(e)}
+                style={{ cursor: "pointer" }}
+                title="Click for full payload"
+              >
                 <td className="font-mono muted tabular-nums" style={{ fontSize: 11.5, whiteSpace: "nowrap" }}>{e.t}</td>
                 <td style={{ wordBreak: "break-all" }}>{e.actor}</td>
                 <td><Badge variant={actionColor(e.action)} mono>{e.action}</Badge></td>
@@ -1122,6 +1130,139 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
           >
             {loading ? "Loading…" : hasMore ? "Load more" : "No more rows"}
           </Button>
+        </div>
+      </div>
+      {openEvt && (
+        <ActivityEventDialog evt={openEvt} actionColor={actionColor} onClose={() => setOpenEvt(null)} />
+      )}
+    </div>
+  );
+}
+
+function ActivityEventDialog({
+  evt,
+  actionColor,
+  onClose,
+}: {
+  evt: { t: string; actor: string; action: string; resource: string; ip: string; raw: ApiActivity };
+  actionColor: (a: string) => "default" | "secondary" | "destructive" | "outline";
+  onClose: () => void;
+}) {
+  const json = useMemo(() => {
+    try {
+      return typeof evt.raw.payload === "string"
+        ? evt.raw.payload
+        : JSON.stringify(evt.raw.payload ?? null, null, 2);
+    } catch {
+      return "null";
+    }
+  }, [evt.raw.payload]);
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(json);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+    } catch {
+      // clipboard unavailable — silent
+    }
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const fullTs = (() => {
+    const d = new Date(evt.raw.createdAt);
+    return Number.isNaN(d.getTime()) ? evt.t : d.toISOString().replace("T", " ").replace("Z", " UTC");
+  })();
+  const collection = evt.raw.collection;
+  const itemId = evt.raw.itemId;
+  const userAgent = evt.raw.userAgent;
+  const durationMs = evt.raw.durationMs;
+  return (
+    <div className="dialog-backdrop" onClick={onClose}>
+      <div
+        className="dialog-lg"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-label={`${evt.action} activity detail`}
+      >
+        <div className="dialog-head">
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <Badge variant={actionColor(evt.action)} mono>{evt.action}</Badge>
+              <span className="font-mono" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{collection}{itemId ? "/" + itemId : ""}</span>
+            </div>
+            <h3 style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>
+              {evt.actor}
+            </h3>
+          </div>
+          <IconButton icon={I.X} onClick={onClose} />
+        </div>
+        <div className="dialog-body">
+          <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: "8px 14px", fontSize: 12.5 }}>
+            <span style={{ color: "var(--muted-foreground)" }}>Time</span>
+            <span className="font-mono">{fullTs}</span>
+            <span style={{ color: "var(--muted-foreground)" }}>Actor</span>
+            <span className="font-mono" style={{ wordBreak: "break-all" }}>{evt.actor}</span>
+            <span style={{ color: "var(--muted-foreground)" }}>Action</span>
+            <span className="font-mono">{evt.action}</span>
+            <span style={{ color: "var(--muted-foreground)" }}>Collection</span>
+            <span className="font-mono">{collection}</span>
+            {itemId && (
+              <>
+                <span style={{ color: "var(--muted-foreground)" }}>Item ID</span>
+                <span className="font-mono" style={{ wordBreak: "break-all" }}>{itemId}</span>
+              </>
+            )}
+            <span style={{ color: "var(--muted-foreground)" }}>IP</span>
+            <span className="font-mono">{evt.ip}</span>
+            {userAgent && (
+              <>
+                <span style={{ color: "var(--muted-foreground)" }}>User-Agent</span>
+                <span className="font-mono" style={{ fontSize: 11.5, wordBreak: "break-all" }}>{userAgent}</span>
+              </>
+            )}
+            {durationMs != null && (
+              <>
+                <span style={{ color: "var(--muted-foreground)" }}>Duration</span>
+                <span className="font-mono tabular-nums">{durationMs} ms</span>
+              </>
+            )}
+            <span style={{ color: "var(--muted-foreground)" }}>Activity ID</span>
+            <span className="font-mono" style={{ fontSize: 11.5, wordBreak: "break-all" }}>{evt.raw.id}</span>
+          </div>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, color: "var(--muted-foreground)", fontSize: 11.5 }}>
+              <I.Braces size={12} />
+              <span style={{ textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Payload</span>
+            </div>
+            <pre
+              className="font-mono"
+              style={{
+                margin: 0,
+                padding: 12,
+                background: "color-mix(in oklch, var(--muted) 40%, var(--card))",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                fontSize: 11.5,
+                lineHeight: 1.55,
+                maxHeight: 360,
+                overflow: "auto",
+                whiteSpace: "pre",
+              }}
+            >
+              {json}
+            </pre>
+          </div>
+        </div>
+        <div className="dialog-foot">
+          <Button variant="outline" size="sm" onClick={copy}>{copied ? "Copied" : "Copy JSON"}</Button>
+          <div className="spacer" style={{ flex: 1 }} />
+          <Button variant="ghost" size="sm" onClick={onClose}>Close</Button>
         </div>
       </div>
     </div>

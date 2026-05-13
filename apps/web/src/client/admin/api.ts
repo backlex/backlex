@@ -362,7 +362,12 @@ export const emailConfigApi = {
 export const i18nApi = {
   list: () => api<Envelope<ApiI18nString[]>>(`/api/admin/i18n`),
   matrix: () =>
-    api<{ data: Record<string, Record<string, string>>; locales: string[] }>(`/api/admin/i18n/_matrix`),
+    api<{
+      data: Record<string, Record<string, string>>;
+      locales: string[];
+      configuredLocales: string[];
+      defaultLocale: string;
+    }>(`/api/admin/i18n/_matrix`),
   upsert: (key: string, locale: string, value: string) =>
     api<Envelope<ApiI18nString>>(`/api/admin/i18n`, {
       method: "PUT",
@@ -372,6 +377,21 @@ export const i18nApi = {
     api<{ ok: true; upserts: number }>(`/api/admin/i18n/_bulk`, {
       method: "PUT",
       body: JSON.stringify(rows),
+    }),
+  autoTranslate: (input: {
+    targetLocale: string;
+    sourceLocale?: string;
+    keys?: string[];
+    onlyMissing?: boolean;
+  }) =>
+    api<{
+      ok: true;
+      translated: number;
+      remaining?: number;
+      rows: { id: string; key: string; locale: string; value: string }[];
+    }>(`/api/admin/i18n/_auto-translate`, {
+      method: "POST",
+      body: JSON.stringify(input),
     }),
 };
 

@@ -23,6 +23,16 @@ import {
   type ApiUser,
 } from "./api";
 import { ConfirmDialog } from "./sheet";
+import { useTheme } from "@/components/theme-provider";
+
+/** Mirror of `services/workspace-config.ts::isValidColor` — keep in sync. */
+const isValidColor = (v: string): boolean => {
+  const s = v.trim();
+  if (/^#[0-9a-fA-F]{3,8}$/.test(s)) {
+    return s.length === 4 || s.length === 5 || s.length === 7 || s.length === 9;
+  }
+  return /^(rgb|hsl|oklch|oklab)a?\(\s*[\d\s%.,/-]+\s*\)$/i.test(s);
+};
 
 const fetchSafely = async <T,>(path: string): Promise<T | null> => {
   try {
@@ -2500,10 +2510,13 @@ function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
  * (`branding/logo` / `branding/favicon`) — re-uploading replaces.
  */
 function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
+  const { theme: userTheme, setTheme: setUserTheme } = useTheme();
   const [workspaceName, setWorkspaceName] = useState("");
   const [description, setDescription] = useState("");
   const [logoFileKey, setLogoFileKey] = useState<string | null>(null);
   const [faviconFileKey, setFaviconFileKey] = useState<string | null>(null);
+  const [primaryColor, setPrimaryColor] = useState("");
+  const [defaultTheme, setDefaultTheme] = useState<"" | "light" | "dark" | "system">("");
   // Per-asset nonce appended to the preview URL so a re-upload to the same
   // logical key busts the browser cache.
   const [logoBust, setLogoBust] = useState<string>("");
@@ -2516,6 +2529,8 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const faviconInputRef = useRef<HTMLInputElement | null>(null);
 
+  const primaryColorOk = primaryColor.trim() === "" || isValidColor(primaryColor);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -2525,6 +2540,12 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
       setDescription(d.description ?? "");
       setLogoFileKey(d.logoFileKey ?? null);
       setFaviconFileKey(d.faviconFileKey ?? null);
+      setPrimaryColor(d.primaryColor ?? "");
+      setDefaultTheme(
+        d.defaultTheme === "light" || d.defaultTheme === "dark" || d.defaultTheme === "system"
+          ? d.defaultTheme
+          : "",
+      );
       const v = String(d.updatedAt ?? Date.now());
       setLogoBust(v);
       setFaviconBust(v);
@@ -2584,6 +2605,10 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
   };
 
   const save = async () => {
+    if (!primaryColorOk) {
+      pushToast("Primary color must be a hex (#rrggbb) or a CSS color function.");
+      return;
+    }
     setSaving(true);
     try {
       await workspaceConfigApi.put({
@@ -2591,6 +2616,8 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
         description: description.trim() || null,
         logoFileKey,
         faviconFileKey,
+        primaryColor: primaryColor.trim() || null,
+        defaultTheme: defaultTheme || null,
       });
       setDirty(false);
       pushToast("Branding saved.");
@@ -2716,6 +2743,89 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
               Remove
             </Button>
           )}
+        </div>
+      </div>
+      <div className="field" style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+        <label className="field-label">Primary color</label>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span
+            aria-hidden
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 6,
+              border: "1px solid var(--border)",
+              background: primaryColorOk && primaryColor.trim() ? primaryColor : "var(--primary)",
+            }}
+          />
+          <input
+            type="color"
+            value={/^#[0-9a-fA-F]{6}$/.test(primaryColor.trim()) ? primaryColor.trim() : "#000000"}
+            disabled={loading}
+            onChange={(e) => { setPrimaryColor(e.target.value); setDirty(true); }}
+            style={{ width: 40, height: 28, padding: 0, border: "1px solid var(--border)", borderRadius: 6, background: "transparent" }}
+            aria-label="Pick primary color"
+          />
+          <input
+            className="input"
+            value={primaryColor}
+            placeholder="#3b82f6 or oklch(0.84 0.23 128.85)"
+            disabled={loading}
+            onChange={(e) => { setPrimaryColor(e.target.value); setDirty(true); }}
+            style={{ flex: 1, fontFamily: "var(--font-mono)" }}
+          />
+          {primaryColor && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={loading}
+              onClick={() => { setPrimaryColor(""); setDirty(true); }}
+            >
+              Reset
+            </Button>
+          )}
+        </div>
+        <span className="field-hint">
+          {primaryColorOk
+            ? "Overrides the `--primary` token used across the admin and any published surfaces."
+            : "Use a hex value (#rrggbb), or a CSS color function: rgb(), hsl(), oklch(), oklab()."}
+        </span>
+      </div>
+      <div className="field-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 14, alignItems: "flex-start" }}>
+        <div>
+          <div className="field-label">Workspace default theme</div>
+          <div className="field-hint">Applied to users with no local override yet.</div>
+        </div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {(["", "light", "dark", "system"] as const).map((opt) => (
+            <Button
+              key={opt || "user"}
+              variant={defaultTheme === opt ? "primary" : "outline"}
+              size="sm"
+              disabled={loading}
+              onClick={() => { setDefaultTheme(opt); setDirty(true); }}
+            >
+              {opt === "" ? "Leave to user" : opt === "light" ? "Light" : opt === "dark" ? "Dark" : "System"}
+            </Button>
+          ))}
+        </div>
+      </div>
+      <div className="field-row" style={{ alignItems: "flex-start" }}>
+        <div>
+          <div className="field-label">My theme</div>
+          <div className="field-hint">Your own preference — stored locally, not synced.</div>
+        </div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {(["light", "dark", "system"] as const).map((opt) => (
+            <Button
+              key={opt}
+              variant={userTheme === opt ? "primary" : "outline"}
+              size="sm"
+              onClick={() => setUserTheme(opt)}
+            >
+              {opt === "light" ? "Light" : opt === "dark" ? "Dark" : "System"}
+            </Button>
+          ))}
         </div>
       </div>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 6 }}>

@@ -73,8 +73,9 @@ export const flowsRoutes = new Hono<AppBindings>()
       layout: body.layout ?? null,
       active: body.active ?? true,
     });
-    await logActivity(c, { action: "create", collection: "system_flows", itemId: id, payload: { name: body.name, trigger: body.trigger } });
-    return c.json({ data: { id, ...body, active: body.active ?? true } }, 201);
+    const created = { id, ...body, active: body.active ?? true };
+    await logActivity(c, { action: "create", collection: "system_flows", itemId: id, payload: { name: body.name, trigger: body.trigger }, response: { data: created } });
+    return c.json({ data: created }, 201);
   })
   .patch("/:id", async (c) => {
     const ctx = c.get("ctx");
@@ -92,7 +93,7 @@ export const flowsRoutes = new Hono<AppBindings>()
         updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
       })
       .where(and(eq(t.id, c.req.param("id")), eq(t.tenantId, tenantId)));
-    await logActivity(c, { action: "update", collection: "system_flows", itemId: c.req.param("id"), payload: body });
+    await logActivity(c, { action: "update", collection: "system_flows", itemId: c.req.param("id"), payload: body, response: { ok: true } });
     return c.json({ ok: true });
   })
   .delete("/:id", async (c) => {
@@ -102,7 +103,7 @@ export const flowsRoutes = new Hono<AppBindings>()
     await (ctx.db as any)
       .delete(t)
       .where(and(eq(t.id, c.req.param("id")), eq(t.tenantId, tenantId)));
-    await logActivity(c, { action: "delete", collection: "system_flows", itemId: c.req.param("id") });
+    await logActivity(c, { action: "delete", collection: "system_flows", itemId: c.req.param("id"), response: { ok: true } });
     return c.json({ ok: true });
   })
   .post("/:id/run", async (c) => {

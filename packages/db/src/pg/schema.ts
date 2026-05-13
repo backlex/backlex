@@ -537,6 +537,7 @@ export const activity = pgTable(
     ip: text("ip"),
     userAgent: text("user_agent"),
     payload: jsonb("payload").$type<unknown | null>(),
+    response: jsonb("response").$type<unknown | null>(),
     /** Request handler duration in ms — populated by sessionMiddleware
      *  via a per-request timer. Lets the metrics endpoint compute p95
      *  without a separate analytics pipeline. */

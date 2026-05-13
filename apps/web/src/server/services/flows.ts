@@ -469,6 +469,7 @@ const logFlowRun = async (
       collection: "system_flows",
       itemId: flow.id,
       payload: result.ok ? null : { error: result.error },
+      response: result,
       durationMs,
     },
   );

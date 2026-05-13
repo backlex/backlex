@@ -154,6 +154,65 @@ interface Revision {
   createdAt: string | number;
 }
 
+interface I18nTextEditorProps {
+  value: Record<string, string> | null | undefined;
+  onChange: (next: Record<string, string>) => void;
+  required?: boolean;
+}
+
+/** Per-locale inputs for a `i18n_text` field. Locales are pulled from
+ *  /api/i18n (workspace settings); when the endpoint is unreachable we fall
+ *  back to a single "en" input so editing isn't blocked. */
+const I18nTextEditor = ({ value, onChange, required }: I18nTextEditorProps) => {
+  const [locales, setLocales] = useState<string[]>([]);
+  const [defaultLocale, setDefaultLocale] = useState("en");
+  const map =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, string>)
+      : {};
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await api<{ data: { locales: string[]; defaultLocale: string } }>(
+          "/api/i18n",
+        );
+        if (cancelled) return;
+        setLocales(res.data.locales);
+        setDefaultLocale(res.data.defaultLocale);
+      } catch {
+        if (!cancelled) setLocales(["en"]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Show every configured locale plus any locale that already has a value
+  // but isn't in the active list (so legacy data isn't hidden).
+  const columns = Array.from(new Set([...locales, ...Object.keys(map)]));
+
+  return (
+    <div className="space-y-2">
+      {columns.map((l) => (
+        <div key={l} className="flex items-center gap-2">
+          <Badge variant="outline" className="font-mono text-[10px] min-w-12 justify-center">
+            {l}{l === defaultLocale && " ·"}
+          </Badge>
+          <Input
+            value={map[l] ?? ""}
+            onChange={(e) => onChange({ ...map, [l]: e.target.value })}
+            placeholder={l === defaultLocale ? "(default)" : map[defaultLocale] || ""}
+            required={required && l === defaultLocale}
+          />
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const renderInput = (
   field: Field,
   value: unknown,
@@ -227,6 +286,15 @@ const renderInput = (
     );
   }
 
+  if (field.type === "i18n_text") {
+    return (
+      <I18nTextEditor
+        value={value as Record<string, string> | null | undefined}
+        onChange={(v) => onChange(v)}
+        required={!!field.required}
+      />
+    );
+  }
   if (field.type === "json") {
     const text =
       value === null || value === undefined

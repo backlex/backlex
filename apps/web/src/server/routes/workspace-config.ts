@@ -8,7 +8,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import {
   GLOBAL_WORKSPACE_CONFIG_ID,
-  isOklch,
+  isValidColor,
   loadWorkspaceConfigRow,
   resolveWorkspaceConfig,
   type WorkspaceConfigRow,
@@ -29,12 +29,15 @@ const PutInput = z.object({
   description: optionalString,
   logoFileKey: optionalString,
   faviconFileKey: optionalString,
-  /** OKLCH only (matches the `--primary` token's color space). Pass `""` or
-   *  `null` to clear and fall back to the design-system default. */
+  /** Hex (`#rrggbb`), or a CSS color function (`rgb()`, `hsl()`, `oklch()`,
+   *  `oklab()`). The exact string lands as the `--primary` token; the format
+   *  whitelist keeps a hostile admin from breaking out of the `<style>` tag
+   *  at boot. Pass `""` / `null` to clear and fall back to the bundled token. */
   primaryColor: z
     .union([
-      z.string().refine((v) => v === "" || isOklch(v), {
-        message: "primary_color must be an OKLCH string (e.g. `oklch(0.84 0.23 128.85)`) or empty",
+      z.string().refine((v) => v === "" || isValidColor(v), {
+        message:
+          "primary_color must be a hex (`#rrggbb`) or a CSS color function (`rgb()`, `hsl()`, `oklch()`, `oklab()`)",
       }),
       z.null(),
     ])
@@ -139,4 +142,34 @@ export const workspaceConfigRoutes = new Hono<AppBindings>()
     }
 
     return c.json({ ok: true });
+  })
+  /**
+   * Stream the active workspace's logo or favicon, no auth required (branding
+   * needs to render on the sign-in screen too). Returns 404 when the
+   * workspace's own row has no key for that asset — we deliberately don't
+   * fall back to `_global` here because the file would have to live in the
+   * `_global` "tenant" bucket, which isn't a real workspace.
+   */
+  .get("/asset/:kind{logo|favicon}", async (c) => {
+    const ctx = c.get("ctx");
+    const auth = c.get("auth");
+    const kind = c.req.param("kind") as "logo" | "favicon";
+    const tenantId = auth.tenantId ?? null;
+    if (!tenantId) throw new AppError("NOT_FOUND", "No active workspace");
+    const row = await loadWorkspaceConfigRow(ctx, tenantId);
+    const logical = kind === "logo" ? row?.logoFileKey : row?.faviconFileKey;
+    if (!logical) throw new AppError("NOT_FOUND", `No ${kind} configured`);
+    // Same prefix scheme as `routes/storage.ts` — keep in sync if it changes.
+    const physical = `tenants/${tenantId}/${logical}`;
+    const obj = await ctx.storage.get(physical);
+    if (!obj) throw new AppError("NOT_FOUND", `${kind} file missing`);
+    return new Response(obj.body, {
+      headers: {
+        "content-type": obj.meta.contentType ?? "application/octet-stream",
+        "content-length": String(obj.meta.size),
+        // Short cache — admins re-upload at low frequency, and the resolved
+        // view appends `?v=<updatedAt>` so a change always busts.
+        "cache-control": "public, max-age=300",
+      },
+    });
   });

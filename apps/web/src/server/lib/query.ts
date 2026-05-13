@@ -80,6 +80,27 @@ export const parseQuery = (
     validateFilterFields(filter, allowedForUser);
   }
 
+  // `q=...` is a free-text search: `_contains` OR-ed across every readable
+  // text/longtext field. AND-combined with the explicit `filter` so the two
+  // are independent — search narrows whatever the user already filtered.
+  const qRaw = params.get("q");
+  if (qRaw && qRaw.trim()) {
+    const needle = qRaw.trim();
+    const searchable = fields.filter(
+      (f) =>
+        (f.type === "text" || f.type === "longtext") &&
+        allowedForUser.has(f.name),
+    );
+    if (searchable.length > 0) {
+      const orClauses = searchable.map(
+        (f) => ({ [f.name]: { _contains: needle } }) as Condition,
+      );
+      const searchCond: Condition =
+        orClauses.length === 1 ? orClauses[0]! : { $or: orClauses };
+      filter = filter ? { $and: [filter, searchCond] } : searchCond;
+    }
+  }
+
   const sortRaw = params.get("sort") ?? "-created_at";
   const sort: SortClause[] = sortRaw
     .split(",")

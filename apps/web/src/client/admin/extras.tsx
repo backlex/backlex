@@ -122,9 +122,138 @@ export interface RealtimeEvent {
   field?: string;
   who?: string;
   t: string;
+  /** Full payload data so the detail modal can render every field. */
+  raw?: Record<string, unknown>;
+  /** Receive timestamp (ms since epoch) — formatted in the detail modal. */
+  receivedAt?: number;
+}
+
+const formatFullTs = (ms: number | undefined): string => {
+  if (!ms) return "—";
+  const d = new Date(ms);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+};
+
+function RealtimeEventDialog({ ev, channel, onClose }: { ev: RealtimeEvent; channel: string; onClose: () => void }) {
+  const json = useMemo(() => {
+    try {
+      return JSON.stringify(ev.raw ?? {}, null, 2);
+    } catch {
+      return "{}";
+    }
+  }, [ev.raw]);
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(json);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+    } catch {
+      // clipboard unavailable — silent
+    }
+  };
+  // Close on ESC for keyboard parity with the other admin dialogs.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="dialog-backdrop" onClick={onClose}>
+      <div
+        className="dialog-lg"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-label={`${ev.event} event detail`}
+      >
+        <div className="dialog-head">
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <span
+                data-event={ev.event}
+                className="tail-event"
+                style={{ padding: 0, border: "none", animation: "none", background: "transparent" }}
+              >
+                <span className="ev">{ev.event}</span>
+              </span>
+              <span className="font-mono" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{channel}</span>
+            </div>
+            <h3 style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>
+              {ev.title || ev.itemId || "(item)"}
+            </h3>
+          </div>
+          <IconButton icon={I.X} onClick={onClose} />
+        </div>
+        <div className="dialog-body">
+          <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: "8px 14px", fontSize: 12.5 }}>
+            <span style={{ color: "var(--muted-foreground)" }}>Channel</span>
+            <span className="font-mono">{channel}</span>
+            <span style={{ color: "var(--muted-foreground)" }}>Event</span>
+            <span className="font-mono">{ev.event}</span>
+            <span style={{ color: "var(--muted-foreground)" }}>Received</span>
+            <span className="font-mono">{formatFullTs(ev.receivedAt)}</span>
+            {ev.itemId && (
+              <>
+                <span style={{ color: "var(--muted-foreground)" }}>Item ID</span>
+                <span className="font-mono" style={{ wordBreak: "break-all" }}>{ev.itemId}</span>
+              </>
+            )}
+            {ev.who && ev.who !== "system" && (
+              <>
+                <span style={{ color: "var(--muted-foreground)" }}>By</span>
+                <span className="font-mono" style={{ wordBreak: "break-all" }}>{ev.who}</span>
+              </>
+            )}
+            {ev.field && (
+              <>
+                <span style={{ color: "var(--muted-foreground)" }}>Changed field</span>
+                <span className="font-mono">{ev.field}</span>
+              </>
+            )}
+          </div>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, color: "var(--muted-foreground)", fontSize: 11.5 }}>
+              <I.Braces size={12} />
+              <span style={{ textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Payload</span>
+            </div>
+            <pre
+              className="font-mono"
+              style={{
+                margin: 0,
+                padding: 12,
+                background: "color-mix(in oklch, var(--muted) 40%, var(--card))",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                fontSize: 11.5,
+                lineHeight: 1.55,
+                maxHeight: 360,
+                overflow: "auto",
+                whiteSpace: "pre",
+              }}
+            >
+              {json}
+            </pre>
+          </div>
+        </div>
+        <div className="dialog-foot">
+          <Button variant="outline" size="sm" onClick={copy}>{copied ? "Copied" : "Copy JSON"}</Button>
+          <div className="spacer" style={{ flex: 1 }} />
+          <Button variant="ghost" size="sm" onClick={onClose}>Close</Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function RealtimeTail({ events, channel, connected }: { events: RealtimeEvent[]; channel: string; connected?: boolean }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  const openEvent = useMemo(
+    () => events.find((e) => e.id === openId) ?? null,
+    [events, openId],
+  );
   return (
     <div className="tail">
       <div className="tail-header">
@@ -142,19 +271,40 @@ export function RealtimeTail({ events, channel, connected }: { events: RealtimeE
       ) : (
         <div className="tail-list">
           {events.slice(0, 30).map((ev) => (
-            <div key={ev.id} className="tail-event" data-event={ev.event}>
+            <div
+              key={ev.id}
+              className="tail-event"
+              data-event={ev.event}
+              onClick={() => setOpenId(ev.id)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setOpenId(ev.id);
+                }
+              }}
+              style={{ cursor: "pointer" }}
+              title="Click for full payload"
+            >
               <div className="row1">
                 <span className="ev">{ev.event}</span>
                 <span className="when">{ev.t}</span>
               </div>
-              <div className="what">
-                <span className="id">{ev.title || ev.itemId}</span>
-                {ev.event === "updated" && ev.field && <> · changed <span style={{ color: "var(--foreground)" }}>{ev.field}</span></>}
-                {ev.who && <> · by <span style={{ color: "var(--foreground)" }}>{ev.who}</span></>}
+              <div className="what" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span className="id">{ev.title || ev.itemId}</span>
+                  {ev.event === "updated" && ev.field && <> · changed <span style={{ color: "var(--foreground)" }}>{ev.field}</span></>}
+                  {ev.who && <> · by <span style={{ color: "var(--foreground)" }}>{ev.who}</span></>}
+                </span>
+                <I.ChevronRight size={12} />
               </div>
             </div>
           ))}
         </div>
+      )}
+      {openEvent && (
+        <RealtimeEventDialog ev={openEvent} channel={channel} onClose={() => setOpenId(null)} />
       )}
     </div>
   );

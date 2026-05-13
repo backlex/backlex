@@ -100,7 +100,9 @@ export const settingsRoutes = new Hono<AppBindings>()
       { type: "Vectorize", name: "VECTORIZE_OPENAI", target: "workeros-openai-1536", status: env.VECTORIZE_OPENAI ? "connected" : "optional" },
       { type: "Vectorize", name: "VECTORIZE_OPENAI_LARGE", target: "workeros-openai-3072", status: env.VECTORIZE_OPENAI_LARGE ? "connected" : "optional" },
       { type: "Vectorize", name: "VECTORIZE_BGE_M3", target: "workeros-bge-m3", status: env.VECTORIZE_BGE_M3 ? "connected" : "optional" },
+      { type: "Vectorize", name: "VECTORIZE_SELF_HOST_BGE_M3", target: "workeros-self-host-bge-m3", status: env.VECTORIZE_SELF_HOST_BGE_M3 ? "connected" : "optional" },
       { type: "WorkersAI", name: "AI", target: "@cf/baai/bge-m3", status: env.AI ? "connected" : "optional" },
+      { type: "HTTP", name: "EMBEDDING_HTTP_URL", target: "self-host embeddings", status: env.EMBEDDING_HTTP_URL ? "connected" : "optional" },
       { type: "Hyperdrive", name: "HYPERDRIVE", target: "pg-pool", status: env.HYPERDRIVE ? "connected" : "optional" },
     ];
     const envVars = [

@@ -13,7 +13,7 @@
  */
 export interface EmbeddingModelDef {
   /** Provider that turns text into vectors. */
-  provider: "workers-ai" | "openai";
+  provider: "workers-ai" | "openai" | "self-host";
   /** Identifier passed to the provider — `@cf/...` for Workers AI,
    *  `text-embedding-...` for OpenAI. */
   providerModel: string;
@@ -54,6 +54,17 @@ export const EMBEDDING_MODELS = {
     vectorizeBinding: "VECTORIZE_OPENAI_LARGE",
     pgTable: "embeddings_openai_3072",
     label: "OpenAI text-embedding-3-large (3072)",
+  },
+  "self-host-bge-m3": {
+    provider: "self-host",
+    // Boot-time argument to the embedding container (e.g. TEI's
+    // `--model-id BAAI/bge-m3`). Sent in the OpenAI-compatible body as
+    // `model` — TEI ignores the field but vLLM/LiteLLM use it.
+    providerModel: "BAAI/bge-m3",
+    dimensions: 1024,
+    vectorizeBinding: "VECTORIZE_SELF_HOST_BGE_M3",
+    pgTable: "embeddings_self_host_bge_m3",
+    label: "Self-host bge-m3 (TEI container, 1024)",
   },
 } as const satisfies Record<string, EmbeddingModelDef>;
 

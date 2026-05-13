@@ -10,6 +10,7 @@ import { getEmbeddingModel, type EmbeddingModel } from "@workeros/core";
 export const embeddingRouter = (providers: {
   "workers-ai"?: EmbeddingAdapter;
   openai?: EmbeddingAdapter;
+  "self-host"?: EmbeddingAdapter;
 }): EmbeddingAdapter => ({
   async embed(req) {
     const def = getEmbeddingModel(req.model);
@@ -20,7 +21,9 @@ export const embeddingRouter = (providers: {
         `Embedding provider '${def.provider}' is not configured. ` +
           (def.provider === "workers-ai"
             ? "Bind [ai] in wrangler.toml."
-            : "Set OPENAI_API_KEY."),
+            : def.provider === "openai"
+              ? "Set OPENAI_API_KEY."
+              : "Set EMBEDDING_HTTP_URL to your container endpoint."),
       );
     }
     return adapter.embed(req);

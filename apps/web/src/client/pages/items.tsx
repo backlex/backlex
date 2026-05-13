@@ -701,10 +701,12 @@ export const Items = () => {
     );
   }, [filters, filterMode, statusTab, statusField]);
 
-  const refresh = async () => {
+  const refresh = async (signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const c = await api<{ data: Collection }>(`/api/collections/${slug}`);
+      const c = await api<{ data: Collection }>(`/api/collections/${slug}`, {
+        signal,
+      });
       setCollection(c.data);
       const params = new URLSearchParams();
       params.set("limit", String(PAGE_SIZE));
@@ -720,19 +722,22 @@ export const Items = () => {
       const i = await api<{
         data: Item[];
         meta?: { filter_count?: number };
-      }>(`/api/items/${slug}?${params}`);
+      }>(`/api/items/${slug}?${params}`, { signal });
       setItems(i.data);
       setFilterCount(i.meta?.filter_count ?? null);
     } catch (e) {
+      if ((e as { name?: string })?.name === "AbortError") return;
       notifyError(e, "Loading items");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   };
 
   useEffect(() => {
-    refresh();
+    const ac = new AbortController();
+    refresh(ac.signal);
     setSelected(new Set());
+    return () => ac.abort();
   }, [slug, page, sort, combinedFilter, search]);
 
   useEffect(() => {
@@ -1026,7 +1031,7 @@ export const Items = () => {
         description={`${collection?.fields.length ?? 0} field(s). Click a row to edit; checkbox column enables bulk actions.`}
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={refresh}>
+            <Button variant="outline" size="sm" onClick={() => refresh()}>
               Refresh
             </Button>
             <Button size="sm" onClick={startCreate}>
@@ -1473,7 +1478,7 @@ export const Items = () => {
           <SchemaTab
             collection={collection}
             slug={slug}
-            onChanged={refresh}
+            onChanged={() => refresh()}
           />
         </TabsContent>
 

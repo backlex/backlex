@@ -47,6 +47,14 @@ export const EMBEDDING_MODELS = {
     pgTable: "embeddings_openai_1536",
     label: "OpenAI text-embedding-3-small (1536)",
   },
+  "openai-3-large": {
+    provider: "openai",
+    providerModel: "text-embedding-3-large",
+    dimensions: 3072,
+    vectorizeBinding: "VECTORIZE_OPENAI_LARGE",
+    pgTable: "embeddings_openai_3072",
+    label: "OpenAI text-embedding-3-large (3072)",
+  },
 } as const satisfies Record<string, EmbeddingModelDef>;
 
 export type EmbeddingModel = keyof typeof EMBEDDING_MODELS;

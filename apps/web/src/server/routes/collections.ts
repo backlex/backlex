@@ -184,13 +184,15 @@ export const collectionsRoutes = new Hono<AppBindings>()
     if (body.ownerScoped) {
       await seedOwnerScopedPermissions({ db, dialect }, tenantId, body.slug);
     }
+    const created = { id, ...body, tenantId, physicalTable };
     await logActivity(c, {
       action: "create",
       collection: "system_collections",
       itemId: body.slug,
       payload: { fields: body.fields.length },
+      response: { data: created },
     });
-    return c.json({ data: { id, ...body, tenantId, physicalTable } }, 201);
+    return c.json({ data: created }, 201);
   })
   .patch("/:slug", requireUser, async (c) => {
     const slug = c.req.param("slug");
@@ -273,13 +275,15 @@ export const collectionsRoutes = new Hono<AppBindings>()
     if (merged.ownerScoped) {
       await seedOwnerScopedPermissions({ db, dialect }, tenantId, nextSlug);
     }
+    const updateResponse = { ok: true, slug: nextSlug, renamed: renameCounts };
     await logActivity(c, {
       action: "update",
       collection: "system_collections",
       itemId: nextSlug,
       payload: renameCounts ? { ...body, _rename: { from: slug, to: nextSlug, ...renameCounts } } : body,
+      response: updateResponse,
     });
-    return c.json({ ok: true, slug: nextSlug, renamed: renameCounts });
+    return c.json(updateResponse);
   })
   .delete("/:slug", requireUser, async (c) => {
     const slug = c.req.param("slug");
@@ -301,6 +305,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       action: "delete",
       collection: "system_collections",
       itemId: slug,
+      response: { ok: true },
     });
     return c.json({ ok: true });
   })
@@ -376,13 +381,15 @@ export const collectionsRoutes = new Hono<AppBindings>()
       skipped += batch.length - upserted;
       offset += batch.length;
     }
+    const vectorizeResponse = { ok: true, processed, skipped, total };
     await logActivity(c, {
       action: "vectorize",
       collection: "system_collections",
       itemId: slug,
       payload: { processed, skipped, total },
+      response: vectorizeResponse,
     });
-    return c.json({ ok: true, processed, skipped, total });
+    return c.json(vectorizeResponse);
   });
 
 const runQuery = async <T>(

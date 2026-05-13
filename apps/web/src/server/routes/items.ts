@@ -526,6 +526,7 @@ export const itemsRoutes = new Hono<AppBindings>()
       { event: "created", data: out },
       { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
     );
+    const projected = projectFields(out, perm.fields);
     const meta = requestMeta(c.req.raw);
     await recordActivity(
       { db: ctx.db, dialect: ctx.dialect },
@@ -537,10 +538,11 @@ export const itemsRoutes = new Hono<AppBindings>()
         itemId: id,
         ...meta,
         payload: data,
+        response: { data: projected },
         durationMs: elapsedMs(c),
       },
     );
-    return c.json({ data: projectFields(out, perm.fields) }, 201);
+    return c.json({ data: projected }, 201);
   })
   .patch("/:slug/:id", requirePermission(collectionFromParam, "update"), async (c) => {
     const ctx = c.get("ctx");
@@ -609,6 +611,7 @@ export const itemsRoutes = new Hono<AppBindings>()
       { event: "updated", data: refreshedRow },
       { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
     );
+    const projected = projectFields(refreshedRow, perm.fields);
     const meta = requestMeta(c.req.raw);
     await recordActivity(
       { db: ctx.db, dialect: ctx.dialect },
@@ -620,6 +623,7 @@ export const itemsRoutes = new Hono<AppBindings>()
         itemId: id,
         ...meta,
         payload: patch,
+        response: { data: projected },
         durationMs: elapsedMs(c),
       },
     );
@@ -633,7 +637,7 @@ export const itemsRoutes = new Hono<AppBindings>()
         tenantId: auth.tenantId ?? null,
       },
     );
-    return c.json({ data: projectFields(refreshedRow, perm.fields) });
+    return c.json({ data: projected });
   })
   .delete("/:slug/:id", requirePermission(collectionFromParam, "delete"), async (c) => {
     const ctx = c.get("ctx");
@@ -678,6 +682,7 @@ export const itemsRoutes = new Hono<AppBindings>()
         itemId: id,
         ...meta,
         payload: oldRow,
+        response: { ok: true },
         durationMs: elapsedMs(c),
       },
     );

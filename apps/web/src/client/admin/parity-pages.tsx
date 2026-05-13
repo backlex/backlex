@@ -1139,24 +1139,18 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
   );
 }
 
-function ActivityEventDialog({
-  evt,
-  actionColor,
-  onClose,
-}: {
-  evt: { t: string; actor: string; action: string; resource: string; ip: string; raw: ApiActivity };
-  actionColor: (a: string) => "default" | "secondary" | "destructive" | "outline";
-  onClose: () => void;
-}) {
-  const json = useMemo(() => {
-    try {
-      return typeof evt.raw.payload === "string"
-        ? evt.raw.payload
-        : JSON.stringify(evt.raw.payload ?? null, null, 2);
-    } catch {
-      return "null";
-    }
-  }, [evt.raw.payload]);
+function formatJson(value: unknown): string {
+  try {
+    return typeof value === "string"
+      ? value
+      : JSON.stringify(value ?? null, null, 2);
+  } catch {
+    return "null";
+  }
+}
+
+function JsonBlock({ label, value }: { label: string; value: unknown }) {
+  const json = useMemo(() => formatJson(value), [value]);
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
@@ -1167,6 +1161,59 @@ function ActivityEventDialog({
       // clipboard unavailable — silent
     }
   };
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, color: "var(--muted-foreground)", fontSize: 11.5 }}>
+        <I.Braces size={12} />
+        <span style={{ textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{label}</span>
+        <div style={{ flex: 1 }} />
+        <button
+          type="button"
+          onClick={copy}
+          className="font-mono"
+          style={{
+            fontSize: 10.5,
+            padding: "2px 8px",
+            border: "1px solid var(--border)",
+            borderRadius: 4,
+            background: "var(--card)",
+            color: "var(--muted-foreground)",
+            cursor: "pointer",
+          }}
+        >
+          {copied ? "copied" : "copy"}
+        </button>
+      </div>
+      <pre
+        className="font-mono"
+        style={{
+          margin: 0,
+          padding: 12,
+          background: "color-mix(in oklch, var(--muted) 40%, var(--card))",
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+          fontSize: 11.5,
+          lineHeight: 1.55,
+          maxHeight: 280,
+          overflow: "auto",
+          whiteSpace: "pre",
+        }}
+      >
+        {json}
+      </pre>
+    </div>
+  );
+}
+
+function ActivityEventDialog({
+  evt,
+  actionColor,
+  onClose,
+}: {
+  evt: { t: string; actor: string; action: string; resource: string; ip: string; raw: ApiActivity };
+  actionColor: (a: string) => "default" | "secondary" | "destructive" | "outline";
+  onClose: () => void;
+}) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -1235,32 +1282,12 @@ function ActivityEventDialog({
             <span style={{ color: "var(--muted-foreground)" }}>Activity ID</span>
             <span className="font-mono" style={{ fontSize: 11.5, wordBreak: "break-all" }}>{evt.raw.id}</span>
           </div>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, color: "var(--muted-foreground)", fontSize: 11.5 }}>
-              <I.Braces size={12} />
-              <span style={{ textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Payload</span>
-            </div>
-            <pre
-              className="font-mono"
-              style={{
-                margin: 0,
-                padding: 12,
-                background: "color-mix(in oklch, var(--muted) 40%, var(--card))",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                fontSize: 11.5,
-                lineHeight: 1.55,
-                maxHeight: 360,
-                overflow: "auto",
-                whiteSpace: "pre",
-              }}
-            >
-              {json}
-            </pre>
-          </div>
+          <JsonBlock label="Payload" value={evt.raw.payload} />
+          {evt.raw.response != null && (
+            <JsonBlock label="Response" value={evt.raw.response} />
+          )}
         </div>
         <div className="dialog-foot">
-          <Button variant="outline" size="sm" onClick={copy}>{copied ? "Copied" : "Copy JSON"}</Button>
           <div className="spacer" style={{ flex: 1 }} />
           <Button variant="ghost" size="sm" onClick={onClose}>Close</Button>
         </div>

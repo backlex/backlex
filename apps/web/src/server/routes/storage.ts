@@ -121,23 +121,20 @@ export const storageRoutes = new Hono<AppBindings>()
           contentType: obj.contentType ?? null,
         },
       });
+    const uploaded = {
+      ...obj,
+      key: logicalKey,
+      folderId,
+      ownerId: auth.userId,
+    };
     await logActivity(c, {
       action: "upload",
       collection: FILES_COLLECTION,
       itemId: logicalKey,
       payload: { size: obj.size, contentType: obj.contentType, folderId },
+      response: { data: uploaded },
     });
-    return c.json(
-      {
-        data: {
-          ...obj,
-          key: logicalKey,
-          folderId,
-          ownerId: auth.userId,
-        },
-      },
-      201,
-    );
+    return c.json({ data: uploaded }, 201);
   })
   .get("/:key{.+}", requirePermission(filesCollection, "read"), async (c) => {
     const ctx = c.get("ctx");
@@ -194,6 +191,7 @@ export const storageRoutes = new Hono<AppBindings>()
       action: "delete",
       collection: FILES_COLLECTION,
       itemId: logicalKey,
+      response: { ok: true },
     });
     return c.json({ ok: true });
   })
@@ -230,11 +228,13 @@ export const storageRoutes = new Hono<AppBindings>()
       .update(t)
       .set(patch)
       .where(and(eq(t.key, key), eq(t.tenantId, tenantId)));
+    const updateResponse = { ok: true, data: { key: logicalKey, ...patch } };
     await logActivity(c, {
       action: "update",
       collection: FILES_COLLECTION,
       itemId: logicalKey,
       payload: patch,
+      response: updateResponse,
     });
-    return c.json({ ok: true, data: { key: logicalKey, ...patch } });
+    return c.json(updateResponse);
   });

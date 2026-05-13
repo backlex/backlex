@@ -3238,12 +3238,12 @@ function AutoTranslateDialog({ locales, base, data, busy, onClose, onRun }: Auto
             <label className="field-label">To</label>
             <Select value={target} onChange={setTarget} options={locales.filter((l) => l !== source)} />
           </div>
-          <div className="field" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Switch checked={onlyMissing} onCheckedChange={setOnlyMissing} />
+          <div className="field-row">
             <div style={{ display: "flex", flexDirection: "column" }}>
               <span style={{ fontSize: 12.5 }}>Only translate missing keys</span>
               <span className="muted" style={{ fontSize: 11 }}>When off, existing translations in the target locale are overwritten.</span>
             </div>
+            <Switch checked={onlyMissing} onChange={setOnlyMissing} />
           </div>
           <div className="field" style={{ background: "var(--muted)", padding: 10, borderRadius: "var(--radius-xl)", fontSize: 12 }}>
             <I.Info size={12} style={{ verticalAlign: -2, marginRight: 4 }} />

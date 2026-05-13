@@ -1,5 +1,7 @@
 import type { Condition } from "@workeros/core";
 
+export type FilterMode = "and" | "or";
+
 export interface FilterEntry {
   /** Stable id so the UI can key/remove rows even when two chips share the same field+op. */
   id: string;
@@ -35,15 +37,19 @@ const entryToCondition = (f: FilterEntry): Condition =>
  * Build a server-shaped {@link Condition} from a list of chip entries.
  *
  * Each chip becomes its own `{ field: { _op: value } }` clause. Multiple chips
- * (including duplicates on the same field+op) are AND-ed together via a top-level
- * `$and` so nothing gets silently overwritten — the previous shape used object
- * keys for each field, which collapsed `tags _contains "a"` + `tags _contains "b"`
- * into a single clause.
+ * are joined by `$and` or `$or` depending on `mode` (default `and`) so nothing
+ * is silently overwritten — the previous shape used object keys for each field,
+ * which collapsed `tags _contains "a"` + `tags _contains "b"` into a single
+ * clause.
  */
-export const buildFilterDSL = (filters: FilterEntry[]): Condition | null => {
+export const buildFilterDSL = (
+  filters: FilterEntry[],
+  mode: FilterMode = "and",
+): Condition | null => {
   if (filters.length === 0) return null;
   if (filters.length === 1) return entryToCondition(filters[0]!);
-  return { $and: filters.map(entryToCondition) };
+  const clauses = filters.map(entryToCondition);
+  return mode === "or" ? { $or: clauses } : { $and: clauses };
 };
 
 /**
@@ -73,9 +79,13 @@ export const mergeFilters = (
 export const previewFilterUrl = (
   slug: string,
   dsl: Condition | null,
+  q?: string,
 ): string => {
-  if (!dsl) return `GET /api/items/${slug}`;
-  return `GET /api/items/${slug}?filter=${encodeURIComponent(JSON.stringify(dsl))}`;
+  const parts: string[] = [];
+  if (dsl) parts.push(`filter=${encodeURIComponent(JSON.stringify(dsl))}`);
+  if (q && q.trim()) parts.push(`q=${encodeURIComponent(q.trim())}`);
+  if (parts.length === 0) return `GET /api/items/${slug}`;
+  return `GET /api/items/${slug}?${parts.join("&")}`;
 };
 
 /** Format a chip's value for display. */

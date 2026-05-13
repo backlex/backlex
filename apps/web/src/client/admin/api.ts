@@ -101,6 +101,19 @@ export interface ApiEmailConfig {
   providerIds: readonly string[];
 }
 
+/** Resolved (public) workspace branding view returned by
+ *  `GET /api/workspace-config` — workspace's own row merged onto `_global`
+ *  for text/color/theme fields. `logoUrl` / `faviconUrl` already include the
+ *  cache-busting query param when set. */
+export interface ApiWorkspaceConfigResolved {
+  workspaceName: string | null;
+  description: string | null;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  primaryColor: string | null;
+  defaultTheme: "light" | "dark" | "system" | null;
+}
+
 /** Raw workspace branding row as returned by `/api/workspace-config/raw` —
  *  the workspace's own values (no `_global` fallback) so the admin form edits
  *  this workspace specifically. */
@@ -362,6 +375,9 @@ export const emailTemplatesApi = {
 };
 
 export const workspaceConfigApi = {
+  /** Public resolved view — used by `main.tsx` boot-time branding injection. */
+  getResolved: () =>
+    api<Envelope<ApiWorkspaceConfigResolved>>(`/api/workspace-config`),
   /** Admin form: workspace's own row, no `_global` fallback applied. */
   getRaw: () => api<Envelope<ApiWorkspaceConfigRaw>>(`/api/workspace-config/raw`),
   put: (body: {

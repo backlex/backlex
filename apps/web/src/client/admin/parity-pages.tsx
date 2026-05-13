@@ -3245,9 +3245,9 @@ function AutoTranslateDialog({ locales, base, data, busy, onClose, onRun }: Auto
             </div>
             <Switch checked={onlyMissing} onChange={setOnlyMissing} />
           </div>
-          <div className="field" style={{ background: "var(--muted)", padding: 10, borderRadius: "var(--radius-xl)", fontSize: 12 }}>
-            <I.Info size={12} style={{ verticalAlign: -2, marginRight: 4 }} />
-            Will translate <strong>{Math.min(targetCount, 50)}</strong> key{targetCount === 1 ? "" : "s"}{targetCount > 50 ? ` of ${targetCount} (capped at 50 per run)` : ""}.
+          <div style={{ background: "var(--muted)", padding: 10, borderRadius: "var(--radius-xl)", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
+            <I.Info size={12} />
+            <span>Will translate <strong>{Math.min(targetCount, 50)}</strong> key{targetCount === 1 ? "" : "s"}{targetCount > 50 ? ` of ${targetCount} (capped at 50 per run)` : ""}.</span>
           </div>
         </div>
         <div className="sheet-footer">

@@ -4,6 +4,7 @@ import {
   Fragment,
   useCallback,
   useEffect,
+  useMemo,
   useState,
   type ButtonHTMLAttributes,
   type CSSProperties,
@@ -13,6 +14,72 @@ import {
 import { I, type IconComponent, type IconKey } from "./icons";
 import { ADAPTER_PROFILES, NAV_ITEMS, NAV_SETTINGS, type AdapterId } from "./config";
 import { tenantsApi, type ApiTenant } from "./api";
+
+export function formatJson(value: unknown): string {
+  try {
+    return typeof value === "string"
+      ? value
+      : JSON.stringify(value ?? null, null, 2);
+  } catch {
+    return "null";
+  }
+}
+
+export function JsonBlock({ label, value, maxHeight = 280 }: { label: string; value: unknown; maxHeight?: number }) {
+  const json = useMemo(() => formatJson(value), [value]);
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(json);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+    } catch {
+      // clipboard unavailable — silent
+    }
+  };
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, color: "var(--muted-foreground)", fontSize: 11.5 }}>
+        <I.Braces size={12} />
+        <span style={{ textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{label}</span>
+        <div style={{ flex: 1 }} />
+        <button
+          type="button"
+          onClick={copy}
+          className="font-mono"
+          style={{
+            fontSize: 10.5,
+            padding: "2px 8px",
+            border: "1px solid var(--border)",
+            borderRadius: 4,
+            background: "var(--card)",
+            color: "var(--muted-foreground)",
+            cursor: "pointer",
+          }}
+        >
+          {copied ? "copied" : "copy"}
+        </button>
+      </div>
+      <pre
+        className="font-mono"
+        style={{
+          margin: 0,
+          padding: 12,
+          background: "color-mix(in oklch, var(--muted) 40%, var(--card))",
+          border: "1px solid var(--border)",
+          borderRadius: 8,
+          fontSize: 11.5,
+          lineHeight: 1.55,
+          maxHeight,
+          overflow: "auto",
+          whiteSpace: "pre",
+        }}
+      >
+        {json}
+      </pre>
+    </div>
+  );
+}
 
 export interface BrandMarkProps {
   size?: number;

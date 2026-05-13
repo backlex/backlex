@@ -29,6 +29,7 @@ import {
   FilterDSLPreview,
   ItemsTable,
   evaluateFilter,
+  resolveStatusField,
   type FilterCondition,
 } from "./items";
 import { ConfirmDialog, ItemSheet } from "./sheet";
@@ -230,15 +231,46 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   );
   const [newCollectionOpen, setNewCollectionOpen] = useState(false);
 
-  // Real items + schema load — both keyed off the active collection so
-  // opening c_<anything> fetches that collection's rows + columns. Empty/
-  // missing/auth-fail falls back to whatever's currently cached.
+  // Debounced server-side search. The admin used to filter `posts` purely
+  // in memory, which never actually fired a request when the user typed —
+  // and silently capped at the first 50 items so anything beyond that
+  // window was unreachable. We now push `q` + chip filters + status tab
+  // down to /api/items so the server does the work.
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
+  useEffect(() => {
+    if (debouncedSearch === search) return;
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search, debouncedSearch]);
+
+  // Items refetch — keyed off the active collection AND every filter input
+  // so typing / chipping / status-tabbing fires a request. Empty / missing
+  // / auth-fail falls back to whatever's currently cached.
   useEffect(() => {
     if (!activeCollection) return;
     let cancelled = false;
     void (async () => {
       try {
-        const res = await itemsApi.list(activeCollection, { limit: 50, sort: "-updated_at" });
+        const query: Record<string, string | number> = {
+          limit: 50,
+          sort: sort || "-updated_at",
+        };
+        if (debouncedSearch.trim()) query.q = debouncedSearch.trim();
+        // Build a `$and` filter from chips (each its own clause so duplicate
+        // field+op pairs survive) plus the status quick-filter when active.
+        const clauses: Record<string, Record<string, unknown>>[] = filters.map(
+          (f) => ({ [f.field]: { [f.op]: f.value } }),
+        );
+        const statusCfg = resolveStatusField(schemaState as unknown as { fields?: Array<Record<string, unknown>> } | null);
+        if (statusTab !== "all" && statusCfg) {
+          clauses.push({ [statusCfg.name]: { _eq: statusTab } });
+        }
+        if (clauses.length === 1) {
+          query.filter = JSON.stringify(clauses[0]);
+        } else if (clauses.length > 1) {
+          query.filter = JSON.stringify({ $and: clauses });
+        }
+        const res = await itemsApi.list(activeCollection, query);
         if (cancelled) return;
         if (Array.isArray(res.data)) {
           setPosts(res.data as unknown as Post[]);
@@ -247,6 +279,13 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
         // keep whatever is currently in `posts`
       }
     })();
+    return () => { cancelled = true; };
+  }, [activeCollection, debouncedSearch, filters, statusTab, sort, schemaState]);
+
+  // Schema load — only re-runs when the active collection changes.
+  useEffect(() => {
+    if (!activeCollection) return;
+    let cancelled = false;
     void (async () => {
       try {
         const res = await collectionsApi.get(activeCollection);

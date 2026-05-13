@@ -20,6 +20,7 @@ import {
 } from "./adapters/vector.cf";
 import { workersAiEmbeddingAdapter } from "./adapters/embedding.workers-ai";
 import { openaiEmbeddingAdapter } from "./adapters/embedding.openai";
+import { selfHostEmbeddingAdapter } from "./adapters/embedding.self-host";
 import {
   embeddingRouter,
   noEmbeddingAdapter,
@@ -194,6 +195,7 @@ export const buildContext = (env: Env): Ctx => {
   if (env.VECTORIZE_OPENAI) vectorizeBindings["openai-3-small"] = env.VECTORIZE_OPENAI;
   if (env.VECTORIZE_OPENAI_LARGE) vectorizeBindings["openai-3-large"] = env.VECTORIZE_OPENAI_LARGE;
   if (env.VECTORIZE_BGE_M3) vectorizeBindings["bge-m3"] = env.VECTORIZE_BGE_M3;
+  if (env.VECTORIZE_SELF_HOST_BGE_M3) vectorizeBindings["self-host-bge-m3"] = env.VECTORIZE_SELF_HOST_BGE_M3;
   const hasAnyVectorize =
     Object.keys(vectorizeBindings).length > 0;
   const vector: VectorAdapter = hasAnyVectorize
@@ -205,15 +207,24 @@ export const buildContext = (env: Env): Ctx => {
   // Embedding (text → vector). Models are routed to providers by the
   // registry: bge-m3 → Workers AI, openai-3-small → OpenAI. A model whose
   // provider isn't configured here fails loudly when invoked.
-  const embedding: EmbeddingAdapter =
-    env.AI || env.OPENAI_API_KEY
-      ? embeddingRouter({
-          ...(env.AI ? { "workers-ai": workersAiEmbeddingAdapter(env.AI) } : {}),
-          ...(env.OPENAI_API_KEY
-            ? { openai: openaiEmbeddingAdapter(env.OPENAI_API_KEY) }
-            : {}),
-        })
-      : noEmbeddingAdapter();
+  const hasAnyEmbeddingProvider =
+    env.AI || env.OPENAI_API_KEY || env.EMBEDDING_HTTP_URL;
+  const embedding: EmbeddingAdapter = hasAnyEmbeddingProvider
+    ? embeddingRouter({
+        ...(env.AI ? { "workers-ai": workersAiEmbeddingAdapter(env.AI) } : {}),
+        ...(env.OPENAI_API_KEY
+          ? { openai: openaiEmbeddingAdapter(env.OPENAI_API_KEY) }
+          : {}),
+        ...(env.EMBEDDING_HTTP_URL
+          ? {
+              "self-host": selfHostEmbeddingAdapter({
+                baseUrl: env.EMBEDDING_HTTP_URL,
+                token: env.EMBEDDING_HTTP_TOKEN,
+              }),
+            }
+          : {}),
+      })
+    : noEmbeddingAdapter();
 
   // Image transform: prefer Bun's built-in image API when available; fall
   // back to passthrough so the route still works (just without resizing).

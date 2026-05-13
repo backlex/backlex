@@ -253,7 +253,11 @@ const AddFilter = ({ fields, onAdd }: AddFilterProps) => {
           <FilterIcon /> Filter
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 p-3">
+      <PopoverContent
+        align="start"
+        collisionPadding={8}
+        className="w-80 max-w-[calc(100vw-1rem)] p-3"
+      >
         <form onSubmit={submit} className="space-y-2">
           <div className="grid grid-cols-[1fr_120px] gap-2">
             <div className="space-y-1.5">

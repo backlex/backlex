@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode }
 import { useIsMobile } from "@workeros/ui/hooks/use-mobile";
 import { I } from "./icons";
 import { ADAPTER_PROFILES, type AdapterId } from "./config";
-import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
+import { Badge, Button, IconButton, JsonBlock, PageHeader, Switch } from "./ui";
 import { Select } from "./select";
 import { ConfirmDialog } from "./sheet";
 import { ApiError } from "@/lib/api";
@@ -1135,72 +1135,6 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
       {openEvt && (
         <ActivityEventDialog evt={openEvt} actionColor={actionColor} onClose={() => setOpenEvt(null)} />
       )}
-    </div>
-  );
-}
-
-function formatJson(value: unknown): string {
-  try {
-    return typeof value === "string"
-      ? value
-      : JSON.stringify(value ?? null, null, 2);
-  } catch {
-    return "null";
-  }
-}
-
-function JsonBlock({ label, value }: { label: string; value: unknown }) {
-  const json = useMemo(() => formatJson(value), [value]);
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(json);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1400);
-    } catch {
-      // clipboard unavailable — silent
-    }
-  };
-  return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, color: "var(--muted-foreground)", fontSize: 11.5 }}>
-        <I.Braces size={12} />
-        <span style={{ textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{label}</span>
-        <div style={{ flex: 1 }} />
-        <button
-          type="button"
-          onClick={copy}
-          className="font-mono"
-          style={{
-            fontSize: 10.5,
-            padding: "2px 8px",
-            border: "1px solid var(--border)",
-            borderRadius: 4,
-            background: "var(--card)",
-            color: "var(--muted-foreground)",
-            cursor: "pointer",
-          }}
-        >
-          {copied ? "copied" : "copy"}
-        </button>
-      </div>
-      <pre
-        className="font-mono"
-        style={{
-          margin: 0,
-          padding: 12,
-          background: "color-mix(in oklch, var(--muted) 40%, var(--card))",
-          border: "1px solid var(--border)",
-          borderRadius: 8,
-          fontSize: 11.5,
-          lineHeight: 1.55,
-          maxHeight: 280,
-          overflow: "auto",
-          whiteSpace: "pre",
-        }}
-      >
-        {json}
-      </pre>
     </div>
   );
 }

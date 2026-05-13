@@ -2880,6 +2880,8 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
   const [showOnly, setShowOnly] = useState("all");
   const [addOpen, setAddOpen] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
+  const [translateOpen, setTranslateOpen] = useState(false);
+  const [translating, setTranslating] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -2933,9 +2935,37 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
             URL.revokeObjectURL(url);
             pushToast("Exported translations.json.");
           }}>Export</Button>
+          <Button variant="outline" icon={I.Zap} onClick={() => setTranslateOpen(true)} disabled={data.length === 0 || locales.length < 2}>Auto-translate</Button>
           <Button variant="primary" icon={I.Plus} onClick={() => setAddOpen(true)}>New key</Button>
         </>}
       />
+      {translateOpen && (
+        <AutoTranslateDialog
+          locales={locales}
+          base={base}
+          data={data}
+          busy={translating}
+          onClose={() => setTranslateOpen(false)}
+          onRun={async ({ targetLocale, sourceLocale, onlyMissing }) => {
+            setTranslating(true);
+            try {
+              const res = await i18nApi.autoTranslate({ targetLocale, sourceLocale, onlyMissing });
+              if (res.rows.length > 0) {
+                setData((arr) => arr.map((r) => {
+                  const hit = res.rows.find((x) => x.key === r.key);
+                  return hit ? { ...r, [targetLocale]: hit.value } : r;
+                }));
+              }
+              pushToast(`Translated ${res.translated}${res.remaining ? ` (${res.remaining} more queued — run again)` : ""}.`);
+              if (!res.remaining) setTranslateOpen(false);
+            } catch (e) {
+              pushToast((e as Error).message);
+            } finally {
+              setTranslating(false);
+            }
+          }}
+        />
+      )}
       {addOpen && (
         <AddTranslationKeyDialog
           base={base}
@@ -3149,6 +3179,86 @@ function AddTranslationKeyDialog({ base, locales, existingKeys, onClose, onCreat
           <Button variant="ghost" onClick={onClose} disabled={submitting}>Cancel</Button>
           <Button variant="primary" icon={I.Plus} onClick={submit} disabled={!valid || submitting}>
             {submitting ? "Creating…" : "Create key"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface AutoTranslateDialogProps {
+  locales: string[];
+  base: string;
+  data: Record<string, string>[];
+  busy: boolean;
+  onClose: () => void;
+  onRun: (input: { targetLocale: string; sourceLocale: string; onlyMissing: boolean }) => Promise<void>;
+}
+
+function AutoTranslateDialog({ locales, base, data, busy, onClose, onRun }: AutoTranslateDialogProps) {
+  const others = locales.filter((l) => l !== base);
+  const [target, setTarget] = useState(others[0] || locales[0] || "");
+  const [source, setSource] = useState(base);
+  const [onlyMissing, setOnlyMissing] = useState(true);
+
+  // Estimate how many keys the request will touch.
+  const targetCount = useMemo(() => {
+    if (!target) return 0;
+    return data.filter((r) => {
+      const src = r[source];
+      if (!src) return false;
+      if (onlyMissing) return !r[target];
+      return true;
+    }).length;
+  }, [data, target, source, onlyMissing]);
+
+  return (
+    <div className="dialog-backdrop" onClick={busy ? undefined : onClose}>
+      <div
+        className="dialog-lg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="auto-translate-title"
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: 460, maxWidth: "92vw" }}
+      >
+        <div className="sheet-header" style={{ borderBottom: "1px solid var(--border)" }}>
+          <div style={{ flex: 1 }}>
+            <h2 id="auto-translate-title">Auto-translate</h2>
+            <p>Translate UI strings using Claude. Requires <span className="font-mono">ANTHROPIC_API_KEY</span> on the server.</p>
+          </div>
+          <IconButton icon={I.X} onClick={onClose} title="Close" disabled={busy} />
+        </div>
+        <div className="dialog-body">
+          <div className="field">
+            <label className="field-label">From</label>
+            <Select value={source} onChange={setSource} options={locales} />
+          </div>
+          <div className="field">
+            <label className="field-label">To</label>
+            <Select value={target} onChange={setTarget} options={locales.filter((l) => l !== source)} />
+          </div>
+          <div className="field" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Switch checked={onlyMissing} onCheckedChange={setOnlyMissing} />
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: 12.5 }}>Only translate missing keys</span>
+              <span className="muted" style={{ fontSize: 11 }}>When off, existing translations in the target locale are overwritten.</span>
+            </div>
+          </div>
+          <div className="field" style={{ background: "var(--muted)", padding: 10, borderRadius: "var(--radius-xl)", fontSize: 12 }}>
+            <I.Info size={12} style={{ verticalAlign: -2, marginRight: 4 }} />
+            Will translate <strong>{Math.min(targetCount, 50)}</strong> key{targetCount === 1 ? "" : "s"}{targetCount > 50 ? ` of ${targetCount} (capped at 50 per run)` : ""}.
+          </div>
+        </div>
+        <div className="sheet-footer">
+          <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button
+            variant="primary"
+            icon={I.Zap}
+            onClick={() => void onRun({ targetLocale: target, sourceLocale: source, onlyMissing })}
+            disabled={busy || targetCount === 0 || !target || source === target}
+          >
+            {busy ? "Translating…" : "Translate"}
           </Button>
         </div>
       </div>

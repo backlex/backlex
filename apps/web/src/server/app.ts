@@ -51,6 +51,7 @@ import { emailConfigRoutes } from "./routes/email-config";
 import { authAdminRoutes } from "./routes/auth-admin";
 import { panelsRoutes } from "./routes/panels";
 import { i18nRoutes } from "./routes/i18n";
+import { i18nPublicRoutes } from "./routes/i18n-public";
 import { settingsRoutes } from "./routes/settings";
 import { dbAdminRoutes } from "./routes/db-admin";
 import { metricsRoutes } from "./routes/metrics";
@@ -161,6 +162,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/auth", authAdminRoutes);
   app.route("/api/admin/panels", panelsRoutes);
   app.route("/api/admin/i18n", i18nRoutes);
+  app.route("/api/i18n", i18nPublicRoutes);
   app.route("/api/admin/settings", settingsRoutes);
   app.route("/api/admin/db", dbAdminRoutes);
   app.route("/api/admin/metrics", metricsRoutes);

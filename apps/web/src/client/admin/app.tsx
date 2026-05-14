@@ -563,7 +563,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
 
   return (
     <div className="app" data-collapsed={tweaks.sidebarCollapsed} data-density={tweaks.density} data-mobile-open={mobileNavOpen}>
-      <Sidebar activeNav={activeNav} setActiveNav={navTo} adapter={tweaks.adapter} collapsed={tweaks.sidebarCollapsed} pushToast={pushToast} collectionsCount={collections.length} />
+      <Sidebar activeNav={activeNav} setActiveNav={navTo} collapsed={tweaks.sidebarCollapsed} pushToast={pushToast} collectionsCount={collections.length} />
       {mobileNavOpen && <div className="sidebar-backdrop" onClick={() => setMobileNavOpen(false)} />}
 
       <div className="main">

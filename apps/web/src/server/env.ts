@@ -88,6 +88,8 @@ export interface Env {
   OAUTH_GOOGLE_CLIENT_SECRET?: string;
   OAUTH_GITHUB_CLIENT_ID?: string;
   OAUTH_GITHUB_CLIENT_SECRET?: string;
+  OAUTH_APPLE_CLIENT_ID?: string;
+  OAUTH_APPLE_CLIENT_SECRET?: string;
   /** Comma-separated better-auth plugin names: `magic-link,email-otp,anonymous`. */
   AUTH_PLUGINS?: string;
   /** Comma-separated extra origins (scheme://host[:port]) allowed to make

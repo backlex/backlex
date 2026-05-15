@@ -68,6 +68,7 @@ import {
   UsersPage,
   WebhooksPage,
 } from "./pages";
+import { AccountPage } from "./account-page";
 
 interface AdminAppOptions {
   initialNav?: string;
@@ -121,6 +122,8 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
       new Set<string>([
         ...NAV_ITEMS.map((n) => n.id),
         ...NAV_SETTINGS.map((n) => n.id),
+        // Reachable only via the header avatar dropdown — not in the sidebar.
+        "account",
       ]),
     [],
   );
@@ -314,6 +317,22 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
 
   const [events, setEvents] = useState<RealtimeEvent[]>([]);
   const [toastNode, pushToast] = useToasts();
+  const [me, setMe] = useState<{ name: string | null; email: string; image: string | null; isAdmin: boolean } | null>(null);
+  // Hydrate the header dropdown — name/email/avatar + admin badge. `auth.useSession()`
+  // doesn't carry role info, so we hit our own `/api/me` which returns the
+  // permission-resolver's view of the current user.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await api<{ data: { name: string | null; email: string; image: string | null; isAdmin: boolean } }>("/api/me");
+        if (!cancelled) setMe(r.data);
+      } catch {
+        // not signed in or endpoint missing — dropdown falls back gracefully
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Detect the actual runtime profile so the sidebar pill, Health card and
   // Settings page show truth instead of the design's `bun` default.
@@ -583,6 +602,8 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             else setTweak("sidebarCollapsed", !tweaks.sidebarCollapsed);
           }}
           onSignOut={onSignOut}
+          user={me}
+          onAccountSettings={() => navigate("/account")}
         />
 
         <div className="scrollarea" style={{ flex: 1 }}>
@@ -604,6 +625,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             {activeNav === "api-keys" && <ApiKeysPage pushToast={pushToast} />}
             {activeNav === "email-templates" && <EmailTemplatesPage pushToast={pushToast} />}
             {activeNav === "settings" && <SettingsPage adapter={tweaks.adapter} pushToast={pushToast} />}
+            {activeNav === "account" && <AccountPage pushToast={pushToast} />}
             {activeNav === "roles" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                 <PageHeader title="Roles & permissions" description="System roles ship with the platform; custom roles layer additively." />

@@ -6,6 +6,7 @@ const env: Env = {
   APP_URL: process.env.APP_URL ?? "http://localhost:5173",
   AUTH_SECRET: process.env.AUTH_SECRET ?? "dev-secret-change-me",
   DATABASE_URL: process.env.DATABASE_URL,
+  SQLITE_PATH: process.env.SQLITE_PATH,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   EMAIL_FROM: process.env.EMAIL_FROM,

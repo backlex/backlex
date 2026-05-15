@@ -5,6 +5,7 @@
 // credentials. Everything talks to better-auth's self-service endpoints
 // at /api/auth/* so there's no extra server route involved.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Checkbox } from "@workeros/ui/components/checkbox";
 import { auth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { I } from "./icons";
@@ -379,8 +380,12 @@ function SecurityCard({ pushToast }: { pushToast: (m: string) => void }) {
           <input className="input" type="password" autoComplete="new-password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
         </div>
         {hasPassword !== false && (
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-            <input type="checkbox" checked={revokeOthers} onChange={(e) => setRevokeOthers(e.target.checked)} />
+          <label htmlFor="revoke-others" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+            <Checkbox
+              id="revoke-others"
+              checked={revokeOthers}
+              onCheckedChange={(v) => setRevokeOthers(v === true)}
+            />
             Sign out from all other devices
           </label>
         )}

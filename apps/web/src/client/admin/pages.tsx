@@ -2503,6 +2503,21 @@ function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
   );
 }
 
+const PRIMARY_PRESETS: { label: string; value: string }[] = [
+  { label: "Lime", value: "oklch(0.841 0.238 128.85)" },
+  { label: "Emerald", value: "oklch(0.78 0.21 155)" },
+  { label: "Teal", value: "oklch(0.78 0.14 185)" },
+  { label: "Cyan", value: "oklch(0.78 0.16 210)" },
+  { label: "Blue", value: "oklch(0.7 0.2 255)" },
+  { label: "Indigo", value: "oklch(0.65 0.22 280)" },
+  { label: "Violet", value: "oklch(0.68 0.24 305)" },
+  { label: "Pink", value: "oklch(0.75 0.23 350)" },
+  { label: "Rose", value: "oklch(0.7 0.24 15)" },
+  { label: "Orange", value: "oklch(0.78 0.2 50)" },
+  { label: "Amber", value: "oklch(0.85 0.18 85)" },
+  { label: "Slate", value: "oklch(0.55 0.04 250)" },
+];
+
 /**
  * Per-workspace branding form. Reads its workspace's own row (no `_global`
  * fallback) so the admin edits *this* workspace's overrides explicitly. Logo
@@ -2747,6 +2762,34 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
       </div>
       <div className="field" style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
         <label className="field-label">Primary color</label>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+          {PRIMARY_PRESETS.map((p) => {
+            const active = primaryColor.trim() === p.value;
+            return (
+              <button
+                key={p.value}
+                type="button"
+                title={p.label}
+                aria-label={`Use ${p.label} palette`}
+                aria-pressed={active}
+                disabled={loading}
+                onClick={() => { setPrimaryColor(p.value); setDirty(true); }}
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 999,
+                  background: p.value,
+                  border: "1px solid var(--border)",
+                  boxShadow: active
+                    ? "0 0 0 2px var(--background), 0 0 0 4px var(--foreground)"
+                    : "none",
+                  cursor: loading ? "default" : "pointer",
+                  padding: 0,
+                }}
+              />
+            );
+          })}
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span
             aria-hidden

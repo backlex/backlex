@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { KeyIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { KeyIcon, PlusIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@workeros/ui/components/card";
 import { Button } from "@workeros/ui/components/button";
 import { Input } from "@workeros/ui/components/input";
@@ -45,13 +45,36 @@ const isExpired = (v: string | number | null): boolean =>
 // "no role restriction" choice and translate it on submit.
 const NO_ROLE = "__none__";
 
+type ExpiryPreset = "7d" | "30d" | "90d" | "365d" | "never" | "custom";
+
+const EXPIRY_PRESETS: { value: ExpiryPreset; label: string; days: number | null }[] = [
+  { value: "7d", label: "7 days", days: 7 },
+  { value: "30d", label: "30 days", days: 30 },
+  { value: "90d", label: "90 days", days: 90 },
+  { value: "365d", label: "1 year", days: 365 },
+  { value: "never", label: "Never (no expiry)", days: null },
+  { value: "custom", label: "Custom date…", days: null },
+];
+
+const expiresAtFromPreset = (
+  preset: ExpiryPreset,
+  custom: string,
+): string | null => {
+  if (preset === "never") return null;
+  if (preset === "custom") return custom ? new Date(custom).toISOString() : null;
+  const days = EXPIRY_PRESETS.find((p) => p.value === preset)?.days ?? null;
+  if (days === null) return null;
+  return new Date(Date.now() + days * 86_400_000).toISOString();
+};
+
 export const ApiKeys = () => {
   const [items, setItems] = useState<ApiKey[]>([]);
   const [roles, setRoles] = useState<BindableRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
-  const [expiresAt, setExpiresAt] = useState("");
+  const [expiryPreset, setExpiryPreset] = useState<ExpiryPreset>("30d");
+  const [customExpiry, setCustomExpiry] = useState("");
   const [roleId, setRoleId] = useState<string>(NO_ROLE);
   const [secret, setSecret] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -72,7 +95,8 @@ export const ApiKeys = () => {
 
   const resetForm = () => {
     setName("");
-    setExpiresAt("");
+    setExpiryPreset("30d");
+    setCustomExpiry("");
     setRoleId(NO_ROLE);
   };
 
@@ -82,7 +106,8 @@ export const ApiKeys = () => {
     try {
       const body: Record<string, unknown> = {};
       if (name.trim()) body.name = name.trim();
-      if (expiresAt) body.expiresAt = new Date(expiresAt).toISOString();
+      const iso = expiresAtFromPreset(expiryPreset, customExpiry);
+      if (iso) body.expiresAt = iso;
       if (roleId && roleId !== NO_ROLE) body.roleId = roleId;
       const r = await api<{ data: ApiKey & { secret: string } }>(
         "/api/api-keys",
@@ -194,12 +219,37 @@ export const ApiKeys = () => {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="expires">Expires</Label>
-                <Input
-                  id="expires"
-                  type="datetime-local"
-                  value={expiresAt}
-                  onChange={(e) => setExpiresAt(e.target.value)}
-                />
+                <Select
+                  value={expiryPreset}
+                  onValueChange={(v) => setExpiryPreset(v as ExpiryPreset)}
+                >
+                  <SelectTrigger id="expires">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EXPIRY_PRESETS.map((p) => (
+                      <SelectItem key={p.value} value={p.value}>
+                        {p.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {expiryPreset === "custom" && (
+                  <Input
+                    type="datetime-local"
+                    value={customExpiry}
+                    onChange={(e) => setCustomExpiry(e.target.value)}
+                  />
+                )}
+                {expiryPreset === "never" && (
+                  <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2.5 text-xs text-destructive">
+                    <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
+                    <span>
+                      Long-lived keys widen blast radius. Prefer the shortest
+                      expiry that works — you can always rotate.
+                    </span>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
                   Optional — the key stops working after this time.
                 </p>

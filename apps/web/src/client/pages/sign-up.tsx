@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { KeyRoundIcon, ShieldIcon } from "lucide-react";
+import { KeyRoundIcon, MailCheckIcon, ShieldIcon } from "lucide-react";
 import { Input } from "@workeros/ui/components/input";
 import { Label } from "@workeros/ui/components/label";
 import { Checkbox } from "@workeros/ui/components/checkbox";
@@ -13,9 +13,9 @@ import {
   AuthShell,
   AuthSubmit,
 } from "@/components/auth-shell";
-import { SocialButtons } from "@/components/social-buttons";
+import { SocialButtons, useHasSocialProviders } from "@/components/social-buttons";
 import { notifyError } from "@/lib/error";
-import { auth } from "@/lib/auth";
+import { auth, invalidateAuthSurface, useAuthSurface } from "@/lib/auth";
 import { cn } from "@workeros/ui/lib/utils";
 
 const computeStrength = (pw: string): number => {
@@ -45,12 +45,30 @@ export const SignUp = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [agreed, setAgreed] = useState(false);
-  const [enrollPasskey, setEnrollPasskey] = useState(passkeysSupported());
+  // Computed once on mount — `passkeysSupported()` is environment-stable.
+  const [supportsPasskey] = useState(() => passkeysSupported());
+  const [enrollPasskey, setEnrollPasskey] = useState(supportsPasskey);
   const [busy, setBusy] = useState(false);
-  const [stage, setStage] = useState<"form" | "creating" | "enrolling">("form");
+  const [stage, setStage] = useState<
+    "form" | "creating" | "enrolling" | "verify"
+  >("form");
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const isFirst = params.get("claim") === "1";
+  const { surface } = useAuthSurface();
+  const hasSocials = useHasSocialProviders();
+
+  // The server is the source of truth — `?claim=1` only matters when the
+  // instance still has zero users. Anyone landing on the link after an
+  // admin exists gets the normal sign-up copy.
+  const isFirst = surface?.firstUserMode === true && params.get("claim") === "1";
+  const openSignup = surface ? surface.policy.openSignup !== false : true;
+  const requireVerify = surface
+    ? surface.policy.requireEmailVerification !== false
+    : false;
+  // Block the form when sign-up is closed AND we're not bootstrapping the
+  // first admin. While the surface is still loading, render normally so the
+  // form doesn't flash an error before we know the policy.
+  const blocked = surface != null && !openSignup && !isFirst;
 
   useEffect(() => {
     let cancelled = false;
@@ -83,9 +101,13 @@ export const SignUp = () => {
       return;
     }
 
+    // Invalidate the cached surface so the next render picks up
+    // `firstUserMode = false` (the page just consumed the claim).
+    invalidateAuthSurface();
+
     // Optional passkey enrolment in the same flow. signUp.email sets the
     // session cookie, so addPasskey runs as the freshly-created user.
-    if (enrollPasskey && passkeysSupported()) {
+    if (enrollPasskey && supportsPasskey) {
       setStage("enrolling");
       try {
         const c = auth as unknown as PasskeyClient;
@@ -113,8 +135,55 @@ export const SignUp = () => {
       }
     }
 
+    // When email verification is required AND we're not the first user
+    // (the first user is auto-admin and skips verification), park them on
+    // a "check your inbox" panel instead of redirecting into a 401 loop.
+    if (requireVerify && !isFirst) {
+      setStage("verify");
+      setBusy(false);
+      return;
+    }
+
     window.location.href = "/";
   };
+
+  if (blocked) {
+    return (
+      <AuthShell mode="sign-up">
+        <AuthCard>
+          <AuthCardHeader
+            title="Sign-up is disabled"
+            description="An admin has turned off public sign-up for this instance. Ask for an invite, or sign in if you already have an account."
+          />
+          <AuthCallout icon={<ShieldIcon size={16} />}>
+            <strong>Closed instance.</strong> Set{" "}
+            <span className="font-mono">openSignup</span> to <em>true</em> in
+            admin → Auth Settings to re-open.
+          </AuthCallout>
+          <AuthFootLink to="/sign-in" prefix="Have an account?" label="Sign in" />
+        </AuthCard>
+      </AuthShell>
+    );
+  }
+
+  if (stage === "verify") {
+    return (
+      <AuthShell mode="sign-up">
+        <AuthCard>
+          <AuthCardHeader
+            title="Check your inbox"
+            description={`We sent a verification link to ${email}. Click it to finish creating your account.`}
+          />
+          <AuthCallout icon={<MailCheckIcon size={16} />}>
+            <strong>Verification required.</strong> Until you confirm your
+            email, sign-in won't work. Didn't get it? Check spam, or wait a
+            minute and try sign-in — we'll re-send on demand.
+          </AuthCallout>
+          <AuthFootLink to="/sign-in" prefix="Already verified?" label="Sign in" />
+        </AuthCard>
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell mode={isFirst ? "claim" : "sign-up"}>
@@ -139,7 +208,7 @@ export const SignUp = () => {
 
         <SocialButtons />
 
-        <AuthDivider>or with email</AuthDivider>
+        {hasSocials && <AuthDivider>or with email</AuthDivider>}
 
         <form className="space-y-4" onSubmit={submit}>
           <div className="space-y-1.5">
@@ -209,7 +278,7 @@ export const SignUp = () => {
             </p>
           </div>
 
-          {passkeysSupported() && (
+          {supportsPasskey && (
             <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-primary/30 bg-primary/8 px-3 py-2.5 text-[12.5px]">
               <Checkbox
                 checked={enrollPasskey}

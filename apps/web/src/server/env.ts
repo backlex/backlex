@@ -10,6 +10,9 @@ export interface Env {
   AUTH_SECRET: string;
   // Postgres URL (self-host or Hyperdrive). One of DATABASE_URL or D1 is required.
   DATABASE_URL?: string;
+  /** SQLite file path for Bun self-host. Defaults to `./.data/workeros.sqlite`.
+   *  Override for tests (e.g. a temp file per run) or alternate disk layouts. */
+  SQLITE_PATH?: string;
   // Cloudflare bindings — present only when running on Workers.
   D1?: D1Database;
   R2?: R2Bucket;

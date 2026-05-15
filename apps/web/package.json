@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "vite build && wrangler deploy",
-    "typecheck": "tsc --noEmit -p tsconfig.client.json && tsc --noEmit -p tsconfig.server.json"
+    "typecheck": "tsc --noEmit -p tsconfig.client.json && tsc --noEmit -p tsconfig.server.json",
+    "test": "bun test tests/"
   },
   "dependencies": {
     "@cf-wasm/quickjs": "^0.2.5",

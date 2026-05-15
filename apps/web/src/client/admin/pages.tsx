@@ -24,6 +24,7 @@ import {
 } from "./api";
 import { ConfirmDialog } from "./sheet";
 import { useTheme } from "@/components/theme-provider";
+import { applyPrimaryColor } from "@/main";
 
 /** Mirror of `services/workspace-config.ts::isValidColor` — keep in sync. */
 const isValidColor = (v: string): boolean => {
@@ -2626,14 +2627,16 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
     }
     setSaving(true);
     try {
+      const nextPrimary = primaryColor.trim() || null;
       await workspaceConfigApi.put({
         workspaceName: workspaceName.trim() || null,
         description: description.trim() || null,
         logoFileKey,
         faviconFileKey,
-        primaryColor: primaryColor.trim() || null,
+        primaryColor: nextPrimary,
         defaultTheme: defaultTheme || null,
       });
+      applyPrimaryColor(nextPrimary);
       setDirty(false);
       pushToast("Branding saved.");
     } catch (e) {

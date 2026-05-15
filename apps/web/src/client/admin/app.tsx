@@ -69,6 +69,7 @@ import {
   WebhooksPage,
 } from "./pages";
 import { AccountPage } from "./account-page";
+import { GraphqlPage } from "@/pages/graphql";
 
 interface AdminAppOptions {
   initialNav?: string;
@@ -614,6 +615,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             {activeNav === "flows" && <FlowsPage pushToast={pushToast} activeFlow={activeFlow} setActiveFlow={setActiveFlow} />}
             {activeNav === "functions" && <FunctionsPage pushToast={pushToast} />}
             {activeNav === "webhooks" && <WebhooksPage pushToast={pushToast} />}
+            {activeNav === "graphql" && <GraphqlPage />}
             {activeNav === "realtime" && <RealtimePage events={events} active={realtimeChannel} onActiveChange={setRealtimeChannel} pushToast={pushToast} />}
             {activeNav === "insights" && <InsightsPage pushToast={pushToast} />}
             {activeNav === "activity" && <ActivityPage pushToast={pushToast} />}

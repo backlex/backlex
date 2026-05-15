@@ -69,7 +69,7 @@ export const buildContext = (env: Env): Ctx => {
     ? createD1Client(env.D1)
     : env.DATABASE_URL
       ? createPgClient(env.DATABASE_URL)
-      : createBunSqliteClient();
+      : createBunSqliteClient(env.SQLITE_PATH);
 
   const dbCtx = { db, dialect };
 

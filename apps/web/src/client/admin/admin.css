@@ -220,7 +220,6 @@ body {
 .app[data-collapsed="true"] .nav-label { display: none; }
 .app[data-collapsed="true"] .sidebar-section-label { opacity: 0; }
 .app[data-collapsed="true"] .nav-end { display: none; }
-.app[data-collapsed="true"] .adapter-card { display: none; }
 
 .sidebar-section-label {
   font-size: 10px;
@@ -270,19 +269,6 @@ body {
   gap: 8px;
 }
 
-.adapter-card {
-  margin-top: auto;
-  border: 1px solid var(--sidebar-border);
-  background: var(--background);
-  border-radius: var(--radius-2xl);
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.adapter-card .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11.5px; }
-.adapter-card .row .k { color: var(--muted-foreground); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; }
-.adapter-card .row .v { font-family: 'Geist Mono', monospace; font-size: 11.5px; }
 .dot {
   width: 7px; height: 7px;
   border-radius: 999px;
@@ -2084,8 +2070,7 @@ body {
   /* The drawer always shows full labels — undo the icon-rail collapse. */
   .app[data-collapsed="true"] .nav-label,
   .app[data-collapsed="true"] .brand-text,
-  .app[data-collapsed="true"] .nav-end,
-  .app[data-collapsed="true"] .adapter-card { display: revert; }
+  .app[data-collapsed="true"] .nav-end { display: revert; }
   .app[data-collapsed="true"] .sidebar-section-label { opacity: 1; }
   .app[data-collapsed="true"] .ws-trigger .ws-chev { display: revert; }
 

@@ -83,6 +83,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "flows", label: "Flows", icon: "Bolt" },
   { id: "functions", label: "Functions", icon: "Function" },
   { id: "webhooks", label: "Webhooks", icon: "Webhook" },
+  { id: "graphql", label: "GraphQL", icon: "Code" },
   { id: "realtime", label: "Realtime", icon: "Zap" },
   { id: "insights", label: "Insights", icon: "BarChart" },
   { id: "activity", label: "Activity log", icon: "Clock" },

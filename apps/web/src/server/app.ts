@@ -23,6 +23,7 @@ import { activityRoutes } from "./routes/activity";
 import { revisionsRoutes } from "./routes/revisions";
 import { authRoutes } from "./routes/auth";
 import { authProvidersHandler } from "./routes/auth-public";
+import { meRoutes } from "./routes/me";
 import { tenantAuthRoutes } from "./routes/tenant-auth";
 import { apiKeysRoutes } from "./routes/api-keys";
 import { collectionsRoutes } from "./routes/collections";
@@ -153,6 +154,7 @@ export const createApp = (env: Env) => {
   // catch-all (`/api/auth/*`) so it isn't shadowed by it.
   app.get("/api/auth/providers", authProvidersHandler);
   app.route("/api/auth", authRoutes);
+  app.route("/api/me", meRoutes);
   // Workspace end-user auth (the "auth as a service" surface) — each tenant
   // gets its own better-auth instance under /api/t/<slug>/auth/*, backed by
   // the app_* tables and the tenant-scoped adapter wrapper.

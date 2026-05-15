@@ -450,6 +450,13 @@ function NewWorkspaceDialog({ onClose, onCreate, existing }: { onClose: () => vo
   );
 }
 
+export interface TopbarUser {
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  isAdmin?: boolean;
+}
+
 export interface TopbarProps {
   crumbs: ReactNode[];
   onOpenPalette: () => void;
@@ -457,9 +464,29 @@ export interface TopbarProps {
   dark: boolean;
   onToggleSidebar: () => void;
   onSignOut?: () => void;
+  user?: TopbarUser | null;
+  onAccountSettings?: () => void;
 }
 
-export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onToggleSidebar, onSignOut }: TopbarProps) {
+const avatarInitials = (u: TopbarUser | null | undefined): string => {
+  const name = (u?.name ?? "").trim();
+  if (name) {
+    const parts = name.split(/\s+/);
+    const a = (parts[0] ?? "").slice(0, 1);
+    const b = (parts[1] ?? "").slice(0, 1);
+    return ((a + b) || a || "?").toUpperCase();
+  }
+  const local = (u?.email ?? "").split("@")[0] ?? "";
+  return (local.slice(0, 2) || "?").toUpperCase();
+};
+
+const resolveAvatarSrc = (image: string | null | undefined): string | null => {
+  if (!image) return null;
+  if (/^https?:\/\//i.test(image) || image.startsWith("/")) return image;
+  return `/api/storage/${encodeURIComponent(image)}`;
+};
+
+export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onToggleSidebar, onSignOut, user, onAccountSettings }: TopbarProps) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -489,21 +516,47 @@ export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onToggleSid
       </div>
       <IconButton icon={dark ? I.Sun : I.Moon} onClick={onToggleTheme} title="Toggle theme" />
       <div className="user-menu-wrap" style={{ position: "relative" }}>
-        <button onClick={() => setOpen((v) => !v)} title="rana@workeros.dev" style={{ background: "transparent", border: 0, padding: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-          <div className="avatar">RM</div>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          title={user?.email ?? "Account"}
+          aria-label="Account menu"
+          style={{ background: "transparent", border: 0, padding: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+        >
+          {(() => {
+            const src = resolveAvatarSrc(user?.image);
+            return src ? (
+              <img src={src} alt="" className="avatar" style={{ objectFit: "cover" }} />
+            ) : (
+              <div className="avatar">{avatarInitials(user)}</div>
+            );
+          })()}
           <I.ChevronDown size={12} style={{ color: "var(--muted-foreground)" }} />
         </button>
         {open && (
           <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 220, background: "var(--popover)", border: "1px solid var(--border)", borderRadius: "var(--radius-xl)", boxShadow: "0 12px 32px oklch(0 0 0 / 0.12)", padding: 6, zIndex: 100, fontSize: 13 }}>
             <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", marginBottom: 4 }}>
-              <div style={{ fontWeight: 500 }}>Rana Marin</div>
-              <div className="muted font-mono" style={{ fontSize: 11.5 }}>rana@workeros.dev</div>
-              <div style={{ marginTop: 4 }}><span className="badge badge-default">admin</span></div>
+              <div style={{ fontWeight: 500 }}>
+                {user?.name || user?.email?.split("@")[0] || "Account"}
+              </div>
+              {user?.email && (
+                <div className="muted font-mono" style={{ fontSize: 11.5 }}>{user.email}</div>
+              )}
+              {user?.isAdmin && (
+                <div style={{ marginTop: 4 }}><span className="badge badge-default">admin</span></div>
+              )}
             </div>
-            <button type="button" style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--radius-md)", background: "transparent", border: 0, color: "var(--foreground)", width: "100%", textAlign: "left", cursor: "pointer", font: "inherit" }}>
+            <button
+              type="button"
+              onClick={() => { setOpen(false); onAccountSettings?.(); }}
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--radius-md)", background: "transparent", border: 0, color: "var(--foreground)", width: "100%", textAlign: "left", cursor: "pointer", font: "inherit" }}
+            >
               <I.Settings size={13} /> Account settings
             </button>
-            <button type="button" onClick={onSignOut} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--radius-md)", background: "transparent", border: 0, color: "var(--destructive)", width: "100%", textAlign: "left", cursor: "pointer", font: "inherit" }}>
+            <button
+              type="button"
+              onClick={onSignOut}
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--radius-md)", background: "transparent", border: 0, color: "var(--destructive)", width: "100%", textAlign: "left", cursor: "pointer", font: "inherit" }}
+            >
               <I.LogOut size={13} /> Sign out
             </button>
           </div>

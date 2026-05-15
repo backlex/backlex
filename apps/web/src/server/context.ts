@@ -73,7 +73,11 @@ export const buildContext = (env: Env): Ctx => {
 
   const dbCtx = { db, dialect };
 
-  const social: { google?: OAuthProviderConfig; github?: OAuthProviderConfig } = {};
+  const social: {
+    google?: OAuthProviderConfig;
+    github?: OAuthProviderConfig;
+    apple?: OAuthProviderConfig;
+  } = {};
   if (env.OAUTH_GOOGLE_CLIENT_ID && env.OAUTH_GOOGLE_CLIENT_SECRET) {
     social.google = {
       clientId: env.OAUTH_GOOGLE_CLIENT_ID,
@@ -84,6 +88,12 @@ export const buildContext = (env: Env): Ctx => {
     social.github = {
       clientId: env.OAUTH_GITHUB_CLIENT_ID,
       clientSecret: env.OAUTH_GITHUB_CLIENT_SECRET,
+    };
+  }
+  if (env.OAUTH_APPLE_CLIENT_ID && env.OAUTH_APPLE_CLIENT_SECRET) {
+    social.apple = {
+      clientId: env.OAUTH_APPLE_CLIENT_ID,
+      clientSecret: env.OAUTH_APPLE_CLIENT_SECRET,
     };
   }
 

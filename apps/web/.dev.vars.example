@@ -33,3 +33,13 @@ TEST_ADMIN_PASSWORD = "correct-horse-battery"
 # SMTP_USER = "apikey-or-username"
 # SMTP_PASSWORD = "..."
 # SMTP_SECURE = "false"
+
+# OAuth providers — both id+secret required to enable. Each is auto-wired
+# into better-auth's socialProviders if both are present. The admin Auth
+# Settings page can also store per-workspace overrides (encrypted).
+# OAUTH_GOOGLE_CLIENT_ID = "..."
+# OAUTH_GOOGLE_CLIENT_SECRET = "..."
+# OAUTH_GITHUB_CLIENT_ID = "..."
+# OAUTH_GITHUB_CLIENT_SECRET = "..."
+# OAUTH_APPLE_CLIENT_ID = "..."          # Service ID (e.g. com.example.signin)
+# OAUTH_APPLE_CLIENT_SECRET = "..."      # Generated JWT signed with the Apple key

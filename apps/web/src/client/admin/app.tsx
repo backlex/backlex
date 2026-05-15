@@ -59,7 +59,6 @@ import { MembersPanel } from "./members-panel";
 import { PermissionsMatrix } from "./permissions-matrix";
 import { ConditionEditor } from "./condition-editor";
 import {
-  ApiKeysPage,
   FlowsPage,
   FunctionsPage,
   OverviewPage,
@@ -70,6 +69,7 @@ import {
 } from "./pages";
 import { AccountPage } from "./account-page";
 import { GraphqlPage } from "@/pages/graphql";
+import { ApiKeys } from "@/pages/api-keys";
 
 interface AdminAppOptions {
   initialNav?: string;
@@ -624,7 +624,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             {activeNav === "authentication" && <AuthSettingsPage pushToast={pushToast} />}
             {activeNav === "users" && <UsersPage pushToast={pushToast} />}
             {activeNav === "app-users" && <AppUsersPage pushToast={pushToast} />}
-            {activeNav === "api-keys" && <ApiKeysPage pushToast={pushToast} />}
+            {activeNav === "api-keys" && <ApiKeys />}
             {activeNav === "email-templates" && <EmailTemplatesPage pushToast={pushToast} />}
             {activeNav === "settings" && <SettingsPage adapter={tweaks.adapter} pushToast={pushToast} />}
             {activeNav === "account" && <AccountPage pushToast={pushToast} />}

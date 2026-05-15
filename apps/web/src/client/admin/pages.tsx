@@ -25,6 +25,7 @@ import {
 import { ConfirmDialog } from "./sheet";
 import { useTheme } from "@/components/theme-provider";
 import { applyPrimaryColor } from "@/main";
+import { ColorPicker } from "@workeros/ui/components/color-picker";
 
 /** Mirror of `services/workspace-config.ts::isValidColor` — keep in sync. */
 const isValidColor = (v: string): boolean => {
@@ -2547,6 +2548,16 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
 
   const primaryColorOk = primaryColor.trim() === "" || isValidColor(primaryColor);
 
+  // Single mutation point for the primary color: keeps state, dirty flag, and
+  // live `--primary` preview in sync so every input (preset, picker, text,
+  // reset) updates the swatch cascade instantly.
+  const commitPrimary = useCallback((next: string) => {
+    setPrimaryColor(next);
+    setDirty(true);
+    const trimmed = next.trim();
+    applyPrimaryColor(trimmed && isValidColor(trimmed) ? trimmed : null);
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -2557,6 +2568,9 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
       setLogoFileKey(d.logoFileKey ?? null);
       setFaviconFileKey(d.faviconFileKey ?? null);
       setPrimaryColor(d.primaryColor ?? "");
+      // Revert any in-flight live preview (e.g. on Discard) to the server's
+      // saved value so the form and the `--primary` token stay aligned.
+      applyPrimaryColor(d.primaryColor ?? null);
       setDefaultTheme(
         d.defaultTheme === "light" || d.defaultTheme === "dark" || d.defaultTheme === "system"
           ? d.defaultTheme
@@ -2776,7 +2790,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
                 aria-label={`Use ${p.label} palette`}
                 aria-pressed={active}
                 disabled={loading}
-                onClick={() => { setPrimaryColor(p.value); setDirty(true); }}
+                onClick={() => commitPrimary(p.value)}
                 style={{
                   width: 28,
                   height: 28,
@@ -2794,30 +2808,17 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
           })}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span
-            aria-hidden
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 6,
-              border: "1px solid var(--border)",
-              background: primaryColorOk && primaryColor.trim() ? primaryColor : "var(--primary)",
-            }}
-          />
-          <input
-            type="color"
-            value={/^#[0-9a-fA-F]{6}$/.test(primaryColor.trim()) ? primaryColor.trim() : "#000000"}
+          <ColorPicker
+            value={primaryColorOk && primaryColor.trim() ? primaryColor : ""}
             disabled={loading}
-            onChange={(e) => { setPrimaryColor(e.target.value); setDirty(true); }}
-            style={{ width: 40, height: 28, padding: 0, border: "1px solid var(--border)", borderRadius: 6, background: "transparent" }}
-            aria-label="Pick primary color"
+            onChange={(hex) => commitPrimary(hex)}
           />
           <input
             className="input"
             value={primaryColor}
             placeholder="#3b82f6 or oklch(0.84 0.23 128.85)"
             disabled={loading}
-            onChange={(e) => { setPrimaryColor(e.target.value); setDirty(true); }}
+            onChange={(e) => commitPrimary(e.target.value)}
             style={{ flex: 1, fontFamily: "var(--font-mono)" }}
           />
           {primaryColor && (
@@ -2825,7 +2826,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
               variant="ghost"
               size="sm"
               disabled={loading}
-              onClick={() => { setPrimaryColor(""); setDirty(true); }}
+              onClick={() => commitPrimary("")}
             >
               Reset
             </Button>

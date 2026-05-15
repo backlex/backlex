@@ -6,11 +6,15 @@ import { Select } from "../select";
 import {
   authAdminApi,
   tenantsApi,
+  rolesApi,
+  samlAdminApi,
   type ApiAuthConfig,
+  type ApiSamlProvider,
   type ApiSession,
   type ApiTenant,
 } from "../api";
 import { apiOrigin, copyText, fmtRelative } from "./_shared";
+import { SamlProviderDialog } from "./saml-provider-dialog";
 
 type AuthProviderRow = {
   id: string;
@@ -55,7 +59,7 @@ const isHttpUrl = (s: string) => {
   }
 };
 
-const providerKind = (p: AuthProviderRow): "oauth" | "builtin" | "custom" =>
+const providerKind = (p: AuthProviderRow): "oauth" | "builtin" | "custom" | "saml" =>
   p.system ? (AUTH_OAUTH_IDS.has(p.id) ? "oauth" : "builtin") : "custom";
 
 const mapAuthProviders = (map: Record<string, any> | undefined): AuthProviderRow[] => {
@@ -84,6 +88,11 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
   const [configuring, setConfiguring] = useState<AuthProviderRow | null>(null);
   const [adding, setAdding] = useState(false);
   const [workspace, setWorkspace] = useState<ApiTenant | null>(null);
+  // SAML providers — separate from the OIDC/built-in list above. Loaded via
+  // /api/admin/saml/providers, edited through SamlProviderDialog.
+  const [samlProviders, setSamlProviders] = useState<ApiSamlProvider[]>([]);
+  const [samlDialog, setSamlDialog] = useState<{ mode: "create" } | { mode: "edit"; row: ApiSamlProvider } | null>(null);
+  const [availableRoles, setAvailableRoles] = useState<{ id: string; name: string }[]>([]);
 
   const loadConfig = async () => {
     const cfg = await authAdminApi.config();
@@ -111,6 +120,29 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
     setSessions((ss.data ?? []).map(mapSession));
   };
 
+  const loadSamlProviders = async () => {
+    try {
+      const r = await samlAdminApi.list();
+      setSamlProviders(r.data ?? []);
+    } catch {
+      // saml_providers table may not be migrated yet — empty list is fine
+      setSamlProviders([]);
+    }
+  };
+
+  const loadAvailableRoles = async () => {
+    try {
+      const r = await rolesApi.list();
+      setAvailableRoles(
+        (r.data ?? [])
+          .filter((role: any) => !role.admin)
+          .map((role: any) => ({ id: role.id, name: role.name })),
+      );
+    } catch {
+      setAvailableRoles([]);
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -133,10 +165,33 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
       } catch (e) {
         pushToast?.((e as Error).message);
       }
+      if (cancelled) return;
+      await Promise.allSettled([loadSamlProviders(), loadAvailableRoles()]);
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pushToast]);
+
+  const removeSamlProvider = async (id: string) => {
+    if (!confirm("Delete this SAML provider? External identity rows are kept as an audit trail.")) return;
+    try {
+      await samlAdminApi.remove(id);
+      setSamlProviders((arr) => arr.filter((r) => r.id !== id));
+      pushToast?.("Provider deleted.");
+    } catch (e) {
+      pushToast?.((e as Error).message);
+    }
+  };
+
+  const toggleSamlEnabled = async (row: ApiSamlProvider, enabled: boolean) => {
+    setSamlProviders((arr) => arr.map((r) => (r.id === row.id ? { ...r, enabled } : r)));
+    try {
+      await samlAdminApi.update(row.id, { enabled });
+    } catch (e) {
+      pushToast?.((e as Error).message);
+      setSamlProviders((arr) => arr.map((r) => (r.id === row.id ? { ...r, enabled: !enabled } : r)));
+    }
+  };
 
   const toggleProvider = async (id: string, enabled: boolean) => {
     setProviders((arr) => arr.map((p) => (p.id === id ? { ...p, enabled } : p)));
@@ -301,6 +356,78 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
         </div>
       </div>
 
+      <div className="card">
+        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <I.Shield size={13} />
+          <span style={{ fontSize: 13, fontWeight: 500 }}>SAML 2.0 SSO</span>
+          <span className="muted font-mono" style={{ fontSize: 11.5 }}>
+            {samlProviders.length} provider{samlProviders.length === 1 ? "" : "s"}
+          </span>
+          <div className="spacer" />
+          <Button
+            size="sm"
+            variant="outline"
+            icon={I.Plus}
+            onClick={() => setSamlDialog({ mode: "create" })}
+          >
+            Add SAML
+          </Button>
+        </div>
+        {samlProviders.length === 0 && (
+          <div className="card-section muted" style={{ fontSize: 12.5 }}>
+            No SAML providers configured. Add one to enable IdP-based SSO for this workspace's end-users.
+          </div>
+        )}
+        {samlProviders.map((p) => (
+          <div
+            key={p.id}
+            className="schema-row"
+            style={{ gridTemplateColumns: "24px 1fr auto auto auto auto" }}
+          >
+            <span>
+              <I.Shield size={13} />
+            </span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>
+                {p.name}
+                {p.idpTemplate && (
+                  <Badge variant="secondary" style={{ marginLeft: 6 }}>
+                    {p.idpTemplate}
+                  </Badge>
+                )}
+              </div>
+              <div className="font-mono muted" style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis" }}>
+                {p.entityId}
+              </div>
+              {!p.idpCertSet && (
+                <div style={{ fontSize: 11, color: "var(--destructive)" }}>
+                  No signing cert stored — login will fail.
+                </div>
+              )}
+            </div>
+            <Badge variant="default">SAML</Badge>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setSamlDialog({ mode: "edit", row: p })}
+            >
+              Configure
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => void removeSamlProvider(p.id)}
+            >
+              Delete
+            </Button>
+            <Switch
+              checked={p.enabled}
+              onChange={(v) => void toggleSamlEnabled(p, v)}
+            />
+          </div>
+        ))}
+      </div>
+
       {(() => {
         const slug = workspace?.slug ?? "<workspace>";
         const base = apiOrigin();
@@ -413,6 +540,25 @@ curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
           existingIds={providers.map((p) => p.id)}
           onClose={() => setAdding(false)}
           onAdd={(id, patch) => void addProvider(id, patch)}
+        />
+      )}
+      {samlDialog && (
+        <SamlProviderDialog
+          existing={samlDialog.mode === "edit" ? samlDialog.row : null}
+          workspaceSlug={workspace?.slug ?? ""}
+          availableRoles={availableRoles}
+          pushToast={pushToast}
+          onClose={() => setSamlDialog(null)}
+          onSaved={(saved) => {
+            setSamlProviders((arr) => {
+              const i = arr.findIndex((r) => r.id === saved.id);
+              if (i === -1) return [...arr, saved];
+              const next = arr.slice();
+              next[i] = saved;
+              return next;
+            });
+            setSamlDialog(null);
+          }}
         />
       )}
     </div>

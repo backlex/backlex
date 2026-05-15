@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { Env } from "../env";
-import type { DbCtx } from "./seed";
+import { userCount, type DbCtx } from "./seed";
 
 /**
  * Tenant id of the instance-wide `auth_config` row — the fallback used when a
@@ -19,7 +19,8 @@ export type AuthProviderKey =
   | "emailOtp"
   | "passkey"
   | "github"
-  | "google";
+  | "google"
+  | "apple";
 
 export interface PublicProvider {
   /** Identifier a frontend app passes to the client SDK — `auth.signIn()` for
@@ -46,6 +47,10 @@ export interface ResolvedAuthSurface {
     requireEmailVerification: boolean;
     [key: string]: unknown;
   };
+  /** True iff the instance has zero users yet — the next sign-up will be
+   *  provisioned as admin. Lets the client show the "claim instance" copy
+   *  only when it actually applies (server-validated, not query-param). */
+  firstUserMode: boolean;
 }
 
 interface StoredAuthConfigRow {
@@ -67,6 +72,7 @@ const PROVIDER_META: Record<
   passkey: { kind: "passkey", label: "Passkey" },
   github: { kind: "social", label: "GitHub" },
   google: { kind: "social", label: "Google" },
+  apple: { kind: "social", label: "Apple" },
 };
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -85,6 +91,7 @@ const envConfiguredProviders = (env: Env): Record<AuthProviderKey, boolean> => (
   passkey: Boolean(env.AUTH_PLUGINS?.includes("passkey")),
   github: Boolean(env.OAUTH_GITHUB_CLIENT_ID && env.OAUTH_GITHUB_CLIENT_SECRET),
   google: Boolean(env.OAUTH_GOOGLE_CLIENT_ID && env.OAUTH_GOOGLE_CLIENT_SECRET),
+  apple: Boolean(env.OAUTH_APPLE_CLIENT_ID && env.OAUTH_APPLE_CLIENT_SECRET),
 });
 
 /** `enabled` defaults applied when a workspace has no stored `auth_config`
@@ -148,7 +155,7 @@ export const resolveAuthSurface = async (
       | { enabled?: unknown; clientId?: unknown; clientSecretEnc?: unknown }
       | undefined;
     if (!e) return false;
-    if (key === "github" || key === "google") {
+    if (key === "github" || key === "google" || key === "apple") {
       return Boolean(
         typeof e.clientId === "string" &&
           e.clientId.trim() &&
@@ -173,9 +180,20 @@ export const resolveAuthSurface = async (
     });
 
   const policy = (stored?.policy ?? {}) as Record<string, unknown>;
+  // The user count drives `firstUserMode`. Treat read failures (table not
+  // migrated yet on a brand-new instance) as "yes, first user" so the bootstrap
+  // flow still works — the server-side `onBeforeUserCreated` hook is the
+  // actual enforcer; this flag is only a UI hint.
+  let firstUserMode = false;
+  try {
+    firstUserMode = (await userCount(ctx)) === 0;
+  } catch {
+    firstUserMode = true;
+  }
   return {
     tenantId: tenantId ?? null,
     providers,
     policy: { openSignup: true, requireEmailVerification: true, ...policy },
+    firstUserMode,
   };
 };

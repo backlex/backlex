@@ -22,6 +22,7 @@
     "db:migrate:d1:remote": "bun run --cwd packages/db migrate:d1 -- --remote",
     "db:studio": "bun run --cwd packages/db studio",
     "deploy": "bun run --cwd apps/web deploy",
+    "test": "bun run --cwd apps/web test",
     "workeros": "bun run packages/cli/bin/workeros.ts"
   },
   "devDependencies": {

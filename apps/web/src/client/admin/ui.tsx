@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { I, type IconComponent, type IconKey } from "./icons";
-import { ADAPTER_PROFILES, NAV_ITEMS, NAV_SETTINGS, type AdapterId } from "./config";
+import { NAV_ITEMS, NAV_SETTINGS } from "./config";
 import { tenantsApi, type ApiTenant } from "./api";
 
 export function formatJson(value: unknown): string {
@@ -243,16 +243,14 @@ const fromApiTenant = (t: ApiTenant, fallback: number): Tenant => ({
 export interface SidebarProps {
   activeNav: string;
   setActiveNav: (id: string) => void;
-  adapter: AdapterId;
   collapsed?: boolean;
   pushToast: (msg: string, type?: "success" | "error") => void;
   collectionsCount?: number;
 }
 
-export function Sidebar({ activeNav, setActiveNav, adapter, pushToast, collectionsCount }: SidebarProps) {
+export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }: SidebarProps) {
   const items = NAV_ITEMS;
   const settings = NAV_SETTINGS;
-  const profile = ADAPTER_PROFILES[adapter];
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [tenantId, setTenantId] = useState<string | null>(null);
@@ -393,15 +391,6 @@ export function Sidebar({ activeNav, setActiveNav, adapter, pushToast, collectio
         </div>
       </div>
 
-      <div className="adapter-card">
-        <div className="row">
-          <span className="k">Runtime</span>
-          <span className="adapter-pill"><span className="dot" />{adapter === "workers" ? "cf workers" : adapter}</span>
-        </div>
-        <div className="row"><span className="k">DB</span><span className="v">{profile.db}</span></div>
-        <div className="row"><span className="k">Storage</span><span className="v">{profile.storage}</span></div>
-        <div className="row"><span className="k">Realtime</span><span className="v">{profile.realtime}</span></div>
-      </div>
       {newWsOpen && <NewWorkspaceDialog onClose={() => setNewWsOpen(false)} onCreate={createWorkspace} existing={tenants.map((t) => t.name)} />}
     </aside>
   );

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { Button } from "@workeros/ui/components/button";
 import { useTheme } from "@/components/theme-provider";
+import { useAuthSurface } from "@/lib/auth";
 
 export type AuthMode = "sign-in" | "sign-up" | "magic" | "forgot" | "claim";
 
@@ -161,13 +162,20 @@ const MODE_LINKS: Array<{ mode: AuthMode; to: string; label: string }> = [
   { mode: "sign-in", to: "/sign-in", label: "Sign in" },
   { mode: "sign-up", to: "/sign-up", label: "Sign up" },
   { mode: "magic", to: "/magic-link", label: "Magic link" },
-  { mode: "claim", to: "/sign-up?claim=1", label: "First-user" },
+  { mode: "claim", to: "/sign-up?claim=1", label: "Claim instance" },
 ];
 
 export const AuthShell = ({ mode, children }: AuthShellProps) => {
   const copy = COPY[mode];
   const { theme, setTheme } = useTheme();
   const dark = theme === "dark";
+  const { surface } = useAuthSurface();
+  // The "Claim instance" link only exists when the server confirms the
+  // instance has zero users. Once an admin exists it disappears everywhere
+  // — the sign-up page itself also stops honouring `?claim=1`.
+  const visibleLinks = MODE_LINKS.filter(
+    (l) => l.mode !== "claim" || surface?.firstUserMode === true,
+  );
 
   return (
     <div className="grid min-h-svh w-full grid-cols-1 bg-background text-foreground md:grid-cols-2">
@@ -227,7 +235,7 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
           </button>
           {children}
           <div className="mt-7 flex justify-center gap-4 text-xs text-muted-foreground">
-            {MODE_LINKS.map((link) => (
+            {visibleLinks.map((link) => (
               <Link
                 key={link.mode}
                 to={link.to}

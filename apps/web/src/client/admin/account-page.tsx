@@ -1,15 +1,36 @@
-// @ts-nocheck
 // Personal account settings. Reached only via the header avatar dropdown
 // (not in the sidebar); every signed-in user — admin or not — can open it
 // and manage their own profile, password, sessions, and connected
 // credentials. Everything talks to better-auth's self-service endpoints
 // at /api/auth/* so there's no extra server route involved.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIcon,
+  GlobeIcon,
+  LockIcon,
+  LogOutIcon,
+  ShieldIcon,
+} from "lucide-react";
+import { Button } from "@workeros/ui/components/button";
+import { Badge } from "@workeros/ui/components/badge";
+import { Input } from "@workeros/ui/components/input";
+import { Label } from "@workeros/ui/components/label";
 import { Checkbox } from "@workeros/ui/components/checkbox";
+import { Avatar, AvatarFallback, AvatarImage } from "@workeros/ui/components/avatar";
+import { Card, CardContent, CardHeader, CardTitle } from "@workeros/ui/components/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@workeros/ui/components/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+import { Separator } from "@workeros/ui/components/separator";
+import { PageHeader } from "@/components/page-header";
 import { auth } from "@/lib/auth";
 import { api } from "@/lib/api";
-import { I } from "./icons";
-import { Badge, Button, PageHeader } from "./ui";
 
 interface SessionRow {
   id: string;
@@ -71,51 +92,44 @@ const unwrap = <T,>(res: { data?: T | null; error?: { message?: string } | null 
   return (res?.data ?? null) as T;
 };
 
+type AccountTab = "profile" | "security" | "sessions" | "connected";
+
 export function AccountPage({ pushToast }: { pushToast: (m: string) => void }) {
   const session = auth.useSession();
-  const sessionUser = (session.data as { user?: { id?: string; name?: string | null; email?: string; image?: string | null } } | null)?.user ?? null;
+  const sessionUser =
+    (session.data as { user?: { id?: string; name?: string | null; email?: string; image?: string | null } } | null)
+      ?.user ?? null;
   const currentSessionToken =
     (session.data as { session?: { token?: string } } | null)?.session?.token ?? null;
 
-  const [tab, setTab] = useState<"profile" | "security" | "sessions" | "connected">("profile");
+  const [tab, setTab] = useState<AccountTab>("profile");
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="Account"
         description="Your personal profile, password, sessions, and connected credentials. Workspace-wide settings live under the Settings page."
       />
-      <div className="tabs">
-        {[
-          { id: "profile" as const, label: "Profile" },
-          { id: "security" as const, label: "Security" },
-          { id: "sessions" as const, label: "Sessions" },
-          { id: "connected" as const, label: "Connected" },
-        ].map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className="tab"
-            data-active={tab === t.id}
-            onClick={() => setTab(t.id)}
-          >
-            <span>{t.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {tab === "profile" && (
-        <ProfileCard user={sessionUser} pushToast={pushToast} refetch={() => session.refetch()} />
-      )}
-      {tab === "security" && (
-        <SecurityCard pushToast={pushToast} />
-      )}
-      {tab === "sessions" && (
-        <SessionsCard currentToken={currentSessionToken} pushToast={pushToast} />
-      )}
-      {tab === "connected" && (
-        <ConnectedCard pushToast={pushToast} />
-      )}
+      <Tabs value={tab} onValueChange={(v) => setTab(v as AccountTab)}>
+        <TabsList>
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="security">Security</TabsTrigger>
+          <TabsTrigger value="sessions">Sessions</TabsTrigger>
+          <TabsTrigger value="connected">Connected</TabsTrigger>
+        </TabsList>
+        <TabsContent value="profile">
+          <ProfileCard user={sessionUser} pushToast={pushToast} refetch={() => session.refetch()} />
+        </TabsContent>
+        <TabsContent value="security">
+          <SecurityCard pushToast={pushToast} />
+        </TabsContent>
+        <TabsContent value="sessions">
+          <SessionsCard currentToken={currentSessionToken} pushToast={pushToast} />
+        </TabsContent>
+        <TabsContent value="connected">
+          <ConnectedCard pushToast={pushToast} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
@@ -202,90 +216,99 @@ function ProfileCard({
     }
   };
 
+  const initial = (user?.name ?? user?.email ?? "?").slice(0, 1).toUpperCase();
+
   return (
-    <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
-      <div className="field-row">
-        <div>
-          <div className="field-label">Avatar</div>
-          <div className="field-hint">PNG, JPG or WebP. Shown in the header and on any author display.</div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span
-            aria-hidden
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: "50%",
-              background: previewSrc ? `center/cover no-repeat url('${previewSrc}')` : "var(--muted)",
-              border: "1px solid var(--border)",
-              display: "grid",
-              placeItems: "center",
-              fontSize: 18,
-              fontWeight: 600,
-              color: "var(--muted-foreground)",
-            }}
-          >
-            {!previewSrc && ((user?.name ?? user?.email ?? "?").slice(0, 1).toUpperCase())}
-          </span>
-          <input
-            ref={fileInput}
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            style={{ display: "none" }}
-            onChange={(e) => {
-              const f = e.target.files?.[0] ?? null;
-              e.target.value = "";
-              if (f) void upload(f);
-            }}
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={uploading || !user?.id}
-            onClick={() => fileInput.current?.click()}
-          >
-            {uploading ? "Uploading…" : image ? "Replace" : "Upload"}
-          </Button>
-          {image && (
+    <Card className="max-w-3xl">
+      <CardContent className="flex flex-col gap-6 pt-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <Label>Avatar</Label>
+            <p className="text-sm text-muted-foreground">
+              PNG, JPG or WebP. Shown in the header and on any author display.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Avatar className="size-14">
+              {previewSrc && <AvatarImage src={previewSrc} alt="Avatar preview" />}
+              <AvatarFallback>{initial}</AvatarFallback>
+            </Avatar>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                e.target.value = "";
+                if (f) void upload(f);
+              }}
+            />
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              disabled={uploading}
-              onClick={() => { setImage(null); setDirty(true); }}
+              disabled={uploading || !user?.id}
+              onClick={() => fileInput.current?.click()}
             >
-              Remove
+              {uploading ? "Uploading…" : image ? "Replace" : "Upload"}
             </Button>
-          )}
+            {image && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={uploading}
+                onClick={() => {
+                  setImage(null);
+                  setDirty(true);
+                }}
+              >
+                Remove
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
-      <div className="field" style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
-        <label className="field-label">Name</label>
-        <input
-          className="input"
-          value={name}
-          onChange={(e) => { setName(e.target.value); setDirty(true); }}
-          placeholder="Your display name"
-        />
-        <span className="field-hint">Shown in author bylines and the header dropdown.</span>
-      </div>
-      <div className="field-row">
-        <div>
-          <div className="field-label">Email</div>
-          <div className="field-hint">Email changes aren't supported yet — contact an admin if you need to switch addresses.</div>
+        <Separator />
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="account-name">Name</Label>
+          <Input
+            id="account-name"
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setDirty(true);
+            }}
+            placeholder="Your display name"
+          />
+          <p className="text-sm text-muted-foreground">Shown in author bylines and the header dropdown.</p>
         </div>
-        <span className="font-mono muted" style={{ fontSize: 12.5 }}>{user?.email ?? "—"}</span>
-      </div>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 6 }}>
-        <Button variant="ghost" size="sm" disabled={!dirty || saving} onClick={() => {
-          setName(user?.name ?? "");
-          setImage(user?.image ?? null);
-          setDirty(false);
-        }}>Discard</Button>
-        <Button variant="primary" size="sm" disabled={!dirty || saving} onClick={save}>
-          {saving ? "Saving…" : "Save"}
-        </Button>
-      </div>
-    </div>
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <Label>Email</Label>
+            <p className="text-sm text-muted-foreground">
+              Email changes aren't supported yet — contact an admin if you need to switch addresses.
+            </p>
+          </div>
+          <span className="font-mono text-sm text-muted-foreground">{user?.email ?? "—"}</span>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!dirty || saving}
+            onClick={() => {
+              setName(user?.name ?? "");
+              setImage(user?.image ?? null);
+              setDirty(false);
+            }}
+          >
+            Discard
+          </Button>
+          <Button size="sm" disabled={!dirty || saving} onClick={save}>
+            {saving ? "Saving…" : "Save"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -309,7 +332,7 @@ function SecurityCard({ pushToast }: { pushToast: (m: string) => void }) {
     let cancelled = false;
     void (async () => {
       try {
-        const list = unwrap<LinkedAccount[]>(await auth.listUserAccounts());
+        const list = unwrap<LinkedAccount[]>(await auth.listAccounts());
         if (cancelled) return;
         setHasPassword(Array.isArray(list) && list.some((a) => a.providerId === "credential"));
       } catch {
@@ -330,7 +353,20 @@ function SecurityCard({ pushToast }: { pushToast: (m: string) => void }) {
         unwrap(await auth.changePassword({ currentPassword: oldPw, newPassword: newPw, revokeOtherSessions: revokeOthers }));
         pushToast(revokeOthers ? "Password changed; other sessions signed out." : "Password changed.");
       } else {
-        unwrap(await auth.setPassword({ newPassword: newPw }));
+        // `setPassword` is a sensitive-session-gated server endpoint that the
+        // typed client doesn't expose; reach it through the raw API path. The
+        // session cookie is sufficient on same-origin since the endpoint
+        // requires a fresh session.
+        const res = await fetch("/api/auth/set-password", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ newPassword: newPw }),
+        });
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          throw new Error(body || `set-password failed (${res.status})`);
+        }
         setHasPassword(true);
         pushToast("Password set.");
       }
@@ -355,64 +391,93 @@ function SecurityCard({ pushToast }: { pushToast: (m: string) => void }) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 720 }}>
-      <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <I.Lock size={14} />
-          <span style={{ fontSize: 13, fontWeight: 500 }}>{hasPassword === false ? "Set a password" : "Change password"}</span>
-        </div>
-        {hasPassword === false && (
-          <div className="field-hint">You signed in with a social provider. Setting a password lets you also sign in with email + password.</div>
-        )}
-        {hasPassword !== false && (
-          <div className="field">
-            <label className="field-label">Current password</label>
-            <input className="input" type="password" autoComplete="current-password" value={oldPw} onChange={(e) => setOldPw(e.target.value)} />
-          </div>
-        )}
-        <div className="field">
-          <label className="field-label">New password</label>
-          <input className="input" type="password" autoComplete="new-password" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
-          <span className="field-hint">At least 8 characters.</span>
-        </div>
-        <div className="field">
-          <label className="field-label">Confirm new password</label>
-          <input className="input" type="password" autoComplete="new-password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} />
-        </div>
-        {hasPassword !== false && (
-          <label htmlFor="revoke-others" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
-            <Checkbox
-              id="revoke-others"
-              checked={revokeOthers}
-              onCheckedChange={(v) => setRevokeOthers(v === true)}
+    <div className="flex max-w-3xl flex-col gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <LockIcon className="size-4" />
+            {hasPassword === false ? "Set a password" : "Change password"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {hasPassword === false && (
+            <p className="text-sm text-muted-foreground">
+              You signed in with a social provider. Setting a password lets you also sign in with email + password.
+            </p>
+          )}
+          {hasPassword !== false && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="old-pw">Current password</Label>
+              <Input
+                id="old-pw"
+                type="password"
+                autoComplete="current-password"
+                value={oldPw}
+                onChange={(e) => setOldPw(e.target.value)}
+              />
+            </div>
+          )}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="new-pw">New password</Label>
+            <Input
+              id="new-pw"
+              type="password"
+              autoComplete="new-password"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
             />
-            Sign out from all other devices
-          </label>
-        )}
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Button
-            variant="primary"
-            size="sm"
-            disabled={saving || !newPw || !confirmPw || (hasPassword !== false && !oldPw)}
-            onClick={submitChange}
-          >
-            {saving ? "Saving…" : (hasPassword === false ? "Set password" : "Update password")}
-          </Button>
-        </div>
-      </div>
+            <p className="text-sm text-muted-foreground">At least 8 characters.</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="confirm-pw">Confirm new password</Label>
+            <Input
+              id="confirm-pw"
+              type="password"
+              autoComplete="new-password"
+              value={confirmPw}
+              onChange={(e) => setConfirmPw(e.target.value)}
+            />
+          </div>
+          {hasPassword !== false && (
+            <label htmlFor="revoke-others" className="flex cursor-pointer items-center gap-2 text-sm">
+              <Checkbox
+                id="revoke-others"
+                checked={revokeOthers}
+                onCheckedChange={(v) => setRevokeOthers(v === true)}
+              />
+              Sign out from all other devices
+            </label>
+          )}
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              disabled={saving || !newPw || !confirmPw || (hasPassword !== false && !oldPw)}
+              onClick={submitChange}
+            >
+              {saving ? "Saving…" : hasPassword === false ? "Set password" : "Update password"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <I.LogOut size={14} />
-          <span style={{ fontSize: 13, fontWeight: 500 }}>Sign out elsewhere</span>
-        </div>
-        <div className="field-hint">Revokes every active session except the one you're on right now.</div>
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Button variant="outline" size="sm" disabled={revoking} onClick={signOutOthers}>
-            {revoking ? "Revoking…" : "Sign out other devices"}
-          </Button>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <LogOutIcon className="size-4" />
+            Sign out elsewhere
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground">
+            Revokes every active session except the one you're on right now.
+          </p>
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" disabled={revoking} onClick={signOutOthers}>
+              {revoking ? "Revoking…" : "Sign out other devices"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -467,38 +532,60 @@ function SessionsCard({
   };
 
   return (
-    <div className="card">
-      <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <I.Activity size={13} />
-        <span style={{ fontSize: 13, fontWeight: 500 }}>Active sessions</span>
-        <span className="muted font-mono" style={{ fontSize: 11.5 }}>{sessions.length} session{sessions.length === 1 ? "" : "s"}</span>
-        <div className="spacer" />
-        <Button size="sm" variant="ghost" onClick={() => void load()}>{loading ? "Refreshing…" : "Refresh"}</Button>
-      </div>
-      <div className="table-scroll">
-        <table className="table">
-          <thead>
-            <tr><th>Device</th><th>IP</th><th>Created</th><th>Last seen</th><th></th></tr>
-          </thead>
-          <tbody>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <ActivityIcon className="size-4" />
+          Active sessions
+          <span className="font-mono text-xs text-muted-foreground">
+            {sessions.length} session{sessions.length === 1 ? "" : "s"}
+          </span>
+        </CardTitle>
+        <Button size="sm" variant="ghost" onClick={() => void load()}>
+          {loading ? "Refreshing…" : "Refresh"}
+        </Button>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Device</TableHead>
+              <TableHead>IP</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead>Last seen</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {!loading && sessions.length === 0 && (
-              <tr><td colSpan={5} className="muted" style={{ padding: 14 }}>No active sessions.</td></tr>
+              <TableRow>
+                <TableCell colSpan={5} className="text-muted-foreground">
+                  No active sessions.
+                </TableCell>
+              </TableRow>
             )}
             {sessions.map((s) => (
-              <tr key={s.id}>
-                <td>{s.device}{s.current && <Badge variant="default" style={{ marginLeft: 6 }}>current</Badge>}</td>
-                <td className="font-mono muted" style={{ fontSize: 11.5 }}>{s.ip}</td>
-                <td className="muted font-mono" style={{ fontSize: 11.5 }}>{s.created}</td>
-                <td className="muted font-mono" style={{ fontSize: 11.5 }}>{s.last}</td>
-                <td style={{ textAlign: "right" }}>
-                  {!s.current && <Button size="sm" variant="ghost" onClick={() => void revoke(s.token, s.id.slice(0, 6) + "…")}>Revoke</Button>}
-                </td>
-              </tr>
+              <TableRow key={s.id}>
+                <TableCell>
+                  {s.device}
+                  {s.current && <Badge className="ml-2">current</Badge>}
+                </TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground">{s.ip}</TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground">{s.created}</TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground">{s.last}</TableCell>
+                <TableCell className="text-right">
+                  {!s.current && (
+                    <Button size="sm" variant="ghost" onClick={() => void revoke(s.token, s.id.slice(0, 6) + "…")}>
+                      Revoke
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -537,7 +624,7 @@ function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
   const loadAccounts = useCallback(async () => {
     setLoadingAccounts(true);
     try {
-      const list = unwrap<any[]>(await auth.listUserAccounts());
+      const list = unwrap<any[]>(await auth.listAccounts());
       const rows = (Array.isArray(list) ? list : []).map((a): LinkedAccount => ({
         id: String(a.id),
         providerId: String(a.providerId),
@@ -673,69 +760,93 @@ function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
   const displayProviders = Array.from(knownProviders);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 720 }}>
-      <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <I.Globe size={14} />
-          <span style={{ fontSize: 13, fontWeight: 500 }}>Social sign-in</span>
-        </div>
-        {displayProviders.length === 0 && (
-          <div className="muted" style={{ fontSize: 12.5 }}>
-            {loadingAccounts ? "Loading…" : "No social providers are enabled for this workspace."}
-          </div>
-        )}
-        {displayProviders.map((id) => {
-          const linked = accountByProvider.get(id);
-          return (
-            <div key={id} className="field-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-              <div>
-                <div className="field-label">{PROVIDER_LABELS[id] ?? id}</div>
-                <div className="field-hint">{linked ? "Linked — you can sign in with this provider." : "Not linked."}</div>
+    <div className="flex max-w-3xl flex-col gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <GlobeIcon className="size-4" />
+            Social sign-in
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {displayProviders.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              {loadingAccounts ? "Loading…" : "No social providers are enabled for this workspace."}
+            </p>
+          )}
+          {displayProviders.map((id, idx) => {
+            const linked = accountByProvider.get(id);
+            return (
+              <div key={id} className={idx > 0 ? "border-t pt-3" : undefined}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <Label>{PROVIDER_LABELS[id] ?? id}</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {linked ? "Linked — you can sign in with this provider." : "Not linked."}
+                    </p>
+                  </div>
+                  {linked ? (
+                    <Button size="sm" variant="ghost" onClick={() => void unlink(linked)}>
+                      Unlink
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={linking === id}
+                      onClick={() => void link(id)}
+                    >
+                      {linking === id ? "Redirecting…" : "Link"}
+                    </Button>
+                  )}
+                </div>
               </div>
-              {linked ? (
-                <Button size="sm" variant="ghost" onClick={() => void unlink(linked)}>Unlink</Button>
-              ) : (
-                <Button size="sm" variant="outline" disabled={linking === id} onClick={() => void link(id)}>
-                  {linking === id ? "Redirecting…" : "Link"}
-                </Button>
-              )}
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </CardContent>
+      </Card>
 
-      <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <I.Shield size={14} />
-          <span style={{ fontSize: 13, fontWeight: 500 }}>Passkeys</span>
-          <span className="muted font-mono" style={{ fontSize: 11.5 }}>{passkeys.length}</span>
-        </div>
-        <div className="field-hint">Sign in with Touch ID, Face ID, a Windows Hello PIN, or a hardware security key.</div>
-        <div className="field-row">
-          <input
-            className="input"
-            value={newPkName}
-            onChange={(e) => setNewPkName(e.target.value)}
-            placeholder="Name this passkey (e.g. MacBook Touch ID)"
-            style={{ flex: 1 }}
-          />
-          <Button size="sm" variant="primary" disabled={addingPk} onClick={addPasskey}>
-            {addingPk ? "Waiting for browser…" : "Add passkey"}
-          </Button>
-        </div>
-        {!loadingPk && passkeys.length === 0 && (
-          <div className="muted" style={{ fontSize: 12.5 }}>You haven't registered any passkeys yet.</div>
-        )}
-        {passkeys.map((p) => (
-          <div key={p.id} className="field-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-            <div>
-              <div className="field-label">{p.name || "Unnamed passkey"}</div>
-              <div className="field-hint">Added {fmtRelative(p.createdAt)}</div>
-            </div>
-            <Button size="sm" variant="ghost" onClick={() => void removePasskey(p.id)}>Remove</Button>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ShieldIcon className="size-4" />
+            Passkeys
+            <span className="font-mono text-xs text-muted-foreground">{passkeys.length}</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground">
+            Sign in with Touch ID, Face ID, a Windows Hello PIN, or a hardware security key.
+          </p>
+          <div className="flex items-center gap-2">
+            <Input
+              value={newPkName}
+              onChange={(e) => setNewPkName(e.target.value)}
+              placeholder="Name this passkey (e.g. MacBook Touch ID)"
+              className="flex-1"
+            />
+            <Button size="sm" disabled={addingPk} onClick={addPasskey}>
+              {addingPk ? "Waiting for browser…" : "Add passkey"}
+            </Button>
           </div>
-        ))}
-      </div>
+          {!loadingPk && passkeys.length === 0 && (
+            <p className="text-sm text-muted-foreground">You haven't registered any passkeys yet.</p>
+          )}
+          {passkeys.map((p, idx) => (
+            <div key={p.id} className={idx > 0 ? "border-t pt-3" : undefined}>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Label>{p.name || "Unnamed passkey"}</Label>
+                  <p className="text-sm text-muted-foreground">Added {fmtRelative(p.createdAt)}</p>
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => void removePasskey(p.id)}>
+                  Remove
+                </Button>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 }

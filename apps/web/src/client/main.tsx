@@ -39,14 +39,26 @@ const applyBranding = (b: ResolvedBranding): void => {
     }
     link.href = b.faviconUrl;
   }
-  if (b.primaryColor && isSafeColor(b.primaryColor)) {
-    let style = document.getElementById("workspace-tokens") as HTMLStyleElement | null;
-    if (!style) {
-      style = document.createElement("style");
-      style.id = "workspace-tokens";
-      document.head.appendChild(style);
-    }
-    style.textContent = `:root{--primary:${b.primaryColor}}.dark{--primary:${b.primaryColor}}`;
+  applyPrimaryColor(b.primaryColor);
+};
+
+/**
+ * Live-apply (or clear) the `--primary` workspace override without a reload.
+ * Called both on boot (via `applyBranding`) and after the Appearance form
+ * persists a new value so the swatch cascade visible immediately.
+ */
+export const applyPrimaryColor = (value: string | null): void => {
+  const el = document.getElementById("workspace-tokens") as HTMLStyleElement | null;
+  if (value && isSafeColor(value)) {
+    const style = el ?? (() => {
+      const s = document.createElement("style");
+      s.id = "workspace-tokens";
+      document.head.appendChild(s);
+      return s;
+    })();
+    style.textContent = `:root{--primary:${value}}.dark{--primary:${value}}`;
+  } else if (el) {
+    el.remove();
   }
 };
 

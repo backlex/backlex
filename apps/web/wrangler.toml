@@ -10,9 +10,12 @@ compatibility_flags = ["nodejs_compat"]
 # nodemailer is imported by the SMTP email adapter; SMTP needs raw TCP and is
 # never selected on Workers (HTTP providers — resend/sendgrid/mailgun/ses —
 # are used instead), so it's aliased to a throwing stub here too.
+# ldapts is imported by the LDAP/AD auth adapter; LDAP also needs raw TCP and
+# is never selected on Workers (use SAML SSO instead). Same shim pattern.
 [alias]
 "bun:sqlite" = "./src/server/shims/bun-sqlite-shim.ts"
 "nodemailer" = "./src/server/shims/nodemailer-shim.ts"
+"ldapts" = "./src/server/shims/ldapts-shim.ts"
 
 [vars]
 APP_URL = "https://workeros-api.kinyasfurkan.workers.dev"

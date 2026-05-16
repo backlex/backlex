@@ -14,6 +14,10 @@ import {
 import { I, type IconComponent, type IconKey } from "./icons";
 import { NAV_ITEMS, NAV_SETTINGS } from "./config";
 import { tenantsApi, type ApiTenant } from "./api";
+import { Button as ShadcnButton } from "@workeros/ui/components/button";
+import { Badge as ShadcnBadge } from "@workeros/ui/components/badge";
+import { Switch as ShadcnSwitch } from "@workeros/ui/components/switch";
+import { Checkbox as ShadcnCheckbox } from "@workeros/ui/components/checkbox";
 
 export function formatJson(value: unknown): string {
   try {
@@ -94,7 +98,7 @@ export function BrandMark({ size = 32 }: BrandMarkProps) {
 }
 
 export type ButtonVariant = "primary" | "outline" | "ghost" | "destructive" | "secondary";
-export type ButtonSize = "sm" | "md" | "lg";
+export type ButtonSize = "xs" | "sm" | "md" | "lg";
 
 export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "size"> {
   variant?: ButtonVariant;
@@ -104,6 +108,14 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
   children?: ReactNode;
 }
 
+// Map our legacy variant names → shadcn's. The only rename is primary→default.
+const mapButtonVariant = (v: ButtonVariant): "default" | "outline" | "ghost" | "destructive" | "secondary" =>
+  v === "primary" ? "default" : v;
+
+// Map our legacy size names → shadcn's. The only rename is md→default.
+const mapButtonSize = (s: ButtonSize): "xs" | "sm" | "default" | "lg" =>
+  s === "md" ? "default" : s;
+
 export function Button({
   variant = "outline",
   size = "sm",
@@ -112,17 +124,24 @@ export function Button({
   onClick,
   disabled,
   children,
-  className = "",
+  className,
   type = "button",
   ...rest
 }: ButtonProps) {
-  const cls = `btn btn-${variant} ${size === "lg" ? "btn-lg" : size === "sm" ? "btn-sm" : ""} ${className}`;
   return (
-    <button className={cls} type={type} onClick={onClick} disabled={disabled} {...rest}>
-      {IconComp ? <IconComp size={14} /> : null}
+    <ShadcnButton
+      variant={mapButtonVariant(variant)}
+      size={mapButtonSize(size)}
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={className}
+      {...rest}
+    >
+      {IconComp ? <IconComp data-icon="inline-start" /> : null}
       {children}
-      {IconRight ? <IconRight size={14} /> : null}
-    </button>
+      {IconRight ? <IconRight data-icon="inline-end" /> : null}
+    </ShadcnButton>
   );
 }
 
@@ -135,12 +154,11 @@ export interface IconButtonProps {
   className?: string;
 }
 
-export function IconButton({ icon: IconComp, onClick, size = "sm", variant = "ghost", title, className = "" }: IconButtonProps) {
-  const cls = `btn btn-${variant} ${size === "sm" ? "btn-icon-sm" : "btn-icon"} ${className}`;
+export function IconButton({ icon: IconComp, onClick, title, className }: IconButtonProps) {
   return (
-    <button className={cls} onClick={onClick} title={title} type="button">
+    <ShadcnButton variant="ghost" size="icon-sm" type="button" onClick={onClick} title={title} className={className}>
       <IconComp size={14} />
-    </button>
+    </ShadcnButton>
   );
 }
 
@@ -154,11 +172,12 @@ export interface BadgeProps {
   style?: CSSProperties;
 }
 
-export function Badge({ variant = "default", mono, children, className = "", style }: BadgeProps) {
+export function Badge({ variant = "default", mono, children, className, style }: BadgeProps) {
+  const cls = [mono ? "font-mono" : null, className].filter(Boolean).join(" ") || undefined;
   return (
-    <span className={`badge badge-${variant} ${mono ? "badge-mono" : ""} ${className}`} style={style}>
+    <ShadcnBadge variant={variant} className={cls} style={style}>
       {children}
-    </span>
+    </ShadcnBadge>
   );
 }
 
@@ -171,14 +190,10 @@ export interface SwitchProps {
 
 export function Switch({ checked, onChange, disabled, title }: SwitchProps) {
   return (
-    <div
-      className="switch"
-      data-on={checked}
-      data-disabled={disabled || undefined}
-      onClick={() => { if (!disabled) onChange(!checked); }}
-      role="switch"
-      aria-checked={checked}
-      aria-disabled={disabled || undefined}
+    <ShadcnSwitch
+      checked={checked}
+      onCheckedChange={onChange}
+      disabled={disabled}
       title={title}
     />
   );
@@ -192,19 +207,10 @@ export interface CheckboxProps {
 
 export function Checkbox({ checked, indeterminate, onChange }: CheckboxProps) {
   return (
-    <div
-      className="checkbox"
-      data-checked={checked && !indeterminate}
-      data-indeterminate={indeterminate}
-      onClick={(e) => {
-        e.stopPropagation();
-        onChange(!checked);
-      }}
-      role="checkbox"
-      aria-checked={indeterminate ? "mixed" : checked}
-    >
-      {indeterminate ? <I.Minus size={11} stroke={3} /> : checked ? <I.Check size={11} stroke={3} /> : null}
-    </div>
+    <ShadcnCheckbox
+      checked={indeterminate ? "indeterminate" : checked}
+      onCheckedChange={(next) => onChange(next === true)}
+    />
   );
 }
 

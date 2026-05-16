@@ -254,8 +254,8 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
                 >
                   <span style={{
                     width: 14, height: 14, borderRadius: 999,
-                    border: `1px solid ${on ? "var(--ring)" : "var(--border)"}`,
-                    background: on ? "var(--ring)" : "transparent",
+                    border: `1px solid ${on ? "var(--primary)" : "var(--border)"}`,
+                    background: on ? "var(--primary)" : "transparent",
                     boxShadow: on ? "inset 0 0 0 3px var(--card)" : "none",
                     flex: "none",
                   }} />
@@ -331,9 +331,9 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 6,
                     padding: "6px 10px",
-                    border: `1px solid ${on ? "var(--ring)" : "var(--border)"}`,
+                    border: `1px solid ${on ? "var(--primary)" : "var(--border)"}`,
                     borderRadius: 999,
-                    background: on ? "color-mix(in oklch, var(--ring) 18%, var(--card))" : "var(--card)",
+                    background: on ? "color-mix(in oklch, var(--primary) 18%, var(--card))" : "var(--card)",
                     cursor: "pointer", font: "inherit", fontSize: 12.5, color: "var(--foreground)",
                   }}
                 >
@@ -444,7 +444,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
               min={min} max={max} step={step}
               value={Number.isFinite(num) ? num : min}
               onChange={(e) => setField(e.target.value)}
-              style={{ flex: 1, accentColor: "var(--ring)" }}
+              style={{ flex: 1, accentColor: "var(--primary)" }}
             />
             <span className="font-mono tabular-nums" style={{ fontSize: 12.5, minWidth: 40, textAlign: "right" }}>
               {Number.isFinite(num) ? num : min}
@@ -473,7 +473,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
                   style={{
                     width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center",
                     border: "none", background: "transparent", cursor: "pointer",
-                    color: on ? "var(--ring)" : "var(--muted-foreground)",
+                    color: on ? "var(--primary)" : "var(--muted-foreground)",
                   }}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill={on ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">

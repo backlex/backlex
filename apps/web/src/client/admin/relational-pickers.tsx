@@ -1,305 +1,31 @@
 // @ts-nocheck
-// Searchable popovers for the "Relational" interface group rendered inside
-// the item edit sheet:
-//   • RelationPicker  — pick a row from c_<target> for `relation` fields.
-//   • FilePicker      — pick one file/image key from /api/storage.
-//   • MultiFilePicker — same, but for `files` (multi) fields; value is a
-//     string[] of keys.
+// Modal pickers for the "Relational" interface group in the item edit sheet.
 //
-// Visual + keyboard mirrors admin/select.tsx (reuses .sn-select-* CSS) but
-// renders rich rows (thumbnails for images, label heuristics for relations)
-// instead of plain options.
+//   • RelationPicker  — pick a row from c_<target> for `relation` fields.
+//   • FilePicker      — pick one file/image key from /api/storage; lets the
+//     user upload new files via drag-drop or click-to-pick.
+//   • MultiFilePicker — multi-select variant; staged selection commits on Done.
+//
+// Each component renders an inline trigger button (showing the current value
+// with a thumbnail/label when available) plus a portaled `.dialog-backdrop` +
+// `.dialog-lg` modal when the user clicks the trigger.
 
 import {
+  useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
-  type RefObject,
+  type ChangeEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import { I } from "./icons";
+import { Button, IconButton, Checkbox } from "./ui";
 import { api } from "@/lib/api";
 import { itemsApi } from "./api";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared popover positioning
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface PopPos { top: number; left: number; width: number }
-
-function usePopoverPos(open: boolean, listCount: number, triggerRef: RefObject<HTMLElement | null>): PopPos {
-  const [pos, setPos] = useState<PopPos>({ top: 0, left: 0, width: 0 });
-  useLayoutEffect(() => {
-    if (!open || !triggerRef.current) return;
-    const r = triggerRef.current.getBoundingClientRect();
-    const popHeight = Math.min(360, listCount * 56 + 60);
-    const below = window.innerHeight - r.bottom;
-    const flipUp = below < popHeight + 12 && r.top > popHeight + 12;
-    setPos({
-      top: flipUp ? r.top - popHeight - 6 : r.bottom + 6,
-      left: r.left,
-      width: r.width,
-    });
-  }, [open, listCount, triggerRef]);
-  return pos;
-}
-
-function useOutsideAndKeys(opts: {
-  open: boolean;
-  popRef: RefObject<HTMLElement | null>;
-  triggerRef: RefObject<HTMLElement | null>;
-  listLen: number;
-  active: number;
-  setActive: (fn: (a: number) => number) => void;
-  onEnter: () => void;
-  close: () => void;
-}) {
-  const { open, popRef, triggerRef, listLen, active, setActive, onEnter, close } = opts;
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (popRef.current?.contains(t) || triggerRef.current?.contains(t)) return;
-      close();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { close(); triggerRef.current?.focus(); }
-      else if (e.key === "ArrowDown") { e.preventDefault(); if (listLen) setActive((a) => (a + 1) % listLen); }
-      else if (e.key === "ArrowUp") { e.preventDefault(); if (listLen) setActive((a) => (a - 1 + listLen) % listLen); }
-      else if (e.key === "Enter") { e.preventDefault(); onEnter(); }
-    };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open, listLen, active, onEnter, close, popRef, triggerRef, setActive]);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// RelationPicker
-// ─────────────────────────────────────────────────────────────────────────────
-
-const LABEL_FIELDS = ["title", "name", "label", "slug", "subject", "email", "username"];
-
-function pickRelationLabel(row: Record<string, unknown>): string | null {
-  for (const k of LABEL_FIELDS) {
-    const v = row[k];
-    if (typeof v === "string" && v.trim()) return v;
-  }
-  return null;
-}
-
-export interface RelationPickerProps {
-  value: string;
-  onChange: (v: string) => void;
-  target: string;
-  error?: boolean;
-  placeholder?: string;
-}
-
-export function RelationPicker({ value, onChange, target, error, placeholder }: RelationPickerProps) {
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const popRef = useRef<HTMLDivElement | null>(null);
-  const searchRef = useRef<HTMLInputElement | null>(null);
-  const [open, setOpen] = useState(false);
-  const [q, setQ] = useState("");
-  const [rows, setRows] = useState<Array<Record<string, unknown>> | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [loadErr, setLoadErr] = useState<string | null>(null);
-  const [active, setActive] = useState(0);
-  // id → display label, populated as rows stream in and on single-id lookups
-  // so the trigger can show a friendly label even before the popover opens.
-  const [labelCache, setLabelCache] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (!open || rows !== null || !target) return;
-    setLoading(true);
-    setLoadErr(null);
-    itemsApi.list(target, { limit: 50, sort: "-updated_at" })
-      .then((res) => {
-        const next = (res?.data ?? []) as Array<Record<string, unknown>>;
-        setRows(next);
-        setLabelCache((cache) => {
-          const out = { ...cache };
-          for (const r of next) {
-            const id = String(r.id ?? "");
-            if (id) out[id] = pickRelationLabel(r) ?? id;
-          }
-          return out;
-        });
-      })
-      .catch((e: Error) => setLoadErr(e.message || "Failed to load rows"))
-      .finally(() => setLoading(false));
-  }, [open, rows, target]);
-
-  // Fill in the trigger label when a value is set but the row isn't in the
-  // first-page list (e.g. edit-mode opening on an older relation).
-  useEffect(() => {
-    if (!value || !target) return;
-    if (labelCache[value]) return;
-    let cancelled = false;
-    itemsApi.get(target, value)
-      .then((res) => {
-        if (cancelled || !res?.data) return;
-        const lbl = pickRelationLabel(res.data as Record<string, unknown>);
-        if (lbl) setLabelCache((c) => ({ ...c, [value]: lbl }));
-      })
-      .catch(() => { /* row may be deleted — show id only */ });
-    return () => { cancelled = true; };
-  }, [value, target, labelCache]);
-
-  const filtered = useMemo(() => {
-    if (!rows) return [];
-    const query = q.trim().toLowerCase();
-    if (!query) return rows;
-    return rows.filter((r) => {
-      const hay = `${pickRelationLabel(r) ?? ""} ${r.id ?? ""}`.toLowerCase();
-      return hay.includes(query);
-    });
-  }, [rows, q]);
-
-  const pos = usePopoverPos(open, filtered.length, triggerRef);
-
-  useLayoutEffect(() => {
-    if (!open) return;
-    setTimeout(() => searchRef.current?.focus(), 0);
-    setActive(0);
-  }, [open]);
-  useEffect(() => { setActive(0); }, [q]);
-
-  const commit = (id: string) => {
-    onChange(id);
-    setOpen(false); setQ("");
-    triggerRef.current?.focus();
-  };
-
-  useOutsideAndKeys({
-    open,
-    popRef,
-    triggerRef,
-    listLen: filtered.length,
-    active,
-    setActive,
-    onEnter: () => {
-      const sel = filtered[active];
-      if (sel) {
-        const id = String(sel.id ?? "");
-        if (id) commit(id);
-      }
-    },
-    close: () => { setOpen(false); setQ(""); },
-  });
-
-  const currentLabel = value ? labelCache[value] : undefined;
-
-  return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        className={`sn-select-trigger ${error ? "error" : ""}`}
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        title={value || ""}
-      >
-        <span className="sn-select-value">
-          {value ? (
-            currentLabel ? (
-              <>
-                <span>{currentLabel}</span>
-                <span className="muted font-mono" style={{ fontSize: 11 }}>{value.slice(0, 8)}</span>
-              </>
-            ) : (
-              <span className="font-mono">{value}</span>
-            )
-          ) : (
-            <span className="sn-select-placeholder">
-              {placeholder ?? `Pick a row from c_${target}…`}
-            </span>
-          )}
-        </span>
-        <I.ChevronDown size={13} className="sn-select-chevron" />
-      </button>
-
-      {open && createPortal(
-        <div
-          ref={popRef}
-          className="sn-select-pop"
-          style={{ top: pos.top, left: pos.left, minWidth: pos.width, maxWidth: 520 }}
-          role="listbox"
-        >
-          <div className="sn-select-search">
-            <I.Search size={12} />
-            <input
-              ref={searchRef}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder={`Search rows in c_${target}…`}
-            />
-            {value && (
-              <button
-                type="button"
-                onClick={() => commit("")}
-                style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 11, padding: "2px 6px", color: "var(--muted-foreground)" }}
-                title="Clear selection"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-
-          <div className="sn-select-list" style={{ maxHeight: 320, overflowY: "auto" }}>
-            {loading && <div className="sn-select-empty">Loading…</div>}
-            {loadErr && <div className="sn-select-empty" style={{ color: "var(--destructive)" }}>{loadErr}</div>}
-            {!loading && !loadErr && rows && filtered.length === 0 && (
-              <div className="sn-select-empty">
-                {q ? `No rows match “${q}”` : `c_${target} is empty`}
-              </div>
-            )}
-            {filtered.map((r, i) => {
-              const id = String(r.id ?? "");
-              const lbl = pickRelationLabel(r);
-              const on = value === id;
-              return (
-                <div
-                  key={id || i}
-                  role="option"
-                  aria-selected={on}
-                  data-active={i === active}
-                  className="sn-select-item"
-                  onMouseEnter={() => setActive(i)}
-                  onClick={() => commit(id)}
-                  style={{ alignItems: "flex-start" }}
-                >
-                  <span className="sn-select-check" style={{ marginTop: 2 }}>
-                    {on ? <I.Check size={12} /> : null}
-                  </span>
-                  <span className="sn-select-item-label" style={{ flexDirection: "column", alignItems: "flex-start", gap: 2, minWidth: 0 }}>
-                    <span style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 360 }}>
-                      {lbl ?? <span className="muted">(no label)</span>}
-                    </span>
-                    <span className="muted font-mono" style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 360 }}>
-                      {id}
-                    </span>
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>,
-        document.body,
-      )}
-    </>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// FilePicker / MultiFilePicker
+// Shared bits
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface StorageFile {
@@ -309,24 +35,13 @@ interface StorageFile {
   uploadedAt: string;
 }
 
-function useStorageList(open: boolean, kind: "file" | "image") {
-  const [files, setFiles] = useState<StorageFile[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  useEffect(() => {
-    if (!open || files !== null) return;
-    setLoading(true);
-    setErr(null);
-    api<{ data: StorageFile[] }>(`/api/storage`)
-      .then((res) => {
-        let list = res.data ?? [];
-        if (kind === "image") list = list.filter((f) => (f.contentType ?? "").startsWith("image/"));
-        setFiles(list);
-      })
-      .catch((e: Error) => setErr(e.message || "Failed to load files"))
-      .finally(() => setLoading(false));
-  }, [open, files, kind]);
-  return { files, loading, err };
+const LABEL_FIELDS = ["title", "name", "label", "slug", "subject", "email", "username"];
+function pickRelationLabel(row: Record<string, unknown>): string | null {
+  for (const k of LABEL_FIELDS) {
+    const v = row[k];
+    if (typeof v === "string" && v.trim()) return v;
+  }
+  return null;
 }
 
 function fmtSize(n: number): string {
@@ -335,9 +50,22 @@ function fmtSize(n: number): string {
   return `${n} B`;
 }
 
-function FileThumb({ k, isImg, size = 28 }: { k: string; isImg: boolean; size?: number }) {
+function sanitizeFileName(raw: string): string {
+  const trimmed = raw.replace(/^\/+/, "").replace(/[?#]/g, "").trim();
+  return trimmed || `upload-${Date.now()}`;
+}
+
+function FileThumb({ k, contentType, size = 28 }: { k: string; contentType?: string; size?: number }) {
+  const isImg = (contentType ?? "").startsWith("image/")
+    || /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(k);
   return (
-    <span style={{ width: size, height: size, borderRadius: 4, overflow: "hidden", background: "var(--muted)", flexShrink: 0, display: "grid", placeItems: "center", color: "var(--muted-foreground)" }}>
+    <span
+      style={{
+        width: size, height: size, borderRadius: 6, overflow: "hidden",
+        background: "var(--muted)", flexShrink: 0,
+        display: "grid", placeItems: "center", color: "var(--muted-foreground)",
+      }}
+    >
       {isImg ? (
         <img
           src={`/api/storage/${encodeURI(k)}`}
@@ -353,6 +81,28 @@ function FileThumb({ k, isImg, size = 28 }: { k: string; isImg: boolean; size?: 
   );
 }
 
+function useLockBodyScroll(open: boolean) {
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+}
+
+function useEscClose(open: boolean, close: () => void) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, close]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FilePicker (single)
+// ─────────────────────────────────────────────────────────────────────────────
+
 export interface FilePickerProps {
   value: string;
   onChange: (v: string) => void;
@@ -361,152 +111,26 @@ export interface FilePickerProps {
 }
 
 export function FilePicker({ value, onChange, kind, error }: FilePickerProps) {
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const popRef = useRef<HTMLDivElement | null>(null);
-  const searchRef = useRef<HTMLInputElement | null>(null);
   const [open, setOpen] = useState(false);
-  const [q, setQ] = useState("");
-  const [active, setActive] = useState(0);
-
-  const { files, loading, err } = useStorageList(open, kind);
-
-  const filtered = useMemo(() => {
-    if (!files) return [];
-    const query = q.trim().toLowerCase();
-    if (!query) return files;
-    return files.filter((f) => f.key.toLowerCase().includes(query));
-  }, [files, q]);
-
-  const pos = usePopoverPos(open, filtered.length, triggerRef);
-
-  useLayoutEffect(() => {
-    if (!open) return;
-    setTimeout(() => searchRef.current?.focus(), 0);
-    setActive(0);
-  }, [open]);
-  useEffect(() => { setActive(0); }, [q]);
-
-  const commit = (k: string) => {
-    onChange(k);
-    setOpen(false); setQ("");
-    triggerRef.current?.focus();
-  };
-
-  useOutsideAndKeys({
-    open,
-    popRef,
-    triggerRef,
-    listLen: filtered.length,
-    active,
-    setActive,
-    onEnter: () => {
-      const sel = filtered[active];
-      if (sel) commit(sel.key);
-    },
-    close: () => { setOpen(false); setQ(""); },
-  });
-
-  const isImg = kind === "image";
-
   return (
     <>
-      <button
-        ref={triggerRef}
-        type="button"
-        className={`sn-select-trigger ${error ? "error" : ""}`}
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        title={value || ""}
-      >
-        <span className="sn-select-value" style={{ gap: 8 }}>
-          {value ? (
-            <>
-              <FileThumb k={value} isImg={isImg} size={22} />
-              <span className="font-mono" style={{ fontSize: 12.5 }}>{value}</span>
-            </>
-          ) : (
-            <span className="sn-select-placeholder">
-              {isImg ? "Pick an image…" : "Pick a file…"}
-            </span>
-          )}
-        </span>
-        <I.ChevronDown size={13} className="sn-select-chevron" />
-      </button>
-
-      {open && createPortal(
-        <div
-          ref={popRef}
-          className="sn-select-pop"
-          style={{ top: pos.top, left: pos.left, minWidth: pos.width, maxWidth: 520 }}
-          role="listbox"
-        >
-          <div className="sn-select-search">
-            <I.Search size={12} />
-            <input
-              ref={searchRef}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder={isImg ? "Search images…" : "Search files…"}
-            />
-            {value && (
-              <button
-                type="button"
-                onClick={() => commit("")}
-                style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 11, padding: "2px 6px", color: "var(--muted-foreground)" }}
-                title="Clear selection"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-
-          <div className="sn-select-list" style={{ maxHeight: 360, overflowY: "auto" }}>
-            {loading && <div className="sn-select-empty">Loading…</div>}
-            {err && <div className="sn-select-empty" style={{ color: "var(--destructive)" }}>{err}</div>}
-            {!loading && !err && files && filtered.length === 0 && (
-              <div className="sn-select-empty">
-                {q
-                  ? `No ${isImg ? "images" : "files"} match “${q}”`
-                  : isImg
-                    ? "No images uploaded yet — upload one in Storage."
-                    : "No files uploaded yet — upload one in Storage."}
-              </div>
-            )}
-            {filtered.map((f, i) => {
-              const on = value === f.key;
-              const rowIsImg = (f.contentType ?? "").startsWith("image/");
-              return (
-                <div
-                  key={f.key}
-                  role="option"
-                  aria-selected={on}
-                  data-active={i === active}
-                  className="sn-select-item"
-                  onMouseEnter={() => setActive(i)}
-                  onClick={() => commit(f.key)}
-                  style={{ alignItems: "center", gap: 10 }}
-                >
-                  <span className="sn-select-check">{on ? <I.Check size={12} /> : null}</span>
-                  <FileThumb k={f.key} isImg={rowIsImg} size={28} />
-                  <span className="sn-select-item-label" style={{ flexDirection: "column", alignItems: "flex-start", gap: 2, minWidth: 0 }}>
-                    <span className="font-mono" style={{ fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 360 }}>
-                      {f.key}
-                    </span>
-                    <span className="muted tabular-nums" style={{ fontSize: 11 }}>
-                      {fmtSize(f.size)}{f.contentType ? ` · ${f.contentType}` : ""}
-                    </span>
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>,
-        document.body,
+      <FileTrigger value={value} kind={kind} error={!!error} onOpen={() => setOpen(true)} onClear={() => onChange("")} />
+      {open && (
+        <FileBrowserModal
+          kind={kind}
+          mode="single"
+          initialSelection={value ? [value] : []}
+          onCommit={(keys) => { onChange(keys[0] ?? ""); setOpen(false); }}
+          onClose={() => setOpen(false)}
+        />
       )}
     </>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MultiFilePicker
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface MultiFilePickerProps {
   value: string[];
@@ -515,14 +139,148 @@ export interface MultiFilePickerProps {
 }
 
 export function MultiFilePicker({ value, onChange, error }: MultiFilePickerProps) {
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const popRef = useRef<HTMLDivElement | null>(null);
-  const searchRef = useRef<HTMLInputElement | null>(null);
   const [open, setOpen] = useState(false);
-  const [q, setQ] = useState("");
-  const [active, setActive] = useState(0);
+  return (
+    <>
+      <MultiFileTrigger
+        value={value}
+        error={!!error}
+        onOpen={() => setOpen(true)}
+        onRemove={(k) => onChange(value.filter((x) => x !== k))}
+      />
+      {open && (
+        <FileBrowserModal
+          kind="file"
+          mode="multi"
+          initialSelection={value}
+          onCommit={(keys) => { onChange(keys); setOpen(false); }}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
+}
 
-  const { files, loading, err } = useStorageList(open, "file");
+// ─────────────────────────────────────────────────────────────────────────────
+// Triggers
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FileTrigger({ value, kind, error, onOpen, onClear }: { value: string; kind: "file" | "image"; error: boolean; onOpen: () => void; onClear: () => void }) {
+  return (
+    <div
+      style={{
+        display: "flex", alignItems: "center", gap: 8,
+        border: `1px solid ${error ? "var(--destructive)" : "var(--border)"}`,
+        borderRadius: "var(--radius-3xl)",
+        background: "var(--card)",
+        padding: "4px 6px 4px 8px",
+        minHeight: 36,
+      }}
+    >
+      {value ? (
+        <>
+          <FileThumb k={value} size={26} />
+          <span className="font-mono" style={{ fontSize: 12.5, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={value}>
+            {value}
+          </span>
+          <IconButton icon={I.X} title="Clear" onClick={onClear} />
+        </>
+      ) : (
+        <span className="muted" style={{ flex: 1, fontSize: 13, paddingLeft: 4 }}>
+          {kind === "image" ? "No image selected" : "No file selected"}
+        </span>
+      )}
+      <Button size="sm" variant="outline" onClick={onOpen}>
+        {value ? "Change" : kind === "image" ? "Pick image" : "Pick file"}
+      </Button>
+    </div>
+  );
+}
+
+function MultiFileTrigger({ value, error, onOpen, onRemove }: { value: string[]; error: boolean; onOpen: () => void; onRemove: (k: string) => void }) {
+  return (
+    <div
+      style={{
+        display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center",
+        border: `1px solid ${error ? "var(--destructive)" : "var(--border)"}`,
+        borderRadius: "var(--radius-3xl)",
+        background: "var(--card)", padding: "6px 6px 6px 10px", minHeight: 36,
+      }}
+    >
+      {value.map((k) => (
+        <span
+          key={k}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            padding: "3px 4px 3px 6px", borderRadius: 999,
+            background: "var(--muted)", fontSize: 12,
+          }}
+        >
+          <FileThumb k={k} size={18} />
+          <span className="font-mono" style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{k}</span>
+          <button
+            type="button"
+            onClick={() => onRemove(k)}
+            style={{
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              width: 18, height: 18, borderRadius: 999, border: "none",
+              background: "transparent", cursor: "pointer", color: "var(--muted-foreground)",
+            }}
+            aria-label={`Remove ${k}`}
+          >
+            <I.X size={11} />
+          </button>
+        </span>
+      ))}
+      <div style={{ flex: 1 }} />
+      <Button size="sm" variant="outline" icon={I.Plus} onClick={onOpen}>
+        {value.length ? "Manage" : "Pick files"}
+      </Button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// File browser modal (single + multi)
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface FileBrowserModalProps {
+  kind: "file" | "image";
+  mode: "single" | "multi";
+  initialSelection: string[];
+  onCommit: (keys: string[]) => void;
+  onClose: () => void;
+}
+
+function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: FileBrowserModalProps) {
+  useLockBodyScroll(true);
+  useEscClose(true, onClose);
+
+  const [files, setFiles] = useState<StorageFile[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [selected, setSelected] = useState<string[]>(initialSelection);
+  const [dragOver, setDragOver] = useState(false);
+  const [uploads, setUploads] = useState<Array<{ id: string; name: string; status: "uploading" | "done" | "error"; error?: string }>>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadErr(null);
+    api<{ data: StorageFile[] }>(`/api/storage`)
+      .then((res) => {
+        if (cancelled) return;
+        let list = res.data ?? [];
+        if (kind === "image") list = list.filter((f) => (f.contentType ?? "").startsWith("image/"));
+        list.sort((a, b) => (b.uploadedAt ?? "").localeCompare(a.uploadedAt ?? ""));
+        setFiles(list);
+      })
+      .catch((e: Error) => { if (!cancelled) setLoadErr(e.message || "Failed to load files"); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [kind]);
 
   const filtered = useMemo(() => {
     if (!files) return [];
@@ -531,141 +289,521 @@ export function MultiFilePicker({ value, onChange, error }: MultiFilePickerProps
     return files.filter((f) => f.key.toLowerCase().includes(query));
   }, [files, q]);
 
-  const pos = usePopoverPos(open, filtered.length, triggerRef);
+  const toggle = useCallback((k: string) => {
+    if (mode === "single") setSelected([k]);
+    else setSelected((s) => (s.includes(k) ? s.filter((x) => x !== k) : [...s, k]));
+  }, [mode]);
 
-  useLayoutEffect(() => {
-    if (!open) return;
-    setTimeout(() => searchRef.current?.focus(), 0);
-    setActive(0);
-  }, [open]);
-  useEffect(() => { setActive(0); }, [q]);
+  const uploadFiles = useCallback((list: File[]) => {
+    if (!list.length) return;
+    const accept = kind === "image"
+      ? (t: string) => t.startsWith("image/")
+      : () => true;
+    for (const f of list) {
+      if (!accept(f.type || "")) continue;
+      const safeName = sanitizeFileName(f.name);
+      const key = `uploads/${safeName}`;
+      const jobId = `up_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      setUploads((arr) => [{ id: jobId, name: key, status: "uploading" }, ...arr]);
+      fetch(`/api/storage/${encodeURIComponent(key)}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "content-type": f.type || "application/octet-stream" },
+        body: f,
+      })
+        .then(async (r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const body = await r.json().catch(() => null);
+          const finalKey = body?.data?.key ?? key;
+          setFiles((fs) => [
+            {
+              key: finalKey,
+              size: f.size,
+              contentType: f.type || "application/octet-stream",
+              uploadedAt: new Date().toISOString(),
+            },
+            ...(fs ?? []).filter((x) => x.key !== finalKey),
+          ]);
+          setUploads((arr) => arr.map((u) => (u.id === jobId ? { ...u, status: "done" } : u)));
+          if (mode === "single") setSelected([finalKey]);
+          else setSelected((s) => (s.includes(finalKey) ? s : [...s, finalKey]));
+        })
+        .catch((e: Error) => {
+          setUploads((arr) => arr.map((u) => (u.id === jobId ? { ...u, status: "error", error: e.message } : u)));
+        });
+    }
+  }, [kind, mode]);
 
-  const toggle = (k: string) => {
-    onChange(value.includes(k) ? value.filter((x) => x !== k) : [...value, k]);
-  };
-  const removeChip = (k: string) => onChange(value.filter((x) => x !== k));
+  const onDropFiles = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    setDragOver(false);
+    const list = Array.from(e.dataTransfer?.files ?? []);
+    uploadFiles(list);
+  }, [uploadFiles]);
 
-  useOutsideAndKeys({
-    open,
-    popRef,
-    triggerRef,
-    listLen: filtered.length,
-    active,
-    setActive,
-    onEnter: () => {
-      const sel = filtered[active];
-      if (sel) toggle(sel.key);
-    },
-    close: () => { setOpen(false); setQ(""); },
-  });
+  const onPickFiles = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+    const list = Array.from(e.target.files ?? []);
+    uploadFiles(list);
+    e.target.value = "";
+  }, [uploadFiles]);
 
-  return (
-    <>
+  const title = kind === "image" ? "Pick an image" : mode === "multi" ? "Pick files" : "Pick a file";
+  const accept = kind === "image" ? "image/*" : undefined;
+  const canCommit = mode === "multi" ? true : selected.length > 0;
+
+  return createPortal(
+    <div className="dialog-backdrop" onClick={onClose}>
       <div
-        style={{
-          display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center",
-          border: `1px solid ${error ? "var(--destructive)" : "var(--border)"}`,
-          borderRadius: "var(--radius-3xl)",
-          background: "var(--card)", padding: "6px 10px", minHeight: 36,
-        }}
+        className="dialog-lg"
+        onClick={(e) => e.stopPropagation()}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false); }}
+        onDrop={onDropFiles}
+        role="dialog"
+        aria-modal="true"
+        style={{ width: "min(880px, 94vw)", maxHeight: "min(88vh, 760px)" }}
       >
-        {value.map((k) => {
-          const meta = files?.find((f) => f.key === k);
-          const isImg = (meta?.contentType ?? "").startsWith("image/");
-          return (
-            <span
-              key={k}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                padding: "3px 4px 3px 6px", borderRadius: 999,
-                background: "var(--muted)", fontSize: 12,
-              }}
-            >
-              <FileThumb k={k} isImg={isImg} size={18} />
-              <span className="font-mono" style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{k}</span>
-              <button
-                type="button"
-                onClick={() => removeChip(k)}
-                style={{
-                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                  width: 18, height: 18, borderRadius: 999, border: "none",
-                  background: "transparent", cursor: "pointer", color: "var(--muted-foreground)",
-                }}
-                aria-label={`Remove ${k}`}
-              >
-                <I.X size={11} />
-              </button>
-            </span>
-          );
-        })}
-        <button
-          ref={triggerRef}
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-haspopup="listbox"
-          aria-expanded={open}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px",
-            borderRadius: 999, border: "1px dashed var(--border)", background: "transparent",
-            cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12,
-          }}
-        >
-          <I.Plus size={11} /> Add file
-        </button>
-      </div>
+        <div className="dialog-head">
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>{title}</h3>
+            <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--muted-foreground)" }}>
+              {mode === "multi"
+                ? "Pick one or more files. Drag-drop or use Upload to add new ones."
+                : kind === "image"
+                  ? "Pick an existing image, or drop a new one to upload."
+                  : "Pick an existing file, or drop a new one to upload."}
+            </p>
+          </div>
+          <IconButton icon={I.X} title="Close" onClick={onClose} />
+        </div>
 
-      {open && createPortal(
-        <div
-          ref={popRef}
-          className="sn-select-pop"
-          style={{ top: pos.top, left: pos.left, minWidth: pos.width, maxWidth: 520 }}
-          role="listbox"
-        >
-          <div className="sn-select-search">
-            <I.Search size={12} />
+        <div className="dialog-body" style={{ padding: 16, gap: 12 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div className="search-input" style={{ flex: 1 }}>
+              <I.Search size={14} />
+              <input
+                autoFocus
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={kind === "image" ? "Search images by key…" : "Search files by key…"}
+              />
+            </div>
+            <Button variant="outline" size="sm" icon={I.Upload} onClick={() => fileInputRef.current?.click()}>
+              Upload
+            </Button>
             <input
-              ref={searchRef}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search files…"
+              ref={fileInputRef}
+              type="file"
+              accept={accept}
+              multiple={mode === "multi"}
+              style={{ display: "none" }}
+              onChange={onPickFiles}
             />
           </div>
 
-          <div className="sn-select-list" style={{ maxHeight: 360, overflowY: "auto" }}>
-            {loading && <div className="sn-select-empty">Loading…</div>}
-            {err && <div className="sn-select-empty" style={{ color: "var(--destructive)" }}>{err}</div>}
-            {!loading && !err && files && filtered.length === 0 && (
-              <div className="sn-select-empty">{q ? `No files match “${q}”` : "No files uploaded yet — upload one in Storage."}</div>
+          <div
+            className={`dropzone ${dragOver ? "is-over" : ""}`}
+            onClick={() => fileInputRef.current?.click()}
+            role="button"
+            tabIndex={0}
+            style={{ padding: "10px 14px" }}
+          >
+            <div className="dropzone-icon" style={{ width: 32, height: 32 }}>
+              <I.Upload size={16} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>
+                Drop {kind === "image" ? "images" : "files"} here, or click to upload
+              </div>
+              <div className="muted" style={{ fontSize: 12 }}>
+                Stored under <span className="font-mono">uploads/</span>.
+              </div>
+            </div>
+            <span className="dropzone-hint font-mono">{mode === "multi" ? "multiple ok" : "1 file"}</span>
+          </div>
+
+          {uploads.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {uploads.slice(0, 4).map((u) => (
+                <UploadRow key={u.id} u={u} />
+              ))}
+            </div>
+          )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minHeight: 200 }}>
+            {loading && <div className="muted" style={{ fontSize: 12.5, padding: 12 }}>Loading…</div>}
+            {loadErr && <div style={{ color: "var(--destructive)", fontSize: 12.5, padding: 12 }}>{loadErr}</div>}
+            {!loading && !loadErr && filtered.length === 0 && (
+              <div className="muted" style={{ fontSize: 12.5, padding: 12 }}>
+                {q
+                  ? `No ${kind === "image" ? "images" : "files"} match “${q}”.`
+                  : `No ${kind === "image" ? "images" : "files"} uploaded yet — drop one above to get started.`}
+              </div>
             )}
-            {filtered.map((f, i) => {
-              const on = value.includes(f.key);
-              const rowIsImg = (f.contentType ?? "").startsWith("image/");
+            {!loading && !loadErr && filtered.length > 0 && (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+                  gap: 10,
+                }}
+              >
+                {filtered.map((f) => (
+                  <FileTile
+                    key={f.key}
+                    f={f}
+                    selected={selected.includes(f.key)}
+                    mode={mode}
+                    onToggle={() => toggle(f.key)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="dialog-foot">
+          <span className="muted" style={{ fontSize: 12 }}>
+            {mode === "multi"
+              ? selected.length
+                ? `${selected.length} selected`
+                : "Nothing selected yet"
+              : selected[0]
+                ? <>Selected <span className="font-mono">{selected[0]}</span></>
+                : "Pick a tile to select it"}
+          </span>
+          <div style={{ flex: 1 }} />
+          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" size="sm" disabled={!canCommit} onClick={() => onCommit(selected)}>
+            {mode === "multi" ? `Use ${selected.length || "0"} file${selected.length === 1 ? "" : "s"}` : "Confirm"}
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function FileTile({ f, selected, mode, onToggle }: { f: StorageFile; selected: boolean; mode: "single" | "multi"; onToggle: () => void }) {
+  const isImg = (f.contentType ?? "").startsWith("image/");
+  const name = f.key.split("/").pop() || f.key;
+  return (
+    <div
+      onClick={onToggle}
+      onDoubleClick={onToggle}
+      role="button"
+      tabIndex={0}
+      style={{
+        display: "flex", flexDirection: "column", gap: 6,
+        padding: 8,
+        borderRadius: "var(--radius-xl)",
+        border: `1px solid ${selected ? "var(--primary)" : "var(--border)"}`,
+        background: selected ? "color-mix(in oklch, var(--primary) 8%, var(--card))" : "var(--card)",
+        cursor: "pointer",
+        position: "relative",
+        transition: "border-color 120ms, background 120ms",
+      }}
+    >
+      {mode === "multi" && (
+        <div
+          style={{
+            position: "absolute", top: 6, right: 6, zIndex: 1,
+            background: "color-mix(in oklch, var(--card) 90%, transparent)",
+            borderRadius: 4, padding: 2,
+          }}
+        >
+          <Checkbox checked={selected} onChange={() => onToggle()} />
+        </div>
+      )}
+      <div
+        style={{
+          aspectRatio: "1 / 1",
+          width: "100%",
+          borderRadius: "var(--radius-md)",
+          overflow: "hidden",
+          background: "var(--muted)",
+          display: "grid", placeItems: "center",
+        }}
+      >
+        {isImg ? (
+          <img
+            src={`/api/storage/${encodeURI(f.key)}`}
+            alt=""
+            loading="lazy"
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
+        ) : (
+          <I.Folder size={32} />
+        )}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div className="font-mono" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={f.key}>
+          {name}
+        </div>
+        <div className="muted tabular-nums" style={{ fontSize: 11 }}>
+          {fmtSize(f.size)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UploadRow({ u }: { u: { id: string; name: string; status: "uploading" | "done" | "error"; error?: string } }) {
+  const Icon = u.status === "uploading" ? I.Upload : u.status === "done" ? I.Check : I.AlertTriangle;
+  const color = u.status === "error" ? "var(--destructive)" : u.status === "done" ? "oklch(0.7 0.18 145)" : "var(--muted-foreground)";
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 8px", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", background: "var(--card)", fontSize: 12 }}>
+      <Icon size={13} />
+      <span className="font-mono" style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</span>
+      <span style={{ color, fontSize: 11 }}>
+        {u.status === "uploading" ? "uploading…" : u.status === "done" ? "uploaded" : (u.error || "failed")}
+      </span>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RelationPicker (modal)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface RelationPickerProps {
+  value: string;
+  onChange: (v: string) => void;
+  target: string;
+  error?: boolean;
+  placeholder?: string;
+}
+
+export function RelationPicker({ value, onChange, target, error, placeholder }: RelationPickerProps) {
+  const [open, setOpen] = useState(false);
+  const [labelCache, setLabelCache] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!value || !target || labelCache[value]) return;
+    let cancelled = false;
+    itemsApi.get(target, value)
+      .then((res) => {
+        if (cancelled || !res?.data) return;
+        const lbl = pickRelationLabel(res.data as Record<string, unknown>);
+        if (lbl) setLabelCache((c) => ({ ...c, [value]: lbl }));
+      })
+      .catch(() => { /* row may be deleted — keep id-only */ });
+    return () => { cancelled = true; };
+  }, [value, target, labelCache]);
+
+  const seedLabels = useCallback((rows: Array<Record<string, unknown>>) => {
+    setLabelCache((c) => {
+      const next = { ...c };
+      for (const r of rows) {
+        const id = String(r.id ?? "");
+        if (id) next[id] = pickRelationLabel(r) ?? id;
+      }
+      return next;
+    });
+  }, []);
+
+  return (
+    <>
+      <RelationTrigger
+        value={value}
+        label={value ? labelCache[value] : undefined}
+        error={!!error}
+        target={target}
+        placeholder={placeholder}
+        onOpen={() => setOpen(true)}
+        onClear={() => onChange("")}
+      />
+      {open && (
+        <RelationBrowserModal
+          target={target}
+          initial={value}
+          onCommit={(id) => { onChange(id); setOpen(false); }}
+          onClose={() => setOpen(false)}
+          seedLabels={seedLabels}
+        />
+      )}
+    </>
+  );
+}
+
+function RelationTrigger({ value, label, error, target, placeholder, onOpen, onClear }: {
+  value: string;
+  label?: string;
+  error: boolean;
+  target: string;
+  placeholder?: string;
+  onOpen: () => void;
+  onClear: () => void;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex", alignItems: "center", gap: 8,
+        border: `1px solid ${error ? "var(--destructive)" : "var(--border)"}`,
+        borderRadius: "var(--radius-3xl)",
+        background: "var(--card)",
+        padding: "4px 6px 4px 12px",
+        minHeight: 36,
+      }}
+    >
+      {value ? (
+        <>
+          <span style={{ fontSize: 13, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={value}>
+            {label ?? <span className="font-mono">{value}</span>}
+          </span>
+          {label && (
+            <span className="muted font-mono" style={{ fontSize: 11 }}>{value.slice(0, 8)}</span>
+          )}
+          <IconButton icon={I.X} title="Clear" onClick={onClear} />
+        </>
+      ) : (
+        <span className="muted" style={{ flex: 1, fontSize: 13 }}>
+          {placeholder ?? `No row from c_${target} selected`}
+        </span>
+      )}
+      <Button size="sm" variant="outline" onClick={onOpen}>
+        {value ? "Change" : "Pick row"}
+      </Button>
+    </div>
+  );
+}
+
+function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }: {
+  target: string;
+  initial: string;
+  onCommit: (id: string) => void;
+  onClose: () => void;
+  seedLabels: (rows: Array<Record<string, unknown>>) => void;
+}) {
+  useLockBodyScroll(true);
+  useEscClose(true, onClose);
+
+  const [rows, setRows] = useState<Array<Record<string, unknown>> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [selected, setSelected] = useState<string>(initial);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setErr(null);
+    itemsApi.list(target, { limit: 100, sort: "-updated_at" })
+      .then((res) => {
+        if (cancelled) return;
+        const next = (res?.data ?? []) as Array<Record<string, unknown>>;
+        setRows(next);
+        seedLabels(next);
+      })
+      .catch((e: Error) => { if (!cancelled) setErr(e.message || "Failed to load rows"); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [target, seedLabels]);
+
+  const filtered = useMemo(() => {
+    if (!rows) return [];
+    const query = q.trim().toLowerCase();
+    if (!query) return rows;
+    return rows.filter((r) => {
+      const hay = `${pickRelationLabel(r) ?? ""} ${r.id ?? ""}`.toLowerCase();
+      return hay.includes(query);
+    });
+  }, [rows, q]);
+
+  return createPortal(
+    <div className="dialog-backdrop" onClick={onClose}>
+      <div
+        className="dialog-lg"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        style={{ width: "min(720px, 92vw)", maxHeight: "min(88vh, 720px)" }}
+      >
+        <div className="dialog-head">
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>
+              Pick a row from <span className="font-mono">c_{target}</span>
+            </h3>
+            <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--muted-foreground)" }}>
+              Showing the 100 most recently updated rows. Use search to narrow down.
+            </p>
+          </div>
+          <IconButton icon={I.X} title="Close" onClick={onClose} />
+        </div>
+
+        <div className="dialog-body" style={{ padding: 16, gap: 12 }}>
+          <div className="search-input">
+            <I.Search size={14} />
+            <input
+              autoFocus
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search by label or id…"
+            />
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minHeight: 200 }}>
+            {loading && <div className="muted" style={{ fontSize: 12.5, padding: 12 }}>Loading…</div>}
+            {err && <div style={{ color: "var(--destructive)", fontSize: 12.5, padding: 12 }}>{err}</div>}
+            {!loading && !err && filtered.length === 0 && (
+              <div className="muted" style={{ fontSize: 12.5, padding: 12 }}>
+                {q ? `No rows match “${q}”.` : `c_${target} is empty.`}
+              </div>
+            )}
+            {filtered.map((r) => {
+              const id = String(r.id ?? "");
+              const lbl = pickRelationLabel(r);
+              const on = selected === id;
               return (
                 <div
-                  key={f.key}
-                  role="option"
-                  aria-selected={on}
-                  data-active={i === active}
-                  className="sn-select-item"
-                  onMouseEnter={() => setActive(i)}
-                  onClick={() => toggle(f.key)}
-                  style={{ alignItems: "center", gap: 10 }}
+                  key={id}
+                  onClick={() => setSelected(id)}
+                  onDoubleClick={() => { setSelected(id); onCommit(id); }}
+                  role="button"
+                  tabIndex={0}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "8px 12px",
+                    borderRadius: "var(--radius-xl)",
+                    border: `1px solid ${on ? "var(--primary)" : "var(--border)"}`,
+                    background: on ? "color-mix(in oklch, var(--primary) 8%, var(--card))" : "var(--card)",
+                    cursor: "pointer",
+                  }}
                 >
-                  <span className="sn-select-check">{on ? <I.Check size={12} /> : null}</span>
-                  <FileThumb k={f.key} isImg={rowIsImg} size={28} />
-                  <span className="sn-select-item-label" style={{ flexDirection: "column", alignItems: "flex-start", gap: 2, minWidth: 0 }}>
-                    <span className="font-mono" style={{ fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 360 }}>{f.key}</span>
-                    <span className="muted tabular-nums" style={{ fontSize: 11 }}>
-                      {fmtSize(f.size)}{f.contentType ? ` · ${f.contentType}` : ""}
-                    </span>
-                  </span>
+                  <span style={{
+                    width: 14, height: 14, borderRadius: 999,
+                    border: `1px solid ${on ? "var(--primary)" : "var(--border)"}`,
+                    background: on ? "var(--primary)" : "transparent",
+                    boxShadow: on ? "inset 0 0 0 3px var(--card)" : "none",
+                    flex: "none",
+                  }} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {lbl ?? <span className="muted">(no label)</span>}
+                    </div>
+                    <div className="muted font-mono" style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {id}
+                    </div>
+                  </div>
                 </div>
               );
             })}
           </div>
-        </div>,
-        document.body,
-      )}
-    </>
+        </div>
+
+        <div className="dialog-foot">
+          <span className="muted" style={{ fontSize: 12 }}>
+            {selected
+              ? <>Selected <span className="font-mono">{selected}</span></>
+              : "Pick a row to select it"}
+          </span>
+          <div style={{ flex: 1 }} />
+          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" size="sm" disabled={!selected} onClick={() => onCommit(selected)}>Confirm</Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }

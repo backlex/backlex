@@ -384,27 +384,9 @@ body {
 
 /* ─── Filter bar ─── */
 .filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.search-input {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 36px;
-  padding: 0 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-3xl);
-  background: var(--card);
-  min-width: 280px;
-  flex: 1;
-}
-.search-input input {
-  border: none;
-  outline: none;
-  background: transparent;
-  font: inherit;
-  color: var(--foreground);
-  width: 100%;
-}
-.search-input input::placeholder { color: var(--muted-foreground); }
+/* `.search-input` was dropped during the shadcn migration — every search
+   field now uses InputGroup + InputGroupAddon + InputGroupInput from
+   @workeros/ui/components/input-group. */
 
 .chip {
   display: inline-flex;
@@ -2100,7 +2082,6 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   .tabs .tab { flex: 0 0 auto; }
 
   .split { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .search-input { min-width: 0; }
   .filter-bar { gap: 6px; }
 
   /* Multi-column tables / grid "tables" stay readable and scroll horizontally

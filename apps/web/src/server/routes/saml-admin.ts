@@ -97,15 +97,18 @@ interface ImportedMetadata {
  * pass is sufficient for the admin pre-fill path (the actual sig check
  * always goes through samlify).
  */
+// `(?:\w+:)?` makes the XML namespace prefix optional — mocksaml.com,
+// Okta, Azure AD all emit `<md:EntityDescriptor>` / `<ds:X509Certificate>`
+// while some bare-namespace IdPs emit unprefixed tags.
 const parseMetadataXml = (xml: string): ImportedMetadata => {
-  const entityMatch = xml.match(/<EntityDescriptor\b[^>]*\bentityID="([^"]+)"/);
+  const entityMatch = xml.match(/<(?:\w+:)?EntityDescriptor\b[^>]*\bentityID="([^"]+)"/);
   const entityId = entityMatch?.[1];
   if (!entityId) throw new AppError("VALIDATION", "Metadata missing EntityDescriptor/@entityID");
 
   // SingleSignOnService — prefer HTTP-Redirect, fall back to HTTP-POST.
   const ssoMatches = [
     ...xml.matchAll(
-      /<SingleSignOnService\b[^>]*\bBinding="([^"]+)"[^>]*\bLocation="([^"]+)"/g,
+      /<(?:\w+:)?SingleSignOnService\b[^>]*\bBinding="([^"]+)"[^>]*\bLocation="([^"]+)"/g,
     ),
   ];
   const ssoRedirect = ssoMatches.find((m) =>
@@ -117,7 +120,7 @@ const parseMetadataXml = (xml: string): ImportedMetadata => {
 
   const sloMatches = [
     ...xml.matchAll(
-      /<SingleLogoutService\b[^>]*\bBinding="([^"]+)"[^>]*\bLocation="([^"]+)"/g,
+      /<(?:\w+:)?SingleLogoutService\b[^>]*\bBinding="([^"]+)"[^>]*\bLocation="([^"]+)"/g,
     ),
   ];
   const sloUrl =
@@ -129,7 +132,7 @@ const parseMetadataXml = (xml: string): ImportedMetadata => {
   // `use` attribute is optional — IdPs that emit a single cert often omit
   // it and use the same key for signing and encryption.
   const certBlock = xml.match(
-    /<KeyDescriptor\b(?:[^>]*\buse="signing")?[^>]*>[\s\S]*?<X509Certificate>([\s\S]*?)<\/X509Certificate>[\s\S]*?<\/KeyDescriptor>/,
+    /<(?:\w+:)?KeyDescriptor\b(?:[^>]*\buse="signing")?[^>]*>[\s\S]*?<(?:\w+:)?X509Certificate>([\s\S]*?)<\/(?:\w+:)?X509Certificate>[\s\S]*?<\/(?:\w+:)?KeyDescriptor>/,
   );
   const certBody = certBlock?.[1]?.replace(/\s+/g, "") ?? null;
   if (!certBody) {

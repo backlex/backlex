@@ -60,9 +60,27 @@ interface UploadJob {
   status: "uploading" | "done";
 }
 
+const PAGE_SIZE = 50;
+
 export function StoragePage({ pushToast }: { pushToast: (msg: string) => void }) {
   const [folders, setFolders] = useState<StoredFolder[]>([]);
   const [files, setFiles] = useState<StoredFile[]>([]);
+  const [filesTotal, setFilesTotal] = useState(0);
+  const [filesLoading, setFilesLoading] = useState(false);
+  const [folderCounts, setFolderCounts] = useState<{ root: number; byFolderId: Record<string, number>; total: number }>({ root: 0, byFolderId: {}, total: 0 });
+  const [folder, setFolder] = useState<string | null>(null);
+  const [folderQuery, setFolderQuery] = useState("");
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  const [search, setSearch] = useState("");
+  // Debounced search — the user can keep typing without triggering a refetch
+  // on every keystroke. 300 ms matches the storage detail HEAD probe.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Folder list (small — load once, refresh on creates).
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -81,32 +99,122 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
       } catch {
         // leave folders empty
       }
-      try {
-        const fs = await api<{ data: any[] }>("/api/storage");
-        if (!cancelled && Array.isArray(fs.data)) {
-          setFiles(
-            fs.data.map((file) => ({
-              key: file.key,
-              size: file.size ?? 0,
-              type: file.contentType ?? "application/octet-stream",
-              folder: file.folderId ?? null,
-              folderId: file.folderId ?? null,
-              updated: file.uploadedAt ? String(file.uploadedAt).slice(0, 10) : "—",
-              acl: (file.acl as "public" | "private") ?? "private",
-              metadata: file.metadata ?? null,
-            })),
-          );
-        }
-      } catch {
-        // leave files empty
-      }
     })();
     return () => { cancelled = true; };
   }, []);
-  const [folder, setFolder] = useState<string | null>(null);
-  const [folderQuery, setFolderQuery] = useState("");
-  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
-  const [search, setSearch] = useState("");
+
+  /** path → folder.id lookup. Virtual parent nodes (paths that exist only
+   *  via name splitting, no real row) won't be present here, so the
+   *  resolver below returns null and the page falls back to "all files". */
+  const folderIdByPath = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const fl of folders) m.set(fl.name, fl.id);
+    return m;
+  }, [folders]);
+  const selectedFolderId = folder == null ? null : folderIdByPath.get(folder) ?? null;
+
+  /** Internal: build the query string for a given offset. Keeps callsites
+   *  (initial load + Load more) consistent. */
+  const buildListUrl = (offset: number): string => {
+    const params = new URLSearchParams();
+    params.set("limit", String(PAGE_SIZE));
+    params.set("offset", String(offset));
+    if (folder == null) {
+      // root selection = no filter (show every file in the tenant)
+    } else if (selectedFolderId) {
+      params.set("folderId", selectedFolderId);
+    } else {
+      // Virtual parent ("marketing" with only "marketing/q1" as a real
+      // folder). The server has no name-prefix filter, so we'd over-fetch;
+      // signal it by passing a sentinel that returns nothing and add a
+      // client-side hint instead.
+      params.set("folderId", "__virtual__");
+    }
+    if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
+    return `/api/storage/?${params}`;
+  };
+
+  // Files page — refetches on folder / debounced-search change. Replaces
+  // the prior one-shot dump of the whole tenant; the new endpoint paginates
+  // by createdAt DESC so users see their latest uploads first.
+  useEffect(() => {
+    let cancelled = false;
+    setFilesLoading(true);
+    void (async () => {
+      try {
+        const fs = await api<{ data: any[]; meta: { total: number; limit: number; offset: number } }>(
+          buildListUrl(0),
+        );
+        if (cancelled) return;
+        setFiles(
+          (fs.data ?? []).map((file) => ({
+            key: file.key,
+            size: file.size ?? 0,
+            type: file.contentType ?? "application/octet-stream",
+            folder: file.folderId ?? null,
+            folderId: file.folderId ?? null,
+            updated: file.uploadedAt ? String(file.uploadedAt).slice(0, 10) : "—",
+            acl: (file.acl as "public" | "private") ?? "private",
+            metadata: file.metadata ?? null,
+          })),
+        );
+        setFilesTotal(fs.meta?.total ?? 0);
+      } catch {
+        if (!cancelled) {
+          setFiles([]);
+          setFilesTotal(0);
+        }
+      } finally {
+        if (!cancelled) setFilesLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [folder, debouncedSearch, selectedFolderId]);
+
+  /** Append the next page in place. Triggered by the "Load more" button. */
+  const loadMore = async () => {
+    if (filesLoading || files.length >= filesTotal) return;
+    setFilesLoading(true);
+    try {
+      const fs = await api<{ data: any[]; meta: { total: number } }>(
+        buildListUrl(files.length),
+      );
+      setFiles((prev) => [
+        ...prev,
+        ...(fs.data ?? []).map((file) => ({
+          key: file.key,
+          size: file.size ?? 0,
+          type: file.contentType ?? "application/octet-stream",
+          folder: file.folderId ?? null,
+          folderId: file.folderId ?? null,
+          updated: file.uploadedAt ? String(file.uploadedAt).slice(0, 10) : "—",
+          acl: (file.acl as "public" | "private") ?? "private",
+          metadata: file.metadata ?? null,
+        })),
+      ]);
+      setFilesTotal(fs.meta?.total ?? 0);
+    } catch (e) {
+      pushToast?.((e as Error).message);
+    } finally {
+      setFilesLoading(false);
+    }
+  };
+
+  // Folder-count badges — one server-side GROUP BY replaces the previous
+  // O(files × depth) client computation. Refresh after the user uploads,
+  // deletes, or moves a file (the relevant handlers call refreshCounts).
+  const refreshCounts = async () => {
+    try {
+      const r = await api<{ root: number; byFolderId: Record<string, number>; total: number }>(
+        "/api/storage/folder-counts",
+      );
+      setFolderCounts(r);
+    } catch {
+      // leave previous snapshot in place
+    }
+  };
+  useEffect(() => { void refreshCounts(); }, []);
   const [view, setView] = useState<"grid" | "list">("grid");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -169,49 +277,29 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
     });
   };
 
-  // folder_id (UUID) → folder.name lookup. files.folderId is a UUID; the
-  // sidebar tree is built from folder *names* (split on "/"). Both sides
-  // need to talk through this map.
-  const folderNameById = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const fl of folders) m.set(fl.id, fl.name);
-    return m;
-  }, [folders]);
+  // Server-paginated: `files` already holds the right page for the current
+  // (folder, search) selection. No client-side filtering — `visible` and
+  // `files` are the same array. Kept as a local alias so the JSX below
+  // doesn't have to change.
+  const visible = files;
 
-  /** Resolve a file's folder name path (or null when it has no folder). */
-  const fileFolderName = (f: StoredFile): string | null => {
-    if (!f.folderId) return null;
-    return folderNameById.get(f.folderId) ?? null;
-  };
-
-  const visible = useMemo(() => files.filter((f) => {
-    const folderName = fileFolderName(f);
-    const folderMatch =
-      folder == null
-        ? true
-        : folderName === folder ||
-          (folderName !== null && folderName.startsWith(folder + "/"));
-    return folderMatch && (!search || f.key.toLowerCase().includes(search.toLowerCase()));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [files, folder, search, folderNameById]);
-
-  /** Per-folder-path counts derived from the files array — keeps the
-   *  sidebar badge live as files move in/out. A file under "marketing/q1"
-   *  counts toward both "marketing/q1" and "marketing" (descendant rollup). */
+  /** Per-folder-path counts derived from the server's GROUP BY response.
+   *  We still roll descendants up to ancestors in the path tree so a virtual
+   *  parent like "marketing" can report the sum of "marketing/q1" + "…/q2"
+   *  even though no folder row literally named "marketing" exists. */
   const folderCountByPath = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const f of files) {
-      const name = fileFolderName(f);
-      if (!name) continue;
-      const parts = name.split("/");
+    for (const fl of folders) {
+      const n = folderCounts.byFolderId[fl.id] ?? 0;
+      if (n === 0) continue;
+      const parts = fl.name.split("/");
       for (let i = 0; i < parts.length; i++) {
         const p = parts.slice(0, i + 1).join("/");
-        counts.set(p, (counts.get(p) ?? 0) + 1);
+        counts.set(p, (counts.get(p) ?? 0) + n);
       }
     }
     return counts;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [files, folderNameById]);
+  }, [folders, folderCounts]);
 
   const selected = files.find((f) => f.key === selectedKey) || null;
   const fmtSize = (b: number) => b > 1024 * 1024 ? (b / 1024 / 1024).toFixed(1) + " MB" : (b / 1024).toFixed(1) + " KB";
@@ -266,6 +354,8 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
             { key, size: f.size, type: f.type || "application/octet-stream", folder: target, folderId: null, updated: "just now", acl: "private", metadata: null },
             ...fs,
           ]);
+          setFilesTotal((n) => n + 1);
+          void refreshCounts();
         })
         .catch((e: Error) => {
           pushToast?.(e.message);
@@ -370,6 +460,8 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         method: "PATCH",
         body: JSON.stringify(next),
       });
+      // Folder move changes the count breakdown — refresh sidebar badges.
+      if (next.folderId !== undefined) void refreshCounts();
       return true;
     } catch (e) {
       // revert
@@ -381,10 +473,12 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
 
   const deleteFile = async (key: string) => {
     setFiles((arr) => arr.filter((x) => x.key !== key));
+    setFilesTotal((n) => Math.max(0, n - 1));
     if (selectedKey === key) { setSelectedKey(null); setDetailOpen(false); }
     try {
       await api(`/api/storage/${encodeURIComponent(key)}`, { method: "DELETE" });
       pushToast(`${key} deleted.`);
+      void refreshCounts();
     } catch (e) {
       pushToast((e as Error).message);
     }
@@ -402,7 +496,10 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
     return () => window.removeEventListener("keydown", onKey);
   }, [detailOpen]);
 
-  const totalBytes = files.reduce((a, f) => a + f.size, 0);
+  // The page header used to sum bytes across `files`, but with pagination
+  // `files` only holds the current page — that number would mislead. The
+  // total count comes from the folder-counts endpoint; per-tenant byte
+  // total isn't computed server-side yet, so we display files-only here.
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }} onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false); }} onDrop={onDrop}>
@@ -410,8 +507,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         title="Storage"
         description={<>Adapter auto-selected: R2 binding → R2; S3 env vars → S3; else local filesystem (Bun dev). Public folders are served at <span className="font-mono">/storage/&lt;key&gt;</span>; private require a signed URL.</>}
         badges={<span style={{ display: "inline-flex", gap: 6, marginLeft: 4 }}>
-          <Badge variant="outline" mono>{files.length} files</Badge>
-          <Badge variant="outline" mono>{fmtSize(totalBytes)}</Badge>
+          <Badge variant="outline" mono>{folderCounts.total} files</Badge>
         </span>}
         actions={<>
           <Button variant="outline" icon={I.Folder} onClick={openNewFolder}>New folder</Button>
@@ -480,7 +576,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
           <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search keys…" />
         </InputGroup>
         <span className="muted font-mono" style={{ fontSize: 11.5 }}>
-          {folder ? <>in <span style={{ color: "var(--foreground)" }}>{folder}/</span></> : "all folders"} · {visible.length} files
+          {folder ? <>in <span style={{ color: "var(--foreground)" }}>{folder}/</span></> : "all folders"} · {filesTotal} files{filesTotal > files.length ? <> · showing {files.length}</> : null}
         </span>
         <div className="spacer" />
         <button className={`chip ${view === "grid" ? "active" : ""}`} onClick={() => setView("grid")}><I.Braces size={12} /> Grid</button>
@@ -510,7 +606,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
             >
               <I.Inbox size={12} />
               <span>All files</span>
-              <span className="muted tabular-nums" style={{ marginLeft: "auto", fontSize: 11 }}>{files.length}</span>
+              <span className="muted tabular-nums" style={{ marginLeft: "auto", fontSize: 11 }}>{folderCounts.total}</span>
             </button>
             {folderTreeFiltered.length === 0 && (
               <div className="muted" style={{ padding: "12px 10px", fontSize: 11.5 }}>
@@ -547,8 +643,9 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         </div>
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           {view === "grid" ? (
+            <>
             <div style={{ padding: 12, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 }}>
-              {visible.length === 0 && (
+              {visible.length === 0 && !filesLoading && (
                 <div style={{ gridColumn: "1 / -1", padding: 36, textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>
                   No files. Drop files anywhere on this page or use Upload.
                 </div>
@@ -557,6 +654,13 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                 <FileTile key={f.key} f={f} active={selectedKey === f.key} onSelect={() => openDetail(f.key)} />
               ))}
             </div>
+            <PaginationFooter
+              loaded={files.length}
+              total={filesTotal}
+              loading={filesLoading}
+              onLoadMore={loadMore}
+            />
+            </>
           ) : (
             <div className="table-scroll">
             <table className="table">
@@ -592,6 +696,12 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                 ))}
               </tbody>
             </table>
+            <PaginationFooter
+              loaded={files.length}
+              total={filesTotal}
+              loading={filesLoading}
+              onLoadMore={loadMore}
+            />
             </div>
           )}
         </div>
@@ -1366,5 +1476,28 @@ function FolderPicker({ folders, value, onChange }: { folders: { id: string; nam
         </Command>
       </PopoverContent>
     </Popover>
+  );
+}
+
+
+/**
+ * Pagination footer for the grid + list views. Renders nothing when there
+ * is just one page worth of results; otherwise shows "Showing X of Y" plus
+ * a Load more button. Single-button is intentional — we paginate forward
+ * only, infinite-scroll style.
+ */
+function PaginationFooter({ loaded, total, loading, onLoadMore }: { loaded: number; total: number; loading: boolean; onLoadMore: () => void }) {
+  const hasMore = loaded < total;
+  if (total === 0) return null;
+  if (!hasMore && !loading) return null;
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "12px 14px", borderTop: "1px solid var(--border)", fontSize: 12 }}>
+      <span className="muted tabular-nums">Showing {loaded} of {total}</span>
+      {hasMore && (
+        <Button size="sm" variant="outline" onClick={onLoadMore} disabled={loading}>
+          {loading ? "Loading…" : "Load more"}
+        </Button>
+      )}
+    </div>
   );
 }

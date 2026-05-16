@@ -84,6 +84,11 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [w, setW] = useState(800);
+  // `null` = "match source aspect" — CF/Bun derive height from width. Setting
+  // an explicit number makes the transform behave as an aspect crop (with
+  // fit=cover + focal). Decoupled state so the slider can be hidden until
+  // the user actually wants to constrain height.
+  const [h, setH] = useState<number | null>(null);
   const [q, setQ] = useState(80);
   const [fmt, setFmt] = useState("webp");
   const [fit, setFit] = useState("cover");
@@ -483,7 +488,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
           f={selected}
           fmtSize={fmtSize}
           isImage={isImage(selected.type)}
-          w={w} setW={setW} q={q} setQ={setQ} fmt={fmt} setFmt={setFmt}
+          w={w} setW={setW} h={h} setH={setH} q={q} setQ={setQ} fmt={fmt} setFmt={setFmt}
           fit={fit} setFit={setFit}
           focal={focal} setFocal={setFocal}
           onToggleACL={() => toggleACL(selected.key)}
@@ -640,9 +645,11 @@ function FileDetailModal({ f, onClose, ...rest }: any) {
   );
 }
 
-function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, setFit, focal, setFocal, onToggleACL, onDelete, onCopy, pushToast, embedded }: any) {
+function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFmt, fit, setFit, focal, setFocal, onToggleACL, onDelete, onCopy, pushToast, embedded }: any) {
   const url = `/api/storage/${encodeURI(f.key)}`;
-  const params = isImage ? `?width=${w}&format=${fmt}&quality=${q}&fit=${fit}&focal=${focal.x},${focal.y}` : "";
+  const params = isImage
+    ? `?width=${w}${h != null ? `&height=${h}` : ""}&format=${fmt}&quality=${q}&fit=${fit}&focal=${focal.x},${focal.y}`
+    : "";
   const transformedUrl = url + params;
   // Copying / signing produces URLs that travel outside the admin tab —
   // a chat message, an <img> on another site, a curl invocation. Relative
@@ -703,7 +710,9 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
   const effectiveSrc = transformError ? url : transformedUrl;
 
   const aspect = (isImage && f.w && f.h) ? f.h / f.w : 0.6;
-  const previewH = (isImage && f.w) ? Math.round(w * aspect) : null;
+  // When the user pins height, the label shows it verbatim; otherwise we
+  // derive from the source aspect so the slider readout still makes sense.
+  const previewH = h != null ? h : ((isImage && f.w) ? Math.round(w * aspect) : null);
 
   const Wrapper: any = embedded ? Fragment : "div";
   const wrapperProps: any = embedded ? {} : { className: "card", style: { padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" } };
@@ -839,7 +848,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
                 <I.Sliders size={13} />
                 <span style={{ fontSize: 12, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>Transform</span>
                 <div className="spacer" />
-                <button className="link-btn" onClick={() => { setW(f.w || 1600); setQ(80); setFmt("webp"); setFit("cover"); setFocal({ x: 50, y: 50 }); }}>Reset</button>
+                <button className="link-btn" onClick={() => { setW(f.w || 1600); setH(null); setQ(80); setFmt("webp"); setFit("cover"); setFocal({ x: 50, y: 50 }); }}>Reset</button>
               </div>
 
               <div className="field" style={{ marginTop: 0 }}>
@@ -855,6 +864,40 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
                     <button key={preset} className={`size-chip ${w === preset ? "on" : ""}`} onClick={() => setW(preset)}>{preset}</button>
                   ))}
                 </div>
+              </div>
+
+              <div className="field" style={{ marginTop: 0 }}>
+                <label className="field-label">
+                  Height
+                  <span className="muted tabular-nums">
+                    {h != null ? `${h}px` : "auto"}
+                  </span>
+                </label>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <input
+                    type="range"
+                    min={120}
+                    max={Math.max(1600, f.h || 1600)}
+                    step={20}
+                    value={h ?? Math.round(w * aspect)}
+                    onChange={(e) => setH(Number(e.target.value))}
+                    style={{ flex: 1 }}
+                    disabled={h == null}
+                    aria-disabled={h == null}
+                  />
+                </div>
+                <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
+                  <button className={`size-chip ${h == null ? "on" : ""}`} onClick={() => setH(null)} title="Derive from width × source aspect">auto</button>
+                  <button className={`size-chip ${h === w ? "on" : ""}`} onClick={() => setH(w)} title="1:1 square">1:1</button>
+                  <button className={`size-chip ${h === Math.round(w * 9 / 16) ? "on" : ""}`} onClick={() => setH(Math.round(w * 9 / 16))} title="16:9 widescreen">16:9</button>
+                  <button className={`size-chip ${h === Math.round(w * 5 / 4) ? "on" : ""}`} onClick={() => setH(Math.round(w * 5 / 4))} title="4:5 portrait">4:5</button>
+                  <button className={`size-chip ${h === Math.round(w * 2 / 3) ? "on" : ""}`} onClick={() => setH(Math.round(w * 2 / 3))} title="3:2 standard">3:2</button>
+                </div>
+                <span className="field-hint">
+                  {h == null
+                    ? "Auto = preserve source aspect. Pin height to crop to a different aspect (uses Focal point + fit=cover)."
+                    : "Aspect-cropping active. Focal point picks which area is kept."}
+                </span>
               </div>
 
               <div className="field" style={{ marginTop: 0 }}>

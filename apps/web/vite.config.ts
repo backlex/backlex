@@ -30,6 +30,11 @@ export default defineConfig({
       nodemailer: fileURLToPath(
         new URL("./src/server/shims/nodemailer-shim.ts", import.meta.url),
       ),
+      // ldapts (the LDAP/AD auth adapter) also needs node:net/node:tls. LDAP
+      // is never selected on Workers — same throwing-stub pattern as above.
+      ldapts: fileURLToPath(
+        new URL("./src/server/shims/ldapts-shim.ts", import.meta.url),
+      ),
     },
   },
   server: {

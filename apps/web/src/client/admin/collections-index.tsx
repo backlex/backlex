@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { I, type IconComponent, type IconKey } from "./icons";
 import type { CollectionListItem } from "./config";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
 
 export interface CollectionsIndexProps {
   collections: CollectionListItem[];
@@ -50,10 +51,10 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete }: Colle
       />
 
       <div className="filter-bar">
-        <div className="search-input">
-          <I.Search size={14} />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search collections by slug or group…" />
-        </div>
+        <InputGroup>
+          <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
+          <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search collections by slug or group…" />
+        </InputGroup>
         <div className="spacer" />
         <button className={`chip ${view === "grid" ? "active" : ""}`} onClick={() => setView("grid")}><I.Braces size={12} /> Grid</button>
         <button className={`chip ${view === "table" ? "active" : ""}`} onClick={() => setView("table")}><I.Inbox size={12} /> Table</button>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "./icons";
 import { Badge, Button } from "./ui";
+import { Select } from "./select";
 import { api } from "@/lib/api";
 import type { RoleData } from "./role-editor";
 
@@ -158,13 +159,18 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
     const needsValue = node.op !== "_null" && node.op !== "_nnull";
     return (
       <div className="rb-cond">
-        <select className="rb-input" value={node.field} onChange={(e) => update(path, (n) => { n.field = e.target.value; })}>
-          <option value="">field…</option>
-          {fields.map((f) => <option key={f} value={f}>{f}</option>)}
-        </select>
-        <select className="rb-input" value={node.op} onChange={(e) => update(path, (n) => { n.op = e.target.value; })}>
-          {CE_OPS.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
-        </select>
+        <Select
+          value={node.field}
+          onChange={(v) => update(path, (n) => { n.field = v; })}
+          options={[{ value: "", label: "field…" }, ...fields.map((f) => ({ value: f, label: f }))]}
+          size="sm"
+        />
+        <Select
+          value={node.op}
+          onChange={(v) => update(path, (n) => { n.op = v; })}
+          options={CE_OPS.map((o) => ({ value: o.v, label: o.label }))}
+          size="sm"
+        />
         {needsValue && (
           <div style={{ position: "relative", flex: 1 }}>
             <input
@@ -342,17 +348,29 @@ export function ConditionEditor({ roles, pushToast }: ConditionEditorProps) {
       <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <I.Code size={14} />
         <span style={{ fontSize: 13, fontWeight: 500 }}>permission</span>
-        <select className="select" style={{ height: 28, padding: "0 10px", minWidth: 140 }} value={role} onChange={(e) => { setRole(e.target.value); setDirty(true); }}>
-          {roles.map((r) => <option key={r.name} value={r.name}>{r.name}</option>)}
-        </select>
+        <Select
+          value={role}
+          onChange={(v) => { setRole(v); setDirty(true); }}
+          options={roles.map((r) => ({ value: r.name, label: r.name }))}
+          size="sm"
+          style={{ minWidth: 140 }}
+        />
         <span className="muted" style={{ fontSize: 12 }}>·</span>
-        <select className="select" style={{ height: 28, padding: "0 10px", minWidth: 100 }} value={action} onChange={(e) => setAction(e.target.value)}>
-          {["read", "create", "update", "delete"].map((a) => <option key={a} value={a}>{a}</option>)}
-        </select>
+        <Select
+          value={action}
+          onChange={setAction}
+          options={["read", "create", "update", "delete"].map((a) => ({ value: a, label: a }))}
+          size="sm"
+          style={{ minWidth: 100 }}
+        />
         <span className="muted" style={{ fontSize: 12 }}>·</span>
-        <select className="select" style={{ height: 28, padding: "0 10px", minWidth: 110 }} value={collection} onChange={(e) => setCollection(e.target.value)}>
-          {Object.keys(CE_FIELDS_BY_COLLECTION).map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
+        <Select
+          value={collection}
+          onChange={setCollection}
+          options={Object.keys(CE_FIELDS_BY_COLLECTION).map((c) => ({ value: c, label: c }))}
+          size="sm"
+          style={{ minWidth: 110 }}
+        />
         {dirty && <Badge variant="outline">modified</Badge>}
         <div className="spacer" />
         <span className="muted font-mono" style={{ fontSize: 11.5 }}>{summarizeTree(tree).slice(0, 80)}</span>
@@ -476,10 +494,13 @@ export function ConditionEditor({ roles, pushToast }: ConditionEditorProps) {
             <div className="presets-list">
               {presets.map((p, i) => (
                 <div key={p.id} className="presets-row">
-                  <select className="rb-input" style={{ minWidth: 160 }} value={p.key} onChange={(e) => { setPresets((arr) => arr.map((x, j) => j === i ? { ...x, key: e.target.value } : x)); setDirty(true); }}>
-                    <option value="">field…</option>
-                    {fields.map((f) => <option key={f} value={f}>{f}</option>)}
-                  </select>
+                  <Select
+                    value={p.key}
+                    onChange={(v) => { setPresets((arr) => arr.map((x, j) => j === i ? { ...x, key: v } : x)); setDirty(true); }}
+                    options={[{ value: "", label: "field…" }, ...fields.map((f) => ({ value: f, label: f }))]}
+                    size="sm"
+                    style={{ minWidth: 160 }}
+                  />
                   <span className="muted">=</span>
                   <input className="rb-input" style={{ flex: 1 }} placeholder="value or $user.id" list={`presets-vars-${p.id}`} value={p.value} onChange={(e) => { setPresets((arr) => arr.map((x, j) => j === i ? { ...x, value: e.target.value } : x)); setDirty(true); }} />
                   <datalist id={`presets-vars-${p.id}`}>

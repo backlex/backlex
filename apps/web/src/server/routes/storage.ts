@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { and, count, desc, eq, isNull, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
 import { AppError, type ImageTransform } from "@workeros/core";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
@@ -87,6 +87,17 @@ function folderNameFromKey(logicalKey: string): string | null {
   const lastSlash = logicalKey.lastIndexOf("/");
   if (lastSlash <= 0) return null;
   return logicalKey.slice(0, lastSlash);
+}
+
+/** Both forms a row's `key` might take in production: the modern, tenant-
+ *  prefixed `tenants/<tid>/<logical>` AND the bare logical key for rows
+ *  uploaded before that prefix was introduced. Lookups, signs, deletes,
+ *  and reads all match either form — the storage adapter then uses
+ *  whatever key the row actually carries, so R2 GETs the right object. */
+function keyCandidates(tenantId: string, logicalKey: string): string[] {
+  const physical = physicalKey(tenantId, logicalKey);
+  if (physical === logicalKey) return [physical];
+  return [physical, logicalKey];
 }
 
 const filesCollection = () => FILES_COLLECTION;
@@ -233,18 +244,23 @@ export const storageRoutes = new Hono<AppBindings>()
       ? Math.max(0, Math.floor(rawOffset))
       : 0;
 
-    const conds: SQL[] = [
-      eq(t.tenantId, tenantId),
-      sql`${sql.identifier("key")} LIKE ${`${physicalPrefix}%`}`,
-    ];
+    const conds: SQL[] = [eq(t.tenantId, tenantId)];
+    // The key-prefix filter is purely organizational: only enforced when
+    // the caller is browsing into a sub-path. Tenant isolation is already
+    // handled by `tenant_id = ?`, and legacy rows (uploaded before the
+    // `tenants/<tid>/` physical prefix was introduced) would otherwise
+    // never show up in the list.
+    if (prefix) {
+      conds.push(sql`${sql.identifier("key")} LIKE ${`${physicalPrefix}%`}`);
+    }
     if (folderId === "__root__") conds.push(isNull(t.folderId));
     else if (folderId) conds.push(eq(t.folderId, folderId));
     if (search) {
-      // Escape LIKE wildcards in user input, then anchor the match inside the
-      // already-tenant-scoped key prefix. SQLite LIKE is case-insensitive for
-      // ASCII; Postgres uses ILIKE for portability.
+      // Substring match — tolerant of legacy rows without the
+      // `tenants/<tid>/` physical prefix. SQLite LIKE is case-insensitive
+      // for ASCII; Postgres uses ILIKE for portability.
       const esc = search.replace(/[\\%_]/g, (m) => `\\${m}`);
-      const pattern = `${physicalPrefix}%${esc}%`;
+      const pattern = `%${esc}%`;
       conds.push(
         ctx.dialect === "pg"
           ? sql`${sql.identifier("key")} ILIKE ${pattern} ESCAPE '\\'`
@@ -464,8 +480,11 @@ export const storageRoutes = new Hono<AppBindings>()
       // verify token first, then use its pinned tenantId.
       const payload = await verifyStorageUrl(token, ctx.env.AUTH_SECRET);
       if (!payload) throw new AppError("UNAUTHORIZED", "Invalid or expired token");
-      const expectedKey = physicalKey(payload.t, logicalKey);
-      if (payload.k !== expectedKey) {
+      // Tokens signed for legacy rows carry the bare key; modern tokens
+      // carry the tenant-prefixed one. Accept either as long as it points
+      // to the same logical key under the same tenant.
+      const allowedKeys = keyCandidates(payload.t, logicalKey);
+      if (!allowedKeys.includes(payload.k)) {
         throw new AppError("UNAUTHORIZED", "Token does not match this object");
       }
       // Pin the request to the token's tenant so the rest of the handler
@@ -495,7 +514,6 @@ export const storageRoutes = new Hono<AppBindings>()
     const tenantId = requireTenantId(auth);
     const logicalKey = c.req.param("key");
     guardLogicalKey(logicalKey);
-    const key = physicalKey(tenantId, logicalKey);
     const body = (await c.req.json().catch(() => ({}))) as { ttlSeconds?: number };
     const ttl = Math.max(60, Math.min(86400, body.ttlSeconds ?? 3600));
 
@@ -503,7 +521,10 @@ export const storageRoutes = new Hono<AppBindings>()
     // permission middleware only proved they have `read`; the row-level
     // condition is enforced here so a scoped role can't sign a sibling row).
     const t = filesTable(ctx.dialect);
-    const conds: SQL[] = [eq(t.key, key), eq(t.tenantId, tenantId)];
+    const conds: SQL[] = [
+      inArray(t.key, keyCandidates(tenantId, logicalKey)),
+      eq(t.tenantId, tenantId),
+    ];
     if (perm.whereSql) conds.push(perm.whereSql);
     const rows = (await (ctx.db as any)
       .select({ key: t.key })
@@ -511,10 +532,11 @@ export const storageRoutes = new Hono<AppBindings>()
       .where(and(...conds))
       .limit(1)) as { key: string }[];
     if (!rows[0]) throw new AppError("NOT_FOUND", "Object not found");
+    const matchedKey = rows[0].key;
 
     const exp = Math.floor(Date.now() / 1000) + ttl;
     const token = await signStorageUrl(
-      { k: key, t: tenantId, exp },
+      { k: matchedKey, t: tenantId, exp },
       ctx.env.AUTH_SECRET,
     );
     return c.json({
@@ -529,10 +551,12 @@ export const storageRoutes = new Hono<AppBindings>()
     const tenantId = requireTenantId(auth);
     const logicalKey = c.req.param("key");
     guardLogicalKey(logicalKey);
-    const key = physicalKey(tenantId, logicalKey);
     const t = filesTable(ctx.dialect);
 
-    const conds: SQL[] = [eq(t.key, key), eq(t.tenantId, tenantId)];
+    const conds: SQL[] = [
+      inArray(t.key, keyCandidates(tenantId, logicalKey)),
+      eq(t.tenantId, tenantId),
+    ];
     if (perm.whereSql) conds.push(perm.whereSql);
     const rows = (await (ctx.db as any)
       .select({ key: t.key })
@@ -540,11 +564,12 @@ export const storageRoutes = new Hono<AppBindings>()
       .where(and(...conds))
       .limit(1)) as { key: string }[];
     if (!rows[0]) throw new AppError("NOT_FOUND", "Object not found");
+    const matchedKey = rows[0].key;
 
-    await ctx.storage.delete(key);
+    await ctx.storage.delete(matchedKey);
     await (ctx.db as any)
       .delete(t)
-      .where(and(eq(t.key, key), eq(t.tenantId, tenantId)));
+      .where(and(eq(t.key, matchedKey), eq(t.tenantId, tenantId)));
     await logActivity(c, {
       action: "delete",
       collection: FILES_COLLECTION,
@@ -565,7 +590,6 @@ export const storageRoutes = new Hono<AppBindings>()
     const tenantId = requireTenantId(auth);
     const logicalKey = c.req.param("key");
     guardLogicalKey(logicalKey);
-    const key = physicalKey(tenantId, logicalKey);
     const body = (await c.req.json().catch(() => ({}))) as {
       acl?: "public" | "private";
       folderId?: string | null;
@@ -575,7 +599,10 @@ export const storageRoutes = new Hono<AppBindings>()
       metadata?: Record<string, unknown> | null;
     };
     const t = filesTable(ctx.dialect);
-    const conds: SQL[] = [eq(t.key, key), eq(t.tenantId, tenantId)];
+    const conds: SQL[] = [
+      inArray(t.key, keyCandidates(tenantId, logicalKey)),
+      eq(t.tenantId, tenantId),
+    ];
     if (perm.whereSql) conds.push(perm.whereSql);
     const existing = (await (ctx.db as any)
       .select({ key: t.key, metadata: t.metadata })
@@ -583,6 +610,7 @@ export const storageRoutes = new Hono<AppBindings>()
       .where(and(...conds))
       .limit(1)) as { key: string; metadata: Record<string, unknown> | null }[];
     if (!existing[0]) throw new AppError("NOT_FOUND", "Object not found");
+    const matchedKey = existing[0].key;
 
     const patch: Record<string, unknown> = {};
     if (body.acl) patch.acl = body.acl;
@@ -603,7 +631,7 @@ export const storageRoutes = new Hono<AppBindings>()
     await (ctx.db as any)
       .update(t)
       .set(patch)
-      .where(and(eq(t.key, key), eq(t.tenantId, tenantId)));
+      .where(and(eq(t.key, matchedKey), eq(t.tenantId, tenantId)));
     const updateResponse = { ok: true, data: { key: logicalKey, ...patch } };
     await logActivity(c, {
       action: "update",
@@ -628,10 +656,12 @@ async function serveObject(
 ): Promise<Response> {
   const ctx = c.get("ctx");
   const perm = skipPermissionFilter ? null : c.get("permission");
-  const key = physicalKey(tenantId, logicalKey);
   const t = filesTable(ctx.dialect);
 
-  const conds: SQL[] = [eq(t.key, key), eq(t.tenantId, tenantId)];
+  const conds: SQL[] = [
+    inArray(t.key, keyCandidates(tenantId, logicalKey)),
+    eq(t.tenantId, tenantId),
+  ];
   if (perm?.whereSql) conds.push(perm.whereSql);
   const rows = (await (ctx.db as any)
     .select()
@@ -640,6 +670,10 @@ async function serveObject(
     .limit(1)) as FileRow[];
   const row = rows[0];
   if (!row) throw new AppError("NOT_FOUND", "Object not found");
+  // Storage adapter operates on whatever key the row actually carries —
+  // legacy rows without the tenant prefix kept their R2/fs object at the
+  // un-prefixed location, so we must follow it.
+  const key = row.key;
 
   const parsed = parseTransform({
     width: c.req.query("width"),

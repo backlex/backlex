@@ -435,6 +435,75 @@ describe("saml: linkByVerifiedEmail behaviour", () => {
   });
 });
 
+describe("saml: parseMetadataXml handles XML namespace prefixes", () => {
+  let h: TestHarness;
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+  });
+
+  afterAll(() => {
+    h.cleanup();
+  });
+
+  const sampleCertBody =
+    "MIIC4jCCAcoCCQC33wnybT5QZDANBgkqhkiG9w0BAQsFADAyMQswCQYDVQQGEwJVSzEPMA0GA1UECgwGQm94eUhRMRIwEAYDVQQDDAlNb2NrIFNBTUwwIBcNMjIwMjI4MjE0NjM4WhgPMzAyMTA3MDEyMTQ2MzhaMDIxCzAJBgNVBAYTAlVLMQ8wDQYDVQQKDAZCb3h5SFExEjAQBgNVBAMMCU1vY2sgU0FNTA==";
+
+  test("md:/ds: prefixed metadata (mocksaml.com / Okta / Azure shape) parses", async () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<md:EntityDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://saml.example.com/entityid">
+  <md:IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <md:KeyDescriptor use="signing">
+      <ds:KeyInfo xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+        <ds:X509Data>
+          <ds:X509Certificate>${sampleCertBody}</ds:X509Certificate>
+        </ds:X509Data>
+      </ds:KeyInfo>
+    </md:KeyDescriptor>
+    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://mocksaml.com/api/saml/sso"/>
+    <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://mocksaml.com/api/saml/sso"/>
+  </md:IDPSSODescriptor>
+</md:EntityDescriptor>`;
+    const res = await h.fetch("/api/admin/saml/providers/import-metadata", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ metadataXml: xml }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { entityId: string; ssoUrl: string; idpCertPem: string } };
+    expect(body.data.entityId).toBe("https://saml.example.com/entityid");
+    expect(body.data.ssoUrl).toBe("https://mocksaml.com/api/saml/sso");
+    expect(body.data.idpCertPem).toContain("-----BEGIN CERTIFICATE-----");
+    expect(body.data.idpCertPem).toContain("-----END CERTIFICATE-----");
+  });
+
+  test("unprefixed metadata still parses (regression guard)", async () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://idp.example.org/entity">
+  <IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+    <KeyDescriptor use="signing">
+      <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <X509Data>
+          <X509Certificate>${sampleCertBody}</X509Certificate>
+        </X509Data>
+      </KeyInfo>
+    </KeyDescriptor>
+    <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://idp.example.org/sso"/>
+  </IDPSSODescriptor>
+</EntityDescriptor>`;
+    const res = await h.fetch("/api/admin/saml/providers/import-metadata", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ metadataXml: xml }),
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { entityId: string; ssoUrl: string } };
+    expect(body.data.entityId).toBe("https://idp.example.org/entity");
+    expect(body.data.ssoUrl).toBe("https://idp.example.org/sso");
+  });
+});
+
 describe("external-identities: lookup index is tenant-scoped", () => {
   let h: TestHarness;
   let kp: Keypair;

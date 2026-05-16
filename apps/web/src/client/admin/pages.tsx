@@ -2262,7 +2262,7 @@ function InviteUserDialog({ roles, onClose, onInvite }: { roles: string[]; onClo
           <div className="field">
             <label className="field-label">Sign-in method</label>
             <Select value={provider} onChange={setProvider}
-              options={[{ value: "password", label: "password", hint: "set on first login" }, { value: "magic", label: "magic link", hint: "email-only, no password" }, { value: "github", label: "github SSO", hint: "OAuth required" }, { value: "google", label: "google SSO", hint: "OAuth required" }, { value: "saml", label: "SAML SSO", hint: "configure providers under Authentication" }]} />
+              options={[{ value: "password", label: "password", hint: "set on first login" }, { value: "magic", label: "magic link", hint: "email-only, no password" }, { value: "github", label: "github SSO", hint: "OAuth required" }, { value: "google", label: "google SSO", hint: "OAuth required" }, { value: "saml", label: "SAML SSO", hint: "configure providers under Authentication" }, { value: "ldap", label: "LDAP / AD", hint: "configure directory under Authentication" }]} />
           </div>
         </div>
         <div className="sheet-footer">

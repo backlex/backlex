@@ -967,6 +967,57 @@ export const externalIdentities = pgTable(
 );
 
 /**
+ * Per-workspace LDAP / Active Directory configuration. Single row per
+ * workspace (PK = `tenant_id`); the `_global` sentinel works as the
+ * instance-wide fallback, same pattern as `email_config` / `auth_config`.
+ *
+ * `bind_password` and the optional `ca_pem` (custom TLS CA chain for self-
+ * signed LDAPS) live in `secrets` as `enc:v1:…` ciphertext — never returned in
+ * the clear. `tls_options` holds non-secret TLS knobs (`rejectUnauthorized`).
+ * `domain_match` is an optional email-domain allow-list applied BEFORE the
+ * LDAP roundtrip (saves the IdP query when the username clearly isn't ours).
+ */
+export const ldapConfigs = pgTable(
+  "ldap_configs",
+  {
+    /** Workspace id or the `_global` sentinel. */
+    tenantId: text("tenant_id").primaryKey(),
+    enabled: boolean("enabled").notNull().default(false),
+    /** e.g. `ldaps://dc1.corp.example:636`. */
+    url: text("url").notNull(),
+    bindDn: text("bind_dn").notNull(),
+    baseDn: text("base_dn").notNull(),
+    /** Substituted with the escaped username before search. */
+    userFilter: text("user_filter")
+      .notNull()
+      .default("(&(objectClass=person)(uid={{username}}))"),
+    /** Optional group-membership search filter (AD `memberOf` is read straight
+     *  off the user entry, so this is typically left null). */
+    groupFilter: text("group_filter"),
+    attributeMap: jsonb("attribute_map")
+      .$type<{ email: string; firstName: string; lastName: string; groups: string }>()
+      .notNull()
+      .default({ email: "mail", firstName: "givenName", lastName: "sn", groups: "memberOf" }),
+    defaultRoleId: text("default_role_id").references(() => roles.id, {
+      onDelete: "set null",
+    }),
+    /** `{ "<directory-group>": "<role-id>" }`. Reconciled on every login. */
+    groupsToRoles: jsonb("groups_to_roles").$type<Record<string, string>>(),
+    /** Non-secret TLS knobs. `caPem` lives in `secrets`. */
+    tlsOptions: jsonb("tls_options").$type<{ rejectUnauthorized?: boolean }>(),
+    /** `{ bindPassword: "enc:v1:…", caPem?: "enc:v1:…" }` (AES-256-GCM). */
+    secrets: jsonb("secrets").$type<Record<string, string>>().notNull().default({}),
+    /** Optional allow-list of email domains. When set, usernames that look like
+     *  emails must match before the LDAP roundtrip is attempted. */
+    domainMatch: jsonb("domain_match").$type<string[]>(),
+    /** Per-email rate limit. Failed bind attempts count too. */
+    rateLimitPerMinute: integer("rate_limit_per_minute").notNull().default(10),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("ldap_configs_tenant_idx").on(t.tenantId)],
+);
+
+/**
  * Per-workspace email transport. `tenant_id` is the workspace id, or the
  * `_global` sentinel for the instance-wide override row. `provider = "inherit"`
  * (or no usable config) falls through to the next level and ultimately to the

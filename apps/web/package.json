@@ -34,6 +34,7 @@
     "graphql": "^16.10.0",
     "graphql-yoga": "^5.10.4",
     "hono": "^4.6.12",
+    "ldapts": "^8.1.7",
     "lucide-react": "^1.14.0",
     "nodemailer": "^6.9.16",
     "react": "^19.0.0",

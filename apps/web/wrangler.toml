@@ -19,6 +19,12 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 APP_URL = "https://workeros-api.kinyasfurkan.workers.dev"
+# Public r2.dev origin for the `workeros-files` R2 bucket. Lets the storage
+# route ask Cloudflare Image Resizing to transform public files at the edge
+# (no bytes through the Worker isolate). Only used when the row's ACL is
+# `public` — private files stay behind the Worker. Enabled with:
+#   wrangler r2 bucket dev-url enable workeros-files
+R2_PUBLIC_BASE = "https://pub-608efd24875b4982a0592efb86a9b63c.r2.dev"
 # Comma-separated better-auth plugins enabled at boot. Mirrored in
 # packages/auth/src/client.ts (passkey + magic-link plugin clients).
 AUTH_PLUGINS = "passkey,magic-link,email-otp,anonymous"

@@ -14,13 +14,25 @@ interface StoredFolder {
   public: boolean;
 }
 
+interface FileMetadata {
+  name?: string;
+  description?: string;
+  tags?: string[];
+  author?: string;
+  location?: string;
+  [key: string]: unknown;
+}
+
 interface StoredFile {
   key: string;
   size: number;
   type: string;
   folder: string | null;
+  /** Persisted folder_id from the DB — drives the "Move to folder" select. */
+  folderId: string | null;
   updated: string;
   acl: "public" | "private";
+  metadata: FileMetadata | null;
   hue?: number;
   w?: number;
   h?: number;
@@ -65,8 +77,10 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
               size: file.size ?? 0,
               type: file.contentType ?? "application/octet-stream",
               folder: file.folderId ?? null,
-              updated: file.createdAt ? String(file.createdAt).slice(0, 10) : "—",
+              folderId: file.folderId ?? null,
+              updated: file.uploadedAt ? String(file.uploadedAt).slice(0, 10) : "—",
               acl: (file.acl as "public" | "private") ?? "private",
+              metadata: file.metadata ?? null,
             })),
           );
         }
@@ -160,7 +174,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         if (u.progress >= 100) return u;
         const next = Math.min(100, u.progress + 8 + Math.random() * 18);
         if (next >= 100) {
-          setFiles((fs) => [{ key: `${folder || "uploads"}/${u.name}`, size: u.size, type: u.type, folder: folder || "uploads", updated: "just now", acl: "private", hue: Math.floor(Math.random() * 360), w: 1600, h: 900 }, ...fs]);
+          setFiles((fs) => [{ key: `${folder || "uploads"}/${u.name}`, size: u.size, type: u.type, folder: folder || "uploads", folderId: null, updated: "just now", acl: "private", metadata: null, hue: Math.floor(Math.random() * 360), w: 1600, h: 900 }, ...fs]);
           return { ...u, progress: 100, status: "done" };
         }
         return { ...u, progress: next };
@@ -199,7 +213,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
             arr.map((u) => (u.id === job.id ? { ...u, progress: 100, status: "done" } : u)),
           );
           setFiles((fs) => [
-            { key, size: f.size, type: f.type || "application/octet-stream", folder: target, updated: "just now", acl: "private" },
+            { key, size: f.size, type: f.type || "application/octet-stream", folder: target, folderId: null, updated: "just now", acl: "private", metadata: null },
             ...fs,
           ]);
         })
@@ -264,6 +278,54 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
       // revert on failure
       setFiles((arr) => arr.map((f) => f.key === key ? { ...f, acl: next === "public" ? "private" : "public" } : f));
       pushToast((e as Error).message);
+    }
+  };
+
+  /**
+   * Generic patch helper used by the edit modal for metadata + folder moves.
+   * Optimistic — applies `next` to local state immediately and reverts on
+   * server failure. Metadata is sent as a merge patch (server merges per
+   * key), so callers pass only the keys they want to change.
+   */
+  const patchFile = async (
+    key: string,
+    next: { folderId?: string | null; metadata?: FileMetadata | null },
+  ): Promise<boolean> => {
+    const prev = files.find((x) => x.key === key);
+    if (!prev) return false;
+    setFiles((arr) =>
+      arr.map((f) => {
+        if (f.key !== key) return f;
+        const updated: StoredFile = { ...f };
+        if (next.folderId !== undefined) {
+          updated.folderId = next.folderId;
+          updated.folder = next.folderId;
+        }
+        if (next.metadata !== undefined) {
+          if (next.metadata === null) updated.metadata = null;
+          else {
+            const merged: FileMetadata = { ...(f.metadata ?? {}) };
+            for (const [k, v] of Object.entries(next.metadata)) {
+              if (v === null) delete merged[k];
+              else merged[k] = v as unknown;
+            }
+            updated.metadata = Object.keys(merged).length ? merged : null;
+          }
+        }
+        return updated;
+      }),
+    );
+    try {
+      await api(`/api/storage/${encodeURIComponent(key)}`, {
+        method: "PATCH",
+        body: JSON.stringify(next),
+      });
+      return true;
+    } catch (e) {
+      // revert
+      setFiles((arr) => arr.map((f) => (f.key === key ? prev : f)));
+      pushToast((e as Error).message);
+      return false;
     }
   };
 
@@ -491,6 +553,8 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
           w={w} setW={setW} h={h} setH={setH} q={q} setQ={setQ} fmt={fmt} setFmt={setFmt}
           fit={fit} setFit={setFit}
           focal={focal} setFocal={setFocal}
+          folders={folders}
+          onPatch={(next) => patchFile(selected.key, next)}
           onToggleACL={() => toggleACL(selected.key)}
           onDelete={() => deleteFile(selected.key)}
           onCopy={(text: string) => { navigator.clipboard?.writeText(text); pushToast("Copied to clipboard."); }}
@@ -645,7 +709,67 @@ function FileDetailModal({ f, onClose, ...rest }: any) {
   );
 }
 
-function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFmt, fit, setFit, focal, setFocal, onToggleACL, onDelete, onCopy, pushToast, embedded }: any) {
+function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFmt, fit, setFit, focal, setFocal, folders, onPatch, onToggleACL, onDelete, onCopy, pushToast, embedded }: any) {
+  const fileMeta: FileMetadata = (f.metadata as FileMetadata | null) ?? {};
+  // Local edit buffer for the metadata section — flushed to the server via
+  // onPatch when the user clicks Save. Re-syncs whenever the underlying
+  // file changes (e.g. after a server-confirmed merge).
+  const [metaName, setMetaName] = useState<string>(fileMeta.name ?? "");
+  const [metaDescription, setMetaDescription] = useState<string>(fileMeta.description ?? "");
+  const [metaTags, setMetaTags] = useState<string[]>(fileMeta.tags ?? []);
+  const [metaTagDraft, setMetaTagDraft] = useState<string>("");
+  const [metaAuthor, setMetaAuthor] = useState<string>(fileMeta.author ?? "");
+  const [metaLocation, setMetaLocation] = useState<string>(fileMeta.location ?? "");
+  const [metaSaving, setMetaSaving] = useState<boolean>(false);
+  useEffect(() => {
+    setMetaName(fileMeta.name ?? "");
+    setMetaDescription(fileMeta.description ?? "");
+    setMetaTags(fileMeta.tags ?? []);
+    setMetaTagDraft("");
+    setMetaAuthor(fileMeta.author ?? "");
+    setMetaLocation(fileMeta.location ?? "");
+    // f.key is the row identity; we only resync when the *file* changes,
+    // not on every metadata update from the optimistic patch (otherwise
+    // typing into the description would get wiped by our own save).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [f.key]);
+  const metaDirty =
+    (fileMeta.name ?? "") !== metaName ||
+    (fileMeta.description ?? "") !== metaDescription ||
+    JSON.stringify(fileMeta.tags ?? []) !== JSON.stringify(metaTags) ||
+    (fileMeta.author ?? "") !== metaAuthor ||
+    (fileMeta.location ?? "") !== metaLocation;
+
+  const saveMeta = async () => {
+    if (!onPatch || metaSaving) return;
+    setMetaSaving(true);
+    // null sentinel = remove the key on the server; empty string also clears.
+    const patch: Record<string, unknown> = {
+      name: metaName.trim() || null,
+      description: metaDescription.trim() || null,
+      tags: metaTags.length ? metaTags : null,
+      author: metaAuthor.trim() || null,
+      location: metaLocation.trim() || null,
+    };
+    const ok = await onPatch({ metadata: patch });
+    setMetaSaving(false);
+    if (ok) pushToast?.("Metadata saved.");
+  };
+
+  const commitTagDraft = () => {
+    const v = metaTagDraft.trim();
+    if (!v) return;
+    if (metaTags.includes(v)) { setMetaTagDraft(""); return; }
+    setMetaTags([...metaTags, v]);
+    setMetaTagDraft("");
+  };
+
+  const moveToFolder = async (folderId: string | null) => {
+    if (!onPatch) return;
+    const ok = await onPatch({ folderId });
+    if (ok) pushToast?.(folderId ? "Moved." : "Moved to root.");
+  };
+
   const url = `/api/storage/${encodeURI(f.key)}`;
   const params = isImage
     ? `?width=${w}${h != null ? `&height=${h}` : ""}&format=${fmt}&quality=${q}&fit=${fit}&focal=${focal.x},${focal.y}`
@@ -839,6 +963,134 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
             <div className="field-hint">{f.acl === "public" ? "Anyone with the URL can fetch this file." : "Requires a signed URL or auth cookie."}</div>
           </div>
           <Switch checked={f.acl === "public"} onChange={onToggleACL} />
+        </div>
+
+        {/* Folder — DB-only move; key on disk is unchanged. */}
+        <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+          <label className="field-label">
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <I.Folder size={12} /> Folder
+            </span>
+          </label>
+          <select
+            value={f.folderId ?? ""}
+            onChange={(e) => moveToFolder(e.target.value || null)}
+            className="font-mono"
+            style={{ width: "100%", height: 32, padding: "0 8px", fontSize: 12, borderRadius: "var(--radius-md)", background: "var(--card)", color: "var(--foreground)", border: "1px solid var(--border)" }}
+          >
+            <option value="">— None (root) —</option>
+            {(folders ?? []).map((fl: { id: string; name: string }) => (
+              <option key={fl.id} value={fl.id}>{fl.name}</option>
+            ))}
+          </select>
+          <span className="field-hint">Logical grouping in the DB. The object's storage key doesn't change.</span>
+        </div>
+
+        {/* Metadata — free-form bag stored in files.metadata jsonb. */}
+        <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <I.Hash size={13} />
+            <span style={{ fontSize: 12, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>Metadata</span>
+            <div className="spacer" />
+            {metaDirty && <Badge variant="outline" mono>unsaved</Badge>}
+          </div>
+
+          <div className="field" style={{ marginTop: 0 }}>
+            <label className="field-label">Name</label>
+            <Input
+              value={metaName}
+              onChange={(e) => setMetaName(e.target.value)}
+              placeholder={f.key.split("/").pop()}
+            />
+            <span className="field-hint">Display label. The storage key stays <span className="font-mono">{f.key}</span>.</span>
+          </div>
+
+          <div className="field" style={{ marginTop: 0 }}>
+            <label className="field-label">Description</label>
+            <textarea
+              value={metaDescription}
+              onChange={(e) => setMetaDescription(e.target.value)}
+              placeholder="What this file is about…"
+              rows={3}
+              style={{ width: "100%", padding: "8px 10px", fontSize: 12.5, lineHeight: 1.5, borderRadius: "var(--radius-md)", background: "var(--card)", color: "var(--foreground)", border: "1px solid var(--border)", resize: "vertical", fontFamily: "inherit" }}
+            />
+          </div>
+
+          <div className="field" style={{ marginTop: 0 }}>
+            <label className="field-label">Tags</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6 }}>
+              {metaTags.map((tag) => (
+                <span key={tag} className="chip" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <span className="font-mono">{tag}</span>
+                  <button
+                    type="button"
+                    onClick={() => setMetaTags(metaTags.filter((t) => t !== tag))}
+                    style={{ background: "none", border: 0, padding: 0, cursor: "pointer", color: "var(--muted-foreground)", lineHeight: 1 }}
+                    title="Remove tag"
+                  >
+                    <I.X size={10} />
+                  </button>
+                </span>
+              ))}
+              {metaTags.length === 0 && <span className="muted" style={{ fontSize: 11.5 }}>No tags yet.</span>}
+            </div>
+            <Input
+              value={metaTagDraft}
+              onChange={(e) => setMetaTagDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === ",") { e.preventDefault(); commitTagDraft(); }
+                if (e.key === "Backspace" && metaTagDraft === "" && metaTags.length > 0) {
+                  setMetaTags(metaTags.slice(0, -1));
+                }
+              }}
+              onBlur={commitTagDraft}
+              placeholder="Add a tag and press Enter…"
+            />
+          </div>
+
+          <div className="field" style={{ marginTop: 0 }}>
+            <label className="field-label">Author</label>
+            <Input
+              value={metaAuthor}
+              onChange={(e) => setMetaAuthor(e.target.value)}
+              placeholder="Photographer, designer, source…"
+            />
+          </div>
+
+          <div className="field" style={{ marginTop: 0 }}>
+            <label className="field-label">Location</label>
+            <Input
+              value={metaLocation}
+              onChange={(e) => setMetaLocation(e.target.value)}
+              placeholder="Istanbul, Turkey"
+            />
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setMetaName(fileMeta.name ?? "");
+                setMetaDescription(fileMeta.description ?? "");
+                setMetaTags(fileMeta.tags ?? []);
+                setMetaTagDraft("");
+                setMetaAuthor(fileMeta.author ?? "");
+                setMetaLocation(fileMeta.location ?? "");
+              }}
+              disabled={!metaDirty || metaSaving}
+            >
+              Discard
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={saveMeta}
+              disabled={!metaDirty || metaSaving}
+            >
+              {metaSaving ? "Saving…" : "Save metadata"}
+            </Button>
+          </div>
         </div>
 
         {isImage && (

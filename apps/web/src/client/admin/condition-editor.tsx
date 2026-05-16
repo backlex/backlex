@@ -1,6 +1,7 @@
 // @ts-nocheck
 // Directus-parity permission editor.
 import { useEffect, useMemo, useState } from "react";
+import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "./icons";
 import { Badge, Button } from "./ui";
 import { api } from "@/lib/api";
@@ -386,8 +387,8 @@ export function ConditionEditor({ roles, pushToast }: ConditionEditorProps) {
               <RuleBuilder tree={tree} onChange={setTreeDirty} fields={fields} />
             ) : (
               <div className="field" style={{ marginTop: 0 }}>
-                <textarea
-                  className="input font-mono"
+                <Textarea
+                  className="font-mono"
                   style={{ minHeight: 180, padding: 12, lineHeight: 1.5, fontSize: 12.5, resize: "vertical" }}
                   value={jsonDraft}
                   onChange={(e) => { setJsonDraft(e.target.value); }}
@@ -495,8 +496,8 @@ export function ConditionEditor({ roles, pushToast }: ConditionEditorProps) {
         {tab === "item" && (
           <div className="field">
             <label className="field-label">Test against an item</label>
-            <textarea
-              className="input font-mono"
+            <Textarea
+              className="font-mono"
               style={{ minHeight: 90, padding: 12, lineHeight: 1.5, fontSize: 12, resize: "vertical" }}
               value={testItem}
               onChange={(e) => { setTestItem(e.target.value); setTestResult(null); }}

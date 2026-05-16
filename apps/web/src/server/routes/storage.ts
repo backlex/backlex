@@ -44,6 +44,51 @@ const guardLogicalKey = (key: string) => {
 const filesTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.files : sqlite.schema.files;
 
+const foldersTable = (dialect: "pg" | "sqlite") =>
+  dialect === "pg" ? pg.schema.folders : sqlite.schema.folders;
+
+/**
+ * Look up the folder whose name matches `name` for this tenant; create one
+ * if it doesn't exist. Migration-friendly: lets an upload at
+ * `photos/2024/spring/beach.jpg` auto-organize into a folder named
+ * `photos/2024/spring` without the client pre-creating it.
+ *
+ * Uniqueness on `(tenant_id, name)` isn't enforced at the DB level yet, so
+ * two parallel uploads racing on the same path may briefly insert dupes —
+ * acceptable v1 trade-off; both rows still resolve to a valid folder.
+ */
+async function findOrCreateFolderByName(
+  ctx: { db: unknown; dialect: "pg" | "sqlite" },
+  tenantId: string,
+  name: string,
+  ownerId: string | null,
+): Promise<string> {
+  const t = foldersTable(ctx.dialect);
+  const existing = (await (ctx.db as any)
+    .select({ id: t.id })
+    .from(t)
+    .where(and(eq(t.tenantId, tenantId), eq(t.name, name)))
+    .limit(1)) as { id: string }[];
+  if (existing[0]) return existing[0].id;
+  const id = crypto.randomUUID();
+  await (ctx.db as any).insert(t).values({
+    id,
+    name,
+    parentId: null,
+    ownerId,
+    tenantId,
+  });
+  return id;
+}
+
+/** Derive a folder-name path from a logical key. Returns null for files at
+ *  the root (no "/" before the file name). */
+function folderNameFromKey(logicalKey: string): string | null {
+  const lastSlash = logicalKey.lastIndexOf("/");
+  if (lastSlash <= 0) return null;
+  return logicalKey.slice(0, lastSlash);
+}
+
 const filesCollection = () => FILES_COLLECTION;
 
 interface FileRow {
@@ -281,7 +326,22 @@ export const storageRoutes = new Hono<AppBindings>()
     guardLogicalKey(logicalKey);
     const key = physicalKey(tenantId, logicalKey);
     const contentType = c.req.header("content-type") ?? undefined;
-    const folderId = c.req.query("folderId") ?? null;
+    // Auto-derive folder from the key path so an upload at
+    // `photos/2024/spring/beach.jpg` lands in the matching folder row
+    // (created on the fly when missing). An explicit `?folderId=` always
+    // wins; `?folderId=__root__` opts out of auto-derive and forces null.
+    const folderIdQuery = c.req.query("folderId") ?? null;
+    let folderId: string | null;
+    if (folderIdQuery === "__root__") {
+      folderId = null;
+    } else if (folderIdQuery) {
+      folderId = folderIdQuery;
+    } else {
+      const inferredName = folderNameFromKey(logicalKey);
+      folderId = inferredName
+        ? await findOrCreateFolderByName(ctx, tenantId, inferredName, auth.userId)
+        : null;
+    }
     const body = c.req.raw.body;
     if (!body) throw new AppError("BAD_REQUEST", "Empty body");
     const obj = await ctx.storage.put({ key, body, contentType });

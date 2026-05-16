@@ -169,12 +169,49 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
     });
   };
 
+  // folder_id (UUID) → folder.name lookup. files.folderId is a UUID; the
+  // sidebar tree is built from folder *names* (split on "/"). Both sides
+  // need to talk through this map.
+  const folderNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const fl of folders) m.set(fl.id, fl.name);
+    return m;
+  }, [folders]);
+
+  /** Resolve a file's folder name path (or null when it has no folder). */
+  const fileFolderName = (f: StoredFile): string | null => {
+    if (!f.folderId) return null;
+    return folderNameById.get(f.folderId) ?? null;
+  };
+
   const visible = useMemo(() => files.filter((f) => {
-    const folderMatch = folder == null
-      ? true
-      : (f.folder === folder || (f.folder && f.folder.startsWith(folder + "/")));
+    const folderName = fileFolderName(f);
+    const folderMatch =
+      folder == null
+        ? true
+        : folderName === folder ||
+          (folderName !== null && folderName.startsWith(folder + "/"));
     return folderMatch && (!search || f.key.toLowerCase().includes(search.toLowerCase()));
-  }), [files, folder, search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [files, folder, search, folderNameById]);
+
+  /** Per-folder-path counts derived from the files array — keeps the
+   *  sidebar badge live as files move in/out. A file under "marketing/q1"
+   *  counts toward both "marketing/q1" and "marketing" (descendant rollup). */
+  const folderCountByPath = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const f of files) {
+      const name = fileFolderName(f);
+      if (!name) continue;
+      const parts = name.split("/");
+      for (let i = 0; i < parts.length; i++) {
+        const p = parts.slice(0, i + 1).join("/");
+        counts.set(p, (counts.get(p) ?? 0) + 1);
+      }
+    }
+    return counts;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files, folderNameById]);
 
   const selected = files.find((f) => f.key === selectedKey) || null;
   const fmtSize = (b: number) => b > 1024 * 1024 ? (b / 1024 / 1024).toFixed(1) + " MB" : (b / 1024).toFixed(1) + " KB";
@@ -499,7 +536,9 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                     <I.Folder size={12} />
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{node.name}</span>
                     {node.folder?.public && <span style={{ width: 5, height: 5, borderRadius: 999, background: "oklch(0.7 0.18 145)", flexShrink: 0 }} title="public" />}
-                    <span className="muted tabular-nums" style={{ marginLeft: "auto", fontSize: 11 }}>{node.folder?.count ?? 0}</span>
+                    <span className="muted tabular-nums" style={{ marginLeft: "auto", fontSize: 11 }}>
+                      {folderCountByPath.get(node.path) ?? 0}
+                    </span>
                   </button>
                 </div>
               );

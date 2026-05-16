@@ -1,5 +1,7 @@
 // @ts-nocheck
 import { useEffect, useRef, useState } from "react";
+import { Input } from "@workeros/ui/components/input";
+import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "../icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
@@ -343,8 +345,7 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
           </div>
           <div className="field">
             <label className="field-label">Allowed redirect URLs</label>
-            <textarea
-              className="input"
+            <Textarea
               rows={3}
               value={redirectText}
               onChange={(e) => setRedirectText(e.target.value)}
@@ -636,25 +637,25 @@ function ProviderConfigDialog({ provider, kind, onClose, onSave }: {
           {kind === "custom" && (
             <div className="field">
               <label className="field-label">Display name</label>
-              <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme SSO" />
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme SSO" />
             </div>
           )}
           {(kind === "oauth" || kind === "custom") && (
             <div className="field">
               <label className="field-label">Client ID</label>
-              <input className="input font-mono" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="123456789-abc.apps.example.com" />
+              <Input className="font-mono" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="123456789-abc.apps.example.com" />
             </div>
           )}
           {(kind === "oauth" || kind === "custom") && (
             <div className="field">
               <label className="field-label">Client secret {provider.hasSecret && <span className="muted">· stored, leave blank to keep</span>}</label>
-              <input type="password" className="input font-mono" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} placeholder={provider.hasSecret ? "••••••••••••••••" : "paste from the provider"} autoComplete="new-password" />
+              <Input type="password" className="font-mono" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} placeholder={provider.hasSecret ? "••••••••••••••••" : "paste from the provider"} autoComplete="new-password" />
             </div>
           )}
           {kind === "custom" && (
             <div className="field">
               <label className="field-label">Discovery URL <span className="muted">(optional)</span></label>
-              <input className="input font-mono" value={discoveryUrl} onChange={(e) => setDiscoveryUrl(e.target.value)} placeholder="https://issuer.example.com/.well-known/openid-configuration" />
+              <Input className="font-mono" value={discoveryUrl} onChange={(e) => setDiscoveryUrl(e.target.value)} placeholder="https://issuer.example.com/.well-known/openid-configuration" />
               {discoveryBad && <span className="field-hint" style={{ color: "var(--destructive)" }}>Must be a full http(s) URL.</span>}
             </div>
           )}
@@ -722,7 +723,7 @@ function AddProviderDialog({ existingIds, onClose, onAdd }: {
         <div className="dialog-body">
           <div className="field">
             <label className="field-label">Display name</label>
-            <input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme SSO" />
+            <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme SSO" />
             <span className="field-hint font-mono" style={{ fontSize: 11 }}>
               id: <span style={{ color: idTaken ? "var(--destructive)" : "var(--foreground)" }}>{slug || "—"}</span>
               {idTaken && <span style={{ color: "var(--destructive)" }}> · already exists</span>}
@@ -730,11 +731,11 @@ function AddProviderDialog({ existingIds, onClose, onAdd }: {
           </div>
           <div className="field">
             <label className="field-label">Client ID <span className="muted">(optional)</span></label>
-            <input className="input font-mono" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="abc123" />
+            <Input className="font-mono" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="abc123" />
           </div>
           <div className="field">
             <label className="field-label">Discovery URL <span className="muted">(optional)</span></label>
-            <input className="input font-mono" value={discoveryUrl} onChange={(e) => setDiscoveryUrl(e.target.value)} placeholder="https://issuer.example.com/.well-known/openid-configuration" />
+            <Input className="font-mono" value={discoveryUrl} onChange={(e) => setDiscoveryUrl(e.target.value)} placeholder="https://issuer.example.com/.well-known/openid-configuration" />
             {discoveryBad && <span className="field-hint" style={{ color: "var(--destructive)" }}>Must be a full http(s) URL.</span>}
           </div>
           <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.5 }}>

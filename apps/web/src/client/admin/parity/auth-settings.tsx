@@ -15,6 +15,7 @@ import {
 } from "../api";
 import { apiOrigin, copyText, fmtRelative } from "./_shared";
 import { SamlProviderDialog } from "./saml-provider-dialog";
+import { LdapConfigCard } from "./ldap-config-card";
 
 type AuthProviderRow = {
   id: string;
@@ -427,6 +428,8 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
           </div>
         ))}
       </div>
+
+      <LdapConfigCard availableRoles={availableRoles} pushToast={pushToast} />
 
       {(() => {
         const slug = workspace?.slug ?? "<workspace>";

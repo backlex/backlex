@@ -3,6 +3,8 @@
 // template), toggle owner-scope, and a destructive zone to drop the whole
 // collection. Mounted as the 4th tab next to Items / Schema / Permissions.
 import { useEffect, useState } from "react";
+import { Input } from "@workeros/ui/components/input";
+import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "./icons";
 import { Button, Switch } from "./ui";
 
@@ -102,23 +104,22 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
           </div>
           <div className="field">
             <label className="field-label">Singular</label>
-            <input className="input" value={singular} onChange={(e) => setSingular(e.target.value)} placeholder="post" />
+            <Input value={singular} onChange={(e) => setSingular(e.target.value)} placeholder="post" />
             <span className="field-hint">"New post" buttons, etc. Falls back to the slug.</span>
           </div>
           <div className="field">
             <label className="field-label">Plural</label>
-            <input className="input" value={plural} onChange={(e) => setPlural(e.target.value)} placeholder="posts" />
+            <Input value={plural} onChange={(e) => setPlural(e.target.value)} placeholder="posts" />
             <span className="field-hint">Page titles, badges. Falls back to the slug.</span>
           </div>
           <div className="field" style={{ gridColumn: "1 / -1" }}>
             <label className="field-label">Display template</label>
-            <input className="input font-mono" value={displayTemplate} onChange={(e) => setDisplayTemplate(e.target.value)} placeholder="{{ title }} — {{ status }}" />
+            <Input className="font-mono" value={displayTemplate} onChange={(e) => setDisplayTemplate(e.target.value)} placeholder="{{ title }} — {{ status }}" />
             <span className="field-hint">Mustache-style template for row display in pickers and references.</span>
           </div>
           <div className="field" style={{ gridColumn: "1 / -1" }}>
             <label className="field-label">Note</label>
-            <textarea
-              className="textarea"
+            <Textarea
               rows={3}
               value={note}
               onChange={(e) => setNote(e.target.value)}

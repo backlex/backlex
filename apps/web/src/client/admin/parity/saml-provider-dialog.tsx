@@ -18,6 +18,8 @@
  * `@/admin/ui` (the local re-export of @workeros/ui).
  */
 import { useEffect, useMemo, useState } from "react";
+import { Input } from "@workeros/ui/components/input";
+import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "../icons";
 import { Badge, Button, IconButton, Switch } from "../ui";
 import { Select } from "../select";
@@ -360,8 +362,7 @@ export function SamlProviderDialog({
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div className="field">
                 <label className="field-label">Metadata XML</label>
-                <textarea
-                  className="input"
+                <Textarea
                   rows={6}
                   value={importXml}
                   onChange={(e) => setImportXml(e.target.value)}
@@ -372,8 +373,8 @@ export function SamlProviderDialog({
               <div className="muted" style={{ fontSize: 11.5 }}>or</div>
               <div className="field">
                 <label className="field-label">Metadata URL</label>
-                <input
-                  className="input font-mono"
+                <Input
+                  className="font-mono"
                   value={importUrl}
                   onChange={(e) => setImportUrl(e.target.value)}
                   placeholder="https://idp.example/saml/metadata"
@@ -396,8 +397,7 @@ export function SamlProviderDialog({
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div className="field">
                 <label className="field-label">Display name</label>
-                <input
-                  className="input"
+                <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Acme Okta"
@@ -406,8 +406,8 @@ export function SamlProviderDialog({
               </div>
               <div className="field">
                 <label className="field-label">Slug</label>
-                <input
-                  className="input font-mono"
+                <Input
+                  className="font-mono"
                   value={slug || effectiveSlug}
                   onChange={(e) => setSlug(e.target.value)}
                   placeholder="okta"
@@ -416,8 +416,8 @@ export function SamlProviderDialog({
               </div>
               <div className="field">
                 <label className="field-label">IdP entity ID (Issuer)</label>
-                <input
-                  className="input font-mono"
+                <Input
+                  className="font-mono"
                   value={entityId}
                   onChange={(e) => setEntityId(e.target.value)}
                   placeholder="https://idp.example.com/saml"
@@ -425,8 +425,8 @@ export function SamlProviderDialog({
               </div>
               <div className="field">
                 <label className="field-label">IdP SSO URL</label>
-                <input
-                  className="input font-mono"
+                <Input
+                  className="font-mono"
                   value={ssoUrl}
                   onChange={(e) => setSsoUrl(e.target.value)}
                   placeholder="https://idp.example.com/saml/sso"
@@ -434,8 +434,8 @@ export function SamlProviderDialog({
               </div>
               <div className="field">
                 <label className="field-label">IdP SLO URL <span className="muted">(optional)</span></label>
-                <input
-                  className="input font-mono"
+                <Input
+                  className="font-mono"
                   value={sloUrl}
                   onChange={(e) => setSloUrl(e.target.value)}
                   placeholder="https://idp.example.com/saml/slo"
@@ -445,8 +445,7 @@ export function SamlProviderDialog({
                 <label className="field-label">
                   IdP signing cert (PEM) {existing && existing.idpCertSet && <Badge variant="secondary">already set</Badge>}
                 </label>
-                <textarea
-                  className="input"
+                <Textarea
                   rows={6}
                   value={idpCertPem}
                   onChange={(e) => setIdpCertPem(e.target.value)}
@@ -459,8 +458,8 @@ export function SamlProviderDialog({
               </div>
               <div className="field">
                 <label className="field-label">SP entity ID</label>
-                <input
-                  className="input font-mono"
+                <Input
+                  className="font-mono"
                   value={spEntityId}
                   onChange={(e) => setSpEntityId(e.target.value)}
                 />
@@ -469,8 +468,8 @@ export function SamlProviderDialog({
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
                 <div className="field">
                   <label className="field-label">Email attribute</label>
-                  <input
-                    className="input font-mono"
+                  <Input
+                    className="font-mono"
                     value={attrMap.email ?? ""}
                     onChange={(e) => setAttrMap({ ...attrMap, email: e.target.value })}
                     placeholder="email"
@@ -478,8 +477,8 @@ export function SamlProviderDialog({
                 </div>
                 <div className="field">
                   <label className="field-label">First name</label>
-                  <input
-                    className="input font-mono"
+                  <Input
+                    className="font-mono"
                     value={attrMap.firstName ?? ""}
                     onChange={(e) => setAttrMap({ ...attrMap, firstName: e.target.value })}
                     placeholder="firstName"
@@ -487,8 +486,8 @@ export function SamlProviderDialog({
                 </div>
                 <div className="field">
                   <label className="field-label">Last name</label>
-                  <input
-                    className="input font-mono"
+                  <Input
+                    className="font-mono"
                     value={attrMap.lastName ?? ""}
                     onChange={(e) => setAttrMap({ ...attrMap, lastName: e.target.value })}
                     placeholder="lastName"
@@ -496,8 +495,8 @@ export function SamlProviderDialog({
                 </div>
                 <div className="field">
                   <label className="field-label">Groups</label>
-                  <input
-                    className="input font-mono"
+                  <Input
+                    className="font-mono"
                     value={attrMap.groups ?? ""}
                     onChange={(e) => setAttrMap({ ...attrMap, groups: e.target.value })}
                     placeholder="groups"
@@ -564,8 +563,7 @@ export function SamlProviderDialog({
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div className="field">
                 <label className="field-label">Paste a base64 SAMLResponse</label>
-                <textarea
-                  className="input"
+                <Textarea
                   rows={6}
                   value={testInput}
                   onChange={(e) => setTestInput(e.target.value)}

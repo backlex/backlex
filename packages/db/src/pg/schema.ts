@@ -858,6 +858,115 @@ export const authConfig = pgTable(
 );
 
 /**
+ * Per-workspace SAML 2.0 IdP configuration. One row per IdP (`tenant_id`,
+ * `slug`) — a workspace can wire multiple IdPs (e.g. corporate Okta + a
+ * partner ADFS). `idp_cert_pem` is stored as an `enc:v1:…` ciphertext
+ * (AES-256-GCM via lib/crypto). The route layer assigns the
+ * SP entity id (`sp_entity_id`) — typically the metadata URL — and the
+ * ACS URL is derived from `tenant.slug + slug` at request time.
+ *
+ * `attribute_map` maps assertion attribute names → workeros user fields
+ * (`email`, `firstName`, `lastName`, `groups`).
+ *
+ * `groups_to_roles` is reserved for v2 — a mapping from IdP group string
+ * to `roles.id` so SAML-assigned roles can be reconciled on every login.
+ */
+export const samlProviders = pgTable(
+  "saml_providers",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** URL-safe handle, scoped within the tenant. Used in `/auth/saml/<slug>/...`. */
+    slug: text("slug").notNull(),
+    /** Vendor template — drives default attribute maps in the admin UI. */
+    idpTemplate: text("idp_template"),
+    entityId: text("entity_id").notNull(),
+    ssoUrl: text("sso_url").notNull(),
+    sloUrl: text("slo_url"),
+    /** AES-256-GCM ciphertext of the IdP signing cert PEM. */
+    idpCertPem: text("idp_cert_pem").notNull(),
+    spEntityId: text("sp_entity_id").notNull(),
+    attributeMap: jsonb("attribute_map")
+      .$type<Record<string, string>>()
+      .notNull()
+      .default({}),
+    defaultRoleId: text("default_role_id").references(() => roles.id, {
+      onDelete: "set null",
+    }),
+    /** Reserved for v2: { "<idp-group>": "<role-id>" }. */
+    groupsToRoles: jsonb("groups_to_roles").$type<Record<string, string>>(),
+    signatureAlgorithm: text("signature_algorithm").notNull().default("sha256"),
+    wantSignedAssertions: boolean("want_signed_assertions").notNull().default(true),
+    /** When true, an existing `app_users` row matching the IdP-asserted email
+     *  is reused instead of provisioning a new account. Off by default for
+     *  security (see provisionAppUser). */
+    linkByVerifiedEmail: boolean("link_by_verified_email").notNull().default(false),
+    nameIdFormat: text("name_id_format").notNull().default("emailAddress"),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("saml_providers_tenant_slug_idx").on(t.tenantId, t.slug),
+    index("saml_providers_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
+ * Federated identity link between a workspace user (or platform user) and an
+ * external IdP. `plane` decides which pool `user_id` references:
+ *   - `platform` → `users.id` (the admin app's identity pool)
+ *   - `app`      → `app_users.id` (the workspace's end-user pool)
+ *
+ * No FK on `user_id` — the referent table depends on `plane`, mirroring the
+ * `tenant_members.user_id` pattern. Lookups go through the
+ * `(tenant_id, provider_type, provider_id, subject)` unique index.
+ *
+ * Rows are kept after a provider is deleted as an audit trail; the resolver
+ * skips orphaned rows because the provider lookup fails first.
+ */
+export const externalIdentities = pgTable(
+  "external_identities",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    /** platform | app — which user pool `user_id` points at. */
+    plane: text("plane").notNull(),
+    userId: text("user_id").notNull(),
+    /** saml | ldap. */
+    providerType: text("provider_type").notNull(),
+    /** For SAML: `saml_providers.id`. For LDAP: the literal `"ldap"`. */
+    providerId: text("provider_id").notNull(),
+    /** SAML NameID or LDAP DN — the IdP's stable identifier for the subject. */
+    subject: text("subject").notNull(),
+    emailAtProvision: text("email_at_provision"),
+    /** Snapshot of the role set last assigned via the IdP's groups for this
+     *  subject. The provisioner diffs against the new SSO group set on each
+     *  login and patches roles accordingly. */
+    rolesFromGroups: jsonb("roles_from_groups").$type<string[]>(),
+    lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+    lastLoginIp: text("last_login_ip"),
+    /** SAML AuthnContextClassRef (or LDAP bind class). */
+    lastAuthnContext: text("last_authn_context"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("external_identities_lookup_idx").on(
+      t.tenantId,
+      t.providerType,
+      t.providerId,
+      t.subject,
+    ),
+    index("external_identities_user_idx").on(t.plane, t.userId),
+  ],
+);
+
+/**
  * Per-workspace email transport. `tenant_id` is the workspace id, or the
  * `_global` sentinel for the instance-wide override row. `provider = "inherit"`
  * (or no usable config) falls through to the next level and ultimately to the

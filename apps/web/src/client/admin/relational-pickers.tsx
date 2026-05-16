@@ -56,9 +56,15 @@ function sanitizeFileName(raw: string): string {
   return trimmed || `upload-${Date.now()}`;
 }
 
+// Renders an inline preview for a storage key. Optimistically tries to load
+// the file as an image — if the request 404s or the browser can't decode it,
+// we swap to a folder icon. This way non-image keys without a file extension
+// (e.g. `branding/logo`) still get a chance to preview instead of always
+// falling back to the icon.
 function FileThumb({ k, contentType, size = 28 }: { k: string; contentType?: string; size?: number }) {
-  const isImg = (contentType ?? "").startsWith("image/")
-    || /\.(png|jpe?g|gif|webp|avif|svg)$/i.test(k);
+  const [errored, setErrored] = useState(false);
+  const knownNonImage = (contentType ?? "").length > 0 && !contentType!.startsWith("image/");
+  const showImage = !errored && !knownNonImage;
   return (
     <span
       style={{
@@ -67,13 +73,13 @@ function FileThumb({ k, contentType, size = 28 }: { k: string; contentType?: str
         display: "grid", placeItems: "center", color: "var(--muted-foreground)",
       }}
     >
-      {isImg ? (
+      {showImage ? (
         <img
           src={`/api/storage/${encodeURI(k)}`}
           alt=""
           loading="lazy"
           style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          onError={() => setErrored(true)}
         />
       ) : (
         <I.Folder size={Math.max(12, size - 14)} />
@@ -170,26 +176,37 @@ function FileTrigger({ value, kind, error, onOpen, onClear }: { value: string; k
   return (
     <div
       style={{
-        display: "flex", alignItems: "center", gap: 8,
+        display: "flex", alignItems: "center", gap: 10,
         border: `1px solid ${error ? "var(--destructive)" : "var(--border)"}`,
-        borderRadius: "var(--radius-3xl)",
+        borderRadius: "var(--radius-2xl)",
         background: "var(--card)",
-        padding: "4px 6px 4px 8px",
-        minHeight: 36,
+        padding: 6,
+        minHeight: 56,
       }}
     >
       {value ? (
         <>
-          <FileThumb k={value} size={26} />
-          <span className="font-mono" style={{ fontSize: 12.5, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={value}>
+          <FileThumb k={value} size={44} />
+          <span className="font-mono" style={{ fontSize: 12.5, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingLeft: 2 }} title={value}>
             {value}
           </span>
           <IconButton icon={I.X} title="Clear" onClick={onClear} />
         </>
       ) : (
-        <span className="muted" style={{ flex: 1, fontSize: 13, paddingLeft: 4 }}>
-          {kind === "image" ? "No image selected" : "No file selected"}
-        </span>
+        <>
+          <span
+            style={{
+              width: 44, height: 44, borderRadius: 6, flexShrink: 0,
+              background: "var(--muted)", display: "grid", placeItems: "center",
+              color: "var(--muted-foreground)",
+            }}
+          >
+            {kind === "image" ? <I.Upload size={16} /> : <I.Folder size={16} />}
+          </span>
+          <span className="muted" style={{ flex: 1, fontSize: 13 }}>
+            {kind === "image" ? "No image selected" : "No file selected"}
+          </span>
+        </>
       )}
       <Button size="sm" variant="outline" onClick={onOpen}>
         {value ? "Change" : kind === "image" ? "Pick image" : "Pick file"}

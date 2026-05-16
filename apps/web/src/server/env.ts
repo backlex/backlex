@@ -116,6 +116,12 @@ export interface Env {
    *  cron triggers must set this explicitly (no incoming request to
    *  derive from). */
   SELF_URL?: string;
+  /** Public base URL of the R2 bucket (or any HTTP origin serving the same
+   *  objects). When set on Workers, the storage GET route can ask Cloudflare
+   *  Image Resizing to transform the source through that origin instead of
+   *  shipping bytes through the Worker. Only used when the file's ACL is
+   *  `public` — private files would need a signed origin first. */
+  R2_PUBLIC_BASE?: string;
   /** S3-compatible storage. When `S3_BUCKET` is set the storage adapter
    *  selects S3 (via `Bun.S3Client` when on Bun, else `aws4fetch`).
    *  Compatible with AWS S3, Cloudflare R2, Backblaze B2, MinIO,

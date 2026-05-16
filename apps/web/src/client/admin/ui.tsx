@@ -18,6 +18,7 @@ import { Button as ShadcnButton } from "@workeros/ui/components/button";
 import { Badge as ShadcnBadge } from "@workeros/ui/components/badge";
 import { Switch as ShadcnSwitch } from "@workeros/ui/components/switch";
 import { Checkbox as ShadcnCheckbox } from "@workeros/ui/components/checkbox";
+import { Input } from "@workeros/ui/components/input";
 
 export function formatJson(value: unknown): string {
   try {
@@ -422,14 +423,14 @@ function NewWorkspaceDialog({ onClose, onCreate, existing }: { onClose: () => vo
         <div style={{ padding: 22, display: "flex", flexDirection: "column", gap: 16 }}>
           <div className="field">
             <label className="field-label">Name</label>
-            <input className="input" value={name} onChange={(e) => setName(e.target.value)} autoFocus placeholder="acme-prod" onKeyDown={(e) => e.key === "Enter" && submit()} />
+            <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus placeholder="acme-prod" onKeyDown={(e) => e.key === "Enter" && submit()} />
             {taken && <span className="field-hint" style={{ color: "var(--destructive)" }}>Workspace "{slug}" already exists.</span>}
             {!taken && slug && <span className="field-hint">URL: <span className="font-mono">workeros.dev/{slug}</span></span>}
             {!slug && <span className="field-hint">Lowercase, alphanumeric, 2–24 chars.</span>}
           </div>
           <div className="field">
             <label className="field-label">Default project</label>
-            <input className="input" value={project} onChange={(e) => setProject(e.target.value)} placeholder="default" />
+            <Input value={project} onChange={(e) => setProject(e.target.value)} placeholder="default" />
           </div>
           <div className="field">
             <label className="field-label">Environment</label>
@@ -582,15 +583,17 @@ export interface PageHeaderProps {
 
 export function PageHeader({ title, slug, description, actions, badges }: PageHeaderProps) {
   return (
-    <div className="page-header">
-      <div className="page-title-block">
-        <h1 className="page-title">
-          {slug ? <span className="slug">{slug}</span> : title}
+    <div className="flex flex-wrap items-start justify-between gap-[18px]">
+      <div className="flex min-w-0 flex-col gap-1">
+        <h1 className="m-0 flex items-center gap-2.5 text-2xl font-semibold tracking-tight">
+          {slug ? <span className="font-mono text-[22px] font-medium">{slug}</span> : title}
           {badges}
         </h1>
-        {description && <div className="page-desc">{description}</div>}
+        {description && (
+          <div className="max-w-[720px] text-sm text-muted-foreground">{description}</div>
+        )}
       </div>
-      {actions && <div className="page-actions">{actions}</div>}
+      {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>
   );
 }

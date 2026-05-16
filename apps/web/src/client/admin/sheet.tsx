@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { I } from "./icons";
 import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button, Checkbox, IconButton, Switch } from "./ui";
+import { Input } from "@workeros/ui/components/input";
+import { Textarea } from "@workeros/ui/components/textarea";
 import { Select } from "./select";
 import { RelationPicker, FilePicker, MultiFilePicker } from "./relational-pickers";
 
@@ -494,11 +496,12 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       return (
         <div key={f.name} className="field">
           {label}
-          <input
-            className={`input tabular-nums ${err ? "error" : ""}`}
+          <Input
+            className="tabular-nums"
             type="number"
             step={isInt ? 1 : "any"}
             value={val === null || val === undefined ? "" : String(val)}
+            aria-invalid={!!err || undefined}
             onChange={(e) => setField(e.target.value)}
           />
           {errBlock}
@@ -513,10 +516,10 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       return (
         <div key={f.name} className="field">
           {label}
-          <input
-            className={`input ${err ? "error" : ""}`}
+          <Input
             type="date"
             value={dateOnly}
+            aria-invalid={!!err || undefined}
             onChange={(e) => setField(e.target.value ? new Date(e.target.value + "T00:00:00Z").toISOString() : null)}
           />
           {errBlock}
@@ -529,10 +532,10 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       return (
         <div key={f.name} className="field">
           {label}
-          <input
-            className={`input ${err ? "error" : ""}`}
+          <Input
             type="datetime-local"
             value={localValue}
+            aria-invalid={!!err || undefined}
             onChange={(e) => setField(e.target.value ? new Date(e.target.value).toISOString() : null)}
           />
           {errBlock}
@@ -553,10 +556,11 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
               onChange={(e) => setField(e.target.value)}
               style={{ height: 36, width: 52, borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", cursor: "pointer", padding: 2 }}
             />
-            <input
-              className={`input font-mono ${err ? "error" : ""}`}
+            <Input
+              className="font-mono"
               value={hex}
               placeholder="#RRGGBB"
+              aria-invalid={!!err || undefined}
               onChange={(e) => setField(e.target.value)}
               style={{ flex: 1 }}
             />
@@ -580,10 +584,11 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
             }}>
               {Match ? <Match size={16} /> : <I.Bolt size={14} />}
             </div>
-            <input
-              className={`input font-mono ${err ? "error" : ""}`}
+            <Input
+              className="font-mono"
               value={name}
               placeholder="lucide icon name…"
+              aria-invalid={!!err || undefined}
               onChange={(e) => setField(e.target.value)}
               style={{ flex: 1 }}
             />
@@ -597,12 +602,12 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       return (
         <div key={f.name} className="field">
           {label}
-          <input
-            className={`input ${err ? "error" : ""}`}
+          <Input
             type="url"
             inputMode="url"
             value={String(val ?? "")}
             placeholder="https://…"
+            aria-invalid={!!err || undefined}
             onChange={(e) => setField(e.target.value)}
           />
           {errBlock}
@@ -613,12 +618,12 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       return (
         <div key={f.name} className="field">
           {label}
-          <input
-            className={`input ${err ? "error" : ""}`}
+          <Input
             type="email"
             inputMode="email"
             value={String(val ?? "")}
             placeholder="name@example.com"
+            aria-invalid={!!err || undefined}
             onChange={(e) => setField(e.target.value)}
           />
           {errBlock}
@@ -630,10 +635,11 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       return (
         <div key={f.name} className="field">
           {label}
-          <input
-            className={`input font-mono ${err ? "error" : ""}`}
+          <Input
+            className="font-mono"
             value={String(val ?? "")}
             placeholder="my-post-slug"
+            aria-invalid={!!err || undefined}
             onChange={(e) => {
               const v = e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, "-");
               setField(v);
@@ -650,12 +656,12 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       return (
         <div key={f.name} className="field">
           {label}
-          <textarea
-            className={`textarea ${err ? "error" : ""}`}
+          <Textarea
             rows={iface === "richtext" ? 8 : 6}
             value={String(val ?? "")}
             placeholder={iface === "markdown" ? "# Heading\\n\\nWrite Markdown…" : iface === "code" ? "// code" : ""}
             style={!monoIfaces ? { fontFamily: "inherit" } : undefined}
+            aria-invalid={!!err || undefined}
             onChange={(e) => setField(e.target.value)}
           />
           {iface === "richtext" && (
@@ -674,11 +680,11 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       return (
         <div key={f.name} className="field">
           {label}
-          <textarea
-            className={`textarea ${err ? "error" : ""}`}
+          <Textarea
             rows={4}
             value={String(val ?? "")}
             placeholder={iface === "map" ? `{ "type":"Point", "coordinates":[0,0] }` : "[] or {}"}
+            aria-invalid={!!err || undefined}
             onChange={(e) => setField(e.target.value)}
           />
           {errBlock}
@@ -700,10 +706,11 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
               error={!!err}
             />
           ) : (
-            <input
-              className={`input font-mono ${err ? "error" : ""}`}
+            <Input
+              className="font-mono"
               value={String(val ?? "")}
               placeholder="id"
+              aria-invalid={!!err || undefined}
               onChange={(e) => setField(e.target.value)}
             />
           )}
@@ -750,10 +757,11 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       return (
         <div key={f.name} className="field">
           {label}
-          <input
-            className={`input font-mono ${err ? "error" : ""}`}
+          <Input
+            className="font-mono"
             value={String(val ?? "")}
             placeholder="00000000-0000-0000-0000-000000000000"
+            aria-invalid={!!err || undefined}
             onChange={(e) => setField(e.target.value)}
             autoComplete="off"
           />
@@ -767,10 +775,11 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
     return (
       <div key={f.name} className="field">
         {label}
-        <input
-          className={`input ${f.name === "slug" ? "font-mono" : ""} ${err ? "error" : ""}`}
+        <Input
+          className={f.name === "slug" ? "font-mono" : undefined}
           value={String(val ?? "")}
           autoFocus={f.name === "title"}
+          aria-invalid={!!err || undefined}
           onChange={(e) => setField(e.target.value)}
           autoComplete="off"
         />

@@ -766,13 +766,29 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
   );
 }
 
+/**
+ * Build a thumbnail URL for a file. For public images on Workers (or any
+ * runtime with a working transform path) we ask the API for an edge-
+ * resized WebP — ~2 KB instead of the multi-megabyte original. Private
+ * images fall back to the original URL because the transform path 422s
+ * on Workers without R2_PUBLIC_BASE; serving the raw bytes is wasteful
+ * but at least the thumbnail shows up. Non-image files don't get a URL.
+ */
+function thumbnailUrl(f: StoredFile, displayPx: number): string {
+  const base = `/api/storage/${encodeURI(f.key)}`;
+  if (f.acl !== "public") return base;
+  // 2× DPR floor at 80px so even a 20px chip fetches sharp pixels on retina.
+  const w = Math.max(80, Math.round(displayPx * 2));
+  return `${base}?width=${w}&format=webp&quality=70&fit=cover`;
+}
+
 function FileGlyph({ f, size = 64 }: { f: StoredFile; size?: number }) {
   const isImg = Boolean(f.type && f.type.startsWith("image/"));
   const [imgFailed, setImgFailed] = useState(false);
   if (isImg && !imgFailed) {
     return (
       <img
-        src={`/api/storage/${encodeURI(f.key)}`}
+        src={thumbnailUrl(f, typeof size === "number" ? size : 64)}
         alt=""
         loading="lazy"
         onError={() => setImgFailed(true)}
@@ -823,12 +839,28 @@ function FileTile({ f, active, onSelect }: { f: StoredFile; active: boolean; onS
   const isImg = Boolean(f.type && f.type.startsWith("image/"));
   const [imgFailed, setImgFailed] = useState(false);
   const sizeStr = f.size > 1024 * 1024 ? (f.size / 1024 / 1024).toFixed(1) + " MB" : (f.size / 1024).toFixed(1) + " KB";
+  // Display name = metadata.name override falls back to the leaf of the key.
+  const displayName = (f.metadata && typeof f.metadata.name === "string" && f.metadata.name.trim()) || (f.key.split("/").pop() ?? f.key);
   return (
-    <div onClick={onSelect} style={{ display: "flex", alignItems: "center", gap: 10, padding: 8, borderRadius: "var(--radius-md)", border: `1px solid ${active ? "var(--primary)" : "var(--border)"}`, background: active ? "color-mix(in oklch, var(--primary) 6%, transparent)" : "var(--card)", cursor: "pointer", transition: "background 100ms", minWidth: 0 }}>
-      <div style={{ width: 36, height: 36, position: "relative", borderRadius: "var(--radius-sm)", overflow: "hidden", background: "var(--muted)", flexShrink: 0 }}>
+    <div
+      onClick={onSelect}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 0,
+        borderRadius: "var(--radius-md)",
+        border: `1px solid ${active ? "var(--primary)" : "var(--border)"}`,
+        background: active ? "color-mix(in oklch, var(--primary) 6%, transparent)" : "var(--card)",
+        cursor: "pointer",
+        transition: "background 100ms, border-color 100ms",
+        minWidth: 0,
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ aspectRatio: "1 / 1", position: "relative", background: "var(--muted)" }}>
         {isImg && !imgFailed ? (
           <img
-            src={`/api/storage/${encodeURI(f.key)}`}
+            src={thumbnailUrl(f, 320)}
             alt=""
             loading="lazy"
             onError={() => setImgFailed(true)}
@@ -838,15 +870,28 @@ function FileTile({ f, active, onSelect }: { f: StoredFile; active: boolean; onS
           <ImageMock hue={f.hue ?? 200} />
         ) : (
           <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
-            <FileGlyph f={f} size={36} />
+            <FileGlyph f={f} size={64} />
           </div>
         )}
+        {f.acl === "public" && (
+          <span
+            style={{ position: "absolute", top: 6, right: 6, padding: "2px 6px", borderRadius: 999, background: "oklch(0.25 0.04 145 / 0.85)", color: "oklch(0.9 0.18 145)", fontSize: 9.5, fontFamily: "Geist Mono, monospace", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}
+            title="public"
+          >
+            public
+          </span>
+        )}
       </div>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div className="font-mono" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.key.split("/").pop()}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+      <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+        <div className="font-mono" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {displayName}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span className="muted tabular-nums" style={{ fontSize: 10.5 }}>{sizeStr}</span>
-          {f.acl === "public" && <span style={{ width: 4, height: 4, borderRadius: 999, background: "oklch(0.7 0.18 145)" }} title="public" />}
+          <span className="muted" style={{ fontSize: 10.5 }}>·</span>
+          <span className="muted" style={{ fontSize: 10.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {(f.type || "").split("/")[1] || "file"}
+          </span>
         </div>
       </div>
     </div>

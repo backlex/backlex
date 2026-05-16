@@ -123,6 +123,11 @@ function envAuthDefaults(env: any) {
         configured: Boolean(env.OAUTH_GOOGLE_CLIENT_ID),
         clientId: env.OAUTH_GOOGLE_CLIENT_ID ?? null,
       },
+      apple: {
+        enabled: Boolean(env.OAUTH_APPLE_CLIENT_ID && env.OAUTH_APPLE_CLIENT_SECRET),
+        configured: Boolean(env.OAUTH_APPLE_CLIENT_ID),
+        clientId: env.OAUTH_APPLE_CLIENT_ID ?? null,
+      },
     } as Record<string, Record<string, unknown>>,
     policy: {
       requireEmailVerification: true,

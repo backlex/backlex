@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { auth } from "@/lib/auth";
+import { useState, type ReactNode } from "react";
+import { KeyRoundIcon } from "lucide-react";
+import { auth, useAuthSurface, type PublicProvider } from "@/lib/auth";
 import { notifyError } from "@/lib/error";
 
 interface SocialButtonsProps {
@@ -34,16 +35,43 @@ const GoogleIcon = () => (
   </svg>
 );
 
+// Apple's mark — monochrome, follows currentColor so it inverts cleanly in
+// dark mode. Standard Sign in with Apple silhouette.
+const AppleIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+    <path d="M11.182.008C11.148-.03 9.923.023 8.857 1.18 7.79 2.337 7.953 3.66 7.977 3.694c.024.034 1.523.106 2.443-1.218.92-1.324.764-2.43.762-2.468zM15.99 11.776c-.048-.096-2.343-1.244-2.13-3.453.213-2.21 1.687-2.815 1.71-2.879.024-.064-.604-.799-1.27-1.171a3.7 3.7 0 0 0-1.715-.46c-.12-.002-.535-.105-1.387.13-.56.155-1.834.658-2.185.678-.352.02-1.398-.585-2.523-.745-.717-.143-1.476.135-2.02.353-.542.215-1.575.834-2.297 2.476-.722 1.642-.345 4.245-.074 5.054.27.808.69 2.133 1.4 3.107.633.964 1.469 1.633 1.819 1.889.35.255 1.339.426 2.022.078.55-.336 1.541-.532 1.932-.518.39.014 1.158.174 1.943.591.62.301 1.206.176 1.792-.062.586-.238 1.428-1.137 2.41-2.969.372-.852.539-1.31.45-1.554.024-.064.604-.799-.044-.844z" />
+  </svg>
+);
+
+const ICON_FOR: Record<string, () => ReactNode> = {
+  github: GitHubIcon,
+  google: GoogleIcon,
+  apple: AppleIcon,
+};
+
+const iconFor = (id: string): ReactNode => {
+  const Icon = ICON_FOR[id];
+  return Icon ? <Icon /> : <KeyRoundIcon size={14} />;
+};
+
 /**
- * GitHub + Google OAuth buttons. Calls better-auth's `signIn.social` which
- * redirects to the provider; on a successful round-trip the user lands on
- * `callbackURL`. If the corresponding OAUTH_*_CLIENT_ID/SECRET pair isn't
- * set on the server the call returns a clear "provider disabled" error.
+ * Renders one button per *enabled and configured* social provider returned
+ * by `/api/auth/providers`. If the worker has no socials wired up (or the
+ * surface fetch fails) nothing renders — no empty grid, no stranded divider.
+ *
+ * Calls better-auth's `signIn.social` which redirects to the provider; on a
+ * successful round-trip the user lands on `callbackURL`.
  */
 export const SocialButtons = ({ callbackURL = "/" }: SocialButtonsProps) => {
-  const [busy, setBusy] = useState<"github" | "google" | null>(null);
+  const { surface } = useAuthSurface();
+  const [busy, setBusy] = useState<string | null>(null);
 
-  const onClick = async (provider: "github" | "google") => {
+  const socials: PublicProvider[] = (surface?.providers ?? []).filter(
+    (p) => p.kind === "social" && p.enabled,
+  );
+  if (socials.length === 0) return null;
+
+  const onClick = async (provider: string) => {
     setBusy(provider);
     try {
       const c = auth as unknown as {
@@ -71,34 +99,37 @@ export const SocialButtons = ({ callbackURL = "/" }: SocialButtonsProps) => {
     }
   };
 
-  const Btn = ({
-    provider,
-    icon,
-    label,
-  }: {
-    provider: "github" | "google";
-    icon: React.ReactNode;
-    label: string;
-  }) => (
-    <button
-      type="button"
-      onClick={() => onClick(provider)}
-      disabled={busy !== null}
-      className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-3xl border border-border bg-card text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-60"
-    >
-      {busy === provider ? (
-        <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-      ) : (
-        icon
-      )}
-      {label}
-    </button>
-  );
+  // Two columns when even, single column when odd (one provider stretches
+  // the row instead of leaving a stranded gap).
+  const cols = socials.length > 1 ? "grid-cols-2" : "grid-cols-1";
 
   return (
-    <div className="grid grid-cols-2 gap-2">
-      <Btn provider="github" icon={<GitHubIcon />} label="GitHub" />
-      <Btn provider="google" icon={<GoogleIcon />} label="Google" />
+    <div className={`grid gap-2 ${cols}`}>
+      {socials.map((p) => (
+        <button
+          key={p.id}
+          type="button"
+          onClick={() => onClick(p.id)}
+          disabled={busy !== null}
+          className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-3xl border border-border bg-card text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-60"
+        >
+          {busy === p.id ? (
+            <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          ) : (
+            iconFor(p.id)
+          )}
+          {p.label}
+        </button>
+      ))}
     </div>
+  );
+};
+
+/** True if at least one social provider is enabled — lets sign-in / sign-up
+ *  pages hide the "or with email" divider when there are no buttons above. */
+export const useHasSocialProviders = (): boolean => {
+  const { surface } = useAuthSurface();
+  return (surface?.providers ?? []).some(
+    (p) => p.kind === "social" && p.enabled,
   );
 };

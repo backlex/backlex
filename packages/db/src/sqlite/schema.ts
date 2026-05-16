@@ -823,6 +823,46 @@ export const externalIdentities = sqliteTable(
 );
 
 /**
+ * Per-workspace LDAP / Active Directory configuration — see
+ * packages/db/src/pg/schema.ts for full docs.
+ */
+export const ldapConfigs = sqliteTable(
+  "ldap_configs",
+  {
+    tenantId: text("tenant_id").primaryKey(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+    url: text("url").notNull(),
+    bindDn: text("bind_dn").notNull(),
+    baseDn: text("base_dn").notNull(),
+    userFilter: text("user_filter")
+      .notNull()
+      .default("(&(objectClass=person)(uid={{username}}))"),
+    groupFilter: text("group_filter"),
+    attributeMap: text("attribute_map", { mode: "json" })
+      .$type<{ email: string; firstName: string; lastName: string; groups: string }>()
+      .notNull()
+      .default({ email: "mail", firstName: "givenName", lastName: "sn", groups: "memberOf" }),
+    defaultRoleId: text("default_role_id").references(() => roles.id, {
+      onDelete: "set null",
+    }),
+    groupsToRoles: text("groups_to_roles", { mode: "json" }).$type<
+      Record<string, string>
+    >(),
+    tlsOptions: text("tls_options", { mode: "json" }).$type<{
+      rejectUnauthorized?: boolean;
+    }>(),
+    secrets: text("secrets", { mode: "json" })
+      .$type<Record<string, string>>()
+      .notNull()
+      .default({}),
+    domainMatch: text("domain_match", { mode: "json" }).$type<string[]>(),
+    rateLimitPerMinute: integer("rate_limit_per_minute").notNull().default(10),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [index("ldap_configs_tenant_idx").on(t.tenantId)],
+);
+
+/**
  * Per-workspace email transport. `tenant_id` is the workspace id, or the
  * `_global` sentinel for the instance-wide override row. `provider = "inherit"`
  * (or no usable config) falls through to the next level and ultimately to the

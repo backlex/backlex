@@ -9,6 +9,7 @@ import { I, type IconComponent, type IconKey } from "./icons";
 import { type CollectionSchema } from "./config";
 import { Badge, Button, IconButton, Switch } from "./ui";
 import { Input } from "@workeros/ui/components/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
 import { Select } from "./select";
 import { AlterPreview } from "./extras";
 import {
@@ -154,15 +155,15 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
 
         {step === 1 && (
           <div className="addfield-body">
-            <div className="search-input" style={{ marginBottom: 14 }}>
-              <I.Search size={14} />
-              <input
+            <InputGroup style={{ marginBottom: 14 }}>
+              <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
+              <InputGroupInput
                 autoFocus
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={`Search ${FIELD_INTERFACES.length} interfaces — input, markdown, dropdown, relation…`}
               />
-            </div>
+            </InputGroup>
             {groups.length === 0 && (
               <div className="muted" style={{ fontSize: 12.5, padding: "16px 4px" }}>No interface matches “{query}”.</div>
             )}

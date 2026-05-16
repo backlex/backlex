@@ -125,6 +125,33 @@ Selection priority in `buildContext`:
 Pre-signed URLs are exposed via the `signedUrl(key, ttlSeconds)` adapter
 method (e.g. for direct browser uploads / public CDN links).
 
+### Image transforms on Workers
+
+`GET /api/storage/:key?width=…&format=…` runs through Cloudflare Image
+Resizing when:
+
+1. `env.R2_PUBLIC_BASE` is set to a stable public origin for the bucket
+   (r2.dev URL or a custom domain bound via `wrangler r2 bucket domain
+   add`), AND
+2. the file's ACL is `public`.
+
+Enable the r2.dev origin once per bucket:
+
+```bash
+bunx wrangler r2 bucket dev-url enable workeros-files
+bunx wrangler r2 bucket dev-url get workeros-files
+# → Public URL: https://pub-<hash>.r2.dev
+```
+
+Then set `R2_PUBLIC_BASE = "https://pub-<hash>.r2.dev"` under `[vars]`
+in `wrangler.toml` and redeploy. Without it, transform requests on
+Workers return `422 VALIDATION` (no silent passthrough). Bun deployments
+transform in-process via `Bun.Image` and don't need this var.
+
+Heads-up: enabling the r2.dev URL makes *every* object in that bucket
+readable by anyone who knows the key path — see `docs/storage.md`
+"Security tradeoffs" for the mitigations.
+
 ## Netlify
 
 `netlify.toml` at the repo root mirrors Vercel — admin SPA + edge
@@ -158,6 +185,7 @@ driver; storage needs S3.
 | `S3_BUCKET` + `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY` | no¹ | ¹ Required on Vercel/Netlify edge (no fs); optional on Bun (defaults to fsStorage) and Workers (R2 binding preferred) |
 | `S3_ENDPOINT`                | no        | Custom S3 endpoint for R2/B2/MinIO/Spaces    |
 | `S3_REGION`                  | no        | Defaults to `auto`                           |
+| `R2_PUBLIC_BASE`             | no        | Workers only. Public origin for the R2 bucket; activates cf.image edge resizing for public-ACL files. See `docs/storage.md`. |
 
 ## Verifying a deploy
 

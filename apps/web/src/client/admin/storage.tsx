@@ -644,6 +644,12 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
   const url = `/api/storage/${encodeURI(f.key)}`;
   const params = isImage ? `?width=${w}&format=${fmt}&quality=${q}&fit=${fit}&focal=${focal.x},${focal.y}` : "";
   const transformedUrl = url + params;
+  // Copying / signing produces URLs that travel outside the admin tab —
+  // a chat message, an <img> on another site, a curl invocation. Relative
+  // paths are fine for in-page <img>/HEAD/anchor download (browser resolves
+  // them against the page origin) but useless once detached.
+  const toAbsolute = (rel: string): string =>
+    rel.startsWith("http") ? rel : window.location.origin + rel;
 
   // Real transformed-output size, read from the server via HEAD. Debounced
   // so dragging a slider doesn't fire one request per pixel. Resets to
@@ -710,7 +716,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
   const onSignUrl = async () => {
     try {
       const signed = await signOnce(3600);
-      onCopy(withTransformParams(signed));
+      onCopy(toAbsolute(withTransformParams(signed)));
       pushToast?.("Signed URL copied (1h).");
     } catch (e) {
       pushToast?.((e as Error).message);
@@ -904,7 +910,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
         </div>
 
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <Button size="sm" variant="outline" icon={I.Code} onClick={() => onCopy(transformedUrl)}>Copy URL</Button>
+          <Button size="sm" variant="outline" icon={I.Code} onClick={() => onCopy(toAbsolute(transformedUrl))}>Copy URL</Button>
           {f.acl === "private" && <Button size="sm" variant="outline" icon={I.Shield} onClick={onSignUrl}>Sign URL</Button>}
           <Button size="sm" variant="outline" icon={I.Download} onClick={onDownload}>Download</Button>
         </div>

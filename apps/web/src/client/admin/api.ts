@@ -490,6 +490,90 @@ export const authAdminApi = {
     }),
 };
 
+export interface ApiSamlProvider {
+  id: string;
+  tenantId: string;
+  name: string;
+  slug: string;
+  idpTemplate: string | null;
+  entityId: string;
+  ssoUrl: string;
+  sloUrl: string | null;
+  /** True when an encrypted cert PEM is stored. Plaintext is never returned. */
+  idpCertSet: boolean;
+  spEntityId: string;
+  attributeMap: Record<string, string>;
+  defaultRoleId: string | null;
+  groupsToRoles: Record<string, string> | null;
+  signatureAlgorithm: string;
+  wantSignedAssertions: boolean;
+  linkByVerifiedEmail: boolean;
+  nameIdFormat: string;
+  enabled: boolean;
+  createdAt: string | number;
+  updatedAt: string | number;
+}
+
+export interface SamlProviderCreate {
+  name: string;
+  slug?: string;
+  idpTemplate?: string | null;
+  entityId: string;
+  ssoUrl: string;
+  sloUrl?: string | null;
+  idpCertPem: string;
+  spEntityId: string;
+  attributeMap?: Record<string, string>;
+  defaultRoleId?: string | null;
+  groupsToRoles?: Record<string, string> | null;
+  signatureAlgorithm?: "sha1" | "sha256" | "sha512";
+  wantSignedAssertions?: boolean;
+  linkByVerifiedEmail?: boolean;
+  nameIdFormat?: string;
+  enabled?: boolean;
+}
+
+export const samlAdminApi = {
+  list: () => api<Envelope<ApiSamlProvider[]>>(`/api/admin/saml/providers`),
+  create: (body: SamlProviderCreate) =>
+    api<Envelope<ApiSamlProvider>>(`/api/admin/saml/providers`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  update: (id: string, body: Partial<SamlProviderCreate>) =>
+    api<Envelope<ApiSamlProvider>>(`/api/admin/saml/providers/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  remove: (id: string) =>
+    api<{ ok: true }>(`/api/admin/saml/providers/${id}`, { method: "DELETE" }),
+  testAssertion: (id: string, samlResponse: string) =>
+    api<Envelope<{
+      nameId: string;
+      issuer: string;
+      audience: string;
+      authnContext: string | null;
+      sessionIndex: string | null;
+      notOnOrAfter: string;
+      attributes: Record<string, string[]>;
+      mapped: { email: string | null; firstName: string | null; lastName: string | null; groups: string[] };
+    }>>(`/api/admin/saml/providers/${id}/test-assertion`, {
+      method: "POST",
+      body: JSON.stringify({ samlResponse }),
+    }),
+  importMetadata: (body: { metadataXml?: string; metadataUrl?: string }) =>
+    api<Envelope<{
+      entityId: string;
+      ssoUrl: string;
+      sloUrl: string | null;
+      idpCertPem: string;
+      spEntityIdSuggested: string;
+    }>>(`/api/admin/saml/providers/import-metadata`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+};
+
 export const settingsApi = {
   load: () => api<Envelope<Record<string, unknown>>>(`/api/admin/settings`),
   patch: (body: Record<string, unknown>) =>

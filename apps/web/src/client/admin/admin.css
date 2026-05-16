@@ -334,42 +334,11 @@ body {
 .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .scrollarea { overflow: auto; }
 .page { padding: 24px 28px 80px; display: flex; flex-direction: column; gap: 18px; }
-.page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
-.page-title-block { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.page-title { font-size: 24px; font-weight: 600; letter-spacing: -0.015em; margin: 0; display: flex; align-items: center; gap: 10px; }
-.page-title .slug { font-family: 'Geist Mono', monospace; font-size: 22px; font-weight: 500; color: var(--foreground); }
-.page-desc { color: var(--muted-foreground); font-size: 13px; max-width: 720px; }
-.page-actions { display: flex; gap: 8px; align-items: center; }
-
-/* ─── Buttons ─── */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 0 14px;
-  height: 32px;
-  border-radius: var(--radius-3xl);
-  font-size: 13px;
-  font-weight: 500;
-  border: 1px solid transparent;
-  cursor: pointer;
-  user-select: none;
-  white-space: nowrap;
-  transition: background 120ms, border-color 120ms, color 120ms;
-}
-.btn-primary { background: var(--primary); color: var(--primary-foreground); }
-.btn-primary:hover { background: color-mix(in oklch, var(--primary) 92%, black); }
-.btn-outline { background: var(--card); color: var(--foreground); border-color: var(--border); }
-.btn-outline:hover { background: var(--accent); }
-.btn-ghost { background: transparent; color: var(--foreground); }
-.btn-ghost:hover { background: var(--accent); }
-.btn-destructive { background: var(--destructive); color: white; }
-.btn-destructive:hover { background: color-mix(in oklch, var(--destructive) 88%, black); }
-.btn-sm { height: 28px; padding: 0 11px; font-size: 12.5px; }
-.btn-lg { height: 38px; padding: 0 18px; font-size: 14px; }
-.btn-icon { width: 32px; padding: 0; }
-.btn-icon-sm { width: 28px; height: 28px; padding: 0; }
+/* PageHeader, Button, and form input/textarea primitives moved to shadcn
+   via apps/web/src/client/admin/ui.tsx + @workeros/ui/components/*. The
+   legacy `.page-header`/`.btn`/`.input`/`.textarea` rules used to live
+   here; they were dropped during the shadcn migration. `.input-affix*`
+   below is a separate wrapper component and stays. */
 
 /* ─── Tabs ─── (pill segment; used for both page-section sub-nav and inline
    list filters. .ce-tabs below is kept only for in-panel use by the condition
@@ -658,34 +627,9 @@ body {
 .field-label { font-size: 12.5px; font-weight: 500; color: var(--foreground); display: flex; align-items: center; gap: 8px; }
 .field-hint { font-size: 11.5px; color: var(--muted-foreground); }
 .field-error { font-size: 11.5px; color: var(--destructive); display: flex; gap: 4px; align-items: center; }
-.input, .textarea, .select {
-  width: 100%;
-  height: 36px;
-  padding: 0 14px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-3xl);
-  color: var(--foreground);
-  font: inherit;
-  outline: none;
-  transition: border-color 120ms, box-shadow 120ms;
-}
-.textarea {
-  height: auto;
-  min-height: 96px;
-  padding: 12px 14px 12px 14px;
-  border-radius: var(--radius-xl);
-  font-family: 'Geist Mono', monospace;
-  font-size: 12.5px;
-  line-height: 1.5;
-  resize: vertical;
-}
-.input:focus, .textarea:focus, .select:focus {
-  border-color: var(--ring);
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 30%, transparent);
-}
-.input.error, .textarea.error { border-color: var(--destructive); }
-.select { padding-right: 32px; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>"); background-repeat: no-repeat; background-position: right 12px center; }
+/* `.input`, `.textarea`, `.select` rules were dropped during the shadcn
+   migration — every callsite now renders @workeros/ui Input/Textarea/Select
+   via apps/web/src/client/admin/ui.tsx and admin/select.tsx. */
 
 /* Native range input — paired with `accent-color: var(--primary)` set
    inline at the call-site, this gives the filled portion the design-system

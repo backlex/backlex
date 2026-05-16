@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
+import { Input } from "@workeros/ui/components/input";
 import { I } from "../icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
 import { ConfirmDialog } from "../sheet";
@@ -111,8 +112,7 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
           <span style={{ fontSize: 13, fontWeight: 500 }}>End-users</span>
           <span className="muted font-mono" style={{ fontSize: 11.5 }}>{rows.length}</span>
           <div className="spacer" />
-          <input
-            className="input"
+          <Input
             placeholder="Filter by email / name…"
             value={q}
             onChange={(e) => setQ(e.target.value)}

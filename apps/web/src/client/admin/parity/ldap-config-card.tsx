@@ -14,6 +14,8 @@
  * ciphertext intact. A "Clear" action removes the key entirely.
  */
 import { useEffect, useState } from "react";
+import { Input } from "@workeros/ui/components/input";
+import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "../icons";
 import { Badge, Button, Switch } from "../ui";
 import { Select } from "../select";
@@ -163,8 +165,7 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
       <div className="card-section" style={{ display: "grid", gap: 14 }}>
         <div className="field">
           <label className="field-label">LDAP URL</label>
-          <input
-            className="input"
+          <Input
             value={cfg.url}
             onChange={(e) => patch({ url: e.target.value })}
             placeholder="ldaps://dc1.corp.example:636"
@@ -175,8 +176,7 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           <div className="field">
             <label className="field-label">Bind DN</label>
-            <input
-              className="input"
+            <Input
               value={cfg.bindDn}
               onChange={(e) => patch({ bindDn: e.target.value })}
               placeholder="cn=workeros,ou=service,dc=corp,dc=example"
@@ -190,8 +190,7 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
               )}
             </label>
             <div style={{ display: "flex", gap: 6 }}>
-              <input
-                className="input"
+              <Input
                 type="password"
                 value={pwInput}
                 disabled={clearPw}
@@ -210,8 +209,7 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
 
         <div className="field">
           <label className="field-label">Base DN (search root)</label>
-          <input
-            className="input"
+          <Input
             value={cfg.baseDn}
             onChange={(e) => patch({ baseDn: e.target.value })}
             placeholder="ou=users,dc=corp,dc=example"
@@ -220,8 +218,7 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
 
         <div className="field">
           <label className="field-label">User filter</label>
-          <textarea
-            className="input"
+          <Textarea
             rows={2}
             value={cfg.userFilter}
             onChange={(e) => patch({ userFilter: e.target.value })}
@@ -239,8 +236,7 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
             {(["email", "firstName", "lastName", "groups"] as const).map((k) => (
               <div key={k} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span className="muted font-mono" style={{ fontSize: 11, width: 80 }}>{k}</span>
-                <input
-                  className="input"
+                <Input
                   value={cfg.attributeMap[k] ?? ""}
                   onChange={(e) =>
                     patch({
@@ -271,8 +267,7 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
           </div>
           <div className="field">
             <label className="field-label">Rate limit (per email / minute)</label>
-            <input
-              className="input"
+            <Input
               type="number"
               min={1}
               max={600}
@@ -284,8 +279,7 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
 
         <div className="field">
           <label className="field-label">Allowed email domains (optional)</label>
-          <input
-            className="input"
+          <Input
             value={domainText}
             onChange={(e) => setDomainText(e.target.value)}
             placeholder="corp.example.com, contractor.example.com"
@@ -319,8 +313,7 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
             )}
           </label>
           <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
-            <textarea
-              className="input"
+            <Textarea
               rows={4}
               disabled={clearCa}
               value={caInput}
@@ -400,8 +393,7 @@ function LdapTestDialog({
         <div className="sheet-body" style={{ display: "grid", gap: 12 }}>
           <div className="field">
             <label className="field-label">Username</label>
-            <input
-              className="input"
+            <Input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="alice"
@@ -409,8 +401,7 @@ function LdapTestDialog({
           </div>
           <div className="field">
             <label className="field-label">Password</label>
-            <input
-              className="input"
+            <Input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

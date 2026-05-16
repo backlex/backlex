@@ -17,6 +17,7 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import { I } from "./icons";
@@ -264,6 +265,16 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
   const [dragOver, setDragOver] = useState(false);
   const [uploads, setUploads] = useState<Array<{ id: string; name: string; status: "uploading" | "done" | "error"; error?: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // null = "All files"; "(root)" = files with no `/` prefix; else the
+  // top-level folder name (first path segment).
+  const [activeFolder, setActiveFolder] = useState<string | null>(() => {
+    // If the user already had a file selected, open the modal scoped to its
+    // folder so the previous pick is in view.
+    const seed = initialSelection[0];
+    if (!seed) return null;
+    const i = seed.indexOf("/");
+    return i > 0 ? seed.slice(0, i) : "(root)";
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -282,18 +293,45 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
     return () => { cancelled = true; };
   }, [kind]);
 
+  // Folder list with counts, derived from the loaded file keys. Top-level
+  // only — nested prefixes are flattened into their root so the panel stays a
+  // single shallow list. Files with no slash go under the "(root)" bucket.
+  const folders = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const f of files ?? []) {
+      const i = f.key.indexOf("/");
+      const name = i > 0 ? f.key.slice(0, i) : "(root)";
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => {
+        if (a.name === "(root)") return 1;
+        if (b.name === "(root)") return -1;
+        return a.name.localeCompare(b.name);
+      });
+  }, [files]);
+
   const filtered = useMemo(() => {
     if (!files) return [];
     const query = q.trim().toLowerCase();
-    if (!query) return files;
-    return files.filter((f) => f.key.toLowerCase().includes(query));
-  }, [files, q]);
+    return files.filter((f) => {
+      if (activeFolder === "(root)") {
+        if (f.key.includes("/")) return false;
+      } else if (activeFolder) {
+        if (!f.key.startsWith(`${activeFolder}/`)) return false;
+      }
+      if (query && !f.key.toLowerCase().includes(query)) return false;
+      return true;
+    });
+  }, [files, q, activeFolder]);
 
   const toggle = useCallback((k: string) => {
     if (mode === "single") setSelected([k]);
     else setSelected((s) => (s.includes(k) ? s.filter((x) => x !== k) : [...s, k]));
   }, [mode]);
 
+  const uploadFolder = activeFolder && activeFolder !== "(root)" ? activeFolder : "uploads";
   const uploadFiles = useCallback((list: File[]) => {
     if (!list.length) return;
     const accept = kind === "image"
@@ -302,7 +340,7 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
     for (const f of list) {
       if (!accept(f.type || "")) continue;
       const safeName = sanitizeFileName(f.name);
-      const key = `uploads/${safeName}`;
+      const key = `${uploadFolder}/${safeName}`;
       const jobId = `up_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
       setUploads((arr) => [{ id: jobId, name: key, status: "uploading" }, ...arr]);
       fetch(`/api/storage/${encodeURIComponent(key)}`, {
@@ -332,7 +370,7 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
           setUploads((arr) => arr.map((u) => (u.id === jobId ? { ...u, status: "error", error: e.message } : u)));
         });
     }
-  }, [kind, mode]);
+  }, [kind, mode, uploadFolder]);
 
   const onDropFiles = useCallback((e: React.DragEvent) => {
     e.preventDefault(); e.stopPropagation();
@@ -377,88 +415,99 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
           <IconButton icon={I.X} title="Close" onClick={onClose} />
         </div>
 
-        <div className="dialog-body" style={{ padding: 16, gap: 12 }}>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <div className="search-input" style={{ flex: 1 }}>
-              <I.Search size={14} />
+        <div className="dialog-body" style={{ padding: 0, gap: 0, flexDirection: "row" }}>
+          <FolderSidebar
+            folders={folders}
+            active={activeFolder}
+            onSelect={setActiveFolder}
+            totalCount={files?.length ?? 0}
+          />
+
+          <div style={{ flex: 1, minWidth: 0, padding: 14, display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div className="search-input" style={{ flex: 1 }}>
+                <I.Search size={14} />
+                <input
+                  autoFocus
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder={kind === "image" ? "Search images by key…" : "Search files by key…"}
+                />
+              </div>
+              <Button variant="outline" size="sm" icon={I.Upload} onClick={() => fileInputRef.current?.click()}>
+                Upload
+              </Button>
               <input
-                autoFocus
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={kind === "image" ? "Search images by key…" : "Search files by key…"}
+                ref={fileInputRef}
+                type="file"
+                accept={accept}
+                multiple={mode === "multi"}
+                style={{ display: "none" }}
+                onChange={onPickFiles}
               />
             </div>
-            <Button variant="outline" size="sm" icon={I.Upload} onClick={() => fileInputRef.current?.click()}>
-              Upload
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={accept}
-              multiple={mode === "multi"}
-              style={{ display: "none" }}
-              onChange={onPickFiles}
-            />
-          </div>
 
-          <div
-            className={`dropzone ${dragOver ? "is-over" : ""}`}
-            onClick={() => fileInputRef.current?.click()}
-            role="button"
-            tabIndex={0}
-            style={{ padding: "10px 14px" }}
-          >
-            <div className="dropzone-icon" style={{ width: 32, height: 32 }}>
-              <I.Upload size={16} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 500 }}>
-                Drop {kind === "image" ? "images" : "files"} here, or click to upload
+            <div
+              className={`dropzone ${dragOver ? "is-over" : ""}`}
+              onClick={() => fileInputRef.current?.click()}
+              role="button"
+              tabIndex={0}
+              style={{ padding: "10px 14px" }}
+            >
+              <div className="dropzone-icon" style={{ width: 32, height: 32 }}>
+                <I.Upload size={16} />
               </div>
-              <div className="muted" style={{ fontSize: 12 }}>
-                Stored under <span className="font-mono">uploads/</span>.
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>
+                  Drop {kind === "image" ? "images" : "files"} here, or click to upload
+                </div>
+                <div className="muted" style={{ fontSize: 12 }}>
+                  Uploading to <span className="font-mono">{uploadFolder}/</span>.
+                </div>
               </div>
+              <span className="dropzone-hint font-mono">{mode === "multi" ? "multiple ok" : "1 file"}</span>
             </div>
-            <span className="dropzone-hint font-mono">{mode === "multi" ? "multiple ok" : "1 file"}</span>
-          </div>
 
-          {uploads.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {uploads.slice(0, 4).map((u) => (
-                <UploadRow key={u.id} u={u} />
-              ))}
-            </div>
-          )}
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minHeight: 200 }}>
-            {loading && <div className="muted" style={{ fontSize: 12.5, padding: 12 }}>Loading…</div>}
-            {loadErr && <div style={{ color: "var(--destructive)", fontSize: 12.5, padding: 12 }}>{loadErr}</div>}
-            {!loading && !loadErr && filtered.length === 0 && (
-              <div className="muted" style={{ fontSize: 12.5, padding: 12 }}>
-                {q
-                  ? `No ${kind === "image" ? "images" : "files"} match “${q}”.`
-                  : `No ${kind === "image" ? "images" : "files"} uploaded yet — drop one above to get started.`}
-              </div>
-            )}
-            {!loading && !loadErr && filtered.length > 0 && (
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-                  gap: 10,
-                }}
-              >
-                {filtered.map((f) => (
-                  <FileTile
-                    key={f.key}
-                    f={f}
-                    selected={selected.includes(f.key)}
-                    mode={mode}
-                    onToggle={() => toggle(f.key)}
-                  />
+            {uploads.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {uploads.slice(0, 4).map((u) => (
+                  <UploadRow key={u.id} u={u} />
                 ))}
               </div>
             )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minHeight: 200 }}>
+              {loading && <div className="muted" style={{ fontSize: 12.5, padding: 12 }}>Loading…</div>}
+              {loadErr && <div style={{ color: "var(--destructive)", fontSize: 12.5, padding: 12 }}>{loadErr}</div>}
+              {!loading && !loadErr && filtered.length === 0 && (
+                <div className="muted" style={{ fontSize: 12.5, padding: 12 }}>
+                  {q
+                    ? `No ${kind === "image" ? "images" : "files"} match “${q}”.`
+                    : activeFolder
+                      ? `Folder ${activeFolder === "(root)" ? "(no folder)" : activeFolder + "/"} is empty.`
+                      : `No ${kind === "image" ? "images" : "files"} uploaded yet — drop one above to get started.`}
+                </div>
+              )}
+              {!loading && !loadErr && filtered.length > 0 && (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
+                    gap: 10,
+                  }}
+                >
+                  {filtered.map((f) => (
+                    <FileTile
+                      key={f.key}
+                      f={f}
+                      selected={selected.includes(f.key)}
+                      mode={mode}
+                      onToggle={() => toggle(f.key)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -481,6 +530,70 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
       </div>
     </div>,
     document.body,
+  );
+}
+
+function FolderSidebar({ folders, active, onSelect, totalCount }: {
+  folders: Array<{ name: string; count: number }>;
+  active: string | null;
+  onSelect: (folder: string | null) => void;
+  totalCount: number;
+}) {
+  const row = (label: ReactNode, count: number, isActive: boolean, onClick: () => void, key: string) => (
+    <button
+      key={key}
+      type="button"
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "6px 10px",
+        borderRadius: "var(--radius-md)",
+        border: "none",
+        background: isActive ? "color-mix(in oklch, var(--primary) 10%, transparent)" : "transparent",
+        color: isActive ? "var(--foreground)" : "var(--muted-foreground)",
+        cursor: "pointer",
+        textAlign: "left",
+        font: "inherit",
+        fontSize: 12.5,
+      }}
+    >
+      <I.Folder size={13} />
+      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+      <span className="muted tabular-nums" style={{ fontSize: 11 }}>{count}</span>
+    </button>
+  );
+
+  return (
+    <aside
+      style={{
+        width: 192,
+        flexShrink: 0,
+        padding: "14px 10px",
+        borderRight: "1px solid var(--border)",
+        background: "color-mix(in oklch, var(--muted) 18%, var(--card))",
+        overflowY: "auto",
+        display: "flex", flexDirection: "column", gap: 2,
+      }}
+    >
+      <div className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.08em", padding: "4px 10px 8px" }}>
+        Folders
+      </div>
+      {row("All files", totalCount, active === null, () => onSelect(null), "__all")}
+      {folders.map((f) =>
+        row(
+          f.name === "(root)" ? <span className="muted">(no folder)</span> : <span className="font-mono">{f.name}</span>,
+          f.count,
+          active === f.name,
+          () => onSelect(f.name),
+          f.name,
+        ),
+      )}
+      {folders.length === 0 && (
+        <div className="muted" style={{ fontSize: 11.5, padding: "8px 10px" }}>
+          No folders yet — uploads land under <span className="font-mono">uploads/</span>.
+        </div>
+      )}
+    </aside>
   );
 }
 

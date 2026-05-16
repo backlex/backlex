@@ -36,6 +36,7 @@ export interface AuthConfig {
   socialProviders?: {
     google?: OAuthProviderConfig;
     github?: OAuthProviderConfig;
+    apple?: OAuthProviderConfig;
   };
   email?: EmailAdapter;
   /** Recognized: `magic-link`, `email-otp`, `anonymous`, `passkey`. Plugins

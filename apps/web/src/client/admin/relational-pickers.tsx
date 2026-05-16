@@ -22,6 +22,7 @@ import {
 import { createPortal } from "react-dom";
 import { I } from "./icons";
 import { Button, IconButton, Checkbox } from "./ui";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
 import { api } from "@/lib/api";
 import { itemsApi } from "./api";
 
@@ -442,15 +443,15 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
 
           <div style={{ flex: 1, minWidth: 0, padding: 14, display: "flex", flexDirection: "column", gap: 10, overflowY: "auto" }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <div className="search-input" style={{ flex: 1 }}>
-                <I.Search size={14} />
-                <input
+              <InputGroup style={{ flex: 1 }}>
+                <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
+                <InputGroupInput
                   autoFocus
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   placeholder={kind === "image" ? "Search images by key…" : "Search files by key…"}
                 />
-              </div>
+              </InputGroup>
               <Button variant="outline" size="sm" icon={I.Upload} onClick={() => fileInputRef.current?.click()}>
                 Upload
               </Button>
@@ -863,15 +864,15 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
         </div>
 
         <div className="dialog-body" style={{ padding: 16, gap: 12 }}>
-          <div className="search-input">
-            <I.Search size={14} />
-            <input
+          <InputGroup>
+            <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
+            <InputGroupInput
               autoFocus
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search by label or id…"
             />
-          </div>
+          </InputGroup>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minHeight: 200 }}>
             {loading && <div className="muted" style={{ fontSize: 12.5, padding: 12 }}>Loading…</div>}

@@ -5,6 +5,7 @@ import { I } from "./icons";
 import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button, Checkbox, IconButton } from "./ui";
 import { Select } from "./select";
+import { Input } from "@workeros/ui/components/input";
 import { getAuthors, subscribeAuthors } from "./authors-cache";
 
 export const FIELD_OPS: Record<string, string[]> = {
@@ -151,8 +152,7 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
         <Select value={op} onChange={setOp} options={ops} style={{ flex: "0 0 110px" }} />
       </div>
       {op !== "_null" && (
-        <input
-          className="input"
+        <Input
           autoFocus
           placeholder={fieldDef.type === "integer" ? "42" : op === "_in" ? "a, b, c" : "value…"}
           value={val}

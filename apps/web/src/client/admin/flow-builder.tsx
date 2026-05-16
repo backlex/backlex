@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { Badge, Button, IconButton, Switch } from "./ui";
 import { Select } from "./select";
+import { Input } from "@workeros/ui/components/input";
+import { Textarea } from "@workeros/ui/components/textarea";
 import { emailTemplatesApi, functionsApi, collectionsApi, type ApiEmailTemplate, type ApiFunction, type ApiCollection } from "./api";
 
 // `pending` marks steps the runtime doesn't execute yet. The compiler will
@@ -424,14 +426,14 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
             {node.type === "cron" && (
               <div className="field">
                 <label className="field-label">Schedule</label>
-                <input className="input" value={node.config.cron || "0 9 * * *"} onChange={(e) => onChange({ config: { cron: e.target.value } })} placeholder="0 9 * * *" />
+                <Input value={node.config.cron || "0 9 * * *"} onChange={(e) => onChange({ config: { cron: e.target.value } })} placeholder="0 9 * * *" />
                 <span className="field-hint font-mono">runs daily at 09:00 UTC</span>
               </div>
             )}
             {node.type.startsWith("item.") && (
               <div className="field">
                 <label className="field-label">When (filter DSL)</label>
-                <textarea className="input" rows={3} value={node.config.when} onChange={(e) => onChange({ config: { when: e.target.value } })} placeholder='{ "status": { "_eq": "published" } }' />
+                <Textarea rows={3} value={node.config.when} onChange={(e) => onChange({ config: { when: e.target.value } })} placeholder='{ "status": { "_eq": "published" } }' />
                 <span className="field-hint">Trigger only fires when the row matches this filter (after the change).</span>
               </div>
             )}
@@ -441,7 +443,7 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
           <>
             <div className="field">
               <label className="field-label">Test</label>
-              <textarea className="input" rows={3} value={node.config.test} onChange={(e) => onChange({ config: { test: e.target.value } })} />
+              <Textarea rows={3} value={node.config.test} onChange={(e) => onChange({ config: { test: e.target.value } })} />
               <span className="field-hint">Evaluates against current step context. Use <span className="font-mono">{"{{ var }}"}</span> for interpolation.</span>
             </div>
             <div className="alter-preview" style={{ fontSize: 11 }}>
@@ -451,7 +453,7 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
         )}
         {node.kind === "action" && node.type === "email" && (
           <>
-            <div className="field"><label className="field-label">To</label><input className="input" value={node.config.to} onChange={(e) => onChange({ config: { to: e.target.value } })} placeholder="{{ data.author.email }}" /></div>
+            <div className="field"><label className="field-label">To</label><Input value={node.config.to} onChange={(e) => onChange({ config: { to: e.target.value } })} placeholder="{{ data.author.email }}" /></div>
             <div className="field">
               <label className="field-label">Template</label>
               <Select
@@ -466,8 +468,8 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
             </div>
             {!node.config.templateKey && (
               <>
-                <div className="field"><label className="field-label">Subject</label><input className="input" value={node.config.subject || ""} onChange={(e) => onChange({ config: { subject: e.target.value } })} /></div>
-                <div className="field"><label className="field-label">Body (text)</label><textarea className="input" rows={4} value={node.config.text || ""} onChange={(e) => onChange({ config: { text: e.target.value } })} placeholder="Hi {{ data.author.name }}, …" /></div>
+                <div className="field"><label className="field-label">Subject</label><Input value={node.config.subject || ""} onChange={(e) => onChange({ config: { subject: e.target.value } })} /></div>
+                <div className="field"><label className="field-label">Body (text)</label><Textarea rows={4} value={node.config.text || ""} onChange={(e) => onChange({ config: { text: e.target.value } })} placeholder="Hi {{ data.author.name }}, …" /></div>
               </>
             )}
           </>
@@ -488,7 +490,7 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
             </div>
             <div className="field">
               <label className="field-label">Input</label>
-              <textarea className="input font-mono" rows={3} value={node.config.input || ""} onChange={(e) => onChange({ config: { input: e.target.value } })} placeholder="leave empty to pass the trigger payload" />
+              <Textarea className="font-mono" rows={3} value={node.config.input || ""} onChange={(e) => onChange({ config: { input: e.target.value } })} placeholder="leave empty to pass the trigger payload" />
               <span className="field-hint">JSON or template string. Becomes <span className="font-mono">data</span> inside the function.</span>
             </div>
           </>
@@ -503,28 +505,28 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
                 options={["GET", "POST", "PUT", "PATCH", "DELETE"]}
               />
             </div>
-            <div className="field"><label className="field-label">URL</label><input className="input" value={node.config.url} onChange={(e) => onChange({ config: { url: e.target.value } })} /></div>
-            <div className="field"><label className="field-label">Body</label><textarea className="input font-mono" rows={3} value={node.config.body || ""} onChange={(e) => onChange({ config: { body: e.target.value } })} placeholder='{ "key": "{{ data.title }}" }' /><span className="field-hint">JSON or template string. Webhook defaults to the event payload when empty.</span></div>
+            <div className="field"><label className="field-label">URL</label><Input value={node.config.url} onChange={(e) => onChange({ config: { url: e.target.value } })} /></div>
+            <div className="field"><label className="field-label">Body</label><Textarea className="font-mono" rows={3} value={node.config.body || ""} onChange={(e) => onChange({ config: { body: e.target.value } })} placeholder='{ "key": "{{ data.title }}" }' /><span className="field-hint">JSON or template string. Webhook defaults to the event payload when empty.</span></div>
           </>
         )}
         {node.kind === "action" && node.type === "log" && (
-          <div className="field"><label className="field-label">Message</label><input className="input" value={node.config.message || ""} onChange={(e) => onChange({ config: { message: e.target.value } })} /><span className="field-hint">Server log line. Use <span className="font-mono">{"{{ data.* }}"}</span> for interpolation.</span></div>
+          <div className="field"><label className="field-label">Message</label><Input value={node.config.message || ""} onChange={(e) => onChange({ config: { message: e.target.value } })} /><span className="field-hint">Server log line. Use <span className="font-mono">{"{{ data.* }}"}</span> for interpolation.</span></div>
         )}
         {node.kind === "action" && node.type === "notification" && (
           <>
-            <div className="field"><label className="field-label">Title</label><input className="input" value={node.config.title || ""} onChange={(e) => onChange({ config: { title: e.target.value } })} /></div>
-            <div className="field"><label className="field-label">Body</label><textarea className="input" rows={2} value={node.config.body || ""} onChange={(e) => onChange({ config: { body: e.target.value } })} /></div>
-            <div className="field"><label className="field-label">URL</label><input className="input" value={node.config.url || ""} onChange={(e) => onChange({ config: { url: e.target.value } })} placeholder="/posts/{{ data.id }}" /></div>
-            <div className="field"><label className="field-label">Recipient (userId)</label><input className="input" value={node.config.userId ?? ""} onChange={(e) => onChange({ config: { userId: e.target.value || null } })} placeholder="leave empty for admins" /></div>
+            <div className="field"><label className="field-label">Title</label><Input value={node.config.title || ""} onChange={(e) => onChange({ config: { title: e.target.value } })} /></div>
+            <div className="field"><label className="field-label">Body</label><Textarea rows={2} value={node.config.body || ""} onChange={(e) => onChange({ config: { body: e.target.value } })} /></div>
+            <div className="field"><label className="field-label">URL</label><Input value={node.config.url || ""} onChange={(e) => onChange({ config: { url: e.target.value } })} placeholder="/posts/{{ data.id }}" /></div>
+            <div className="field"><label className="field-label">Recipient (userId)</label><Input value={node.config.userId ?? ""} onChange={(e) => onChange({ config: { userId: e.target.value || null } })} placeholder="leave empty for admins" /></div>
           </>
         )}
         {node.kind === "action" && node.type === "transform" && (
-          <div className="field"><label className="field-label">Value</label><textarea className="input font-mono" rows={3} value={node.config.value || ""} onChange={(e) => onChange({ config: { value: e.target.value } })} placeholder="{{ data.title }}" /><span className="field-hint">Result is piped into <span className="font-mono">$last</span> for the next step.</span></div>
+          <div className="field"><label className="field-label">Value</label><Textarea className="font-mono" rows={3} value={node.config.value || ""} onChange={(e) => onChange({ config: { value: e.target.value } })} placeholder="{{ data.title }}" /><span className="field-hint">Result is piped into <span className="font-mono">$last</span> for the next step.</span></div>
         )}
         {node.kind === "action" && node.type === "run-script" && (
           <>
-            <div className="field"><label className="field-label">Code</label><textarea className="input font-mono" rows={6} value={node.config.code || ""} onChange={(e) => onChange({ config: { code: e.target.value } })} /><span className="field-hint">Sandboxed JS. Returns into <span className="font-mono">$last</span>.</span></div>
-            <div className="field"><label className="field-label">Timeout (ms)</label><input className="input" type="number" value={node.config.timeoutMs ?? 5000} onChange={(e) => onChange({ config: { timeoutMs: Number(e.target.value) || 5000 } })} /></div>
+            <div className="field"><label className="field-label">Code</label><Textarea className="font-mono" rows={6} value={node.config.code || ""} onChange={(e) => onChange({ config: { code: e.target.value } })} /><span className="field-hint">Sandboxed JS. Returns into <span className="font-mono">$last</span>.</span></div>
+            <div className="field"><label className="field-label">Timeout (ms)</label><Input type="number" value={node.config.timeoutMs ?? 5000} onChange={(e) => onChange({ config: { timeoutMs: Number(e.target.value) || 5000 } })} /></div>
           </>
         )}
         {node.kind === "action" && (node.type === "item.create" || node.type === "item.update") && (
@@ -541,11 +543,11 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
               />
             </div>
             {node.type === "item.update" && (
-              <div className="field"><label className="field-label">Row id</label><input className="input" value={node.config.id || ""} onChange={(e) => onChange({ config: { id: e.target.value } })} placeholder="{{ data.id }}" /></div>
+              <div className="field"><label className="field-label">Row id</label><Input value={node.config.id || ""} onChange={(e) => onChange({ config: { id: e.target.value } })} placeholder="{{ data.id }}" /></div>
             )}
             <div className="field">
               <label className="field-label">Data</label>
-              <textarea className="input font-mono" rows={5} value={node.config.data || ""} onChange={(e) => onChange({ config: { data: e.target.value } })} placeholder='{ "title": "{{ data.title }}" }' />
+              <Textarea className="font-mono" rows={5} value={node.config.data || ""} onChange={(e) => onChange({ config: { data: e.target.value } })} placeholder='{ "title": "{{ data.title }}" }' />
               <span className="field-hint">JSON object — template strings are interpolated before insert/update.</span>
             </div>
           </>
@@ -553,7 +555,7 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
         {node.kind === "action" && node.type === "delay" && (
           <div className="field">
             <label className="field-label">Duration</label>
-            <input className="input" value={node.config.duration || ""} onChange={(e) => onChange({ config: { duration: e.target.value } })} placeholder="5m" />
+            <Input value={node.config.duration || ""} onChange={(e) => onChange({ config: { duration: e.target.value } })} placeholder="5m" />
             <span className="field-hint">e.g. 30s, 5m, 1h, 2d. ≤ 30s sleeps inline; longer waits persist to the scheduler.</span>
           </div>
         )}
@@ -657,7 +659,7 @@ function TestRunPanel({ name, nodes, edges: _edges, onClose }: { name: string; n
         <div className="fb-test-body">
           <div>
             <div className="field-label" style={{ marginBottom: 6 }}>Sample event payload</div>
-            <textarea className="input font-mono" rows={14} value={payload} onChange={(e) => setPayload(e.target.value)} style={{ fontSize: 11.5, lineHeight: 1.5 }} />
+            <Textarea className="font-mono" rows={14} value={payload} onChange={(e) => setPayload(e.target.value)} style={{ fontSize: 11.5, lineHeight: 1.5 }} />
             <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
               <Button variant="primary" icon={I.Zap} onClick={run} disabled={running}>{running ? "Running…" : "Run"}</Button>
               <Button variant="ghost" onClick={() => setSteps([])}>Clear</Button>

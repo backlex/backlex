@@ -574,6 +574,67 @@ export const samlAdminApi = {
     }),
 };
 
+/** Sanitized LDAP config row returned by GET /api/admin/ldap-config. The
+ *  encrypted `bindPassword` + `caPem` never travel the wire — `secretsSet`
+ *  carries a "is this set" flag per key instead. */
+export interface ApiLdapConfig {
+  tenantId: string;
+  enabled: boolean;
+  url: string;
+  bindDn: string;
+  baseDn: string;
+  userFilter: string;
+  groupFilter: string | null;
+  attributeMap: { email: string; firstName: string; lastName: string; groups: string };
+  defaultRoleId: string | null;
+  groupsToRoles: Record<string, string> | null;
+  tlsOptions: { rejectUnauthorized?: boolean } | null;
+  secretsSet: { bindPassword: boolean; caPem: boolean };
+  domainMatch: string[] | null;
+  rateLimitPerMinute: number;
+  updatedAt: string | number | null;
+}
+
+export interface LdapConfigPatch {
+  enabled?: boolean;
+  url?: string;
+  bindDn?: string;
+  baseDn?: string;
+  userFilter?: string;
+  groupFilter?: string | null;
+  attributeMap?: Partial<{
+    email: string;
+    firstName: string;
+    lastName: string;
+    groups: string;
+  }>;
+  defaultRoleId?: string | null;
+  groupsToRoles?: Record<string, string> | null;
+  tlsOptions?: { rejectUnauthorized?: boolean } | null;
+  domainMatch?: string[] | null;
+  rateLimitPerMinute?: number;
+  /** `""`/`null` clears a key; omitting one leaves the stored ciphertext
+   *  in place. */
+  secrets?: { bindPassword?: string | null; caPem?: string | null };
+}
+
+export const ldapAdminApi = {
+  load: () => api<Envelope<ApiLdapConfig>>(`/api/admin/ldap-config`),
+  save: (body: LdapConfigPatch) =>
+    api<{ ok: true }>(`/api/admin/ldap-config`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  test: (username: string, password: string) =>
+    api<
+      | { ok: true; dn: string; attributes: { email: string | null; firstName: string | null; lastName: string | null; groups: string[] } }
+      | { ok: false; reason: string }
+    >(`/api/admin/ldap-config/test`, {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+};
+
 export const settingsApi = {
   load: () => api<Envelope<Record<string, unknown>>>(`/api/admin/settings`),
   patch: (body: Record<string, unknown>) =>

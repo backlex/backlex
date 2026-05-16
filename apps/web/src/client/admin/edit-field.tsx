@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { I } from "./icons";
 import { Badge, Button, IconButton, Switch } from "./ui";
+import { Input } from "@workeros/ui/components/input";
 import { Select } from "./select";
 import { getInterface, interfacesForType } from "./interfaces";
 
@@ -181,14 +182,12 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {choices.map((c, i) => (
                   <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 90px 32px", gap: 6, alignItems: "center" }}>
-                    <input
-                      className="input"
+                    <Input
                       placeholder="value"
                       value={c.value}
                       onChange={(e) => setChoice(i, { value: e.target.value })}
                     />
-                    <input
-                      className="input"
+                    <Input
                       placeholder="label (optional)"
                       value={c.label ?? ""}
                       onChange={(e) => setChoice(i, { label: e.target.value })}

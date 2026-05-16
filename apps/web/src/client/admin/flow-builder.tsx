@@ -183,7 +183,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
     <div className="fb-overlay">
       <div className="fb-shell">
         <div className="fb-header">
-          <button className="btn btn-ghost btn-icon-sm" onClick={onClose} title="Back"><I.ChevronLeft size={14} /></button>
+          <IconButton icon={I.ChevronLeft} onClick={onClose} title="Back" />
           <div className="fb-title">
             <input className="fb-name" value={name} onChange={(e) => setName(e.target.value)} />
             <span className="font-mono muted" style={{ fontSize: 11.5 }}>flow_{(initial?.id || "draft").slice(-6)}</span>
@@ -583,7 +583,7 @@ function NodePalette({ onSelect, onClose, branch }: { onSelect: (cat: any) => vo
           <I.Search size={13} />
           <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search steps…" />
           {branch && <Badge variant="outline">{branch} branch</Badge>}
-          <button className="btn btn-ghost btn-icon-sm" onClick={onClose}><I.X size={13} /></button>
+          <IconButton icon={I.X} onClick={onClose} title="Close" />
         </div>
         <div className="fb-palette-grid">
           {list.map((x) => {
@@ -654,7 +654,7 @@ function TestRunPanel({ name, nodes, edges: _edges, onClose }: { name: string; n
             <div className="muted" style={{ fontSize: 11.5 }}>Dry run — no real side-effects</div>
           </div>
           <div className="spacer" />
-          <button className="btn btn-ghost btn-icon-sm" onClick={onClose}><I.X size={13} /></button>
+          <IconButton icon={I.X} onClick={onClose} title="Close" />
         </div>
         <div className="fb-test-body">
           <div>

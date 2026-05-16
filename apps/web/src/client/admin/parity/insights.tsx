@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useIsMobile } from "@workeros/ui/hooks/use-mobile";
+import { Input } from "@workeros/ui/components/input";
+import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "../icons";
 import { Badge, Button, IconButton, PageHeader } from "../ui";
 import { Select } from "../select";
@@ -743,9 +745,9 @@ function PanelEditorDialog({
             <label className="field-label" htmlFor="panel-name">
               Name <span style={{ color: "var(--destructive)" }}>*</span>
             </label>
-            <input
+            <Input
               id="panel-name"
-              className={`input ${nameError && (name || serverErrors.name) ? "error" : ""}`}
+              aria-invalid={!!(nameError && (name || serverErrors.name))}
               autoFocus
               autoComplete="off"
               placeholder="Active users (24h)"
@@ -763,9 +765,9 @@ function PanelEditorDialog({
             <label className="field-label" htmlFor="panel-desc">
               Description <span className="muted" style={{ fontWeight: 400 }}>· optional</span>
             </label>
-            <input
+            <Input
               id="panel-desc"
-              className={`input ${descError ? "error" : ""}`}
+              aria-invalid={!!descError}
               autoComplete="off"
               placeholder="Distinct users with a session in the last 24h"
               value={description}
@@ -824,9 +826,10 @@ function PanelEditorDialog({
                     {previewBusy ? "Running…" : "Run preview"}
                   </Button>
                 </label>
-                <textarea
+                <Textarea
                   id="panel-sql"
-                  className={`textarea font-mono ${sqlError ? "error" : ""}`}
+                  className="font-mono"
+                  aria-invalid={!!sqlError}
                   style={{ minHeight: 140, fontSize: 12, whiteSpace: "pre" }}
                   spellCheck={false}
                   value={sqlText}
@@ -912,8 +915,9 @@ function PanelEditorDialog({
                 <label className="field-label">
                   Filter <Badge variant="outline" mono>JSON DSL</Badge> <span className="muted" style={{ fontWeight: 400 }}>· optional</span>
                 </label>
-                <textarea
-                  className={`textarea font-mono ${aggError.filter ? "error" : ""}`}
+                <Textarea
+                  className="font-mono"
+                  aria-invalid={!!aggError.filter}
                   style={{ minHeight: 80, fontSize: 12, whiteSpace: "pre" }}
                   spellCheck={false}
                   placeholder={`{ "status": { "_eq": "published" } }`}
@@ -932,8 +936,9 @@ function PanelEditorDialog({
               {agg.groupBy && (
                 <div className="field">
                   <label className="field-label">Limit <span className="muted" style={{ fontWeight: 400 }}>· optional</span></label>
-                  <input
-                    className={`input tabular-nums ${aggError.limit ? "error" : ""}`}
+                  <Input
+                    className="tabular-nums"
+                    aria-invalid={!!aggError.limit}
                     type="number"
                     min={1}
                     max={200}

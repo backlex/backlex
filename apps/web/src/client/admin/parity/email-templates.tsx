@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
+import { Input } from "@workeros/ui/components/input";
 import { I } from "../icons";
 import { Button, PageHeader } from "../ui";
 import { emailTemplatesApi, type ApiEmailTemplate } from "../api";
@@ -156,11 +157,11 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
           </div>
           <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ display: "flex", gap: 10 }}>
-              <div className="field" style={{ flex: 1 }}><label className="field-label">Name</label><input className="input" value={name} placeholder="Verify email" onChange={(e) => setName(e.target.value)} /></div>
-              <div className="field" style={{ flex: 1 }}><label className="field-label">Key</label><input className="input font-mono" value={keyDraft} placeholder="verify" disabled={!active?.isNew} spellCheck={false} autoComplete="off" onChange={(e) => setKeyDraft(e.target.value)} /></div>
+              <div className="field" style={{ flex: 1 }}><label className="field-label">Name</label><Input value={name} placeholder="Verify email" onChange={(e) => setName(e.target.value)} /></div>
+              <div className="field" style={{ flex: 1 }}><label className="field-label">Key</label><Input className="font-mono" value={keyDraft} placeholder="verify" disabled={!active?.isNew} spellCheck={false} autoComplete="off" onChange={(e) => setKeyDraft(e.target.value)} /></div>
             </div>
-            <div className="field"><label className="field-label">Subject</label><input className="input" value={subject} onChange={(e) => setSubject(e.target.value)} /></div>
-            <div className="field"><label className="field-label">From</label><input className="input" value={fromAddress} placeholder="(use the configured default)" onChange={(e) => setFromAddress(e.target.value)} /></div>
+            <div className="field"><label className="field-label">Subject</label><Input value={subject} onChange={(e) => setSubject(e.target.value)} /></div>
+            <div className="field"><label className="field-label">From</label><Input value={fromAddress} placeholder="(use the configured default)" onChange={(e) => setFromAddress(e.target.value)} /></div>
             <div className="field">
               <label className="field-label">Body (HTML)</label>
               <textarea value={body} onChange={(e) => setBody(e.target.value)} spellCheck={false} style={{ width: "100%", minHeight: 220, padding: 12, border: "1px solid var(--border)", borderRadius: "var(--radius-xl)", background: "oklch(0.18 0.01 130)", color: "oklch(0.92 0.02 130)", fontFamily: "Geist Mono, monospace", fontSize: 12.5, lineHeight: 1.55, resize: "vertical" }} />

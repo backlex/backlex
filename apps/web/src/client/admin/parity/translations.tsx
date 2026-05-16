@@ -1,5 +1,7 @@
 // @ts-nocheck
 import { useEffect, useMemo, useState } from "react";
+import { Input } from "@workeros/ui/components/input";
+import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "../icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
@@ -254,9 +256,10 @@ function AddTranslationKeyDialog({ base, locales, existingKeys, onClose, onCreat
             <label className="field-label" htmlFor="i18n-new-key">
               Key <Badge variant="outline" mono>text</Badge> <span style={{ color: "var(--destructive)" }}>*</span>
             </label>
-            <input
+            <Input
               id="i18n-new-key"
-              className={`input font-mono ${error ? "error" : ""}`}
+              className="font-mono"
+              aria-invalid={!!error}
               autoFocus
               autoComplete="off"
               spellCheck={false}
@@ -281,9 +284,8 @@ function AddTranslationKeyDialog({ base, locales, existingKeys, onClose, onCreat
             <label className="field-label" htmlFor="i18n-new-value">
               Base value <Badge variant="outline" mono>{base}</Badge> <span className="muted" style={{ fontWeight: 400 }}>· optional</span>
             </label>
-            <textarea
+            <Textarea
               id="i18n-new-value"
-              className="textarea"
               rows={2}
               placeholder={`Translation for ${base}`}
               value={value}
@@ -473,8 +475,8 @@ function ManageLocalesDialog({ locales, defaultLocale, onClose, onSave }: Manage
               ))}
             </div>
             <div style={{ display: "flex", gap: 6 }}>
-              <input
-                className="input font-mono"
+              <Input
+                className="font-mono"
                 placeholder="tr, en-GB, …"
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}

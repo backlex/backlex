@@ -53,6 +53,7 @@ interface FileRow {
   acl: "public" | "private";
   size: number;
   contentType: string | null;
+  metadata: Record<string, unknown> | null;
   createdAt: Date | number;
 }
 
@@ -181,6 +182,7 @@ export const storageRoutes = new Hono<AppBindings>()
         contentType: r.contentType ?? undefined,
         ownerId: r.ownerId,
         acl: r.acl,
+        metadata: r.metadata ?? null,
         uploadedAt:
           r.createdAt instanceof Date
             ? r.createdAt.toISOString()
@@ -367,19 +369,37 @@ export const storageRoutes = new Hono<AppBindings>()
     const body = (await c.req.json().catch(() => ({}))) as {
       acl?: "public" | "private";
       folderId?: string | null;
+      /** Free-form bag for display name, description, tags[], author,
+       *  location, etc. Merged onto the existing row — keys explicitly set
+       *  to `null` are removed so the UI can clear a field. */
+      metadata?: Record<string, unknown> | null;
     };
     const t = filesTable(ctx.dialect);
     const conds: SQL[] = [eq(t.key, key), eq(t.tenantId, tenantId)];
     if (perm.whereSql) conds.push(perm.whereSql);
-    const rows = (await (ctx.db as any)
-      .select({ key: t.key })
+    const existing = (await (ctx.db as any)
+      .select({ key: t.key, metadata: t.metadata })
       .from(t)
       .where(and(...conds))
-      .limit(1)) as { key: string }[];
-    if (!rows[0]) throw new AppError("NOT_FOUND", "Object not found");
+      .limit(1)) as { key: string; metadata: Record<string, unknown> | null }[];
+    if (!existing[0]) throw new AppError("NOT_FOUND", "Object not found");
+
     const patch: Record<string, unknown> = {};
     if (body.acl) patch.acl = body.acl;
     if (body.folderId !== undefined) patch.folderId = body.folderId;
+    if (body.metadata !== undefined) {
+      // null = wipe everything; an object = merge (null leaves on keys remove them)
+      if (body.metadata === null) {
+        patch.metadata = null;
+      } else {
+        const merged: Record<string, unknown> = { ...(existing[0].metadata ?? {}) };
+        for (const [k, v] of Object.entries(body.metadata)) {
+          if (v === null) delete merged[k];
+          else merged[k] = v;
+        }
+        patch.metadata = Object.keys(merged).length > 0 ? merged : null;
+      }
+    }
     await (ctx.db as any)
       .update(t)
       .set(patch)

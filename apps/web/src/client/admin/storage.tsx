@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } fr
 import { I } from "./icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
 import { Input } from "@workeros/ui/components/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
 import { api } from "@/lib/api";
 
 interface StoredFolder {
@@ -358,10 +359,10 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
       )}
 
       <div className="filter-bar">
-        <div className="search-input">
-          <I.Search size={14} />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search keys…" />
-        </div>
+        <InputGroup>
+          <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
+          <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search keys…" />
+        </InputGroup>
         <span className="muted font-mono" style={{ fontSize: 11.5 }}>
           {folder ? <>in <span style={{ color: "var(--foreground)" }}>{folder}/</span></> : "all folders"} · {visible.length} files
         </span>
@@ -380,10 +381,10 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
             <IconButton icon={I.Plus} title="New folder" onClick={openNewFolder} />
           </div>
           <div style={{ padding: "8px 10px 6px", borderBottom: "1px solid var(--border)" }}>
-            <div className="search-input" style={{ height: 28, minWidth: 0, padding: "0 10px" }}>
-              <I.Search size={12} />
-              <input value={folderQuery} onChange={(e) => setFolderQuery(e.target.value)} placeholder="Filter folders…" style={{ fontSize: 12, minWidth: 0 }} />
-            </div>
+            <InputGroup className="h-8">
+              <InputGroupAddon><I.Search size={12} /></InputGroupAddon>
+              <InputGroupInput value={folderQuery} onChange={(e) => setFolderQuery(e.target.value)} placeholder="Filter folders…" className="text-xs" />
+            </InputGroup>
           </div>
           <div style={{ overflowY: "auto", flex: 1, padding: "6px 6px 8px" }}>
             <button

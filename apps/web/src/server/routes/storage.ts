@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { and, eq, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, isNull, sql, type SQL } from "drizzle-orm";
 import { AppError, type ImageTransform } from "@workeros/core";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
@@ -154,6 +154,21 @@ const TRANSFORM_CACHE_HEADERS: Record<string, string> = {
 };
 
 export const storageRoutes = new Hono<AppBindings>()
+  /**
+   * Paginated listing for this tenant. Defaults are friendly to the admin
+   * UI; the response stays the same shape (`{ data, meta }`) for clients
+   * that didn't ask for pagination — `meta.total` lets them tell whether
+   * there's more.
+   *
+   * Query params:
+   *   - prefix    Logical key prefix (e.g. "uploads/")
+   *   - folderId  UUID of a folder to filter by, OR `"__root__"` to match
+   *               only files with no folder. Composes with `prefix`.
+   *   - search    Substring match on the logical key (case-insensitive
+   *               via LIKE; escapes %_\\ in the user input).
+   *   - limit     1–200, default 50
+   *   - offset    ≥0, default 0
+   */
   .get("/", requirePermission(filesCollection, "read"), async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");
@@ -162,17 +177,52 @@ export const storageRoutes = new Hono<AppBindings>()
     const t = filesTable(ctx.dialect);
     const prefix = c.req.query("prefix") ?? "";
     const physicalPrefix = physicalKey(tenantId, prefix);
+    const folderId = c.req.query("folderId");
+    const search = (c.req.query("search") ?? "").trim();
+    const rawLimit = Number(c.req.query("limit") ?? 50);
+    const rawOffset = Number(c.req.query("offset") ?? 0);
+    const limit = Number.isFinite(rawLimit)
+      ? Math.max(1, Math.min(200, Math.floor(rawLimit)))
+      : 50;
+    const offset = Number.isFinite(rawOffset)
+      ? Math.max(0, Math.floor(rawOffset))
+      : 0;
 
     const conds: SQL[] = [
       eq(t.tenantId, tenantId),
       sql`${sql.identifier("key")} LIKE ${`${physicalPrefix}%`}`,
     ];
+    if (folderId === "__root__") conds.push(isNull(t.folderId));
+    else if (folderId) conds.push(eq(t.folderId, folderId));
+    if (search) {
+      // Escape LIKE wildcards in user input, then anchor the match inside the
+      // already-tenant-scoped key prefix. SQLite LIKE is case-insensitive for
+      // ASCII; Postgres uses ILIKE for portability.
+      const esc = search.replace(/[\\%_]/g, (m) => `\\${m}`);
+      const pattern = `${physicalPrefix}%${esc}%`;
+      conds.push(
+        ctx.dialect === "pg"
+          ? sql`${sql.identifier("key")} ILIKE ${pattern} ESCAPE '\\'`
+          : sql`${sql.identifier("key")} LIKE ${pattern} ESCAPE '\\'`,
+      );
+    }
     if (perm.whereSql) conds.push(perm.whereSql);
 
-    const rows = (await (ctx.db as any)
-      .select()
-      .from(t)
-      .where(and(...conds))) as FileRow[];
+    const where = and(...conds);
+    const [rows, totalRows] = await Promise.all([
+      (ctx.db as any)
+        .select()
+        .from(t)
+        .where(where)
+        .orderBy(desc(t.createdAt))
+        .limit(limit)
+        .offset(offset) as Promise<FileRow[]>,
+      (ctx.db as any)
+        .select({ value: count() })
+        .from(t)
+        .where(where) as Promise<{ value: number }[]>,
+    ]);
+    const total = Number(totalRows[0]?.value ?? 0);
 
     return c.json({
       data: rows.map((r) => ({
@@ -188,7 +238,40 @@ export const storageRoutes = new Hono<AppBindings>()
             ? r.createdAt.toISOString()
             : new Date(r.createdAt).toISOString(),
       })),
+      meta: { total, limit, offset },
     });
+  })
+  /**
+   * Aggregate count per folder for the sidebar badge. One DB round-trip
+   * replaces the client's O(files × depth) per-render computation. Returns
+   * `{ root: number, byFolderId: { [id]: number }, total: number }`.
+   */
+  .get("/folder-counts", requirePermission(filesCollection, "read"), async (c) => {
+    const ctx = c.get("ctx");
+    const auth = c.get("auth");
+    const perm = c.get("permission");
+    const tenantId = requireTenantId(auth);
+    const t = filesTable(ctx.dialect);
+
+    const conds: SQL[] = [eq(t.tenantId, tenantId)];
+    if (perm.whereSql) conds.push(perm.whereSql);
+
+    const rows = (await (ctx.db as any)
+      .select({ folderId: t.folderId, value: count() })
+      .from(t)
+      .where(and(...conds))
+      .groupBy(t.folderId)) as { folderId: string | null; value: number }[];
+
+    let root = 0;
+    const byFolderId: Record<string, number> = {};
+    let total = 0;
+    for (const r of rows) {
+      const n = Number(r.value);
+      total += n;
+      if (r.folderId === null) root = n;
+      else byFolderId[r.folderId] = n;
+    }
+    return c.json({ root, byFolderId, total });
   })
   .put("/:key{.+}", requirePermission(filesCollection, "create"), async (c) => {
     const ctx = c.get("ctx");

@@ -657,7 +657,17 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                 </div>
               )}
               {visible.map((f) => (
-                <FileTile key={f.key} f={f} active={selectedKey === f.key} onSelect={() => openDetail(f.key)} />
+                <FileTile
+                  key={f.key}
+                  f={f}
+                  active={selectedKey === f.key}
+                  onSelect={() => openDetail(f.key)}
+                  onCopyUrl={(k) => {
+                    const url = window.location.origin + "/api/storage/" + encodeURI(k);
+                    navigator.clipboard?.writeText(url);
+                    pushToast("URL copied: " + (k.split("/").pop() ?? k));
+                  }}
+                />
               ))}
             </div>
             <PaginationFooter
@@ -835,11 +845,10 @@ function ImageMock({ hue = 200, focal, style = {} as CSSProperties }: { hue?: nu
   );
 }
 
-function FileTile({ f, active, onSelect }: { f: StoredFile; active: boolean; onSelect: () => void }) {
+function FileTile({ f, active, onSelect, onCopyUrl }: { f: StoredFile; active: boolean; onSelect: () => void; onCopyUrl: (key: string) => void }) {
   const isImg = Boolean(f.type && f.type.startsWith("image/"));
   const [imgFailed, setImgFailed] = useState(false);
   const sizeStr = f.size > 1024 * 1024 ? (f.size / 1024 / 1024).toFixed(1) + " MB" : (f.size / 1024).toFixed(1) + " KB";
-  // Display name = metadata.name override falls back to the leaf of the key.
   const displayName = (f.metadata && typeof f.metadata.name === "string" && f.metadata.name.trim()) || (f.key.split("/").pop() ?? f.key);
   return (
     <div
@@ -857,7 +866,7 @@ function FileTile({ f, active, onSelect }: { f: StoredFile; active: boolean; onS
         overflow: "hidden",
       }}
     >
-      <div style={{ aspectRatio: "1 / 1", position: "relative", background: "var(--muted)" }}>
+      <div style={{ aspectRatio: "16 / 9", position: "relative", background: "var(--muted)" }}>
         {isImg && !imgFailed ? (
           <img
             src={thumbnailUrl(f, 320)}
@@ -875,12 +884,37 @@ function FileTile({ f, active, onSelect }: { f: StoredFile; active: boolean; onS
         )}
         {f.acl === "public" && (
           <span
-            style={{ position: "absolute", top: 6, right: 6, padding: "2px 6px", borderRadius: 999, background: "oklch(0.25 0.04 145 / 0.85)", color: "oklch(0.9 0.18 145)", fontSize: 9.5, fontFamily: "Geist Mono, monospace", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}
+            style={{ position: "absolute", top: 6, left: 6, padding: "2px 6px", borderRadius: 999, background: "oklch(0.25 0.04 145 / 0.85)", color: "oklch(0.9 0.18 145)", fontSize: 9.5, fontFamily: "Geist Mono, monospace", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}
             title="public"
           >
             public
           </span>
         )}
+        {/* Copy URL — clicking doesn't open the detail modal, just copies. */}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onCopyUrl(f.key); }}
+          title="Copy URL"
+          style={{
+            position: "absolute",
+            top: 6,
+            right: 6,
+            width: 24,
+            height: 24,
+            display: "grid",
+            placeItems: "center",
+            padding: 0,
+            borderRadius: "var(--radius-sm)",
+            background: "oklch(0.18 0 0 / 0.7)",
+            color: "oklch(0.95 0 0)",
+            border: "1px solid oklch(1 0 0 / 0.15)",
+            cursor: "pointer",
+            backdropFilter: "blur(4px)",
+          }}
+          aria-label="Copy URL"
+        >
+          <I.Code size={12} />
+        </button>
       </div>
       <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
         <div className="font-mono" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

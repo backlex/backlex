@@ -7,7 +7,9 @@ import type { AppBindings } from "../app";
 import { findTenantBySlugOrId, getTenantAuth } from "../services/tenant-auth";
 import { loadAuthConfigRow, resolveAuthSurface } from "../services/auth-config";
 import { resolveSamlProvider } from "../services/saml-providers";
+import { resolveLdapAdapter } from "../services/ldap-config";
 import { provisionAppUser } from "../services/sso-provisioning";
+import { rateLimitOk } from "../lib/rate-limit";
 
 /**
  * Workspace end-user auth surface — the "auth as a service" router. Mounted
@@ -473,6 +475,129 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
     });
     if (!logout) return c.json({ ok: true });
     return c.redirect(logout.url, 302);
+  })
+  /**
+   * LDAP / Active Directory sign-in. Form-driven: the customer's app POSTs
+   * `{ username, password }` and we either return `{ token, user }` or 401.
+   *
+   * Flow:
+   *   1. resolve the tenant + its LDAP config (null → 503 UNAVAILABLE);
+   *   2. rate-limit per `(tenant_id, normalized_username, ip)` against
+   *      `config.rateLimitPerMinute`;
+   *   3. if `config.domainMatch` is set and the username looks like email,
+   *      bail BEFORE the LDAP roundtrip when the domain isn't allow-listed;
+   *   4. `adapter.authenticate(username, password)` → null → 401 (we do NOT
+   *      distinguish "no such user" from "wrong password");
+   *   5. provision the app_user (`linkByVerifiedEmail: false` — LDAP users
+   *      are directory-bound, no cross-provider linking by default);
+   *   6. issue an `app_sessions` row + return `{ token, user }`.
+   */
+  .post("/:slug/auth/ldap/sign-in", async (c) => {
+    const { ctx, tenant } = await resolveTenant(c);
+    const body = (await c.req.json().catch(() => null)) as
+      | { username?: unknown; password?: unknown }
+      | null;
+    const username =
+      typeof body?.username === "string" ? body.username.trim() : "";
+    const password = typeof body?.password === "string" ? body.password : "";
+    if (!username || !password) {
+      throw new AppError("VALIDATION", "username and password are required");
+    }
+
+    const resolved = await resolveLdapAdapter(
+      { db: ctx.db, dialect: ctx.dialect, env: ctx.env },
+      tenant.id,
+    );
+    if (!resolved) {
+      throw new AppError(
+        "UNAVAILABLE",
+        "LDAP is not configured or not available on this runtime",
+      );
+    }
+    const { adapter, config } = resolved;
+
+    // Per-(tenant, username, ip) rate limit. Both successes and failures count
+    // — directory brute-force attempts shouldn't get a clean window from
+    // throwing the right password somewhere along the way.
+    const ip =
+      extractIp(c.req.raw) ?? c.req.raw.headers.get("x-real-ip") ?? "unknown";
+    const rlKey = `ldap:${tenant.id}:${username.toLowerCase()}:${ip}`;
+    if (!rateLimitOk(rlKey, config.rateLimitPerMinute, 60_000)) {
+      throw new AppError(
+        "RATE_LIMITED",
+        "Too many LDAP sign-in attempts — try again in a minute",
+      );
+    }
+
+    // Domain allow-list — applied BEFORE the LDAP roundtrip when the username
+    // looks like an email and a list is configured.
+    if (config.domainMatch && config.domainMatch.length > 0 && username.includes("@")) {
+      const domain = username.split("@")[1]?.toLowerCase() ?? "";
+      const allowed = config.domainMatch.map((d) => d.toLowerCase());
+      if (!allowed.includes(domain)) {
+        throw new AppError("VALIDATION", "Email domain not allowed for LDAP sign-in");
+      }
+    }
+
+    // Authenticate against the directory. Transport errors throw → 500.
+    let attrs;
+    try {
+      attrs = await adapter.authenticate(username, password);
+    } catch (err) {
+      throw new AppError(
+        "INTERNAL",
+        `LDAP transport error: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+    if (!attrs) {
+      throw new AppError("UNAUTHORIZED", "Invalid credentials");
+    }
+    if (!attrs.email) {
+      throw new AppError(
+        "VALIDATION",
+        "LDAP user has no email attribute (configure attributeMap.email)",
+      );
+    }
+
+    // Provision the app-user. `linkByVerifiedEmail: false` — LDAP is the
+    // identity authority for these users; we don't auto-link to whatever
+    // happens to share their email locally.
+    const { appUserId } = await provisionAppUser({
+      ctx: { db: ctx.db, dialect: ctx.dialect },
+      tenantId: tenant.id,
+      providerType: "ldap",
+      providerId: "ldap",
+      subject: attrs.dn,
+      email: attrs.email,
+      firstName: attrs.firstName,
+      lastName: attrs.lastName,
+      groups: attrs.groups,
+      defaultRoleId: config.defaultRoleId ?? null,
+      groupsToRoles: config.groupsToRoles ?? null,
+      linkByVerifiedEmail: false,
+      ipAddress: extractIp(c.req.raw) ?? undefined,
+      authnContext: "ldap-simple-bind",
+    });
+
+    const lifetime =
+      parseLifetime(
+        (await loadAuthConfigRow(
+          { db: ctx.db as any, dialect: ctx.dialect },
+          tenant.id,
+        ))?.sessionLifetime,
+      ) ?? DEFAULT_APP_SESSION_LIFETIME_SECONDS;
+    const { token } = await issueAppSession(
+      { db: ctx.db, dialect: ctx.dialect },
+      {
+        tenantId: tenant.id,
+        userId: appUserId,
+        ipAddress: extractIp(c.req.raw),
+        userAgent: c.req.raw.headers.get("user-agent"),
+        lifetimeSeconds: lifetime,
+      },
+    );
+
+    return c.json({ token, user: { id: appUserId, email: attrs.email } });
   })
   .all("/:slug/auth/*", async (c) => {
     const { ctx, tenant } = await resolveTenant(c);

@@ -6,7 +6,8 @@ export type ErrorCode =
   | "CONFLICT"
   | "VALIDATION"
   | "RATE_LIMITED"
-  | "INTERNAL";
+  | "INTERNAL"
+  | "UNAVAILABLE";
 
 const STATUS: Record<ErrorCode, number> = {
   BAD_REQUEST: 400,
@@ -17,6 +18,9 @@ const STATUS: Record<ErrorCode, number> = {
   VALIDATION: 422,
   RATE_LIMITED: 429,
   INTERNAL: 500,
+  /** Feature is configured but the runtime can't serve it (e.g. LDAP on
+   *  Cloudflare Workers — no raw TCP). */
+  UNAVAILABLE: 503,
 };
 
 export class AppError extends Error {

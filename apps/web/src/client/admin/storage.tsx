@@ -131,7 +131,13 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
       params.set("folderId", "__virtual__");
     }
     if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
-    return `/api/storage/?${params}`;
+    // No trailing slash — Hono treats `/api/storage/` as a distinct path
+    // from the route registered on `/`, returning 404. The old non-paginated
+    // call used the bare path and worked; the rewrite accidentally tacked
+    // the slash on, so the request would 404, the client would catch and
+    // silently set files=[], and the grid stayed empty even though
+    // folder-counts (a different path) reported real numbers.
+    return `/api/storage?${params}`;
   };
 
   // Files page — refetches on folder / debounced-search change. Replaces

@@ -318,6 +318,63 @@ export const storageRoutes = new Hono<AppBindings>()
     }
     return c.json({ root, byFolderId, total });
   })
+  /**
+   * One-shot migration: walks every file in the current tenant whose
+   * `folder_id` is NULL and derives a folder from the key path, creating
+   * the matching folder row (find-or-create) and pinning the file to it.
+   * Idempotent — running it again after new uploads only touches rows the
+   * upload route hasn't already attached. Admin-only because it can mass-
+   * modify other users' rows.
+   */
+  .post("/_backfill-folders", requirePermission(filesCollection, "update"), async (c) => {
+    const ctx = c.get("ctx");
+    const auth = c.get("auth");
+    const tenantId = requireTenantId(auth);
+    if (!auth.roles?.includes("admin")) {
+      throw new AppError("FORBIDDEN", "Admin role required to run backfill");
+    }
+    const t = filesTable(ctx.dialect);
+    const rows = (await (ctx.db as any)
+      .select({ key: t.key })
+      .from(t)
+      .where(and(eq(t.tenantId, tenantId), isNull(t.folderId)))) as { key: string }[];
+
+    let scanned = rows.length;
+    let updated = 0;
+    let foldersCreatedBefore = 0;
+    let foldersCreatedAfter = 0;
+    if (rows.length > 0) {
+      const foldersT = foldersTable(ctx.dialect);
+      const beforeCount = (await (ctx.db as any)
+        .select({ value: count() })
+        .from(foldersT)
+        .where(eq(foldersT.tenantId, tenantId))) as { value: number }[];
+      foldersCreatedBefore = Number(beforeCount[0]?.value ?? 0);
+
+      for (const row of rows) {
+        const logical = stripTenantPrefix(tenantId, row.key);
+        const inferred = folderNameFromKey(logical);
+        if (!inferred) continue;
+        const fid = await findOrCreateFolderByName(ctx, tenantId, inferred, auth.userId);
+        await (ctx.db as any)
+          .update(t)
+          .set({ folderId: fid })
+          .where(and(eq(t.key, row.key), eq(t.tenantId, tenantId)));
+        updated++;
+      }
+
+      const afterCount = (await (ctx.db as any)
+        .select({ value: count() })
+        .from(foldersT)
+        .where(eq(foldersT.tenantId, tenantId))) as { value: number }[];
+      foldersCreatedAfter = Number(afterCount[0]?.value ?? 0);
+    }
+    return c.json({
+      scanned,
+      filesUpdated: updated,
+      foldersCreated: foldersCreatedAfter - foldersCreatedBefore,
+    });
+  })
   .put("/:key{.+}", requirePermission(filesCollection, "create"), async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");

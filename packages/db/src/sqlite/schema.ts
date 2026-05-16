@@ -738,6 +738,91 @@ export const authConfig = sqliteTable(
 );
 
 /**
+ * Per-workspace SAML 2.0 IdP configuration. Mirror of the pg `saml_providers`
+ * table — see packages/db/src/pg/schema.ts for the column-level docs.
+ *
+ * Booleans are stored as integer (0/1) per SQLite convention; `attribute_map`
+ * and `groups_to_roles` use JSON text columns rather than `jsonb`.
+ */
+export const samlProviders = sqliteTable(
+  "saml_providers",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    idpTemplate: text("idp_template"),
+    entityId: text("entity_id").notNull(),
+    ssoUrl: text("sso_url").notNull(),
+    sloUrl: text("slo_url"),
+    /** AES-256-GCM ciphertext of the IdP signing cert PEM. */
+    idpCertPem: text("idp_cert_pem").notNull(),
+    spEntityId: text("sp_entity_id").notNull(),
+    attributeMap: text("attribute_map", { mode: "json" })
+      .$type<Record<string, string>>()
+      .notNull()
+      .default({}),
+    defaultRoleId: text("default_role_id").references(() => roles.id, {
+      onDelete: "set null",
+    }),
+    groupsToRoles: text("groups_to_roles", { mode: "json" }).$type<
+      Record<string, string>
+    >(),
+    signatureAlgorithm: text("signature_algorithm").notNull().default("sha256"),
+    wantSignedAssertions: integer("want_signed_assertions", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    linkByVerifiedEmail: integer("link_by_verified_email", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    nameIdFormat: text("name_id_format").notNull().default("emailAddress"),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("saml_providers_tenant_slug_idx").on(t.tenantId, t.slug),
+    index("saml_providers_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
+ * Federated identity link — see packages/db/src/pg/schema.ts for full docs.
+ * `plane` is `'platform' | 'app'`; `user_id` references the matching pool.
+ */
+export const externalIdentities = sqliteTable(
+  "external_identities",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    plane: text("plane").notNull(),
+    userId: text("user_id").notNull(),
+    providerType: text("provider_type").notNull(),
+    providerId: text("provider_id").notNull(),
+    subject: text("subject").notNull(),
+    emailAtProvision: text("email_at_provision"),
+    rolesFromGroups: text("roles_from_groups", { mode: "json" }).$type<string[]>(),
+    lastLoginAt: integer("last_login_at", { mode: "timestamp_ms" }),
+    lastLoginIp: text("last_login_ip"),
+    lastAuthnContext: text("last_authn_context"),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    uniqueIndex("external_identities_lookup_idx").on(
+      t.tenantId,
+      t.providerType,
+      t.providerId,
+      t.subject,
+    ),
+    index("external_identities_user_idx").on(t.plane, t.userId),
+  ],
+);
+
+/**
  * Per-workspace email transport. `tenant_id` is the workspace id, or the
  * `_global` sentinel for the instance-wide override row. `provider = "inherit"`
  * (or no usable config) falls through to the next level and ultimately to the

@@ -88,7 +88,6 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
   const [fmt, setFmt] = useState("webp");
   const [fit, setFit] = useState("cover");
   const [focal, setFocal] = useState({ x: 50, y: 50 });
-  const [compare, setCompare] = useState(50);
   const [uploads, setUploads] = useState<UploadJob[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [newFolderOpen, setNewFolderOpen] = useState(false);
@@ -487,7 +486,6 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
           w={w} setW={setW} q={q} setQ={setQ} fmt={fmt} setFmt={setFmt}
           fit={fit} setFit={setFit}
           focal={focal} setFocal={setFocal}
-          compare={compare} setCompare={setCompare}
           onToggleACL={() => toggleACL(selected.key)}
           onDelete={() => deleteFile(selected.key)}
           onCopy={(text: string) => { navigator.clipboard?.writeText(text); pushToast("Copied to clipboard."); }}
@@ -642,32 +640,82 @@ function FileDetailModal({ f, onClose, ...rest }: any) {
   );
 }
 
-function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, setFit, focal, setFocal, compare, setCompare, onToggleACL, onDelete, onCopy, pushToast, embedded }: any) {
-  const url = `/api/storage/${f.key}`;
+function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, setFit, focal, setFocal, onToggleACL, onDelete, onCopy, pushToast, embedded }: any) {
+  const url = `/api/storage/${encodeURI(f.key)}`;
   const params = isImage ? `?width=${w}&format=${fmt}&quality=${q}&fit=${fit}&focal=${focal.x},${focal.y}` : "";
   const transformedUrl = url + params;
 
-  const estSize = isImage && f.w ? (() => {
-    const ratio = w / f.w;
-    const qualityFactor = q / 100;
-    const formatFactor = ({ webp: 0.55, avif: 0.4, jpeg: 1, png: 2.2 } as Record<string, number>)[fmt] || 1;
-    const est = Math.round(f.size * ratio * ratio * qualityFactor * formatFactor);
-    return Math.max(1500, est);
-  })() : null;
+  // Real transformed-output size, read from the server via HEAD. Debounced
+  // so dragging a slider doesn't fire one request per pixel. Resets to
+  // "loading" whenever the transform URL changes.
+  const [transformedSize, setTransformedSize] = useState<number | null>(null);
+  const [transformedLoading, setTransformedLoading] = useState(false);
+  useEffect(() => {
+    if (!isImage) { setTransformedSize(null); return; }
+    setTransformedLoading(true);
+    const ctrl = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(transformedUrl, { method: "HEAD", credentials: "include", signal: ctrl.signal });
+        if (!res.ok) { setTransformedSize(null); return; }
+        const len = res.headers.get("content-length");
+        setTransformedSize(len ? Number(len) : null);
+      } catch {
+        // AbortError on re-trigger is expected; everything else just clears.
+      } finally {
+        setTransformedLoading(false);
+      }
+    }, 300);
+    return () => { ctrl.abort(); clearTimeout(t); };
+  }, [transformedUrl, isImage]);
 
   const aspect = (isImage && f.w && f.h) ? f.h / f.w : 0.6;
   const previewH = (isImage && f.w) ? Math.round(w * aspect) : null;
 
-  const onPreviewClick = (e: any) => {
-    if (!isImage) return;
-    const r = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - r.left) / r.width) * 100;
-    const y = ((e.clientY - r.top) / r.height) * 100;
-    setFocal({ x: Math.round(x), y: Math.round(y) });
-  };
-
   const Wrapper: any = embedded ? Fragment : "div";
   const wrapperProps: any = embedded ? {} : { className: "card", style: { padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" } };
+
+  /** Hit POST /api/storage/<key>/sign and return the relative signed URL. */
+  const signOnce = async (ttlSeconds: number): Promise<string> => {
+    const res = await api<{ url: string }>(
+      `/api/storage/${encodeURI(f.key)}/sign`,
+      { method: "POST", body: JSON.stringify({ ttlSeconds }) },
+    );
+    return res.url;
+  };
+
+  /** Append transform params to a signed URL — the server validates the
+   *  token first then runs the transform path, so this stays one request. */
+  const withTransformParams = (signed: string): string => {
+    if (!params) return signed;
+    return signed + (signed.includes("?") ? "&" : "?") + params.slice(1);
+  };
+
+  const onDownload = async () => {
+    try {
+      const href = f.acl === "public"
+        ? transformedUrl
+        : withTransformParams(await signOnce(60));
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = f.key.split("/").pop() || "download";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      pushToast?.((e as Error).message);
+    }
+  };
+
+  const onSignUrl = async () => {
+    try {
+      const signed = await signOnce(3600);
+      onCopy(withTransformParams(signed));
+      pushToast?.("Signed URL copied (1h).");
+    } catch (e) {
+      pushToast?.((e as Error).message);
+    }
+  };
 
   return (
     <Wrapper {...wrapperProps}>
@@ -679,37 +727,30 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
         </div>
       )}
 
-      <div className="img-preview" onClick={onPreviewClick} style={{ aspectRatio: "16 / 9", cursor: isImage ? "crosshair" : "default", borderRadius: 0 }}>
+      <div
+        className="img-preview"
+        onClick={(e) => {
+          if (!isImage) return;
+          const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          const x = ((e.clientX - r.left) / r.width) * 100;
+          const y = ((e.clientY - r.top) / r.height) * 100;
+          setFocal({ x: Math.round(x), y: Math.round(y) });
+        }}
+        style={{ aspectRatio: "16 / 9", cursor: isImage ? "crosshair" : "default", borderRadius: 0 }}
+      >
         {isImage ? (
           <>
             <img
-              src={`/api/storage/${encodeURI(f.key)}`}
+              key={transformedUrl}
+              src={transformedUrl}
               alt=""
               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: fit === "contain" ? "contain" : "cover", display: "block", background: "var(--muted)" }}
             />
-            <ImageMock hue={f.hue ?? 200} focal={{ x: 50, y: 50 }} />
-            <div style={{ position: "absolute", inset: 0, clipPath: `inset(0 0 0 ${compare}%)` }}>
-              <ImageMock
-                hue={f.hue ?? 200}
-                focal={focal}
-                style={{
-                  filter: q < 50 ? `blur(${(50 - q) / 25}px) saturate(${0.7 + q / 200})` : "none",
-                  transform: fit === "cover" ? `scale(${1 + (50 - Math.max(...[Math.abs(focal.x - 50), Math.abs(focal.y - 50)])) / 100})` : "none",
-                }}
-              />
-            </div>
-            <div className="focal-pin" style={{ left: `calc(${focal.x}% - 1px)`, top: `calc(${focal.y}% - 1px)`, opacity: focal.x > compare ? 1 : 0.3 }}>
+            <div className="focal-pin" style={{ left: `calc(${focal.x}% - 1px)`, top: `calc(${focal.y}% - 1px)` }}>
               <span />
             </div>
-            <div className="compare-track">
-              <input type="range" min={0} max={100} value={compare} onChange={(e) => { e.stopPropagation(); setCompare(Number(e.target.value)); }} onClick={(e) => e.stopPropagation()} />
-              <div className="compare-handle" style={{ left: `${compare}%` }}>
-                <span />
-              </div>
-            </div>
-            <div className="img-label" style={{ left: 8, top: 8 }}>original · {f.w}×{f.h}</div>
-            <div className="img-label" style={{ right: 8, top: 8 }}>{fmt} · {w}×{previewH}</div>
+            <div className="img-label" style={{ right: 8, top: 8 }}>{fmt} · {w}{previewH ? `×${previewH}` : ""}</div>
           </>
         ) : (
           <>
@@ -818,7 +859,12 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
                   const r = e.currentTarget.getBoundingClientRect();
                   setFocal({ x: Math.round(((e.clientX - r.left) / r.width) * 100), y: Math.round(((e.clientY - r.top) / r.height) * 100) });
                 }}>
-                  <ImageMock hue={f.hue ?? 200} focal={{ x: 50, y: 50 }} />
+                  <img
+                    src={`/api/storage/${encodeURI(f.key)}`}
+                    alt=""
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block", background: "var(--muted)" }}
+                  />
                   <div className="focal-grid-overlay">
                     {[0, 1, 2].map((row) => (
                       [0, 1, 2].map((col) => {
@@ -829,25 +875,27 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
                     <div className="focal-pin" style={{ left: `calc(${focal.x}% - 1px)`, top: `calc(${focal.y}% - 1px)` }}><span /></div>
                   </div>
                 </div>
-                <span className="field-hint">Click anywhere to set the crop pivot for <span className="font-mono">fit=cover</span>. Drag the slider above to compare.</span>
+                <span className="field-hint">Click anywhere to set the crop pivot for <span className="font-mono">fit=cover</span>.</span>
               </div>
             </div>
 
-            {estSize != null && (
-              <div className="size-readout">
-                <div>
-                  <div className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Original</div>
-                  <div className="tabular-nums">{fmtSize(f.size)}</div>
-                </div>
-                <I.ChevronRight size={14} className="muted" />
-                <div>
-                  <div className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Transformed</div>
-                  <div className="tabular-nums" style={{ color: "oklch(0.55 0.16 145)", fontWeight: 500 }}>~{fmtSize(estSize)}</div>
-                </div>
-                <div className="spacer" />
-                <Badge variant="outline" mono>{Math.round((1 - estSize / f.size) * 100)}% smaller</Badge>
+            <div className="size-readout">
+              <div>
+                <div className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Original</div>
+                <div className="tabular-nums">{fmtSize(f.size)}</div>
               </div>
-            )}
+              <I.ChevronRight size={14} className="muted" />
+              <div>
+                <div className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Transformed</div>
+                <div className="tabular-nums" style={{ color: transformedSize != null ? "oklch(0.55 0.16 145)" : "var(--muted-foreground)", fontWeight: 500 }}>
+                  {transformedLoading ? "…" : transformedSize != null ? fmtSize(transformedSize) : "—"}
+                </div>
+              </div>
+              <div className="spacer" />
+              {transformedSize != null && (
+                <Badge variant="outline" mono>{Math.round((1 - transformedSize / f.size) * 100)}% smaller</Badge>
+              )}
+            </div>
           </>
         )}
 
@@ -857,8 +905,8 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
 
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <Button size="sm" variant="outline" icon={I.Code} onClick={() => onCopy(transformedUrl)}>Copy URL</Button>
-          {f.acl === "private" && <Button size="sm" variant="outline" icon={I.Shield} onClick={() => { onCopy(transformedUrl + (transformedUrl.includes("?") ? "&" : "?") + "token=sig_" + Math.random().toString(36).slice(2, 14)); pushToast("Signed URL copied (1h)."); }}>Sign URL</Button>}
-          <Button size="sm" variant="outline" icon={I.Download} onClick={() => pushToast("Download started.")}>Download</Button>
+          {f.acl === "private" && <Button size="sm" variant="outline" icon={I.Shield} onClick={onSignUrl}>Sign URL</Button>}
+          <Button size="sm" variant="outline" icon={I.Download} onClick={onDownload}>Download</Button>
         </div>
       </div>
     </Wrapper>

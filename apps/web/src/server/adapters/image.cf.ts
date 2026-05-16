@@ -33,12 +33,23 @@ export const cfImage = (publicBase: string): ImageAdapter => ({
 });
 
 /**
+ * CF-specific options on top of the runtime-agnostic {@link ImageTransform}.
+ * `gravity` controls the focal point for `fit=cover` crops — values are 0–1
+ * relative coordinates ({0,0} = top-left, {1,1} = bottom-right). Bun.Image
+ * has no equivalent and ignores this; the storage route picks the right
+ * branch.
+ */
+export interface CfImageTransform extends ImageTransform {
+  gravity?: { x: number; y: number };
+}
+
+/**
  * Variant that accepts a full URL to the source object. The Workers runtime
  * will hit the URL via the same edge with `cf.image` options applied.
  */
 export const cfImageFromUrl = (
   url: string,
-  opts: ImageTransform,
+  opts: CfImageTransform,
 ): Promise<Response> => {
   const cfOptions: Record<string, unknown> = {};
   if (opts.width) cfOptions.width = opts.width;
@@ -46,5 +57,6 @@ export const cfImageFromUrl = (
   if (opts.fit) cfOptions.fit = opts.fit;
   if (opts.format) cfOptions.format = opts.format;
   if (opts.quality !== undefined) cfOptions.quality = opts.quality;
+  if (opts.gravity) cfOptions.gravity = opts.gravity;
   return fetch(url, { cf: { image: cfOptions } } as RequestInit);
 };

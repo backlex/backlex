@@ -651,18 +651,39 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
   const toAbsolute = (rel: string): string =>
     rel.startsWith("http") ? rel : window.location.origin + rel;
 
-  // Real transformed-output size, read from the server via HEAD. Debounced
-  // so dragging a slider doesn't fire one request per pixel. Resets to
-  // "loading" whenever the transform URL changes.
+  // Probe the transform URL with a debounced HEAD. The response tells us
+  // three things in one round-trip:
+  //   - content-length → real transformed size for the readout
+  //   - 422 → the runtime can't transform this file (private + Workers
+  //     without an internal-fetch fallback). We swap <img src> back to
+  //     the un-transformed URL so the preview keeps working and surface
+  //     the server's hint in place of the size readout.
+  //   - other non-2xx → silently drop the size; img onError handles it.
   const [transformedSize, setTransformedSize] = useState<number | null>(null);
   const [transformedLoading, setTransformedLoading] = useState(false);
+  const [transformError, setTransformError] = useState<string | null>(null);
   useEffect(() => {
-    if (!isImage) { setTransformedSize(null); return; }
+    if (!isImage) { setTransformedSize(null); setTransformError(null); return; }
     setTransformedLoading(true);
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
       try {
         const res = await fetch(transformedUrl, { method: "HEAD", credentials: "include", signal: ctrl.signal });
+        if (res.status === 422) {
+          // Pull the body via a follow-up GET so the user sees the actual
+          // server hint ("only available for public files", etc.). HEAD
+          // doesn't include the JSON error body.
+          let msg = "Transforms unavailable for this file on this runtime.";
+          try {
+            const r2 = await fetch(transformedUrl, { credentials: "include", signal: ctrl.signal });
+            const j = await r2.json().catch(() => null);
+            if (j?.error?.message) msg = j.error.message;
+          } catch {}
+          setTransformError(msg);
+          setTransformedSize(null);
+          return;
+        }
+        setTransformError(null);
         if (!res.ok) { setTransformedSize(null); return; }
         const len = res.headers.get("content-length");
         setTransformedSize(len ? Number(len) : null);
@@ -674,6 +695,9 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
     }, 300);
     return () => { ctrl.abort(); clearTimeout(t); };
   }, [transformedUrl, isImage]);
+  // When the runtime can't transform, the preview falls back to the raw
+  // object so the user still sees their image.
+  const effectiveSrc = transformError ? url : transformedUrl;
 
   const aspect = (isImage && f.w && f.h) ? f.h / f.w : 0.6;
   const previewH = (isImage && f.w) ? Math.round(w * aspect) : null;
@@ -691,16 +715,18 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
   };
 
   /** Append transform params to a signed URL — the server validates the
-   *  token first then runs the transform path, so this stays one request. */
+   *  token first then runs the transform path, so this stays one request.
+   *  Skipped when the runtime can't transform this file (Workers + private
+   *  + no internal-fetch fallback), in which case we sign the raw object. */
   const withTransformParams = (signed: string): string => {
-    if (!params) return signed;
+    if (!params || transformError) return signed;
     return signed + (signed.includes("?") ? "&" : "?") + params.slice(1);
   };
 
   const onDownload = async () => {
     try {
       const href = f.acl === "public"
-        ? transformedUrl
+        ? effectiveSrc
         : withTransformParams(await signOnce(60));
       const a = document.createElement("a");
       a.href = href;
@@ -747,8 +773,8 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
         {isImage ? (
           <>
             <img
-              key={transformedUrl}
-              src={transformedUrl}
+              key={effectiveSrc}
+              src={effectiveSrc}
               alt=""
               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: fit === "contain" ? "contain" : "cover", display: "block", background: "var(--muted)" }}
@@ -885,23 +911,40 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
               </div>
             </div>
 
-            <div className="size-readout">
-              <div>
-                <div className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Original</div>
-                <div className="tabular-nums">{fmtSize(f.size)}</div>
-              </div>
-              <I.ChevronRight size={14} className="muted" />
-              <div>
-                <div className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Transformed</div>
-                <div className="tabular-nums" style={{ color: transformedSize != null ? "oklch(0.55 0.16 145)" : "var(--muted-foreground)", fontWeight: 500 }}>
-                  {transformedLoading ? "…" : transformedSize != null ? fmtSize(transformedSize) : "—"}
+            {transformError ? (
+              <div
+                className="size-readout"
+                style={{ alignItems: "flex-start", gap: 8 }}
+                role="alert"
+              >
+                <I.Shield size={14} style={{ color: "oklch(0.65 0.16 50)", flexShrink: 0, marginTop: 2 }} />
+                <div style={{ minWidth: 0 }}>
+                  <div className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Transform unavailable</div>
+                  <div style={{ fontSize: 12, lineHeight: 1.4 }}>{transformError}</div>
+                  <div className="field-hint" style={{ marginTop: 4 }}>
+                    Showing the original above. Toggle <span className="font-mono">Public</span> to enable edge resizing for this file.
+                  </div>
                 </div>
               </div>
-              <div className="spacer" />
-              {transformedSize != null && (
-                <Badge variant="outline" mono>{Math.round((1 - transformedSize / f.size) * 100)}% smaller</Badge>
-              )}
-            </div>
+            ) : (
+              <div className="size-readout">
+                <div>
+                  <div className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Original</div>
+                  <div className="tabular-nums">{fmtSize(f.size)}</div>
+                </div>
+                <I.ChevronRight size={14} className="muted" />
+                <div>
+                  <div className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Transformed</div>
+                  <div className="tabular-nums" style={{ color: transformedSize != null ? "oklch(0.55 0.16 145)" : "var(--muted-foreground)", fontWeight: 500 }}>
+                    {transformedLoading ? "…" : transformedSize != null ? fmtSize(transformedSize) : "—"}
+                  </div>
+                </div>
+                <div className="spacer" />
+                {transformedSize != null && (
+                  <Badge variant="outline" mono>{Math.round((1 - transformedSize / f.size) * 100)}% smaller</Badge>
+                )}
+              </div>
+            )}
           </>
         )}
 
@@ -910,7 +953,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
         </div>
 
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <Button size="sm" variant="outline" icon={I.Code} onClick={() => onCopy(toAbsolute(transformedUrl))}>Copy URL</Button>
+          <Button size="sm" variant="outline" icon={I.Code} onClick={() => onCopy(toAbsolute(effectiveSrc))}>Copy URL</Button>
           {f.acl === "private" && <Button size="sm" variant="outline" icon={I.Shield} onClick={onSignUrl}>Sign URL</Button>}
           <Button size="sm" variant="outline" icon={I.Download} onClick={onDownload}>Download</Button>
         </div>

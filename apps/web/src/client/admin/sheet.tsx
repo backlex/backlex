@@ -5,6 +5,7 @@ import { I } from "./icons";
 import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button, Checkbox, IconButton, Switch } from "./ui";
 import { Select } from "./select";
+import { RelationPicker, FilePicker, MultiFilePicker } from "./relational-pickers";
 
 export interface ItemSheetProps {
   open: boolean;
@@ -666,7 +667,10 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
     }
 
     // ── Raw JSON / map ────────────────────────────────────────────────────
-    if (f.type === "json") {
+    // `files` is type=json but has its own picker below, so skip the textarea
+    // path for it. Other array-shape interfaces (tags/checkboxes/etc.) already
+    // exited above through their own renderers.
+    if (f.type === "json" && iface !== "files") {
       return (
         <div key={f.name} className="field">
           {label}
@@ -682,19 +686,30 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       );
     }
 
-    // ── Relational (placeholder ID editors) ───────────────────────────────
+    // ── Relational ────────────────────────────────────────────────────────
     if (iface === "relation" || f.type === "relation") {
+      const target = f.to || "";
       return (
         <div key={f.name} className="field">
           {label}
-          <input
-            className={`input font-mono ${err ? "error" : ""}`}
-            value={String(val ?? "")}
-            placeholder={`id of c_${f.to || "…"}`}
-            onChange={(e) => setField(e.target.value)}
-          />
+          {target ? (
+            <RelationPicker
+              value={String(val ?? "")}
+              onChange={setField}
+              target={target}
+              error={!!err}
+            />
+          ) : (
+            <input
+              className={`input font-mono ${err ? "error" : ""}`}
+              value={String(val ?? "")}
+              placeholder="id"
+              onChange={(e) => setField(e.target.value)}
+            />
+          )}
           <div className="field-hint">
-            Stores a row id from <span className="font-mono">c_{f.to || "—"}</span>. Row picker UI not wired yet — paste the target id.
+            Stores a row id from <span className="font-mono">c_{target || "—"}</span>.
+            {!target && " Set the target collection in the field settings."}
           </div>
           {errBlock}
         </div>
@@ -704,13 +719,28 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       return (
         <div key={f.name} className="field">
           {label}
-          <input
-            className={`input font-mono ${err ? "error" : ""}`}
+          <FilePicker
             value={String(val ?? "")}
-            placeholder={iface === "image" ? "image file id" : "file id"}
-            onChange={(e) => setField(e.target.value)}
+            onChange={setField}
+            kind={iface === "image" ? "image" : "file"}
+            error={!!err}
           />
-          <div className="field-hint">References a file by id. Upload picker not wired yet — paste the id from Storage.</div>
+          <div className="field-hint">
+            Stores the storage key. Upload new files on the <span className="font-mono">Storage</span> page.
+          </div>
+          {errBlock}
+        </div>
+      );
+    }
+    if (iface === "files") {
+      const arr: string[] = Array.isArray(val) ? (val as string[]).map(String) : [];
+      return (
+        <div key={f.name} className="field">
+          {label}
+          <MultiFilePicker value={arr} onChange={setField} error={!!err} />
+          <div className="field-hint">
+            Stores a list of storage keys. Upload new files on the <span className="font-mono">Storage</span> page.
+          </div>
           {errBlock}
         </div>
       );

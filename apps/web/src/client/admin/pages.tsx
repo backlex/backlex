@@ -27,6 +27,7 @@ import { useTheme } from "@/components/theme-provider";
 import { applyPrimaryColor } from "@/main";
 import { ColorPicker } from "@workeros/ui/components/color-picker";
 import { Input } from "@workeros/ui/components/input";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workeros/ui/components/input-group";
 import { Textarea } from "@workeros/ui/components/textarea";
 
 /** Mirror of `services/workspace-config.ts::isValidColor` — keep in sync. */
@@ -1903,11 +1904,15 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
       </div>
 
       <div className="filter-bar" style={{ gap: 10 }}>
-        <div className="search-input" style={{ minWidth: 280, flex: "0 1 320px" }}>
-          <I.Search size={14} />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or email…" />
-          {q && <button type="button" className="x" onClick={() => setQ("")}><I.X size={11} /></button>}
-        </div>
+        <InputGroup style={{ minWidth: 280, flex: "0 1 320px" }}>
+          <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
+          <InputGroupInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or email…" />
+          {q && (
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton size="icon-xs" onClick={() => setQ("")}><I.X size={11} /></InputGroupButton>
+            </InputGroupAddon>
+          )}
+        </InputGroup>
         <div className="users-filter">
           <span className="muted">Role</span>
           <Select size="sm" value={roleFilter} onChange={setRoleFilter} style={{ width: 140 }}

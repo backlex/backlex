@@ -19,11 +19,29 @@ import { onCloudflareWorkers } from "./email-select";
 export const buildSamlAdapter = (): SamlAdapter => samlifySamlAdapter();
 
 /**
+ * Tests-only override: when set, `buildLdapAdapter` returns this adapter
+ * factory's output instead of building a real ldapts one. Lets the LDAP
+ * route tests inject a fake directory without monkey-patching the package.
+ * Reset by passing `null`.
+ */
+let ldapAdapterOverride:
+  | ((spec: LdapSpec) => LdapAdapter | undefined)
+  | null = null;
+
+/** Tests-only. Use `null` to clear the override. */
+export const __setLdapAdapterFactoryForTests = (
+  override: ((spec: LdapSpec) => LdapAdapter | undefined) | null,
+): void => {
+  ldapAdapterOverride = override;
+};
+
+/**
  * Wire an {@link LdapAdapter} for a resolved LDAP config. Returns `undefined`
  * on Cloudflare Workers (no raw TCP); callers should surface that as
  * 503 "LDAP is not available on this runtime — configure SAML instead".
  */
 export const buildLdapAdapter = (spec: LdapSpec): LdapAdapter | undefined => {
+  if (ldapAdapterOverride) return ldapAdapterOverride(spec);
   if (onCloudflareWorkers()) {
     console.warn(
       "[ldap] not available on Cloudflare Workers — configure SAML instead",

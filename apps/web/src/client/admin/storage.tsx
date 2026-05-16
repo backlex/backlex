@@ -890,31 +890,20 @@ function FileTile({ f, active, onSelect, onCopyUrl }: { f: StoredFile; active: b
             public
           </span>
         )}
-        {/* Copy URL — clicking doesn't open the detail modal, just copies. */}
-        <button
+        {/* Copy URL — clicking doesn't open the detail modal, just copies.
+            Uses the shadcn Button primitive (size="icon-xs") with a dark
+            glass override so it stays legible on any image. */}
+        <ShadButton
           type="button"
+          variant="secondary"
+          size="icon-xs"
           onClick={(e) => { e.stopPropagation(); onCopyUrl(f.key); }}
           title="Copy URL"
-          style={{
-            position: "absolute",
-            top: 6,
-            right: 6,
-            width: 24,
-            height: 24,
-            display: "grid",
-            placeItems: "center",
-            padding: 0,
-            borderRadius: "var(--radius-sm)",
-            background: "oklch(0.18 0 0 / 0.7)",
-            color: "oklch(0.95 0 0)",
-            border: "1px solid oklch(1 0 0 / 0.15)",
-            cursor: "pointer",
-            backdropFilter: "blur(4px)",
-          }}
           aria-label="Copy URL"
+          className="absolute top-1.5 right-1.5 bg-black/70 text-white border border-white/15 backdrop-blur-sm hover:bg-black/85"
         >
           <I.Code size={12} />
-        </button>
+        </ShadButton>
       </div>
       <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
         <div className="font-mono" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -1262,14 +1251,17 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
               {metaTags.map((tag) => (
                 <span key={tag} className="chip" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                   <span className="font-mono">{tag}</span>
-                  <button
+                  <ShadButton
                     type="button"
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={() => setMetaTags(metaTags.filter((t) => t !== tag))}
-                    style={{ background: "none", border: 0, padding: 0, cursor: "pointer", color: "var(--muted-foreground)", lineHeight: 1 }}
                     title="Remove tag"
+                    aria-label={`Remove tag ${tag}`}
+                    className="size-4 text-muted-foreground hover:text-foreground"
                   >
                     <I.X size={10} />
-                  </button>
+                  </ShadButton>
                 </span>
               ))}
               {metaTags.length === 0 && <span className="muted" style={{ fontSize: 11.5 }}>No tags yet.</span>}

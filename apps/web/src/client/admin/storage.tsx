@@ -659,6 +659,12 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
   //     the un-transformed URL so the preview keeps working and surface
   //     the server's hint in place of the size readout.
   //   - other non-2xx → silently drop the size; img onError handles it.
+  //
+  // Both fetches go through `cache: "no-store"` because the transformed
+  // response carries `Cache-Control: immutable` for a year — the right
+  // call for byte-addressed transforms, but wrong for this freshness
+  // probe. Without it, toggling a file from public → private wouldn't
+  // surface the new 422 until the year-long cache entry expired.
   const [transformedSize, setTransformedSize] = useState<number | null>(null);
   const [transformedLoading, setTransformedLoading] = useState(false);
   const [transformError, setTransformError] = useState<string | null>(null);
@@ -668,14 +674,11 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(transformedUrl, { method: "HEAD", credentials: "include", signal: ctrl.signal });
+        const res = await fetch(transformedUrl, { method: "HEAD", credentials: "include", cache: "no-store", signal: ctrl.signal });
         if (res.status === 422) {
-          // Pull the body via a follow-up GET so the user sees the actual
-          // server hint ("only available for public files", etc.). HEAD
-          // doesn't include the JSON error body.
           let msg = "Transforms unavailable for this file on this runtime.";
           try {
-            const r2 = await fetch(transformedUrl, { credentials: "include", signal: ctrl.signal });
+            const r2 = await fetch(transformedUrl, { credentials: "include", cache: "no-store", signal: ctrl.signal });
             const j = await r2.json().catch(() => null);
             if (j?.error?.message) msg = j.error.message;
           } catch {}

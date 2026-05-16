@@ -56,7 +56,12 @@ interface FileRow {
   createdAt: Date | number;
 }
 
-const FIT_VALUES = new Set(["cover", "contain", "fill", "inside", "outside"]);
+// Only the values that work on BOTH transform backends without semantic
+// drift: CF Image Resizing supports {cover, contain, scale-down, crop,
+// pad}; Bun.Image's `fit` is {fill, inside}. `cover` and `contain` are
+// the universally meaningful subset — anything else either errors at
+// the edge (CF 9401) or maps to a different operation on Bun.
+const FIT_VALUES = new Set(["cover", "contain"]);
 const FORMAT_VALUES = new Set(["webp", "jpeg", "png", "avif"]);
 
 interface ParsedTransform {

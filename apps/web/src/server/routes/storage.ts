@@ -1,11 +1,13 @@
 import { Hono } from "hono";
 import { and, eq, sql, type SQL } from "drizzle-orm";
-import { AppError } from "@workeros/core";
+import { AppError, type ImageTransform } from "@workeros/core";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
 import { logActivity } from "../services/activity";
+import { signStorageUrl, verifyStorageUrl } from "../lib/crypto";
+import { cfImageFromUrl } from "../adapters/image.cf";
 
 export const FILES_COLLECTION = "system_files";
 
@@ -48,10 +50,102 @@ interface FileRow {
   key: string;
   folderId: string | null;
   ownerId: string | null;
+  acl: "public" | "private";
   size: number;
   contentType: string | null;
   createdAt: Date | number;
 }
+
+const FIT_VALUES = new Set(["cover", "contain", "fill", "inside", "outside"]);
+const FORMAT_VALUES = new Set(["webp", "jpeg", "png", "avif"]);
+
+interface ParsedTransform {
+  transform: ImageTransform;
+  focal?: { x: number; y: number };
+  /** True when any transform-related query parameter was provided. */
+  any: boolean;
+}
+
+/**
+ * Validate the transform query string. Anything malformed throws VALIDATION
+ * — silently dropping bad params would let `?width=abc` silently serve the
+ * original at full quality, masking client bugs.
+ */
+const parseTransform = (q: Record<string, string | undefined>): ParsedTransform => {
+  const out: ImageTransform = {};
+  let any = false;
+  let focal: { x: number; y: number } | undefined;
+
+  const intInRange = (raw: string, name: string, min: number, max: number): number => {
+    const n = Number(raw);
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < min || n > max) {
+      throw new AppError("VALIDATION", `${name} must be an integer between ${min} and ${max}`);
+    }
+    return n;
+  };
+
+  if (q.width !== undefined) { out.width = intInRange(q.width, "width", 1, 4096); any = true; }
+  if (q.height !== undefined) { out.height = intInRange(q.height, "height", 1, 4096); any = true; }
+  if (q.quality !== undefined) { out.quality = intInRange(q.quality, "quality", 1, 100); any = true; }
+  if (q.fit !== undefined) {
+    if (!FIT_VALUES.has(q.fit)) {
+      throw new AppError("VALIDATION", `fit must be one of: ${[...FIT_VALUES].join(", ")}`);
+    }
+    out.fit = q.fit as ImageTransform["fit"];
+    any = true;
+  }
+  if (q.format !== undefined) {
+    if (!FORMAT_VALUES.has(q.format)) {
+      throw new AppError("VALIDATION", `format must be one of: ${[...FORMAT_VALUES].join(", ")}`);
+    }
+    out.format = q.format as ImageTransform["format"];
+    any = true;
+  }
+  if (q.focal !== undefined) {
+    const m = q.focal.match(/^(\d{1,3}),(\d{1,3})$/);
+    if (!m) throw new AppError("VALIDATION", `focal must be "x,y" with values 0–100`);
+    const x = Number(m[1]);
+    const y = Number(m[2]);
+    if (x < 0 || x > 100 || y < 0 || y > 100) {
+      throw new AppError("VALIDATION", `focal x,y must be 0–100`);
+    }
+    focal = { x, y };
+    any = true;
+  }
+  return { transform: out, focal, any };
+};
+
+const isImageContentType = (ct: string | null | undefined): boolean =>
+  Boolean(ct && ct.startsWith("image/"));
+
+/** Stable ETag derived from the physical key + transform query — different
+ *  transforms get distinct cache entries automatically. */
+const computeEtag = async (physical: string, queryString: string): Promise<string> => {
+  const data = new TextEncoder().encode(`${physical}::${queryString}`);
+  const digest = await crypto.subtle.digest("SHA-256", data as unknown as BufferSource);
+  const bytes = new Uint8Array(digest);
+  let hex = "";
+  for (let i = 0; i < 12; i++) hex += bytes[i]!.toString(16).padStart(2, "0");
+  return `W/"${hex}"`;
+};
+
+/** Serialize a transform back to the canonical query string so the ETag is
+ *  stable regardless of param order. */
+const canonicalizeTransformQuery = (t: ImageTransform, focal?: { x: number; y: number }): string => {
+  const parts: string[] = [];
+  if (t.width !== undefined) parts.push(`width=${t.width}`);
+  if (t.height !== undefined) parts.push(`height=${t.height}`);
+  if (t.format !== undefined) parts.push(`format=${t.format}`);
+  if (t.quality !== undefined) parts.push(`quality=${t.quality}`);
+  if (t.fit !== undefined) parts.push(`fit=${t.fit}`);
+  if (focal) parts.push(`focal=${focal.x},${focal.y}`);
+  return parts.join("&");
+};
+
+const TRANSFORM_CACHE_HEADERS: Record<string, string> = {
+  // Transforms are content-addressed by query, so we can cache aggressively.
+  "cache-control": "public, max-age=31536000, immutable",
+};
 
 export const storageRoutes = new Hono<AppBindings>()
   .get("/", requirePermission(filesCollection, "read"), async (c) => {
@@ -81,6 +175,7 @@ export const storageRoutes = new Hono<AppBindings>()
         size: r.size,
         contentType: r.contentType ?? undefined,
         ownerId: r.ownerId,
+        acl: r.acl,
         uploadedAt:
           r.createdAt instanceof Date
             ? r.createdAt.toISOString()
@@ -136,7 +231,57 @@ export const storageRoutes = new Hono<AppBindings>()
     });
     return c.json({ data: uploaded }, 201);
   })
-  .get("/:key{.+}", requirePermission(filesCollection, "read"), async (c) => {
+  /**
+   * Read an object.
+   *
+   * Two non-default behaviors share this handler:
+   *
+   * 1. `?token=…` — HMAC-signed bearer that bypasses session + permission
+   *    when it validates against `AUTH_SECRET` and pins to this tenant+key.
+   *    Lets the admin UI hand out short-lived links for download / sharing
+   *    of private files without going through the cookie session.
+   * 2. `?width=…&format=…&quality=…&fit=…&focal=…` — image transform. We
+   *    run the bytes through `ctx.image` (Bun) or, on Workers, ask the
+   *    edge to do it via `cf.image` when the file's ACL is public and
+   *    `R2_PUBLIC_BASE` is set. Transform on a non-image throws 400.
+   */
+  .get("/:key{.+}", async (c, next) => {
+    // Token-based bypass: validate before falling through to permission gate.
+    const token = c.req.query("token");
+    if (token) {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const logicalKey = c.req.param("key");
+      guardLogicalKey(logicalKey);
+      // We don't know the tenant yet (token bypass means we can be anonymous);
+      // verify token first, then use its pinned tenantId.
+      const payload = await verifyStorageUrl(token, ctx.env.AUTH_SECRET);
+      if (!payload) throw new AppError("UNAUTHORIZED", "Invalid or expired token");
+      const expectedKey = physicalKey(payload.t, logicalKey);
+      if (payload.k !== expectedKey) {
+        throw new AppError("UNAUTHORIZED", "Token does not match this object");
+      }
+      // Pin the request to the token's tenant so the rest of the handler
+      // can use the same code path as a cookie-session call.
+      auth.tenantId = payload.t;
+      return serveObject(c, payload.t, logicalKey, /* skipPermissionFilter */ true);
+    }
+    return next();
+  }, requirePermission(filesCollection, "read"), async (c) => {
+    const auth = c.get("auth");
+    const tenantId = requireTenantId(auth);
+    const logicalKey = c.req.param("key");
+    guardLogicalKey(logicalKey);
+    return serveObject(c, tenantId, logicalKey, /* skipPermissionFilter */ false);
+  })
+  /**
+   * Issue a short-lived signed URL for an object the caller can already
+   * read. Useful for handing a private file off to an `<img>` tag or a
+   * download anchor without exposing a session cookie. The URL is a normal
+   * `GET /api/storage/:key?token=…`; the GET handler validates the token
+   * before falling through to the permission middleware.
+   */
+  .post("/:key{.+}/sign", requirePermission(filesCollection, "read"), async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");
     const perm = c.get("permission");
@@ -144,24 +289,30 @@ export const storageRoutes = new Hono<AppBindings>()
     const logicalKey = c.req.param("key");
     guardLogicalKey(logicalKey);
     const key = physicalKey(tenantId, logicalKey);
-    const t = filesTable(ctx.dialect);
+    const body = (await c.req.json().catch(() => ({}))) as { ttlSeconds?: number };
+    const ttl = Math.max(60, Math.min(86400, body.ttlSeconds ?? 3600));
 
+    // Confirm the object exists *and* is visible to this caller (the
+    // permission middleware only proved they have `read`; the row-level
+    // condition is enforced here so a scoped role can't sign a sibling row).
+    const t = filesTable(ctx.dialect);
     const conds: SQL[] = [eq(t.key, key), eq(t.tenantId, tenantId)];
     if (perm.whereSql) conds.push(perm.whereSql);
     const rows = (await (ctx.db as any)
-      .select()
+      .select({ key: t.key })
       .from(t)
       .where(and(...conds))
-      .limit(1)) as FileRow[];
+      .limit(1)) as { key: string }[];
     if (!rows[0]) throw new AppError("NOT_FOUND", "Object not found");
-    const obj = await ctx.storage.get(key);
-    if (!obj) throw new AppError("NOT_FOUND", "Object not found");
-    return new Response(obj.body, {
-      headers: {
-        "content-type":
-          obj.meta.contentType ?? rows[0].contentType ?? "application/octet-stream",
-        "content-length": String(obj.meta.size),
-      },
+
+    const exp = Math.floor(Date.now() / 1000) + ttl;
+    const token = await signStorageUrl(
+      { k: key, t: tenantId, exp },
+      ctx.env.AUTH_SECRET,
+    );
+    return c.json({
+      url: `/api/storage/${encodeURI(logicalKey)}?token=${encodeURIComponent(token)}`,
+      expiresAt: new Date(exp * 1000).toISOString(),
     });
   })
   .delete("/:key{.+}", requirePermission(filesCollection, "delete"), async (c) => {
@@ -238,3 +389,141 @@ export const storageRoutes = new Hono<AppBindings>()
     });
     return c.json(updateResponse);
   });
+
+/**
+ * Shared GET handler — used by both the cookie/session path and the token
+ * bypass path. `skipPermissionFilter` is true on the token path because the
+ * token itself proved authorization for this exact (tenant, key).
+ */
+async function serveObject(
+  c: import("hono").Context<AppBindings>,
+  tenantId: string,
+  logicalKey: string,
+  skipPermissionFilter: boolean,
+): Promise<Response> {
+  const ctx = c.get("ctx");
+  const perm = skipPermissionFilter ? null : c.get("permission");
+  const key = physicalKey(tenantId, logicalKey);
+  const t = filesTable(ctx.dialect);
+
+  const conds: SQL[] = [eq(t.key, key), eq(t.tenantId, tenantId)];
+  if (perm?.whereSql) conds.push(perm.whereSql);
+  const rows = (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(and(...conds))
+    .limit(1)) as FileRow[];
+  const row = rows[0];
+  if (!row) throw new AppError("NOT_FOUND", "Object not found");
+
+  const parsed = parseTransform({
+    width: c.req.query("width"),
+    height: c.req.query("height"),
+    quality: c.req.query("quality"),
+    format: c.req.query("format"),
+    fit: c.req.query("fit"),
+    focal: c.req.query("focal"),
+  });
+
+  // Fast path — no transform requested, stream the raw object.
+  if (!parsed.any) {
+    const obj = await ctx.storage.get(key);
+    if (!obj) throw new AppError("NOT_FOUND", "Object not found");
+    return new Response(obj.body, {
+      headers: {
+        "content-type":
+          obj.meta.contentType ?? row.contentType ?? "application/octet-stream",
+        "content-length": String(obj.meta.size),
+      },
+    });
+  }
+
+  // Transform path — only meaningful on image content types.
+  const ct = row.contentType;
+  if (!isImageContentType(ct)) {
+    throw new AppError(
+      "VALIDATION",
+      "Transform parameters only apply to image content types",
+    );
+  }
+
+  const queryString = canonicalizeTransformQuery(parsed.transform, parsed.focal);
+  const etag = await computeEtag(key, queryString);
+  if (c.req.header("if-none-match") === etag) {
+    return new Response(null, { status: 304, headers: { etag } });
+  }
+
+  const isWorker = typeof (ctx.env as { R2?: unknown }).R2 !== "undefined";
+  const publicBase = (ctx.env as { R2_PUBLIC_BASE?: string }).R2_PUBLIC_BASE;
+
+  // Workers + public R2 origin: let the edge resize. Cheapest path — no
+  // bytes through the Worker isolate. Requires the file to be reachable
+  // publicly, which is only honest when the row's ACL is public.
+  if (isWorker && publicBase && row.acl === "public") {
+    const origin = publicBase.replace(/\/$/, "");
+    const sourceUrl = `${origin}/${key}`;
+    const cfTransform = { ...parsed.transform };
+    // CF Image Resizing wants a gravity object — focal x/y in 0..1.
+    const cf: Record<string, unknown> = {
+      ...cfTransform,
+      ...(parsed.focal
+        ? { gravity: { x: parsed.focal.x / 100, y: parsed.focal.y / 100 } }
+        : {}),
+    };
+    const resp = await cfImageFromUrl(sourceUrl, cf as ImageTransform);
+    const headers = new Headers(resp.headers);
+    headers.set("etag", etag);
+    for (const [k, v] of Object.entries(TRANSFORM_CACHE_HEADERS)) headers.set(k, v);
+    return new Response(resp.body, { status: resp.status, headers });
+  }
+
+  // Bun / fs / passthrough — read the object and run it through ctx.image.
+  // Workers without a public origin would fall here, but ctx.image is the
+  // passthrough adapter (no Bun.Image), so transforms are a no-op. We'd
+  // rather surface that than silently lie.
+  if (isWorker && !publicBase) {
+    throw new AppError(
+      "VALIDATION",
+      "Image transform on Workers requires R2_PUBLIC_BASE to be set and the file to be public",
+    );
+  }
+  if (isWorker && row.acl !== "public") {
+    throw new AppError(
+      "VALIDATION",
+      "Image transform on Workers is only available for public files",
+    );
+  }
+  if (ctx.image.name === "passthrough") {
+    throw new AppError(
+      "VALIDATION",
+      "This runtime has no image-transform backend (install Bun ≥ 1.2, or deploy on Cloudflare Workers with R2_PUBLIC_BASE)",
+    );
+  }
+
+  const source = await ctx.storage.get(key);
+  if (!source) throw new AppError("NOT_FOUND", "Object not found");
+  const transformed = await ctx.image.transform(
+    source.body,
+    ct ?? undefined,
+    parsed.transform,
+  );
+  // Bun.Image returns a Uint8Array; compute the length so clients see a
+  // sensible content-length and HEAD requests can read it.
+  const bytes =
+    transformed.body instanceof Uint8Array
+      ? transformed.body
+      : transformed.body instanceof ArrayBuffer
+        ? new Uint8Array(transformed.body)
+        : null;
+  const responseBody: BodyInit = bytes
+    ? (bytes as unknown as BodyInit)
+    : (transformed.body as unknown as BodyInit);
+  return new Response(responseBody, {
+    headers: {
+      "content-type": transformed.contentType,
+      ...(bytes ? { "content-length": String(bytes.byteLength) } : {}),
+      etag,
+      ...TRANSFORM_CACHE_HEADERS,
+    },
+  });
+}

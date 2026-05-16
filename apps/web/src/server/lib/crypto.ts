@@ -88,3 +88,93 @@ export const decryptSecret = async (
     return null;
   }
 };
+
+// ---------------------------------------------------------------------------
+// HMAC URL signing (storage signed URLs)
+// ---------------------------------------------------------------------------
+
+const b64urlEncode = (bytes: Uint8Array): string =>
+  b64encode(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+const b64urlDecode = (s: string): Uint8Array => {
+  const pad = s.length % 4 === 0 ? "" : "=".repeat(4 - (s.length % 4));
+  return b64decode(s.replace(/-/g, "+").replace(/_/g, "/") + pad);
+};
+
+const deriveHmacKey = async (secret: string): Promise<CryptoKey> => {
+  const material = await crypto.subtle.digest(
+    "SHA-256",
+    buf(new TextEncoder().encode(`workeros:storage-url-sign:v1:${secret}`)),
+  );
+  return crypto.subtle.importKey(
+    "raw",
+    material,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign", "verify"],
+  );
+};
+
+export interface StorageUrlPayload {
+  /** Physical key (already tenant-prefixed). */
+  k: string;
+  /** Tenant id — pinned so a leaked token only unlocks one workspace. */
+  t: string;
+  /** Expiry, epoch seconds. */
+  exp: number;
+}
+
+/** Produce `<base64url-payload>.<base64url-sig>` for the storage GET route. */
+export const signStorageUrl = async (
+  payload: StorageUrlPayload,
+  secret: string,
+): Promise<string> => {
+  const key = await deriveHmacKey(secret);
+  const body = b64urlEncode(new TextEncoder().encode(JSON.stringify(payload)));
+  const sig = new Uint8Array(
+    await crypto.subtle.sign(
+      "HMAC",
+      key,
+      buf(new TextEncoder().encode(body)),
+    ),
+  );
+  return `${body}.${b64urlEncode(sig)}`;
+};
+
+/**
+ * Validate a token produced by {@link signStorageUrl}. Returns the payload
+ * when the signature is intact AND the token hasn't expired; `null` on any
+ * failure (malformed, bad signature, expired). Never throws — callers gate
+ * on the return value.
+ */
+export const verifyStorageUrl = async (
+  token: string,
+  secret: string,
+): Promise<StorageUrlPayload | null> => {
+  const dot = token.indexOf(".");
+  if (dot <= 0 || dot === token.length - 1) return null;
+  const body = token.slice(0, dot);
+  const sig = token.slice(dot + 1);
+  try {
+    const key = await deriveHmacKey(secret);
+    const ok = await crypto.subtle.verify(
+      "HMAC",
+      key,
+      buf(b64urlDecode(sig)),
+      buf(new TextEncoder().encode(body)),
+    );
+    if (!ok) return null;
+    const payload = JSON.parse(
+      new TextDecoder().decode(b64urlDecode(body)),
+    ) as StorageUrlPayload;
+    if (
+      typeof payload.k !== "string" ||
+      typeof payload.t !== "string" ||
+      typeof payload.exp !== "number"
+    ) return null;
+    if (payload.exp * 1000 < Date.now()) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+};

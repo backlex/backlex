@@ -1292,7 +1292,14 @@ function FolderPicker({ folders, value, onChange }: { folders: { id: string; nam
           <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
         </ShadButton>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+      <PopoverContent
+        // .dialog-backdrop sits at z-index: 70 (legacy admin.css). Popover's
+        // default `z-50` would render the combobox content behind it — the
+        // trigger looks broken because nothing visible happens on click. Pin
+        // above the backdrop and any other modal scrim.
+        className="z-[100] w-[var(--radix-popover-trigger-width)] p-0"
+        align="start"
+      >
         <Command>
           <CommandInput placeholder="Search folders…" />
           <CommandList>

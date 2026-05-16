@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { type CollectionSchema } from "./config";
 import { Badge, Button, IconButton, Switch } from "./ui";
+import { Input } from "@workeros/ui/components/input";
 import { Select } from "./select";
 import { AlterPreview } from "./extras";
 import {
@@ -195,7 +196,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div className="field">
                 <label className="field-label">Name</label>
-                <input className="input" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="reading_time_minutes" />
+                <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="reading_time_minutes" />
                 <span className="field-hint font-mono" style={{ fontSize: 11 }}>
                   column: <span style={{ color: nameTaken ? "var(--destructive)" : "var(--foreground)" }}>{safeName || "—"}</span>
                   {nameTaken && <span style={{ color: "var(--destructive)" }}> · already exists</span>}
@@ -228,8 +229,8 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {choices.map((c, i) => (
                       <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 64px 30px", gap: 6, alignItems: "center" }}>
-                        <input className="input" placeholder="value" value={c.value} onChange={(e) => setChoice(i, { value: e.target.value })} />
-                        <input className="input" placeholder="label (optional)" value={c.label ?? ""} onChange={(e) => setChoice(i, { label: e.target.value })} />
+                        <Input placeholder="value" value={c.value} onChange={(e) => setChoice(i, { value: e.target.value })} />
+                        <Input placeholder="label (optional)" value={c.label ?? ""} onChange={(e) => setChoice(i, { label: e.target.value })} />
                         <input type="color" value={c.color ?? "#A1A6B8"} onChange={(e) => setChoice(i, { color: e.target.value })} style={{ height: 30, width: "100%", borderRadius: 6, border: "1px solid var(--border)", background: "var(--card)", cursor: "pointer" }} />
                         <IconButton icon={I.Trash} title="Remove choice" onClick={() => removeChoice(i)} />
                       </div>
@@ -252,8 +253,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
 
               <div className="field">
                 <label className="field-label">Default value <span className="muted">(optional)</span></label>
-                <input
-                  className="input"
+                <Input
                   value={defaultValue}
                   onChange={(e) => setDefaultValue(e.target.value)}
                   placeholder={def.type === "integer" || def.type === "number" ? "0" : def.type === "boolean" ? "false" : def.type === "timestamp" ? "now()" : ""}

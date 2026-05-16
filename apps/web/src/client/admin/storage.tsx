@@ -5,6 +5,19 @@ import { I } from "./icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
 import { Input } from "@workeros/ui/components/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
+import { Textarea } from "@workeros/ui/components/textarea";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@workeros/ui/components/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@workeros/ui/components/popover";
+import { Button as ShadButton } from "@workeros/ui/components/button";
+import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
+import { cn } from "@workeros/ui/lib/utils";
 import { api } from "@/lib/api";
 
 interface StoredFolder {
@@ -972,17 +985,11 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
               <I.Folder size={12} /> Folder
             </span>
           </label>
-          <select
-            value={f.folderId ?? ""}
-            onChange={(e) => moveToFolder(e.target.value || null)}
-            className="font-mono"
-            style={{ width: "100%", height: 32, padding: "0 8px", fontSize: 12, borderRadius: "var(--radius-md)", background: "var(--card)", color: "var(--foreground)", border: "1px solid var(--border)" }}
-          >
-            <option value="">— None (root) —</option>
-            {(folders ?? []).map((fl: { id: string; name: string }) => (
-              <option key={fl.id} value={fl.id}>{fl.name}</option>
-            ))}
-          </select>
+          <FolderPicker
+            folders={folders ?? []}
+            value={f.folderId ?? null}
+            onChange={(id) => moveToFolder(id)}
+          />
           <span className="field-hint">Logical grouping in the DB. The object's storage key doesn't change.</span>
         </div>
 
@@ -1007,12 +1014,11 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
 
           <div className="field" style={{ marginTop: 0 }}>
             <label className="field-label">Description</label>
-            <textarea
+            <Textarea
               value={metaDescription}
               onChange={(e) => setMetaDescription(e.target.value)}
               placeholder="What this file is about…"
               rows={3}
-              style={{ width: "100%", padding: "8px 10px", fontSize: 12.5, lineHeight: 1.5, borderRadius: "var(--radius-md)", background: "var(--card)", color: "var(--foreground)", border: "1px solid var(--border)", resize: "vertical", fontFamily: "inherit" }}
             />
           </div>
 
@@ -1257,5 +1263,62 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
         </div>
       </div>
     </Wrapper>
+  );
+}
+
+
+/**
+ * Searchable folder picker — shadcn Popover + Command pattern. Filters the
+ * local list as the user types (no remote call; folders are already loaded
+ * for the sidebar). Selecting an item fires `onChange` and closes the
+ * popover. Sentinel "" value means "no folder" (root).
+ */
+function FolderPicker({ folders, value, onChange }: { folders: { id: string; name: string }[]; value: string | null; onChange: (id: string | null) => void }) {
+  const [open, setOpen] = useState(false);
+  const current = folders.find((f) => f.id === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <ShadButton
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between"
+        >
+          <span className={cn("truncate", !value && "text-muted-foreground")}>
+            {current ? current.name : "— None (root) —"}
+          </span>
+          <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
+        </ShadButton>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search folders…" />
+          <CommandList>
+            <CommandEmpty>No folders match.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="__root__ none root"
+                onSelect={() => { onChange(null); setOpen(false); }}
+              >
+                <CheckIcon className={cn("mr-2 size-4", value == null ? "opacity-100" : "opacity-0")} />
+                <span className="text-muted-foreground">— None (root) —</span>
+              </CommandItem>
+              {folders.map((fl) => (
+                <CommandItem
+                  key={fl.id}
+                  value={fl.name}
+                  onSelect={() => { onChange(fl.id); setOpen(false); }}
+                >
+                  <CheckIcon className={cn("mr-2 size-4", value === fl.id ? "opacity-100" : "opacity-0")} />
+                  <span className="truncate">{fl.name}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }

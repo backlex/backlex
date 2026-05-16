@@ -26,6 +26,8 @@ import { ConfirmDialog } from "./sheet";
 import { useTheme } from "@/components/theme-provider";
 import { applyPrimaryColor } from "@/main";
 import { ColorPicker } from "@workeros/ui/components/color-picker";
+import { Input } from "@workeros/ui/components/input";
+import { Textarea } from "@workeros/ui/components/textarea";
 
 /** Mirror of `services/workspace-config.ts::isValidColor` — keep in sync. */
 const isValidColor = (v: string): boolean => {
@@ -975,8 +977,9 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
           {renameDraft !== null ? (
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <I.Pencil size={16} />
-              <input
-                className={`input font-mono ${renameError ? "error" : ""}`}
+              <Input
+                className="font-mono"
+                aria-invalid={!!renameError}
                 style={{ fontSize: 14, width: 260 }}
                 autoFocus
                 value={renameDraft}
@@ -1179,8 +1182,9 @@ function NewFunctionDialog({
         <div className="dialog-body" style={{ overflow: "auto" }}>
           <div className="field">
             <label className="field-label">Name <span style={{ color: "var(--destructive)" }}>*</span></label>
-            <input
-              className={`input font-mono ${nameError && name ? "error" : ""}`}
+            <Input
+              className="font-mono"
+              aria-invalid={!!(nameError && name)}
               autoFocus
               placeholder="my_function"
               value={name}
@@ -1208,8 +1212,8 @@ function NewFunctionDialog({
             </div>
             <div className="field">
               <label className="field-label">Timeout (ms)</label>
-              <input
-                className={`input ${timeoutError ? "error" : ""}`}
+              <Input
+                aria-invalid={!!timeoutError}
                 type="number"
                 min={50}
                 max={60000}
@@ -1223,8 +1227,9 @@ function NewFunctionDialog({
           {trigger !== "http" && (
             <div className="field">
               <label className="field-label">{trigger === "cron" ? "Cron expression" : "Event pattern"} <span style={{ color: "var(--destructive)" }}>*</span></label>
-              <input
-                className={`input font-mono ${patternError ? "error" : ""}`}
+              <Input
+                className="font-mono"
+                aria-invalid={!!patternError}
                 value={pattern}
                 onChange={(e) => setPattern(e.target.value)}
                 placeholder={trigger === "cron" ? "*/5 * * * *" : "items:posts:*"}
@@ -1243,8 +1248,9 @@ function NewFunctionDialog({
 
           <div className="field">
             <label className="field-label">Code <span style={{ color: "var(--destructive)" }}>*</span></label>
-            <textarea
-              className={`textarea font-mono ${codeError ? "error" : ""}`}
+            <Textarea
+              className="font-mono"
+              aria-invalid={!!codeError}
               style={{ minHeight: 200, fontSize: 12, whiteSpace: "pre" }}
               value={code}
               onChange={(e) => setCode(e.target.value)}
@@ -1588,7 +1594,7 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
         <div className="dialog-body">
           <div className="field">
             <label className="field-label">Name <span style={{ color: "var(--destructive)" }}>*</span></label>
-            <input className={`input ${errors.name ? "error" : ""}`} autoFocus value={draft.name} onChange={(e) => update("name", e.target.value)} placeholder="Slack #content" />
+            <Input aria-invalid={!!errors.name} autoFocus value={draft.name} onChange={(e) => update("name", e.target.value)} placeholder="Slack #content" />
             {errors.name && <div className="field-error"><I.AlertTriangle size={11} />{errors.name}</div>}
           </div>
 
@@ -1596,7 +1602,7 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
             <label className="field-label">Endpoint URL <span style={{ color: "var(--destructive)" }}>*</span></label>
             <div style={{ display: "flex", gap: 8 }}>
               <Select size="sm" value={draft.method} onChange={(v) => update("method", v)} style={{ width: 100, height: 36 }} options={["POST", "PUT", "PATCH"]} />
-              <input className={`input font-mono ${errors.url ? "error" : ""}`} style={{ flex: 1, fontSize: 12.5 }} value={draft.url} onChange={(e) => update("url", e.target.value)} placeholder="https://api.example.com/webhooks/workeros" />
+              <Input className="font-mono" aria-invalid={!!errors.url} style={{ flex: 1, fontSize: 12.5 }} value={draft.url} onChange={(e) => update("url", e.target.value)} placeholder="https://api.example.com/webhooks/workeros" />
             </div>
             {errors.url ? <div className="field-error"><I.AlertTriangle size={11} />{errors.url}</div> : <span className="field-hint">Must accept the chosen HTTP method and respond with 2xx within 10s.</span>}
           </div>
@@ -1623,7 +1629,7 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
           <div className="field">
             <label className="field-label">Signing secret</label>
             <div style={{ display: "flex", gap: 8 }}>
-              <input className="input font-mono" style={{ flex: 1, fontSize: 12.5 }} type={revealSecret ? "text" : "password"} value={draft.secret} readOnly />
+              <Input className="font-mono" style={{ flex: 1, fontSize: 12.5 }} type={revealSecret ? "text" : "password"} value={draft.secret} readOnly />
               <Button variant="outline" size="sm" icon={revealSecret ? I.X : I.Eye} onClick={() => setRevealSecret(!revealSecret)}>{revealSecret ? "Hide" : "Show"}</Button>
               <Button variant="outline" size="sm" icon={I.Refresh} onClick={() => { update("secret", "whsec_" + Math.random().toString(16).slice(2, 14)); pushToast("Secret rotated."); }}>Rotate</Button>
             </div>
@@ -1632,7 +1638,7 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
 
           <div className="field">
             <label className="field-label">Custom headers</label>
-            <textarea className="textarea font-mono" style={{ minHeight: 70, fontSize: 12 }} value={draft.headers} onChange={(e) => update("headers", e.target.value)} placeholder={"Authorization: Bearer …\nX-Tenant: workeros"} />
+            <Textarea className="font-mono" style={{ minHeight: 70, fontSize: 12 }} value={draft.headers} onChange={(e) => update("headers", e.target.value)} placeholder={"Authorization: Bearer …\nX-Tenant: workeros"} />
             <span className="field-hint">One per line. <span className="font-mono">Content-Type</span> and <span className="font-mono">X-Workeros-*</span> are reserved.</span>
           </div>
 
@@ -2251,7 +2257,7 @@ function InviteUserDialog({ roles, onClose, onInvite }: { roles: string[]; onClo
         <div className="dialog-body">
           <div className="field">
             <label className="field-label">Email</label>
-            <input className="input" autoFocus placeholder="teammate@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input autoFocus placeholder="teammate@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
             <span className="field-hint">An invite link will be emailed; valid for 7 days.</span>
           </div>
           <div className="field">
@@ -2379,7 +2385,7 @@ function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
       {provider !== "inherit" && provider !== "console" && (
         <div className="field">
           <label className="field-label">From address</label>
-          <input className="input" placeholder="hello@yourdomain.com" value={from} onChange={(e) => { setFrom(e.target.value); mark(); }} />
+          <Input placeholder="hello@yourdomain.com" value={from} onChange={(e) => { setFrom(e.target.value); mark(); }} />
           <span className="field-hint">Required for every provider — must be a verified sender/domain for the chosen transport.</span>
         </div>
       )}
@@ -2393,7 +2399,7 @@ function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
           ) : (
             <>
               <label className="field-label">{label}</label>
-              <input className="input" type={type === "number" ? "number" : "text"} placeholder={placeholder} value={config[key] ?? ""} onChange={(e) => { setConfig((c) => ({ ...c, [key]: e.target.value })); mark(); }} />
+              <Input type={type === "number" ? "number" : "text"} placeholder={placeholder} value={config[key] ?? ""} onChange={(e) => { setConfig((c) => ({ ...c, [key]: e.target.value })); mark(); }} />
             </>
           )}
         </div>
@@ -2401,8 +2407,7 @@ function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
       {fields.secrets.map(([key, label]) => (
         <div className="field" key={key}>
           <label className="field-label">{label}</label>
-          <input
-            className="input"
+          <Input
             type="password"
             autoComplete="new-password"
             placeholder={cfg?.secretsSet?.[key] ? "•••••••• (stored — leave blank to keep)" : ""}
@@ -2588,8 +2593,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
     <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
       <div className="field">
         <label className="field-label">Workspace name</label>
-        <input
-          className="input"
+        <Input
           value={workspaceName}
           disabled={loading}
           onChange={(e) => { setWorkspaceName(e.target.value); setDirty(true); }}
@@ -2598,8 +2602,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
       </div>
       <div className="field">
         <label className="field-label">Description</label>
-        <textarea
-          className="input"
+        <Textarea
           rows={3}
           value={description}
           disabled={loading}
@@ -2731,8 +2734,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
             disabled={loading}
             onChange={(hex) => commitPrimary(hex)}
           />
-          <input
-            className="input"
+          <Input
             value={primaryColor}
             placeholder="#3b82f6 or oklch(0.84 0.23 128.85)"
             disabled={loading}
@@ -2898,7 +2900,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
 
       {tab === "general" && (
         <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
-          <div className="field"><label className="field-label">Site name</label><input className="input" value={siteName} onChange={(e) => { setSiteName(e.target.value); setDirty(true); }} /><span className="field-hint">Display name for this instance.</span></div>
+          <div className="field"><label className="field-label">Site name</label><Input value={siteName} onChange={(e) => { setSiteName(e.target.value); setDirty(true); }} /><span className="field-hint">Display name for this instance.</span></div>
           <div className="field-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
             <div>
               <div className="field-label">APP_URL</div>

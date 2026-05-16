@@ -70,7 +70,7 @@ Query parameters on `GET /api/storage/:key`:
 | `height`  | 1–4096 (integer)                                  |
 | `quality` | 1–100 (integer; ignored for lossless formats)     |
 | `format`  | `webp` \| `jpeg` \| `png` \| `avif`               |
-| `fit`     | `cover` \| `contain` \| `fill` \| `inside` \| `outside` |
+| `fit`     | `cover` \| `contain` (only values that work on both backends) |
 | `focal`   | `"x,y"` with `x`/`y` in 0–100 (percent)           |
 
 Invalid params throw `VALIDATION` (HTTP 422) — silently dropping bad

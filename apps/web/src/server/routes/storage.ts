@@ -7,7 +7,7 @@ import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
 import { logActivity } from "../services/activity";
 import { signStorageUrl, verifyStorageUrl } from "../lib/crypto";
-import { cfImageFromUrl } from "../adapters/image.cf";
+import { cfImageFromUrl, type CfImageTransform } from "../adapters/image.cf";
 
 export const FILES_COLLECTION = "system_files";
 
@@ -467,15 +467,14 @@ async function serveObject(
   if (isWorker && publicBase && row.acl === "public") {
     const origin = publicBase.replace(/\/$/, "");
     const sourceUrl = `${origin}/${key}`;
-    const cfTransform = { ...parsed.transform };
     // CF Image Resizing wants a gravity object — focal x/y in 0..1.
-    const cf: Record<string, unknown> = {
-      ...cfTransform,
+    const cf: CfImageTransform = {
+      ...parsed.transform,
       ...(parsed.focal
         ? { gravity: { x: parsed.focal.x / 100, y: parsed.focal.y / 100 } }
         : {}),
     };
-    const resp = await cfImageFromUrl(sourceUrl, cf as ImageTransform);
+    const resp = await cfImageFromUrl(sourceUrl, cf);
     const headers = new Headers(resp.headers);
     headers.set("etag", etag);
     for (const [k, v] of Object.entries(TRANSFORM_CACHE_HEADERS)) headers.set(k, v);

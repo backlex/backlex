@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { I } from "./icons";
 import { Badge, Button, IconButton } from "./ui";
+import { Select } from "./select";
 import { tenantsApi, type ApiTenantMember } from "./api";
 import type { RoleData } from "./role-editor";
 
@@ -171,9 +172,12 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
           onChange={(e) => setInvite(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") sendInvite(); }}
         />
-        <select className="mp-invite-role" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
-          {WORKSPACE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-        </select>
+        <Select
+          value={inviteRole}
+          onChange={setInviteRole}
+          options={WORKSPACE_ROLES.map((r) => ({ value: r, label: r }))}
+          size="sm"
+        />
         <Button variant="primary" size="sm" icon={I.Plus} onClick={sendInvite}>Invite</Button>
       </div>
 
@@ -194,9 +198,12 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
                 <span className="mp-email font-mono">{m.email}</span>
               </div>
             </div>
-            <select className="mp-role-select" value={m.role} onChange={(e) => setRole(m.id, e.target.value)}>
-              {WORKSPACE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
+            <Select
+              value={m.role}
+              onChange={(v) => setRole(m.id, v)}
+              options={WORKSPACE_ROLES.map((r) => ({ value: r, label: r }))}
+              size="sm"
+            />
             <span className="muted font-mono" style={{ fontSize: 11.5 }}>{m.last}</span>
             <span>
               {m.status === "active" && <Badge variant="secondary">active</Badge>}

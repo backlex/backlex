@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { I } from "./icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
+import { Input } from "@workeros/ui/components/input";
 import { api } from "@/lib/api";
 
 interface StoredFolder {
@@ -504,9 +505,8 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                 Lowercase letters, digits, <span className="font-mono">_</span> and <span className="font-mono">-</span>. Use <span className="font-mono">/</span> in the name to nest under an existing folder.
               </p>
             </div>
-            <input
+            <Input
               ref={newFolderInputRef}
-              className="input"
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
               onKeyDown={(e) => {

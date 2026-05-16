@@ -26,14 +26,19 @@ export interface PublicProvider {
   /** Identifier a frontend app passes to the client SDK — `auth.signIn()` for
    *  `"email"`, `auth.signInMagicLink()` for `"magic"`, the email-OTP flow for
    *  `"emailOtp"`, the WebAuthn flow for `"passkey"`,
-   *  `auth.signInSocial("github")` for the OAuth providers. */
-  id: AuthProviderKey;
-  kind: "credential" | "magic-link" | "email-otp" | "passkey" | "social";
+   *  `auth.signInSocial("github")` for the OAuth providers. SAML providers
+   *  use their per-tenant slug as the id and point to
+   *  `/api/t/<slug>/auth/saml/<slug>/login`. */
+  id: AuthProviderKey | string;
+  kind: "credential" | "magic-link" | "email-otp" | "passkey" | "social" | "saml";
   label: string;
   /** Whether sign-in with this provider is currently offered for this
    *  workspace. The list itself only contains providers the running worker is
    *  actually able to serve. */
   enabled: boolean;
+  /** Provider-specific entry-point URL (SAML only — the rest are implied by
+   *  the better-auth client SDK calls). */
+  loginUrl?: string;
 }
 
 export interface ResolvedAuthSurface {
@@ -134,11 +139,15 @@ export const loadAuthConfigRow = async (
  * Resolve the *public* description of a workspace's auth surface — the provider
  * list and policy flags a frontend app needs to render its sign-in screen.
  * Never includes secrets or admin-only fields.
+ *
+ * `tenantSlug` is optional; when provided, SAML providers are included in the
+ * list with a `loginUrl` pointing at the SP-initiated login redirect.
  */
 export const resolveAuthSurface = async (
   ctx: DbCtx,
   env: Env,
   tenantId: string | null | undefined,
+  tenantSlug?: string,
 ): Promise<ResolvedAuthSurface> => {
   const stored = await loadAuthConfigRow(ctx, tenantId);
   const envConfigured = envConfiguredProviders(env);
@@ -176,8 +185,48 @@ export const resolveAuthSurface = async (
         entry && typeof entry.enabled === "boolean"
           ? entry.enabled
           : fallbackEnabled[key];
-      return { id: key, kind: PROVIDER_META[key].kind, label: PROVIDER_META[key].label, enabled };
+      return {
+        id: key,
+        kind: PROVIDER_META[key].kind,
+        label: PROVIDER_META[key].label,
+        enabled,
+      };
     });
+
+  // Append enabled SAML providers — one entry per row. Reads degrade to an
+  // empty list when the table isn't migrated yet.
+  if (tenantId && tenantSlug) {
+    const t =
+      ctx.dialect === "pg" ? pg.schema.samlProviders : sqlite.schema.samlProviders;
+    try {
+      const rows = (await (ctx.db as any)
+        .select({
+          id: t.id,
+          slug: t.slug,
+          name: t.name,
+          enabled: t.enabled,
+        })
+        .from(t)
+        .where(eq(t.tenantId, tenantId))) as Array<{
+          id: string;
+          slug: string;
+          name: string;
+          enabled: boolean;
+        }>;
+      const base = env.APP_URL.replace(/\/+$/, "");
+      for (const r of rows) {
+        providers.push({
+          id: r.slug,
+          kind: "saml",
+          label: r.name,
+          enabled: Boolean(r.enabled),
+          loginUrl: `${base}/api/t/${tenantSlug}/auth/saml/${r.slug}/login`,
+        });
+      }
+    } catch {
+      // table not migrated yet — skip silently.
+    }
+  }
 
   const policy = (stored?.policy ?? {}) as Record<string, unknown>;
   // The user count drives `firstUserMode`. Treat read failures (table not

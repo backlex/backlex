@@ -15,6 +15,7 @@ const tablesFor = (dialect: "pg" | "sqlite") =>
     ? {
         roles: pg.schema.roles,
         userRoles: pg.schema.userRoles,
+        appUserRoles: pg.schema.appUserRoles,
         permissions: pg.schema.permissions,
         users: pg.schema.users,
         tenants: pg.schema.tenants,
@@ -23,6 +24,7 @@ const tablesFor = (dialect: "pg" | "sqlite") =>
     : {
         roles: sqlite.schema.roles,
         userRoles: sqlite.schema.userRoles,
+        appUserRoles: sqlite.schema.appUserRoles,
         permissions: sqlite.schema.permissions,
         users: sqlite.schema.users,
         tenants: sqlite.schema.tenants,
@@ -173,6 +175,32 @@ export const assignRoleByName = async (
   if (existing.some((r: { roleId: string }) => r.roleId === role.id)) return;
   await (ctx.db as any).insert(t.userRoles).values({
     userId,
+    roleId: role.id,
+  });
+};
+
+/**
+ * `assignRoleByName` for the workspace end-user pool. Looks up the role by
+ * `(tenant_id, name)` and writes to `app_user_roles` rather than
+ * `user_roles`. Used by the SAML/LDAP provisioner to attach the implicit
+ * `authenticated` role on first login.
+ */
+export const assignAppUserRoleByName = async (
+  ctx: DbCtx,
+  tenantId: string,
+  appUserId: string,
+  roleName: string,
+): Promise<void> => {
+  const role = await getRoleByName(ctx, tenantId, roleName);
+  if (!role) return;
+  const t = tablesFor(ctx.dialect);
+  const existing = await (ctx.db as any)
+    .select({ roleId: t.appUserRoles.roleId })
+    .from(t.appUserRoles)
+    .where(eq(t.appUserRoles.appUserId, appUserId));
+  if (existing.some((r: { roleId: string }) => r.roleId === role.id)) return;
+  await (ctx.db as any).insert(t.appUserRoles).values({
+    appUserId,
     roleId: role.id,
   });
 };

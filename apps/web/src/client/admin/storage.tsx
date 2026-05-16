@@ -16,7 +16,7 @@ import {
 } from "@workeros/ui/components/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@workeros/ui/components/popover";
 import { Button as ShadButton } from "@workeros/ui/components/button";
-import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
+import { CheckIcon, ChevronsUpDownIcon, LinkIcon } from "lucide-react";
 import { cn } from "@workeros/ui/lib/utils";
 import { api } from "@/lib/api";
 
@@ -890,24 +890,26 @@ function FileTile({ f, active, onSelect, onCopyUrl }: { f: StoredFile; active: b
             public
           </span>
         )}
-        {/* Copy URL — clicking doesn't open the detail modal, just copies.
-            Uses the shadcn Button primitive (size="icon-xs") with a dark
-            glass override so it stays legible on any image. */}
-        <ShadButton
-          type="button"
-          variant="secondary"
-          size="icon-xs"
-          onClick={(e) => { e.stopPropagation(); onCopyUrl(f.key); }}
-          title="Copy URL"
-          aria-label="Copy URL"
-          className="absolute top-1.5 right-1.5 bg-black/70 text-white border border-white/15 backdrop-blur-sm hover:bg-black/85"
-        >
-          <I.Code size={12} />
-        </ShadButton>
       </div>
       <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-        <div className="font-mono" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {displayName}
+        <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+          <span className="font-mono" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+            {displayName}
+          </span>
+          {/* Copy URL — uses the chain-link icon (the "<>" code glyph was
+              misleading). Stops propagation so the detail modal stays
+              closed. shadcn Button primitive, no raw <button>. */}
+          <ShadButton
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            onClick={(e) => { e.stopPropagation(); onCopyUrl(f.key); }}
+            title="Copy URL"
+            aria-label="Copy URL"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
+          >
+            <LinkIcon className="size-3" />
+          </ShadButton>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span className="muted tabular-nums" style={{ fontSize: 10.5 }}>{sizeStr}</span>

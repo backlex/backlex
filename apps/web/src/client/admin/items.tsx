@@ -6,6 +6,7 @@ import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button, Checkbox, IconButton } from "./ui";
 import { Select } from "./select";
 import { Input } from "@workeros/ui/components/input";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workeros/ui/components/input-group";
 import { getAuthors, subscribeAuthors } from "./authors-cache";
 
 export const FIELD_OPS: Record<string, string[]> = {
@@ -193,11 +194,15 @@ export function FilterBar({ search, setSearch, filters, setFilters, schema, stat
 
   return (
     <div className="filter-bar">
-      <div className="search-input">
-        <I.Search size={14} />
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Search ${total} items by title or slug…`} />
-        {search && <span className="x" onClick={() => setSearch("")}><I.X size={13} /></span>}
-      </div>
+      <InputGroup>
+        <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
+        <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Search ${total} items by title or slug…`} />
+        {search && (
+          <InputGroupAddon align="inline-end">
+            <InputGroupButton size="icon-xs" onClick={() => setSearch("")}><I.X size={13} /></InputGroupButton>
+          </InputGroupAddon>
+        )}
+      </InputGroup>
 
       {(() => {
         const cfg = resolveStatusField(schema as any);

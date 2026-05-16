@@ -135,3 +135,137 @@ assignments aren't touched.
 - **Cloudflare Workers runtime** — samlify imports `xml-crypto` which uses
   `node:crypto`. Workers expose those under `nodejs_compat`
   (`apps/web/wrangler.toml`); deploying without that flag will fail at boot.
+
+---
+
+## LDAP / Active Directory (Phase 2)
+
+LDAP / AD is the second federated-identity option after SAML. Use it when
+your customer wants to keep username + password sign-in but bind against
+their existing directory (no IdP-side SAML configuration needed).
+
+### Runtime requirements
+
+LDAP needs raw TCP via `node:net`/`node:tls`. **Cloudflare Workers do not
+expose raw sockets**, so the LDAP adapter is gated off there: the route
+returns 503 `UNAVAILABLE` and `apps/web/src/server/lib/auth-select.ts::
+buildLdapAdapter` short-circuits to `undefined`. Use SAML on Workers, or run
+the app on Bun / Vercel / Netlify where `node:net` is available.
+
+The Worker bundle still resolves `import "ldapts"` — it's aliased to
+`apps/web/src/server/shims/ldapts-shim.ts` (wired in both `wrangler.toml`
+`[alias]` and `vite.config.ts`), which throws if anything ever actually
+calls `new Client(...)` on Workers.
+
+### Config storage
+
+Per-workspace single-row config in `ldap_configs` (PK on `tenant_id`; the
+`_global` sentinel works as the instance-wide fallback, same pattern as
+`email_config`). `bind_password` and the optional `ca_pem` (custom TLS CA
+for self-signed LDAPS) live in `secrets` as `enc:v1:…` AES-256-GCM
+ciphertext — never returned by the API, just a per-key "is it set" flag.
+
+Admin CRUD lives at `/api/admin/ldap-config` (GET, PUT, POST `/test`). The
+admin UI in `Authentication → LDAP / Active Directory` writes through here.
+
+### Sign-in flow
+
+`POST /api/t/<slug>/auth/ldap/sign-in` with `{username, password}`:
+
+1. Resolve the workspace + its LDAP config (missing/disabled/unsupported →
+   503).
+2. Per-`(tenant, normalized_username, ip)` rate limit
+   (`config.rateLimitPerMinute`, default 10/min). Both successes and
+   failures count.
+3. If `domainMatch` is set and the username contains `@`, reject pre-LDAP
+   when the domain isn't in the allow-list (saves the directory round-trip).
+4. Service-bind, escape the username per RFC 4515, search by `userFilter`,
+   then user-bind with the supplied password. Returns 401 on bad
+   credentials *or* no match (same response + timing — no enumeration).
+5. Provision via `provisionAppUser` (`linkByVerifiedEmail: false` —
+   directory-bound users don't cross-link by default), apply
+   `defaultRoleId` + `groupsToRoles`, issue an `app_sessions` row.
+6. Returns `{token, user: {id, email}}` — *not* a redirect; LDAP is
+   form-driven from the customer's own UI.
+
+### Recipe: OpenLDAP
+
+Typical OpenLDAP layout:
+
+```
+dc=example,dc=com
+  ou=users
+    uid=alice,ou=users,dc=example,dc=com  (objectClass: inetOrgPerson)
+  ou=groups
+    cn=engineers,ou=groups,dc=example,dc=com  (objectClass: groupOfNames)
+      member: uid=alice,ou=users,...
+```
+
+Settings:
+- **URL** — `ldaps://ldap.example.com:636` (use `ldaps://` in production).
+- **Bind DN** — a read-only service account, e.g.
+  `cn=workeros-readonly,ou=service,dc=example,dc=com`.
+- **Base DN** — `ou=users,dc=example,dc=com`.
+- **User filter** — `(&(objectClass=inetOrgPerson)(uid={{username}}))`.
+- **Attribute map** — `email = mail`, `firstName = givenName`,
+  `lastName = sn`, `groups = memberOf` (with the `memberof` overlay loaded
+  on the OpenLDAP server; without it, switch `groups` to the empty string
+  and forgo group sync).
+
+### Recipe: Active Directory
+
+Settings:
+- **URL** — `ldaps://dc1.corp.example:636`. Workers can't reach AD over
+  raw TCP — host on Bun/Node.
+- **Bind DN** — typically a domain account: `cn=workeros,ou=Service
+  Accounts,dc=corp,dc=example` or the UPN `workeros@corp.example`.
+- **Base DN** — `dc=corp,dc=example` (or scope tighter — `ou=Users,...` —
+  if all sign-in users live below one OU).
+- **User filter** — `(&(objectClass=user)(sAMAccountName={{username}}))`
+  for legacy login names, or
+  `(&(objectClass=user)(userPrincipalName={{username}}))` when users sign
+  in with their email/UPN.
+- **Attribute map** — `email = mail`, `firstName = givenName`,
+  `lastName = sn`, `groups = memberOf` (AD exposes group DNs directly on
+  the user entry).
+- **Pagination** — AD truncates `memberOf` at 1 500 entries and returns
+  `memberOf;range=0-1499`. The adapter detects the ranged form and re-
+  queries with `memberOf;range=<next>-*` until exhausted, so users in many
+  groups still work.
+
+### TLS notes
+
+- **LDAPS** is just LDAP over TLS on port 636 — recommended for any
+  internet-reachable directory.
+- **StartTLS** (negotiate TLS on port 389) isn't supported by the current
+  adapter; use LDAPS.
+- **Self-signed CAs** — paste the root/intermediate PEM into the
+  *Custom CA PEM* field. It's encrypted into `secrets.caPem` and only
+  decrypted on the way into the TLS handshake.
+- **Disable cert verification** (`Reject unauthorized certs` off) only as
+  a last-ditch debugging step. Production deployments should always
+  reject unauthorized certs.
+
+### Filter-injection protection
+
+The adapter escapes the username per RFC 4515 before substituting it into
+`userFilter`. So `userFilter = "(uid={{username}})"` with username
+`alice)(uid=*` becomes
+`(uid=alice\29\28uid=\2a)` — a valid filter that matches nothing — instead
+of collapsing the filter to match all users. Don't try to pre-escape on
+the client; the server always escapes.
+
+### Troubleshooting
+
+- **503 / "LDAP is not available on this runtime"** — running on
+  Cloudflare Workers. Move to Bun/Vercel/Netlify or use SAML SSO.
+- **401 every time** — likely either the bind DN/password is wrong (check
+  the *Test connection* dialog), or the `userFilter` doesn't match (try
+  it against `ldapsearch -x -H <url> -D '<bindDn>' -W -b '<baseDn>'
+  '(...your filter with the username...)'`).
+- **Login succeeds but groups are empty** — the `memberOf` overlay isn't
+  enabled (OpenLDAP) or the user really isn't in any groups. Run
+  `ldapsearch ... '(uid=alice)' memberOf` to confirm.
+- **`hostname-mismatch` / `unable to get issuer cert`** — the LDAPS cert
+  chain isn't trusted by the host's CA store. Paste the issuing CA's PEM
+  into *Custom CA PEM*.

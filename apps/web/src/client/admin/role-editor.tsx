@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { I } from "./icons";
 import { Button, IconButton } from "./ui";
+import { Input } from "@workeros/ui/components/input";
 
 const ACTIONS = ["read", "create", "update", "delete"] as const;
 
@@ -80,13 +81,13 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
         <div className="dialog-body">
           <div className="field">
             <label className="field-label">Name</label>
-            <input className="input" value={name} disabled={isSystem} onChange={(e) => setName(e.target.value.replace(/[^a-z0-9_-]/g, "_"))} placeholder="editor" />
+            <Input value={name} disabled={isSystem} onChange={(e) => setName(e.target.value.replace(/[^a-z0-9_-]/g, "_"))} placeholder="editor" />
             <span className="field-hint font-mono">lowercase, snake_case</span>
           </div>
 
           <div className="field">
             <label className="field-label">Description</label>
-            <input className="input" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What this role can do…" />
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What this role can do…" />
           </div>
 
           <div className="field">

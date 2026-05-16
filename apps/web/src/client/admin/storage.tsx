@@ -882,7 +882,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, q, setQ, fmt, setFmt, fit, s
               <div className="field" style={{ marginTop: 0 }}>
                 <label className="field-label">Fit</label>
                 <div className="seg">
-                  {["cover", "contain", "fill", "inside"].map((o) => (
+                  {["cover", "contain"].map((o) => (
                     <button key={o} className={fit === o ? "on" : ""} onClick={() => setFit(o)}><span className="font-mono">{o}</span></button>
                   ))}
                 </div>

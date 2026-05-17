@@ -161,8 +161,18 @@ export const resolveProjection = (
   fields: FieldDef[],
   ownerScoped: boolean,
   permissionFields: Set<string> | null,
+  opts: { hasCreatedAt?: boolean; hasUpdatedAt?: boolean } = {},
 ): string[] | null => {
-  const sys = ["id", "created_at", "updated_at", ...(ownerScoped ? ["owner_id"] : [])];
+  // Default true preserves the legacy contract for managed collections;
+  // adopted collections opt out when the underlying table doesn't carry
+  // the system column (or aliases it through a separate column, which
+  // routes/items.ts handles via SELECT-time aliasing).
+  const hasCreatedAt = opts.hasCreatedAt !== false;
+  const hasUpdatedAt = opts.hasUpdatedAt !== false;
+  const sys: string[] = ["id"];
+  if (hasCreatedAt) sys.push("created_at");
+  if (hasUpdatedAt) sys.push("updated_at");
+  if (ownerScoped) sys.push("owner_id");
   if (parsed.fields) {
     const set = new Set(parsed.fields);
     for (const c of sys) set.add(c);

@@ -1237,7 +1237,7 @@ const EndpointList = ({
   }, [filtered]);
 
   return (
-    <Card className="flex h-full max-h-[calc(100vh-160px)] flex-col overflow-hidden">
+    <Card className="flex h-full max-h-[calc(100vh-220px)] flex-col overflow-hidden">
       <CardHeader className="gap-2">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
@@ -1392,7 +1392,7 @@ export const RestExplorerPage = () => {
           onRefetch={() => void load()}
           loading={loading}
         />
-        <div className="min-h-0 max-h-[calc(100vh-160px)] overflow-auto">
+        <div className="min-h-0 max-h-[calc(100vh-220px)] overflow-auto">
           {selected ? (
             <EndpointDetail ep={selected} doc={doc} baseUrl={baseUrl} />
           ) : (

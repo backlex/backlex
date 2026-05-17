@@ -156,6 +156,14 @@ const buildInputType = (collection: CollectionRow): GraphQLInputObjectType => {
         // All fields optional in input — server-side validates required-ness.
         fields[camel(f.name)] = { type: fieldScalar(f.type) };
       }
+      // GraphQL requires at least one input field. A collection with no
+      // user-defined fields would otherwise fail the entire schema build —
+      // emit a placeholder field that's documented as "no-op".
+      if (Object.keys(fields).length === 0) {
+        fields._empty = {
+          type: GraphQLBoolean,
+        };
+      }
       return fields;
     },
   });

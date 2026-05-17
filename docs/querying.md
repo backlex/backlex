@@ -158,21 +158,64 @@ produces one join, not two.
 
 - **Single-level only.** `a.b.c` returns `422` — multi-hop joins are
   planned.
-- **`relation` only.** Nested filtering through `relation_many`
-  (JSON-array storage) returns `422`; an `EXISTS` / `json_each`
-  lowering is planned.
+- **`relation_many` filters lower to `EXISTS`, not a JOIN.** See
+  ["Filtering through a `relation_many` field"](#filtering-through-a-relation_many-field)
+  below. Sorting through `relation_many` is still rejected — there's no
+  well-defined order across the array's members.
 - **Permission-gated.** The caller must hold read on the target
   collection *and* the specific sub-field, otherwise `403`. See
   "Permission interactions" below.
 - **Self-referential FKs work.** A `parent_id` relation on the same
   collection joins as `rel_parent_id` the same way.
 
+### Filtering through a `relation_many` field
+
+`relation_many` stores foreign ids as a JSON array (`jsonb` on PG, text
+JSON on SQLite). A nested filter on a `relation_many` head doesn't
+materialize a JOIN — it lowers to an `EXISTS` subquery that unpacks the
+array and joins on membership, on a per-clause basis:
+
+```bash
+curl '/api/items/posts?filter={"tags.name":{"_contains":"art"}}'
+```
+
+PG:
+
+```sql
+WHERE EXISTS (
+  SELECT 1 FROM c_tags AS sub
+  WHERE sub.id IN (SELECT value FROM jsonb_array_elements_text(posts.tags))
+    AND sub.tenant_id = $1            -- tenant-scoped targets only
+    AND sub.name LIKE '%art%'
+)
+```
+
+SQLite / D1:
+
+```sql
+WHERE EXISTS (
+  SELECT 1 FROM c_tags AS sub
+  WHERE sub.id IN (SELECT value FROM json_each(posts.tags))
+    AND sub.tenant_id = ?
+    AND sub.name LIKE '%art%'
+)
+```
+
+Every operator (`_eq`, `_neq`, `_in`, `_nin`, `_gt/_gte/_lt/_lte`,
+`_contains/_starts_with/_ends_with`, `_null`) applies to `sub.<sub>` the
+same way it would against a plain column. Multi-clause shapes — e.g.
+`{"tags.name":{"_contains":"a"},"tags.id":{"_in":["…"]}}` — emit one
+`EXISTS` per clause AND'd together; this is on purpose (each clause is
+satisfied by *some* related row, not necessarily the same one). Nested
+`relation_many` inside `$or`/`$and`/`$not` works as expected — the
+lowering happens per leaf and respects the tree's boolean structure.
+
 ### Edge cases and 4xx messages
 
 | Situation                                                       | Status | Message                                                            |
 |-----------------------------------------------------------------|--------|--------------------------------------------------------------------|
 | Multi-level dotted key (`a.b.c`)                                | 422    | `Multi-level nested filter not supported yet: a.b.c`               |
-| Nested filter through a `relation_many` field                   | 422    | `Nested filter on relation_many not supported yet: <field>`        |
+| Nested sort through a `relation_many` field                     | 422    | `Nested sort on relation_many is not supported: <field>`           |
 | Head is not a relation field                                    | 422    | `Nested filter only works on relation fields — "<head>" is <type>` |
 | Unknown sub-field on target collection                          | 422    | `Unknown field on relation target "<slug>": <sub>`                 |
 | Target collection is archived                                   | 422    | `Relation target not active: <slug>`                               |
@@ -192,15 +235,14 @@ curl '/api/items/orders?sort=-customer_id.created_at'
 # Combined: filter + sort + projection + meta — one JOIN
 curl '/api/items/orders?filter={"customer_id.name":{"_eq":"Alice"}}&sort=-amount&fields=id,amount&meta=filter_count'
 
+# Filter through a relation_many (lowers to EXISTS, not a JOIN)
+curl '/api/items/posts?filter={"tags.name":{"_eq":"art"}}'
+
 # Free-text search narrowed by a filter
 curl '/api/items/posts?q=cluster&filter={"published":{"_eq":true}}'
 
 # Locale projection
 curl '/api/items/articles?locale=tr'
-
-# 422 — nested filter on relation_many is not supported yet
-curl '/api/items/articles?filter={"tags.name":{"_eq":"x"}}'
-# {"error":{"code":"VALIDATION","message":"Nested filter on relation_many not supported yet: tags"}}
 ```
 
 ## Permission interactions
@@ -229,8 +271,9 @@ doesn't ambiguously resolve against the joined target's `owner_id`.
 
 - **Multi-level nested** (`a.b.c`) — needs a recursive resolver across
   multiple join aliases.
-- **`relation_many` nested** — will lower to `EXISTS` on PG and
-  `json_each` on SQLite; storage is array-of-id, not a joinable scalar.
+- **Sorting through `relation_many`** — there's no well-defined order
+  across the array's members; filter is supported via `EXISTS`, sort
+  still returns `422`.
 - **`?expand=customer_id`** — REST returns bare relation ids. To inline
   related rows, use GraphQL (type-aware expansion via the schema
   registry). A REST `expand` parameter is on the table but not shipped.

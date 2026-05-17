@@ -173,6 +173,17 @@ export const parseQuery = (
             `Nested sort only works on relation fields — "${head}" is ${def.type}`,
           );
         }
+        if (def.type === "relation_many") {
+          // Sorting through a JSON array of foreign ids has no well-defined
+          // semantics — which related row's value drives the order? Reject
+          // up front so the caller gets a precise 422 instead of a cryptic
+          // SQL error from the items.ts code path that only sets up JOINs
+          // for single-FK `relation` heads.
+          throw new AppError(
+            "VALIDATION",
+            `Nested sort on relation_many is not supported: ${head}`,
+          );
+        }
         if (!allowedForUser.has(head)) {
           throw new AppError("FORBIDDEN", `No permission to read field: ${head}`);
         }

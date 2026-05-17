@@ -10,6 +10,7 @@ import {
   validateValue,
   type FieldType,
   type ColRefResolver,
+  type LeafCompiler,
 } from "@workeros/db";
 import type { Condition } from "@workeros/core";
 import type { Context } from "hono";
@@ -857,7 +858,50 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         string,
         { alias: string; target: CollectionRow }
       >();
+      // Heads on `relation_many` fields don't get a JOIN — instead the
+      // leaf compiler below lowers `<head>.<sub>` into an EXISTS subquery
+      // against the target table, keyed by JSON-array membership. We still
+      // load + permission-check the target here so 403/422 surface uniformly
+      // with the JOIN path.
+      const manyHeadMap = new Map<
+        string,
+        { target: CollectionRow }
+      >();
       const extraJoins: SQL[] = [];
+      // Per-target subfield-permission check used by both JOIN and EXISTS
+      // paths — same allow-list logic, so factor it out.
+      const enforceTargetSubs = (
+        toSlug: string,
+        target: CollectionRow,
+        targetPerm: { fields: Set<string> | null },
+        subs: Iterable<string>,
+      ): void => {
+        const targetSys = new Set<string>(["id"]);
+        if (target.hasCreatedAt) targetSys.add("created_at");
+        if (target.hasUpdatedAt) targetSys.add("updated_at");
+        if (target.ownerScoped) targetSys.add("owner_id");
+        const targetFieldNames = new Set(target.fields.map((f) => f.name));
+        for (const s of subs) {
+          const isSystem = targetSys.has(s);
+          const isField = targetFieldNames.has(s);
+          if (!isSystem && !isField) {
+            throw new AppError(
+              "VALIDATION",
+              `Unknown field on relation target "${toSlug}": ${s}`,
+            );
+          }
+          if (
+            !isSystem &&
+            targetPerm.fields &&
+            !targetPerm.fields.has(s)
+          ) {
+            throw new AppError(
+              "FORBIDDEN",
+              `No permission to read "${toSlug}.${s}"`,
+            );
+          }
+        }
+      };
       for (const head of nestedHeads) {
         const def = collection.fields.find((f) => f.name === head);
         if (!def || !def.to) {
@@ -865,13 +909,6 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
           throw new AppError(
             "VALIDATION",
             `Nested filter head "${head}" is not a relation field`,
-          );
-        }
-        if (def.type === "relation_many") {
-          // EXISTS subquery / json_each on SQLite would work; deferred.
-          throw new AppError(
-            "VALIDATION",
-            `Nested filter on relation_many not supported yet: ${head}`,
           );
         }
         let target: CollectionRow;
@@ -900,30 +937,19 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         // surfaces. Also enforce the target's `fields` allow-list so a
         // role with restricted projection on `customers` can't probe
         // hidden columns via a nested filter on `orders`.
-        const targetSys = new Set<string>(["id"]);
-        if (target.hasCreatedAt) targetSys.add("created_at");
-        if (target.hasUpdatedAt) targetSys.add("updated_at");
-        if (target.ownerScoped) targetSys.add("owner_id");
-        const targetFieldNames = new Set(target.fields.map((f) => f.name));
-        for (const s of nestedSubs.get(head) ?? []) {
-          const isSystem = targetSys.has(s);
-          const isField = targetFieldNames.has(s);
-          if (!isSystem && !isField) {
-            throw new AppError(
-              "VALIDATION",
-              `Unknown field on relation target "${def.to}": ${s}`,
-            );
-          }
-          if (
-            !isSystem &&
-            targetPerm.fields &&
-            !targetPerm.fields.has(s)
-          ) {
-            throw new AppError(
-              "FORBIDDEN",
-              `No permission to read "${def.to}.${s}"`,
-            );
-          }
+        enforceTargetSubs(
+          def.to,
+          target,
+          { fields: targetPerm.fields },
+          nestedSubs.get(head) ?? [],
+        );
+        if (def.type === "relation_many") {
+          // Side-banded into the leaf compiler below (EXISTS lowering on
+          // JSON-array storage). No JOIN; the base column reference stays
+          // unqualified-or-base-qualified the same way the rest of the
+          // filter does.
+          manyHeadMap.set(head, { target });
+          continue;
         }
         const alias = `rel_${head}`;
         const targetTbl = sql.identifier(target.physicalTable);
@@ -972,14 +998,60 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         return sql`${sql.identifier(field)}`;
       };
 
+      // Leaf compiler for `relation_many` heads: lower `<head>.<sub>` to
+      // an EXISTS subquery against the target table, joining on JSON-array
+      // membership. The array storage is dialect-specific (PG: `jsonb`,
+      // SQLite: text-JSON), so the membership unpack uses
+      // `jsonb_array_elements_text` / `json_each`. The actual `<sub>` vs
+      // operator semantics are reused by recursing into `compileCondition`
+      // with a synthetic `{ [sub]: cmp }` condition and a per-subquery
+      // colRef that points at `sub.<sub_col>` — that way every operator
+      // (`_eq`, `_in`, `_contains`, …) keeps its existing implementation.
+      const relationManyLeaf: LeafCompiler | undefined = manyHeadMap.size > 0
+        ? (field, cmp, leafCtx) => {
+            if (!field.includes(".")) return null;
+            const [head, sub] = field.split(".") as [string, string];
+            const entry = manyHeadMap.get(head);
+            if (!entry) return null;
+            const target = entry.target;
+            const targetTbl = sql.identifier(target.physicalTable);
+            const subAlias = sql.identifier("sub");
+            const subColRef: ColRefResolver = () =>
+              sql`${subAlias}.${sql.identifier(sub)}`;
+            const innerWhere = compileCondition(
+              { [sub]: cmp },
+              leafCtx,
+              subColRef,
+            );
+            const baseCol = hasJoins
+              ? sql`${baseTblId}.${sql.identifier(head)}`
+              : sql`${sql.identifier(head)}`;
+            // Pin tenant on the subquery for tenant-scoped targets so a
+            // stray id leaking across workspaces can't satisfy the EXISTS.
+            const tenantClause =
+              target.tenantScoped && auth.tenantId
+                ? sql` AND ${subAlias}.${sql.identifier("tenant_id")} = ${auth.tenantId}`
+                : sql``;
+            const pkRef = sql`${subAlias}.${sql.identifier(target.pkColumn)}`;
+            const arrayUnpack =
+              ctx.dialect === "pg"
+                ? sql`SELECT value FROM jsonb_array_elements_text(${baseCol})`
+                : sql`SELECT value FROM json_each(${baseCol})`;
+            return sql`EXISTS (SELECT 1 FROM ${targetTbl} AS ${subAlias} WHERE ${pkRef} IN (${arrayUnpack})${tenantClause} AND ${innerWhere})`;
+          }
+        : undefined;
+
       const userWhere = userFilter
-        ? compileCondition(userFilter, auth, nestedColRef)
+        ? compileCondition(userFilter, auth, nestedColRef, relationManyLeaf)
         : null;
       // When joins are present, recompile permission conditions so their
       // unqualified column references (`owner_id` etc.) also get pinned to
       // the base table. `perm.conditions === null` means at least one
       // matching permission row was unconditional → stays null. Otherwise
-      // recompile through the join-aware colRef.
+      // recompile through the join-aware colRef. Permission conditions
+      // never reference dotted relation_many keys (they're defined per-
+      // collection by admins), so we don't need to thread the leaf
+      // compiler through this path.
       const permWhere =
         hasJoins && perm.conditions
           ? combineConditions(perm.conditions, auth, nestedColRef)

@@ -223,12 +223,14 @@ const AddFilter = ({
   const [field, setField] = useState(editable[0]?.name ?? "");
   const headDef = editable.find((f) => f.name === field) ?? editable[0];
 
-  // Nested-relation drill-down. Only meaningful when the head is a
-  // `relation` (single FK) — `relation_many` is recognised so the disabled
-  // hint can render, but no sub can be picked yet.
+  // Nested-relation drill-down. Both `relation` (single FK) and
+  // `relation_many` (JSON-array of FKs) drill into the target collection;
+  // the server picks the right SQL shape (LEFT JOIN vs EXISTS) — the
+  // picker semantics are identical.
   const isRelation = headDef?.type === "relation";
   const isRelationMany = headDef?.type === "relation_many";
-  const canDrill = isRelation && !!headDef?.to && !!relationTargetFields;
+  const isRelationLike = isRelation || isRelationMany;
+  const canDrill = isRelationLike && !!headDef?.to && !!relationTargetFields;
   const targetFields =
     canDrill && headDef?.to ? relationTargetFields!(headDef.to) : undefined;
   // Hide system PK from the sub list; everything else is a fair filter
@@ -241,7 +243,7 @@ const AddFilter = ({
   // The op list and value shape follow the *leaf* field's type — for a
   // nested filter that's the sub, otherwise the head itself.
   const leafDef: SchemaField | undefined =
-    isRelation || isRelationMany ? subDef : headDef;
+    isRelationLike ? subDef : headDef;
   const ops = (leafDef && FIELD_OPS[leafDef.type]) ?? ["_eq"];
   const [op, setOp] = useState(ops[0] ?? "_eq");
   const [textValue, setTextValue] = useState("");
@@ -268,8 +270,8 @@ const AddFilter = ({
 
   // Apply is gated on having a leaf field — for plain heads that's always
   // true, for relations only after a sub is picked.
-  const needsSub = isRelation || isRelationMany;
-  const canSubmit = !!leafDef && (!needsSub || (isRelation && !!subDef));
+  const needsSub = isRelationLike;
+  const canSubmit = !!leafDef && (!needsSub || !!subDef);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -300,12 +302,12 @@ const AddFilter = ({
     // server's parseQuery / compileCondition expect; flat filters keep the
     // bare head name.
     const fieldKey =
-      isRelation && subDef ? `${headDef.name}.${subDef.name}` : headDef.name;
+      isRelationLike && subDef ? `${headDef.name}.${subDef.name}` : headDef.name;
     onAdd({
       field: fieldKey,
       op,
       value,
-      ...(isRelation && subDef ? { nestedSub: subDef.name } : {}),
+      ...(isRelationLike && subDef ? { nestedSub: subDef.name } : {}),
     });
     setTextValue("");
     setMultiValue([]);
@@ -314,20 +316,18 @@ const AddFilter = ({
   };
 
   // Sub-dropdown placeholder — the disabled state has three flavors so the
-  // user knows why they can't proceed. `relation_many` is the deferred case
-  // (server compiler doesn't JOIN on JSON arrays yet) — keep the field
-  // pickable in the head list but block the drill.
-  const subPlaceholder = isRelationMany
-    ? "Not supported on relation_many"
-    : !headDef?.to
-      ? "Relation has no target"
-      : !relationTargetFields
-        ? "Loading target…"
-        : targetFields === undefined
-          ? "Target unavailable"
-          : "Pick a subfield";
+  // user knows why they can't proceed. Both `relation` and `relation_many`
+  // now lower to a usable nested filter on the server (JOIN vs EXISTS), so
+  // the picker treats them identically.
+  const subPlaceholder = !headDef?.to
+    ? "Relation has no target"
+    : !relationTargetFields
+      ? "Loading target…"
+      : targetFields === undefined
+        ? "Target unavailable"
+        : "Pick a subfield";
   const subDisabled =
-    !isRelation || !headDef?.to || !relationTargetFields || !targetFields;
+    !isRelationLike || !headDef?.to || !relationTargetFields || !targetFields;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -389,13 +389,7 @@ const AddFilter = ({
                 onValueChange={setNestedSub}
                 disabled={subDisabled}
               >
-                <SelectTrigger
-                  title={
-                    isRelationMany
-                      ? "Nested filter not supported on relation_many yet"
-                      : undefined
-                  }
-                >
+                <SelectTrigger>
                   <SelectValue placeholder={subPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
@@ -409,11 +403,6 @@ const AddFilter = ({
                   ))}
                 </SelectContent>
               </Select>
-              {isRelationMany && (
-                <p className="text-[11px] text-muted-foreground">
-                  Nested filter not supported on relation_many yet.
-                </p>
-              )}
             </div>
           )}
           {op !== "_null" && leafDef && (

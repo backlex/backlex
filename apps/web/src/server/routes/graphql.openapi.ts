@@ -4,7 +4,7 @@ import { apiRegistry, SECURITY, errorResponses } from "../lib/openapi";
 const GraphQLRequest = z
   .object({
     query: z.string().openapi({ description: "GraphQL query/mutation/subscription document." }),
-    variables: z.record(z.unknown()).optional(),
+    variables: z.record(z.string(), z.unknown()).optional(),
     operationName: z.string().optional(),
   })
   .openapi("GraphQLRequest");
@@ -20,11 +20,11 @@ const GraphQLResponse = z
           locations: z
             .array(z.object({ line: z.number(), column: z.number() }))
             .optional(),
-          extensions: z.record(z.unknown()).optional(),
+          extensions: z.record(z.string(), z.unknown()).optional(),
         }),
       )
       .optional(),
-    extensions: z.record(z.unknown()).optional(),
+    extensions: z.record(z.string(), z.unknown()).optional(),
   })
   .openapi("GraphQLResponse");
 

@@ -31,5 +31,8 @@
   },
   "engines": {
     "bun": ">=1.1.0"
+  },
+  "resolutions": {
+    "zod": "^4.4.3"
   }
 }

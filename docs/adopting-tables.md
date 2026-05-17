@@ -129,6 +129,120 @@ issue [#24411](https://github.com/directus/directus/issues/24411)
 tracks the inverse footgun on their side, closed "not planned"; we
 don't have it.) Drop the table yourself if you want it gone.
 
+## Aliasing existing columns
+
+Adopted tables rarely follow workeros' conventional column names —
+they have `inserted_at` instead of `created_at`, `user_id` instead of
+`owner_id`. **Aliasing** lets a collection treat one of your columns
+*as* a system field without renaming or copying it. The original
+column stays put; workeros just learns where to look. This keeps
+adoption truly DDL-free: no `ALTER TABLE` to add a duplicate column,
+no backfill, no drift between your migration tool and ours.
+
+### How it works
+
+Three nullable columns on `collections` carry the mapping:
+`created_at_column`, `updated_at_column`, `owner_id_column`. When set,
+the items router emits the alias at SQL level —
+`SELECT inserted_at AS created_at` — and rewrites `sort` / `filter`
+parameters that target the conventional name onto the underlying
+column. The wire shape is unchanged: API consumers always see
+`createdAt`, `updatedAt`, `ownerId`. Sort `?sort=-created_at` works
+against `inserted_at` transparently.
+
+### Auto-suggestions
+
+`POST /api/admin/adopt/inspect` scans your columns for common naming
+patterns and returns an `aliasSuggestions` block the wizard preselects:
+
+```json
+{
+  "aliasSuggestions": {
+    "createdAt": "inserted_at",
+    "updatedAt": null,
+    "ownerId": "user_id"
+  }
+}
+```
+
+Patterns matched (case-insensitive, snake or camel):
+
+- **createdAt** — `inserted_at`, `created_at`, `date_created`,
+  `created`, `insert_time`, `createdAt`, `dateCreated`
+- **updatedAt** — `modified_at`, `updated_at`, `last_modified`,
+  `updated`, `modify_time`, `updatedAt`, `modifiedAt`, `lastModified`
+- **ownerId** — `user_id`, `owner_id`, `created_by`, `author_id`,
+  `owner`, `owned_by`, `userId`, `createdBy`, `authorId`, `ownedBy`
+
+A suggestion is only emitted when the column's inferred FieldType also
+satisfies the alias type constraint (see below).
+
+### Ownership alias
+
+`ownerIdColumn` is the special one: when set, the items router reads
+ownership straight from that column on your table and **skips the
+`item_ownership` side-table entirely** — no JOIN, no sync writes on
+INSERT/DELETE. Pick the alias when your table already has an
+authoritative `user_id` (and you want permission filters to compile to
+an in-row comparison). Pick the side-table — leave `ownerIdColumn`
+null with `ownerScoped: true` — when you want owner-scoping without
+touching the source table at all.
+
+### Worked example
+
+```sql
+-- A typical adoption with aliasing: legacy table with inserted_at + user_id.
+CREATE TABLE legacy_orders (
+  id uuid PRIMARY KEY,
+  total numeric(10, 2) NOT NULL,
+  inserted_at timestamptz NOT NULL DEFAULT now(),
+  user_id text NOT NULL
+);
+```
+
+```bash
+# Inspect — note the aliasSuggestions in the response
+curl -sX POST localhost:5173/api/admin/adopt/inspect \
+  -H 'Content-Type: application/json' \
+  -d '{"table": "legacy_orders"}' \
+  --cookie better-auth.session_token=...
+
+# Apply — explicit alias mapping
+curl -sX POST localhost:5173/api/admin/adopt/apply \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "table": "legacy_orders",
+    "slug": "orders",
+    "pkColumn": "id",
+    "ownerScoped": true,
+    "createdAtColumn": "inserted_at",
+    "ownerIdColumn": "user_id",
+    "fields": [...]
+  }'
+
+# Read — API returns createdAt + ownerId at the conventional shape
+curl -s localhost:5173/api/items/orders?sort=-created_at
+```
+
+### Type validation
+
+`apply` checks the aliased column's FieldType before persisting:
+
+- `createdAtColumn` / `updatedAtColumn` — must be `timestamp` or
+  `integer` (Unix-ms epochs are fine on SQLite).
+- `ownerIdColumn` — must be `text`, `longtext`, or `uuid`.
+
+Mismatches return `VALIDATION` with the offending field name.
+
+### Limits
+
+- An aliased column **cannot also appear in the regular `fields`
+  list** — apply rejects the duplicate and the wizard surfaces a
+  warning. Pick one role for the column.
+- If your table already has a column literally named `created_at` /
+  `updated_at` / `owner_id`, leave the alias `null` and use
+  `addCreatedAt: true` (etc.) instead — there's nothing to alias.
+
 ## What we don't do (and why)
 
 - **DDL on adopted tables.** `applyCollection` is a no-op when

@@ -48,22 +48,31 @@ const validateFilterFields = (
     return;
   }
   for (const k of Object.keys(c)) {
-    // Nested-relation filter: `<relation_field>.<sub>` — the head must be
-    // a `relation` / `relation_many` field on this collection that the
-    // caller has read permission on. The tail is validated at compile
-    // time (compileCondition has access to the target collection).
+    // Nested-relation filter: `<relation_field>.<sub>[.<sub2>…]` — the
+    // FIRST segment must be a `relation` / `relation_many` field on THIS
+    // collection that the caller has read permission on. Middle segments
+    // (for multi-hop) can't be type-checked here because the target
+    // collection isn't loaded yet — items.ts resolves each hop, the
+    // target collection, and the per-hop read permission at compile
+    // time. We only enforce identifier shape on every segment.
     if (k.includes(".")) {
       const dotCount = (k.match(/\./g) || []).length;
-      if (dotCount > 1) {
+      // Hard ceiling: keys may have up to 3 segments (= 2 hops + leaf).
+      // `a.b` is 1-hop (head `a`, leaf `b`). `a.b.c` is 2-hop (chain
+      // `[a, b]`, leaf `c`). `a.b.c.d` is 3-hop — rejected. The ceiling
+      // keeps generated aliases under the PG 63-char identifier limit
+      // and the JOIN ladder readable in EXPLAIN.
+      if (dotCount > 2) {
         throw new AppError(
           "VALIDATION",
-          `Multi-level nested filter not supported yet: ${k}`,
+          `Nested filter exceeds max depth: ${k}`,
         );
       }
-      const [head, sub] = k.split(".") as [string, string];
-      if (!head || !sub) {
+      const segments = k.split(".");
+      if (segments.some((s) => !s)) {
         throw new AppError("VALIDATION", `Invalid nested filter key: ${k}`);
       }
+      const head = segments[0]!;
       const def = fieldsByName.get(head);
       if (!def) {
         throw new AppError("VALIDATION", `Unknown field on nested filter: ${head}`);
@@ -77,10 +86,14 @@ const validateFilterFields = (
       if (!allowedForUser.has(head)) {
         throw new AppError("FORBIDDEN", `No permission to read field: ${head}`);
       }
-      // Subfield identifier shape — actual existence on the target
-      // collection is enforced when compileCondition resolves the JOIN.
-      if (!/^[a-z_][a-z0-9_]*$/.test(sub)) {
-        throw new AppError("VALIDATION", `Invalid nested subfield: ${sub}`);
+      // Every segment after the head must have a safe identifier shape;
+      // mid-segment type-checking and target-collection existence are
+      // enforced by the items.ts compile-time wiring.
+      for (let i = 1; i < segments.length; i++) {
+        const seg = segments[i]!;
+        if (!/^[a-z_][a-z0-9_]*$/.test(seg)) {
+          throw new AppError("VALIDATION", `Invalid nested subfield: ${seg}`);
+        }
       }
       continue;
     }
@@ -151,18 +164,22 @@ export const parseQuery = (
     .map((s) => {
       const dir: "asc" | "desc" = s.startsWith("-") ? "desc" : "asc";
       const field = s.replace(/^[-+]/, "");
-      // Nested sort: `<relation_field>.<sub>` — same gate as nested
-      // filter. items.ts threads the JOIN through `nestedColRef` for
-      // ORDER BY at compile time.
+      // Nested sort: `<relation_field>.<sub>[.<sub2>…]` — same gate as
+      // nested filter. items.ts threads the multi-hop JOIN chain through
+      // `nestedColRef` for ORDER BY at compile time. The HEAD must be a
+      // single-FK `relation` (relation_many sort has no well-defined
+      // order). Middle hops must also be relations — but that's enforced
+      // by items.ts when it walks the chain and loads target collections.
       if (field.includes(".")) {
         const dotCount = (field.match(/\./g) || []).length;
-        if (dotCount > 1) {
-          throw new AppError("VALIDATION", `Multi-level nested sort not supported yet: ${field}`);
+        if (dotCount > 2) {
+          throw new AppError("VALIDATION", `Nested sort exceeds max depth: ${field}`);
         }
-        const [head, sub] = field.split(".") as [string, string];
-        if (!head || !sub) {
+        const segments = field.split(".");
+        if (segments.some((s) => !s)) {
           throw new AppError("VALIDATION", `Invalid nested sort key: ${field}`);
         }
+        const head = segments[0]!;
         const def = sortFieldsByName.get(head);
         if (!def) {
           throw new AppError("VALIDATION", `Unknown sort field: ${head}`);
@@ -187,8 +204,11 @@ export const parseQuery = (
         if (!allowedForUser.has(head)) {
           throw new AppError("FORBIDDEN", `No permission to read field: ${head}`);
         }
-        if (!/^[a-z_][a-z0-9_]*$/.test(sub)) {
-          throw new AppError("VALIDATION", `Invalid nested sort subfield: ${sub}`);
+        for (let i = 1; i < segments.length; i++) {
+          const seg = segments[i]!;
+          if (!/^[a-z_][a-z0-9_]*$/.test(seg)) {
+            throw new AppError("VALIDATION", `Invalid nested sort subfield: ${seg}`);
+          }
         }
         return { field, dir };
       }

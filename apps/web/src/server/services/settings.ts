@@ -12,7 +12,6 @@ import type { SqliteDb } from "@workeros/db/sqlite";
  * `routes/settings.ts`.
  */
 export interface AppSettings {
-  siteName: string;
   /** When false, account creation is rejected (any sign-up path). The very
    *  first user is always allowed so a fresh instance can bootstrap. */
   openSignup: boolean;
@@ -25,7 +24,6 @@ export interface AppSettings {
 }
 
 export const APP_SETTINGS_DEFAULTS: AppSettings = {
-  siteName: "workeros",
   openSignup: true,
   i18nLocales: ["en", "tr", "de", "es", "fr", "ja"],
   i18nDefaultLocale: "en",
@@ -53,8 +51,7 @@ export const loadAppSettings = async (
     }[];
     const out: AppSettings = { ...APP_SETTINGS_DEFAULTS };
     for (const r of rows) {
-      if (r.key === "siteName" && typeof r.value === "string") out.siteName = r.value;
-      else if (r.key === "openSignup" && typeof r.value === "boolean")
+      if (r.key === "openSignup" && typeof r.value === "boolean")
         out.openSignup = r.value;
       else if (r.key === "i18nLocales" && isStringArray(r.value) && r.value.length > 0)
         out.i18nLocales = r.value;

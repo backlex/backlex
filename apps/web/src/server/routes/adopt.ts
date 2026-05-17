@@ -17,7 +17,7 @@
  */
 import { Hono } from "hono";
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { AppError, SYSTEM_ROLES } from "@workeros/core";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
@@ -53,6 +53,7 @@ const FieldInput = z.object({
     "timestamp",
     "uuid",
     "relation",
+    "relation_many",
   ]),
   required: z.boolean().optional(),
   unique: z.boolean().optional(),
@@ -139,6 +140,7 @@ export const adoptRoutes = new Hono<AppBindings>()
    */
   .post("/inspect", async (c) => {
     const ctx = c.get("ctx");
+    const auth = c.get("auth");
     const body = z
       .object({ table: z.string().min(1).max(120) })
       .parse(await c.req.json());
@@ -147,6 +149,23 @@ export const adoptRoutes = new Hono<AppBindings>()
         { db: ctx.db, dialect: ctx.dialect },
         body.table,
       );
+      // Per-FK target collection lookup. Service layer doesn't know about
+      // the request's tenant; we resolve here so the wizard can pre-fill
+      // the relation dropdown with the matching slug. One SELECT covers
+      // all FKs on the table (collections is a small metadata table).
+      if (data.foreignKeys.length > 0 && auth.tenantId) {
+        const t = tableFor(ctx.dialect);
+        const parentTables = [...new Set(data.foreignKeys.map((fk) => fk.referencesTable))];
+        const rows: { id: string; slug: string; physicalTable: string }[] = await (ctx.db as any)
+          .select({ id: t.id, slug: t.slug, physicalTable: t.physicalTable })
+          .from(t)
+          .where(and(eq(t.tenantId, auth.tenantId), inArray(t.physicalTable, parentTables)));
+        const byPhys = new Map(rows.map((r) => [r.physicalTable, { slug: r.slug, id: r.id }]));
+        for (const fk of data.foreignKeys) {
+          const hit = byPhys.get(fk.referencesTable);
+          if (hit) fk.targetCollection = hit;
+        }
+      }
       return c.json({ data });
     } catch (e) {
       const msg = (e as Error).message;

@@ -324,7 +324,33 @@ export interface InspectedTable {
     updatedAt: string | null;
     ownerId: string | null;
   };
+  /** Foreign keys declared on the source table. Composite FKs are
+   *  reported with `composite: true` (workeros doesn't model multi-column
+   *  references; UI surfaces them as informational, not adoptable).
+   *  `targetCollection` is filled in by the route layer after the service
+   *  returns — it requires the request's tenant to scope the lookup. */
+  foreignKeys: ForeignKey[];
   warnings: string[];
+}
+
+export interface ForeignKey {
+  /** Source column on the table being inspected. */
+  column: string;
+  /** Parent table referenced by this FK. */
+  referencesTable: string;
+  /** Parent column. May be empty string if the source schema omitted the
+   *  column list (`REFERENCES parent` without parentheses) and we could
+   *  not resolve the parent's PK — flag it but don't fail introspection. */
+  referencesColumn: string;
+  /** True when this FK spans multiple columns. workeros' relation field
+   *  is single-column, so composite FKs are shown but cannot be adopted
+   *  as `relation`/`relation_many`. */
+  composite: boolean;
+  /** Set by the route layer when the parent table matches an existing
+   *  collection in the current workspace (lookup by `physical_table`).
+   *  Null = no managed/adopted collection in this workspace targets the
+   *  same physical table; user must adopt the parent first. */
+  targetCollection: { slug: string; id: string } | null;
 }
 
 /** Patterns we recognize for each system field, in priority order. The
@@ -497,7 +523,8 @@ const inspectPg = async (ctx: DbCtx, table: string): Promise<InspectedTable> => 
       ...(RESERVED_NAMES.has(c.column_name) ? { reserved: c.column_name } : {}),
     };
   });
-  return buildInspectResult(table, columnsOut, pkName);
+  const fks = await listForeignKeysPg(ctx, table);
+  return buildInspectResult(table, columnsOut, pkName, fks);
 };
 
 const inspectSqlite = async (ctx: DbCtx, table: string): Promise<InspectedTable> => {
@@ -528,13 +555,152 @@ const inspectSqlite = async (ctx: DbCtx, table: string): Promise<InspectedTable>
     suggested: suggestFieldType(c.type || "TEXT"),
     ...(RESERVED_NAMES.has(c.name) ? { reserved: c.name } : {}),
   }));
-  return buildInspectResult(table, columnsOut, pkName);
+  const fks = await listForeignKeysSqlite(ctx, table);
+  return buildInspectResult(table, columnsOut, pkName, fks);
+};
+
+/**
+ * List FKs on a Postgres table. We pull from `pg_constraint` and join
+ * `pg_attribute` twice — once for child columns, once for parent — using
+ * `unnest WITH ORDINALITY` so composite FK column pairs preserve their
+ * declaration order. The plain `= ANY()` form silently rearranges array
+ * elements and would corrupt composite tuples.
+ */
+const listForeignKeysPg = async (
+  ctx: DbCtx,
+  table: string,
+): Promise<ForeignKey[]> => {
+  const safe = table.replace(/'/g, "''");
+  type Row = {
+    conname: string;
+    child_col: string;
+    parent_table: string;
+    parent_col: string;
+    ord: number;
+  };
+  const rows = await runQuery<Row>(
+    ctx,
+    sql.raw(
+      `SELECT c.conname,
+              a_child.attname  AS child_col,
+              p.relname        AS parent_table,
+              a_parent.attname AS parent_col,
+              k.ord
+         FROM pg_constraint c
+         JOIN pg_class      cl ON cl.oid = c.conrelid
+         JOIN pg_namespace  n  ON n.oid  = cl.relnamespace
+         JOIN pg_class      p  ON p.oid  = c.confrelid
+         JOIN unnest(c.conkey)  WITH ORDINALITY AS k(attnum, ord) ON true
+         JOIN unnest(c.confkey) WITH ORDINALITY AS f(attnum, ord) ON f.ord = k.ord
+         JOIN pg_attribute  a_child  ON a_child.attrelid  = c.conrelid AND a_child.attnum  = k.attnum
+         JOIN pg_attribute  a_parent ON a_parent.attrelid = c.confrelid AND a_parent.attnum = f.attnum
+        WHERE c.contype = 'f'
+          AND n.nspname = current_schema()
+          AND cl.relname = '${safe}'
+        ORDER BY c.conname, k.ord`,
+    ),
+  );
+  return groupAndShapeFks(
+    rows.map((r) => ({
+      id: r.conname,
+      seq: Number(r.ord),
+      child: r.child_col,
+      parentTable: r.parent_table,
+      parentCol: r.parent_col,
+    })),
+  );
+};
+
+/**
+ * SQLite/D1 path. `PRAGMA foreign_key_list(table)` returns one row per
+ * column pair; same `id` = same constraint. `to` is NULL when the source
+ * schema wrote `REFERENCES parent` without a column list — we resolve
+ * that by reading the parent's PK columns and aligning by `seq`.
+ */
+const listForeignKeysSqlite = async (
+  ctx: DbCtx,
+  table: string,
+): Promise<ForeignKey[]> => {
+  const safe = table.replace(/"/g, '""');
+  type Row = {
+    id: number | string;
+    seq: number | string;
+    table: string;
+    from: string;
+    to: string | null;
+  };
+  const rows = await runQuery<Row>(
+    ctx,
+    sql.raw(`PRAGMA foreign_key_list("${safe}")`),
+  );
+  // Resolve NULL `to` against parent PK columns. Group missing-to FKs by
+  // parent table to limit the table_info lookups to one per parent.
+  const parents = new Set<string>();
+  for (const r of rows) {
+    if (r.to === null || r.to === "") parents.add(r.table);
+  }
+  const pkByTable = new Map<string, string[]>();
+  for (const parent of parents) {
+    const safeParent = parent.replace(/"/g, '""');
+    const pkRows = await runQuery<{ name: string; pk: number | string }>(
+      ctx,
+      sql.raw(`PRAGMA table_info("${safeParent}")`),
+    );
+    const pks = pkRows
+      .filter((c) => Number(c.pk) > 0)
+      .sort((a, b) => Number(a.pk) - Number(b.pk))
+      .map((c) => c.name);
+    pkByTable.set(parent, pks);
+  }
+  return groupAndShapeFks(
+    rows.map((r) => {
+      const seq = Number(r.seq);
+      const parentCol = r.to ?? pkByTable.get(r.table)?.[seq] ?? "";
+      return {
+        id: String(r.id),
+        seq,
+        child: r.from,
+        parentTable: r.table,
+        parentCol,
+      };
+    }),
+  );
+};
+
+const groupAndShapeFks = (
+  rows: { id: string | number; seq: number; child: string; parentTable: string; parentCol: string }[],
+): ForeignKey[] => {
+  // Group by constraint id, sort columns by seq. For single-column FKs
+  // (the common case) we still emit one ForeignKey row; composite FKs
+  // emit one row per column pair flagged `composite: true` so the UI can
+  // disable each of them with a clear reason.
+  const groups = new Map<string | number, typeof rows>();
+  for (const r of rows) {
+    if (!groups.has(r.id)) groups.set(r.id, []);
+    groups.get(r.id)!.push(r);
+  }
+  const out: ForeignKey[] = [];
+  for (const cols of groups.values()) {
+    cols.sort((a, b) => a.seq - b.seq);
+    const isComposite = cols.length > 1;
+    for (const c of cols) {
+      out.push({
+        column: c.child,
+        referencesTable: c.parentTable,
+        referencesColumn: c.parentCol,
+        composite: isComposite,
+        targetCollection: null,
+      });
+    }
+  }
+  return out;
 };
 
 const buildInspectResult = (
   table: string,
   columns: InspectedColumn[],
   pkName: string | null,
+  foreignKeys: ForeignKey[] = [],
 ): InspectedTable => {
   const byName = new Map(columns.map((c) => [c.name, c] as const));
   const pkCol = pkName ? byName.get(pkName) ?? null : null;
@@ -576,6 +742,7 @@ const buildInspectResult = (
         ? null
         : pickAlias(byName, ALIAS_PATTERNS.ownerId, isIdLike),
     },
+    foreignKeys,
     warnings,
   };
 };

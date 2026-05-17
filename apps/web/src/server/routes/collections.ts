@@ -189,6 +189,10 @@ export const collectionsRoutes = new Hono<AppBindings>()
       ownerScoped: body.ownerScoped,
       tenantScoped: body.tenantScoped,
       versioned: body.versioned,
+      // POST through this route always creates a managed table; the adopt
+      // flow has its own service that inserts the row with `adopted=true`
+      // and skips DDL via the applier's adopted branch.
+      adopted: false,
     });
     if (body.ownerScoped) {
       await seedOwnerScopedPermissions({ db, dialect }, tenantId, body.slug);
@@ -283,6 +287,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       ownerScoped: merged.ownerScoped,
       tenantScoped: merged.tenantScoped ?? merged.tenant_scoped ?? true,
       versioned: merged.versioned,
+      adopted: Boolean(merged.adopted),
     });
     if (merged.ownerScoped) {
       await seedOwnerScopedPermissions({ db, dialect }, tenantId, nextSlug);
@@ -309,7 +314,8 @@ export const collectionsRoutes = new Hono<AppBindings>()
       .limit(1);
     if (!existing[0]) throw new AppError("NOT_FOUND", "Collection not found");
     const physicalTable = (existing[0].physicalTable ?? existing[0].physical_table) as string;
-    await dropCollection(db, dialect, physicalTable);
+    const adopted = Boolean(existing[0].adopted);
+    await dropCollection(db, dialect, physicalTable, { adopted });
     await (db as any)
       .delete(t)
       .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)));

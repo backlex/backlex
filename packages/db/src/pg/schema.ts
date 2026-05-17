@@ -627,12 +627,59 @@ export const collections = pgTable(
      *  e.g. `"-published_at,name"`. Null falls back to `-created_at` if the
      *  collection has that column, otherwise the PK. */
     defaultSort: text("default_sort"),
+    /** True when this collection was adopted from an existing physical table
+     *  (vs. created by us). Schema applier becomes a no-op for these rows,
+     *  drop never touches the underlying table, and ownership uses the
+     *  side-table `item_ownership` instead of an injected `owner_id`
+     *  column. */
+    adopted: boolean("adopted").notNull().default(false),
+    /** Name of the PK column on the physical table. Default `id` covers
+     *  every collection we create; adoption surfaces this for source
+     *  tables that use a different PK name (e.g. `sku`, `uuid_v7`). */
+    pkColumn: text("pk_column").notNull().default("id"),
+    /** True when the physical table has a `created_at` column. Always true
+     *  for managed collections; flexible for adopted ones. Affects whether
+     *  POST sets it, whether the projection includes it, and the default
+     *  sort fallback in `parseQuery`. */
+    hasCreatedAt: boolean("has_created_at").notNull().default(true),
+    /** Mirror of `hasCreatedAt` for `updated_at`. */
+    hasUpdatedAt: boolean("has_updated_at").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("collections_tenant_slug_idx").on(t.tenantId, t.slug),
     uniqueIndex("collections_physical_table_idx").on(t.physicalTable),
+  ],
+);
+
+/**
+ * Row-level ownership for items. One row per (collection, item) when the
+ * owning collection is `ownerScoped`. We keep ownership in this side table
+ * instead of an `owner_id` column on every `c_<slug>` for two reasons:
+ *   (1) **adopt-friendly** — adopted tables stay non-invasive (no DDL on
+ *       the user's table); ownership lives entirely in our side table.
+ *   (2) **toggle-friendly** — flipping `ownerScoped` off no longer leaves
+ *       orphan columns behind on the physical table.
+ * Permission filters compile `owner_id` references to a semi-join against
+ * this table. `routes/items.ts` LEFT JOINs it on read to surface the
+ * resolved `owner_id` to the API response.
+ */
+export const itemOwnership = pgTable(
+  "item_ownership",
+  {
+    collectionId: text("collection_id")
+      .notNull()
+      .references(() => collections.id, { onDelete: "cascade" }),
+    /** PK value of the row in the physical table, stringified so uuid/int/
+     *  text PKs all fit in one column. */
+    itemId: text("item_id").notNull(),
+    ownerId: text("owner_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("item_ownership_pk_idx").on(t.collectionId, t.itemId),
+    index("item_ownership_owner_idx").on(t.ownerId, t.collectionId),
   ],
 );
 

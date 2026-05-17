@@ -7,6 +7,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { useSearchParams } from "react-router-dom";
 import { RefreshCwIcon, SearchIcon, SendIcon, ChevronRightIcon } from "lucide-react";
 import { Button } from "@workeros/ui/components/button";
 import { Input } from "@workeros/ui/components/input";
@@ -1325,6 +1326,10 @@ export const RestExplorerPage = () => {
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Deep-link from Collections cards: `/rest-explorer?slug=<slug>` jumps to
+  // the first endpoint under `/api/items/<slug>`. Consumed once on load.
+  const deepLinkSlug = searchParams.get("slug");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1346,17 +1351,32 @@ export const RestExplorerPage = () => {
   const endpoints = useMemo(() => flattenEndpoints(doc), [doc]);
 
   // Auto-select the first endpoint once loaded; preserve selection across
-  // refetches when the id still exists.
+  // refetches when the id still exists. If a `?slug=` deep-link is present,
+  // prefer the first endpoint under `/api/items/<slug>` and clear the param.
   useEffect(() => {
     if (endpoints.length === 0) {
       setSelectedId(null);
       return;
     }
+    if (deepLinkSlug) {
+      const prefix = `/api/items/${deepLinkSlug}`;
+      const match = endpoints.find((ep) => ep.path === prefix || ep.path.startsWith(`${prefix}/`));
+      if (match) {
+        setSelectedId(match.id);
+        setSearch(prefix);
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("slug");
+          return next;
+        }, { replace: true });
+        return;
+      }
+    }
     setSelectedId((prev) => {
       if (prev && endpoints.some((ep) => ep.id === prev)) return prev;
       return endpoints[0]!.id;
     });
-  }, [endpoints]);
+  }, [endpoints, deepLinkSlug, setSearchParams]);
 
   const selected = useMemo(
     () => endpoints.find((ep) => ep.id === selectedId) ?? null,

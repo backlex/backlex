@@ -23,6 +23,10 @@ interface SchemaLike {
   ownerScoped?: boolean;
   tenantScoped?: boolean;
   versioned?: boolean;
+  /** True when the collection was adopted from a pre-existing physical table.
+   *  Adopted collections soft-delete (archive) rather than hard-drop; managed
+   *  collections hard-DROP the underlying `c_<slug>` table on delete. */
+  adopted?: boolean;
   fields?: FieldLike[];
   /** Comma-separated default sort, Directus shape (`-field,name`). */
   defaultSort?: string | null;
@@ -367,24 +371,48 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
         </div>
       </div>
 
-      <div className="card" style={{ borderColor: "color-mix(in oklch, var(--destructive) 35%, var(--border))" }}>
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <I.Trash size={14} />
-          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--destructive)" }}>danger zone</span>
-        </div>
-        <div style={{ padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 500 }}>Delete this collection</div>
-            <div className="field-hint">
-              Drops the physical <span className="font-mono">c_{schema.slug}</span> table and all rows.
-              Permissions and revisions tied to the slug are removed too. This is irreversible.
-            </div>
+      {schema.adopted ? (
+        // Adopted collections soft-delete (archive). The physical table stays
+        // intact, metadata is retained, and the row can be restored from the
+        // Archived view in the collections index.
+        <div className="card" style={{ borderColor: "color-mix(in oklch, var(--chart-2, var(--primary)) 35%, var(--border))" }}>
+          <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <I.Archive size={14} />
+            <span style={{ fontSize: 13, fontWeight: 500, color: "color-mix(in oklch, var(--chart-2, var(--primary)) 80%, var(--foreground))" }}>archive zone</span>
           </div>
-          <Button variant="primary" size="sm" onClick={onDelete} style={{ background: "var(--destructive)", borderColor: "var(--destructive)" }}>
-            Delete collection
-          </Button>
+          <div style={{ padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>Archive this collection</div>
+              <div className="field-hint">
+                Workeros stops treating <span className="font-mono">{schema.slug}</span> as a collection.
+                The underlying table and its rows stay intact; you can restore from the Archived view.
+              </div>
+            </div>
+            <Button variant="outline" size="sm" icon={I.Archive} onClick={onDelete}>
+              Archive collection
+            </Button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="card" style={{ borderColor: "color-mix(in oklch, var(--destructive) 35%, var(--border))" }}>
+          <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <I.Trash size={14} />
+            <span style={{ fontSize: 13, fontWeight: 500, color: "var(--destructive)" }}>danger zone</span>
+          </div>
+          <div style={{ padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>Delete this collection</div>
+              <div className="field-hint">
+                Drops the physical <span className="font-mono">c_{schema.slug}</span> table and all rows.
+                Permissions and revisions tied to the slug are removed too. This is irreversible.
+              </div>
+            </div>
+            <Button variant="primary" size="sm" onClick={onDelete} style={{ background: "var(--destructive)", borderColor: "var(--destructive)" }}>
+              Delete collection
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

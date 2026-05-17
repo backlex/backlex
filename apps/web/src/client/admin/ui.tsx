@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { I, type IconComponent, type IconKey } from "./icons";
-import { NAV_ITEMS, NAV_SETTINGS } from "./config";
+import { NAV_ITEMS, NAV_SETTINGS, NAV_DEVELOPERS } from "./config";
 import { tenantsApi, type ApiTenant } from "./api";
 import { Button as ShadcnButton } from "@workeros/ui/components/button";
 import { Badge as ShadcnBadge } from "@workeros/ui/components/badge";
@@ -258,6 +258,7 @@ export interface SidebarProps {
 export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }: SidebarProps) {
   const items = NAV_ITEMS;
   const settings = NAV_SETTINGS;
+  const developers = NAV_DEVELOPERS;
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [tenantId, setTenantId] = useState<string | null>(null);
@@ -379,6 +380,19 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
                 {IconComp && <IconComp size={15} />}
                 <span className="nav-label">{it.label}</span>
                 {liveBadge != null && <span className="nav-end tabular-nums">{liveBadge}</span>}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="sidebar-section-label">Developers</div>
+        <div className="nav">
+          {developers.map((it) => {
+            const IconComp = (I as Record<string, IconComponent>)[it.icon as IconKey];
+            return (
+              <div key={it.id} className="nav-item" data-active={activeNav === it.id} onClick={() => setActiveNav(it.id)}>
+                {IconComp && <IconComp size={15} />}
+                <span className="nav-label">{it.label}</span>
               </div>
             );
           })}

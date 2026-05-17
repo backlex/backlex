@@ -143,6 +143,7 @@ export const parseQuery = (
 
   const fallbackSort = defaultSort?.trim() || "-created_at";
   const sortRaw = params.get("sort")?.trim() || fallbackSort;
+  const sortFieldsByName = new Map(fields.map((f) => [f.name, f] as const));
   const sort: SortClause[] = sortRaw
     .split(",")
     .map((s) => s.trim())
@@ -150,6 +151,36 @@ export const parseQuery = (
     .map((s) => {
       const dir: "asc" | "desc" = s.startsWith("-") ? "desc" : "asc";
       const field = s.replace(/^[-+]/, "");
+      // Nested sort: `<relation_field>.<sub>` — same gate as nested
+      // filter. items.ts threads the JOIN through `nestedColRef` for
+      // ORDER BY at compile time.
+      if (field.includes(".")) {
+        const dotCount = (field.match(/\./g) || []).length;
+        if (dotCount > 1) {
+          throw new AppError("VALIDATION", `Multi-level nested sort not supported yet: ${field}`);
+        }
+        const [head, sub] = field.split(".") as [string, string];
+        if (!head || !sub) {
+          throw new AppError("VALIDATION", `Invalid nested sort key: ${field}`);
+        }
+        const def = sortFieldsByName.get(head);
+        if (!def) {
+          throw new AppError("VALIDATION", `Unknown sort field: ${head}`);
+        }
+        if (def.type !== "relation" && def.type !== "relation_many") {
+          throw new AppError(
+            "VALIDATION",
+            `Nested sort only works on relation fields — "${head}" is ${def.type}`,
+          );
+        }
+        if (!allowedForUser.has(head)) {
+          throw new AppError("FORBIDDEN", `No permission to read field: ${head}`);
+        }
+        if (!/^[a-z_][a-z0-9_]*$/.test(sub)) {
+          throw new AppError("VALIDATION", `Invalid nested sort subfield: ${sub}`);
+        }
+        return { field, dir };
+      }
       if (!allowedForUser.has(field)) {
         throw new AppError("VALIDATION", `Cannot sort on field: ${field}`);
       }

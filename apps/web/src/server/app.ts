@@ -22,7 +22,7 @@ import {
 import { activityRoutes } from "./routes/activity";
 import { revisionsRoutes } from "./routes/revisions";
 import { authRoutes } from "./routes/auth";
-import { authProvidersHandler } from "./routes/auth-public";
+import { authPublicRoutes } from "./routes/auth-public";
 import { meRoutes } from "./routes/me";
 import { tenantAuthRoutes } from "./routes/tenant-auth";
 import { apiKeysRoutes } from "./routes/api-keys";
@@ -100,6 +100,11 @@ export type AppBindings = {
 let rolesSeeded = false;
 
 export const createApp = (env: Env) => {
+  // Main app stays as plain Hono — `OpenAPIHono.route(...)` chains the tag
+  // tree types of every sub-app together, which can blow past TS heap
+  // limits in a large repo. The sub-apps that ARE `OpenAPIHono` still
+  // expose their `openAPIRegistry`; `mountOpenapiRoutes` collects them
+  // explicitly to build the doc.
   const app = new Hono<AppBindings>();
 
   app.use("*", logger());
@@ -156,7 +161,7 @@ export const createApp = (env: Env) => {
 
   // Public auth-surface discovery — must be registered before the better-auth
   // catch-all (`/api/auth/*`) so it isn't shadowed by it.
-  app.get("/api/auth/providers", authProvidersHandler);
+  app.route("/api/auth", authPublicRoutes);
   app.route("/api/auth", authRoutes);
   app.route("/api/me", meRoutes);
   // Workspace end-user auth (the "auth as a service" surface) — each tenant

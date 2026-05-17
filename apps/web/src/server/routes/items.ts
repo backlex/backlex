@@ -5,15 +5,19 @@ import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import {
   compileCondition,
+  combineConditions,
   type FieldDef,
   validateValue,
   type FieldType,
+  type ColRefResolver,
 } from "@workeros/db";
+import type { Condition } from "@workeros/core";
 import type { Context } from "hono";
 import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
 import type { Ctx } from "../context";
 import { parseQuery, resolveProjection } from "../lib/query";
+import { resolvePermission } from "../services/permissions";
 import { publishEvent } from "../services/events";
 import { elapsedMs, keepAlive, recordActivity, requestMeta } from "../services/activity";
 import { recordRevision } from "../services/revisions";
@@ -587,6 +591,42 @@ const rewriteSystemFieldsInCondition = (
   return out;
 };
 
+/**
+ * Walk a Condition tree and collect the unique "head" identifiers of any
+ * nested-relation keys (e.g. `customer_id.name` → "customer_id"). Used by
+ * the list handler to wire up LEFT JOINs against relation target tables.
+ *
+ * `parseQuery` already validated that each head is a `relation` /
+ * `relation_many` field that the caller may read and that the sub-key has
+ * a safe identifier shape, so we don't re-validate here.
+ */
+const collectNestedRelationHeads = (cond: any): Set<string> => {
+  const out = new Set<string>();
+  const walk = (c: any): void => {
+    if (c === null || c === undefined) return;
+    if (Array.isArray(c.$and)) {
+      for (const sub of c.$and) walk(sub);
+      return;
+    }
+    if (Array.isArray(c.$or)) {
+      for (const sub of c.$or) walk(sub);
+      return;
+    }
+    if (c.$not !== undefined) {
+      walk(c.$not);
+      return;
+    }
+    for (const k of Object.keys(c)) {
+      if (k.includes(".")) {
+        const [head] = k.split(".");
+        if (head) out.add(head);
+      }
+    }
+  };
+  walk(cond);
+  return out;
+};
+
 /** Rewrite a sort field name to its physical column. Returns the input
  *  unchanged when no mapping applies. */
 const rewriteSortField = (field: string, collection: CollectionRow): string => {
@@ -765,9 +805,182 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       // responsible for crafting permission conditions against the aliased
       // column name directly.
       const userFilter = q.filter ? rewriteSystemFieldsInCondition(q.filter, collection) : null;
-      const userWhere = userFilter ? compileCondition(userFilter, auth) : null;
-      const tenantWhere = tenantFilter(collection, auth);
-      const wheres = [userWhere, perm.whereSql, tenantWhere].filter(
+
+      // Nested-relation joins: for every `<head>.<sub>` key in the filter,
+      // LEFT JOIN the relation target table aliased `rel_<head>` so the
+      // colRef resolver can route the comparison there. Validated upstream
+      // by parseQuery (head must be a relation field the caller can read,
+      // sub must be a safe identifier, only single-level). We still enforce
+      // read permission on the target collection here, because parseQuery
+      // doesn't have access to target collections.
+      const nestedHeads = userFilter
+        ? collectNestedRelationHeads(userFilter)
+        : new Set<string>();
+      // Snapshot every (head, sub) used by the filter so we can verify the
+      // sub exists on the target collection — otherwise compileCondition
+      // emits a bare `rel_x.bogus = ?` which fails at the SQL layer with a
+      // 500 instead of the 422 the caller deserves.
+      const collectNestedSubs = (cond: any, out: Map<string, Set<string>>): void => {
+        if (cond === null || cond === undefined) return;
+        if (Array.isArray(cond.$and)) {
+          for (const sub of cond.$and) collectNestedSubs(sub, out);
+          return;
+        }
+        if (Array.isArray(cond.$or)) {
+          for (const sub of cond.$or) collectNestedSubs(sub, out);
+          return;
+        }
+        if (cond.$not !== undefined) {
+          collectNestedSubs(cond.$not, out);
+          return;
+        }
+        for (const k of Object.keys(cond)) {
+          if (k.includes(".")) {
+            const [h, s] = k.split(".") as [string, string];
+            if (!out.has(h)) out.set(h, new Set());
+            out.get(h)!.add(s);
+          }
+        }
+      };
+      const nestedSubs = new Map<string, Set<string>>();
+      if (userFilter) collectNestedSubs(userFilter, nestedSubs);
+      const joinMap = new Map<
+        string,
+        { alias: string; target: CollectionRow }
+      >();
+      const extraJoins: SQL[] = [];
+      for (const head of nestedHeads) {
+        const def = collection.fields.find((f) => f.name === head);
+        if (!def || !def.to) {
+          // Unreachable: parseQuery already vetted these.
+          throw new AppError(
+            "VALIDATION",
+            `Nested filter head "${head}" is not a relation field`,
+          );
+        }
+        if (def.type === "relation_many") {
+          // EXISTS subquery / json_each on SQLite would work; deferred.
+          throw new AppError(
+            "VALIDATION",
+            `Nested filter on relation_many not supported yet: ${head}`,
+          );
+        }
+        let target: CollectionRow;
+        try {
+          target = await loadCollection(ctx, auth.tenantId, def.to);
+        } catch {
+          throw new AppError(
+            "VALIDATION",
+            `Relation target not active: ${def.to}`,
+          );
+        }
+        const targetPerm = await resolvePermission(
+          { db: ctx.db, dialect: ctx.dialect },
+          auth,
+          def.to,
+          "read",
+        );
+        if (!targetPerm.allowed) {
+          throw new AppError(
+            "FORBIDDEN",
+            `No read permission on relation target: ${def.to}`,
+          );
+        }
+        // Validate every sub used under this head exists on the target —
+        // either as a user-defined field or as a system column the target
+        // surfaces. Also enforce the target's `fields` allow-list so a
+        // role with restricted projection on `customers` can't probe
+        // hidden columns via a nested filter on `orders`.
+        const targetSys = new Set<string>(["id"]);
+        if (target.hasCreatedAt) targetSys.add("created_at");
+        if (target.hasUpdatedAt) targetSys.add("updated_at");
+        if (target.ownerScoped) targetSys.add("owner_id");
+        const targetFieldNames = new Set(target.fields.map((f) => f.name));
+        for (const s of nestedSubs.get(head) ?? []) {
+          const isSystem = targetSys.has(s);
+          const isField = targetFieldNames.has(s);
+          if (!isSystem && !isField) {
+            throw new AppError(
+              "VALIDATION",
+              `Unknown field on relation target "${def.to}": ${s}`,
+            );
+          }
+          if (
+            !isSystem &&
+            targetPerm.fields &&
+            !targetPerm.fields.has(s)
+          ) {
+            throw new AppError(
+              "FORBIDDEN",
+              `No permission to read "${def.to}.${s}"`,
+            );
+          }
+        }
+        const alias = `rel_${head}`;
+        const targetTbl = sql.identifier(target.physicalTable);
+        const baseTbl = sql.identifier(collection.physicalTable);
+        const aliasId = sql.identifier(alias);
+        const onParts: SQL[] = [
+          sql`${aliasId}.${sql.identifier(target.pkColumn)} = ${baseTbl}.${sql.identifier(head)}`,
+        ];
+        // Cross-tenant guard: when the target is tenant-scoped, pin the
+        // join to the active tenant so a stale FK that points across
+        // tenants doesn't accidentally surface the related row.
+        if (target.tenantScoped && auth.tenantId) {
+          onParts.push(sql`${aliasId}.${sql.identifier("tenant_id")} = ${auth.tenantId}`);
+        }
+        extraJoins.push(
+          sql`LEFT JOIN ${targetTbl} AS ${aliasId} ON ${sql.join(onParts, sql` AND `)}`,
+        );
+        joinMap.set(head, { alias, target });
+      }
+      const hasJoins = extraJoins.length > 0;
+
+      // Custom colRef: nested keys route to the join alias; plain fields
+      // get qualified to the base table when joins are present (otherwise
+      // unqualified `id` / `tenant_id` would be ambiguous against the
+      // joined relation target). When there are no joins, default behavior
+      // (`sql.identifier(field)`) is preserved.
+      const baseTblId = sql.identifier(collection.physicalTable);
+      const usesSideTable = usesOwnershipSideTable(collection);
+      const nestedColRef: ColRefResolver = (field) => {
+        if (field.includes(".")) {
+          const [head, sub] = field.split(".") as [string, string];
+          const j = joinMap.get(head);
+          if (!j) return sql`${sql.identifier(field)}`; // unreachable
+          return sql`${sql.identifier(j.alias)}.${sql.identifier(sub)}`;
+        }
+        if (hasJoins) {
+          // `owner_id` is special when ownership lives in the side table —
+          // it comes from `item_ownership.owner_id`, not the base table.
+          if (field === "owner_id" && usesSideTable) {
+            return sql`${sql.identifier("item_ownership")}.${sql.identifier("owner_id")}`;
+          }
+          // Qualify to the base table to disambiguate columns the joined
+          // target also exposes (`id`, `tenant_id`, `created_at`, etc.).
+          return sql`${baseTblId}.${sql.identifier(field)}`;
+        }
+        return sql`${sql.identifier(field)}`;
+      };
+
+      const userWhere = userFilter
+        ? compileCondition(userFilter, auth, nestedColRef)
+        : null;
+      // When joins are present, recompile permission conditions so their
+      // unqualified column references (`owner_id` etc.) also get pinned to
+      // the base table. `perm.conditions === null` means at least one
+      // matching permission row was unconditional → stays null. Otherwise
+      // recompile through the join-aware colRef.
+      const permWhere =
+        hasJoins && perm.conditions
+          ? combineConditions(perm.conditions, auth, nestedColRef)
+          : perm.whereSql;
+      const tenantWhereRaw = tenantFilter(collection, auth);
+      const tenantWhere =
+        hasJoins && tenantWhereRaw && collection.tenantScoped && auth.tenantId
+          ? sql`${baseTblId}.${sql.identifier("tenant_id")} = ${auth.tenantId}`
+          : tenantWhereRaw;
+      const wheres = [userWhere, permWhere, tenantWhere].filter(
         (x): x is SQL => x != null,
       );
       const whereClause = wheres.length
@@ -781,23 +994,99 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         perm.fields,
         { hasCreatedAt: collection.hasCreatedAt, hasUpdatedAt: collection.hasUpdatedAt },
       );
+      // When relation joins are present the SELECT must qualify every base-
+      // table column — bare `*` / bare identifiers would surface the joined
+      // target's `id`/`created_at`/etc. and the wire shape would silently
+      // swap to the related row.
+      const buildStarWithJoins = (): SQL => {
+        const parts: SQL[] = [sql`${baseTblId}.*`];
+        if (usesSideTable) {
+          parts.push(
+            sql`${sql.identifier("item_ownership")}.${sql.identifier("owner_id")} AS ${sql.identifier("owner_id")}`,
+          );
+        }
+        if (
+          collection.hasCreatedAt &&
+          collection.createdAtColumn &&
+          collection.createdAtColumn !== "created_at"
+        ) {
+          parts.push(
+            sql`${baseTblId}.${sql.identifier(collection.createdAtColumn)} AS ${sql.identifier("created_at")}`,
+          );
+        }
+        if (
+          collection.hasUpdatedAt &&
+          collection.updatedAtColumn &&
+          collection.updatedAtColumn !== "updated_at"
+        ) {
+          parts.push(
+            sql`${baseTblId}.${sql.identifier(collection.updatedAtColumn)} AS ${sql.identifier("updated_at")}`,
+          );
+        }
+        if (
+          collection.ownerScoped &&
+          collection.adopted &&
+          collection.ownerIdColumn
+        ) {
+          parts.push(
+            sql`${baseTblId}.${sql.identifier(collection.ownerIdColumn)} AS ${sql.identifier("owner_id")}`,
+          );
+        }
+        return sql.join(parts, sql`, `);
+      };
+      const buildProjectedWithJoins = (cols: string[]): SQL =>
+        sql.join(
+          cols.map((col) => {
+            const ref = selectColRef(collection, col);
+            // selectColRef already qualifies three special cases (owner
+            // side-table, aliased created_at, aliased updated_at); every
+            // other branch returns a bare identifier — needs the base-
+            // table prefix when joins are present.
+            const aliased =
+              (col === "owner_id" &&
+                (usesSideTable ||
+                  !!(collection.ownerIdColumn &&
+                    collection.ownerIdColumn !== "owner_id"))) ||
+              (col === "created_at" &&
+                !!(collection.createdAtColumn &&
+                  collection.createdAtColumn !== "created_at")) ||
+              (col === "updated_at" &&
+                !!(collection.updatedAtColumn &&
+                  collection.updatedAtColumn !== "updated_at"));
+            if (aliased) return ref;
+            return sql`${baseTblId}.${sql.identifier(col)}`;
+          }),
+          sql`, `,
+        );
       const selectCols: SQL = projection
-        ? sql.join(
-            projection.map((col) => selectColRef(collection, col)),
-            sql`, `,
-          )
-        : selectStar(collection);
+        ? hasJoins
+          ? buildProjectedWithJoins(projection)
+          : sql.join(
+              projection.map((col) => selectColRef(collection, col)),
+              sql`, `,
+            )
+        : hasJoins
+          ? buildStarWithJoins()
+          : selectStar(collection);
 
       const orderClause = sql.join(
-        q.sort.map(
-          (s) => sql`${sql.identifier(rewriteSortField(s.field, collection))} ${sql.raw(s.dir.toUpperCase())}`,
-        ),
+        q.sort.map((s) => {
+          const physical = rewriteSortField(s.field, collection);
+          const ref = hasJoins
+            ? sql`${baseTblId}.${sql.identifier(physical)}`
+            : sql`${sql.identifier(physical)}`;
+          return sql`${ref} ${sql.raw(s.dir.toUpperCase())}`;
+        }),
         sql`, `,
       );
 
+      const fromClause: SQL = hasJoins
+        ? sql`${fromOf(collection)} ${sql.join(extraJoins, sql` `)}`
+        : fromOf(collection);
+
       const rows = await queryAll<Record<string, unknown>>(
         ctx,
-        sql`SELECT ${selectCols} FROM ${fromOf(collection)} ${whereClause} ORDER BY ${orderClause} LIMIT ${q.limit} OFFSET ${q.offset}`,
+        sql`SELECT ${selectCols} FROM ${fromClause} ${whereClause} ORDER BY ${orderClause} LIMIT ${q.limit} OFFSET ${q.offset}`,
       );
 
       let metaOut: { filter_count?: number; total_count?: number } | undefined;
@@ -806,15 +1095,18 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         if (q.meta.filterCount) {
           const r = await queryAll<{ count: number | string | bigint }>(
             ctx,
-            sql`SELECT COUNT(*) AS count FROM ${fromOf(collection)} ${whereClause}`,
+            sql`SELECT COUNT(*) AS count FROM ${fromClause} ${whereClause}`,
           );
           metaOut.filter_count = Number(r[0]?.count ?? 0);
         }
         if (q.meta.totalCount) {
           // total_count still respects tenant scoping — never leak rows from
-          // sibling workspaces to the API consumer.
-          const totalWhere = tenantWhere
-            ? sql`WHERE ${tenantWhere}`
+          // sibling workspaces to the API consumer. No nested joins here:
+          // the total is meant to count *everything visible to this tenant*
+          // regardless of the filter.
+          const totalTenant = tenantWhereRaw;
+          const totalWhere = totalTenant
+            ? sql`WHERE ${totalTenant}`
             : sql``;
           const r = await queryAll<{ count: number | string | bigint }>(
             ctx,

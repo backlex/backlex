@@ -1,11 +1,13 @@
-import { Hono, type Context } from "hono";
+import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { sql, type SQL } from "drizzle-orm";
 import { AppError } from "@workeros/core";
 import { type FieldDef } from "@workeros/db";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
+import type { Context } from "hono";
 import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
+import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import {
   getRevision,
   listRevisions,
@@ -53,31 +55,89 @@ const loadCollection = async (
 const collectionFromParam = (c: Context<AppBindings>) =>
   c.req.param("collection" as never) as string;
 
-export const revisionsRoutes = new Hono<AppBindings>()
-  .get(
-    "/:collection/:itemId",
-    requirePermission(collectionFromParam, "read"),
+const RevisionRow = z
+  .object({
+    id: z.string(),
+    collection: z.string(),
+    itemId: z.string(),
+    tenantId: z.string().nullable(),
+    userId: z.string().nullable(),
+    snapshot: z.record(z.string(), z.unknown()),
+    createdAt: z.unknown(),
+  })
+  .openapi("RevisionRow");
+
+export const revisionsRoutes = new OpenAPIHono<AppBindings>()
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/{collection}/{itemId}",
+      tags: ["revisions"],
+      summary: "List revisions for an item",
+      description:
+        "Returns every recorded snapshot of `(collection, itemId)`. Requires `read` permission on the target collection.",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "read")],
+      request: {
+        params: z.object({
+          collection: z
+            .string()
+            .openapi({ description: "Collection slug (e.g. `posts`)." }),
+          itemId: z.string(),
+        }),
+      },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": {
+              schema: z.any(),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
-      const rows = await listRevisions(
-        ctx,
-        c.req.param("collection"),
-        c.req.param("itemId"),
-        auth.tenantId,
-      );
+      const { collection, itemId } = c.req.valid("param");
+      const rows = await listRevisions(ctx, collection, itemId, auth.tenantId);
       return c.json({ data: rows });
     },
   )
-  .post(
-    "/:id/revert",
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{id}/revert",
+      tags: ["revisions"],
+      summary: "Revert an item to a recorded revision",
+      description:
+        "Rewrites the live row in `c_<slug>` from the snapshot and records a new revision documenting the revert. Requires `update` permission on the target collection.",
+      security: SECURITY,
+      request: {
+        params: z.object({
+          id: z
+            .string()
+            .openapi({ description: "Revision row id (NOT the item id)." }),
+        }),
+      },
+      responses: {
+        200: {
+          description: "Reverted",
+          content: { "application/json": { schema: OkSchema } },
+        },
+        ...errorResponses,
+      },
+    }),
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
+      const { id } = c.req.valid("param");
       if (!auth.userId) {
         throw new AppError("UNAUTHORIZED", "Sign in required");
       }
-      const rev = await getRevision(ctx, c.req.param("id"), auth.tenantId);
+      const rev = await getRevision(ctx, id, auth.tenantId);
       if (!rev) throw new AppError("NOT_FOUND", "Revision not found");
 
       // Permission check on the target collection (update).

@@ -593,16 +593,23 @@ const rewriteSystemFieldsInCondition = (
 };
 
 /**
- * Walk a Condition tree and collect the unique "head" identifiers of any
- * nested-relation keys (e.g. `customer_id.name` → "customer_id"). Used by
- * the list handler to wire up LEFT JOINs against relation target tables.
+ * Walk a Condition tree and collect every unique relation chain implied
+ * by a nested-filter key — `customer_id.address_id.city` contributes the
+ * chain `["customer_id", "address_id"]` (the leaf `city` is NOT part of
+ * the chain — it's a column on the last target). Used by the list
+ * handler to wire up the multi-hop LEFT JOIN ladder.
+ *
+ * Returned map key is the dot-joined chain (`"customer_id.address_id"`),
+ * which collision-safely deduplicates: two filter clauses that share the
+ * exact same join path produce a single join.
  *
  * `parseQuery` already validated that each head is a `relation` /
- * `relation_many` field that the caller may read and that the sub-key has
- * a safe identifier shape, so we don't re-validate here.
+ * `relation_many` field that the caller may read and that every
+ * subsequent segment has safe identifier shape, so we don't re-validate
+ * here.
  */
-const collectNestedRelationHeads = (cond: any): Set<string> => {
-  const out = new Set<string>();
+const collectNestedRelationChains = (cond: any): Map<string, string[]> => {
+  const out = new Map<string, string[]>();
   const walk = (c: any): void => {
     if (c === null || c === undefined) return;
     if (Array.isArray(c.$and)) {
@@ -619,8 +626,12 @@ const collectNestedRelationHeads = (cond: any): Set<string> => {
     }
     for (const k of Object.keys(c)) {
       if (k.includes(".")) {
-        const [head] = k.split(".");
-        if (head) out.add(head);
+        const segments = k.split(".");
+        // Last segment is the leaf column on the final target — strip it.
+        const chain = segments.slice(0, -1);
+        if (chain.length === 0) continue;
+        const key = chain.join(".");
+        if (!out.has(key)) out.set(key, chain);
       }
     }
   };
@@ -807,69 +818,101 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       // column name directly.
       const userFilter = q.filter ? rewriteSystemFieldsInCondition(q.filter, collection) : null;
 
-      // Nested-relation joins: for every `<head>.<sub>` key in the filter,
-      // LEFT JOIN the relation target table aliased `rel_<head>` so the
-      // colRef resolver can route the comparison there. Validated upstream
-      // by parseQuery (head must be a relation field the caller can read,
-      // sub must be a safe identifier, only single-level). We still enforce
-      // read permission on the target collection here, because parseQuery
-      // doesn't have access to target collections.
-      const nestedHeads = userFilter
-        ? collectNestedRelationHeads(userFilter)
-        : new Set<string>();
-      // Sort can also reach into a relation (`-owner.created_at`). Mix
-      // those heads into the same JOIN pass so we don't materialize a
-      // second `rel_<head>` alias for the same relation.
+      // Nested-relation joins: for every `<a>.<b>[…].<leaf>` key in the
+      // filter or sort, walk the relation chain `[a, b, …]` and LEFT JOIN
+      // each hop's target table. Joins are keyed by the full prefix chain
+      // so two filter clauses sharing the same join path collapse to one
+      // JOIN (e.g. `customer_id.address_id.city` and
+      // `customer_id.address_id.zip` produce one join on customers and
+      // one on addresses, not two of each).
+      //
+      // parseQuery already validated the HEAD is a `relation` /
+      // `relation_many` field the caller may read, and that every other
+      // segment has safe identifier shape. The per-hop target collection
+      // lookup + per-hop read permission + leaf field-existence /
+      // permission check happen here, since parseQuery doesn't have
+      // access to target collections.
+      const nestedChains = userFilter
+        ? collectNestedRelationChains(userFilter)
+        : new Map<string, string[]>();
+      // Sort can also reach into a relation — multi-hop allowed too
+      // (`-customer_id.address_id.city`). Mix those chains into the
+      // single JOIN pass so we don't materialize two ladders for the
+      // same prefix.
       for (const s of q.sort) {
         if (s.field.includes(".")) {
-          const head = s.field.split(".")[0];
-          if (head) nestedHeads.add(head);
+          const segs = s.field.split(".");
+          const chain = segs.slice(0, -1);
+          if (chain.length === 0) continue;
+          const key = chain.join(".");
+          if (!nestedChains.has(key)) nestedChains.set(key, chain);
         }
       }
-      // Snapshot every (head, sub) used by the filter so we can verify the
-      // sub exists on the target collection — otherwise compileCondition
-      // emits a bare `rel_x.bogus = ?` which fails at the SQL layer with a
-      // 500 instead of the 422 the caller deserves.
-      const collectNestedSubs = (cond: any, out: Map<string, Set<string>>): void => {
+      // Snapshot every (chain, leaf) pair used by the filter so we can
+      // verify the leaf exists on the FINAL target collection — otherwise
+      // compileCondition emits a bare `rel_x.bogus = ?` which fails at
+      // the SQL layer with a 500 instead of the 422 the caller deserves.
+      const collectNestedLeaves = (
+        cond: any,
+        out: Map<string, Set<string>>,
+      ): void => {
         if (cond === null || cond === undefined) return;
         if (Array.isArray(cond.$and)) {
-          for (const sub of cond.$and) collectNestedSubs(sub, out);
+          for (const sub of cond.$and) collectNestedLeaves(sub, out);
           return;
         }
         if (Array.isArray(cond.$or)) {
-          for (const sub of cond.$or) collectNestedSubs(sub, out);
+          for (const sub of cond.$or) collectNestedLeaves(sub, out);
           return;
         }
         if (cond.$not !== undefined) {
-          collectNestedSubs(cond.$not, out);
+          collectNestedLeaves(cond.$not, out);
           return;
         }
         for (const k of Object.keys(cond)) {
           if (k.includes(".")) {
-            const [h, s] = k.split(".") as [string, string];
-            if (!out.has(h)) out.set(h, new Set());
-            out.get(h)!.add(s);
+            const segs = k.split(".");
+            const leaf = segs[segs.length - 1]!;
+            const chainKey = segs.slice(0, -1).join(".");
+            if (!out.has(chainKey)) out.set(chainKey, new Set());
+            out.get(chainKey)!.add(leaf);
           }
         }
       };
-      const nestedSubs = new Map<string, Set<string>>();
-      if (userFilter) collectNestedSubs(userFilter, nestedSubs);
+      const nestedLeaves = new Map<string, Set<string>>();
+      if (userFilter) collectNestedLeaves(userFilter, nestedLeaves);
+      // Sort leaves also need to exist on the target collection — fold
+      // them into the same map.
+      for (const s of q.sort) {
+        if (s.field.includes(".")) {
+          const segs = s.field.split(".");
+          const leaf = segs[segs.length - 1]!;
+          const chainKey = segs.slice(0, -1).join(".");
+          if (!nestedLeaves.has(chainKey)) nestedLeaves.set(chainKey, new Set());
+          nestedLeaves.get(chainKey)!.add(leaf);
+        }
+      }
+      // joinMap: key = full chain (dot-joined), value = { alias, target }.
+      // For 1-hop the key is the bare head — preserves the old shape so
+      // single-hop call sites keep working. For 2/3-hop the key is the
+      // multi-segment chain (`customer_id.address_id`).
       const joinMap = new Map<
         string,
         { alias: string; target: CollectionRow }
       >();
       // Heads on `relation_many` fields don't get a JOIN — instead the
       // leaf compiler below lowers `<head>.<sub>` into an EXISTS subquery
-      // against the target table, keyed by JSON-array membership. We still
-      // load + permission-check the target here so 403/422 surface uniformly
-      // with the JOIN path.
+      // against the target table, keyed by JSON-array membership. Only
+      // SINGLE-HOP relation_many chains are supported; a relation_many
+      // anywhere in a multi-hop chain is rejected (joining through a
+      // JSON-array would need a different lowering — left for a follow-up).
       const manyHeadMap = new Map<
         string,
         { target: CollectionRow }
       >();
       const extraJoins: SQL[] = [];
-      // Per-target subfield-permission check used by both JOIN and EXISTS
-      // paths — same allow-list logic, so factor it out.
+      // Per-target field-existence + per-target permission check, used by
+      // both JOIN and EXISTS paths.
       const enforceTargetSubs = (
         toSlug: string,
         target: CollectionRow,
@@ -902,13 +945,36 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
           }
         }
       };
-      for (const head of nestedHeads) {
-        const def = collection.fields.find((f) => f.name === head);
-        if (!def || !def.to) {
-          // Unreachable: parseQuery already vetted these.
+      // Resolve a relation hop from a source collection: find the FK
+      // field, load the target, gate read permission, return the target.
+      // Throws AppError on any failure so the caller surfaces a clean 4xx.
+      const resolveHop = async (
+        source: CollectionRow,
+        segment: string,
+        position: "head" | "middle" | "leaf-relation",
+      ): Promise<{ def: FieldDef; target: CollectionRow; perm: { fields: Set<string> | null } }> => {
+        const def = source.fields.find((f) => f.name === segment);
+        if (!def || (def.type !== "relation" && def.type !== "relation_many")) {
           throw new AppError(
             "VALIDATION",
-            `Nested filter head "${head}" is not a relation field`,
+            `Nested filter hop "${segment}" on "${source.slug}" is not a relation field`,
+          );
+        }
+        if (!def.to) {
+          throw new AppError(
+            "VALIDATION",
+            `Relation "${source.slug}.${segment}" has no target collection`,
+          );
+        }
+        // Multi-hop chains can't traverse `relation_many` at non-leaf
+        // positions — joining through a JSON-array of foreign ids would
+        // need a separate lowering (LATERAL unnest on PG, sub-SELECT on
+        // SQLite) and per-row semantics that don't compose with LEFT
+        // JOIN. Rejected here so the caller gets a precise 422.
+        if (def.type === "relation_many" && position === "middle") {
+          throw new AppError(
+            "VALIDATION",
+            `Multi-hop nested filter through relation_many is not supported: "${source.slug}.${segment}"`,
           );
         }
         let target: CollectionRow;
@@ -932,42 +998,116 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
             `No read permission on relation target: ${def.to}`,
           );
         }
-        // Validate every sub used under this head exists on the target —
-        // either as a user-defined field or as a system column the target
-        // surfaces. Also enforce the target's `fields` allow-list so a
-        // role with restricted projection on `customers` can't probe
-        // hidden columns via a nested filter on `orders`.
-        enforceTargetSubs(
-          def.to,
-          target,
-          { fields: targetPerm.fields },
-          nestedSubs.get(head) ?? [],
-        );
-        if (def.type === "relation_many") {
-          // Side-banded into the leaf compiler below (EXISTS lowering on
-          // JSON-array storage). No JOIN; the base column reference stays
-          // unqualified-or-base-qualified the same way the rest of the
-          // filter does.
-          manyHeadMap.set(head, { target });
-          continue;
+        return { def, target, perm: { fields: targetPerm.fields } };
+      };
+      // Walk each chain hop-by-hop, materializing one LEFT JOIN per hop
+      // and recording aliases in joinMap under every prefix so the leaf
+      // colRef resolver can look up the alias by its full chain prefix.
+      // Per-hop join cache: if two chains share a prefix (`a.b.c1` and
+      // `a.b.c2`), the `a` and `a.b` joins are emitted only once.
+      const joinedPrefixes = new Set<string>();
+      const baseTbl = sql.identifier(collection.physicalTable);
+      // Deterministic order: longest chains last keeps the LEFT JOIN
+      // ladder bottom-up. Sorting by chain length is enough — JS Map
+      // preserves insertion order but later mutation (sort folding from
+      // q.sort above) may have jumbled it.
+      const chainList = [...nestedChains.values()].sort(
+        (a, b) => a.length - b.length,
+      );
+      for (const chain of chainList) {
+        let source: CollectionRow = collection;
+        // `parentAliasId` is the SQL fragment that qualifies the FK
+        // column on the parent hop's table — base table at hop 0, the
+        // previous alias for hops 1+. Held as a SQL fragment (not a raw
+        // identifier) so `sql.join` works downstream.
+        let parentAliasId: SQL = sql`${baseTbl}`;
+        for (let i = 0; i < chain.length; i++) {
+          const segment = chain[i]!;
+          const isLastHop = i === chain.length - 1;
+          const isFirstHop = i === 0;
+          const position: "head" | "middle" | "leaf-relation" = isLastHop
+            ? "leaf-relation"
+            : isFirstHop
+              ? "head"
+              : "middle";
+          const prefix = chain.slice(0, i + 1).join(".");
+          if (joinedPrefixes.has(prefix)) {
+            // Already wired up by a sibling chain — just advance.
+            const cached = joinMap.get(prefix);
+            if (cached) {
+              source = cached.target;
+              parentAliasId = sql`${sql.identifier(cached.alias)}`;
+            }
+            continue;
+          }
+          const hop = await resolveHop(source, segment, position);
+          const def = hop.def;
+          const target = hop.target;
+          // Single-hop relation_many: side-band to the EXISTS lowering
+          // (no JOIN). Only valid at the head of a SINGLE-hop chain;
+          // resolveHop already rejected it at middle positions, and a
+          // chain whose last hop is relation_many implies the leaf
+          // filter is `head.leaf` (chain length 1) — fine. A multi-hop
+          // chain whose LAST hop is relation_many means an intermediate
+          // hop landed on a collection that exposes a relation_many
+          // field; that case still wants the EXISTS lowering but we
+          // don't support it here — reject.
+          if (def.type === "relation_many") {
+            if (chain.length > 1) {
+              throw new AppError(
+                "VALIDATION",
+                `Multi-hop nested filter through relation_many is not supported: "${chain.join(".")}"`,
+              );
+            }
+            // Single-hop: the leaves of this chain were collected under
+            // the prefix `head`; validate them against the target now.
+            enforceTargetSubs(
+              def.to!,
+              target,
+              hop.perm,
+              nestedLeaves.get(prefix) ?? [],
+            );
+            manyHeadMap.set(segment, { target });
+            joinedPrefixes.add(prefix);
+            // No JOIN; stop walking — relation_many is terminal in this
+            // branch.
+            break;
+          }
+          // Plain `relation`: emit a LEFT JOIN.
+          // Alias = `rel_<seg1>__<seg2>__…__<segN>` (full prefix). The
+          // `__` separator keeps it unique against shorter prefixes
+          // (`rel_a` vs `rel_a__b`) and PG-identifier-safe up to 63
+          // chars (3-hop alias is ≤ ~45 chars in practice).
+          const alias = `rel_${chain.slice(0, i + 1).join("__")}`;
+          const targetTbl = sql.identifier(target.physicalTable);
+          const aliasId = sql.identifier(alias);
+          const onParts: SQL[] = [
+            sql`${aliasId}.${sql.identifier(target.pkColumn)} = ${parentAliasId}.${sql.identifier(segment)}`,
+          ];
+          // Cross-tenant guard on every hop: a stale FK pointing across
+          // workspaces should never surface the related row.
+          if (target.tenantScoped && auth.tenantId) {
+            onParts.push(sql`${aliasId}.${sql.identifier("tenant_id")} = ${auth.tenantId}`);
+          }
+          extraJoins.push(
+            sql`LEFT JOIN ${targetTbl} AS ${aliasId} ON ${sql.join(onParts, sql` AND `)}`,
+          );
+          joinMap.set(prefix, { alias, target });
+          joinedPrefixes.add(prefix);
+          // At the leaf hop, validate the requested sub-columns exist on
+          // the final target — both the leaves that came from filter
+          // keys (collected into nestedLeaves) and any sort leaves.
+          if (isLastHop) {
+            enforceTargetSubs(
+              def.to!,
+              target,
+              hop.perm,
+              nestedLeaves.get(prefix) ?? [],
+            );
+          }
+          source = target;
+          parentAliasId = sql`${aliasId}`;
         }
-        const alias = `rel_${head}`;
-        const targetTbl = sql.identifier(target.physicalTable);
-        const baseTbl = sql.identifier(collection.physicalTable);
-        const aliasId = sql.identifier(alias);
-        const onParts: SQL[] = [
-          sql`${aliasId}.${sql.identifier(target.pkColumn)} = ${baseTbl}.${sql.identifier(head)}`,
-        ];
-        // Cross-tenant guard: when the target is tenant-scoped, pin the
-        // join to the active tenant so a stale FK that points across
-        // tenants doesn't accidentally surface the related row.
-        if (target.tenantScoped && auth.tenantId) {
-          onParts.push(sql`${aliasId}.${sql.identifier("tenant_id")} = ${auth.tenantId}`);
-        }
-        extraJoins.push(
-          sql`LEFT JOIN ${targetTbl} AS ${aliasId} ON ${sql.join(onParts, sql` AND `)}`,
-        );
-        joinMap.set(head, { alias, target });
       }
       const hasJoins = extraJoins.length > 0;
 
@@ -980,10 +1120,12 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       const usesSideTable = usesOwnershipSideTable(collection);
       const nestedColRef: ColRefResolver = (field) => {
         if (field.includes(".")) {
-          const [head, sub] = field.split(".") as [string, string];
-          const j = joinMap.get(head);
+          const segs = field.split(".");
+          const leaf = segs[segs.length - 1]!;
+          const chainKey = segs.slice(0, -1).join(".");
+          const j = joinMap.get(chainKey);
           if (!j) return sql`${sql.identifier(field)}`; // unreachable
-          return sql`${sql.identifier(j.alias)}.${sql.identifier(sub)}`;
+          return sql`${sql.identifier(j.alias)}.${sql.identifier(leaf)}`;
         }
         if (hasJoins) {
           // `owner_id` is special when ownership lives in the side table —
@@ -1010,7 +1152,13 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       const relationManyLeaf: LeafCompiler | undefined = manyHeadMap.size > 0
         ? (field, cmp, leafCtx) => {
             if (!field.includes(".")) return null;
-            const [head, sub] = field.split(".") as [string, string];
+            // Only single-hop relation_many is supported here
+            // (`tags.name`). Multi-hop chains were rejected upstream when
+            // building joins, but be defensive: ignore any 2+ hop field
+            // here so we never emit malformed SQL.
+            const segs = field.split(".");
+            if (segs.length !== 2) return null;
+            const [head, sub] = segs as [string, string];
             const entry = manyHeadMap.get(head);
             if (!entry) return null;
             const target = entry.target;
@@ -1152,15 +1300,20 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
 
       const orderClause = sql.join(
         q.sort.map((s) => {
-          // Nested sort routes through the same `rel_<head>` alias the
+          // Nested sort routes through the same `rel_<chain>` alias the
           // filter JOINs added. parseQuery already validated the head is
-          // a relation field; items.ts above resolved the target and put
-          // an entry in joinMap.
+          // a relation field; items.ts above walked the chain, resolved
+          // each target, and recorded an entry in joinMap under the full
+          // chain prefix. Multi-hop sort sees the deepest join alias
+          // (`rel_customer_id__address_id`) and references its leaf
+          // column directly.
           if (s.field.includes(".")) {
-            const [head, sub] = s.field.split(".") as [string, string];
-            const j = joinMap.get(head);
+            const segs = s.field.split(".");
+            const leaf = segs[segs.length - 1]!;
+            const chainKey = segs.slice(0, -1).join(".");
+            const j = joinMap.get(chainKey);
             const ref = j
-              ? sql`${sql.identifier(j.alias)}.${sql.identifier(sub)}`
+              ? sql`${sql.identifier(j.alias)}.${sql.identifier(leaf)}`
               : sql`${sql.identifier(s.field)}`;
             return sql`${ref} ${sql.raw(s.dir.toUpperCase())}`;
           }

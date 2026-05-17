@@ -116,11 +116,14 @@ returns the full map.
 
 ## Nested queries (relations)
 
-`filter` and `sort` accept a one-level dotted key `<relation>.<sub>`.
-parseQuery validates the shape; the list handler adds a
-`LEFT JOIN target AS rel_<relation>` and routes both `WHERE` and
-`ORDER BY` through that alias. The alias is shared, so using the same
-relation in filter and sort produces one join, not two.
+`filter` and `sort` accept dotted keys `<relation>.<sub>` (one hop) or
+`<relation>.<relation2>.…<sub>` (multi-hop, up to **2 hops** deep (3 dotted segments: `head.middle.leaf`)).
+parseQuery validates the shape; the list handler walks the chain and
+emits one `LEFT JOIN target AS rel_<chain>` per hop, then routes both
+`WHERE` and `ORDER BY` through the deepest alias. Joins are keyed by
+the full chain prefix, so two clauses sharing a prefix (e.g.
+`customer_id.address_id.city` and `customer_id.address_id.zip`) emit
+one join on customers and one on addresses — not duplicates of each.
 
 ### Filter
 
@@ -156,17 +159,22 @@ produces one join, not two.
 
 ### Limits
 
-- **Single-level only.** `a.b.c` returns `422` — multi-hop joins are
-  planned.
+- **Up to 2 hops** (3 dotted segments). `a.b.c.d` returns `422`. Each
+  hop's target collection is loaded and read-permission-checked at
+  compile time.
 - **`relation_many` filters lower to `EXISTS`, not a JOIN.** See
   ["Filtering through a `relation_many` field"](#filtering-through-a-relation_many-field)
   below. Sorting through `relation_many` is still rejected — there's no
-  well-defined order across the array's members.
-- **Permission-gated.** The caller must hold read on the target
-  collection *and* the specific sub-field, otherwise `403`. See
-  "Permission interactions" below.
+  well-defined order across the array's members. Multi-hop chains
+  cannot traverse `relation_many` at any segment (only single-hop
+  `relation_many` is supported).
+- **Permission-gated at every hop.** The caller must hold read on
+  every target collection in the chain *and* the leaf sub-field,
+  otherwise `403`. See "Permission interactions" below.
 - **Self-referential FKs work.** A `parent_id` relation on the same
-  collection joins as `rel_parent_id` the same way.
+  collection joins as `rel_parent_id` the same way. Multi-hop self
+  references (`parent_id.parent_id.title`) work too — aliases stay
+  unique via the `__` separator (`rel_parent_id__parent_id`).
 
 ### Filtering through a `relation_many` field
 
@@ -214,12 +222,14 @@ lowering happens per leaf and respects the tree's boolean structure.
 
 | Situation                                                       | Status | Message                                                            |
 |-----------------------------------------------------------------|--------|--------------------------------------------------------------------|
-| Multi-level dotted key (`a.b.c`)                                | 422    | `Multi-level nested filter not supported yet: a.b.c`               |
+| More than 2 hops (`a.b.c.d`)                                    | 422    | `Nested filter exceeds max depth: a.b.c.d`                         |
 | Nested sort through a `relation_many` field                     | 422    | `Nested sort on relation_many is not supported: <field>`           |
+| Multi-hop chain through a `relation_many` field                 | 422    | `Multi-hop nested filter through relation_many is not supported: "<slug>.<segment>"` |
 | Head is not a relation field                                    | 422    | `Nested filter only works on relation fields — "<head>" is <type>` |
+| Mid-chain segment is not a relation field on its source         | 422    | `Nested filter hop "<segment>" on "<slug>" is not a relation field` |
 | Unknown sub-field on target collection                          | 422    | `Unknown field on relation target "<slug>": <sub>`                 |
-| Target collection is archived                                   | 422    | `Relation target not active: <slug>`                               |
-| No read permission on the target collection                     | 403    | `No read permission on relation target: <slug>`                    |
+| Target collection is archived (any hop)                         | 422    | `Relation target not active: <slug>`                               |
+| No read permission on a target collection (any hop)             | 403    | `No read permission on relation target: <slug>`                    |
 | Sub-field outside target permission `fields` allow-list         | 403    | `No permission to read "<slug>.<sub>"`                             |
 | Head relation outside source `fields` allow-list                | 403    | `No permission to read field: <head>`                              |
 
@@ -231,6 +241,12 @@ curl '/api/items/orders?filter={"customer_id.email":{"_ends_with":"@acme.com"}}'
 
 # Sort by a related field
 curl '/api/items/orders?sort=-customer_id.created_at'
+
+# Multi-hop filter: orders → customers → addresses
+curl '/api/items/orders?filter={"customer_id.address_id.city":{"_eq":"Berlin"}}'
+
+# Multi-hop sort: orders ordered by the customer's address city
+curl '/api/items/orders?sort=-customer_id.address_id.city'
 
 # Combined: filter + sort + projection + meta — one JOIN
 curl '/api/items/orders?filter={"customer_id.name":{"_eq":"Alice"}}&sort=-amount&fields=id,amount&meta=filter_count'
@@ -244,6 +260,28 @@ curl '/api/items/posts?q=cluster&filter={"published":{"_eq":true}}'
 # Locale projection
 curl '/api/items/articles?locale=tr'
 ```
+
+### Multi-hop mental model
+
+For `filter={"customer_id.address_id.city":{"_eq":"Berlin"}}` on
+`orders`, the compiler emits:
+
+```sql
+SELECT orders.*
+FROM c_orders AS orders
+LEFT JOIN c_customers AS rel_customer_id
+  ON rel_customer_id.id = orders.customer_id
+ AND rel_customer_id.tenant_id = $1
+LEFT JOIN c_addresses AS rel_customer_id__address_id
+  ON rel_customer_id__address_id.id = rel_customer_id.address_id
+ AND rel_customer_id__address_id.tenant_id = $1
+WHERE rel_customer_id__address_id.city = 'Berlin'
+  AND -- … permission whereSql, tenant scope, etc.
+```
+
+Aliases use `__` (double underscore) as the segment separator so a
+3-hop chain stays under PG's 63-char identifier limit and never
+collides with a shorter prefix's alias.
 
 ## Permission interactions
 
@@ -269,8 +307,17 @@ doesn't ambiguously resolve against the joined target's `owner_id`.
 
 ## What's not yet supported
 
-- **Multi-level nested** (`a.b.c`) — needs a recursive resolver across
-  multiple join aliases.
+- **Beyond 2 hops** — `a.b.c.d` and deeper return `422`. The hard
+  ceiling exists to keep alias lengths well under PG's 63-char
+  identifier limit and to keep the JOIN ladder readable in `EXPLAIN`.
+  A 3rd hop can be added by lifting the `dotCount > 2` cap in
+  `parseQuery` — the JOIN builder in `items.ts` is already recursive.
+- **Multi-hop through `relation_many`** — only single-hop
+  `relation_many` filters lower to `EXISTS`. A multi-hop chain whose
+  middle (or last) segment is a `relation_many` field returns `422` —
+  joining through a JSON array of foreign ids needs a different
+  lowering (LATERAL unnest on PG, sub-SELECT on SQLite) that doesn't
+  compose cleanly with the LEFT-JOIN ladder. Tracked as a follow-up.
 - **Sorting through `relation_many`** — there's no well-defined order
   across the array's members; filter is supported via `EXISTS`, sort
   still returns `422`.

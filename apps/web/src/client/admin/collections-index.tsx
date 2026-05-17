@@ -5,6 +5,7 @@ import { I, type IconComponent, type IconKey } from "./icons";
 import type { CollectionListItem } from "./config";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
+import { AdoptWizard } from "./adopt-wizard";
 
 export interface CollectionsIndexProps {
   collections: CollectionListItem[];
@@ -14,9 +15,10 @@ export interface CollectionsIndexProps {
   pushToast: (msg: string) => void;
 }
 
-export function CollectionsIndex({ collections, onOpen, onNew, onDelete }: CollectionsIndexProps) {
+export function CollectionsIndex({ collections, onOpen, onNew, onDelete, pushToast }: CollectionsIndexProps) {
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"grid" | "table">("grid");
+  const [adoptOpen, setAdoptOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -46,8 +48,21 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete }: Colle
         actions={<>
           <Button variant="outline" icon={I.Code}>Schema</Button>
           <Button variant="outline" icon={I.ExternalLink}>API docs</Button>
+          <Button variant="outline" icon={I.Database} onClick={() => setAdoptOpen(true)}>Import from database</Button>
           <Button variant="primary" icon={I.Plus} onClick={onNew}>New collection</Button>
         </>}
+      />
+      <AdoptWizard
+        open={adoptOpen}
+        onClose={() => setAdoptOpen(false)}
+        onComplete={({ slug }) => {
+          setAdoptOpen(false);
+          pushToast?.(`Adopted "${slug}". Reloading…`);
+          // Easiest reliable refresh — the index reads `collections` from the
+          // parent, which fetches once on mount. A reload keeps that contract
+          // intact without threading a new "refresh" callback through.
+          setTimeout(() => window.location.reload(), 600);
+        }}
       />
 
       <div className="filter-bar">

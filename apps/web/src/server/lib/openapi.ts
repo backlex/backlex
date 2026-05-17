@@ -130,9 +130,18 @@ export const buildOpenApiDoc = async (
   // Combine the global registry (used by the few remaining legacy sibling
   // metadata files) with every OpenAPIHono sub-app's registry. Each sub-app
   // path gets its mount prefix so the doc shows the full URL.
-  const combined = [...apiRegistry.definitions];
+  const combined = apiRegistry?.definitions ? [...apiRegistry.definitions] : [];
   for (const [mount, sub] of opts.subApps ?? []) {
-    for (const def of sub.openAPIRegistry.definitions) {
+    const defs = sub?.openAPIRegistry?.definitions;
+    if (!defs) {
+      console.warn(
+        `[openapi] sub-app at mount ${mount} has no openAPIRegistry — skipping. sub=${typeof sub} keys=${
+          sub ? Object.keys(sub).slice(0, 5).join(",") : "null"
+        }`,
+      );
+      continue;
+    }
+    for (const def of defs) {
       if (def.type === "route") {
         const prefixed = mount + (def.route.path === "/" ? "" : def.route.path);
         combined.push({

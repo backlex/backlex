@@ -100,6 +100,41 @@ function keyCandidates(tenantId: string, logicalKey: string): string[] {
   return [physical, logicalKey];
 }
 
+/** SSRF guard for the URL-import endpoint. Returns true for hostnames the
+ *  Worker should refuse to fetch — link-local, loopback, RFC1918, the
+ *  IPv6 equivalents, and common internal-DNS suffixes. Not airtight (DNS
+ *  rebinding sidesteps a purely-syntactic check) but a reasonable v1
+ *  layered with the runtime's own network policies. */
+function isPrivateHost(host: string): boolean {
+  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
+  if (
+    h === "localhost" ||
+    h.endsWith(".local") ||
+    h.endsWith(".internal") ||
+    h.endsWith(".lan")
+  ) return true;
+  const ipv4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4) {
+    const a = Number(ipv4[1]);
+    const b = Number(ipv4[2]);
+    if (a === 0 || a === 10 || a === 127) return true;
+    if (a === 169 && b === 254) return true; // link-local
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    return false;
+  }
+  if (h === "::1" || h === "::") return true;
+  if (h.startsWith("fe80:")) return true; // link-local
+  if (h.startsWith("fc") || h.startsWith("fd")) return true; // unique local
+  return false;
+}
+
+/** Bounded length for keys we synthesize from URLs. Long query strings
+ *  shouldn't make their way into storage paths. */
+const MAX_IMPORT_KEY_LENGTH = 256;
+const MAX_IMPORT_BYTES = 100 * 1024 * 1024;
+const IMPORT_TIMEOUT_MS = 30_000;
+
 const filesCollection = () => FILES_COLLECTION;
 
 interface FileRow {
@@ -390,6 +425,146 @@ export const storageRoutes = new Hono<AppBindings>()
       filesUpdated: updated,
       foldersCreated: foldersCreatedAfter - foldersCreatedBefore,
     });
+  })
+  /**
+   * Server-side import: pull an HTTP(S) URL into storage. Avoids the CORS
+   * tax of a client-side fetch + PUT — the Worker fetches the source
+   * directly. Useful for migrating remote assets, OG-image scrapes,
+   * arXiv PDF copies, etc.
+   *
+   * Body:
+   *   url       — required, http/https, public host (SSRF-guarded)
+   *   key       — optional logical key; derived from URL path basename
+   *               when missing (or `import-<ts>` for path-less URLs)
+   *   folderId  — optional override; same semantics as PUT (`__root__`
+   *               opts out of auto-derive; otherwise the auto-derive
+   *               from the key path runs as usual)
+   *   acl       — optional, defaults to `private`
+   *
+   * Caps: 100 MB body, 30 s connect+read timeout. Errors surface as
+   * AppError VALIDATION/BAD_REQUEST so the UI can show the reason.
+   */
+  .post("/from-url", requirePermission(filesCollection, "create"), async (c) => {
+    const ctx = c.get("ctx");
+    const auth = c.get("auth");
+    const tenantId = requireTenantId(auth);
+    const body = (await c.req.json().catch(() => ({}))) as {
+      url?: string;
+      key?: string;
+      folderId?: string | null;
+      acl?: "public" | "private";
+    };
+    if (!body.url || typeof body.url !== "string") {
+      throw new AppError("VALIDATION", "url is required");
+    }
+
+    let parsed: URL;
+    try { parsed = new URL(body.url); } catch {
+      throw new AppError("VALIDATION", "url must be a valid URL");
+    }
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new AppError("VALIDATION", "url must use http or https");
+    }
+    if (isPrivateHost(parsed.hostname)) {
+      throw new AppError("VALIDATION", "url points to a private/internal host");
+    }
+
+    // Derive logical key
+    let logicalKey = (body.key ?? "").trim();
+    if (!logicalKey) {
+      const pathParts = parsed.pathname.split("/").filter(Boolean);
+      logicalKey = pathParts[pathParts.length - 1] ?? "";
+      // Decode percent-escapes (URL paths often carry them) but keep slashes.
+      try { logicalKey = decodeURIComponent(logicalKey); } catch { /* leave as-is */ }
+      if (!logicalKey) logicalKey = `import-${Date.now()}`;
+    }
+    if (logicalKey.length > MAX_IMPORT_KEY_LENGTH) {
+      throw new AppError("VALIDATION", `derived key longer than ${MAX_IMPORT_KEY_LENGTH} chars; pass an explicit \`key\``);
+    }
+    guardLogicalKey(logicalKey);
+
+    // Fetch with bounded timeout. Workers + Bun both honor AbortSignal here.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), IMPORT_TIMEOUT_MS);
+    let resp: Response;
+    try {
+      resp = await fetch(body.url, {
+        signal: controller.signal,
+        redirect: "follow",
+        headers: { "user-agent": "workeros-storage-import/1.0" },
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      throw new AppError("BAD_REQUEST", `fetch failed: ${(e as Error).message}`);
+    }
+    clearTimeout(timer);
+    if (!resp.ok) {
+      throw new AppError("BAD_REQUEST", `source returned HTTP ${resp.status}`);
+    }
+    const contentTypeHeader = resp.headers.get("content-type") ?? "";
+    const contentType = contentTypeHeader.split(";")[0]?.trim() || undefined;
+    const contentLengthHeader = resp.headers.get("content-length");
+    if (contentLengthHeader && Number(contentLengthHeader) > MAX_IMPORT_BYTES) {
+      throw new AppError("VALIDATION", `source body advertises ${contentLengthHeader} bytes; cap is ${MAX_IMPORT_BYTES}`);
+    }
+    if (!resp.body) throw new AppError("BAD_REQUEST", "source returned no body");
+
+    // Auto folder from key path — same rule as PUT.
+    const folderIdQuery = body.folderId;
+    let folderId: string | null;
+    if (folderIdQuery === "__root__" || folderIdQuery === null) {
+      folderId = null;
+    } else if (typeof folderIdQuery === "string" && folderIdQuery !== "") {
+      folderId = folderIdQuery;
+    } else {
+      const inferredName = folderNameFromKey(logicalKey);
+      folderId = inferredName
+        ? await findOrCreateFolderByName(ctx, tenantId, inferredName, auth.userId)
+        : null;
+    }
+
+    const key = physicalKey(tenantId, logicalKey);
+    const obj = await ctx.storage.put({ key, body: resp.body, contentType });
+    const t = filesTable(ctx.dialect);
+    const aclValue = body.acl === "public" ? "public" : "private";
+    await (ctx.db as any)
+      .insert(t)
+      .values({
+        key,
+        folderId,
+        ownerId: auth.userId,
+        tenantId,
+        size: obj.size,
+        contentType: obj.contentType ?? null,
+        acl: aclValue,
+      })
+      .onConflictDoUpdate({
+        target: t.key,
+        set: {
+          folderId,
+          ownerId: auth.userId,
+          tenantId,
+          size: obj.size,
+          contentType: obj.contentType ?? null,
+          acl: aclValue,
+        },
+      });
+    const uploaded = {
+      ...obj,
+      key: logicalKey,
+      folderId,
+      ownerId: auth.userId,
+      acl: aclValue,
+      sourceUrl: body.url,
+    };
+    await logActivity(c, {
+      action: "upload",
+      collection: FILES_COLLECTION,
+      itemId: logicalKey,
+      payload: { sourceUrl: body.url, size: obj.size, contentType: obj.contentType, folderId, acl: aclValue },
+      response: { data: uploaded },
+    });
+    return c.json({ data: uploaded }, 201);
   })
   .put("/:key{.+}", requirePermission(filesCollection, "create"), async (c) => {
     const ctx = c.get("ctx");

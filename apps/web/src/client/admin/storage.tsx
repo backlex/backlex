@@ -56,8 +56,13 @@ interface UploadJob {
   name: string;
   size: number;
   type: string;
+  /** 0–100, derived from XHR upload.onprogress event. */
   progress: number;
-  status: "uploading" | "done";
+  status: "uploading" | "done" | "failed";
+  /** Set on failure so the row can show the server's message. */
+  error?: string;
+  /** Per-job XHR so the user can cancel mid-flight. */
+  xhr?: XMLHttpRequest;
 }
 
 const PAGE_SIZE = 50;
@@ -316,62 +321,74 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
   const fmtSize = (b: number) => b > 1024 * 1024 ? (b / 1024 / 1024).toFixed(1) + " MB" : (b / 1024).toFixed(1) + " KB";
   const isImage = (t: string) => Boolean(t && t.startsWith("image/"));
 
-  useEffect(() => {
-    if (uploads.every((u) => u.progress >= 100)) return;
-    const t = setInterval(() => {
-      setUploads((arr) => arr.map((u) => {
-        if (u.progress >= 100) return u;
-        const next = Math.min(100, u.progress + 8 + Math.random() * 18);
-        if (next >= 100) {
-          setFiles((fs) => [{ key: `${folder || "uploads"}/${u.name}`, size: u.size, type: u.type, folder: folder || "uploads", folderId: null, updated: "just now", acl: "private", metadata: null, hue: Math.floor(Math.random() * 360), w: 1600, h: 900 }, ...fs]);
-          return { ...u, progress: 100, status: "done" };
-        }
-        return { ...u, progress: next };
-      }));
-    }, 240);
-    return () => clearInterval(t);
-  }, [uploads, folder]);
-
-  const queueUploads = (list: ({ name?: string; size?: number; type?: string } | File)[]) => {
-    const target = folder || "uploads";
-    const next: UploadJob[] = list.map((f, i) => ({
-      id: "up_" + Date.now() + "_" + i,
-      name: f.name || `upload-${i}.png`,
-      size: f.size || 80000 + Math.floor(Math.random() * 400000),
-      type: f.type || "image/png",
+  /** Start an XHR PUT for a single File and return its job, attaching the
+   *  XHR so the row can cancel mid-flight. Progress comes from
+   *  `xhr.upload.onprogress` — real bytes transferred, not a fake interval. */
+  const startUpload = (f: File, target: string, idx: number): UploadJob => {
+    const id = "up_" + Date.now() + "_" + idx;
+    const key = `${target}/${f.name}`;
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", `/api/storage/${encodeURIComponent(key)}`);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader("content-type", f.type || "application/octet-stream");
+    xhr.upload.addEventListener("progress", (e) => {
+      if (!e.lengthComputable) return;
+      const pct = Math.min(99, Math.round((e.loaded / e.total) * 100));
+      setUploads((arr) => arr.map((u) => (u.id === id ? { ...u, progress: pct } : u)));
+    });
+    xhr.addEventListener("load", () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        setUploads((arr) => arr.map((u) => (u.id === id ? { ...u, progress: 100, status: "done", xhr: undefined } : u)));
+        setFiles((fs) => [
+          { key, size: f.size, type: f.type || "application/octet-stream", folder: target, folderId: null, updated: "just now", acl: "private", metadata: null },
+          ...fs,
+        ]);
+        setFilesTotal((n) => n + 1);
+        void refreshCounts();
+      } else {
+        let msg = `HTTP ${xhr.status}`;
+        try {
+          const j = JSON.parse(xhr.responseText);
+          if (j?.error?.message) msg = j.error.message;
+        } catch { /* keep status line */ }
+        setUploads((arr) => arr.map((u) => (u.id === id ? { ...u, status: "failed", error: msg, xhr: undefined } : u)));
+        pushToast?.(`${f.name}: ${msg}`);
+      }
+    });
+    xhr.addEventListener("error", () => {
+      setUploads((arr) => arr.map((u) => (u.id === id ? { ...u, status: "failed", error: "network error", xhr: undefined } : u)));
+      pushToast?.(`${f.name}: network error`);
+    });
+    xhr.addEventListener("abort", () => {
+      setUploads((arr) => arr.filter((u) => u.id !== id));
+    });
+    xhr.send(f);
+    return {
+      id,
+      name: f.name,
+      size: f.size,
+      type: f.type || "application/octet-stream",
       progress: 0,
       status: "uploading",
-    }));
-    setUploads((arr) => [...next, ...arr.filter((u) => u.status === "uploading")]);
-    pushToast(`${next.length} file${next.length === 1 ? "" : "s"} queued for ${target}/.`);
-    // Real upload for File-like inputs that the browser handed us. Synthetic
-    // entries (drag-drop placeholders without a File) just animate locally.
-    list.forEach((f, i) => {
-      if (!(f instanceof File)) return;
-      const job = next[i]!;
-      const key = `${target}/${f.name}`;
-      void fetch(`/api/storage/${encodeURIComponent(key)}`, {
-        method: "PUT",
-        credentials: "include",
-        headers: { "content-type": f.type || "application/octet-stream" },
-        body: f,
-      })
-        .then((r) => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          setUploads((arr) =>
-            arr.map((u) => (u.id === job.id ? { ...u, progress: 100, status: "done" } : u)),
-          );
-          setFiles((fs) => [
-            { key, size: f.size, type: f.type || "application/octet-stream", folder: target, folderId: null, updated: "just now", acl: "private", metadata: null },
-            ...fs,
-          ]);
-          setFilesTotal((n) => n + 1);
-          void refreshCounts();
-        })
-        .catch((e: Error) => {
-          pushToast?.(e.message);
-          setUploads((arr) => arr.filter((u) => u.id !== job.id));
-        });
+      xhr,
+    };
+  };
+
+  const queueUploads = (list: File[]) => {
+    if (list.length === 0) return;
+    const target = folder || "uploads";
+    const jobs = list.map((f, i) => startUpload(f, target, i));
+    setUploads((arr) => [...jobs, ...arr.filter((u) => u.status === "uploading")]);
+    pushToast(`${jobs.length} file${jobs.length === 1 ? "" : "s"} queued for ${target}/.`);
+  };
+
+  /** Cancel an in-flight upload — aborts the XHR; the abort handler clears
+   *  the row. Already-done or already-failed jobs ignore. */
+  const cancelUpload = (id: string) => {
+    setUploads((arr) => {
+      const job = arr.find((u) => u.id === id);
+      if (job?.xhr) job.xhr.abort();
+      return arr;
     });
   };
 
@@ -379,11 +396,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
     e.preventDefault();
     setDragOver(false);
     const list = Array.from(e.dataTransfer?.files || []) as File[];
-    if (list.length === 0) {
-      queueUploads([{ name: `dropped-${Date.now() % 9999}.png`, size: 142000, type: "image/png" }]);
-    } else {
-      queueUploads(list);
-    }
+    if (list.length > 0) queueUploads(list);
   };
 
   const openNewFolder = () => {
@@ -612,19 +625,58 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
             <Button variant="ghost" size="sm" onClick={() => setUploads((arr) => arr.filter((u) => u.status === "uploading"))}>Clear done</Button>
           </div>
           <div style={{ padding: "8px 14px", display: "flex", flexDirection: "column", gap: 8, maxHeight: 180, overflow: "auto" }}>
-            {uploads.map((u) => (
-              <div key={u.id} style={{ display: "grid", gridTemplateColumns: "16px 1fr 70px 60px", alignItems: "center", gap: 10, fontSize: 12 }}>
-                {u.status === "done" ? <I.Check size={13} style={{ color: "oklch(0.55 0.16 145)" }} /> : <I.Upload size={13} className="muted" />}
-                <div style={{ minWidth: 0 }}>
-                  <div className="font-mono" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</div>
-                  <div style={{ height: 4, borderRadius: 2, background: "var(--muted)", overflow: "hidden", marginTop: 4 }}>
-                    <div style={{ height: "100%", width: `${u.progress}%`, background: u.status === "done" ? "oklch(0.7 0.18 145)" : "var(--primary)", transition: "width 200ms" }} />
+            {uploads.map((u) => {
+              const isDone = u.status === "done";
+              const isFailed = u.status === "failed";
+              const isUploading = u.status === "uploading";
+              const barColor = isFailed
+                ? "var(--destructive)"
+                : isDone
+                  ? "oklch(0.7 0.18 145)"
+                  : "var(--primary)";
+              const pctColor = isFailed
+                ? "var(--destructive)"
+                : isDone
+                  ? "oklch(0.55 0.16 145)"
+                  : "var(--muted-foreground)";
+              return (
+                <div key={u.id} style={{ display: "grid", gridTemplateColumns: "16px 1fr 70px 60px 24px", alignItems: "center", gap: 10, fontSize: 12 }}>
+                  {isDone
+                    ? <I.Check size={13} style={{ color: "oklch(0.55 0.16 145)" }} />
+                    : isFailed
+                      ? <I.AlertTriangle size={13} style={{ color: "var(--destructive)" }} />
+                      : <I.Upload size={13} className="muted" />}
+                  <div style={{ minWidth: 0 }}>
+                    <div className="font-mono" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</div>
+                    <div style={{ height: 4, borderRadius: 2, background: "var(--muted)", overflow: "hidden", marginTop: 4 }}>
+                      <div style={{ height: "100%", width: `${isFailed ? 100 : u.progress}%`, background: barColor, transition: "width 200ms" }} />
+                    </div>
+                    {isFailed && u.error && (
+                      <div style={{ marginTop: 3, fontSize: 11, color: "var(--destructive)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.error}</div>
+                    )}
                   </div>
+                  <span className="tabular-nums muted" style={{ fontSize: 11.5, textAlign: "right" }}>{fmtSize(u.size)}</span>
+                  <span className="tabular-nums" style={{ fontSize: 11.5, textAlign: "right", color: pctColor }}>
+                    {isFailed ? "failed" : `${Math.round(u.progress)}%`}
+                  </span>
+                  {isUploading ? (
+                    <ShadButton
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => cancelUpload(u.id)}
+                      title="Cancel upload"
+                      aria-label="Cancel upload"
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <I.X size={12} />
+                    </ShadButton>
+                  ) : (
+                    <span />
+                  )}
                 </div>
-                <span className="tabular-nums muted" style={{ fontSize: 11.5, textAlign: "right" }}>{fmtSize(u.size)}</span>
-                <span className="tabular-nums" style={{ fontSize: 11.5, textAlign: "right", color: u.status === "done" ? "oklch(0.55 0.16 145)" : "var(--muted-foreground)" }}>{Math.round(u.progress)}%</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

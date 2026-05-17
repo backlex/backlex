@@ -18,5 +18,14 @@ export const graphqlRoutes = new Hono<AppBindings>().all("/", async (c) => {
     landingPage: false,
     graphiql: { defaultQuery: "{ _empty }" },
   });
-  return yoga.fetch(c.req.raw);
+  // yoga returns a Response with a ReadableStream body. Returning it
+  // directly through Hono on Cloudflare workers serializes the body as
+  // the literal string `[object ReadableStream]`. Drain to text and
+  // forward as a fresh Response so the client gets the actual payload.
+  const res = await yoga.fetch(c.req.raw);
+  const body = await res.text();
+  return new Response(body, {
+    status: res.status,
+    headers: res.headers,
+  });
 });

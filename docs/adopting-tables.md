@@ -243,6 +243,112 @@ Mismatches return `VALIDATION` with the offending field name.
   `updated_at` / `owner_id`, leave the alias `null` and use
   `addCreatedAt: true` (etc.) instead — there's nothing to alias.
 
+## Foreign key auto-detection
+
+Adopted tables almost always already have foreign keys — `orders.customer_id
+→ customers.id`, the usual shape. The adopt flow now introspects those
+constraints and offers to wire each one as a workeros `relation` field, so
+items written through the API are validated against the target collection
+without you hand-writing a single field definition. Nothing about your
+schema changes; the FK stays where it is, and only the collection metadata
+gains a relation entry.
+
+### How it works
+
+`POST /api/admin/adopt/inspect` returns a `foreignKeys` array alongside the
+existing column list. On Postgres the inspector reads `pg_constraint` and
+expands `conkey` / `confkey` via `unnest WITH ORDINALITY`, so composite-FK
+column ordering is preserved. On SQLite / D1 it walks `PRAGMA
+foreign_key_list(<table>)` and resolves any NULL `to` against the parent
+table's PRAGMA-derived primary key. Each row records the source column,
+the referenced table + column, and a `composite: true` flag when the
+constraint spans more than one column.
+
+The route layer then matches each `referencesTable` against the workspace's
+collections by `physical_table`, so both managed (`c_<tenant>_customers`)
+and adopted (`customers`) targets are recognised and surface as
+`targetCollection: { slug, id }`. Targets that don't yet exist as a
+workeros collection come back with `targetCollection: null`.
+
+### The wizard
+
+Step 2 of the adopt wizard renders a **"Foreign keys detected"** panel
+listing every FK with its source column, target table, and an **"Adopt as
+relation"** toggle. Toggling it adds a `{ type: "relation", to: "<slug>" }`
+entry to the apply payload for that column; leaving it off keeps the
+column as its inferred scalar type. Rows with `composite: true` are
+disabled — workeros relation fields are single-column — and rows whose
+target collection isn't in the workspace show a hint to **"Adopt the
+target table first"** before coming back.
+
+### Adopt-time vs runtime semantics
+
+Auto-detection only sets up the metadata. The runtime guarantees come from
+the Phase 1 integrity checks already in `items.ts`: every write through
+`POST` / `PATCH` runs `validateRelations`, which checks that each
+`relation` value exists in the target collection (tenant-scoped — you
+cannot point at another workspace's row). Failures are mapped to
+`VALIDATION` (422).
+
+DB-level violations are mapped the same way: PG's `23503` and SQLite /
+D1's `SQLITE_CONSTRAINT_FOREIGNKEY` both surface as 422 to the client.
+D1 enforces foreign keys unconditionally; on PG the constraint is enforced
+whenever the FK exists on the table (which, for adopted tables, it almost
+always does).
+
+### Limits
+
+- **Composite FKs** (multi-column). workeros relations are single-column,
+  so composite constraints are detected and shown but not offered as a
+  toggle. Define the columns manually as `text` fields if you need them.
+- **Cross-schema FKs (PG).** The inspector is scoped to `current_schema()`;
+  FKs pointing into another schema don't surface.
+- **Cross-DB FKs.** D1 has no `ATTACH`, so adoption is single-DB; PG has
+  no cross-database FKs in the SQL standard.
+- **`ON DELETE CASCADE`.** Cascaded deletes happen at the DB layer and
+  workeros never sees them — no audit row, no webhook fire, no realtime
+  event for the cascaded children. If your adopted table relies on
+  cascade, treat those deletions as out-of-band.
+
+### Type rules
+
+A detected FK column is offered as `relation` regardless of its underlying
+type (`uuid`, `integer`, `text` all work — workeros stores the raw value
+and validates membership on write). The schema also supports
+`relation_many`, but auto-detect always proposes `relation` because a
+single-column FK is by definition to-one; pick `relation_many` manually
+when you're modelling a junction table.
+
+### Worked example
+
+```bash
+# Inspect — note the foreignKeys
+curl -sX POST localhost:5173/api/admin/adopt/inspect \
+  -H 'Content-Type: application/json' \
+  -d '{"table": "orders"}' --cookie ...
+
+# Response includes:
+# "foreignKeys": [{"column": "customer_id", "referencesTable": "customers", ...}]
+
+# Apply — customer_id becomes a relation field
+curl -sX POST localhost:5173/api/admin/adopt/apply \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "table": "orders",
+    "slug": "orders",
+    "pkColumn": "id",
+    "fields": [
+      {"name": "customer_id", "type": "relation", "to": "customers"},
+      {"name": "amount", "type": "number"}
+    ]
+  }' --cookie ...
+
+# Write — invalid relation rejected
+curl -sX POST localhost:5173/api/items/orders \
+  -d '{"customer_id": "nonexistent", "amount": 50}'
+# → 422 "Relation target \"customers\" has no row(s) with id: nonexistent"
+```
+
 ## What we don't do (and why)
 
 - **DDL on adopted tables.** `applyCollection` is a no-op when

@@ -180,51 +180,60 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   // No mock seed — empty until /api/collections fills in. The Collections
   // index renders an empty/zero-state path when nothing is loaded yet.
   const [collections, setCollections] = useState<CollectionListItem[]>([]);
-  useEffect(() => {
-    let cancelled = false;
-    // Card stats (rows / writes 24h / last write) come from the metrics
-    // overview's per-collection bucket. Card layout is keyed off the
-    // collections list, so we merge the two responses by slug.
-    void (async () => {
-      const fmtAgo = (ts: number | null | undefined): string => {
-        if (!ts) return "—";
-        const ms = Date.now() - ts;
-        if (ms < 60_000) return "just now";
-        if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
-        if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
-        return `${Math.floor(ms / 86_400_000)}d ago`;
-      };
-      try {
-        const [listRes, metricsRes] = await Promise.all([
-          collectionsApi.list(),
-          metricsApi.overview("24h").catch(() => null),
-        ]);
-        if (cancelled) return;
-        if (!Array.isArray(listRes.data)) return;
-        const statsBySlug = new Map(
-          (metricsRes?.data?.topCollections ?? []).map((s) => [s.slug, s]),
-        );
-        const mapped = listRes.data.map((c) => {
+  // Archive lifecycle view — when on, GET /api/collections is called with
+  // `?include_archived=true` and we filter the result down to status="archived"
+  // rows. Default off → active rows only.
+  const [showArchived, setShowArchived] = useState(false);
+  const reloadCollections = useCallback(async (archived: boolean) => {
+    const fmtAgo = (ts: number | null | undefined): string => {
+      if (!ts) return "—";
+      const ms = Date.now() - ts;
+      if (ms < 60_000) return "just now";
+      if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
+      if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
+      return `${Math.floor(ms / 86_400_000)}d ago`;
+    };
+    try {
+      const [listRes, metricsRes] = await Promise.all([
+        collectionsApi.listWithArchived(archived),
+        metricsApi.overview("24h").catch(() => null),
+      ]);
+      if (!Array.isArray(listRes.data)) return;
+      const statsBySlug = new Map(
+        (metricsRes?.data?.topCollections ?? []).map((s) => [s.slug, s]),
+      );
+      const mapped = listRes.data
+        .filter((c: any) => archived
+          ? (c.status ?? "active") === "archived"
+          : (c.status ?? "active") === "active",
+        )
+        .map((c: any) => {
           const stats = statsBySlug.get(c.slug);
           return {
             slug: c.slug,
             count: stats?.rows ?? 0,
             ownerScoped: c.ownerScoped,
+            // Pass-through fields the index/danger zone branch on. Loosened
+            // on `CollectionListItem` so the parent can stamp them in.
+            adopted: !!c.adopted,
+            status: c.status ?? "active",
+            archivedAt: c.archivedAt ?? null,
             fields: Array.isArray(c.fields) ? c.fields.length : 0,
             icon: "Database" as const,
             writes24h: stats?.writes24h ?? 0,
             lastWrite: fmtAgo(stats?.lastWrite ?? null),
             singleton: false,
             group: "Content",
-          };
+          } as CollectionListItem;
         });
-        setCollections(mapped);
-      } catch {
-        // leave collections empty on auth/network failure
-      }
-    })();
-    return () => { cancelled = true; };
+      setCollections(mapped);
+    } catch {
+      // leave collections empty on auth/network failure
+    }
   }, []);
+  useEffect(() => {
+    void reloadCollections(showArchived);
+  }, [reloadCollections, showArchived]);
   const activeCollection = activeNav === "collections" && segs[1] ? segs[1] : null;
   const setActiveCollection = useCallback(
     (slug: string | null) => { navigate(slug ? "/collections/" + slug : "/collections"); },
@@ -311,8 +320,11 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
         setSchemaState({
           slug: activeCollection,
           ownerScoped: !!res.data.ownerScoped,
+          // Pass through `adopted` so CollectionSettings can pick the
+          // archive-vs-destroy lifecycle for the danger zone.
+          adopted: !!(res.data as any).adopted,
           fields: fields as any,
-        });
+        } as any);
       } catch {
         // leave previous schemaState in place
       }
@@ -643,19 +655,50 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             {activeNav === "collections" && !activeCollection && (
               <CollectionsIndex
                 collections={collections}
+                showArchived={showArchived}
+                onToggleArchived={(next) => setShowArchived(next)}
                 onOpen={(slug) => { setActiveCollection(slug); setActiveTab("items"); }}
                 onNew={() => setNewCollectionOpen(true)}
-                onDelete={(slug) => setConfirm({
-                  title: <>Delete collection <span className="font-mono">c_{slug}</span>?</>,
-                  description: <>The physical table and all rows are dropped. This is irreversible. Permissions, revisions, and webhooks tied to this collection are removed too.</>,
-                  actionLabel: "Delete collection",
-                  destructive: true,
+                onDelete={(slug) => {
+                  // Branch by adopted flag — adopted collections soft-delete
+                  // (archive, reversible), managed ones hard-DROP the table.
+                  const target = (collections as Array<CollectionListItem & { adopted?: boolean }>).find((c) => c.slug === slug);
+                  const adopted = !!target?.adopted;
+                  setConfirm({
+                    title: adopted
+                      ? <>Archive collection <span className="font-mono">c_{slug}</span>?</>
+                      : <>Delete collection <span className="font-mono">c_{slug}</span>?</>,
+                    description: adopted
+                      ? <>Workeros stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view.</>
+                      : <>The physical table and all rows are dropped. This is irreversible. Permissions, revisions, and webhooks tied to this collection are removed too.</>,
+                    actionLabel: adopted ? "Archive collection" : "Delete collection",
+                    destructive: !adopted,
+                    onConfirm: async () => {
+                      try {
+                        const resp = await collectionsApi.remove(slug);
+                        setCollections((arr) => arr.filter((c) => c.slug !== slug));
+                        if (activeCollection === slug) setActiveCollection(null);
+                        pushToast(resp.archived
+                          ? `Collection c_${slug} archived. Restore it from the Archived view.`
+                          : `Collection c_${slug} dropped.`);
+                      } catch (e) {
+                        pushToast((e as Error).message, "error");
+                      }
+                      setConfirm(null);
+                    },
+                  });
+                }}
+                onRestore={(slug) => setConfirm({
+                  title: <>Restore collection <span className="font-mono">c_{slug}</span>?</>,
+                  description: <>Workeros will start treating this table as a collection again. Owner-scoped permissions are re-seeded if they were configured.</>,
+                  actionLabel: "Restore collection",
+                  destructive: false,
                   onConfirm: async () => {
                     try {
-                      await collectionsApi.remove(slug);
-                      setCollections((arr) => arr.filter((c) => c.slug !== slug));
-                      if (activeCollection === slug) setActiveCollection(null);
-                      pushToast(`Collection c_${slug} dropped.`);
+                      await collectionsApi.restore(slug);
+                      pushToast(`Collection c_${slug} restored.`);
+                      // Reload archived list — the restored row falls off it.
+                      await reloadCollections(showArchived);
                     } catch (e) {
                       pushToast((e as Error).message, "error");
                     }
@@ -802,8 +845,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                         try {
                           const resp = await collectionsApi.patch(slug, { slug: nextSlug } as any) as { ok?: boolean; slug?: string; renamed?: Record<string, number> };
                           // Reload collections + swap active slug + URL.
-                          const list = await collectionsApi.list();
-                          setCollections((list.data ?? []) as any);
+                          await reloadCollections(showArchived);
                           setActiveCollection(nextSlug);
                           setSchemaState((s) => ({ ...s, slug: nextSlug }));
                           const totals = resp.renamed
@@ -832,24 +874,33 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                       pushToast((e as Error).message, "error");
                     }
                   }}
-                  onDelete={() => setConfirm({
-                    title: <>Delete collection <span className="font-mono">c_{activeCollection}</span>?</>,
-                    description: <>The physical table and all rows are dropped. This is irreversible.</>,
-                    actionLabel: "Delete collection",
-                    destructive: true,
-                    onConfirm: async () => {
-                      const slug = activeCollection || "posts";
-                      try {
-                        await collectionsApi.remove(slug);
-                        setCollections((arr) => arr.filter((c) => c.slug !== slug));
-                        setActiveCollection(null);
-                        pushToast(`Collection c_${slug} dropped.`);
-                      } catch (e) {
-                        pushToast((e as Error).message, "error");
-                      }
-                      setConfirm(null);
-                    },
-                  })}
+                  onDelete={() => {
+                    const adopted = !!(schemaState as { adopted?: boolean }).adopted;
+                    setConfirm({
+                      title: adopted
+                        ? <>Archive collection <span className="font-mono">c_{activeCollection}</span>?</>
+                        : <>Delete collection <span className="font-mono">c_{activeCollection}</span>?</>,
+                      description: adopted
+                        ? <>Workeros stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view.</>
+                        : <>The physical table and all rows are dropped. This is irreversible.</>,
+                      actionLabel: adopted ? "Archive collection" : "Delete collection",
+                      destructive: !adopted,
+                      onConfirm: async () => {
+                        const slug = activeCollection || "posts";
+                        try {
+                          const resp = await collectionsApi.remove(slug);
+                          setCollections((arr) => arr.filter((c) => c.slug !== slug));
+                          setActiveCollection(null);
+                          pushToast(resp.archived
+                            ? `Collection c_${slug} archived. Restore it from the Archived view.`
+                            : `Collection c_${slug} dropped.`);
+                        } catch (e) {
+                          pushToast((e as Error).message, "error");
+                        }
+                        setConfirm(null);
+                      },
+                    });
+                  }}
                 />
               )}
             </>}

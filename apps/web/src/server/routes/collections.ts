@@ -133,20 +133,71 @@ export const collectionsRoutes = new Hono<AppBindings>()
     const { db, dialect } = c.get("ctx");
     const tenantId = requireTenant(c);
     const t = tableFor(dialect);
-    const rows = await (db as any).select().from(t).where(eq(t.tenantId, tenantId));
+    // Default hides archived (adopted) collections so the admin UI
+    // doesn't have to know about the lifecycle column.
+    // `?include_archived=true` opts into the full set — used by the
+    // "Archived" panel that exposes restore.
+    const includeArchived = c.req.query("include_archived") === "true";
+    const rows = await (db as any)
+      .select()
+      .from(t)
+      .where(
+        includeArchived
+          ? eq(t.tenantId, tenantId)
+          : and(eq(t.tenantId, tenantId), eq(t.status, "active")),
+      );
     return c.json({ data: rows });
   })
   .get("/:slug", async (c) => {
     const { db, dialect } = c.get("ctx");
     const tenantId = requireTenant(c);
     const t = tableFor(dialect);
+    const includeArchived = c.req.query("include_archived") === "true";
     const row = await (db as any)
       .select()
       .from(t)
       .where(and(eq(t.tenantId, tenantId), eq(t.slug, c.req.param("slug"))))
       .limit(1);
     if (!row[0]) throw new AppError("NOT_FOUND", "Collection not found");
+    if (!includeArchived && (row[0].status ?? "active") !== "active") {
+      throw new AppError("NOT_FOUND", "Collection not found");
+    }
     return c.json({ data: row[0] });
+  })
+  /**
+   * Restore an archived (adopted) collection. No-op when the row is
+   * already active; 404 when it doesn't exist. The `authenticated`
+   * role's owner-scoped permissions are re-seeded so a restore is
+   * one-shot, not "restore + re-grant permissions".
+   */
+  .post("/:slug/restore", requireUser, async (c) => {
+    const slug = c.req.param("slug");
+    const { db, dialect } = c.get("ctx");
+    const tenantId = requireTenant(c);
+    const t = tableFor(dialect);
+    const existing = await (db as any)
+      .select()
+      .from(t)
+      .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)))
+      .limit(1);
+    if (!existing[0]) throw new AppError("NOT_FOUND", "Collection not found");
+    if ((existing[0].status ?? "active") === "active") {
+      return c.json({ ok: true, alreadyActive: true });
+    }
+    await (db as any)
+      .update(t)
+      .set({ status: "active", archivedAt: null })
+      .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)));
+    if (existing[0].ownerScoped ?? existing[0].owner_scoped) {
+      await seedOwnerScopedPermissions({ db, dialect }, tenantId, slug);
+    }
+    await logActivity(c, {
+      action: "restore",
+      collection: "system_collections",
+      itemId: slug,
+      response: { ok: true },
+    });
+    return c.json({ ok: true });
   })
   .post("/", requireUser, async (c) => {
     const body = CollectionInput.parse(await c.req.json());
@@ -316,17 +367,35 @@ export const collectionsRoutes = new Hono<AppBindings>()
     if (!existing[0]) throw new AppError("NOT_FOUND", "Collection not found");
     const physicalTable = (existing[0].physicalTable ?? existing[0].physical_table) as string;
     const adopted = Boolean(existing[0].adopted);
-    await dropCollection(db, dialect, physicalTable, { adopted });
-    await (db as any)
-      .delete(t)
-      .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)));
+    if (adopted) {
+      // Archive adopted collections: physical table is intact (the
+      // applier already short-circuits on adopted), so flipping
+      // `status` on the metadata row is enough. The data stays
+      // queryable directly on the source DB; only workeros stops
+      // treating the table as a collection. `POST /:slug/restore`
+      // flips it back. We DON'T do this for managed collections
+      // because their `c_<slug>` table is about to be dropped — a
+      // restorable row with no data behind it would be a lie.
+      await (db as any)
+        .update(t)
+        .set({ status: "archived", archivedAt: new Date() })
+        .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)));
+    } else {
+      // Managed collections — physical `c_<slug>` table goes too; the
+      // metadata row is hard-deleted. There's nothing to restore.
+      await dropCollection(db, dialect, physicalTable, { adopted });
+      await (db as any)
+        .delete(t)
+        .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)));
+    }
     await logActivity(c, {
-      action: "delete",
+      action: adopted ? "archive" : "delete",
       collection: "system_collections",
       itemId: slug,
+      payload: { adopted, archived: adopted },
       response: { ok: true },
     });
-    return c.json({ ok: true });
+    return c.json({ ok: true, archived: adopted });
   })
   /**
    * Backfill: embed every existing row in the collection's physical table

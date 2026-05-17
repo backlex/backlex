@@ -31,6 +31,7 @@ const FieldSchema = z
       "timestamp",
       "uuid",
       "relation",
+      "relation_many",
     ]),
     required: z.boolean().optional(),
     unique: z.boolean().optional(),
@@ -78,8 +79,8 @@ const FieldSchema = z
      *  `vectorize: true`. Only meaningful on text/longtext fields. */
     vectorize: z.boolean().optional(),
   })
-  .refine((f) => f.type !== "relation" || !!f.to, {
-    message: "relation field must specify `to` (target collection slug)",
+  .refine((f) => (f.type !== "relation" && f.type !== "relation_many") || !!f.to, {
+    message: "relation / relation_many field must specify `to` (target collection slug)",
     path: ["to"],
   });
 

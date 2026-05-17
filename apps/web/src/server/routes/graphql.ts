@@ -17,10 +17,6 @@ export const graphqlRoutes = new Hono<AppBindings>().all("/", async (c) => {
     context: () => ({ ctx, auth }),
     landingPage: false,
     graphiql: { defaultQuery: "{ _empty }" },
-    // Temporary: surface the real error message instead of `Unexpected
-    // error` so we can diagnose the introspection failure on the live
-    // worker. Revert once stable.
-    maskedErrors: false,
   });
   // yoga returns a Response with a ReadableStream body. Returning it
   // directly through Hono on Cloudflare workers serializes the body as

@@ -2813,13 +2813,13 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
 export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushToast: (m: string) => void }) {
   const [tab, setTab] = useState("general");
   const [appUrl, setAppUrl] = useState("http://localhost:8787");
-  const [siteName, setSiteName] = useState("workeros");
   const [from, setFrom] = useState("hello@example.com");
   const [signupOpen, setSignupOpen] = useState(true);
   const [dirty, setDirty] = useState(false);
   // Hydrate the General-tab form from /api/admin/settings on mount. APP_URL
-  // and EMAIL_FROM come from env (read-only here); siteName + openSignup are
-  // the runtime-mutable settings persisted in app_settings.
+  // and EMAIL_FROM come from env (read-only here); openSignup is the
+  // runtime-mutable setting persisted in app_settings. The display name lives
+  // in workspace_config and is edited from the Appearance tab.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -2827,7 +2827,6 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
         const r = await settingsApi.load();
         if (cancelled) return;
         const d = r.data as Record<string, unknown>;
-        if (typeof d.siteName === "string") setSiteName(d.siteName);
         if (typeof d.appUrl === "string") setAppUrl(d.appUrl);
         if (typeof d.emailFrom === "string") setFrom(d.emailFrom);
         if (typeof d.openSignup === "boolean") setSignupOpen(d.openSignup);
@@ -2874,7 +2873,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
   }, []);
   const persistGeneral = async () => {
     try {
-      await settingsApi.patch({ siteName, openSignup: signupOpen });
+      await settingsApi.patch({ openSignup: signupOpen });
       setDirty(false);
       pushToast("Settings saved.");
     } catch (e) {
@@ -2905,8 +2904,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
 
       {tab === "general" && (
         <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
-          <div className="field"><label className="field-label">Site name</label><Input value={siteName} onChange={(e) => { setSiteName(e.target.value); setDirty(true); }} /><span className="field-hint">Display name for this instance.</span></div>
-          <div className="field-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+          <div className="field-row">
             <div>
               <div className="field-label">APP_URL</div>
               <div className="field-hint">Public origin of this Worker — set via <span className="font-mono">wrangler.toml [vars]</span> (or <span className="font-mono">.env</span> on self-host). Used for CORS, OAuth callbacks and absolute links. Read-only here.</div>

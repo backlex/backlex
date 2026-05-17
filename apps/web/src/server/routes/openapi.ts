@@ -108,25 +108,8 @@ export const openapiRoutes = new Hono<AppBindings>()
   .get("/openapi.json", requireUser, async (c) => {
     const auth = c.get("auth");
     requireAdmin(auth.roles);
-    try {
-      const doc = await docFor(c, auth.tenantId ?? null);
-      return c.json(doc);
-    } catch (err) {
-      // Surface the build error directly while we debug the doc generator —
-      // 500/INTERNAL hides everything useful. This is admin-only so leaking
-      // the stack here is fine; revert once the doc builds reliably.
-      const e = err as Error;
-      return c.json(
-        {
-          error: {
-            code: "OPENAPI_BUILD_FAILED",
-            message: e.message,
-            stack: e.stack?.split("\n").slice(0, 12),
-          },
-        },
-        500,
-      );
-    }
+    const doc = await docFor(c, auth.tenantId ?? null);
+    return c.json(doc);
   })
   .get("/openapi.yaml", requireUser, async (c) => {
     const auth = c.get("auth");

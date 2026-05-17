@@ -90,6 +90,12 @@ const loadCollection = async (
     .limit(1);
   if (!rows[0]) throw new AppError("NOT_FOUND", `Collection "${slug}" not found`);
   const r = rows[0] as Record<string, unknown>;
+  // Archived (adopted) collections are 404 from every items endpoint;
+  // workeros stops treating the underlying table as a collection until
+  // someone calls `POST /collections/:slug/restore`.
+  if (((r.status ?? "active") as string) !== "active") {
+    throw new AppError("NOT_FOUND", `Collection "${slug}" not found`);
+  }
   return {
     id: r.id as string,
     slug: r.slug as string,

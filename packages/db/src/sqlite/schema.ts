@@ -554,6 +554,12 @@ export const collections = sqliteTable(
     createdAtColumn: text("created_at_column"),
     updatedAtColumn: text("updated_at_column"),
     ownerIdColumn: text("owner_id_column"),
+    /** Lifecycle status (`active` | `archived`). See pg/schema.ts twin
+     *  for the full rationale. Adopted collections only use `archived`;
+     *  managed are hard-deleted instead. */
+    status: text("status").notNull().default("active"),
+    /** When `status` flipped to `'archived'`. Null while active. */
+    archivedAt: integer("archived_at", { mode: "timestamp_ms" }),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },

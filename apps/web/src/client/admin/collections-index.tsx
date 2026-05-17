@@ -19,10 +19,13 @@ export interface CollectionsIndexProps {
   onToggleArchived?: (next: boolean) => void;
   /** Restore an archived (adopted) collection. Only shown in archived view. */
   onRestore?: (slug: string) => void;
+  /** Jump to the REST Explorer. With a slug, deep-links to that
+   *  collection's `/api/items/<slug>` endpoint group. */
+  onOpenApi?: (slug?: string) => void;
   pushToast: (msg: string) => void;
 }
 
-export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArchived, onToggleArchived, onRestore, pushToast }: CollectionsIndexProps) {
+export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArchived, onToggleArchived, onRestore, onOpenApi, pushToast }: CollectionsIndexProps) {
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"grid" | "table">("grid");
   const [adoptOpen, setAdoptOpen] = useState(false);
@@ -69,7 +72,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
           )}
           {!showArchived && <>
             <Button variant="outline" icon={I.Code}>Schema</Button>
-            <Button variant="outline" icon={I.ExternalLink}>API docs</Button>
+            <Button variant="outline" icon={I.ExternalLink} onClick={() => onOpenApi?.()}>API docs</Button>
             <Button variant="outline" icon={I.Database} onClick={() => setAdoptOpen(true)}>Import from database</Button>
             <Button variant="primary" icon={I.Plus} onClick={onNew}>New collection</Button>
           </>}
@@ -114,6 +117,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
                     c={c}
                     archived={!!showArchived}
                     onOpen={() => onOpen(c.slug)}
+                    onOpenApi={onOpenApi ? () => onOpenApi(c.slug) : undefined}
                     onRestore={onRestore ? () => onRestore(c.slug) : undefined}
                   />
                 ))}
@@ -186,7 +190,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
   );
 }
 
-function CollectionCard({ c, onOpen, archived, onRestore }: { c: CollectionListItem; onOpen: () => void; archived?: boolean; onRestore?: () => void }) {
+function CollectionCard({ c, onOpen, archived, onRestore, onOpenApi }: { c: CollectionListItem; onOpen: () => void; archived?: boolean; onRestore?: () => void; onOpenApi?: () => void }) {
   const Ic = (I as Record<string, IconComponent>)[c.icon as IconKey] || I.Database;
   return (
     <div
@@ -234,7 +238,7 @@ function CollectionCard({ c, onOpen, archived, onRestore }: { c: CollectionListI
         ) : (
           <>
             <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onOpen(); }}>Open</Button>
-            <Button size="sm" variant="ghost" iconRight={I.ExternalLink}>API</Button>
+            <Button size="sm" variant="ghost" iconRight={I.ExternalLink} onClick={(e) => { e.stopPropagation(); onOpenApi?.(); }}>API</Button>
           </>
         )}
       </div>

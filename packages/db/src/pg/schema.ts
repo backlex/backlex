@@ -622,6 +622,11 @@ export const collections = pgTable(
      *  to `env.EMBEDDING_DEFAULT_MODEL`; when neither is set, vectorization
      *  is silently skipped for this collection. */
     vectorizeModel: text("vectorize_model"),
+    /** Default sort applied by `parseQuery` when the request omits `?sort=`.
+     *  Comma-separated field list, `-` prefix = DESC (Directus-style).
+     *  e.g. `"-published_at,name"`. Null falls back to `-created_at` if the
+     *  collection has that column, otherwise the PK. */
+    defaultSort: text("default_sort"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

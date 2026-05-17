@@ -539,6 +539,10 @@ export const collections = sqliteTable(
     vectorize: integer("vectorize", { mode: "boolean" }).notNull().default(false),
     /** Embedding model key (e.g. `bge-m3`). Null → env default → skip. */
     vectorizeModel: text("vectorize_model"),
+    /** Default sort applied by `parseQuery` when the request omits `?sort=`.
+     *  Comma-separated field list, `-` prefix = DESC (Directus-style).
+     *  e.g. `"-published_at,name"`. */
+    defaultSort: text("default_sort"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },

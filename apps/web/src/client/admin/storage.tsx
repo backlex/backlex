@@ -239,6 +239,11 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderBusy, setNewFolderBusy] = useState(false);
+  const [importUrlOpen, setImportUrlOpen] = useState(false);
+  const [importUrl, setImportUrl] = useState("");
+  const [importKey, setImportKey] = useState("");
+  const [importBusy, setImportBusy] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
   const newFolderInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dropFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -411,6 +416,53 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
     }
   };
 
+  const submitImportUrl = async () => {
+    const url = importUrl.trim();
+    if (!url) {
+      setImportError("URL is required.");
+      return;
+    }
+    setImportBusy(true);
+    setImportError(null);
+    try {
+      const res = await api<{ data: { key: string; size: number; contentType?: string; folderId: string | null; acl?: string } }>(
+        "/api/storage/from-url",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            url,
+            key: importKey.trim() || undefined,
+            // honor the currently-selected sidebar folder when the user
+            // didn't override it via the (future) key path. null = root.
+            folderId: folder == null ? null : (selectedFolderId ?? "__root__"),
+          }),
+        },
+      );
+      // Optimistic prepend so the new file shows up immediately.
+      setFiles((fs) => [
+        {
+          key: res.data.key,
+          size: res.data.size,
+          type: res.data.contentType ?? "application/octet-stream",
+          folder: res.data.folderId,
+          folderId: res.data.folderId,
+          updated: "just now",
+          acl: (res.data.acl as "public" | "private") ?? "private",
+          metadata: null,
+        },
+        ...fs,
+      ]);
+      setFilesTotal((n) => n + 1);
+      pushToast(`Imported ${res.data.key.split("/").pop() ?? res.data.key}.`);
+      setImportUrlOpen(false);
+      void refreshCounts();
+    } catch (e) {
+      setImportError((e as Error).message);
+    } finally {
+      setImportBusy(false);
+    }
+  };
+
   const toggleACL = async (key: string) => {
     const next = files.find((x) => x.key === key)?.acl === "public" ? "private" : "public";
     setFiles((arr) => arr.map((f) => f.key === key ? { ...f, acl: next } : f));
@@ -517,6 +569,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         </span>}
         actions={<>
           <Button variant="outline" icon={I.Folder} onClick={openNewFolder}>New folder</Button>
+          <Button variant="outline" icon={I.Globe} onClick={() => { setImportUrlOpen(true); setImportUrl(""); setImportKey(""); setImportError(null); }}>Import URL</Button>
           <Button variant="primary" icon={I.Plus} onClick={() => fileInputRef.current?.click()}>Upload</Button>
           <input ref={fileInputRef} type="file" multiple style={{ display: "none" }} onChange={(e) => queueUploads(Array.from(e.target.files || []))} />
         </>}
@@ -767,6 +820,61 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
               <Button variant="ghost" size="sm" onClick={() => setNewFolderOpen(false)} disabled={newFolderBusy}>Cancel</Button>
               <Button variant="primary" size="sm" onClick={submitNewFolder} disabled={newFolderBusy || !newFolderName.trim()}>
                 {newFolderBusy ? "Creating…" : "Create folder"}
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {importUrlOpen && (
+        <>
+          <div className="scrim" onClick={() => !importBusy && setImportUrlOpen(false)} />
+          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="import-url-title">
+            <div>
+              <h3 id="import-url-title">Import from URL</h3>
+              <p style={{ marginTop: 6 }}>
+                Server fetches the URL and stores it in this workspace. http/https only — private/internal hosts are rejected.
+              </p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="field" style={{ marginTop: 0 }}>
+                <label className="field-label">Source URL</label>
+                <Input
+                  value={importUrl}
+                  onChange={(e) => { setImportUrl(e.target.value); setImportError(null); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { e.preventDefault(); void submitImportUrl(); }
+                    if (e.key === "Escape") { e.preventDefault(); setImportUrlOpen(false); }
+                  }}
+                  placeholder="https://example.com/photos/sunset.jpg"
+                  disabled={importBusy}
+                  autoFocus
+                />
+              </div>
+              <div className="field" style={{ marginTop: 0 }}>
+                <label className="field-label">
+                  Save as <span className="muted" style={{ fontSize: 11 }}>(optional)</span>
+                </label>
+                <Input
+                  value={importKey}
+                  onChange={(e) => setImportKey(e.target.value)}
+                  placeholder={folder ? `${folder}/<derived>` : "Defaults to the URL's filename"}
+                  disabled={importBusy}
+                />
+                <span className="field-hint">
+                  Leave blank to use the URL's last path segment. Slashes auto-create folders ({folder ? <>currently in <span className="font-mono">{folder}/</span></> : "root by default"}).
+                </span>
+              </div>
+              {importError && (
+                <div style={{ padding: "8px 10px", borderRadius: "var(--radius-md)", background: "color-mix(in oklch, var(--destructive) 8%, transparent)", color: "var(--destructive)", fontSize: 12 }}>
+                  {importError}
+                </div>
+              )}
+            </div>
+            <div className="actions">
+              <Button variant="ghost" size="sm" onClick={() => setImportUrlOpen(false)} disabled={importBusy}>Cancel</Button>
+              <Button variant="primary" size="sm" onClick={submitImportUrl} disabled={importBusy || !importUrl.trim()}>
+                {importBusy ? "Importing…" : "Import"}
               </Button>
             </div>
           </div>

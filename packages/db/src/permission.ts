@@ -26,12 +26,24 @@ const resolveVar = (v: string, ctx: AuthSubject): unknown => {
 const resolve = (v: unknown, ctx: AuthSubject): unknown =>
   isVar(v) ? resolveVar(v, ctx) : v;
 
+/**
+ * Resolves a logical field key to a SQL identifier (or qualified
+ * identifier). Default behavior is `sql.identifier(field)`; callers
+ * that need to alias system columns to a different physical column,
+ * or route nested-relation keys (`customer_id.name`) through a JOIN
+ * alias, pass a custom resolver.
+ */
+export type ColRefResolver = (field: string) => SQL;
+
+const defaultColRef: ColRefResolver = (field) => sql`${sql.identifier(field)}`;
+
 const compileComparison = (
   field: string,
   cmp: ComparisonObj,
   ctx: AuthSubject,
+  colRef: ColRefResolver = defaultColRef,
 ): SQL => {
-  const id = sql.identifier(field);
+  const id = colRef(field);
   const parts: SQL[] = [];
   if (cmp._eq !== undefined) {
     const v = resolve(cmp._eq, ctx);
@@ -77,24 +89,25 @@ const compileComparison = (
 export const compileCondition = (
   cond: Condition,
   ctx: AuthSubject,
+  colRef: ColRefResolver = defaultColRef,
 ): SQL => {
   if (isAnd(cond)) {
-    const parts = cond.$and.map((c) => compileCondition(c, ctx));
+    const parts = cond.$and.map((c) => compileCondition(c, ctx, colRef));
     if (parts.length === 0) return TRUE;
     return sql`(${sql.join(parts, sql` AND `)})`;
   }
   if (isOr(cond)) {
-    const parts = cond.$or.map((c) => compileCondition(c, ctx));
+    const parts = cond.$or.map((c) => compileCondition(c, ctx, colRef));
     if (parts.length === 0) return FALSE;
     return sql`(${sql.join(parts, sql` OR `)})`;
   }
   if (isNot(cond)) {
-    return sql`NOT (${compileCondition(cond.$not, ctx)})`;
+    return sql`NOT (${compileCondition(cond.$not, ctx, colRef)})`;
   }
   const fieldMap = cond as Record<string, ComparisonObj>;
   const keys = Object.keys(fieldMap);
   if (keys.length === 0) return TRUE;
-  const parts = keys.map((k) => compileComparison(k, fieldMap[k]!, ctx));
+  const parts = keys.map((k) => compileComparison(k, fieldMap[k]!, ctx, colRef));
   return sql`(${sql.join(parts, sql` AND `)})`;
 };
 
@@ -105,13 +118,14 @@ export const compileCondition = (
 export const combineConditions = (
   conds: (Condition | null | undefined)[],
   ctx: AuthSubject,
+  colRef: ColRefResolver = defaultColRef,
 ): SQL | null => {
   if (conds.length === 0) return FALSE;
   if (conds.some((c) => c === null || c === undefined)) {
     // At least one role grants unconditional access.
     return null;
   }
-  const compiled = conds.map((c) => compileCondition(c as Condition, ctx));
+  const compiled = conds.map((c) => compileCondition(c as Condition, ctx, colRef));
   if (compiled.length === 1) return compiled[0]!;
   return sql`(${sql.join(compiled, sql` OR `)})`;
 };

@@ -314,8 +314,45 @@ export interface InspectedTable {
     updatedAt: boolean;
     ownerId: boolean;
   };
+  /** Heuristic suggestions for aliasing a non-conventional column to one
+   *  of our system fields. Populated when the source table doesn't have
+   *  the conventional name but does have something that looks like it
+   *  (`inserted_at` for created_at, `user_id` for owner_id, etc.). The
+   *  wizard's "system columns" panel surfaces these as preselects. */
+  aliasSuggestions: {
+    createdAt: string | null;
+    updatedAt: string | null;
+    ownerId: string | null;
+  };
   warnings: string[];
 }
+
+/** Patterns we recognize for each system field, in priority order. The
+ *  first one that's present *and* has a compatible type (timestamp-ish
+ *  for created/updated, text/uuid for owner) wins. */
+const ALIAS_PATTERNS = {
+  createdAt: ["created_at", "createdAt", "inserted_at", "insertedAt", "date_created", "dateCreated", "created", "insert_time"],
+  updatedAt: ["updated_at", "updatedAt", "modified_at", "modifiedAt", "last_modified", "lastModified", "updated", "modify_time"],
+  ownerId: ["owner_id", "ownerId", "user_id", "userId", "created_by", "createdBy", "author_id", "authorId", "owner", "owned_by", "ownedBy"],
+} as const;
+
+const isTimestampLike = (col: InspectedColumn): boolean =>
+  col.suggested === "timestamp" || col.suggested === "integer";
+
+const isIdLike = (col: InspectedColumn): boolean =>
+  col.suggested === "text" || col.suggested === "longtext" || col.suggested === "uuid";
+
+const pickAlias = (
+  byName: Map<string, InspectedColumn>,
+  patterns: readonly string[],
+  typeCheck: (c: InspectedColumn) => boolean,
+): string | null => {
+  for (const name of patterns) {
+    const col = byName.get(name);
+    if (col && typeCheck(col)) return col.name;
+  }
+  return null;
+};
 
 /**
  * Map a SQL/driver-reported type string to one of our supported FieldType
@@ -527,6 +564,17 @@ const buildInspectResult = (
       createdAt: byName.has("created_at"),
       updatedAt: byName.has("updated_at"),
       ownerId: byName.has("owner_id"),
+    },
+    aliasSuggestions: {
+      createdAt: byName.has("created_at")
+        ? null
+        : pickAlias(byName, ALIAS_PATTERNS.createdAt, isTimestampLike),
+      updatedAt: byName.has("updated_at")
+        ? null
+        : pickAlias(byName, ALIAS_PATTERNS.updatedAt, isTimestampLike),
+      ownerId: byName.has("owner_id")
+        ? null
+        : pickAlias(byName, ALIAS_PATTERNS.ownerId, isIdLike),
     },
     warnings,
   };

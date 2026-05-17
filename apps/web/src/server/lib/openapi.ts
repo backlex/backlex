@@ -127,35 +127,12 @@ export const buildOpenApiDoc = async (
     ? await buildDynamicCollectionPaths(ctx, tenantId)
     : {};
 
-  // Combine the global registry (used by the few remaining legacy sibling
-  // metadata files) with every OpenAPIHono sub-app's registry. Each sub-app
-  // path gets its mount prefix so the doc shows the full URL.
-  const combined = apiRegistry?.definitions ? [...apiRegistry.definitions] : [];
-  for (const [mount, sub] of opts.subApps ?? []) {
-    const defs = sub?.openAPIRegistry?.definitions;
-    if (!defs) {
-      console.warn(
-        `[openapi] sub-app at mount ${mount} has no openAPIRegistry — skipping. sub=${typeof sub} keys=${
-          sub ? Object.keys(sub).slice(0, 5).join(",") : "null"
-        }`,
-      );
-      continue;
-    }
-    for (const def of defs) {
-      if (def.type === "route") {
-        const prefixed = mount + (def.route.path === "/" ? "" : def.route.path);
-        combined.push({
-          type: "route",
-          route: { ...def.route, path: prefixed },
-        });
-      } else {
-        combined.push(def);
-      }
-    }
-  }
-
-  const generator = new OpenApiGeneratorV31(combined);
-  const baseDoc = generator.generateDocument({
+  // Build the global registry's doc first. This catches the seed schemas
+  // (AppError, Ok, PaginationMeta) + any remaining sibling metadata files.
+  const globalGen = new OpenApiGeneratorV31(
+    apiRegistry?.definitions ? [...apiRegistry.definitions] : [],
+  );
+  const baseDoc = globalGen.generateDocument({
     openapi: "3.1.0",
     info: {
       title: opts.title ?? "Workeros API",
@@ -166,6 +143,43 @@ export const buildOpenApiDoc = async (
     servers: opts.baseUrl ? [{ url: opts.baseUrl }] : undefined,
     security: [{ sessionCookie: [] }, { apiKey: [] }],
   });
+
+  // Then merge each sub-app's doc independently — a broken schema in one
+  // sub-app shouldn't blow up the entire build. Failures are logged and
+  // the offending mount is skipped.
+  baseDoc.paths = baseDoc.paths ?? {};
+  for (const [mount, sub] of opts.subApps ?? []) {
+    const defs = sub?.openAPIRegistry?.definitions;
+    if (!defs) {
+      console.warn(`[openapi] sub-app at mount ${mount} has no openAPIRegistry — skipping`);
+      continue;
+    }
+    try {
+      const subGen = new OpenApiGeneratorV31(defs);
+      const subDoc = subGen.generateDocument({
+        openapi: "3.1.0",
+        info: { title: "_inline", version: "0.0.0" },
+      });
+      if (subDoc.paths) {
+        for (const [p, item] of Object.entries(subDoc.paths)) {
+          const fullPath = mount + (p === "/" ? "" : p);
+          (baseDoc.paths as any)[fullPath] = item;
+        }
+      }
+      const subSchemas = (subDoc.components as any)?.schemas;
+      if (subSchemas) {
+        baseDoc.components = baseDoc.components ?? {};
+        (baseDoc.components as any).schemas = {
+          ...((baseDoc.components as any).schemas ?? {}),
+          ...subSchemas,
+        };
+      }
+    } catch (err) {
+      console.warn(
+        `[openapi] sub-app at ${mount} failed: ${(err as Error).message}`,
+      );
+    }
+  }
 
   baseDoc.paths = {
     ...(baseDoc.paths ?? {}),

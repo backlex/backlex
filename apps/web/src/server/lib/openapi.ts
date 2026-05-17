@@ -1,17 +1,23 @@
-import {
-  OpenAPIRegistry,
-  OpenApiGeneratorV31,
-  extendZodWithOpenApi,
-} from "@asteasolutions/zod-to-openapi";
-import { z } from "zod";
+import { OpenAPIRegistry, OpenApiGeneratorV31 } from "@asteasolutions/zod-to-openapi";
+import { z, OpenAPIHono } from "@hono/zod-openapi";
 import type { Ctx } from "../context";
 import { buildDynamicCollectionPaths } from "../services/openapi-dynamic";
 
-// Module-load-time extend: every metadata file imports `z` from this module,
-// so the prototype is mutated exactly once and everyone shares it.
-extendZodWithOpenApi(z);
-export const ensureZodExtended = () => {};
+/**
+ * Re-export the extended `z` from `@hono/zod-openapi`. That package wraps
+ * `@asteasolutions/zod-to-openapi`'s `extendZodWithOpenApi` and exposes a
+ * pre-mutated `z` — every metadata file in this codebase imports `z` from
+ * THIS module so the prototype is shared and `.openapi(...)` resolves.
+ */
+export { z };
 
+/**
+ * Global registry. Used by the (now-shrinking) population of `*.openapi.ts`
+ * sibling files that still call `registerPath()` directly. Newer route files
+ * declare schemas inline via `OpenAPIHono#openapi(createRoute({...}))` and
+ * their definitions live in the sub-app's own `openAPIRegistry`. The
+ * `buildOpenApiDoc` helper merges both worlds.
+ */
 export const apiRegistry = new OpenAPIRegistry();
 
 apiRegistry.registerComponent("securitySchemes", "sessionCookie", {
@@ -43,9 +49,11 @@ export const AppErrorSchema = apiRegistry.register(
     .openapi({ description: "Uniform error envelope returned by every route." }),
 );
 
+// Plain `z.boolean()` rather than `z.literal(true)` so handlers can return
+// `{ ok: true }` without TS narrowing the value to a `boolean` mismatch.
 export const OkSchema = apiRegistry.register(
   "Ok",
-  z.object({ ok: z.literal(true) }),
+  z.object({ ok: z.boolean() }),
 );
 
 export const PaginationMetaSchema = apiRegistry.register(
@@ -104,6 +112,10 @@ export type BuildDocOptions = {
   baseUrl?: string;
   title?: string;
   version?: string;
+  /** `[mountPath, openAPIHonoSubApp]` pairs. Each sub-app's
+   *  `openAPIRegistry.definitions` are pulled and prefixed with the mount
+   *  path so the full URL appears in the doc. */
+  subApps?: ReadonlyArray<readonly [string, OpenAPIHono<any>]>;
 };
 
 export const buildOpenApiDoc = async (
@@ -111,12 +123,29 @@ export const buildOpenApiDoc = async (
   tenantId: string | null,
   opts: BuildDocOptions = {},
 ) => {
-  ensureZodExtended();
   const dynamicPaths = tenantId
     ? await buildDynamicCollectionPaths(ctx, tenantId)
     : {};
 
-  const generator = new OpenApiGeneratorV31(apiRegistry.definitions);
+  // Combine the global registry (used by the few remaining legacy sibling
+  // metadata files) with every OpenAPIHono sub-app's registry. Each sub-app
+  // path gets its mount prefix so the doc shows the full URL.
+  const combined = [...apiRegistry.definitions];
+  for (const [mount, sub] of opts.subApps ?? []) {
+    for (const def of sub.openAPIRegistry.definitions) {
+      if (def.type === "route") {
+        const prefixed = mount + (def.route.path === "/" ? "" : def.route.path);
+        combined.push({
+          type: "route",
+          route: { ...def.route, path: prefixed },
+        });
+      } else {
+        combined.push(def);
+      }
+    }
+  }
+
+  const generator = new OpenApiGeneratorV31(combined);
   const baseDoc = generator.generateDocument({
     openapi: "3.1.0",
     info: {
@@ -135,5 +164,3 @@ export const buildOpenApiDoc = async (
   } as typeof baseDoc.paths;
   return baseDoc;
 };
-
-export { z };

@@ -1,5 +1,6 @@
-import type { Handler } from "hono";
+import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { AppBindings } from "../app";
+import { errorResponses } from "../lib/openapi";
 import { resolveAuthSurface } from "../services/auth-config";
 
 /**
@@ -12,16 +13,52 @@ import { resolveAuthSurface } from "../services/auth-config";
  * secrets: only provider ids, labels, `enabled` flags, and non-secret policy
  * toggles (e.g. whether sign-up is open).
  *
- * Mounted as `GET /api/auth/providers` *before* the better-auth catch-all
+ * Mounted at `/api/auth/providers` *before* the better-auth catch-all
  * (`/api/auth/*`) so it isn't swallowed by it.
  */
-export const authProvidersHandler: Handler<AppBindings> = async (c) => {
-  const ctx = c.get("ctx");
-  const auth = c.get("auth");
-  const surface = await resolveAuthSurface(
-    { db: ctx.db, dialect: ctx.dialect },
-    ctx.env,
-    auth.tenantId ?? null,
-  );
-  return c.json({ data: surface });
-};
+
+const AuthProvider = z
+  .object({
+    id: z.string(),
+    label: z.string(),
+    enabled: z.boolean(),
+  })
+  .passthrough()
+  .openapi("AuthProvider");
+
+const AuthSurface = z
+  .object({
+    providers: z.array(AuthProvider),
+    policy: z.record(z.string(), z.unknown()).optional(),
+  })
+  .passthrough()
+  .openapi("AuthSurface");
+
+export const authPublicRoutes = new OpenAPIHono<AppBindings>().openapi(
+  createRoute({
+    method: "get",
+    path: "/providers",
+    tags: ["auth-public"],
+    summary: "Public auth surface",
+    description:
+      "Unauthenticated discovery endpoint — returns the active workspace's sign-in providers and non-secret policy flags. The workspace is resolved from `X-Workeros-Tenant` / cookie / default.",
+    security: [],
+    responses: {
+      200: {
+        description: "OK",
+        content: { "application/json": { schema: z.object({ data: AuthSurface }) } },
+      },
+      ...errorResponses,
+    },
+  }),
+  async (c) => {
+    const ctx = c.get("ctx");
+    const auth = c.get("auth");
+    const surface = await resolveAuthSurface(
+      { db: ctx.db, dialect: ctx.dialect },
+      ctx.env,
+      auth.tenantId ?? null,
+    );
+    return c.json({ data: surface });
+  },
+);

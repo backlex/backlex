@@ -1,9 +1,10 @@
-import { Hono } from "hono";
+import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { streamSSE } from "hono/streaming";
 import type { SSEStreamingApi } from "hono/streaming";
 import { AppError, SYSTEM_ROLES } from "@workeros/core";
 import type { AppBindings } from "../app";
 import type { Env } from "../env";
+import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { resolvePermission } from "../services/permissions";
 import {
   currentSeq,
@@ -163,52 +164,120 @@ const publishToChannel = async (
   }
 };
 
-export const realtimeRoutes = new Hono<AppBindings>()
-  .post("/:channel/publish", async (c) => {
-    const ctx = c.get("ctx");
-    const auth = c.get("auth");
-    const channel = c.req.param("channel");
-    await gateForChannel(ctx, auth, channel, true);
-
-    if (!rateLimitOk(`pub:${channel}:${clientIp(c)}`, PUBLISH_RATE_MAX, PUBLISH_RATE_WINDOW_MS)) {
-      throw new AppError("RATE_LIMITED", "Too many publishes — slow down");
-    }
-    const payload = await c.req.json();
-    await publishToChannel(ctx.env, channel, payload);
-    return c.json({ ok: true });
+const TestPublishInput = z
+  .object({
+    event: z.enum(["created", "updated", "deleted"]),
+    data: z.record(z.string(), z.unknown()),
   })
+  .openapi("RealtimeTestPublishInput");
+
+const TAG = "realtime";
+
+export const realtimeRoutes = new OpenAPIHono<AppBindings>()
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{channel}/publish",
+      tags: [TAG],
+      summary: "Publish to a free-form channel",
+      description:
+        "Free-form channels only — `items:*`, `collections`, and `presence:*` are managed by the API and reject client publish. Rate limited per `(channel, ip)`.",
+      security: SECURITY,
+      request: {
+        params: z.object({ channel: z.string() }),
+        body: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: z.unknown().openapi({
+                description: "Free-form payload — forwarded to every subscriber as-is.",
+              }),
+            },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: "Published",
+          content: { "application/json": { schema: OkSchema } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const { channel } = c.req.valid("param");
+      await gateForChannel(ctx, auth, channel, true);
+
+      if (!rateLimitOk(`pub:${channel}:${clientIp(c)}`, PUBLISH_RATE_MAX, PUBLISH_RATE_WINDOW_MS)) {
+        throw new AppError("RATE_LIMITED", "Too many publishes — slow down");
+      }
+      const payload = await c.req.json();
+      await publishToChannel(ctx.env, channel, payload);
+      return c.json({ ok: true });
+    },
+  )
   // Admin-only synthetic event injector — lets you fire a fake ItemEvent at an
   // `items:*` channel to verify per-subscriber permission filtering / field
   // projection without performing real CRUD. No webhook/flow side effects.
-  .post("/:channel/test-publish", async (c) => {
-    const auth = c.get("auth");
-    const ctx = c.get("ctx");
-    const channel = c.req.param("channel");
-    if (!auth.roles.includes(SYSTEM_ROLES.admin)) {
-      throw new AppError(
-        auth.userId ? "FORBIDDEN" : "UNAUTHORIZED",
-        "Admin only",
-      );
-    }
-    if (!channel.startsWith(ITEMS_PREFIX)) {
-      throw new AppError("VALIDATION", "test-publish is only for items:* channels");
-    }
-    const body = (await c.req.json().catch(() => null)) as
-      | { event?: unknown; data?: unknown }
-      | null;
-    const event = body?.event as ItemEventPayload["event"] | undefined;
-    if (typeof event !== "string" || !ITEM_EVENTS.has(event)) {
-      throw new AppError("VALIDATION", "event must be one of created|updated|deleted");
-    }
-    if (body?.data == null || typeof body.data !== "object" || Array.isArray(body.data)) {
-      throw new AppError("VALIDATION", "data must be an object");
-    }
-    await publishToChannel(ctx.env, channel, {
-      event,
-      data: body.data as Record<string, unknown>,
-    } satisfies ItemEventPayload);
-    return c.json({ ok: true });
-  })
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{channel}/test-publish",
+      tags: [TAG],
+      summary: "Admin-only synthetic event injector",
+      description:
+        "Fires a synthetic `ItemEventPayload` at an `items:*` channel to verify per-subscriber permission filtering. No webhook/flow side effects.",
+      security: SECURITY,
+      request: {
+        params: z.object({
+          channel: z.string().openapi({ description: "Must start with `items:`." }),
+        }),
+        body: {
+          required: true,
+          content: { "application/json": { schema: TestPublishInput } },
+        },
+      },
+      responses: {
+        200: {
+          description: "Injected",
+          content: { "application/json": { schema: OkSchema } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const auth = c.get("auth");
+      const ctx = c.get("ctx");
+      const { channel } = c.req.valid("param");
+      if (!auth.roles.includes(SYSTEM_ROLES.admin)) {
+        throw new AppError(
+          auth.userId ? "FORBIDDEN" : "UNAUTHORIZED",
+          "Admin only",
+        );
+      }
+      if (!channel.startsWith(ITEMS_PREFIX)) {
+        throw new AppError("VALIDATION", "test-publish is only for items:* channels");
+      }
+      const body = c.req.valid("json") as { event: ItemEventPayload["event"]; data: Record<string, unknown> };
+      if (typeof body.event !== "string" || !ITEM_EVENTS.has(body.event)) {
+        throw new AppError("VALIDATION", "event must be one of created|updated|deleted");
+      }
+      if (body.data == null || typeof body.data !== "object" || Array.isArray(body.data)) {
+        throw new AppError("VALIDATION", "data must be an object");
+      }
+      await publishToChannel(ctx.env, channel, {
+        event: body.event,
+        data: body.data,
+      } satisfies ItemEventPayload);
+      return c.json({ ok: true });
+    },
+  )
+  // SSE subscribe — kept as a plain Hono `.get(...)` because the response is a
+  // long-lived `text/event-stream`, not a JSON body suitable for OpenAPI
+  // validation. The OpenAPI doc for this endpoint is registered separately by
+  // `lib/openapi.ts` consumers if needed.
   .get("/:channel/subscribe", async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");

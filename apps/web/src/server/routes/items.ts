@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { sql, and, eq, type SQL } from "drizzle-orm";
 import { AppError } from "@workeros/core";
 import * as pg from "@workeros/db/pg";
@@ -9,6 +9,7 @@ import {
   validateValue,
   type FieldType,
 } from "@workeros/db";
+import type { Context } from "hono";
 import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
 import type { Ctx } from "../context";
@@ -18,6 +19,7 @@ import { elapsedMs, keepAlive, recordActivity, requestMeta } from "../services/a
 import { recordRevision } from "../services/revisions";
 import { embedAndUpsert, deleteVector } from "../services/vectorize";
 import { loadAppSettings } from "../services/settings";
+import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 
 interface CollectionRow {
   /** Collections.id — primary key in the metadata table. Needed for the
@@ -470,7 +472,6 @@ const queryAll = async <T>(ctx: Ctx, query: unknown): Promise<T[]> => {
   return (await (ctx.db as any).all(query)) as T[];
 };
 
-import type { Context } from "hono";
 const collectionFromParam = (c: Context<AppBindings>) =>
   c.req.param("slug" as never) as string;
 
@@ -655,476 +656,671 @@ const selectColRef = (collection: CollectionRow, col: string): SQL => {
   return sql`${sql.identifier(col)}`;
 };
 
-export const itemsRoutes = new Hono<AppBindings>()
-  .get("/:slug", requirePermission(collectionFromParam, "read"), async (c) => {
-    const ctx = c.get("ctx");
-    const auth = c.get("auth");
-    const perm = c.get("permission");
-    const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
-    const params = new URL(c.req.url).searchParams;
-    const q = parseQuery(
-      params,
-      collection.fields,
-      collection.ownerScoped,
-      perm.fields,
-      collection.defaultSort,
-    );
+// Per-collection shapes are added at request time by services/openapi-dynamic.
+// The generic endpoints below document the shared envelope; the body and
+// item shapes are `record(unknown)` because the field set is dynamic.
+const ItemBody = z.record(z.string(), z.unknown()).openapi("ItemBody");
+const ItemRow = z.record(z.string(), z.unknown()).openapi("ItemRow");
 
-    const table = collection.physicalTable;
-    // User-supplied filters and permission whereSql both reference system
-    // fields by their logical names (`created_at`, `owner_id`). Rewrite
-    // those keys to the actual physical column before compiling so the
-    // generated SQL doesn't refer to columns the source table doesn't have.
-    // perm.whereSql is already compiled (we can't re-rewrite it here);
-    // permissions only reference `owner_id`, and the side-table join
-    // surfaces an unqualified `owner_id` so the existing perm SQL still
-    // works in that case. For the alias path the workspace admin is
-    // responsible for crafting permission conditions against the aliased
-    // column name directly.
-    const userFilter = q.filter ? rewriteSystemFieldsInCondition(q.filter, collection) : null;
-    const userWhere = userFilter ? compileCondition(userFilter, auth) : null;
-    const tenantWhere = tenantFilter(collection, auth);
-    const wheres = [userWhere, perm.whereSql, tenantWhere].filter(
-      (x): x is SQL => x != null,
-    );
-    const whereClause = wheres.length
-      ? sql`WHERE ${sql.join(wheres, sql` AND `)}`
-      : sql``;
-
-    const projection = resolveProjection(
-      q,
-      collection.fields,
-      collection.ownerScoped,
-      perm.fields,
-    );
-    const selectCols: SQL = projection
-      ? sql.join(
-          projection.map((col) => selectColRef(collection, col)),
-          sql`, `,
-        )
-      : selectStar(collection);
-
-    const orderClause = sql.join(
-      q.sort.map(
-        (s) => sql`${sql.identifier(rewriteSortField(s.field, collection))} ${sql.raw(s.dir.toUpperCase())}`,
-      ),
-      sql`, `,
-    );
-
-    const rows = await queryAll<Record<string, unknown>>(
-      ctx,
-      sql`SELECT ${selectCols} FROM ${fromOf(collection)} ${whereClause} ORDER BY ${orderClause} LIMIT ${q.limit} OFFSET ${q.offset}`,
-    );
-
-    let metaOut: { filter_count?: number; total_count?: number } | undefined;
-    if (q.meta.filterCount || q.meta.totalCount) {
-      metaOut = {};
-      if (q.meta.filterCount) {
-        const r = await queryAll<{ count: number | string | bigint }>(
-          ctx,
-          sql`SELECT COUNT(*) AS count FROM ${fromOf(collection)} ${whereClause}`,
-        );
-        metaOut.filter_count = Number(r[0]?.count ?? 0);
-      }
-      if (q.meta.totalCount) {
-        // total_count still respects tenant scoping — never leak rows from
-        // sibling workspaces to the API consumer.
-        const totalWhere = tenantWhere
-          ? sql`WHERE ${tenantWhere}`
-          : sql``;
-        const r = await queryAll<{ count: number | string | bigint }>(
-          ctx,
-          sql`SELECT COUNT(*) AS count FROM ${fromOf(collection)} ${totalWhere}`,
-        );
-        metaOut.total_count = Number(r[0]?.count ?? 0);
-      }
-    }
-
-    const locale = c.req.query("locale") ?? null;
-    const defaultLocale =
-      locale && locale !== "*" && hasI18nField(collection.fields)
-        ? (await loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null)).i18nDefaultLocale
-        : null;
-    return c.json({
-      data: rows.map((r) =>
-        localizeRow(
-          deserializeRow(
-            r,
-            collection.fields,
-            ctx.dialect,
-            collection.ownerScoped,
-            projection,
-          ),
-          collection.fields,
-          locale,
-          defaultLocale,
-        ),
-      ),
-      limit: q.limit,
-      offset: q.offset,
-      ...(metaOut ? { meta: metaOut } : {}),
-    });
+const ListMeta = z
+  .object({
+    filter_count: z.number().int().nonnegative().optional(),
+    total_count: z.number().int().nonnegative().optional(),
   })
-  .get("/:slug/:id", requirePermission(collectionFromParam, "read"), async (c) => {
-    const ctx = c.get("ctx");
-    const auth = c.get("auth");
-    const perm = c.get("permission");
-    const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
-    const table = collection.physicalTable;
-    const rows = await queryAll<Record<string, unknown>>(
-      ctx,
-      sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, c.req.param("id")), perm.whereSql, tenantFilter(collection, auth))} LIMIT 1`,
-    );
-    if (!rows[0]) throw new AppError("NOT_FOUND", "Item not found");
-    const locale = c.req.query("locale") ?? null;
-    const defaultLocale =
-      locale && locale !== "*" && hasI18nField(collection.fields)
-        ? (await loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null)).i18nDefaultLocale
-        : null;
-    return c.json({
-      data: projectFields(
-        localizeRow(
-          deserializeRow(rows[0], collection.fields, ctx.dialect, collection.ownerScoped),
-          collection.fields,
-          locale,
-          defaultLocale,
-        ),
+  .openapi("ItemsListMeta");
+
+const ListQuery = z.object({
+  filter: z.string().optional().openapi({
+    description: "JSON-encoded filter DSL (Directus-style).",
+  }),
+  sort: z.string().optional().openapi({
+    description: "Comma-separated field list; prefix `-` for DESC.",
+  }),
+  fields: z.string().optional().openapi({
+    description: "Comma-separated projection. System fields are always included.",
+  }),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+  meta: z.string().optional().openapi({
+    description: "`filter_count`, `total_count`, or `*`.",
+  }),
+  locale: z.string().optional().openapi({
+    description: "Locale for i18n_text projection; `*` returns full map.",
+  }),
+});
+
+const TAGS = ["items"];
+
+export const itemsRoutes = new OpenAPIHono<AppBindings>()
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/{slug}",
+      tags: TAGS,
+      summary: "List items",
+      description:
+        "Generic list endpoint for any collection. Supports Directus-shaped `filter`, `sort`, `fields`, `limit`, `offset`, `meta`. Item shape comes from the collection's field definitions; see the dynamic per-collection paths for typed schemas.",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "read")],
+      request: {
+        params: z.object({ slug: z.string() }),
+        query: ListQuery,
+      },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z.array(ItemRow),
+                limit: z.number().int().nonnegative(),
+                offset: z.number().int().nonnegative(),
+                meta: ListMeta.optional(),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const perm = c.get("permission");
+      const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
+      const params = new URL(c.req.url).searchParams;
+      const q = parseQuery(
+        params,
+        collection.fields,
+        collection.ownerScoped,
         perm.fields,
-      ),
-    });
-  })
-  .post("/:slug", requirePermission(collectionFromParam, "create"), async (c) => {
-    const ctx = c.get("ctx");
-    const auth = c.get("auth");
-    const perm = c.get("permission");
-    const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
-    const data = (await c.req.json()) as Record<string, unknown>;
-    // PK extraction MUST happen before validateBody — adopted collections
-    // accept the PK in the body, but the PK isn't in `collection.fields`,
-    // so validateBody would reject it as an unknown field otherwise.
-    const table = collection.physicalTable;
-    let id: string;
-    if (collection.adopted) {
-      const pkVal = data[collection.pkColumn];
-      if (pkVal === undefined || pkVal === null || pkVal === "") {
-        throw new AppError(
-          "VALIDATION",
-          `Primary key "${collection.pkColumn}" is required in the body for adopted collections`,
+        collection.defaultSort,
+      );
+
+      const table = collection.physicalTable;
+      // User-supplied filters and permission whereSql both reference system
+      // fields by their logical names (`created_at`, `owner_id`). Rewrite
+      // those keys to the actual physical column before compiling so the
+      // generated SQL doesn't refer to columns the source table doesn't have.
+      // perm.whereSql is already compiled (we can't re-rewrite it here);
+      // permissions only reference `owner_id`, and the side-table join
+      // surfaces an unqualified `owner_id` so the existing perm SQL still
+      // works in that case. For the alias path the workspace admin is
+      // responsible for crafting permission conditions against the aliased
+      // column name directly.
+      const userFilter = q.filter ? rewriteSystemFieldsInCondition(q.filter, collection) : null;
+      const userWhere = userFilter ? compileCondition(userFilter, auth) : null;
+      const tenantWhere = tenantFilter(collection, auth);
+      const wheres = [userWhere, perm.whereSql, tenantWhere].filter(
+        (x): x is SQL => x != null,
+      );
+      const whereClause = wheres.length
+        ? sql`WHERE ${sql.join(wheres, sql` AND `)}`
+        : sql``;
+
+      const projection = resolveProjection(
+        q,
+        collection.fields,
+        collection.ownerScoped,
+        perm.fields,
+      );
+      const selectCols: SQL = projection
+        ? sql.join(
+            projection.map((col) => selectColRef(collection, col)),
+            sql`, `,
+          )
+        : selectStar(collection);
+
+      const orderClause = sql.join(
+        q.sort.map(
+          (s) => sql`${sql.identifier(rewriteSortField(s.field, collection))} ${sql.raw(s.dir.toUpperCase())}`,
+        ),
+        sql`, `,
+      );
+
+      const rows = await queryAll<Record<string, unknown>>(
+        ctx,
+        sql`SELECT ${selectCols} FROM ${fromOf(collection)} ${whereClause} ORDER BY ${orderClause} LIMIT ${q.limit} OFFSET ${q.offset}`,
+      );
+
+      let metaOut: { filter_count?: number; total_count?: number } | undefined;
+      if (q.meta.filterCount || q.meta.totalCount) {
+        metaOut = {};
+        if (q.meta.filterCount) {
+          const r = await queryAll<{ count: number | string | bigint }>(
+            ctx,
+            sql`SELECT COUNT(*) AS count FROM ${fromOf(collection)} ${whereClause}`,
+          );
+          metaOut.filter_count = Number(r[0]?.count ?? 0);
+        }
+        if (q.meta.totalCount) {
+          // total_count still respects tenant scoping — never leak rows from
+          // sibling workspaces to the API consumer.
+          const totalWhere = tenantWhere
+            ? sql`WHERE ${tenantWhere}`
+            : sql``;
+          const r = await queryAll<{ count: number | string | bigint }>(
+            ctx,
+            sql`SELECT COUNT(*) AS count FROM ${fromOf(collection)} ${totalWhere}`,
+          );
+          metaOut.total_count = Number(r[0]?.count ?? 0);
+        }
+      }
+
+      const locale = c.req.query("locale") ?? null;
+      const defaultLocale =
+        locale && locale !== "*" && hasI18nField(collection.fields)
+          ? (await loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null)).i18nDefaultLocale
+          : null;
+      return c.json({
+        data: rows.map((r) =>
+          localizeRow(
+            deserializeRow(
+              r,
+              collection.fields,
+              ctx.dialect,
+              collection.ownerScoped,
+              projection,
+            ),
+            collection.fields,
+            locale,
+            defaultLocale,
+          ),
+        ),
+        limit: q.limit,
+        offset: q.offset,
+        ...(metaOut ? { meta: metaOut } : {}),
+      });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/{slug}/{id}",
+      tags: TAGS,
+      summary: "Get item",
+      description: "Fetches one row by primary key. Respects per-role read field projection.",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "read")],
+      request: {
+        params: z.object({ slug: z.string(), id: z.string() }),
+        query: z.object({ locale: z.string().optional() }),
+      },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: z.object({ data: ItemRow }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const perm = c.get("permission");
+      const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
+      const table = collection.physicalTable;
+      const rows = await queryAll<Record<string, unknown>>(
+        ctx,
+        sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, c.req.param("id")), perm.whereSql, tenantFilter(collection, auth))} LIMIT 1`,
+      );
+      if (!rows[0]) throw new AppError("NOT_FOUND", "Item not found");
+      const locale = c.req.query("locale") ?? null;
+      const defaultLocale =
+        locale && locale !== "*" && hasI18nField(collection.fields)
+          ? (await loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null)).i18nDefaultLocale
+          : null;
+      return c.json({
+        data: projectFields(
+          localizeRow(
+            deserializeRow(rows[0], collection.fields, ctx.dialect, collection.ownerScoped),
+            collection.fields,
+            locale,
+            defaultLocale,
+          ),
+          perm.fields,
+        ),
+      });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{slug}",
+      tags: TAGS,
+      summary: "Create item",
+      description:
+        "Creates a row in the collection. Body shape is the collection's field map; adopted collections must include the primary key value.",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "create")],
+      request: {
+        params: z.object({ slug: z.string() }),
+        query: z.object({ locale: z.string().optional() }),
+        body: {
+          required: true,
+          content: { "application/json": { schema: ItemBody } },
+        },
+      },
+      responses: {
+        201: {
+          description: "Created",
+          content: {
+            "application/json": { schema: z.object({ data: ItemRow }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const perm = c.get("permission");
+      const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
+      const data = (await c.req.json()) as Record<string, unknown>;
+      // PK extraction MUST happen before validateBody — adopted collections
+      // accept the PK in the body, but the PK isn't in `collection.fields`,
+      // so validateBody would reject it as an unknown field otherwise.
+      const table = collection.physicalTable;
+      let id: string;
+      if (collection.adopted) {
+        const pkVal = data[collection.pkColumn];
+        if (pkVal === undefined || pkVal === null || pkVal === "") {
+          throw new AppError(
+            "VALIDATION",
+            `Primary key "${collection.pkColumn}" is required in the body for adopted collections`,
+          );
+        }
+        id = String(pkVal);
+        delete data[collection.pkColumn];
+      } else {
+        id = crypto.randomUUID();
+      }
+      validateBody(data, collection.fields, false, perm.fields);
+      await validateRelations(data, collection.fields, ctx, auth.tenantId);
+      if (hasI18nField(collection.fields)) {
+        const writeLocale = c.req.query("locale") ?? null;
+        mergeI18nPatch(data, {}, collection.fields, writeLocale);
+      }
+      const now = nowFor(ctx.dialect);
+
+      const cols: string[] = [collection.pkColumn];
+      const vals: unknown[] = [id];
+      if (collection.hasCreatedAt) {
+        cols.push(collection.createdAtColumn ?? "created_at");
+        vals.push(now);
+      }
+      if (collection.hasUpdatedAt) {
+        cols.push(collection.updatedAtColumn ?? "updated_at");
+        vals.push(now);
+      }
+      // Managed owner_id column lives on the physical row; adopted collections
+      // use the side-table `item_ownership` instead (written below, after the
+      // row insert succeeds — see the adopted ownership branch).
+      if (collection.ownerScoped && !collection.adopted) {
+        cols.push("owner_id");
+        vals.push(auth.userId);
+      }
+      if (collection.tenantScoped) {
+        if (!auth.tenantId) {
+          throw new AppError(
+            "VALIDATION",
+            "Active tenant could not be resolved; cannot insert into tenant-scoped collection",
+          );
+        }
+        cols.push("tenant_id");
+        vals.push(auth.tenantId);
+      }
+      for (const f of collection.fields) {
+        if (data[f.name] === undefined) continue;
+        cols.push(f.name);
+        vals.push(serialize(data[f.name], f.type, ctx.dialect));
+      }
+
+      const colSql = sql.join(
+        cols.map((n) => sql.identifier(n)),
+        sql`, `,
+      );
+      const valSql = sql.join(
+        vals.map((v) => sql`${v}`),
+        sql`, `,
+      );
+      await execute(
+        ctx,
+        sql`INSERT INTO ${sql.identifier(table)} (${colSql}) VALUES (${valSql})`,
+      );
+      // Adopted owner-scoped collections carry ownership in the side table.
+      // We INSERT here, post-row-insert, so a FK violation on a missing
+      // collection row would fail before we wrote to the user's table.
+      if (usesOwnershipSideTable(collection) && auth.userId) {
+        await execute(
+          ctx,
+          sql`INSERT INTO ${sql.identifier("item_ownership")} (${sql.identifier("collection_id")}, ${sql.identifier("item_id")}, ${sql.identifier("owner_id")}, ${sql.identifier("created_at")})
+              VALUES (${collection.id}, ${id}, ${auth.userId}, ${now})`,
         );
       }
-      id = String(pkVal);
-      delete data[collection.pkColumn];
-    } else {
-      id = crypto.randomUUID();
-    }
-    validateBody(data, collection.fields, false, perm.fields);
-    await validateRelations(data, collection.fields, ctx, auth.tenantId);
-    if (hasI18nField(collection.fields)) {
-      const writeLocale = c.req.query("locale") ?? null;
-      mergeI18nPatch(data, {}, collection.fields, writeLocale);
-    }
-    const now = nowFor(ctx.dialect);
 
-    const cols: string[] = [collection.pkColumn];
-    const vals: unknown[] = [id];
-    if (collection.hasCreatedAt) {
-      cols.push(collection.createdAtColumn ?? "created_at");
-      vals.push(now);
-    }
-    if (collection.hasUpdatedAt) {
-      cols.push(collection.updatedAtColumn ?? "updated_at");
-      vals.push(now);
-    }
-    // Managed owner_id column lives on the physical row; adopted collections
-    // use the side-table `item_ownership` instead (written below, after the
-    // row insert succeeds — see the adopted ownership branch).
-    if (collection.ownerScoped && !collection.adopted) {
-      cols.push("owner_id");
-      vals.push(auth.userId);
-    }
-    if (collection.tenantScoped) {
-      if (!auth.tenantId) {
-        throw new AppError(
-          "VALIDATION",
-          "Active tenant could not be resolved; cannot insert into tenant-scoped collection",
+      const out: Record<string, unknown> = { id, ...data };
+      if (collection.hasCreatedAt) out.createdAt = deserialize(now, "timestamp", ctx.dialect);
+      if (collection.hasUpdatedAt) out.updatedAt = deserialize(now, "timestamp", ctx.dialect);
+      if (collection.ownerScoped) out.ownerId = auth.userId;
+      await embedAndUpsert(
+        ctx,
+        collection,
+        auth.tenantId ?? null,
+        id,
+        data,
+      );
+      await publishEvent(
+        ctx.env,
+        `items:${collection.slug}`,
+        { event: "created", data: out },
+        { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
+      );
+      const projected = projectFields(out, perm.fields);
+      const meta = requestMeta(c.req.raw);
+      await recordActivity(
+        { db: ctx.db, dialect: ctx.dialect },
+        {
+          userId: auth.userId,
+          tenantId: auth.tenantId ?? null,
+          action: "create",
+          collection: collection.slug,
+          itemId: id,
+          ...meta,
+          payload: data,
+          response: { data: projected },
+          durationMs: elapsedMs(c),
+        },
+      );
+      return c.json({ data: projected }, 201);
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "patch",
+      path: "/{slug}/{id}",
+      tags: TAGS,
+      summary: "Update item",
+      description:
+        "Partial update. `i18n_text` fields merge into the existing locale map; pass `?locale=xx` with a string value to upsert one locale.",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "update")],
+      request: {
+        params: z.object({ slug: z.string(), id: z.string() }),
+        query: z.object({ locale: z.string().optional() }),
+        body: {
+          required: true,
+          content: { "application/json": { schema: ItemBody } },
+        },
+      },
+      responses: {
+        200: {
+          description: "Updated",
+          content: {
+            "application/json": { schema: z.object({ data: ItemRow }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const perm = c.get("permission");
+      const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
+      const id = c.req.param("id");
+      const patch = (await c.req.json()) as Record<string, unknown>;
+      validateBody(patch, collection.fields, true, perm.fields);
+      await validateRelations(patch, collection.fields, ctx, auth.tenantId);
+
+      const table = collection.physicalTable;
+      const tenantWhere = tenantFilter(collection, auth);
+      const existing = await queryAll<Record<string, unknown>>(
+        ctx,
+        sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)} LIMIT 1`,
+      );
+      if (!existing[0]) throw new AppError("NOT_FOUND", "Item not found");
+      const beforeRow = deserializeRow(
+        existing[0],
+        collection.fields,
+        ctx.dialect,
+        collection.ownerScoped,
+      );
+
+      if (hasI18nField(collection.fields)) {
+        const writeLocale = c.req.query("locale") ?? null;
+        mergeI18nPatch(patch, beforeRow, collection.fields, writeLocale);
+      }
+
+      const now = nowFor(ctx.dialect);
+      const sets: SQL[] = [];
+      if (collection.hasUpdatedAt) {
+        sets.push(sql`${sql.identifier(collection.updatedAtColumn ?? "updated_at")} = ${now}`);
+      }
+      for (const f of collection.fields) {
+        if (patch[f.name] === undefined) continue;
+        sets.push(
+          sql`${sql.identifier(f.name)} = ${serialize(patch[f.name], f.type, ctx.dialect)}`,
         );
       }
-      cols.push("tenant_id");
-      vals.push(auth.tenantId);
-    }
-    for (const f of collection.fields) {
-      if (data[f.name] === undefined) continue;
-      cols.push(f.name);
-      vals.push(serialize(data[f.name], f.type, ctx.dialect));
-    }
 
-    const colSql = sql.join(
-      cols.map((n) => sql.identifier(n)),
-      sql`, `,
-    );
-    const valSql = sql.join(
-      vals.map((v) => sql`${v}`),
-      sql`, `,
-    );
-    await execute(
-      ctx,
-      sql`INSERT INTO ${sql.identifier(table)} (${colSql}) VALUES (${valSql})`,
-    );
-    // Adopted owner-scoped collections carry ownership in the side table.
-    // We INSERT here, post-row-insert, so a FK violation on a missing
-    // collection row would fail before we wrote to the user's table.
-    if (usesOwnershipSideTable(collection) && auth.userId) {
+      // If nothing to update (no updated_at + no field patches), skip the UPDATE
+      // entirely — emitting `SET ` with no clauses is a syntax error.
+      if (sets.length > 0) {
+        await execute(
+          ctx,
+          sql`UPDATE ${sql.identifier(table)} SET ${sql.join(sets, sql`, `)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)}`,
+        );
+      }
+
+      const refreshed = await queryAll<Record<string, unknown>>(
+        ctx,
+        sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, id), tenantWhere)} LIMIT 1`,
+      );
+      const refreshedRow = deserializeRow(
+        refreshed[0]!,
+        collection.fields,
+        ctx.dialect,
+        collection.ownerScoped,
+      );
+      await embedAndUpsert(
+        ctx,
+        collection,
+        auth.tenantId ?? null,
+        id,
+        refreshedRow,
+      );
+      await publishEvent(
+        ctx.env,
+        `items:${collection.slug}`,
+        { event: "updated", data: refreshedRow },
+        { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
+      );
+      const projected = projectFields(refreshedRow, perm.fields);
+      const meta = requestMeta(c.req.raw);
+      await recordActivity(
+        { db: ctx.db, dialect: ctx.dialect },
+        {
+          userId: auth.userId,
+          tenantId: auth.tenantId ?? null,
+          action: "update",
+          collection: collection.slug,
+          itemId: id,
+          ...meta,
+          payload: patch,
+          response: { data: projected },
+          durationMs: elapsedMs(c),
+        },
+      );
+      await recordRevision(
+        { db: ctx.db, dialect: ctx.dialect },
+        {
+          collection: collection.slug,
+          itemId: id,
+          snapshot: beforeRow,
+          userId: auth.userId,
+          tenantId: auth.tenantId ?? null,
+        },
+      );
+      return c.json({ data: projected });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "delete",
+      path: "/{slug}/{id}",
+      tags: TAGS,
+      summary: "Delete item",
+      description: "Hard-deletes the row. Cascades to ownership side table + vector store.",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "delete")],
+      request: {
+        params: z.object({ slug: z.string(), id: z.string() }),
+      },
+      responses: {
+        200: {
+          description: "Deleted",
+          content: { "application/json": { schema: OkSchema } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const perm = c.get("permission");
+      const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
+      const id = c.req.param("id");
+      const table = collection.physicalTable;
+      const tenantWhere = tenantFilter(collection, auth);
+
+      const existing = await queryAll<Record<string, unknown>>(
+        ctx,
+        sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)} LIMIT 1`,
+      );
+      if (!existing[0]) throw new AppError("NOT_FOUND", "Item not found");
+      const oldRow = deserializeRow(
+        existing[0],
+        collection.fields,
+        ctx.dialect,
+        collection.ownerScoped,
+      );
+
       await execute(
         ctx,
-        sql`INSERT INTO ${sql.identifier("item_ownership")} (${sql.identifier("collection_id")}, ${sql.identifier("item_id")}, ${sql.identifier("owner_id")}, ${sql.identifier("created_at")})
-            VALUES (${collection.id}, ${id}, ${auth.userId}, ${now})`,
+        sql`DELETE FROM ${sql.identifier(table)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)}`,
       );
-    }
-
-    const out: Record<string, unknown> = { id, ...data };
-    if (collection.hasCreatedAt) out.createdAt = deserialize(now, "timestamp", ctx.dialect);
-    if (collection.hasUpdatedAt) out.updatedAt = deserialize(now, "timestamp", ctx.dialect);
-    if (collection.ownerScoped) out.ownerId = auth.userId;
-    await embedAndUpsert(
-      ctx,
-      collection,
-      auth.tenantId ?? null,
-      id,
-      data,
-    );
-    await publishEvent(
-      ctx.env,
-      `items:${collection.slug}`,
-      { event: "created", data: out },
-      { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
-    );
-    const projected = projectFields(out, perm.fields);
-    const meta = requestMeta(c.req.raw);
-    await recordActivity(
-      { db: ctx.db, dialect: ctx.dialect },
-      {
-        userId: auth.userId,
-        tenantId: auth.tenantId ?? null,
-        action: "create",
-        collection: collection.slug,
-        itemId: id,
-        ...meta,
-        payload: data,
-        response: { data: projected },
-        durationMs: elapsedMs(c),
-      },
-    );
-    return c.json({ data: projected }, 201);
-  })
-  .patch("/:slug/:id", requirePermission(collectionFromParam, "update"), async (c) => {
-    const ctx = c.get("ctx");
-    const auth = c.get("auth");
-    const perm = c.get("permission");
-    const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
-    const id = c.req.param("id");
-    const patch = (await c.req.json()) as Record<string, unknown>;
-    validateBody(patch, collection.fields, true, perm.fields);
-    await validateRelations(patch, collection.fields, ctx, auth.tenantId);
-
-    const table = collection.physicalTable;
-    const tenantWhere = tenantFilter(collection, auth);
-    const existing = await queryAll<Record<string, unknown>>(
-      ctx,
-      sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)} LIMIT 1`,
-    );
-    if (!existing[0]) throw new AppError("NOT_FOUND", "Item not found");
-    const beforeRow = deserializeRow(
-      existing[0],
-      collection.fields,
-      ctx.dialect,
-      collection.ownerScoped,
-    );
-
-    if (hasI18nField(collection.fields)) {
-      const writeLocale = c.req.query("locale") ?? null;
-      mergeI18nPatch(patch, beforeRow, collection.fields, writeLocale);
-    }
-
-    const now = nowFor(ctx.dialect);
-    const sets: SQL[] = [];
-    if (collection.hasUpdatedAt) {
-      sets.push(sql`${sql.identifier(collection.updatedAtColumn ?? "updated_at")} = ${now}`);
-    }
-    for (const f of collection.fields) {
-      if (patch[f.name] === undefined) continue;
-      sets.push(
-        sql`${sql.identifier(f.name)} = ${serialize(patch[f.name], f.type, ctx.dialect)}`,
+      // Cascade-clean the ownership side table for adopted owner-scoped rows.
+      // No-op for everyone else (the row simply doesn't exist there).
+      if (usesOwnershipSideTable(collection)) {
+        await execute(
+          ctx,
+          sql`DELETE FROM ${sql.identifier("item_ownership")}
+              WHERE ${sql.identifier("collection_id")} = ${collection.id}
+              AND ${sql.identifier("item_id")} = ${id}`,
+        );
+      }
+      await deleteVector(ctx, collection, id);
+      await publishEvent(
+        ctx.env,
+        `items:${collection.slug}`,
+        { event: "deleted", data: oldRow },
+        { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
       );
-    }
-
-    // If nothing to update (no updated_at + no field patches), skip the UPDATE
-    // entirely — emitting `SET ` with no clauses is a syntax error.
-    if (sets.length > 0) {
-      await execute(
-        ctx,
-        sql`UPDATE ${sql.identifier(table)} SET ${sql.join(sets, sql`, `)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)}`,
+      const meta = requestMeta(c.req.raw);
+      await recordActivity(
+        { db: ctx.db, dialect: ctx.dialect },
+        {
+          userId: auth.userId,
+          tenantId: auth.tenantId ?? null,
+          action: "delete",
+          collection: collection.slug,
+          itemId: id,
+          ...meta,
+          payload: oldRow,
+          response: { ok: true },
+          durationMs: elapsedMs(c),
+        },
       );
-    }
-
-    const refreshed = await queryAll<Record<string, unknown>>(
-      ctx,
-      sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, id), tenantWhere)} LIMIT 1`,
-    );
-    const refreshedRow = deserializeRow(
-      refreshed[0]!,
-      collection.fields,
-      ctx.dialect,
-      collection.ownerScoped,
-    );
-    await embedAndUpsert(
-      ctx,
-      collection,
-      auth.tenantId ?? null,
-      id,
-      refreshedRow,
-    );
-    await publishEvent(
-      ctx.env,
-      `items:${collection.slug}`,
-      { event: "updated", data: refreshedRow },
-      { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
-    );
-    const projected = projectFields(refreshedRow, perm.fields);
-    const meta = requestMeta(c.req.raw);
-    await recordActivity(
-      { db: ctx.db, dialect: ctx.dialect },
-      {
-        userId: auth.userId,
-        tenantId: auth.tenantId ?? null,
-        action: "update",
-        collection: collection.slug,
-        itemId: id,
-        ...meta,
-        payload: patch,
-        response: { data: projected },
-        durationMs: elapsedMs(c),
-      },
-    );
-    await recordRevision(
-      { db: ctx.db, dialect: ctx.dialect },
-      {
-        collection: collection.slug,
-        itemId: id,
-        snapshot: beforeRow,
-        userId: auth.userId,
-        tenantId: auth.tenantId ?? null,
-      },
-    );
-    return c.json({ data: projected });
-  })
-  .delete("/:slug/:id", requirePermission(collectionFromParam, "delete"), async (c) => {
-    const ctx = c.get("ctx");
-    const auth = c.get("auth");
-    const perm = c.get("permission");
-    const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
-    const id = c.req.param("id");
-    const table = collection.physicalTable;
-    const tenantWhere = tenantFilter(collection, auth);
-
-    const existing = await queryAll<Record<string, unknown>>(
-      ctx,
-      sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)} LIMIT 1`,
-    );
-    if (!existing[0]) throw new AppError("NOT_FOUND", "Item not found");
-    const oldRow = deserializeRow(
-      existing[0],
-      collection.fields,
-      ctx.dialect,
-      collection.ownerScoped,
-    );
-
-    await execute(
-      ctx,
-      sql`DELETE FROM ${sql.identifier(table)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)}`,
-    );
-    // Cascade-clean the ownership side table for adopted owner-scoped rows.
-    // No-op for everyone else (the row simply doesn't exist there).
-    if (usesOwnershipSideTable(collection)) {
-      await execute(
-        ctx,
-        sql`DELETE FROM ${sql.identifier("item_ownership")}
-            WHERE ${sql.identifier("collection_id")} = ${collection.id}
-            AND ${sql.identifier("item_id")} = ${id}`,
+      await recordRevision(
+        { db: ctx.db, dialect: ctx.dialect },
+        {
+          collection: collection.slug,
+          itemId: id,
+          snapshot: oldRow,
+          userId: auth.userId,
+          tenantId: auth.tenantId ?? null,
+        },
       );
-    }
-    await deleteVector(ctx, collection, id);
-    await publishEvent(
-      ctx.env,
-      `items:${collection.slug}`,
-      { event: "deleted", data: oldRow },
-      { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
-    );
-    const meta = requestMeta(c.req.raw);
-    await recordActivity(
-      { db: ctx.db, dialect: ctx.dialect },
-      {
-        userId: auth.userId,
-        tenantId: auth.tenantId ?? null,
-        action: "delete",
-        collection: collection.slug,
-        itemId: id,
-        ...meta,
-        payload: oldRow,
-        response: { ok: true },
-        durationMs: elapsedMs(c),
-      },
-    );
-    await recordRevision(
-      { db: ctx.db, dialect: ctx.dialect },
-      {
-        collection: collection.slug,
-        itemId: id,
-        snapshot: oldRow,
-        userId: auth.userId,
-        tenantId: auth.tenantId ?? null,
-      },
-    );
-    return c.json({ ok: true });
-  })
+      return c.json({ ok: true });
+    },
+  )
   /**
    * Flip a versioned-collection row from `_status='draft'` to `'published'`
    * (or vice versa with `?unpublish=1`). Requires the caller to have
    * `update` permission on the collection.
    */
-  .post("/:slug/:id/publish", requirePermission(collectionFromParam, "update"), async (c) => {
-    const ctx = c.get("ctx");
-    const auth = c.get("auth");
-    const perm = c.get("permission");
-    const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
-    if (!collection.versioned) {
-      throw new AppError(
-        "VALIDATION",
-        "Collection is not versioned — set `versioned: true` on the collection first",
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{slug}/{id}/publish",
+      tags: TAGS,
+      summary: "Publish or unpublish a versioned item",
+      description:
+        "Versioned-collection only. Flips `_status` between `draft` and `published`; pass `?unpublish=1` to revert.",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "update")],
+      request: {
+        params: z.object({ slug: z.string(), id: z.string() }),
+        query: z.object({ unpublish: z.enum(["1"]).optional() }),
+      },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: z.object({ data: ItemRow }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const perm = c.get("permission");
+      const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
+      if (!collection.versioned) {
+        throw new AppError(
+          "VALIDATION",
+          "Collection is not versioned — set `versioned: true` on the collection first",
+        );
+      }
+      const id = c.req.param("id");
+      const table = collection.physicalTable;
+      const tenantWhere = tenantFilter(collection, auth);
+      const unpublish = c.req.query("unpublish") === "1";
+      const now = nowFor(ctx.dialect);
+      const setSql = unpublish
+        ? sql`${sql.identifier("_status")} = 'draft', ${sql.identifier("_published_at")} = NULL, ${sql.identifier("updated_at")} = ${now}`
+        : sql`${sql.identifier("_status")} = 'published', ${sql.identifier("_published_at")} = ${now}, ${sql.identifier("updated_at")} = ${now}`;
+      await execute(
+        ctx,
+        sql`UPDATE ${sql.identifier(table)} SET ${setSql} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)}`,
       );
-    }
-    const id = c.req.param("id");
-    const table = collection.physicalTable;
-    const tenantWhere = tenantFilter(collection, auth);
-    const unpublish = c.req.query("unpublish") === "1";
-    const now = nowFor(ctx.dialect);
-    const setSql = unpublish
-      ? sql`${sql.identifier("_status")} = 'draft', ${sql.identifier("_published_at")} = NULL, ${sql.identifier("updated_at")} = ${now}`
-      : sql`${sql.identifier("_status")} = 'published', ${sql.identifier("_published_at")} = ${now}, ${sql.identifier("updated_at")} = ${now}`;
-    await execute(
-      ctx,
-      sql`UPDATE ${sql.identifier(table)} SET ${setSql} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)}`,
-    );
-    const rows = await queryAll<Record<string, unknown>>(
-      ctx,
-      sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)} LIMIT 1`,
-    );
-    if (!rows[0]) throw new AppError("NOT_FOUND", "Item not found");
-    const after = deserializeRow(rows[0], collection.fields, ctx.dialect, collection.ownerScoped);
-    await publishEvent(
-      ctx.env,
-      `items:${collection.slug}`,
-      { event: unpublish ? "unpublished" : "published", data: after },
-      { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
-    );
-    return c.json({ data: after });
-  });
+      const rows = await queryAll<Record<string, unknown>>(
+        ctx,
+        sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)} LIMIT 1`,
+      );
+      if (!rows[0]) throw new AppError("NOT_FOUND", "Item not found");
+      const after = deserializeRow(rows[0], collection.fields, ctx.dialect, collection.ownerScoped);
+      await publishEvent(
+        ctx.env,
+        `items:${collection.slug}`,
+        { event: unpublish ? "unpublished" : "published", data: after },
+        { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
+      );
+      return c.json({ data: after });
+    },
+  );

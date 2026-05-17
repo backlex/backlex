@@ -57,6 +57,7 @@ export const parseQuery = (
   fields: FieldDef[],
   ownerScoped: boolean,
   permissionFields: Set<string> | null,
+  defaultSort: string | null = null,
 ): ParsedQuery => {
   const valid = buildValidColumns(fields, ownerScoped);
   // Permission allow-list narrows what user fields can be filtered/sorted/projected.
@@ -101,7 +102,8 @@ export const parseQuery = (
     }
   }
 
-  const sortRaw = params.get("sort") ?? "-created_at";
+  const fallbackSort = defaultSort?.trim() || "-created_at";
+  const sortRaw = params.get("sort")?.trim() || fallbackSort;
   const sort: SortClause[] = sortRaw
     .split(",")
     .map((s) => s.trim())

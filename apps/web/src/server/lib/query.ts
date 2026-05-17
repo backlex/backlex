@@ -11,6 +11,16 @@ export interface ParsedQuery {
   filter: Condition | null;
   sort: SortClause[];
   fields: string[] | null;
+  /**
+   * Relation field names to inline-expand in the response. Each entry must
+   * be a single-FK `relation` field on this collection that the caller has
+   * read permission on; chains (`a.b`) and `relation_many` heads are
+   * rejected at parse time (see "What's not yet supported" in
+   * docs/querying.md). Validation only covers source-side rules — the
+   * target collection + per-target read permission gate is enforced by the
+   * items list/get handlers when the LEFT JOIN is materialized.
+   */
+  expand: string[];
   limit: number;
   offset: number;
   meta: { filterCount: boolean; totalCount: boolean };
@@ -236,6 +246,52 @@ export const parseQuery = (
     }
   }
 
+  // `expand=<relation_field>[,<relation_field>…]` — inline the target row of
+  // each named relation field in the response. Single-hop only in this PR;
+  // chains (`a.b`) and `relation_many` heads return 422. The handler resolves
+  // the target collection, gates read perm, and materializes the JOIN — we
+  // only enforce source-side identifier shape, field existence, type, and
+  // the caller's source-side `fields` allow-list here.
+  const expand: string[] = [];
+  const expandRaw = params.get("expand");
+  if (expandRaw) {
+    const expandFieldsByName = new Map(fields.map((f) => [f.name, f] as const));
+    const seen = new Set<string>();
+    for (const raw of expandRaw.split(",")) {
+      const name = raw.trim();
+      if (!name) continue;
+      if (name.includes(".")) {
+        throw new AppError(
+          "VALIDATION",
+          `expand chain not yet supported: ${name}`,
+        );
+      }
+      const def = expandFieldsByName.get(name);
+      if (!def) {
+        throw new AppError("VALIDATION", `Unknown expand field: ${name}`);
+      }
+      if (def.type === "relation_many") {
+        throw new AppError(
+          "VALIDATION",
+          `expand on relation_many not yet supported: ${name}`,
+        );
+      }
+      if (def.type !== "relation") {
+        throw new AppError(
+          "VALIDATION",
+          `expand only works on relation fields — "${name}" is ${def.type}`,
+        );
+      }
+      if (!allowedForUser.has(name)) {
+        throw new AppError("FORBIDDEN", `No permission to read field: ${name}`);
+      }
+      if (!seen.has(name)) {
+        seen.add(name);
+        expand.push(name);
+      }
+    }
+  }
+
   const limit = Math.min(
     200,
     Math.max(1, Number(params.get("limit") ?? 50) || 50),
@@ -249,7 +305,7 @@ export const parseQuery = (
     totalCount: metaParts.has("total_count") || metaParts.has("*"),
   };
 
-  return { filter, sort, fields: fieldsList, limit, offset, meta };
+  return { filter, sort, fields: fieldsList, expand, limit, offset, meta };
 };
 
 /**

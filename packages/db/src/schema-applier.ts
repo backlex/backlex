@@ -45,6 +45,10 @@ interface CollectionShape {
   tenantScoped?: boolean;
   /** When true, the physical table gets `_status` + `_published_at` columns. */
   versioned?: boolean;
+  /** When true, the table is *adopted* (already exists, not managed by us).
+   *  Apply is a no-op — we never DDL someone else's table. The collections
+   *  metadata is the only thing that changes for adoptions. */
+  adopted?: boolean;
 }
 
 const systemColumns = (
@@ -124,6 +128,10 @@ export const applyCollection = async (
   dialect: Dialect,
   def: CollectionShape,
 ): Promise<void> => {
+  // Adopted tables are the user's pre-existing tables — DDL on them is the
+  // one thing the adopt flow exists *not* to do. The `collections` row is
+  // the source of truth; ALTER/CREATE never runs here.
+  if (def.adopted) return;
   validateFields(def.fields);
   const table = def.table;
   const ownerScoped = Boolean(def.ownerScoped);
@@ -225,6 +233,13 @@ export const dropCollection = async (
   db: AnyDb,
   dialect: Dialect,
   table: string,
+  options: { adopted?: boolean } = {},
 ): Promise<void> => {
+  // Refuse to drop an adopted (user-owned) table. The adopt flow's
+  // headline guarantee is that we never touch the underlying table; the
+  // `collections` metadata + permissions + revisions are cleared by the
+  // caller, the physical table stays put. (Directus' #24411 — closed
+  // "not planned" — is exactly the footgun we won't reproduce.)
+  if (options.adopted) return;
   await exec(db, dialect, `DROP TABLE IF EXISTS ${quote(table)}`);
 };

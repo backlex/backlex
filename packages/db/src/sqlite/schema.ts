@@ -543,12 +543,36 @@ export const collections = sqliteTable(
      *  Comma-separated field list, `-` prefix = DESC (Directus-style).
      *  e.g. `"-published_at,name"`. */
     defaultSort: text("default_sort"),
+    /** Adopted (existing table) vs managed (we created the table). See the
+     *  pg/schema.ts twin for the full contract. */
+    adopted: integer("adopted", { mode: "boolean" }).notNull().default(false),
+    pkColumn: text("pk_column").notNull().default("id"),
+    hasCreatedAt: integer("has_created_at", { mode: "boolean" }).notNull().default(true),
+    hasUpdatedAt: integer("has_updated_at", { mode: "boolean" }).notNull().default(true),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },
   (t) => [
     uniqueIndex("collections_tenant_slug_idx").on(t.tenantId, t.slug),
     uniqueIndex("collections_physical_table_idx").on(t.physicalTable),
+  ],
+);
+
+/** Side-table for row ownership. See the pg/schema.ts twin for the
+ *  rationale (adopt-friendly + toggle-friendly ownership). */
+export const itemOwnership = sqliteTable(
+  "item_ownership",
+  {
+    collectionId: text("collection_id")
+      .notNull()
+      .references(() => collections.id, { onDelete: "cascade" }),
+    itemId: text("item_id").notNull(),
+    ownerId: text("owner_id").notNull(),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    uniqueIndex("item_ownership_pk_idx").on(t.collectionId, t.itemId),
+    index("item_ownership_owner_idx").on(t.ownerId, t.collectionId),
   ],
 );
 

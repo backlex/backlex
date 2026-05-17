@@ -816,6 +816,15 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       const nestedHeads = userFilter
         ? collectNestedRelationHeads(userFilter)
         : new Set<string>();
+      // Sort can also reach into a relation (`-owner.created_at`). Mix
+      // those heads into the same JOIN pass so we don't materialize a
+      // second `rel_<head>` alias for the same relation.
+      for (const s of q.sort) {
+        if (s.field.includes(".")) {
+          const head = s.field.split(".")[0];
+          if (head) nestedHeads.add(head);
+        }
+      }
       // Snapshot every (head, sub) used by the filter so we can verify the
       // sub exists on the target collection — otherwise compileCondition
       // emits a bare `rel_x.bogus = ?` which fails at the SQL layer with a
@@ -1071,6 +1080,18 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
 
       const orderClause = sql.join(
         q.sort.map((s) => {
+          // Nested sort routes through the same `rel_<head>` alias the
+          // filter JOINs added. parseQuery already validated the head is
+          // a relation field; items.ts above resolved the target and put
+          // an entry in joinMap.
+          if (s.field.includes(".")) {
+            const [head, sub] = s.field.split(".") as [string, string];
+            const j = joinMap.get(head);
+            const ref = j
+              ? sql`${sql.identifier(j.alias)}.${sql.identifier(sub)}`
+              : sql`${sql.identifier(s.field)}`;
+            return sql`${ref} ${sql.raw(s.dir.toUpperCase())}`;
+          }
           const physical = rewriteSortField(s.field, collection);
           const ref = hasJoins
             ? sql`${baseTblId}.${sql.identifier(physical)}`

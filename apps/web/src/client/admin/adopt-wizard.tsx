@@ -54,6 +54,21 @@ interface InspectColumn {
   reserved?: string | null;
 }
 
+interface InspectForeignKey {
+  // Source column on the table being inspected.
+  column: string;
+  // Parent table referenced by this FK.
+  referencesTable: string;
+  // Parent column. May be empty string if unresolvable.
+  referencesColumn: string;
+  // True when the FK spans multiple columns. workeros' relation field is
+  // single-column, so composite FKs are surfaced but cannot be adopted.
+  composite: boolean;
+  // Set by the route layer when the parent table already maps to an existing
+  // collection in this workspace. Null = the parent hasn't been adopted yet.
+  targetCollection: { slug: string; id: string } | null;
+}
+
 interface InspectResult {
   table: string;
   pk: { column: string; dbType: string; supported: boolean };
@@ -70,6 +85,9 @@ interface InspectResult {
     updatedAt: string | null;
     ownerId: string | null;
   };
+  // Foreign keys detected on the source table. Composite FKs are listed but
+  // disabled in the UI — workeros relations are single-column only.
+  foreignKeys: InspectForeignKey[];
   warnings: string[];
 }
 
@@ -131,6 +149,18 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
   const [inspectLoading, setInspectLoading] = useState(false);
   const [inspectError, setInspectError] = useState<string | null>(null);
   const [columns, setColumns] = useState<ColumnDraft[]>([]);
+  // Foreign key drafts. One entry per FK from inspect.foreignKeys (composite
+  // FKs included for display, but `adopt` stays false). `targetSlug` is the
+  // workspace collection the FK should point at — pre-filled when the parent
+  // table is already adopted in this workspace.
+  const [fkDrafts, setFkDrafts] = useState<
+    { column: string; referencesTable: string; composite: boolean; targetSlug: string; adopt: boolean }[]
+  >([]);
+  // Workspace collections used to populate FK target dropdowns. Lazy-fetched
+  // once per dialog open — adoption is admin-only and lists tend to be small.
+  const [availableCollections, setAvailableCollections] = useState<
+    { slug: string }[]
+  >([]);
   // System-column wiring is modeled as a mode picker per logical field. The
   // legacy boolean flags (addCreatedAt / addUpdatedAt / ownerScoped) are
   // derived from the modes when building the apply payload.
@@ -159,6 +189,7 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
     setInspect(null);
     setInspectError(null);
     setColumns([]);
+    setFkDrafts([]);
     setCreatedAtMode("none");
     setCreatedAtAlias("");
     setUpdatedAtMode("none");
@@ -180,6 +211,13 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
       .then((r) => setTables(r.data || []))
       .catch((e) => setTablesError((e as Error).message))
       .finally(() => setTablesLoading(false));
+
+    // Pre-fetch the workspace's adopted/managed collections for the FK
+    // target dropdown. Failures here are non-fatal — the FK panel will
+    // simply show an empty option list.
+    jsonFetch<{ data: { slug: string }[] }>("/api/collections")
+      .then((r) => setAvailableCollections(r.data || []))
+      .catch(() => setAvailableCollections([]));
   }, [open]);
 
   const filteredTables = useMemo(() => {
@@ -249,6 +287,18 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
       }
       setOwnerMode("none");
       setOwnerAlias(aliases.ownerId || "");
+      // Seed FK drafts. Composite FKs are listed but force-disabled
+      // (`adopt: false`). Single-column FKs whose parent table is already
+      // adopted default to ON; FKs without a target collection default to
+      // OFF (the user has to adopt the parent first).
+      const fks = (r.data.foreignKeys || []).map((fk) => ({
+        column: fk.column,
+        referencesTable: fk.referencesTable,
+        composite: fk.composite,
+        targetSlug: fk.targetCollection?.slug ?? "",
+        adopt: !fk.composite && !!fk.targetCollection,
+      }));
+      setFkDrafts(fks);
       // Seed metadata defaults from the table name.
       setSlug(name);
       setSingular("");
@@ -310,6 +360,48 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
     (updatedAtMode === "alias" && !updatedAtAlias) ||
     (ownerMode === "alias" && !ownerAlias);
 
+  // FK drafts that are toggled "Adopt as relation" AND have a target slug
+  // picked. These get their `type` overridden to `relation` in the apply
+  // payload (with `to: <slug>`). Composite FKs are filtered out — workeros'
+  // relation field is single-column only.
+  const activeFkRelations = useMemo(
+    () => fkDrafts.filter((fk) => fk.adopt && !fk.composite && fk.targetSlug),
+    [fkDrafts],
+  );
+  const activeFkBySource = useMemo(() => {
+    const m = new Map<string, { targetSlug: string; referencesTable: string }>();
+    for (const fk of activeFkRelations) {
+      m.set(fk.column, { targetSlug: fk.targetSlug, referencesTable: fk.referencesTable });
+    }
+    return m;
+  }, [activeFkRelations]);
+
+  // Conflict: the user toggled an FK to "Adopt as relation" but also
+  // manually picked a non-relation type for that same column in the field
+  // mapping list. The apply payload sends `relation` (the FK panel wins),
+  // but we should still flag it so the user knows the column-row choice
+  // will be overridden.
+  const fkColumnConflicts = useMemo(() => {
+    const out: { column: string; manualType: string }[] = [];
+    for (const c of columns) {
+      const active = activeFkBySource.get(c.name);
+      if (!active) continue;
+      if (!c.include) continue;
+      // Anything other than a placeholder is a "manual override" — the user
+      // explicitly picked a scalar type while the FK row asks for relation.
+      if (c.type && c.type !== "uuid" && c.type !== "integer" && c.type !== "text") {
+        out.push({ column: c.name, manualType: c.type });
+      }
+    }
+    return out;
+  }, [columns, activeFkBySource]);
+
+  // FK toggled ON but no target slug picked — the wizard can't build a
+  // relation field without a `to:` value, so block apply.
+  const fkMissingTarget = fkDrafts.some(
+    (fk) => fk.adopt && !fk.composite && !fk.targetSlug,
+  );
+
   const canApply =
     !!inspect &&
     slugValid &&
@@ -317,7 +409,9 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
     includedFields.length > 0 &&
     inspect.pk.supported &&
     aliasConflicts.length === 0 &&
-    !aliasMissingColumn;
+    !aliasMissingColumn &&
+    fkColumnConflicts.length === 0 &&
+    !fkMissingTarget;
 
   const apply = async () => {
     if (!inspect || !canApply) return;
@@ -342,11 +436,26 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
         createdAtColumn: createdAtAliasCol || null,
         updatedAtColumn: updatedAtAliasCol || null,
         ownerIdColumn: ownerAliasCol || null,
-        fields: includedFields.map((c) => ({
-          name: c.name,
-          type: c.type as FieldType,
-          required: c.required,
-        })),
+        // For each included field, if it's also an active FK relation,
+        // override the scalar `type` with `relation` and include the target
+        // collection slug as `to`. Faz 1's validateRelations checks target
+        // row existence on insert, so we don't have to pre-validate here.
+        fields: includedFields.map((c) => {
+          const active = activeFkBySource.get(c.name);
+          if (active) {
+            return {
+              name: c.name,
+              type: "relation" as const,
+              required: c.required,
+              to: active.targetSlug,
+            };
+          }
+          return {
+            name: c.name,
+            type: c.type as FieldType,
+            required: c.required,
+          };
+        }),
       };
       const r = await jsonFetch<{ data: { slug: string } }>(
         "/api/admin/adopt/apply",
@@ -421,6 +530,11 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
             ownerAlias={ownerAlias}
             setOwnerAlias={setOwnerAlias}
             aliasConflicts={aliasConflicts}
+            fkDrafts={fkDrafts}
+            setFkDrafts={setFkDrafts}
+            availableCollections={availableCollections}
+            fkColumnConflicts={fkColumnConflicts}
+            fkMissingTarget={fkMissingTarget}
           />
         )}
 
@@ -448,6 +562,7 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
             updatedAtAliasCol={updatedAtAliasCol}
             ownerAliasCol={ownerAliasCol}
             fieldsCount={includedFields.length}
+            activeFkRelations={activeFkRelations}
             applyError={applyError}
           />
         )}
@@ -471,6 +586,16 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
                 {aliasMissingColumn && (
                   <span style={{ color: "var(--destructive)" }}>
                     {" · "}pick a column for the aliased system field
+                  </span>
+                )}
+                {fkColumnConflicts.length > 0 && (
+                  <span style={{ color: "var(--destructive)" }}>
+                    {" · "}FK conflict on {fkColumnConflicts.map((c) => c.column).join(", ")}
+                  </span>
+                )}
+                {fkMissingTarget && (
+                  <span style={{ color: "var(--destructive)" }}>
+                    {" · "}pick a target collection for the adopted FK
                   </span>
                 )}
               </>
@@ -508,7 +633,9 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
                 !inspect.pk.supported ||
                 includedFields.length === 0 ||
                 aliasConflicts.length > 0 ||
-                aliasMissingColumn
+                aliasMissingColumn ||
+                fkColumnConflicts.length > 0 ||
+                fkMissingTarget
               }
               onClick={() => setStep(3)}
             >
@@ -675,6 +802,11 @@ function Step2Fields({
   ownerAlias,
   setOwnerAlias,
   aliasConflicts,
+  fkDrafts,
+  setFkDrafts,
+  availableCollections,
+  fkColumnConflicts,
+  fkMissingTarget,
 }: {
   inspect: InspectResult;
   columns: ColumnDraft[];
@@ -692,6 +824,21 @@ function Step2Fields({
   ownerAlias: string;
   setOwnerAlias: (v: string) => void;
   aliasConflicts: { logical: string; column: string }[];
+  fkDrafts: {
+    column: string;
+    referencesTable: string;
+    composite: boolean;
+    targetSlug: string;
+    adopt: boolean;
+  }[];
+  setFkDrafts: (
+    next:
+      | typeof fkDrafts
+      | ((prev: typeof fkDrafts) => typeof fkDrafts),
+  ) => void;
+  availableCollections: { slug: string }[];
+  fkColumnConflicts: { column: string; manualType: string }[];
+  fkMissingTarget: boolean;
 }) {
   const patch = (i: number, p: Partial<ColumnDraft>) =>
     setColumns((cs) => cs.map((c, idx) => (idx === i ? { ...c, ...p } : c)));
@@ -842,6 +989,16 @@ function Step2Fields({
         })}
       </div>
 
+      {fkDrafts.length > 0 && (
+        <ForeignKeysPanel
+          fkDrafts={fkDrafts}
+          setFkDrafts={setFkDrafts}
+          availableCollections={availableCollections}
+          fkColumnConflicts={fkColumnConflicts}
+          fkMissingTarget={fkMissingTarget}
+        />
+      )}
+
       <div
         className="card"
         style={{ marginTop: 16, border: "1px solid var(--border)", borderRadius: "var(--radius-lg)" }}
@@ -911,6 +1068,163 @@ function Step2Fields({
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// "Foreign keys detected" panel — shown in Step 2 between the field
+// mapping table and the system-columns card. Each FK row offers a target
+// dropdown (workspace collections) + an "Adopt as relation" toggle.
+// Composite FKs are listed but disabled with a "not supported" badge.
+// When the toggle is ON, the source column's type is overridden to
+// `relation` in the apply payload (with `to: <slug>`).
+function ForeignKeysPanel({
+  fkDrafts,
+  setFkDrafts,
+  availableCollections,
+  fkColumnConflicts,
+  fkMissingTarget,
+}: {
+  fkDrafts: {
+    column: string;
+    referencesTable: string;
+    composite: boolean;
+    targetSlug: string;
+    adopt: boolean;
+  }[];
+  setFkDrafts: (
+    next:
+      | typeof fkDrafts
+      | ((prev: typeof fkDrafts) => typeof fkDrafts),
+  ) => void;
+  availableCollections: { slug: string }[];
+  fkColumnConflicts: { column: string; manualType: string }[];
+  fkMissingTarget: boolean;
+}) {
+  const options = availableCollections.map((c) => ({ value: c.slug, label: c.slug }));
+  const patch = (
+    i: number,
+    p: Partial<(typeof fkDrafts)[number]>,
+  ) => setFkDrafts((cs) => cs.map((c, idx) => (idx === i ? { ...c, ...p } : c)));
+
+  return (
+    <div
+      className="card"
+      style={{ marginTop: 16, border: "1px solid var(--border)", borderRadius: "var(--radius-lg)" }}
+    >
+      <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <I.Link size={13} />
+        <span style={{ fontSize: 13, fontWeight: 500 }}>Foreign keys detected</span>
+        <span className="font-mono muted" style={{ fontSize: 12 }}>
+          {fkDrafts.length} {fkDrafts.length === 1 ? "key" : "keys"} — adopt as workeros relations
+        </span>
+      </div>
+      <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 14 }}>
+        {fkDrafts.map((fk, i) => {
+          const composite = fk.composite;
+          const targetMissing = !fk.targetSlug && !composite;
+          // Parent table has no matching adopted collection in this workspace.
+          // We disable the toggle and point the user at the right next step.
+          const noTarget = !fk.targetSlug && !composite;
+          return (
+            <div
+              key={`${fk.column}-${i}`}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                paddingBottom: i === fkDrafts.length - 1 ? 0 : 12,
+                borderBottom: i === fkDrafts.length - 1 ? "none" : "1px solid var(--border)",
+                opacity: composite ? 0.6 : 1,
+              }}
+              title={composite ? "Composite (multi-column) FKs cannot be adopted as a workeros relation" : undefined}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <span className="font-mono" style={{ fontSize: 13, fontWeight: 500 }}>
+                  {fk.column}
+                </span>
+                <span className="muted" style={{ fontSize: 12 }}>→</span>
+                <span className="font-mono" style={{ fontSize: 13 }}>{fk.referencesTable}</span>
+                {composite && (
+                  <Badge variant="outline" mono>composite — not supported</Badge>
+                )}
+                {!composite && fk.targetSlug && (
+                  <Badge variant="outline" mono>target: {fk.targetSlug}</Badge>
+                )}
+                {!composite && noTarget && (
+                  <Badge variant="destructive" mono>parent not adopted</Badge>
+                )}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <span className="muted" style={{ fontSize: 12 }}>Target:</span>
+                <div style={{ minWidth: 220 }}>
+                  <Select
+                    value={fk.targetSlug || undefined}
+                    onChange={(v) => patch(i, { targetSlug: v })}
+                    options={options}
+                    placeholder={composite ? "—" : "Pick collection…"}
+                    disabled={composite || options.length === 0}
+                    size="sm"
+                  />
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <Switch
+                    checked={fk.adopt && !composite}
+                    disabled={composite || noTarget}
+                    onChange={(v) => patch(i, { adopt: v })}
+                  />
+                  <span className="muted" style={{ fontSize: 12 }}>
+                    Adopt as relation
+                  </span>
+                </div>
+                {noTarget && (
+                  <span className="muted" style={{ fontSize: 11.5 }}>
+                    Adopt <span className="font-mono">{fk.referencesTable}</span> as a workeros
+                    collection first, then revisit this step.
+                  </span>
+                )}
+                {targetMissing && fk.adopt && (
+                  <span style={{ color: "var(--destructive)", fontSize: 11.5 }}>
+                    Pick a target collection.
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {(fkColumnConflicts.length > 0 || fkMissingTarget) && (
+          <div
+            style={{
+              marginTop: 4,
+              padding: "8px 12px",
+              border: "1px solid var(--destructive)",
+              borderRadius: "var(--radius-md)",
+              color: "var(--destructive)",
+              fontSize: 12.5,
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+            }}
+          >
+            {fkColumnConflicts.map((c) => (
+              <div key={c.column} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <I.AlertTriangle size={12} />
+                <span>
+                  Column <span className="font-mono">{c.column}</span> is mapped to{" "}
+                  <span className="font-mono">{c.manualType}</span> in the field list but also
+                  toggled "Adopt as relation". The FK panel will override the field type.
+                </span>
+              </div>
+            ))}
+            {fkMissingTarget && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <I.AlertTriangle size={12} />
+                <span>One or more adopted FKs are missing a target collection.</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1141,6 +1455,7 @@ function Step3Metadata({
   updatedAtAliasCol,
   ownerAliasCol,
   fieldsCount,
+  activeFkRelations,
   applyError,
 }: {
   inspect: InspectResult;
@@ -1165,6 +1480,13 @@ function Step3Metadata({
   updatedAtAliasCol: string;
   ownerAliasCol: string;
   fieldsCount: number;
+  activeFkRelations: {
+    column: string;
+    referencesTable: string;
+    composite: boolean;
+    targetSlug: string;
+    adopt: boolean;
+  }[];
   applyError: string | null;
 }) {
   // Build a list of "system column wiring" lines for the dry-run summary.
@@ -1287,6 +1609,18 @@ function Step3Metadata({
                 <ul style={{ margin: "2px 0 0", paddingLeft: 16 }}>
                   {systemColumnLines.map((line) => (
                     <li key={line} className="font-mono" style={{ fontSize: 12 }}>{line}</li>
+                  ))}
+                </ul>
+              </li>
+            )}
+            {activeFkRelations.length > 0 && (
+              <li>
+                Foreign keys adopted as relations:
+                <ul style={{ margin: "2px 0 0", paddingLeft: 16 }}>
+                  {activeFkRelations.map((fk) => (
+                    <li key={fk.column} className="font-mono" style={{ fontSize: 12 }}>
+                      {fk.column} → {fk.targetSlug} (relation)
+                    </li>
                   ))}
                 </ul>
               </li>

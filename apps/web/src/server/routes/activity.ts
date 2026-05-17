@@ -1,27 +1,73 @@
-import { Hono } from "hono";
+import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { and, desc, eq, type SQL } from "drizzle-orm";
 import { AppError, SYSTEM_ROLES } from "@workeros/core";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { SECURITY, errorResponses } from "../lib/openapi";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.activity : sqlite.schema.activity;
 
-export const activityRoutes = new Hono<AppBindings>()
-  .get("/", requireUser, async (c) => {
+const ActivityRow = z
+  .object({
+    id: z.string(),
+    userId: z.string().nullable(),
+    tenantId: z.string().nullable(),
+    action: z.string(),
+    collection: z.string().nullable(),
+    itemId: z.string().nullable(),
+    payload: z.unknown().nullable(),
+    durationMs: z.number().int().nullable(),
+    createdAt: z.unknown(),
+  })
+  .openapi("ActivityRow");
+
+export const activityRoutes = new OpenAPIHono<AppBindings>().openapi(
+  createRoute({
+    method: "get",
+    path: "/",
+    tags: ["activity"],
+    summary: "List activity log entries",
+    description:
+      "Admins see every entry; non-admins see only their own. Filter by `collection` and/or `itemId`. Paginate with `limit` (max 200) and `offset`.",
+    security: SECURITY,
+    middleware: [requireUser],
+    request: {
+      query: z.object({
+        collection: z.string().optional(),
+        itemId: z.string().optional(),
+        limit: z.coerce.number().int().min(1).max(200).optional(),
+        offset: z.coerce.number().int().min(0).optional(),
+      }),
+    },
+    responses: {
+      200: {
+        description: "OK",
+        content: {
+          "application/json": {
+            schema: z.object({
+              data: z.array(ActivityRow),
+              limit: z.number().int(),
+              offset: z.number().int(),
+            }),
+          },
+        },
+      },
+      ...errorResponses,
+    },
+  }),
+  async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");
     const isAdmin = auth.roles.includes(SYSTEM_ROLES.admin);
     const t = tableFor(ctx.dialect);
-    const limit = Math.min(
-      200,
-      Math.max(1, Number(c.req.query("limit") ?? 50) || 50),
-    );
-    const offset = Math.max(0, Number(c.req.query("offset") ?? 0) || 0);
-    const collection = c.req.query("collection");
-    const itemId = c.req.query("itemId");
+    const q = c.req.valid("query");
+    const limit = Math.min(200, Math.max(1, q.limit ?? 50));
+    const offset = Math.max(0, q.offset ?? 0);
+    const collection = q.collection;
+    const itemId = q.itemId;
 
     const conds: SQL[] = [];
     if (!isAdmin) {
@@ -36,4 +82,5 @@ export const activityRoutes = new Hono<AppBindings>()
     const rows = await qb.orderBy(desc(t.createdAt)).limit(limit).offset(offset);
 
     return c.json({ data: rows, limit, offset });
-  });
+  },
+);

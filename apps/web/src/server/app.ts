@@ -60,6 +60,7 @@ import { i18nPublicRoutes } from "./routes/i18n-public";
 import { settingsRoutes } from "./routes/settings";
 import { dbAdminRoutes } from "./routes/db-admin";
 import { metricsRoutes } from "./routes/metrics";
+import { openapiRoutes } from "./routes/openapi";
 import type { Env } from "./env";
 
 export type AppBindings = {
@@ -199,6 +200,7 @@ export const createApp = (env: Env) => {
   app.route("/api/app-users", appUsersRoutes);
   app.route("/api/functions", functionsRoutes);
   app.route("/api/graphql", graphqlRoutes);
+  app.route("/api", openapiRoutes);
   app.route("/api/_internal/sandbox-rpc", sandboxRpcRoutes);
 
   app.onError(errorHandler);

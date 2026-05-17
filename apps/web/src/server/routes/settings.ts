@@ -36,7 +36,6 @@ const LocaleCode = z
 
 const SettingsInput = z
   .object({
-    siteName: z.string().min(1).max(120).optional(),
     openSignup: z.boolean().optional(),
     i18nLocales: z.array(LocaleCode).min(1).max(50).optional(),
     i18nDefaultLocale: LocaleCode.optional(),
@@ -56,7 +55,6 @@ const SettingsInput = z
 
 const SettingsRow = z
   .object({
-    siteName: z.string().nullable().optional(),
     openSignup: z.boolean().optional(),
     i18nLocales: z.array(z.string()).optional(),
     i18nDefaultLocale: z.string().nullable().optional(),

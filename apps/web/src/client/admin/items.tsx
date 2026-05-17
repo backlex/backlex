@@ -131,18 +131,56 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
   const editable = schema.fields.filter((f) => !f.system || f.name === "created_at" || f.name === "updated_at");
   const [field, setField] = useState(editable[1]?.name || "title");
   const fieldDef = editable.find((f) => f.name === field) || editable[0];
-  const ops = FIELD_OPS[fieldDef.type] || ["_eq"];
+  const isRelation = fieldDef.type === "relation";
+  const isRelationMany = fieldDef.type === "relation_many";
+
+  // Lazy-fetched target collection fields for nested relation filters.
+  // We only hit the network when the user actually picks a relation
+  // field, and cache the result for the popover's lifetime.
+  const [targetFieldsCache, setTargetFieldsCache] = useState<Record<string, Array<{ name: string; type: string }>>>({});
+  const [targetLoading, setTargetLoading] = useState(false);
+  const [nestedSub, setNestedSub] = useState<string>("");
+
+  useEffect(() => {
+    setNestedSub("");
+    if (!isRelation || !fieldDef.to) return;
+    if (targetFieldsCache[fieldDef.to]) return;
+    let cancelled = false;
+    setTargetLoading(true);
+    fetch(`/api/collections/${fieldDef.to}`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((j) => {
+        if (cancelled) return;
+        const f = (j?.data?.fields ?? []) as Array<{ name: string; type: string }>;
+        setTargetFieldsCache((cache) => ({ ...cache, [fieldDef.to as string]: f }));
+      })
+      .catch(() => { /* leave cache empty; sub dropdown will say "Target unavailable" */ })
+      .finally(() => { if (!cancelled) setTargetLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [field, isRelation, fieldDef.to]);
+
+  // Leaf field — the one that actually drives op list + value parsing.
+  // For nested filters that's the sub-field on the target collection.
+  const targetFields = isRelation && fieldDef.to ? targetFieldsCache[fieldDef.to] : null;
+  const subDef = nestedSub && targetFields ? targetFields.find((f) => f.name === nestedSub) : null;
+  const leafType = subDef?.type ?? fieldDef.type;
+  const ops = FIELD_OPS[leafType] || ["_eq"];
   const [op, setOp] = useState(ops[0]);
   const [val, setVal] = useState("");
 
-  useEffect(() => { setOp(ops[0]); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [field]);
+  useEffect(() => { setOp(ops[0]); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [field, nestedSub]);
+
+  const canSubmit = !isRelation || !!nestedSub;
 
   const submit = () => {
+    if (!canSubmit) return;
     let parsed: unknown = val;
     if (op === "_null") parsed = true;
     else if (["_in", "_nin"].includes(op)) parsed = val.split(",").map((s) => s.trim()).filter(Boolean);
-    else if (["integer", "number"].includes(fieldDef.type)) parsed = Number(val);
-    onAdd({ field, op, value: parsed });
+    else if (["integer", "number"].includes(leafType)) parsed = Number(val);
+    const fieldKey = isRelation && nestedSub ? `${field}.${nestedSub}` : field;
+    onAdd({ field: fieldKey, op, value: parsed });
     onClose();
   };
 
@@ -150,12 +188,40 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
     <div className="popover" style={{ top: 44, right: 0 }}>
       <div className="popover-row">
         <Select value={field} onChange={setField} options={editable.map((f) => ({ value: f.name, label: f.name, hint: f.type }))} className="" style={{ flex: 1 }} />
-        <Select value={op} onChange={setOp} options={ops} style={{ flex: "0 0 110px" }} />
+        <Select value={op} onChange={setOp} options={ops} style={{ flex: "0 0 110px" }} disabled={isRelation && !nestedSub} />
       </div>
+      {/* Nested relation: pick a sub-field on the target collection. */}
+      {isRelation && (
+        <div className="popover-row">
+          <Select
+            value={nestedSub}
+            onChange={setNestedSub}
+            options={
+              !fieldDef.to
+                ? [{ value: "", label: "Relation has no target" }]
+                : targetLoading
+                  ? [{ value: "", label: "Loading target…" }]
+                  : targetFields
+                    ? targetFields.map((f) => ({ value: f.name, label: f.name, hint: f.type }))
+                    : [{ value: "", label: "Target unavailable" }]
+            }
+            placeholder={fieldDef.to ? "Pick a subfield…" : "—"}
+            className=""
+            style={{ flex: 1 }}
+            disabled={!fieldDef.to || targetLoading || !targetFields}
+          />
+        </div>
+      )}
+      {isRelationMany && (
+        <div style={{ fontSize: 11, color: "var(--muted-foreground)", padding: "2px 4px" }}>
+          Nested filter on relation_many not supported yet
+        </div>
+      )}
       {op !== "_null" && (
         <Input
           autoFocus
-          placeholder={fieldDef.type === "integer" ? "42" : op === "_in" ? "a, b, c" : "value…"}
+          disabled={!canSubmit}
+          placeholder={leafType === "integer" ? "42" : op === "_in" ? "a, b, c" : "value…"}
           value={val}
           onChange={(e) => setVal(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") submit(); if (e.key === "Escape") onClose(); }}
@@ -163,7 +229,7 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
       )}
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, paddingTop: 4 }}>
         <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
-        <Button variant="primary" size="sm" onClick={submit}>Add filter</Button>
+        <Button variant="primary" size="sm" onClick={submit} disabled={!canSubmit}>Add filter</Button>
       </div>
     </div>
   );

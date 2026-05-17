@@ -5,9 +5,22 @@ export type FilterMode = "and" | "or";
 export interface FilterEntry {
   /** Stable id so the UI can key/remove rows even when two chips share the same field+op. */
   id: string;
+  /**
+   * Either a flat column name (`title`) or a nested-relation key
+   * (`customer_id.name`). When nested, {@link nestedSub} mirrors the part
+   * after the dot so the builder can hydrate its dropdowns without
+   * re-splitting at render time.
+   */
   field: string;
   op: string;
   value: unknown;
+  /**
+   * Sub-field of the target collection for nested-relation filters. Only set
+   * when `field` is a `head.sub` pair; carried as a separate slot so a chip
+   * round-tripped from URL preserves the structured form. The compiled DSL
+   * still reads from {@link field} — this is UI metadata only.
+   */
+  nestedSub?: string;
 }
 
 /** Operators surfaced by the FilterBuilder, indexed by the underlying field type. */
@@ -21,6 +34,23 @@ export const FIELD_OPS: Record<string, string[]> = {
   boolean: ["_eq"],
   json: ["_contains", "_null"],
   relation: ["_eq", "_neq", "_in", "_null"],
+};
+
+/**
+ * Split a field key into head + sub when it carries a nested-relation dot
+ * (`customer_id.name` → `{head: "customer_id", sub: "name"}`). Returns null
+ * for flat keys. Multi-level keys (`a.b.c`) are rejected here too — the
+ * server's filter parser doesn't accept them yet.
+ */
+export const splitNestedField = (
+  field: string,
+): { head: string; sub: string } | null => {
+  if (!field.includes(".")) return null;
+  const parts = field.split(".");
+  if (parts.length !== 2) return null;
+  const [head, sub] = parts as [string, string];
+  if (!head || !sub) return null;
+  return { head, sub };
 };
 
 /** Generate a stable id for a new chip. Falls back to a counter on older runtimes. */

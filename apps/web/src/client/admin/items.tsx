@@ -141,9 +141,15 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
   const [targetLoading, setTargetLoading] = useState(false);
   const [nestedSub, setNestedSub] = useState<string>("");
 
+  // `relation` and `relation_many` heads share the drill-down: both need
+  // a target collection slug to lazy-load fields from, and both submit
+  // a `<head>.<sub>` filter key. The only server-side difference is the
+  // SQL shape (JOIN vs EXISTS) — invisible from this picker.
+  const needsTargetDrill = isRelation || isRelationMany;
+
   useEffect(() => {
     setNestedSub("");
-    if (!isRelation || !fieldDef.to) return;
+    if (!needsTargetDrill || !fieldDef.to) return;
     if (targetFieldsCache[fieldDef.to]) return;
     let cancelled = false;
     setTargetLoading(true);
@@ -158,11 +164,11 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
       .finally(() => { if (!cancelled) setTargetLoading(false); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [field, isRelation, fieldDef.to]);
+  }, [field, needsTargetDrill, fieldDef.to]);
 
   // Leaf field — the one that actually drives op list + value parsing.
   // For nested filters that's the sub-field on the target collection.
-  const targetFields = isRelation && fieldDef.to ? targetFieldsCache[fieldDef.to] : null;
+  const targetFields = needsTargetDrill && fieldDef.to ? targetFieldsCache[fieldDef.to] : null;
   const subDef = nestedSub && targetFields ? targetFields.find((f) => f.name === nestedSub) : null;
   const leafType = subDef?.type ?? fieldDef.type;
   const ops = FIELD_OPS[leafType] || ["_eq"];
@@ -171,7 +177,7 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
 
   useEffect(() => { setOp(ops[0]); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [field, nestedSub]);
 
-  const canSubmit = !isRelation || !!nestedSub;
+  const canSubmit = !needsTargetDrill || !!nestedSub;
 
   const submit = () => {
     if (!canSubmit) return;
@@ -179,7 +185,7 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
     if (op === "_null") parsed = true;
     else if (["_in", "_nin"].includes(op)) parsed = val.split(",").map((s) => s.trim()).filter(Boolean);
     else if (["integer", "number"].includes(leafType)) parsed = Number(val);
-    const fieldKey = isRelation && nestedSub ? `${field}.${nestedSub}` : field;
+    const fieldKey = needsTargetDrill && nestedSub ? `${field}.${nestedSub}` : field;
     onAdd({ field: fieldKey, op, value: parsed });
     onClose();
   };
@@ -188,10 +194,12 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
     <div className="popover" style={{ top: 44, left: 0 }}>
       <div className="popover-row">
         <Select value={field} onChange={setField} options={editable.map((f) => ({ value: f.name, label: f.name, hint: f.type }))} className="" style={{ flex: 1 }} />
-        <Select value={op} onChange={setOp} options={ops} style={{ flex: "0 0 110px" }} disabled={isRelation && !nestedSub} />
+        <Select value={op} onChange={setOp} options={ops} style={{ flex: "0 0 110px" }} disabled={needsTargetDrill && !nestedSub} />
       </div>
-      {/* Nested relation: pick a sub-field on the target collection. */}
-      {isRelation && (
+      {/* Nested relation (single FK or array): pick a sub-field on the
+          target collection. The server lowers `relation_many` to EXISTS
+          and `relation` to a LEFT JOIN — same picker either way. */}
+      {needsTargetDrill && (
         <div className="popover-row">
           <Select
             value={nestedSub}
@@ -210,11 +218,6 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
             style={{ flex: 1 }}
             disabled={!fieldDef.to || targetLoading || !targetFields}
           />
-        </div>
-      )}
-      {isRelationMany && (
-        <div style={{ fontSize: 11, color: "var(--muted-foreground)", padding: "2px 4px" }}>
-          Nested filter on relation_many not supported yet
         </div>
       )}
       {op !== "_null" && (

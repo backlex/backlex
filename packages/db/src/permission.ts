@@ -35,6 +35,26 @@ const resolve = (v: unknown, ctx: AuthSubject): unknown =>
  */
 export type ColRefResolver = (field: string) => SQL;
 
+/**
+ * Optional leaf-comparison override. Called for every leaf field key
+ * before the default operator dispatch runs. Returning an `SQL` fragment
+ * replaces the default `<colRef> <op> <val>` shape entirely — useful for
+ * keys that need to lower to a subquery (e.g. `relation_many` arrays via
+ * `EXISTS … json_each(…)` / `jsonb_array_elements_text(…)`). Returning
+ * `null` falls through to the default scalar comparison path.
+ *
+ * The callback owns the full comparison: it sees the user-supplied
+ * `ComparisonObj` and emits a single SQL fragment that captures every
+ * operator in it. Operator semantics (`_eq`, `_neq`, `_in`, …) match the
+ * default path; callers re-use the same resolver for the `_eq`-value
+ * indirection.
+ */
+export type LeafCompiler = (
+  field: string,
+  cmp: ComparisonObj,
+  ctx: AuthSubject,
+) => SQL | null;
+
 const defaultColRef: ColRefResolver = (field) => sql`${sql.identifier(field)}`;
 
 const compileComparison = (
@@ -42,7 +62,12 @@ const compileComparison = (
   cmp: ComparisonObj,
   ctx: AuthSubject,
   colRef: ColRefResolver = defaultColRef,
+  leaf?: LeafCompiler,
 ): SQL => {
+  if (leaf) {
+    const override = leaf(field, cmp, ctx);
+    if (override) return override;
+  }
   const id = colRef(field);
   const parts: SQL[] = [];
   if (cmp._eq !== undefined) {
@@ -90,24 +115,25 @@ export const compileCondition = (
   cond: Condition,
   ctx: AuthSubject,
   colRef: ColRefResolver = defaultColRef,
+  leaf?: LeafCompiler,
 ): SQL => {
   if (isAnd(cond)) {
-    const parts = cond.$and.map((c) => compileCondition(c, ctx, colRef));
+    const parts = cond.$and.map((c) => compileCondition(c, ctx, colRef, leaf));
     if (parts.length === 0) return TRUE;
     return sql`(${sql.join(parts, sql` AND `)})`;
   }
   if (isOr(cond)) {
-    const parts = cond.$or.map((c) => compileCondition(c, ctx, colRef));
+    const parts = cond.$or.map((c) => compileCondition(c, ctx, colRef, leaf));
     if (parts.length === 0) return FALSE;
     return sql`(${sql.join(parts, sql` OR `)})`;
   }
   if (isNot(cond)) {
-    return sql`NOT (${compileCondition(cond.$not, ctx, colRef)})`;
+    return sql`NOT (${compileCondition(cond.$not, ctx, colRef, leaf)})`;
   }
   const fieldMap = cond as Record<string, ComparisonObj>;
   const keys = Object.keys(fieldMap);
   if (keys.length === 0) return TRUE;
-  const parts = keys.map((k) => compileComparison(k, fieldMap[k]!, ctx, colRef));
+  const parts = keys.map((k) => compileComparison(k, fieldMap[k]!, ctx, colRef, leaf));
   return sql`(${sql.join(parts, sql` AND `)})`;
 };
 
@@ -119,13 +145,14 @@ export const combineConditions = (
   conds: (Condition | null | undefined)[],
   ctx: AuthSubject,
   colRef: ColRefResolver = defaultColRef,
+  leaf?: LeafCompiler,
 ): SQL | null => {
   if (conds.length === 0) return FALSE;
   if (conds.some((c) => c === null || c === undefined)) {
     // At least one role grants unconditional access.
     return null;
   }
-  const compiled = conds.map((c) => compileCondition(c as Condition, ctx, colRef));
+  const compiled = conds.map((c) => compileCondition(c as Condition, ctx, colRef, leaf));
   if (compiled.length === 1) return compiled[0]!;
   return sql`(${sql.join(compiled, sql` OR `)})`;
 };

@@ -18,7 +18,8 @@ export type StorageType =
   | "json"
   | "timestamp"
   | "uuid"
-  | "relation";
+  | "relation"
+  | "relation_many";
 
 export type InterfaceGroup =
   | "Text & Numbers"
@@ -79,6 +80,7 @@ export const FIELD_INTERFACES: FieldInterfaceDef[] = [
 
   // ── Relational ───────────────────────────────────────────────────
   { id: "relation", label: "Many to One", sub: "Reference a row in another collection", group: "Relational", icon: "Database", type: "relation", hasRelation: true, keywords: ["m2o", "foreign", "reference", "link"] },
+  { id: "relation_many", label: "Many to Many", sub: "Reference multiple rows in another collection (stored as a JSON array of ids)", group: "Relational", icon: "Database", type: "relation_many", hasRelation: true, keywords: ["m2m", "many to many", "multi-reference"] },
   { id: "file", label: "File", sub: "Reference an uploaded file", group: "Relational", icon: "Folder", type: "text", keywords: ["upload", "attachment", "asset"] },
   { id: "image", label: "Image", sub: "Reference an uploaded image", group: "Relational", icon: "Upload", type: "text", keywords: ["photo", "picture", "asset"] },
   { id: "files", label: "Files (multiple)", sub: "List of uploaded file ids", group: "Relational", icon: "Folder", type: "json", keywords: ["gallery", "attachments"] },

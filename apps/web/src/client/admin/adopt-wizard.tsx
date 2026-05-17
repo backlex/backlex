@@ -63,8 +63,23 @@ interface InspectResult {
     updatedAt: boolean;
     ownerId: boolean;
   };
+  // Heuristic alias suggestions from the backend — column names that look
+  // like a non-conventional version of a system field. Null = no candidate.
+  aliasSuggestions: {
+    createdAt: string | null;
+    updatedAt: string | null;
+    ownerId: string | null;
+  };
   warnings: string[];
 }
+
+// "Modes" for the system-column section in Step 2. The wizard keeps a
+// per-field mode rather than the raw flag so we can render a single picker
+// that covers (a) no system field, (b) the table already has the
+// conventional column, and (c) the user wants to alias an existing column
+// to the system field.
+type TimeMode = "none" | "conventional" | "alias";
+type OwnerMode = "none" | "side-table" | "conventional" | "alias";
 
 interface ColumnDraft {
   name: string;
@@ -116,9 +131,15 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
   const [inspectLoading, setInspectLoading] = useState(false);
   const [inspectError, setInspectError] = useState<string | null>(null);
   const [columns, setColumns] = useState<ColumnDraft[]>([]);
-  const [addCreatedAt, setAddCreatedAt] = useState(false);
-  const [addUpdatedAt, setAddUpdatedAt] = useState(false);
-  const [ownerScoped, setOwnerScoped] = useState(false);
+  // System-column wiring is modeled as a mode picker per logical field. The
+  // legacy boolean flags (addCreatedAt / addUpdatedAt / ownerScoped) are
+  // derived from the modes when building the apply payload.
+  const [createdAtMode, setCreatedAtMode] = useState<TimeMode>("none");
+  const [createdAtAlias, setCreatedAtAlias] = useState<string>("");
+  const [updatedAtMode, setUpdatedAtMode] = useState<TimeMode>("none");
+  const [updatedAtAlias, setUpdatedAtAlias] = useState<string>("");
+  const [ownerMode, setOwnerMode] = useState<OwnerMode>("none");
+  const [ownerAlias, setOwnerAlias] = useState<string>("");
 
   // Step 3
   const [slug, setSlug] = useState("");
@@ -138,9 +159,12 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
     setInspect(null);
     setInspectError(null);
     setColumns([]);
-    setAddCreatedAt(false);
-    setAddUpdatedAt(false);
-    setOwnerScoped(false);
+    setCreatedAtMode("none");
+    setCreatedAtAlias("");
+    setUpdatedAtMode("none");
+    setUpdatedAtAlias("");
+    setOwnerMode("none");
+    setOwnerAlias("");
     setSlug("");
     setSingular("");
     setPlural("");
@@ -196,6 +220,35 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
         } as ColumnDraft;
       });
       setColumns(drafts);
+      // Seed system-column modes from inspect output. Priority for createdAt
+      // and updatedAt: alias suggestion wins (so the heuristic match is the
+      // default), else conventional column if present, else "none". Owner
+      // defaults to "none" — owner-scoping is opt-in and the alias for
+      // owner is a heavier decision than a timestamp alias.
+      const sys = r.data.systemColumnsPresent;
+      const aliases = r.data.aliasSuggestions;
+      if (aliases.createdAt) {
+        setCreatedAtMode("alias");
+        setCreatedAtAlias(aliases.createdAt);
+      } else if (sys.createdAt) {
+        setCreatedAtMode("conventional");
+        setCreatedAtAlias("");
+      } else {
+        setCreatedAtMode("none");
+        setCreatedAtAlias("");
+      }
+      if (aliases.updatedAt) {
+        setUpdatedAtMode("alias");
+        setUpdatedAtAlias(aliases.updatedAt);
+      } else if (sys.updatedAt) {
+        setUpdatedAtMode("conventional");
+        setUpdatedAtAlias("");
+      } else {
+        setUpdatedAtMode("none");
+        setUpdatedAtAlias("");
+      }
+      setOwnerMode("none");
+      setOwnerAlias(aliases.ownerId || "");
       // Seed metadata defaults from the table name.
       setSlug(name);
       setSingular("");
@@ -221,12 +274,50 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
       : null;
 
   const includedFields = columns.filter((c) => c.include && c.type);
+
+  // Derived flags. The apply payload still uses the boolean addCreatedAt /
+  // addUpdatedAt for "table already has this column", and ownerScoped
+  // covers both side-table and column-aliased ownership.
+  const addCreatedAt = createdAtMode === "conventional";
+  const addUpdatedAt = updatedAtMode === "conventional";
+  const ownerScoped = ownerMode !== "none";
+  const createdAtAliasCol = createdAtMode === "alias" ? createdAtAlias : "";
+  const updatedAtAliasCol = updatedAtMode === "alias" ? updatedAtAlias : "";
+  const ownerAliasCol = ownerMode === "alias" ? ownerAlias : "";
+
+  // If an alias mode is picked, that column must not also be brought in as
+  // a regular field — otherwise the backend would treat the same column as
+  // both a system slot AND a user-defined column. Flag it for the user.
+  const aliasConflicts = useMemo(() => {
+    const out: { logical: string; column: string }[] = [];
+    const includedNames = new Set(includedFields.map((c) => c.name));
+    if (createdAtAliasCol && includedNames.has(createdAtAliasCol)) {
+      out.push({ logical: "created_at", column: createdAtAliasCol });
+    }
+    if (updatedAtAliasCol && includedNames.has(updatedAtAliasCol)) {
+      out.push({ logical: "updated_at", column: updatedAtAliasCol });
+    }
+    if (ownerAliasCol && includedNames.has(ownerAliasCol)) {
+      out.push({ logical: "owner_id", column: ownerAliasCol });
+    }
+    return out;
+  }, [createdAtAliasCol, updatedAtAliasCol, ownerAliasCol, includedFields]);
+
+  // An "alias" mode with no column picked is also blocked — the wizard
+  // can't ask the backend to alias to nothing.
+  const aliasMissingColumn =
+    (createdAtMode === "alias" && !createdAtAlias) ||
+    (updatedAtMode === "alias" && !updatedAtAlias) ||
+    (ownerMode === "alias" && !ownerAlias);
+
   const canApply =
     !!inspect &&
     slugValid &&
     !applying &&
     includedFields.length > 0 &&
-    inspect.pk.supported;
+    inspect.pk.supported &&
+    aliasConflicts.length === 0 &&
+    !aliasMissingColumn;
 
   const apply = async () => {
     if (!inspect || !canApply) return;
@@ -245,6 +336,12 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
         defaultSort: defaultSort.trim() || null,
         addCreatedAt: addCreatedAt && !inspect.systemColumnsPresent.createdAt,
         addUpdatedAt: addUpdatedAt && !inspect.systemColumnsPresent.updatedAt,
+        // Alias columns. Send the column name when mode === "alias", null
+        // otherwise — backend treats null as "use conventional name" (or
+        // "no system column at all", depending on the addCreatedAt flag).
+        createdAtColumn: createdAtAliasCol || null,
+        updatedAtColumn: updatedAtAliasCol || null,
+        ownerIdColumn: ownerAliasCol || null,
         fields: includedFields.map((c) => ({
           name: c.name,
           type: c.type as FieldType,
@@ -311,12 +408,19 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
             inspect={inspect}
             columns={columns}
             setColumns={setColumns}
-            addCreatedAt={addCreatedAt}
-            setAddCreatedAt={setAddCreatedAt}
-            addUpdatedAt={addUpdatedAt}
-            setAddUpdatedAt={setAddUpdatedAt}
-            ownerScoped={ownerScoped}
-            setOwnerScoped={setOwnerScoped}
+            createdAtMode={createdAtMode}
+            setCreatedAtMode={setCreatedAtMode}
+            createdAtAlias={createdAtAlias}
+            setCreatedAtAlias={setCreatedAtAlias}
+            updatedAtMode={updatedAtMode}
+            setUpdatedAtMode={setUpdatedAtMode}
+            updatedAtAlias={updatedAtAlias}
+            setUpdatedAtAlias={setUpdatedAtAlias}
+            ownerMode={ownerMode}
+            setOwnerMode={setOwnerMode}
+            ownerAlias={ownerAlias}
+            setOwnerAlias={setOwnerAlias}
+            aliasConflicts={aliasConflicts}
           />
         )}
 
@@ -337,6 +441,12 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
             tenantScoped={tenantScoped}
             setTenantScoped={setTenantScoped}
             ownerScoped={ownerScoped}
+            ownerMode={ownerMode}
+            createdAtMode={createdAtMode}
+            createdAtAliasCol={createdAtAliasCol}
+            updatedAtMode={updatedAtMode}
+            updatedAtAliasCol={updatedAtAliasCol}
+            ownerAliasCol={ownerAliasCol}
             fieldsCount={includedFields.length}
             applyError={applyError}
           />
@@ -352,6 +462,16 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
                 {includedFields.length} of {columns.length} columns mapped
                 {!inspect.pk.supported && (
                   <span style={{ color: "var(--destructive)" }}> · primary key {inspect.pk.dbType} is unsupported</span>
+                )}
+                {aliasConflicts.length > 0 && (
+                  <span style={{ color: "var(--destructive)" }}>
+                    {" · "}alias conflict on {aliasConflicts.map((c) => c.column).join(", ")}
+                  </span>
+                )}
+                {aliasMissingColumn && (
+                  <span style={{ color: "var(--destructive)" }}>
+                    {" · "}pick a column for the aliased system field
+                  </span>
                 )}
               </>
             )}
@@ -384,7 +504,11 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
               size="sm"
               iconRight={I.ChevronRight}
               disabled={
-                !inspect || !inspect.pk.supported || includedFields.length === 0
+                !inspect ||
+                !inspect.pk.supported ||
+                includedFields.length === 0 ||
+                aliasConflicts.length > 0 ||
+                aliasMissingColumn
               }
               onClick={() => setStep(3)}
             >
@@ -538,25 +662,60 @@ function Step2Fields({
   inspect,
   columns,
   setColumns,
-  addCreatedAt,
-  setAddCreatedAt,
-  addUpdatedAt,
-  setAddUpdatedAt,
-  ownerScoped,
-  setOwnerScoped,
+  createdAtMode,
+  setCreatedAtMode,
+  createdAtAlias,
+  setCreatedAtAlias,
+  updatedAtMode,
+  setUpdatedAtMode,
+  updatedAtAlias,
+  setUpdatedAtAlias,
+  ownerMode,
+  setOwnerMode,
+  ownerAlias,
+  setOwnerAlias,
+  aliasConflicts,
 }: {
   inspect: InspectResult;
   columns: ColumnDraft[];
   setColumns: (next: ColumnDraft[] | ((prev: ColumnDraft[]) => ColumnDraft[])) => void;
-  addCreatedAt: boolean;
-  setAddCreatedAt: (v: boolean) => void;
-  addUpdatedAt: boolean;
-  setAddUpdatedAt: (v: boolean) => void;
-  ownerScoped: boolean;
-  setOwnerScoped: (v: boolean) => void;
+  createdAtMode: TimeMode;
+  setCreatedAtMode: (v: TimeMode) => void;
+  createdAtAlias: string;
+  setCreatedAtAlias: (v: string) => void;
+  updatedAtMode: TimeMode;
+  setUpdatedAtMode: (v: TimeMode) => void;
+  updatedAtAlias: string;
+  setUpdatedAtAlias: (v: string) => void;
+  ownerMode: OwnerMode;
+  setOwnerMode: (v: OwnerMode) => void;
+  ownerAlias: string;
+  setOwnerAlias: (v: string) => void;
+  aliasConflicts: { logical: string; column: string }[];
 }) {
   const patch = (i: number, p: Partial<ColumnDraft>) =>
     setColumns((cs) => cs.map((c, idx) => (idx === i ? { ...c, ...p } : c)));
+
+  // Build dropdown options from the inspect columns. Timestamp/integer
+  // columns can back created_at / updated_at; text/longtext/uuid can back
+  // owner_id. We label with the column name in mono + the workeros type
+  // in muted (the dbType is redundant once you see the suggested type).
+  const timestampLikeColumns = inspect.columns
+    .filter((c) => c.suggested === "timestamp" || c.suggested === "integer")
+    .map((c) => ({
+      value: c.name,
+      label: c.name,
+      hint: c.suggested ?? c.dbType,
+    }));
+  const ownerLikeColumns = inspect.columns
+    .filter(
+      (c) => c.suggested === "text" || c.suggested === "longtext" || c.suggested === "uuid",
+    )
+    .map((c) => ({
+      value: c.name,
+      label: c.name,
+      hint: c.suggested ?? c.dbType,
+    }));
 
   return (
     <div className="addfield-body">
@@ -691,72 +850,268 @@ function Step2Fields({
           <I.Settings size={13} />
           <span style={{ fontSize: 13, fontWeight: 500 }}>System columns (optional)</span>
           <span className="font-mono muted" style={{ fontSize: 12 }}>
-            flags only — no DDL is run on the table
+            flags + aliases — no DDL is run on the table
           </span>
         </div>
-        <div style={{ padding: "10px 16px" }}>
-          <SystemRow
-            label="Add created_at column"
-            hint="Flag the collection as having a created_at column. workeros will read it for default sort + audit."
-            present={inspect.systemColumnsPresent.createdAt}
-            checked={addCreatedAt}
-            onChange={setAddCreatedAt}
+        <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 14 }}>
+          <TimeFieldRow
+            label="created_at"
+            hint="Used for default sort, audit, and the created_at projection."
+            conventionalPresent={inspect.systemColumnsPresent.createdAt}
+            suggestedAlias={inspect.aliasSuggestions.createdAt}
+            mode={createdAtMode}
+            setMode={setCreatedAtMode}
+            alias={createdAtAlias}
+            setAlias={setCreatedAtAlias}
+            options={timestampLikeColumns}
           />
-          <SystemRow
-            label="Add updated_at column"
-            hint="Same flag for updated_at — used by revision tracking."
-            present={inspect.systemColumnsPresent.updatedAt}
-            checked={addUpdatedAt}
-            onChange={setAddUpdatedAt}
+          <TimeFieldRow
+            label="updated_at"
+            hint="Used by revision tracking and the updated_at projection."
+            conventionalPresent={inspect.systemColumnsPresent.updatedAt}
+            suggestedAlias={inspect.aliasSuggestions.updatedAt}
+            mode={updatedAtMode}
+            setMode={setUpdatedAtMode}
+            alias={updatedAtAlias}
+            setAlias={setUpdatedAtAlias}
+            options={timestampLikeColumns}
           />
-          <SystemRow
-            label="Owner-scoped (uses item_ownership table)"
-            hint="The authenticated role can only read/update its own rows. Ownership rows live in a side table — your physical schema is untouched."
-            present={inspect.systemColumnsPresent.ownerId}
-            checked={ownerScoped}
-            onChange={setOwnerScoped}
-            last
+          <OwnerFieldRow
+            conventionalPresent={inspect.systemColumnsPresent.ownerId}
+            suggestedAlias={inspect.aliasSuggestions.ownerId}
+            mode={ownerMode}
+            setMode={setOwnerMode}
+            alias={ownerAlias}
+            setAlias={setOwnerAlias}
+            options={ownerLikeColumns}
           />
+          {aliasConflicts.length > 0 && (
+            <div
+              style={{
+                marginTop: 4,
+                padding: "8px 12px",
+                border: "1px solid var(--destructive)",
+                borderRadius: "var(--radius-md)",
+                color: "var(--destructive)",
+                fontSize: 12.5,
+                display: "flex",
+                flexDirection: "column",
+                gap: 4,
+              }}
+            >
+              {aliasConflicts.map((c) => (
+                <div key={c.logical} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <I.AlertTriangle size={12} />
+                  <span>
+                    Column <span className="font-mono">{c.column}</span> is aliased to {" "}
+                    <span className="font-mono">{c.logical}</span> AND included as a regular field. Pick one.
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function SystemRow({
-  label,
-  hint,
-  present,
-  checked,
-  onChange,
-  last,
+// Segmented mode picker for the system-column rows. Renders as a row of
+// shadcn Buttons (the admin wrapper from ./ui) — the active mode is the
+// "primary" variant, inactive ones are "ghost". No native radio inputs.
+function ModeSegment<M extends string>({
+  value,
+  options,
 }: {
-  label: string;
-  hint: string;
-  present: boolean;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  last?: boolean;
+  value: M;
+  options: { value: M; label: string; disabled?: boolean; onSelect: () => void }[];
 }) {
   return (
     <div
-      className="field-row"
-      style={
-        last
-          ? { paddingBottom: 4 }
-          : { borderBottom: "1px solid var(--border)", paddingBottom: 10, marginBottom: 10 }
-      }
+      style={{
+        display: "inline-flex",
+        gap: 6,
+        flexWrap: "wrap",
+      }}
     >
-      <div>
-        <div className="field-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {label}
-          {present && (
-            <span className="muted font-mono" style={{ fontSize: 11 }}>Already present</span>
+      {options.map((o) => (
+        <Button
+          key={o.value}
+          variant={value === o.value ? "primary" : "ghost"}
+          size="xs"
+          disabled={o.disabled}
+          onClick={o.onSelect}
+        >
+          {o.label}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
+function TimeFieldRow({
+  label,
+  hint,
+  conventionalPresent,
+  suggestedAlias,
+  mode,
+  setMode,
+  alias,
+  setAlias,
+  options,
+}: {
+  label: string;
+  hint: string;
+  conventionalPresent: boolean;
+  suggestedAlias: string | null;
+  mode: TimeMode;
+  setMode: (v: TimeMode) => void;
+  alias: string;
+  setAlias: (v: string) => void;
+  options: { value: string; label: string; hint?: string }[];
+}) {
+  const aliasAvailable = options.length > 0;
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        paddingBottom: 12,
+        borderBottom: "1px solid var(--border)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <span className="field-label font-mono" style={{ margin: 0 }}>{label}</span>
+        {conventionalPresent && (
+          <Badge variant="outline" mono>conventional column present</Badge>
+        )}
+        {suggestedAlias && !conventionalPresent && (
+          <Badge variant="outline" mono>suggested: {suggestedAlias}</Badge>
+        )}
+      </div>
+      <div className="field-hint" style={{ marginTop: -2 }}>{hint}</div>
+      <ModeSegment<TimeMode>
+        value={mode}
+        options={[
+          { value: "none", label: "Not used", onSelect: () => setMode("none") },
+          {
+            value: "conventional",
+            label: `Use "${label}" column`,
+            disabled: !conventionalPresent,
+            onSelect: () => setMode("conventional"),
+          },
+          {
+            value: "alias",
+            label: "Alias from another column",
+            disabled: !aliasAvailable,
+            onSelect: () => {
+              setMode("alias");
+              if (!alias && suggestedAlias) setAlias(suggestedAlias);
+            },
+          },
+        ]}
+      />
+      {mode === "alias" && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="muted" style={{ fontSize: 12 }}>Column:</span>
+          <div style={{ minWidth: 240 }}>
+            <Select
+              value={alias || undefined}
+              onChange={(v) => setAlias(v)}
+              options={options}
+              placeholder="Pick column…"
+              size="sm"
+            />
+          </div>
+          {alias && (
+            <span className="muted font-mono" style={{ fontSize: 11 }}>
+              {label} ← {alias}
+            </span>
           )}
         </div>
-        <div className="field-hint">{hint}</div>
+      )}
+    </div>
+  );
+}
+
+function OwnerFieldRow({
+  conventionalPresent,
+  suggestedAlias,
+  mode,
+  setMode,
+  alias,
+  setAlias,
+  options,
+}: {
+  conventionalPresent: boolean;
+  suggestedAlias: string | null;
+  mode: OwnerMode;
+  setMode: (v: OwnerMode) => void;
+  alias: string;
+  setAlias: (v: string) => void;
+  options: { value: string; label: string; hint?: string }[];
+}) {
+  const aliasAvailable = options.length > 0;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <span className="field-label font-mono" style={{ margin: 0 }}>owner_id</span>
+        {conventionalPresent && (
+          <Badge variant="outline" mono>conventional column present</Badge>
+        )}
+        {suggestedAlias && !conventionalPresent && (
+          <Badge variant="outline" mono>suggested: {suggestedAlias}</Badge>
+        )}
       </div>
-      <Switch checked={checked} onChange={onChange} disabled={present} />
+      <div className="field-hint" style={{ marginTop: -2 }}>
+        Restricts the authenticated role to its own rows. Pick where ownership lives — a side table, the conventional <span className="font-mono">owner_id</span> column, or an aliased column.
+      </div>
+      <ModeSegment<OwnerMode>
+        value={mode}
+        options={[
+          { value: "none", label: "Not owner-scoped", onSelect: () => setMode("none") },
+          {
+            value: "side-table",
+            label: "Side-table (item_ownership)",
+            onSelect: () => setMode("side-table"),
+          },
+          {
+            value: "conventional",
+            label: 'Use "owner_id" column',
+            disabled: !conventionalPresent,
+            onSelect: () => setMode("conventional"),
+          },
+          {
+            value: "alias",
+            label: "Alias from another column",
+            disabled: !aliasAvailable,
+            onSelect: () => {
+              setMode("alias");
+              if (!alias && suggestedAlias) setAlias(suggestedAlias);
+            },
+          },
+        ]}
+      />
+      {mode === "alias" && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="muted" style={{ fontSize: 12 }}>Column:</span>
+          <div style={{ minWidth: 240 }}>
+            <Select
+              value={alias || undefined}
+              onChange={(v) => setAlias(v)}
+              options={options}
+              placeholder="Pick column…"
+              size="sm"
+            />
+          </div>
+          {alias && (
+            <span className="muted font-mono" style={{ fontSize: 11 }}>
+              owner_id ← {alias}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -779,6 +1134,12 @@ function Step3Metadata({
   tenantScoped,
   setTenantScoped,
   ownerScoped,
+  ownerMode,
+  createdAtMode,
+  createdAtAliasCol,
+  updatedAtMode,
+  updatedAtAliasCol,
+  ownerAliasCol,
   fieldsCount,
   applyError,
 }: {
@@ -797,9 +1158,36 @@ function Step3Metadata({
   tenantScoped: boolean;
   setTenantScoped: (v: boolean) => void;
   ownerScoped: boolean;
+  ownerMode: OwnerMode;
+  createdAtMode: TimeMode;
+  createdAtAliasCol: string;
+  updatedAtMode: TimeMode;
+  updatedAtAliasCol: string;
+  ownerAliasCol: string;
   fieldsCount: number;
   applyError: string | null;
 }) {
+  // Build a list of "system column wiring" lines for the dry-run summary.
+  // Each entry maps a logical system field to the physical resolution
+  // (conventional, alias <- column, side table, or "not used").
+  const systemColumnLines: string[] = [];
+  if (createdAtMode === "alias" && createdAtAliasCol) {
+    systemColumnLines.push(`created_at ← ${createdAtAliasCol} (alias)`);
+  } else if (createdAtMode === "conventional") {
+    systemColumnLines.push("created_at (conventional column)");
+  }
+  if (updatedAtMode === "alias" && updatedAtAliasCol) {
+    systemColumnLines.push(`updated_at ← ${updatedAtAliasCol} (alias)`);
+  } else if (updatedAtMode === "conventional") {
+    systemColumnLines.push("updated_at (conventional column)");
+  }
+  if (ownerMode === "alias" && ownerAliasCol) {
+    systemColumnLines.push(`owner_id ← ${ownerAliasCol} (alias)`);
+  } else if (ownerMode === "conventional") {
+    systemColumnLines.push("owner_id (conventional column)");
+  } else if (ownerMode === "side-table") {
+    systemColumnLines.push("owner_id (item_ownership side-table)");
+  }
   return (
     <div className="addfield-body cols-2">
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -893,6 +1281,16 @@ function Step3Metadata({
             <li>
               <span className="tabular-nums">{fieldsCount}</span> fields registered.
             </li>
+            {systemColumnLines.length > 0 && (
+              <li>
+                System columns:
+                <ul style={{ margin: "2px 0 0", paddingLeft: 16 }}>
+                  {systemColumnLines.map((line) => (
+                    <li key={line} className="font-mono" style={{ fontSize: 12 }}>{line}</li>
+                  ))}
+                </ul>
+              </li>
+            )}
             <li>
               Permissions:{" "}
               {ownerScoped

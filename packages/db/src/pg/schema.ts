@@ -644,6 +644,18 @@ export const collections = pgTable(
     hasCreatedAt: boolean("has_created_at").notNull().default(true),
     /** Mirror of `hasCreatedAt` for `updated_at`. */
     hasUpdatedAt: boolean("has_updated_at").notNull().default(true),
+    /** Physical column name backing `createdAt`. Null means "use the
+     *  conventional name `created_at`" (every managed collection). Adopted
+     *  collections can map to an existing column with a different name —
+     *  e.g. `inserted_at` — without DDL on the source table. */
+    createdAtColumn: text("created_at_column"),
+    /** Mirror of `createdAtColumn` for `updatedAt` (`modified_at` etc.). */
+    updatedAtColumn: text("updated_at_column"),
+    /** Physical column name backing `ownerId`. When set, ownership reads
+     *  from this column on the source table instead of the `item_ownership`
+     *  side-table — useful when the adopted table already carries a
+     *  `user_id` / `created_by` column the user wants to keep authoritative. */
+    ownerIdColumn: text("owner_id_column"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

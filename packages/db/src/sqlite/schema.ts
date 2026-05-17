@@ -549,6 +549,11 @@ export const collections = sqliteTable(
     pkColumn: text("pk_column").notNull().default("id"),
     hasCreatedAt: integer("has_created_at", { mode: "boolean" }).notNull().default(true),
     hasUpdatedAt: integer("has_updated_at", { mode: "boolean" }).notNull().default(true),
+    /** Source-table column names backing the system fields. Null = use the
+     *  conventional names. See pg/schema.ts twin for the full rationale. */
+    createdAtColumn: text("created_at_column"),
+    updatedAtColumn: text("updated_at_column"),
+    ownerIdColumn: text("owner_id_column"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },

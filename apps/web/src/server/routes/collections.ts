@@ -104,6 +104,14 @@ const CollectionInput = z.object({
   vectorize: z.boolean().optional().default(false),
   /** Embedding model key. Null → fall back to env.EMBEDDING_DEFAULT_MODEL. */
   vectorizeModel: ModelEnum.nullable().optional(),
+  /** Comma-separated default sort (`"-published_at,name"`). Field-level
+   *  validity is enforced by `parseQuery` at read time against the
+   *  caller's permission allow-list; here we only constrain shape. */
+  defaultSort: z
+    .string()
+    .regex(/^[-+]?[a-z_][a-z0-9_]*(,[-+]?[a-z_][a-z0-9_]*)*$/)
+    .nullable()
+    .optional(),
 });
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -173,6 +181,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       versioned: body.versioned,
       vectorize: body.vectorize,
       vectorizeModel: body.vectorizeModel ?? null,
+      defaultSort: body.defaultSort ?? null,
     });
     await applyCollection(db, dialect, {
       table: physicalTable,
@@ -253,6 +262,9 @@ export const collectionsRoutes = new Hono<AppBindings>()
       ...(body.vectorize !== undefined ? { vectorize: body.vectorize } : {}),
       ...(body.vectorizeModel !== undefined
         ? { vectorizeModel: body.vectorizeModel ?? null }
+        : {}),
+      ...(body.defaultSort !== undefined
+        ? { defaultSort: body.defaultSort ?? null }
         : {}),
       updatedAt: new Date(),
     };

@@ -13,6 +13,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workeros/ui/components/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
 import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
@@ -143,8 +151,8 @@ export const ApiKeys = () => {
             <Button variant="outline" size="sm" onClick={refresh}>
               Refresh
             </Button>
-            <Button size="sm" onClick={() => setShowForm((s) => !s)}>
-              <PlusIcon /> {showForm ? "Cancel" : "New"}
+            <Button size="sm" onClick={() => setShowForm(true)}>
+              <PlusIcon /> New
             </Button>
           </>
         }
@@ -175,94 +183,114 @@ export const ApiKeys = () => {
         </Card>
       )}
 
-      {showForm && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>New API key</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-3" onSubmit={submit}>
-              <div className="space-y-1.5">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="ci-bot (optional)"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Optional — a timestamped name is generated if you leave this blank.
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="role">Scope to role</Label>
-                <Select value={roleId} onValueChange={setRoleId}>
-                  <SelectTrigger id="role">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NO_ROLE}>
-                      Owner&rsquo;s full access (no restriction)
+      <Dialog
+        open={showForm}
+        onOpenChange={(open) => {
+          if (busy) return;
+          if (!open) resetForm();
+          setShowForm(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>New API key</DialogTitle>
+            <DialogDescription>
+              The full secret is shown once after creation — copy it somewhere safe.
+            </DialogDescription>
+          </DialogHeader>
+          <form id="new-api-key-form" className="space-y-4" onSubmit={submit}>
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="ci-bot (optional)"
+                autoFocus
+              />
+              <p className="text-xs text-muted-foreground">
+                Optional — a timestamped name is generated if you leave this blank.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="role">Scope to role</Label>
+              <Select value={roleId} onValueChange={setRoleId}>
+                <SelectTrigger id="role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_ROLE}>
+                    Owner&rsquo;s full access (no restriction)
+                  </SelectItem>
+                  {roles.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}
+                      {r.admin ? " (admin)" : ""}
                     </SelectItem>
-                    {roles.map((r) => (
-                      <SelectItem key={r.id} value={r.id}>
-                        {r.name}
-                        {r.admin ? " (admin)" : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  When set, requests made with this key get only this role&rsquo;s
-                  permissions — and only while the owner still holds it.
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="expires">Expires</Label>
-                <Select
-                  value={expiryPreset}
-                  onValueChange={(v) => setExpiryPreset(v as ExpiryPreset)}
-                >
-                  <SelectTrigger id="expires">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EXPIRY_PRESETS.map((p) => (
-                      <SelectItem key={p.value} value={p.value}>
-                        {p.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {expiryPreset === "custom" && (
-                  <Input
-                    type="datetime-local"
-                    value={customExpiry}
-                    onChange={(e) => setCustomExpiry(e.target.value)}
-                  />
-                )}
-                {expiryPreset === "never" && (
-                  <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2.5 text-xs text-destructive">
-                    <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
-                    <span>
-                      Long-lived keys widen blast radius. Prefer the shortest
-                      expiry that works — you can always rotate.
-                    </span>
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Optional — the key stops working after this time.
-                </p>
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button type="submit" disabled={busy}>
-                  {busy ? "Creating…" : "Create"}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                When set, requests made with this key get only this role&rsquo;s
+                permissions — and only while the owner still holds it.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="expires">Expires</Label>
+              <Select
+                value={expiryPreset}
+                onValueChange={(v) => setExpiryPreset(v as ExpiryPreset)}
+              >
+                <SelectTrigger id="expires">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXPIRY_PRESETS.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {expiryPreset === "custom" && (
+                <Input
+                  type="datetime-local"
+                  value={customExpiry}
+                  onChange={(e) => setCustomExpiry(e.target.value)}
+                />
+              )}
+              {expiryPreset === "never" && (
+                <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2.5 text-xs text-destructive">
+                  <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" />
+                  <span>
+                    Long-lived keys widen blast radius. Prefer the shortest
+                    expiry that works — you can always rotate.
+                  </span>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Optional — the key stops working after this time.
+              </p>
+            </div>
+          </form>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                resetForm();
+                setShowForm(false);
+              }}
+              disabled={busy}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" form="new-api-key-form" disabled={busy}>
+              {busy ? "Creating…" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardContent>

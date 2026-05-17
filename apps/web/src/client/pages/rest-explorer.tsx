@@ -1158,7 +1158,7 @@ const EndpointDetail = ({
           onValueChange={(v) => setTab(v as typeof tab)}
           className="flex flex-1 flex-col overflow-hidden"
         >
-          <div className="border-b px-4 pt-3">
+          <div className="px-4 pt-4">
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="request">Request</TabsTrigger>

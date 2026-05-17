@@ -252,7 +252,20 @@ export function FilterBar({ search, setSearch, filters, setFilters, schema, stat
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setPopOpen(false);
+      if (!wrapRef.current || wrapRef.current.contains(e.target as Node)) return;
+      // Radix Select renders its options into a portal at the body root,
+      // so clicking an option counts as "outside" the popover wrapper and
+      // would close the filter before the user finishes building the
+      // clause. Treat any click inside a Radix popper / listbox / dialog
+      // as still-inside.
+      const t = e.target as HTMLElement | null;
+      if (t && (
+        t.closest('[data-radix-popper-content-wrapper]') ||
+        t.closest('[role="listbox"]') ||
+        t.closest('[role="option"]') ||
+        t.closest('[role="dialog"]')
+      )) return;
+      setPopOpen(false);
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);

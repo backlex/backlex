@@ -160,7 +160,11 @@ const SQLITE_TYPES: Record<FieldType, string> = {
 export const sqlTypeFor = (type: FieldType, dialect: Dialect): string =>
   dialect === "pg" ? PG_TYPES[type] : SQLITE_TYPES[type];
 
-const IDENT = /^[a-z][a-z0-9_]*$/;
+// Identifiers must be lowercase snake_case. A leading underscore is allowed
+// for the system columns we emit internally (`_status`, `_published_at`);
+// user-supplied field names go through `validateFieldName` separately and
+// keep the stricter "must start with a letter" rule there.
+const IDENT = /^[a-z_][a-z0-9_]*$/;
 
 export const assertIdent = (name: string): string => {
   if (!IDENT.test(name)) {
@@ -203,11 +207,19 @@ const RESERVED = new Set([
 
 export const isReservedField = (name: string): boolean => RESERVED.has(name);
 
+// User-supplied field names must start with a letter — `_*` is reserved
+// for our own system columns (`_status`, `_published_at`).
+const USER_FIELD_NAME = /^[a-z][a-z0-9_]*$/;
+
 export const validateFields = (fields: FieldDef[]): void => {
   const seen = new Set<string>();
   const names = new Set(fields.map((f) => f.name));
   for (const f of fields) {
-    assertIdent(f.name);
+    if (!USER_FIELD_NAME.test(f.name)) {
+      throw new Error(
+        `Invalid field name "${f.name}" — must be snake_case and start with a letter`,
+      );
+    }
     if (RESERVED.has(f.name)) {
       throw new Error(`Field name "${f.name}" is reserved (system column)`);
     }

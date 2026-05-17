@@ -144,8 +144,13 @@ const serialize = (
       return value instanceof Date ? value.getTime() : Number(value);
     }
   } else {
-    if (type === "timestamp" && !(value instanceof Date)) {
-      return new Date(value as string | number);
+    if (type === "timestamp") {
+      // ISO strings round-trip through postgres-js's prepared-statement
+      // binder cleanly. Date instances reach `byteLength` and throw
+      // because the binder has no schema-side type info for our dynamic
+      // tables (c_* and adopted both miss from Drizzle's type map).
+      const d = value instanceof Date ? value : new Date(value as string | number);
+      return d.toISOString();
     }
     if (type === "relation_many" && typeof value === "string") {
       // Be forgiving — caller might send already-stringified JSON.
@@ -420,8 +425,13 @@ const mergeI18nPatch = (
   }
 };
 
+// Postgres-js's prepared-statement binder calls `byteLength` on params
+// when it has no per-column type info from the schema (the dynamic
+// `c_*` / adopted tables aren't in Drizzle's type map). Date instances
+// reach `byteLength` and throw `ERR_INVALID_ARG_TYPE`. ISO strings round-
+// trip cleanly to `timestamptz` and avoid the binder ambiguity entirely.
 const nowFor = (dialect: "pg" | "sqlite") =>
-  dialect === "pg" ? new Date() : Date.now();
+  dialect === "pg" ? new Date().toISOString() : Date.now();
 
 /**
  * Translate DB-level FK violations into a workeros-shaped error. Adopted
@@ -763,6 +773,7 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         collection.fields,
         collection.ownerScoped,
         perm.fields,
+        { hasCreatedAt: collection.hasCreatedAt, hasUpdatedAt: collection.hasUpdatedAt },
       );
       const selectCols: SQL = projection
         ? sql.join(

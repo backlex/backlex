@@ -656,6 +656,16 @@ export const collections = pgTable(
      *  side-table — useful when the adopted table already carries a
      *  `user_id` / `created_by` column the user wants to keep authoritative. */
     ownerIdColumn: text("owner_id_column"),
+    /** Lifecycle status. `'active'` (default) = the normal state.
+     *  `'archived'` = soft-archived (adopted collections only); items
+     *  endpoints return 404 and the collection is hidden from the
+     *  default list response, but the physical table stays intact and
+     *  `POST /collections/:slug/restore` flips it back. Managed `c_*`
+     *  collections never reach `'archived'` — they're hard-dropped on
+     *  delete because the physical table goes with them. */
+    status: text("status").notNull().default("active"),
+    /** When `status` flipped to `'archived'`. Null while active. */
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

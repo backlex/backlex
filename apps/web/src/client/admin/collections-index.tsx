@@ -12,10 +12,17 @@ export interface CollectionsIndexProps {
   onOpen: (slug: string) => void;
   onNew: () => void;
   onDelete?: (slug: string) => void;
+  /** Archive-view toggle: parent re-fetches /api/collections with
+   *  `?include_archived=true` and feeds the archived rows back through
+   *  `collections`. Default is the active list. */
+  showArchived?: boolean;
+  onToggleArchived?: (next: boolean) => void;
+  /** Restore an archived (adopted) collection. Only shown in archived view. */
+  onRestore?: (slug: string) => void;
   pushToast: (msg: string) => void;
 }
 
-export function CollectionsIndex({ collections, onOpen, onNew, onDelete, pushToast }: CollectionsIndexProps) {
+export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArchived, onToggleArchived, onRestore, pushToast }: CollectionsIndexProps) {
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"grid" | "table">("grid");
   const [adoptOpen, setAdoptOpen] = useState(false);
@@ -42,14 +49,30 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, pushToa
         title="Collections"
         description={<>Each collection is a physical <span className="font-mono">c_&lt;slug&gt;</span> table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations.</>}
         badges={<span style={{ display: "inline-flex", gap: 6, marginLeft: 4 }}>
-          <Badge variant="outline" mono>{collections.length} collections</Badge>
-          <Badge variant="outline" mono>{collections.reduce((a, c) => a + c.count, 0).toLocaleString()} rows</Badge>
+          <Badge variant={showArchived ? "secondary" : "outline"} mono>
+            {collections.length} {showArchived ? "archived" : "collections"}
+          </Badge>
+          {!showArchived && (
+            <Badge variant="outline" mono>{collections.reduce((a, c) => a + c.count, 0).toLocaleString()} rows</Badge>
+          )}
         </span>}
         actions={<>
-          <Button variant="outline" icon={I.Code}>Schema</Button>
-          <Button variant="outline" icon={I.ExternalLink}>API docs</Button>
-          <Button variant="outline" icon={I.Database} onClick={() => setAdoptOpen(true)}>Import from database</Button>
-          <Button variant="primary" icon={I.Plus} onClick={onNew}>New collection</Button>
+          {onToggleArchived && (
+            <Button
+              variant="outline"
+              icon={showArchived ? I.Inbox : I.Archive}
+              onClick={() => onToggleArchived(!showArchived)}
+              title={showArchived ? "Show active collections" : "Show archived collections"}
+            >
+              {showArchived ? "View active" : "View archived"}
+            </Button>
+          )}
+          {!showArchived && <>
+            <Button variant="outline" icon={I.Code}>Schema</Button>
+            <Button variant="outline" icon={I.ExternalLink}>API docs</Button>
+            <Button variant="outline" icon={I.Database} onClick={() => setAdoptOpen(true)}>Import from database</Button>
+            <Button variant="primary" icon={I.Plus} onClick={onNew}>New collection</Button>
+          </>}
         </>}
       />
       <AdoptWizard
@@ -85,11 +108,21 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, pushToa
                 <div style={{ flex: 1, height: 1, background: "var(--border)", marginLeft: 6 }} />
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
-                {list.map((c) => <CollectionCard key={c.slug} c={c} onOpen={() => onOpen(c.slug)} />)}
-                <button onClick={onNew} className="card" style={{ minHeight: 138, border: "1.5px dashed var(--border)", background: "transparent", cursor: "pointer", display: "grid", placeItems: "center", gap: 6, color: "var(--muted-foreground)" }}>
-                  <I.Plus size={18} />
-                  <span style={{ fontSize: 12.5, fontWeight: 500 }}>New collection</span>
-                </button>
+                {list.map((c) => (
+                  <CollectionCard
+                    key={c.slug}
+                    c={c}
+                    archived={!!showArchived}
+                    onOpen={() => onOpen(c.slug)}
+                    onRestore={onRestore ? () => onRestore(c.slug) : undefined}
+                  />
+                ))}
+                {!showArchived && (
+                  <button onClick={onNew} className="card" style={{ minHeight: 138, border: "1.5px dashed var(--border)", background: "transparent", cursor: "pointer", display: "grid", placeItems: "center", gap: 6, color: "var(--muted-foreground)" }}>
+                    <I.Plus size={18} />
+                    <span style={{ fontSize: 12.5, fontWeight: 500 }}>New collection</span>
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -127,11 +160,19 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, pushToa
                     <td className="tabular-nums muted" style={{ textAlign: "right" }}>{c.fields}</td>
                     <td className="tabular-nums" style={{ textAlign: "right" }}>{c.writes24h}</td>
                     <td className="muted font-mono" style={{ fontSize: 11.5 }}>{c.lastWrite}</td>
-                    <td>{c.ownerScoped ? <Badge variant="default">owner-scoped</Badge> : <Badge variant="secondary">public read</Badge>}</td>
+                    <td>
+                      {showArchived
+                        ? <Badge variant="secondary">archived</Badge>
+                        : c.ownerScoped ? <Badge variant="default">owner-scoped</Badge> : <Badge variant="secondary">public read</Badge>}
+                    </td>
                     <td onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}>
-                      {onDelete && (
-                        <IconButton icon={I.Trash} title="Delete collection" onClick={() => onDelete(c.slug)} />
-                      )}
+                      {showArchived
+                        ? onRestore && (
+                            <IconButton icon={I.RotateCcw} title="Restore collection" onClick={() => onRestore(c.slug)} />
+                          )
+                        : onDelete && (
+                            <IconButton icon={I.Trash} title="Delete collection" onClick={() => onDelete(c.slug)} />
+                          )}
                     </td>
                   </tr>
                 );
@@ -145,13 +186,13 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, pushToa
   );
 }
 
-function CollectionCard({ c, onOpen }: { c: CollectionListItem; onOpen: () => void }) {
+function CollectionCard({ c, onOpen, archived, onRestore }: { c: CollectionListItem; onOpen: () => void; archived?: boolean; onRestore?: () => void }) {
   const Ic = (I as Record<string, IconComponent>)[c.icon as IconKey] || I.Database;
   return (
     <div
       className="card"
       onClick={onOpen}
-      style={{ padding: 16, cursor: "pointer", display: "flex", flexDirection: "column", gap: 12, transition: "border-color 100ms, transform 100ms" }}
+      style={{ padding: 16, cursor: "pointer", display: "flex", flexDirection: "column", gap: 12, transition: "border-color 100ms, transform 100ms", opacity: archived ? 0.92 : 1 }}
       onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "color-mix(in oklch, var(--primary) 50%, var(--border))"; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)"; }}
     >
@@ -161,6 +202,14 @@ function CollectionCard({ c, onOpen }: { c: CollectionListItem; onOpen: () => vo
           <span className="font-mono" style={{ fontSize: 13.5, fontWeight: 600 }}>c_{c.slug}</span>
           <span className="muted" style={{ fontSize: 11.5 }}>{c.fields} fields · {c.singleton ? "singleton" : c.ownerScoped ? "owner-scoped" : "public read"}</span>
         </div>
+        {archived && (
+          <span style={{ marginLeft: "auto" }}>
+            <Badge variant="secondary">
+              <I.Archive size={10} />
+              <span style={{ marginLeft: 4 }}>archived</span>
+            </Badge>
+          </span>
+        )}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
         <Stat k="rows" v={c.count.toLocaleString()} />
@@ -168,8 +217,26 @@ function CollectionCard({ c, onOpen }: { c: CollectionListItem; onOpen: () => vo
         <Stat k="last" v={c.lastWrite} mono />
       </div>
       <div style={{ display: "flex", gap: 6 }}>
-        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onOpen(); }}>Open</Button>
-        <Button size="sm" variant="ghost" iconRight={I.ExternalLink}>API</Button>
+        {archived ? (
+          <>
+            {onRestore && (
+              <Button
+                size="sm"
+                variant="primary"
+                icon={I.RotateCcw}
+                onClick={(e) => { e.stopPropagation(); onRestore(); }}
+              >
+                Restore
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onOpen(); }}>Open</Button>
+          </>
+        ) : (
+          <>
+            <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onOpen(); }}>Open</Button>
+            <Button size="sm" variant="ghost" iconRight={I.ExternalLink}>API</Button>
+          </>
+        )}
       </div>
     </div>
   );

@@ -35,6 +35,9 @@ interface CollectionRow {
   vectorize: boolean;
   /** Embedding model key (`EMBEDDING_MODELS` keys). Null → env default. */
   vectorizeModel: string | null;
+  /** Comma-separated default sort (Directus shape, `-` prefix = DESC). Null
+   *  falls back to `-created_at` in `parseQuery`. */
+  defaultSort: string | null;
 }
 
 const collectionsTable = (dialect: "pg" | "sqlite") =>
@@ -68,6 +71,7 @@ const loadCollection = async (
     versioned: Boolean(r.versioned),
     vectorize: Boolean(r.vectorize),
     vectorizeModel: ((r.vectorizeModel ?? r.vectorize_model) as string | null | undefined) ?? null,
+    defaultSort: ((r.defaultSort ?? r.default_sort) as string | null | undefined) ?? null,
   };
 };
 
@@ -341,7 +345,13 @@ export const itemsRoutes = new Hono<AppBindings>()
     const perm = c.get("permission");
     const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
     const params = new URL(c.req.url).searchParams;
-    const q = parseQuery(params, collection.fields, collection.ownerScoped, perm.fields);
+    const q = parseQuery(
+      params,
+      collection.fields,
+      collection.ownerScoped,
+      perm.fields,
+      collection.defaultSort,
+    );
 
     const table = collection.physicalTable;
     const userWhere = q.filter ? compileCondition(q.filter, auth) : null;

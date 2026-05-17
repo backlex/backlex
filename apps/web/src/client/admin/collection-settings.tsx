@@ -6,7 +6,13 @@ import { useEffect, useState } from "react";
 import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "./icons";
+import { Select } from "./select";
 import { Button, Switch } from "./ui";
+
+interface FieldLike {
+  name: string;
+  type?: string;
+}
 
 interface SchemaLike {
   slug: string;
@@ -17,7 +23,31 @@ interface SchemaLike {
   ownerScoped?: boolean;
   tenantScoped?: boolean;
   versioned?: boolean;
+  fields?: FieldLike[];
+  /** Comma-separated default sort, Directus shape (`-field,name`). */
+  defaultSort?: string | null;
 }
+
+type SortClause = { field: string; dir: "asc" | "desc" };
+
+const parseDefaultSort = (raw?: string | null): SortClause[] => {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => ({
+      field: p.replace(/^[-+]/, ""),
+      dir: (p.startsWith("-") ? "desc" : "asc") as "asc" | "desc",
+    }));
+};
+
+const serializeSort = (clauses: SortClause[]): string | null => {
+  if (clauses.length === 0) return null;
+  return clauses
+    .map((c) => (c.dir === "desc" ? "-" : "") + c.field)
+    .join(",");
+};
 
 export interface CollectionSettingsProps {
   schema: SchemaLike;
@@ -35,6 +65,9 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
   const [plural, setPlural] = useState(schema.plural ?? "");
   const [note, setNote] = useState(schema.note ?? "");
   const [displayTemplate, setDisplayTemplate] = useState(schema.displayTemplate ?? "");
+  const [sortClauses, setSortClauses] = useState<SortClause[]>(
+    parseDefaultSort(schema.defaultSort),
+  );
 
   // Reseed when the user navigates between collections (or hits Refresh).
   useEffect(() => {
@@ -43,7 +76,29 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
     setPlural(schema.plural ?? "");
     setNote(schema.note ?? "");
     setDisplayTemplate(schema.displayTemplate ?? "");
+    setSortClauses(parseDefaultSort(schema.defaultSort));
   }, [schema.slug]);
+
+  // Field options for the sort dropdown: id + user fields + (created_at,
+  // updated_at as system columns) + owner_id when the collection is
+  // owner-scoped. Same allow-list parseQuery validates against server-side.
+  const sortFieldOptions = (() => {
+    const opts: { value: string; label: string; hint?: string }[] = [
+      { value: "id", label: "id", hint: "pk" },
+      { value: "created_at", label: "created_at", hint: "system" },
+      { value: "updated_at", label: "updated_at", hint: "system" },
+    ];
+    if (schema.ownerScoped) {
+      opts.push({ value: "owner_id", label: "owner_id", hint: "system" });
+    }
+    for (const f of schema.fields ?? []) {
+      opts.push({ value: f.name, label: f.name, hint: f.type });
+    }
+    return opts;
+  })();
+
+  const sortDirty =
+    serializeSort(sortClauses) !== (schema.defaultSort ?? null);
 
   const slugClean = slug.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_").replace(/^_+|_+$/g, "");
   const slugError =
@@ -181,6 +236,134 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
             </div>
             <Switch checked={!!schema.versioned} onChange={(v) => onPatch({ versioned: v })} />
           </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <I.ArrowUpDown size={14} />
+          <span style={{ fontSize: 13, fontWeight: 500 }}>list &amp; sort</span>
+          <span className="font-mono muted" style={{ fontSize: 12 }}>
+            default order when <span style={{ fontFamily: "inherit" }}>?sort=</span> is omitted
+          </span>
+        </div>
+        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+          {sortClauses.length === 0 ? (
+            <div className="field-hint">
+              No default sort configured — list responses fall back to
+              <span className="font-mono"> -created_at</span> (newest first).
+              Add one or more fields below to pin a different order.
+            </div>
+          ) : (
+            sortClauses.map((clause, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <Select
+                    value={clause.field}
+                    onChange={(v) =>
+                      setSortClauses((cs) =>
+                        cs.map((c, idx) => (idx === i ? { ...c, field: v } : c)),
+                      )
+                    }
+                    options={sortFieldOptions}
+                    placeholder="Pick a field…"
+                    size="sm"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  title={clause.dir === "desc" ? "Descending" : "Ascending"}
+                  onClick={() =>
+                    setSortClauses((cs) =>
+                      cs.map((c, idx) =>
+                        idx === i
+                          ? { ...c, dir: c.dir === "desc" ? "asc" : "desc" }
+                          : c,
+                      ),
+                    )
+                  }
+                  style={{ minWidth: 64 }}
+                >
+                  {clause.dir === "desc" ? (
+                    <>
+                      <I.ArrowDown size={12} /> desc
+                    </>
+                  ) : (
+                    <>
+                      <I.ArrowUp size={12} /> asc
+                    </>
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  title="Move up"
+                  disabled={i === 0}
+                  onClick={() =>
+                    setSortClauses((cs) => {
+                      const next = [...cs];
+                      [next[i - 1], next[i]] = [next[i], next[i - 1]];
+                      return next;
+                    })
+                  }
+                >
+                  <I.ChevronUp size={12} />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  title="Move down"
+                  disabled={i === sortClauses.length - 1}
+                  onClick={() =>
+                    setSortClauses((cs) => {
+                      const next = [...cs];
+                      [next[i], next[i + 1]] = [next[i + 1], next[i]];
+                      return next;
+                    })
+                  }
+                >
+                  <I.ChevronDown size={12} />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  title="Remove"
+                  onClick={() =>
+                    setSortClauses((cs) => cs.filter((_, idx) => idx !== i))
+                  }
+                >
+                  <I.X size={12} />
+                </Button>
+              </div>
+            ))
+          )}
+          <div>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => {
+                const used = new Set(sortClauses.map((c) => c.field));
+                const next = sortFieldOptions.find((o) => !used.has(o.value));
+                setSortClauses((cs) => [
+                  ...cs,
+                  { field: next?.value ?? "created_at", dir: "desc" },
+                ]);
+              }}
+            >
+              <I.Plus size={12} /> Add sort
+            </Button>
+          </div>
+        </div>
+        <div style={{ padding: "10px 16px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={!sortDirty}
+            onClick={() => onPatch({ defaultSort: serializeSort(sortClauses) })}
+          >
+            Save sort
+          </Button>
         </div>
       </div>
 

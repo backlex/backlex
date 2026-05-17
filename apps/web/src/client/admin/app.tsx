@@ -7,6 +7,7 @@ import "./flow-builder.css";
 import { I } from "./icons";
 import {
   ADAPTER_PROFILES,
+  NAV_DEVELOPERS,
   NAV_ITEMS,
   NAV_SETTINGS,
   type AdapterId,
@@ -69,6 +70,8 @@ import {
 } from "./pages";
 import { AccountPage } from "./account-page";
 import { GraphqlPage } from "@/pages/graphql";
+import { RestExplorerPage } from "@/pages/rest-explorer";
+import { OpenApiExportPage } from "@/pages/openapi-export";
 import { ApiKeys } from "@/pages/api-keys";
 
 interface AdminAppOptions {
@@ -122,6 +125,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
     () =>
       new Set<string>([
         ...NAV_ITEMS.map((n) => n.id),
+        ...NAV_DEVELOPERS.map((n) => n.id),
         ...NAV_SETTINGS.map((n) => n.id),
         // Reachable only via the header avatar dropdown — not in the sidebar.
         "account",
@@ -616,6 +620,8 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             {activeNav === "functions" && <FunctionsPage pushToast={pushToast} />}
             {activeNav === "webhooks" && <WebhooksPage pushToast={pushToast} />}
             {activeNav === "graphql" && <GraphqlPage />}
+            {activeNav === "rest-explorer" && <RestExplorerPage />}
+            {activeNav === "openapi" && <OpenApiExportPage />}
             {activeNav === "realtime" && <RealtimePage events={events} active={realtimeChannel} onActiveChange={setRealtimeChannel} pushToast={pushToast} />}
             {activeNav === "insights" && <InsightsPage pushToast={pushToast} />}
             {activeNav === "activity" && <ActivityPage pushToast={pushToast} />}

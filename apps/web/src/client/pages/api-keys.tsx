@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@workeros/ui/components/dialog";
 import { ConfirmAction } from "@/components/confirm-action";
+import { DatePicker } from "@/components/date-picker";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { notifyError } from "@/lib/error";
@@ -66,10 +67,10 @@ const EXPIRY_PRESETS: { value: ExpiryPreset; label: string; days: number | null 
 
 const expiresAtFromPreset = (
   preset: ExpiryPreset,
-  custom: string,
+  custom: string | null,
 ): string | null => {
   if (preset === "never") return null;
-  if (preset === "custom") return custom ? new Date(custom).toISOString() : null;
+  if (preset === "custom") return custom;
   const days = EXPIRY_PRESETS.find((p) => p.value === preset)?.days ?? null;
   if (days === null) return null;
   return new Date(Date.now() + days * 86_400_000).toISOString();
@@ -81,8 +82,8 @@ export const ApiKeys = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
-  const [expiryPreset, setExpiryPreset] = useState<ExpiryPreset>("30d");
-  const [customExpiry, setCustomExpiry] = useState("");
+  const [expiryPreset, setExpiryPreset] = useState<ExpiryPreset>("never");
+  const [customExpiry, setCustomExpiry] = useState<string | null>(null);
   const [roleId, setRoleId] = useState<string>(NO_ROLE);
   const [secret, setSecret] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -103,8 +104,8 @@ export const ApiKeys = () => {
 
   const resetForm = () => {
     setName("");
-    setExpiryPreset("30d");
-    setCustomExpiry("");
+    setExpiryPreset("never");
+    setCustomExpiry(null);
     setRoleId(NO_ROLE);
   };
 
@@ -147,14 +148,9 @@ export const ApiKeys = () => {
         title="API Keys"
         description="Long-lived bearer tokens (`pak_…`) for CI, scripts, third-party integrations. A key impersonates its owner — optionally narrowed to a single role and/or given an expiry date."
         actions={
-          <>
-            <Button variant="outline" size="sm" onClick={refresh}>
-              Refresh
-            </Button>
-            <Button size="sm" onClick={() => setShowForm(true)}>
-              <PlusIcon /> New
-            </Button>
-          </>
+          <Button size="sm" onClick={() => setShowForm(true)}>
+            <PlusIcon /> New
+          </Button>
         }
       />
 
@@ -253,11 +249,7 @@ export const ApiKeys = () => {
                 </SelectContent>
               </Select>
               {expiryPreset === "custom" && (
-                <Input
-                  type="datetime-local"
-                  value={customExpiry}
-                  onChange={(e) => setCustomExpiry(e.target.value)}
-                />
+                <DatePicker value={customExpiry} onChange={setCustomExpiry} />
               )}
               {expiryPreset === "never" && (
                 <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2.5 text-xs text-destructive">

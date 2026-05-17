@@ -83,12 +83,20 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "flows", label: "Flows", icon: "Bolt" },
   { id: "functions", label: "Functions", icon: "Function" },
   { id: "webhooks", label: "Webhooks", icon: "Webhook" },
-  { id: "graphql", label: "GraphQL", icon: "Code" },
   { id: "realtime", label: "Realtime", icon: "Zap" },
   { id: "insights", label: "Insights", icon: "BarChart" },
   { id: "activity", label: "Activity log", icon: "Clock" },
   { id: "revisions", label: "Revisions", icon: "History" },
   { id: "translations", label: "Translations", icon: "Globe" },
+];
+
+// Developer-facing tools: REST explorer, GraphQL playground, OpenAPI export.
+// Kept in their own group so they sit together in the sidebar without
+// crowding the workspace nav.
+export const NAV_DEVELOPERS: NavItem[] = [
+  { id: "rest-explorer", label: "REST Explorer", icon: "Braces" },
+  { id: "graphql", label: "GraphQL", icon: "Code" },
+  { id: "openapi", label: "OpenAPI", icon: "Download" },
 ];
 
 export const NAV_SETTINGS: NavItem[] = [

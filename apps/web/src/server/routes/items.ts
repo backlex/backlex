@@ -54,6 +54,16 @@ interface CollectionRow {
    *  projection, and the `parseQuery` default-sort fallback. */
   hasCreatedAt: boolean;
   hasUpdatedAt: boolean;
+  /** Physical column names backing the system fields. Null = use the
+   *  conventional name (`created_at`/`updated_at`/`owner_id`). Adopted
+   *  collections can map to whatever the source table already calls
+   *  these — `inserted_at`, `user_id`, etc. */
+  createdAtColumn: string | null;
+  updatedAtColumn: string | null;
+  /** When set on an adopted owner-scoped collection, ownership reads
+   *  from this column on the source table (alias path) instead of the
+   *  `item_ownership` side-table (join path). */
+  ownerIdColumn: string | null;
 }
 
 const collectionsTable = (dialect: "pg" | "sqlite") =>
@@ -93,6 +103,9 @@ const loadCollection = async (
     pkColumn: ((r.pkColumn ?? r.pk_column) as string | undefined) ?? "id",
     hasCreatedAt: (r.hasCreatedAt ?? r.has_created_at) === false ? false : true,
     hasUpdatedAt: (r.hasUpdatedAt ?? r.has_updated_at) === false ? false : true,
+    createdAtColumn: ((r.createdAtColumn ?? r.created_at_column) as string | null | undefined) ?? null,
+    updatedAtColumn: ((r.updatedAtColumn ?? r.updated_at_column) as string | null | undefined) ?? null,
+    ownerIdColumn: ((r.ownerIdColumn ?? r.owner_id_column) as string | null | undefined) ?? null,
   };
 };
 
@@ -364,14 +377,101 @@ const pkEq = (pkColumn: string, id: string): SQL =>
   sql`${sql.identifier(pkColumn)} = ${id}`;
 
 /**
+ * Resolve the *physical* column name for a logical system field. Returns
+ * null when the field doesn't exist on this collection (e.g. has_created_at
+ * is false). Adopted collections can alias `created_at` → `inserted_at` and
+ * friends; managed collections always pass through the conventional name.
+ *
+ * For `owner_id` there's a third possibility: the column may live on the
+ * side-table `item_ownership` (adopted + ownerScoped + no alias). Callers
+ * that care about the side-table case should also check
+ * `usesOwnershipSideTable`.
+ */
+const physicalSystemCol = (
+  collection: CollectionRow,
+  logical: "created_at" | "updated_at" | "owner_id",
+): string | null => {
+  if (logical === "created_at") {
+    return collection.hasCreatedAt
+      ? (collection.createdAtColumn ?? "created_at")
+      : null;
+  }
+  if (logical === "updated_at") {
+    return collection.hasUpdatedAt
+      ? (collection.updatedAtColumn ?? "updated_at")
+      : null;
+  }
+  // owner_id
+  if (!collection.ownerScoped) return null;
+  if (collection.adopted) {
+    return collection.ownerIdColumn ?? null;
+    // null here means the join path is active; caller must consult
+    // `usesOwnershipSideTable` to know whether to read from `item_ownership`.
+  }
+  return "owner_id"; // managed default
+};
+
+/**
  * Whether this collection's `owner_id` lives in the side table rather than
  * on the physical row. The two-pronged check is essentially the contract:
  * adopted collections never had an `owner_id` column injected (the
- * schema-applier is a no-op for them), so when they're also owner-scoped,
- * ownership must come from `item_ownership` via a join.
+ * schema-applier is a no-op for them), so when they're also owner-scoped
+ * *and* haven't aliased an existing column, ownership must come from
+ * `item_ownership` via a join.
  */
 const usesOwnershipSideTable = (collection: CollectionRow): boolean =>
-  collection.adopted && collection.ownerScoped;
+  collection.adopted && collection.ownerScoped && !collection.ownerIdColumn;
+
+/**
+ * Rewrite a permission/filter Condition tree so logical system-field keys
+ * (`created_at`, `updated_at`, `owner_id`) become the actual physical
+ * column names this collection uses. Without this, `compileCondition`
+ * would emit `WHERE "created_at" = ?` against a table whose timestamp
+ * column is actually called `inserted_at` and the query would fail.
+ */
+const rewriteSystemFieldsInCondition = (
+  cond: any,
+  collection: CollectionRow,
+): any => {
+  if (cond === null || cond === undefined) return cond;
+  if (Array.isArray(cond.$and)) {
+    return { $and: cond.$and.map((c: any) => rewriteSystemFieldsInCondition(c, collection)) };
+  }
+  if (Array.isArray(cond.$or)) {
+    return { $or: cond.$or.map((c: any) => rewriteSystemFieldsInCondition(c, collection)) };
+  }
+  if (cond.$not !== undefined) {
+    return { $not: rewriteSystemFieldsInCondition(cond.$not, collection) };
+  }
+  // Leaf — a `{field: comparison}` map. Rewrite system-field keys.
+  const out: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(cond)) {
+    if (key === "created_at" || key === "updated_at" || key === "owner_id") {
+      const physical = physicalSystemCol(collection, key);
+      if (physical) {
+        out[physical] = val;
+        continue;
+      }
+      // For owner_id on the side-table path: keep the logical key so the
+      // LEFT JOIN's `owner_id` resolves it (the join surfaces the column
+      // unqualified — see fromOf + selectStar).
+      out[key] = val;
+      continue;
+    }
+    out[key] = val;
+  }
+  return out;
+};
+
+/** Rewrite a sort field name to its physical column. Returns the input
+ *  unchanged when no mapping applies. */
+const rewriteSortField = (field: string, collection: CollectionRow): string => {
+  if (field === "created_at" || field === "updated_at" || field === "owner_id") {
+    const physical = physicalSystemCol(collection, field);
+    if (physical) return physical;
+  }
+  return field;
+};
 
 /**
  * FROM clause for a collection's physical table, plus a LEFT JOIN to
@@ -392,22 +492,58 @@ const fromOf = (collection: CollectionRow): SQL => {
 };
 
 /**
- * `SELECT *` replacement that disambiguates column lists when the join is
- * active — we explicitly pull `<physical>.*` plus the qualified
- * `item_ownership.owner_id` so two `created_at` columns (one on each side)
- * don't collide in the result set.
+ * `SELECT *` replacement that surfaces aliased system columns (when an
+ * adopted table uses non-conventional names like `inserted_at`) and joins
+ * in `item_ownership.owner_id` (when ownership lives in the side-table).
+ * For managed collections this is just `*`.
+ *
+ * Aliased columns appear *twice* in the response — once under their real
+ * name (via `*`) and once under the logical name (via the `AS` clause).
+ * That's a feature, not a bug: it keeps deserializeRow + downstream API
+ * consumers reading `created_at` consistently while letting power users
+ * inspect the source column too.
  */
 const selectStar = (collection: CollectionRow): SQL => {
-  if (!usesOwnershipSideTable(collection)) return sql`*`;
   const tbl = sql.identifier(collection.physicalTable);
-  return sql`${tbl}.*, ${sql.identifier("item_ownership")}.${sql.identifier("owner_id")} AS ${sql.identifier("owner_id")}`;
+  const extras: SQL[] = [];
+  const createdAlias = collection.hasCreatedAt && collection.createdAtColumn && collection.createdAtColumn !== "created_at";
+  const updatedAlias = collection.hasUpdatedAt && collection.updatedAtColumn && collection.updatedAtColumn !== "updated_at";
+  if (createdAlias) {
+    extras.push(sql`${tbl}.${sql.identifier(collection.createdAtColumn!)} AS ${sql.identifier("created_at")}`);
+  }
+  if (updatedAlias) {
+    extras.push(sql`${tbl}.${sql.identifier(collection.updatedAtColumn!)} AS ${sql.identifier("updated_at")}`);
+  }
+  if (collection.ownerScoped && collection.adopted) {
+    if (collection.ownerIdColumn) {
+      extras.push(sql`${tbl}.${sql.identifier(collection.ownerIdColumn)} AS ${sql.identifier("owner_id")}`);
+    } else {
+      // Side-table path — join surfaces the column from `item_ownership`.
+      extras.push(sql`${sql.identifier("item_ownership")}.${sql.identifier("owner_id")} AS ${sql.identifier("owner_id")}`);
+    }
+  }
+  if (extras.length === 0) return sql`*`;
+  return sql`${tbl}.*, ${sql.join(extras, sql`, `)}`;
 };
 
-/** Build a single column reference for the SELECT list, qualifying
- *  `owner_id` to the side-table when needed. */
+/** Build a single column reference for the SELECT list. System fields
+ *  (`created_at`, `updated_at`, `owner_id`) get aliased to their physical
+ *  column when the collection maps them somewhere else. */
 const selectColRef = (collection: CollectionRow, col: string): SQL => {
-  if (col === "owner_id" && usesOwnershipSideTable(collection)) {
-    return sql`${sql.identifier("item_ownership")}.${sql.identifier("owner_id")} AS ${sql.identifier("owner_id")}`;
+  const tbl = sql.identifier(collection.physicalTable);
+  if (col === "owner_id") {
+    if (usesOwnershipSideTable(collection)) {
+      return sql`${sql.identifier("item_ownership")}.${sql.identifier("owner_id")} AS ${sql.identifier("owner_id")}`;
+    }
+    if (collection.ownerIdColumn && collection.ownerIdColumn !== "owner_id") {
+      return sql`${tbl}.${sql.identifier(collection.ownerIdColumn)} AS ${sql.identifier("owner_id")}`;
+    }
+  }
+  if (col === "created_at" && collection.createdAtColumn && collection.createdAtColumn !== "created_at") {
+    return sql`${tbl}.${sql.identifier(collection.createdAtColumn)} AS ${sql.identifier("created_at")}`;
+  }
+  if (col === "updated_at" && collection.updatedAtColumn && collection.updatedAtColumn !== "updated_at") {
+    return sql`${tbl}.${sql.identifier(collection.updatedAtColumn)} AS ${sql.identifier("updated_at")}`;
   }
   return sql`${sql.identifier(col)}`;
 };
@@ -428,7 +564,18 @@ export const itemsRoutes = new Hono<AppBindings>()
     );
 
     const table = collection.physicalTable;
-    const userWhere = q.filter ? compileCondition(q.filter, auth) : null;
+    // User-supplied filters and permission whereSql both reference system
+    // fields by their logical names (`created_at`, `owner_id`). Rewrite
+    // those keys to the actual physical column before compiling so the
+    // generated SQL doesn't refer to columns the source table doesn't have.
+    // perm.whereSql is already compiled (we can't re-rewrite it here);
+    // permissions only reference `owner_id`, and the side-table join
+    // surfaces an unqualified `owner_id` so the existing perm SQL still
+    // works in that case. For the alias path the workspace admin is
+    // responsible for crafting permission conditions against the aliased
+    // column name directly.
+    const userFilter = q.filter ? rewriteSystemFieldsInCondition(q.filter, collection) : null;
+    const userWhere = userFilter ? compileCondition(userFilter, auth) : null;
     const tenantWhere = tenantFilter(collection, auth);
     const wheres = [userWhere, perm.whereSql, tenantWhere].filter(
       (x): x is SQL => x != null,
@@ -452,7 +599,7 @@ export const itemsRoutes = new Hono<AppBindings>()
 
     const orderClause = sql.join(
       q.sort.map(
-        (s) => sql`${sql.identifier(s.field)} ${sql.raw(s.dir.toUpperCase())}`,
+        (s) => sql`${sql.identifier(rewriteSortField(s.field, collection))} ${sql.raw(s.dir.toUpperCase())}`,
       ),
       sql`, `,
     );
@@ -545,16 +692,10 @@ export const itemsRoutes = new Hono<AppBindings>()
     const perm = c.get("permission");
     const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
     const data = (await c.req.json()) as Record<string, unknown>;
-    validateBody(data, collection.fields, false, perm.fields);
-    if (hasI18nField(collection.fields)) {
-      const writeLocale = c.req.query("locale") ?? null;
-      mergeI18nPatch(data, {}, collection.fields, writeLocale);
-    }
-
+    // PK extraction MUST happen before validateBody — adopted collections
+    // accept the PK in the body, but the PK isn't in `collection.fields`,
+    // so validateBody would reject it as an unknown field otherwise.
     const table = collection.physicalTable;
-    // PK generation: managed collections always synthesize a UUID; adopted
-    // collections must receive the PK in the request body (we can't guess
-    // the user's PK type — could be uuid, int, custom slug…).
     let id: string;
     if (collection.adopted) {
       const pkVal = data[collection.pkColumn];
@@ -569,16 +710,21 @@ export const itemsRoutes = new Hono<AppBindings>()
     } else {
       id = crypto.randomUUID();
     }
+    validateBody(data, collection.fields, false, perm.fields);
+    if (hasI18nField(collection.fields)) {
+      const writeLocale = c.req.query("locale") ?? null;
+      mergeI18nPatch(data, {}, collection.fields, writeLocale);
+    }
     const now = nowFor(ctx.dialect);
 
     const cols: string[] = [collection.pkColumn];
     const vals: unknown[] = [id];
     if (collection.hasCreatedAt) {
-      cols.push("created_at");
+      cols.push(collection.createdAtColumn ?? "created_at");
       vals.push(now);
     }
     if (collection.hasUpdatedAt) {
-      cols.push("updated_at");
+      cols.push(collection.updatedAtColumn ?? "updated_at");
       vals.push(now);
     }
     // Managed owner_id column lives on the physical row; adopted collections
@@ -693,7 +839,7 @@ export const itemsRoutes = new Hono<AppBindings>()
     const now = nowFor(ctx.dialect);
     const sets: SQL[] = [];
     if (collection.hasUpdatedAt) {
-      sets.push(sql`${sql.identifier("updated_at")} = ${now}`);
+      sets.push(sql`${sql.identifier(collection.updatedAtColumn ?? "updated_at")} = ${now}`);
     }
     for (const f of collection.fields) {
       if (patch[f.name] === undefined) continue;

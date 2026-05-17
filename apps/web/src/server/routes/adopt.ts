@@ -73,6 +73,20 @@ const ApplyInput = z.object({
    *  managed (so `parseQuery` default-sort + items.ts row shaping match). */
   addCreatedAt: z.boolean().optional().default(false),
   addUpdatedAt: z.boolean().optional().default(false),
+  /** Alias an existing column to a system field. e.g.
+   *  `createdAtColumn: "inserted_at"` makes routes/items.ts read `created_at`
+   *  from `inserted_at`, without DDL. When set, it also implies
+   *  hasCreatedAt = true. Mutually exclusive in spirit with the
+   *  `addCreatedAt` flag (both setting hasCreatedAt = true) — `addCreatedAt`
+   *  is the "table actually has a created_at column" path, `createdAtColumn`
+   *  is the "table has it under a different name" path. */
+  createdAtColumn: z.string().min(1).max(120).nullable().optional(),
+  updatedAtColumn: z.string().min(1).max(120).nullable().optional(),
+  /** When set on an owner-scoped collection, ownership reads from this
+   *  column on the source table directly instead of the `item_ownership`
+   *  side-table. Useful when the table already carries a `user_id` /
+   *  `created_by` column the admin wants to keep authoritative. */
+  ownerIdColumn: z.string().min(1).max(120).nullable().optional(),
   defaultSort: z
     .string()
     .regex(/^[-+]?[a-z_][a-z0-9_]*(,[-+]?[a-z_][a-z0-9_]*)*$/)
@@ -204,18 +218,58 @@ export const adoptRoutes = new Hono<AppBindings>()
         );
       }
     }
-    const hasCreatedAt = body.addCreatedAt || inspection.systemColumnsPresent.createdAt;
-    const hasUpdatedAt = body.addUpdatedAt || inspection.systemColumnsPresent.updatedAt;
-    if (body.addCreatedAt && !inspection.systemColumnsPresent.createdAt) {
+    // Resolve alias columns: must exist on the table, must have a
+    // compatible workeros field type. We never invent columns; an alias
+    // pointing nowhere would silently corrupt reads.
+    const colByName = new Map(inspection.columns.map((c) => [c.name, c] as const));
+    const validateAlias = (
+      logical: "createdAt" | "updatedAt" | "ownerId",
+      raw: string | null | undefined,
+    ): string | null => {
+      if (!raw) return null;
+      const col = colByName.get(raw);
+      if (!col) {
+        throw new AppError("VALIDATION", `${logical}Column "${raw}" not found on table "${body.table}"`);
+      }
+      if (logical === "ownerId") {
+        if (col.suggested !== "text" && col.suggested !== "longtext" && col.suggested !== "uuid") {
+          throw new AppError("VALIDATION", `${logical}Column "${raw}" must be a text/uuid type (got ${col.dbType})`);
+        }
+      } else {
+        if (col.suggested !== "timestamp" && col.suggested !== "integer") {
+          throw new AppError("VALIDATION", `${logical}Column "${raw}" must be a timestamp/integer type (got ${col.dbType})`);
+        }
+      }
+      return raw;
+    };
+    // Normalize: alias pointing at the conventional name is the same as no
+    // alias (cleaner storage; routes/items.ts treats null as "use the
+    // conventional name").
+    const createdAtColumn = validateAlias("createdAt", body.createdAtColumn === "created_at" ? null : body.createdAtColumn);
+    const updatedAtColumn = validateAlias("updatedAt", body.updatedAtColumn === "updated_at" ? null : body.updatedAtColumn);
+    const ownerIdColumn = validateAlias("ownerId", body.ownerIdColumn === "owner_id" ? null : body.ownerIdColumn);
+
+    // hasCreatedAt is true if: an alias was set, OR addCreatedAt was set
+    // (and the conventional column exists), OR the conventional column is
+    // already present. Same logic for updatedAt.
+    const hasCreatedAt = Boolean(createdAtColumn) || body.addCreatedAt || inspection.systemColumnsPresent.createdAt;
+    const hasUpdatedAt = Boolean(updatedAtColumn) || body.addUpdatedAt || inspection.systemColumnsPresent.updatedAt;
+    if (body.addCreatedAt && !inspection.systemColumnsPresent.createdAt && !createdAtColumn) {
       throw new AppError(
         "VALIDATION",
-        "addCreatedAt is true but the table has no created_at column",
+        "addCreatedAt is true but the table has no created_at column (use createdAtColumn to alias an existing column instead)",
       );
     }
-    if (body.addUpdatedAt && !inspection.systemColumnsPresent.updatedAt) {
+    if (body.addUpdatedAt && !inspection.systemColumnsPresent.updatedAt && !updatedAtColumn) {
       throw new AppError(
         "VALIDATION",
         "addUpdatedAt is true but the table has no updated_at column",
+      );
+    }
+    if (ownerIdColumn && !body.ownerScoped) {
+      throw new AppError(
+        "VALIDATION",
+        "ownerIdColumn is set but ownerScoped is false — drop one or the other",
       );
     }
 
@@ -280,6 +334,9 @@ export const adoptRoutes = new Hono<AppBindings>()
       pkColumn: body.pkColumn,
       hasCreatedAt,
       hasUpdatedAt,
+      createdAtColumn,
+      updatedAtColumn,
+      ownerIdColumn,
     });
 
     if (body.ownerScoped) {

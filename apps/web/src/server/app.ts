@@ -53,6 +53,7 @@ import { workspaceConfigRoutes } from "./routes/workspace-config";
 import { authAdminRoutes } from "./routes/auth-admin";
 import { samlAdminRoutes } from "./routes/saml-admin";
 import { ldapAdminRoutes } from "./routes/ldap-admin";
+import { adoptRoutes } from "./routes/adopt";
 import { panelsRoutes } from "./routes/panels";
 import { i18nRoutes } from "./routes/i18n";
 import { i18nPublicRoutes } from "./routes/i18n-public";
@@ -168,6 +169,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/auth", authAdminRoutes);
   app.route("/api/admin/saml", samlAdminRoutes);
   app.route("/api/admin/ldap-config", ldapAdminRoutes);
+  app.route("/api/admin/adopt", adoptRoutes);
   app.route("/api/admin/panels", panelsRoutes);
   app.route("/api/admin/i18n", i18nRoutes);
   app.route("/api/i18n", i18nPublicRoutes);

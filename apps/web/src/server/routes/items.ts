@@ -20,6 +20,9 @@ import { embedAndUpsert, deleteVector } from "../services/vectorize";
 import { loadAppSettings } from "../services/settings";
 
 interface CollectionRow {
+  /** Collections.id — primary key in the metadata table. Needed for the
+   *  `item_ownership` semi-join on adopted owner-scoped collections. */
+  id: string;
   slug: string;
   /** Physical table backing the dynamic data (e.g. `c_<tenantPrefix>_<slug>`). */
   physicalTable: string;
@@ -38,6 +41,19 @@ interface CollectionRow {
   /** Comma-separated default sort (Directus shape, `-` prefix = DESC). Null
    *  falls back to `-created_at` in `parseQuery`. */
   defaultSort: string | null;
+  /** True when this collection was adopted from an existing physical table
+   *  (vs. we created it). When true, schema-applier never DDLs the table
+   *  and ownership lives in `item_ownership` instead of an injected
+   *  `owner_id` column. */
+  adopted: boolean;
+  /** Primary-key column name on the physical table. Default `id`; adoption
+   *  surfaces this for source tables with a different PK name. */
+  pkColumn: string;
+  /** Whether the physical table has these columns. Always true for managed
+   *  collections; flexible for adopted ones. Used by POST/PATCH writes,
+   *  projection, and the `parseQuery` default-sort fallback. */
+  hasCreatedAt: boolean;
+  hasUpdatedAt: boolean;
 }
 
 const collectionsTable = (dialect: "pg" | "sqlite") =>
@@ -63,6 +79,7 @@ const loadCollection = async (
   if (!rows[0]) throw new AppError("NOT_FOUND", `Collection "${slug}" not found`);
   const r = rows[0] as Record<string, unknown>;
   return {
+    id: r.id as string,
     slug: r.slug as string,
     physicalTable: (r.physicalTable ?? r.physical_table) as string,
     fields: r.fields as FieldDef[],
@@ -72,6 +89,10 @@ const loadCollection = async (
     vectorize: Boolean(r.vectorize),
     vectorizeModel: ((r.vectorizeModel ?? r.vectorize_model) as string | null | undefined) ?? null,
     defaultSort: ((r.defaultSort ?? r.default_sort) as string | null | undefined) ?? null,
+    adopted: Boolean(r.adopted),
+    pkColumn: ((r.pkColumn ?? r.pk_column) as string | undefined) ?? "id",
+    hasCreatedAt: (r.hasCreatedAt ?? r.has_created_at) === false ? false : true,
+    hasUpdatedAt: (r.hasUpdatedAt ?? r.has_updated_at) === false ? false : true,
   };
 };
 
@@ -158,14 +179,18 @@ const deserializeRow = (
   dialect: "pg" | "sqlite",
   ownerScoped: boolean,
   projection: string[] | null = null,
+  collection?: { pkColumn: string; hasCreatedAt: boolean; hasUpdatedAt: boolean },
 ): Record<string, unknown> => {
+  const pk = collection?.pkColumn ?? "id";
+  const hasCreatedAt = collection?.hasCreatedAt ?? true;
+  const hasUpdatedAt = collection?.hasUpdatedAt ?? true;
   const includeAll = !projection;
   const sel = new Set(projection ?? []);
   const out: Record<string, unknown> = {};
-  if (includeAll || sel.has("id")) out.id = row.id;
-  if (includeAll || sel.has("created_at"))
+  if (includeAll || sel.has("id") || sel.has(pk)) out.id = row[pk] ?? row.id;
+  if (hasCreatedAt && (includeAll || sel.has("created_at")))
     out.createdAt = deserialize(row.created_at, "timestamp", dialect);
-  if (includeAll || sel.has("updated_at"))
+  if (hasUpdatedAt && (includeAll || sel.has("updated_at")))
     out.updatedAt = deserialize(row.updated_at, "timestamp", dialect);
   if ((includeAll && ownerScoped) || sel.has("owner_id"))
     out.ownerId = row.owner_id ?? null;
@@ -335,8 +360,57 @@ const whereOf = (...frags: (SQL | null | undefined)[]): SQL => {
   return sql`WHERE ${sql.join(valid, sql` AND `)}`;
 };
 
-const idEq = (id: string): SQL =>
-  sql`${sql.identifier("id")} = ${id}`;
+const pkEq = (pkColumn: string, id: string): SQL =>
+  sql`${sql.identifier(pkColumn)} = ${id}`;
+
+/**
+ * Whether this collection's `owner_id` lives in the side table rather than
+ * on the physical row. The two-pronged check is essentially the contract:
+ * adopted collections never had an `owner_id` column injected (the
+ * schema-applier is a no-op for them), so when they're also owner-scoped,
+ * ownership must come from `item_ownership` via a join.
+ */
+const usesOwnershipSideTable = (collection: CollectionRow): boolean =>
+  collection.adopted && collection.ownerScoped;
+
+/**
+ * FROM clause for a collection's physical table, plus a LEFT JOIN to
+ * `item_ownership` when ownership lives there. The join surfaces
+ * `owner_id` on every row so projection/filter/sort can keep referring to
+ * it as a regular column — `compileCondition` doesn't need to know
+ * anything about ownership tables. Unqualified `owner_id` references
+ * disambiguate cleanly because adopted tables never had the column.
+ */
+const fromOf = (collection: CollectionRow): SQL => {
+  const tbl = sql.identifier(collection.physicalTable);
+  if (usesOwnershipSideTable(collection)) {
+    return sql`${tbl} LEFT JOIN ${sql.identifier("item_ownership")}
+      ON ${sql.identifier("item_ownership")}.${sql.identifier("collection_id")} = ${collection.id}
+      AND ${sql.identifier("item_ownership")}.${sql.identifier("item_id")} = ${tbl}.${sql.identifier(collection.pkColumn)}`;
+  }
+  return sql`${tbl}`;
+};
+
+/**
+ * `SELECT *` replacement that disambiguates column lists when the join is
+ * active — we explicitly pull `<physical>.*` plus the qualified
+ * `item_ownership.owner_id` so two `created_at` columns (one on each side)
+ * don't collide in the result set.
+ */
+const selectStar = (collection: CollectionRow): SQL => {
+  if (!usesOwnershipSideTable(collection)) return sql`*`;
+  const tbl = sql.identifier(collection.physicalTable);
+  return sql`${tbl}.*, ${sql.identifier("item_ownership")}.${sql.identifier("owner_id")} AS ${sql.identifier("owner_id")}`;
+};
+
+/** Build a single column reference for the SELECT list, qualifying
+ *  `owner_id` to the side-table when needed. */
+const selectColRef = (collection: CollectionRow, col: string): SQL => {
+  if (col === "owner_id" && usesOwnershipSideTable(collection)) {
+    return sql`${sql.identifier("item_ownership")}.${sql.identifier("owner_id")} AS ${sql.identifier("owner_id")}`;
+  }
+  return sql`${sql.identifier(col)}`;
+};
 
 export const itemsRoutes = new Hono<AppBindings>()
   .get("/:slug", requirePermission(collectionFromParam, "read"), async (c) => {
@@ -371,10 +445,10 @@ export const itemsRoutes = new Hono<AppBindings>()
     );
     const selectCols: SQL = projection
       ? sql.join(
-          projection.map((col) => sql.identifier(col)),
+          projection.map((col) => selectColRef(collection, col)),
           sql`, `,
         )
-      : sql`*`;
+      : selectStar(collection);
 
     const orderClause = sql.join(
       q.sort.map(
@@ -385,7 +459,7 @@ export const itemsRoutes = new Hono<AppBindings>()
 
     const rows = await queryAll<Record<string, unknown>>(
       ctx,
-      sql`SELECT ${selectCols} FROM ${sql.identifier(table)} ${whereClause} ORDER BY ${orderClause} LIMIT ${q.limit} OFFSET ${q.offset}`,
+      sql`SELECT ${selectCols} FROM ${fromOf(collection)} ${whereClause} ORDER BY ${orderClause} LIMIT ${q.limit} OFFSET ${q.offset}`,
     );
 
     let metaOut: { filter_count?: number; total_count?: number } | undefined;
@@ -394,7 +468,7 @@ export const itemsRoutes = new Hono<AppBindings>()
       if (q.meta.filterCount) {
         const r = await queryAll<{ count: number | string | bigint }>(
           ctx,
-          sql`SELECT COUNT(*) AS count FROM ${sql.identifier(table)} ${whereClause}`,
+          sql`SELECT COUNT(*) AS count FROM ${fromOf(collection)} ${whereClause}`,
         );
         metaOut.filter_count = Number(r[0]?.count ?? 0);
       }
@@ -406,7 +480,7 @@ export const itemsRoutes = new Hono<AppBindings>()
           : sql``;
         const r = await queryAll<{ count: number | string | bigint }>(
           ctx,
-          sql`SELECT COUNT(*) AS count FROM ${sql.identifier(table)} ${totalWhere}`,
+          sql`SELECT COUNT(*) AS count FROM ${fromOf(collection)} ${totalWhere}`,
         );
         metaOut.total_count = Number(r[0]?.count ?? 0);
       }
@@ -445,7 +519,7 @@ export const itemsRoutes = new Hono<AppBindings>()
     const table = collection.physicalTable;
     const rows = await queryAll<Record<string, unknown>>(
       ctx,
-      sql`SELECT * FROM ${sql.identifier(table)} ${whereOf(idEq(c.req.param("id")), perm.whereSql, tenantFilter(collection, auth))} LIMIT 1`,
+      sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, c.req.param("id")), perm.whereSql, tenantFilter(collection, auth))} LIMIT 1`,
     );
     if (!rows[0]) throw new AppError("NOT_FOUND", "Item not found");
     const locale = c.req.query("locale") ?? null;
@@ -478,12 +552,39 @@ export const itemsRoutes = new Hono<AppBindings>()
     }
 
     const table = collection.physicalTable;
-    const id = crypto.randomUUID();
+    // PK generation: managed collections always synthesize a UUID; adopted
+    // collections must receive the PK in the request body (we can't guess
+    // the user's PK type — could be uuid, int, custom slug…).
+    let id: string;
+    if (collection.adopted) {
+      const pkVal = data[collection.pkColumn];
+      if (pkVal === undefined || pkVal === null || pkVal === "") {
+        throw new AppError(
+          "VALIDATION",
+          `Primary key "${collection.pkColumn}" is required in the body for adopted collections`,
+        );
+      }
+      id = String(pkVal);
+      delete data[collection.pkColumn];
+    } else {
+      id = crypto.randomUUID();
+    }
     const now = nowFor(ctx.dialect);
 
-    const cols: string[] = ["id", "created_at", "updated_at"];
-    const vals: unknown[] = [id, now, now];
-    if (collection.ownerScoped) {
+    const cols: string[] = [collection.pkColumn];
+    const vals: unknown[] = [id];
+    if (collection.hasCreatedAt) {
+      cols.push("created_at");
+      vals.push(now);
+    }
+    if (collection.hasUpdatedAt) {
+      cols.push("updated_at");
+      vals.push(now);
+    }
+    // Managed owner_id column lives on the physical row; adopted collections
+    // use the side-table `item_ownership` instead (written below, after the
+    // row insert succeeds — see the adopted ownership branch).
+    if (collection.ownerScoped && !collection.adopted) {
       cols.push("owner_id");
       vals.push(auth.userId);
     }
@@ -515,13 +616,20 @@ export const itemsRoutes = new Hono<AppBindings>()
       ctx,
       sql`INSERT INTO ${sql.identifier(table)} (${colSql}) VALUES (${valSql})`,
     );
+    // Adopted owner-scoped collections carry ownership in the side table.
+    // We INSERT here, post-row-insert, so a FK violation on a missing
+    // collection row would fail before we wrote to the user's table.
+    if (usesOwnershipSideTable(collection) && auth.userId) {
+      await execute(
+        ctx,
+        sql`INSERT INTO ${sql.identifier("item_ownership")} (${sql.identifier("collection_id")}, ${sql.identifier("item_id")}, ${sql.identifier("owner_id")}, ${sql.identifier("created_at")})
+            VALUES (${collection.id}, ${id}, ${auth.userId}, ${now})`,
+      );
+    }
 
-    const out: Record<string, unknown> = {
-      id,
-      createdAt: deserialize(now, "timestamp", ctx.dialect),
-      updatedAt: deserialize(now, "timestamp", ctx.dialect),
-      ...data,
-    };
+    const out: Record<string, unknown> = { id, ...data };
+    if (collection.hasCreatedAt) out.createdAt = deserialize(now, "timestamp", ctx.dialect);
+    if (collection.hasUpdatedAt) out.updatedAt = deserialize(now, "timestamp", ctx.dialect);
     if (collection.ownerScoped) out.ownerId = auth.userId;
     await embedAndUpsert(
       ctx,
@@ -567,7 +675,7 @@ export const itemsRoutes = new Hono<AppBindings>()
     const tenantWhere = tenantFilter(collection, auth);
     const existing = await queryAll<Record<string, unknown>>(
       ctx,
-      sql`SELECT * FROM ${sql.identifier(table)} ${whereOf(idEq(id), perm.whereSql, tenantWhere)} LIMIT 1`,
+      sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)} LIMIT 1`,
     );
     if (!existing[0]) throw new AppError("NOT_FOUND", "Item not found");
     const beforeRow = deserializeRow(
@@ -583,9 +691,10 @@ export const itemsRoutes = new Hono<AppBindings>()
     }
 
     const now = nowFor(ctx.dialect);
-    const sets: SQL[] = [
-      sql`${sql.identifier("updated_at")} = ${now}`,
-    ];
+    const sets: SQL[] = [];
+    if (collection.hasUpdatedAt) {
+      sets.push(sql`${sql.identifier("updated_at")} = ${now}`);
+    }
     for (const f of collection.fields) {
       if (patch[f.name] === undefined) continue;
       sets.push(
@@ -593,14 +702,18 @@ export const itemsRoutes = new Hono<AppBindings>()
       );
     }
 
-    await execute(
-      ctx,
-      sql`UPDATE ${sql.identifier(table)} SET ${sql.join(sets, sql`, `)} ${whereOf(idEq(id), perm.whereSql, tenantWhere)}`,
-    );
+    // If nothing to update (no updated_at + no field patches), skip the UPDATE
+    // entirely — emitting `SET ` with no clauses is a syntax error.
+    if (sets.length > 0) {
+      await execute(
+        ctx,
+        sql`UPDATE ${sql.identifier(table)} SET ${sql.join(sets, sql`, `)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)}`,
+      );
+    }
 
     const refreshed = await queryAll<Record<string, unknown>>(
       ctx,
-      sql`SELECT * FROM ${sql.identifier(table)} ${whereOf(idEq(id), tenantWhere)} LIMIT 1`,
+      sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, id), tenantWhere)} LIMIT 1`,
     );
     const refreshedRow = deserializeRow(
       refreshed[0]!,
@@ -660,7 +773,7 @@ export const itemsRoutes = new Hono<AppBindings>()
 
     const existing = await queryAll<Record<string, unknown>>(
       ctx,
-      sql`SELECT * FROM ${sql.identifier(table)} ${whereOf(idEq(id), perm.whereSql, tenantWhere)} LIMIT 1`,
+      sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)} LIMIT 1`,
     );
     if (!existing[0]) throw new AppError("NOT_FOUND", "Item not found");
     const oldRow = deserializeRow(
@@ -672,8 +785,18 @@ export const itemsRoutes = new Hono<AppBindings>()
 
     await execute(
       ctx,
-      sql`DELETE FROM ${sql.identifier(table)} ${whereOf(idEq(id), perm.whereSql, tenantWhere)}`,
+      sql`DELETE FROM ${sql.identifier(table)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)}`,
     );
+    // Cascade-clean the ownership side table for adopted owner-scoped rows.
+    // No-op for everyone else (the row simply doesn't exist there).
+    if (usesOwnershipSideTable(collection)) {
+      await execute(
+        ctx,
+        sql`DELETE FROM ${sql.identifier("item_ownership")}
+            WHERE ${sql.identifier("collection_id")} = ${collection.id}
+            AND ${sql.identifier("item_id")} = ${id}`,
+      );
+    }
     await deleteVector(ctx, collection, id);
     await publishEvent(
       ctx.env,
@@ -734,11 +857,11 @@ export const itemsRoutes = new Hono<AppBindings>()
       : sql`${sql.identifier("_status")} = 'published', ${sql.identifier("_published_at")} = ${now}, ${sql.identifier("updated_at")} = ${now}`;
     await execute(
       ctx,
-      sql`UPDATE ${sql.identifier(table)} SET ${setSql} ${whereOf(idEq(id), perm.whereSql, tenantWhere)}`,
+      sql`UPDATE ${sql.identifier(table)} SET ${setSql} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)}`,
     );
     const rows = await queryAll<Record<string, unknown>>(
       ctx,
-      sql`SELECT * FROM ${sql.identifier(table)} ${whereOf(idEq(id), perm.whereSql, tenantWhere)} LIMIT 1`,
+      sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)} LIMIT 1`,
     );
     if (!rows[0]) throw new AppError("NOT_FOUND", "Item not found");
     const after = deserializeRow(rows[0], collection.fields, ctx.dialect, collection.ownerScoped);

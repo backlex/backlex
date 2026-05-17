@@ -265,7 +265,17 @@ export const collectionsApi = {
       body: JSON.stringify(input),
     }),
   remove: (slug: string) =>
-    api<{ ok: true }>(`/api/collections/${slug}`, { method: "DELETE" }),
+    api<{ ok: true; archived?: boolean }>(`/api/collections/${slug}`, { method: "DELETE" }),
+  /** Re-activate an archived (adopted) collection. No-op on already-active rows. */
+  restore: (slug: string) =>
+    api<{ ok: true; alreadyActive?: boolean }>(`/api/collections/${slug}/restore`, {
+      method: "POST",
+    }),
+  /** Fetch collections list, optionally including archived (adopted-soft-delete) rows. */
+  listWithArchived: (includeArchived?: boolean) =>
+    api<Envelope<ApiCollection[]>>(
+      `/api/collections${includeArchived ? "?include_archived=true" : ""}`,
+    ),
 };
 
 export interface ItemsListResp<T = Record<string, unknown>> {

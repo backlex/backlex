@@ -129,6 +129,80 @@ issue [#24411](https://github.com/directus/directus/issues/24411)
 tracks the inverse footgun on their side, closed "not planned"; we
 don't have it.) Drop the table yourself if you want it gone.
 
+## Archive and restore
+
+`DELETE` on an adopted collection is **soft**: the row stays put with
+`status = 'archived'` and an `archived_at` timestamp, the physical table
+is never touched, and a single `POST .../restore` brings everything
+back. Managed collections still hard-delete — there's no row to recover
+because the data only ever lived inside workeros. The split keeps both
+sides honest: adopted data outlives the collection, managed data doesn't.
+
+### What "archive" means
+
+`DELETE /api/collections/<slug>` on an adopted collection sets
+`status = 'archived'` and `archived_at = now()` on the `collections`
+row. The physical table is left alone — that's the whole adoption
+contract, and Directus #24411 is the footgun we're explicitly not
+shipping. Metadata (fields, permissions, aliases, FK relations) is
+preserved so restore is lossless. While archived, `/api/items/<slug>`
+endpoints return `404 Collection not found`, and the row is hidden from
+the default collection list.
+
+### Restore
+
+```bash
+curl -sX POST localhost:5173/api/collections/<slug>/restore
+```
+
+Sets `status = 'active'`, clears `archived_at`, and re-seeds the
+`authenticated`-role owner-scoped permissions via the same
+`seedOwnerScopedPermissions` helper from Phase 1. One round-trip and
+the collection is back on the API, the realtime channel, and the admin
+UI. Restore is a no-op for managed collections (there's no archived
+state to leave) and an error for collections that were never archived.
+
+### Default vs all
+
+`GET /api/collections` returns only `status = 'active'` rows by default.
+Pass `?include_archived=true` to fold the archived ones back in — the
+admin UI uses this to render the "Archived" tab. Single-collection
+lookup follows the same rule: `GET /api/collections/<slug>` 404s on an
+archived row unless you pass `?include_archived=true`.
+
+### Managed collections
+
+Managed collections (the ones whose physical table is `c_<slug>`) still
+hard-delete: the `c_<slug>` table is dropped, the metadata row is gone,
+and there is no restore. The asymmetry is on purpose — for an adopted
+table the data lives in some other application and the user owns it, so
+deleting the wrapper can't be irreversible. For a managed table the
+data only ever lived in workeros, so `DELETE` means what it says.
+
+### Worked example
+
+```bash
+# Adopt + later archive + restore
+curl -sX POST localhost:5173/api/admin/adopt/apply \
+  -d '{"table":"legacy_orders","slug":"legacy_orders","pkColumn":"id","fields":[...]}'
+
+# Some time later — admin archives
+curl -sX DELETE localhost:5173/api/collections/legacy_orders
+# Response: {"ok": true, "archived": true}
+
+# Items endpoint now 404s
+curl -sX GET localhost:5173/api/items/legacy_orders
+# 404 "Collection not found"
+
+# Restore
+curl -sX POST localhost:5173/api/collections/legacy_orders/restore
+# Response: {"ok": true}
+
+# Items endpoint works again — the data was never gone
+curl -sX GET localhost:5173/api/items/legacy_orders
+# 200, returns the rows that were always in the physical table
+```
+
 ## Aliasing existing columns
 
 Adopted tables rarely follow workeros' conventional column names —

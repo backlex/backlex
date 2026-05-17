@@ -13,6 +13,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workeros/ui/components/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
 import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
@@ -143,23 +151,9 @@ export const ApiKeys = () => {
             <Button variant="outline" size="sm" onClick={refresh}>
               Refresh
             </Button>
-            {showForm ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  resetForm();
-                  setShowForm(false);
-                }}
-                disabled={busy}
-              >
-                Cancel
-              </Button>
-            ) : (
-              <Button size="sm" onClick={() => setShowForm(true)}>
-                <PlusIcon /> New
-              </Button>
-            )}
+            <Button size="sm" onClick={() => setShowForm(true)}>
+              <PlusIcon /> New
+            </Button>
           </>
         }
       />
@@ -189,15 +183,21 @@ export const ApiKeys = () => {
         </Card>
       )}
 
-      {showForm && (
-        <Card className="max-w-2xl">
-          <CardHeader>
-            <CardTitle className="text-base">New API key</CardTitle>
-            <p className="text-xs text-muted-foreground">
+      <Dialog
+        open={showForm}
+        onOpenChange={(open) => {
+          if (busy) return;
+          if (!open) resetForm();
+          setShowForm(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>New API key</DialogTitle>
+            <DialogDescription>
               The full secret is shown once after creation — copy it somewhere safe.
-            </p>
-          </CardHeader>
-          <CardContent>
+            </DialogDescription>
+          </DialogHeader>
           <form id="new-api-key-form" className="space-y-4" onSubmit={submit}>
             <div className="space-y-1.5">
               <Label htmlFor="name">Name</Label>
@@ -273,11 +273,10 @@ export const ApiKeys = () => {
               </p>
             </div>
           </form>
-          <div className="mt-5 flex items-center justify-end gap-2 border-t pt-4">
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={() => {
                 resetForm();
                 setShowForm(false);
@@ -286,13 +285,12 @@ export const ApiKeys = () => {
             >
               Cancel
             </Button>
-            <Button type="submit" form="new-api-key-form" size="sm" disabled={busy}>
+            <Button type="submit" form="new-api-key-form" disabled={busy}>
               {busy ? "Creating…" : "Create"}
             </Button>
-          </div>
-          </CardContent>
-        </Card>
-      )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardContent>

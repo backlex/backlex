@@ -31,21 +31,59 @@ const buildValidColumns = (
 const validateFilterFields = (
   cond: Condition,
   valid: Set<string>,
+  fieldsByName: Map<string, FieldDef>,
+  allowedForUser: Set<string>,
 ): void => {
   const c = cond as Record<string, unknown>;
   if (Array.isArray(c.$and)) {
-    for (const sub of c.$and) validateFilterFields(sub as Condition, valid);
+    for (const sub of c.$and) validateFilterFields(sub as Condition, valid, fieldsByName, allowedForUser);
     return;
   }
   if (Array.isArray(c.$or)) {
-    for (const sub of c.$or) validateFilterFields(sub as Condition, valid);
+    for (const sub of c.$or) validateFilterFields(sub as Condition, valid, fieldsByName, allowedForUser);
     return;
   }
   if (c.$not !== undefined) {
-    validateFilterFields(c.$not as Condition, valid);
+    validateFilterFields(c.$not as Condition, valid, fieldsByName, allowedForUser);
     return;
   }
   for (const k of Object.keys(c)) {
+    // Nested-relation filter: `<relation_field>.<sub>` — the head must be
+    // a `relation` / `relation_many` field on this collection that the
+    // caller has read permission on. The tail is validated at compile
+    // time (compileCondition has access to the target collection).
+    if (k.includes(".")) {
+      const dotCount = (k.match(/\./g) || []).length;
+      if (dotCount > 1) {
+        throw new AppError(
+          "VALIDATION",
+          `Multi-level nested filter not supported yet: ${k}`,
+        );
+      }
+      const [head, sub] = k.split(".") as [string, string];
+      if (!head || !sub) {
+        throw new AppError("VALIDATION", `Invalid nested filter key: ${k}`);
+      }
+      const def = fieldsByName.get(head);
+      if (!def) {
+        throw new AppError("VALIDATION", `Unknown field on nested filter: ${head}`);
+      }
+      if (def.type !== "relation" && def.type !== "relation_many") {
+        throw new AppError(
+          "VALIDATION",
+          `Nested filter only works on relation fields — "${head}" is ${def.type}`,
+        );
+      }
+      if (!allowedForUser.has(head)) {
+        throw new AppError("FORBIDDEN", `No permission to read field: ${head}`);
+      }
+      // Subfield identifier shape — actual existence on the target
+      // collection is enforced when compileCondition resolves the JOIN.
+      if (!/^[a-z_][a-z0-9_]*$/.test(sub)) {
+        throw new AppError("VALIDATION", `Invalid nested subfield: ${sub}`);
+      }
+      continue;
+    }
     if (!valid.has(k)) {
       throw new AppError("VALIDATION", `Cannot filter on field: ${k}`);
     }
@@ -78,7 +116,8 @@ export const parseQuery = (
     } catch {
       throw new AppError("VALIDATION", "Invalid `filter` JSON");
     }
-    validateFilterFields(filter, allowedForUser);
+    const fieldsByName = new Map(fields.map((f) => [f.name, f] as const));
+    validateFilterFields(filter, allowedForUser, fieldsByName, allowedForUser);
   }
 
   // `q=...` is a free-text search: `_contains` OR-ed across every readable

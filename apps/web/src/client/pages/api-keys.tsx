@@ -13,14 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workeros/ui/components/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@workeros/ui/components/dialog";
 import { ConfirmAction } from "@/components/confirm-action";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
@@ -142,7 +134,7 @@ export const ApiKeys = () => {
   };
 
   return (
-    <div>
+    <div className="flex flex-col gap-5">
       <PageHeader
         title="API Keys"
         description="Long-lived bearer tokens (`pak_…`) for CI, scripts, third-party integrations. A key impersonates its owner — optionally narrowed to a single role and/or given an expiry date."
@@ -151,15 +143,29 @@ export const ApiKeys = () => {
             <Button variant="outline" size="sm" onClick={refresh}>
               Refresh
             </Button>
-            <Button size="sm" onClick={() => setShowForm(true)}>
-              <PlusIcon /> New
-            </Button>
+            {showForm ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  resetForm();
+                  setShowForm(false);
+                }}
+                disabled={busy}
+              >
+                Cancel
+              </Button>
+            ) : (
+              <Button size="sm" onClick={() => setShowForm(true)}>
+                <PlusIcon /> New
+              </Button>
+            )}
           </>
         }
       />
 
       {secret && (
-        <Card className="mb-6 ring-2 ring-primary/40">
+        <Card className="max-w-2xl ring-2 ring-primary/40">
           <CardHeader>
             <CardTitle className="text-sm">Save this secret now</CardTitle>
           </CardHeader>
@@ -183,21 +189,15 @@ export const ApiKeys = () => {
         </Card>
       )}
 
-      <Dialog
-        open={showForm}
-        onOpenChange={(open) => {
-          if (busy) return;
-          if (!open) resetForm();
-          setShowForm(open);
-        }}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>New API key</DialogTitle>
-            <DialogDescription>
+      {showForm && (
+        <Card className="max-w-2xl">
+          <CardHeader>
+            <CardTitle className="text-base">New API key</CardTitle>
+            <p className="text-xs text-muted-foreground">
               The full secret is shown once after creation — copy it somewhere safe.
-            </DialogDescription>
-          </DialogHeader>
+            </p>
+          </CardHeader>
+          <CardContent>
           <form id="new-api-key-form" className="space-y-4" onSubmit={submit}>
             <div className="space-y-1.5">
               <Label htmlFor="name">Name</Label>
@@ -273,10 +273,11 @@ export const ApiKeys = () => {
               </p>
             </div>
           </form>
-          <DialogFooter>
+          <div className="mt-5 flex items-center justify-end gap-2 border-t pt-4">
             <Button
               type="button"
               variant="outline"
+              size="sm"
               onClick={() => {
                 resetForm();
                 setShowForm(false);
@@ -285,12 +286,13 @@ export const ApiKeys = () => {
             >
               Cancel
             </Button>
-            <Button type="submit" form="new-api-key-form" disabled={busy}>
+            <Button type="submit" form="new-api-key-form" size="sm" disabled={busy}>
               {busy ? "Creating…" : "Create"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent>

@@ -339,7 +339,7 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
       <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
         {tab === "item" && (
           <>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span className="muted" style={{ fontSize: 12.5 }}>{(() => {
                 const r = <span className="font-mono" style={{ color: "var(--foreground)" }}>{role}</span>;
                 if (action === "read") return <>Rows matching this rule are visible to {r}.</>;
@@ -354,6 +354,17 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
                 <button type="button" className={mode === "json" ? "on" : ""} onClick={() => { setJsonDraft(compiledJson); setMode("json"); }}>JSON</button>
               </div>
             </div>
+            {availableFields.length === 0 && (
+              <div className="muted" style={{
+                fontSize: 12,
+                padding: "10px 12px",
+                border: "1px dashed var(--border)",
+                borderRadius: "var(--radius-md)",
+                background: "color-mix(in oklch, var(--muted) 30%, var(--card))",
+              }}>
+                No fields defined for <span className="font-mono" style={{ color: "var(--foreground)" }}>{collection}</span> yet — add fields in the schema editor before writing rules.
+              </div>
+            )}
             {mode === "builder" ? (
               <RuleBuilder tree={tree} onChange={setTreeDirty} fields={fields} />
             ) : (
@@ -468,21 +479,36 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
         )}
 
         {tab === "item" && (
-          <div className="field">
-            <label className="field-label">Test against an item</label>
-            <Textarea
-              className="font-mono"
-              style={{ minHeight: 90, padding: 12, lineHeight: 1.5, fontSize: 12, resize: "vertical" }}
-              value={testItem}
-              onChange={(e) => { setTestItem(e.target.value); setTestResult(null); }}
-            />
-            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6, flexWrap: "wrap" }}>
-              <Button variant="outline" size="sm" icon={I.Zap} onClick={runTest}>Run test</Button>
-              {testResult?.error && <Badge variant="destructive">error: {testResult.error}</Badge>}
-              {testResult && testResult.passed === true && <Badge variant="default">✓ passes · {testResult.ms}ms</Badge>}
-              {testResult && testResult.passed === false && <Badge variant="destructive">✗ denied</Badge>}
+          <details style={{
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-md)",
+            background: "var(--card)",
+          }}>
+            <summary style={{
+              cursor: "pointer",
+              padding: "8px 12px",
+              fontSize: 12.5,
+              fontWeight: 500,
+              color: "var(--foreground)",
+              listStyle: "none",
+            }}>
+              Test against an item
+            </summary>
+            <div style={{ padding: "0 12px 12px 12px" }}>
+              <Textarea
+                className="font-mono"
+                style={{ minHeight: 90, padding: 12, lineHeight: 1.5, fontSize: 12, resize: "vertical" }}
+                value={testItem}
+                onChange={(e) => { setTestItem(e.target.value); setTestResult(null); }}
+              />
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6, flexWrap: "wrap" }}>
+                <Button variant="outline" size="sm" icon={I.Zap} onClick={runTest}>Run test</Button>
+                {testResult?.error && <Badge variant="destructive">error: {testResult.error}</Badge>}
+                {testResult && testResult.passed === true && <Badge variant="default">✓ passes · {testResult.ms}ms</Badge>}
+                {testResult && testResult.passed === false && <Badge variant="destructive">✗ denied</Badge>}
+              </div>
             </div>
-          </div>
+          </details>
         )}
 
         {showSql && (

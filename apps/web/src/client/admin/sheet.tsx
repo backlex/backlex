@@ -6,6 +6,13 @@ import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button, Checkbox, IconButton, Switch } from "./ui";
 import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@workeros/ui/components/dropdown-menu";
+import { cn } from "@workeros/ui/lib/utils";
 import { Select } from "./select";
 import { RelationPicker, FilePicker, MultiFilePicker } from "./relational-pickers";
 
@@ -19,10 +26,19 @@ export interface ItemSheetProps {
    * Save the current draft. Return value is awaited; if it resolves to `false`
    * the sheet treats it as a validation/API failure and stays dirty (so the
    * user can retry). Anything else (true / undefined / void) is treated as
-   * success — the sheet stays open and the parent is expected to have updated
-   * `initial` so the form re-syncs to the freshly-saved values.
+   * success.
+   *
+   * `opts.close` is the primary-vs-secondary axis of the split-button:
+   *   - `true`  (default, "Save" / `Enter` / `Cmd+Enter` / `Create <slug>`):
+   *             on success the parent closes the sheet.
+   *   - `false` ("Save and continue" dropdown item): on success the sheet
+   *             stays open and the parent is expected to have updated
+   *             `initial` so the form re-syncs to the freshly-saved values.
    */
-  onSave: (draft: Partial<Post>) => void | boolean | Promise<void | boolean>;
+  onSave: (
+    draft: Partial<Post>,
+    opts?: { close?: boolean },
+  ) => void | boolean | Promise<void | boolean>;
 }
 
 type SchemaField = {
@@ -160,9 +176,10 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
     return Object.keys(e).length === 0;
   };
 
-  const submit = async () => {
+  const submit = async (opts?: { close?: boolean }) => {
     if (saving) return;
     if (!validate()) return;
+    const close = opts?.close ?? true;
     const payload: Record<string, unknown> = {};
     for (const f of fields) {
       const raw = draft[f.name];
@@ -194,18 +211,19 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
     }
     setSaving(true);
     try {
-      await onSave(payload as Partial<Post>);
+      await onSave(payload as Partial<Post>, { close });
     } finally {
       setSaving(false);
     }
   };
 
-  // Enter-to-save handler for the body. We let Enter pass through inside
-  // textareas / rich-text editors (so it keeps inserting a newline), and
-  // anywhere the active element opts out via `data-enter-newline="true"`
-  // (used by the chip-input inside the tags field, which has its own Enter
-  // semantics). Cmd/Ctrl+Enter always saves — that's the documented escape
-  // hatch from inside a textarea.
+  // Enter-to-save handler for the body. Both Enter and Cmd/Ctrl+Enter trigger
+  // the primary "Save" action (close on success) — matching the split-button's
+  // default. We let Enter pass through inside textareas / rich-text editors
+  // (so it keeps inserting a newline), and anywhere the active element opts
+  // out via `data-enter-newline="true"` (used by the chip-input inside the
+  // tags field, which has its own Enter semantics). Cmd/Ctrl+Enter is the
+  // documented escape hatch from inside a textarea.
   const onBodyKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== "Enter") return;
     // If a child handler already consumed Enter (e.g. the tags chip input
@@ -217,7 +235,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
     const isMeta = e.metaKey || e.ctrlKey;
     if (isMeta) {
       e.preventDefault();
-      void submit();
+      void submit({ close: true });
       return;
     }
     // Don't intercept Enter inside multi-line editors or contenteditable
@@ -230,9 +248,9 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
     // don't submit on those modifiers.
     if (e.shiftKey || e.altKey) return;
     // For everything else (Input, Select, Checkbox, Switch buttons, etc.)
-    // treat Enter as "submit the form".
+    // treat Enter as "submit the form" (primary: close on success).
     e.preventDefault();
-    void submit();
+    void submit({ close: true });
   };
 
   if (!open) return null;
@@ -883,11 +901,58 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
           <Button variant="ghost" size="sm" onClick={onClose}>
             {Object.keys(touched).length === 0 ? "Close" : "Cancel"}
           </Button>
-          <Button variant="primary" size="sm" onClick={submit} disabled={saving}>
-            {mode === "create"
-              ? `Create ${slug || "row"}`
-              : saving ? "Saving…" : "Save and continue"}
-          </Button>
+          {mode === "create" ? (
+            // Create mode has only one save action — no split button needed.
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => void submit({ close: true })}
+              disabled={saving}
+            >
+              {saving ? "Saving…" : `Create ${slug || "row"}`}
+            </Button>
+          ) : (
+            // Edit mode: split-button. Primary "Save" closes the sheet on
+            // success; the chevron dropdown exposes "Save and continue" which
+            // saves without closing. The two buttons share a seam — the
+            // primary loses its right radius, the chevron loses its left
+            // radius and its left border so the outer rounded corners stay
+            // clean and the inner edge has no double-stroke.
+            <div style={{ display: "inline-flex" }}>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => void submit({ close: true })}
+                disabled={saving}
+                className={cn("rounded-r-none")}
+              >
+                {saving ? "Saving…" : "Save"}
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={saving}
+                    aria-label="More save options"
+                    className={cn("rounded-l-none border-l-0 px-2")}
+                  >
+                    <I.ChevronDown size={14} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      void submit({ close: false });
+                    }}
+                  >
+                    Save and continue
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </div>
       </div>
     </>

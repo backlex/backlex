@@ -915,32 +915,44 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
             // Edit mode: split-button. Primary "Save" closes the sheet on
             // success; the chevron dropdown exposes "Save and continue" which
             // saves without closing. The two buttons share a seam — the
-            // primary loses its right radius, the chevron loses its left
-            // radius and its left border so the outer rounded corners stay
-            // clean and the inner edge has no double-stroke.
+            // primary loses its right radius AND right border, the chevron
+            // loses its left radius and its left border so the outer rounded
+            // corners stay clean and the inner edge has no transparent-border
+            // bleed (Button uses `border border-transparent bg-clip-padding`,
+            // which would otherwise show the sheet background through that
+            // 1px gap). Both halves are pinned to rounded-2xl because the
+            // default rounded-4xl (≈36px) gets visibly clamped on an h-8
+            // (32px) button — the curves look uneven across the split.
             <div style={{ display: "inline-flex" }}>
               <Button
                 variant="primary"
                 size="sm"
                 onClick={() => void submit({ close: true })}
                 disabled={saving}
-                className={cn("rounded-r-none")}
+                className={cn("rounded-2xl rounded-r-none border-r-0")}
               >
                 {saving ? "Saving…" : "Save"}
               </Button>
-              <DropdownMenu>
+              {/* `modal={false}` so the menu doesn't try to lock body scroll
+                  / focus while the sheet itself already owns the modal stack,
+                  and so its trigger pointer events aren't competing with any
+                  outer dismiss handler. The real reason the menu looked
+                  "broken" before was z-index: the sheet sits at z-index: 61
+                  but DropdownMenuContent ships with `z-50`, so the portal
+                  rendered *behind* the sheet panel. Bump it above the sheet. */}
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="primary"
                     size="sm"
                     disabled={saving}
                     aria-label="More save options"
-                    className={cn("rounded-l-none border-l-0 px-2")}
+                    className={cn("rounded-2xl rounded-l-none border-l-0 px-2")}
                   >
                     <I.ChevronDown size={14} />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="z-[70]">
                   <DropdownMenuItem
                     onSelect={(e) => {
                       e.preventDefault();

@@ -519,12 +519,18 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   const openCreate = () => { setSheetMode("create"); setSheetItem(null); setSheetOpen(true); };
   const openEdit = (it: Post) => { setSheetMode("edit"); setSheetItem(it); setSheetOpen(true); };
 
-  // Save-and-continue: after a successful save we keep the sheet open and
-  // hand it a fresh `sheetItem` so its useEffect re-syncs the draft to the
-  // server-confirmed values. The sheet only closes when the user explicitly
-  // dismisses it via Cancel/Close/X/scrim. Returns `false` on failure so the
-  // sheet can stay dirty for retries.
-  const onSave = async (draft: Partial<Post>): Promise<boolean> => {
+  // Split-button save. The primary "Save" action closes the sheet on success
+  // (opts.close === true, also the default for `Enter` / `Cmd+Enter` and the
+  // create-mode button). The dropdown's "Save and continue" passes
+  // `close: false` — we keep the sheet open and hand it a fresh `sheetItem` so
+  // its useEffect re-syncs the draft to the server-confirmed values. Returns
+  // `false` on failure so the sheet can stay dirty for retries (and won't
+  // close).
+  const onSave = async (
+    draft: Partial<Post>,
+    opts?: { close?: boolean },
+  ): Promise<boolean> => {
+    const close = opts?.close ?? true;
     if (sheetMode === "create") {
       let nu: Post;
       try {
@@ -566,6 +572,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
       // draft to the server-confirmed values.
       setSheetItem(updated);
     }
+    if (close) setSheetOpen(false);
     return true;
   };
 

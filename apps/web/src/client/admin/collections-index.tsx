@@ -29,6 +29,11 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"grid" | "table">("grid");
   const [adoptOpen, setAdoptOpen] = useState(false);
+  // Single entry-point chooser: the create + adopt flows share one backend
+  // path (`POST /api/collections` with optional `adopted: true`), and this
+  // chooser is the UI counterpart — one button on the page, two distinct
+  // wizards routed by the user's intent.
+  const [chooserOpen, setChooserOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -73,8 +78,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
           {!showArchived && <>
             <Button variant="outline" icon={I.Code}>Schema</Button>
             <Button variant="outline" icon={I.ExternalLink} onClick={() => onOpenApi?.()}>API docs</Button>
-            <Button variant="outline" icon={I.Database} onClick={() => setAdoptOpen(true)}>Import from database</Button>
-            <Button variant="primary" icon={I.Plus} onClick={onNew}>New collection</Button>
+            <Button variant="primary" icon={I.Plus} onClick={() => setChooserOpen(true)}>New collection</Button>
           </>}
         </>}
       />
@@ -89,6 +93,12 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
           // intact without threading a new "refresh" callback through.
           setTimeout(() => window.location.reload(), 600);
         }}
+      />
+      <CreateChooserDialog
+        open={chooserOpen}
+        onClose={() => setChooserOpen(false)}
+        onPickEmpty={() => { setChooserOpen(false); onNew(); }}
+        onPickAdopt={() => { setChooserOpen(false); setAdoptOpen(true); }}
       />
 
       <div className="filter-bar">
@@ -533,6 +543,75 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
           ) : (
             <Button variant="primary" size="sm" icon={I.Plus} onClick={submit}>Create collection</Button>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Mode chooser shown before either the managed-create wizard or the adopt
+ * wizard opens. The two flows share one backend path (`POST /api/collections`,
+ * with `adopted: true` for the adopt branch); this chooser is the visible
+ * counterpart of that unification on the admin side. Two cards, one
+ * decision — keeps the surface area small without forcing two very
+ * different UX flows into a single screen.
+ */
+interface CreateChooserDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onPickEmpty: () => void;
+  onPickAdopt: () => void;
+}
+
+function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt }: CreateChooserDialogProps) {
+  if (!open) return null;
+  return (
+    <div className="dialog-backdrop" onClick={onClose}>
+      <div className="dialog-lg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560, width: "100%", display: "flex", flexDirection: "column" }}>
+        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <I.Plus size={14} />
+          <span style={{ fontSize: 14, fontWeight: 500 }}>New collection</span>
+          <div className="spacer" />
+          <IconButton icon={I.X} onClick={onClose} />
+        </div>
+        <div style={{ padding: 22, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <button
+            type="button"
+            onClick={onPickEmpty}
+            className="card"
+            style={{ padding: 18, textAlign: "left", cursor: "pointer", display: "flex", flexDirection: "column", gap: 10, background: "var(--card)" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "color-mix(in oklch, var(--primary) 50%, var(--border))"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)"; }}
+          >
+            <span style={{ width: 36, height: 36, borderRadius: "var(--radius-lg)", background: "var(--muted)", border: "1px solid var(--border)", display: "grid", placeItems: "center" }}><I.Braces size={16} /></span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 13.5, fontWeight: 600 }}>Empty or template</span>
+              <span className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>
+                Create a new physical table from scratch. Pick a preset (Content / Taxonomy / People / Blank) and configure scope toggles.
+              </span>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={onPickAdopt}
+            className="card"
+            style={{ padding: 18, textAlign: "left", cursor: "pointer", display: "flex", flexDirection: "column", gap: 10, background: "var(--card)" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "color-mix(in oklch, var(--primary) 50%, var(--border))"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)"; }}
+          >
+            <span style={{ width: 36, height: 36, borderRadius: "var(--radius-lg)", background: "var(--muted)", border: "1px solid var(--border)", display: "grid", placeItems: "center" }}><I.Database size={16} /></span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: 13.5, fontWeight: 600 }}>From existing table</span>
+              <span className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>
+                Register a table that already exists in your database. No DDL is run on the table — workeros only writes its own metadata.
+              </span>
+            </div>
+          </button>
+        </div>
+        <div className="card-section" style={{ borderTop: "1px solid var(--border)", borderBottom: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="spacer" />
+          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
         </div>
       </div>
     </div>

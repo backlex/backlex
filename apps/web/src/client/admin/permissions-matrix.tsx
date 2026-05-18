@@ -2,10 +2,12 @@
 // Directus-parity permission matrix
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { I } from "./icons";
-import { Badge } from "./ui";
+import { Badge, IconButton } from "./ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@workeros/ui/components/popover";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@workeros/ui/components/sheet";
 import { api } from "@/lib/api";
 import type { RoleData } from "./role-editor";
+import { ConditionEditor } from "./condition-editor";
 
 const persistMatrixCell = async (
   roleName: string,
@@ -135,6 +137,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
   const [collections, setCollections] = useState<string[]>([]);
   const [matrix, setMatrix] = useState<Matrix>(() => emptyMatrix(roles, []));
   const [pop, setPop] = useState<{ collection: string; action: string } | null>(null);
+  const [sheetTarget, setSheetTarget] = useState<{ role: string; action: string; collection: string } | null>(null);
 
   // Load live collections (c_<slug> tables) once.
   useEffect(() => {
@@ -213,8 +216,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
       pushToast?.((e as Error).message);
     }
     if (val === "custom") {
-      window.dispatchEvent(new CustomEvent("ce:focus", { detail: { role: activeRole, collection, action } }));
-      pushToast?.(`Editing rule for ${activeRole} · ${action} · ${collection}`);
+      setSheetTarget({ role: activeRole, action, collection });
     } else {
       pushToast?.(`${activeRole} · ${action} · ${collection} → ${val === "all" ? "full access" : "no access"}`);
     }
@@ -284,7 +286,6 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
                 const isOpen = !!pop && pop.collection === c && pop.action === a.v;
                 const trigger = (
                   <button
-                    key={a.v}
                     type="button"
                     className={`pm-cell pm-cell-${state} ${isOpen ? "is-open" : ""} ${isAdmin ? "is-locked" : ""}`}
                     title={cellSummary(state, a.v, c)}
@@ -293,40 +294,52 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
                     <CellGlyph state={isAdmin ? "all" : state} />
                   </button>
                 );
-                if (isAdmin) return trigger;
+                if (isAdmin) return <div key={a.v} className="pm-cell-wrap">{trigger}</div>;
                 return (
-                  <Popover
-                    key={a.v}
-                    open={isOpen}
-                    onOpenChange={(o) => setPop(o ? { collection: c, action: a.v } : null)}
-                  >
-                    <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-                    <PopoverContent
-                      align="center"
-                      sideOffset={6}
-                      className="w-auto min-w-[240px] gap-0 rounded-lg p-1.5"
+                  <div key={a.v} className="pm-cell-wrap" style={{ position: "relative" }}>
+                    <Popover
+                      open={isOpen}
+                      onOpenChange={(o) => setPop(o ? { collection: c, action: a.v } : null)}
                     >
-                      <div className="pm-pop-head">
-                        <span className="font-mono" style={{ fontSize: 11.5 }}>{activeRole}</span>
-                        <span className="muted">·</span>
-                        <span className="font-mono" style={{ fontSize: 11.5 }}>{a.v}</span>
-                        <span className="muted">·</span>
-                        <span className="font-mono" style={{ fontSize: 11.5 }}>{c}</span>
-                      </div>
-                      <button type="button" className="pm-pop-opt" onClick={() => pickState(c, a.v, "all")}>
-                        <CellGlyph state="all" />
-                        <span><strong>Full access</strong><span className="muted">no condition; everyone in role</span></span>
-                      </button>
-                      <button type="button" className="pm-pop-opt" onClick={() => pickState(c, a.v, "custom")}>
-                        <CellGlyph state="custom" />
-                        <span><strong>Use custom rule</strong><span className="muted">edit conditions below ↓</span></span>
-                      </button>
-                      <button type="button" className="pm-pop-opt" onClick={() => pickState(c, a.v, "none")}>
-                        <CellGlyph state="none" />
-                        <span><strong>No access</strong><span className="muted">denied for this role</span></span>
-                      </button>
-                    </PopoverContent>
-                  </Popover>
+                      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+                      <PopoverContent
+                        align="center"
+                        sideOffset={6}
+                        className="w-auto min-w-[240px] gap-0 rounded-lg p-1.5"
+                      >
+                        <div className="pm-pop-head">
+                          <span className="font-mono" style={{ fontSize: 11.5 }}>{activeRole}</span>
+                          <span className="muted">·</span>
+                          <span className="font-mono" style={{ fontSize: 11.5 }}>{a.v}</span>
+                          <span className="muted">·</span>
+                          <span className="font-mono" style={{ fontSize: 11.5 }}>{c}</span>
+                        </div>
+                        <button type="button" className="pm-pop-opt" onClick={() => pickState(c, a.v, "all")}>
+                          <CellGlyph state="all" />
+                          <span><strong>Full access</strong><span className="muted">no condition; everyone in role</span></span>
+                        </button>
+                        <button type="button" className="pm-pop-opt" onClick={() => pickState(c, a.v, "custom")}>
+                          <CellGlyph state="custom" />
+                          <span><strong>Use custom rule</strong><span className="muted">edit conditions below ↓</span></span>
+                        </button>
+                        <button type="button" className="pm-pop-opt" onClick={() => pickState(c, a.v, "none")}>
+                          <CellGlyph state="none" />
+                          <span><strong>No access</strong><span className="muted">denied for this role</span></span>
+                        </button>
+                      </PopoverContent>
+                    </Popover>
+                    {state === "custom" && (
+                      <IconButton
+                        icon={I.Pencil}
+                        title="Edit rule"
+                        className="pm-cell-edit"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSheetTarget({ role: activeRole, action: a.v, collection: c });
+                        }}
+                      />
+                    )}
+                  </div>
                 );
               })}
             </Fragment>
@@ -339,8 +352,28 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
         <span><CellGlyph state="custom" /> custom rule</span>
         <span><CellGlyph state="none" /> denied</span>
         <div className="spacer" />
-        <span className="muted" style={{ fontSize: 11.5 }}>Click any cell to set state. Custom opens the rule builder below.</span>
+        <span className="muted" style={{ fontSize: 11.5 }}>Click any cell to set state. Custom opens the rule builder in a side sheet.</span>
       </div>
+
+      <Sheet open={sheetTarget !== null} onOpenChange={(o) => { if (!o) setSheetTarget(null); }}>
+        <SheetContent side="right" className="sm:max-w-2xl w-full overflow-y-auto p-0 gap-0">
+          <SheetHeader>
+            <SheetTitle>Edit rule</SheetTitle>
+            <SheetDescription className="font-mono">
+              {sheetTarget ? `${sheetTarget.role} · ${sheetTarget.action} · ${sheetTarget.collection}` : ""}
+            </SheetDescription>
+          </SheetHeader>
+          {sheetTarget && (
+            <ConditionEditor
+              role={sheetTarget.role}
+              action={sheetTarget.action}
+              collection={sheetTarget.collection}
+              roles={roles}
+              pushToast={pushToast}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

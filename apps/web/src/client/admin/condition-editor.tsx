@@ -31,13 +31,6 @@ const persistRule = async (
   });
 };
 
-const CE_FIELDS_BY_COLLECTION: Record<string, string[]> = {
-  posts: ["id", "title", "slug", "status", "body", "published_at", "owner_id", "tags", "created_at", "updated_at"],
-  comments: ["id", "body", "post_id", "author_id", "status", "created_at"],
-  authors: ["id", "name", "email", "bio", "avatar", "created_at"],
-  tags: ["id", "slug", "label", "color"],
-};
-
 const CE_OPS = [
   { v: "_eq", label: "equals" },
   { v: "_neq", label: "not equals" },
@@ -200,9 +193,10 @@ export interface ConditionEditorProps {
   collection: string;
   roles: RoleData[];
   pushToast: (msg: string) => void;
+  availableFields: string[];
 }
 
-export function ConditionEditor({ role, action, collection, roles, pushToast }: ConditionEditorProps) {
+export function ConditionEditor({ role, action, collection, roles, pushToast, availableFields }: ConditionEditorProps) {
   const [tab, setTab] = useState<"item" | "fields" | "validation" | "presets">("item");
   const [mode, setMode] = useState<"builder" | "json">("builder");
 
@@ -233,7 +227,7 @@ export function ConditionEditor({ role, action, collection, roles, pushToast }: 
   ]);
   const [fieldPerms, setFieldPerms] = useState<Record<string, { read: boolean; write: boolean }>>(() => {
     const out: Record<string, { read: boolean; write: boolean }> = {};
-    CE_FIELDS_BY_COLLECTION.posts.forEach((f) => { out[f] = { read: true, write: f !== "id" && f !== "created_at" }; });
+    availableFields.forEach((f) => { out[f] = { read: true, write: f !== "id" && f !== "created_at" }; });
     return out;
   });
   const [jsonDraft, setJsonDraft] = useState("");
@@ -242,7 +236,7 @@ export function ConditionEditor({ role, action, collection, roles, pushToast }: 
   const [testResult, setTestResult] = useState<{ passed?: boolean; ms?: string; error?: string } | null>(null);
   const [showSql, setShowSql] = useState(false);
 
-  const fields = CE_FIELDS_BY_COLLECTION[collection] || [];
+  const fields = availableFields;
 
   useEffect(() => {
     setTree(presetTree(action));

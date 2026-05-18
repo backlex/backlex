@@ -12,7 +12,7 @@ import {
   type ColRefResolver,
   type LeafCompiler,
 } from "@workeros/db";
-import type { Condition } from "@workeros/core";
+import type { AuthSubject, Condition } from "@workeros/core";
 import type { Context } from "hono";
 import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
@@ -239,6 +239,230 @@ const deserializeRow = (
     }
   }
   return out;
+};
+
+/**
+ * Build the SELECT expression for one `?expand=<head>` entry:
+ *
+ *   CASE WHEN base.<head> IS NULL
+ *        THEN NULL
+ *        ELSE jsonb_build_object('id', rel.id, …)
+ *   END AS "__expand_<head>"
+ *
+ * The CASE wrapper exists because `jsonb_build_object` (PG) and
+ * `json_object` (SQLite) happily build a non-NULL row of NULL fields when
+ * the JOIN didn't match — and a NULL relation FK shouldn't surface as
+ * `{id: null, name: null}` to the caller. With the wrapper, a null FK
+ * stays null in the response, matching the unexpanded behavior.
+ *
+ * `cols` is the per-target list of (jsonKey → physical column reference)
+ * pairs. System columns (id / created_at / updated_at / owner_id) are
+ * always included; user fields are filtered by the target role's
+ * permission `fields` allow-list (passed in already-filtered).
+ */
+const buildExpandSelect = (
+  dialect: "pg" | "sqlite",
+  baseFkRef: SQL,
+  alias: string,
+  outputCol: string,
+  cols: Array<{ key: string; ref: SQL }>,
+): SQL => {
+  const builder = dialect === "pg" ? sql`jsonb_build_object` : sql`json_object`;
+  const args = cols.flatMap((c) => [sql`${c.key}`, c.ref]);
+  const objectExpr = sql`${builder}(${sql.join(args, sql`, `)})`;
+  return sql`CASE WHEN ${baseFkRef} IS NULL THEN NULL ELSE ${objectExpr} END AS ${sql.identifier(outputCol)}`;
+};
+
+interface ExpandPlan {
+  /** Source-collection relation field name (the column being expanded). */
+  head: string;
+  /** Output column the SELECT aliases to — `__expand_<head>`. */
+  outputCol: string;
+  /** Target collection, for deserializing nested values back to JS types. */
+  target: CollectionRow;
+  /** Allowed fields on the target after permission projection (null = all). */
+  allowedFields: Set<string> | null;
+}
+
+/**
+ * Resolve every `?expand=<head>` entry into a JOIN (or alias reuse) plus
+ * a SELECT expression. Returns:
+ *   - extraJoins: LEFT JOINs to append after the existing nested-filter
+ *     joins. Empty when every expand head already has a join alias from
+ *     the filter/sort chain walker.
+ *   - selects: per-head SELECT expressions (`__expand_<head>`).
+ *   - plans: per-head metadata for post-query row substitution.
+ *
+ * Permission gate: each target's `resolvePermission("read")` must be
+ * allowed → 403 otherwise. Same gate the nested-filter resolver applies,
+ * so a caller who can already filter on `customer_id.name` can also
+ * expand `customer_id` (and vice versa).
+ *
+ * Tenant scope: cross-tenant guard added to the JOIN's ON clause when the
+ * target is tenant-scoped — mirrors the nested-filter JOIN.
+ */
+const resolveExpands = async (
+  ctx: Ctx,
+  auth: AuthSubject,
+  collection: CollectionRow,
+  expand: string[],
+  joinMap: Map<string, { alias: string; target: CollectionRow }>,
+): Promise<{ extraJoins: SQL[]; selects: SQL[]; plans: ExpandPlan[] }> => {
+  if (expand.length === 0) {
+    return { extraJoins: [], selects: [], plans: [] };
+  }
+  const extraJoins: SQL[] = [];
+  const selects: SQL[] = [];
+  const plans: ExpandPlan[] = [];
+  const baseTbl = sql.identifier(collection.physicalTable);
+  for (const head of expand) {
+    const def = collection.fields.find((f) => f.name === head);
+    // parseQuery already enforced shape + type + source perm, so a missing
+    // / wrong-type def shouldn't happen — be defensive anyway.
+    if (!def || def.type !== "relation" || !def.to) {
+      throw new AppError(
+        "VALIDATION",
+        `Cannot expand "${head}" — not a single-FK relation`,
+      );
+    }
+    const target = await loadCollection(ctx, auth.tenantId, def.to).catch(() => {
+      throw new AppError(
+        "VALIDATION",
+        `Relation target not active: ${def.to}`,
+      );
+    });
+    const targetPerm = await resolvePermission(
+      { db: ctx.db, dialect: ctx.dialect },
+      auth,
+      def.to,
+      "read",
+    );
+    if (!targetPerm.allowed) {
+      throw new AppError(
+        "FORBIDDEN",
+        `No read permission on relation target: ${def.to}`,
+      );
+    }
+    // Reuse the JOIN alias from the nested-filter/sort walker when it's
+    // already there (e.g. `?filter={"customer_id.name":…}&expand=customer_id`
+    // shares one join). Otherwise emit a fresh LEFT JOIN.
+    let alias = joinMap.get(head)?.alias;
+    if (!alias) {
+      alias = `rel_${head}`;
+      const aliasId = sql.identifier(alias);
+      const targetTbl = sql.identifier(target.physicalTable);
+      const onParts: SQL[] = [
+        sql`${aliasId}.${sql.identifier(target.pkColumn)} = ${baseTbl}.${sql.identifier(head)}`,
+      ];
+      if (target.tenantScoped && auth.tenantId) {
+        onParts.push(
+          sql`${aliasId}.${sql.identifier("tenant_id")} = ${auth.tenantId}`,
+        );
+      }
+      extraJoins.push(
+        sql`LEFT JOIN ${targetTbl} AS ${aliasId} ON ${sql.join(onParts, sql` AND `)}`,
+      );
+      joinMap.set(head, { alias, target });
+    }
+    // Build the column list for the JSON object. System columns are
+    // unconditional; user fields are filtered by the target role's
+    // `fields` allow-list. Adopted targets may have aliased created_at /
+    // updated_at — emit the physical column under the logical key so the
+    // wire shape stays consistent across managed and adopted targets.
+    const aliasId = sql.identifier(alias);
+    const cols: Array<{ key: string; ref: SQL }> = [
+      { key: "id", ref: sql`${aliasId}.${sql.identifier(target.pkColumn)}` },
+    ];
+    if (target.hasCreatedAt) {
+      const phys = target.createdAtColumn ?? "created_at";
+      cols.push({ key: "created_at", ref: sql`${aliasId}.${sql.identifier(phys)}` });
+    }
+    if (target.hasUpdatedAt) {
+      const phys = target.updatedAtColumn ?? "updated_at";
+      cols.push({ key: "updated_at", ref: sql`${aliasId}.${sql.identifier(phys)}` });
+    }
+    // owner_id only when the target stores it on-row (managed default or
+    // adopted-with-alias). The side-table path (`item_ownership`) isn't
+    // joined here — leaving it off is the right call for v1; expanding it
+    // would need a second LEFT JOIN per expand and isn't worth the cost.
+    if (target.ownerScoped && (!target.adopted || target.ownerIdColumn)) {
+      const phys = target.ownerIdColumn ?? "owner_id";
+      cols.push({ key: "owner_id", ref: sql`${aliasId}.${sql.identifier(phys)}` });
+    }
+    for (const f of target.fields) {
+      if (targetPerm.fields && !targetPerm.fields.has(f.name)) continue;
+      cols.push({ key: f.name, ref: sql`${aliasId}.${sql.identifier(f.name)}` });
+    }
+    const outputCol = `__expand_${head}`;
+    const baseFkRef = sql`${baseTbl}.${sql.identifier(head)}`;
+    selects.push(
+      buildExpandSelect(ctx.dialect, baseFkRef, alias, outputCol, cols),
+    );
+    plans.push({ head, outputCol, target, allowedFields: targetPerm.fields });
+  }
+  return { extraJoins, selects, plans };
+};
+
+/**
+ * Post-process a deserialized row: for every expand plan, parse the raw
+ * `__expand_<head>` column (a JSON string on SQLite, an object on PG) and
+ * substitute it under the `head` key. System keys inside the nested
+ * object are converted to the API's camelCase shape and timestamps go
+ * through `deserialize("timestamp", …)` so the inlined row's shape
+ * matches what `GET /api/items/<target>/<id>` would return.
+ *
+ * If the raw column is null (LEFT JOIN miss OR FK was null), the nested
+ * value stays null — the CASE wrapper in the SELECT already guarantees
+ * we never emit `{id: null, …}`.
+ */
+const applyExpandToRow = (
+  out: Record<string, unknown>,
+  raw: Record<string, unknown>,
+  plans: ExpandPlan[],
+  dialect: "pg" | "sqlite",
+): void => {
+  for (const plan of plans) {
+    const v = raw[plan.outputCol];
+    if (v === null || v === undefined) {
+      out[plan.head] = null;
+      continue;
+    }
+    let obj: Record<string, unknown>;
+    if (typeof v === "string") {
+      // SQLite always returns json_object output as a TEXT string. PG can
+      // too in some driver configurations (e.g. when jsonb is cast to
+      // text), so parse defensively on both.
+      try {
+        obj = JSON.parse(v) as Record<string, unknown>;
+      } catch {
+        out[plan.head] = null;
+        continue;
+      }
+    } else if (typeof v === "object") {
+      obj = v as Record<string, unknown>;
+    } else {
+      out[plan.head] = null;
+      continue;
+    }
+    const expanded: Record<string, unknown> = {};
+    // System keys → camelCase, matching the top-level row shape that
+    // deserializeRow emits.
+    if ("id" in obj) expanded.id = obj.id;
+    if ("created_at" in obj && obj.created_at != null) {
+      expanded.createdAt = deserialize(obj.created_at, "timestamp", dialect);
+    }
+    if ("updated_at" in obj && obj.updated_at != null) {
+      expanded.updatedAt = deserialize(obj.updated_at, "timestamp", dialect);
+    }
+    if ("owner_id" in obj) expanded.ownerId = obj.owner_id ?? null;
+    for (const f of plan.target.fields) {
+      if (!(f.name in obj)) continue;
+      // Permission `fields` allow-list was already enforced at SELECT
+      // emission time, so anything present here is allowed.
+      expanded[f.name] = deserialize(obj[f.name], f.type, dialect);
+    }
+    out[plan.head] = expanded;
+  }
 };
 
 const validateBody = (
@@ -747,6 +971,10 @@ const ListQuery = z.object({
   fields: z.string().optional().openapi({
     description: "Comma-separated projection. System fields are always included.",
   }),
+  expand: z.string().optional().openapi({
+    description:
+      "Comma-separated relation fields to inline-expand. Each one must be a single-FK `relation` field on the collection. Single-hop only — chains (`a.b`) and `relation_many` heads return 422.",
+  }),
   limit: z.coerce.number().int().min(1).max(200).optional(),
   offset: z.coerce.number().int().min(0).optional(),
   meta: z.string().optional().openapi({
@@ -1109,6 +1337,16 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
           parentAliasId = sql`${aliasId}`;
         }
       }
+      // `?expand=<head>` wires LEFT JOINs that share aliases with the
+      // nested-filter chain walker above (`rel_<head>` is the same alias
+      // whether it came from a filter, a sort, or an expand). Resolver
+      // gates per-target read permission + tenant scope on every entry.
+      const {
+        extraJoins: expandJoins,
+        selects: expandSelects,
+        plans: expandPlans,
+      } = await resolveExpands(ctx, auth, collection, q.expand, joinMap);
+      for (const j of expandJoins) extraJoins.push(j);
       const hasJoins = extraJoins.length > 0;
 
       // Custom colRef: nested keys route to the join alias; plain fields
@@ -1287,7 +1525,7 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
           }),
           sql`, `,
         );
-      const selectCols: SQL = projection
+      const baseSelectCols: SQL = projection
         ? hasJoins
           ? buildProjectedWithJoins(projection)
           : sql.join(
@@ -1297,6 +1535,12 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         : hasJoins
           ? buildStarWithJoins()
           : selectStar(collection);
+      // Append `__expand_<head>` columns when expansions are requested.
+      // They live alongside the base SELECT and never collide because the
+      // double-underscore prefix is reserved for system-emitted aliases.
+      const selectCols: SQL = expandSelects.length
+        ? sql`${baseSelectCols}, ${sql.join(expandSelects, sql`, `)}`
+        : baseSelectCols;
 
       const orderClause = sql.join(
         q.sort.map((s) => {
@@ -1368,8 +1612,8 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
           ? (await loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null)).i18nDefaultLocale
           : null;
       return c.json({
-        data: rows.map((r) =>
-          localizeRow(
+        data: rows.map((r) => {
+          const out = localizeRow(
             deserializeRow(
               r,
               collection.fields,
@@ -1380,8 +1624,18 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
             collection.fields,
             locale,
             defaultLocale,
-          ),
-        ),
+          );
+          // Substitute the raw FK id with the inlined target row. The
+          // `__expand_<head>` JSON object was emitted by the SELECT; we
+          // parse + camelCase + timestamp-deserialize it here so the
+          // wire shape matches `GET /api/items/<target>/<id>`. Done
+          // AFTER localizeRow so localized i18n_text fields on the
+          // target keep their own behavior (no double-projection).
+          if (expandPlans.length > 0) {
+            applyExpandToRow(out, r, expandPlans, ctx.dialect);
+          }
+          return out;
+        }),
         limit: q.limit,
         offset: q.offset,
         ...(metaOut ? { meta: metaOut } : {}),
@@ -1399,7 +1653,13 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       middleware: [requirePermission(collectionFromParam, "read")],
       request: {
         params: z.object({ slug: z.string(), id: z.string() }),
-        query: z.object({ locale: z.string().optional() }),
+        query: z.object({
+          locale: z.string().optional(),
+          expand: z.string().optional().openapi({
+            description:
+              "Comma-separated relation fields to inline-expand. Single-hop only.",
+          }),
+        }),
       },
       responses: {
         200: {
@@ -1416,10 +1676,128 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       const auth = c.get("auth");
       const perm = c.get("permission");
       const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
-      const table = collection.physicalTable;
+      // `?expand=` works the same shape as on the list endpoint, but
+      // single-GET doesn't go through parseQuery — so we inline the
+      // source-side validation here (chain reject, type check, source
+      // perm-fields gate). resolveExpands enforces the per-target read
+      // permission + tenant scope, same as the list path.
+      const expand: string[] = [];
+      const expandRaw = c.req.query("expand");
+      if (expandRaw) {
+        const fieldsByName = new Map(collection.fields.map((f) => [f.name, f] as const));
+        const seen = new Set<string>();
+        for (const raw of expandRaw.split(",")) {
+          const name = raw.trim();
+          if (!name) continue;
+          if (name.includes(".")) {
+            throw new AppError(
+              "VALIDATION",
+              `expand chain not yet supported: ${name}`,
+            );
+          }
+          const def = fieldsByName.get(name);
+          if (!def) {
+            throw new AppError("VALIDATION", `Unknown expand field: ${name}`);
+          }
+          if (def.type === "relation_many") {
+            throw new AppError(
+              "VALIDATION",
+              `expand on relation_many not yet supported: ${name}`,
+            );
+          }
+          if (def.type !== "relation") {
+            throw new AppError(
+              "VALIDATION",
+              `expand only works on relation fields — "${name}" is ${def.type}`,
+            );
+          }
+          if (perm.fields && !perm.fields.has(name)) {
+            throw new AppError(
+              "FORBIDDEN",
+              `No permission to read field: ${name}`,
+            );
+          }
+          if (!seen.has(name)) {
+            seen.add(name);
+            expand.push(name);
+          }
+        }
+      }
+
+      const joinMap = new Map<string, { alias: string; target: CollectionRow }>();
+      const {
+        extraJoins: expandJoins,
+        selects: expandSelects,
+        plans: expandPlans,
+      } = await resolveExpands(ctx, auth, collection, expand, joinMap);
+      const hasJoins = expandJoins.length > 0;
+      // When joins are added, `*` would surface the target's columns too —
+      // qualify everything to the base table the same way the list handler
+      // does. selectStar still handles the aliased-system-column cases.
+      const baseTblId = sql.identifier(collection.physicalTable);
+      const baseSelect: SQL = hasJoins
+        ? (() => {
+            const parts: SQL[] = [sql`${baseTblId}.*`];
+            if (usesOwnershipSideTable(collection)) {
+              parts.push(
+                sql`${sql.identifier("item_ownership")}.${sql.identifier("owner_id")} AS ${sql.identifier("owner_id")}`,
+              );
+            }
+            if (
+              collection.hasCreatedAt &&
+              collection.createdAtColumn &&
+              collection.createdAtColumn !== "created_at"
+            ) {
+              parts.push(
+                sql`${baseTblId}.${sql.identifier(collection.createdAtColumn)} AS ${sql.identifier("created_at")}`,
+              );
+            }
+            if (
+              collection.hasUpdatedAt &&
+              collection.updatedAtColumn &&
+              collection.updatedAtColumn !== "updated_at"
+            ) {
+              parts.push(
+                sql`${baseTblId}.${sql.identifier(collection.updatedAtColumn)} AS ${sql.identifier("updated_at")}`,
+              );
+            }
+            if (
+              collection.ownerScoped &&
+              collection.adopted &&
+              collection.ownerIdColumn
+            ) {
+              parts.push(
+                sql`${baseTblId}.${sql.identifier(collection.ownerIdColumn)} AS ${sql.identifier("owner_id")}`,
+              );
+            }
+            return sql.join(parts, sql`, `);
+          })()
+        : selectStar(collection);
+      const selectCols: SQL = expandSelects.length
+        ? sql`${baseSelect}, ${sql.join(expandSelects, sql`, `)}`
+        : baseSelect;
+      // PK and tenant filter both need to qualify to the base table when
+      // there's a join — same reason `nestedColRef` qualifies in the list
+      // handler. Permission's whereSql is left untouched: in this path
+      // permissions only reference `owner_id`, which (a) is provided
+      // unqualified in our base SELECT (managed `owner_id` column or
+      // side-table-join surfaced alias) and (b) is unambiguous because
+      // the joined targets only expose `owner_id` if they're owner-scoped
+      // — even then, the column is on the alias, not unqualified.
+      const pkWhere = hasJoins
+        ? sql`${baseTblId}.${sql.identifier(collection.pkColumn)} = ${c.req.param("id")}`
+        : pkEq(collection.pkColumn, c.req.param("id"));
+      const tenantWhereRaw = tenantFilter(collection, auth);
+      const tenantWhere =
+        hasJoins && tenantWhereRaw && collection.tenantScoped && auth.tenantId
+          ? sql`${baseTblId}.${sql.identifier("tenant_id")} = ${auth.tenantId}`
+          : tenantWhereRaw;
+      const fromClause: SQL = hasJoins
+        ? sql`${fromOf(collection)} ${sql.join(expandJoins, sql` `)}`
+        : fromOf(collection);
       const rows = await queryAll<Record<string, unknown>>(
         ctx,
-        sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, c.req.param("id")), perm.whereSql, tenantFilter(collection, auth))} LIMIT 1`,
+        sql`SELECT ${selectCols} FROM ${fromClause} ${whereOf(pkWhere, perm.whereSql, tenantWhere)} LIMIT 1`,
       );
       if (!rows[0]) throw new AppError("NOT_FOUND", "Item not found");
       const locale = c.req.query("locale") ?? null;
@@ -1427,17 +1805,25 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         locale && locale !== "*" && hasI18nField(collection.fields)
           ? (await loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null)).i18nDefaultLocale
           : null;
-      return c.json({
-        data: projectFields(
-          localizeRow(
-            deserializeRow(rows[0], collection.fields, ctx.dialect, collection.ownerScoped),
-            collection.fields,
-            locale,
-            defaultLocale,
-          ),
-          perm.fields,
+      const projected = projectFields(
+        localizeRow(
+          deserializeRow(rows[0], collection.fields, ctx.dialect, collection.ownerScoped),
+          collection.fields,
+          locale,
+          defaultLocale,
         ),
-      });
+        perm.fields,
+      );
+      // Expand AFTER projectFields so the inlined object survives the
+      // perm.fields trim even when the source FK key (e.g. `customer_id`)
+      // would have been kept by virtue of being in perm.fields, but a
+      // user who has source perm but no `customer_id` in their fields
+      // allow-list still can't expand it — parseQuery's source-perm gate
+      // above rejects that case first.
+      if (expandPlans.length > 0) {
+        applyExpandToRow(projected, rows[0], expandPlans, ctx.dialect);
+      }
+      return c.json({ data: projected });
     },
   )
   .openapi(

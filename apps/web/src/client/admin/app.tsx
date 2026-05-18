@@ -520,7 +520,12 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   const openCreate = () => { setSheetMode("create"); setSheetItem(null); setSheetOpen(true); };
   const openEdit = (it: Post) => { setSheetMode("edit"); setSheetItem(it); setSheetOpen(true); };
 
-  const onSave = async (draft: Partial<Post>) => {
+  // Save-and-continue: after a successful save we keep the sheet open and
+  // hand it a fresh `sheetItem` so its useEffect re-syncs the draft to the
+  // server-confirmed values. The sheet only closes when the user explicitly
+  // dismisses it via Cancel/Close/X/scrim. Returns `false` on failure so the
+  // sheet can stay dirty for retries.
+  const onSave = async (draft: Partial<Post>): Promise<boolean> => {
     if (sheetMode === "create") {
       let nu: Post;
       try {
@@ -540,21 +545,29 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
         };
       } catch (e) {
         pushToast((e as Error).message, "error");
-        return;
+        return false;
       }
       setPosts((p) => [nu, ...p]);
       pushToast(`Post "${(nu.title ?? "").slice(0, 38)}${(nu.title ?? "").length > 38 ? "…" : ""}" created.`);
+      // Flip the sheet into edit mode on the freshly-created row so subsequent
+      // saves PATCH it rather than re-inserting.
+      setSheetMode("edit");
+      setSheetItem(nu);
     } else if (sheetItem) {
       try {
         await itemsApi.patch(activeCollection || "posts", sheetItem.id, draft as Record<string, unknown>);
       } catch (e) {
         pushToast((e as Error).message, "error");
-        return;
+        return false;
       }
-      setPosts((p) => p.map((x) => x.id === sheetItem.id ? { ...x, ...draft, updated_at: new Date().toISOString() } as Post : x));
+      const updated = { ...sheetItem, ...draft, updated_at: new Date().toISOString() } as Post;
+      setPosts((p) => p.map((x) => x.id === sheetItem.id ? updated : x));
       pushToast("Post saved.");
+      // Hand the sheet a new object reference so its useEffect re-syncs the
+      // draft to the server-confirmed values.
+      setSheetItem(updated);
     }
-    setSheetOpen(false);
+    return true;
   };
 
   const onBulkPublish = () => {

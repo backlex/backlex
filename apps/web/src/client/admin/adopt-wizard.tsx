@@ -3,11 +3,14 @@
 // workeros collection. 3 steps:
 //   1) pick a table (GET /api/admin/adopt/tables)
 //   2) map columns to FieldType (POST /api/admin/adopt/inspect)
-//   3) metadata + dry-run summary → POST /api/admin/adopt/apply
+//   3) metadata + dry-run summary → POST /api/collections (adopted: true)
 //
 // No DDL is run on the user's table — adoption only writes the collection
 // metadata row + per-field registrations. System-column toggles set flags
-// only; the backend decides whether to backfill anything later.
+// only; the backend decides whether to backfill anything later. The unified
+// create endpoint (`POST /api/collections`) handles both managed and adopted
+// flows; this wizard's submit just sets `adopted: true` and passes the
+// introspected `physicalTable`/`pkColumn`/alias columns.
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
@@ -419,7 +422,8 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
     setApplyError(null);
     try {
       const body = {
-        table: inspect.table,
+        adopted: true,
+        physicalTable: inspect.table,
         slug: slugClean,
         singular: singular.trim() || null,
         plural: plural.trim() || null,
@@ -428,11 +432,17 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
         ownerScoped,
         tenantScoped,
         defaultSort: defaultSort.trim() || null,
-        addCreatedAt: addCreatedAt && !inspect.systemColumnsPresent.createdAt,
-        addUpdatedAt: addUpdatedAt && !inspect.systemColumnsPresent.updatedAt,
+        // hasCreatedAt/hasUpdatedAt are the user's *assertion* that the
+        // source table has the conventional column. The unified server
+        // route still cross-checks with introspect; we only send `true`
+        // when the toggle is on AND inspect didn't already see the column
+        // (when inspect saw it, the server uses that as the source of
+        // truth so we don't need to assert anything).
+        hasCreatedAt: addCreatedAt && !inspect.systemColumnsPresent.createdAt,
+        hasUpdatedAt: addUpdatedAt && !inspect.systemColumnsPresent.updatedAt,
         // Alias columns. Send the column name when mode === "alias", null
         // otherwise — backend treats null as "use conventional name" (or
-        // "no system column at all", depending on the addCreatedAt flag).
+        // "no system column at all", depending on the hasCreatedAt flag).
         createdAtColumn: createdAtAliasCol || null,
         updatedAtColumn: updatedAtAliasCol || null,
         ownerIdColumn: ownerAliasCol || null,
@@ -458,7 +468,7 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
         }),
       };
       const r = await jsonFetch<{ data: { slug: string } }>(
-        "/api/admin/adopt/apply",
+        "/api/collections",
         { method: "POST", body: JSON.stringify(body) },
       );
       onComplete(r.data);

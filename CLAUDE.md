@@ -180,12 +180,21 @@ When wiring a new resource (collections, files, etc.), add a `requirePermission`
 
 ### Hybrid schema ownership: dynamic collections via runtime DDL
 
-User collections live in physical tables **created at runtime** (not in the Drizzle schema). The `collections` metadata row drives a CREATE/ALTER/DROP cycle on `c_<slug>` tables:
+User collections live in physical tables. The `collections` metadata row's `physical_table` column is the **single source of truth** for the table name — runtime code (`routes/items.ts`, the realtime channels, the items query layer) always reads it from there and never recomputes. The naming convention `c_<tenantPrefix12>_<slug>` is only a **default** that the unified create endpoint applies when callers don't supply their own name.
 
-- `packages/db/src/field-types.ts` — supported `FieldType` registry (`text, longtext, integer, number, boolean, json, timestamp, uuid`) with PG/SQLite type mappings, identifier validation, reserved system column names (`id, owner_id, created_at, updated_at`).
-- `packages/db/src/schema-applier.ts` — `applyCollection`, `dropCollection`, `dropField`, plus `tableExists` / `introspectColumns` helpers. `applyCollection` is **additive only** by design: it never drops or alters existing columns. To remove a field, call `dropField` explicitly.
-- `apps/web/src/server/routes/collections.ts` — POST/PATCH wires `applyCollection`, DELETE wires `dropCollection`. The `collections` row is the source of truth for metadata; the physical table is regenerated from it.
-- `apps/web/src/server/routes/items.ts` — dynamic CRUD on `c_<slug>` using drizzle's `sql` template + `sql.identifier` for safe identifier interpolation. Per-dialect serialization for `json` (stringify on SQLite), `boolean` (0/1 on SQLite), and `timestamp` (Unix ms on SQLite, `Date` on PG).
+There are two create paths through one endpoint (`POST /api/collections`), distinguished by the `adopted` flag — naming is no longer the distinguishing axis, DDL is:
+
+- **Managed** (`adopted: false`, default) — workeros creates the physical table. `physicalTable` is optional; when omitted it falls back to `derivePhysicalTable(tenantId, slug)`. The table must not already exist (returns 409 with a hint pointing at `adopted: true`).
+- **Adopted** (`adopted: true`) — the table already exists; workeros only writes the metadata row. `physicalTable` is required; the route introspects via `services/adopt.ts::inspectTable`, validates that `pkColumn`/field names/alias columns line up with the source table, and the schema-applier short-circuits (no DDL ever runs against the user's table).
+
+The admin UI surfaces this as one "New collection" button with a small chooser → either the managed wizard (`collections-index.tsx::NewCollectionDialog`) or the adopt wizard (`adopt-wizard.tsx`). Both wizards POST to the same endpoint; the helper routes `GET /api/admin/adopt/tables` and `POST /api/admin/adopt/inspect` exist only to feed the adopt wizard's discovery step.
+
+Key files:
+- `packages/db/src/field-types.ts` — supported `FieldType` registry, identifier validation (`assertIdent`), reserved system column names, `derivePhysicalTable(tenantId, slug)` default-name helper.
+- `packages/db/src/schema-applier.ts` — `applyCollection`, `dropCollection`, `dropField`, plus `tableExists` / `introspectColumns` helpers. `applyCollection` is **additive only** by design: it never drops or alters existing columns; it also short-circuits when `def.adopted === true`. To remove a field, call `dropField` explicitly.
+- `apps/web/src/server/routes/collections.ts` — unified POST/PATCH/DELETE. DELETE on an adopted row archives (status='archived', physical table intact, `POST /:slug/restore` flips back); DELETE on a managed row hard-drops both the metadata and the physical table.
+- `apps/web/src/server/services/adopt.ts` — `listAdoptableTables`, `inspectTable`, `RESERVED_NAMES`. The adopt route's `/apply` endpoint is gone — the unified create endpoint owns that write.
+- `apps/web/src/server/routes/items.ts` — dynamic CRUD on the physical table using drizzle's `sql` template + `sql.identifier`. Per-dialect serialization for `json` (stringify on SQLite), `boolean` (0/1 on SQLite), `timestamp` (Unix ms on SQLite, `Date` on PG). Honors `pkColumn` / `hasCreatedAt` / `hasUpdatedAt` / `createdAtColumn` / `updatedAtColumn` / `ownerIdColumn` so adopted tables with non-conventional column names still work without DDL.
 
 When adding a new field type: extend `FieldType` union, add entries to `PG_TYPES` and `SQLITE_TYPES`, and add (de)serialize cases in `apps/web/src/server/routes/items.ts` if the wire format differs from the column format.
 

@@ -594,8 +594,7 @@ body {
 }
 .sheet-header h2 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
 .sheet-header p { margin: 2px 0 0; color: var(--muted-foreground); font-size: 12.5px; }
-.sheet-body { padding: 18px 20px; overflow: auto; flex: 1; display: flex; flex-direction: column; gap: 0; }
-.sheet-body > .field + .field { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+.sheet-body { padding: 18px 20px; overflow: auto; flex: 1; display: flex; flex-direction: column; gap: 48px; }
 .sheet-footer {
   padding: 12px 20px;
   border-top: 1px solid var(--border);

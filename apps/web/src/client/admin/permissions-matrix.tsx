@@ -135,6 +135,7 @@ export interface PermissionsMatrixProps {
 export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) {
   const [activeRole, setActiveRole] = useState(roles[1]?.name || "authenticated");
   const [collections, setCollections] = useState<string[]>([]);
+  const [fieldsBySlug, setFieldsBySlug] = useState<Record<string, string[]>>({});
   const [matrix, setMatrix] = useState<Matrix>(() => emptyMatrix(roles, []));
   const [pop, setPop] = useState<{ collection: string; action: string } | null>(null);
   const [sheetTarget, setSheetTarget] = useState<{ role: string; action: string; collection: string } | null>(null);
@@ -142,11 +143,17 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
   // Load live collections (c_<slug> tables) once.
   useEffect(() => {
     let cancelled = false;
-    api<{ data: { slug: string }[] }>("/api/collections")
+    api<{ data: { slug: string; fields: Array<{ name: string }> | null }[] }>("/api/collections")
       .then((res) => {
         if (cancelled) return;
-        const slugs = (res.data ?? []).map((c) => c.slug).sort();
+        const rows = res.data ?? [];
+        const slugs = rows.map((c) => c.slug).sort();
+        const map: Record<string, string[]> = {};
+        for (const c of rows) {
+          map[c.slug] = Array.isArray(c.fields) ? c.fields.map((f: any) => f.name) : [];
+        }
         setCollections(slugs);
+        setFieldsBySlug(map);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -370,6 +377,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
               collection={sheetTarget.collection}
               roles={roles}
               pushToast={pushToast}
+              availableFields={fieldsBySlug[sheetTarget.collection] ?? []}
             />
           )}
         </SheetContent>

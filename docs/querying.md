@@ -14,13 +14,15 @@ backs the GraphQL resolver.
 | `q`      | string                            | none                                    | Free-text `_contains` across every readable text/longtext field              |
 | `sort`   | comma-separated field list        | collection `default_sort`, else `-created_at` | `-` prefix = `DESC`; multi-column                                            |
 | `fields` | comma-separated field list        | all readable                            | SQL-level projection; system columns always re-added                         |
+| `expand` | comma-separated relation field list | none                                  | Inline-expand each named relation: the FK id is replaced by the target row    |
 | `limit`  | integer 1-200                     | `50`                                    | Page size                                                                    |
 | `offset` | integer ≥ 0                       | `0`                                     | Page offset                                                                  |
 | `meta`   | `filter_count`, `total_count`, `*`| none                                    | Adds extra `SELECT COUNT(*)` to the response `meta`                          |
 | `locale` | string or `*`                     | `null`                                  | Projects `i18n_text` fields to one locale; `*` returns the full `{xx: …}` map |
 
-Only the list endpoint accepts these. `GET /:id`, `POST`, `PATCH`, and
-`DELETE` use `requirePermission` only — no query parameters.
+Only the list endpoint accepts these except `?expand`, which the single
+GET (`GET /:id`) also accepts. `POST`, `PATCH`, and `DELETE` use
+`requirePermission` only — no query parameters.
 
 ## Filters
 
@@ -283,6 +285,109 @@ Aliases use `__` (double underscore) as the segment separator so a
 3-hop chain stays under PG's 63-char identifier limit and never
 collides with a shorter prefix's alias.
 
+## Expanding related rows (`expand`)
+
+`expand=<rel_field>[,<rel_field>…]` inlines the target row of each named
+relation in the response: the FK id is replaced by the full related
+object, so a single round-trip returns both sides of the relation.
+
+```bash
+curl '/api/items/orders?fields=id,title,customer_id&expand=customer_id'
+```
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "id": "o-1",
+      "title": "X",
+      "customer_id": { "id": "c-1", "name": "Alice", "email": "alice@…" }
+    }
+  ]
+}
+```
+
+Multiple expansions are comma-separated:
+
+```bash
+curl '/api/items/orders?expand=customer_id,owner'
+```
+
+Both the list endpoint (`GET /api/items/<slug>`) and the single-item
+endpoint (`GET /api/items/<slug>/<id>`) accept `expand`.
+
+### Mental model — what the compiler emits
+
+```sql
+SELECT base.*,
+       CASE WHEN base.customer_id IS NULL THEN NULL
+            ELSE jsonb_build_object(            -- json_object on SQLite
+              'id', rel_customer_id.id,
+              'created_at', rel_customer_id.created_at,
+              'name', rel_customer_id.name,
+              'email', rel_customer_id.email
+            )
+       END AS "__expand_customer_id"
+FROM c_orders AS base
+LEFT JOIN c_customers AS rel_customer_id
+  ON rel_customer_id.id = base.customer_id
+ AND rel_customer_id.tenant_id = $1
+```
+
+- One LEFT JOIN per expanded field. Aliases (`rel_<head>`) are
+  **shared with the nested-filter chain walker** — combining
+  `?filter={"customer_id.name":…}` with `?expand=customer_id` produces
+  exactly one join, not two.
+- The `CASE WHEN base.<head> IS NULL THEN NULL` wrapper is load-bearing:
+  without it, both `jsonb_build_object` (PG) and `json_object` (SQLite)
+  happily build `{id: null, name: null, …}` from a JOIN miss, which
+  would silently change the wire shape for unset relations.
+- The fully-built JSON object is selected as `__expand_<head>` and
+  substituted under the `<head>` key during deserialization, so the
+  caller never sees the synthetic column.
+
+### Permission cascade
+
+`expand=<head>` is a read against the target collection, gated the same
+way nested filter is:
+
+1. The source collection's `read` perm must already allow `<head>`
+   (the caller's `fields` allow-list on the source).
+2. The target collection's `read` perm must be allowed (`403` otherwise).
+3. Target's `fields` allow-list filters the JSON object's keys — fields
+   outside the allow-list are dropped from every expanded row (system
+   columns `id`, `created_at`, `updated_at`, `owner_id` always stay).
+
+So a target role that grants read on `id, name` but not `email` produces
+`{id, name}` in the expanded object — same shape as `GET
+/api/items/customers/<id>` would have returned for that caller.
+
+### Tenant scope
+
+The JOIN's `ON` clause pins `rel_<head>.tenant_id = $tenant` whenever
+the target is tenant-scoped — a stale cross-tenant FK never surfaces a
+related row, matching the nested-filter JOIN behavior.
+
+### Null relations
+
+A null source FK (`customer_id IS NULL`) returns `"customer_id": null`
+in the response, NOT `{id: null, …}`. The CASE wrapper enforces this so
+unset relations look the same expanded or not.
+
+### Edge cases and 4xx messages
+
+| Situation                                                       | Status | Message                                                            |
+|-----------------------------------------------------------------|--------|--------------------------------------------------------------------|
+| `expand` chain (`a.b`)                                          | 422    | `expand chain not yet supported: <field>`                          |
+| `expand` on a `relation_many` field                             | 422    | `expand on relation_many not yet supported: <field>`               |
+| `expand` on a non-relation field                                | 422    | `expand only works on relation fields — "<field>" is <type>`       |
+| Unknown expand field                                            | 422    | `Unknown expand field: <field>`                                    |
+| Source `fields` allow-list excludes the relation field          | 403    | `No permission to read field: <field>`                             |
+| Target collection is archived                                   | 422    | `Relation target not active: <slug>`                               |
+| Caller has no read permission on the target collection          | 403    | `No read permission on relation target: <slug>`                    |
+
 ## Permission interactions
 
 Nested filter and sort aren't just data-shape syntax — they're a
@@ -321,6 +426,12 @@ doesn't ambiguously resolve against the joined target's `owner_id`.
 - **Sorting through `relation_many`** — there's no well-defined order
   across the array's members; filter is supported via `EXISTS`, sort
   still returns `422`.
-- **`?expand=customer_id`** — REST returns bare relation ids. To inline
-  related rows, use GraphQL (type-aware expansion via the schema
-  registry). A REST `expand` parameter is on the table but not shipped.
+- **`?expand=` chain (`a.b`)** — single-hop only. Chained expansion
+  (`?expand=customer_id.address_id`) returns `422`. The mechanics
+  (per-hop target collection load + read-permission gate + nested JOIN)
+  are the same as for nested filter; the lowering just hasn't been
+  wired up yet. Tracked as a follow-up.
+- **`?expand=` on a `relation_many` field** — expanding an array of
+  foreign ids would emit `array<object>` rather than `object`, which
+  needs a different SQL strategy (PG: `LATERAL` + `jsonb_agg`; SQLite:
+  correlated sub-`SELECT json_group_array(…)`). Returns `422` for now.

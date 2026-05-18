@@ -363,7 +363,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
       </div>
 
       <Sheet open={sheetTarget !== null} onOpenChange={(o) => { if (!o) setSheetTarget(null); }}>
-        <SheetContent side="right" className="w-full data-[side=right]:sm:max-w-2xl data-[side=right]:lg:max-w-3xl data-[side=right]:xl:max-w-4xl overflow-y-auto p-0 gap-0">
+        <SheetContent side="right" className="w-full data-[side=right]:sm:max-w-2xl overflow-y-auto p-0 gap-0">
           <SheetHeader>
             <SheetTitle>Edit rule</SheetTitle>
             <SheetDescription className="font-mono">

@@ -122,7 +122,7 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
         <div className="table-scroll">
           <table className="table">
             <thead>
-              <tr><th>Email</th><th>Name</th><th>Status</th><th>Roles</th><th>Created</th><th /></tr>
+              <tr><th>Email</th><th>Name</th><th>Status</th><th>Roles</th><th>Created</th><th className="col-actions" /></tr>
             </thead>
             <tbody>
               {!loaded && <tr><td colSpan={6} className="muted" style={{ padding: 14 }}>Loading…</td></tr>}
@@ -144,7 +144,7 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
                       : u.roles.map((r) => <Badge key={r.id} variant="secondary" style={{ marginRight: 4 }}>{r.name}</Badge>)}
                   </td>
                   <td className="muted font-mono" style={{ fontSize: 11.5 }}>{fmtDate(u.createdAt)}</td>
-                  <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+                  <td className="col-actions" style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                     <Button size="sm" variant="ghost" onClick={() => setEditRoles(u)}>Roles</Button>
                     {u.status === "suspended"
                       ? <Button size="sm" variant="ghost" onClick={() => void setStatus(u, "active")}>Activate</Button>

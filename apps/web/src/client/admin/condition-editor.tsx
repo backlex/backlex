@@ -345,31 +345,31 @@ export function ConditionEditor({ roles, pushToast }: ConditionEditorProps) {
 
   return (
     <div className="card">
-      <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <I.Code size={14} />
-        <span style={{ fontSize: 13, fontWeight: 500 }}>permission</span>
+        <span className="muted" style={{ fontSize: 12.5 }}>Allow</span>
         <Select
           value={role}
           onChange={(v) => { setRole(v); setDirty(true); }}
           options={roles.map((r) => ({ value: r.name, label: r.name }))}
           size="sm"
-          style={{ minWidth: 140 }}
+          className="w-auto"
         />
-        <span className="muted" style={{ fontSize: 12 }}>·</span>
+        <span className="muted" style={{ fontSize: 12.5 }}>to</span>
         <Select
           value={action}
           onChange={setAction}
           options={["read", "create", "update", "delete"].map((a) => ({ value: a, label: a }))}
           size="sm"
-          style={{ minWidth: 100 }}
+          className="w-auto"
         />
-        <span className="muted" style={{ fontSize: 12 }}>·</span>
+        <span className="muted" style={{ fontSize: 12.5 }}>on</span>
         <Select
           value={collection}
           onChange={setCollection}
           options={Object.keys(CE_FIELDS_BY_COLLECTION).map((c) => ({ value: c, label: c }))}
           size="sm"
-          style={{ minWidth: 110 }}
+          className="w-auto"
         />
         {dirty && <Badge variant="outline">modified</Badge>}
         <div className="spacer" />
@@ -394,7 +394,14 @@ export function ConditionEditor({ roles, pushToast }: ConditionEditorProps) {
         {tab === "item" && (
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span className="muted" style={{ fontSize: 12.5 }}>Items matching this rule are visible / mutable by <span className="font-mono" style={{ color: "var(--foreground)" }}>{role}</span> on <span className="font-mono" style={{ color: "var(--foreground)" }}>{action}</span>.</span>
+              <span className="muted" style={{ fontSize: 12.5 }}>{(() => {
+                const r = <span className="font-mono" style={{ color: "var(--foreground)" }}>{role}</span>;
+                if (action === "read") return <>Rows matching this rule are visible to {r}.</>;
+                if (action === "create") return <>Rows created by {r} must match this rule.</>;
+                if (action === "update") return <>{r} may update rows matching this rule.</>;
+                if (action === "delete") return <>{r} may delete rows matching this rule.</>;
+                return <>Items matching this rule are allowed for {r}.</>;
+              })()}</span>
               <div className="spacer" />
               <div className="rb-toggle">
                 <button type="button" className={mode === "builder" ? "on" : ""} onClick={() => setMode("builder")}>Builder</button>

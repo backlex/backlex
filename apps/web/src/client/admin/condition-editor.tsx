@@ -195,14 +195,14 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
 }
 
 export interface ConditionEditorProps {
+  role: string;
+  action: string;
+  collection: string;
   roles: RoleData[];
   pushToast: (msg: string) => void;
 }
 
-export function ConditionEditor({ roles, pushToast }: ConditionEditorProps) {
-  const [role, setRole] = useState("authenticated");
-  const [action, setAction] = useState("update");
-  const [collection, setCollection] = useState("posts");
+export function ConditionEditor({ role, action, collection, roles, pushToast }: ConditionEditorProps) {
   const [tab, setTab] = useState<"item" | "fields" | "validation" | "presets">("item");
   const [mode, setMode] = useState<"builder" | "json">("builder");
 
@@ -253,23 +253,6 @@ export function ConditionEditor({ roles, pushToast }: ConditionEditorProps) {
     setFieldPerms(out);
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [action, role, collection]);
-
-  useEffect(() => {
-    const onFocus = (e: any) => {
-      const { role: r, collection: c, action: a } = e.detail || {};
-      if (r) setRole(r);
-      if (a) setAction(a);
-      if (c) setCollection(c);
-      setTab("item");
-      setMode("builder");
-      setTimeout(() => {
-        const el = document.querySelector(".ce-tabs");
-        if (el) el.closest(".card")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 50);
-    };
-    window.addEventListener("ce:focus", onFocus);
-    return () => window.removeEventListener("ce:focus", onFocus);
-  }, []);
 
   useEffect(() => {
     if (mode === "json") setJsonDraft(objToPretty(ruleTreeToObj(tree)));
@@ -345,37 +328,6 @@ export function ConditionEditor({ roles, pushToast }: ConditionEditorProps) {
 
   return (
     <div className="card">
-      <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        <I.Code size={14} />
-        <span className="muted" style={{ fontSize: 12.5 }}>Allow</span>
-        <Select
-          value={role}
-          onChange={(v) => { setRole(v); setDirty(true); }}
-          options={roles.map((r) => ({ value: r.name, label: r.name }))}
-          size="sm"
-          className="w-auto"
-        />
-        <span className="muted" style={{ fontSize: 12.5 }}>to</span>
-        <Select
-          value={action}
-          onChange={setAction}
-          options={["read", "create", "update", "delete"].map((a) => ({ value: a, label: a }))}
-          size="sm"
-          className="w-auto"
-        />
-        <span className="muted" style={{ fontSize: 12.5 }}>on</span>
-        <Select
-          value={collection}
-          onChange={setCollection}
-          options={Object.keys(CE_FIELDS_BY_COLLECTION).map((c) => ({ value: c, label: c }))}
-          size="sm"
-          className="w-auto"
-        />
-        {dirty && <Badge variant="outline">modified</Badge>}
-        <div className="spacer" />
-        <span className="muted font-mono" style={{ fontSize: 11.5 }}>{summarizeTree(tree).slice(0, 80)}</span>
-      </div>
-
       <div className="ce-tabs">
         {[
           { id: "item", label: "Item permissions", count: tree.children.length, hint: "rules" },

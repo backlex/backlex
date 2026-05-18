@@ -58,7 +58,6 @@ import {
 import { RoleEditor, type RoleData } from "./role-editor";
 import { MembersPanel } from "./members-panel";
 import { PermissionsMatrix } from "./permissions-matrix";
-import { ConditionEditor } from "./condition-editor";
 import {
   FlowsPage,
   FunctionsPage,
@@ -1094,7 +1093,6 @@ function PermissionsPanel({ pushToast }: { pushToast: (m: string) => void }) {
       </div>
 
       <PermissionsMatrix roles={roles} pushToast={pushToast} />
-      <ConditionEditor roles={roles} pushToast={pushToast} />
       <RoleEditor open={editing !== null || isNew} role={editing} isNew={isNew} onClose={close} onSave={save} />
     </div>
   );

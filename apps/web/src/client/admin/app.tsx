@@ -723,7 +723,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                 actions={
                   <>
                     <Button variant="outline" icon={I.Refresh} onClick={refresh}>Refresh</Button>
-                    <Button variant="outline" icon={I.ExternalLink}>API</Button>
+                    <Button variant="outline" icon={I.ExternalLink} onClick={() => navigate(`/rest-explorer?slug=${encodeURIComponent(activeCollection)}`)}>API</Button>
                     <Button variant="primary" icon={I.Plus} onClick={openCreate}>New post</Button>
                   </>
                 }

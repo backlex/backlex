@@ -15,7 +15,14 @@ export interface ItemSheetProps {
   initial: Post | null;
   schema: CollectionSchema;
   onClose: () => void;
-  onSave: (draft: Partial<Post>) => void;
+  /**
+   * Save the current draft. Return value is awaited; if it resolves to `false`
+   * the sheet treats it as a validation/API failure and stays dirty (so the
+   * user can retry). Anything else (true / undefined / void) is treated as
+   * success — the sheet stays open and the parent is expected to have updated
+   * `initial` so the form re-syncs to the freshly-saved values.
+   */
+  onSave: (draft: Partial<Post>) => void | boolean | Promise<void | boolean>;
 }
 
 type SchemaField = {
@@ -78,6 +85,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
   const [draft, setDraft] = useState<Record<string, unknown>>(buildDefaults);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -152,7 +160,8 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
     return Object.keys(e).length === 0;
   };
 
-  const submit = () => {
+  const submit = async () => {
+    if (saving) return;
     if (!validate()) return;
     const payload: Record<string, unknown> = {};
     for (const f of fields) {
@@ -183,7 +192,47 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
         payload[f.name] = raw;
       }
     }
-    onSave(payload as Partial<Post>);
+    setSaving(true);
+    try {
+      await onSave(payload as Partial<Post>);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Enter-to-save handler for the body. We let Enter pass through inside
+  // textareas / rich-text editors (so it keeps inserting a newline), and
+  // anywhere the active element opts out via `data-enter-newline="true"`
+  // (used by the chip-input inside the tags field, which has its own Enter
+  // semantics). Cmd/Ctrl+Enter always saves — that's the documented escape
+  // hatch from inside a textarea.
+  const onBodyKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== "Enter") return;
+    // If a child handler already consumed Enter (e.g. the tags chip input
+    // calls preventDefault to add a chip, the rich-text editor inserts a
+    // newline) leave it alone.
+    if (e.defaultPrevented) return;
+    const target = e.target as HTMLElement | null;
+    const tag = target?.tagName?.toLowerCase();
+    const isMeta = e.metaKey || e.ctrlKey;
+    if (isMeta) {
+      e.preventDefault();
+      void submit();
+      return;
+    }
+    // Don't intercept Enter inside multi-line editors or contenteditable
+    // surfaces — they need it for newlines.
+    if (tag === "textarea") return;
+    if (target?.isContentEditable) return;
+    // Honor explicit opt-outs (e.g. anything that wants raw Enter semantics).
+    if (target?.closest("[data-enter-newline=\"true\"]")) return;
+    // Shift/Alt+Enter are reserved for newline semantics in some editors;
+    // don't submit on those modifiers.
+    if (e.shiftKey || e.altKey) return;
+    // For everything else (Input, Select, Checkbox, Switch buttons, etc.)
+    // treat Enter as "submit the form".
+    e.preventDefault();
+    void submit();
   };
 
   if (!open) return null;
@@ -809,7 +858,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
           <IconButton icon={I.X} onClick={onClose} title="Close" />
         </div>
 
-        <div className="sheet-body">
+        <div className="sheet-body" onKeyDown={onBodyKeyDown}>
           {fields.length === 0 && (
             <div className="muted" style={{ fontSize: 13, padding: 12, background: "var(--muted)", borderRadius: "var(--radius-xl)" }}>
               No editable fields. Add columns from the Schema tab to capture data on this collection.
@@ -828,9 +877,16 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
         </div>
 
         <div className="sheet-footer">
-          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" size="sm" onClick={submit}>
-            {mode === "create" ? `Create ${slug || "row"}` : "Save"}
+          {/* "Cancel" reads as "throw away changes" — once the form is clean
+              (no touched fields) we relabel to "Close" so the user knows
+              dismissing the sheet won't lose anything. */}
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            {Object.keys(touched).length === 0 ? "Close" : "Cancel"}
+          </Button>
+          <Button variant="primary" size="sm" onClick={submit} disabled={saving}>
+            {mode === "create"
+              ? `Create ${slug || "row"}`
+              : saving ? "Saving…" : "Save and continue"}
           </Button>
         </div>
       </div>

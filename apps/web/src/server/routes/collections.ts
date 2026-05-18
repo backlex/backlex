@@ -6,13 +6,16 @@ import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import {
   applyCollection,
+  assertIdent,
   derivePhysicalTable,
   dropCollection,
   type FieldDef,
+  tableExists,
   validateFields,
 } from "@workeros/db";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { inspectTable, RESERVED_NAMES } from "../services/adopt";
 import { seedOwnerScopedPermissions } from "../services/seed";
 import { logActivity } from "../services/activity";
 import { cascadeSlugRename } from "../services/collection-rename";
@@ -113,6 +116,33 @@ const CollectionInput = z.object({
     .regex(/^[-+]?[a-z_][a-z0-9_]*(,[-+]?[a-z_][a-z0-9_]*)*$/)
     .nullable()
     .optional(),
+  /** Physical table name. Optional for managed creates (defaults to
+   *  `derivePhysicalTable(tenantId, slug)`); required when `adopted=true`.
+   *  Custom names are allowed for managed collections too — useful when a
+   *  caller wants a friendlier table name than `c_<prefix>_<slug>`. */
+  physicalTable: z.string().min(1).max(120).optional(),
+  /** When true, register an *existing* physical table without DDL. The
+   *  table must already exist; field names, PK, and any column aliases are
+   *  validated against the live table shape before the metadata row is
+   *  written. Default is false (managed create — DDL runs). */
+  adopted: z.boolean().optional().default(false),
+  /** PK column name. Ignored for managed creates (always `"id"`); for
+   *  adopted creates, must match the introspected primary key. */
+  pkColumn: z.string().min(1).max(120).optional(),
+  /** Adopted-only flags asserting the source table has the conventional
+   *  system column. Ignored for managed creates (always true). */
+  hasCreatedAt: z.boolean().optional(),
+  hasUpdatedAt: z.boolean().optional(),
+  /** Adopted-only: alias an existing column to a system field. e.g.
+   *  `createdAtColumn: "inserted_at"` makes routes/items.ts read
+   *  `created_at` from `inserted_at` without DDL. Null/omitted = use the
+   *  conventional name. Ignored for managed creates. */
+  createdAtColumn: z.string().min(1).max(120).nullable().optional(),
+  updatedAtColumn: z.string().min(1).max(120).nullable().optional(),
+  /** Adopted-only: when set on an owner-scoped collection, ownership
+   *  reads from this column on the source table instead of the
+   *  `item_ownership` side-table. */
+  ownerIdColumn: z.string().min(1).max(120).nullable().optional(),
 });
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -199,6 +229,25 @@ export const collectionsRoutes = new Hono<AppBindings>()
     });
     return c.json({ ok: true });
   })
+  /**
+   * Unified create — one endpoint for both managed (we own the DDL) and
+   * adopted (existing table, no DDL) collections. `body.adopted` controls
+   * which path runs; the `physical_table` column is the single source of
+   * truth either way, so the runtime read path doesn't branch.
+   *
+   *   Managed (`adopted: false`, default):
+   *     - physicalTable optional, defaults to derivePhysicalTable(tenant, slug)
+   *     - table must NOT exist (we're about to CREATE it)
+   *     - pkColumn / hasCreatedAt / createdAtColumn / etc. ignored — always
+   *       "id" + true + null
+   *
+   *   Adopted (`adopted: true`):
+   *     - physicalTable required, table MUST exist
+   *     - introspected via inspectTable; pkColumn must match the real PK,
+   *       field names must exist on the table, alias columns must be present
+   *       and type-compatible
+   *     - applier short-circuits — never touches the user's table
+   */
   .post("/", requireUser, async (c) => {
     const body = CollectionInput.parse(await c.req.json());
     try {
@@ -209,15 +258,201 @@ export const collectionsRoutes = new Hono<AppBindings>()
     const { db, dialect } = c.get("ctx");
     const tenantId = requireTenant(c);
     const t = tableFor(dialect);
-    const existing = await (db as any)
-      .select()
+
+    // Slug uniqueness per workspace.
+    const slugConflict = await (db as any)
+      .select({ id: t.id })
       .from(t)
       .where(and(eq(t.tenantId, tenantId), eq(t.slug, body.slug)))
       .limit(1);
-    if (existing[0]) throw new AppError("CONFLICT", "Slug already exists");
+    if (slugConflict[0]) throw new AppError("CONFLICT", "Slug already exists");
+
+    let physicalTable: string;
+    let pkColumn = "id";
+    let hasCreatedAt = true;
+    let hasUpdatedAt = true;
+    let createdAtColumn: string | null = null;
+    let updatedAtColumn: string | null = null;
+    let ownerIdColumn: string | null = null;
+
+    if (body.adopted) {
+      if (!body.physicalTable) {
+        throw new AppError(
+          "VALIDATION",
+          "physicalTable is required when adopted is true",
+        );
+      }
+      try {
+        assertIdent(body.physicalTable);
+      } catch (e) {
+        throw new AppError("VALIDATION", (e as Error).message);
+      }
+      physicalTable = body.physicalTable;
+      if (!(await tableExists(db, dialect, physicalTable))) {
+        throw new AppError("NOT_FOUND", `Table "${physicalTable}" not found`);
+      }
+      let inspection;
+      try {
+        inspection = await inspectTable({ db, dialect }, physicalTable);
+      } catch (e) {
+        const msg = (e as Error).message;
+        if (/not found/i.test(msg)) throw new AppError("NOT_FOUND", msg);
+        throw new AppError("VALIDATION", msg);
+      }
+      if (!inspection.pk) {
+        throw new AppError(
+          "VALIDATION",
+          `Table "${physicalTable}" has no primary key — adoption requires a single-column PK`,
+        );
+      }
+      pkColumn = body.pkColumn ?? inspection.pk.column;
+      if (pkColumn !== inspection.pk.column) {
+        throw new AppError(
+          "VALIDATION",
+          `pkColumn "${pkColumn}" does not match the table's primary key column "${inspection.pk.column}"`,
+        );
+      }
+      const colNames = new Set(inspection.columns.map((col) => col.name));
+      for (const f of body.fields) {
+        if (!colNames.has(f.name)) {
+          throw new AppError(
+            "VALIDATION",
+            `Field "${f.name}" not found on table "${physicalTable}"`,
+          );
+        }
+        // The pkColumn override may legitimately point at "id"; everything
+        // else colliding with a reserved name is a footgun.
+        if (RESERVED_NAMES.has(f.name) && f.name !== pkColumn) {
+          throw new AppError(
+            "VALIDATION",
+            `Field name "${f.name}" collides with a reserved system column`,
+          );
+        }
+      }
+      // Alias resolution. We never invent columns; an alias pointing nowhere
+      // would silently corrupt reads.
+      const colByName = new Map(
+        inspection.columns.map((col) => [col.name, col] as const),
+      );
+      const validateAlias = (
+        logical: "createdAt" | "updatedAt" | "ownerId",
+        raw: string | null | undefined,
+      ): string | null => {
+        if (!raw) return null;
+        const col = colByName.get(raw);
+        if (!col) {
+          throw new AppError(
+            "VALIDATION",
+            `${logical}Column "${raw}" not found on table "${physicalTable}"`,
+          );
+        }
+        if (logical === "ownerId") {
+          if (
+            col.suggested !== "text" &&
+            col.suggested !== "longtext" &&
+            col.suggested !== "uuid"
+          ) {
+            throw new AppError(
+              "VALIDATION",
+              `${logical}Column "${raw}" must be a text/uuid type (got ${col.dbType})`,
+            );
+          }
+        } else {
+          if (col.suggested !== "timestamp" && col.suggested !== "integer") {
+            throw new AppError(
+              "VALIDATION",
+              `${logical}Column "${raw}" must be a timestamp/integer type (got ${col.dbType})`,
+            );
+          }
+        }
+        return raw;
+      };
+      // Normalize: an alias pointing at the conventional name is the same
+      // as no alias (cleaner storage; routes/items.ts treats null as "use
+      // the conventional name").
+      createdAtColumn = validateAlias(
+        "createdAt",
+        body.createdAtColumn === "created_at" ? null : body.createdAtColumn,
+      );
+      updatedAtColumn = validateAlias(
+        "updatedAt",
+        body.updatedAtColumn === "updated_at" ? null : body.updatedAtColumn,
+      );
+      ownerIdColumn = validateAlias(
+        "ownerId",
+        body.ownerIdColumn === "owner_id" ? null : body.ownerIdColumn,
+      );
+      hasCreatedAt =
+        Boolean(createdAtColumn) ||
+        (body.hasCreatedAt ?? false) ||
+        inspection.systemColumnsPresent.createdAt;
+      hasUpdatedAt =
+        Boolean(updatedAtColumn) ||
+        (body.hasUpdatedAt ?? false) ||
+        inspection.systemColumnsPresent.updatedAt;
+      if (
+        body.hasCreatedAt &&
+        !inspection.systemColumnsPresent.createdAt &&
+        !createdAtColumn
+      ) {
+        throw new AppError(
+          "VALIDATION",
+          "hasCreatedAt is true but the table has no created_at column (use createdAtColumn to alias an existing column instead)",
+        );
+      }
+      if (
+        body.hasUpdatedAt &&
+        !inspection.systemColumnsPresent.updatedAt &&
+        !updatedAtColumn
+      ) {
+        throw new AppError(
+          "VALIDATION",
+          "hasUpdatedAt is true but the table has no updated_at column",
+        );
+      }
+      if (ownerIdColumn && !body.ownerScoped) {
+        throw new AppError(
+          "VALIDATION",
+          "ownerIdColumn is set but ownerScoped is false — drop one or the other",
+        );
+      }
+    } else {
+      // Managed path. Custom physicalTable is allowed but optional — the
+      // default `c_<tenantPrefix12>_<slug>` keeps two workspaces from
+      // colliding when they happen to pick the same slug.
+      if (body.physicalTable) {
+        try {
+          assertIdent(body.physicalTable);
+        } catch (e) {
+          throw new AppError("VALIDATION", (e as Error).message);
+        }
+        physicalTable = body.physicalTable;
+      } else {
+        physicalTable = derivePhysicalTable(tenantId, body.slug);
+      }
+      if (await tableExists(db, dialect, physicalTable)) {
+        throw new AppError(
+          "CONFLICT",
+          `Physical table "${physicalTable}" already exists. To register it as a collection, set adopted=true instead.`,
+        );
+      }
+    }
+
+    // Physical-table uniqueness check (friendly per-workspace error; the
+    // DB-level `collections_physical_table_idx` enforces the hard guarantee).
+    const tableConflict = await (db as any)
+      .select({ slug: t.slug })
+      .from(t)
+      .where(and(eq(t.tenantId, tenantId), eq(t.physicalTable, physicalTable)))
+      .limit(1);
+    if (tableConflict[0]) {
+      throw new AppError(
+        "CONFLICT",
+        `Physical table "${physicalTable}" is already registered as collection "${tableConflict[0].slug}"`,
+      );
+    }
 
     const id = crypto.randomUUID();
-    const physicalTable = derivePhysicalTable(tenantId, body.slug);
     await (db as any).insert(t).values({
       id,
       slug: body.slug,
@@ -234,6 +469,13 @@ export const collectionsRoutes = new Hono<AppBindings>()
       vectorize: body.vectorize,
       vectorizeModel: body.vectorizeModel ?? null,
       defaultSort: body.defaultSort ?? null,
+      adopted: body.adopted,
+      pkColumn,
+      hasCreatedAt,
+      hasUpdatedAt,
+      createdAtColumn,
+      updatedAtColumn,
+      ownerIdColumn,
     });
     await applyCollection(db, dialect, {
       table: physicalTable,
@@ -241,20 +483,40 @@ export const collectionsRoutes = new Hono<AppBindings>()
       ownerScoped: body.ownerScoped,
       tenantScoped: body.tenantScoped,
       versioned: body.versioned,
-      // POST through this route always creates a managed table; the adopt
-      // flow has its own service that inserts the row with `adopted=true`
-      // and skips DDL via the applier's adopted branch.
-      adopted: false,
+      adopted: body.adopted,
     });
     if (body.ownerScoped) {
       await seedOwnerScopedPermissions({ db, dialect }, tenantId, body.slug);
     }
-    const created = { id, ...body, tenantId, physicalTable };
+    const created = {
+      id,
+      slug: body.slug,
+      tenantId,
+      physicalTable,
+      singular: body.singular ?? null,
+      plural: body.plural ?? null,
+      note: body.note ?? null,
+      displayTemplate: body.displayTemplate ?? null,
+      fields: body.fields,
+      ownerScoped: body.ownerScoped,
+      tenantScoped: body.tenantScoped,
+      versioned: body.versioned,
+      vectorize: body.vectorize,
+      vectorizeModel: body.vectorizeModel ?? null,
+      defaultSort: body.defaultSort ?? null,
+      adopted: body.adopted,
+      pkColumn,
+      hasCreatedAt,
+      hasUpdatedAt,
+      createdAtColumn,
+      updatedAtColumn,
+      ownerIdColumn,
+    };
     await logActivity(c, {
       action: "create",
       collection: "system_collections",
       itemId: body.slug,
-      payload: { fields: body.fields.length },
+      payload: { fields: body.fields.length, adopted: body.adopted },
       response: { data: created },
     });
     return c.json({ data: created }, 201);

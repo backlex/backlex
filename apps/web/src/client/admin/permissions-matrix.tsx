@@ -1,8 +1,9 @@
 // @ts-nocheck
 // Directus-parity permission matrix
-import { Fragment, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { I } from "./icons";
 import { Badge } from "./ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@workeros/ui/components/popover";
 import { api } from "@/lib/api";
 import type { RoleData } from "./role-editor";
 
@@ -133,8 +134,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
   const [activeRole, setActiveRole] = useState(roles[1]?.name || "authenticated");
   const [collections, setCollections] = useState<string[]>([]);
   const [matrix, setMatrix] = useState<Matrix>(() => emptyMatrix(roles, []));
-  const [pop, setPop] = useState<{ role: string; collection: string; action: string; x: number; y: number } | null>(null);
-  const popRef = useRef<HTMLDivElement | null>(null);
+  const [pop, setPop] = useState<{ collection: string; action: string } | null>(null);
 
   // Load live collections (c_<slug> tables) once.
   useEffect(() => {
@@ -193,15 +193,6 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
     return () => { cancelled = true; };
   }, [roles, collections]);
 
-  useEffect(() => {
-    if (!pop) return;
-    const onDoc = (e: MouseEvent) => { if (popRef.current && !popRef.current.contains(e.target as Node)) setPop(null); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPop(null); };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
-  }, [pop]);
-
   const isAdmin = activeRole === "admin";
 
   const setCell = (collection: string, action: string, val: CellState) => {
@@ -214,30 +205,18 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
     }));
   };
 
-  const openCell = (e: ReactMouseEvent<HTMLButtonElement>, collection: string, action: string) => {
-    if (isAdmin) return;
-    const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-    const host = (e.currentTarget.closest(".pm-grid-wrap") as HTMLElement).getBoundingClientRect();
-    setPop({
-      role: activeRole, collection, action,
-      x: rect.left - host.left + rect.width / 2,
-      y: rect.bottom - host.top + 6,
-    });
-  };
-
-  const pickState = async (val: CellState) => {
-    if (!pop) return;
-    setCell(pop.collection, pop.action, val);
+  const pickState = async (collection: string, action: string, val: CellState) => {
+    setCell(collection, action, val);
     try {
-      await persistMatrixCell(pop.role, pop.collection, pop.action, val);
+      await persistMatrixCell(activeRole, collection, action, val);
     } catch (e) {
       pushToast?.((e as Error).message);
     }
     if (val === "custom") {
-      window.dispatchEvent(new CustomEvent("ce:focus", { detail: { role: pop.role, collection: pop.collection, action: pop.action } }));
-      pushToast?.(`Editing rule for ${pop.role} · ${pop.action} · ${pop.collection}`);
+      window.dispatchEvent(new CustomEvent("ce:focus", { detail: { role: activeRole, collection, action } }));
+      pushToast?.(`Editing rule for ${activeRole} · ${action} · ${collection}`);
     } else {
-      pushToast?.(`${pop.role} · ${pop.action} · ${pop.collection} → ${val === "all" ? "full access" : "no access"}`);
+      pushToast?.(`${activeRole} · ${action} · ${collection} → ${val === "all" ? "full access" : "no access"}`);
     }
     setPop(null);
   };
@@ -302,47 +281,57 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
               </div>
               {PM_ACTIONS.map((a) => {
                 const state = (matrix[activeRole]?.[c]?.[a.v] || "none") as CellState;
-                const isOpen = pop && pop.collection === c && pop.action === a.v;
-                return (
+                const isOpen = !!pop && pop.collection === c && pop.action === a.v;
+                const trigger = (
                   <button
                     key={a.v}
                     type="button"
                     className={`pm-cell pm-cell-${state} ${isOpen ? "is-open" : ""} ${isAdmin ? "is-locked" : ""}`}
-                    onClick={(e) => openCell(e, c, a.v)}
                     title={cellSummary(state, a.v, c)}
                     aria-label={`${activeRole} · ${a.title} · ${c}: ${state}`}
                   >
                     <CellGlyph state={isAdmin ? "all" : state} />
                   </button>
                 );
+                if (isAdmin) return trigger;
+                return (
+                  <Popover
+                    key={a.v}
+                    open={isOpen}
+                    onOpenChange={(o) => setPop(o ? { collection: c, action: a.v } : null)}
+                  >
+                    <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+                    <PopoverContent
+                      align="center"
+                      sideOffset={6}
+                      className="w-auto min-w-[240px] gap-0 rounded-lg p-1.5"
+                    >
+                      <div className="pm-pop-head">
+                        <span className="font-mono" style={{ fontSize: 11.5 }}>{activeRole}</span>
+                        <span className="muted">·</span>
+                        <span className="font-mono" style={{ fontSize: 11.5 }}>{a.v}</span>
+                        <span className="muted">·</span>
+                        <span className="font-mono" style={{ fontSize: 11.5 }}>{c}</span>
+                      </div>
+                      <button type="button" className="pm-pop-opt" onClick={() => pickState(c, a.v, "all")}>
+                        <CellGlyph state="all" />
+                        <span><strong>Full access</strong><span className="muted">no condition; everyone in role</span></span>
+                      </button>
+                      <button type="button" className="pm-pop-opt" onClick={() => pickState(c, a.v, "custom")}>
+                        <CellGlyph state="custom" />
+                        <span><strong>Use custom rule</strong><span className="muted">edit conditions below ↓</span></span>
+                      </button>
+                      <button type="button" className="pm-pop-opt" onClick={() => pickState(c, a.v, "none")}>
+                        <CellGlyph state="none" />
+                        <span><strong>No access</strong><span className="muted">denied for this role</span></span>
+                      </button>
+                    </PopoverContent>
+                  </Popover>
+                );
               })}
             </Fragment>
           ))}
         </div>
-
-        {pop && (
-          <div ref={popRef} className="pm-pop" style={{ left: pop.x, top: pop.y }} role="dialog">
-            <div className="pm-pop-head">
-              <span className="font-mono" style={{ fontSize: 11.5 }}>{pop.role}</span>
-              <span className="muted">·</span>
-              <span className="font-mono" style={{ fontSize: 11.5 }}>{pop.action}</span>
-              <span className="muted">·</span>
-              <span className="font-mono" style={{ fontSize: 11.5 }}>{pop.collection}</span>
-            </div>
-            <button type="button" className="pm-pop-opt" onClick={() => pickState("all")}>
-              <CellGlyph state="all" />
-              <span><strong>Full access</strong><span className="muted">no condition; everyone in role</span></span>
-            </button>
-            <button type="button" className="pm-pop-opt" onClick={() => pickState("custom")}>
-              <CellGlyph state="custom" />
-              <span><strong>Use custom rule</strong><span className="muted">edit conditions below ↓</span></span>
-            </button>
-            <button type="button" className="pm-pop-opt" onClick={() => pickState("none")}>
-              <CellGlyph state="none" />
-              <span><strong>No access</strong><span className="muted">denied for this role</span></span>
-            </button>
-          </div>
-        )}
       </div>
 
       <div className="pm-legend">

@@ -792,7 +792,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                   <th style={{ width: 80 }}>ACL</th>
                   <th style={{ width: 90, textAlign: "right" }}>Size</th>
                   <th style={{ width: 100 }}>Updated</th>
-                  <th style={{ width: 60 }}></th>
+                  <th className="col-actions" style={{ width: 60 }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -810,7 +810,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                     </td>
                     <td className="tabular-nums" style={{ textAlign: "right" }}>{fmtSize(f.size)}</td>
                     <td className="muted font-mono" style={{ fontSize: 11.5 }}>{f.updated}</td>
-                    <td onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}>
+                    <td className="col-actions" onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}>
                       <IconButton icon={I.Trash} title="Delete" onClick={() => deleteFile(f.key)} />
                     </td>
                   </tr>

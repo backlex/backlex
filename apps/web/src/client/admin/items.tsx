@@ -432,7 +432,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
           {has.words && <SortHead id="word_count" label="Words" num />}
           {has.views && <SortHead id="view_count" label="Views" num />}
           <SortHead id="updated_at" label="Updated" />
-          <th style={{ width: 60, textAlign: "right" }}></th>
+          <th className="col-actions" style={{ width: 60, textAlign: "right" }}></th>
         </tr>
       </thead>
       <tbody>
@@ -494,7 +494,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
                 <td className="tabular-nums" style={{ textAlign: "right", color: r.view_count ? "var(--foreground)" : "var(--muted-foreground)" }}>{r.view_count ? Number(r.view_count).toLocaleString() : "—"}</td>
               )}
               <td style={{ color: "var(--muted-foreground)" }} className="font-mono tabular-nums">{fmtDate(r.updated_at ?? r.updatedAt)}</td>
-              <td onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}>
+              <td className="col-actions" onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}>
                 <IconButton icon={I.Pencil} onClick={() => onEdit(r)} title="Edit" />
               </td>
             </tr>

@@ -69,7 +69,7 @@ function FileThumb({ k, contentType, size = 28 }: { k: string; contentType?: str
   return (
     <span
       style={{
-        width: size, height: size, borderRadius: 6, overflow: "hidden",
+        width: size, height: size, borderRadius: "var(--radius-xl)", overflow: "hidden",
         background: "var(--muted)", flexShrink: 0,
         display: "grid", placeItems: "center", color: "var(--muted-foreground)",
       }}
@@ -197,7 +197,7 @@ function FileTrigger({ value, kind, error, onOpen, onClear }: { value: string; k
         <>
           <span
             style={{
-              width: 44, height: 44, borderRadius: 6, flexShrink: 0,
+              width: 44, height: 44, borderRadius: "var(--radius-xl)", flexShrink: 0,
               background: "var(--muted)", display: "grid", placeItems: "center",
               color: "var(--muted-foreground)",
             }}

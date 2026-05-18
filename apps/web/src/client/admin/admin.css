@@ -1623,6 +1623,22 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   color: oklch(0.48 0.14 70);
 }
 
+.pm-pop {
+  position: absolute;
+  transform: translateX(-50%);
+  min-width: 240px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 32px oklch(0 0 0 / 0.18), 0 2px 6px oklch(0 0 0 / 0.08);
+  padding: 6px;
+  z-index: 20;
+  animation: pm-pop-in 140ms ease-out;
+}
+@keyframes pm-pop-in {
+  from { opacity: 0; transform: translate(-50%, -4px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
 .pm-pop-head {
   display: flex; align-items: center; gap: 6px;
   padding: 6px 10px 8px;

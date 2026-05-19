@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Flows page — trigger → operations list + preview canvas + builder modal
 import { Fragment, useEffect, useState } from "react";
 import { I, type IconComponent } from "../icons";
@@ -128,7 +127,7 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
         actions={<Button variant="primary" icon={I.Plus} onClick={newFlow}>New flow</Button>}
       />
 
-      <div className="master-detail" style={{ "--md-aside": "320px" }}>
+      <div className="master-detail" style={{ "--md-aside": "320px" } as React.CSSProperties}>
         <div className="card">
           {flows.map((f) => (
             <div key={f.id} onClick={() => setActive(f.id)} className="schema-row" style={{ gridTemplateColumns: "24px 1fr 60px", cursor: "pointer", background: active === f.id ? "var(--accent)" : "transparent" }}>
@@ -351,7 +350,7 @@ function FlowNode({ x, y, kind, title, sub }: { x: number; y: number; kind: stri
     condition: { bg: "color-mix(in oklch, oklch(0.78 0.16 75) 18%, var(--card))", bd: "color-mix(in oklch, oklch(0.78 0.16 75) 50%, var(--border))", ic: I.Filter },
     action: { bg: "var(--card)", bd: "var(--border)", ic: I.Function },
   };
-  const c = colors[kind];
+  const c = colors[kind] ?? colors.action!;
   const Icon = c.ic;
   return (
     <div style={{ position: "absolute", left: x, top: y, width: 176, padding: "10px 12px", background: c.bg, border: `1px solid ${c.bd}`, borderRadius: "var(--radius-xl)", display: "flex", flexDirection: "column", gap: 2, boxShadow: "0 1px 2px oklch(0 0 0 / 0.06)", overflow: "hidden" }}>

@@ -2167,3 +2167,53 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   }
 }
 
+/* ─── REST Explorer + OpenAPI responsive ─── */
+
+/* REST Explorer two-pane layout. Above 768px (md): fixed list rail + fluid
+   detail. Below 768px: stack vertically so the detail panel isn't crushed
+   to ~80px wide on phone-sized viewports (~459px), where path strings like
+   `/api/items/test` were wrapping every 4 characters. The list takes a
+   bounded height so the detail panel remains visible below without
+   scrolling the whole page. Mirrors the `.master-detail` convention. */
+.rest-explorer-split {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 768px) {
+  .rest-explorer-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* Stacked: cap the list height so users can see the detail pane below
+     without a long initial scroll. Wide-width default is full-height. */
+  .rest-explorer-split .rest-explorer-list-card {
+    max-height: 320px;
+  }
+}
+@media (min-width: 769px) {
+  /* Restore the original height constraint when side-by-side. */
+  .rest-explorer-split .rest-explorer-list-card {
+    max-height: calc(100vh - 220px);
+  }
+  .rest-explorer-split .rest-explorer-detail {
+    max-height: calc(100vh - 220px);
+  }
+}
+
+/* OpenAPI: PageHeader's actions slot is `flex shrink-0`, so the 3 download
+   buttons would crush the description column to ~100px on narrow viewports
+   (~826px) — the description then wraps word-per-line. Loosen the slot so
+   the buttons wrap to a 2nd row instead. Uses `:has()` to target the
+   PageHeader's actions wrapper without modifying the shared component. */
+.openapi-export-page :where(div:has(> .openapi-actions)) {
+  flex-shrink: 1;
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  /* When wrapping, left-align the action row beneath the title so the gap
+     reads as an extra row rather than a floating right-edge cluster. */
+  .openapi-export-page .openapi-actions {
+    justify-content: flex-start;
+  }
+}

@@ -631,7 +631,7 @@ export const GraphqlPage = () => {
       setResult(null);
       setTookMs(null);
       const started = performance.now();
-      let parsedVars: unknown = undefined;
+      let parsedVars: unknown;
       const trimmedVars = variables.trim();
       if (trimmedVars && trimmedVars !== "{}") {
         try {

@@ -112,7 +112,7 @@ const tokenize = (src: string): Tok[] => {
     }
     // Number (allow leading minus)
     const numMatch = /^-?\d+(?:\.\d+)?/.exec(src.slice(i));
-    if (numMatch && (i === 0 || /[\s(,\[]/.test(src[i - 1] ?? " "))) {
+    if (numMatch && (i === 0 || /[\s(,[]/.test(src[i - 1] ?? " "))) {
       out.push({ t: "number", v: Number(numMatch[0]), pos });
       i += numMatch[0].length;
       continue;

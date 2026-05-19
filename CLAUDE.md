@@ -11,6 +11,8 @@ bun install
 bun run dev                # Vite + Cloudflare miniflare in one process (port 5173)
 bun run dev:bun            # Bun-native API only on :8787 (no admin SPA)
 bun run typecheck          # all workspaces
+bun run lint               # biome lint apps + packages (no formatter)
+bun run lint:fix           # biome lint --write (safe auto-fixes)
 bun run build              # vite build (admin SPA + worker bundle)
 bun run deploy             # vite build + wrangler deploy (CF)
 

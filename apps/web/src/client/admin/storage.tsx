@@ -20,6 +20,7 @@ import { CheckIcon, ChevronsUpDownIcon, LinkIcon } from "lucide-react";
 import { cn } from "@workeros/ui/lib/utils";
 import { api } from "@/lib/api";
 import { useUrlState } from "@/lib/use-url-state";
+import { SkeletonCard } from "./loading";
 
 interface StoredFolder {
   id: string;
@@ -757,6 +758,13 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
           {view === "grid" ? (
             <>
             <div style={{ padding: 12, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 }}>
+              {visible.length === 0 && filesLoading && (
+                <>
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <SkeletonCard key={`fs-${i}`} height={140} />
+                  ))}
+                </>
+              )}
               {visible.length === 0 && !filesLoading && (
                 <div style={{ gridColumn: "1 / -1", padding: 36, textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>
                   No files. Drop files anywhere on this page or use Upload.
@@ -797,6 +805,18 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                 </tr>
               </thead>
               <tbody>
+                {visible.length === 0 && filesLoading && (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <tr key={`fl-${i}`}>
+                      <td><SkeletonCard height={16} /></td>
+                      <td><SkeletonCard height={16} /></td>
+                      <td><SkeletonCard height={16} /></td>
+                      <td><SkeletonCard height={16} /></td>
+                      <td><SkeletonCard height={16} /></td>
+                      <td />
+                    </tr>
+                  ))
+                )}
                 {visible.map((f) => (
                   <tr key={f.key} data-selected={selectedKey === f.key} onClick={() => openDetail(f.key)} style={{ cursor: "pointer" }}>
                     <td>

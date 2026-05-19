@@ -1,9 +1,10 @@
 // @ts-nocheck
 // Directus-parity permission editor.
 import { useEffect, useMemo, useState } from "react";
+import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "./icons";
-import { Badge, Button } from "./ui";
+import { Badge, Button, Checkbox, IconButton } from "./ui";
 import { Select } from "./select";
 import { api } from "@/lib/api";
 import type { RoleData } from "./role-editor";
@@ -120,15 +121,25 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
     <div className="rb-group">
       <div className="rb-group-head">
         <div className="rb-toggle" role="tablist">
-          <button type="button" className={node.op === "and" ? "on" : ""} onClick={() => update(path, (n) => { n.op = "and"; })}>AND</button>
-          <button type="button" className={node.op === "or" ? "on" : ""} onClick={() => update(path, (n) => { n.op = "or"; })}>OR</button>
+          <Button
+            size="xs"
+            variant={node.op === "and" ? "primary" : "ghost"}
+            aria-pressed={node.op === "and"}
+            onClick={() => update(path, (n) => { n.op = "and"; })}
+          >AND</Button>
+          <Button
+            size="xs"
+            variant={node.op === "or" ? "primary" : "ghost"}
+            aria-pressed={node.op === "or"}
+            onClick={() => update(path, (n) => { n.op = "or"; })}
+          >OR</Button>
         </div>
         <span className="muted" style={{ fontSize: 11.5 }}>match {node.op === "and" ? "all" : "any"} of the following</span>
         <div className="spacer" />
-        <button type="button" className="rb-add" onClick={() => update(path, (n) => n.children.push(newCondition()))}>+ condition</button>
-        <button type="button" className="rb-add" onClick={() => update(path, (n) => n.children.push(newGroup(node.op === "and" ? "or" : "and")))}>+ group</button>
+        <Button size="xs" variant="ghost" className="rb-add" onClick={() => update(path, (n) => n.children.push(newCondition()))}>+ condition</Button>
+        <Button size="xs" variant="ghost" className="rb-add" onClick={() => update(path, (n) => n.children.push(newGroup(node.op === "and" ? "or" : "and")))}>+ group</Button>
         {path.length > 0 && (
-          <button type="button" className="rb-rm" onClick={() => removeAt(path)} title="Remove group"><I.X size={12} /></button>
+          <IconButton icon={I.X} className="rb-rm" title="Remove group" onClick={() => removeAt(path)} />
         )}
       </div>
       <div className="rb-children">
@@ -166,9 +177,8 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
         />
         {needsValue && (
           <div className="rb-value-wrap" style={{ position: "relative", flex: 1 }}>
-            <input
-              className="rb-input"
-              style={{ width: "100%" }}
+            <Input
+              className="rb-input w-full"
               placeholder={node.op === "_in" || node.op === "_nin" ? "a, b, c" : "value or $user.id"}
               value={node.value}
               onChange={(e) => update(path, (n) => { n.value = e.target.value; })}
@@ -179,7 +189,7 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
             </datalist>
           </div>
         )}
-        <button type="button" className="rb-rm" onClick={() => removeAt(path)} title="Remove"><I.X size={12} /></button>
+        <IconButton icon={I.X} className="rb-rm" title="Remove" onClick={() => removeAt(path)} />
       </div>
     );
   };
@@ -329,10 +339,18 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
           { id: "validation", label: "Validation", count: validation.children.length, hint: "rules" },
           { id: "presets", label: "Presets", count: presets.length, hint: "defaults" },
         ].map((t) => (
-          <button key={t.id} type="button" className={`ce-tab ${tab === t.id ? "on" : ""}`} onClick={() => setTab(t.id as any)}>
+          <Button
+            key={t.id}
+            type="button"
+            variant="ghost"
+            size="xs"
+            className={`ce-tab ${tab === t.id ? "on" : ""}`}
+            aria-pressed={tab === t.id}
+            onClick={() => setTab(t.id as any)}
+          >
             <span>{t.label}</span>
             <span className="ce-tab-count">{t.count}</span>
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -350,8 +368,24 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
               })()}</span>
               <div className="spacer" />
               <div className="rb-toggle">
-                <button type="button" className={mode === "builder" ? "on" : ""} onClick={() => setMode("builder")}>Builder</button>
-                <button type="button" className={mode === "json" ? "on" : ""} onClick={() => { setJsonDraft(compiledJson); setMode("json"); }}>JSON</button>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant={mode === "builder" ? "primary" : "ghost"}
+                  aria-pressed={mode === "builder"}
+                  onClick={() => setMode("builder")}
+                >
+                  Builder
+                </Button>
+                <Button
+                  type="button"
+                  size="xs"
+                  variant={mode === "json" ? "primary" : "ghost"}
+                  aria-pressed={mode === "json"}
+                  onClick={() => { setJsonDraft(compiledJson); setMode("json"); }}
+                >
+                  JSON
+                </Button>
               </div>
             </div>
             {availableFields.length === 0 && (
@@ -424,10 +458,16 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
                 <div key={f} className="fg-row">
                   <span className="font-mono" style={{ fontSize: 12.5 }}>{f}</span>
                   <label className="fg-cell">
-                    <input type="checkbox" checked={fieldPerms[f]?.read || false} onChange={(e) => { setFieldPerms((p) => ({ ...p, [f]: { ...p[f], read: e.target.checked } })); setDirty(true); }} />
+                    <Checkbox
+                      checked={fieldPerms[f]?.read || false}
+                      onChange={(next) => { setFieldPerms((p) => ({ ...p, [f]: { ...p[f], read: next } })); setDirty(true); }}
+                    />
                   </label>
                   <label className="fg-cell">
-                    <input type="checkbox" checked={fieldPerms[f]?.write || false} onChange={(e) => { setFieldPerms((p) => ({ ...p, [f]: { ...p[f], write: e.target.checked } })); setDirty(true); }} />
+                    <Checkbox
+                      checked={fieldPerms[f]?.write || false}
+                      onChange={(next) => { setFieldPerms((p) => ({ ...p, [f]: { ...p[f], write: next } })); setDirty(true); }}
+                    />
                   </label>
                 </div>
               ))}
@@ -466,14 +506,33 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
                     style={{ minWidth: 160 }}
                   />
                   <span className="muted">=</span>
-                  <input className="rb-input" style={{ flex: 1 }} placeholder="value or $user.id" list={`presets-vars-${p.id}`} value={p.value} onChange={(e) => { setPresets((arr) => arr.map((x, j) => j === i ? { ...x, value: e.target.value } : x)); setDirty(true); }} />
+                  <Input
+                    className="rb-input flex-1"
+                    placeholder="value or $user.id"
+                    list={`presets-vars-${p.id}`}
+                    value={p.value}
+                    onChange={(e) => { setPresets((arr) => arr.map((x, j) => j === i ? { ...x, value: e.target.value } : x)); setDirty(true); }}
+                  />
                   <datalist id={`presets-vars-${p.id}`}>
                     {CE_DYNAMIC_VARS.map((v) => <option key={v.v} value={v.v}>{v.desc}</option>)}
                   </datalist>
-                  <button type="button" className="rb-rm" onClick={() => { setPresets((arr) => arr.filter((_, j) => j !== i)); setDirty(true); }} title="Remove"><I.X size={12} /></button>
+                  <IconButton
+                    icon={I.X}
+                    className="rb-rm"
+                    title="Remove"
+                    onClick={() => { setPresets((arr) => arr.filter((_, j) => j !== i)); setDirty(true); }}
+                  />
                 </div>
               ))}
-              <button type="button" className="rb-add" style={{ alignSelf: "flex-start" }} onClick={() => { setPresets((arr) => [...arr, { id: Date.now(), key: "", value: "" }]); setDirty(true); }}>+ preset</button>
+              <Button
+                type="button"
+                size="xs"
+                variant="ghost"
+                className="rb-add self-start"
+                onClick={() => { setPresets((arr) => [...arr, { id: Date.now(), key: "", value: "" }]); setDirty(true); }}
+              >
+                + preset
+              </Button>
             </div>
           </>
         )}

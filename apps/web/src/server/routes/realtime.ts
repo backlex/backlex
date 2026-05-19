@@ -210,7 +210,7 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
       const { channel } = c.req.valid("param");
       await gateForChannel(ctx, auth, channel, true);
 
-      if (!rateLimitOk(`pub:${channel}:${clientIp(c)}`, PUBLISH_RATE_MAX, PUBLISH_RATE_WINDOW_MS)) {
+      if (!(await rateLimitOk(ctx.env, `pub:${channel}:${clientIp(c)}`, PUBLISH_RATE_MAX, PUBLISH_RATE_WINDOW_MS))) {
         throw new AppError("RATE_LIMITED", "Too many publishes — slow down");
       }
       const payload = await c.req.json();

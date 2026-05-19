@@ -1,11 +1,13 @@
 // @ts-nocheck
 // Members panel — workspace member management for multi-tenant.
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Input } from "@workeros/ui/components/input";
 import { I } from "./icons";
 import { Badge, Button, IconButton } from "./ui";
 import { Select } from "./select";
 import { tenantsApi, type ApiTenantMember } from "./api";
+import { queryKeys, useTenantMembers, useTenants } from "./queries";
 import type { RoleData } from "./role-editor";
 import { useUrlState } from "@/lib/use-url-state";
 import { SkeletonList } from "./loading";
@@ -82,36 +84,26 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
    */
   const WORKSPACE_ROLES = ["owner", "admin", "editor", "member"] as const;
 
-  const [members, setMembers] = useState<Member[]>([]);
+  // Server-state via React Query — caches across navigation so the panel
+  // doesn't re-fetch when the user bounces off and back. The tenants list
+  // is shared with the workspace switcher and the topbar.
+  const qc = useQueryClient();
+  const tenantsQuery = useTenants();
+  const tenantId =
+    tenantsQuery.data?.active ||
+    sniffActiveTenantId() ||
+    tenantsQuery.data?.data[0]?.id ||
+    null;
+  const membersQuery = useTenantMembers(tenantId);
+  const members: Member[] = useMemo(
+    () => (membersQuery.data?.data ?? []).map(fromApiMember),
+    [membersQuery.data],
+  );
+  const loading = tenantsQuery.isLoading || membersQuery.isLoading;
+
   const [q, setQ] = useUrlState("q", "");
   const [invite, setInvite] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
-  const [tenantId, setTenantId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const ts = await tenantsApi.list();
-        const active = ts.active || sniffActiveTenantId() || ts.data[0]?.id;
-        if (!active) {
-          if (!cancelled) setLoading(false);
-          return;
-        }
-        if (cancelled) return;
-        setTenantId(active);
-        const ms = await tenantsApi.members(active);
-        if (cancelled) return;
-        setMembers(ms.data.map(fromApiMember));
-      } catch (e) {
-        pushToast?.((e as Error).message);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [pushToast]);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -133,21 +125,19 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
       await tenantsApi.invite(tenantId, { email, role: inviteRole });
       pushToast(`Invite sent to ${email}.`);
       setInvite("");
-      const ms = await tenantsApi.members(tenantId);
-      setMembers(ms.data.map(fromApiMember));
+      // Refetch members list (and any other view that observes the same
+      // subtree). Tenants list itself didn't change — leave it cached.
+      await qc.invalidateQueries({ queryKey: queryKeys.tenantMembers(tenantId) });
     } catch (e) {
       pushToast((e as Error).message);
     }
   };
 
-  const setRole = (id: string, r: string) =>
-    setMembers((arr) => arr.map((m) => (m.id === id ? { ...m, role: r } : m)));
-
   const remove = async (id: string) => {
     if (!tenantId) return;
     try {
       await tenantsApi.removeMember(tenantId, id);
-      setMembers((arr) => arr.filter((m) => m.id !== id));
+      await qc.invalidateQueries({ queryKey: queryKeys.tenantMembers(tenantId) });
     } catch (e) {
       pushToast((e as Error).message);
     }
@@ -210,9 +200,15 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
             </div>
             <Select
               value={m.role}
-              onChange={(v) => setRole(m.id, v)}
+              onChange={() => {
+                // Role mutation isn't wired yet — there's no /api/tenants/:id/
+                // members/:id PATCH route. Surface the current role read-only
+                // so the column shape stays consistent with the rest of the
+                // grid until that endpoint lands.
+              }}
               options={WORKSPACE_ROLES.map((r) => ({ value: r, label: r }))}
               size="sm"
+              disabled
             />
             <span className="muted font-mono" style={{ fontSize: 11.5 }}>{m.last}</span>
             <span>

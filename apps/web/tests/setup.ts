@@ -52,6 +52,16 @@ export const makeHarness = (overrides: Partial<Env> = {}): TestHarness => {
   const app = createApp(env);
 
   const cookieJar = new Map<string, string>();
+  // Each harness gets its own synthetic client IP so the module-level
+  // auth-rate-limit windows (lib/auth-rate-limit.ts) don't accumulate across
+  // unrelated describe blocks in the same bun-test process. Without this a
+  // batch of test files that legitimately sign up many users from the same
+  // empty/"unknown" IP would tip the signup limit and start 429-ing.
+  // Tests that explicitly want to exercise the limiter can set their own
+  // X-Forwarded-For via the init argument.
+  const syntheticIp = `127.0.${(Math.random() * 250 + 1) | 0}.${
+    (Math.random() * 250 + 1) | 0
+  }`;
   const fetchWithCookies = async (
     input: string,
     init: RequestInit = {},
@@ -59,6 +69,8 @@ export const makeHarness = (overrides: Partial<Env> = {}): TestHarness => {
     const url = input.startsWith("http") ? input : `${env.APP_URL}${input}`;
     const headers = new Headers(init.headers ?? {});
     if (!headers.has("Origin")) headers.set("Origin", env.APP_URL);
+    if (!headers.has("X-Forwarded-For"))
+      headers.set("X-Forwarded-For", syntheticIp);
     if (cookieJar.size > 0) {
       const cookieHeader = [...cookieJar.entries()]
         .map(([k, v]) => `${k}=${v}`)

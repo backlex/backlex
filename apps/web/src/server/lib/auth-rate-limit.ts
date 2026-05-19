@@ -6,14 +6,14 @@
  * the high-blast-radius routes — sign-in, sign-up, password reset, magic
  * link, OTP — before the request ever reaches the auth handler.
  *
- * In-memory limiter is per-isolate (Workers) / per-process (Bun) so this
- * is not a hard distributed quota; it is intentionally a "blunt the obvious
- * floods" first line of defense (credential stuffing, password-reset spam,
- * mass-signup), not a precise abuse mitigation. Tune by adjusting the
- * `max` field per pattern.
+ * Counter backend depends on the runtime — see `rate-limit.ts`. On Workers
+ * the count goes through a Durable Object so it's authoritative across
+ * isolates; on Bun / Vercel / Netlify it falls back to an in-process Map.
+ * Tune by adjusting the `max` field per pattern.
  */
 import type { MiddlewareHandler } from "hono";
 import { AppError } from "@workeros/core";
+import type { Env } from "../env";
 import { rateLimitOk } from "./rate-limit";
 
 const WINDOW_MS = 60_000;
@@ -79,7 +79,19 @@ export const authRateLimitMiddleware: MiddlewareHandler = async (c, next) => {
   }
   const ip = ipFromHeaders(c.req.raw);
   const key = `auth:${rule.label}:${ip}`;
-  if (!rateLimitOk(key, rule.max, WINDOW_MS)) {
+  // The runtime Env hangs off the per-request Ctx (built by app.ts before
+  // any middleware runs). Reading it via `c.get("ctx")` keeps the limiter
+  // backend selection (DO vs in-memory) decoupled from Hono's adapter quirks
+  // (e.g. `c.env` is not always populated under Bun's fetch wrapper).
+  const ctx = c.get("ctx") as { env: Env } | undefined;
+  const env = ctx?.env;
+  if (!env) {
+    // Should never happen — the ctx middleware runs first in app.ts. Fail
+    // open rather than crash auth flows for a misconfigured runtime.
+    await next();
+    return;
+  }
+  if (!(await rateLimitOk(env, key, rule.max, WINDOW_MS))) {
     throw new AppError(
       "RATE_LIMITED",
       "Too many auth requests — try again in a minute",
@@ -91,17 +103,32 @@ export const authRateLimitMiddleware: MiddlewareHandler = async (c, next) => {
 /**
  * Per-IP guard for endpoints not part of better-auth (api-key creation,
  * email config test, etc.). Throws AppError directly so route handlers
- * don't have to repeat the boilerplate.
+ * don't have to repeat the boilerplate. Async because on Workers the
+ * counter check hops to a Durable Object.
+ *
+ * Reads the runtime `Env` off `c.get("ctx").env` (set by app.ts before any
+ * route runs). The argument is intentionally loosely typed so route handlers
+ * can pass their Hono `Context` directly without a cast.
  */
-export const enforceIpRateLimit = (
-  c: { req: { raw: Request } },
+export const enforceIpRateLimit = async (
+  c: {
+    req: { raw: Request };
+    get: (key: "ctx") => unknown;
+  },
   label: string,
   max: number,
   windowMs: number = WINDOW_MS,
-): void => {
+): Promise<void> => {
   const ip = ipFromHeaders(c.req.raw);
   const key = `${label}:${ip}`;
-  if (!rateLimitOk(key, max, windowMs)) {
+  const ctx = c.get("ctx") as { env?: Env } | undefined;
+  const env = ctx?.env;
+  if (!env) {
+    // Should be unreachable — the ctx middleware runs first in app.ts. Fail
+    // open rather than crash route handlers for a misconfigured runtime.
+    return;
+  }
+  if (!(await rateLimitOk(env, key, max, windowMs))) {
     throw new AppError(
       "RATE_LIMITED",
       "Too many requests — try again in a minute",

@@ -522,7 +522,7 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
     const ip =
       extractIp(c.req.raw) ?? c.req.raw.headers.get("x-real-ip") ?? "unknown";
     const rlKey = `ldap:${tenant.id}:${username.toLowerCase()}:${ip}`;
-    if (!rateLimitOk(rlKey, config.rateLimitPerMinute, 60_000)) {
+    if (!(await rateLimitOk(ctx.env, rlKey, config.rateLimitPerMinute, 60_000))) {
       throw new AppError(
         "RATE_LIMITED",
         "Too many LDAP sign-in attempts — try again in a minute",

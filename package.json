@@ -25,7 +25,7 @@
     "test": "bun run --cwd apps/web test",
     "lint": "biome lint apps packages",
     "lint:fix": "biome lint --write apps packages",
-    "prepare": "lefthook install",
+    "prepare": "lefthook install --force",
     "workeros": "bun run packages/cli/bin/workeros.ts"
   },
   "devDependencies": {

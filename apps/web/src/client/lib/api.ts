@@ -1,5 +1,13 @@
 const base = import.meta.env.VITE_API_URL ?? "";
 
+/**
+ * Latest D1 Sessions-API bookmark seen on a response. We round-trip it on
+ * subsequent requests as the `x-d1-bookmark` header so a write made in one
+ * request is guaranteed visible to the reads in the next (read-your-writes
+ * across requests). The string is opaque — we just shuttle it back and forth.
+ */
+let d1Bookmark: string | null = null;
+
 export interface ApiErrorDetail {
   path?: (string | number)[];
   message?: string;
@@ -29,10 +37,16 @@ export const api = async <T>(path: string, init?: RequestInit): Promise<T> => {
     credentials: "include",
     headers: {
       "content-type": "application/json",
+      ...(d1Bookmark ? { "x-d1-bookmark": d1Bookmark } : {}),
       ...(init?.headers ?? {}),
     },
     ...init,
   });
+  // Capture the latest bookmark so the next request can pin its session
+  // forward. Header is exposed via CORS in app.ts so reading it here works
+  // for cross-origin deploys too.
+  const bm = res.headers.get("x-d1-bookmark");
+  if (bm) d1Bookmark = bm;
   if (!res.ok) {
     // Mid-session 401: tell the AuthGate to bounce to /sign-in. Skip when
     // we're already on the auth pages (probing get-session there is normal).

@@ -165,7 +165,7 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
           size="sm"
         />
         {needsValue && (
-          <div style={{ position: "relative", flex: 1 }}>
+          <div className="rb-value-wrap" style={{ position: "relative", flex: 1 }}>
             <input
               className="rb-input"
               style={{ width: "100%" }}

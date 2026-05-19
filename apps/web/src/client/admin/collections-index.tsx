@@ -55,7 +55,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
     <div className="collections-index" style={{ display: "flex", flexDirection: "column", gap: 18, minWidth: 0 }}>
       <PageHeader
         title="Collections"
-        description={<>Each collection is a physical <span className="font-mono">c_&lt;slug&gt;</span> table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations.</>}
+        description={<>Each collection is a physical table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations.</>}
         badges={<span style={{ display: "inline-flex", flexWrap: "wrap", gap: 6, marginLeft: 4 }}>
           <Badge variant={showArchived ? "secondary" : "outline"} mono>
             {collections.length} {showArchived ? "archived" : "collections"}
@@ -165,7 +165,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ width: 24, height: 24, borderRadius: "var(--radius-md)", background: "var(--muted)", display: "grid", placeItems: "center" }}><Ic size={12} /></span>
-                        <span className="font-mono" style={{ fontSize: 13, fontWeight: 500 }}>c_{c.slug}</span>
+                        <span className="font-mono" style={{ fontSize: 13, fontWeight: 500 }}>{c.slug}</span>
                         {c.singleton && <Badge variant="outline">singleton</Badge>}
                       </div>
                     </td>
@@ -213,7 +213,7 @@ function CollectionCard({ c, onOpen, archived, onRestore, onOpenApi }: { c: Coll
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ width: 32, height: 32, borderRadius: "var(--radius-lg)", background: "var(--muted)", border: "1px solid var(--border)", display: "grid", placeItems: "center", color: "var(--muted-foreground)" }}><Ic size={15} /></span>
         <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
-          <span className="font-mono" style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>c_{c.slug}</span>
+          <span className="font-mono" style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.slug}</span>
           <span className="muted" style={{ fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.fields} fields · {c.singleton ? "singleton" : c.ownerScoped ? "owner-scoped" : "public read"}</span>
         </div>
         {archived && (
@@ -308,7 +308,7 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
   if (!open) return null;
 
   const slugClean = slug.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_").replace(/^_+|_+$/g, "");
-  const slugError = !slugClean ? null : existingSlugs.includes(slugClean) ? `c_${slugClean} already exists` : !/^[a-z][a-z0-9_]*$/.test(slugClean) ? "must start with a letter" : null;
+  const slugError = !slugClean ? null : existingSlugs.includes(slugClean) ? `${slugClean} already exists` : !/^[a-z][a-z0-9_]*$/.test(slugClean) ? "must start with a letter" : null;
 
   // Default status choices when the wizard injects a status field — Directus-
   // shaped (value/label/color). Keep these aligned with the badge palette in
@@ -385,10 +385,10 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
     },
   ];
 
-  const sql = `CREATE TABLE c_${slugClean || "<slug>"} (
+  const sql = `CREATE TABLE ${slugClean || "<slug>"} (
   id          uuid PRIMARY KEY DEFAULT gen_uuid(),${tenantScoped ? `\n  tenant_id   uuid NOT NULL REFERENCES tenants(id),` : ""}${ownerScoped ? `\n  owner_id    uuid NOT NULL,` : ""}${timestamps ? `\n  created_at  timestamptz NOT NULL DEFAULT now(),\n  updated_at  timestamptz NOT NULL DEFAULT now(),` : ""}${softDelete ? `\n  deleted_at  timestamptz,` : ""}
   -- + template columns
-);${tenantScoped ? `\n\n-- RLS auto-injected:\n-- ALTER TABLE c_${slugClean || "<slug>"} ENABLE ROW LEVEL SECURITY;\n-- CREATE POLICY tenant_isolation ON c_${slugClean || "<slug>"}\n--   USING (tenant_id = current_setting('app.tenant_id')::uuid);` : ""}`;
+);${tenantScoped ? `\n\n-- RLS auto-injected:\n-- ALTER TABLE ${slugClean || "<slug>"} ENABLE ROW LEVEL SECURITY;\n-- CREATE POLICY tenant_isolation ON ${slugClean || "<slug>"}\n--   USING (tenant_id = current_setting('app.tenant_id')::uuid);` : ""}`;
 
   const submit = () => {
     if (!slugClean || slugError) return;
@@ -434,13 +434,10 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
             <>
               <div className="field">
                 <label className="field-label">Slug</label>
-                <div className={`input-affix ${slugError ? "error" : ""}`}>
-                  <span className="input-affix-prefix font-mono">c_</span>
-                  <input value={slug} onChange={(e) => setSlug(e.target.value)} autoFocus placeholder="products" className="font-mono" />
-                </div>
+                <input value={slug} onChange={(e) => setSlug(e.target.value)} autoFocus placeholder="products" className="font-mono" aria-invalid={slugError ? true : undefined} />
                 {slugError && <span className="field-hint" style={{ color: "var(--destructive)" }}>{slugError}</span>}
                 {!slugError && !slugClean && <span className="field-hint">Enter a slug to continue.</span>}
-                {!slugError && slugClean && <span className="field-hint">Table name: <span className="font-mono">c_{slugClean}</span></span>}
+                {!slugError && slugClean && <span className="field-hint">Slug: <span className="font-mono">{slugClean}</span></span>}
               </div>
 
               <div className="field">

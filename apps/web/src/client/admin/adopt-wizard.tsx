@@ -1537,7 +1537,7 @@ function Step3Metadata({
           >
             {slugError ?? (
               <>
-                URL identifier. Stored as <span className="font-mono">c_{slug || inspect.table}</span> reference (no physical rename).
+                URL identifier. References the existing <span className="font-mono">{inspect.table}</span> table (no physical rename).
               </>
             )}
           </span>

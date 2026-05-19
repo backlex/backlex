@@ -8,6 +8,7 @@ import { Select } from "./select";
 import { tenantsApi, type ApiTenantMember } from "./api";
 import type { RoleData } from "./role-editor";
 import { useUrlState } from "@/lib/use-url-state";
+import { SkeletonList } from "./loading";
 
 interface Member {
   id: string;
@@ -197,6 +198,7 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
           <span>Status</span>
           <span />
         </div>
+        {loading && filtered.length === 0 && <SkeletonList rows={4} cols={5} />}
         {filtered.map((m) => (
           <div key={m.id} className="mp-row">
             <div className="mp-member">
@@ -220,9 +222,9 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
             <IconButton icon={I.Trash} title="Remove" onClick={() => remove(m.id)} />
           </div>
         ))}
-        {!filtered.length && (
+        {!loading && !filtered.length && (
           <div style={{ padding: 24, textAlign: "center", color: "var(--muted-foreground)", fontSize: 12.5 }}>
-            {loading ? "Loading members…" : q ? `No members match "${q}".` : "No members yet."}
+            {q ? `No members match "${q}".` : "No members yet."}
           </div>
         )}
       </div>

@@ -7,6 +7,7 @@ import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
 import { AdoptWizard } from "./adopt-wizard";
 import { useUrlState } from "@/lib/use-url-state";
+import { SkeletonRow } from "./loading";
 
 export interface CollectionsIndexProps {
   collections: CollectionListItem[];
@@ -35,6 +36,21 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
   // chooser is the UI counterpart — one button on the page, two distinct
   // wizards routed by the user's intent.
   const [chooserOpen, setChooserOpen] = useState(false);
+  // `collections` arrives from a parent fetch — we only see the prop, not
+  // the fetch lifecycle. Show a skeleton placeholder until the first
+  // populated array arrives OR a short timeout elapses (so a genuinely
+  // empty workspace doesn't hang on the placeholder forever). Once
+  // resolved, never flip back to loading — toggling archived view will
+  // briefly empty the list and that's a normal empty-state, not a fetch.
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (collections.length > 0) {
+      setLoading(false);
+      return;
+    }
+    const t = setTimeout(() => setLoading(false), 600);
+    return () => clearTimeout(t);
+  }, [collections.length]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -114,6 +130,15 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
 
       {view === "grid" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+          {loading && groups.length === 0 && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))", gap: 12 }}>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="card" style={{ minHeight: 138, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <SkeletonRow cols={3} />
+                </div>
+              ))}
+            </div>
+          )}
           {groups.map(([g, list]) => (
             <div key={g} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>

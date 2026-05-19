@@ -17,25 +17,42 @@ export type SqliteDb =
 export const createD1Client = (binding: unknown): SqliteDb =>
   drizzleD1(binding as Parameters<typeof drizzleD1>[0], { schema });
 
+/** Drizzle client bound to a D1 Sessions-API session, plus a `getBookmark`
+ *  accessor for the raw session — the bookmark must be propagated back to the
+ *  client on the response so subsequent requests can pin the session forward. */
+export interface D1SessionClient {
+  db: SqliteDb;
+  /** Latest bookmark from the underlying D1 session, or null if none yet. */
+  getBookmark: () => string | null;
+}
+
 /**
  * Open a D1 Sessions-API client. The constraint (`first-unconstrained` by
  * default) routes the first read to the nearest replica and pins every
  * subsequent statement on the same session to that replica with read-your-
- * writes consistency. A bookmark string can be passed to anchor the session
- * to a known database state (e.g. from `X-D1-Bookmark` on a prior response)
- * for read-after-write across requests.
+ * writes consistency *within* the session. To extend RYOW across requests,
+ * the caller should read the prior `x-d1-bookmark` header off the request,
+ * pass it here as the constraint, and write `getBookmark()` back into the
+ * response's `x-d1-bookmark` header (per the D1 docs).
  *
- * The returned drizzle client is otherwise identical to `createD1Client` —
+ * The wrapped drizzle client is otherwise identical to `createD1Client` —
  * routes don't need to know about Sessions API.
  */
 export const createD1SessionClient = (
   binding: unknown,
   constraint: string = "first-unconstrained",
-): SqliteDb => {
+): D1SessionClient => {
   const session = (
-    binding as { withSession: (c: string) => Parameters<typeof drizzleD1>[0] }
+    binding as {
+      withSession: (c: string) => Parameters<typeof drizzleD1>[0] & {
+        getBookmark?: () => string | null;
+      };
+    }
   ).withSession(constraint);
-  return drizzleD1(session, { schema });
+  return {
+    db: drizzleD1(session, { schema }),
+    getBookmark: () => session.getBookmark?.() ?? null,
+  };
 };
 
 export const createBunSqliteClient = (path = "./.data/workeros.sqlite"): SqliteDb => {

@@ -126,6 +126,11 @@ export const createAuth = (
     session: {
       expiresIn: 60 * 60 * 24 * 7, // 7d
       updateAge: 60 * 60 * 24, // 1d
+      // Sign the session payload into the cookie and skip the DB lookup for
+      // the next 60s. Cuts ~1 D1 round-trip off every authenticated request;
+      // sign-out / session revocation still works because better-auth invalidates
+      // the cache on its own sign-out paths.
+      cookieCache: { enabled: true, maxAge: 60 },
     },
     databaseHooks:
       config.hooks?.onUserCreated || config.hooks?.onBeforeUserCreated

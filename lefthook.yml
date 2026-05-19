@@ -1,0 +1,20 @@
+# Pre-commit gates. Run `bun install` once to install hooks (the `prepare`
+# script invokes `lefthook install` automatically). After that every commit
+# routes through these checks.
+#
+# Why both biome and tsc:
+#   - Biome catches lint-level issues fast (~200ms) — incremental on the
+#     staged file list, so single-file commits are nearly free.
+#   - `bun run typecheck` is a slower whole-repo pass but cheap relative to
+#     a CI round-trip, and is the only way to surface dual-dialect type
+#     drift before push. Skip with `git commit --no-verify` only when the
+#     hook is the actual blocker (failing CI for an unrelated reason).
+pre-commit:
+  parallel: true
+  jobs:
+    - name: biome-lint
+      glob: "*.{ts,tsx,js,jsx,json}"
+      run: bunx --bun biome lint --no-errors-on-unmatched {staged_files}
+    - name: typecheck
+      glob: "*.{ts,tsx}"
+      run: bun run typecheck

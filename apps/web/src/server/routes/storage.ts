@@ -531,7 +531,7 @@ export const storageRoutes = new OpenAPIHono<AppBindings>()
         .from(t)
         .where(and(eq(t.tenantId, tenantId), isNull(t.folderId)))) as { key: string }[];
 
-      let scanned = rows.length;
+      const scanned = rows.length;
       let updated = 0;
       let foldersCreatedBefore = 0;
       let foldersCreatedAfter = 0;

@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Shared helpers used across multiple admin pages
 import { api } from "@/lib/api";
 

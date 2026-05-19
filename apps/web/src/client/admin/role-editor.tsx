@@ -72,7 +72,7 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto overflow-x-hidden [grid-template-columns:minmax(0,1fr)]">
         <DialogHeader>
           <DialogTitle>{isNew ? "New role" : `Edit ${role?.name || "role"}`}</DialogTitle>
           <DialogDescription>
@@ -82,7 +82,7 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
           </DialogDescription>
         </DialogHeader>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div className="min-w-0" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div className="field">
             <label className="field-label">Name</label>
             <Input value={name} disabled={isSystem} onChange={(e) => setName(e.target.value.replace(/[^a-z0-9_-]/g, "_"))} placeholder="editor" />
@@ -130,7 +130,7 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
 
           <div className="field">
             <label className="field-label">Compiled rule</label>
-            <pre className="alter-preview" style={{ fontSize: 11.5, margin: 0, whiteSpace: "pre", overflowX: "auto" }}>{compiled}</pre>
+            <pre className="alter-preview" style={{ fontSize: 11.5, margin: 0, whiteSpace: "pre", overflowX: "auto", maxWidth: "100%" }}>{compiled}</pre>
             <span className="field-hint">Generated DSL — saved to <span className="font-mono">role_permissions</span> on save.</span>
           </div>
         </div>

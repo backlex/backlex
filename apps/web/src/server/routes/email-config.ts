@@ -302,7 +302,7 @@ export const emailConfigRoutes = new OpenAPIHono<AppBindings>()
       // Useful to verify credentials right after saving without needing a template.
       // Cap per-IP so an admin cookie can't be turned into a free spam pipe
       // (or rack up provider costs) by hammering this endpoint.
-      enforceIpRateLimit(c, "email-test", 5);
+      await enforceIpRateLimit(c, "email-test", 5);
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const body = await c.req

@@ -3,6 +3,7 @@ import { cronTick } from "../services/scheduler";
 import type { Env } from "../env";
 
 export { RealtimeRoom } from "../durable-objects/realtime-room";
+export { RateLimitRoom } from "../durable-objects/rate-limit-room";
 
 export default {
   fetch(request: Request, env: Env, _ctx: unknown) {

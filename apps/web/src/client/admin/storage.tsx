@@ -19,6 +19,7 @@ import { Button as ShadButton } from "@workeros/ui/components/button";
 import { CheckIcon, ChevronsUpDownIcon, LinkIcon } from "lucide-react";
 import { cn } from "@workeros/ui/lib/utils";
 import { api } from "@/lib/api";
+import { useUrlState } from "@/lib/use-url-state";
 
 interface StoredFolder {
   id: string;
@@ -76,7 +77,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
   const [folder, setFolder] = useState<string | null>(null);
   const [folderQuery, setFolderQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlState("q", "");
   // Debounced search — the user can keep typing without triggering a refetch
   // on every keystroke. 300 ms matches the storage detail HEAD probe.
   const [debouncedSearch, setDebouncedSearch] = useState("");

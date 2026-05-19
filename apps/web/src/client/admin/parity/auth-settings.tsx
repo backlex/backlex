@@ -15,6 +15,7 @@ import {
   type ApiSession,
   type ApiTenant,
 } from "../api";
+import { ConfirmDialog } from "../sheet";
 import { apiOrigin, copyText, fmtRelative } from "./_shared";
 import { SamlProviderDialog } from "./saml-provider-dialog";
 import { LdapConfigCard } from "./ldap-config-card";
@@ -95,6 +96,7 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
   // /api/admin/saml/providers, edited through SamlProviderDialog.
   const [samlProviders, setSamlProviders] = useState<ApiSamlProvider[]>([]);
   const [samlDialog, setSamlDialog] = useState<{ mode: "create" } | { mode: "edit"; row: ApiSamlProvider } | null>(null);
+  const [confirmRemoveSaml, setConfirmRemoveSaml] = useState<{ id: string } | null>(null);
   const [availableRoles, setAvailableRoles] = useState<{ id: string; name: string }[]>([]);
 
   const loadConfig = async () => {
@@ -175,8 +177,11 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pushToast]);
 
-  const removeSamlProvider = async (id: string) => {
-    if (!confirm("Delete this SAML provider? External identity rows are kept as an audit trail.")) return;
+  const removeSamlProvider = (id: string) => {
+    setConfirmRemoveSaml({ id });
+  };
+
+  const doRemoveSamlProvider = async (id: string) => {
     try {
       await samlAdminApi.remove(id);
       setSamlProviders((arr) => arr.filter((r) => r.id !== id));
@@ -565,6 +570,18 @@ curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
           }}
         />
       )}
+      <ConfirmDialog
+        open={!!confirmRemoveSaml}
+        title="Delete SAML provider?"
+        description="External identity rows are kept as an audit trail."
+        actionLabel="Delete"
+        destructive
+        onConfirm={async () => {
+          if (confirmRemoveSaml) await doRemoveSamlProvider(confirmRemoveSaml.id);
+          setConfirmRemoveSaml(null);
+        }}
+        onCancel={() => setConfirmRemoveSaml(null)}
+      />
     </div>
   );
 }

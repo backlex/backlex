@@ -21,6 +21,7 @@ import { Badge as ShadcnBadge } from "@workeros/ui/components/badge";
 import { Switch as ShadcnSwitch } from "@workeros/ui/components/switch";
 import { Checkbox as ShadcnCheckbox } from "@workeros/ui/components/checkbox";
 import { Input } from "@workeros/ui/components/input";
+import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 
 export function formatJson(value: unknown): string {
   try {
@@ -582,20 +583,14 @@ export function NotificationsBell() {
           <div className="notif-head">
             <span style={{ fontSize: 13, fontWeight: 500 }}>Notifications</span>
             <div className="spacer" />
-            <button
-              type="button"
-              className={`notif-tab ${filter === "all" ? "on" : ""}`}
-              onClick={() => setFilter("all")}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              className={`notif-tab ${filter === "unread" ? "on" : ""}`}
-              onClick={() => setFilter("unread")}
-            >
-              Unread {unread > 0 && <span className="notif-tab-count font-mono">{unread}</span>}
-            </button>
+            <Tabs value={filter} onValueChange={(v) => setFilter(v as "all" | "unread")}>
+              <TabsList className="h-7">
+                <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
+                <TabsTrigger value="unread" className="text-xs">
+                  Unread {unread > 0 && <span className="count">{unread}</span>}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
           <div className="notif-list">
             {visible.length === 0 ? (

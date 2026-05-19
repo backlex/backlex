@@ -4,6 +4,7 @@
 import { useMemo, useState } from "react";
 import { I, type IconComponent } from "../icons";
 import { Button, PageHeader } from "../ui";
+import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 
 type CheckKind = "security" | "performance";
 type CheckLevel = "error" | "warn" | "info";
@@ -116,16 +117,18 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
         </div>
       </div>
 
-      <div className="tabs">
-        <button className="tab" data-active={tab === "security"} onClick={() => setTab("security")}>
-          <I.ShieldAlert size={13} />Security{" "}
-          <span className="count">{counts.security.error + counts.security.warn + counts.security.info}</span>
-        </button>
-        <button className="tab" data-active={tab === "performance"} onClick={() => setTab("performance")}>
-          <I.Cpu size={13} />Performance{" "}
-          <span className="count">{counts.performance.error + counts.performance.warn + counts.performance.info}</span>
-        </button>
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as CheckKind)}>
+        <TabsList variant="line">
+          <TabsTrigger value="security">
+            <I.ShieldAlert size={13} />Security
+            <span className="count">{counts.security.error + counts.security.warn + counts.security.info}</span>
+          </TabsTrigger>
+          <TabsTrigger value="performance">
+            <I.Cpu size={13} />Performance
+            <span className="count">{counts.performance.error + counts.performance.warn + counts.performance.info}</span>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Findings */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

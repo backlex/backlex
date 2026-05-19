@@ -7,6 +7,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { I, type IconComponent, type IconKey } from "../icons";
 import { Badge, Button, IconButton, PageHeader } from "../ui";
 import { Input } from "@workeros/ui/components/input";
+import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 
 type LogLevel = "info" | "warn" | "error";
 
@@ -137,24 +138,21 @@ export function LogsPage({ pushToast }: { pushToast: (m: string, type?: "success
       />
 
       {/* Source tabs */}
-      <div className="logs-src">
-        {LOG_SOURCES.map((s) => {
-          const IconComp = (I as Record<string, IconComponent>)[s.icon] ?? I.Activity;
-          const n = LOG_ROWS.filter((r) => r.src === s.id).length;
-          return (
-            <button
-              key={s.id}
-              type="button"
-              className={`logs-src-tab ${src === s.id ? "on" : ""}`}
-              onClick={() => { setSrc(s.id); setSelected(null); }}
-            >
-              <IconComp size={13} />
-              <span>{s.label}</span>
-              <span className="logs-src-count font-mono tabular-nums">{n}</span>
-            </button>
-          );
-        })}
-      </div>
+      <Tabs value={src} onValueChange={(v) => { setSrc(v); setSelected(null); }}>
+        <TabsList>
+          {LOG_SOURCES.map((s) => {
+            const IconComp = (I as Record<string, IconComponent>)[s.icon] ?? I.Activity;
+            const n = LOG_ROWS.filter((r) => r.src === s.id).length;
+            return (
+              <TabsTrigger key={s.id} value={s.id}>
+                <IconComp size={13} />
+                <span>{s.label}</span>
+                <span className="count">{n}</span>
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+      </Tabs>
 
       {/* Volume + level summary */}
       <div
@@ -182,18 +180,20 @@ export function LogsPage({ pushToast }: { pushToast: (m: string, type?: "success
           ))}
         </div>
         {levelButtons.map((x) => (
-          <button
+          <Button
             key={x.k}
-            type="button"
-            className={`logs-level ${level === x.k ? "on" : ""}`}
+            variant={level === x.k ? "secondary" : "outline"}
+            size="sm"
             onClick={() => setLevel((cur) => (cur === x.k ? "any" : x.k))}
           >
-            <span className="logs-level-dot" style={{ background: x.color }} />
+            <span
+              style={{ width: 8, height: 8, borderRadius: 999, background: x.color, display: "inline-block" }}
+            />
             <span className="font-mono">{x.label}</span>
             <span className="font-mono tabular-nums" style={{ color: "var(--muted-foreground)" }}>
               {x.count}
             </span>
-          </button>
+          </Button>
         ))}
       </div>
 

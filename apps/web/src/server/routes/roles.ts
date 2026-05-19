@@ -1,116 +1,29 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { eq, and, inArray } from "drizzle-orm";
-import { AppError, SYSTEM_ROLES } from "@workeros/core";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
-import type { Context, MiddlewareHandler } from "hono";
+import { AppError } from "@workeros/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
-
-const tableFor = (dialect: "pg" | "sqlite") =>
-  dialect === "pg"
-    ? {
-        roles: pg.schema.roles,
-        userRoles: pg.schema.userRoles,
-        permissions: pg.schema.permissions,
-        users: pg.schema.users,
-        sessions: pg.schema.sessions,
-        tenantMembers: pg.schema.tenantMembers,
-      }
-    : {
-        roles: sqlite.schema.roles,
-        userRoles: sqlite.schema.userRoles,
-        permissions: sqlite.schema.permissions,
-        users: sqlite.schema.users,
-        sessions: sqlite.schema.sessions,
-        tenantMembers: sqlite.schema.tenantMembers,
-      };
-
-const requireTenant = (c: Context<AppBindings>): string => {
-  const tenantId = c.get("auth")?.tenantId ?? null;
-  if (!tenantId) throw new AppError("UNAUTHORIZED", "Active tenant required");
-  return tenantId;
-};
-
-/** Verify the role exists *and* belongs to the active tenant. Routes that
- *  accept a roleId path param call this before mutating to make sure admins
- *  can't reach across workspaces by guessing role ids. */
-const ensureRoleInTenant = async (
-  ctx: { db: unknown; dialect: "pg" | "sqlite" },
-  tenantId: string,
-  roleId: string,
-): Promise<{ id: string; name: string }> => {
-  const t = tableFor(ctx.dialect);
-  const rows = (await (ctx.db as any)
-    .select({ id: t.roles.id, name: t.roles.name })
-    .from(t.roles)
-    .where(and(eq(t.roles.id, roleId), eq(t.roles.tenantId, tenantId)))
-    .limit(1)) as { id: string; name: string }[];
-  if (!rows[0]) throw new AppError("NOT_FOUND", "Role not found in this workspace");
-  return rows[0];
-};
-
-const requireAdmin = (auth: { roles: string[] }) => {
-  if (!auth.roles.includes(SYSTEM_ROLES.admin)) {
-    throw new AppError("FORBIDDEN", "Admin role required");
-  }
-};
-
-/** Per-route admin gate — runs after `requireUser` so `auth.userId` is set. */
-const requireAdminMw: MiddlewareHandler<AppBindings> = async (c, next) => {
-  requireAdmin(c.get("auth"));
-  await next();
-};
-
-const SYSTEM_ROLE_NAMES = new Set<string>([
-  SYSTEM_ROLES.admin,
-  SYSTEM_ROLES.authenticated,
-  SYSTEM_ROLES.public,
-]);
-
-const RoleInput = z
-  .object({
-    name: z.string().min(1),
-    description: z.string().optional(),
-    admin: z.boolean().optional(),
-  })
-  .openapi("RoleInput");
-
-const RoleRowSchema = z
-  .object({
-    id: z.string(),
-    tenantId: z.string().nullable(),
-    name: z.string(),
-    description: z.string().nullable(),
-    admin: z.boolean(),
-  })
-  .openapi("Role");
-
-const PermissionInput = z
-  .object({
-    roleId: z.string().min(1),
-    collection: z.string().min(1),
-    action: z.enum(["read", "create", "update", "delete"]),
-    fields: z.array(z.string()).nullable().optional(),
-    condition: z.unknown().nullable().optional(),
-  })
-  .openapi("PermissionInput");
-
-const PermissionRowSchema = z
-  .object({
-    id: z.string(),
-    roleId: z.string(),
-    collection: z.string(),
-    action: z.string(),
-    fields: z.array(z.string()).nullable(),
-    condition: z.unknown().nullable(),
-  })
-  .openapi("Permission");
-
-const ROLES_TAG = ["roles"];
-const PERMISSIONS_TAG = ["permissions"];
-const USERS_TAG = ["users"];
+import {
+  assertTenantMember,
+  requireAdminMw,
+  requireTenant,
+} from "../services/roles/guards";
+import { ensureRoleInTenant } from "../services/roles/role-checks";
+import {
+  PERMISSIONS_TAG,
+  PermissionInput,
+  PermissionRowSchema,
+  ROLES_TAG,
+  RoleInput,
+  RoleRowSchema,
+  SYSTEM_ROLE_NAMES,
+  USERS_TAG,
+  UserAttachRoleInput,
+  UserInviteInput,
+  UserRow,
+} from "../services/roles/schemas";
+import { tableFor } from "../services/roles/tables";
 
 export const rolesRoutes = new OpenAPIHono<AppBindings>()
   .openapi(
@@ -405,27 +318,6 @@ export const permissionsRoutes = new OpenAPIHono<AppBindings>().openapi(
     return c.json({ ok: true });
   },
 );
-
-const UserRoleRef = z.object({ id: z.string(), name: z.string() });
-
-const UserRow = z
-  .object({
-    id: z.string(),
-    email: z.string(),
-    name: z.string().nullable(),
-    createdAt: z.unknown(),
-    roles: z.array(UserRoleRef),
-    lastSeenAt: z.number().nullable(),
-  })
-  .openapi("UserRow");
-
-const UserAttachRoleInput = z
-  .object({ roleId: z.string() })
-  .openapi("UserAttachRoleInput");
-
-const UserInviteInput = z
-  .object({ email: z.string().email(), role: z.string().optional() })
-  .openapi("UserInviteInput");
 
 export const usersRoutes = new OpenAPIHono<AppBindings>()
   .openapi(
@@ -845,22 +737,3 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
       return c.json({ ok: true });
     },
   );
-
-const assertTenantMember = async (
-  ctx: { db: unknown; dialect: "pg" | "sqlite" },
-  tenantId: string,
-  userId: string,
-): Promise<void> => {
-  const t = tableFor(ctx.dialect);
-  const rows = (await (ctx.db as any)
-    .select({ id: t.tenantMembers.id })
-    .from(t.tenantMembers)
-    .where(
-      and(
-        eq(t.tenantMembers.tenantId, tenantId),
-        eq(t.tenantMembers.userId, userId),
-      ),
-    )
-    .limit(1)) as { id: string }[];
-  if (!rows[0]) throw new AppError("NOT_FOUND", "User not in this workspace");
-};

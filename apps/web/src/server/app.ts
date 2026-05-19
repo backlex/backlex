@@ -8,6 +8,7 @@ import { buildContext, type Ctx } from "./context";
 import { errorHandler } from "./middleware/error";
 import { sessionMiddleware } from "./middleware/session";
 import { tenantMiddleware } from "./middleware/tenant";
+import { authRateLimitMiddleware } from "./lib/auth-rate-limit";
 import type { PermissionVar } from "./middleware/permission";
 import {
   ensureDefaultTenant,
@@ -188,6 +189,15 @@ export const createApp = (env: Env) => {
   app.get("/health", (c) =>
     c.json({ ok: true, dialect: c.get("ctx").dialect, ts: Date.now() }),
   );
+
+  // Per-IP rate limit on the sensitive auth subpaths (sign-in, sign-up,
+  // password reset, magic link, OTP, 2FA). Sits in front of both the
+  // control-plane better-auth router and the workspace end-user tenant-auth
+  // router so credential-stuffing and reset-spam are blunted before they
+  // ever reach the auth handler. GETs and other read-only OAuth flows
+  // pass through untouched (see lib/auth-rate-limit.ts).
+  app.use("/api/auth/*", authRateLimitMiddleware);
+  app.use("/api/t/*", authRateLimitMiddleware);
 
   // Public auth-surface discovery — must be registered before the better-auth
   // catch-all (`/api/auth/*`) so it isn't shadowed by it.

@@ -242,3 +242,116 @@ describe("tenants: nonexistent slug in X-Workeros-Tenant falls back gracefully",
     expect(body.active).not.toBeNull();
   });
 });
+
+/**
+ * Locks in the design contract of middleware/session.ts `loadUnfilteredRoleNames`
+ * and tenant.ts:244-256 — a control-plane admin in tenant T1 may *reach* URLs
+ * for an unrelated tenant T2 (so workspace-switcher UX still works), but the
+ * role bundle assigned for T2 stays tenant-scoped (empty for non-members) and
+ * the request gets only the baseline `authenticated` permissions in T2.
+ *
+ * The cross-tenant union returned by loadUnfilteredRoleNames is consulted ONLY
+ * as a super-admin gate inside tenantMiddleware; it never widens auth.roles.
+ * Permission middleware (`requireAdmin`) reads auth.roles which loadTenantRoleNames
+ * tenant-scoped — so an admin-only endpoint must return 403 in the foreign tenant.
+ */
+describe("tenants: cross-tenant admin gets baseline access in foreign workspaces, not admin powers", () => {
+  let h: TestHarness;
+  let tenantBSlug: string;
+  let adminEmail: string;
+
+  const JSON_HEADERS = { "Content-Type": "application/json" };
+  const signIn = (h: TestHarness, email: string) =>
+    h.fetch("/api/auth/sign-in/email", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ email, password: "correct-horse-battery" }),
+    });
+  const signOut = (h: TestHarness) =>
+    h.fetch("/api/auth/sign-out", { method: "POST" });
+
+  beforeAll(async () => {
+    h = makeHarness();
+
+    // User A — first signup, auto-promoted to admin in `default`.
+    const a = await seedAdmin(h);
+    adminEmail = a.email;
+
+    // Switch identity: sign out A, sign up user B (lands as `authenticated`).
+    await signOut(h);
+    const memberEmail = `member-${Date.now()}@example.test`;
+    const suB = await h.fetch("/api/auth/sign-up/email", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        email: memberEmail,
+        password: "correct-horse-battery",
+        name: "Member B",
+      }),
+    });
+    expect(suB.ok).toBe(true);
+
+    // B creates a new workspace; B becomes owner of tenant-B. A is NOT a member.
+    const suffix = `${Date.now()}`.slice(-6);
+    const createT = await h.fetch("/api/tenants", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ name: `Cross ${suffix}` }),
+    });
+    expect(createT.status).toBe(201);
+    const created = (await createT.json()) as { data: { id: string; slug: string } };
+    tenantBSlug = created.data.slug;
+
+    // Sign out B and sign A back in for the actual assertions.
+    await signOut(h);
+    const back = await signIn(h, adminEmail);
+    expect(back.ok).toBe(true);
+  });
+
+  afterAll(() => {
+    h.cleanup();
+  });
+
+  test("admin reaches tenant-B URLs but auth.roles never includes 'admin' there", async () => {
+    // GET /api/tenants reflects what tenantMiddleware put on `auth` for the
+    // CURRENT request — list shows only workspaces A is a member of. A is
+    // admin in `default`, not a member of tenant-B → tenant-B never appears
+    // in A's own list (regardless of any header override).
+    const own = await h.fetch("/api/tenants");
+    expect(own.status).toBe(200);
+    const ownBody = (await own.json()) as { data: { slug: string }[] };
+    expect(ownBody.data.some((t) => t.slug === tenantBSlug)).toBe(false);
+    expect(ownBody.data.some((t) => t.slug === "default")).toBe(true);
+  });
+
+  test("admin in default cannot exercise admin-only routes against tenant-B", async () => {
+    // /api/roles is gated by requireAdminMw which checks
+    // `auth.roles.includes("admin")`. auth.roles is set by tenantMiddleware
+    // via loadTenantRoleNames(tenantId) — strictly scoped to the active
+    // workspace. A has zero user_roles rows in tenant-B, so the bundle
+    // resolves to empty and the gate returns 403.
+    const forbidden = await h.fetch("/api/roles", {
+      headers: { "X-Workeros-Tenant": tenantBSlug },
+    });
+    expect(forbidden.status).toBe(403);
+    const body = (await forbidden.json()) as {
+      error?: { code?: string };
+    };
+    expect(body.error?.code).toBe("FORBIDDEN");
+  });
+
+  test("the same admin endpoint succeeds in A's own workspace", async () => {
+    // Sanity counter-test — confirms the 403 above is tenant-targeted, not a
+    // sign-in regression. The cookie jar still carries B's `workeros-tenant`
+    // (tenantB) at this point — without an explicit override the cross-tenant
+    // pass-through would keep landing A in tenantB. Drive the request at A's
+    // own workspace explicitly via the header.
+    const ok = await h.fetch("/api/roles", {
+      headers: { "X-Workeros-Tenant": "default" },
+    });
+    expect(ok.status).toBe(200);
+    const body = (await ok.json()) as { data: { name: string }[] };
+    // Admin/authenticated/public are auto-seeded per workspace.
+    expect(body.data.some((r) => r.name === "admin")).toBe(true);
+  });
+});

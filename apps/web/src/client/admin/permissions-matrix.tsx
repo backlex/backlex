@@ -4,7 +4,13 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { I } from "./icons";
 import { Badge, IconButton } from "./ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@workeros/ui/components/popover";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@workeros/ui/components/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
 import { api } from "@/lib/api";
 import type { RoleData } from "./role-editor";
 import { ConditionEditor } from "./condition-editor";
@@ -359,29 +365,31 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
         <span><CellGlyph state="custom" /> custom rule</span>
         <span><CellGlyph state="none" /> denied</span>
         <div className="spacer" />
-        <span className="muted" style={{ fontSize: 11.5 }}>Click any cell to set state. Custom opens the rule builder in a side sheet.</span>
+        <span className="muted" style={{ fontSize: 11.5 }}>Click any cell to set state. Custom opens the rule builder in a dialog.</span>
       </div>
 
-      <Sheet open={sheetTarget !== null} onOpenChange={(o) => { if (!o) setSheetTarget(null); }}>
-        <SheetContent side="right" className="w-full data-[side=right]:sm:max-w-2xl overflow-y-auto p-0 gap-0">
-          <SheetHeader>
-            <SheetTitle>Edit rule</SheetTitle>
-            <SheetDescription className="font-mono">
+      <Dialog open={sheetTarget !== null} onOpenChange={(o) => { if (!o) setSheetTarget(null); }}>
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto overflow-x-hidden [grid-template-columns:minmax(0,1fr)]">
+          <DialogHeader>
+            <DialogTitle>Edit rule</DialogTitle>
+            <DialogDescription className="font-mono">
               {sheetTarget ? `${sheetTarget.role} · ${sheetTarget.action} · ${sheetTarget.collection}` : ""}
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
           {sheetTarget && (
-            <ConditionEditor
-              role={sheetTarget.role}
-              action={sheetTarget.action}
-              collection={sheetTarget.collection}
-              roles={roles}
-              pushToast={pushToast}
-              availableFields={fieldsBySlug[sheetTarget.collection] ?? []}
-            />
+            <div className="min-w-0">
+              <ConditionEditor
+                role={sheetTarget.role}
+                action={sheetTarget.action}
+                collection={sheetTarget.collection}
+                roles={roles}
+                pushToast={pushToast}
+                availableFields={fieldsBySlug[sheetTarget.collection] ?? []}
+              />
+            </div>
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

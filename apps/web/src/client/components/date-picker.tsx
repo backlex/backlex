@@ -16,7 +16,7 @@ interface DatePickerProps {
 const toDate = (v: string | number | null | undefined): Date | undefined => {
   if (v === null || v === undefined) return undefined;
   const d = new Date(v);
-  return isNaN(d.getTime()) ? undefined : d;
+  return Number.isNaN(d.getTime()) ? undefined : d;
 };
 
 const pad = (n: number) => String(n).padStart(2, "0");

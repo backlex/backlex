@@ -90,49 +90,64 @@ export const loadRolesForUser = async (
   // customer can grant broad access only through explicit permissions, never
   // the admin bypass (and a UUID collision with a control-plane user can't
   // leak platform-admin powers either).
+  //
+  // One LEFT JOIN'd SELECT pulls both the explicitly-assigned roles and the
+  // builtin `authenticated` row in a single round-trip — `app_user_roles`
+  // matches on the user; the OR brings in the builtin row even when the user
+  // has no explicit assignment. `roles.admin` is excluded on the join side
+  // so an accidentally-admin custom role can't sneak through.
   if (plane === "app") {
-    const assigned = (await (ctx.db as any)
+    const rows = (await (ctx.db as any)
       .select({ id: t.roles.id, name: t.roles.name, admin: t.roles.admin })
-      .from(t.appUserRoles)
-      .innerJoin(t.roles, eq(t.appUserRoles.roleId, t.roles.id))
-      .where(
-        and(eq(t.appUserRoles.appUserId, userId), eq(t.roles.tenantId, tenantId)),
-      )) as RoleRow[];
-    const builtin = (await (ctx.db as any)
-      .select()
       .from(t.roles)
+      .leftJoin(
+        t.appUserRoles,
+        and(
+          eq(t.appUserRoles.roleId, t.roles.id),
+          eq(t.appUserRoles.appUserId, userId),
+        ),
+      )
       .where(
         and(
           eq(t.roles.tenantId, tenantId),
-          eq(t.roles.name, SYSTEM_ROLES.authenticated),
+          or(
+            eq(t.roles.name, SYSTEM_ROLES.authenticated),
+            and(
+              eq(t.appUserRoles.appUserId, userId),
+              eq(t.roles.admin, false),
+            ),
+          ),
         ),
       )) as RoleRow[];
-    return [...assigned.filter((r) => !r.admin), ...builtin];
+    return rows;
   }
   // Only consider roles that belong to the active tenant. A user can have
   // role X in tenant A and role Y in tenant B; each request only sees the
   // role bundle for the workspace they're acting in.
-  const userAssigned = await (ctx.db as any)
-    .select({
-      id: t.roles.id,
-      name: t.roles.name,
-      admin: t.roles.admin,
-    })
-    .from(t.userRoles)
-    .innerJoin(t.roles, eq(t.userRoles.roleId, t.roles.id))
-    .where(
-      and(eq(t.userRoles.userId, userId), eq(t.roles.tenantId, tenantId)),
-    );
-  const builtin = await (ctx.db as any)
-    .select()
+  //
+  // Same single-SELECT pattern as app-plane: LEFT JOIN user_roles so the
+  // builtin `authenticated` row comes back even when the user has no rows
+  // in `user_roles` yet.
+  const rows = (await (ctx.db as any)
+    .select({ id: t.roles.id, name: t.roles.name, admin: t.roles.admin })
     .from(t.roles)
+    .leftJoin(
+      t.userRoles,
+      and(
+        eq(t.userRoles.roleId, t.roles.id),
+        eq(t.userRoles.userId, userId),
+      ),
+    )
     .where(
       and(
         eq(t.roles.tenantId, tenantId),
-        eq(t.roles.name, SYSTEM_ROLES.authenticated),
+        or(
+          eq(t.roles.name, SYSTEM_ROLES.authenticated),
+          eq(t.userRoles.userId, userId),
+        ),
       ),
-    );
-  return [...(userAssigned as RoleRow[]), ...(builtin as RoleRow[])];
+    )) as RoleRow[];
+  return rows;
 };
 
 export interface ResolvedPermission {

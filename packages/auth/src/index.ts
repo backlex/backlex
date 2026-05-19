@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { bearer } from "better-auth/plugins/bearer";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { anonymous } from "better-auth/plugins/anonymous";
@@ -59,6 +60,11 @@ const authSchemaFor = (provider: "pg" | "sqlite") => {
 
 const buildPlugins = (config: AuthConfig) => {
   const out: ReturnType<typeof magicLink>[] = [];
+  // Always on: lets native/mobile admin clients authenticate with
+  // `Authorization: Bearer <session-token>` instead of a cookie. The session
+  // row is identical either way — header vs cookie is the only difference, so
+  // browser cookie auth is unaffected.
+  out.push(bearer() as unknown as ReturnType<typeof magicLink>);
   const enabled = new Set(config.plugins ?? []);
   if (enabled.has("magic-link") && config.email) {
     out.push(

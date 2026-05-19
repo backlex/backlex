@@ -4,6 +4,7 @@ import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { AppBindings } from "../app";
 import { findApiKey, touchLastUsed } from "../services/api-keys";
+import { verifyAccessToken } from "../lib/jwt";
 
 const extractIp = (req: Request): string | null => {
   const h = req.headers;
@@ -174,16 +175,30 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
         void touchLastUsed(ctx, key.id);
       }
     } else if (authHeader.toLowerCase().startsWith("bearer ")) {
-      // Any non-`pak_` bearer is treated as a workspace end-user session token
-      // (issued by /api/t/:slug/auth/* via better-auth's bearer plugin).
+      // Any non-`pak_` bearer is a workspace end-user token. Two accepted
+      // shapes, tried in order:
+      //   1. a stateless access JWT — verified with AUTH_SECRET, no DB hit;
+      //   2. an opaque, DB-backed session token (the refresh token, also
+      //      issued directly by SAML/LDAP and better-auth's bearer plugin).
       // Unknown tokens fall through → unauthenticated.
       const token = authHeader.slice("bearer ".length).trim();
-      const appSess = await findAppSession({ db: ctx.db, dialect: ctx.dialect }, token);
-      if (appSess) {
+      const claims = await verifyAccessToken(ctx.env.AUTH_SECRET, token);
+      if (claims) {
         plane = "app";
-        userId = appSess.userId;
-        email = appSess.email;
-        appSessionTenantId = appSess.tenantId;
+        userId = claims.sub;
+        email = claims.email;
+        appSessionTenantId = claims.tid;
+      } else {
+        const appSess = await findAppSession(
+          { db: ctx.db, dialect: ctx.dialect },
+          token,
+        );
+        if (appSess) {
+          plane = "app";
+          userId = appSess.userId;
+          email = appSess.email;
+          appSessionTenantId = appSess.tenantId;
+        }
       }
     }
   }

@@ -18,3 +18,20 @@ pre-commit:
     - name: typecheck
       glob: "*.{ts,tsx}"
       run: bun run typecheck
+
+# Pre-push: full CI parity. Branch protection on GitHub isn't available on
+# free/private repos, so this hook is the only thing standing between a
+# broken main and the deploy workflow. Same checks the workflow runs —
+# any green-here / red-there divergence is a CI bug.
+#
+# Override with `git push --no-verify` ONLY when you're certain a transient
+# issue (network, sandbox-only DB lock) is the cause; otherwise diagnose it.
+pre-push:
+  parallel: true
+  jobs:
+    - name: lint
+      run: bun run lint
+    - name: typecheck
+      run: bun run typecheck
+    - name: test
+      run: bun test

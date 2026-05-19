@@ -1,5 +1,6 @@
 import { describe, expect, test, afterAll, beforeAll } from "bun:test";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import { TENANT_COOKIE } from "../src/server/middleware/tenant";
 
 /**
  * Multi-tenant isolation smoke tests.
@@ -340,15 +341,22 @@ describe("tenants: cross-tenant admin gets baseline access in foreign workspaces
     expect(body.error?.code).toBe("FORBIDDEN");
   });
 
-  test("the same admin endpoint succeeds in A's own workspace", async () => {
-    // Sanity counter-test — confirms the 403 above is tenant-targeted, not a
-    // sign-in regression. The cookie jar still carries B's `workeros-tenant`
-    // (tenantB) at this point — without an explicit override the cross-tenant
-    // pass-through would keep landing A in tenantB. Drive the request at A's
-    // own workspace explicitly via the header.
-    const ok = await h.fetch("/api/roles", {
-      headers: { "X-Workeros-Tenant": "default" },
-    });
+  test("the cross-tenant visit doesn't leak workeros-tenant cookie", async () => {
+    // The previous test routed A through tenantB via header. tenantMiddleware
+    // must NOT have written a tenantB cookie back — otherwise every following
+    // request without a header would silently keep landing in the foreign
+    // workspace. Clearing/refusing the cookie on the pass-through path is the
+    // fix locked in here.
+    const jar = h.cookies();
+    expect(jar[TENANT_COOKIE]).not.toBe(tenantBSlug);
+    expect(jar[TENANT_COOKIE]).not.toBeDefined();
+  });
+
+  test("the same admin endpoint succeeds in A's own workspace without an override", async () => {
+    // With the cookie cleared, a header-less request falls back through
+    // user.activeTenantId / firstUserTenant — which is `default`, A's home
+    // workspace. requireAdmin now sees A's admin role and returns 200.
+    const ok = await h.fetch("/api/roles");
     expect(ok.status).toBe(200);
     const body = (await ok.json()) as { data: { name: string }[] };
     // Admin/authenticated/public are auto-seeded per workspace.

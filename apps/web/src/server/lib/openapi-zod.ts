@@ -19,5 +19,3 @@ if (!applied) {
   extendZodWithOpenApi(z);
   applied = true;
 }
-
-export {};

@@ -1,6 +1,7 @@
 // @ts-nocheck
 // Members panel — workspace member management for multi-tenant.
 import { useEffect, useMemo, useState } from "react";
+import { Input } from "@workeros/ui/components/input";
 import { I } from "./icons";
 import { Badge, Button, IconButton } from "./ui";
 import { Select } from "./select";
@@ -159,13 +160,19 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
         <div className="spacer" />
         <div style={{ display: "flex", alignItems: "center", gap: 6, border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "4px 10px", height: 30, background: "var(--card)" }}>
           <I.Search size={12} />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search members…" style={{ border: 0, outline: "none", background: "transparent", fontSize: 12, width: 160 }} />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search members…"
+            className="h-auto border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0 focus-visible:border-0"
+            style={{ width: 160 }}
+          />
         </div>
       </div>
 
       <div className="mp-invite">
         <I.Mail size={13} />
-        <input
+        <Input
           className="mp-invite-input"
           placeholder="invite by email…"
           value={invite}

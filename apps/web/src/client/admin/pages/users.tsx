@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Users page — workspace user table + role/provider filters + invite + drawer
 import { useEffect, useState } from "react";
 import { I } from "../icons";

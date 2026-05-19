@@ -210,7 +210,7 @@ export const apiKeysRoutes = new OpenAPIHono<AppBindings>()
       // Per-IP cap on key creation — a runaway script (or compromised cookie)
       // shouldn't be able to mint hundreds of keys in a minute. Tuned generously
       // since each request is also requireUser-gated.
-      enforceIpRateLimit(c, "apikey-create", 10);
+      await enforceIpRateLimit(c, "apikey-create", 10);
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const tenantId = requireTenant(c);

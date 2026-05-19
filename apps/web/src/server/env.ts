@@ -30,6 +30,12 @@ export interface Env {
   VECTORIZE_SELF_HOST_BGE_M3?: VectorizeIndex;
   HYPERDRIVE?: Hyperdrive;
   REALTIME?: DurableObjectNamespace;
+  /** Per-key counter for the rate limiter (`lib/rate-limit.ts`). One DO per
+   *  `(label, ip)` key — collapses isolate-rotation drift into a single
+   *  authoritative window. Bound on Workers via `wrangler.toml::RATE_LIMIT`;
+   *  absent on Bun / Vercel / Netlify, where the limiter falls back to an
+   *  in-process Map (per-process counter is fine — no isolate fan-out). */
+  RATE_LIMIT?: DurableObjectNamespace;
   /** Cloudflare Workers AI binding. Required for the `bge-m3` model
    *  (`@cf/baai/bge-m3`). Add `[ai] binding = "AI"` in wrangler.toml. */
   AI?: Ai;

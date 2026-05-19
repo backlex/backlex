@@ -45,20 +45,18 @@ const stampSessionMeta = async (
   }
 };
 
-const loadRoleNames = async (
+/**
+ * Cross-tenant role names (unfiltered union). Only consulted by tenantMiddleware
+ * when the caller isn't a member of the requested workspace — to decide whether
+ * they're a super-admin who should pass through anyway. Skipped entirely on the
+ * hot path (member of the active tenant), so this lookup is exported and called
+ * lazily rather than from sessionMiddleware on every request.
+ */
+export const loadUnfilteredRoleNames = async (
   ctx: { db: unknown; dialect: "pg" | "sqlite" },
   userId: string,
   restrictRoleId: string | null,
 ): Promise<string[]> => {
-  // Role names are loaded without a tenant filter here because the tenant
-  // hasn't been resolved yet at this point in the pipeline. The downstream
-  // permission resolver re-loads roles scoped to the active tenant; this
-  // list is only used by the legacy `auth.roles` array, which the admin
-  // routes filter by tenant themselves.
-  //
-  // When the request authenticated with a role-scoped API key, restrict to
-  // that single role (still gated on the owner actually holding it) so the
-  // narrowing is in effect from the very first middleware.
   const t =
     ctx.dialect === "pg"
       ? { roles: pg.schema.roles, userRoles: pg.schema.userRoles }
@@ -190,20 +188,16 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
     }
   }
 
-  // For app-plane identities we deliberately skip the control-plane
-  // `user_roles` join — those rows reference `users.id`, not `app_users.id`,
-  // and an accidental UUID collision must not yield platform-admin powers.
-  // The permission resolver fills in the workspace's `authenticated` role.
-  const roles =
-    plane === "platform" && userId
-      ? await loadRoleNames(ctx, userId, apiKeyRoleId)
-      : [];
-
+  // Roles aren't loaded here — tenantMiddleware will load them tenant-scoped a
+  // moment later, and on the hot path (caller is already a member of the active
+  // workspace) it never needs the unfiltered union. The lazy fallback inside
+  // tenantMiddleware uses `loadUnfilteredRoleNames` only when membership fails,
+  // so we save one D1 round-trip on every authenticated request.
   c.set("auth", {
     plane,
     userId,
     email,
-    roles,
+    roles: [],
     apiKeyTenantId,
     apiKeyRoleId,
     appSessionTenantId,

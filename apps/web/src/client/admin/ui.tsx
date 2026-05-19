@@ -607,7 +607,7 @@ export function PageHeader({ title, slug, description, actions, badges }: PageHe
           <div className="max-w-[720px] text-sm text-muted-foreground">{description}</div>
         )}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center justify-end gap-2">{actions}</div>}
     </div>
   );
 }

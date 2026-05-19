@@ -19,18 +19,19 @@ constraints you need.
 APP_URL=https://your.app \
 DATABASE_URL=postgres://user:pass@host:5432/workeros \
 AUTH_SECRET=$(openssl rand -hex 32) \
-bun run --cwd apps/api dev
+bun run --cwd apps/web dev:bun
 ```
 
 For a managed process: systemd unit, Docker, or `pm2`. The Bun scheduler
-boots inside `entry.bun.ts`; cron functions tick every 30 seconds.
+boots inside `apps/web/src/server/entries/bun.ts`; cron functions tick
+every 30 seconds.
 
 ## Cloudflare Workers
 
-`apps/api/wrangler.toml` covers the bindings. First-time setup:
+`apps/web/wrangler.toml` covers the bindings. First-time setup:
 
 ```bash
-cd apps/api
+cd apps/web
 
 wrangler d1 create workeros          # paste id into wrangler.toml
 wrangler r2 bucket create workeros-files
@@ -75,8 +76,8 @@ Workers users still get a sandbox — sync only.
 ## Vercel
 
 `vercel.json` at the repo root deploys both admin (static SPA from
-`apps/admin/dist`) and API (`apps/api/src/entry.vercel.ts` as Edge
-Function). Cron triggers ping `/api/_cron/tick` once per minute.
+`apps/web/dist/client`) and API (`apps/web/src/server/entries/vercel.ts`
+as Edge Function). Cron triggers ping `/api/_cron/tick` once per minute.
 
 ```bash
 vercel link

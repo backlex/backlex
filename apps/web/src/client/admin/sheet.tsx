@@ -190,13 +190,11 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       } else if (f.type === "json") {
         if (typeof raw === "string" && raw.trim()) {
           try { payload[f.name] = JSON.parse(raw); } catch { payload[f.name] = null; }
-        } else if (typeof raw === "string") {
-          // empty JSON string — leave the column null so PATCH doesn't clobber
-          // an existing value with empty content.
-          continue;
-        } else {
+        } else if (typeof raw !== "string") {
           payload[f.name] = raw;
         }
+        // Empty JSON string: leave the field out so PATCH doesn't clobber
+        // an existing value with empty content.
       } else if (f.type === "integer" || f.type === "number") {
         if (raw === "" || raw === null) continue;
         const n = Number(raw);

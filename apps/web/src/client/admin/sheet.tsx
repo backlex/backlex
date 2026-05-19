@@ -953,12 +953,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="z-[70]">
-                  <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      void submit({ close: false });
-                    }}
-                  >
+                  <DropdownMenuItem onSelect={() => void submit({ close: false })}>
                     Save and continue
                   </DropdownMenuItem>
                 </DropdownMenuContent>

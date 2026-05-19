@@ -52,11 +52,11 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
   }, [filtered]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="collections-index" style={{ display: "flex", flexDirection: "column", gap: 18, minWidth: 0 }}>
       <PageHeader
         title="Collections"
         description={<>Each collection is a physical <span className="font-mono">c_&lt;slug&gt;</span> table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations.</>}
-        badges={<span style={{ display: "inline-flex", gap: 6, marginLeft: 4 }}>
+        badges={<span style={{ display: "inline-flex", flexWrap: "wrap", gap: 6, marginLeft: 4 }}>
           <Badge variant={showArchived ? "secondary" : "outline"} mono>
             {collections.length} {showArchived ? "archived" : "collections"}
           </Badge>
@@ -120,7 +120,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
                 <span className="muted tabular-nums" style={{ fontSize: 11 }}>{list.length}</span>
                 <div style={{ flex: 1, height: 1, background: "var(--border)", marginLeft: 6 }} />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))", gap: 12 }}>
                 {list.map((c) => (
                   <CollectionCard
                     key={c.slug}
@@ -154,7 +154,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
                 <th style={{ width: 110, textAlign: "right" }}>Writes 24h</th>
                 <th style={{ width: 110 }}>Last write</th>
                 <th style={{ width: 130 }}>Permissions</th>
-                <th style={{ width: 60 }}></th>
+                <th className="col-actions" style={{ width: 60 }}></th>
               </tr>
             </thead>
             <tbody>
@@ -179,7 +179,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
                         ? <Badge variant="secondary">archived</Badge>
                         : c.ownerScoped ? <Badge variant="default">owner-scoped</Badge> : <Badge variant="secondary">public read</Badge>}
                     </td>
-                    <td onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}>
+                    <td className="col-actions" onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}>
                       {showArchived
                         ? onRestore && (
                             <IconButton icon={I.RotateCcw} title="Restore collection" onClick={() => onRestore(c.slug)} />
@@ -212,9 +212,9 @@ function CollectionCard({ c, onOpen, archived, onRestore, onOpenApi }: { c: Coll
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ width: 32, height: 32, borderRadius: "var(--radius-lg)", background: "var(--muted)", border: "1px solid var(--border)", display: "grid", placeItems: "center", color: "var(--muted-foreground)" }}><Ic size={15} /></span>
-        <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-          <span className="font-mono" style={{ fontSize: 13.5, fontWeight: 600 }}>c_{c.slug}</span>
-          <span className="muted" style={{ fontSize: 11.5 }}>{c.fields} fields · {c.singleton ? "singleton" : c.ownerScoped ? "owner-scoped" : "public read"}</span>
+        <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
+          <span className="font-mono" style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>c_{c.slug}</span>
+          <span className="muted" style={{ fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.fields} fields · {c.singleton ? "singleton" : c.ownerScoped ? "owner-scoped" : "public read"}</span>
         </div>
         {archived && (
           <span style={{ marginLeft: "auto" }}>
@@ -225,7 +225,7 @@ function CollectionCard({ c, onOpen, archived, onRestore, onOpenApi }: { c: Coll
           </span>
         )}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
         <Stat k="rows" v={c.count.toLocaleString()} />
         <Stat k="writes 24h" v={c.writes24h} />
         <Stat k="last" v={c.lastWrite} mono />
@@ -258,9 +258,9 @@ function CollectionCard({ c, onOpen, archived, onRestore, onOpenApi }: { c: Coll
 
 function Stat({ k, v, mono }: { k: string; v: string | number; mono?: boolean }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      <span className="muted" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{k}</span>
-      <span className={`tabular-nums ${mono ? "font-mono" : ""}`} style={{ fontSize: mono ? 11.5 : 14, fontWeight: mono ? 400 : 600 }}>{v}</span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+      <span className="muted" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{k}</span>
+      <span className={`tabular-nums ${mono ? "font-mono" : ""}`} style={{ fontSize: mono ? 11.5 : 14, fontWeight: mono ? 400 : 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v}</span>
     </div>
   );
 }

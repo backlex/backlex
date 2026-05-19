@@ -512,7 +512,7 @@ curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
         </div>
         <div className="table-scroll">
         <table className="table">
-          <thead><tr><th>User</th><th>Device</th><th>Location</th><th>IP</th><th>Created</th><th>Last seen</th><th></th></tr></thead>
+          <thead><tr><th>User</th><th>Device</th><th>Location</th><th>IP</th><th>Created</th><th>Last seen</th><th className="col-actions"></th></tr></thead>
           <tbody>
             {sessions.length === 0 && <tr><td colSpan={7} className="muted" style={{ padding: 14 }}>No active sessions.</td></tr>}
             {sessions.map((s) => (
@@ -523,7 +523,7 @@ curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
                 <td className="font-mono muted" style={{ fontSize: 11.5 }}>{s.ip}</td>
                 <td className="muted font-mono" style={{ fontSize: 11.5 }}>{s.created}</td>
                 <td className="muted font-mono" style={{ fontSize: 11.5 }}>{s.last}</td>
-                <td style={{ textAlign: "right" }}>{!s.current && <Button size="sm" variant="ghost" onClick={() => void revokeSession(s.id)}>Revoke</Button>}</td>
+                <td className="col-actions" style={{ textAlign: "right" }}>{!s.current && <Button size="sm" variant="ghost" onClick={() => void revokeSession(s.id)}>Revoke</Button>}</td>
               </tr>
             ))}
           </tbody>

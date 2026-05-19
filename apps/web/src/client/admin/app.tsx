@@ -67,6 +67,9 @@ const FlowsPage = lazy(() => import("./pages/flows").then((m) => ({ default: m.F
 const FunctionsPage = lazy(() => import("./pages/functions").then((m) => ({ default: m.FunctionsPage })));
 const WebhooksPage = lazy(() => import("./pages/webhooks").then((m) => ({ default: m.WebhooksPage })));
 const RealtimePage = lazy(() => import("./pages/realtime").then((m) => ({ default: m.RealtimePage })));
+const LogsPage = lazy(() => import("./pages/logs").then((m) => ({ default: m.LogsPage })));
+const AdvisorPage = lazy(() => import("./pages/advisor").then((m) => ({ default: m.AdvisorPage })));
+const SchemaGraphPage = lazy(() => import("./pages/schema-graph").then((m) => ({ default: m.SchemaGraphPage })));
 const UsersPage = lazy(() => import("./pages/users").then((m) => ({ default: m.UsersPage })));
 const SettingsPage = lazy(() => import("./pages/settings").then((m) => ({ default: m.SettingsPage })));
 
@@ -661,6 +664,9 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             {activeNav === "rest-explorer" && <RestExplorerPage />}
             {activeNav === "openapi" && <OpenApiExportPage />}
             {activeNav === "realtime" && <RealtimePage events={events} active={realtimeChannel} onActiveChange={setRealtimeChannel} pushToast={pushToast} />}
+            {activeNav === "logs" && <LogsPage pushToast={pushToast} />}
+            {activeNav === "advisor" && <AdvisorPage pushToast={pushToast} />}
+            {activeNav === "schema-graph" && <SchemaGraphPage pushToast={pushToast} />}
             {activeNav === "insights" && <InsightsPage pushToast={pushToast} />}
             {activeNav === "activity" && <ActivityPage pushToast={pushToast} />}
             {activeNav === "revisions" && <RevisionsPage pushToast={pushToast} />}

@@ -2236,3 +2236,68 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   .collections-index h1 { flex-wrap: wrap; }
   .collections-index h1 > * { min-width: 0; }
 }
+
+/* ─── Condition editor responsive ───
+   The permission rule editor is hosted in a side sheet (capped at sm:max-w-2xl
+   on desktop but full-width on phones). At phone widths the following pieces
+   would overflow horizontally:
+     1. The .ce-tabs strip — already has overflow-x:auto, but the host .card
+        and inner padding row were missing min-width:0 so the scroll viewport
+        wasn't actually established on narrow flex parents.
+     2. The .rb-group-head toolbar (AND/OR · "match all…" · + condition ·
+        + group) — already flex-wrap:wrap; we keep the AND/OR toggle and the
+        Builder/JSON toggle from breaking mid-toggle (whitespace-nowrap on the
+        nested .rb-toggle so its two buttons always stay glued together) and
+        let the helper text shrink rather than reserve a fixed slot.
+     3. The .rb-cond row (field select · operator select · value input · X) —
+        had display:flex with no wrap, gap:6px, and an inline 120px min-width
+        on .rb-input. At <~520px the three controls + button exceed the row
+        width and the value input gets pushed past the sheet edge. We allow
+        the row to wrap, give each Select trigger a fluid flex-basis with
+        min-width:0, and have .rb-value-wrap (the datalist input wrapper)
+        take a full row when the condition wraps.
+     4. The "Test against an item" controls row already wraps; just defend
+        its Textarea + Badge children from forcing horizontal overflow.
+   Pure CSS; the only TSX change is the className="rb-value-wrap" hook on the
+   datalist input wrapper so we can target it without `:has`. */
+.ce-tabs { min-width: 0; }
+.ce-tab { flex: 0 0 auto; white-space: nowrap; }
+.rb-toggle { flex: 0 0 auto; white-space: nowrap; }
+
+@media (max-width: 640px) {
+  /* Toolbar: let the descriptive "match all/any of the following" text shrink
+     so the action buttons aren't shoved off-screen, and keep the AND/OR
+     toggle on its own line if everything else needs space. */
+  .rb-group-head > .muted { flex: 1 1 100%; min-width: 0; }
+  .rb-group-head .rb-add { flex: 0 0 auto; }
+
+  /* Condition row: drop the no-wrap flex into a wrap layout. Each Select
+     trigger and the value input get fluid bases with min-width:0 so they
+     shrink rather than overflow; the value input takes its own row at
+     phone widths so the $user.id literal stays readable. */
+  .rb-cond { flex-wrap: wrap; row-gap: 6px; }
+  .rb-cond > * { min-width: 0; }
+  /* Radix Select trigger is the first/second direct child <button> — give
+     each a sensible flex basis so two selects share the top row. */
+  .rb-cond > button:not(.rb-rm) {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+  }
+  /* Value input wrapper spans the full row at this breakpoint. */
+  .rb-cond .rb-value-wrap {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+  }
+  /* The bare .rb-input inside .rb-cond (legacy selector) — keep it shrinkable
+     too, overriding the 120px min-width from the desktop rule. */
+  .rb-cond > .rb-input,
+  .rb-value-wrap .rb-input { min-width: 0; }
+  .rb-rm { flex: 0 0 auto; }
+}
+
+/* Below ~420px (the smallest realistic phone viewports inside the sheet)
+   stack each control onto its own line so labels never truncate. */
+@media (max-width: 420px) {
+  .rb-cond > button:not(.rb-rm) { flex: 1 1 100%; }
+}

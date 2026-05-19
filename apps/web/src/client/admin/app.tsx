@@ -42,6 +42,7 @@ import { EditFieldDialog } from "./edit-field";
 import { CollectionSettings } from "./collection-settings";
 import { collectionsApi, itemsApi, metricsApi, settingsApi } from "./api";
 import { api } from "@/lib/api";
+import { useUrlState, useUrlStateJson } from "@/lib/use-url-state";
 import { useTheme } from "@/components/theme-provider";
 import { useIsMobile } from "@workeros/ui/hooks/use-mobile";
 import { StoragePage } from "./storage";
@@ -151,10 +152,10 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   const [activeTab, setActiveTab] = useState<"items" | "schema" | "settings">("items");
   const [posts, setPosts] = useState<Post[]>([]);
   // Real items load — see effect after activeCollection is declared.
-  const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<FilterCondition[]>([]);
+  const [search, setSearch] = useUrlState("q", "");
+  const [filters, setFilters] = useUrlStateJson<FilterCondition[]>("filter", []);
   const [statusTab, setStatusTab] = useState("all");
-  const [sort, setSort] = useState("-updated_at");
+  const [sort, setSort] = useUrlState("sort", "-updated_at");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const PER_PAGE = 8;

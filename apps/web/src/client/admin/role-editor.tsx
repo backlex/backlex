@@ -1,9 +1,16 @@
 // @ts-nocheck
 // Role editor dialog
 import { useEffect, useMemo, useState } from "react";
-import { I } from "./icons";
-import { Button, IconButton } from "./ui";
+import { Button } from "./ui";
 import { Input } from "@workeros/ui/components/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
 
 const ACTIONS = ["read", "create", "update", "delete"] as const;
 
@@ -61,24 +68,21 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
   }, [open, role]);
 
   const compiled = useMemo(() => compileRule(rule), [rule]);
-
-  if (!open) return null;
   const isSystem = role?.system;
 
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog-lg" onClick={(e) => e.stopPropagation()}>
-        <div className="dialog-head">
-          <div>
-            <h3>{isNew ? "New role" : `Edit ${role?.name || "role"}`}</h3>
-            <p className="muted" style={{ fontSize: 12.5, marginTop: 4 }}>
-              {isSystem ? "System role — name is read-only; permissions still editable." : "Custom roles layer additively on top of authenticated."}
-            </p>
-          </div>
-          <IconButton icon={I.X} onClick={onClose} />
-        </div>
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{isNew ? "New role" : `Edit ${role?.name || "role"}`}</DialogTitle>
+          <DialogDescription>
+            {isSystem
+              ? "System role — name is read-only; permissions still editable."
+              : "Custom roles layer additively on top of authenticated."}
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="dialog-body">
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div className="field">
             <label className="field-label">Name</label>
             <Input value={name} disabled={isSystem} onChange={(e) => setName(e.target.value.replace(/[^a-z0-9_-]/g, "_"))} placeholder="editor" />
@@ -94,7 +98,11 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
             <label className="field-label">Permissions (per action)</label>
             <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-xl)", overflow: "hidden" }}>
               {ACTIONS.map((a, i) => (
-                <div key={a} style={{ display: "grid", gridTemplateColumns: "110px 1fr", alignItems: "center", padding: "10px 12px", borderTop: i === 0 ? 0 : "1px solid var(--border)", gap: 10 }}>
+                <div
+                  key={a}
+                  className="role-action-row"
+                  style={{ borderTop: i === 0 ? 0 : "1px solid var(--border)" }}
+                >
                   <span className="font-mono" style={{ fontSize: 12.5, fontWeight: 500 }}>{a}</span>
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                     {[
@@ -122,12 +130,12 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
 
           <div className="field">
             <label className="field-label">Compiled rule</label>
-            <pre className="alter-preview" style={{ fontSize: 11.5, margin: 0, whiteSpace: "pre" }}>{compiled}</pre>
+            <pre className="alter-preview" style={{ fontSize: 11.5, margin: 0, whiteSpace: "pre", overflowX: "auto" }}>{compiled}</pre>
             <span className="field-hint">Generated DSL — saved to <span className="font-mono">role_permissions</span> on save.</span>
           </div>
         </div>
 
-        <div className="dialog-foot">
+        <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button
             variant="primary"
@@ -142,8 +150,8 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
           >
             {isNew ? "Create role" : "Save changes"}
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

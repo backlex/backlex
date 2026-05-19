@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Directus-parity permission editor.
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@workeros/ui/components/input";
@@ -104,7 +103,7 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
   const update = (path: number[], mut: (n: any) => void) => {
     const next: GroupNode = JSON.parse(JSON.stringify(tree));
     let ref: any = next;
-    for (let i = 0; i < path.length; i++) ref = ref.children[path[i]];
+    for (const idx of path) ref = ref.children[idx];
     mut(ref);
     onChange(next);
   };
@@ -112,8 +111,8 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
     if (path.length === 0) return;
     const next: GroupNode = JSON.parse(JSON.stringify(tree));
     let parent: any = next;
-    for (let i = 0; i < path.length - 1; i++) parent = parent.children[path[i]];
-    parent.children.splice(path[path.length - 1], 1);
+    for (const idx of path.slice(0, -1)) parent = parent.children[idx];
+    parent.children.splice(path[path.length - 1] as number, 1);
     onChange(next);
   };
 
@@ -415,14 +414,14 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
                         if (obj.$and) return { kind: "group", op: "and", children: obj.$and.map(back) };
                         if (obj.$or) return { kind: "group", op: "or", children: obj.$or.map(back) };
                         const entries = Object.entries(obj);
-                        if (entries.length === 1) {
+                        if (entries.length === 1 && entries[0]) {
                           const [field, ops] = entries[0];
                           const [op, val] = Object.entries(ops as Record<string, unknown>)[0] || ["_eq", ""];
                           return { kind: "cond", field, op, value: Array.isArray(val) ? (val as unknown[]).join(", ") : String(val) };
                         }
                         return {
                           kind: "group", op: "and", children: entries.map(([f, o]) => {
-                            const [op, val] = Object.entries(o as Record<string, unknown>)[0];
+                            const [op, val] = Object.entries(o as Record<string, unknown>)[0] ?? ["_eq", ""];
                             return { kind: "cond", field: f, op, value: Array.isArray(val) ? (val as unknown[]).join(", ") : String(val) } as CondNode;
                           }),
                         };
@@ -460,13 +459,13 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
                   <label className="fg-cell">
                     <Checkbox
                       checked={fieldPerms[f]?.read || false}
-                      onChange={(next) => { setFieldPerms((p) => ({ ...p, [f]: { ...p[f], read: next } })); setDirty(true); }}
+                      onChange={(next) => { setFieldPerms((p) => ({ ...p, [f]: { read: next, write: p[f]?.write ?? false } })); setDirty(true); }}
                     />
                   </label>
                   <label className="fg-cell">
                     <Checkbox
                       checked={fieldPerms[f]?.write || false}
-                      onChange={(next) => { setFieldPerms((p) => ({ ...p, [f]: { ...p[f], write: next } })); setDirty(true); }}
+                      onChange={(next) => { setFieldPerms((p) => ({ ...p, [f]: { read: p[f]?.read ?? false, write: next } })); setDirty(true); }}
                     />
                   </label>
                 </div>

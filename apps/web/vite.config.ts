@@ -37,6 +37,48 @@ export default defineConfig({
       ),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        /**
+         * Pull the long-lived vendor code out of the main bundle so it
+         * caches independently of admin changes and parallel-loads over HTTP/2.
+         *
+         * - `react-vendor`: react + react-dom + scheduler (rarely updated,
+         *   biggest single dep block — worth caching aggressively).
+         * - `radix-vendor`: @radix-ui/* + the radix-ui meta package (most of
+         *   the shadcn primitive surface).
+         *
+         * Everything else — smaller deps and dynamic-imported chunks (e.g.
+         * CodeMirror via the code-editor route, lazy admin/pages/* routes) —
+         * is left to Rollup. A blanket "everything in node_modules → vendor"
+         * catch-all would silently hoist those dynamic deps into the eager
+         * bundle and regress first-paint, which is why the rule below stops
+         * after the two explicit groups.
+         */
+        manualChunks: (id) => {
+          if (!id.includes("node_modules")) return undefined;
+          if (
+            id.includes("/node_modules/react/") ||
+            id.includes("/node_modules/react-dom/") ||
+            id.includes("/node_modules/scheduler/")
+          ) {
+            return "react-vendor";
+          }
+          if (
+            id.includes("/node_modules/@radix-ui/") ||
+            id.includes("/node_modules/radix-ui/")
+          ) {
+            return "radix-vendor";
+          }
+          // No catch-all: let Rollup decide the rest so dynamic-imported deps
+          // (e.g. CodeMirror in the code-editor route) stay in their own
+          // lazy chunk and don't get hoisted into the main bundle.
+          return undefined;
+        },
+      },
+    },
+  },
   server: {
     host: true,
     port: 5173,

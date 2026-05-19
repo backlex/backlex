@@ -17,6 +17,27 @@ export type SqliteDb =
 export const createD1Client = (binding: unknown): SqliteDb =>
   drizzleD1(binding as Parameters<typeof drizzleD1>[0], { schema });
 
+/**
+ * Open a D1 Sessions-API client. The constraint (`first-unconstrained` by
+ * default) routes the first read to the nearest replica and pins every
+ * subsequent statement on the same session to that replica with read-your-
+ * writes consistency. A bookmark string can be passed to anchor the session
+ * to a known database state (e.g. from `X-D1-Bookmark` on a prior response)
+ * for read-after-write across requests.
+ *
+ * The returned drizzle client is otherwise identical to `createD1Client` —
+ * routes don't need to know about Sessions API.
+ */
+export const createD1SessionClient = (
+  binding: unknown,
+  constraint: string = "first-unconstrained",
+): SqliteDb => {
+  const session = (
+    binding as { withSession: (c: string) => Parameters<typeof drizzleD1>[0] }
+  ).withSession(constraint);
+  return drizzleD1(session, { schema });
+};
+
 export const createBunSqliteClient = (path = "./.data/workeros.sqlite"): SqliteDb => {
   mkdirSync(dirname(path), { recursive: true });
   const db = new Database(path, { create: true });

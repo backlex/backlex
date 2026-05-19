@@ -161,9 +161,10 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   const [statusTab, setStatusTab] = useState("all");
   const [sort, setSort] = useUrlState("sort", "-updated_at");
   // Per-collection visualisation. Kanban auto-hides when the schema has no
-  // status-shaped column (see ItemsViewToggle).
+  // status-shaped column (see ItemsViewToggle); the resolved `viewMode` is
+  // derived below once schemaState is known.
   const [view, setView] = useUrlState("view", "table");
-  const viewMode = (["table", "kanban", "gallery", "calendar"].includes(view) ? view : "table") as ItemsViewMode;
+  const requestedView = (["table", "kanban", "gallery", "calendar"].includes(view) ? view : "table") as ItemsViewMode;
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const PER_PAGE = 8;
@@ -190,6 +191,15 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
     ownerScoped: false,
     fields: [],
   });
+  // Kanban needs a status-shaped column to group by. If the URL asks for
+  // `?view=kanban` on a collection that has none, fall back to the table view
+  // (the toggle already hides the Kanban button in that case).
+  const hasStatusField = useMemo(
+    () => !!resolveStatusField(schemaState as unknown as { fields?: Array<Record<string, unknown>> } | null),
+    [schemaState],
+  );
+  const viewMode: ItemsViewMode =
+    requestedView === "kanban" && !hasStatusField ? "table" : requestedView;
   // No mock seed — empty until /api/collections fills in. The Collections
   // index renders an empty/zero-state path when nothing is loaded yet.
   const [collections, setCollections] = useState<CollectionListItem[]>([]);

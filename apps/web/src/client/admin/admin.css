@@ -2137,3 +2137,33 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 @media (max-width: 560px) {
   .users-stats { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ─── Storage page mobile sticky fix ───
+   The Storage page's Folders panel uses inline `position: sticky; top: 12;
+   maxHeight: calc(100vh - 160px)` so it stays visible alongside the files
+   list on desktop. When `.master-detail` collapses to a single column at
+   <=900px, that sticky+max-height combo turns the Folders panel into a
+   near-viewport-height block that pins to the top of the page and visually
+   overlaps the Files card stacked below it (the inner scroll area also
+   keeps the folder list cramped behind the sticky search header, creating
+   the "content bleeding through" effect).
+
+   On mobile we want the Folders panel to flow normally above the Files
+   card with a sensible bounded height — no sticking, no full-viewport
+   stretch. Scoped via `.storage-master-detail` so other pages that use
+   `.master-detail` (pages.tsx, parity/*.tsx) are unaffected. The inline
+   styles on the panel mean we need `!important` to win the cascade. */
+@media (max-width: 900px) {
+  .storage-master-detail > .card:first-child {
+    position: static !important;
+    top: auto !important;
+    max-height: none !important;
+  }
+  /* Cap the inner scroll viewport so the folder list keeps a tidy height
+     on phones instead of expanding to fit every folder. The selector
+     targets the third child of the Folders card (header, filter, list). */
+  .storage-master-detail > .card:first-child > div:nth-child(3) {
+    max-height: 320px !important;
+  }
+}
+

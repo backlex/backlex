@@ -1,10 +1,35 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@workeros/ui/components/tooltip";
 import "@workeros/ui/globals.css";
 import { App } from "./App";
 import { ThemeProvider } from "@/components/theme-provider";
+
+/**
+ * Single QueryClient shared across the admin app. Reasonable defaults for an
+ * always-online admin SPA:
+ *   - staleTime 30s — same row often refetched as the user navigates pages;
+ *     within a 30s window we serve from cache without hitting the API again
+ *   - gcTime 5min — keep observable data resident a bit after components
+ *     unmount so back-navigation feels instant
+ *   - retry once on network errors; the API itself returns AppError statuses
+ *     synchronously so retrying 4xx is wasted load
+ *   - refetchOnWindowFocus off — admin pages are long-lived; constant tab
+ *     refocus refetches were the most-complained-about UX wart in earlier
+ *     React Query rollouts
+ */
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 type ResolvedBranding = {
   workspaceName: string | null;
@@ -90,12 +115,14 @@ if (branding) applyBranding(branding);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ThemeProvider defaultTheme={branding?.defaultTheme ?? "system"}>
-      <BrowserRouter>
-        <TooltipProvider delayDuration={0}>
-          <App />
-        </TooltipProvider>
-      </BrowserRouter>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme={branding?.defaultTheme ?? "system"}>
+        <BrowserRouter>
+          <TooltipProvider delayDuration={0}>
+            <App />
+          </TooltipProvider>
+        </BrowserRouter>
+      </ThemeProvider>
+    </QueryClientProvider>
   </StrictMode>,
 );

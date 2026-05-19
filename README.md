@@ -29,8 +29,8 @@ Admin UI · Typed SDK · CLI · Type generation
 
 ```
 apps/
-  api/      Hono API + entry.{bun,worker,vercel,netlify}.ts
-  admin/    Vite + React + shadcn admin panel
+  web/      One app — Hono API + Vite + React admin SPA in a single bundle
+            (server/ + client/ + entries/{bun,worker,vercel,netlify}.ts)
 packages/
   core/     Shared types + adapter interfaces
   db/       Drizzle schemas + dynamic-schema applier + permission compiler
@@ -46,12 +46,13 @@ Prereqs: Bun ≥ 1.1.
 
 ```bash
 bun install
-cp apps/api/.env.example apps/api/.env
+cp apps/web/.dev.vars.example apps/web/.dev.vars
 
 # Apply migrations to local SQLite (default for dev)
-bun run workeros migrate
+bun run db:migrate:sqlite
 
-# Start API (8787) + admin UI (5173); Vite proxies /api → :8787
+# Start Vite + Cloudflare miniflare in one process on :5173
+# (admin SPA + Worker bundled — no separate API port, no proxy)
 bun run dev
 ```
 
@@ -84,13 +85,13 @@ S3 path automatically. See [Storage on edge](docs/deployment.md#storage-on-edge)
 ```bash
 APP_URL=https://your.app DATABASE_URL=postgres://... \
   AUTH_SECRET=$(openssl rand -hex 32) \
-  bun run --cwd apps/api dev
+  bun run --cwd apps/web dev:bun
 ```
 
 ### Cloudflare Workers
 
 ```bash
-cd apps/api
+cd apps/web
 wrangler d1 create workeros          # paste id into wrangler.toml
 wrangler r2 bucket create workeros-files
 wrangler vectorize create workeros-embeddings --dimensions=1536 --metric=cosine
@@ -200,7 +201,7 @@ Cross-runtime concerns live behind interfaces in `@workeros/core/adapters`:
 - `EmailAdapter` — `consoleEmail` (dev) / `resendEmail` / `sendgridEmail` / `mailgunEmail` / `sesEmail` (HTTP APIs, any runtime) / `smtpEmail` (nodemailer, not on Workers) — pick via `EMAIL_PROVIDER`
 - `ImageAdapter` — `bunImage` (`Bun.Image`) / `cfImage` (CF Image Resize) / `passthroughImage`
 
-`apps/api/src/context.ts` picks the right adapter based on bindings/env.
+`apps/web/src/server/context.ts` picks the right adapter based on bindings/env.
 
 ## License
 

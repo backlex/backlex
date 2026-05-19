@@ -1,0 +1,93 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true,
+    "defaultBranch": "main"
+  },
+  "files": {
+    "includes": [
+      "apps/**/*.{ts,tsx,js,jsx,json}",
+      "packages/**/*.{ts,tsx,js,jsx,json}",
+      "scripts/**/*.{ts,js}",
+      "!**/dist",
+      "!**/.data",
+      "!**/.wrangler",
+      "!**/node_modules",
+      "!**/drizzle",
+      "!**/.claude",
+      "!**/tsconfig*.json"
+    ]
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noConsole": "off",
+        "noArrayIndexKey": "off",
+        "noAssignInExpressions": "off",
+        "noDocumentCookie": "off",
+        "noImplicitAnyLet": "off",
+        "noThenProperty": "off",
+        "noConfusingVoidType": "off",
+        "useIterableCallbackReturn": "off"
+      },
+      "style": {
+        "noNonNullAssertion": "off",
+        "useTemplate": "off",
+        "useImportType": "off",
+        "useNodejsImportProtocol": "off"
+      },
+      "correctness": {
+        "noUnusedVariables": "off",
+        "noUnusedImports": "off",
+        "noUnusedFunctionParameters": "off",
+        "useExhaustiveDependencies": "off"
+      },
+      "complexity": {
+        "noBannedTypes": "off",
+        "useArrowFunction": "off",
+        "noForEach": "off",
+        "noUselessFragments": "off",
+        "useLiteralKeys": "off",
+        "useOptionalChain": "off",
+        "noUselessTernary": "off"
+      },
+      "a11y": {
+        "useKeyWithClickEvents": "off",
+        "useButtonType": "off",
+        "noLabelWithoutControl": "off",
+        "useSemanticElements": "off",
+        "noStaticElementInteractions": "off",
+        "noNoninteractiveElementInteractions": "off",
+        "useAltText": "off",
+        "noAutofocus": "off",
+        "useValidAriaValues": "off",
+        "useMediaCaption": "off",
+        "noSvgWithoutTitle": "off",
+        "useAriaPropsSupportedByRole": "off",
+        "useFocusableInteractive": "off"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "off",
+        "noDangerouslySetInnerHtmlWithChildren": "warn"
+      }
+    }
+  },
+  "formatter": {
+    "enabled": false
+  },
+  "javascript": {
+    "formatter": {
+      "enabled": false
+    }
+  },
+  "json": {
+    "formatter": {
+      "enabled": false
+    }
+  }
+}

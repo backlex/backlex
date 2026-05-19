@@ -8,6 +8,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/compo
 import { AdoptWizard } from "./adopt-wizard";
 import { useUrlState } from "@/lib/use-url-state";
 import { SkeletonRow } from "./loading";
+import { useCollections } from "./queries";
 
 export interface CollectionsIndexProps {
   collections: CollectionListItem[];
@@ -36,21 +37,13 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
   // chooser is the UI counterpart — one button on the page, two distinct
   // wizards routed by the user's intent.
   const [chooserOpen, setChooserOpen] = useState(false);
-  // `collections` arrives from a parent fetch — we only see the prop, not
-  // the fetch lifecycle. Show a skeleton placeholder until the first
-  // populated array arrives OR a short timeout elapses (so a genuinely
-  // empty workspace doesn't hang on the placeholder forever). Once
-  // resolved, never flip back to loading — toggling archived view will
-  // briefly empty the list and that's a normal empty-state, not a fetch.
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    if (collections.length > 0) {
-      setLoading(false);
-      return;
-    }
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
-  }, [collections.length]);
+  // `collections` arrives enriched (metrics merge + status filter) from the
+  // parent. The real fetch lifecycle lives in React Query — observe the same
+  // cached query so the skeleton tracks the actual request instead of the
+  // old timeout heuristic. Same query key as the parent → cache hit, no
+  // duplicate network call.
+  const collectionsQuery = useCollections(!!showArchived);
+  const loading = collectionsQuery.isLoading;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

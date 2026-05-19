@@ -143,7 +143,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   useEffect(() => { setMobileNavOpen(false); }, [location.pathname]);
   useEffect(() => { if (!isMobile) setMobileNavOpen(false); }, [isMobile]);
   const navTo = useCallback((id: string) => { navigate("/" + id); setMobileNavOpen(false); }, [navigate]);
-  const [activeTab, setActiveTab] = useState<"items" | "schema" | "permissions" | "settings">("items");
+  const [activeTab, setActiveTab] = useState<"items" | "schema" | "settings">("items");
   const [posts, setPosts] = useState<Post[]>([]);
   // Real items load — see effect after activeCollection is declared.
   const [search, setSearch] = useState("");
@@ -665,7 +665,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             {activeNav === "email-templates" && <EmailTemplatesPage pushToast={pushToast} />}
             {activeNav === "settings" && <SettingsPage adapter={tweaks.adapter} pushToast={pushToast} />}
             {activeNav === "account" && <AccountPage pushToast={pushToast} />}
-            {activeNav === "roles" && (
+            {activeNav === "access" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                 <PageHeader title="Roles & permissions" description="System roles ship with the platform; custom roles layer additively." />
                 <RolesPageWithMembers pushToast={pushToast} />
@@ -754,9 +754,6 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                 </button>
                 <button className="tab" data-active={activeTab === "schema"} onClick={() => setActiveTab("schema")}>
                   <I.Braces size={13} />Schema <span className="count">{schemaState.fields.length}</span>
-                </button>
-                <button className="tab" data-active={activeTab === "permissions"} onClick={() => setActiveTab("permissions")}>
-                  <I.Shield size={13} />Permissions <span className="count">3</span>
                 </button>
                 <button className="tab" data-active={activeTab === "settings"} onClick={() => setActiveTab("settings")}>
                   <I.Settings size={13} />Settings
@@ -847,8 +844,6 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                   />
                 </div>
               )}
-
-              {activeTab === "permissions" && <PermissionsPanel pushToast={pushToast} />}
 
               {activeTab === "settings" && (
                 <CollectionSettings

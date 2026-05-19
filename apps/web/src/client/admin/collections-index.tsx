@@ -154,7 +154,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
                 <th style={{ width: 110, textAlign: "right" }}>Writes 24h</th>
                 <th style={{ width: 110 }}>Last write</th>
                 <th style={{ width: 130 }}>Permissions</th>
-                <th style={{ width: 60 }}></th>
+                <th className="col-actions" style={{ width: 60 }}></th>
               </tr>
             </thead>
             <tbody>
@@ -179,7 +179,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
                         ? <Badge variant="secondary">archived</Badge>
                         : c.ownerScoped ? <Badge variant="default">owner-scoped</Badge> : <Badge variant="secondary">public read</Badge>}
                     </td>
-                    <td onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}>
+                    <td className="col-actions" onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}>
                       {showArchived
                         ? onRestore && (
                             <IconButton icon={I.RotateCcw} title="Restore collection" onClick={() => onRestore(c.slug)} />

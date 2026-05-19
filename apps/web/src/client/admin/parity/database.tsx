@@ -354,7 +354,7 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
         </div>
         <div className="table-scroll">
         <table className="table">
-          <thead><tr><th>ID</th><th>Created</th><th>Tables</th><th>Size</th><th>Kind</th><th></th></tr></thead>
+          <thead><tr><th>ID</th><th>Created</th><th>Tables</th><th>Size</th><th>Kind</th><th className="col-actions"></th></tr></thead>
           <tbody>
             {backups.map((b) => (
               <tr key={b.id}>
@@ -363,7 +363,7 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
                 <td className="tabular-nums">{b.tables}</td>
                 <td className="tabular-nums">{b.size}</td>
                 <td><Badge variant={b.kind === "auto" ? "secondary" : "default"}>{b.kind}</Badge></td>
-                <td style={{ textAlign: "right" }}>
+                <td className="col-actions" style={{ textAlign: "right" }}>
                   <Button size="sm" variant="ghost" icon={I.Download} onClick={() => {
                     const url = `/api/admin/db/backups/${b.id}/download`;
                     const a = document.createElement("a");

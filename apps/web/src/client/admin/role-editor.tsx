@@ -82,29 +82,28 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
           </DialogDescription>
         </DialogHeader>
 
-        <div className="min-w-0" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div className="field">
-            <label className="field-label">Name</label>
+        <div className="flex min-w-0 flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Name</label>
             <Input value={name} disabled={isSystem} onChange={(e) => setName(e.target.value.replace(/[^a-z0-9_-]/g, "_"))} placeholder="editor" />
-            <span className="field-hint font-mono">lowercase, snake_case</span>
+            <span className="font-mono text-[11.5px] text-muted-foreground">lowercase, snake_case</span>
           </div>
 
-          <div className="field">
-            <label className="field-label">Description</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Description</label>
             <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What this role can do…" />
           </div>
 
-          <div className="field">
-            <label className="field-label">Permissions (per action)</label>
-            <div style={{ border: "1px solid var(--border)", borderRadius: "var(--radius-xl)", overflow: "hidden" }}>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Permissions (per action)</label>
+            <div className="overflow-hidden rounded-xl border border-border">
               {ACTIONS.map((a, i) => (
                 <div
                   key={a}
-                  className="role-action-row"
-                  style={{ borderTop: i === 0 ? 0 : "1px solid var(--border)" }}
+                  className={`grid grid-cols-[110px_1fr] items-center gap-2.5 px-3 py-2.5 max-[640px]:grid-cols-[1fr] max-[640px]:gap-y-2 ${i === 0 ? "" : "border-t border-border"}`}
                 >
-                  <span className="font-mono" style={{ fontSize: 12.5, fontWeight: 500 }}>{a}</span>
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  <span className="font-mono text-[12.5px] font-medium">{a}</span>
+                  <div className="flex flex-wrap gap-1">
                     {[
                       { v: "none", label: "no access" },
                       { v: "owner", label: "owner only" },
@@ -116,8 +115,7 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
                         key={opt.v}
                         type="button"
                         onClick={() => setRule((r) => ({ ...r, [a]: opt.v as RuleState }))}
-                        className={`chip ${rule[a] === opt.v ? "active" : ""}`}
-                        style={{ fontSize: 11.5 }}
+                        className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border px-[11px] text-[11.5px] text-foreground hover:bg-accent ${rule[a] === opt.v ? "border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent" : "border-border bg-card"}`}
                       >
                         {opt.label}
                       </button>
@@ -128,10 +126,10 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
             </div>
           </div>
 
-          <div className="field">
-            <label className="field-label">Compiled rule</label>
-            <pre className="alter-preview" style={{ fontSize: 11.5, margin: 0, whiteSpace: "pre", overflowX: "auto", maxWidth: "100%" }}>{compiled}</pre>
-            <span className="field-hint">Generated DSL — saved to <span className="font-mono">role_permissions</span> on save.</span>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Compiled rule</label>
+            <pre className="m-0 max-w-full overflow-x-auto whitespace-pre rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11.5px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">{compiled}</pre>
+            <span className="text-[11.5px] text-muted-foreground">Generated DSL — saved to <span className="font-mono">role_permissions</span> on save.</span>
           </div>
         </div>
 

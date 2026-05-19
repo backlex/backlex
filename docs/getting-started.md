@@ -12,12 +12,13 @@ Five minutes from clone to first item.
 ```bash
 git clone https://github.com/your/workeros && cd workeros
 bun install
-cp apps/api/.env.example apps/api/.env
+cp apps/web/.dev.vars.example apps/web/.dev.vars
 
 # Apply migrations to local SQLite
-bun run workeros migrate
+bun run db:migrate:sqlite
 
-# Start API (8787) + admin UI (5173) in parallel
+# Start Vite + Cloudflare miniflare in one process on :5173
+# (admin SPA + Worker bundled — no separate API port, no proxy)
 bun run dev
 ```
 

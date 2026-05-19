@@ -26,6 +26,11 @@ const SEED_COMMENTS: Comment[] = [
 const SHARE_URL = "https://workeros.dev/s/01HZ7K8Q6XYZ?token=sv1_a4e2b9c1f0";
 const SHARE_URL_DISPLAY = "https://workeros.dev/s/01HZ7K8Q6XYZ?token=sv1_a4e…";
 
+const CHIP =
+  "inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border border-border bg-card px-[11px] text-[12.5px] text-foreground hover:bg-accent";
+const AVATAR_XS =
+  "grid size-[18px] place-items-center rounded-full border border-border bg-muted font-mono text-[9.5px] text-muted-foreground";
+
 export function ItemCommentsPanel({ pushToast }: { pushToast?: (m: string, type?: "success" | "error") => void }) {
   const [items, setItems] = useState<Comment[]>(SEED_COMMENTS);
   const [draft, setDraft] = useState("");
@@ -67,34 +72,34 @@ export function ItemCommentsPanel({ pushToast }: { pushToast?: (m: string, type?
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <div className="flex flex-col gap-3.5">
       {/* Share */}
-      <div className="card">
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
           <I.Share size={13} />
-          <span style={{ fontSize: 12.5, fontWeight: 500 }}>share this record</span>
+          <span className="text-[12.5px] font-medium">share this record</span>
         </div>
-        <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div className="field">
-            <label className="field-label">Public read-only link</label>
-            <div style={{ display: "flex", gap: 6 }}>
-              <Input className="font-mono" readOnly value={SHARE_URL_DISPLAY} style={{ fontSize: 11.5, flex: 1 }} />
+        <div className="flex flex-col gap-2.5 p-3.5">
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Public read-only link</label>
+            <div className="flex gap-1.5">
+              <Input className="font-mono flex-1 text-[11.5px]" readOnly value={SHARE_URL_DISPLAY} />
               <Button variant="outline" icon={shareCopied ? I.Check : I.Copy} onClick={copyShare}>
                 {shareCopied ? "Copied" : "Copy"}
               </Button>
             </div>
-            <span className="field-hint">
+            <span className="text-[11.5px] text-muted-foreground">
               Signed view token, expires in 7d · revocable from <span className="font-mono">api_keys</span>.
             </span>
           </div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <span className="chip">
+          <div className="flex flex-wrap gap-1.5">
+            <span className={CHIP}>
               <I.Eye size={11} /> read-only
             </span>
-            <span className="chip">
+            <span className={CHIP}>
               <I.Clock size={11} /> 7d expiry
             </span>
-            <span className="chip">
+            <span className={CHIP}>
               <I.Lock size={11} /> password off
             </span>
           </div>
@@ -102,47 +107,35 @@ export function ItemCommentsPanel({ pushToast }: { pushToast?: (m: string, type?
       </div>
 
       {/* Comments */}
-      <div className="card">
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
           <I.MessageSquare size={13} />
-          <span style={{ fontSize: 12.5, fontWeight: 500 }}>comments</span>
-          <span className="font-mono" style={{ fontSize: 11.5, color: "var(--muted-foreground)" }}>
-            {items.length}
-          </span>
+          <span className="text-[12.5px] font-medium">comments</span>
+          <span className="font-mono text-[11.5px] text-muted-foreground">{items.length}</span>
         </div>
-        <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="flex flex-col gap-2.5 px-3.5 py-3">
           {items.map((c) => (
-            <div key={c.id} className="comment">
-              <div className="avatar-xs">{c.initials}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 500 }}>{c.who}</span>
-                  <span className="font-mono" style={{ fontSize: 10.5, color: "var(--muted-foreground)" }}>
-                    {c.t}
-                  </span>
+            <div key={c.id} className="flex items-start gap-2 border-b border-dashed border-border py-2 last:border-b-0">
+              <div className={AVATAR_XS}>{c.initials}</div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-[12.5px] font-medium">{c.who}</span>
+                  <span className="font-mono text-[10.5px] text-muted-foreground">{c.t}</span>
                 </div>
-                <div style={{ fontSize: 12.5, color: "var(--foreground)", marginTop: 2 }}>{c.body}</div>
+                <div className="mt-0.5 text-[12.5px] text-foreground">{c.body}</div>
               </div>
             </div>
           ))}
         </div>
-        <div
-          style={{
-            padding: 12,
-            borderTop: "1px solid var(--border)",
-            display: "flex",
-            gap: 6,
-            alignItems: "flex-start",
-          }}
-        >
-          <div className="avatar-xs" style={{ marginTop: 4 }}>RM</div>
+        <div className="flex items-start gap-1.5 border-t border-border p-3">
+          <div className={`${AVATAR_XS} mt-1`}>RM</div>
           <Textarea
             placeholder="Write a comment · @-mention to notify · ⌘+Enter to send"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={onDraftKey}
             rows={2}
-            style={{ minHeight: 60, fontSize: 12.5, flex: 1 }}
+            className="min-h-[60px] flex-1 text-[12.5px]"
           />
           <Button variant="primary" size="sm" icon={I.Send} onClick={send} disabled={!draft.trim()}>
             Send

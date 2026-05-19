@@ -34,6 +34,7 @@ import {
   type FilterCondition,
 } from "./items";
 import { ConfirmDialog, ItemSheet } from "./sheet";
+import { CalendarView, GalleryGrid, ItemsViewToggle, KanbanBoard, type ItemsViewMode } from "./item-views";
 import { AlterPreview, EmptyItems, Palette, RealtimeTail, SchemaView, type RealtimeEvent } from "./extras";
 import { AddFieldDialog } from "./add-field";
 import { loadAuthors } from "./authors-cache";
@@ -159,6 +160,10 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   const [filters, setFilters] = useUrlStateJson<FilterCondition[]>("filter", []);
   const [statusTab, setStatusTab] = useState("all");
   const [sort, setSort] = useUrlState("sort", "-updated_at");
+  // Per-collection visualisation. Kanban auto-hides when the schema has no
+  // status-shaped column (see ItemsViewToggle).
+  const [view, setView] = useUrlState("view", "table");
+  const viewMode = (["table", "kanban", "gallery", "calendar"].includes(view) ? view : "table") as ItemsViewMode;
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const PER_PAGE = 8;
@@ -784,19 +789,47 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                       total={tweaks.populated ? posts.length : 0}
                     />
                     <div className="card">
+                      <div style={{ padding: "10px 12px", display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid var(--border)" }}>
+                        <ItemsViewToggle
+                          mode={viewMode}
+                          setMode={(m) => setView(m)}
+                          hasStatus={!!resolveStatusField(schemaState as unknown as { fields?: Array<Record<string, unknown>> } | null)}
+                        />
+                      </div>
                       <FilterDSLPreview filters={filters} sort={sort} />
-                      <BulkBar
-                        count={selected.size}
-                        onClear={() => setSelected(new Set())}
-                        onPublish={onBulkPublish}
-                        onDelete={onBulkDelete}
-                      />
-                      {pageRows.length === 0 ? (
-                        <EmptyItems onCreate={openCreate} slug={activeCollection ?? undefined} />
-                      ) : (
-                        <ItemsTable rows={pageRows} selected={selected} setSelected={setSelected} sort={sort} setSort={setSort} onEdit={openEdit} schema={schemaState} />
+                      {viewMode === "table" && (
+                        <BulkBar
+                          count={selected.size}
+                          onClear={() => setSelected(new Set())}
+                          onPublish={onBulkPublish}
+                          onDelete={onBulkDelete}
+                        />
                       )}
-                      {pageRows.length > 0 && (
+                      {viewMode === "table" && (
+                        pageRows.length === 0 ? (
+                          <EmptyItems onCreate={openCreate} slug={activeCollection ?? undefined} />
+                        ) : (
+                          <ItemsTable rows={pageRows} selected={selected} setSelected={setSelected} sort={sort} setSort={setSort} onEdit={openEdit} schema={schemaState} />
+                        )
+                      )}
+                      {viewMode === "kanban" && (
+                        itemsForView.length === 0 ? (
+                          <EmptyItems onCreate={openCreate} slug={activeCollection ?? undefined} />
+                        ) : (
+                          <KanbanBoard rows={itemsForView} onEdit={openEdit} />
+                        )
+                      )}
+                      {viewMode === "gallery" && (
+                        itemsForView.length === 0 ? (
+                          <EmptyItems onCreate={openCreate} slug={activeCollection ?? undefined} />
+                        ) : (
+                          <GalleryGrid rows={itemsForView} onEdit={openEdit} />
+                        )
+                      )}
+                      {viewMode === "calendar" && (
+                        <CalendarView rows={itemsForView} onEdit={openEdit} />
+                      )}
+                      {viewMode === "table" && pageRows.length > 0 && (
                         <div className="pagination">
                           <span className="meta tabular-nums">{(page - 1) * PER_PAGE + 1}-{Math.min(page * PER_PAGE, total)} of {total}</span>
                           <div className="spacer" />

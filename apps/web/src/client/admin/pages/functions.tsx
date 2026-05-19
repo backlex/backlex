@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Functions page — sandboxed JS editor + invocation logs + new-function wizard
 import { useEffect, useState } from "react";
 import { I } from "../icons";
@@ -197,7 +196,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
         actions={<Button variant="primary" icon={I.Plus} onClick={() => setNewOpen(true)}>New function</Button>}
       />
 
-      <div className="master-detail" style={{ "--md-aside": "300px" }}>
+      <div className="master-detail" style={{ "--md-aside": "300px" } as React.CSSProperties}>
         <div className="card">
           {funcs.length === 0 && (
             <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>No functions yet — click + New function.</div>

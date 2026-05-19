@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Overview page — adapter dashboard, runtime stats, recent activity + errors
 import { useEffect, useState } from "react";
 import { I } from "../icons";
@@ -17,14 +16,15 @@ function Sparkline({ data, color = "var(--primary)", height = 36, fill = true }:
   const max = Math.max(...data, 1);
   const min = Math.min(...data, 0);
   const span = max - min || 1;
-  const pts = data.map((v, i) => [i / (data.length - 1) * w, h - ((v - min) / span) * (h - 4) - 2]);
+  const pts: [number, number][] = data.map((v, i) => [i / (data.length - 1) * w, h - ((v - min) / span) * (h - 4) - 2]);
   const d = pts.map((p, i) => (i === 0 ? "M" : "L") + p[0].toFixed(2) + "," + p[1].toFixed(2)).join(" ");
   const fillPath = d + ` L ${w},${h} L 0,${h} Z`;
+  const last = pts[pts.length - 1] ?? [0, 0];
   return (
     <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: "100%", height, display: "block" }}>
       {fill && <path d={fillPath} fill={color} opacity="0.12" />}
       <path d={d} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r="2" fill={color} />
+      <circle cx={last[0]} cy={last[1]} r="2" fill={color} />
     </svg>
   );
 }

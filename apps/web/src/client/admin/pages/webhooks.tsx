@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Webhooks page — outgoing HTTP on collection events + delivery log + editor
 import { useEffect, useState } from "react";
 import { I } from "../icons";

@@ -1,10 +1,15 @@
 // Advisor page — security + performance checks.
 //
-// Visual + interaction parity with the design's parity-v2.jsx::AdvisorPage.
+// Findings come from GET /api/admin/advisor (services/advisor.ts) — every
+// check is computed from live DB / env state. Dismiss stays client-side
+// (a local Set) since there's no dismiss endpoint.
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { I, type IconComponent } from "../icons";
 import { Button, PageHeader } from "../ui";
+import { useAdvisor, queryKeys } from "../queries";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+import { Skeleton } from "@workeros/ui/components/skeleton";
 
 type CheckKind = "security" | "performance";
 type CheckLevel = "error" | "warn" | "info";
@@ -20,28 +25,19 @@ interface AdvisorCheck {
   detected: string;
 }
 
-// TODO(advisor): replace with /api/admin/advisor when the endpoint lands.
-const ADVISOR_CHECKS: AdvisorCheck[] = [
-  // security
-  { id: "a_01", kind: "security", level: "error", title: "Public read on c_users", body: "Role public can read c_users with no condition — emails exposed to anonymous traffic.", fix: "Remove the public read permission on c_users, or scope to { is_public: { _eq: true } }.", resource: "permissions · c_users", detected: "14m ago" },
-  { id: "a_02", kind: "security", level: "error", title: "Missing condition on owner-scoped collection", body: "c_comments has owner-scoped: true but no DSL condition on update — any signed-in user can edit any row.", fix: "Add { owner_id: { _eq: \"$user.id\" } } to the authenticated update permission.", resource: "permissions · c_comments", detected: "1h ago" },
-  { id: "a_03", kind: "security", level: "warn", title: "API key without role scope", body: "pak_a4e2b9c1 (CI bot) inherits the owner's full admin permissions.", fix: "Bind the key to a narrower role via role_id, or rotate to a service account.", resource: "api_keys · pak_a4e2b9c1", detected: "2h ago" },
-  { id: "a_04", kind: "security", level: "warn", title: "MFA disabled for 3 admins", body: "rana, priya, jules have admin role but no enrolled second factor.", fix: "Enforce MFA for the admin role in Authentication settings.", resource: "users · admin role", detected: "1d ago" },
-  { id: "a_05", kind: "security", level: "info", title: "Email provider falls back to console", body: "No EMAIL_PROVIDER configured for production — verification mail logs to stdout.", fix: "Configure Resend, SendGrid, or SES in Authentication → Email.", resource: "env · EMAIL_PROVIDER", detected: "3d ago" },
-  // performance
-  { id: "a_06", kind: "performance", level: "warn", title: "Missing index on c_comments(post_id, created_at)", body: "Sequential scan detected · p95 740ms over the last 24h.", fix: "CREATE INDEX idx_comments_post_created ON c_comments (post_id, created_at DESC);", resource: "c_comments", detected: "30m ago" },
-  { id: "a_07", kind: "performance", level: "warn", title: "N+1 on c_posts.author lookups", body: "Detected 184 sequential auth_users fetches per /api/items/posts request.", fix: "Use the relation expansion query param: fields=*,author.* (single JOIN).", resource: "route · /api/items/posts", detected: "45m ago" },
-  { id: "a_08", kind: "performance", level: "info", title: "Unused index on c_tags(slug)", body: "Index seen 0 times in the last 14 days · 24kB on disk.", fix: "DROP INDEX idx_tags_slug;", resource: "c_tags", detected: "2d ago" },
-  { id: "a_09", kind: "performance", level: "info", title: "Cold storage rate elevated", body: "R2 first-byte latency p95 380ms in eu-west · consider edge cache for /api/storage/*.", fix: "Set Cache-Control: max-age=86400 on immutable object keys.", resource: "storage · R2", detected: "2h ago" },
-];
-
 type LevelCounts = { error: number; warn: number; info: number };
 
 export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "success" | "error") => void }) {
   const [tab, setTab] = useState<CheckKind>("security");
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const qc = useQueryClient();
+  const { data, isLoading, isError, isFetching } = useAdvisor();
+  const checks = useMemo<AdvisorCheck[]>(() => data?.data ?? [], [data]);
 
-  const all = useMemo(() => ADVISOR_CHECKS.filter((c) => !dismissed.has(c.id)), [dismissed]);
+  const all = useMemo(
+    () => checks.filter((c) => !dismissed.has(c.id)),
+    [checks, dismissed],
+  );
   const list = useMemo(() => all.filter((c) => c.kind === tab), [all, tab]);
 
   const counts = useMemo(() => {
@@ -68,9 +64,14 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
           <Button
             variant="outline"
             icon={I.Refresh}
-            onClick={() => pushToast("Advisor re-ran · 9 checks · 0 new findings.")}
+            disabled={isFetching}
+            onClick={() => {
+              void qc
+                .invalidateQueries({ queryKey: queryKeys.advisor() })
+                .then(() => pushToast("Advisor re-ran."));
+            }}
           >
-            Re-run all
+            {isFetching ? "Re-running…" : "Re-run all"}
           </Button>
         }
       />
@@ -132,11 +133,23 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
 
       {/* Findings */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {list.length === 0 ? (
+        {isLoading ? (
+          <>
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </>
+        ) : isError ? (
+          <div className="card empty">
+            <div className="ico"><I.AlertTriangle size={18} /></div>
+            <h4>Couldn't load advisor findings</h4>
+            <p>The advisor endpoint returned an error. Re-run to try again.</p>
+          </div>
+        ) : list.length === 0 ? (
           <div className="card empty">
             <div className="ico"><I.CheckCircle size={18} /></div>
             <h4>All clear in this category</h4>
-            <p>No outstanding findings. The advisor will re-check at the top of the hour.</p>
+            <p>No outstanding findings. Re-run after a schema or permission change.</p>
           </div>
         ) : (
           list.map((c) => (

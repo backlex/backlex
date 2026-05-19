@@ -6,6 +6,7 @@ import type { CollectionListItem } from "./config";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
 import { AdoptWizard } from "./adopt-wizard";
+import { useUrlState } from "@/lib/use-url-state";
 
 export interface CollectionsIndexProps {
   collections: CollectionListItem[];
@@ -26,7 +27,7 @@ export interface CollectionsIndexProps {
 }
 
 export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArchived, onToggleArchived, onRestore, onOpenApi, pushToast }: CollectionsIndexProps) {
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useUrlState("q", "");
   const [view, setView] = useState<"grid" | "table">("grid");
   const [adoptOpen, setAdoptOpen] = useState(false);
   // Single entry-point chooser: the create + adopt flows share one backend

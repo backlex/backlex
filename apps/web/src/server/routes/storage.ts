@@ -1,324 +1,47 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { and, count, desc, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
-import { AppError, type ImageTransform } from "@workeros/core";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
+import { AppError } from "@workeros/core";
 import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
 import { logActivity } from "../services/activity";
 import { signStorageUrl, verifyStorageUrl } from "../lib/crypto";
-import { cfImageFromUrl, type CfImageTransform } from "../adapters/image.cf";
 import { SECURITY, OkSchema, errorResponses, apiRegistry } from "../lib/openapi";
+import {
+  guardLogicalKey,
+  keyCandidates,
+  physicalKey,
+  requireTenantId,
+  stripTenantPrefix,
+} from "../services/storage/keys";
+import {
+  filesTable,
+  findOrCreateFolderByName,
+  folderNameFromKey,
+  foldersTable,
+} from "../services/storage/folders";
+import { isPrivateHost } from "../services/storage/hosts";
+import {
+  IMPORT_TIMEOUT_MS,
+  MAX_IMPORT_BYTES,
+  MAX_IMPORT_KEY_LENGTH,
+} from "../services/storage/constants";
+import {
+  BackfillResponse,
+  FileListMeta,
+  FileRowSchema,
+  FolderCounts,
+  FromUrlInput,
+  PatchInput,
+  SignInput,
+  SignResponse,
+  tags,
+  type FileRow,
+} from "../services/storage/schemas";
+import { serveObject } from "../services/storage/serve";
 
 export const FILES_COLLECTION = "system_files";
 
-/**
- * Reserved physical-key prefix that namespaces every uploaded object under
- * `tenants/<tenant-id>/`. Stored on disk + in `files.key`; never exposed to
- * API clients (we strip it on read and re-add it on write). Two tenants can
- * therefore reuse the same logical key (e.g. "logo.png") without colliding
- * either in the bucket or in the DB primary key.
- */
-const TENANT_PREFIX = "tenants/";
-
-const physicalKey = (tenantId: string, logical: string): string =>
-  `${TENANT_PREFIX}${tenantId}/${logical}`;
-
-const stripTenantPrefix = (tenantId: string, physical: string): string => {
-  const prefix = `${TENANT_PREFIX}${tenantId}/`;
-  return physical.startsWith(prefix) ? physical.slice(prefix.length) : physical;
-};
-
-const requireTenantId = (auth: { tenantId?: string | null }): string => {
-  if (!auth.tenantId) {
-    throw new AppError("VALIDATION", "Active tenant is required for storage operations");
-  }
-  return auth.tenantId;
-};
-
-const guardLogicalKey = (key: string) => {
-  if (key.startsWith(TENANT_PREFIX)) {
-    throw new AppError("VALIDATION", `Key prefix "${TENANT_PREFIX}" is reserved`);
-  }
-};
-
-const filesTable = (dialect: "pg" | "sqlite") =>
-  dialect === "pg" ? pg.schema.files : sqlite.schema.files;
-
-const foldersTable = (dialect: "pg" | "sqlite") =>
-  dialect === "pg" ? pg.schema.folders : sqlite.schema.folders;
-
-/**
- * Look up the folder whose name matches `name` for this tenant; create one
- * if it doesn't exist. Migration-friendly: lets an upload at
- * `photos/2024/spring/beach.jpg` auto-organize into a folder named
- * `photos/2024/spring` without the client pre-creating it.
- *
- * Uniqueness on `(tenant_id, name)` isn't enforced at the DB level yet, so
- * two parallel uploads racing on the same path may briefly insert dupes —
- * acceptable v1 trade-off; both rows still resolve to a valid folder.
- */
-async function findOrCreateFolderByName(
-  ctx: { db: unknown; dialect: "pg" | "sqlite" },
-  tenantId: string,
-  name: string,
-  ownerId: string | null,
-): Promise<string> {
-  const t = foldersTable(ctx.dialect);
-  const existing = (await (ctx.db as any)
-    .select({ id: t.id })
-    .from(t)
-    .where(and(eq(t.tenantId, tenantId), eq(t.name, name)))
-    .limit(1)) as { id: string }[];
-  if (existing[0]) return existing[0].id;
-  const id = crypto.randomUUID();
-  await (ctx.db as any).insert(t).values({
-    id,
-    name,
-    parentId: null,
-    ownerId,
-    tenantId,
-  });
-  return id;
-}
-
-/** Derive a folder-name path from a logical key. Returns null for files at
- *  the root (no "/" before the file name). */
-function folderNameFromKey(logicalKey: string): string | null {
-  const lastSlash = logicalKey.lastIndexOf("/");
-  if (lastSlash <= 0) return null;
-  return logicalKey.slice(0, lastSlash);
-}
-
-/** Both forms a row's `key` might take in production: the modern, tenant-
- *  prefixed `tenants/<tid>/<logical>` AND the bare logical key for rows
- *  uploaded before that prefix was introduced. Lookups, signs, deletes,
- *  and reads all match either form — the storage adapter then uses
- *  whatever key the row actually carries, so R2 GETs the right object. */
-function keyCandidates(tenantId: string, logicalKey: string): string[] {
-  const physical = physicalKey(tenantId, logicalKey);
-  if (physical === logicalKey) return [physical];
-  return [physical, logicalKey];
-}
-
-/** SSRF guard for the URL-import endpoint. Returns true for hostnames the
- *  Worker should refuse to fetch — link-local, loopback, RFC1918, the
- *  IPv6 equivalents, and common internal-DNS suffixes. Not airtight (DNS
- *  rebinding sidesteps a purely-syntactic check) but a reasonable v1
- *  layered with the runtime's own network policies. */
-function isPrivateHost(host: string): boolean {
-  const h = host.toLowerCase().replace(/^\[|\]$/g, "");
-  if (
-    h === "localhost" ||
-    h.endsWith(".local") ||
-    h.endsWith(".internal") ||
-    h.endsWith(".lan")
-  ) return true;
-  const ipv4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (ipv4) {
-    const a = Number(ipv4[1]);
-    const b = Number(ipv4[2]);
-    if (a === 0 || a === 10 || a === 127) return true;
-    if (a === 169 && b === 254) return true; // link-local
-    if (a === 172 && b >= 16 && b <= 31) return true;
-    if (a === 192 && b === 168) return true;
-    return false;
-  }
-  if (h === "::1" || h === "::") return true;
-  if (h.startsWith("fe80:")) return true; // link-local
-  if (h.startsWith("fc") || h.startsWith("fd")) return true; // unique local
-  return false;
-}
-
-/** Bounded length for keys we synthesize from URLs. Long query strings
- *  shouldn't make their way into storage paths. */
-const MAX_IMPORT_KEY_LENGTH = 256;
-const MAX_IMPORT_BYTES = 100 * 1024 * 1024;
-const IMPORT_TIMEOUT_MS = 30_000;
-
 const filesCollection = () => FILES_COLLECTION;
-
-interface FileRow {
-  key: string;
-  folderId: string | null;
-  ownerId: string | null;
-  acl: "public" | "private";
-  size: number;
-  contentType: string | null;
-  metadata: Record<string, unknown> | null;
-  createdAt: Date | number;
-}
-
-// Only the values that work on BOTH transform backends without semantic
-// drift: CF Image Resizing supports {cover, contain, scale-down, crop,
-// pad}; Bun.Image's `fit` is {fill, inside}. `cover` and `contain` are
-// the universally meaningful subset — anything else either errors at
-// the edge (CF 9401) or maps to a different operation on Bun.
-const FIT_VALUES = new Set(["cover", "contain"]);
-const FORMAT_VALUES = new Set(["webp", "jpeg", "png", "avif"]);
-
-interface ParsedTransform {
-  transform: ImageTransform;
-  focal?: { x: number; y: number };
-  /** True when any transform-related query parameter was provided. */
-  any: boolean;
-}
-
-/**
- * Validate the transform query string. Anything malformed throws VALIDATION
- * — silently dropping bad params would let `?width=abc` silently serve the
- * original at full quality, masking client bugs.
- */
-const parseTransform = (q: Record<string, string | undefined>): ParsedTransform => {
-  const out: ImageTransform = {};
-  let any = false;
-  let focal: { x: number; y: number } | undefined;
-
-  const intInRange = (raw: string, name: string, min: number, max: number): number => {
-    const n = Number(raw);
-    if (!Number.isFinite(n) || !Number.isInteger(n) || n < min || n > max) {
-      throw new AppError("VALIDATION", `${name} must be an integer between ${min} and ${max}`);
-    }
-    return n;
-  };
-
-  if (q.width !== undefined) { out.width = intInRange(q.width, "width", 1, 4096); any = true; }
-  if (q.height !== undefined) { out.height = intInRange(q.height, "height", 1, 4096); any = true; }
-  if (q.quality !== undefined) { out.quality = intInRange(q.quality, "quality", 1, 100); any = true; }
-  if (q.fit !== undefined) {
-    if (!FIT_VALUES.has(q.fit)) {
-      throw new AppError("VALIDATION", `fit must be one of: ${[...FIT_VALUES].join(", ")}`);
-    }
-    out.fit = q.fit as ImageTransform["fit"];
-    any = true;
-  }
-  if (q.format !== undefined) {
-    if (!FORMAT_VALUES.has(q.format)) {
-      throw new AppError("VALIDATION", `format must be one of: ${[...FORMAT_VALUES].join(", ")}`);
-    }
-    out.format = q.format as ImageTransform["format"];
-    any = true;
-  }
-  if (q.focal !== undefined) {
-    const m = q.focal.match(/^(\d{1,3}),(\d{1,3})$/);
-    if (!m) throw new AppError("VALIDATION", `focal must be "x,y" with values 0–100`);
-    const x = Number(m[1]);
-    const y = Number(m[2]);
-    if (x < 0 || x > 100 || y < 0 || y > 100) {
-      throw new AppError("VALIDATION", `focal x,y must be 0–100`);
-    }
-    focal = { x, y };
-    any = true;
-  }
-  return { transform: out, focal, any };
-};
-
-const isImageContentType = (ct: string | null | undefined): boolean =>
-  Boolean(ct && ct.startsWith("image/"));
-
-/** Stable ETag derived from the physical key + transform query — different
- *  transforms get distinct cache entries automatically. */
-const computeEtag = async (physical: string, queryString: string): Promise<string> => {
-  const data = new TextEncoder().encode(`${physical}::${queryString}`);
-  const digest = await crypto.subtle.digest("SHA-256", data as unknown as BufferSource);
-  const bytes = new Uint8Array(digest);
-  let hex = "";
-  for (let i = 0; i < 12; i++) hex += bytes[i]!.toString(16).padStart(2, "0");
-  return `W/"${hex}"`;
-};
-
-/** Serialize a transform back to the canonical query string so the ETag is
- *  stable regardless of param order. */
-const canonicalizeTransformQuery = (t: ImageTransform, focal?: { x: number; y: number }): string => {
-  const parts: string[] = [];
-  if (t.width !== undefined) parts.push(`width=${t.width}`);
-  if (t.height !== undefined) parts.push(`height=${t.height}`);
-  if (t.format !== undefined) parts.push(`format=${t.format}`);
-  if (t.quality !== undefined) parts.push(`quality=${t.quality}`);
-  if (t.fit !== undefined) parts.push(`fit=${t.fit}`);
-  if (focal) parts.push(`focal=${focal.x},${focal.y}`);
-  return parts.join("&");
-};
-
-const TRANSFORM_CACHE_HEADERS: Record<string, string> = {
-  // Transforms are content-addressed by query, so we can cache aggressively.
-  "cache-control": "public, max-age=31536000, immutable",
-};
-
-// ---------------------------------------------------------------------------
-// OpenAPI schemas
-// ---------------------------------------------------------------------------
-
-const FileRowSchema = z
-  .object({
-    key: z.string().openapi({ description: "Logical key (tenant prefix stripped)." }),
-    folderId: z.string().nullable(),
-    size: z.number().int().nonnegative(),
-    contentType: z.string().optional(),
-    ownerId: z.string().nullable(),
-    acl: z.enum(["public", "private"]),
-    metadata: z.record(z.string(), z.unknown()).nullable(),
-    uploadedAt: z.string().datetime(),
-  })
-  .openapi("FileRow");
-
-const FileListMeta = z
-  .object({
-    total: z.number().int().nonnegative(),
-    limit: z.number().int().positive(),
-    offset: z.number().int().nonnegative(),
-  })
-  .openapi("FileListMeta");
-
-const FromUrlInput = z
-  .object({
-    url: z.string().url(),
-    key: z.string().optional(),
-    folderId: z.string().nullable().optional(),
-    acl: z.enum(["public", "private"]).optional(),
-  })
-  .openapi("StorageFromUrlInput");
-
-const PatchInput = z
-  .object({
-    acl: z.enum(["public", "private"]).optional(),
-    folderId: z.string().nullable().optional(),
-    metadata: z.record(z.string(), z.unknown()).nullable().optional(),
-  })
-  .openapi("StoragePatchInput");
-
-const SignInput = z
-  .object({
-    ttlSeconds: z.number().int().min(60).max(86400).optional().openapi({
-      description: "Token lifetime in seconds (60–86400). Defaults to 3600.",
-    }),
-  })
-  .openapi("StorageSignInput");
-
-const SignResponse = z
-  .object({
-    url: z.string(),
-    expiresAt: z.string().datetime(),
-  })
-  .openapi("StorageSignResponse");
-
-const FolderCounts = z
-  .object({
-    root: z.number().int().nonnegative(),
-    byFolderId: z.record(z.string(), z.number().int().nonnegative()),
-    total: z.number().int().nonnegative(),
-  })
-  .openapi("StorageFolderCounts");
-
-const BackfillResponse = z
-  .object({
-    scanned: z.number().int().nonnegative(),
-    filesUpdated: z.number().int().nonnegative(),
-    foldersCreated: z.number().int().nonnegative(),
-  })
-  .openapi("StorageBackfillResponse");
-
-const tags = ["storage"];
 
 // NOTE: storage uses Hono catch-all syntax (`/:key{.+}`) so keys with slashes
 // like `photos/2024/spring/beach.jpg` route correctly. OpenAPI can't represent
@@ -1117,146 +840,3 @@ apiRegistry.registerPath({
     ...errorResponses,
   },
 });
-
-/**
- * Shared GET handler — used by both the cookie/session path and the token
- * bypass path. `skipPermissionFilter` is true on the token path because the
- * token itself proved authorization for this exact (tenant, key).
- */
-async function serveObject(
-  c: import("hono").Context<AppBindings>,
-  tenantId: string,
-  logicalKey: string,
-  skipPermissionFilter: boolean,
-): Promise<Response> {
-  const ctx = c.get("ctx");
-  const perm = skipPermissionFilter ? null : c.get("permission");
-  const t = filesTable(ctx.dialect);
-
-  const conds: SQL[] = [
-    inArray(t.key, keyCandidates(tenantId, logicalKey)),
-    eq(t.tenantId, tenantId),
-  ];
-  if (perm?.whereSql) conds.push(perm.whereSql);
-  const rows = (await (ctx.db as any)
-    .select()
-    .from(t)
-    .where(and(...conds))
-    .limit(1)) as FileRow[];
-  const row = rows[0];
-  if (!row) throw new AppError("NOT_FOUND", "Object not found");
-  // Storage adapter operates on whatever key the row actually carries —
-  // legacy rows without the tenant prefix kept their R2/fs object at the
-  // un-prefixed location, so we must follow it.
-  const key = row.key;
-
-  const parsed = parseTransform({
-    width: c.req.query("width"),
-    height: c.req.query("height"),
-    quality: c.req.query("quality"),
-    format: c.req.query("format"),
-    fit: c.req.query("fit"),
-    focal: c.req.query("focal"),
-  });
-
-  // Fast path — no transform requested, stream the raw object.
-  if (!parsed.any) {
-    const obj = await ctx.storage.get(key);
-    if (!obj) throw new AppError("NOT_FOUND", "Object not found");
-    return new Response(obj.body, {
-      headers: {
-        "content-type":
-          obj.meta.contentType ?? row.contentType ?? "application/octet-stream",
-        "content-length": String(obj.meta.size),
-      },
-    });
-  }
-
-  // Transform path — only meaningful on image content types.
-  const ct = row.contentType;
-  if (!isImageContentType(ct)) {
-    throw new AppError(
-      "VALIDATION",
-      "Transform parameters only apply to image content types",
-    );
-  }
-
-  const queryString = canonicalizeTransformQuery(parsed.transform, parsed.focal);
-  const etag = await computeEtag(key, queryString);
-  if (c.req.header("if-none-match") === etag) {
-    return new Response(null, { status: 304, headers: { etag } });
-  }
-
-  const isWorker = typeof (ctx.env as { R2?: unknown }).R2 !== "undefined";
-  const publicBase = (ctx.env as { R2_PUBLIC_BASE?: string }).R2_PUBLIC_BASE;
-
-  // Workers + public R2 origin: let the edge resize. Cheapest path — no
-  // bytes through the Worker isolate. Requires the file to be reachable
-  // publicly, which is only honest when the row's ACL is public.
-  if (isWorker && publicBase && row.acl === "public") {
-    const origin = publicBase.replace(/\/$/, "");
-    const sourceUrl = `${origin}/${key}`;
-    // CF Image Resizing wants a gravity object — focal x/y in 0..1.
-    const cf: CfImageTransform = {
-      ...parsed.transform,
-      ...(parsed.focal
-        ? { gravity: { x: parsed.focal.x / 100, y: parsed.focal.y / 100 } }
-        : {}),
-    };
-    const resp = await cfImageFromUrl(sourceUrl, cf);
-    const headers = new Headers(resp.headers);
-    headers.set("etag", etag);
-    for (const [k, v] of Object.entries(TRANSFORM_CACHE_HEADERS)) headers.set(k, v);
-    return new Response(resp.body, { status: resp.status, headers });
-  }
-
-  // Bun / fs / passthrough — read the object and run it through ctx.image.
-  // Workers without a public origin would fall here, but ctx.image is the
-  // passthrough adapter (no Bun.Image), so transforms are a no-op. We'd
-  // rather surface that than silently lie.
-  if (isWorker && !publicBase) {
-    throw new AppError(
-      "VALIDATION",
-      "Image transform on Workers requires R2_PUBLIC_BASE to be set and the file to be public",
-    );
-  }
-  if (isWorker && row.acl !== "public") {
-    throw new AppError(
-      "VALIDATION",
-      "Image transform on Workers is only available for public files",
-    );
-  }
-  if (ctx.image.name === "passthrough") {
-    throw new AppError(
-      "VALIDATION",
-      "This runtime has no image-transform backend (install Bun ≥ 1.2, or deploy on Cloudflare Workers with R2_PUBLIC_BASE)",
-    );
-  }
-
-  const source = await ctx.storage.get(key);
-  if (!source) throw new AppError("NOT_FOUND", "Object not found");
-  const transformed = await ctx.image.transform(
-    source.body,
-    ct ?? undefined,
-    parsed.transform,
-  );
-  // Bun.Image returns a Uint8Array; compute the length so clients see a
-  // sensible content-length and HEAD requests can read it.
-  const bytes =
-    transformed.body instanceof Uint8Array
-      ? transformed.body
-      : transformed.body instanceof ArrayBuffer
-        ? new Uint8Array(transformed.body)
-        : null;
-  const responseBody: BodyInit = bytes
-    ? (bytes as unknown as BodyInit)
-    : (transformed.body as unknown as BodyInit);
-  return new Response(responseBody, {
-    headers: {
-      "content-type": transformed.contentType,
-      ...(bytes ? { "content-length": String(bytes.byteLength) } : {}),
-      etag,
-      ...TRANSFORM_CACHE_HEADERS,
-    },
-  });
-}

@@ -61,7 +61,37 @@ export interface Ctx {
   image: ImageAdapter;
 }
 
+// Memoize the assembled Ctx by Env reference. Workers reuse the same `env`
+// object across requests in the same isolate, so we can keep one Ctx alive —
+// `createAuth` + the drizzle adapter setup happens once per isolate instead of
+// on every request. We deliberately key on identity (WeakMap) rather than
+// serialising env, so a fresh deployment with a different binding gets a fresh
+// Ctx automatically.
+const ctxCache = new WeakMap<object, Ctx>();
+// Per-Ctx email adapter cache — exposed so the admin email-config write path
+// can drop a stale entry after a workspace updates its config (would otherwise
+// keep serving the previous adapter for the rest of the isolate's life).
+const emailCaches = new WeakMap<object, Map<string, Promise<EmailAdapter>>>();
+/** Drop a single tenant's cached email adapter. Also drops the "" key (the
+ *  env-default fallback used when no workspace is supplied). */
+export const invalidateEmailCache = (env: Env, tenantId: string): void => {
+  const m = emailCaches.get(env as unknown as object);
+  if (!m) return;
+  m.delete(tenantId);
+  m.delete("");
+};
+/** Drop every cached email adapter for this isolate. Use after writes to the
+ *  `_global` row — that fallback layer affects every tenant that doesn't have
+ *  its own `email_config` row, so a per-tenant invalidation alone would leave
+ *  most workspaces serving the previous adapter. */
+export const invalidateAllEmailCaches = (env: Env): void => {
+  emailCaches.get(env as unknown as object)?.clear();
+};
+
 export const buildContext = (env: Env): Ctx => {
+  const cached = ctxCache.get(env as unknown as object);
+  if (cached) return cached;
+
   const dialect: "pg" | "sqlite" =
     env.D1 ? "sqlite" : env.DATABASE_URL ? "pg" : "sqlite";
 
@@ -99,8 +129,12 @@ export const buildContext = (env: Env): Ctx => {
 
   const email: EmailAdapter = selectEmailAdapter(env);
 
-  // Per-request memo for `emailFor` — each workspace resolves at most once.
+  // `emailFor` resolves a tenant's stored email_config (with fallback) on
+  // first call and caches the adapter. Cache is isolate-wide (one entry per
+  // tenant); the admin email-config write path calls `invalidateEmailCache`
+  // to drop a stale entry after an update so the next request rebuilds.
   const emailCache = new Map<string, Promise<EmailAdapter>>();
+  emailCaches.set(env as unknown as object, emailCache);
   const emailFor = (tenantId: string | null | undefined): Promise<EmailAdapter> => {
     const key = tenantId ?? "";
     let p = emailCache.get(key);
@@ -255,6 +289,7 @@ export const buildContext = (env: Env): Ctx => {
   // Late-bind so the `onUserCreated` closure can publish events through the
   // fully assembled Ctx (runFlows + webhook dispatch need `fullCtx`).
   fullCtx = ctx;
+  ctxCache.set(env as unknown as object, ctx);
   return ctx;
 };
 

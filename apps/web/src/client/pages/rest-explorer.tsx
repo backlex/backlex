@@ -1238,7 +1238,7 @@ const EndpointList = ({
   }, [filtered]);
 
   return (
-    <Card className="flex h-full max-h-[calc(100vh-220px)] flex-col overflow-hidden">
+    <Card className="rest-explorer-list-card flex h-full flex-col overflow-hidden">
       <CardHeader className="gap-2">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
@@ -1399,20 +1399,19 @@ export const RestExplorerPage = () => {
           ) : null
         }
       />
-      <div
-        className="grid min-h-0 flex-1 gap-4"
-        style={{ gridTemplateColumns: "320px minmax(0, 1fr)" }}
-      >
-        <EndpointList
-          endpoints={endpoints}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          search={search}
-          onSearch={setSearch}
-          onRefetch={() => void load()}
-          loading={loading}
-        />
-        <div className="min-h-0 max-h-[calc(100vh-220px)] overflow-auto">
+      <div className="rest-explorer-split min-h-0 flex-1 gap-4">
+        <div className="rest-explorer-list min-h-0">
+          <EndpointList
+            endpoints={endpoints}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            search={search}
+            onSearch={setSearch}
+            onRefetch={() => void load()}
+            loading={loading}
+          />
+        </div>
+        <div className="rest-explorer-detail min-h-0 overflow-auto">
           {selected ? (
             <EndpointDetail ep={selected} doc={doc} baseUrl={baseUrl} />
           ) : (

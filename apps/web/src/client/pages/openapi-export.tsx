@@ -299,12 +299,21 @@ export const OpenApiExportPage = () => {
   // --- Render ------------------------------------------------------------
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="openapi-export-page flex flex-col gap-6">
+      {/*
+        PageHeader's `actions` slot uses `flex shrink-0`, so this 3-button
+        row would crush the description column to ~100px on narrow viewports
+        (~826px) and force the description to wrap word-per-line. Pass the
+        actions through `actions={…}` but wrap them in `openapi-actions`;
+        the CSS at the end of admin.css unsets the PageHeader's `shrink-0`
+        and lets the buttons wrap to a 2nd line when there isn't enough
+        horizontal room.
+      */}
       <PageHeader
         title="OpenAPI"
         description="Machine-readable spec for every /api endpoint in this workspace — including dynamic /api/items/{slug} entries for your collections. Import into Postman, Insomnia, Swagger UI, or any code-gen tool."
         actions={
-          <>
+          <div className="openapi-actions flex flex-wrap items-center justify-end gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -332,7 +341,7 @@ export const OpenApiExportPage = () => {
               <I.Download size={14} />
               {downloading === "yaml" ? "Downloading…" : "Download YAML"}
             </Button>
-          </>
+          </div>
         }
       />
 

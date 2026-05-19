@@ -24,12 +24,17 @@
  * surfaces and growing dead code.
  */
 import { useQuery } from "@tanstack/react-query";
-import { collectionsApi, rolesApi, tenantsApi } from "./api";
+import { collectionsApi, metricsApi, rolesApi, tenantsApi } from "./api";
 
 export const queryKeys = {
   tenants: () => ["tenants"] as const,
   tenantMembers: (tenantId: string | null) => ["tenants", tenantId, "members"] as const,
-  collections: () => ["collections"] as const,
+  /** Keyed by the archived flag — active and archived are distinct cache
+   *  entries so toggling the Collections-index view doesn't clobber the
+   *  other list. `invalidateQueries({ queryKey: ["collections"] })` still
+   *  matches both because the prefix is shared. */
+  collections: (includeArchived = false) => ["collections", { includeArchived }] as const,
+  metricsOverview: (range: string) => ["metrics", "overview", range] as const,
   roles: () => ["roles"] as const,
 };
 
@@ -51,10 +56,28 @@ export function useTenantMembers(tenantId: string | null) {
   });
 }
 
-export function useCollections() {
+/**
+ * Collections list. `includeArchived` switches the endpoint to
+ * `?include_archived=true` (adopted soft-delete rows) — the archived view
+ * in the Collections index. Callers still filter by `status` themselves;
+ * this only governs which rows the server returns.
+ */
+export function useCollections(includeArchived = false) {
   return useQuery({
-    queryKey: queryKeys.collections(),
-    queryFn: () => collectionsApi.list(),
+    queryKey: queryKeys.collections(includeArchived),
+    queryFn: () => collectionsApi.listWithArchived(includeArchived),
+  });
+}
+
+/**
+ * Admin metrics overview — used by the Collections index to enrich each
+ * collection row with row counts / 24h write activity. Separate query so it
+ * dedupes with any other consumer and refetches on its own cadence.
+ */
+export function useMetricsOverview(range = "24h") {
+  return useQuery({
+    queryKey: queryKeys.metricsOverview(range),
+    queryFn: () => metricsApi.overview(range),
   });
 }
 

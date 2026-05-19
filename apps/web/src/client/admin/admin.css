@@ -2217,3 +2217,22 @@ input[type="range"]:focus-visible::-moz-range-thumb {
     justify-content: flex-start;
   }
 }
+
+/* ─── Collections index responsive ─── */
+/* Stops the Collections page from forcing horizontal scroll on phone-sized
+   viewports. Root causes addressed inline (in collections-index.tsx): the
+   card grid `minmax(280px, 1fr)` was switched to `minmax(min(100%, 280px),
+   1fr)`, the inner stats grid switched to `repeat(3, minmax(0, 1fr))`, and
+   the card slug + sub-line + stat values got ellipsis truncation so long
+   slugs / timestamps can no longer push a card wider than its column.
+   The rules below tighten the PageHeader title row on narrow viewports —
+   shadcn `<h1 className="flex items-center">` doesn't wrap on its own, so a
+   long title + two inline badges would otherwise expand past viewport. */
+.collections-index { width: 100%; max-width: 100%; }
+@media (max-width: 640px) {
+  /* Allow the PageHeader title + badges row to wrap onto a second line. The
+     h1 is `flex items-center` (no wrap) in the shared PageHeader; scoping
+     this to `.collections-index` keeps the rule narrow. */
+  .collections-index h1 { flex-wrap: wrap; }
+  .collections-index h1 > * { min-width: 0; }
+}

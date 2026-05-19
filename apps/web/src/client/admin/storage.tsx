@@ -694,7 +694,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         <button className={`chip ${view === "list" ? "active" : ""}`} onClick={() => setView("list")}><I.Inbox size={12} /> List</button>
       </div>
 
-      <div className="master-detail" style={{ "--md-aside": "240px" }}>
+      <div className="master-detail storage-master-detail" style={{ "--md-aside": "240px" }}>
         <div className="card" style={{ padding: 0, overflow: "hidden", position: "sticky", top: 12, maxHeight: "calc(100vh - 160px)", display: "flex", flexDirection: "column" }}>
           <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px" }}>
             <I.Folder size={13} />

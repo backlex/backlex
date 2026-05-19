@@ -4,6 +4,7 @@ import type { Context } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { enforceIpRateLimit } from "../lib/auth-rate-limit";
 import {
   assertRoleBindable,
   bindableRoles,
@@ -206,6 +207,10 @@ export const apiKeysRoutes = new OpenAPIHono<AppBindings>()
       },
     }),
     async (c) => {
+      // Per-IP cap on key creation — a runaway script (or compromised cookie)
+      // shouldn't be able to mint hundreds of keys in a minute. Tuned generously
+      // since each request is also requireUser-gated.
+      enforceIpRateLimit(c, "apikey-create", 10);
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const tenantId = requireTenant(c);

@@ -1,5 +1,5 @@
 import type { MiddlewareHandler } from "hono";
-import { getCookie, setCookie } from "hono/cookie";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { and, eq, or } from "drizzle-orm";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
@@ -220,6 +220,12 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   // the lookup off the request path for every member-of-tenant call, which
   // is by far the common case.
   let tenantRoles: string[] = [];
+  // Whether to persist this tenant choice in the workeros-tenant cookie.
+  // Default true — the common case is a member operating on a workspace they
+  // belong to. Flipped to false when we're letting a cross-tenant admin
+  // *view* another workspace via the super-admin shortcut: their actual home
+  // workspace should not be silently overwritten by a one-shot visit.
+  let pinTenantCookie = true;
   if (auth.userId && auth.plane !== "app") {
     if (tenantId) {
       const [member, scopedRoles] = await Promise.all([
@@ -251,6 +257,10 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
         ]);
         if (globalRoles.includes("admin") && exists) {
           tenantRoles = scopedRoles; // admin keeps tenant-scoped role names
+          // Cross-tenant admin shortcut: viewing only. Don't persist the
+          // visit so the next request without a header drops back to the
+          // admin's own workspace (and clear any leaked cookie below).
+          pinTenantCookie = false;
         } else {
           tenantId = null;
         }
@@ -302,11 +312,17 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   // closed-over `tenantId` from the pre-next phase clobbers their cookie.
   const finalTenantId =
     (c.get("auth")?.tenantId as string | null | undefined) ?? tenantId;
-  if (finalTenantId)
+  if (finalTenantId && pinTenantCookie) {
     setCookie(c, TENANT_COOKIE, finalTenantId, {
       httpOnly: false,
       sameSite: "Lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 30,
-  });
+    });
+  } else if (!pinTenantCookie) {
+    // Cross-tenant admin pass-through: actively clear any leaked cookie so
+    // a previous header-driven visit doesn't keep silently routing every
+    // subsequent request through the foreign workspace.
+    deleteCookie(c, TENANT_COOKIE, { path: "/" });
+  }
 };

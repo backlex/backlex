@@ -113,7 +113,7 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
         : !/^[a-z][a-z0-9_]*$/.test(slugClean)
           ? "must start with a letter; snake_case only"
           : existingSlugs.some((s) => s !== schema.slug && s === slugClean)
-            ? `c_${slugClean} already exists`
+            ? `${slugClean} already exists`
             : null;
   const slugDirty = slugClean !== schema.slug;
 
@@ -137,7 +137,6 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
           <div className="field" style={{ gridColumn: "1 / -1" }}>
             <label className="field-label">Slug</label>
             <div className={`input-affix ${slugError ? "error" : ""}`}>
-              <span className="input-affix-prefix font-mono">c_</span>
               <input
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
@@ -157,7 +156,7 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
             <span className="field-hint" style={slugError ? { color: "var(--destructive)" } : undefined}>
               {slugError ??
                 (slugDirty
-                  ? <>Will rename <span className="font-mono">c_{schema.slug}</span> → <span className="font-mono">c_{slugClean}</span> and update permission rules, webhooks, function patterns, flow steps, revisions, comments, and audit log.</>
+                  ? <>Will rename <span className="font-mono">{schema.slug}</span> → <span className="font-mono">{slugClean}</span> and update permission rules, webhooks, function patterns, flow steps, revisions, comments, and audit log.</>
                   : <>URL identifier and physical table prefix. Renaming cascades through all references.</>)}
             </span>
           </div>
@@ -403,7 +402,7 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
             <div>
               <div style={{ fontSize: 13, fontWeight: 500 }}>Delete this collection</div>
               <div className="field-hint">
-                Drops the physical <span className="font-mono">c_{schema.slug}</span> table and all rows.
+                Drops the physical table and all rows.
                 Permissions and revisions tied to the slug are removed too. This is irreversible.
               </div>
             </div>

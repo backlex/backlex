@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
 import type { AuthPlane } from "@workeros/core";
+import { createD1SessionClient } from "@workeros/db/sqlite";
 import { buildContext, type Ctx } from "./context";
 import { errorHandler } from "./middleware/error";
 import { sessionMiddleware } from "./middleware/session";
@@ -111,11 +112,25 @@ export const createApp = (env: Env) => {
   app.use("*", secureHeaders());
 
   // Build the per-request context *before* CORS so the CORS origin check can
-  // read the active workspace set. `buildContext` is synchronous and cheap
-  // (it only constructs adapters); the one-time role/seed bootstrap is gated
-  // by a module flag.
+  // read the active workspace set. `buildContext` is memoized per isolate
+  // (createAuth + adapter setup happens once); the one-time role/seed bootstrap
+  // is gated by a module flag.
+  //
+  // On D1 we open a per-request Sessions-API client so reads can hit the
+  // nearest replica. The base Ctx (and the better-auth instance it carries)
+  // stays bound to the original D1 binding — better-auth's own DB writes
+  // always go through that and land on primary, while route handlers use the
+  // session-bound `ctx.db` and benefit from replica routing.
   app.use("*", async (c, next) => {
-    const ctx = buildContext(env);
+    const baseCtx = buildContext(env);
+    let ctx: Ctx = baseCtx;
+    if (env.D1) {
+      // `first-unconstrained` lets D1 pick the nearest replica for the first
+      // read and pins the rest of the session to it with read-your-writes
+      // consistency. Mutations always route to primary regardless of the
+      // constraint, so this is safe even on write-mixed requests.
+      ctx = { ...baseCtx, db: createD1SessionClient(env.D1, "first-unconstrained") };
+    }
     c.set("ctx", ctx);
     if (!rolesSeeded) {
       const dbCtx = { db: ctx.db, dialect: ctx.dialect };

@@ -21,7 +21,7 @@ workeros/
 ## Adapter pattern
 
 Every cross-runtime concern hides behind a TypeScript interface in
-`@workeros/core/adapters`. `apps/api/src/context.ts::buildContext`
+`@workeros/core/adapters`. `apps/web/src/server/context.ts::buildContext`
 picks the right implementation based on bindings/env.
 
 | Interface           | Bun                | Cloudflare Workers      | Vercel/Netlify Edge   |
@@ -103,7 +103,7 @@ response.
 
 ## Auth pipeline
 
-Per-request middleware in `apps/api/src/app.ts`:
+Per-request middleware in `apps/web/src/server/app.ts`:
 
 1. **CORS** — origin = `env.APP_URL`, credentials allowed.
 2. **buildContext** — wires DB, adapters, schema-seeded roles.

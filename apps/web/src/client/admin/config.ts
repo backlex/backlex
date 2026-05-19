@@ -78,6 +78,7 @@ export type AdapterId = "bun" | "workers" | "vercel";
 export const NAV_ITEMS: NavItem[] = [
   { id: "overview", label: "Overview", icon: "Activity" },
   { id: "collections", label: "Collections", icon: "Database" },
+  { id: "access", label: "Access", icon: "Shield" },
   { id: "database", label: "Database", icon: "Server" },
   { id: "storage", label: "Storage", icon: "Folder" },
   { id: "flows", label: "Flows", icon: "Bolt" },
@@ -101,7 +102,6 @@ export const NAV_DEVELOPERS: NavItem[] = [
 
 export const NAV_SETTINGS: NavItem[] = [
   { id: "authentication", label: "Authentication", icon: "Shield" },
-  { id: "roles", label: "Roles & permissions", icon: "Shield" },
   { id: "users", label: "Users", icon: "Users" },
   { id: "app-users", label: "App users", icon: "Users" },
   { id: "api-keys", label: "API keys", icon: "Code" },

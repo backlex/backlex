@@ -173,7 +173,7 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
       <div className="mp-invite">
         <I.Mail size={13} />
         <Input
-          className="mp-invite-input"
+          className="mp-invite-input min-w-[200px]"
           placeholder="invite by email…"
           value={invite}
           onChange={(e) => setInvite(e.target.value)}

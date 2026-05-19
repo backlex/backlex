@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Realtime page — collection-derived channels + permission-filtered SSE tail
 import { useEffect, useState } from "react";
 import { I } from "../icons";
@@ -48,7 +47,7 @@ export function RealtimePage({ events, active, onActiveChange, pushToast }: { ev
         description="In-process pub/sub on Bun, Durable Objects on Workers. Permission filter applies on subscribe + publish."
         actions={<Button variant="outline" icon={I.Refresh} onClick={() => pushToast("Channels refreshed.")}>Refresh</Button>}
       />
-      <div className="master-detail" style={{ "--md-aside": "300px" }}>
+      <div className="master-detail" style={{ "--md-aside": "300px" } as React.CSSProperties}>
         <div className="card">
           {channels.length === 0 && (
             <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>No channels — create a collection to get one.</div>

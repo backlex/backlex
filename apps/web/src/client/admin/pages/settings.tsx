@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Settings page — general/appearance/email/bindings/env/about tabs
 import { useCallback, useEffect, useRef, useState } from "react";
 import { I, type IconComponent } from "../icons";
@@ -73,7 +72,7 @@ function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
   };
   useEffect(() => { void load(); }, []);
 
-  const fields = EMAIL_PROVIDER_FIELDS[provider] ?? EMAIL_PROVIDER_FIELDS.inherit;
+  const fields = EMAIL_PROVIDER_FIELDS[provider] ?? EMAIL_PROVIDER_FIELDS.inherit!;
   const mark = () => setDirty(true);
 
   const save = async () => {

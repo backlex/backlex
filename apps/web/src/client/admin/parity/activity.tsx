@@ -5,7 +5,7 @@ import { Badge, Button, IconButton, JsonBlock, PageHeader } from "../ui";
 import { activityApi, type ApiActivity } from "../api";
 
 export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) {
-  type Evt = { t: string; actor: string; action: string; resource: string; diff: string; ip: string; raw: ApiActivity };
+  type Evt = { t: string; actor: string; action: string; resource: string; diff: string; ip: string; durationMs: number | null; raw: ApiActivity };
   const PAGE_SIZE = 50;
   const [events, setEvents] = useState<Evt[]>([]);
   const [filter, setFilter] = useState("all");
@@ -22,8 +22,15 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
     resource: `${a.collection}${a.itemId ? "/" + a.itemId : ""}`,
     diff: typeof a.payload === "string" ? a.payload : JSON.stringify(a.payload ?? {}).slice(0, 80),
     ip: a.ip ?? "—",
+    durationMs: a.durationMs,
     raw: a,
   });
+
+  const formatDuration = (ms: number | null): string => {
+    if (ms == null || !Number.isFinite(ms)) return "—";
+    if (ms < 1000) return `${Math.round(ms)}ms`;
+    return `${(ms / 1000).toFixed(1)}s`;
+  };
 
   const fetchPage = async (offset: number, append: boolean) => {
     setLoading(true);
@@ -71,7 +78,7 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
       <div className="card">
         <div className="table-scroll">
         <table className="table">
-          <thead><tr><th style={{ width: 160, whiteSpace: "nowrap" }}>Time</th><th style={{ width: 200 }}>Actor</th><th style={{ width: 140 }}>Action</th><th>Resource</th><th>Diff</th><th style={{ width: 130 }}>IP</th></tr></thead>
+          <thead><tr><th style={{ width: 160, whiteSpace: "nowrap" }}>Time</th><th style={{ width: 90, textAlign: "right" }}>Duration</th><th style={{ width: 140 }}>Action</th><th>Resource</th><th>Diff</th><th style={{ width: 130 }}>IP</th></tr></thead>
           <tbody>
             {visible.map((e, i) => (
               <tr
@@ -81,7 +88,7 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
                 title="Click for full payload"
               >
                 <td className="font-mono muted tabular-nums" style={{ fontSize: 11.5, whiteSpace: "nowrap" }}>{e.t}</td>
-                <td style={{ wordBreak: "break-all" }}>{e.actor}</td>
+                <td className="font-mono muted tabular-nums" style={{ fontSize: 11.5, textAlign: "right", whiteSpace: "nowrap" }}>{formatDuration(e.durationMs)}</td>
                 <td><Badge variant={actionColor(e.action)} mono>{e.action}</Badge></td>
                 <td className="font-mono" style={{ fontSize: 12 }}>{e.resource}</td>
                 <td className="font-mono muted" style={{ fontSize: 11.5 }}>{e.diff}</td>

@@ -1420,7 +1420,7 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
               <th style={{ textAlign: "right", width: 110 }}>Deliveries</th>
               <th style={{ width: 110 }}>Success</th>
               <th style={{ width: 100 }}>Status</th>
-              <th style={{ width: 44 }}></th>
+              <th className="col-actions" style={{ width: 44 }}></th>
             </tr>
           </thead>
           <tbody>
@@ -1449,7 +1449,7 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
                       : h.ok ? <Badge variant="default">healthy</Badge>
                         : <Badge variant="destructive">failing</Badge>}
                   </td>
-                  <td style={{ textAlign: "right", position: "relative" }} onClick={(e) => e.stopPropagation()}>
+                  <td className="col-actions" style={{ textAlign: "right", position: "relative" }} onClick={(e) => e.stopPropagation()}>
                     <IconButton icon={I.More} onClick={(e: any) => { e.stopPropagation(); setMenuOpen(isOpen ? null : h.id); }} />
                     {isOpen && (
                       <div className="users-menu" onClick={(e) => e.stopPropagation()}>
@@ -1515,7 +1515,7 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
         </div>
         <div className="table-scroll">
         <table className="table">
-          <thead><tr><th style={{ width: 100 }}>Time</th><th style={{ width: 80 }}>Hook</th><th>Event</th><th style={{ width: 90, textAlign: "right" }}>Status</th><th style={{ width: 80, textAlign: "right" }}>ms</th><th style={{ width: 60 }}></th></tr></thead>
+          <thead><tr><th style={{ width: 100 }}>Time</th><th style={{ width: 80 }}>Hook</th><th>Event</th><th style={{ width: 90, textAlign: "right" }}>Status</th><th style={{ width: 80, textAlign: "right" }}>ms</th><th className="col-actions" style={{ width: 60 }}></th></tr></thead>
           <tbody>
             {deliveries.map((d, i) => (
               <tr key={i}>
@@ -1524,7 +1524,7 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
                 <td className="font-mono" style={{ fontSize: 12 }}>{d.ev}</td>
                 <td className="tabular-nums" style={{ textAlign: "right" }}><Badge variant={d.code < 300 ? "default" : "destructive"}>{d.code}</Badge></td>
                 <td className="tabular-nums muted" style={{ textAlign: "right" }}>{d.ms}</td>
-                <td style={{ textAlign: "right" }}>
+                <td className="col-actions" style={{ textAlign: "right" }}>
                   <Button variant="ghost" size="sm" onClick={async () => {
                     try {
                       await api(`/api/webhooks/_deliveries/${d.id}/retry`, { method: "POST" });
@@ -1959,7 +1959,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
               <th style={{ width: 140 }}>Provider</th>
               <th style={{ width: 70, textAlign: "center" }}>2FA</th>
               <th style={{ width: 120 }}>Last seen</th>
-              <th style={{ width: 44 }}></th>
+              <th className="col-actions" style={{ width: 44 }}></th>
             </tr>
           </thead>
           <tbody>
@@ -1997,7 +1997,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
                       : <span className="users-mfa off" title="2FA disabled">off</span>}
                   </td>
                   <td className="muted font-mono" style={{ fontSize: 11.5 }}>{u.last}</td>
-                  <td style={{ textAlign: "right", position: "relative" }} onClick={(e) => e.stopPropagation()}>
+                  <td className="col-actions" style={{ textAlign: "right", position: "relative" }} onClick={(e) => e.stopPropagation()}>
                     <IconButton icon={I.More} onClick={(e: any) => { e.stopPropagation(); setMenuOpen(isOpen ? null : u.id); }} />
                     {isOpen && (
                       <div className="users-menu" onClick={(e) => e.stopPropagation()}>

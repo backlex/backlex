@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { I } from "../icons";
 import { Badge, Button, PageHeader } from "../ui";
 import { ConfirmDialog } from "../sheet";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 
 const REV_AUTO_FIELDS = new Set([
   "id",
@@ -198,42 +199,46 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
       <div className="master-detail-3">
         <div className="card">
           <div className="card-section" style={{ fontSize: 12, fontWeight: 500 }}>Items <span className="muted font-mono" style={{ fontSize: 11 }}>· c_{collectionSlug}</span></div>
-          {itemsLoading && (
-            <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>Loading…</div>
-          )}
-          {!itemsLoading && items.length === 0 && (
-            <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>No items in this collection yet.</div>
-          )}
-          {items.map((it) => (
-            <div key={it.id} onClick={() => setActiveId(it.id)} style={{ padding: "8px 12px", borderTop: "1px solid var(--border)", cursor: "pointer", background: activeId === it.id ? "var(--accent)" : "transparent" }}>
-              <div style={{ fontSize: 12.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.title}</div>
-              <div className="font-mono muted" style={{ fontSize: 10.5 }}>{it.id.slice(0, 14)}…</div>
-            </div>
-          ))}
+          <ScrollArea className="h-[60vh]">
+            {itemsLoading && (
+              <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>Loading…</div>
+            )}
+            {!itemsLoading && items.length === 0 && (
+              <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>No items in this collection yet.</div>
+            )}
+            {items.map((it) => (
+              <div key={it.id} onClick={() => setActiveId(it.id)} style={{ padding: "8px 12px", borderTop: "1px solid var(--border)", cursor: "pointer", background: activeId === it.id ? "var(--accent)" : "transparent" }}>
+                <div style={{ fontSize: 12.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.title}</div>
+                <div className="font-mono muted" style={{ fontSize: 10.5 }}>{it.id.slice(0, 14)}…</div>
+              </div>
+            ))}
+          </ScrollArea>
         </div>
         <div className="card">
           <div className="card-section" style={{ fontSize: 12, fontWeight: 500 }}>Timeline · {item?.title?.slice(0, 18) ?? "—"}{item ? "…" : ""}</div>
-          {revsLoading && (
-            <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>Loading…</div>
-          )}
-          {!revsLoading && entries.length === 0 && (
-            <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>{activeId ? "No revisions yet for this item." : "Select an item to see its history."}</div>
-          )}
-          {!revsLoading && entries.length === 1 && entries[0].kind === "live" && (
-            <div className="muted" style={{ padding: "10px 12px", fontSize: 11.5, borderTop: "1px solid var(--border)" }}>Only the current state exists — no edits recorded yet.</div>
-          )}
-          {entries.map((e, i) => {
-            const sel = activeIdx === i;
-            return (
-              <div key={e.kind === "live" ? "__live" : e.id} onClick={() => setActiveIdx(i)} style={{ padding: "8px 12px", borderTop: "1px solid var(--border)", cursor: "pointer", background: sel ? "var(--accent)" : "transparent", display: "flex", flexDirection: "column", gap: 2 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span className="font-mono" style={{ fontSize: 12, fontWeight: 500 }}>{e.kind === "live" ? "live" : `v${e.v}`}</span>
-                  <Badge variant={e.kind === "live" ? "default" : "secondary"}>{e.kind === "live" ? "current" : i === entries.length - 1 ? "initial" : "edit"}</Badge>
+          <ScrollArea className="h-[60vh]">
+            {revsLoading && (
+              <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>Loading…</div>
+            )}
+            {!revsLoading && entries.length === 0 && (
+              <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>{activeId ? "No revisions yet for this item." : "Select an item to see its history."}</div>
+            )}
+            {!revsLoading && entries.length === 1 && entries[0].kind === "live" && (
+              <div className="muted" style={{ padding: "10px 12px", fontSize: 11.5, borderTop: "1px solid var(--border)" }}>Only the current state exists — no edits recorded yet.</div>
+            )}
+            {entries.map((e, i) => {
+              const sel = activeIdx === i;
+              return (
+                <div key={e.kind === "live" ? "__live" : e.id} onClick={() => setActiveIdx(i)} style={{ padding: "8px 12px", borderTop: "1px solid var(--border)", cursor: "pointer", background: sel ? "var(--accent)" : "transparent", display: "flex", flexDirection: "column", gap: 2 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span className="font-mono" style={{ fontSize: 12, fontWeight: 500 }}>{e.kind === "live" ? "live" : `v${e.v}`}</span>
+                    <Badge variant={e.kind === "live" ? "default" : "secondary"}>{e.kind === "live" ? "current" : i === entries.length - 1 ? "initial" : "edit"}</Badge>
+                  </div>
+                  <div className="muted font-mono" style={{ fontSize: 10.5 }}>{subtitleFor(e)}</div>
                 </div>
-                <div className="muted font-mono" style={{ fontSize: 10.5 }}>{subtitleFor(e)}</div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </ScrollArea>
         </div>
         <div className="card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
           {!active ? (

@@ -694,7 +694,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         <button className={`chip ${view === "list" ? "active" : ""}`} onClick={() => setView("list")}><I.Inbox size={12} /> List</button>
       </div>
 
-      <div className="master-detail" style={{ "--md-aside": "240px" }}>
+      <div className="master-detail storage-master-detail" style={{ "--md-aside": "240px" }}>
         <div className="card" style={{ padding: 0, overflow: "hidden", position: "sticky", top: 12, maxHeight: "calc(100vh - 160px)", display: "flex", flexDirection: "column" }}>
           <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px" }}>
             <I.Folder size={13} />
@@ -792,7 +792,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                   <th style={{ width: 80 }}>ACL</th>
                   <th style={{ width: 90, textAlign: "right" }}>Size</th>
                   <th style={{ width: 100 }}>Updated</th>
-                  <th style={{ width: 60 }}></th>
+                  <th className="col-actions" style={{ width: 60 }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -810,7 +810,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                     </td>
                     <td className="tabular-nums" style={{ textAlign: "right" }}>{fmtSize(f.size)}</td>
                     <td className="muted font-mono" style={{ fontSize: 11.5 }}>{f.updated}</td>
-                    <td onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}>
+                    <td className="col-actions" onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}>
                       <IconButton icon={I.Trash} title="Delete" onClick={() => deleteFile(f.key)} />
                     </td>
                   </tr>

@@ -28,7 +28,7 @@ bun run db:migrate:d1      # apply drizzle/sqlite migrations to a local D1
 bun run db:migrate:d1:remote # same, but to the deployed CF D1 (--remote)
 ```
 
-There is no test runner configured yet.
+Tests run on Bun's native runner (`bun:test`). The suite lives in `apps/web/tests/` and is invoked via `bun test` (from the repo root or `apps/web`). Each spec spins a fresh temp SQLite in-process through `tests/setup.ts::makeHarness`; no external server / DB is required. CI runs the same `bun run test` as a pre-deploy gate (`.github/workflows/deploy.yml`).
 
 ## Local test admin
 

@@ -11,12 +11,12 @@
       "apps/**/*.{ts,tsx,js,jsx,json}",
       "packages/**/*.{ts,tsx,js,jsx,json}",
       "scripts/**/*.{ts,js}",
-      "!**/dist/**",
-      "!**/.data/**",
-      "!**/.wrangler/**",
-      "!**/node_modules/**",
-      "!**/drizzle/**",
-      "!**/.claude/**",
+      "!**/dist",
+      "!**/.data",
+      "!**/.wrangler",
+      "!**/node_modules",
+      "!**/drizzle",
+      "!**/.claude",
       "!**/tsconfig*.json"
     ]
   },

@@ -7,6 +7,7 @@ import { Badge, Button, IconButton } from "./ui";
 import { Select } from "./select";
 import { tenantsApi, type ApiTenantMember } from "./api";
 import type { RoleData } from "./role-editor";
+import { useUrlState } from "@/lib/use-url-state";
 
 interface Member {
   id: string;
@@ -81,7 +82,7 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
   const WORKSPACE_ROLES = ["owner", "admin", "editor", "member"] as const;
 
   const [members, setMembers] = useState<Member[]>([]);
-  const [q, setQ] = useState("");
+  const [q, setQ] = useUrlState("q", "");
   const [invite, setInvite] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
   const [tenantId, setTenantId] = useState<string | null>(null);

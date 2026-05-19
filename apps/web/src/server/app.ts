@@ -117,19 +117,24 @@ export const createApp = (env: Env) => {
   // is gated by a module flag.
   //
   // On D1 we open a per-request Sessions-API client so reads can hit the
-  // nearest replica. The base Ctx (and the better-auth instance it carries)
-  // stays bound to the original D1 binding — better-auth's own DB writes
-  // always go through that and land on primary, while route handlers use the
-  // session-bound `ctx.db` and benefit from replica routing.
+  // nearest replica. The bookmark from the previous request (sent back on
+  // `x-d1-bookmark`) is fed to `withSession` so cross-request read-your-writes
+  // is preserved — see CF's "Use Sessions API" pattern. The base Ctx (and the
+  // better-auth instance it carries) stays bound to the original D1 binding —
+  // better-auth's own DB writes route to primary, while route handlers use
+  // the session-bound `ctx.db` and get replica reads.
   app.use("*", async (c, next) => {
     const baseCtx = buildContext(env);
     let ctx: Ctx = baseCtx;
+    let session: { getBookmark: () => string | null } | null = null;
     if (env.D1) {
-      // `first-unconstrained` lets D1 pick the nearest replica for the first
-      // read and pins the rest of the session to it with read-your-writes
-      // consistency. Mutations always route to primary regardless of the
-      // constraint, so this is safe even on write-mixed requests.
-      ctx = { ...baseCtx, db: createD1SessionClient(env.D1, "first-unconstrained") };
+      // Read the prior bookmark (if any); fall back to `first-unconstrained`
+      // so CF picks the nearest replica when no anchor is provided. Mutations
+      // always route to primary regardless of the constraint.
+      const constraint = c.req.header("x-d1-bookmark") ?? "first-unconstrained";
+      const s = createD1SessionClient(env.D1, constraint);
+      session = s;
+      ctx = { ...baseCtx, db: s.db };
     }
     c.set("ctx", ctx);
     if (!rolesSeeded) {
@@ -145,6 +150,13 @@ export const createApp = (env: Env) => {
       rolesSeeded = true;
     }
     await next();
+    // Stamp the latest bookmark on the way out so the client can round-trip
+    // it on the next request. `c.res.headers.set` merges into the final
+    // response — downstream handlers can't clobber it (we run after next()).
+    if (session) {
+      const bm = session.getBookmark();
+      if (bm) c.res.headers.set("x-d1-bookmark", bm);
+    }
   });
 
   app.use(
@@ -162,8 +174,11 @@ export const createApp = (env: Env) => {
         return isWorkspaceAllowedOrigin(origin, env) ? origin : env.APP_URL;
       },
       credentials: true,
-      allowHeaders: ["Content-Type", "Authorization", "X-Workeros-Tenant"],
+      allowHeaders: ["Content-Type", "Authorization", "X-Workeros-Tenant", "X-D1-Bookmark"],
       allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+      // Expose so the browser SPA can read the bookmark off the response and
+      // round-trip it on the next request (D1 Sessions API).
+      exposeHeaders: ["X-D1-Bookmark"],
     }),
   );
 

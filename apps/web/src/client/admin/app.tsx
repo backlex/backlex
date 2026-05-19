@@ -1,6 +1,6 @@
 // @ts-nocheck
 // workeros admin — main app
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./admin.css";
 import "./flow-builder.css";
@@ -58,15 +58,20 @@ import {
 import { RoleEditor, type RoleData } from "./role-editor";
 import { MembersPanel } from "./members-panel";
 import { PermissionsMatrix } from "./permissions-matrix";
-import {
-  FlowsPage,
-  FunctionsPage,
-  OverviewPage,
-  RealtimePage,
-  SettingsPage,
-  UsersPage,
-  WebhooksPage,
-} from "./pages";
+// Each admin page is split into its own chunk so the initial admin bundle
+// stays small. The shared `<Suspense>` boundary inside the page switch below
+// renders the fallback while the page chunk streams in.
+const OverviewPage = lazy(() => import("./pages/overview").then((m) => ({ default: m.OverviewPage })));
+const FlowsPage = lazy(() => import("./pages/flows").then((m) => ({ default: m.FlowsPage })));
+const FunctionsPage = lazy(() => import("./pages/functions").then((m) => ({ default: m.FunctionsPage })));
+const WebhooksPage = lazy(() => import("./pages/webhooks").then((m) => ({ default: m.WebhooksPage })));
+const RealtimePage = lazy(() => import("./pages/realtime").then((m) => ({ default: m.RealtimePage })));
+const UsersPage = lazy(() => import("./pages/users").then((m) => ({ default: m.UsersPage })));
+const SettingsPage = lazy(() => import("./pages/settings").then((m) => ({ default: m.SettingsPage })));
+
+const PageLoading = () => (
+  <div className="muted" style={{ padding: 32, fontSize: 13 }}>Loading…</div>
+);
 import { AccountPage } from "./account-page";
 import { GraphqlPage } from "@/pages/graphql";
 import { RestExplorerPage } from "@/pages/rest-explorer";
@@ -644,6 +649,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
 
         <div className="scrollarea" style={{ flex: 1 }}>
           <div className="page">
+            <Suspense fallback={<PageLoading />}>
             {activeNav === "overview" && <OverviewPage adapter={tweaks.adapter} pushToast={pushToast} setActiveNav={setActiveNav} />}
             {activeNav === "database" && <DatabasePage pushToast={pushToast} adapter={tweaks.adapter} />}
             {activeNav === "storage" && <StoragePage pushToast={pushToast} />}
@@ -919,6 +925,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                 />
               )}
             </>}
+            </Suspense>
           </div>
         </div>
       </div>

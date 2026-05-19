@@ -333,7 +333,15 @@ body {
 /* ─── Page ─── */
 .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .scrollarea { overflow: auto; }
-.page { padding: 24px 28px 80px; display: flex; flex-direction: column; gap: 18px; }
+.page {
+  padding: 24px 28px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 1440px;
+  width: 100%;
+  margin-inline: auto;
+}
 /* PageHeader, Button, and form input/textarea primitives moved to shadcn
    via apps/web/src/client/admin/ui.tsx + @workeros/ui/components/*. The
    legacy `.page-header`/`.btn`/`.input`/`.textarea` rules used to live
@@ -434,6 +442,24 @@ body {
 .table tbody tr[data-selected="true"] td { background: color-mix(in oklch, var(--primary) 10%, var(--card)); }
 .table td { font-size: 13px; border-bottom: 1px solid var(--border); }
 .table tbody tr:last-child td { border-bottom: 0; }
+
+/* Sticky action column — keep the right-most action cell visible while the
+   rest of the row scrolls horizontally on narrow viewports. Applied via the
+   .col-actions class on both <th> and <td>. */
+.table th.col-actions,
+.table td.col-actions {
+  position: sticky;
+  right: 0;
+  background: var(--card);
+  box-shadow: -8px 0 12px -8px oklch(0 0 0 / 0.35);
+  z-index: 1;
+}
+.table tbody tr:hover td.col-actions {
+  background: color-mix(in oklch, var(--accent) 60%, var(--card));
+}
+.table tbody tr[data-selected="true"] td.col-actions {
+  background: color-mix(in oklch, var(--primary) 10%, var(--card));
+}
 
 .checkbox {
   width: 16px; height: 16px;

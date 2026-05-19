@@ -11,6 +11,7 @@ import { encryptSecret } from "../lib/crypto";
 import { EMAIL_PROVIDER_IDS } from "../lib/email-select";
 import { GLOBAL_EMAIL_CONFIG_ID } from "../services/email-config";
 import { invalidateTenantAuth } from "../services/tenant-auth";
+import { invalidateAllEmailCaches, invalidateEmailCache } from "../context";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.emailConfig : sqlite.schema.emailConfig;
@@ -255,6 +256,16 @@ export const emailConfigRoutes = new OpenAPIHono<AppBindings>()
       // The workspace's end-user better-auth instance caches its email
       // transport — drop it so the next request rebuilds from the new config.
       if (auth.tenantId) invalidateTenantAuth(auth.tenantId);
+      // The Ctx-wide emailFor cache also pins the adapter for the rest of the
+      // isolate's life; drop it so `ctx.emailFor(tenantId)` rebuilds. Writes
+      // to the `_global` fallback row affect every tenant that doesn't have
+      // its own row — clear all entries in that case so no workspace serves
+      // the previous adapter.
+      if (tenantId === GLOBAL_EMAIL_CONFIG_ID) {
+        invalidateAllEmailCaches(ctx.env);
+      } else {
+        invalidateEmailCache(ctx.env, tenantId);
+      }
       return c.json({ ok: true });
     },
   )

@@ -1,10 +1,18 @@
 import type { MiddlewareHandler } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { AppBindings } from "../app";
 import { ensureDefaultTenant } from "../services/seed";
+import { loadUnfilteredRoleNames } from "./session";
+
+/** Loose UUID v4-ish shape check — strict enough to avoid false positives on
+ *  slugs (which can't contain `-` in groups of 8-4-4-4-12 hex). When a cookie
+ *  value matches we skip the dedicated tenant lookup and rely on the membership
+ *  check below to validate that the id really exists for this user. */
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const TENANT_COOKIE = "workeros-tenant";
 export const TENANT_HEADER = "x-workeros-tenant";
@@ -63,18 +71,15 @@ const tenantBySlugOrId = async (
   key: string,
 ): Promise<string | null> => {
   const t = tablesFor(dialect).tenants;
+  // One SELECT against `id = ? OR slug = ?` is cheaper than the two sequential
+  // round-trips the previous version did, and the table is small (rows.length
+  // ≤ 1 since both id and slug are unique).
   const rows = (await (db as any)
     .select({ id: t.id })
     .from(t)
-    .where(eq(t.id, key))
+    .where(or(eq(t.id, key), eq(t.slug, key)))
     .limit(1)) as { id: string }[];
-  if (rows[0]) return rows[0].id;
-  const rows2 = (await (db as any)
-    .select({ id: t.id })
-    .from(t)
-    .where(eq(t.slug, key))
-    .limit(1)) as { id: string }[];
-  return rows2[0]?.id ?? null;
+  return rows[0]?.id ?? null;
 };
 
 const isMember = async (
@@ -88,6 +93,23 @@ const isMember = async (
     .select({ id: m.id })
     .from(m)
     .where(and(eq(m.tenantId, tenantId), eq(m.userId, userId)))
+    .limit(1)) as { id: string }[];
+  return rows.length > 0;
+};
+
+/** Lightweight existence check for a tenant id. Used only by the cross-tenant
+ *  admin shortcut to keep the UUID-cookie bypass from leaking a syntactically-
+ *  valid but non-existent id into `auth.tenantId` for the rest of the request. */
+const tenantExists = async (
+  db: unknown,
+  dialect: "pg" | "sqlite",
+  tenantId: string,
+): Promise<boolean> => {
+  const t = tablesFor(dialect).tenants;
+  const rows = (await (db as any)
+    .select({ id: t.id })
+    .from(t)
+    .where(eq(t.id, tenantId))
     .limit(1)) as { id: string }[];
   return rows.length > 0;
 };
@@ -158,9 +180,17 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
 
   let tenantId: string | null = null;
 
+  // Resolve the requested tenant id. UUIDs are accepted *as-is* — the membership
+  // check below catches bogus ids cheaply, so we skip the dedicated lookup. Non-
+  // UUID values (slugs) still need the SELECT to map slug → id.
+  const resolveTenantKey = async (key: string): Promise<string | null> => {
+    if (UUID_RE.test(key)) return key;
+    return tenantBySlugOrId(db, dialect, key);
+  };
+
   const headerKey = c.req.header(TENANT_HEADER);
   if (headerKey) {
-    tenantId = await tenantBySlugOrId(db, dialect, headerKey);
+    tenantId = await resolveTenantKey(headerKey);
   }
   // API-key requests pin to the key's home tenant unless the caller sent an
   // explicit override header. Cookie/user-pref are irrelevant here — the
@@ -176,21 +206,67 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   }
   if (!tenantId) {
     const cookieKey = getCookie(c, TENANT_COOKIE);
-    if (cookieKey) tenantId = await tenantBySlugOrId(db, dialect, cookieKey);
+    if (cookieKey) tenantId = await resolveTenantKey(cookieKey);
   }
   // Control-plane users: confirm the requested tenant is one they belong to
   // (admins bypass). App-plane users are bound to the workspace their session
   // was issued for — that's authoritative, and they have no `tenant_members`
   // row, so the membership check (and the `tenant_members`/`users` fallbacks
   // and writes below) don't apply to them.
+  //
+  // Hot path: run the membership check and the tenant-scoped role load in
+  // parallel. If membership fails we fall back to a lazy global-admin lookup
+  // (the only reason we'd ever need the unfiltered role union) — this keeps
+  // the lookup off the request path for every member-of-tenant call, which
+  // is by far the common case.
+  let tenantRoles: string[] = [];
   if (auth.userId && auth.plane !== "app") {
     if (tenantId) {
-      const allow = auth.roles.includes("admin") ||
-        (await isMember(db, dialect, tenantId, auth.userId));
-      if (!allow) tenantId = null;
+      const [member, scopedRoles] = await Promise.all([
+        isMember(db, dialect, tenantId, auth.userId),
+        loadTenantRoleNames(
+          db,
+          dialect,
+          tenantId,
+          auth.userId,
+          auth.apiKeyRoleId ?? null,
+        ),
+      ]);
+      if (member) {
+        tenantRoles = scopedRoles;
+      } else {
+        // Membership failed — last chance is a cross-tenant super-admin.
+        // We also confirm the tenant actually exists so a forged UUID can't
+        // ride the UUID-bypass into `auth.tenantId` for the rest of the
+        // request (the resolver would still deny on permissions, but audit
+        // logs / route handlers that trust `auth.tenantId` would see a bogus
+        // id). For non-admins membership already failed → tenantId nulled.
+        const [globalRoles, exists] = await Promise.all([
+          loadUnfilteredRoleNames(
+            { db, dialect },
+            auth.userId,
+            auth.apiKeyRoleId ?? null,
+          ),
+          tenantExists(db, dialect, tenantId),
+        ]);
+        if (globalRoles.includes("admin") && exists) {
+          tenantRoles = scopedRoles; // admin keeps tenant-scoped role names
+        } else {
+          tenantId = null;
+        }
+      }
     }
     if (!tenantId) {
       tenantId = await firstUserTenant(db, dialect, auth.userId);
+      if (tenantId) {
+        tenantRoles = await loadTenantRoleNames(
+          db,
+          dialect,
+          tenantId,
+          auth.userId,
+          auth.apiKeyRoleId ?? null,
+        );
+      }
     }
   }
   // For app-plane there's no fallback workspace — if the session's tenant
@@ -199,21 +275,10 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
     tenantId = await ensureDefaultTenant({ db, dialect });
   }
 
-  // Re-scope auth.roles to roles the user actually holds *in this tenant*.
-  // sessionMiddleware loaded an unfiltered union earlier (it doesn't know
-  // the tenant yet); we replace it here so requireAdmin and friends evaluate
-  // against the active workspace. App-plane identities don't participate in
-  // control-plane RBAC, so `auth.roles` stays empty for them — the data-plane
-  // permission resolver loads their workspace roles separately.
-  let tenantRoles = auth.roles;
+  // App-plane identities don't participate in control-plane RBAC, so
+  // `auth.roles` stays empty for them — the data-plane permission resolver
+  // loads their workspace roles separately.
   if (auth.userId && auth.plane !== "app" && tenantId) {
-    tenantRoles = await loadTenantRoleNames(
-      db,
-      dialect,
-      tenantId,
-      auth.userId,
-      auth.apiKeyRoleId ?? null,
-    );
     // Best-effort persistence; ignore failures.
     void persistActive(db, dialect, auth.userId, tenantId).catch(() => {});
     void touchMember(db, dialect, tenantId, auth.userId).catch(() => {});

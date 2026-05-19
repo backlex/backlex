@@ -7,6 +7,7 @@ import * as sqlite from "@workeros/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { enforceIpRateLimit } from "../lib/auth-rate-limit";
 import { encryptSecret } from "../lib/crypto";
 import { EMAIL_PROVIDER_IDS } from "../lib/email-select";
 import { GLOBAL_EMAIL_CONFIG_ID } from "../services/email-config";
@@ -299,6 +300,9 @@ export const emailConfigRoutes = new OpenAPIHono<AppBindings>()
       // Send a one-off test email through the *resolved* transport for the
       // active workspace (its `email_config` → instance default → env adapter).
       // Useful to verify credentials right after saving without needing a template.
+      // Cap per-IP so an admin cookie can't be turned into a free spam pipe
+      // (or rack up provider costs) by hammering this endpoint.
+      enforceIpRateLimit(c, "email-test", 5);
       const ctx = c.get("ctx");
       const auth = c.get("auth");
       const body = await c.req

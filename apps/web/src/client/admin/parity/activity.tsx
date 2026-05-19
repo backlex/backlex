@@ -59,9 +59,9 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader title="Activity log" description="Append-only audit trail. Every mutation through the API or UI is logged with actor, IP, and diff." actions={<Button variant="outline" icon={I.Download} onClick={() => {
         const header = "time,actor,action,resource,diff,ip";
-        const escape = (s: string) => `"${String(s).replace(/"/g, '""')}"`;
+        const csvQuote = (s: string) => `"${String(s).replace(/"/g, '""')}"`;
         const body = events
-          .map((e) => [e.t, e.actor, e.action, e.resource, e.diff, e.ip].map(escape).join(","))
+          .map((e) => [e.t, e.actor, e.action, e.resource, e.diff, e.ip].map(csvQuote).join(","))
           .join("\n");
         const blob = new Blob([header + "\n" + body], { type: "text/csv" });
         const url = URL.createObjectURL(blob);

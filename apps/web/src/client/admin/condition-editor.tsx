@@ -77,7 +77,7 @@ function ruleTreeToObj(node: TreeNode): unknown {
   } else if (val === "true") val = true;
   else if (val === "false") val = false;
   else if (val === "null") val = null;
-  else if (!isNaN(Number(val)) && val !== "" && !String(val).startsWith("$")) val = Number(val);
+  else if (!Number.isNaN(Number(val)) && val !== "" && !String(val).startsWith("$")) val = Number(val);
   return { [node.field]: { [node.op]: val } };
 }
 

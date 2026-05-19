@@ -333,7 +333,15 @@ body {
 /* ─── Page ─── */
 .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .scrollarea { overflow: auto; }
-.page { padding: 24px 28px 80px; display: flex; flex-direction: column; gap: 18px; }
+.page {
+  padding: 24px 28px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 1440px;
+  width: 100%;
+  margin-inline: auto;
+}
 /* PageHeader, Button, and form input/textarea primitives moved to shadcn
    via apps/web/src/client/admin/ui.tsx + @workeros/ui/components/*. The
    legacy `.page-header`/`.btn`/`.input`/`.textarea` rules used to live
@@ -434,6 +442,24 @@ body {
 .table tbody tr[data-selected="true"] td { background: color-mix(in oklch, var(--primary) 10%, var(--card)); }
 .table td { font-size: 13px; border-bottom: 1px solid var(--border); }
 .table tbody tr:last-child td { border-bottom: 0; }
+
+/* Sticky action column — keep the right-most action cell visible while the
+   rest of the row scrolls horizontally on narrow viewports. Applied via the
+   .col-actions class on both <th> and <td>. */
+.table th.col-actions,
+.table td.col-actions {
+  position: sticky;
+  right: 0;
+  background: var(--card);
+  box-shadow: -8px 0 12px -8px oklch(0 0 0 / 0.35);
+  z-index: 1;
+}
+.table tbody tr:hover td.col-actions {
+  background: color-mix(in oklch, var(--accent) 60%, var(--card));
+}
+.table tbody tr[data-selected="true"] td.col-actions {
+  background: color-mix(in oklch, var(--primary) 10%, var(--card));
+}
 
 .checkbox {
   width: 16px; height: 16px;
@@ -2110,4 +2136,103 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 
 @media (max-width: 560px) {
   .users-stats { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ─── Storage page mobile sticky fix ───
+   The Storage page's Folders panel uses inline `position: sticky; top: 12;
+   maxHeight: calc(100vh - 160px)` so it stays visible alongside the files
+   list on desktop. When `.master-detail` collapses to a single column at
+   <=900px, that sticky+max-height combo turns the Folders panel into a
+   near-viewport-height block that pins to the top of the page and visually
+   overlaps the Files card stacked below it (the inner scroll area also
+   keeps the folder list cramped behind the sticky search header, creating
+   the "content bleeding through" effect).
+
+   On mobile we want the Folders panel to flow normally above the Files
+   card with a sensible bounded height — no sticking, no full-viewport
+   stretch. Scoped via `.storage-master-detail` so other pages that use
+   `.master-detail` (pages.tsx, parity/*.tsx) are unaffected. The inline
+   styles on the panel mean we need `!important` to win the cascade. */
+@media (max-width: 900px) {
+  .storage-master-detail > .card:first-child {
+    position: static !important;
+    top: auto !important;
+    max-height: none !important;
+  }
+  /* Cap the inner scroll viewport so the folder list keeps a tidy height
+     on phones instead of expanding to fit every folder. The selector
+     targets the third child of the Folders card (header, filter, list). */
+  .storage-master-detail > .card:first-child > div:nth-child(3) {
+    max-height: 320px !important;
+  }
+}
+
+/* ─── REST Explorer + OpenAPI responsive ─── */
+
+/* REST Explorer two-pane layout. Above 768px (md): fixed list rail + fluid
+   detail. Below 768px: stack vertically so the detail panel isn't crushed
+   to ~80px wide on phone-sized viewports (~459px), where path strings like
+   `/api/items/test` were wrapping every 4 characters. The list takes a
+   bounded height so the detail panel remains visible below without
+   scrolling the whole page. Mirrors the `.master-detail` convention. */
+.rest-explorer-split {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 768px) {
+  .rest-explorer-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* Stacked: cap the list height so users can see the detail pane below
+     without a long initial scroll. Wide-width default is full-height. */
+  .rest-explorer-split .rest-explorer-list-card {
+    max-height: 320px;
+  }
+}
+@media (min-width: 769px) {
+  /* Restore the original height constraint when side-by-side. */
+  .rest-explorer-split .rest-explorer-list-card {
+    max-height: calc(100vh - 220px);
+  }
+  .rest-explorer-split .rest-explorer-detail {
+    max-height: calc(100vh - 220px);
+  }
+}
+
+/* OpenAPI: PageHeader's actions slot is `flex shrink-0`, so the 3 download
+   buttons would crush the description column to ~100px on narrow viewports
+   (~826px) — the description then wraps word-per-line. Loosen the slot so
+   the buttons wrap to a 2nd row instead. Uses `:has()` to target the
+   PageHeader's actions wrapper without modifying the shared component. */
+.openapi-export-page :where(div:has(> .openapi-actions)) {
+  flex-shrink: 1;
+  min-width: 0;
+}
+@media (max-width: 900px) {
+  /* When wrapping, left-align the action row beneath the title so the gap
+     reads as an extra row rather than a floating right-edge cluster. */
+  .openapi-export-page .openapi-actions {
+    justify-content: flex-start;
+  }
+}
+
+/* ─── Collections index responsive ─── */
+/* Stops the Collections page from forcing horizontal scroll on phone-sized
+   viewports. Root causes addressed inline (in collections-index.tsx): the
+   card grid `minmax(280px, 1fr)` was switched to `minmax(min(100%, 280px),
+   1fr)`, the inner stats grid switched to `repeat(3, minmax(0, 1fr))`, and
+   the card slug + sub-line + stat values got ellipsis truncation so long
+   slugs / timestamps can no longer push a card wider than its column.
+   The rules below tighten the PageHeader title row on narrow viewports —
+   shadcn `<h1 className="flex items-center">` doesn't wrap on its own, so a
+   long title + two inline badges would otherwise expand past viewport. */
+.collections-index { width: 100%; max-width: 100%; }
+@media (max-width: 640px) {
+  /* Allow the PageHeader title + badges row to wrap onto a second line. The
+     h1 is `flex items-center` (no wrap) in the shared PageHeader; scoping
+     this to `.collections-index` keeps the rule narrow. */
+  .collections-index h1 { flex-wrap: wrap; }
+  .collections-index h1 > * { min-width: 0; }
 }

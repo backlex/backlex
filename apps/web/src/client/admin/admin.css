@@ -2301,3 +2301,20 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 @media (max-width: 420px) {
   .rb-cond > button:not(.rb-rm) { flex: 1 1 100%; }
 }
+
+/* Role editor permission rows — two-column grid at ≥640px so the action label
+   sits next to its chip options; collapse to a stacked layout on phones so
+   the chip group can wrap onto its own line without horizontal overflow. */
+.role-action-row {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  align-items: center;
+  padding: 10px 12px;
+  gap: 10px;
+}
+@media (max-width: 640px) {
+  .role-action-row {
+    grid-template-columns: 1fr;
+    row-gap: 8px;
+  }
+}

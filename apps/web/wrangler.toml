@@ -132,9 +132,22 @@ binding = "AI"
 name = "REALTIME"
 class_name = "RealtimeRoom"
 
+# Durable Object backing the rate limiter (lib/rate-limit.ts). One DO per
+# (label, ip) — collapses isolate-rotation drift into a single authoritative
+# counter, so the limit can't be bypassed by spreading requests across the
+# many isolates Cloudflare may spin up per colo. Bun / Vercel / Netlify
+# don't have this binding and fall back to the in-process Map.
+[[durable_objects.bindings]]
+name = "RATE_LIMIT"
+class_name = "RateLimitRoom"
+
 [[migrations]]
 tag = "v1"
 new_classes = ["RealtimeRoom"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["RateLimitRoom"]
 
 # Cron triggers — every minute. Adjust as needed (Cloudflare allows
 # multiple expressions but minimum granularity is 1 minute).

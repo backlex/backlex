@@ -431,13 +431,15 @@ export function LogsPage({ pushToast }: { pushToast: (m: string, type?: "success
                 style={{ paddingLeft: 32 }}
               />
             </div>
-            <div style={{ display: "flex", gap: 4 }}>
-              {(["15m", "1h", "24h", "7d"] as RangeFilter[]).map((r) => (
-                <button key={r} type="button" className={`chip ${range === r ? "active" : ""}`} onClick={() => setRange(r)}>
-                  {r}
-                </button>
-              ))}
-            </div>
+            <Tabs value={range} onValueChange={(v) => setRange(v as RangeFilter)}>
+              <TabsList>
+                {(["15m", "1h", "24h", "7d"] as RangeFilter[]).map((r) => (
+                  <TabsTrigger key={r} value={r}>
+                    {r}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
           </div>
 
           {/* Log stream + detail */}

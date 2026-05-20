@@ -4,6 +4,15 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { NAV_ITEMS, NAV_SETTINGS, type CollectionListItem, type CollectionSchema, type Post, type SchemaField } from "./config";
 import { Badge, Button, IconButton, JsonBlock } from "./ui";
+import { Input } from "@workeros/ui/components/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
 
 export type PaletteSelection =
   | { kind: "page"; id: string; label: string; icon: string; meta: string }
@@ -70,17 +79,21 @@ export function Palette({ open, onClose, onNavigate, items, collections }: Palet
   let runningIdx = 0;
   const kbd = "rounded-sm border border-border bg-muted px-[5px] py-px";
   return (
-    <>
-      <div className="fixed inset-0 z-[60] animate-in bg-[oklch(0_0_0/0.32)] fade-in-0 duration-150 dark:bg-[oklch(0_0_0/0.6)]" onClick={onClose} />
-      <div className="fixed left-1/2 top-[18%] z-[70] flex max-h-[60vh] w-[min(640px,92vw)] -translate-x-1/2 animate-in flex-col overflow-hidden rounded-2xl border border-border bg-popover shadow-[0_20px_70px_-10px_oklch(0_0_0/0.4),0_4px_14px_oklch(0_0_0/0.1)] fade-in-0 zoom-in-95 duration-150" role="dialog" aria-modal="true">
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent
+        showCloseButton={false}
+        className="top-[18%] flex max-h-[60vh] w-[min(640px,92vw)] translate-y-0 flex-col gap-0 overflow-hidden bg-popover p-0 sm:max-w-none"
+      >
+        <DialogTitle className="sr-only">Command palette</DialogTitle>
+        <DialogDescription className="sr-only">Type a command, collection, or item title to navigate.</DialogDescription>
         <div className="flex items-center gap-2.5 border-b border-border px-[18px] py-3.5">
           <I.Search size={15} />
-          <input
+          <Input
             ref={inputRef}
             value={q}
             onChange={(e) => { setQ(e.target.value); setActive(0); }}
             placeholder="Type a command, collection, or item title…"
-            className="flex-1 border-0 bg-transparent text-[14.5px] text-foreground outline-none"
+            className="h-auto flex-1 border-0 bg-transparent p-0 text-[14.5px] text-foreground shadow-none focus-visible:ring-0"
           />
           <span className="rounded-sm border border-border bg-muted px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground">esc</span>
         </div>
@@ -121,8 +134,8 @@ export function Palette({ open, onClose, onNavigate, items, collections }: Palet
           <span><span className={kbd}>↑↓</span> navigate</span>
           <span><span className={kbd}>esc</span> close</span>
         </div>
-      </div>
-    </>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -157,37 +170,19 @@ const EV_COLOR: Record<string, string> = {
 };
 
 function RealtimeEventDialog({ ev, channel, onClose }: { ev: RealtimeEvent; channel: string; onClose: () => void }) {
-  // Close on ESC for keyboard parity with the other admin dialogs.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
   return (
-    <div
-      className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150"
-      onClick={onClose}
-    >
-      <div
-        className="relative flex max-h-[min(86vh,720px)] w-[min(720px,92vw)] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-label={`${ev.event} event detail`}
-      >
-        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
-          <div>
-            <div className="mb-1 flex items-center gap-2">
-              <span className={`${EV_BASE} ${EV_COLOR[ev.event]}`}>{ev.event}</span>
-              <span className="font-mono text-xs text-muted-foreground">{channel}</span>
-            </div>
-            <h3 className="m-0 text-sm font-medium">
-              {ev.title || ev.itemId || "(item)"}
-            </h3>
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="flex max-h-[min(86vh,720px)] w-[min(720px,92vw)] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+          <div className="mb-1 flex items-center gap-2">
+            <span className={`${EV_BASE} ${EV_COLOR[ev.event]}`}>{ev.event}</span>
+            <span className="font-mono text-xs text-muted-foreground">{channel}</span>
           </div>
-          <IconButton icon={I.X} onClick={onClose} />
-        </div>
+          <DialogTitle className="text-sm font-medium">
+            {ev.title || ev.itemId || "(item)"}
+          </DialogTitle>
+          <DialogDescription className="sr-only">{`${ev.event} event detail`}</DialogDescription>
+        </DialogHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
           <div className="grid grid-cols-[120px_1fr] gap-x-3.5 gap-y-2 text-[12.5px]">
             <span className="text-muted-foreground">Channel</span>
@@ -217,12 +212,12 @@ function RealtimeEventDialog({ ev, channel, onClose }: { ev: RealtimeEvent; chan
           </div>
           <JsonBlock label="Payload" value={ev.raw ?? {}} />
         </div>
-        <div className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
+        <DialogFooter className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={onClose}>Close</Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

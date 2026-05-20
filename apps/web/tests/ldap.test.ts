@@ -33,6 +33,7 @@ import {
   type LdapClientFactory,
 } from "../src/server/adapters/ldap.ldapts";
 import { __setLdapAdapterFactoryForTests } from "../src/server/lib/auth-select";
+import { verifyAccessToken } from "../src/server/lib/jwt";
 import type { LdapAdapter, LdapAttributes } from "@workeros/core/adapters";
 
 const TENANT_SLUG = "default";
@@ -153,6 +154,59 @@ describe("ldap: happy path + idempotent re-login + bad creds + transport error",
       .all(body.token) as { token: string }[];
     expect(sessions.length).toBe(1);
     db.close();
+  });
+
+  test("sign-in returns an access/refresh token pair; the access JWT verifies", async () => {
+    const res = await signIn(h, "alice", "correct-horse");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      token: string;
+      accessToken: string;
+      refreshToken: string;
+      expiresIn: number;
+      tokenType: string;
+    };
+    // Legacy `token` stays equal to the opaque refresh token (non-breaking).
+    expect(body.token).toBe(body.refreshToken);
+    expect(body.refreshToken.startsWith("app_")).toBe(true);
+    expect(body.tokenType).toBe("Bearer");
+    expect(body.expiresIn).toBeGreaterThan(0);
+
+    const claims = await verifyAccessToken(h.env.AUTH_SECRET, body.accessToken);
+    expect(claims).not.toBeNull();
+    expect(claims!.plane).toBe("app");
+    expect(claims!.email).toBe("alice@test.example");
+  });
+
+  test("token/refresh exchanges a refresh token for a fresh access token", async () => {
+    const signRes = await signIn(h, "alice", "correct-horse");
+    const { refreshToken } = (await signRes.json()) as { refreshToken: string };
+
+    const ok = await h.fetch(`/api/t/${TENANT_SLUG}/auth/token/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+    expect(ok.status).toBe(200);
+    const refreshed = (await ok.json()) as {
+      accessToken: string;
+      refreshToken: string;
+      tokenType: string;
+    };
+    expect(refreshed.refreshToken).toBe(refreshToken);
+    const claims = await verifyAccessToken(
+      h.env.AUTH_SECRET,
+      refreshed.accessToken,
+    );
+    expect(claims).not.toBeNull();
+
+    // A bogus refresh token is rejected.
+    const bad = await h.fetch(`/api/t/${TENANT_SLUG}/auth/token/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken: `app_${crypto.randomUUID()}` }),
+    });
+    expect(bad.status).toBe(401);
   });
 
   test("second login with same DN is idempotent (no duplicate app_users)", async () => {

@@ -926,7 +926,12 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
               </div>
             </>
           )}
-          {mode === "edit" && activeTab === "collab" && <ItemCommentsPanel />}
+          {mode === "edit" && activeTab === "collab" && slug && (initial as { id?: string })?.id && (
+            <ItemCommentsPanel
+              collection={slug}
+              itemId={(initial as { id: string }).id}
+            />
+          )}
         </div>
 
         <div className="flex justify-end gap-2 border-t border-border bg-card px-5 py-3">

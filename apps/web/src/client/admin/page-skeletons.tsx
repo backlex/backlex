@@ -173,7 +173,7 @@ export function LogsSkeleton() {
         <div className="flex-1" />
         <Skeleton className="h-8 w-36 rounded-md" />
       </div>
-      {/* Volume sparkline + level-filter summary card. */}
+      {/* Volume sparkline + level-filter summary card (info / warn / error). */}
       <div className="flex items-center gap-3.5 rounded-2xl border border-border bg-card p-3.5">
         <Skeleton className="h-11 flex-1" />
         <Skeleton className="h-8 w-20 rounded-md" />
@@ -245,18 +245,14 @@ export function FunctionsSkeleton() {
   );
 }
 
-/** Webhooks — header, then a list + delivery-log table. */
+/** Webhooks — header, then a full-width webhooks table card stacked above a
+ *  full-width "Recent deliveries" table card. */
 export function WebhooksSkeleton() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={1} />
-      <div className="grid grid-cols-[320px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
-        <ListCardSkeleton rows={5} header={false} />
-        <div className="flex flex-col gap-3">
-          <CardSkeleton lines={4} />
-          <TableCardSkeleton rows={6} cols={4} />
-        </div>
-      </div>
+      <TableCardSkeleton rows={6} cols={6} />
+      <TableCardSkeleton rows={6} cols={6} />
     </div>
   );
 }
@@ -274,15 +270,20 @@ export function RealtimeSkeleton() {
   );
 }
 
-/** Advisor — header, score/summary strip, tab strip, then a check list. */
+/** Advisor — header, the score card (circular score ring + 2 summary
+ *  tiles), a 2-tab strip, then the findings list. */
 export function AdvisorSkeleton() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={1} />
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <CardSkeleton key={i} lines={2} />
-        ))}
+      {/* Score card: ~140px score ring on the left + Security/Performance tiles. */}
+      <div className="grid grid-cols-[160px_1fr] items-center gap-[22px] rounded-2xl border border-border bg-card p-5">
+        <Skeleton className="size-[140px] rounded-full" />
+        <div className="grid grid-cols-2 gap-3.5">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <CardSkeleton key={i} lines={2} />
+          ))}
+        </div>
       </div>
       <TabStripSkeleton tabs={2} />
       <div className="flex flex-col gap-2.5">
@@ -340,12 +341,30 @@ export function RevisionsSkeleton() {
   );
 }
 
-/** Translations — header, controls row, then a wide matrix table. */
+/** Translations — header (3 actions), a locale-completion card, a controls
+ *  row (base-locale select + All/Missing tabs + Manage locales), then the
+ *  wide matrix table. */
 export function TranslationsSkeleton() {
   return (
     <div className="flex flex-col gap-4.5">
-      <HeaderSkeleton actions={2} />
-      <Skeleton className="h-9 w-full" />
+      <HeaderSkeleton actions={3} />
+      {/* Locale-completion card — one small progress tile per locale. */}
+      <div className="grid grid-cols-4 gap-3 rounded-2xl border border-border bg-card p-3.5">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex flex-col gap-1.5">
+            <Skeleton className="h-3 w-12" />
+            <Skeleton className="h-3.5 w-full" />
+          </div>
+        ))}
+      </div>
+      {/* Controls row — base-locale select + All/Missing tabs + Manage locales. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Skeleton className="h-8 w-32 rounded-md" />
+        <TabStripSkeleton tabs={2} />
+        <div className="ml-auto">
+          <Skeleton className="h-9 w-36" />
+        </div>
+      </div>
       <TableCardSkeleton rows={8} cols={4} />
     </div>
   );
@@ -365,35 +384,82 @@ export function EmailTemplatesSkeleton() {
   );
 }
 
-/** Authentication — header, then a stack of settings cards. */
+/** Authentication — header, a Providers / Policy two-column split, then the
+ *  full-width SAML and LDAP cards stacked below. */
 export function AuthSettingsSkeleton() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={0} />
-      {Array.from({ length: 4 }).map((_, i) => (
-        <CardSkeleton key={i} lines={4} />
-      ))}
+      {/* Providers list (left) + Policy settings form (right). */}
+      <div className="grid grid-cols-[1fr_320px] items-start gap-4 max-[1280px]:grid-cols-1">
+        <ListCardSkeleton rows={5} />
+        <CardSkeleton lines={7} />
+      </div>
+      {/* Full-width SAML 2.0 SSO + LDAP cards. */}
+      <ListCardSkeleton rows={3} />
+      <ListCardSkeleton rows={3} />
     </div>
   );
 }
 
-/** Users — header, then a wide user table. */
+/** Users — header (1 action), a 4-up stat-card row, a filter bar, then a
+ *  wide user table. */
 export function UsersSkeleton() {
   return (
     <div className="flex flex-col gap-4.5">
-      <HeaderSkeleton actions={2} />
+      <HeaderSkeleton actions={1} />
+      {/* Total users / Active 24h / Pending invites / Admins. */}
+      <div className="grid grid-cols-4 gap-2.5 max-[900px]:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex flex-col gap-1 rounded-xl border border-border bg-card px-4 py-3.5">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-7 w-16" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+        ))}
+      </div>
       <Skeleton className="h-9 w-full" />
       <TableCardSkeleton rows={8} cols={6} />
     </div>
   );
 }
 
-/** App users — header, then a wide table card. */
+/** App users — header, then a table card whose inner strip carries an
+ *  "End-users" title, a count, and a right-aligned filter input. */
 export function AppUsersSkeleton() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={0} />
-      <TableCardSkeleton rows={7} cols={6} />
+      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        {/* Card header strip — icon + "End-users" + count + filter input. */}
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
+          <Skeleton className="size-3.5 shrink-0 rounded" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-3 w-8" />
+          <div className="flex-1" />
+          <Skeleton className="h-9 w-[240px]" />
+        </div>
+        {/* Faux table — column header + rows. */}
+        <div className="flex items-center gap-3 border-b border-border px-3.5 py-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-3 flex-1" />
+          ))}
+        </div>
+        {Array.from({ length: 7 }).map((_, r) => (
+          <div
+            key={r}
+            className="flex items-center gap-3 border-b border-border px-3.5 py-3 last:border-b-0"
+          >
+            {Array.from({ length: 6 }).map((_, c) => (
+              <Skeleton
+                key={c}
+                className="h-4 flex-1"
+                style={{ maxWidth: c === 0 ? undefined : "70%" }}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -404,7 +470,7 @@ export function ApiKeysSkeleton() {
     <div className="flex flex-col gap-5">
       <HeaderSkeleton actions={1} />
       <div className="rounded-2xl border border-border bg-card p-4">
-        {Array.from({ length: 4 }).map((_, i) => (
+        {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={i}
             className="flex items-start justify-between gap-4 border-b border-border py-3 last:border-b-0"
@@ -434,22 +500,26 @@ export function SettingsSkeleton() {
   );
 }
 
-/** Account — a single column of settings cards. */
+/** Account — header, a 4-tab strip (Profile / Security / Sessions /
+ *  Connected), then the default tab's `max-w-3xl` card. */
 export function AccountSkeleton() {
   return (
-    <div className="flex max-w-3xl flex-col gap-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <CardSkeleton key={i} lines={4} />
-      ))}
+    <div className="flex flex-col gap-5">
+      <HeaderSkeleton actions={0} />
+      <TabStripSkeleton tabs={4} />
+      <CardSkeleton lines={6} className="max-w-3xl" />
     </div>
   );
 }
 
-/** Storage — header, then a folder sidebar + a file grid. */
+/** Storage — header (3 actions), the drag-and-drop upload banner, then a
+ *  folder sidebar + a file grid. */
 export function StorageSkeleton() {
   return (
-    <div className="flex flex-col gap-4.5">
-      <HeaderSkeleton actions={2} />
+    <div className="flex flex-col gap-[18px]">
+      <HeaderSkeleton actions={3} />
+      {/* Full-width drag-and-drop upload zone. */}
+      <Skeleton className="h-[72px] w-full rounded-2xl" />
       <div className="grid grid-cols-[240px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
         <ListCardSkeleton rows={6} />
         <div className="overflow-hidden rounded-2xl border border-border bg-card p-3">
@@ -464,17 +534,13 @@ export function StorageSkeleton() {
   );
 }
 
-/** Collections index — header, search row, then a grid of collection cards. */
+/** Collections index — header (up to 4 actions), a full-width search bar,
+ *  then a grid of collection cards. */
 export function CollectionsSkeleton() {
   return (
     <div className="flex flex-col gap-4.5">
-      <HeaderSkeleton actions={2} />
-      <div className="flex flex-wrap items-center gap-2">
-        <Skeleton className="h-9 w-[280px]" />
-        <div className="flex-1" />
-        <Skeleton className="h-8 w-20" />
-        <Skeleton className="h-8 w-20" />
-      </div>
+      <HeaderSkeleton actions={4} />
+      <Skeleton className="h-9 w-full" />
       <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3">
         {Array.from({ length: 6 }).map((_, i) => (
           <Skeleton key={i} className="h-[138px] w-full rounded-2xl" />
@@ -539,11 +605,13 @@ export function OpenApiSkeleton() {
   );
 }
 
-/** Access (roles & permissions) — header, then roles + members tables. */
+/** Access (roles & permissions) — header, a Members / Roles & permissions
+ *  tab strip, then the roles + members tables. */
 export function AccessSkeleton() {
   return (
     <div className="flex flex-col gap-[18px]">
       <HeaderSkeleton actions={0} />
+      <TabStripSkeleton tabs={2} />
       <TableCardSkeleton rows={5} cols={4} />
       <TableCardSkeleton rows={6} cols={5} />
     </div>

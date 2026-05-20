@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Flow builder — detailed editor opened from Flows page
 import { useEffect, useRef, useState } from "react";
 import { I, type IconComponent, type IconKey } from "./icons";
@@ -11,7 +10,8 @@ import { emailTemplatesApi, functionsApi, collectionsApi, type ApiEmailTemplate,
 // `pending` marks steps the runtime doesn't execute yet. The compiler will
 // drop them with a warning, so the palette disables the entries entirely
 // until the matching backend phase lands (see flow-graph.ts PHASE_PENDING).
-const TRIGGERS = [
+type TriggerDef = { id: string; label: string; desc: string; icon: string; tag: string; pending?: string };
+const TRIGGERS: TriggerDef[] = [
   { id: "item.created", label: "Item created", desc: "Fires when a row is inserted in a collection", icon: "Plus", tag: "event" },
   { id: "item.updated", label: "Item updated", desc: "Fires when a row is updated", icon: "Pencil", tag: "event" },
   { id: "item.deleted", label: "Item deleted", desc: "Fires when a row is deleted", icon: "Trash", tag: "event" },

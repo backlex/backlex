@@ -1,21 +1,191 @@
 // Collaboration tab for the item edit sheet — share card + comment thread.
 //
-// The comment thread is real: it reads + writes /api/comments via React
-// Query. The share-link card below is still a visual-only mock — there is
-// no share-token / share-link endpoint in the server yet.
+// Both halves are real: the comment thread reads/writes /api/comments and
+// the share card mints/revokes public read-only links via /api/shared-links.
 import { useState, type KeyboardEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { I } from "./icons";
 import { Button, relativeTime } from "./ui";
 import { authorById } from "./items";
-import { commentsApi, type ApiComment } from "./api";
-import { useComments, useMe, queryKeys } from "./queries";
+import { commentsApi, sharedLinksApi, type ApiComment } from "./api";
+import {
+  useComments,
+  useMe,
+  useSharedLinks,
+  queryKeys,
+} from "./queries";
 import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
 import { Skeleton } from "@workeros/ui/components/skeleton";
 
-const SHARE_URL = "https://workeros.dev/s/01HZ7K8Q6XYZ?token=sv1_a4e2b9c1f0";
-const SHARE_URL_DISPLAY = "https://workeros.dev/s/01HZ7K8Q6XYZ?token=sv1_a4e…";
+/**
+ * Public read-only share-link card. A signed-in user mints a `/s/<token>`
+ * link to this record; the plaintext token is only returned at creation, so
+ * for a link that already existed before this sheet opened we can only show
+ * that one is active (with Revoke + Create-new actions), not the URL itself.
+ */
+function ShareLinkCard({
+  collection,
+  itemId,
+  pushToast,
+}: {
+  collection: string;
+  itemId: string;
+  pushToast?: (m: string, type?: "success" | "error") => void;
+}) {
+  const qc = useQueryClient();
+  const [freshUrl, setFreshUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const linksQuery = useSharedLinks(collection, itemId);
+  const activeLink = linksQuery.data?.data[0] ?? null;
+
+  const invalidate = () => {
+    void qc.invalidateQueries({
+      queryKey: queryKeys.sharedLinks(collection, itemId),
+    });
+  };
+
+  const createMut = useMutation({
+    mutationFn: () => sharedLinksApi.create({ collection, itemId }),
+    onSuccess: (res) => {
+      setFreshUrl(`${window.location.origin}${res.data.url}`);
+      invalidate();
+      pushToast?.("Share link created.");
+    },
+    onError: () => pushToast?.("Could not create share link.", "error"),
+  });
+
+  const revokeMut = useMutation({
+    mutationFn: (id: string) => sharedLinksApi.revoke(id),
+    onSuccess: () => {
+      setFreshUrl(null);
+      invalidate();
+      pushToast?.("Share link revoked.");
+    },
+    onError: () => pushToast?.("Could not revoke share link.", "error"),
+  });
+
+  const copy = (url: string) => {
+    try {
+      void navigator.clipboard.writeText(url);
+      setCopied(true);
+      pushToast?.("Share link copied.");
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      pushToast?.("Could not copy link.", "error");
+    }
+  };
+
+  return (
+    <div className="card">
+      <div
+        className="card-section"
+        style={{ display: "flex", alignItems: "center", gap: 8 }}
+      >
+        <I.Share size={13} />
+        <span style={{ fontSize: 12.5, fontWeight: 500 }}>
+          share this record
+        </span>
+      </div>
+      <div
+        style={{
+          padding: 14,
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+        }}
+      >
+        {linksQuery.isLoading ? (
+          <Skeleton className="h-9 w-full" />
+        ) : freshUrl ? (
+          // Just-minted link — the only moment we can show the full URL.
+          <div className="field">
+            <label className="field-label">Public read-only link</label>
+            <div style={{ display: "flex", gap: 6 }}>
+              <Input
+                className="font-mono"
+                readOnly
+                value={freshUrl}
+                style={{ fontSize: 11.5, flex: 1 }}
+              />
+              <Button
+                variant="outline"
+                icon={copied ? I.Check : I.Copy}
+                onClick={() => copy(freshUrl)}
+              >
+                {copied ? "Copied" : "Copy"}
+              </Button>
+            </div>
+            <span className="field-hint">
+              Anyone with this link can view the record — copy it now, the
+              token is shown only once.
+            </span>
+          </div>
+        ) : activeLink ? (
+          // A link already exists but its token is no longer recoverable.
+          <div className="field">
+            <label className="field-label">Public read-only link</label>
+            <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+              An active share link exists for this record. For security the
+              link URL is shown only once, at creation. Revoke it and create a
+              new one if you need a fresh copyable URL.
+            </div>
+            <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+              <Button
+                variant="outline"
+                icon={I.Trash}
+                onClick={() => revokeMut.mutate(activeLink.id)}
+                disabled={revokeMut.isPending}
+              >
+                {revokeMut.isPending ? "Revoking…" : "Revoke"}
+              </Button>
+              <Button
+                variant="outline"
+                icon={I.Plus}
+                onClick={() => createMut.mutate()}
+                disabled={createMut.isPending || revokeMut.isPending}
+              >
+                Create new link
+              </Button>
+            </div>
+          </div>
+        ) : (
+          // No link yet — offer to mint one.
+          <div className="field">
+            <label className="field-label">Public read-only link</label>
+            <div
+              style={{
+                fontSize: 12,
+                color: "var(--muted-foreground)",
+                marginBottom: 2,
+              }}
+            >
+              Mint a public link that shows this record read-only — no sign-in
+              required to view it.
+            </div>
+            <Button
+              variant="primary"
+              icon={I.Share}
+              onClick={() => createMut.mutate()}
+              disabled={createMut.isPending}
+            >
+              {createMut.isPending ? "Creating…" : "Create share link"}
+            </Button>
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <span className="chip">
+            <I.Eye size={11} /> read-only
+          </span>
+          <span className="chip">
+            <I.Trash size={11} /> revocable anytime
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function ItemCommentsPanel({
   collection,
@@ -28,7 +198,6 @@ export function ItemCommentsPanel({
 }) {
   const qc = useQueryClient();
   const [draft, setDraft] = useState("");
-  const [shareCopied, setShareCopied] = useState(false);
 
   const meQuery = useMe();
   const myUserId = meQuery.data?.data.id ?? null;
@@ -72,17 +241,6 @@ export function ItemCommentsPanel({
     createMut.mutate(text);
   };
 
-  const copyShare = () => {
-    try {
-      void navigator.clipboard.writeText(SHARE_URL);
-      setShareCopied(true);
-      pushToast?.("Share link copied.");
-      setTimeout(() => setShareCopied(false), 1800);
-    } catch {
-      pushToast?.("Could not copy link.", "error");
-    }
-  };
-
   const onDraftKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault();
@@ -94,38 +252,12 @@ export function ItemCommentsPanel({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {/* Share — visual-only mock: no share-token endpoint exists yet. */}
-      <div className="card">
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <I.Share size={13} />
-          <span style={{ fontSize: 12.5, fontWeight: 500 }}>share this record</span>
-        </div>
-        <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div className="field">
-            <label className="field-label">Public read-only link</label>
-            <div style={{ display: "flex", gap: 6 }}>
-              <Input className="font-mono" readOnly value={SHARE_URL_DISPLAY} style={{ fontSize: 11.5, flex: 1 }} />
-              <Button variant="outline" icon={shareCopied ? I.Check : I.Copy} onClick={copyShare}>
-                {shareCopied ? "Copied" : "Copy"}
-              </Button>
-            </div>
-            <span className="field-hint">
-              Signed view token, expires in 7d · revocable from <span className="font-mono">api_keys</span>.
-            </span>
-          </div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <span className="chip">
-              <I.Eye size={11} /> read-only
-            </span>
-            <span className="chip">
-              <I.Clock size={11} /> 7d expiry
-            </span>
-            <span className="chip">
-              <I.Lock size={11} /> password off
-            </span>
-          </div>
-        </div>
-      </div>
+      {/* Share — real, backed by /api/shared-links. */}
+      <ShareLinkCard
+        collection={collection}
+        itemId={itemId}
+        pushToast={pushToast}
+      />
 
       {/* Comments — real, backed by /api/comments. */}
       <div className="card">

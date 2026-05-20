@@ -339,13 +339,15 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
                 {p.enabled && !p.configured && <div className="text-[11px] text-destructive">enabled but not configured — won't appear on sign-in</div>}
               </div>
               {!p.configured && <Badge variant={p.enabled ? "destructive" : "secondary"}>not configured</Badge>}
-              <Button size="sm" variant="ghost" onClick={() => setConfiguring(p)}>Configure</Button>
-              <Switch
-                checked={p.enabled}
-                disabled={lockedOff}
-                title={lockedOff ? "Configure this provider (add a Client ID) before enabling it" : undefined}
-                onChange={(v) => toggleProvider(p.id, v)}
-              />
+              <div className="flex items-center gap-3">
+                <Button size="sm" variant="ghost" onClick={() => setConfiguring(p)}>Configure</Button>
+                <Switch
+                  checked={p.enabled}
+                  disabled={lockedOff}
+                  title={lockedOff ? "Configure this provider (add a Client ID) before enabling it" : undefined}
+                  onChange={(v) => toggleProvider(p.id, v)}
+                />
+              </div>
             </div>
             );
           })}

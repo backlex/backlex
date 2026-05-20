@@ -23,6 +23,17 @@ const PRESENCE_PREFIX = "presence:";
 const HEARTBEAT_MS = 25_000;
 /** Hint the browser's EventSource reconnect delay (ms). */
 const RECONNECT_HINT_MS = 3_000;
+/** Backpressure bound for the in-process SSE outbound queue. A slow or dead
+ *  client whose stream can't drain as fast as a publisher fills it would
+ *  otherwise let the queue grow without limit → unbounded memory.
+ *
+ *  Policy: DISCONNECT the slow consumer rather than drop-oldest. Drop-oldest
+ *  would silently punch gaps into the stream that the client never learns
+ *  about; disconnecting triggers the browser's EventSource auto-reconnect,
+ *  and the `Last-Event-ID` resume path replays the missed [since, snapshot]
+ *  range — so the client recovers the gap cleanly instead of losing events.
+ *  Slow consumers must not keep accumulating resources. */
+const SSE_QUEUE_MAX = 1_000;
 /** Free-form publish budget per (channel, client) in a 10s window. */
 const PUBLISH_RATE_MAX = 30;
 const PUBLISH_RATE_WINDOW_MS = 10_000;
@@ -116,6 +127,26 @@ const parseSince = (raw: string | undefined): number => {
 type QueueItem =
   | { kind: "msg"; id?: number; data: string }
   | { kind: "ping" };
+
+/** Enqueue `item` onto a bounded SSE outbound `queue`. Returns `false` when the
+ *  queue is already at `SSE_QUEUE_MAX` — the caller must then tear the
+ *  subscriber down (slow/dead consumer). The item is NOT enqueued in that case,
+ *  so the queue never exceeds the cap. */
+const boundedEnqueue = (
+  queue: QueueItem[],
+  channel: string,
+  item: QueueItem,
+): boolean => {
+  if (queue.length >= SSE_QUEUE_MAX) {
+    console.warn(
+      `[realtime] SSE queue overflow on "${channel}" (>= ${SSE_QUEUE_MAX}); ` +
+        "disconnecting slow consumer — it can reconnect and replay via Last-Event-ID",
+    );
+    return false;
+  }
+  queue.push(item);
+  return true;
+};
 
 /** Drain `queue` to the SSE stream until `isDone()` flips, parking on `setWake`
  *  between flushes. Shared by the Bun (in-process) and Workers (DO-bridge)
@@ -310,6 +341,16 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
           }
         };
         let done = false;
+        // Bounded enqueue: a slow SSE client can't outrun the DO WebSocket
+        // feed forever — overflow flags the stream done so `pumpSSE` exits,
+        // `finally` closes the upstream socket, and the client reconnects.
+        const enqueue = (item: QueueItem) => {
+          if (done) return;
+          if (!boundedEnqueue(queue, channel, item)) {
+            done = true;
+          }
+          wakeUp();
+        };
         ws.addEventListener("message", (ev: MessageEvent) => {
           const raw = typeof ev.data === "string" ? ev.data : "";
           let id: number | undefined;
@@ -329,8 +370,7 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
           } catch {
             // not a wrapped frame; forward as-is
           }
-          queue.push({ kind: "msg", id, data });
-          wakeUp();
+          enqueue({ kind: "msg", id, data });
         });
         ws.addEventListener("close", () => {
           done = true;
@@ -350,8 +390,7 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
           wakeUp();
         });
         const hb = setInterval(() => {
-          queue.push({ kind: "ping" });
-          wakeUp();
+          enqueue({ kind: "ping" });
         }, HEARTBEAT_MS);
         // Accept only after listeners are wired so DO-side replay frames
         // (queued during the `/subscribe` fetch) aren't dispatched into the void.
@@ -387,10 +426,19 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
           wake = null;
         }
       };
+      let aborted = false;
+      // Bounded enqueue: if the outbound queue is full the consumer can't keep
+      // up — flag the stream done so `pumpSSE` exits and `finally` unsubscribes.
+      const enqueue = (item: QueueItem) => {
+        if (aborted) return;
+        if (!boundedEnqueue(queue, channel, item)) {
+          aborted = true;
+        }
+        wakeUp();
+      };
       const sub = {
         send: (msg: string, id?: number) => {
-          queue.push({ kind: "msg", id, data: msg });
-          wakeUp();
+          enqueue({ kind: "msg", id, data: msg });
         },
         meta: gate.meta,
       };
@@ -399,14 +447,12 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
       // recorded before we joined the fan-out set, so replay [since, snapshot]
       // exactly fills the gap without duplicating anything delivered live.
       const snapshot = currentSeq(channel);
-      let aborted = false;
       c.req.raw.signal.addEventListener("abort", () => {
         aborted = true;
         wakeUp();
       });
       const hb = setInterval(() => {
-        queue.push({ kind: "ping" });
-        wakeUp();
+        enqueue({ kind: "ping" });
       }, HEARTBEAT_MS);
       if (since > 0 && since < snapshot) replayLocal(channel, sub, since, snapshot);
       const leavePresence =

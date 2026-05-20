@@ -14,6 +14,7 @@ import {
 import { api } from "@/lib/api";
 import type { RoleData } from "./role-editor";
 import { ConditionEditor } from "./condition-editor";
+import { useCollections } from "./queries";
 
 const persistMatrixCell = async (
   roleName: string,
@@ -140,30 +141,24 @@ export interface PermissionsMatrixProps {
 
 export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) {
   const [activeRole, setActiveRole] = useState(roles[1]?.name || "authenticated");
-  const [collections, setCollections] = useState<string[]>([]);
-  const [fieldsBySlug, setFieldsBySlug] = useState<Record<string, string[]>>({});
   const [matrix, setMatrix] = useState<Matrix>(() => emptyMatrix(roles, []));
   const [pop, setPop] = useState<{ collection: string; action: string } | null>(null);
   const [sheetTarget, setSheetTarget] = useState<{ role: string; action: string; collection: string } | null>(null);
 
-  // Load live collections (c_<slug> tables) once.
-  useEffect(() => {
-    let cancelled = false;
-    api<{ data: { slug: string; fields: Array<{ name: string }> | null }[] }>("/api/collections")
-      .then((res) => {
-        if (cancelled) return;
-        const rows = res.data ?? [];
-        const slugs = rows.map((c) => c.slug).sort();
-        const map: Record<string, string[]> = {};
-        for (const c of rows) {
-          map[c.slug] = Array.isArray(c.fields) ? c.fields.map((f: any) => f.name) : [];
-        }
-        setCollections(slugs);
-        setFieldsBySlug(map);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
+  // Live collections (c_<slug> tables) via React Query — cached + deduped
+  // with the rest of the admin instead of a one-shot useEffect fetch.
+  const collectionsQuery = useCollections();
+  const collections = useMemo<string[]>(
+    () => (collectionsQuery.data?.data ?? []).map((c) => c.slug).sort(),
+    [collectionsQuery.data],
+  );
+  const fieldsBySlug = useMemo<Record<string, string[]>>(() => {
+    const map: Record<string, string[]> = {};
+    for (const c of collectionsQuery.data?.data ?? []) {
+      map[c.slug] = Array.isArray(c.fields) ? c.fields.map((f: any) => f.name) : [];
+    }
+    return map;
+  }, [collectionsQuery.data]);
 
   // Load per-role permissions and derive matrix cell states from real rows.
   // No more "seedMatrix" — empty cells = "none" until we discover a row.

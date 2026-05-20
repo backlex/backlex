@@ -51,7 +51,6 @@ import { useTheme } from "@/components/theme-provider";
 import { SidebarInset, SidebarProvider } from "@workeros/ui/components/sidebar";
 import { StoragePage } from "./storage";
 import {
-  ActivityPage,
   AppUsersPage,
   AuthSettingsPage,
   DatabasePage,
@@ -153,6 +152,12 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   const segs = location.pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
   const activeNav = segs[0] && NAV_IDS.has(segs[0]) ? segs[0] : initialNav;
   const setActiveNav = useCallback((id: string) => { navigate("/" + id); }, [navigate]);
+
+  // The standalone "Activity log" page was merged into "Logs" — keep old
+  // `/activity` deep links working by redirecting them to the unified page.
+  useEffect(() => {
+    if (segs[0] === "activity") navigate("/logs", { replace: true });
+  }, [segs[0], navigate]);
 
   const navTo = useCallback((id: string) => { navigate("/" + id); }, [navigate]);
   const [activeTab, setActiveTab] = useState<"items" | "schema" | "settings">("items");
@@ -681,7 +686,6 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             {activeNav === "advisor" && <AdvisorPage pushToast={pushToast} />}
             {activeNav === "schema-graph" && <SchemaGraphPage pushToast={pushToast} />}
             {activeNav === "insights" && <InsightsPage pushToast={pushToast} />}
-            {activeNav === "activity" && <ActivityPage pushToast={pushToast} />}
             {activeNav === "revisions" && <RevisionsPage pushToast={pushToast} />}
             {activeNav === "translations" && <TranslationsPage pushToast={pushToast} />}
             {activeNav === "authentication" && <AuthSettingsPage pushToast={pushToast} />}

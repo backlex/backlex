@@ -717,3 +717,132 @@ export const metricsApi = {
   overview: (range = "1h") => api<Envelope<ApiMetrics>>(`/api/admin/metrics/overview?range=${range}`),
   entities: () => api<Envelope<ApiEntityMetrics>>(`/api/admin/metrics/entities`),
 };
+
+/** Minimal "who am I" identity surface (`GET /api/me`). */
+export interface ApiMe {
+  id: string;
+  email: string;
+  name: string | null;
+  image: string | null;
+  roles: string[];
+  isAdmin: boolean;
+  tenantId: string | null;
+}
+
+export const meApi = {
+  get: () => api<Envelope<ApiMe>>(`/api/me`),
+};
+
+/** In-app notification row (`/api/notifications`). The real schema has no
+ *  `kind`/`icon`/`who` columns — the bell derives an icon from `flowId`. */
+export interface ApiNotification {
+  id: string;
+  userId: string | null;
+  title: string;
+  body: string | null;
+  url: string | null;
+  flowId: string | null;
+  /** Unix-ms / ISO / null. `null` = unread. */
+  readAt: unknown | null;
+  createdAt: unknown;
+}
+
+export const notificationsApi = {
+  list: (opts?: { unread?: boolean; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (opts?.unread) qs.set("unread", "1");
+    if (opts?.limit != null) qs.set("limit", String(opts.limit));
+    const tail = qs.toString();
+    return api<Envelope<ApiNotification[]>>(
+      `/api/notifications${tail ? `?${tail}` : ""}`,
+    );
+  },
+  unreadCount: () =>
+    api<Envelope<{ count: number }>>(`/api/notifications/_unread-count`),
+  markRead: (id: string) =>
+    api<{ ok: true }>(`/api/notifications/${id}/read`, { method: "POST" }),
+  markAllRead: () =>
+    api<{ ok: true }>(`/api/notifications/_read-all`, { method: "POST" }),
+};
+
+/** Per-item discussion comment (`/api/comments`). */
+export interface ApiComment {
+  id: string;
+  collection: string;
+  itemId: string;
+  userId: string | null;
+  body: string;
+  createdAt: unknown;
+}
+
+export const commentsApi = {
+  list: (collection: string, itemId: string) =>
+    api<Envelope<ApiComment[]>>(
+      `/api/comments?collection=${encodeURIComponent(collection)}&itemId=${encodeURIComponent(itemId)}`,
+    ),
+  create: (input: { collection: string; itemId: string; body: string }) =>
+    api<Envelope<ApiComment>>(`/api/comments`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  remove: (id: string) =>
+    api<{ ok: true }>(`/api/comments/${id}`, { method: "DELETE" }),
+};
+
+/** A public read-only share link for a record (`/api/shared-links`).
+ *  The plaintext `token` is only present on the create response. */
+export interface ApiSharedLink {
+  id: string;
+  createdAt: unknown;
+  revokedAt: unknown;
+}
+
+export interface ApiCreatedSharedLink {
+  id: string;
+  /** One-time plaintext token — only returned here, never on list. */
+  token: string;
+  /** Relative `/s/<token>` path. */
+  url: string;
+}
+
+export const sharedLinksApi = {
+  list: (collection: string, itemId: string) =>
+    api<Envelope<ApiSharedLink[]>>(
+      `/api/shared-links?collection=${encodeURIComponent(collection)}&itemId=${encodeURIComponent(itemId)}`,
+    ),
+  create: (input: { collection: string; itemId: string }) =>
+    api<Envelope<ApiCreatedSharedLink>>(`/api/shared-links`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  revoke: (id: string) =>
+    api<{ ok: true }>(`/api/shared-links/${id}`, { method: "DELETE" }),
+};
+
+/** The public, unauthenticated record-share payload (`GET /api/shared/:token`). */
+export interface ApiSharedRecord {
+  collection: string;
+  item: Record<string, unknown>;
+  fields: { name: string; type: string }[];
+}
+
+export const sharedPublicApi = {
+  get: (token: string) =>
+    api<Envelope<ApiSharedRecord>>(`/api/shared/${encodeURIComponent(token)}`),
+};
+
+/** Advisor finding (`GET /api/admin/advisor`). */
+export interface ApiAdvisorCheck {
+  id: string;
+  kind: "security" | "performance";
+  level: "error" | "warn" | "info";
+  title: string;
+  body: string;
+  fix: string;
+  resource: string;
+  detected: string;
+}
+
+export const advisorApi = {
+  list: () => api<Envelope<ApiAdvisorCheck[]>>(`/api/admin/advisor`),
+};

@@ -372,7 +372,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
               <span>Workspaces</span>
               <span className="font-mono text-[10.5px] text-muted-foreground">{tenants.length}</span>
             </DropdownMenuLabel>
-            <ScrollArea className="max-h-[280px]">
+            <ScrollArea viewportClassName="max-h-[280px]">
               {tenants.map((t) => (
                 <DropdownMenuItem key={t.id} className="gap-2.5" onSelect={() => void switchTenant(t.id)}>
                   <span className="ws-mark" style={{ "--ws-color": t.color ?? undefined } as React.CSSProperties}>{t.name.charAt(0).toUpperCase()}</span>

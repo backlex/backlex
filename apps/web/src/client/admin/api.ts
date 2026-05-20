@@ -676,15 +676,40 @@ export const dbAdminApi = {
     }),
 };
 
+export interface ActivityListParams {
+  limit?: number;
+  offset?: number;
+  /** Action namespace prefix — `item` matches `item.create`, `item.update`, … */
+  action?: string;
+  /** Inclusive lower bound on `createdAt`, epoch milliseconds. */
+  from?: number;
+  /** Inclusive upper bound on `createdAt`, epoch milliseconds. */
+  to?: number;
+  collection?: string;
+  itemId?: string;
+  /** `"count"` → response carries `meta.count` (total matching the filters). */
+  meta?: "count";
+}
+
 export const activityApi = {
-  list: (opts?: { limit?: number; offset?: number }) => {
+  list: (opts?: ActivityListParams) => {
     const qs = new URLSearchParams();
     if (opts?.limit != null) qs.set("limit", String(opts.limit));
     if (opts?.offset != null) qs.set("offset", String(opts.offset));
+    if (opts?.action) qs.set("action", opts.action);
+    if (opts?.from != null) qs.set("from", String(opts.from));
+    if (opts?.to != null) qs.set("to", String(opts.to));
+    if (opts?.collection) qs.set("collection", opts.collection);
+    if (opts?.itemId) qs.set("itemId", opts.itemId);
+    if (opts?.meta) qs.set("meta", opts.meta);
     const tail = qs.toString();
-    return api<Envelope<ApiActivity[]> & { limit: number; offset: number }>(
-      `/api/activity${tail ? `?${tail}` : ""}`,
-    );
+    return api<
+      Envelope<ApiActivity[]> & {
+        limit: number;
+        offset: number;
+        meta?: { count: number };
+      }
+    >(`/api/activity${tail ? `?${tail}` : ""}`);
   },
 };
 

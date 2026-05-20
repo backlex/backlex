@@ -41,7 +41,9 @@ import { loadAuthors } from "./authors-cache";
 import { CollectionsIndex, NewCollectionDialog } from "./collections-index";
 import { EditFieldDialog } from "./edit-field";
 import { CollectionSettings } from "./collection-settings";
-import { collectionsApi, itemsApi, metricsApi, settingsApi } from "./api";
+import { collectionsApi, itemsApi, settingsApi } from "./api";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCollections, useMetricsOverview } from "./queries";
 import { api } from "@/lib/api";
 import { useUrlState, useUrlStateJson } from "@/lib/use-url-state";
 import { useTheme } from "@/components/theme-provider";
@@ -130,6 +132,9 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   // the second segment.
   const location = useLocation();
   const navigate = useNavigate();
+  // Shared React Query client — used to invalidate cached server reads
+  // (collections list, metrics) after mutations.
+  const qc = useQueryClient();
   const NAV_IDS = useMemo(
     () =>
       new Set<string>([
@@ -190,14 +195,21 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
     ownerScoped: false,
     fields: [],
   });
-  // No mock seed — empty until /api/collections fills in. The Collections
-  // index renders an empty/zero-state path when nothing is loaded yet.
-  const [collections, setCollections] = useState<CollectionListItem[]>([]);
   // Archive lifecycle view — when on, GET /api/collections is called with
   // `?include_archived=true` and we filter the result down to status="archived"
   // rows. Default off → active rows only.
   const [showArchived, setShowArchived] = useState(false);
-  const reloadCollections = useCallback(async (archived: boolean) => {
+  // Server state via React Query — the raw collections list (archived-aware)
+  // and the metrics overview are two cached reads; `collections` below is the
+  // derived, enriched array the rest of the app consumes. Mutations call
+  // `invalidateCollections()` instead of poking local state.
+  const collectionsQuery = useCollections(showArchived);
+  const metricsQuery = useMetricsOverview("24h");
+  const invalidateCollections = useCallback(() => {
+    // Prefix match — refreshes both the active and archived list entries.
+    void qc.invalidateQueries({ queryKey: ["collections"] });
+  }, [qc]);
+  const collections = useMemo<CollectionListItem[]>(() => {
     const fmtAgo = (ts: number | null | undefined): string => {
       if (!ts) return "—";
       const ms = Date.now() - ts;
@@ -206,47 +218,36 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
       if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
       return `${Math.floor(ms / 86_400_000)}d ago`;
     };
-    try {
-      const [listRes, metricsRes] = await Promise.all([
-        collectionsApi.listWithArchived(archived),
-        metricsApi.overview("24h").catch(() => null),
-      ]);
-      if (!Array.isArray(listRes.data)) return;
-      const statsBySlug = new Map(
-        (metricsRes?.data?.topCollections ?? []).map((s) => [s.slug, s]),
-      );
-      const mapped = listRes.data
-        .filter((c: any) => archived
-          ? (c.status ?? "active") === "archived"
-          : (c.status ?? "active") === "active",
-        )
-        .map((c: any) => {
-          const stats = statsBySlug.get(c.slug);
-          return {
-            slug: c.slug,
-            count: stats?.rows ?? 0,
-            ownerScoped: c.ownerScoped,
-            // Pass-through fields the index/danger zone branch on. Loosened
-            // on `CollectionListItem` so the parent can stamp them in.
-            adopted: !!c.adopted,
-            status: c.status ?? "active",
-            archivedAt: c.archivedAt ?? null,
-            fields: Array.isArray(c.fields) ? c.fields.length : 0,
-            icon: "Database" as const,
-            writes24h: stats?.writes24h ?? 0,
-            lastWrite: fmtAgo(stats?.lastWrite ?? null),
-            singleton: false,
-            group: "Content",
-          } as CollectionListItem;
-        });
-      setCollections(mapped);
-    } catch {
-      // leave collections empty on auth/network failure
-    }
-  }, []);
-  useEffect(() => {
-    void reloadCollections(showArchived);
-  }, [reloadCollections, showArchived]);
+    const listData = collectionsQuery.data?.data;
+    if (!Array.isArray(listData)) return [];
+    const statsBySlug = new Map(
+      (metricsQuery.data?.data?.topCollections ?? []).map((s) => [s.slug, s]),
+    );
+    return listData
+      .filter((c: any) => showArchived
+        ? (c.status ?? "active") === "archived"
+        : (c.status ?? "active") === "active",
+      )
+      .map((c: any) => {
+        const stats = statsBySlug.get(c.slug);
+        return {
+          slug: c.slug,
+          count: stats?.rows ?? 0,
+          ownerScoped: c.ownerScoped,
+          // Pass-through fields the index/danger zone branch on. Loosened
+          // on `CollectionListItem` so the parent can stamp them in.
+          adopted: !!c.adopted,
+          status: c.status ?? "active",
+          archivedAt: c.archivedAt ?? null,
+          fields: Array.isArray(c.fields) ? c.fields.length : 0,
+          icon: "Database" as const,
+          writes24h: stats?.writes24h ?? 0,
+          lastWrite: fmtAgo(stats?.lastWrite ?? null),
+          singleton: false,
+          group: "Content",
+        } as CollectionListItem;
+      });
+  }, [collectionsQuery.data, metricsQuery.data, showArchived]);
   const activeCollection = activeNav === "collections" && segs[1] ? segs[1] : null;
   const setActiveCollection = useCallback(
     (slug: string | null) => { navigate(slug ? "/collections/" + slug : "/collections"); },
@@ -714,7 +715,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                     onConfirm: async () => {
                       try {
                         const resp = await collectionsApi.remove(slug);
-                        setCollections((arr) => arr.filter((c) => c.slug !== slug));
+                        invalidateCollections();
                         if (activeCollection === slug) setActiveCollection(null);
                         pushToast(resp.archived
                           ? `Collection c_${slug} archived. Restore it from the Archived view.`
@@ -735,8 +736,9 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                     try {
                       await collectionsApi.restore(slug);
                       pushToast(`Collection c_${slug} restored.`);
-                      // Reload archived list — the restored row falls off it.
-                      await reloadCollections(showArchived);
+                      // Refresh both list entries — the restored row falls
+                      // off the archived list and back onto the active one.
+                      invalidateCollections();
                     } catch (e) {
                       pushToast((e as Error).message, "error");
                     }
@@ -905,8 +907,8 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                       onConfirm: async () => {
                         try {
                           const resp = await collectionsApi.patch(slug, { slug: nextSlug } as any) as { ok?: boolean; slug?: string; renamed?: Record<string, number> };
-                          // Reload collections + swap active slug + URL.
-                          await reloadCollections(showArchived);
+                          // Refresh the collections cache + swap active slug + URL.
+                          invalidateCollections();
                           setActiveCollection(nextSlug);
                           setSchemaState((s) => ({ ...s, slug: nextSlug }));
                           const totals = resp.renamed
@@ -950,7 +952,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                         const slug = activeCollection || "posts";
                         try {
                           const resp = await collectionsApi.remove(slug);
-                          setCollections((arr) => arr.filter((c) => c.slug !== slug));
+                          invalidateCollections();
                           setActiveCollection(null);
                           pushToast(resp.archived
                             ? `Collection c_${slug} archived. Restore it from the Archived view.`
@@ -990,7 +992,9 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
               fields: tplFields,
               ownerScoped: c.ownerScoped,
             } as any);
-            setCollections((arr) => [...arr, c]);
+            // Refetch — the new row comes back metrics-enriched from the
+            // canonical list rather than the wizard's partial draft.
+            invalidateCollections();
             pushToast(`Collection c_${c.slug} created.`);
             created = true;
           } catch (e) {

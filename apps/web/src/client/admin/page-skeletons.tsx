@@ -10,6 +10,48 @@
 // Every shimmer block comes from the shadcn `Skeleton` component (or the
 // `loading.tsx` primitives that wrap it) — no hand-rolled animate-pulse.
 import { Skeleton } from "@workeros/ui/components/skeleton";
+import { type ComponentType, useEffect, useState } from "react";
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Delayed-skeleton plumbing
+ * ────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Grace period before a skeleton is allowed to paint. On fast loads the
+ * data / lazy chunk resolves inside this window and the skeleton component
+ * unmounts before it ever rendered anything — so there is no split-second
+ * flash. On slow loads the skeleton appears once the window elapses.
+ */
+const SKELETON_DELAY_MS = 200;
+
+/**
+ * Returns `false` for the first `SKELETON_DELAY_MS` after mount, then `true`.
+ * The timer is cleared on unmount, so a component that unmounts early (its
+ * `isLoading` flipped false / its Suspense chunk resolved) never flips to
+ * `true` — that is what suppresses the fast-load flash.
+ */
+function useSkeletonDelay(): boolean {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => setShow(true), SKELETON_DELAY_MS);
+    return () => clearTimeout(id);
+  }, []);
+  return show;
+}
+
+/**
+ * Wraps a skeleton component so it renders `null` until the delay elapses.
+ * Applied once at every export below, so both the `<Suspense>` fallback and
+ * the in-page `isLoading` gates inherit the delay without page edits.
+ */
+function withSkeletonDelay<P extends object>(Component: ComponentType<P>): ComponentType<P> {
+  function Delayed(props: P) {
+    if (!useSkeletonDelay()) return null;
+    return <Component {...props} />;
+  }
+  Delayed.displayName = `Delayed(${Component.displayName ?? Component.name})`;
+  return Delayed;
+}
 
 /* ──────────────────────────────────────────────────────────────────────
  * Shared building blocks
@@ -116,7 +158,7 @@ function ListCardSkeleton({ rows = 6, header = true }: { rows?: number; header?:
  * ────────────────────────────────────────────────────────────────────── */
 
 /** Overview — metric cards, quick actions, stat cards, then a 2-column split. */
-export function OverviewSkeleton() {
+function OverviewSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={2} />
@@ -157,7 +199,7 @@ export function OverviewSkeleton() {
 /** Logs — the unified log explorer: header with the Stream/Table view switch,
  *  a search + range-filter row, the source-tab + export toolbar, the volume /
  *  level summary card, then the log-row stream. */
-export function LogsSkeleton() {
+function LogsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-[18px]">
       {/* Header — title + the Stream/Table tab switch and the Live button. */}
@@ -193,7 +235,7 @@ export function LogsSkeleton() {
 }
 
 /** Database — header, tab strip, then a sidebar + editor split. */
-export function DatabaseSkeleton() {
+function DatabaseSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={0} />
@@ -213,7 +255,7 @@ export function DatabaseSkeleton() {
 }
 
 /** Flows — header, then a left list + a large preview pane. */
-export function FlowsSkeleton() {
+function FlowsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={1} />
@@ -230,7 +272,7 @@ export function FlowsSkeleton() {
 }
 
 /** Functions — header, then a left list + an editor pane. */
-export function FunctionsSkeleton() {
+function FunctionsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={1} />
@@ -247,7 +289,7 @@ export function FunctionsSkeleton() {
 
 /** Webhooks — header, then a full-width webhooks table card stacked above a
  *  full-width "Recent deliveries" table card. */
-export function WebhooksSkeleton() {
+function WebhooksSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={1} />
@@ -258,7 +300,7 @@ export function WebhooksSkeleton() {
 }
 
 /** Realtime — header, then a channel list + a tail pane. */
-export function RealtimeSkeleton() {
+function RealtimeSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={1} />
@@ -272,7 +314,7 @@ export function RealtimeSkeleton() {
 
 /** Advisor — header, the score card (circular score ring + 2 summary
  *  tiles), a 2-tab strip, then the findings list. */
-export function AdvisorSkeleton() {
+function AdvisorSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={1} />
@@ -296,7 +338,7 @@ export function AdvisorSkeleton() {
 }
 
 /** Schema graph — header, then the ERD canvas card + a relations table. */
-export function SchemaGraphSkeleton() {
+function SchemaGraphSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={2} />
@@ -314,7 +356,7 @@ export function SchemaGraphSkeleton() {
 }
 
 /** Insights — header, then a dashboard grid of panel tiles. */
-export function InsightsSkeleton() {
+function InsightsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={2} />
@@ -328,7 +370,7 @@ export function InsightsSkeleton() {
 }
 
 /** Revisions — header, then a 3-column items / timeline / detail split. */
-export function RevisionsSkeleton() {
+function RevisionsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={0} />
@@ -344,7 +386,7 @@ export function RevisionsSkeleton() {
 /** Translations — header (3 actions), a locale-completion card, a controls
  *  row (base-locale select + All/Missing tabs + Manage locales), then the
  *  wide matrix table. */
-export function TranslationsSkeleton() {
+function TranslationsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={3} />
@@ -371,7 +413,7 @@ export function TranslationsSkeleton() {
 }
 
 /** Email templates — header, then a list + two editor columns. */
-export function EmailTemplatesSkeleton() {
+function EmailTemplatesSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={1} />
@@ -386,7 +428,7 @@ export function EmailTemplatesSkeleton() {
 
 /** Authentication — header, a Providers / Policy two-column split, then the
  *  full-width SAML and LDAP cards stacked below. */
-export function AuthSettingsSkeleton() {
+function AuthSettingsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={0} />
@@ -404,7 +446,7 @@ export function AuthSettingsSkeleton() {
 
 /** Users — header (1 action), a 4-up stat-card row, a filter bar, then a
  *  wide user table. */
-export function UsersSkeleton() {
+function UsersSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={1} />
@@ -426,7 +468,7 @@ export function UsersSkeleton() {
 
 /** App users — header, then a table card whose inner strip carries an
  *  "End-users" title, a count, and a right-aligned filter input. */
-export function AppUsersSkeleton() {
+function AppUsersSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={0} />
@@ -465,7 +507,7 @@ export function AppUsersSkeleton() {
 }
 
 /** API keys — header, then a card holding a key list. */
-export function ApiKeysSkeleton() {
+function ApiKeysSkeletonImpl() {
   return (
     <div className="flex flex-col gap-5">
       <HeaderSkeleton actions={1} />
@@ -488,7 +530,7 @@ export function ApiKeysSkeleton() {
 }
 
 /** Settings — header, tab strip, then a stack of settings cards. */
-export function SettingsSkeleton() {
+function SettingsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={0} />
@@ -502,7 +544,7 @@ export function SettingsSkeleton() {
 
 /** Account — header, a 4-tab strip (Profile / Security / Sessions /
  *  Connected), then the default tab's `max-w-3xl` card. */
-export function AccountSkeleton() {
+function AccountSkeletonImpl() {
   return (
     <div className="flex flex-col gap-5">
       <HeaderSkeleton actions={0} />
@@ -514,7 +556,7 @@ export function AccountSkeleton() {
 
 /** Storage — header (3 actions), the drag-and-drop upload banner, then a
  *  folder sidebar + a file grid. */
-export function StorageSkeleton() {
+function StorageSkeletonImpl() {
   return (
     <div className="flex flex-col gap-[18px]">
       <HeaderSkeleton actions={3} />
@@ -536,7 +578,7 @@ export function StorageSkeleton() {
 
 /** Collections index — header (up to 4 actions), a full-width search bar,
  *  then a grid of collection cards. */
-export function CollectionsSkeleton() {
+function CollectionsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={4} />
@@ -551,7 +593,7 @@ export function CollectionsSkeleton() {
 }
 
 /** Collection detail — back link, header, tab strip, then an items grid. */
-export function CollectionItemsSkeleton() {
+function CollectionItemsSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <Skeleton className="h-8 w-32" />
@@ -569,7 +611,7 @@ export function CollectionItemsSkeleton() {
 }
 
 /** REST Explorer — header, then an endpoint list + a request pane. */
-export function RestExplorerSkeleton() {
+function RestExplorerSkeletonImpl() {
   return (
     <div className="flex flex-col gap-6">
       <HeaderSkeleton actions={0} />
@@ -582,7 +624,7 @@ export function RestExplorerSkeleton() {
 }
 
 /** GraphQL — header, then a schema tree + an editor pane. */
-export function GraphqlSkeleton() {
+function GraphqlSkeletonImpl() {
   return (
     <div className="flex flex-col gap-6">
       <HeaderSkeleton actions={1} />
@@ -595,7 +637,7 @@ export function GraphqlSkeleton() {
 }
 
 /** OpenAPI — header, then a summary card + a paths card. */
-export function OpenApiSkeleton() {
+function OpenApiSkeletonImpl() {
   return (
     <div className="flex flex-col gap-6">
       <HeaderSkeleton actions={3} />
@@ -607,7 +649,7 @@ export function OpenApiSkeleton() {
 
 /** Access (roles & permissions) — header, a Members / Roles & permissions
  *  tab strip, then the roles + members tables. */
-export function AccessSkeleton() {
+function AccessSkeletonImpl() {
   return (
     <div className="flex flex-col gap-[18px]">
       <HeaderSkeleton actions={0} />
@@ -618,6 +660,58 @@ export function AccessSkeleton() {
   );
 }
 
+/** Generic fallback — a header + card stack, used when a nav id has no
+ *  dedicated skeleton. */
+function GenericSkeletonImpl() {
+  return (
+    <div className="flex flex-col gap-4.5">
+      <HeaderSkeleton actions={1} />
+      {Array.from({ length: 3 }).map((_, i) => (
+        <CardSkeleton key={i} lines={4} />
+      ))}
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+ * Delayed exports
+ *
+ * Every page skeleton is exported through `withSkeletonDelay`, so it renders
+ * nothing for the first `SKELETON_DELAY_MS` after it mounts. This covers both
+ * use sites without any page edits: the `<Suspense>` fallback (`PageSkeleton`
+ * delegates to these) and the in-page `if (isLoading) return <XxxSkeleton/>`
+ * gates. A load that resolves inside the window unmounts the skeleton before
+ * the timer fires — straight to content, no flash.
+ * ────────────────────────────────────────────────────────────────────── */
+
+export const OverviewSkeleton = withSkeletonDelay(OverviewSkeletonImpl);
+export const LogsSkeleton = withSkeletonDelay(LogsSkeletonImpl);
+export const DatabaseSkeleton = withSkeletonDelay(DatabaseSkeletonImpl);
+export const FlowsSkeleton = withSkeletonDelay(FlowsSkeletonImpl);
+export const FunctionsSkeleton = withSkeletonDelay(FunctionsSkeletonImpl);
+export const WebhooksSkeleton = withSkeletonDelay(WebhooksSkeletonImpl);
+export const RealtimeSkeleton = withSkeletonDelay(RealtimeSkeletonImpl);
+export const AdvisorSkeleton = withSkeletonDelay(AdvisorSkeletonImpl);
+export const SchemaGraphSkeleton = withSkeletonDelay(SchemaGraphSkeletonImpl);
+export const InsightsSkeleton = withSkeletonDelay(InsightsSkeletonImpl);
+export const RevisionsSkeleton = withSkeletonDelay(RevisionsSkeletonImpl);
+export const TranslationsSkeleton = withSkeletonDelay(TranslationsSkeletonImpl);
+export const EmailTemplatesSkeleton = withSkeletonDelay(EmailTemplatesSkeletonImpl);
+export const AuthSettingsSkeleton = withSkeletonDelay(AuthSettingsSkeletonImpl);
+export const UsersSkeleton = withSkeletonDelay(UsersSkeletonImpl);
+export const AppUsersSkeleton = withSkeletonDelay(AppUsersSkeletonImpl);
+export const ApiKeysSkeleton = withSkeletonDelay(ApiKeysSkeletonImpl);
+export const SettingsSkeleton = withSkeletonDelay(SettingsSkeletonImpl);
+export const AccountSkeleton = withSkeletonDelay(AccountSkeletonImpl);
+export const StorageSkeleton = withSkeletonDelay(StorageSkeletonImpl);
+export const CollectionsSkeleton = withSkeletonDelay(CollectionsSkeletonImpl);
+export const CollectionItemsSkeleton = withSkeletonDelay(CollectionItemsSkeletonImpl);
+export const RestExplorerSkeleton = withSkeletonDelay(RestExplorerSkeletonImpl);
+export const GraphqlSkeleton = withSkeletonDelay(GraphqlSkeletonImpl);
+export const OpenApiSkeleton = withSkeletonDelay(OpenApiSkeletonImpl);
+export const AccessSkeleton = withSkeletonDelay(AccessSkeletonImpl);
+const GenericSkeleton = withSkeletonDelay(GenericSkeletonImpl);
+
 /* ──────────────────────────────────────────────────────────────────────
  * Dispatcher
  * ────────────────────────────────────────────────────────────────────── */
@@ -626,6 +720,10 @@ export function AccessSkeleton() {
  * Resolves a nav id to its matching page skeleton. Used as the lazy-page
  * `<Suspense>` fallback so the chunk-loading placeholder already mirrors the
  * page being opened. Falls back to a generic header + card stack.
+ *
+ * `PageSkeleton` is intentionally NOT itself wrapped in `withSkeletonDelay` —
+ * every branch delegates to an already-delayed component, so wrapping here too
+ * would stack the delay to ~400ms.
  */
 export function PageSkeleton({ nav }: { nav: string }) {
   switch (nav) {
@@ -680,13 +778,6 @@ export function PageSkeleton({ nav }: { nav: string }) {
     case "account":
       return <AccountSkeleton />;
     default:
-      return (
-        <div className="flex flex-col gap-4.5">
-          <HeaderSkeleton actions={1} />
-          {Array.from({ length: 3 }).map((_, i) => (
-            <CardSkeleton key={i} lines={4} />
-          ))}
-        </div>
-      );
+      return <GenericSkeleton />;
   }
 }

@@ -717,3 +717,90 @@ export const metricsApi = {
   overview: (range = "1h") => api<Envelope<ApiMetrics>>(`/api/admin/metrics/overview?range=${range}`),
   entities: () => api<Envelope<ApiEntityMetrics>>(`/api/admin/metrics/entities`),
 };
+
+/** Minimal "who am I" identity surface (`GET /api/me`). */
+export interface ApiMe {
+  id: string;
+  email: string;
+  name: string | null;
+  image: string | null;
+  roles: string[];
+  isAdmin: boolean;
+  tenantId: string | null;
+}
+
+export const meApi = {
+  get: () => api<Envelope<ApiMe>>(`/api/me`),
+};
+
+/** In-app notification row (`/api/notifications`). The real schema has no
+ *  `kind`/`icon`/`who` columns — the bell derives an icon from `flowId`. */
+export interface ApiNotification {
+  id: string;
+  userId: string | null;
+  title: string;
+  body: string | null;
+  url: string | null;
+  flowId: string | null;
+  /** Unix-ms / ISO / null. `null` = unread. */
+  readAt: unknown | null;
+  createdAt: unknown;
+}
+
+export const notificationsApi = {
+  list: (opts?: { unread?: boolean; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (opts?.unread) qs.set("unread", "1");
+    if (opts?.limit != null) qs.set("limit", String(opts.limit));
+    const tail = qs.toString();
+    return api<Envelope<ApiNotification[]>>(
+      `/api/notifications${tail ? `?${tail}` : ""}`,
+    );
+  },
+  unreadCount: () =>
+    api<Envelope<{ count: number }>>(`/api/notifications/_unread-count`),
+  markRead: (id: string) =>
+    api<{ ok: true }>(`/api/notifications/${id}/read`, { method: "POST" }),
+  markAllRead: () =>
+    api<{ ok: true }>(`/api/notifications/_read-all`, { method: "POST" }),
+};
+
+/** Per-item discussion comment (`/api/comments`). */
+export interface ApiComment {
+  id: string;
+  collection: string;
+  itemId: string;
+  userId: string | null;
+  body: string;
+  createdAt: unknown;
+}
+
+export const commentsApi = {
+  list: (collection: string, itemId: string) =>
+    api<Envelope<ApiComment[]>>(
+      `/api/comments?collection=${encodeURIComponent(collection)}&itemId=${encodeURIComponent(itemId)}`,
+    ),
+  create: (input: { collection: string; itemId: string; body: string }) =>
+    api<Envelope<ApiComment>>(`/api/comments`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  remove: (id: string) =>
+    api<{ ok: true }>(`/api/comments/${id}`, { method: "DELETE" }),
+};
+
+/** Advisor finding (`GET /api/admin/advisor`). */
+export interface ApiAdvisorCheck {
+  id: string;
+  kind: "security" | "performance";
+  level: "error" | "warn" | "info";
+  title: string;
+  body: string;
+  fix: string;
+  resource: string;
+  detected: string;
+}
+
+export const advisorApi = {
+  list: () => api<Envelope<ApiAdvisorCheck[]>>(`/api/admin/advisor`),
+};

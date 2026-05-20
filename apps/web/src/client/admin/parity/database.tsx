@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { I } from "../icons";
 import { ADAPTER_PROFILES, type AdapterId } from "../config";
 import { Badge, Button, PageHeader, Switch } from "../ui";
+import { Input } from "@workeros/ui/components/input";
+import { Textarea } from "@workeros/ui/components/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { dbAdminApi } from "../api";
 
@@ -152,12 +154,11 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
             <span className="font-mono text-[11px] text-muted-foreground">{filteredTables.length === tables.length ? tables.length : `${filteredTables.length}/${tables.length}`}</span>
           </div>
           <div className="border-t border-border px-2 py-1.5">
-            <input
+            <Input
               value={tableFilter}
               onChange={(e) => setTableFilter(e.target.value)}
               placeholder="Filter tables…"
               spellCheck={false}
-              className="w-full rounded-3xl border border-border bg-background px-2.5 py-[5px] text-[11.5px] text-foreground outline-0"
             />
           </div>
           <div className="max-h-[280px] overflow-y-auto">
@@ -199,7 +200,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
             <Button size="sm" variant="outline" icon={I.Save} onClick={() => pushToast("Saved as snippet.")}>Save</Button>
             <Button size="sm" variant="primary" icon={I.Play} disabled={running || (readOnly && isWrite)} onClick={run}>{running ? "Running…" : "Run"}</Button>
           </div>
-          <textarea value={sql} onChange={(e) => setSql(e.target.value)} spellCheck={false} className="w-full resize-y border-0 bg-[oklch(0.18_0.01_130)] p-3.5 font-mono text-[13px] leading-[1.55] text-[oklch(0.92_0.02_130)] outline-0 min-h-[180px]" />
+          <Textarea value={sql} onChange={(e) => setSql(e.target.value)} spellCheck={false} className="w-full resize-y rounded-none border-0 bg-[oklch(0.18_0.01_130)] p-3.5 font-mono text-[13px] leading-[1.55] text-[oklch(0.92_0.02_130)] outline-0 min-h-[180px]" />
           {readOnly && isWrite && (
             <div className="flex items-center gap-1.5 border-t border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))] px-3.5 py-2 text-[11.5px] text-destructive">
               <I.AlertTriangle size={12} /> Writes blocked. Toggle "read-only" off to run mutations.

@@ -19,10 +19,17 @@ import {
   type ChangeEvent,
   type ReactNode,
 } from "react";
-import { createPortal } from "react-dom";
 import { I } from "./icons";
 import { Button, IconButton, Checkbox } from "./ui";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
 import { api } from "@/lib/api";
 import { itemsApi } from "./api";
 
@@ -87,24 +94,6 @@ function FileThumb({ k, contentType, size = 28 }: { k: string; contentType?: str
       )}
     </span>
   );
-}
-
-function useLockBodyScroll(open: boolean) {
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, [open]);
-}
-
-function useEscClose(open: boolean, close: () => void) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, close]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -237,18 +226,14 @@ function MultiFileTrigger({ value, error, onOpen, onRemove }: { value: string[];
         >
           <FileThumb k={k} size={18} />
           <span className="font-mono" style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{k}</span>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
+            icon={I.X}
             onClick={() => onRemove(k)}
-            style={{
-              display: "inline-flex", alignItems: "center", justifyContent: "center",
-              width: 18, height: 18, borderRadius: 999, border: "none",
-              background: "transparent", cursor: "pointer", color: "var(--muted-foreground)",
-            }}
             aria-label={`Remove ${k}`}
-          >
-            <I.X size={11} />
-          </button>
+            className="size-[18px] rounded-full p-0 text-muted-foreground"
+          />
         </span>
       ))}
       <div style={{ flex: 1 }} />
@@ -272,9 +257,6 @@ interface FileBrowserModalProps {
 }
 
 function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: FileBrowserModalProps) {
-  useLockBodyScroll(true);
-  useEscClose(true, onClose);
-
   const [files, setFiles] = useState<StorageFile[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -407,33 +389,24 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
   const accept = kind === "image" ? "image/*" : undefined;
   const canCommit = mode === "multi" ? true : selected.length > 0;
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150"
-      onClick={onClose}
-    >
-      <div
-        className="relative flex max-h-[min(88vh,760px)] w-[min(880px,94vw)] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent
+        className="flex max-h-[min(88vh,760px)] w-[min(880px,94vw)] flex-col gap-0 overflow-hidden p-0 sm:max-w-none"
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false); }}
         onDrop={onDropFiles}
-        role="dialog"
-        aria-modal="true"
       >
-        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
-          <div>
-            <h3 className="m-0 text-base font-semibold tracking-[-0.01em]">{title}</h3>
-            <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">
-              {mode === "multi"
-                ? "Pick one or more files. Drag-drop or use Upload to add new ones."
-                : kind === "image"
-                  ? "Pick an existing image, or drop a new one to upload."
-                  : "Pick an existing file, or drop a new one to upload."}
-            </p>
-          </div>
-          <IconButton icon={I.X} title="Close" onClick={onClose} />
-        </div>
+        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">{title}</DialogTitle>
+          <DialogDescription className="text-[12.5px]">
+            {mode === "multi"
+              ? "Pick one or more files. Drag-drop or use Upload to add new ones."
+              : kind === "image"
+                ? "Pick an existing image, or drop a new one to upload."
+                : "Pick an existing file, or drop a new one to upload."}
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="flex flex-1 flex-row overflow-y-auto">
           <FolderSidebar
@@ -530,7 +503,7 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
           </div>
         </div>
 
-        <div className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
+        <DialogFooter className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <span className="text-xs text-muted-foreground">
             {mode === "multi"
               ? selected.length
@@ -545,10 +518,9 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
           <Button variant="primary" size="sm" disabled={!canCommit} onClick={() => onCommit(selected)}>
             {mode === "multi" ? `Use ${selected.length || "0"} file${selected.length === 1 ? "" : "s"}` : "Confirm"}
           </Button>
-        </div>
-      </div>
-    </div>,
-    document.body,
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -808,9 +780,6 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
   onClose: () => void;
   seedLabels: (rows: Array<Record<string, unknown>>) => void;
 }) {
-  useLockBodyScroll(true);
-  useEscClose(true, onClose);
-
   const [rows, setRows] = useState<Array<Record<string, unknown>> | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -843,28 +812,17 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
     });
   }, [rows, q]);
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150"
-      onClick={onClose}
-    >
-      <div
-        className="relative flex max-h-[min(88vh,720px)] w-[min(720px,92vw)] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-      >
-        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
-          <div>
-            <h3 className="m-0 text-base font-semibold tracking-[-0.01em]">
-              Pick a row from <span className="font-mono">c_{target}</span>
-            </h3>
-            <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">
-              Showing the 100 most recently updated rows. Use search to narrow down.
-            </p>
-          </div>
-          <IconButton icon={I.X} title="Close" onClick={onClose} />
-        </div>
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="flex max-h-[min(88vh,720px)] w-[min(720px,92vw)] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
+            Pick a row from <span className="font-mono">c_{target}</span>
+          </DialogTitle>
+          <DialogDescription className="text-[12.5px]">
+            Showing the 100 most recently updated rows. Use search to narrow down.
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
           <InputGroup>
@@ -926,7 +884,7 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
           </div>
         </div>
 
-        <div className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
+        <DialogFooter className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <span className="text-xs text-muted-foreground">
             {selected
               ? <>Selected <span className="font-mono">{selected}</span></>
@@ -935,9 +893,8 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
           <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
           <Button variant="primary" size="sm" disabled={!selected} onClick={() => onCommit(selected)}>Confirm</Button>
-        </div>
-      </div>
-    </div>,
-    document.body,
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

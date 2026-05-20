@@ -319,12 +319,12 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="flex flex-col gap-4.5">
       <PageHeader
         title="Insights"
         description="Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard."
         actions={
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="flex flex-wrap gap-2">
             {!isMobile && (
               <Button
                 variant={editing ? "primary" : "outline"}
@@ -348,10 +348,10 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
           renderPanel={renderPanelCard}
         />
       ) : (
-        <div className="card" style={{ padding: 48, textAlign: "center", color: "var(--muted-foreground)", display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
-          <I.BarChart size={28} className="muted" />
-          <div style={{ fontSize: 14, fontWeight: 500, color: "var(--foreground)" }}>No insight panels yet</div>
-          <div style={{ fontSize: 12.5, maxWidth: 460, lineHeight: 1.5 }}>
+        <div className="flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card p-12 text-center text-muted-foreground">
+          <I.BarChart size={28} className="text-muted-foreground" />
+          <div className="text-sm font-medium text-foreground">No insight panels yet</div>
+          <div className="max-w-[460px] text-[12.5px] leading-[1.5]">
             Insight panels chart a collection aggregate (count / sum / average …) or a saved SQL query as a counter, sparkline, bars, donut, or table.
             Click <strong>+ New panel</strong> to build your first one — pick a collection, no SQL required.
           </div>
@@ -712,19 +712,18 @@ function PanelEditorDialog({
   const titleId = "panel-editor-title";
 
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
+    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={onClose}>
       <div
-        className="dialog-lg"
+        className="relative flex max-h-[90vh] w-[720px] max-w-[94vw] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         onClick={(e) => e.stopPropagation()}
-        style={{ width: 720, maxWidth: "94vw", maxHeight: "90vh", display: "flex", flexDirection: "column" }}
       >
-        <div className="sheet-header" style={{ borderBottom: "1px solid var(--border)" }}>
-          <div style={{ flex: 1 }}>
-            <h2 id={titleId}>{mode === "create" ? "New insight panel" : `Edit panel`}</h2>
-            <p>
+        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
+          <div className="flex-1">
+            <h2 id={titleId} className="m-0 text-base font-semibold tracking-[-0.01em]">{mode === "create" ? "New insight panel" : `Edit panel`}</h2>
+            <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">
               {mode === "create"
                 ? <>Saved as a row in <span className="font-mono">saved_panels</span>. Collection panels aggregate one collection (count / sum / average …); SQL panels run a read-only SELECT against the workspace database.</>
                 : <>Editing <span className="font-mono">{panel?.id}</span>.</>}
@@ -733,17 +732,17 @@ function PanelEditorDialog({
           <IconButton icon={I.X} onClick={onClose} title="Close" />
         </div>
 
-        <div className="dialog-body" style={{ overflow: "auto" }}>
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
           {topError && (
-            <div className="field" style={{ background: "color-mix(in oklch, var(--destructive) 8%, var(--card))", border: "1px solid color-mix(in oklch, var(--destructive) 35%, var(--border))", padding: 10, borderRadius: "var(--radius-md)", color: "var(--destructive)", fontSize: 12.5, display: "flex", gap: 8, alignItems: "flex-start" }}>
-              <I.AlertTriangle size={13} style={{ marginTop: 1, flex: "0 0 auto" }} />
-              <span style={{ flex: 1, wordBreak: "break-word" }}>{topError}</span>
+            <div className="flex items-start gap-2 rounded-md border border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))] p-2.5 text-[12.5px] text-destructive">
+              <I.AlertTriangle size={13} className="mt-px shrink-0" />
+              <span className="flex-1 [word-break:break-word]">{topError}</span>
             </div>
           )}
 
-          <div className="field">
-            <label className="field-label" htmlFor="panel-name">
-              Name <span style={{ color: "var(--destructive)" }}>*</span>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground" htmlFor="panel-name">
+              Name <span className="text-destructive">*</span>
             </label>
             <Input
               id="panel-name"
@@ -755,15 +754,15 @@ function PanelEditorDialog({
               onChange={(e) => { setName(e.target.value); clearServerError("name"); }}
             />
             {nameError && (name || serverErrors.name) ? (
-              <div className="field-error"><I.AlertTriangle size={11} />{nameError}</div>
+              <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{nameError}</div>
             ) : (
-              <span className="field-hint">Shown as the panel title on the dashboard.</span>
+              <span className="text-[11.5px] text-muted-foreground">Shown as the panel title on the dashboard.</span>
             )}
           </div>
 
-          <div className="field">
-            <label className="field-label" htmlFor="panel-desc">
-              Description <span className="muted" style={{ fontWeight: 400 }}>· optional</span>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground" htmlFor="panel-desc">
+              Description <span className="font-normal text-muted-foreground">· optional</span>
             </label>
             <Input
               id="panel-desc"
@@ -773,12 +772,12 @@ function PanelEditorDialog({
               value={description}
               onChange={(e) => { setDescription(e.target.value); clearServerError("description"); }}
             />
-            {descError && <div className="field-error"><I.AlertTriangle size={11} />{descError}</div>}
+            {descError && <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{descError}</div>}
           </div>
 
-          <div className="cols-2">
-            <div className="field">
-              <label className="field-label">Kind</label>
+          <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Kind</label>
               <Select
                 value={kind}
                 onChange={(v) => { setKind(v as PanelKind); setPreview(null); setPreviewError(null); clearServerError("kind"); }}
@@ -789,11 +788,11 @@ function PanelEditorDialog({
                 ]}
               />
               {serverErrors.kind
-                ? <div className="field-error"><I.AlertTriangle size={11} />{serverErrors.kind}</div>
-                : <span className="field-hint">{kind === "items-aggregate" ? "Pick a collection and an aggregate below — no query to write." : kind === "sql" ? "Write a read-only SELECT below." : "Set the config object via the API once the panel exists."}</span>}
+                ? <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{serverErrors.kind}</div>
+                : <span className="text-[11.5px] text-muted-foreground">{kind === "items-aggregate" ? "Pick a collection and an aggregate below — no query to write." : kind === "sql" ? "Write a read-only SELECT below." : "Set the config object via the API once the panel exists."}</span>}
             </div>
-            <div className="field">
-              <label className="field-label">Visualization</label>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Visualization</label>
               <Select
                 value={viz}
                 onChange={(v) => { setViz(v as PanelViz); clearServerError("viz"); }}
@@ -804,41 +803,40 @@ function PanelEditorDialog({
                 }))}
               />
               {serverErrors.viz
-                ? <div className="field-error"><I.AlertTriangle size={11} />{serverErrors.viz}</div>
-                : <span className="field-hint">{vizHint}</span>}
+                ? <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{serverErrors.viz}</div>
+                : <span className="text-[11.5px] text-muted-foreground">{vizHint}</span>}
             </div>
           </div>
 
           {kind === "sql" && (
             <>
-              <div className="field">
-                <label className="field-label" htmlFor="panel-sql">
-                  SQL <Badge variant="outline" mono>SELECT only</Badge> <span style={{ color: "var(--destructive)" }}>*</span>
-                  <div style={{ flex: 1 }} />
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground" htmlFor="panel-sql">
+                  SQL <Badge variant="outline" mono>SELECT only</Badge> <span className="text-destructive">*</span>
+                  <div className="flex-1" />
                   <Button
                     size="sm"
                     variant="outline"
                     icon={I.Play}
                     onClick={runPreview}
                     disabled={previewBusy || !sqlCheck.ok}
-                    style={{ marginLeft: "auto", float: "right" }}
+                    className="ml-auto"
                   >
                     {previewBusy ? "Running…" : "Run preview"}
                   </Button>
                 </label>
                 <Textarea
                   id="panel-sql"
-                  className="font-mono"
+                  className="font-mono min-h-[140px] whitespace-pre text-xs"
                   aria-invalid={!!sqlError}
-                  style={{ minHeight: 140, fontSize: 12, whiteSpace: "pre" }}
                   spellCheck={false}
                   value={sqlText}
                   onChange={(e) => { setSqlText(e.target.value); clearServerError("sql"); setPreviewError(null); }}
                 />
                 {sqlError ? (
-                  <div className="field-error"><I.AlertTriangle size={11} />{sqlError}</div>
+                  <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{sqlError}</div>
                 ) : (
-                  <span className="field-hint">
+                  <span className="text-[11.5px] text-muted-foreground">
                     The query runs verbatim. The visualization hint above explains how its columns map to the chart.
                   </span>
                 )}
@@ -850,22 +848,22 @@ function PanelEditorDialog({
 
           {kind === "items-aggregate" && (
             <>
-              <div className="cols-2">
-                <div className="field">
-                  <label className="field-label">Collection <span style={{ color: "var(--destructive)" }}>*</span></label>
+              <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Collection <span className="text-destructive">*</span></label>
                   <Select
                     value={agg.collection}
                     onChange={(v) => setAgg((s) => ({ ...s, collection: v, field: "", groupBy: "" }))}
                     placeholder={collections.length === 0 ? "No collections" : "Pick a collection…"}
                     options={collections.map((c) => ({ value: c.slug, label: c.slug, hint: `${c.fields.length} fields` }))}
                   />
-                  {aggError.collection && collections.length > 0 && <div className="field-error"><I.AlertTriangle size={11} />{aggError.collection}</div>}
+                  {aggError.collection && collections.length > 0 && <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{aggError.collection}</div>}
                   {collectionsLoaded && collections.length === 0 && (
-                    <span className="field-hint">No collections in this workspace yet — create one first, or switch <strong>Kind</strong> to <span className="font-mono">sql</span>.</span>
+                    <span className="text-[11.5px] text-muted-foreground">No collections in this workspace yet — create one first, or switch <strong>Kind</strong> to <span className="font-mono">sql</span>.</span>
                   )}
                 </div>
-                <div className="field">
-                  <label className="field-label">Aggregate function</label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Aggregate function</label>
                   <Select
                     value={agg.agg}
                     onChange={(v) => setAgg((s) => ({ ...s, agg: v as ItemsAggFunc, field: v === "count" ? "" : s.field }))}
@@ -880,10 +878,10 @@ function PanelEditorDialog({
                 </div>
               </div>
 
-              <div className="cols-2">
-                <div className="field">
-                  <label className="field-label">
-                    Field {agg.agg !== "count" && <span style={{ color: "var(--destructive)" }}>*</span>}
+              <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
+                    Field {agg.agg !== "count" && <span className="text-destructive">*</span>}
                   </label>
                   <Select
                     value={agg.field}
@@ -892,10 +890,10 @@ function PanelEditorDialog({
                     disabled={agg.agg === "count" || !agg.collection || numericFields.length === 0}
                     options={numericFields.map((f) => ({ value: f.name, label: f.name, hint: f.type }))}
                   />
-                  {aggError.field && <div className="field-error"><I.AlertTriangle size={11} />{aggError.field}</div>}
+                  {aggError.field && <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{aggError.field}</div>}
                 </div>
-                <div className="field">
-                  <label className="field-label">Group by <span className="muted" style={{ fontWeight: 400 }}>· optional</span></label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Group by <span className="font-normal text-muted-foreground">· optional</span></label>
                   <Select
                     value={agg.groupBy}
                     onChange={(v) => setAgg((s) => ({ ...s, groupBy: v }))}
@@ -907,35 +905,34 @@ function PanelEditorDialog({
                       ...SYSTEM_GROUP_COLUMNS.map((n) => ({ value: n, label: n, hint: "system" })),
                     ]}
                   />
-                  {aggError.groupBy && <div className="field-error"><I.AlertTriangle size={11} />{aggError.groupBy}</div>}
+                  {aggError.groupBy && <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{aggError.groupBy}</div>}
                 </div>
               </div>
 
-              <div className="field">
-                <label className="field-label">
-                  Filter <Badge variant="outline" mono>JSON DSL</Badge> <span className="muted" style={{ fontWeight: 400 }}>· optional</span>
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
+                  Filter <Badge variant="outline" mono>JSON DSL</Badge> <span className="font-normal text-muted-foreground">· optional</span>
                 </label>
                 <Textarea
-                  className="font-mono"
+                  className="font-mono min-h-[80px] whitespace-pre text-xs"
                   aria-invalid={!!aggError.filter}
-                  style={{ minHeight: 80, fontSize: 12, whiteSpace: "pre" }}
                   spellCheck={false}
                   placeholder={`{ "status": { "_eq": "published" } }`}
                   value={agg.filter}
                   onChange={(e) => setAgg((s) => ({ ...s, filter: e.target.value }))}
                 />
                 {aggError.filter ? (
-                  <div className="field-error"><I.AlertTriangle size={11} />{aggError.filter}</div>
+                  <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{aggError.filter}</div>
                 ) : (
-                  <span className="field-hint">
+                  <span className="text-[11.5px] text-muted-foreground">
                     Same DSL as roles &amp; permissions. Operators: <span className="font-mono">_eq</span>, <span className="font-mono">_in</span>, <span className="font-mono">_gte</span>, … Variables: <span className="font-mono">$user.id</span>, <span className="font-mono">$now</span>, …
                   </span>
                 )}
               </div>
 
               {agg.groupBy && (
-                <div className="field">
-                  <label className="field-label">Limit <span className="muted" style={{ fontWeight: 400 }}>· optional</span></label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Limit <span className="font-normal text-muted-foreground">· optional</span></label>
                   <Input
                     className="tabular-nums"
                     aria-invalid={!!aggError.limit}
@@ -947,14 +944,14 @@ function PanelEditorDialog({
                     onChange={(e) => setAgg((s) => ({ ...s, limit: e.target.value }))}
                   />
                   {aggError.limit ? (
-                    <div className="field-error"><I.AlertTriangle size={11} />{aggError.limit}</div>
+                    <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{aggError.limit}</div>
                   ) : (
-                    <span className="field-hint">Caps the number of grouped rows returned (default 50, max 200).</span>
+                    <span className="text-[11.5px] text-muted-foreground">Caps the number of grouped rows returned (default 50, max 200).</span>
                   )}
                 </div>
               )}
 
-              <div className="field" style={{ display: "flex", justifyContent: "flex-end" }}>
+              <div className="flex justify-end">
                 <Button
                   size="sm"
                   variant="outline"
@@ -971,15 +968,15 @@ function PanelEditorDialog({
           )}
 
           {kind === "static" && (
-            <div className="field" style={{ background: "var(--muted)", padding: 12, borderRadius: "var(--radius-xl)", fontSize: 12.5, color: "var(--muted-foreground)", display: "flex", gap: 8, alignItems: "flex-start" }}>
-              <I.AlertTriangle size={12} style={{ marginTop: 2, flex: "0 0 auto" }} />
+            <div className="flex items-start gap-2 rounded-xl bg-muted p-3 text-[12.5px] text-muted-foreground">
+              <I.AlertTriangle size={12} className="mt-0.5 shrink-0" />
               <span>static panels render their config object verbatim — set it from the API once the panel exists.</span>
             </div>
           )}
         </div>
 
-        <div className="sheet-footer">
-          <div className="spacer" />
+        <div className="flex justify-end gap-2 border-t border-border bg-card px-5 py-3">
+          <div className="flex-1" />
           <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
           <Button variant="primary" icon={mode === "create" ? I.Plus : I.Save} onClick={submit} disabled={!valid || busy}>
             {busy ? (mode === "create" ? "Creating…" : "Saving…") : mode === "create" ? "Create panel" : "Save changes"}
@@ -994,12 +991,12 @@ function PreviewTable({ rows }: { rows: Record<string, unknown>[] }) {
   const cols = Object.keys(rows[0] ?? {}).slice(0, 6);
   const max = 5;
   return (
-    <div style={{ overflowX: "auto", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", background: "var(--card)" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5 }}>
+    <div className="overflow-x-auto rounded-md border border-border bg-card">
+      <table className="w-full border-collapse text-[11.5px]">
         <thead>
           <tr>
             {cols.map((c) => (
-              <th key={c} className="font-mono" style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--border)", color: "var(--muted-foreground)", fontWeight: 500 }}>{c}</th>
+              <th key={c} className="border-b border-border px-2 py-1.5 text-left font-mono font-medium text-muted-foreground">{c}</th>
             ))}
           </tr>
         </thead>
@@ -1007,15 +1004,15 @@ function PreviewTable({ rows }: { rows: Record<string, unknown>[] }) {
           {rows.slice(0, max).map((r, i) => (
             <tr key={i}>
               {cols.map((c) => (
-                <td key={c} className="font-mono" style={{ padding: "6px 8px", borderTop: i === 0 ? "none" : "1px solid var(--border)", whiteSpace: "nowrap", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {r[c] === null || r[c] === undefined ? <span className="muted">∅</span> : typeof r[c] === "object" ? JSON.stringify(r[c]) : String(r[c])}
+                <td key={c} className={`max-w-[220px] truncate px-2 py-1.5 font-mono ${i === 0 ? "" : "border-t border-border"}`}>
+                  {r[c] === null || r[c] === undefined ? <span className="text-muted-foreground">∅</span> : typeof r[c] === "object" ? JSON.stringify(r[c]) : String(r[c])}
                 </td>
               ))}
             </tr>
           ))}
         </tbody>
       </table>
-      {rows.length > max && <div className="muted" style={{ padding: "6px 8px", fontSize: 11, borderTop: "1px solid var(--border)" }}>… and {rows.length - max} more</div>}
+      {rows.length > max && <div className="border-t border-border px-2 py-1.5 text-[11px] text-muted-foreground">… and {rows.length - max} more</div>}
     </div>
   );
 }
@@ -1063,24 +1060,24 @@ function PreviewBlock({
 }) {
   if (!preview && !previewError) return null;
   return (
-    <div className="field" style={{ background: "var(--muted)", padding: 10, borderRadius: "var(--radius-md)" }}>
-      <div className="field-label" style={{ marginBottom: 6 }}>
+    <div className="flex flex-col gap-1.5 rounded-md bg-muted p-2.5">
+      <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground">
         {previewError
-          ? <><I.AlertTriangle size={12} style={{ color: "var(--destructive)" }} /> Preview error</>
+          ? <><I.AlertTriangle size={12} className="text-destructive" /> Preview error</>
           : <><I.Activity size={12} /> Preview · {preview?.rows.length ?? 0} rows · {preview?.ms ?? 0}ms</>}
       </div>
       {previewError ? (
-        <div className="font-mono" style={{ fontSize: 11.5, color: "var(--destructive)", whiteSpace: "pre-wrap" }}>{previewError}</div>
+        <div className="whitespace-pre-wrap font-mono text-[11.5px] text-destructive">{previewError}</div>
       ) : preview && preview.rows.length > 0 ? (
         <>
           <PreviewTable rows={preview.rows} />
-          <div className="muted" style={{ fontSize: 11.5, marginTop: 6, display: "flex", gap: 6, alignItems: "center" }}>
-            <I.BarChart size={11} style={{ flex: "0 0 auto" }} />
+          <div className="mt-1.5 flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+            <I.BarChart size={11} className="shrink-0" />
             <span>{describeVizMapping(viz, preview.rows)}</span>
           </div>
         </>
       ) : (
-        <div className="muted" style={{ fontSize: 12 }}>No rows returned.</div>
+        <div className="text-xs text-muted-foreground">No rows returned.</div>
       )}
     </div>
   );
@@ -1123,9 +1120,9 @@ function RealPanel({
   if (error) {
     return (
       <Panel title={panel.name} sub={sub} onEdit={onEdit} onDelete={onDelete}>
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "10px 12px", borderRadius: "var(--radius-md)", background: "color-mix(in oklch, var(--destructive) 8%, var(--card))", border: "1px solid color-mix(in oklch, var(--destructive) 35%, var(--border))", color: "var(--destructive)", fontSize: 12 }}>
-          <I.AlertTriangle size={13} style={{ marginTop: 1, flex: "0 0 auto" }} />
-          <span style={{ flex: 1, wordBreak: "break-word" }}>{error}</span>
+        <div className="flex items-start gap-2 rounded-md border border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))] px-3 py-2.5 text-xs text-destructive">
+          <I.AlertTriangle size={13} className="mt-px shrink-0" />
+          <span className="flex-1 [word-break:break-word]">{error}</span>
         </div>
       </Panel>
     );
@@ -1134,7 +1131,7 @@ function RealPanel({
   if (rows.length === 0) {
     return (
       <Panel title={panel.name} sub={sub} onEdit={onEdit} onDelete={onDelete}>
-        <div className="muted" style={{ fontSize: 12, padding: "16px 0" }}>No data yet — run the panel.</div>
+        <div className="py-4 text-xs text-muted-foreground">No data yet — run the panel.</div>
       </Panel>
     );
   }
@@ -1146,7 +1143,7 @@ function RealPanel({
     const v = numericCol ? Number(rows[0]![numericCol]) : rows.length;
     return (
       <Panel title={panel.name} sub={sub} onEdit={onEdit} onDelete={onDelete}>
-        <div className="tabular-nums" style={{ fontSize: 32, fontWeight: 600, padding: "8px 0" }}>
+        <div className="py-2 text-[32px] font-semibold tabular-nums">
           {v.toLocaleString()}
         </div>
       </Panel>
@@ -1169,13 +1166,13 @@ function RealPanel({
     }));
     return (
       <Panel title={panel.name} sub={sub} onEdit={onEdit} onDelete={onDelete}>
-        <div style={{ display: "flex", alignItems: "center", gap: 18, padding: "12px 0" }}>
+        <div className="flex items-center gap-[18px] py-3">
           <Donut segments={segs} />
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5 }}>
+          <div className="flex flex-1 flex-col gap-1.5 text-[12.5px]">
             {rows.slice(0, 6).map((r, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 2, background: segs[i]!.color }} />
-                <span className="font-mono" style={{ flex: 1 }}>{String(r[labelCol ?? cols[0]!])}</span>
+              <div key={i} className="flex items-center gap-2">
+                <span className="size-2 rounded-[2px]" style={{ background: segs[i]!.color }} />
+                <span className="flex-1 font-mono">{String(r[labelCol ?? cols[0]!])}</span>
                 <span className="tabular-nums">{Number(r[numericCol ?? cols[1]!])}</span>
               </div>
             ))}
@@ -1188,9 +1185,9 @@ function RealPanel({
   // Fallback: small table.
   return (
     <Panel title={panel.name} sub={sub} onEdit={onEdit} onDelete={onDelete}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12 }}>
+      <div className="flex flex-col gap-1.5 text-xs">
         {rows.slice(0, 8).map((r, i) => (
-          <div key={i} className="font-mono" style={{ display: "flex", justifyContent: "space-between", borderBottom: i < Math.min(rows.length, 8) - 1 ? "1px solid var(--border)" : "none", paddingBottom: 4 }}>
+          <div key={i} className={`flex justify-between pb-1 font-mono ${i < Math.min(rows.length, 8) - 1 ? "border-b border-border" : ""}`}>
             <span>{String(r[labelCol ?? cols[0]!])}</span>
             <span className="tabular-nums">{numericCol ? Number(r[numericCol]).toLocaleString() : ""}</span>
           </div>
@@ -1214,10 +1211,10 @@ function Panel({
   onDelete?: () => void;
 }) {
   return (
-    <div className="card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-        <span style={{ fontSize: 13, fontWeight: 500 }}>{title}</span>
-        <span className="muted" style={{ fontSize: 11.5, flex: 1 }}>{sub}</span>
+    <div className="flex flex-col gap-2 overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground">
+      <div className="flex items-baseline gap-2">
+        <span className="text-[13px] font-medium">{title}</span>
+        <span className="flex-1 text-[11.5px] text-muted-foreground">{sub}</span>
         {onEdit && <IconButton icon={I.Pencil} onClick={onEdit} title="Edit panel" />}
         {onDelete && <IconButton icon={I.Trash} onClick={onDelete} title="Delete panel" />}
       </div>

@@ -23,7 +23,7 @@
  * a callsite migrates is preferable to pre-emptively exposing all 20+ API
  * surfaces and growing dead code.
  */
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
   activityApi,
   advisorApi,
@@ -59,10 +59,22 @@ export const queryKeys = {
   sharedLinks: (collection: string, itemId: string) =>
     ["shared-links", collection, itemId] as const,
   advisor: () => ["advisor"] as const,
-  /** Activity log rows — the Logs page's data source. Keyed by `limit` so a
-   *  different page size is a distinct cache entry. */
-  activity: (limit: number) => ["activity", { limit }] as const,
+  /** Activity log rows — the unified Logs page's data source. Keyed by the
+   *  server-side filters (`from`, `action`, `pageSize`) so changing the time
+   *  window or the action filter is a distinct cache entry; `offset` is the
+   *  per-page cursor and lives in `useInfiniteQuery`'s page params, not here. */
+  activity: (filters: ActivityFilters) => ["activity", filters] as const,
 };
+
+/** Server-side filters that key the activity infinite query. */
+export interface ActivityFilters {
+  /** Inclusive lower bound on `createdAt`, epoch ms (the time-range chip). */
+  from?: number;
+  /** Action namespace prefix (the category chip), e.g. `item` or `auth`. */
+  action?: string;
+  /** Rows per page request. */
+  pageSize: number;
+}
 
 export function useTenants() {
   return useQuery({
@@ -170,13 +182,35 @@ export function useAdvisor() {
 }
 
 /**
- * Activity log rows — the data source for the multi-source Logs page.
+ * Activity log rows — the data source for the unified Logs page.
+ *
+ * Uses `useInfiniteQuery` so the page can paginate past the 200-row server
+ * cap: each page is a `limit`/`offset` request, and "Load more" appends the
+ * next page. The time window (`from`) and the action category (`action`) are
+ * pushed to the server (part of the query key) — this fixes the old bug where
+ * a fixed 200-row `useQuery` clipped any range wider than the freshest 200
+ * rows. `meta=count` is requested so the page can show a real total.
+ *
  * `live` flips on a ~5s `refetchInterval` so the page can tail new entries.
  */
-export function useActivity(limit = 200, live = false) {
-  return useQuery({
-    queryKey: queryKeys.activity(limit),
-    queryFn: () => activityApi.list({ limit }),
+export function useActivity(filters: ActivityFilters, live = false) {
+  return useInfiniteQuery({
+    queryKey: queryKeys.activity(filters),
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
+      activityApi.list({
+        limit: filters.pageSize,
+        offset: pageParam,
+        from: filters.from,
+        action: filters.action,
+        meta: "count",
+      }),
+    // The next page exists only if the last page came back full. The cursor
+    // is a running offset (previous offset + the page size we asked for).
+    getNextPageParam: (lastPage, _all, lastOffset) =>
+      lastPage.data.length === filters.pageSize
+        ? lastOffset + filters.pageSize
+        : undefined,
     refetchInterval: live ? 5000 : false,
   });
 }

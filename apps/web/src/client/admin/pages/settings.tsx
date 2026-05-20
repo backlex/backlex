@@ -113,45 +113,45 @@ function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
       : "";
 
   return (
-    <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-        <I.Info size={14} style={{ marginTop: 2 }} />
-        <span className="muted" style={{ fontSize: 12 }}>
+    <div className="flex max-w-[720px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
+      <div className="flex items-start gap-2.5">
+        <I.Info size={14} className="mt-0.5" />
+        <span className="text-xs text-muted-foreground">
           Email transport for <b>this workspace</b>. Resolution order: this config → the instance-wide
           default → the deployment’s <span className="font-mono">EMAIL_PROVIDER</span> / env keys. Secret
           values are encrypted at rest and never shown again.
         </span>
       </div>
-      <div className="field">
-        <label className="field-label">Provider</label>
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Provider</label>
         <Select value={provider} onChange={(v: string) => { setProvider(v); mark(); }} options={EMAIL_PROVIDER_OPTIONS} />
-        <span className="field-hint">{fields.hint}{envHint}</span>
+        <span className="text-[11.5px] text-muted-foreground">{fields.hint}{envHint}</span>
       </div>
       {provider !== "inherit" && provider !== "console" && (
-        <div className="field">
-          <label className="field-label">From address</label>
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">From address</label>
           <Input placeholder="hello@yourdomain.com" value={from} onChange={(e) => { setFrom(e.target.value); mark(); }} />
-          <span className="field-hint">Required for every provider — must be a verified sender/domain for the chosen transport.</span>
+          <span className="text-[11.5px] text-muted-foreground">Required for every provider — must be a verified sender/domain for the chosen transport.</span>
         </div>
       )}
       {fields.config.map(([key, label, placeholder, type]) => (
-        <div className="field" key={key}>
+        <div className="flex flex-col gap-1.5" key={key}>
           {type === "checkbox" ? (
-            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+            <label className="flex cursor-pointer items-center gap-2">
               <input type="checkbox" checked={!!config[key]} onChange={(e) => { setConfig((c) => ({ ...c, [key]: e.target.checked })); mark(); }} />
-              <span className="field-label" style={{ marginBottom: 0 }}>{label}</span>
+              <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{label}</span>
             </label>
           ) : (
             <>
-              <label className="field-label">{label}</label>
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{label}</label>
               <Input type={type === "number" ? "number" : "text"} placeholder={placeholder} value={config[key] ?? ""} onChange={(e) => { setConfig((c) => ({ ...c, [key]: e.target.value })); mark(); }} />
             </>
           )}
         </div>
       ))}
       {fields.secrets.map(([key, label]) => (
-        <div className="field" key={key}>
-          <label className="field-label">{label}</label>
+        <div className="flex flex-col gap-1.5" key={key}>
+          <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{label}</label>
           <Input
             type="password"
             autoComplete="new-password"
@@ -159,12 +159,12 @@ function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
             value={secrets[key] ?? ""}
             onChange={(e) => { setSecrets((s) => ({ ...s, [key]: e.target.value })); mark(); }}
           />
-          {cfg?.secretsSet?.[key] && <span className="field-hint">A value is stored. Type a new one to replace it, or leave blank to keep it.</span>}
+          {cfg?.secretsSet?.[key] && <span className="text-[11.5px] text-muted-foreground">A value is stored. Type a new one to replace it, or leave blank to keep it.</span>}
         </div>
       ))}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
+      <div className="flex items-center justify-between gap-2 border-t border-border pt-2.5">
         <Button variant="outline" size="sm" disabled={testing} onClick={() => void sendTest()}>{testing ? "Sending…" : "Send test email"}</Button>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="flex gap-2">
           <Button variant="ghost" size="sm" disabled={!dirty || saving} onClick={() => void load()}>Discard</Button>
           <Button variant="primary" size="sm" disabled={!dirty || saving} onClick={() => void save()}>{saving ? "Saving…" : "Save"}</Button>
         </div>
@@ -335,44 +335,44 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
   const faviconSrc = previewUrl(faviconFileKey, faviconBust);
 
   return (
-    <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
-      <div className="field">
-        <label className="field-label">Workspace name</label>
+    <div className="flex max-w-[720px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Workspace name</label>
         <Input
           value={workspaceName}
           disabled={loading}
           onChange={(e) => { setWorkspaceName(e.target.value); setDirty(true); }}
         />
-        <span className="field-hint">Shown in the sidebar and the browser title.</span>
+        <span className="text-[11.5px] text-muted-foreground">Shown in the sidebar and the browser title.</span>
       </div>
-      <div className="field">
-        <label className="field-label">Description</label>
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Description</label>
         <Textarea
           rows={3}
           value={description}
           disabled={loading}
           onChange={(e) => { setDescription(e.target.value); setDirty(true); }}
         />
-        <span className="field-hint">Short tagline for the workspace.</span>
+        <span className="text-[11.5px] text-muted-foreground">Short tagline for the workspace.</span>
       </div>
-      <div className="field-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+      <div className="flex items-center justify-between gap-3 border-t border-border pt-3.5">
         <div>
-          <div className="field-label">Logo</div>
-          <div className="field-hint">PNG, JPG, SVG or WebP. Replaces any previous upload.</div>
+          <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Logo</div>
+          <div className="text-[11.5px] text-muted-foreground">PNG, JPG, SVG or WebP. Replaces any previous upload.</div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="flex items-center gap-3">
           {logoSrc && (
             <img
               src={logoSrc}
               alt="workspace logo"
-              style={{ width: 56, height: 56, objectFit: "contain", borderRadius: 6, background: "var(--muted)", padding: 4 }}
+              className="size-14 rounded-[6px] bg-muted object-contain p-1"
             />
           )}
           <input
             ref={logoInputRef}
             type="file"
             accept="image/png,image/jpeg,image/svg+xml,image/webp"
-            style={{ display: "none" }}
+            className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0] ?? null;
               e.target.value = "";
@@ -399,24 +399,24 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
           )}
         </div>
       </div>
-      <div className="field-row">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="field-label">Favicon</div>
-          <div className="field-hint">PNG or ICO recommended (≤ 64 KB).</div>
+          <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Favicon</div>
+          <div className="text-[11.5px] text-muted-foreground">PNG or ICO recommended (≤ 64 KB).</div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="flex items-center gap-3">
           {faviconSrc && (
             <img
               src={faviconSrc}
               alt="workspace favicon"
-              style={{ width: 32, height: 32, objectFit: "contain", borderRadius: 6, background: "var(--muted)", padding: 2 }}
+              className="size-8 rounded-[6px] bg-muted object-contain p-0.5"
             />
           )}
           <input
             ref={faviconInputRef}
             type="file"
             accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml"
-            style={{ display: "none" }}
+            className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0] ?? null;
               e.target.value = "";
@@ -443,9 +443,9 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
           )}
         </div>
       </div>
-      <div className="field" style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
-        <label className="field-label">Primary color</label>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+      <div className="flex flex-col gap-1.5 border-t border-border pt-3.5">
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Primary color</label>
+        <div className="mb-2.5 flex flex-wrap gap-2">
           {PRIMARY_PRESETS.map((p) => {
             const active = primaryColor.trim() === p.value;
             return (
@@ -457,23 +457,13 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
                 aria-pressed={active}
                 disabled={loading}
                 onClick={() => commitPrimary(p.value)}
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 999,
-                  background: p.value,
-                  border: "1px solid var(--border)",
-                  boxShadow: active
-                    ? "0 0 0 2px var(--background), 0 0 0 4px var(--foreground)"
-                    : "none",
-                  cursor: loading ? "default" : "pointer",
-                  padding: 0,
-                }}
+                className={`size-7 rounded-full border border-border p-0 ${loading ? "cursor-default" : "cursor-pointer"} ${active ? "shadow-[0_0_0_2px_var(--background),0_0_0_4px_var(--foreground)]" : ""}`}
+                style={{ background: p.value }}
               />
             );
           })}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="flex items-center gap-2.5">
           <ColorPicker
             value={primaryColorOk && primaryColor.trim() ? primaryColor : ""}
             disabled={loading}
@@ -484,7 +474,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
             placeholder="#3b82f6 or oklch(0.84 0.23 128.85)"
             disabled={loading}
             onChange={(e) => commitPrimary(e.target.value)}
-            style={{ flex: 1, fontFamily: "var(--font-mono)" }}
+            className="flex-1 font-mono"
           />
           {primaryColor && (
             <Button
@@ -497,18 +487,18 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
             </Button>
           )}
         </div>
-        <span className="field-hint">
+        <span className="text-[11.5px] text-muted-foreground">
           {primaryColorOk
             ? "Overrides the `--primary` token used across the admin and any published surfaces."
             : "Use a hex value (#rrggbb), or a CSS color function: rgb(), hsl(), oklch(), oklab()."}
         </span>
       </div>
-      <div className="field-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 14, alignItems: "flex-start" }}>
+      <div className="flex items-start justify-between gap-3 border-t border-border pt-3.5">
         <div>
-          <div className="field-label">Workspace default theme</div>
-          <div className="field-hint">Applied to users with no local override yet.</div>
+          <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Workspace default theme</div>
+          <div className="text-[11.5px] text-muted-foreground">Applied to users with no local override yet.</div>
         </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <div className="flex flex-wrap gap-1.5">
           {(["", "light", "dark", "system"] as const).map((opt) => (
             <Button
               key={opt || "user"}
@@ -522,12 +512,12 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
           ))}
         </div>
       </div>
-      <div className="field-row" style={{ alignItems: "flex-start" }}>
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="field-label">My theme</div>
-          <div className="field-hint">Your own preference — stored locally, not synced.</div>
+          <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">My theme</div>
+          <div className="text-[11.5px] text-muted-foreground">Your own preference — stored locally, not synced.</div>
         </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <div className="flex flex-wrap gap-1.5">
           {(["light", "dark", "system"] as const).map((opt) => (
             <Button
               key={opt}
@@ -540,7 +530,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
           ))}
         </div>
       </div>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 6 }}>
+      <div className="flex justify-end gap-2 pt-1.5">
         <Button variant="ghost" size="sm" disabled={!dirty || saving || loading} onClick={() => void load()}>Discard</Button>
         <Button variant="primary" size="sm" disabled={!dirty || saving || loading} onClick={() => void save()}>
           {saving ? "Saving…" : "Save"}
@@ -624,9 +614,9 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
   const bindingIcon = (t: string): IconComponent => (({ D1: I.Database, KV: I.Folder, R2: I.Server, DurableObj: I.Bolt, Vectorize: I.Bolt, Hyperdrive: I.Database, Dispatch: I.Bolt, Queue: I.Webhook, AI: I.Bolt } as Record<string, IconComponent>)[t] || I.Folder);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="flex flex-col gap-4.5">
       <PageHeader title="Settings" description="Self-hosted on Cloudflare Workers. Most config lives in wrangler.toml; this page is a live view + UI for runtime-mutable values." />
-      <div className="tabs">
+      <div className="flex w-fit gap-0.5 rounded-3xl bg-muted p-[3px]">
         {[
           { id: "general", label: "General" },
           { id: "appearance", label: "Appearance" },
@@ -634,45 +624,53 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
           { id: "bindings", label: "Bindings", count: bindings.length },
           { id: "env", label: "Environment", count: envVars.length },
           { id: "about", label: "About" },
-        ].map((t) => (
-          <button key={t.id} type="button" className="tab" data-active={tab === t.id} onClick={() => setTab(t.id)}>
-            <span>{t.label}</span>
-            {t.count !== undefined && <span className="count">{t.count}</span>}
-          </button>
-        ))}
+        ].map((t) => {
+          const on = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              className={`inline-flex cursor-pointer items-center gap-1.5 rounded-3xl border-0 px-3.5 py-[5px] text-[12.5px] font-medium ${on ? "bg-card text-foreground shadow-[0_1px_2px_oklch(0_0_0/0.06),0_1px_0_oklch(0_0_0/0.04)]" : "bg-transparent text-muted-foreground"}`}
+              onClick={() => setTab(t.id)}
+            >
+              <span>{t.label}</span>
+              {t.count !== undefined && <span className={`rounded-sm border border-border px-[5px] py-px font-mono text-[11px] text-muted-foreground ${on ? "bg-muted" : "bg-background"}`}>{t.count}</span>}
+            </button>
+          );
+        })}
       </div>
 
       {tab === "general" && (
-        <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 16, maxWidth: 720 }}>
-          <div className="field-row">
+        <div className="flex max-w-[720px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="field-label">APP_URL</div>
-              <div className="field-hint">Public origin of this Worker — set via <span className="font-mono">wrangler.toml [vars]</span> (or <span className="font-mono">.env</span> on self-host). Used for CORS, OAuth callbacks and absolute links. Read-only here.</div>
+              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">APP_URL</div>
+              <div className="text-[11.5px] text-muted-foreground">Public origin of this Worker — set via <span className="font-mono">wrangler.toml [vars]</span> (or <span className="font-mono">.env</span> on self-host). Used for CORS, OAuth callbacks and absolute links. Read-only here.</div>
             </div>
-            <span className="font-mono muted" style={{ fontSize: 12.5, maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={appUrl}>{appUrl}</span>
+            <span className="max-w-[280px] truncate font-mono text-[12.5px] text-muted-foreground" title={appUrl}>{appUrl}</span>
           </div>
-          <div className="field-row">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="field-label">EMAIL_FROM</div>
-              <div className="field-hint">Sender address for transactional email — set via <span className="font-mono">wrangler secret put</span> / <span className="font-mono">.env</span>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here.</div>
+              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">EMAIL_FROM</div>
+              <div className="text-[11.5px] text-muted-foreground">Sender address for transactional email — set via <span className="font-mono">wrangler secret put</span> / <span className="font-mono">.env</span>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here.</div>
             </div>
-            <span className="font-mono muted" style={{ fontSize: 12.5 }}>{from || "(not set)"}</span>
+            <span className="font-mono text-[12.5px] text-muted-foreground">{from || "(not set)"}</span>
           </div>
-          <div className="field-row">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="field-label">Open sign-up</div>
-              <div className="field-hint">When off, new account creation is rejected on every path (email/password, social, magic-link). The first user is always allowed so a fresh instance can bootstrap its admin.</div>
+              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Open sign-up</div>
+              <div className="text-[11.5px] text-muted-foreground">When off, new account creation is rejected on every path (email/password, social, magic-link). The first user is always allowed so a fresh instance can bootstrap its admin.</div>
             </div>
             <Switch checked={signupOpen} onChange={(v) => { setSignupOpen(v); setDirty(true); }} />
           </div>
-          <div className="field-row">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="field-label">Runtime</div>
-              <div className="field-hint">Auto-detected from <span className="font-mono">env</span> bindings.</div>
+              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Runtime</div>
+              <div className="text-[11.5px] text-muted-foreground">Auto-detected from <span className="font-mono">env</span> bindings.</div>
             </div>
-            <span className="adapter-pill"><span className="dot" />{adapter}</span>
+            <span className="inline-flex items-center gap-1.5 rounded-3xl border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className="size-[7px] shrink-0 rounded-full bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]" />{adapter}</span>
           </div>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 6 }}>
+          <div className="flex justify-end gap-2 pt-1.5">
             <Button variant="ghost" size="sm" disabled={!dirty} onClick={() => setDirty(false)}>Discard</Button>
             <Button variant="primary" size="sm" disabled={!dirty} onClick={persistGeneral}>Save</Button>
           </div>
@@ -684,35 +682,35 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
       {tab === "email" && <EmailSettingsCard pushToast={pushToast} />}
 
       {tab === "bindings" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 920 }}>
-          <div className="card" style={{ padding: 14, display: "flex", alignItems: "flex-start", gap: 10, background: "var(--muted)" }}>
-            <I.Info size={14} style={{ marginTop: 2 }} />
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span style={{ fontSize: 12.5, fontWeight: 500 }}>Bindings are read-only here</span>
-              <span className="muted" style={{ fontSize: 12 }}>Edit them in <span className="font-mono" style={{ color: "var(--foreground)" }}>wrangler.toml</span> and redeploy. This panel reflects the live binding map from <span className="font-mono" style={{ color: "var(--foreground)" }}>env</span>.</span>
+        <div className="flex max-w-[920px] flex-col gap-3">
+          <div className="flex items-start gap-2.5 overflow-hidden rounded-2xl border border-border bg-muted p-3.5">
+            <I.Info size={14} className="mt-0.5" />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[12.5px] font-medium">Bindings are read-only here</span>
+              <span className="text-xs text-muted-foreground">Edit them in <span className="font-mono text-foreground">wrangler.toml</span> and redeploy. This panel reflects the live binding map from <span className="font-mono text-foreground">env</span>.</span>
             </div>
           </div>
-          <div className="card">
-            <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <I.Server size={14} /><span style={{ fontSize: 13, fontWeight: 500 }}>worker bindings</span>
-              <span className="font-mono muted" style={{ fontSize: 12 }}>{bindings.filter((b) => b.status === "connected").length} connected · {bindings.filter((b) => b.status !== "connected").length} optional</span>
-              <div className="spacer" />
+          <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+            <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
+              <I.Server size={14} /><span className="text-[13px] font-medium">worker bindings</span>
+              <span className="font-mono text-xs text-muted-foreground">{bindings.filter((b) => b.status === "connected").length} connected · {bindings.filter((b) => b.status !== "connected").length} optional</span>
+              <div className="flex-1" />
               <Button variant="ghost" size="sm" icon={I.Refresh} onClick={() => pushToast("Bindings refreshed.")}>Refresh</Button>
             </div>
-            <div className="table-scroll">
-            <div className="schema-row" style={{ gridTemplateColumns: "24px 110px 160px 1fr 120px", background: "var(--muted)", fontSize: 11, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: 0.4 }}>
+            <div className="w-full max-w-full overflow-x-auto">
+            <div className="grid grid-cols-[24px_110px_160px_1fr_120px] items-center gap-3 border-b border-border bg-muted px-3.5 py-[11px] text-[11px] uppercase tracking-[0.4px] text-muted-foreground">
               <span></span><span>Type</span><span>Name</span><span>Resource</span><span>Status</span>
             </div>
             {bindings.map((b) => {
               const Ic = bindingIcon(b.type);
               return (
-                <div key={b.id} className="schema-row" style={{ gridTemplateColumns: "24px 110px 160px 1fr 120px" }}>
+                <div key={b.id} className="grid grid-cols-[24px_110px_160px_1fr_120px] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0">
                   <span><Ic size={14} /></span>
-                  <span className="font-mono" style={{ fontSize: 12.5 }}>{b.type}</span>
-                  <span className="font-mono" style={{ fontSize: 13 }}>{b.name}</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                    <span className="font-mono muted" style={{ fontSize: 12 }}>{b.target}</span>
-                    {b.warn && <span className="muted" style={{ fontSize: 11.5 }}>· {b.warn}</span>}
+                  <span className="font-mono text-[12.5px]">{b.type}</span>
+                  <span className="font-mono text-[13px]">{b.name}</span>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="font-mono text-xs text-muted-foreground">{b.target}</span>
+                    {b.warn && <span className="text-[11.5px] text-muted-foreground">· {b.warn}</span>}
                   </div>
                   <span>
                     {b.status === "connected" && <Badge variant="default">connected</Badge>}
@@ -723,12 +721,12 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
             })}
             </div>
           </div>
-          <div className="card" style={{ padding: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <div className="overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground">
+            <div className="mb-2 flex items-center gap-2">
               <I.Code size={13} />
-              <span style={{ fontSize: 12.5, fontWeight: 500 }}>wrangler.toml snippet</span>
+              <span className="text-[12.5px] font-medium">wrangler.toml snippet</span>
             </div>
-            <pre className="alter-preview" style={{ fontSize: 11.5, margin: 0, whiteSpace: "pre-wrap" }}>{`[[d1_databases]]
+            <pre className="m-0 whitespace-pre-wrap rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11.5px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">{`[[d1_databases]]
 binding = "D1"
 database_name = "workeros"
 
@@ -748,28 +746,28 @@ class_name = "RealtimeRoom"`}</pre>
       )}
 
       {tab === "env" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 920 }}>
-          <div className="card" style={{ padding: 14, display: "flex", alignItems: "flex-start", gap: 10, background: "var(--muted)" }}>
-            <I.Info size={14} style={{ marginTop: 2 }} />
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span style={{ fontSize: 12.5, fontWeight: 500 }}>Environment variables are read-only here</span>
-              <span className="muted" style={{ fontSize: 12 }}>Set them in <span className="font-mono" style={{ color: "var(--foreground)" }}>wrangler.toml [vars]</span> / <span className="font-mono" style={{ color: "var(--foreground)" }}>wrangler secret put</span> (or <span className="font-mono" style={{ color: "var(--foreground)" }}>apps/web/.env</span> on self-host) and redeploy. This panel only reports which keys are present — secret values are never sent to the browser.</span>
+        <div className="flex max-w-[920px] flex-col gap-3">
+          <div className="flex items-start gap-2.5 overflow-hidden rounded-2xl border border-border bg-muted p-3.5">
+            <I.Info size={14} className="mt-0.5" />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[12.5px] font-medium">Environment variables are read-only here</span>
+              <span className="text-xs text-muted-foreground">Set them in <span className="font-mono text-foreground">wrangler.toml [vars]</span> / <span className="font-mono text-foreground">wrangler secret put</span> (or <span className="font-mono text-foreground">apps/web/.env</span> on self-host) and redeploy. This panel only reports which keys are present — secret values are never sent to the browser.</span>
             </div>
           </div>
-          <div className="card">
-            <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <I.Lock size={14} /><span style={{ fontSize: 13, fontWeight: 500 }}>environment</span>
-              <span className="font-mono muted" style={{ fontSize: 12 }}>{envVars.filter((v) => v.value !== "(unset)").length} set · {envVars.filter((v) => v.value === "(unset)").length} unset</span>
+          <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+            <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-4 py-3.5">
+              <I.Lock size={14} /><span className="text-[13px] font-medium">environment</span>
+              <span className="font-mono text-xs text-muted-foreground">{envVars.filter((v) => v.value !== "(unset)").length} set · {envVars.filter((v) => v.value === "(unset)").length} unset</span>
             </div>
-            <div className="table-scroll">
-            <div className="schema-row" style={{ gridTemplateColumns: "24px 1fr 120px 110px", background: "var(--muted)", fontSize: 11, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: 0.4 }}>
+            <div className="w-full max-w-full overflow-x-auto">
+            <div className="grid grid-cols-[24px_1fr_120px_110px] items-center gap-3 border-b border-border bg-muted px-3.5 py-[11px] text-[11px] uppercase tracking-[0.4px] text-muted-foreground">
               <span></span><span>Key</span><span>Kind</span><span>Status</span>
             </div>
             {envVars.map((v) => (
-              <div key={v.id} className="schema-row" style={{ gridTemplateColumns: "24px 1fr 120px 110px" }}>
+              <div key={v.id} className="grid grid-cols-[24px_1fr_120px_110px] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0">
                 <span>{v.secret ? <I.Lock size={13} /> : <I.Hash size={13} />}</span>
-                <span className="font-mono" style={{ fontSize: 12.5 }}>{v.key}</span>
-                <span className="muted" style={{ fontSize: 11.5 }}>{v.secret ? "secret" : "plain"}</span>
+                <span className="font-mono text-[12.5px]">{v.key}</span>
+                <span className="text-[11.5px] text-muted-foreground">{v.secret ? "secret" : "plain"}</span>
                 <span>{v.value === "(unset)" ? <Badge variant="secondary">unset</Badge> : <Badge variant="default">set</Badge>}</span>
               </div>
             ))}
@@ -779,8 +777,8 @@ class_name = "RealtimeRoom"`}</pre>
       )}
 
       {tab === "about" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 720 }}>
-          <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div className="flex max-w-[720px] flex-col gap-3">
+          <div className="flex flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
             {[
               ["Version", "v0.9.4 (a8b2f1c)"],
               ["Released", "2025-10-12"],
@@ -789,19 +787,19 @@ class_name = "RealtimeRoom"`}</pre>
               ["License", "MIT"],
               ["Repository", "github.com/workeros/workeros"],
             ].map(([k, v]) => (
-              <div key={k} className="field-row" style={{ paddingTop: 0 }}>
-                <span className="field-label" style={{ marginBottom: 0 }}>{k}</span>
-                <span className="font-mono muted" style={{ fontSize: 12.5 }}>{v}</span>
+              <div key={k} className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{k}</span>
+                <span className="font-mono text-[12.5px] text-muted-foreground">{v}</span>
               </div>
             ))}
           </div>
-          <div className="card" style={{ padding: 18, display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="flex items-center gap-2.5 overflow-hidden rounded-2xl border border-border bg-card p-[18px] text-card-foreground">
             <I.Shield size={14} />
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Open-source · MIT licensed</span>
-              <span className="muted" style={{ fontSize: 12 }}>Self-hosted on Cloudflare Workers. No telemetry, no billing — just clone, deploy, run.</span>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[13px] font-medium">Open-source · MIT licensed</span>
+              <span className="text-xs text-muted-foreground">Self-hosted on Cloudflare Workers. No telemetry, no billing — just clone, deploy, run.</span>
             </div>
-            <div className="spacer" />
+            <div className="flex-1" />
             <Button variant="outline" size="sm" icon={I.Code}>GitHub</Button>
             <Button variant="ghost" size="sm" icon={I.Folder}>Docs</Button>
           </div>

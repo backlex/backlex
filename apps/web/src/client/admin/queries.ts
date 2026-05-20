@@ -25,6 +25,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import {
+  activityApi,
   advisorApi,
   collectionsApi,
   commentsApi,
@@ -54,6 +55,9 @@ export const queryKeys = {
   comments: (collection: string, itemId: string) =>
     ["comments", collection, itemId] as const,
   advisor: () => ["advisor"] as const,
+  /** Activity log rows — the Logs page's data source. Keyed by `limit` so a
+   *  different page size is a distinct cache entry. */
+  activity: (limit: number) => ["activity", { limit }] as const,
 };
 
 export function useTenants() {
@@ -148,5 +152,17 @@ export function useAdvisor() {
   return useQuery({
     queryKey: queryKeys.advisor(),
     queryFn: () => advisorApi.list(),
+  });
+}
+
+/**
+ * Activity log rows — the data source for the multi-source Logs page.
+ * `live` flips on a ~5s `refetchInterval` so the page can tail new entries.
+ */
+export function useActivity(limit = 200, live = false) {
+  return useQuery({
+    queryKey: queryKeys.activity(limit),
+    queryFn: () => activityApi.list({ limit }),
+    refetchInterval: live ? 5000 : false,
   });
 }

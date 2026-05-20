@@ -10,6 +10,7 @@ import { resolveSamlProvider } from "../services/saml-providers";
 import { resolveLdapAdapter } from "../services/ldap-config";
 import { provisionAppUser } from "../services/sso-provisioning";
 import { rateLimitOk } from "../lib/rate-limit";
+import { signAccessToken } from "../lib/jwt";
 
 /**
  * Workspace end-user auth surface — the "auth as a service" router. Mounted
@@ -155,23 +156,26 @@ const consumeVerification = async (
   await (ctx.db as any).delete(t).where(eq(t.id, id));
 };
 
+interface AppSessionArgs {
+  tenantId: string;
+  userId: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  lifetimeSeconds: number;
+}
+
 const issueAppSession = async (
   ctx: { db: unknown; dialect: "pg" | "sqlite" },
-  args: {
-    tenantId: string;
-    userId: string;
-    ipAddress: string | null;
-    userAgent: string | null;
-    lifetimeSeconds: number;
-  },
-): Promise<{ token: string; expiresAt: Date }> => {
+  args: AppSessionArgs,
+): Promise<{ id: string; token: string; expiresAt: Date }> => {
   const t =
     ctx.dialect === "pg" ? pg.schema.appSessions : sqlite.schema.appSessions;
+  const id = crypto.randomUUID();
   const token = `app_${crypto.randomUUID()}${crypto.randomUUID().replace(/-/g, "")}`;
   const now = new Date();
   const expiresAt = new Date(now.getTime() + args.lifetimeSeconds * 1000);
   await (ctx.db as any).insert(t).values({
-    id: crypto.randomUUID(),
+    id,
     tenantId: args.tenantId,
     userId: args.userId,
     token,
@@ -181,7 +185,77 @@ const issueAppSession = async (
     createdAt: ctx.dialect === "pg" ? now : now.getTime(),
     updatedAt: ctx.dialect === "pg" ? now : now.getTime(),
   });
-  return { token, expiresAt };
+  return { id, token, expiresAt };
+};
+
+/**
+ * Issue a sign-in token pair: the `app_sessions` row doubles as the
+ * long-lived, revocable *refresh* token; the HS256 JWT is the short-lived
+ * stateless *access* token verified without a DB round-trip on every request.
+ */
+const issueTokenPair = async (
+  ctx: { db: unknown; dialect: "pg" | "sqlite"; env: { AUTH_SECRET: string } },
+  args: AppSessionArgs & { email: string | null },
+): Promise<{
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  refreshExpiresAt: Date;
+}> => {
+  const session = await issueAppSession(ctx, args);
+  const access = await signAccessToken(ctx.env.AUTH_SECRET, {
+    sub: args.userId,
+    tid: args.tenantId,
+    sid: session.id,
+    email: args.email,
+  });
+  return {
+    accessToken: access.token,
+    refreshToken: session.token,
+    expiresIn: access.expiresIn,
+    refreshExpiresAt: session.expiresAt,
+  };
+};
+
+/**
+ * Resolve a refresh token (an `app_sessions.token`) to its live session, or
+ * `null` when the token is unknown, expired, or the end-user is suspended.
+ * Tenant-scoped so a token from another workspace can't be exchanged here.
+ */
+const findRefreshSession = async (
+  ctx: { db: unknown; dialect: "pg" | "sqlite" },
+  tenantId: string,
+  token: string,
+): Promise<{ id: string; userId: string; email: string | null } | null> => {
+  const t =
+    ctx.dialect === "pg"
+      ? { sessions: pg.schema.appSessions, users: pg.schema.appUsers }
+      : { sessions: sqlite.schema.appSessions, users: sqlite.schema.appUsers };
+  const rows = (await (ctx.db as any)
+    .select({
+      id: t.sessions.id,
+      userId: t.sessions.userId,
+      expiresAt: t.sessions.expiresAt,
+      email: t.users.email,
+      status: t.users.status,
+    })
+    .from(t.sessions)
+    .innerJoin(t.users, eq(t.sessions.userId, t.users.id))
+    .where(and(eq(t.sessions.token, token), eq(t.sessions.tenantId, tenantId)))
+    .limit(1)) as Array<{
+      id: string;
+      userId: string;
+      expiresAt: Date | number;
+      email: string | null;
+      status: string;
+    }>;
+  const row = rows[0];
+  if (!row) return null;
+  if (row.status !== "active") return null;
+  const exp =
+    row.expiresAt instanceof Date ? row.expiresAt.getTime() : Number(row.expiresAt);
+  if (exp <= Date.now()) return null;
+  return { id: row.id, userId: row.userId, email: row.email };
 };
 
 const revokeAppSession = async (
@@ -586,18 +660,80 @@ export const tenantAuthRoutes = new Hono<AppBindings>()
           tenant.id,
         ))?.sessionLifetime,
       ) ?? DEFAULT_APP_SESSION_LIFETIME_SECONDS;
-    const { token } = await issueAppSession(
-      { db: ctx.db, dialect: ctx.dialect },
+    const tokens = await issueTokenPair(
+      { db: ctx.db, dialect: ctx.dialect, env: ctx.env },
       {
         tenantId: tenant.id,
         userId: appUserId,
+        email: attrs.email,
         ipAddress: extractIp(c.req.raw),
         userAgent: c.req.raw.headers.get("user-agent"),
         lifetimeSeconds: lifetime,
       },
     );
 
-    return c.json({ token, user: { id: appUserId, email: attrs.email } });
+    return c.json({
+      // `token` is the legacy field — identical to `refreshToken`. Kept so
+      // existing opaque-bearer clients keep working; new (mobile) clients use
+      // the short-lived `accessToken` and refresh it via /auth/token/refresh.
+      token: tokens.refreshToken,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresIn: tokens.expiresIn,
+      tokenType: "Bearer",
+      user: { id: appUserId, email: attrs.email },
+    });
+  })
+  /**
+   * Exchange a refresh token for a fresh access token. The refresh token is
+   * an `app_sessions.token` (returned as `refreshToken` by every sign-in
+   * path, or in the SAML redirect fragment). Accepts it in the JSON body
+   * (`refreshToken` or legacy `token`) or as an `Authorization: Bearer`
+   * header. The refresh token itself is unchanged — it stays valid until its
+   * own expiry or until the session row is revoked.
+   */
+  .post("/:slug/auth/token/refresh", async (c) => {
+    const { ctx, tenant } = await resolveTenant(c);
+    const body = (await c.req.json().catch(() => null)) as
+      | { refreshToken?: unknown; token?: unknown }
+      | null;
+    let refreshToken =
+      typeof body?.refreshToken === "string"
+        ? body.refreshToken.trim()
+        : typeof body?.token === "string"
+          ? body.token.trim()
+          : "";
+    if (!refreshToken) {
+      const authHeader = c.req.raw.headers.get("authorization") ?? "";
+      if (authHeader.toLowerCase().startsWith("bearer ")) {
+        refreshToken = authHeader.slice("bearer ".length).trim();
+      }
+    }
+    if (!refreshToken) {
+      throw new AppError("VALIDATION", "refreshToken is required");
+    }
+
+    const session = await findRefreshSession(
+      { db: ctx.db, dialect: ctx.dialect },
+      tenant.id,
+      refreshToken,
+    );
+    if (!session) {
+      throw new AppError("UNAUTHORIZED", "Invalid or expired refresh token");
+    }
+
+    const access = await signAccessToken(ctx.env.AUTH_SECRET, {
+      sub: session.userId,
+      tid: tenant.id,
+      sid: session.id,
+      email: session.email,
+    });
+    return c.json({
+      accessToken: access.token,
+      refreshToken,
+      expiresIn: access.expiresIn,
+      tokenType: "Bearer",
+    });
   })
   .all("/:slug/auth/*", async (c) => {
     const { ctx, tenant } = await resolveTenant(c);

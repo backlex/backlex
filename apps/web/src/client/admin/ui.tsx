@@ -53,6 +53,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@workeros/ui/components/select";
+import {
+  Sidebar as ShadcnSidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarTrigger,
+} from "@workeros/ui/components/sidebar";
 
 export function formatJson(value: unknown): string {
   try {
@@ -265,7 +277,6 @@ const fromApiTenant = (t: ApiTenant, fallback: number): Tenant => ({
 export interface SidebarProps {
   activeNav: string;
   setActiveNav: (id: string) => void;
-  collapsed?: boolean;
   pushToast: (msg: string, type?: "success" | "error") => void;
   collectionsCount?: number;
 }
@@ -335,86 +346,77 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
     };
 
   return (
-    <aside className="sidebar">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className="brand ws-trigger" type="button">
-            <BrandMark />
-            <div className="brand-text">
-              <b>{tenant.name}</b>
-              <span>{tenant.project} · {tenant.branch}</span>
-            </div>
-            <I.ChevronDown size={12} className="ws-chev" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="min-w-64">
-          <DropdownMenuLabel className="flex items-center justify-between">
-            <span>Workspaces</span>
-            <span className="font-mono text-[10.5px] text-muted-foreground">{tenants.length}</span>
-          </DropdownMenuLabel>
-          {tenants.map((t) => (
-            <DropdownMenuItem key={t.id} className="gap-2.5" onSelect={() => void switchTenant(t.id)}>
-              <span className="ws-mark" style={{ background: t.color }}>{t.mark}</span>
-              <span className="ws-meta">
-                <span className="ws-name">{t.name}</span>
-                <span className="ws-sub font-mono">{t.project} · {t.branch} · {t.env}</span>
-              </span>
-              {t.id === tenantId && <I.Check size={12} />}
-            </DropdownMenuItem>
-          ))}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => setNewWsOpen(true)}><I.Plus size={12} /> New workspace</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setActiveNav?.("settings")}><I.Settings size={12} /> Manage</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <div className="sidebar-scroll">
-        <div className="sidebar-section-label">Workspace</div>
-        <div className="nav">
-          {items.map((it) => {
-            const IconComp = (I as Record<string, IconComponent>)[it.icon as IconKey];
-            // Collections gets a live badge from the parent; other items use the
-            // (currently empty) static `badge` field on the nav definition.
-            const liveBadge = it.id === "collections" ? collectionsCount : it.badge;
-            return (
-              <div key={it.id} className="nav-item" data-active={activeNav === it.id} onClick={() => setActiveNav(it.id)}>
-                {IconComp && <IconComp size={15} />}
-                <span className="nav-label">{it.label}</span>
-                {liveBadge != null && <span className="nav-end tabular-nums">{liveBadge}</span>}
+    <ShadcnSidebar>
+      <SidebarHeader>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="brand ws-trigger" type="button">
+              <BrandMark />
+              <div className="brand-text">
+                <b>{tenant.name}</b>
+                <span>{tenant.project} · {tenant.branch}</span>
               </div>
-            );
-          })}
-        </div>
+              <I.ChevronDown size={12} className="ws-chev" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-64">
+            <DropdownMenuLabel className="flex items-center justify-between">
+              <span>Workspaces</span>
+              <span className="font-mono text-[10.5px] text-muted-foreground">{tenants.length}</span>
+            </DropdownMenuLabel>
+            {tenants.map((t) => (
+              <DropdownMenuItem key={t.id} className="gap-2.5" onSelect={() => void switchTenant(t.id)}>
+                <span className="ws-mark" style={{ background: t.color }}>{t.mark}</span>
+                <span className="ws-meta">
+                  <span className="ws-name">{t.name}</span>
+                  <span className="ws-sub font-mono">{t.project} · {t.branch} · {t.env}</span>
+                </span>
+                {t.id === tenantId && <I.Check size={12} />}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => setNewWsOpen(true)}><I.Plus size={12} /> New workspace</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setActiveNav?.("settings")}><I.Settings size={12} /> Manage</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarHeader>
 
-        <div className="sidebar-section-label">Developers</div>
-        <div className="nav">
-          {developers.map((it) => {
-            const IconComp = (I as Record<string, IconComponent>)[it.icon as IconKey];
-            return (
-              <div key={it.id} className="nav-item" data-active={activeNav === it.id} onClick={() => setActiveNav(it.id)}>
-                {IconComp && <IconComp size={15} />}
-                <span className="nav-label">{it.label}</span>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="sidebar-section-label">Admin</div>
-        <div className="nav">
-          {settings.map((it) => {
-            const IconComp = (I as Record<string, IconComponent>)[it.icon as IconKey];
-            return (
-              <div key={it.id} className="nav-item" data-active={activeNav === it.id} onClick={() => setActiveNav(it.id)}>
-                {IconComp && <IconComp size={15} />}
-                <span className="nav-label">{it.label}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <SidebarContent>
+        {[
+          { label: "Workspace", entries: items },
+          { label: "Developers", entries: developers },
+          { label: "Admin", entries: settings },
+        ].map((group) => (
+          <SidebarGroup key={group.label}>
+            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarMenu>
+              {group.entries.map((it) => {
+                const IconComp = (I as Record<string, IconComponent>)[it.icon as IconKey];
+                // Collections gets a live badge from the parent; other items use
+                // the (currently empty) static `badge` field on the nav def.
+                const liveBadge = it.id === "collections" ? collectionsCount : it.badge;
+                return (
+                  <SidebarMenuItem key={it.id}>
+                    <SidebarMenuButton
+                      isActive={activeNav === it.id}
+                      onClick={() => setActiveNav(it.id)}
+                    >
+                      {IconComp && <IconComp size={15} />}
+                      <span>{it.label}</span>
+                    </SidebarMenuButton>
+                    {liveBadge != null && (
+                      <SidebarMenuBadge className="tabular-nums">{liveBadge}</SidebarMenuBadge>
+                    )}
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroup>
+        ))}
+      </SidebarContent>
 
       {newWsOpen && <NewWorkspaceDialog onClose={() => setNewWsOpen(false)} onCreate={createWorkspace} existing={tenants.map((t) => t.name)} />}
-    </aside>
+    </ShadcnSidebar>
   );
 }
 
@@ -486,7 +488,6 @@ export interface TopbarProps {
   onOpenPalette: () => void;
   onToggleTheme: () => void;
   dark: boolean;
-  onToggleSidebar: () => void;
   onSignOut?: () => void;
   user?: TopbarUser | null;
   onAccountSettings?: () => void;
@@ -676,10 +677,10 @@ export function NotificationsBell() {
   );
 }
 
-export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onToggleSidebar, onSignOut, user, onAccountSettings }: TopbarProps) {
+export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onSignOut, user, onAccountSettings }: TopbarProps) {
   return (
     <div className="topbar">
-      <IconButton icon={I.Sidebar} onClick={onToggleSidebar} title="Toggle sidebar" />
+      <SidebarTrigger title="Toggle sidebar" />
       <div className="crumbs path">
         <span className="sep">/</span>
         {crumbs.map((c, i) => (

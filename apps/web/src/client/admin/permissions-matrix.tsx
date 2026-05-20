@@ -3,7 +3,13 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { I } from "./icons";
 import { Badge, IconButton } from "./ui";
-import { Popover, PopoverContent, PopoverTrigger } from "@workeros/ui/components/popover";
+import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@workeros/ui/components/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -149,7 +155,6 @@ export interface PermissionsMatrixProps {
 export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) {
   const [activeRole, setActiveRole] = useState(roles[1]?.name || "authenticated");
   const [matrix, setMatrix] = useState<Matrix>(() => emptyMatrix(roles, []));
-  const [pop, setPop] = useState<{ collection: string; action: string } | null>(null);
   const [sheetTarget, setSheetTarget] = useState<{ role: string; action: string; collection: string } | null>(null);
 
   // Live collections (c_<slug> tables) via React Query — cached + deduped
@@ -235,7 +240,6 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
     } else {
       pushToast?.(`${activeRole} · ${action} · ${collection} → ${val === "all" ? "full access" : "no access"}`);
     }
-    setPop(null);
   };
 
   const stats = useMemo(() => {
@@ -260,22 +264,18 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
         {isAdmin && <Badge variant="secondary">bypass — read-only</Badge>}
       </div>
 
-      <div className="flex flex-wrap gap-1 border-b border-border bg-[color-mix(in_oklch,var(--muted)_22%,var(--card))] px-3.5 py-2.5">
-        {roles.map((r) => {
-          const on = activeRole === r.name;
-          return (
-            <button
-              key={r.name}
-              type="button"
-              className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors ${on ? "border-border bg-card text-foreground shadow-[0_1px_0_oklch(0_0_0/0.04)]" : "border-transparent bg-transparent text-muted-foreground hover:bg-card hover:text-foreground"}`}
-              onClick={() => { setActiveRole(r.name); setPop(null); }}
-            >
-              <I.Users size={12} />
-              <span className="font-mono">{r.name}</span>
-              {r.system && <span className="rounded-[3px] bg-[color-mix(in_oklch,var(--muted)_70%,transparent)] px-[5px] py-px text-[9.5px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">system</span>}
-            </button>
-          );
-        })}
+      <div className="border-b border-border bg-[color-mix(in_oklch,var(--muted)_22%,var(--card))] px-3.5 py-2.5">
+        <Tabs value={activeRole} onValueChange={(v) => setActiveRole(v)}>
+          <TabsList>
+            {roles.map((r) => (
+              <TabsTrigger key={r.name} value={r.name}>
+                <I.Users size={12} />
+                <span className="font-mono">{r.name}</span>
+                {r.system && <span className="rounded-[3px] bg-[color-mix(in_oklch,var(--muted)_70%,transparent)] px-[5px] py-px text-[9.5px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">system</span>}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
 
       <div className="relative bg-card p-4">
@@ -301,13 +301,10 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
               </div>
               {PM_ACTIONS.map((a) => {
                 const state = (matrix[activeRole]?.[c]?.[a.v] || "none") as CellState;
-                const isOpen = !!pop && pop.collection === c && pop.action === a.v;
-                const cellCls = `relative grid h-11 w-full place-items-center border-0 border-l border-t border-border outline-none transition-[background,box-shadow] focus-visible:z-[2] focus-visible:shadow-[inset_0_0_0_1.5px_color-mix(in_oklch,var(--ring)_70%,transparent)] ${
-                  isOpen
-                    ? "z-[2] bg-[color-mix(in_oklch,var(--primary)_10%,var(--card))] shadow-[inset_0_0_0_1.5px_color-mix(in_oklch,var(--primary)_70%,transparent)]"
-                    : isAdmin
-                      ? "cursor-not-allowed bg-card opacity-85"
-                      : "cursor-pointer bg-card hover:bg-[color-mix(in_oklch,var(--accent)_50%,var(--card))]"
+                const cellCls = `relative grid h-11 w-full place-items-center border-0 border-l border-t border-border outline-none transition-[background,box-shadow] focus-visible:z-[2] focus-visible:shadow-[inset_0_0_0_1.5px_color-mix(in_oklch,var(--ring)_70%,transparent)] data-[state=open]:z-[2] data-[state=open]:bg-[color-mix(in_oklch,var(--primary)_10%,var(--card))] data-[state=open]:shadow-[inset_0_0_0_1.5px_color-mix(in_oklch,var(--primary)_70%,transparent)] ${
+                  isAdmin
+                    ? "cursor-not-allowed bg-card opacity-85"
+                    : "cursor-pointer bg-card hover:bg-[color-mix(in_oklch,var(--accent)_50%,var(--card))]"
                 }`;
                 const trigger = (
                   <button
@@ -322,44 +319,38 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
                 if (isAdmin) return <div key={a.v} className="relative grid">{trigger}</div>;
                 return (
                   <div key={a.v} className="group relative grid">
-                    <Popover
-                      open={isOpen}
-                      onOpenChange={(o) => setPop(o ? { collection: c, action: a.v } : null)}
-                    >
-                      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-                      <PopoverContent
-                        align="center"
-                        sideOffset={6}
-                        className="w-auto min-w-[240px] gap-0 rounded-lg p-1.5"
-                      >
-                        <div className="mb-1 flex items-center gap-1.5 border-b border-border px-2.5 pb-2 pt-1.5">
-                          <span className="font-mono text-[11.5px]">{activeRole}</span>
-                          <span className="text-muted-foreground">·</span>
-                          <span className="font-mono text-[11.5px]">{a.v}</span>
-                          <span className="text-muted-foreground">·</span>
-                          <span className="font-mono text-[11.5px]">{c}</span>
-                        </div>
-                        <button type="button" className="flex w-full cursor-pointer items-center gap-2.5 rounded-md border-0 bg-transparent px-2.5 py-2 text-left text-[12.5px] text-foreground hover:bg-accent" onClick={() => pickState(c, a.v, "all")}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="min-w-[240px]">
+                        <DropdownMenuItem
+                          className="gap-2.5"
+                          onSelect={() => pickState(c, a.v, "all")}
+                        >
                           <CellGlyph state="all" />
                           <span><strong className="block font-medium">Full access</strong><span className="mt-px block text-[11px] text-muted-foreground">no condition; everyone in role</span></span>
-                        </button>
-                        <button type="button" className="flex w-full cursor-pointer items-center gap-2.5 rounded-md border-0 bg-transparent px-2.5 py-2 text-left text-[12.5px] text-foreground hover:bg-accent" onClick={() => pickState(c, a.v, "custom")}>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="gap-2.5"
+                          onSelect={() => pickState(c, a.v, "custom")}
+                        >
                           <CellGlyph state="custom" />
                           <span><strong className="block font-medium">Use custom rule</strong><span className="mt-px block text-[11px] text-muted-foreground">edit conditions below ↓</span></span>
-                        </button>
-                        <button type="button" className="flex w-full cursor-pointer items-center gap-2.5 rounded-md border-0 bg-transparent px-2.5 py-2 text-left text-[12.5px] text-foreground hover:bg-accent" onClick={() => pickState(c, a.v, "none")}>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="gap-2.5"
+                          onSelect={() => pickState(c, a.v, "none")}
+                        >
                           <CellGlyph state="none" />
                           <span><strong className="block font-medium">No access</strong><span className="mt-px block text-[11px] text-muted-foreground">denied for this role</span></span>
-                        </button>
-                      </PopoverContent>
-                    </Popover>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     {state === "custom" && (
                       <IconButton
                         icon={I.Pencil}
                         title="Edit rule"
                         className="absolute right-[3px] top-[3px] z-[3] size-5 min-w-0 bg-[color-mix(in_oklch,var(--card)_80%,transparent)] p-0 opacity-0 backdrop-blur-[2px] transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        onClick={() => {
                           setSheetTarget({ role: activeRole, action: a.v, collection: c });
                         }}
                       />

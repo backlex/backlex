@@ -33,6 +33,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workeros/ui/components/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@workeros/ui/components/dropdown-menu";
 
 export function formatJson(value: unknown): string {
   try {
@@ -685,16 +692,6 @@ export function NotificationsBell() {
 }
 
 export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onToggleSidebar, onSignOut, user, onAccountSettings }: TopbarProps) {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: Event) => {
-      const target = e.target as HTMLElement | null;
-      if (!target?.closest(".user-menu-wrap")) setOpen(false);
-    };
-    document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
-  }, [open]);
   return (
     <div className="topbar">
       <IconButton icon={I.Sidebar} onClick={onToggleSidebar} title="Toggle sidebar" />
@@ -714,57 +711,50 @@ export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onToggleSid
       </div>
       <IconButton icon={dark ? I.Sun : I.Moon} onClick={onToggleTheme} title="Toggle theme" />
       <NotificationsBell />
-      <div className="user-menu-wrap" style={{ position: "relative" }}>
-        <button
-          onClick={() => setOpen((v) => !v)}
-          title={user?.email ?? "Account"}
-          aria-label="Account menu"
-          style={{ background: "transparent", border: 0, padding: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
-        >
-          {(() => {
-            const src = resolveAvatarSrc(user?.image);
-            return src ? (
-              <img src={src} alt="" className="avatar" style={{ objectFit: "cover" }} />
-            ) : (
-              <div className="avatar">{avatarInitials(user)}</div>
-            );
-          })()}
-          <I.ChevronDown size={12} style={{ color: "var(--muted-foreground)" }} />
-        </button>
-        {open && (
-          <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 220, background: "var(--popover)", border: "1px solid var(--border)", borderRadius: "var(--radius-xl)", boxShadow: "0 12px 32px oklch(0 0 0 / 0.12)", padding: 6, zIndex: 100, fontSize: 13 }}>
-            <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", marginBottom: 4 }}>
-              <div style={{ fontWeight: 500 }}>
-                {user?.name || user?.email?.split("@")[0] || "Account"}
-              </div>
-              {user?.email && (
-                <div className="font-mono text-[11.5px] text-muted-foreground">{user.email}</div>
-              )}
-              {user?.isAdmin && (
-                <div className="mt-1">
-                  <span className="inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-3xl border border-[color-mix(in_oklch,var(--primary)_22%,transparent)] bg-[color-mix(in_oklch,var(--primary)_8%,var(--card))] px-2 py-px text-[11px] font-medium tabular-nums text-[oklch(from_var(--primary)_0.38_0.12_h)] dark:text-[oklch(from_var(--primary)_0.92_0.18_h)]">
-                    admin
-                  </span>
-                </div>
-              )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            title={user?.email ?? "Account"}
+            aria-label="Account menu"
+            style={{ background: "transparent", border: 0, padding: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+          >
+            {(() => {
+              const src = resolveAvatarSrc(user?.image);
+              return src ? (
+                <img src={src} alt="" className="avatar" style={{ objectFit: "cover" }} />
+              ) : (
+                <div className="avatar">{avatarInitials(user)}</div>
+              );
+            })()}
+            <I.ChevronDown size={12} style={{ color: "var(--muted-foreground)" }} />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <div style={{ padding: "8px 10px" }}>
+            <div style={{ fontWeight: 500 }}>
+              {user?.name || user?.email?.split("@")[0] || "Account"}
             </div>
-            <button
-              type="button"
-              onClick={() => { setOpen(false); onAccountSettings?.(); }}
-              style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--radius-md)", background: "transparent", border: 0, color: "var(--foreground)", width: "100%", textAlign: "left", cursor: "pointer", font: "inherit" }}
-            >
-              <I.Settings size={13} /> Account settings
-            </button>
-            <button
-              type="button"
-              onClick={onSignOut}
-              style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--radius-md)", background: "transparent", border: 0, color: "var(--destructive)", width: "100%", textAlign: "left", cursor: "pointer", font: "inherit" }}
-            >
-              <I.LogOut size={13} /> Sign out
-            </button>
+            {user?.email && (
+              <div className="font-mono text-[11.5px] text-muted-foreground">{user.email}</div>
+            )}
+            {user?.isAdmin && (
+              <div className="mt-1">
+                <span className="inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-3xl border border-[color-mix(in_oklch,var(--primary)_22%,transparent)] bg-[color-mix(in_oklch,var(--primary)_8%,var(--card))] px-2 py-px text-[11px] font-medium tabular-nums text-[oklch(from_var(--primary)_0.38_0.12_h)] dark:text-[oklch(from_var(--primary)_0.92_0.18_h)]">
+                  admin
+                </span>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => { onAccountSettings?.(); }}>
+            <I.Settings size={13} /> Account settings
+          </DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" onSelect={() => { onSignOut?.(); }}>
+            <I.LogOut size={13} /> Sign out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

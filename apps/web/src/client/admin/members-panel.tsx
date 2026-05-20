@@ -161,7 +161,7 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-2 border-b border-border bg-[color-mix(in_oklch,var(--muted)_22%,var(--card))] px-3.5 py-2.5">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border bg-[color-mix(in_oklch,var(--muted)_22%,var(--card))] px-3.5 py-2.5">
         <I.Mail size={13} className="text-muted-foreground" />
         <Input
           className="h-[30px] min-w-[200px] flex-1 text-[12.5px]"
@@ -179,8 +179,8 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
         <Button variant="primary" size="sm" icon={I.Plus} onClick={sendInvite}>Invite</Button>
       </div>
 
-      <div className="py-1">
-        <div className="grid grid-cols-[1.6fr_1fr_1fr_0.8fr_36px] items-center gap-3 border-b border-border bg-[color-mix(in_oklch,var(--muted)_18%,var(--card))] px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+      <div className="overflow-x-auto py-1">
+        <div className="grid min-w-[520px] grid-cols-[1.6fr_1fr_1fr_0.8fr_36px] items-center gap-3 border-b border-border bg-[color-mix(in_oklch,var(--muted)_18%,var(--card))] px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
           <span>Member</span>
           <span>Role</span>
           <span>Last active</span>
@@ -191,7 +191,7 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
         {filtered.map((m) => (
           <div
             key={m.id}
-            className="grid grid-cols-[1.6fr_1fr_1fr_0.8fr_36px] items-center gap-3 px-4 py-2.5 hover:bg-[color-mix(in_oklch,var(--accent)_50%,var(--card))] [&+&]:border-t [&+&]:border-border"
+            className="grid min-w-[520px] grid-cols-[1.6fr_1fr_1fr_0.8fr_36px] items-center gap-3 px-4 py-2.5 hover:bg-[color-mix(in_oklch,var(--accent)_50%,var(--card))] [&+&]:border-t [&+&]:border-border"
           >
             <div className="flex items-center gap-2.5">
               <span

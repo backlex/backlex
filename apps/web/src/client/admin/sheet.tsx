@@ -262,11 +262,11 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
     const err = errors[f.name];
     const iface = f.interface;
     const setField = (v: unknown) => { updateField(f.name, v); setTouched((t) => ({ ...t, [f.name]: true })); };
-    const errBlock = err ? <div className="field-error"><I.AlertTriangle size={11} />{err}</div> : null;
+    const errBlock = err ? <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{err}</div> : null;
     const typeLabel = (iface ?? f.type ?? "text") + (f.unique ? " · unique" : "");
     const reqMark = f.required || f.nullable === false ? <span style={{ color: "var(--destructive)" }}>*</span> : null;
     const label = (
-      <label className="field-label">
+      <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
         {f.name} <Badge variant="outline" mono>{typeLabel}</Badge> {reqMark}
       </label>
     );
@@ -286,7 +286,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
           : undefined,
       }));
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <Select
             value={current}
@@ -303,10 +303,10 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       const choices = readChoices(f);
       const current = String(val ?? "");
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "4px 2px" }}>
-            {choices.length === 0 && <div className="muted" style={{ fontSize: 12 }}>No choices configured.</div>}
+            {choices.length === 0 && <div className="text-xs text-muted-foreground">No choices configured.</div>}
             {choices.map((c) => {
               const on = current === c.value;
               return (
@@ -314,7 +314,6 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
                   key={c.value}
                   type="button"
                   onClick={() => setField(c.value)}
-                  className="radio-row"
                   data-on={on}
                   style={{
                     display: "flex", alignItems: "center", gap: 10,
@@ -332,7 +331,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
                   }} />
                   {c.color && <span style={{ width: 8, height: 8, borderRadius: 999, background: c.color, flex: "none" }} />}
                   <span style={{ fontSize: 13 }}>{c.label ?? c.value}</span>
-                  <span className="muted font-mono" style={{ marginLeft: "auto", fontSize: 11 }}>{c.value}</span>
+                  <span className="ml-auto font-mono text-[11px] text-muted-foreground">{c.value}</span>
                 </button>
               );
             })}
@@ -350,10 +349,10 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
         setField(next);
       };
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "4px 2px" }}>
-            {choices.length === 0 && <div className="muted" style={{ fontSize: 12 }}>No choices configured.</div>}
+            {choices.length === 0 && <div className="text-xs text-muted-foreground">No choices configured.</div>}
             {choices.map((c) => {
               const on = selected.includes(c.value);
               return (
@@ -370,7 +369,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
                   <Checkbox checked={on} onChange={() => toggle(c.value)} />
                   {c.color && <span style={{ width: 8, height: 8, borderRadius: 999, background: c.color, flex: "none" }} />}
                   <span style={{ fontSize: 13 }}>{c.label ?? c.value}</span>
-                  <span className="muted font-mono" style={{ marginLeft: "auto", fontSize: 11 }}>{c.value}</span>
+                  <span className="ml-auto font-mono text-[11px] text-muted-foreground">{c.value}</span>
                 </div>
               );
             })}
@@ -388,10 +387,10 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
         setField(next);
       };
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "4px 2px" }}>
-            {choices.length === 0 && <div className="muted" style={{ fontSize: 12 }}>No choices configured.</div>}
+            {choices.length === 0 && <div className="text-xs text-muted-foreground">No choices configured.</div>}
             {choices.map((c) => {
               const on = selected.includes(c.value);
               return (
@@ -434,7 +433,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
         setInput("");
       };
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <div
             style={{
@@ -490,8 +489,8 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
 
     if (iface === "toggle" || f.type === "boolean") {
       return (
-        <div key={f.name} className="field">
-          <div className="field-row">
+        <div key={f.name} className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between gap-3">
             <div>{label}</div>
             <Switch checked={!!val} onChange={(on) => setField(on)} />
           </div>
@@ -507,7 +506,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       const step = f.options?.step ?? 1;
       const num = val === "" || val == null ? min : Number(val);
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <input
@@ -530,7 +529,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       const max = f.options?.max ?? 5;
       const num = Math.max(0, Math.min(max, Number(val) || 0));
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
             {Array.from({ length: max }, (_, i) => i + 1).map((star) => {
@@ -553,7 +552,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
                 </button>
               );
             })}
-            <span className="muted tabular-nums" style={{ marginLeft: 8, fontSize: 12 }}>{num}/{max}</span>
+            <span className="ml-2 tabular-nums text-xs text-muted-foreground">{num}/{max}</span>
           </div>
           {errBlock}
         </div>
@@ -563,7 +562,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
     if (iface === "integer" || iface === "decimal" || f.type === "integer" || f.type === "number") {
       const isInt = iface === "integer" || f.type === "integer";
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <Input
             className="tabular-nums"
@@ -583,7 +582,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       const iso = typeof val === "string" ? val : "";
       const dateOnly = iso ? iso.slice(0, 10) : "";
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <Input
             type="date"
@@ -599,7 +598,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       const iso = typeof val === "string" ? val : "";
       const localValue = iso ? iso.slice(0, 16) : "";
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <Input
             type="datetime-local"
@@ -616,7 +615,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
     if (iface === "color") {
       const hex = typeof val === "string" ? val : "";
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <input
@@ -643,7 +642,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       const name = typeof val === "string" ? val : "";
       const Match = (I as Record<string, unknown>)[name] as ((p: { size?: number }) => ReactNode) | undefined;
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <div style={{
@@ -669,7 +668,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
 
     if (iface === "url") {
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <Input
             type="url"
@@ -685,7 +684,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
     }
     if (iface === "email") {
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <Input
             type="email"
@@ -702,7 +701,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
 
     if (iface === "slug") {
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <Input
             className="font-mono"
@@ -723,7 +722,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
     if (iface === "code" || iface === "markdown" || iface === "richtext" || f.type === "longtext") {
       const monoIfaces = iface === "code" || iface === "markdown";
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <Textarea
             rows={iface === "richtext" ? 8 : 6}
@@ -734,7 +733,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
             onChange={(e) => setField(e.target.value)}
           />
           {iface === "richtext" && (
-            <div className="field-hint">Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup.</div>
+            <div className="text-[11.5px] text-muted-foreground">Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup.</div>
           )}
           {errBlock}
         </div>
@@ -747,7 +746,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
     // exited above through their own renderers.
     if (f.type === "json" && iface !== "files") {
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <Textarea
             rows={4}
@@ -765,7 +764,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
     if (iface === "relation" || f.type === "relation") {
       const target = f.to || "";
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           {target ? (
             <RelationPicker
@@ -783,7 +782,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
               onChange={(e) => setField(e.target.value)}
             />
           )}
-          <div className="field-hint">
+          <div className="text-[11.5px] text-muted-foreground">
             Stores a row id from <span className="font-mono">c_{target || "—"}</span>.
             {!target && " Set the target collection in the field settings."}
           </div>
@@ -793,7 +792,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
     }
     if (iface === "file" || iface === "image") {
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <FilePicker
             value={String(val ?? "")}
@@ -801,7 +800,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
             kind={iface === "image" ? "image" : "file"}
             error={!!err}
           />
-          <div className="field-hint">
+          <div className="text-[11.5px] text-muted-foreground">
             Stores the storage key. Upload new files on the <span className="font-mono">Storage</span> page.
           </div>
           {errBlock}
@@ -811,10 +810,10 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
     if (iface === "files") {
       const arr: string[] = Array.isArray(val) ? (val as string[]).map(String) : [];
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <MultiFilePicker value={arr} onChange={setField} error={!!err} />
-          <div className="field-hint">
+          <div className="text-[11.5px] text-muted-foreground">
             Stores a list of storage keys. Upload new files on the <span className="font-mono">Storage</span> page.
           </div>
           {errBlock}
@@ -824,7 +823,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
 
     if (iface === "uuid" || f.type === "uuid") {
       return (
-        <div key={f.name} className="field">
+        <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <Input
             className="font-mono"
@@ -842,7 +841,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
     // text / autocomplete / input (free text fallback)
     const autoSlug = f.name === "slug" && !touched.slug && fields.some((x) => x.name === "title");
     return (
-      <div key={f.name} className="field">
+      <div key={f.name} className="flex flex-col gap-1.5">
         {label}
         <Input
           className={f.name === "slug" ? "font-mono" : undefined}
@@ -853,8 +852,8 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
           autoComplete="off"
         />
         {err
-          ? <div className="field-error"><I.AlertTriangle size={11} />{err}</div>
-          : autoSlug && <div className="field-hint">Auto-derived from title until edited.</div>}
+          ? <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{err}</div>
+          : autoSlug && <div className="text-[11.5px] text-muted-foreground">Auto-derived from title until edited.</div>}
       </div>
     );
   };
@@ -864,12 +863,19 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
 
   return (
     <>
-      <div className="scrim" onClick={onClose} />
-      <div className="sheet" role="dialog" aria-modal="true">
-        <div className="sheet-header">
-          <div style={{ flex: 1 }}>
-            <h2>{mode === "create" ? `New ${slug || "row"}` : `Edit ${slug || "row"}`}</h2>
-            <p>
+      <div
+        className="fixed inset-0 z-[60] animate-in bg-[oklch(0_0_0/0.32)] fade-in-0 duration-150 dark:bg-[oklch(0_0_0/0.6)]"
+        onClick={onClose}
+      />
+      <div
+        className="fixed bottom-0 right-0 top-0 z-[61] flex w-[min(560px,100vw)] animate-in flex-col border-l border-border bg-card slide-in-from-right duration-200"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
+          <div className="flex-1">
+            <h2 className="m-0 text-base font-semibold tracking-[-0.01em]">{mode === "create" ? `New ${slug || "row"}` : `Edit ${slug || "row"}`}</h2>
+            <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">
               {mode === "create"
                 ? <>Insert into <span className="font-mono">c_{slug}</span>{ownerScoped ? <>. Owner is set to <span className="font-mono">$user.id</span></> : null}.</>
                 : <>id <span className="font-mono">{(initial as { id?: string })?.id}</span></>}
@@ -879,28 +885,20 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
         </div>
 
         {mode === "edit" && (
-          <div
-            style={{
-              display: "flex",
-              gap: 2,
-              padding: "0 14px",
-              borderBottom: "1px solid var(--border)",
-              background: "var(--card)",
-            }}
-          >
+          <div className="flex gap-0.5 border-b border-border bg-card px-3.5">
             <button
               type="button"
-              className={`sheet-tab ${activeTab === "fields" ? "on" : ""}`}
+              className={`-mb-px inline-flex cursor-pointer items-center gap-1.5 border-0 border-b-2 bg-transparent px-3.5 py-2.5 text-[12.5px] hover:text-foreground ${activeTab === "fields" ? "border-b-foreground text-foreground" : "border-b-transparent text-muted-foreground"}`}
               onClick={() => setActiveTab("fields")}
             >
               <I.Braces size={12} /> Fields
-              <span className="font-mono" style={{ fontSize: 10.5, color: "var(--muted-foreground)" }}>
+              <span className="font-mono text-[10.5px] text-muted-foreground">
                 {fields.length}
               </span>
             </button>
             <button
               type="button"
-              className={`sheet-tab ${activeTab === "collab" ? "on" : ""}`}
+              className={`-mb-px inline-flex cursor-pointer items-center gap-1.5 border-0 border-b-2 bg-transparent px-3.5 py-2.5 text-[12.5px] hover:text-foreground ${activeTab === "collab" ? "border-b-foreground text-foreground" : "border-b-transparent text-muted-foreground"}`}
               onClick={() => setActiveTab("collab")}
             >
               <I.MessageSquare size={12} /> Collaboration
@@ -908,19 +906,19 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
           </div>
         )}
 
-        <div className="sheet-body" onKeyDown={onBodyKeyDown}>
+        <div className="flex flex-1 flex-col gap-8 overflow-auto px-5 py-[18px]" onKeyDown={onBodyKeyDown}>
           {activeTab === "fields" && (
             <>
               {fields.length === 0 && (
-                <div className="muted" style={{ fontSize: 13, padding: 12, background: "var(--muted)", borderRadius: "var(--radius-xl)" }}>
+                <div className="rounded-xl bg-muted p-3 text-[13px] text-muted-foreground">
                   No editable fields. Add columns from the Schema tab to capture data on this collection.
                 </div>
               )}
               {fields.map(renderField)}
 
-              <div className="field" style={{ background: "var(--muted)", padding: 12, borderRadius: "var(--radius-xl)" }}>
-                <div className="field-label" style={{ marginBottom: 6 }}>system fields</div>
-                <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 12, color: "var(--muted-foreground)" }}>
+              <div className="flex flex-col gap-1.5 rounded-xl bg-muted p-3">
+                <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground">system fields</div>
+                <div className="flex flex-wrap gap-3.5 text-xs text-muted-foreground">
                   <div><span className="font-mono">id</span>: {mode === "create" ? <span className="font-mono">gen_uuid()</span> : <span className="font-mono">{(initial as { id?: string })?.id}</span>}</div>
                   {ownerScoped && <div><span className="font-mono">owner_id</span>: <span className="font-mono">$user.id</span></div>}
                   <div><span className="font-mono">updated_at</span>: <span className="font-mono">now()</span></div>
@@ -936,7 +934,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
           )}
         </div>
 
-        <div className="sheet-footer">
+        <div className="flex justify-end gap-2 border-t border-border bg-card px-5 py-3">
           {/* "Cancel" reads as "throw away changes" — once the form is clean
               (no touched fields) we relabel to "Close" so the user knows
               dismissing the sheet won't lose anything. */}
@@ -965,7 +963,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
             // 1px gap). Both halves are pinned to rounded-2xl because the
             // default rounded-4xl (≈36px) gets visibly clamped on an h-8
             // (32px) button — the curves look uneven across the split.
-            <div style={{ display: "inline-flex" }}>
+            <div className="inline-flex">
               <Button
                 variant="primary"
                 size="sm"
@@ -1022,13 +1020,19 @@ export function ConfirmDialog({ open, title, description, actionLabel = "Confirm
   if (!open) return null;
   return (
     <>
-      <div className="scrim" onClick={onCancel} />
-      <div className="dialog" role="alertdialog">
+      <div
+        className="fixed inset-0 z-[60] animate-in bg-[oklch(0_0_0/0.32)] fade-in-0 duration-150 dark:bg-[oklch(0_0_0/0.6)]"
+        onClick={onCancel}
+      />
+      <div
+        className="fixed left-1/2 top-1/2 z-[71] flex w-[min(440px,92vw)] -translate-x-1/2 -translate-y-1/2 animate-in flex-col gap-4 rounded-2xl border border-border bg-popover px-[22px] pb-[18px] pt-[22px] shadow-[0_20px_70px_-10px_oklch(0_0_0/0.4)] fade-in-0 zoom-in-95 duration-150"
+        role="alertdialog"
+      >
         <div>
-          <h3>{title}</h3>
-          <p style={{ marginTop: 8 }}>{description}</p>
+          <h3 className="m-0 text-base font-semibold tracking-[-0.01em]">{title}</h3>
+          <p className="m-0 mt-2 text-[13px] leading-[1.5] text-muted-foreground">{description}</p>
         </div>
-        <div className="actions">
+        <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
           <Button variant={destructive ? "destructive" : "primary"} size="sm" onClick={onConfirm}>{actionLabel}</Button>
         </div>

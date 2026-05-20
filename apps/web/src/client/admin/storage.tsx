@@ -16,11 +16,27 @@ import {
 } from "@workeros/ui/components/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@workeros/ui/components/popover";
 import { Button as ShadButton } from "@workeros/ui/components/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { CheckIcon, ChevronsUpDownIcon, LinkIcon } from "lucide-react";
 import { cn } from "@workeros/ui/lib/utils";
 import { api } from "@/lib/api";
 import { useUrlState } from "@/lib/use-url-state";
 import { SkeletonCard } from "./loading";
+
+const ADMIN_TABLE_CLS =
+  "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
+
+const SCRIM_CLS = "fixed inset-0 z-[60] bg-[oklch(0_0_0/0.32)] dark:bg-[oklch(0_0_0/0.6)]";
+
+const DIALOG_CLS =
+  "fixed left-1/2 top-1/2 z-[71] flex w-[min(440px,92vw)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-2xl border border-border bg-popover px-[22px] pb-[18px] pt-[22px] shadow-[0_20px_70px_-10px_oklch(0_0_0/0.4)]";
+
+const SIZE_CHIP_BASE = "flex-1 cursor-pointer rounded-md border py-1 font-mono text-[10.5px]";
+const SIZE_CHIP_ON = "border-primary bg-primary text-primary-foreground";
+const SIZE_CHIP_OFF = "border-border bg-card text-muted-foreground hover:text-foreground";
+const SEG_BTN_BASE = "flex-1 cursor-pointer px-2 py-1.5 text-[11.5px]";
+const SEG_BTN_ON = "bg-primary text-primary-foreground";
+const SEG_BTN_OFF = "bg-transparent text-muted-foreground hover:text-foreground";
 
 interface StoredFolder {
   id: string;
@@ -575,23 +591,27 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
   // total isn't computed server-side yet, so we display files-only here.
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }} onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false); }} onDrop={onDrop}>
+    <div className="flex flex-col gap-[18px]" onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false); }} onDrop={onDrop}>
       <PageHeader
         title="Storage"
         description={<>Adapter auto-selected: R2 binding → R2; S3 env vars → S3; else local filesystem (Bun dev). Public folders are served at <span className="font-mono">/storage/&lt;key&gt;</span>; private require a signed URL.</>}
-        badges={<span style={{ display: "inline-flex", gap: 6, marginLeft: 4 }}>
+        badges={<span className="ml-1 inline-flex gap-1.5">
           <Badge variant="outline" mono>{folderCounts.total} files</Badge>
         </span>}
         actions={<>
           <Button variant="outline" icon={I.Folder} onClick={openNewFolder}>New folder</Button>
           <Button variant="outline" icon={I.Globe} onClick={() => { setImportUrlOpen(true); setImportUrl(""); setImportKey(""); setImportError(null); }}>Import URL</Button>
           <Button variant="primary" icon={I.Plus} onClick={() => fileInputRef.current?.click()}>Upload</Button>
-          <input ref={fileInputRef} type="file" multiple style={{ display: "none" }} onChange={(e) => queueUploads(Array.from(e.target.files || []))} />
+          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => queueUploads(Array.from(e.target.files || []))} />
         </>}
       />
 
       <div
-        className={`dropzone ${dragOver ? "is-over" : ""}`}
+        className={`flex cursor-pointer items-center gap-3.5 rounded-2xl border-[1.5px] bg-[color-mix(in_oklch,var(--muted)_22%,var(--card))] px-[18px] py-4 transition-all duration-[120ms] hover:bg-muted ${
+          dragOver
+            ? "scale-[1.005] border-solid border-primary bg-muted"
+            : "border-dashed border-border hover:border-[color-mix(in_oklch,var(--primary)_50%,var(--border))]"
+        }`}
         onClick={() => dropFileInputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
@@ -599,34 +619,34 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         role="button"
         tabIndex={0}
       >
-        <div className="dropzone-icon">
+        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted text-primary">
           <I.Upload size={20} />
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 500 }}>
-            Drop files to upload — or <span style={{ color: "var(--primary)", textDecoration: "underline", textDecorationThickness: 1, textUnderlineOffset: 2 }}>browse</span>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <div className="text-[13.5px] font-medium">
+            Drop files to upload — or <span className="text-primary underline [text-decoration-thickness:1px] underline-offset-2">browse</span>
           </div>
-          <div className="muted" style={{ fontSize: 12 }}>
-            Target folder: <span className="font-mono" style={{ color: "var(--foreground)" }}>{folder || "uploads"}/</span> · max 100 MB per file · jpeg, png, webp, avif transformed on the fly
+          <div className="text-xs text-muted-foreground">
+            Target folder: <span className="font-mono text-foreground">{folder || "uploads"}/</span> · max 100 MB per file · jpeg, png, webp, avif transformed on the fly
           </div>
         </div>
-        <div className="spacer" />
-        <span className="dropzone-hint font-mono">⌘V to paste</span>
-        <input ref={dropFileInputRef} type="file" multiple style={{ display: "none" }} onChange={(e) => queueUploads(Array.from(e.target.files || []))} />
+        <div className="flex-1" />
+        <span className="rounded-full border border-border bg-card px-2 py-[3px] font-mono text-[11px] text-muted-foreground">⌘V to paste</span>
+        <input ref={dropFileInputRef} type="file" multiple className="hidden" onChange={(e) => queueUploads(Array.from(e.target.files || []))} />
       </div>
 
       {uploads.length > 0 && (
-        <div className="card" style={{ padding: 0 }}>
-          <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
             <I.Activity size={14} />
-            <span style={{ fontSize: 13, fontWeight: 500 }}>Uploads</span>
-            <span className="muted font-mono" style={{ fontSize: 11.5 }}>
+            <span className="text-[13px] font-medium">Uploads</span>
+            <span className="font-mono text-[11.5px] text-muted-foreground">
               {uploads.filter((u) => u.status === "done").length} / {uploads.length} complete
             </span>
-            <div className="spacer" />
+            <div className="flex-1" />
             <Button variant="ghost" size="sm" onClick={() => setUploads((arr) => arr.filter((u) => u.status === "uploading"))}>Clear done</Button>
           </div>
-          <div style={{ padding: "8px 14px", display: "flex", flexDirection: "column", gap: 8, maxHeight: 180, overflow: "auto" }}>
+          <div className="flex max-h-[180px] flex-col gap-2 overflow-auto px-3.5 py-2">
             {uploads.map((u) => {
               const isDone = u.status === "done";
               const isFailed = u.status === "failed";
@@ -642,23 +662,23 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                   ? "oklch(0.55 0.16 145)"
                   : "var(--muted-foreground)";
               return (
-                <div key={u.id} style={{ display: "grid", gridTemplateColumns: "16px 1fr 70px 60px 24px", alignItems: "center", gap: 10, fontSize: 12 }}>
+                <div key={u.id} className="grid grid-cols-[16px_1fr_70px_60px_24px] items-center gap-2.5 text-xs">
                   {isDone
-                    ? <I.Check size={13} style={{ color: "oklch(0.55 0.16 145)" }} />
+                    ? <I.Check size={13} className="text-[oklch(0.55_0.16_145)]" />
                     : isFailed
-                      ? <I.AlertTriangle size={13} style={{ color: "var(--destructive)" }} />
-                      : <I.Upload size={13} className="muted" />}
-                  <div style={{ minWidth: 0 }}>
-                    <div className="font-mono" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</div>
-                    <div style={{ height: 4, borderRadius: 2, background: "var(--muted)", overflow: "hidden", marginTop: 4 }}>
-                      <div style={{ height: "100%", width: `${isFailed ? 100 : u.progress}%`, background: barColor, transition: "width 200ms" }} />
+                      ? <I.AlertTriangle size={13} className="text-destructive" />
+                      : <I.Upload size={13} className="text-muted-foreground" />}
+                  <div className="min-w-0">
+                    <div className="truncate font-mono text-xs">{u.name}</div>
+                    <div className="mt-1 h-1 overflow-hidden rounded-sm bg-muted">
+                      <div className="h-full transition-[width] duration-200" style={{ width: `${isFailed ? 100 : u.progress}%`, background: barColor }} />
                     </div>
                     {isFailed && u.error && (
-                      <div style={{ marginTop: 3, fontSize: 11, color: "var(--destructive)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.error}</div>
+                      <div className="mt-[3px] truncate text-[11px] text-destructive">{u.error}</div>
                     )}
                   </div>
-                  <span className="tabular-nums muted" style={{ fontSize: 11.5, textAlign: "right" }}>{fmtSize(u.size)}</span>
-                  <span className="tabular-nums" style={{ fontSize: 11.5, textAlign: "right", color: pctColor }}>
+                  <span className="text-right text-[11.5px] tabular-nums text-muted-foreground">{fmtSize(u.size)}</span>
+                  <span className="text-right text-[11.5px] tabular-nums" style={{ color: pctColor }}>
                     {isFailed ? "failed" : `${Math.round(u.progress)}%`}
                   </span>
                   {isUploading ? (
@@ -683,48 +703,60 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         </div>
       )}
 
-      <div className="filter-bar">
+      <div className="flex flex-wrap items-center gap-2">
         <InputGroup>
           <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
           <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search keys…" />
         </InputGroup>
-        <span className="muted font-mono" style={{ fontSize: 11.5 }}>
-          {folder ? <>in <span style={{ color: "var(--foreground)" }}>{folder}/</span></> : "all folders"} · {filesTotal} files{filesTotal > files.length ? <> · showing {files.length}</> : null}
+        <span className="font-mono text-[11.5px] text-muted-foreground">
+          {folder ? <>in <span className="text-foreground">{folder}/</span></> : "all folders"} · {filesTotal} files{filesTotal > files.length ? <> · showing {files.length}</> : null}
         </span>
-        <div className="spacer" />
-        <button className={`chip ${view === "grid" ? "active" : ""}`} onClick={() => setView("grid")}><I.Braces size={12} /> Grid</button>
-        <button className={`chip ${view === "list" ? "active" : ""}`} onClick={() => setView("list")}><I.Inbox size={12} /> List</button>
+        <div className="flex-1" />
+        {(["grid", "list"] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border bg-card px-[11px] text-[12.5px] text-foreground hover:bg-accent ${
+              view === v ? "border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent" : "border-border"
+            }`}
+            onClick={() => setView(v)}
+          >
+            {v === "grid" ? <I.Braces size={12} /> : <I.Inbox size={12} />} {v === "grid" ? "Grid" : "List"}
+          </button>
+        ))}
       </div>
 
-      <div className="master-detail storage-master-detail" style={{ "--md-aside": "240px" }}>
-        <div className="card" style={{ padding: 0, overflow: "hidden", position: "sticky", top: 12, maxHeight: "calc(100vh - 160px)", display: "flex", flexDirection: "column" }}>
-          <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px" }}>
+      <div className="grid grid-cols-[240px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
+        <div className="sticky top-3 flex max-h-[calc(100vh-160px)] flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground max-[900px]:static max-[900px]:max-h-none">
+          <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
             <I.Folder size={13} />
-            <span style={{ fontSize: 12.5, fontWeight: 500 }}>Folders</span>
-            <span className="muted tabular-nums" style={{ fontSize: 11 }}>{folders.length}</span>
-            <div className="spacer" />
+            <span className="text-[12.5px] font-medium">Folders</span>
+            <span className="text-[11px] tabular-nums text-muted-foreground">{folders.length}</span>
+            <div className="flex-1" />
             <IconButton icon={I.Plus} title="New folder" onClick={openNewFolder} />
           </div>
-          <div style={{ padding: "8px 10px 6px", borderBottom: "1px solid var(--border)" }}>
+          <div className="border-b border-border px-2.5 pb-1.5 pt-2">
             <InputGroup className="h-8">
               <InputGroupAddon><I.Search size={12} /></InputGroupAddon>
               <InputGroupInput value={folderQuery} onChange={(e) => setFolderQuery(e.target.value)} placeholder="Filter folders…" className="text-xs" />
             </InputGroup>
           </div>
-          <div style={{ overflowY: "auto", flex: 1, padding: "6px 6px 8px" }}>
+          <div className="flex-1 overflow-y-auto px-1.5 pb-2 pt-1.5 max-[900px]:max-h-[320px]">
             <button
-              className={`folder-row ${folder == null ? "active" : ""}`}
+              type="button"
+              className={`flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-md border-0 py-1.5 pl-2.5 pr-2 text-left text-[12.5px] text-foreground hover:bg-accent ${
+                folder == null ? "bg-accent font-medium" : "bg-transparent"
+              }`}
               onClick={() => setFolder(null)}
-              style={{ paddingLeft: 10 }}
             >
               <I.Inbox size={12} />
               <span>All files</span>
-              <span className="muted tabular-nums" style={{ marginLeft: "auto", fontSize: 11 }}>{folderCounts.total}</span>
+              <span className={`ml-auto text-[11px] tabular-nums ${folder == null ? "text-foreground" : "text-muted-foreground"}`}>{folderCounts.total}</span>
             </button>
             {folderTreeFiltered.length === 0 && (
-              <div className="muted" style={{ padding: "12px 10px", fontSize: 11.5 }}>
+              <div className="px-2.5 py-3 text-[11.5px] text-muted-foreground">
                 {folders.length === 0
-                  ? <>No folders yet. <button onClick={openNewFolder} style={{ background: "none", border: 0, padding: 0, color: "var(--primary)", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Create one</button>.</>
+                  ? <>No folders yet. <button type="button" onClick={openNewFolder} className="cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-primary underline">Create one</button>.</>
                   : "No folders match."}
               </div>
             )}
@@ -733,19 +765,25 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
               const isOpen = !collapsed.has(node.path);
               const isActive = folder === node.path;
               return (
-                <div key={node.path} className={`folder-row ${isActive ? "active" : ""}`} style={{ paddingLeft: 8 + node.depth * 14 }}>
+                <div
+                  key={node.path}
+                  className={`flex w-full min-w-0 items-center gap-1.5 rounded-md py-1.5 pr-2 text-[12.5px] text-foreground ${
+                    isActive ? "bg-accent font-medium" : "bg-transparent"
+                  }`}
+                  style={{ paddingLeft: 8 + node.depth * 14 }}
+                >
                   {hasKids ? (
-                    <button className="folder-caret" onClick={(e) => { e.stopPropagation(); toggleCollapse(node.path); }} aria-label="Toggle">
-                      <I.ChevronRight size={11} style={{ transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 100ms" }} />
+                    <button type="button" className="inline-flex size-3.5 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); toggleCollapse(node.path); }} aria-label="Toggle">
+                      <I.ChevronRight size={11} className={`transition-transform duration-100 ${isOpen ? "rotate-90" : ""}`} />
                     </button>
                   ) : (
-                    <span style={{ width: 14 }} />
+                    <span className="w-3.5" />
                   )}
-                  <button className="folder-row-main" onClick={() => setFolder(node.path)}>
+                  <button type="button" className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-left text-[inherit] text-inherit" onClick={() => setFolder(node.path)}>
                     <I.Folder size={12} />
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{node.name}</span>
-                    {node.folder?.public && <span style={{ width: 5, height: 5, borderRadius: 999, background: "oklch(0.7 0.18 145)", flexShrink: 0 }} title="public" />}
-                    <span className="muted tabular-nums" style={{ marginLeft: "auto", fontSize: 11 }}>
+                    <span className="truncate">{node.name}</span>
+                    {node.folder?.public && <span className="size-[5px] shrink-0 rounded-full bg-[oklch(0.7_0.18_145)]" title="public" />}
+                    <span className={`ml-auto text-[11px] tabular-nums ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
                       {folderCountByPath.get(node.path) ?? 0}
                     </span>
                   </button>
@@ -754,10 +792,10 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
             })}
           </div>
         </div>
-        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
           {view === "grid" ? (
             <>
-            <div style={{ padding: 12, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 }}>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2 p-3">
               {visible.length === 0 && filesLoading && (
                 <>
                   {Array.from({ length: 8 }).map((_, i) => (
@@ -766,7 +804,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                 </>
               )}
               {visible.length === 0 && !filesLoading && (
-                <div style={{ gridColumn: "1 / -1", padding: 36, textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>
+                <div className="col-span-full p-9 text-center text-[13px] text-muted-foreground">
                   No files. Drop files anywhere on this page or use Upload.
                 </div>
               )}
@@ -792,59 +830,64 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
             />
             </>
           ) : (
-            <div className="table-scroll">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Key</th>
-                  <th style={{ width: 90 }}>Type</th>
-                  <th style={{ width: 80 }}>ACL</th>
-                  <th style={{ width: 90, textAlign: "right" }}>Size</th>
-                  <th style={{ width: 100 }}>Updated</th>
-                  <th className="col-actions" style={{ width: 60 }}></th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+            <Table className={ADMIN_TABLE_CLS}>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Key</TableHead>
+                  <TableHead className="w-[90px]">Type</TableHead>
+                  <TableHead className="w-[80px]">ACL</TableHead>
+                  <TableHead className="w-[90px] text-right">Size</TableHead>
+                  <TableHead className="w-[100px]">Updated</TableHead>
+                  <TableHead className="sticky right-0 w-[60px] bg-card" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {visible.length === 0 && filesLoading && (
                   Array.from({ length: 6 }).map((_, i) => (
-                    <tr key={`fl-${i}`}>
-                      <td><SkeletonCard height={16} /></td>
-                      <td><SkeletonCard height={16} /></td>
-                      <td><SkeletonCard height={16} /></td>
-                      <td><SkeletonCard height={16} /></td>
-                      <td><SkeletonCard height={16} /></td>
-                      <td />
-                    </tr>
+                    <TableRow key={`fl-${i}`}>
+                      <TableCell><SkeletonCard height={16} /></TableCell>
+                      <TableCell><SkeletonCard height={16} /></TableCell>
+                      <TableCell><SkeletonCard height={16} /></TableCell>
+                      <TableCell><SkeletonCard height={16} /></TableCell>
+                      <TableCell><SkeletonCard height={16} /></TableCell>
+                      <TableCell />
+                    </TableRow>
                   ))
                 )}
                 {visible.map((f) => (
-                  <tr key={f.key} data-selected={selectedKey === f.key} onClick={() => openDetail(f.key)} style={{ cursor: "pointer" }}>
-                    <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                  <TableRow
+                    key={f.key}
+                    data-selected={selectedKey === f.key}
+                    onClick={() => openDetail(f.key)}
+                    className="cursor-pointer data-[selected=true]:bg-[color-mix(in_oklch,var(--primary)_10%,var(--card))]"
+                  >
+                    <TableCell>
+                      <div className="flex min-w-0 items-center gap-2">
                         <FileGlyph f={f} size={20} />
-                        <span className="font-mono" style={{ fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.key}</span>
+                        <span className="truncate font-mono text-[12.5px]">{f.key}</span>
                       </div>
-                    </td>
-                    <td><Badge variant="outline" mono>{f.type.split("/")[1]}</Badge></td>
-                    <td>
+                    </TableCell>
+                    <TableCell><Badge variant="outline" mono>{f.type.split("/")[1]}</Badge></TableCell>
+                    <TableCell>
                       <Badge variant={f.acl === "public" ? "default" : "secondary"}>{f.acl}</Badge>
-                    </td>
-                    <td className="tabular-nums" style={{ textAlign: "right" }}>{fmtSize(f.size)}</td>
-                    <td className="muted font-mono" style={{ fontSize: 11.5 }}>{f.updated}</td>
-                    <td className="col-actions" onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{fmtSize(f.size)}</TableCell>
+                    <TableCell className="font-mono text-[11.5px] text-muted-foreground">{f.updated}</TableCell>
+                    <TableCell className="sticky right-0 bg-card text-right" onClick={(e) => e.stopPropagation()}>
                       <IconButton icon={I.Trash} title="Delete" onClick={() => deleteFile(f.key)} />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
             <PaginationFooter
               loaded={files.length}
               total={filesTotal}
               loading={filesLoading}
               onLoadMore={loadMore}
             />
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -869,11 +912,11 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
 
       {newFolderOpen && (
         <>
-          <div className="scrim" onClick={() => !newFolderBusy && setNewFolderOpen(false)} />
-          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="new-folder-title">
+          <div className={SCRIM_CLS} onClick={() => !newFolderBusy && setNewFolderOpen(false)} />
+          <div className={DIALOG_CLS} role="dialog" aria-modal="true" aria-labelledby="new-folder-title">
             <div>
-              <h3 id="new-folder-title">New folder</h3>
-              <p style={{ marginTop: 6 }}>
+              <h3 id="new-folder-title" className="m-0 text-base font-semibold tracking-[-0.01em]">New folder</h3>
+              <p className="m-0 mt-1.5 text-[13px] leading-normal text-muted-foreground">
                 Lowercase letters, digits, <span className="font-mono">_</span> and <span className="font-mono">-</span>. Use <span className="font-mono">/</span> in the name to nest under an existing folder.
               </p>
             </div>
@@ -889,7 +932,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
               disabled={newFolderBusy}
               autoFocus
             />
-            <div className="actions">
+            <div className="flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setNewFolderOpen(false)} disabled={newFolderBusy}>Cancel</Button>
               <Button variant="primary" size="sm" onClick={submitNewFolder} disabled={newFolderBusy || !newFolderName.trim()}>
                 {newFolderBusy ? "Creating…" : "Create folder"}
@@ -901,17 +944,17 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
 
       {importUrlOpen && (
         <>
-          <div className="scrim" onClick={() => !importBusy && setImportUrlOpen(false)} />
-          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="import-url-title">
+          <div className={SCRIM_CLS} onClick={() => !importBusy && setImportUrlOpen(false)} />
+          <div className={DIALOG_CLS} role="dialog" aria-modal="true" aria-labelledby="import-url-title">
             <div>
-              <h3 id="import-url-title">Import from URL</h3>
-              <p style={{ marginTop: 6 }}>
+              <h3 id="import-url-title" className="m-0 text-base font-semibold tracking-[-0.01em]">Import from URL</h3>
+              <p className="m-0 mt-1.5 text-[13px] leading-normal text-muted-foreground">
                 Server fetches the URL and stores it in this workspace. http/https only — private/internal hosts are rejected.
               </p>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div className="field" style={{ marginTop: 0 }}>
-                <label className="field-label">Source URL</label>
+            <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Source URL</label>
                 <Input
                   value={importUrl}
                   onChange={(e) => { setImportUrl(e.target.value); setImportError(null); }}
@@ -924,9 +967,9 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                   autoFocus
                 />
               </div>
-              <div className="field" style={{ marginTop: 0 }}>
-                <label className="field-label">
-                  Save as <span className="muted" style={{ fontSize: 11 }}>(optional)</span>
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
+                  Save as <span className="text-[11px] text-muted-foreground">(optional)</span>
                 </label>
                 <Input
                   value={importKey}
@@ -934,17 +977,17 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                   placeholder={folder ? `${folder}/<derived>` : "Defaults to the URL's filename"}
                   disabled={importBusy}
                 />
-                <span className="field-hint">
+                <span className="text-[11.5px] text-muted-foreground">
                   Leave blank to use the URL's last path segment. Slashes auto-create folders ({folder ? <>currently in <span className="font-mono">{folder}/</span></> : "root by default"}).
                 </span>
               </div>
               {importError && (
-                <div style={{ padding: "8px 10px", borderRadius: "var(--radius-md)", background: "color-mix(in oklch, var(--destructive) 8%, transparent)", color: "var(--destructive)", fontSize: 12 }}>
+                <div className="rounded-md bg-[color-mix(in_oklch,var(--destructive)_8%,transparent)] px-2.5 py-2 text-xs text-destructive">
                   {importError}
                 </div>
               )}
             </div>
-            <div className="actions">
+            <div className="flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setImportUrlOpen(false)} disabled={importBusy}>Cancel</Button>
               <Button variant="primary" size="sm" onClick={submitImportUrl} disabled={importBusy || !importUrl.trim()}>
                 {importBusy ? "Importing…" : "Import"}
@@ -1034,47 +1077,38 @@ function FileTile({ f, active, onSelect, onCopyUrl }: { f: StoredFile; active: b
   return (
     <div
       onClick={onSelect}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 0,
-        borderRadius: "var(--radius-md)",
-        border: `1px solid ${active ? "var(--primary)" : "var(--border)"}`,
-        background: active ? "color-mix(in oklch, var(--primary) 6%, transparent)" : "var(--card)",
-        cursor: "pointer",
-        transition: "background 100ms, border-color 100ms",
-        minWidth: 0,
-        overflow: "hidden",
-      }}
+      className={`flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-md border transition-[background,border-color] duration-100 ${
+        active ? "border-primary bg-[color-mix(in_oklch,var(--primary)_6%,transparent)]" : "border-border bg-card"
+      }`}
     >
-      <div style={{ aspectRatio: "16 / 9", position: "relative", background: "var(--muted)" }}>
+      <div className="relative aspect-[16/9] bg-muted">
         {isImg && !imgFailed ? (
           <img
             src={thumbnailUrl(f, 320)}
             alt=""
             loading="lazy"
             onError={() => setImgFailed(true)}
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            className="absolute inset-0 block size-full object-cover"
           />
         ) : isImg ? (
           <ImageMock hue={f.hue ?? 200} />
         ) : (
-          <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
+          <div className="absolute inset-0 grid place-items-center">
             <FileGlyph f={f} size={64} />
           </div>
         )}
         {f.acl === "public" && (
           <span
-            style={{ position: "absolute", top: 6, left: 6, padding: "2px 6px", borderRadius: 999, background: "oklch(0.25 0.04 145 / 0.85)", color: "oklch(0.9 0.18 145)", fontSize: 9.5, fontFamily: "Geist Mono, monospace", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}
+            className="absolute left-1.5 top-1.5 rounded-full bg-[oklch(0.25_0.04_145/0.85)] px-1.5 py-0.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.06em] text-[oklch(0.9_0.18_145)]"
             title="public"
           >
             public
           </span>
         )}
       </div>
-      <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
-          <span className="font-mono" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+      <div className="flex min-w-0 flex-col gap-0.5 px-2.5 py-2">
+        <div className="flex min-w-0 items-center gap-1">
+          <span className="min-w-0 flex-1 truncate font-mono text-xs">
             {displayName}
           </span>
           {/* Copy URL — uses the chain-link icon (the "<>" code glyph was
@@ -1092,10 +1126,10 @@ function FileTile({ f, active, onSelect, onCopyUrl }: { f: StoredFile; active: b
             <LinkIcon className="size-3" />
           </ShadButton>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span className="muted tabular-nums" style={{ fontSize: 10.5 }}>{sizeStr}</span>
-          <span className="muted" style={{ fontSize: 10.5 }}>·</span>
-          <span className="muted" style={{ fontSize: 10.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10.5px] tabular-nums text-muted-foreground">{sizeStr}</span>
+          <span className="text-[10.5px] text-muted-foreground">·</span>
+          <span className="truncate text-[10.5px] text-muted-foreground">
             {(f.type || "").split("/")[1] || "file"}
           </span>
         </div>
@@ -1106,21 +1140,24 @@ function FileTile({ f, active, onSelect, onCopyUrl }: { f: StoredFile; active: b
 
 function FileDetailModal({ f, onClose, ...rest }: any) {
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150"
+      onClick={onClose}
+    >
       <div
-        className="dialog-lg storage-detail-dialog"
+        className="relative flex max-h-[min(86vh,720px)] w-[min(720px,92vw)] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="dialog-head">
-          <div style={{ minWidth: 0 }}>
-            <h3 style={{ margin: 0, fontSize: 14.5, fontWeight: 600, letterSpacing: "-0.01em" }}>Edit file</h3>
-            <p style={{ margin: "2px 0 0", color: "var(--muted-foreground)", fontSize: 12, fontFamily: "Geist Mono, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.key}</p>
+        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
+          <div className="min-w-0 flex-1">
+            <h3 className="m-0 text-[14.5px] font-semibold tracking-[-0.01em]">Edit file</h3>
+            <p className="m-0 mt-0.5 truncate font-mono text-xs text-muted-foreground">{f.key}</p>
           </div>
           <IconButton icon={I.X} onClick={onClose} title="Close" />
         </div>
-        <div className="dialog-body" style={{ padding: 0 }}>
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-0">
           <FileDetail f={f} {...rest} embedded />
         </div>
       </div>
@@ -1258,7 +1295,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
   const previewH = h != null ? h : ((isImage && f.w) ? Math.round(w * aspect) : null);
 
   const Wrapper: any = embedded ? Fragment : "div";
-  const wrapperProps: any = embedded ? {} : { className: "card", style: { padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" } };
+  const wrapperProps: any = embedded ? {} : { className: "flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground" };
 
   /** Hit POST /api/storage/<key>/sign and return the relative signed URL. */
   const signOnce = async (ttlSeconds: number): Promise<string> => {
@@ -1307,15 +1344,15 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
   return (
     <Wrapper {...wrapperProps}>
       {!embedded && (
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 500 }}>File detail</span>
-          <div className="spacer" />
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
+          <span className="text-[13px] font-medium">File detail</span>
+          <div className="flex-1" />
           <IconButton icon={I.Trash} title="Delete" onClick={onDelete} />
         </div>
       )}
 
       <div
-        className="img-preview"
+        className="relative grid aspect-[16/9] place-items-center overflow-hidden"
         onClick={(e) => {
           if (!isImage) return;
           const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -1323,7 +1360,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
           const y = ((e.clientY - r.top) / r.height) * 100;
           setFocal({ x: Math.round(x), y: Math.round(y) });
         }}
-        style={{ aspectRatio: "16 / 9", cursor: isImage ? "crosshair" : "default", borderRadius: 0 }}
+        style={{ background: "repeating-conic-gradient(var(--muted) 0% 25%, var(--background) 0% 50%) 50% / 16px 16px", cursor: isImage ? "crosshair" : "default" }}
       >
         {isImage ? (
           <>
@@ -1332,62 +1369,63 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
               src={effectiveSrc}
               alt=""
               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: fit === "contain" ? "contain" : "cover", display: "block", background: "var(--muted)" }}
+              className="absolute inset-0 block size-full bg-muted"
+              style={{ objectFit: fit === "contain" ? "contain" : "cover" }}
             />
-            <div className="focal-pin" style={{ left: `calc(${focal.x}% - 1px)`, top: `calc(${focal.y}% - 1px)` }}>
-              <span />
+            <div
+              className="pointer-events-none absolute grid size-[18px] place-items-center rounded-full border-2 border-[oklch(0.55_0.22_22)] bg-white shadow-[0_2px_6px_oklch(0_0_0/0.4)]"
+              style={{ left: `calc(${focal.x}% - 1px)`, top: `calc(${focal.y}% - 1px)` }}
+            >
+              <span className="size-1 rounded-full bg-[oklch(0.55_0.22_22)]" />
             </div>
-            <div className="img-label" style={{ right: 8, top: 8 }}>{fmt} · {w}{previewH ? `×${previewH}` : ""}</div>
+            <div className="pointer-events-none absolute right-2 top-2 rounded-full bg-[oklch(0_0_0/0.6)] px-2 py-[3px] font-mono text-[10.5px] tracking-[0.04em] text-white">{fmt} · {w}{previewH ? `×${previewH}` : ""}</div>
           </>
         ) : (
-          <>
-            <div style={{ position: "absolute", inset: 0, background: "repeating-conic-gradient(var(--muted) 0% 25%, var(--background) 0% 50%) 50% / 16px 16px" }} />
-            <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, color: "var(--muted-foreground)" }}>
-              <FileGlyph f={f} size={64} />
-              <span className="font-mono" style={{ fontSize: 11.5 }}>{f.type}</span>
-            </div>
-          </>
+          <div className="relative flex flex-col items-center gap-1.5 text-muted-foreground">
+            <FileGlyph f={f} size={64} />
+            <span className="font-mono text-[11.5px]">{f.type}</span>
+          </div>
         )}
       </div>
 
-      <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 12, fontSize: 12.5 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          <span className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Key</span>
-          <span className="font-mono" style={{ fontSize: 12, wordBreak: "break-all" }}>{f.key}</span>
+      <div className="flex flex-col gap-3 p-3.5 text-[12.5px]">
+        <div className="flex flex-col gap-1">
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Key</span>
+          <span className="break-all font-mono text-xs">{f.key}</span>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+        <div className="grid grid-cols-3 gap-2.5">
           <div>
-            <div className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Size</div>
-            <div className="tabular-nums" style={{ fontWeight: 500 }}>{fmtSize(f.size)}</div>
+            <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Size</div>
+            <div className="font-medium tabular-nums">{fmtSize(f.size)}</div>
           </div>
           {isImage && f.w && (
             <div>
-              <div className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Dim</div>
-              <div className="font-mono tabular-nums" style={{ fontSize: 11.5 }}>{f.w}×{f.h}</div>
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Dim</div>
+              <div className="font-mono text-[11.5px] tabular-nums">{f.w}×{f.h}</div>
             </div>
           )}
           <div>
-            <div className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Updated</div>
-            <div className="font-mono" style={{ fontSize: 11.5 }}>{f.updated}</div>
+            <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Updated</div>
+            <div className="font-mono text-[11.5px]">{f.updated}</div>
           </div>
         </div>
 
-        <div className="field-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+        <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
           <div>
-            <div className="field-label" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div className="flex items-center gap-1.5 text-[12.5px] font-medium text-foreground">
               {f.acl === "public" ? <I.Eye size={12} /> : <I.Shield size={12} />}
               {f.acl === "public" ? "Public" : "Private"}
             </div>
-            <div className="field-hint">{f.acl === "public" ? "Anyone with the URL can fetch this file." : "Requires a signed URL or auth cookie."}</div>
+            <div className="text-[11.5px] text-muted-foreground">{f.acl === "public" ? "Anyone with the URL can fetch this file." : "Requires a signed URL or auth cookie."}</div>
           </div>
           <Switch checked={f.acl === "public"} onChange={onToggleACL} />
         </div>
 
         {/* Folder — DB-only move; key on disk is unchanged. */}
-        <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
-          <label className="field-label">
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div className="flex flex-col gap-1.5 border-t border-border pt-3">
+          <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
+            <span className="flex items-center gap-1.5">
               <I.Folder size={12} /> Folder
             </span>
           </label>
@@ -1396,30 +1434,30 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
             value={f.folderId ?? null}
             onChange={(id) => moveToFolder(id)}
           />
-          <span className="field-hint">Logical grouping in the DB. The object's storage key doesn't change.</span>
+          <span className="text-[11.5px] text-muted-foreground">Logical grouping in the DB. The object's storage key doesn't change.</span>
         </div>
 
         {/* Metadata — free-form bag stored in files.metadata jsonb. */}
-        <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="flex flex-col gap-2.5 border-t border-border pt-3">
+          <div className="flex items-center gap-2">
             <I.Hash size={13} />
-            <span style={{ fontSize: 12, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>Metadata</span>
-            <div className="spacer" />
+            <span className="text-xs font-medium uppercase tracking-[0.06em]">Metadata</span>
+            <div className="flex-1" />
             {metaDirty && <Badge variant="outline" mono>unsaved</Badge>}
           </div>
 
-          <div className="field" style={{ marginTop: 0 }}>
-            <label className="field-label">Name</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Name</label>
             <Input
               value={metaName}
               onChange={(e) => setMetaName(e.target.value)}
               placeholder={f.key.split("/").pop()}
             />
-            <span className="field-hint">Display label. The storage key stays <span className="font-mono">{f.key}</span>.</span>
+            <span className="text-[11.5px] text-muted-foreground">Display label. The storage key stays <span className="font-mono">{f.key}</span>.</span>
           </div>
 
-          <div className="field" style={{ marginTop: 0 }}>
-            <label className="field-label">Description</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Description</label>
             <Textarea
               value={metaDescription}
               onChange={(e) => setMetaDescription(e.target.value)}
@@ -1428,11 +1466,11 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
             />
           </div>
 
-          <div className="field" style={{ marginTop: 0 }}>
-            <label className="field-label">Tags</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6 }}>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Tags</label>
+            <div className="mb-1.5 flex flex-wrap gap-1">
               {metaTags.map((tag) => (
-                <span key={tag} className="chip" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <span key={tag} className="inline-flex h-7 items-center gap-1 rounded-3xl border border-border bg-card px-[11px] text-[12.5px] text-foreground">
                   <span className="font-mono">{tag}</span>
                   <ShadButton
                     type="button"
@@ -1447,7 +1485,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
                   </ShadButton>
                 </span>
               ))}
-              {metaTags.length === 0 && <span className="muted" style={{ fontSize: 11.5 }}>No tags yet.</span>}
+              {metaTags.length === 0 && <span className="text-[11.5px] text-muted-foreground">No tags yet.</span>}
             </div>
             <Input
               value={metaTagDraft}
@@ -1463,8 +1501,8 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
             />
           </div>
 
-          <div className="field" style={{ marginTop: 0 }}>
-            <label className="field-label">Author</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Author</label>
             <Input
               value={metaAuthor}
               onChange={(e) => setMetaAuthor(e.target.value)}
@@ -1472,8 +1510,8 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
             />
           </div>
 
-          <div className="field" style={{ marginTop: 0 }}>
-            <label className="field-label">Location</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Location</label>
             <Input
               value={metaLocation}
               onChange={(e) => setMetaLocation(e.target.value)}
@@ -1481,7 +1519,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
             />
           </div>
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+          <div className="flex justify-end gap-1.5">
             <Button
               size="sm"
               variant="outline"
@@ -1510,37 +1548,37 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
 
         {isImage && (
           <>
-            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div className="flex flex-col gap-3 border-t border-border pt-3">
+              <div className="flex items-center gap-2">
                 <I.Sliders size={13} />
-                <span style={{ fontSize: 12, fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.06em" }}>Transform</span>
-                <div className="spacer" />
-                <button className="link-btn" onClick={() => { setW(f.w || 1600); setH(null); setQ(80); setFmt("webp"); setFit("cover"); setFocal({ x: 50, y: 50 }); }}>Reset</button>
+                <span className="text-xs font-medium uppercase tracking-[0.06em]">Transform</span>
+                <div className="flex-1" />
+                <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-[11px] text-muted-foreground hover:text-foreground hover:underline" onClick={() => { setW(f.w || 1600); setH(null); setQ(80); setFmt("webp"); setFit("cover"); setFocal({ x: 50, y: 50 }); }}>Reset</button>
               </div>
 
-              <div className="field" style={{ marginTop: 0 }}>
-                <label className="field-label">
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
                   Width
-                  <span className="muted tabular-nums">{w}px {f.w && <span style={{ opacity: 0.6 }}>· {Math.round((w / f.w) * 100)}%</span>}</span>
+                  <span className="tabular-nums text-muted-foreground">{w}px {f.w && <span className="opacity-60">· {Math.round((w / f.w) * 100)}%</span>}</span>
                 </label>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <input type="range" min={120} max={Math.max(1600, f.w || 1600)} step={20} value={w} onChange={(e) => setW(Number(e.target.value))} style={{ flex: 1 }} />
+                <div className="flex items-center gap-2">
+                  <input type="range" min={120} max={Math.max(1600, f.w || 1600)} step={20} value={w} onChange={(e) => setW(Number(e.target.value))} className="flex-1" />
                 </div>
-                <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
+                <div className="mt-1.5 flex gap-1">
                   {[256, 512, 800, 1200, 1600].map((preset) => (
-                    <button key={preset} className={`size-chip ${w === preset ? "on" : ""}`} onClick={() => setW(preset)}>{preset}</button>
+                    <button key={preset} className={cn(SIZE_CHIP_BASE, (w === preset) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setW(preset)}>{preset}</button>
                   ))}
                 </div>
               </div>
 
-              <div className="field" style={{ marginTop: 0 }}>
-                <label className="field-label">
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
                   Height
-                  <span className="muted tabular-nums">
+                  <span className="tabular-nums text-muted-foreground">
                     {h != null ? `${h}px` : "auto"}
                   </span>
                 </label>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div className="flex items-center gap-2">
                   <input
                     type="range"
                     min={120}
@@ -1548,59 +1586,59 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
                     step={20}
                     value={h ?? Math.round(w * aspect)}
                     onChange={(e) => setH(Number(e.target.value))}
-                    style={{ flex: 1 }}
+                    className="flex-1"
                     disabled={h == null}
                     aria-disabled={h == null}
                   />
                 </div>
-                <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
-                  <button className={`size-chip ${h == null ? "on" : ""}`} onClick={() => setH(null)} title="Derive from width × source aspect">auto</button>
-                  <button className={`size-chip ${h === w ? "on" : ""}`} onClick={() => setH(w)} title="1:1 square">1:1</button>
-                  <button className={`size-chip ${h === Math.round(w * 9 / 16) ? "on" : ""}`} onClick={() => setH(Math.round(w * 9 / 16))} title="16:9 widescreen">16:9</button>
-                  <button className={`size-chip ${h === Math.round(w * 5 / 4) ? "on" : ""}`} onClick={() => setH(Math.round(w * 5 / 4))} title="4:5 portrait">4:5</button>
-                  <button className={`size-chip ${h === Math.round(w * 2 / 3) ? "on" : ""}`} onClick={() => setH(Math.round(w * 2 / 3))} title="3:2 standard">3:2</button>
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  <button className={cn(SIZE_CHIP_BASE, (h == null) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(null)} title="Derive from width × source aspect">auto</button>
+                  <button className={cn(SIZE_CHIP_BASE, (h === w) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(w)} title="1:1 square">1:1</button>
+                  <button className={cn(SIZE_CHIP_BASE, (h === Math.round(w * 9 / 16)) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(Math.round(w * 9 / 16))} title="16:9 widescreen">16:9</button>
+                  <button className={cn(SIZE_CHIP_BASE, (h === Math.round(w * 5 / 4)) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(Math.round(w * 5 / 4))} title="4:5 portrait">4:5</button>
+                  <button className={cn(SIZE_CHIP_BASE, (h === Math.round(w * 2 / 3)) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(Math.round(w * 2 / 3))} title="3:2 standard">3:2</button>
                 </div>
-                <span className="field-hint">
+                <span className="text-[11.5px] text-muted-foreground">
                   {h == null
                     ? "Auto = preserve source aspect. Pin height to crop to a different aspect (uses Focal point + fit=cover)."
                     : "Aspect-cropping active. Focal point picks which area is kept."}
                 </span>
               </div>
 
-              <div className="field" style={{ marginTop: 0 }}>
-                <label className="field-label">Quality <span className="muted tabular-nums">{q}</span></label>
-                <input type="range" min={10} max={100} step={5} value={q} onChange={(e) => setQ(Number(e.target.value))} style={{ width: "100%" }} />
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Quality <span className="tabular-nums text-muted-foreground">{q}</span></label>
+                <input type="range" min={10} max={100} step={5} value={q} onChange={(e) => setQ(Number(e.target.value))} className="w-full" />
               </div>
 
-              <div className="field" style={{ marginTop: 0 }}>
-                <label className="field-label">Format</label>
-                <div className="seg">
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Format</label>
+                <div className="inline-flex w-full divide-x divide-border overflow-hidden rounded-md border border-border bg-card">
                   {[
                     { v: "webp", save: "−45%" },
                     { v: "avif", save: "−60%" },
                     { v: "jpeg", save: "0%" },
                     { v: "png", save: "+lossless" },
                   ].map((o) => (
-                    <button key={o.v} className={fmt === o.v ? "on" : ""} onClick={() => setFmt(o.v)}>
+                    <button key={o.v} type="button" className={cn(SEG_BTN_BASE, fmt === o.v ? SEG_BTN_ON : SEG_BTN_OFF)} onClick={() => setFmt(o.v)}>
                       <span className="font-mono">{o.v}</span>
-                      <span className="muted" style={{ fontSize: 10, marginLeft: 4 }}>{o.save}</span>
+                      <span className="ml-1 text-[10px] opacity-70">{o.save}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div className="field" style={{ marginTop: 0 }}>
-                <label className="field-label">Fit</label>
-                <div className="seg">
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Fit</label>
+                <div className="inline-flex w-full divide-x divide-border overflow-hidden rounded-md border border-border bg-card">
                   {["cover", "contain"].map((o) => (
-                    <button key={o} className={fit === o ? "on" : ""} onClick={() => setFit(o)}><span className="font-mono">{o}</span></button>
+                    <button key={o} type="button" className={cn(SEG_BTN_BASE, fit === o ? SEG_BTN_ON : SEG_BTN_OFF)} onClick={() => setFit(o)}><span className="font-mono">{o}</span></button>
                   ))}
                 </div>
               </div>
 
-              <div className="field" style={{ marginTop: 0 }}>
-                <label className="field-label">Focal point <span className="muted font-mono">{focal.x}, {focal.y}</span></label>
-                <div className="focal-grid" onClick={(e: any) => {
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Focal point <span className="font-mono text-muted-foreground">{focal.x}, {focal.y}</span></label>
+                <div className="relative aspect-[16/9] w-full cursor-crosshair overflow-hidden rounded-md border border-border" onClick={(e: any) => {
                   const r = e.currentTarget.getBoundingClientRect();
                   setFocal({ x: Math.round(((e.clientX - r.left) / r.width) * 100), y: Math.round(((e.clientY - r.top) / r.height) * 100) });
                 }}>
@@ -1608,51 +1646,50 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
                     src={`/api/storage/${encodeURI(f.key)}`}
                     alt=""
                     onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                    style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block", background: "var(--muted)" }}
+                    className="absolute inset-0 block size-full bg-muted object-cover"
                   />
-                  <div className="focal-grid-overlay">
+                  <div className="absolute inset-0 [background-image:linear-gradient(to_right,oklch(1_0_0/0.3)_1px,transparent_1px),linear-gradient(to_bottom,oklch(1_0_0/0.3)_1px,transparent_1px)] [background-size:33.33%_33.33%]">
                     {[0, 1, 2].map((row) => (
                       [0, 1, 2].map((col) => {
                         const x = col * 50; const y = row * 50;
-                        return <button key={`${row}-${col}`} className={`focal-anchor ${focal.x === x && focal.y === y ? "on" : ""}`} style={{ left: `${x}%`, top: `${y}%` }} onClick={(e: any) => { e.stopPropagation(); setFocal({ x, y }); }} title={`${x},${y}`} />;
+                        return <button key={`${row}-${col}`} className={cn("absolute size-3 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-[1.5px] p-0", focal.x === x && focal.y === y ? "border-white bg-[oklch(0.55_0.22_22)]" : "border-[oklch(0_0_0/0.4)] bg-[oklch(1_0_0/0.6)] hover:bg-white")} style={{ left: `${x}%`, top: `${y}%` }} onClick={(e: any) => { e.stopPropagation(); setFocal({ x, y }); }} title={`${x},${y}`} />;
                       })
                     ))}
-                    <div className="focal-pin" style={{ left: `calc(${focal.x}% - 1px)`, top: `calc(${focal.y}% - 1px)` }}><span /></div>
+                    <div className="pointer-events-none absolute grid size-[18px] place-items-center rounded-full border-2 border-[oklch(0.55_0.22_22)] bg-white shadow-[0_2px_6px_oklch(0_0_0/0.4)]" style={{ left: `calc(${focal.x}% - 1px)`, top: `calc(${focal.y}% - 1px)` }}><span className="size-1 rounded-full bg-[oklch(0.55_0.22_22)]" /></div>
                   </div>
                 </div>
-                <span className="field-hint">Click anywhere to set the crop pivot for <span className="font-mono">fit=cover</span>.</span>
+                <span className="text-[11.5px] text-muted-foreground">Click anywhere to set the crop pivot for <span className="font-mono">fit=cover</span>.</span>
               </div>
             </div>
 
             {transformError ? (
               <div
-                className="size-readout"
-                style={{ alignItems: "flex-start", gap: 8 }}
+                className="flex items-start gap-2 rounded-md border border-border bg-[color-mix(in_oklch,var(--muted)_25%,var(--card))] px-3 py-2.5 text-xs"
                 role="alert"
               >
-                <I.Shield size={14} style={{ color: "oklch(0.65 0.16 50)", flexShrink: 0, marginTop: 2 }} />
-                <div style={{ minWidth: 0 }}>
-                  <div className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Transform unavailable</div>
-                  <div style={{ fontSize: 12, lineHeight: 1.4 }}>{transformError}</div>
-                  <div className="field-hint" style={{ marginTop: 4 }}>
+                <I.Shield size={14} className="mt-0.5 shrink-0 text-[oklch(0.65_0.16_50)]" />
+                <div className="min-w-0">
+                  <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Transform unavailable</div>
+                  <div className="text-xs leading-[1.4]">{transformError}</div>
+                  <div className="mt-1 text-[11.5px] text-muted-foreground">
                     Showing the original above. Toggle <span className="font-mono">Public</span> to enable edge resizing for this file.
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="size-readout">
+              <div className="flex items-center gap-2.5 rounded-md border border-border bg-[color-mix(in_oklch,var(--muted)_25%,var(--card))] px-3 py-2.5 text-xs">
                 <div>
-                  <div className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Original</div>
+                  <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Original</div>
                   <div className="tabular-nums">{fmtSize(f.size)}</div>
                 </div>
-                <I.ChevronRight size={14} className="muted" />
+                <I.ChevronRight size={14} className="text-muted-foreground" />
                 <div>
-                  <div className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Transformed</div>
-                  <div className="tabular-nums" style={{ color: transformedSize != null ? "oklch(0.55 0.16 145)" : "var(--muted-foreground)", fontWeight: 500 }}>
+                  <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Transformed</div>
+                  <div className="font-medium tabular-nums" style={{ color: transformedSize != null ? "oklch(0.55 0.16 145)" : "var(--muted-foreground)" }}>
                     {transformedLoading ? "…" : transformedSize != null ? fmtSize(transformedSize) : "—"}
                   </div>
                 </div>
-                <div className="spacer" />
+                <div className="flex-1" />
                 {transformedSize != null && (
                   <Badge variant="outline" mono>{Math.round((1 - transformedSize / f.size) * 100)}% smaller</Badge>
                 )}
@@ -1661,11 +1698,11 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
           </>
         )}
 
-        <div className="alter-preview" style={{ fontSize: 11, padding: 10, lineHeight: 1.5 }}>
-          <span className="kw">GET</span> <span style={{ color: "var(--foreground)" }}>{url}</span>{params && <span className="muted">{params}</span>}
+        <div className="whitespace-pre-wrap break-words rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-2.5 font-mono text-[11px] leading-normal text-[oklch(from_var(--primary)_0.95_0.02_h)]">
+          <span className="text-[oklch(0.78_0.18_95)]">GET</span> <span className="text-foreground">{url}</span>{params && <span className="text-muted-foreground">{params}</span>}
         </div>
 
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        <div className="flex flex-wrap gap-1.5">
           <Button size="sm" variant="outline" icon={I.Code} onClick={() => onCopy(toAbsolute(effectiveSrc))}>Copy URL</Button>
           {f.acl === "private" && <Button size="sm" variant="outline" icon={I.Shield} onClick={onSignUrl}>Sign URL</Button>}
           <Button size="sm" variant="outline" icon={I.Download} onClick={onDownload}>Download</Button>
@@ -1751,8 +1788,8 @@ function PaginationFooter({ loaded, total, loading, onLoadMore }: { loaded: numb
   if (total === 0) return null;
   if (!hasMore && !loading) return null;
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "12px 14px", borderTop: "1px solid var(--border)", fontSize: 12 }}>
-      <span className="muted tabular-nums">Showing {loaded} of {total}</span>
+    <div className="flex items-center justify-center gap-3 border-t border-border px-3.5 py-3 text-xs">
+      <span className="tabular-nums text-muted-foreground">Showing {loaded} of {total}</span>
       {hasMore && (
         <Button size="sm" variant="outline" onClick={onLoadMore} disabled={loading}>
           {loading ? "Loading…" : "Load more"}

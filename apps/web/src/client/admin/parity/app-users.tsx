@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
 import { Input } from "@workeros/ui/components/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { I } from "../icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
 import { ConfirmDialog } from "../sheet";
@@ -95,7 +96,7 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="flex flex-col gap-4.5">
       <PageHeader
         title="App users"
         description={
@@ -106,56 +107,54 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
           </>
         }
       />
-      <div className="card">
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
           <I.Users size={13} />
-          <span style={{ fontSize: 13, fontWeight: 500 }}>End-users</span>
-          <span className="muted font-mono" style={{ fontSize: 11.5 }}>{rows.length}</span>
-          <div className="spacer" />
+          <span className="text-[13px] font-medium">End-users</span>
+          <span className="font-mono text-[11.5px] text-muted-foreground">{rows.length}</span>
+          <div className="flex-1" />
           <Input
             placeholder="Filter by email / name…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            style={{ maxWidth: 240 }}
+            className="max-w-[240px]"
           />
         </div>
-        <div className="table-scroll">
-          <table className="table">
-            <thead>
-              <tr><th>Email</th><th>Name</th><th>Status</th><th>Roles</th><th>Created</th><th className="col-actions" /></tr>
-            </thead>
-            <tbody>
-              {!loaded && <tr><td colSpan={6} className="muted" style={{ padding: 14 }}>Loading…</td></tr>}
-              {loaded && filtered.length === 0 && (
-                <tr><td colSpan={6} className="muted" style={{ padding: 14 }}>
-                  {rows.length === 0
-                    ? "No end-users yet — they appear here after signing up via the workspace auth endpoint."
-                    : "No matches."}
-                </td></tr>
-              )}
-              {filtered.map((u) => (
-                <tr key={u.id}>
-                  <td>{u.email}{!u.emailVerified && <Badge variant="outline" style={{ marginLeft: 6 }}>unverified</Badge>}</td>
-                  <td className="muted">{u.name ?? "—"}</td>
-                  <td>{u.status === "suspended" ? <Badge variant="destructive">suspended</Badge> : <Badge variant="default">active</Badge>}</td>
-                  <td>
-                    {u.roles.length === 0
-                      ? <span className="muted" style={{ fontSize: 12 }}>authenticated</span>
-                      : u.roles.map((r) => <Badge key={r.id} variant="secondary" style={{ marginRight: 4 }}>{r.name}</Badge>)}
-                  </td>
-                  <td className="muted font-mono" style={{ fontSize: 11.5 }}>{fmtDate(u.createdAt)}</td>
-                  <td className="col-actions" style={{ textAlign: "right", whiteSpace: "nowrap" }}>
-                    <Button size="sm" variant="ghost" onClick={() => setEditRoles(u)}>Roles</Button>
-                    {u.status === "suspended"
-                      ? <Button size="sm" variant="ghost" onClick={() => void setStatus(u, "active")}>Activate</Button>
-                      : <Button size="sm" variant="ghost" onClick={() => void setStatus(u, "suspended")}>Suspend</Button>}
-                    <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(u)}>Delete</Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table className="[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground">
+          <TableHeader>
+            <TableRow><TableHead>Email</TableHead><TableHead>Name</TableHead><TableHead>Status</TableHead><TableHead>Roles</TableHead><TableHead>Created</TableHead><TableHead className="sticky right-0 bg-card" /></TableRow>
+          </TableHeader>
+          <TableBody>
+            {!loaded && <TableRow><TableCell colSpan={6} className="text-muted-foreground">Loading…</TableCell></TableRow>}
+            {loaded && filtered.length === 0 && (
+              <TableRow><TableCell colSpan={6} className="text-muted-foreground">
+                {rows.length === 0
+                  ? "No end-users yet — they appear here after signing up via the workspace auth endpoint."
+                  : "No matches."}
+              </TableCell></TableRow>
+            )}
+            {filtered.map((u) => (
+              <TableRow key={u.id}>
+                <TableCell>{u.email}{!u.emailVerified && <Badge variant="outline" className="ml-1.5">unverified</Badge>}</TableCell>
+                <TableCell className="text-muted-foreground">{u.name ?? "—"}</TableCell>
+                <TableCell>{u.status === "suspended" ? <Badge variant="destructive">suspended</Badge> : <Badge variant="default">active</Badge>}</TableCell>
+                <TableCell>
+                  {u.roles.length === 0
+                    ? <span className="text-xs text-muted-foreground">authenticated</span>
+                    : u.roles.map((r) => <Badge key={r.id} variant="secondary" className="mr-1">{r.name}</Badge>)}
+                </TableCell>
+                <TableCell className="font-mono text-[11.5px] text-muted-foreground">{fmtDate(u.createdAt)}</TableCell>
+                <TableCell className="sticky right-0 bg-card text-right">
+                  <Button size="sm" variant="ghost" onClick={() => setEditRoles(u)}>Roles</Button>
+                  {u.status === "suspended"
+                    ? <Button size="sm" variant="ghost" onClick={() => void setStatus(u, "active")}>Activate</Button>
+                    : <Button size="sm" variant="ghost" onClick={() => void setStatus(u, "suspended")}>Suspend</Button>}
+                  <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(u)}>Delete</Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
       {editRoles && (
         <AppUserRolesDialog
@@ -201,12 +200,12 @@ function AppUserRolesDialog({
       return n;
     });
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog dialog-lg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440, width: "92vw" }}>
-        <div className="dialog-head">
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>Roles · {user.email}</div>
-            <div className="muted" style={{ fontSize: 12.5, marginTop: 3 }}>
+    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={onClose}>
+      <div className="relative flex max-h-[min(86vh,720px)] w-[92vw] max-w-[440px] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
+          <div className="flex-1">
+            <div className="text-base font-semibold tracking-[-0.01em]">Roles · {user.email}</div>
+            <div className="mt-[3px] text-[12.5px] text-muted-foreground">
               End-users always have the workspace's <span className="font-mono">authenticated</span> role;
               pick any extra custom roles below. The <span className="font-mono">admin</span> role can't be
               assigned to end-users.
@@ -214,24 +213,24 @@ function AppUserRolesDialog({
           </div>
           <IconButton icon={I.X} onClick={onClose} />
         </div>
-        <div className="dialog-body">
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
           {roles.length === 0 && (
-            <div className="muted" style={{ fontSize: 12.5 }}>
+            <div className="text-[12.5px] text-muted-foreground">
               This workspace has no custom roles yet — create one under <strong>Roles &amp; permissions</strong>.
             </div>
           )}
           {roles.map((r) => (
-            <div key={r.id} className="field-row">
+            <div key={r.id} className="flex items-center justify-between gap-3">
               <div>
-                <div className="field-label">{r.name}</div>
-                {r.description && <div className="field-hint">{r.description}</div>}
+                <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{r.name}</div>
+                {r.description && <div className="text-[11.5px] text-muted-foreground">{r.description}</div>}
               </div>
               <Switch checked={selected.has(r.id)} onChange={(on) => setHas(r.id, on)} />
             </div>
           ))}
         </div>
-        <div className="dialog-foot">
-          <div className="spacer" />
+        <div className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
+          <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
           <Button variant="primary" size="sm" icon={I.Check} onClick={() => onSave([...selected])}>Save</Button>
         </div>

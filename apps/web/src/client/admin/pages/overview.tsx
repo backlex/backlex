@@ -4,6 +4,10 @@ import { I } from "../icons";
 import { ADAPTER_PROFILES, type AdapterId } from "../config";
 import { Badge, Button, PageHeader } from "../ui";
 import { Select } from "../select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
+
+const ADMIN_TABLE_CLS =
+  "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
 import {
   metricsApi,
   settingsApi,
@@ -21,7 +25,7 @@ function Sparkline({ data, color = "var(--primary)", height = 36, fill = true }:
   const fillPath = d + ` L ${w},${h} L 0,${h} Z`;
   const last = pts[pts.length - 1] ?? [0, 0];
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: "100%", height, display: "block" }}>
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="block w-full" style={{ height }}>
       {fill && <path d={fillPath} fill={color} opacity="0.12" />}
       <path d={d} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx={last[0]} cy={last[1]} r="2" fill={color} />
@@ -147,7 +151,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="flex flex-col gap-4.5">
       <PageHeader
         title="Overview"
         description={<>Adapter auto-selected from bindings/env. <span className="font-mono">{adapter}</span> profile is active.</>}
@@ -158,116 +162,114 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
             { value: "24h", label: "Last 24 hours" },
             { value: "7d", label: "Last 7 days" },
             { value: "30d", label: "Last 30 days" },
-          ]} style={{ width: 170 }} />
+          ]} className="w-[170px]" />
           <Button variant="outline" icon={I.Refresh} onClick={() => pushToast("Status refreshed.")}>Refresh</Button>
         </>}
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
         {todayMetrics.map((m) => (
-          <div key={m.label} className="card" style={{ padding: 0, display: "flex", flexDirection: "column", gap: 8, overflow: "hidden" }}>
-            <div style={{ padding: "14px 14px 0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div className="muted" style={{ fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{m.label}</div>
-              <span className="font-mono tabular-nums" style={{ fontSize: 11, color: m.up ? "oklch(0.55 0.16 145)" : "var(--destructive)" }}>{m.delta}</span>
+          <div key={m.label} className="flex flex-col gap-2 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+            <div className="flex items-center justify-between px-3.5 pt-3.5">
+              <div className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{m.label}</div>
+              <span className="font-mono text-[11px] tabular-nums" style={{ color: m.up ? "oklch(0.55 0.16 145)" : "var(--destructive)" }}>{m.delta}</span>
             </div>
-            <div className="tabular-nums" style={{ padding: "0 14px", fontSize: 24, fontWeight: 600, letterSpacing: "-0.02em" }}>{m.value}</div>
-            <div style={{ marginTop: 6, display: "block", lineHeight: 0 }}>
+            <div className="px-3.5 text-2xl font-semibold tabular-nums tracking-[-0.02em]">{m.value}</div>
+            <div className="mt-1.5 block leading-[0]">
               <Sparkline data={m.series} color={m.color} height={36} />
             </div>
           </div>
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-2.5">
         {quickActions.map((a) => {
           const Icon = a.icon;
           return (
-            <button key={a.label} onClick={a.onClick} className="card" style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left", border: "1px dashed var(--border)", background: "transparent", font: "inherit", color: "inherit" }}>
-              <span style={{ width: 32, height: 32, borderRadius: "var(--radius-lg)", background: "color-mix(in oklch, var(--primary) 16%, var(--card))", display: "grid", placeItems: "center", color: "var(--primary)" }}>
+            <button key={a.label} onClick={a.onClick} className="flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-border bg-transparent px-3.5 py-3 text-left text-inherit">
+              <span className="grid size-8 place-items-center rounded-lg bg-[color-mix(in_oklch,var(--primary)_16%,var(--card))] text-primary">
                 <Icon size={14} />
               </span>
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: 13, fontWeight: 500 }}>{a.label}</span>
-                <span className="muted" style={{ fontSize: 11.5 }}>{a.hint}</span>
+              <div className="flex flex-col">
+                <span className="text-[13px] font-medium">{a.label}</span>
+                <span className="text-[11.5px] text-muted-foreground">{a.hint}</span>
               </div>
-              <div className="spacer" />
-              <I.ChevronRight size={14} className="muted" />
+              <div className="flex-1" />
+              <I.ChevronRight size={14} className="text-muted-foreground" />
             </button>
           );
         })}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
         {stats.map((s) => {
           const Icon = s.icon;
           return (
-            <div key={s.label} className="card" style={{ padding: 16, cursor: "pointer", display: "flex", flexDirection: "column", gap: 4 }} onClick={() => setActiveNav(s.nav)}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Icon size={13} className="muted" />
-                <div className="muted" style={{ fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{s.label}</div>
+            <div key={s.label} className="flex cursor-pointer flex-col gap-1 overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground" onClick={() => setActiveNav(s.nav)}>
+              <div className="flex items-center gap-2">
+                <Icon size={13} className="text-muted-foreground" />
+                <div className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{s.label}</div>
               </div>
-              <div className="tabular-nums" style={{ fontSize: 28, fontWeight: 600, letterSpacing: "-0.02em", marginTop: 2 }}>{s.value}</div>
-              <div className="muted" style={{ fontSize: 12 }}>{s.sub}</div>
+              <div className="mt-0.5 text-[28px] font-semibold tabular-nums tracking-[-0.02em]">{s.value}</div>
+              <div className="text-xs text-muted-foreground">{s.sub}</div>
             </div>
           );
         })}
       </div>
 
-      <div className="split">
-        <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
-          <div className="card">
-            <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div className="grid grid-cols-[1fr_320px] items-start gap-4 max-[1280px]:grid-cols-1">
+        <div className="flex min-w-0 flex-col gap-3.5">
+          <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+            <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
               <I.Database size={14} />
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Top collections</span>
-              <div className="spacer" />
+              <span className="text-[13px] font-medium">Top collections</span>
+              <div className="flex-1" />
               <Button variant="ghost" size="sm" onClick={() => setActiveNav("collections")} iconRight={I.ChevronRight}>Manage</Button>
             </div>
-            <div className="table-scroll">
-            <table className="table">
-              <thead><tr><th>Slug</th><th style={{ width: 80, textAlign: "right" }}>Rows</th><th style={{ width: 90, textAlign: "right" }}>Size</th><th style={{ width: 110, textAlign: "right" }}>Writes (1h)</th><th style={{ width: 100 }}>Last write</th></tr></thead>
-              <tbody>
+            <Table className={ADMIN_TABLE_CLS}>
+              <TableHeader><TableRow><TableHead>Slug</TableHead><TableHead className="w-[80px] text-right">Rows</TableHead><TableHead className="w-[90px] text-right">Size</TableHead><TableHead className="w-[110px] text-right">Writes (1h)</TableHead><TableHead className="w-[100px]">Last write</TableHead></TableRow></TableHeader>
+              <TableBody>
                 {collections.map((c) => (
-                  <tr key={c.slug} onClick={() => setActiveNav("collections")}>
-                    <td><span className="font-mono" style={{ fontSize: 12.5 }}>c_{c.slug}</span></td>
-                    <td className="tabular-nums" style={{ textAlign: "right" }}>{c.rows}</td>
-                    <td className="tabular-nums muted" style={{ textAlign: "right" }}>{c.size}</td>
-                    <td className="tabular-nums" style={{ textAlign: "right" }}>{c.writes}</td>
-                    <td className="muted font-mono" style={{ fontSize: 11.5 }}>{c.last}</td>
-                  </tr>
+                  <TableRow key={c.slug} className="cursor-pointer" onClick={() => setActiveNav("collections")}>
+                    <TableCell><span className="font-mono text-[12.5px]">c_{c.slug}</span></TableCell>
+                    <TableCell className="text-right tabular-nums">{c.rows}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{c.size}</TableCell>
+                    <TableCell className="text-right tabular-nums">{c.writes}</TableCell>
+                    <TableCell className="font-mono text-[11.5px] text-muted-foreground">{c.last}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-            </div>
+              </TableBody>
+            </Table>
           </div>
 
-          <div className="card">
-            <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+            <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
               <I.Activity size={14} />
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Activity</span>
-              <div className="spacer" />
+              <span className="text-[13px] font-medium">Activity</span>
+              <div className="flex-1" />
               <Button variant="ghost" size="sm" iconRight={I.ChevronRight} onClick={() => setActiveNav("activity")}>All events</Button>
             </div>
             {activity.length === 0 ? (
-              <div style={{ padding: "20px 16px", textAlign: "center" }}>
-                <span className="muted" style={{ fontSize: 12.5 }}>No activity recorded.</span>
+              <div className="px-4 py-5 text-center">
+                <span className="text-[12.5px] text-muted-foreground">No activity recorded.</span>
               </div>
             ) : (
-              <div style={{ padding: "4px 0" }}>
+              <div className="py-1">
                 {activity.map((a, i) => {
                   const Icon = a.icon;
                   return (
-                    <div key={i} style={{ padding: "8px 16px", display: "flex", alignItems: "flex-start", gap: 10 }}>
-                      <span style={{ width: 22, height: 22, borderRadius: 999, background: "var(--muted)", display: "grid", placeItems: "center", flexShrink: 0, marginTop: 1 }}>
-                        <Icon size={11} className="muted" />
+                    <div key={i} className="flex items-start gap-2.5 px-4 py-2">
+                      <span className="mt-px grid size-[22px] shrink-0 place-items-center rounded-full bg-muted">
+                        <Icon size={11} className="text-muted-foreground" />
                       </span>
-                      <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
-                        <span style={{ fontSize: 12.5 }}>
-                          <span style={{ fontWeight: 500 }}>{a.who}</span>
-                          <span className="muted"> {a.verb} </span>
-                          <span className="font-mono" style={{ fontSize: 12 }}>{a.what}</span>
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <span className="text-[12.5px]">
+                          <span className="font-medium">{a.who}</span>
+                          <span className="text-muted-foreground"> {a.verb} </span>
+                          <span className="font-mono text-xs">{a.what}</span>
                         </span>
                       </div>
-                      <span className="muted font-mono tabular-nums" style={{ fontSize: 11 }}>{a.t}</span>
+                      <span className="font-mono text-[11px] tabular-nums text-muted-foreground">{a.t}</span>
                     </div>
                   );
                 })}
@@ -275,38 +277,38 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
             )}
           </div>
 
-          <div className="card">
-            <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+            <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
               <I.AlertTriangle size={14} />
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Recent errors</span>
-              <span className="font-mono muted" style={{ fontSize: 12 }}>last {range} · {(metrics?.totals?.errors ?? recentErrors.reduce((a, e) => a + (e.count ?? 0), 0))} {(metrics?.totals?.errors ?? 0) === 1 ? "event" : "events"}</span>
-              <div className="spacer" />
+              <span className="text-[13px] font-medium">Recent errors</span>
+              <span className="font-mono text-xs text-muted-foreground">last {range} · {(metrics?.totals?.errors ?? recentErrors.reduce((a, e) => a + (e.count ?? 0), 0))} {(metrics?.totals?.errors ?? 0) === 1 ? "event" : "events"}</span>
+              <div className="flex-1" />
               <Button variant="ghost" size="sm" onClick={() => setActiveNav("activity")}>View all</Button>
             </div>
             {recentErrors.length === 0 ? (
-              <div style={{ padding: "20px 16px", textAlign: "center" }}>
-                <span className="muted" style={{ fontSize: 12.5 }}>No errors recorded.</span>
+              <div className="px-4 py-5 text-center">
+                <span className="text-[12.5px] text-muted-foreground">No errors recorded.</span>
               </div>
             ) : recentErrors.map((e, i) => (
-              <div key={i} style={{ padding: "10px 16px", borderBottom: i < recentErrors.length - 1 ? "1px solid var(--border)" : 0, display: "flex", alignItems: "center", gap: 12 }}>
+              <div key={i} className={`flex items-center gap-3 px-4 py-2.5 ${i < recentErrors.length - 1 ? "border-b border-border" : ""}`}>
                 <Badge variant="destructive">{e.code}</Badge>
-                <span className="tabular-nums muted" style={{ fontSize: 12, width: 36 }}>×{e.count}</span>
-                <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
-                  <span className="font-mono" style={{ fontSize: 12.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.hook}</span>
-                  <span className="muted" style={{ fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.msg}</span>
+                <span className="w-9 text-xs tabular-nums text-muted-foreground">×{e.count}</span>
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate font-mono text-[12.5px]">{e.hook}</span>
+                  <span className="truncate text-[11.5px] text-muted-foreground">{e.msg}</span>
                 </div>
-                <span className="muted font-mono" style={{ fontSize: 11.5 }}>{e.last}</span>
+                <span className="font-mono text-[11.5px] text-muted-foreground">{e.last}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div className="card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <I.Globe size={14} /><span style={{ fontSize: 13, fontWeight: 500 }}>Health</span>
-              <div className="spacer" />
-              <span className="adapter-pill"><span className="dot" />{adapter === "workers" ? "cf workers" : adapter}</span>
+        <div className="flex flex-col gap-3.5">
+          <div className="flex flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground">
+            <div className="flex items-center gap-2">
+              <I.Globe size={14} /><span className="text-[13px] font-medium">Health</span>
+              <div className="flex-1" />
+              <span className="inline-flex items-center gap-1.5 rounded-3xl border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className="size-[7px] shrink-0 rounded-full bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]" />{adapter === "workers" ? "cf workers" : adapter}</span>
             </div>
             {(() => {
               // Live health rows derived from /api/admin/settings/runtime.
@@ -348,12 +350,12 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
               ];
               return rows;
             })().map(([k, v, status, hint], i, arr) => (
-              <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : 0, paddingBottom: 9 }}>
+              <div key={k} className={`flex items-center justify-between pb-[9px] ${i < arr.length - 1 ? "border-b border-border" : ""}`}>
                 <div>
-                  <div style={{ fontSize: 12.5, fontWeight: 500 }}>{k}</div>
-                  <div className="font-mono muted" style={{ fontSize: 11.5 }}>{v} · {hint}</div>
+                  <div className="text-[12.5px] font-medium">{k}</div>
+                  <div className="font-mono text-[11.5px] text-muted-foreground">{v} · {hint}</div>
                 </div>
-                <span className="adapter-pill"><span className={`dot ${status === "idle" ? "amber" : ""}`} />{status}</span>
+                <span className="inline-flex items-center gap-1.5 rounded-3xl border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className={`size-[7px] shrink-0 rounded-full ${status === "idle" ? "bg-[oklch(0.78_0.16_75)] shadow-[0_0_0_3px_oklch(0.78_0.16_75/0.2)]" : "bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]"}`} />{status}</span>
               </div>
             ))}
           </div>

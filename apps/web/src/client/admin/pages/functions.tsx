@@ -189,44 +189,47 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="flex flex-col gap-4.5">
       <PageHeader
         title="Functions"
         description="Sandboxed JS — HTTP, event-trigger, or cron. Provider auto-selected per runtime."
         actions={<Button variant="primary" icon={I.Plus} onClick={() => setNewOpen(true)}>New function</Button>}
       />
 
-      <div className="master-detail" style={{ "--md-aside": "300px" } as React.CSSProperties}>
-        <div className="card">
+      <div className="grid grid-cols-[300px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
           {funcs.length === 0 && (
-            <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>No functions yet — click + New function.</div>
+            <div className="px-3 py-4 text-xs text-muted-foreground">No functions yet — click + New function.</div>
           )}
           {funcs.map((f) => (
-            <div key={f.name} onClick={() => setActive(f)} className="schema-row" style={{ gridTemplateColumns: "24px 1fr 70px", cursor: "pointer", background: active?.name === f.name ? "var(--accent)" : "transparent" }}>
+            <div
+              key={f.name}
+              onClick={() => setActive(f)}
+              className={`grid cursor-pointer grid-cols-[24px_1fr_70px] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0 ${active?.name === f.name ? "bg-accent" : ""}`}
+            >
               <span><I.Function size={14} /></span>
-              <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                <span className="font-mono" style={{ fontSize: 12.5, fontWeight: 500 }}>{f.name}</span>
-                <span className="font-mono muted" style={{ fontSize: 11 }}>{f.trigger}</span>
+              <div className="flex min-w-0 flex-col">
+                <span className="font-mono text-[12.5px] font-medium">{f.name}</span>
+                <span className="font-mono text-[11px] text-muted-foreground">{f.trigger}</span>
               </div>
               <Badge variant="outline">{f.kind}</Badge>
             </div>
           ))}
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div className="flex flex-col gap-3">
           {!active ? (
-            <div className="card" style={{ padding: 36, textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>
+            <div className="overflow-hidden rounded-2xl border border-border bg-card p-9 text-center text-[13px] text-muted-foreground">
               No function selected. Click <strong>+ New function</strong> to create one.
             </div>
           ) : (
           <>
           {renameDraft !== null ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <div className="flex flex-wrap items-center gap-2">
               <I.Pencil size={16} />
               <Input
-                className="font-mono"
+                className="font-mono w-[260px] text-sm"
                 aria-invalid={!!renameError}
-                style={{ fontSize: 14, width: 260 }}
                 autoFocus
                 value={renameDraft}
                 onChange={(e) => setRenameDraft(e.target.value)}
@@ -237,17 +240,17 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
               />
               <Button variant="primary" size="sm" icon={I.Check} disabled={!!renameError || renameBusy || renameDraft.trim() === active.name} onClick={() => void renameFunction(active.name, renameDraft)}>{renameBusy ? "Renaming…" : "Rename"}</Button>
               <Button variant="ghost" size="sm" icon={I.X} onClick={() => setRenameDraft(null)} disabled={renameBusy}>Cancel</Button>
-              {renameError && <span className="field-error"><I.AlertTriangle size={11} />{renameError}</span>}
+              {renameError && <span className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{renameError}</span>}
             </div>
           ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span className="font-mono" style={{ fontSize: 18, fontWeight: 600 }}>{active.name}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-lg font-semibold">{active.name}</span>
             <IconButton icon={I.Pencil} title="Rename function" onClick={() => setRenameDraft(active.name)} />
             <Badge variant="outline">{active.kind}</Badge>
-            <span className="font-mono muted" style={{ fontSize: 12 }}>· {active.trigger}</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginLeft: "auto" }}>
-              <span className="muted" style={{ fontSize: 12 }}>{Number(active.invocations ?? 0).toLocaleString()} invocations · p95 {active.p95 ?? 0}ms</span>
-              <Button variant="outline" size="sm" icon={I.Trash} onClick={() => active && setConfirmDelete(active.name)} style={{ color: "var(--destructive)" }}>Delete</Button>
+            <span className="font-mono text-xs text-muted-foreground">· {active.trigger}</span>
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">{Number(active.invocations ?? 0).toLocaleString()} invocations · p95 {active.p95 ?? 0}ms</span>
+              <Button variant="outline" size="sm" icon={I.Trash} onClick={() => active && setConfirmDelete(active.name)} className="text-destructive">Delete</Button>
               <Button variant="outline" size="sm" icon={I.Save} onClick={saveCode}>Save</Button>
               <Button variant="primary" size="sm" icon={I.Zap} onClick={run} disabled={running}>{running ? "Running…" : "Run"}</Button>
             </div>
@@ -258,23 +261,22 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
             value={code}
             onChange={(e) => setCode(e.target.value)}
             spellCheck={false}
-            className="alter-preview"
-            style={{ minHeight: 200, fontSize: 12, width: "100%", border: "none", resize: "vertical", fontFamily: "Geist Mono, monospace", whiteSpace: "pre-wrap" }}
+            className="min-h-[200px] w-full resize-y whitespace-pre-wrap rounded-xl border-0 bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-xs leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)] [word-break:break-word]"
           />
 
-          <div className="card" style={{ overflow: "hidden" }}>
-            <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <I.Code size={14} /><span style={{ fontSize: 13, fontWeight: 500 }}>Logs</span>
-              <span className="muted font-mono" style={{ fontSize: 11.5 }}>last invocation</span>
-              <div className="spacer" />
+          <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+            <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
+              <I.Code size={14} /><span className="text-[13px] font-medium">Logs</span>
+              <span className="font-mono text-[11.5px] text-muted-foreground">last invocation</span>
+              <div className="flex-1" />
               <Button variant="ghost" size="sm" onClick={() => setLogs([])}>Clear</Button>
             </div>
-            <div style={{ background: "oklch(0.18 0.01 130)", color: "oklch(0.92 0.02 130)", fontFamily: "Geist Mono, monospace", fontSize: 12, padding: 12, minHeight: 130, maxHeight: 260, overflow: "auto" }}>
-              {logs.length === 0 && <div style={{ color: "oklch(0.6 0.02 130)" }}>No logs yet — click Run.</div>}
+            <div className="max-h-[260px] min-h-[130px] overflow-auto bg-[oklch(0.18_0.01_130)] p-3 font-mono text-xs text-[oklch(0.92_0.02_130)]">
+              {logs.length === 0 && <div className="text-[oklch(0.6_0.02_130)]">No logs yet — click Run.</div>}
               {logs.map((l, i) => (
                 <div key={i}>
-                  <span style={{ color: "oklch(0.6 0.02 130)" }}>{l.t}</span>{" "}
-                  <span style={{ color: l.lvl === "error" ? "oklch(0.7 0.18 22)" : "oklch(0.78 0.18 95)" }}>{l.lvl.toUpperCase().padEnd(5, " ")}</span>{" "}
+                  <span className="text-[oklch(0.6_0.02_130)]">{l.t}</span>{" "}
+                  <span className={l.lvl === "error" ? "text-[oklch(0.7_0.18_22)]" : "text-[oklch(0.78_0.18_95)]"}>{l.lvl.toUpperCase().padEnd(5, " ")}</span>{" "}
                   {l.msg}
                 </div>
               ))}
@@ -409,25 +411,27 @@ function NewFunctionDialog({
   };
 
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150"
+      onClick={onClose}
+    >
       <div
-        className="dialog-lg"
+        className="relative flex max-h-[90vh] w-[640px] max-w-[94vw] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        style={{ width: 640, maxWidth: "94vw", maxHeight: "90vh", display: "flex", flexDirection: "column" }}
       >
-        <div className="sheet-header" style={{ borderBottom: "1px solid var(--border)" }}>
-          <div style={{ flex: 1 }}>
-            <h2>New function</h2>
-            <p>Sandboxed JS. HTTP for manual invoke, event for pub-sub triggers, or cron for scheduled runs.</p>
+        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
+          <div className="flex-1">
+            <h2 className="m-0 text-base font-semibold tracking-[-0.01em]">New function</h2>
+            <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">Sandboxed JS. HTTP for manual invoke, event for pub-sub triggers, or cron for scheduled runs.</p>
           </div>
           <IconButton icon={I.X} onClick={onClose} title="Close" />
         </div>
 
-        <div className="dialog-body" style={{ overflow: "auto" }}>
-          <div className="field">
-            <label className="field-label">Name <span style={{ color: "var(--destructive)" }}>*</span></label>
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Name <span className="text-destructive">*</span></label>
             <Input
               className="font-mono"
               aria-invalid={!!(nameError && name)}
@@ -437,15 +441,15 @@ function NewFunctionDialog({
               onChange={(e) => setName(e.target.value)}
             />
             {nameError && name ? (
-              <div className="field-error"><I.AlertTriangle size={11} />{nameError}</div>
+              <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{nameError}</div>
             ) : (
-              <span className="field-hint">Lowercase, digits, <span className="font-mono">_</span> or <span className="font-mono">-</span>. You can rename it later.</span>
+              <span className="text-[11.5px] text-muted-foreground">Lowercase, digits, <span className="font-mono">_</span> or <span className="font-mono">-</span>. You can rename it later.</span>
             )}
           </div>
 
-          <div className="cols-2">
-            <div className="field">
-              <label className="field-label">Trigger</label>
+          <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Trigger</label>
               <Select
                 value={trigger}
                 onChange={onTriggerChange}
@@ -456,8 +460,8 @@ function NewFunctionDialog({
                 ]}
               />
             </div>
-            <div className="field">
-              <label className="field-label">Timeout (ms)</label>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Timeout (ms)</label>
               <Input
                 aria-invalid={!!timeoutError}
                 type="number"
@@ -466,13 +470,13 @@ function NewFunctionDialog({
                 value={timeoutMs}
                 onChange={(e) => setTimeoutMs(Number(e.target.value))}
               />
-              {timeoutError && <div className="field-error"><I.AlertTriangle size={11} />{timeoutError}</div>}
+              {timeoutError && <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{timeoutError}</div>}
             </div>
           </div>
 
           {trigger !== "http" && (
-            <div className="field">
-              <label className="field-label">{trigger === "cron" ? "Cron expression" : "Event pattern"} <span style={{ color: "var(--destructive)" }}>*</span></label>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{trigger === "cron" ? "Cron expression" : "Event pattern"} <span className="text-destructive">*</span></label>
               <Input
                 className="font-mono"
                 aria-invalid={!!patternError}
@@ -481,9 +485,9 @@ function NewFunctionDialog({
                 placeholder={trigger === "cron" ? "*/5 * * * *" : "items:posts:*"}
               />
               {patternError ? (
-                <div className="field-error"><I.AlertTriangle size={11} />{patternError}</div>
+                <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{patternError}</div>
               ) : (
-                <span className="field-hint">
+                <span className="text-[11.5px] text-muted-foreground">
                   {trigger === "cron"
                     ? "5-field cron (minute hour day month weekday)."
                     : "Examples: items:posts:created, items:posts:*, items:*:*"}
@@ -492,32 +496,31 @@ function NewFunctionDialog({
             </div>
           )}
 
-          <div className="field">
-            <label className="field-label">Code <span style={{ color: "var(--destructive)" }}>*</span></label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Code <span className="text-destructive">*</span></label>
             <Textarea
-              className="font-mono"
+              className="font-mono min-h-[200px] text-xs whitespace-pre"
               aria-invalid={!!codeError}
-              style={{ minHeight: 200, fontSize: 12, whiteSpace: "pre" }}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               spellCheck={false}
             />
-            <span className="field-hint">
+            <span className="text-[11.5px] text-muted-foreground">
               Globals: <span className="font-mono">ctx.data</span>, <span className="font-mono">ctx.user</span>, <span className="font-mono">console.log</span>. Sync-only in v1; runs in QuickJS-WASM sandbox.
             </span>
           </div>
 
-          <div className="field-row">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 500 }}>Active</div>
-              <div className="muted" style={{ fontSize: 11.5 }}>When paused, triggers stop firing and HTTP invokes are rejected.</div>
+              <div className="text-[12.5px] font-medium">Active</div>
+              <div className="text-[11.5px] text-muted-foreground">When paused, triggers stop firing and HTTP invokes are rejected.</div>
             </div>
             <Switch checked={active} onChange={setActiveFlag} />
           </div>
         </div>
 
-        <div className="sheet-footer">
-          <div className="spacer" />
+        <div className="flex justify-end gap-2 border-t border-border bg-card px-5 py-3">
+          <div className="flex-1" />
           <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
           <Button variant="primary" onClick={submit} disabled={!valid || busy}>
             {busy ? "Creating…" : "Create function"}

@@ -128,55 +128,59 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
     .replace(/{{\s*magic_url\s*}}/g, "https://workeros.dev/auth/magic?token=…")
     .replace(/{{\s*site\.name\s*}}/g, "workeros");
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="flex flex-col gap-4.5">
       <PageHeader title="Email templates" description={<>Variables use Liquid-style <span className="font-mono">{"{{ user.email }}"}</span>. Template renders run through the Functions sandbox.</>} actions={<Button size="sm" variant="outline" icon={I.Plus} onClick={onNew}>New template</Button>} />
-      <div className="master-detail-3" style={{ "--md-a": "240px", "--md-b": "minmax(0, 1fr)" }}>
-        <div className="card">
+      <div className="grid grid-cols-[240px_minmax(0,1fr)_minmax(0,1fr)] items-start gap-3.5 max-[1024px]:grid-cols-[minmax(0,1fr)]">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
           {templates.length === 0 && !active?.isNew && (
-            <div className="muted" style={{ padding: "12px 14px", fontSize: 12 }}>No templates yet — use “New template” to add one.</div>
+            <div className="px-3.5 py-3 text-xs text-muted-foreground">No templates yet — use “New template” to add one.</div>
           )}
           {active?.isNew && !templates.some((t) => t.id === active.id) && (
-            <div style={{ padding: "10px 12px", borderTop: "1px solid var(--border)", background: "var(--accent)" }}>
-              <div style={{ fontSize: 12.5, fontWeight: 500 }}>{name.trim() || "(new template)"}</div>
-              <div className="font-mono muted" style={{ fontSize: 11 }}>{keyDraft.trim() || "unsaved"}</div>
+            <div className="border-t border-border bg-accent px-3 py-2.5">
+              <div className="text-[12.5px] font-medium">{name.trim() || "(new template)"}</div>
+              <div className="font-mono text-[11px] text-muted-foreground">{keyDraft.trim() || "unsaved"}</div>
             </div>
           )}
           {templates.map((t) => (
-            <div key={t.id} onClick={() => void onSelect(t)} style={{ padding: "10px 12px", borderTop: "1px solid var(--border)", cursor: "pointer", background: active?.id === t.id ? "var(--accent)" : "transparent" }}>
-              <div style={{ fontSize: 12.5, fontWeight: 500 }}>{t.name || "(unnamed)"}</div>
-              <div className="font-mono muted" style={{ fontSize: 11 }}>{t.key || t.id}</div>
+            <div
+              key={t.id}
+              onClick={() => void onSelect(t)}
+              className={`cursor-pointer border-t border-border px-3 py-2.5 ${active?.id === t.id ? "bg-accent" : ""}`}
+            >
+              <div className="text-[12.5px] font-medium">{t.name || "(unnamed)"}</div>
+              <div className="font-mono text-[11px] text-muted-foreground">{t.key || t.id}</div>
             </div>
           ))}
         </div>
-        <div className="card" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 12, fontWeight: 500 }}>Editor</span>
-            <div className="spacer" />
+        <div className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
+            <span className="text-xs font-medium">Editor</span>
+            <div className="flex-1" />
             <Button size="sm" variant="outline" icon={I.Mail} onClick={onSendTest} disabled={!active || active.isNew}>Send test</Button>
             <Button size="sm" variant="primary" icon={I.Save} onClick={onSave} disabled={!active || saving}>Save</Button>
           </div>
-          <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", gap: 10 }}>
-              <div className="field" style={{ flex: 1 }}><label className="field-label">Name</label><Input value={name} placeholder="Verify email" onChange={(e) => setName(e.target.value)} /></div>
-              <div className="field" style={{ flex: 1 }}><label className="field-label">Key</label><Input className="font-mono" value={keyDraft} placeholder="verify" disabled={!active?.isNew} spellCheck={false} autoComplete="off" onChange={(e) => setKeyDraft(e.target.value)} /></div>
+          <div className="flex flex-col gap-2.5 p-3.5">
+            <div className="flex gap-2.5">
+              <div className="flex flex-1 flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Name</label><Input value={name} placeholder="Verify email" onChange={(e) => setName(e.target.value)} /></div>
+              <div className="flex flex-1 flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Key</label><Input className="font-mono" value={keyDraft} placeholder="verify" disabled={!active?.isNew} spellCheck={false} autoComplete="off" onChange={(e) => setKeyDraft(e.target.value)} /></div>
             </div>
-            <div className="field"><label className="field-label">Subject</label><Input value={subject} onChange={(e) => setSubject(e.target.value)} /></div>
-            <div className="field"><label className="field-label">From</label><Input value={fromAddress} placeholder="(use the configured default)" onChange={(e) => setFromAddress(e.target.value)} /></div>
-            <div className="field">
-              <label className="field-label">Body (HTML)</label>
-              <textarea value={body} onChange={(e) => setBody(e.target.value)} spellCheck={false} style={{ width: "100%", minHeight: 220, padding: 12, border: "1px solid var(--border)", borderRadius: "var(--radius-xl)", background: "oklch(0.18 0.01 130)", color: "oklch(0.92 0.02 130)", fontFamily: "Geist Mono, monospace", fontSize: 12.5, lineHeight: 1.55, resize: "vertical" }} />
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Subject</label><Input value={subject} onChange={(e) => setSubject(e.target.value)} /></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">From</label><Input value={fromAddress} placeholder="(use the configured default)" onChange={(e) => setFromAddress(e.target.value)} /></div>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Body (HTML)</label>
+              <textarea value={body} onChange={(e) => setBody(e.target.value)} spellCheck={false} className="min-h-[220px] w-full resize-y rounded-xl border border-border bg-[oklch(0.18_0.01_130)] p-3 font-mono text-[12.5px] leading-[1.55] text-[oklch(0.92_0.02_130)]" />
             </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <div className="flex flex-wrap gap-1.5">
               {(active?.vars ?? []).map((v) => (
-                <button key={v} onClick={() => setBody((b) => b + `{{ ${v} }}`)} className="chip"><I.Code size={11} /> {`{{ ${v} }}`}</button>
+                <button key={v} onClick={() => setBody((b) => b + `{{ ${v} }}`)} className="inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border border-border bg-card px-[11px] text-[12.5px] text-foreground hover:bg-accent"><I.Code size={11} /> {`{{ ${v} }}`}</button>
               ))}
             </div>
           </div>
         </div>
-        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-          <div className="card-section"><span style={{ fontSize: 12, fontWeight: 500 }}>Preview</span></div>
-          <div style={{ padding: 24, background: "oklch(0.97 0.005 130)", minHeight: 280 }}>
-            <div style={{ background: "white", borderRadius: 12, padding: 28, maxWidth: 480, margin: "0 auto", boxShadow: "0 1px 4px oklch(0 0 0 / 0.06)", color: "#1a1a1a" }} dangerouslySetInnerHTML={{ __html: preview.replace(/<a /g, '<a style="display:inline-block;margin-top:8px;padding:10px 16px;background:oklch(0.85 0.18 125);color:#1a1a1a;border-radius:999px;text-decoration:none;font-weight:500;font-family:Geist,sans-serif" ') }} />
+        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          <div className="border-b border-border px-4 py-3.5"><span className="text-xs font-medium">Preview</span></div>
+          <div className="min-h-[280px] bg-[oklch(0.97_0.005_130)] p-6">
+            <div className="mx-auto max-w-[480px] rounded-[12px] bg-white p-7 text-[#1a1a1a] shadow-[0_1px_4px_oklch(0_0_0/0.06)]" dangerouslySetInnerHTML={{ __html: preview.replace(/<a /g, '<a style="display:inline-block;margin-top:8px;padding:10px 16px;background:oklch(0.85 0.18 125);color:#1a1a1a;border-radius:999px;text-decoration:none;font-weight:500;font-family:Geist,sans-serif" ') }} />
           </div>
         </div>
       </div>

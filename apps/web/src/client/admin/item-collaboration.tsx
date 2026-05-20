@@ -18,6 +18,17 @@ import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
 import { Skeleton } from "@workeros/ui/components/skeleton";
 
+const CARD_CLS =
+  "overflow-hidden rounded-2xl border border-border bg-card text-card-foreground";
+const CARD_SECTION_CLS = "flex items-center gap-2 border-b border-border px-4 py-3.5";
+const FIELD_CLS = "flex flex-col gap-1.5";
+const FIELD_LABEL_CLS = "flex items-center gap-2 text-[12.5px] font-medium text-foreground";
+const FIELD_HINT_CLS = "text-[11.5px] text-muted-foreground";
+const CHIP_CLS =
+  "inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-3xl border border-border bg-card px-[11px] text-[12.5px] text-foreground";
+const AVATAR_XS_CLS =
+  "grid size-[18px] place-items-center rounded-full border border-border bg-muted font-mono text-[9.5px] text-muted-foreground";
+
 /**
  * Public read-only share-link card. A signed-in user mints a `/s/<token>`
  * link to this record; the plaintext token is only returned at creation, so
@@ -78,36 +89,23 @@ function ShareLinkCard({
   };
 
   return (
-    <div className="card">
-      <div
-        className="card-section"
-        style={{ display: "flex", alignItems: "center", gap: 8 }}
-      >
+    <div className={CARD_CLS}>
+      <div className={CARD_SECTION_CLS}>
         <I.Share size={13} />
-        <span style={{ fontSize: 12.5, fontWeight: 500 }}>
-          share this record
-        </span>
+        <span className="text-[12.5px] font-medium">share this record</span>
       </div>
-      <div
-        style={{
-          padding: 14,
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-        }}
-      >
+      <div className="flex flex-col gap-2.5 p-3.5">
         {linksQuery.isLoading ? (
           <Skeleton className="h-9 w-full" />
         ) : freshUrl ? (
           // Just-minted link — the only moment we can show the full URL.
-          <div className="field">
-            <label className="field-label">Public read-only link</label>
-            <div style={{ display: "flex", gap: 6 }}>
+          <div className={FIELD_CLS}>
+            <label className={FIELD_LABEL_CLS}>Public read-only link</label>
+            <div className="flex gap-1.5">
               <Input
-                className="font-mono"
+                className="flex-1 font-mono text-[11.5px]"
                 readOnly
                 value={freshUrl}
-                style={{ fontSize: 11.5, flex: 1 }}
               />
               <Button
                 variant="outline"
@@ -117,21 +115,21 @@ function ShareLinkCard({
                 {copied ? "Copied" : "Copy"}
               </Button>
             </div>
-            <span className="field-hint">
+            <span className={FIELD_HINT_CLS}>
               Anyone with this link can view the record — copy it now, the
               token is shown only once.
             </span>
           </div>
         ) : activeLink ? (
           // A link already exists but its token is no longer recoverable.
-          <div className="field">
-            <label className="field-label">Public read-only link</label>
-            <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+          <div className={FIELD_CLS}>
+            <label className={FIELD_LABEL_CLS}>Public read-only link</label>
+            <div className="text-xs text-muted-foreground">
               An active share link exists for this record. For security the
               link URL is shown only once, at creation. Revoke it and create a
               new one if you need a fresh copyable URL.
             </div>
-            <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+            <div className="mt-1 flex gap-1.5">
               <Button
                 variant="outline"
                 icon={I.Trash}
@@ -152,15 +150,9 @@ function ShareLinkCard({
           </div>
         ) : (
           // No link yet — offer to mint one.
-          <div className="field">
-            <label className="field-label">Public read-only link</label>
-            <div
-              style={{
-                fontSize: 12,
-                color: "var(--muted-foreground)",
-                marginBottom: 2,
-              }}
-            >
+          <div className={FIELD_CLS}>
+            <label className={FIELD_LABEL_CLS}>Public read-only link</label>
+            <div className="mb-0.5 text-xs text-muted-foreground">
               Mint a public link that shows this record read-only — no sign-in
               required to view it.
             </div>
@@ -174,11 +166,11 @@ function ShareLinkCard({
             </Button>
           </div>
         )}
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <span className="chip">
+        <div className="flex flex-wrap gap-1.5">
+          <span className={CHIP_CLS}>
             <I.Eye size={11} /> read-only
           </span>
-          <span className="chip">
+          <span className={CHIP_CLS}>
             <I.Trash size={11} /> revocable anytime
           </span>
         </div>
@@ -251,7 +243,7 @@ export function ItemCommentsPanel({
   const myAuthor = authorById(myUserId);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <div className="flex flex-col gap-3.5">
       {/* Share — real, backed by /api/shared-links. */}
       <ShareLinkCard
         collection={collection}
@@ -260,22 +252,22 @@ export function ItemCommentsPanel({
       />
 
       {/* Comments — real, backed by /api/comments. */}
-      <div className="card">
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div className={CARD_CLS}>
+        <div className={CARD_SECTION_CLS}>
           <I.MessageSquare size={13} />
-          <span style={{ fontSize: 12.5, fontWeight: 500 }}>comments</span>
-          <span className="font-mono" style={{ fontSize: 11.5, color: "var(--muted-foreground)" }}>
+          <span className="text-[12.5px] font-medium">comments</span>
+          <span className="font-mono text-[11.5px] text-muted-foreground">
             {comments.length}
           </span>
         </div>
-        <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="flex flex-col gap-2.5 px-3.5 py-3">
           {commentsQuery.isLoading ? (
             <>
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
             </>
           ) : ordered.length === 0 ? (
-            <div style={{ fontSize: 12.5, color: "var(--muted-foreground)", padding: "8px 0" }}>
+            <div className="py-2 text-[12.5px] text-muted-foreground">
               No comments yet — start the thread below.
             </div>
           ) : (
@@ -283,12 +275,12 @@ export function ItemCommentsPanel({
               const author = authorById(c.userId);
               const canDelete = isAdmin || (!!myUserId && c.userId === myUserId);
               return (
-                <div key={c.id} className="comment">
-                  <div className="avatar-xs">{author.initials}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                      <span style={{ fontSize: 12.5, fontWeight: 500 }}>{author.name}</span>
-                      <span className="font-mono" style={{ fontSize: 10.5, color: "var(--muted-foreground)" }}>
+                <div key={c.id} className="flex items-start gap-2 border-b border-dashed border-border py-2 last:border-b-0">
+                  <div className={AVATAR_XS_CLS}>{author.initials}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-[12.5px] font-medium">{author.name}</span>
+                      <span className="font-mono text-[10.5px] text-muted-foreground">
                         {relativeTime(c.createdAt)}
                       </span>
                       {canDelete && (
@@ -298,34 +290,26 @@ export function ItemCommentsPanel({
                           icon={I.Trash}
                           onClick={() => deleteMut.mutate(c.id)}
                           disabled={deleteMut.isPending}
-                          style={{ marginLeft: "auto" }}
+                          className="ml-auto"
                         />
                       )}
                     </div>
-                    <div style={{ fontSize: 12.5, color: "var(--foreground)", marginTop: 2 }}>{c.body}</div>
+                    <div className="mt-0.5 text-[12.5px] text-foreground">{c.body}</div>
                   </div>
                 </div>
               );
             })
           )}
         </div>
-        <div
-          style={{
-            padding: 12,
-            borderTop: "1px solid var(--border)",
-            display: "flex",
-            gap: 6,
-            alignItems: "flex-start",
-          }}
-        >
-          <div className="avatar-xs" style={{ marginTop: 4 }}>{myAuthor.initials}</div>
+        <div className="flex items-start gap-1.5 border-t border-border p-3">
+          <div className={`mt-1 ${AVATAR_XS_CLS}`}>{myAuthor.initials}</div>
           <Textarea
             placeholder="Write a comment · ⌘+Enter to send"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={onDraftKey}
             rows={2}
-            style={{ minHeight: 60, fontSize: 12.5, flex: 1 }}
+            className="min-h-[60px] flex-1 text-[12.5px]"
           />
           <Button
             variant="primary"

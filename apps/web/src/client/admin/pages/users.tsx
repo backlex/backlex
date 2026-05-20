@@ -5,6 +5,7 @@ import { Badge, Button, Checkbox, IconButton, PageHeader } from "../ui";
 import { Select } from "../select";
 import { Input } from "@workeros/ui/components/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workeros/ui/components/input-group";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { rolesApi, usersApi, type ApiUser } from "../api";
 
 const ProviderGlyph = ({ kind, size = 12 }: { kind: string; size?: number }) => {
@@ -217,31 +218,30 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
       )}
 
       <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
-        <div className="w-full max-w-full overflow-x-auto">
-        <table className="table users-table">
-          <thead>
-            <tr>
-              <th style={{ width: 36 }}>
+        <Table className="[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-9">
                 <Checkbox checked={allChecked} indeterminate={someChecked} onChange={toggleAll} />
-              </th>
-              <th>User</th>
-              <th style={{ width: 200 }}>Role</th>
-              <th style={{ width: 130 }}>Status</th>
-              <th style={{ width: 140 }}>Provider</th>
-              <th style={{ width: 70, textAlign: "center" }}>2FA</th>
-              <th style={{ width: 120 }}>Last seen</th>
-              <th className="col-actions" style={{ width: 44 }}></th>
-            </tr>
-          </thead>
-          <tbody>
+              </TableHead>
+              <TableHead>User</TableHead>
+              <TableHead className="w-[200px]">Role</TableHead>
+              <TableHead className="w-[130px]">Status</TableHead>
+              <TableHead className="w-[140px]">Provider</TableHead>
+              <TableHead className="w-[70px] text-center">2FA</TableHead>
+              <TableHead className="w-[120px]">Last seen</TableHead>
+              <TableHead className="sticky right-0 w-11 bg-card" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {filtered.map((u) => {
               const isOpen = menuOpen === u.id;
               return (
-                <tr key={u.id} className={`users-row ${selected.has(u.id) ? "on" : ""}`} onClick={() => setActiveUser(u)}>
-                  <td onClick={(e) => e.stopPropagation()}>
+                <TableRow key={u.id} data-selected={selected.has(u.id)} onClick={() => setActiveUser(u)} className="cursor-pointer data-[selected=true]:bg-[color-mix(in_oklch,var(--primary)_10%,var(--card))]">
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox checked={selected.has(u.id)} onChange={() => toggle(u.id)} />
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center gap-2.5">
                       <div className="grid size-8 place-items-center rounded-full text-[12.5px] font-semibold tracking-[-0.01em]" style={{ background: `oklch(0.78 0.14 ${u.hue})`, color: `oklch(0.25 0.06 ${u.hue})` }}>{u.name.split(" ").map((p) => p[0]).slice(0, 2).join("")}</div>
                       <div className="flex min-w-0 flex-col gap-px">
@@ -249,26 +249,27 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
                         <span className="text-[11.5px] text-muted-foreground">{u.email}</span>
                       </div>
                     </div>
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {u.roles.map((r) => <Badge key={r} variant={r === "admin" ? "default" : "secondary"}>{r}</Badge>)}
                     </div>
-                  </td>
-                  <td>{statusBadge(u.status)}</td>
-                  <td>
+                  </TableCell>
+                  <TableCell>{statusBadge(u.status)}</TableCell>
+                  <TableCell>
                     <span className="inline-flex items-center gap-1.5 text-foreground">
                       <ProviderGlyph kind={u.provider} />
                       <span className="text-[12.5px]">{PROVIDER_LABEL[u.provider]}</span>
                     </span>
-                  </td>
-                  <td style={{ textAlign: "center" }}>
+                  </TableCell>
+                  <TableCell className="text-center">
                     {u.mfa
                       ? <span className="inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklch,oklch(0.55_0.15_145)_35%,var(--border))] bg-[color-mix(in_oklch,oklch(0.78_0.14_145)_14%,transparent)] px-[7px] py-0.5 font-mono text-[11px] text-[oklch(0.55_0.15_145)]" title="2FA enabled"><I.Shield size={11} /> on</span>
                       : <span className="inline-flex items-center gap-1 rounded-full border border-border px-[7px] py-0.5 font-mono text-[11px] text-muted-foreground" title="2FA disabled">off</span>}
-                  </td>
-                  <td className="font-mono text-[11.5px] text-muted-foreground">{u.last}</td>
-                  <td className="col-actions" style={{ textAlign: "right", position: "relative" }} onClick={(e) => e.stopPropagation()}>
+                  </TableCell>
+                  <TableCell className="font-mono text-[11.5px] text-muted-foreground">{u.last}</TableCell>
+                  <TableCell className="sticky right-0 bg-card text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="relative">
                     <IconButton icon={I.More} onClick={(e: any) => { e.stopPropagation(); setMenuOpen(isOpen ? null : u.id); }} />
                     {isOpen && (
                       <div className="absolute right-2 top-[calc(100%-4px)] z-30 flex min-w-[180px] flex-col rounded-xl border border-border bg-popover p-1 text-left shadow-[0_8px_24px_oklch(0_0_0/0.16)] [&>button]:flex [&>button]:cursor-pointer [&>button]:items-center [&>button]:gap-2 [&>button]:rounded-md [&>button]:border-0 [&>button]:bg-transparent [&>button]:px-2.5 [&>button]:py-[7px] [&>button]:text-left [&>button]:text-[12.5px] [&>button]:text-foreground [&>button:hover]:bg-accent" onClick={(e) => e.stopPropagation()}>
@@ -298,22 +299,22 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
                         }}><I.Trash size={12} />Delete</button>
                       </div>
                     )}
-                  </td>
-                </tr>
+                    </div>
+                  </TableCell>
+                </TableRow>
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={8}>
+              <TableRow><TableCell colSpan={8}>
                 <div className="flex flex-col items-center gap-3 py-8 text-center">
                   <I.Users size={20} />
                   <h4 className="m-0 text-[15px] font-semibold">No users match</h4>
                   <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground">Adjust your filters or invite a new teammate.</p>
                 </div>
-              </td></tr>
+              </TableCell></TableRow>
             )}
-          </tbody>
-        </table>
-        </div>
+          </TableBody>
+        </Table>
       </div>
 
       {activeUser && <UserDrawer user={activeUser} onClose={() => setActiveUser(null)} pushToast={pushToast} />}

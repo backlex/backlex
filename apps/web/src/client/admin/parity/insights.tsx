@@ -3,6 +3,14 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode }
 import { useIsMobile } from "@workeros/ui/hooks/use-mobile";
 import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
 import { I } from "../icons";
 import { Badge, Button, IconButton, PageHeader } from "../ui";
 import { Select } from "../select";
@@ -709,28 +717,17 @@ function PanelEditorDialog({
     }
   };
 
-  const titleId = "panel-editor-title";
-
   return (
-    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={onClose}>
-      <div
-        className="relative flex max-h-[90vh] w-[720px] max-w-[94vw] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
-          <div className="flex-1">
-            <h2 id={titleId} className="m-0 text-base font-semibold tracking-[-0.01em]">{mode === "create" ? "New insight panel" : `Edit panel`}</h2>
-            <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">
-              {mode === "create"
-                ? <>Saved as a row in <span className="font-mono">saved_panels</span>. Collection panels aggregate one collection (count / sum / average …); SQL panels run a read-only SELECT against the workspace database.</>
-                : <>Editing <span className="font-mono">{panel?.id}</span>.</>}
-            </p>
-          </div>
-          <IconButton icon={I.X} onClick={onClose} title="Close" />
-        </div>
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[720px]">
+        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">{mode === "create" ? "New insight panel" : `Edit panel`}</DialogTitle>
+          <DialogDescription className="text-[12.5px]">
+            {mode === "create"
+              ? <>Saved as a row in <span className="font-mono">saved_panels</span>. Collection panels aggregate one collection (count / sum / average …); SQL panels run a read-only SELECT against the workspace database.</>
+              : <>Editing <span className="font-mono">{panel?.id}</span>.</>}
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
           {topError && (
@@ -975,15 +972,14 @@ function PanelEditorDialog({
           )}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-border bg-card px-5 py-3">
-          <div className="flex-1" />
+        <DialogFooter className="border-t border-border bg-card px-5 py-3">
           <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
           <Button variant="primary" icon={mode === "create" ? I.Plus : I.Save} onClick={submit} disabled={!valid || busy}>
             {busy ? (mode === "create" ? "Creating…" : "Saving…") : mode === "create" ? "Create panel" : "Save changes"}
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

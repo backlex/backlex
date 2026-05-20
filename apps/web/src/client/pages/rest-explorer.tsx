@@ -19,6 +19,7 @@ import {
   CardTitle,
 } from "@workeros/ui/components/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@workeros/ui/components/collapsible";
 import { Separator } from "@workeros/ui/components/separator";
 import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { cn } from "@workeros/ui/lib/utils";
@@ -752,22 +753,23 @@ const ResponseSection = ({
           ? "text-destructive"
           : "text-muted-foreground";
   return (
-    <div className="rounded-md border bg-card">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted/40"
-      >
-        <ChevronRightIcon
-          className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")}
-        />
-        <code className={cn("font-mono text-[12px] font-semibold tabular-nums", toneClass)}>{status}</code>
-        <span className="text-[12px] text-muted-foreground">{response.description ?? "—"}</span>
-        {json && (
-          <code className="ml-auto font-mono text-[10.5px] text-muted-foreground">{json.type}</code>
-        )}
-      </button>
-      {open && (
+    <Collapsible open={open} onOpenChange={setOpen} className="rounded-md border bg-card">
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted/40"
+        >
+          <ChevronRightIcon
+            className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")}
+          />
+          <code className={cn("font-mono text-[12px] font-semibold tabular-nums", toneClass)}>{status}</code>
+          <span className="text-[12px] text-muted-foreground">{response.description ?? "—"}</span>
+          {json && (
+            <code className="ml-auto font-mono text-[10.5px] text-muted-foreground">{json.type}</code>
+          )}
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
         <div className="border-t px-3 py-2">
           {json ? (
             <SchemaTree schema={json.media.schema} doc={doc} />
@@ -775,8 +777,8 @@ const ResponseSection = ({
             <p className="text-sm text-muted-foreground">No content schema.</p>
           )}
         </div>
-      )}
-    </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 };
 

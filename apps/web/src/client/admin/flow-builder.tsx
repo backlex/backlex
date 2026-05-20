@@ -185,7 +185,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
         <div className="fb-header">
           <IconButton icon={I.ChevronLeft} onClick={onClose} title="Back" />
           <div className="fb-title">
-            <input className="fb-name" value={name} onChange={(e) => setName(e.target.value)} />
+            <Input className="fb-name" value={name} onChange={(e) => setName(e.target.value)} />
             <span className="font-mono text-[11.5px] text-muted-foreground">flow_{(initial?.id || "draft").slice(-6)}</span>
           </div>
           <Badge variant={enabled ? "default" : "secondary"}>{enabled ? "enabled" : "draft"}</Badge>
@@ -581,7 +581,7 @@ function NodePalette({ onSelect, onClose, branch }: { onSelect: (cat: any) => vo
       <div className="fb-palette" onClick={(e) => e.stopPropagation()}>
         <div className="fb-palette-head">
           <I.Search size={13} />
-          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search steps…" />
+          <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search steps…" />
           {branch && <Badge variant="outline">{branch} branch</Badge>}
           <IconButton icon={I.X} onClick={onClose} title="Close" />
         </div>

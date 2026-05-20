@@ -52,10 +52,11 @@ body {
 /* ─── Workspace switcher ─── */
 .ws-mark {
   width: 26px; height: 26px;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   display: grid; place-items: center;
   font-family: 'Geist Mono', monospace; font-weight: 700; font-size: 12px;
-  color: oklch(0.18 0 0);
+  background: var(--primary);
+  color: var(--primary-foreground);
   flex: none;
 }
 .ws-meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }

@@ -252,28 +252,15 @@ interface Tenant {
   branch: string;
   env: string;
   members?: number;
-  mark: string;
-  color: string;
 }
 
-const PALETTE_FALLBACK = [
-  "oklch(0.78 0.16 95)",
-  "oklch(0.72 0.18 145)",
-  "oklch(0.72 0.16 240)",
-  "oklch(0.7 0.16 28)",
-  "oklch(0.7 0.18 320)",
-  "oklch(0.74 0.14 200)",
-];
-
-const fromApiTenant = (t: ApiTenant, fallback: number): Tenant => ({
+const fromApiTenant = (t: ApiTenant): Tenant => ({
   id: t.id,
   slug: t.slug,
   name: t.name,
   project: t.project,
   branch: t.branch,
   env: t.env,
-  mark: t.mark || t.name.charAt(0).toUpperCase(),
-  color: t.color || PALETTE_FALLBACK[fallback % PALETTE_FALLBACK.length],
 });
 
 export interface SidebarProps {
@@ -295,7 +282,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
   const reloadTenants = useCallback(async () => {
     try {
       const res = await tenantsApi.list();
-      const mapped = res.data.map((t, i) => fromApiTenant(t, i));
+      const mapped = res.data.map(fromApiTenant);
       setTenants(mapped);
       setTenantId(res.active ?? mapped[0]?.id ?? null);
     } catch {
@@ -343,8 +330,6 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
       project: "—",
       branch: "—",
       env: "—",
-      mark: "·",
-      color: PALETTE_FALLBACK[0],
     };
 
   return (
@@ -371,7 +356,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
             </DropdownMenuLabel>
             {tenants.map((t) => (
               <DropdownMenuItem key={t.id} className="gap-2.5" onSelect={() => void switchTenant(t.id)}>
-                <span className="ws-mark" style={{ background: t.color }}>{t.mark}</span>
+                <span className="ws-mark">{t.name.charAt(0).toUpperCase()}</span>
                 <span className="ws-meta">
                   <span className="ws-name">{t.name}</span>
                   <span className="ws-sub font-mono">{t.project} · {t.branch} · {t.env}</span>

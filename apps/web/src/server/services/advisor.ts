@@ -202,9 +202,9 @@ export const runAdvisorChecks = async (
         kind: "security",
         level: "warn",
         title: `API key "${key.name}" has no role scope`,
-        body: `pak_${key.prefix} inherits its owner's full role set — including admin if the owner is an admin.`,
+        body: `${key.prefix} inherits its owner's full role set — including admin if the owner is an admin.`,
         fix: `Bind the key to a narrower role via role_id, or rotate it to a service account that only holds the roles it needs.`,
-        resource: `api_keys · pak_${key.prefix}`,
+        resource: `api_keys · ${key.prefix}`,
         detected: now,
       });
     }

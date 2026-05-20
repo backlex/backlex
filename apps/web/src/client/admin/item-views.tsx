@@ -9,10 +9,17 @@
 import { useMemo, useState } from "react";
 import { I, type IconComponent } from "./icons";
 import { Badge, IconButton } from "./ui";
+import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { authorById } from "./items";
 import type { Post } from "./config";
 
 export type ItemsViewMode = "table" | "kanban" | "gallery" | "calendar";
+
+// Rows come from arbitrary user collections, not the design's `posts` mock —
+// any field beyond `id` may be missing. These readers degrade instead of
+// throwing (e.g. `r.word_count.toLocaleString()` on a column-less collection).
+const rowLabel = (r: Post): string => r.title || r.slug || r.id;
+const rowNumber = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
 interface ToggleOption {
   id: ItemsViewMode;
@@ -40,20 +47,16 @@ export function ItemsViewToggle({
   // prototype always had `status` so it never had to guard for this.
   const opts = hasStatus ? ALL_OPTS : ALL_OPTS.filter((o) => o.id !== "kanban");
   return (
-    <div className="view-toggle">
-      {opts.map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          className={`view-toggle-btn ${mode === o.id ? "on" : ""}`}
-          onClick={() => setMode(o.id)}
-          title={o.label}
-        >
-          <o.icon size={13} />
-          <span>{o.label}</span>
-        </button>
-      ))}
-    </div>
+    <Tabs value={mode} onValueChange={(v) => setMode(v as ItemsViewMode)}>
+      <TabsList>
+        {opts.map((o) => (
+          <TabsTrigger key={o.id} value={o.id} title={o.label}>
+            <o.icon size={13} />
+            <span>{o.label}</span>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }
 
@@ -88,22 +91,28 @@ export function KanbanBoard({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post)
               ) : (
                 items.map((r) => {
                   const author = authorById(r.author);
+                  const words = rowNumber(r.word_count);
+                  const views = rowNumber(r.view_count);
                   return (
                     <button key={r.id} type="button" className="kb-card" onClick={() => onEdit(r)}>
-                      <div className="kb-card-title">{r.title}</div>
-                      <div className="kb-card-meta">
-                        <span className="font-mono">{r.slug}</span>
-                      </div>
+                      <div className="kb-card-title">{rowLabel(r)}</div>
+                      {r.slug && (
+                        <div className="kb-card-meta">
+                          <span className="font-mono">{r.slug}</span>
+                        </div>
+                      )}
                       <div className="kb-card-foot">
                         <span className="avatar-xs">{author.initials}</span>
-                        <span
-                          className="font-mono tabular-nums"
-                          style={{ color: "var(--muted-foreground)", fontSize: 10.5 }}
-                        >
-                          {r.word_count.toLocaleString()} w
-                        </span>
+                        {words != null && (
+                          <span
+                            className="font-mono tabular-nums"
+                            style={{ color: "var(--muted-foreground)", fontSize: 10.5 }}
+                          >
+                            {words.toLocaleString()} w
+                          </span>
+                        )}
                         <div className="spacer" />
-                        {r.view_count > 0 && (
+                        {views != null && views > 0 && (
                           <span
                             className="font-mono tabular-nums"
                             style={{
@@ -114,7 +123,7 @@ export function KanbanBoard({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post)
                               gap: 4,
                             }}
                           >
-                            <I.Eye size={10} /> {r.view_count.toLocaleString()}
+                            <I.Eye size={10} /> {views.toLocaleString()}
                           </span>
                         )}
                       </div>
@@ -154,21 +163,24 @@ export function GalleryGrid({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post)
       {rows.map((r) => {
         const a = hashColor(r.id);
         const b = hashColor(r.id.split("").reverse().join(""));
+        const words = rowNumber(r.word_count);
         return (
           <button key={r.id} type="button" className="gal-card" onClick={() => onEdit(r)}>
             <div className="gal-thumb" style={{ background: `linear-gradient(135deg, ${a}, ${b})` }}>
-              <span className="gal-thumb-label font-mono">{r.slug}</span>
+              <span className="gal-thumb-label font-mono">{r.slug || r.id}</span>
             </div>
             <div className="gal-meta">
-              <div className="gal-title">{r.title}</div>
+              <div className="gal-title">{rowLabel(r)}</div>
               <div className="gal-sub">
-                <Badge variant={statusBadgeVariant(r.status)}>{r.status}</Badge>
-                <span
-                  className="font-mono tabular-nums"
-                  style={{ color: "var(--muted-foreground)", fontSize: 11 }}
-                >
-                  {r.word_count.toLocaleString()} w
-                </span>
+                {r.status && <Badge variant={statusBadgeVariant(r.status)}>{r.status}</Badge>}
+                {words != null && (
+                  <span
+                    className="font-mono tabular-nums"
+                    style={{ color: "var(--muted-foreground)", fontSize: 11 }}
+                  >
+                    {words.toLocaleString()} w
+                  </span>
+                )}
               </div>
             </div>
           </button>
@@ -264,12 +276,12 @@ export function CalendarView({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post
                     <button
                       key={r.id}
                       type="button"
-                      className={`cal-evt cal-evt-${r.status}`}
+                      className={`cal-evt cal-evt-${r.status || "draft"}`}
                       onClick={() => onEdit(r)}
-                      title={r.title}
+                      title={rowLabel(r)}
                     >
                       <span className="cal-evt-dot" />
-                      <span className="cal-evt-title">{r.title}</span>
+                      <span className="cal-evt-title">{rowLabel(r)}</span>
                     </button>
                   ))}
                   {(byDay[d] || []).length > 3 && (

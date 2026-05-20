@@ -19,6 +19,7 @@ import {
   type ApiAppUser,
   type ApiRole,
 } from "../api";
+import { AppUsersSkeleton } from "../page-skeletons";
 
 /* ──────────────────────────────────────────────────────────────────────
  * App users — the workspace end-user pool (the `app_users` table). Distinct
@@ -103,6 +104,9 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
     return Number.isNaN(d.getTime()) ? "—" : d.toISOString().slice(0, 10);
   };
 
+  // First whole-page fetch — end-users + roles haven't landed yet.
+  if (!loaded) return <AppUsersSkeleton />;
+
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
@@ -133,8 +137,7 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
             <TableRow><TableHead>Email</TableHead><TableHead>Name</TableHead><TableHead>Status</TableHead><TableHead>Roles</TableHead><TableHead>Created</TableHead><TableHead className="sticky right-0 bg-card" /></TableRow>
           </TableHeader>
           <TableBody>
-            {!loaded && <TableRow><TableCell colSpan={6} className="text-muted-foreground">Loading…</TableCell></TableRow>}
-            {loaded && filtered.length === 0 && (
+            {filtered.length === 0 && (
               <TableRow><TableCell colSpan={6} className="text-muted-foreground">
                 {rows.length === 0
                   ? "No end-users yet — they appear here after signing up via the workspace auth endpoint."

@@ -5,10 +5,13 @@ import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "../icons";
 import { Button, PageHeader } from "../ui";
 import { emailTemplatesApi, type ApiEmailTemplate } from "../api";
+import { EmailTemplatesSkeleton } from "../page-skeletons";
 
 export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => void }) {
   type Tpl = { id: string; key: string; name: string; subject: string; vars: string[]; bodyHtml?: string; fromAddress?: string | null; isNew?: boolean };
   const [templates, setTemplates] = useState<Tpl[]>([]);
+  // First-load gate — drives the page skeleton until templates land.
+  const [loaded, setLoaded] = useState(false);
   const [active, setActive] = useState<Tpl | null>(null);
   const [keyDraft, setKeyDraft] = useState("");
   const [name, setName] = useState("");
@@ -47,6 +50,8 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
         }
       } catch {
         // leave templates empty
+      } finally {
+        if (!cancelled) setLoaded(true);
       }
     })();
     return () => { cancelled = true; };
@@ -128,6 +133,10 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
     .replace(/{{\s*reset_url\s*}}/g, "https://workeros.dev/auth/reset?token=…")
     .replace(/{{\s*magic_url\s*}}/g, "https://workeros.dev/auth/magic?token=…")
     .replace(/{{\s*site\.name\s*}}/g, "workeros");
+
+  // First whole-page fetch — email templates haven't landed yet.
+  if (!loaded) return <EmailTemplatesSkeleton />;
+
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader title="Email templates" description={<>Variables use Liquid-style <span className="font-mono">{"{{ user.email }}"}</span>. Template renders run through the Functions sandbox.</>} actions={<Button size="sm" variant="outline" icon={I.Plus} onClick={onNew}>New template</Button>} />

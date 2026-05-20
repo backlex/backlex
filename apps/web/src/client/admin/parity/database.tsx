@@ -3,7 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import { I } from "../icons";
 import { ADAPTER_PROFILES, type AdapterId } from "../config";
 import { Badge, Button, PageHeader, Switch } from "../ui";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { dbAdminApi } from "../api";
+
+const ADMIN_TABLE_CLS =
+  "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
 
 export function DatabasePage({ pushToast, adapter }: { pushToast: (m: string) => void; adapter: AdapterId }) {
   const [tab, setTab] = useState("sql");
@@ -23,22 +27,26 @@ export function DatabasePage({ pushToast, adapter }: { pushToast: (m: string) =>
     })();
     return () => { cancelled = true; };
   }, []);
+  const tabCls = (id: string) =>
+    `inline-flex cursor-pointer items-center gap-1.5 rounded-3xl border-0 px-3.5 py-[5px] text-[12.5px] font-medium ${tab === id ? "bg-card text-foreground shadow-[0_1px_2px_oklch(0_0_0/0.06),0_1px_0_oklch(0_0_0/0.04)]" : "bg-transparent text-muted-foreground"}`;
+  const countCls = (id: string) =>
+    `rounded-sm border border-border px-[5px] py-px font-mono text-[11px] text-muted-foreground ${tab === id ? "bg-muted" : "bg-background"}`;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="flex flex-col gap-4.5">
       <PageHeader
         title="Database"
         description={<>Direct access to the underlying engine. Adapter: <span className="font-mono">{ADAPTER_PROFILES[adapter].db}</span>. SQL editor runs through the same permission layer as the API.</>}
         badges={<Badge variant="outline" mono>{ADAPTER_PROFILES[adapter].db}</Badge>}
       />
-      <div className="tabs">
-        <button className="tab" data-active={tab === "sql"} onClick={() => setTab("sql")}><I.Code size={13} />SQL editor</button>
-        <button className="tab" data-active={tab === "migrations"} onClick={() => setTab("migrations")}>
+      <div className="flex w-fit gap-0.5 rounded-3xl bg-muted p-[3px]">
+        <button className={tabCls("sql")} onClick={() => setTab("sql")}><I.Code size={13} />SQL editor</button>
+        <button className={tabCls("migrations")} onClick={() => setTab("migrations")}>
           <I.History size={13} />Migrations
-          {migCount !== null && <span className="count">{migCount}</span>}
+          {migCount !== null && <span className={countCls("migrations")}>{migCount}</span>}
         </button>
-        <button className="tab" data-active={tab === "backups"} onClick={() => setTab("backups")}>
+        <button className={tabCls("backups")} onClick={() => setTab("backups")}>
           <I.Save size={13} />Backups
-          {backupCount !== null && <span className="count">{backupCount}</span>}
+          {backupCount !== null && <span className={countCls("backups")}>{backupCount}</span>}
         </button>
       </div>
       {tab === "sql" && <SqlEditor pushToast={pushToast} />}
@@ -135,94 +143,94 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
   };
 
   return (
-    <div className="master-detail" style={{ "--md-aside": "240px" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div className="card">
-          <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <I.Database size={13} /><span style={{ fontSize: 12, fontWeight: 500 }}>Tables</span>
-            <div className="spacer" />
-            <span className="muted font-mono" style={{ fontSize: 11 }}>{filteredTables.length === tables.length ? tables.length : `${filteredTables.length}/${tables.length}`}</span>
+    <div className="grid grid-cols-[240px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
+      <div className="flex flex-col gap-2.5">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
+            <I.Database size={13} /><span className="text-xs font-medium">Tables</span>
+            <div className="flex-1" />
+            <span className="font-mono text-[11px] text-muted-foreground">{filteredTables.length === tables.length ? tables.length : `${filteredTables.length}/${tables.length}`}</span>
           </div>
-          <div style={{ padding: "6px 8px", borderTop: "1px solid var(--border)" }}>
+          <div className="border-t border-border px-2 py-1.5">
             <input
               value={tableFilter}
               onChange={(e) => setTableFilter(e.target.value)}
               placeholder="Filter tables…"
               spellCheck={false}
-              style={{ width: "100%", padding: "5px 10px", fontSize: 11.5, borderRadius: "var(--radius-3xl)", border: "1px solid var(--border)", background: "var(--background)", color: "inherit", outline: 0 }}
+              className="w-full rounded-3xl border border-border bg-background px-2.5 py-[5px] text-[11.5px] text-foreground outline-0"
             />
           </div>
-          <div className="scrollarea" style={{ maxHeight: 280, overflowY: "auto" }}>
+          <div className="max-h-[280px] overflow-y-auto">
             {filteredTables.length === 0 ? (
-              <div className="muted" style={{ padding: "12px", fontSize: 11.5, textAlign: "center" }}>
+              <div className="p-3 text-center text-[11.5px] text-muted-foreground">
                 {tables.length === 0 ? "Loading…" : "No tables match."}
               </div>
             ) : filteredTables.map((t) => (
-              <div key={t.name} title={browseSql(t.name)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", borderTop: "1px solid var(--border)", cursor: "pointer" }} onClick={() => setSql(browseSql(t.name))}>
-                <I.Braces size={11} className="muted" />
-                <span className="font-mono" style={{ fontSize: 11.5, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
-                <span className="muted tabular-nums" style={{ fontSize: 10.5 }}>{t.rows.toLocaleString()}</span>
+              <div key={t.name} title={browseSql(t.name)} className="flex cursor-pointer items-center gap-2 border-t border-border px-3 py-1.5" onClick={() => setSql(browseSql(t.name))}>
+                <I.Braces size={11} className="text-muted-foreground" />
+                <span className="flex-1 truncate font-mono text-[11.5px]">{t.name}</span>
+                <span className="font-mono text-[10.5px] tabular-nums text-muted-foreground">{t.rows.toLocaleString()}</span>
               </div>
             ))}
           </div>
         </div>
-        <div className="card">
-          <div className="card-section" style={{ fontSize: 12, fontWeight: 500 }}>Snippets</div>
-          <div className="scrollarea" style={{ maxHeight: 220, overflowY: "auto" }}>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          <div className="border-b border-border px-4 py-3.5 text-xs font-medium">Snippets</div>
+          <div className="max-h-[220px] overflow-y-auto">
             {snippets.length === 0 ? (
-              <div className="muted" style={{ padding: "10px 12px", fontSize: 11.5, borderTop: "1px solid var(--border)" }}>No tables yet.</div>
+              <div className="border-t border-border px-3 py-2.5 text-[11.5px] text-muted-foreground">No tables yet.</div>
             ) : snippets.map((s) => (
-              <div key={s.name} title={s.sql} onClick={() => setSql(s.sql)} style={{ padding: "8px 12px", borderTop: "1px solid var(--border)", cursor: "pointer", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
+              <div key={s.name} title={s.sql} onClick={() => setSql(s.sql)} className="cursor-pointer truncate border-t border-border px-3 py-2 text-xs">{s.name}</div>
             ))}
           </div>
         </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
-        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-          <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 500 }}>query.sql</span>
+      <div className="flex min-w-0 flex-col gap-3">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
+            <span className="text-xs font-medium">query.sql</span>
             {isWrite && <Badge variant="destructive">WRITE</Badge>}
-            <div className="spacer" />
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--muted-foreground)" }}>
+            <div className="flex-1" />
+            <label className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
               <I.Lock size={11} /> read-only
               <Switch checked={readOnly} onChange={setReadOnly} />
             </label>
             <Button size="sm" variant="outline" icon={I.Save} onClick={() => pushToast("Saved as snippet.")}>Save</Button>
             <Button size="sm" variant="primary" icon={I.Play} disabled={running || (readOnly && isWrite)} onClick={run}>{running ? "Running…" : "Run"}</Button>
           </div>
-          <textarea value={sql} onChange={(e) => setSql(e.target.value)} spellCheck={false} style={{ width: "100%", minHeight: 180, padding: 14, border: 0, outline: 0, resize: "vertical", background: "oklch(0.18 0.01 130)", color: "oklch(0.92 0.02 130)", fontFamily: "Geist Mono, monospace", fontSize: 13, lineHeight: 1.55 }} />
+          <textarea value={sql} onChange={(e) => setSql(e.target.value)} spellCheck={false} className="w-full resize-y border-0 bg-[oklch(0.18_0.01_130)] p-3.5 font-mono text-[13px] leading-[1.55] text-[oklch(0.92_0.02_130)] outline-0 min-h-[180px]" />
           {readOnly && isWrite && (
-            <div style={{ padding: "8px 14px", background: "color-mix(in oklch, var(--destructive) 8%, var(--card))", borderTop: "1px solid color-mix(in oklch, var(--destructive) 35%, var(--border))", fontSize: 11.5, color: "var(--destructive)", display: "flex", alignItems: "center", gap: 6 }}>
+            <div className="flex items-center gap-1.5 border-t border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))] px-3.5 py-2 text-[11.5px] text-destructive">
               <I.AlertTriangle size={12} /> Writes blocked. Toggle "read-only" off to run mutations.
             </div>
           )}
         </div>
-        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-          <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 500 }}>Result</span>
-            <span className="muted font-mono" style={{ fontSize: 11 }}>{result.count} rows · {result.ms}ms</span>
-            <div className="spacer" />
+        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
+            <span className="text-xs font-medium">Result</span>
+            <span className="font-mono text-[11px] text-muted-foreground">{result.count} rows · {result.ms}ms</span>
+            <div className="flex-1" />
             <Button size="sm" variant="ghost" icon={I.Download} onClick={() => pushToast("Exported result.csv.")}>CSV</Button>
             <Button size="sm" variant="ghost" icon={I.Code} onClick={() => pushToast("Copied JSON.")}>JSON</Button>
           </div>
           {result.rows.length === 0 ? (
-            <div className="muted" style={{ padding: "24px 16px", fontSize: 12.5, textAlign: "center" }}>
+            <div className="px-4 py-6 text-center text-[12.5px] text-muted-foreground">
               {result.ms > 0 ? "Query returned no rows." : "Run a query to see results."}
             </div>
           ) : (
-            <div className="table-scroll">
-            <table className="table">
-              <thead><tr>{Object.keys(result.rows[0] || {}).map((k) => <th key={k}>{k}</th>)}</tr></thead>
-              <tbody>
+            <Table className={ADMIN_TABLE_CLS}>
+              <TableHeader>
+                <TableRow>{Object.keys(result.rows[0] || {}).map((k) => <TableHead key={k}>{k}</TableHead>)}</TableRow>
+              </TableHeader>
+              <TableBody>
                 {result.rows.map((r, i) => (
-                  <tr key={i}>
-                    {Object.entries(r).map(([k, v]) => <td key={k} className={typeof v === "number" ? "tabular-nums font-mono" : "font-mono"} style={{ fontSize: 12 }}>{String(v)}</td>)}
-                  </tr>
+                  <TableRow key={i}>
+                    {Object.entries(r).map(([k, v]) => <TableCell key={k} className={`font-mono text-xs ${typeof v === "number" ? "tabular-nums" : ""}`}>{String(v)}</TableCell>)}
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-            </div>
+              </TableBody>
+            </Table>
           )}
         </div>
       </div>
@@ -261,42 +269,46 @@ function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
     return () => { cancelled = true; };
   }, [pushToast]);
   return (
-    <div className="master-detail" style={{ "--md-aside": "380px" }}>
-      <div className="card">
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 12, fontWeight: 500 }}>Migrations</span>
-          <div className="spacer" />
-          <span className="muted font-mono" style={{ fontSize: 11 }}>{migs.length}</span>
+    <div className="grid grid-cols-[380px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
+          <span className="text-xs font-medium">Migrations</span>
+          <div className="flex-1" />
+          <span className="font-mono text-[11px] text-muted-foreground">{migs.length}</span>
         </div>
         {migs.length === 0 && (
-          <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>No migrations applied yet.</div>
+          <div className="px-3 py-4 text-xs text-muted-foreground">No migrations applied yet.</div>
         )}
         {migs.map((m) => (
-          <div key={m.hash} onClick={() => setActive(m)} className="schema-row" style={{ gridTemplateColumns: "20px 1fr 70px", cursor: "pointer", background: active?.hash === m.hash ? "var(--accent)" : "transparent" }}>
-            <span><I.Check size={13} style={{ color: "oklch(0.55 0.16 145)" }} /></span>
-            <div style={{ minWidth: 0 }}>
-              <div className="font-mono" style={{ fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div
+            key={m.hash}
+            onClick={() => setActive(m)}
+            className={`grid cursor-pointer grid-cols-[20px_1fr_70px] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0 ${active?.hash === m.hash ? "bg-accent" : ""}`}
+          >
+            <span><I.Check size={13} className="text-[oklch(0.55_0.16_145)]" /></span>
+            <div className="min-w-0">
+              <div className="truncate font-mono text-[11.5px]">
                 {m.tag ?? m.hash.slice(0, 12)}
               </div>
-              <div className="muted" style={{ fontSize: 11 }}>{m.t}</div>
+              <div className="text-[11px] text-muted-foreground">{m.t}</div>
             </div>
             <Badge variant="default">applied</Badge>
           </div>
         ))}
       </div>
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
         {!active ? (
-          <div className="muted" style={{ padding: 36, textAlign: "center", fontSize: 13 }}>Pick a migration to inspect its details.</div>
+          <div className="p-9 text-center text-[13px] text-muted-foreground">Pick a migration to inspect its details.</div>
         ) : (
           <>
-            <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span className="font-mono" style={{ fontSize: 12, fontWeight: 500 }}>{active.tag ?? active.hash.slice(0, 12)}</span>
+            <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
+              <span className="font-mono text-xs font-medium">{active.tag ?? active.hash.slice(0, 12)}</span>
             </div>
-            <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 8, fontSize: 12 }}>
-              <div><span className="muted">Folder tag</span><div className="font-mono">{active.tag ?? <em className="muted">unknown — manifest out of sync, run <code>bun run --cwd packages/db manifest</code></em>}</div></div>
-              <div><span className="muted">Hash</span><div className="font-mono" style={{ wordBreak: "break-all" }}>{active.hash}</div></div>
-              <div><span className="muted">Applied at</span><div className="font-mono">{active.t}</div></div>
-              <div className="muted" style={{ fontSize: 11.5, marginTop: 8 }}>
+            <div className="flex flex-col gap-2 p-4 text-xs">
+              <div><span className="text-muted-foreground">Folder tag</span><div className="font-mono">{active.tag ?? <em className="text-muted-foreground">unknown — manifest out of sync, run <code>bun run --cwd packages/db manifest</code></em>}</div></div>
+              <div><span className="text-muted-foreground">Hash</span><div className="font-mono [word-break:break-all]">{active.hash}</div></div>
+              <div><span className="text-muted-foreground">Applied at</span><div className="font-mono">{active.t}</div></div>
+              <div className="mt-2 text-[11.5px] text-muted-foreground">
                 Migrations are applied via <code>bun run db:migrate:&lt;dialect&gt;</code> at deploy time. Drizzle tracks them by content hash; the folder tag comes from the build-time manifest. Rollbacks are not supported — write a forward migration instead.
               </div>
             </div>
@@ -340,30 +352,31 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
     }
   };
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div className="card cols-3" style={{ padding: 14 }}>
-        <div><div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Schedule</div><div style={{ fontWeight: 500 }}>Daily 03:00 UTC</div></div>
-        <div><div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Retention</div><div style={{ fontWeight: 500 }}>30 days</div></div>
-        <div><div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Destination</div><div className="font-mono" style={{ fontWeight: 500, fontSize: 12 }}>r2://workeros-backups/</div></div>
+    <div className="flex flex-col gap-3.5">
+      <div className="grid grid-cols-3 gap-3 overflow-hidden rounded-2xl border border-border bg-card p-3.5 text-card-foreground max-[640px]:grid-cols-1">
+        <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Schedule</div><div className="font-medium">Daily 03:00 UTC</div></div>
+        <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Retention</div><div className="font-medium">30 days</div></div>
+        <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Destination</div><div className="font-mono text-xs font-medium">r2://workeros-backups/</div></div>
       </div>
-      <div className="card">
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 12, fontWeight: 500 }}>Backups</span>
-          <div className="spacer" />
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
+          <span className="text-xs font-medium">Backups</span>
+          <div className="flex-1" />
           <Button size="sm" variant="primary" icon={I.Save} onClick={backupNow}>Back up now</Button>
         </div>
-        <div className="table-scroll">
-        <table className="table">
-          <thead><tr><th>ID</th><th>Created</th><th>Tables</th><th>Size</th><th>Kind</th><th className="col-actions"></th></tr></thead>
-          <tbody>
+        <Table className={ADMIN_TABLE_CLS}>
+          <TableHeader>
+            <TableRow><TableHead>ID</TableHead><TableHead>Created</TableHead><TableHead>Tables</TableHead><TableHead>Size</TableHead><TableHead>Kind</TableHead><TableHead className="sticky right-0 bg-card" /></TableRow>
+          </TableHeader>
+          <TableBody>
             {backups.map((b) => (
-              <tr key={b.id}>
-                <td className="font-mono" style={{ fontSize: 12 }}>{b.id}{b.label && <span className="muted"> · {b.label}</span>}</td>
-                <td className="muted font-mono" style={{ fontSize: 11.5 }}>{b.t}</td>
-                <td className="tabular-nums">{b.tables}</td>
-                <td className="tabular-nums">{b.size}</td>
-                <td><Badge variant={b.kind === "auto" ? "secondary" : "default"}>{b.kind}</Badge></td>
-                <td className="col-actions" style={{ textAlign: "right" }}>
+              <TableRow key={b.id}>
+                <TableCell className="font-mono text-xs">{b.id}{b.label && <span className="text-muted-foreground"> · {b.label}</span>}</TableCell>
+                <TableCell className="font-mono text-[11.5px] text-muted-foreground">{b.t}</TableCell>
+                <TableCell className="tabular-nums">{b.tables}</TableCell>
+                <TableCell className="tabular-nums">{b.size}</TableCell>
+                <TableCell><Badge variant={b.kind === "auto" ? "secondary" : "default"}>{b.kind}</Badge></TableCell>
+                <TableCell className="sticky right-0 bg-card text-right">
                   <Button size="sm" variant="ghost" icon={I.Download} onClick={() => {
                     const url = `/api/admin/db/backups/${b.id}/download`;
                     const a = document.createElement("a");
@@ -374,12 +387,11 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
                     a.remove();
                   }}>Download</Button>
                   <Button size="sm" variant="ghost" icon={I.History} onClick={() => pushToast(`Restored from ${b.id} (dry-run).`)}>Restore</Button>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-        </div>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

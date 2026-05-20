@@ -6,9 +6,13 @@ import type { CollectionListItem } from "./config";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
 import { AdoptWizard } from "./adopt-wizard";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { useUrlState } from "@/lib/use-url-state";
 import { SkeletonRow } from "./loading";
 import { useCollections } from "./queries";
+
+const ADMIN_TABLE_CLS =
+  "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
 
 export interface CollectionsIndexProps {
   collections: CollectionListItem[];
@@ -62,11 +66,11 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
   }, [filtered]);
 
   return (
-    <div className="collections-index" style={{ display: "flex", flexDirection: "column", gap: 18, minWidth: 0 }}>
+    <div className="flex min-w-0 flex-col gap-4.5">
       <PageHeader
         title="Collections"
         description={<>Each collection is a physical table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations.</>}
-        badges={<span style={{ display: "inline-flex", flexWrap: "wrap", gap: 6, marginLeft: 4 }}>
+        badges={<span className="ml-1 inline-flex flex-wrap gap-1.5">
           <Badge variant={showArchived ? "secondary" : "outline"} mono>
             {collections.length} {showArchived ? "archived" : "collections"}
           </Badge>
@@ -111,35 +115,35 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
         onPickAdopt={() => { setChooserOpen(false); setAdoptOpen(true); }}
       />
 
-      <div className="filter-bar">
+      <div className="flex flex-wrap items-center gap-2">
         <InputGroup>
           <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
           <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search collections by slug or group…" />
         </InputGroup>
-        <div className="spacer" />
-        <button className={`chip ${view === "grid" ? "active" : ""}`} onClick={() => setView("grid")}><I.Braces size={12} /> Grid</button>
-        <button className={`chip ${view === "table" ? "active" : ""}`} onClick={() => setView("table")}><I.Inbox size={12} /> Table</button>
+        <div className="flex-1" />
+        <button className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border px-[11px] text-[12.5px] text-foreground hover:bg-accent ${view === "grid" ? "border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent" : "border-border bg-card"}`} onClick={() => setView("grid")}><I.Braces size={12} /> Grid</button>
+        <button className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border px-[11px] text-[12.5px] text-foreground hover:bg-accent ${view === "table" ? "border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent" : "border-border bg-card"}`} onClick={() => setView("table")}><I.Inbox size={12} /> Table</button>
       </div>
 
       {view === "grid" ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+        <div className="flex flex-col gap-[22px]">
           {loading && groups.length === 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))", gap: 12 }}>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="card" style={{ minHeight: 138, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div key={i} className="flex min-h-[138px] flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground">
                   <SkeletonRow cols={3} />
                 </div>
               ))}
             </div>
           )}
           {groups.map(([g, list]) => (
-            <div key={g} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <span style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, color: "var(--muted-foreground)" }}>{g}</span>
-                <span className="muted tabular-nums" style={{ fontSize: 11 }}>{list.length}</span>
-                <div style={{ flex: 1, height: 1, background: "var(--border)", marginLeft: 6 }} />
+            <div key={g} className="flex flex-col gap-2.5">
+              <div className="flex items-baseline gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{g}</span>
+                <span className="text-[11px] tabular-nums text-muted-foreground">{list.length}</span>
+                <div className="ml-1.5 h-px flex-1 bg-border" />
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))", gap: 12 }}>
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3">
                 {list.map((c) => (
                   <CollectionCard
                     key={c.slug}
@@ -151,9 +155,9 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
                   />
                 ))}
                 {!showArchived && (
-                  <button onClick={onNew} className="card" style={{ minHeight: 138, border: "1.5px dashed var(--border)", background: "transparent", cursor: "pointer", display: "grid", placeItems: "center", gap: 6, color: "var(--muted-foreground)" }}>
+                  <button onClick={onNew} className="grid min-h-[138px] cursor-pointer place-items-center gap-1.5 rounded-2xl border-[1.5px] border-dashed border-border bg-transparent text-muted-foreground">
                     <I.Plus size={18} />
-                    <span style={{ fontSize: 12.5, fontWeight: 500 }}>New collection</span>
+                    <span className="text-[12.5px] font-medium">New collection</span>
                   </button>
                 )}
               </div>
@@ -161,44 +165,43 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
           ))}
         </div>
       ) : (
-        <div className="card">
-          <div className="table-scroll">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Slug</th>
-                <th style={{ width: 110 }}>Group</th>
-                <th style={{ width: 90, textAlign: "right" }}>Rows</th>
-                <th style={{ width: 80, textAlign: "right" }}>Fields</th>
-                <th style={{ width: 110, textAlign: "right" }}>Writes 24h</th>
-                <th style={{ width: 110 }}>Last write</th>
-                <th style={{ width: 130 }}>Permissions</th>
-                <th className="col-actions" style={{ width: 60 }}></th>
-              </tr>
-            </thead>
-            <tbody>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          <Table className={ADMIN_TABLE_CLS}>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Slug</TableHead>
+                <TableHead className="w-[110px]">Group</TableHead>
+                <TableHead className="w-[90px] text-right">Rows</TableHead>
+                <TableHead className="w-[80px] text-right">Fields</TableHead>
+                <TableHead className="w-[110px] text-right">Writes 24h</TableHead>
+                <TableHead className="w-[110px]">Last write</TableHead>
+                <TableHead className="w-[130px]">Permissions</TableHead>
+                <TableHead className="sticky right-0 w-[60px] bg-card" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {filtered.map((c) => {
                 const Ic = (I as Record<string, IconComponent>)[c.icon as IconKey] || I.Database;
                 return (
-                  <tr key={c.slug} onClick={() => onOpen(c.slug)} style={{ cursor: "pointer" }}>
-                    <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ width: 24, height: 24, borderRadius: "var(--radius-md)", background: "var(--muted)", display: "grid", placeItems: "center" }}><Ic size={12} /></span>
-                        <span className="font-mono" style={{ fontSize: 13, fontWeight: 500 }}>{c.slug}</span>
+                  <TableRow key={c.slug} onClick={() => onOpen(c.slug)} className="cursor-pointer">
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="grid size-6 place-items-center rounded-md bg-muted"><Ic size={12} /></span>
+                        <span className="font-mono text-[13px] font-medium">{c.slug}</span>
                         {c.singleton && <Badge variant="outline">singleton</Badge>}
                       </div>
-                    </td>
-                    <td className="muted" style={{ fontSize: 12 }}>{c.group}</td>
-                    <td className="tabular-nums" style={{ textAlign: "right" }}>{c.count.toLocaleString()}</td>
-                    <td className="tabular-nums muted" style={{ textAlign: "right" }}>{c.fields}</td>
-                    <td className="tabular-nums" style={{ textAlign: "right" }}>{c.writes24h}</td>
-                    <td className="muted font-mono" style={{ fontSize: 11.5 }}>{c.lastWrite}</td>
-                    <td>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{c.group}</TableCell>
+                    <TableCell className="text-right tabular-nums">{c.count.toLocaleString()}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{c.fields}</TableCell>
+                    <TableCell className="text-right tabular-nums">{c.writes24h}</TableCell>
+                    <TableCell className="font-mono text-[11.5px] text-muted-foreground">{c.lastWrite}</TableCell>
+                    <TableCell>
                       {showArchived
                         ? <Badge variant="secondary">archived</Badge>
                         : c.ownerScoped ? <Badge variant="default">owner-scoped</Badge> : <Badge variant="secondary">public read</Badge>}
-                    </td>
-                    <td className="col-actions" onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}>
+                    </TableCell>
+                    <TableCell className="sticky right-0 bg-card text-right" onClick={(e) => e.stopPropagation()}>
                       {showArchived
                         ? onRestore && (
                             <IconButton icon={I.RotateCcw} title="Restore collection" onClick={() => onRestore(c.slug)} />
@@ -206,13 +209,12 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
                         : onDelete && (
                             <IconButton icon={I.Trash} title="Delete collection" onClick={() => onDelete(c.slug)} />
                           )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
-          </div>
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>
@@ -223,33 +225,30 @@ function CollectionCard({ c, onOpen, archived, onRestore, onOpenApi }: { c: Coll
   const Ic = (I as Record<string, IconComponent>)[c.icon as IconKey] || I.Database;
   return (
     <div
-      className="card"
+      className={`flex cursor-pointer flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground transition-colors hover:border-[color-mix(in_oklch,var(--primary)_50%,var(--border))] ${archived ? "opacity-90" : ""}`}
       onClick={onOpen}
-      style={{ padding: 16, cursor: "pointer", display: "flex", flexDirection: "column", gap: 12, transition: "border-color 100ms, transform 100ms", opacity: archived ? 0.92 : 1 }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "color-mix(in oklch, var(--primary) 50%, var(--border))"; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)"; }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ width: 32, height: 32, borderRadius: "var(--radius-lg)", background: "var(--muted)", border: "1px solid var(--border)", display: "grid", placeItems: "center", color: "var(--muted-foreground)" }}><Ic size={15} /></span>
-        <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
-          <span className="font-mono" style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.slug}</span>
-          <span className="muted" style={{ fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.fields} fields · {c.singleton ? "singleton" : c.ownerScoped ? "owner-scoped" : "public read"}</span>
+      <div className="flex items-center gap-2.5">
+        <span className="grid size-8 place-items-center rounded-lg border border-border bg-muted text-muted-foreground"><Ic size={15} /></span>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate font-mono text-[13.5px] font-semibold">{c.slug}</span>
+          <span className="truncate text-[11.5px] text-muted-foreground">{c.fields} fields · {c.singleton ? "singleton" : c.ownerScoped ? "owner-scoped" : "public read"}</span>
         </div>
         {archived && (
-          <span style={{ marginLeft: "auto" }}>
+          <span className="ml-auto">
             <Badge variant="secondary">
               <I.Archive size={10} />
-              <span style={{ marginLeft: 4 }}>archived</span>
+              <span className="ml-1">archived</span>
             </Badge>
           </span>
         )}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+      <div className="grid grid-cols-3 gap-2">
         <Stat k="rows" v={c.count.toLocaleString()} />
         <Stat k="writes 24h" v={c.writes24h} />
         <Stat k="last" v={c.lastWrite} mono />
       </div>
-      <div style={{ display: "flex", gap: 6 }}>
+      <div className="flex gap-1.5">
         {archived ? (
           <>
             {onRestore && (
@@ -277,9 +276,9 @@ function CollectionCard({ c, onOpen, archived, onRestore, onOpenApi }: { c: Coll
 
 function Stat({ k, v, mono }: { k: string; v: string | number; mono?: boolean }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-      <span className="muted" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{k}</span>
-      <span className={`tabular-nums ${mono ? "font-mono" : ""}`} style={{ fontSize: mono ? 11.5 : 14, fontWeight: mono ? 400 : 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v}</span>
+    <div className="flex min-w-0 flex-col gap-0.5">
+      <span className="truncate text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{k}</span>
+      <span className={`truncate tabular-nums ${mono ? "font-mono text-[11.5px] font-normal" : "text-sm font-semibold"}`}>{v}</span>
     </div>
   );
 }
@@ -438,51 +437,51 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
   };
 
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog-lg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640, width: "100%", display: "flex", flexDirection: "column", maxHeight: "90vh" }}>
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={onClose}>
+      <div className="relative flex max-h-[90vh] w-full animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200 max-w-[640px]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
           <I.Database size={14} />
-          <span style={{ fontSize: 14, fontWeight: 500 }}>New collection</span>
-          <span className="muted font-mono" style={{ fontSize: 11.5 }}>step {step + 1} of 2</span>
-          <div className="spacer" />
+          <span className="text-sm font-medium">New collection</span>
+          <span className="font-mono text-[11.5px] text-muted-foreground">step {step + 1} of 2</span>
+          <div className="flex-1" />
           <IconButton icon={I.X} onClick={onClose} />
         </div>
 
-        <div style={{ padding: 22, overflow: "auto", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div className="flex flex-1 flex-col gap-4 overflow-auto p-[22px]">
           {step === 0 && (
             <>
-              <div className="field">
-                <label className="field-label">Slug</label>
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Slug</label>
                 <input value={slug} onChange={(e) => setSlug(e.target.value)} autoFocus placeholder="products" className="font-mono" aria-invalid={slugError ? true : undefined} />
-                {slugError && <span className="field-hint" style={{ color: "var(--destructive)" }}>{slugError}</span>}
-                {!slugError && !slugClean && <span className="field-hint">Enter a slug to continue.</span>}
-                {!slugError && slugClean && <span className="field-hint">Slug: <span className="font-mono">{slugClean}</span></span>}
+                {slugError && <span className="text-[11.5px] text-destructive">{slugError}</span>}
+                {!slugError && !slugClean && <span className="text-[11.5px] text-muted-foreground">Enter a slug to continue.</span>}
+                {!slugError && slugClean && <span className="text-[11.5px] text-muted-foreground">Slug: <span className="font-mono">{slugClean}</span></span>}
               </div>
 
-              <div className="field">
-                <label className="field-label">Group</label>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Group</label>
+                <div className="flex flex-wrap gap-1.5">
                   {["Content", "Marketing", "System", "Other"].map((g) => (
-                    <button key={g} type="button" className={`chip ${group === g ? "active" : ""}`} onClick={() => setGroup(g)}>{g}</button>
+                    <button key={g} type="button" className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border px-[11px] text-[12.5px] text-foreground hover:bg-accent ${group === g ? "border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent" : "border-border bg-card"}`} onClick={() => setGroup(g)}>{g}</button>
                   ))}
                 </div>
               </div>
 
-              <div className="field">
-                <label className="field-label">Start from</label>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Start from</label>
+                <div className="grid grid-cols-2 gap-2">
                   {templates.map((t) => {
                     const Ic = (I as Record<string, IconComponent>)[t.icon as IconKey] || I.Braces;
                     const active = template === t.id;
                     return (
-                      <button key={t.id} type="button" onClick={() => setTemplate(t.id)} className="card" style={{ padding: 12, textAlign: "left", cursor: "pointer", borderColor: active ? "var(--primary)" : "var(--border)", background: active ? "color-mix(in oklch, var(--primary) 8%, var(--card))" : "var(--card)" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <button key={t.id} type="button" onClick={() => setTemplate(t.id)} className={`cursor-pointer rounded-2xl border p-3 text-left ${active ? "border-primary bg-[color-mix(in_oklch,var(--primary)_8%,var(--card))]" : "border-border bg-card"}`}>
+                        <div className="mb-1 flex items-center gap-2">
                           <Ic size={13} />
-                          <span style={{ fontSize: 13, fontWeight: 500 }}>{t.name}</span>
-                          <div className="spacer" />
-                          <span className="muted tabular-nums" style={{ fontSize: 11 }}>{t.fields.length} fields</span>
+                          <span className="text-[13px] font-medium">{t.name}</span>
+                          <div className="flex-1" />
+                          <span className="tabular-nums text-[11px] text-muted-foreground">{t.fields.length} fields</span>
                         </div>
-                        <span className="muted" style={{ fontSize: 11.5, lineHeight: 1.4 }}>{t.desc}</span>
+                        <span className="text-[11.5px] leading-[1.4] text-muted-foreground">{t.desc}</span>
                       </button>
                     );
                   })}
@@ -493,38 +492,38 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
 
           {step === 1 && (
             <>
-              <div className="field-row" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
+              <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
                 <div>
-                  <div className="field-label">Tenant-scoped <Badge variant="secondary">recommended</Badge></div>
-                  <div className="field-hint">Auto-add <span className="font-mono">tenant_id</span>; row-level security isolates data per workspace. All read/write rules get <span className="font-mono">tenant_id = $user.tenant_id</span> injected.</div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Tenant-scoped <Badge variant="secondary">recommended</Badge></div>
+                  <div className="text-[11.5px] text-muted-foreground">Auto-add <span className="font-mono">tenant_id</span>; row-level security isolates data per workspace. All read/write rules get <span className="font-mono">tenant_id = $user.tenant_id</span> injected.</div>
                 </div>
                 <Switch checked={tenantScoped} onChange={setTenantScoped} />
               </div>
-              <div className="field-row" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
+              <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
                 <div>
-                  <div className="field-label">Owner-scoped</div>
-                  <div className="field-hint">Auto-add <span className="font-mono">owner_id</span>; the <span className="font-mono">authenticated</span> role can only read/update its own rows.</div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Owner-scoped</div>
+                  <div className="text-[11.5px] text-muted-foreground">Auto-add <span className="font-mono">owner_id</span>; the <span className="font-mono">authenticated</span> role can only read/update its own rows.</div>
                 </div>
                 <Switch checked={ownerScoped} onChange={setOwnerScoped} />
               </div>
-              <div className="field-row" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
+              <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
                 <div>
-                  <div className="field-label">Timestamps</div>
-                  <div className="field-hint">Add <span className="font-mono">created_at</span> and <span className="font-mono">updated_at</span>.</div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Timestamps</div>
+                  <div className="text-[11.5px] text-muted-foreground">Add <span className="font-mono">created_at</span> and <span className="font-mono">updated_at</span>.</div>
                 </div>
                 <Switch checked={timestamps} onChange={setTimestamps} />
               </div>
-              <div className="field-row" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
+              <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
                 <div>
-                  <div className="field-label">Soft delete</div>
-                  <div className="field-hint">Add <span className="font-mono">deleted_at</span>; deletes mark rows instead of removing them.</div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Soft delete</div>
+                  <div className="text-[11.5px] text-muted-foreground">Add <span className="font-mono">deleted_at</span>; deletes mark rows instead of removing them.</div>
                 </div>
                 <Switch checked={softDelete} onChange={setSoftDelete} />
               </div>
-              <div className="field-row" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
+              <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
                 <div>
-                  <div className="field-label">Status field</div>
-                  <div className="field-hint">
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Status field</div>
+                  <div className="text-[11.5px] text-muted-foreground">
                     Add a <span className="font-mono">status</span> dropdown with{" "}
                     <span className="font-mono">draft / review / published / archived</span>{" "}
                     + per-option color. List view auto-shows status tabs and badges.
@@ -532,24 +531,22 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
                 </div>
                 <Switch checked={withStatus} onChange={setWithStatus} />
               </div>
-              <div className="field-row" style={{ paddingBottom: 4 }}>
+              <div className="flex items-center justify-between gap-3 pb-1">
                 <div>
-                  <div className="field-label">Singleton</div>
-                  <div className="field-hint">Locked to one row — useful for site settings.</div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Singleton</div>
+                  <div className="text-[11.5px] text-muted-foreground">Locked to one row — useful for site settings.</div>
                 </div>
                 <Switch checked={singleton} onChange={setSingleton} />
               </div>
 
-              <div className="alter-preview" style={{ fontSize: 11.5, marginTop: 4 }}>
-                <pre style={{ margin: 0, fontFamily: "inherit", whiteSpace: "pre-wrap" }}>{sql}</pre>
-              </div>
+              <pre className="mt-1 m-0 whitespace-pre-wrap rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11.5px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">{sql}</pre>
             </>
           )}
         </div>
 
-        <div className="card-section" style={{ borderTop: "1px solid var(--border)", borderBottom: 0, display: "flex", alignItems: "center", gap: 8 }}>
+        <div className="flex items-center gap-2 border-t border-border px-4 py-3.5">
           {step === 1 && <Button variant="ghost" size="sm" icon={I.ChevronLeft} onClick={() => setStep(0)}>Back</Button>}
-          <div className="spacer" />
+          <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
           {step === 0 ? (
             <Button variant="primary" size="sm" iconRight={I.ChevronRight} onClick={() => {
@@ -583,27 +580,24 @@ interface CreateChooserDialogProps {
 function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt }: CreateChooserDialogProps) {
   if (!open) return null;
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog-lg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560, width: "100%", display: "flex", flexDirection: "column" }}>
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={onClose}>
+      <div className="relative flex max-h-[90vh] w-full animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200 max-w-[560px]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
           <I.Plus size={14} />
-          <span style={{ fontSize: 14, fontWeight: 500 }}>New collection</span>
-          <div className="spacer" />
+          <span className="text-sm font-medium">New collection</span>
+          <div className="flex-1" />
           <IconButton icon={I.X} onClick={onClose} />
         </div>
-        <div style={{ padding: 22, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div className="grid grid-cols-2 gap-3 p-[22px]">
           <button
             type="button"
             onClick={onPickEmpty}
-            className="card"
-            style={{ padding: 18, textAlign: "left", cursor: "pointer", display: "flex", flexDirection: "column", gap: 10, background: "var(--card)" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "color-mix(in oklch, var(--primary) 50%, var(--border))"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)"; }}
+            className="flex cursor-pointer flex-col gap-2.5 rounded-2xl border border-border bg-card p-[18px] text-left text-card-foreground transition-colors hover:border-[color-mix(in_oklch,var(--primary)_50%,var(--border))]"
           >
-            <span style={{ width: 36, height: 36, borderRadius: "var(--radius-lg)", background: "var(--muted)", border: "1px solid var(--border)", display: "grid", placeItems: "center" }}><I.Braces size={16} /></span>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <span style={{ fontSize: 13.5, fontWeight: 600 }}>Empty or template</span>
-              <span className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>
+            <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted"><I.Braces size={16} /></span>
+            <div className="flex flex-col gap-1">
+              <span className="text-[13.5px] font-semibold">Empty or template</span>
+              <span className="text-xs leading-[1.45] text-muted-foreground">
                 Create a new physical table from scratch. Pick a preset (Content / Taxonomy / People / Blank) and configure scope toggles.
               </span>
             </div>
@@ -611,22 +605,19 @@ function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt }: Create
           <button
             type="button"
             onClick={onPickAdopt}
-            className="card"
-            style={{ padding: 18, textAlign: "left", cursor: "pointer", display: "flex", flexDirection: "column", gap: 10, background: "var(--card)" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "color-mix(in oklch, var(--primary) 50%, var(--border))"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--border)"; }}
+            className="flex cursor-pointer flex-col gap-2.5 rounded-2xl border border-border bg-card p-[18px] text-left text-card-foreground transition-colors hover:border-[color-mix(in_oklch,var(--primary)_50%,var(--border))]"
           >
-            <span style={{ width: 36, height: 36, borderRadius: "var(--radius-lg)", background: "var(--muted)", border: "1px solid var(--border)", display: "grid", placeItems: "center" }}><I.Database size={16} /></span>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <span style={{ fontSize: 13.5, fontWeight: 600 }}>From existing table</span>
-              <span className="muted" style={{ fontSize: 12, lineHeight: 1.45 }}>
+            <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted"><I.Database size={16} /></span>
+            <div className="flex flex-col gap-1">
+              <span className="text-[13.5px] font-semibold">From existing table</span>
+              <span className="text-xs leading-[1.45] text-muted-foreground">
                 Register a table that already exists in your database. No DDL is run on the table — workeros only writes its own metadata.
               </span>
             </div>
           </button>
         </div>
-        <div className="card-section" style={{ borderTop: "1px solid var(--border)", borderBottom: 0, display: "flex", alignItems: "center", gap: 8 }}>
-          <div className="spacer" />
+        <div className="flex items-center gap-2 border-t border-border px-4 py-3.5">
+          <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
         </div>
       </div>

@@ -2,8 +2,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
 import { I } from "../icons";
-import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
+import { Badge, Button, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { i18nApi, settingsApi } from "../api";
@@ -185,7 +193,7 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
                 <TableCell className="sticky left-0 bg-card px-3.5 font-mono text-xs">{r.key}</TableCell>
                 {locales.map((l) => (
                   <TableCell key={l} className="p-0">
-                    <input value={r[l] || ""} onChange={(e) => update(r.key, l, e.target.value)} placeholder={l === base ? "" : (r[base] || "—")} className={`w-full border-0 px-3 py-2.5 text-[12.5px] outline-0 ${!r[l] ? "bg-[color-mix(in_oklch,oklch(0.78_0.16_75)_8%,transparent)] text-muted-foreground" : "bg-transparent text-foreground"}`} />
+                    <Input value={r[l] || ""} onChange={(e) => update(r.key, l, e.target.value)} placeholder={l === base ? "" : (r[base] || "—")} className={`h-auto w-full rounded-none border-0 px-3 py-2.5 text-[12.5px] shadow-none focus-visible:ring-0 ${!r[l] ? "bg-[color-mix(in_oklch,oklch(0.78_0.16_75)_8%,transparent)] text-muted-foreground" : "bg-transparent text-foreground"}`} />
                   </TableCell>
                 ))}
               </TableRow>
@@ -239,21 +247,12 @@ function AddTranslationKeyDialog({ base, locales, existingKeys, onClose, onCreat
   };
 
   return (
-    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={onClose}>
-      <div
-        className="relative flex max-h-[min(86vh,720px)] max-w-[92vw] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200 w-[480px]"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="add-i18n-key-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
-          <div className="flex-1">
-            <h2 id="add-i18n-key-title" className="m-0 text-base font-semibold tracking-[-0.01em]">New translation key</h2>
-            <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">Adds a row to <span className="font-mono">i18n_strings</span>. The key is shared across all locales; values are filled per locale.</p>
-          </div>
-          <IconButton icon={I.X} onClick={onClose} title="Close" />
-        </div>
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[480px]">
+        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">New translation key</DialogTitle>
+          <DialogDescription className="text-[12.5px]">Adds a row to <span className="font-mono">i18n_strings</span>. The key is shared across all locales; values are filled per locale.</DialogDescription>
+        </DialogHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground" htmlFor="i18n-new-key">
@@ -313,14 +312,14 @@ function AddTranslationKeyDialog({ base, locales, existingKeys, onClose, onCreat
             </div>
           </div>
         </div>
-        <div className="flex justify-end gap-2 border-t border-border bg-card px-5 py-3">
+        <DialogFooter className="border-t border-border bg-card px-5 py-3">
           <Button variant="ghost" onClick={onClose} disabled={submitting}>Cancel</Button>
           <Button variant="primary" icon={I.Plus} onClick={submit} disabled={!valid || submitting}>
             {submitting ? "Creating…" : "Create key"}
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -351,21 +350,12 @@ function AutoTranslateDialog({ locales, base, data, busy, onClose, onRun }: Auto
   }, [data, target, source, onlyMissing]);
 
   return (
-    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={busy ? undefined : onClose}>
-      <div
-        className="relative flex max-h-[min(86vh,720px)] max-w-[92vw] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200 w-[460px]"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="auto-translate-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
-          <div className="flex-1">
-            <h2 id="auto-translate-title" className="m-0 text-base font-semibold tracking-[-0.01em]">Auto-translate</h2>
-            <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">Translate UI strings using Claude. Requires <span className="font-mono">ANTHROPIC_API_KEY</span> on the server.</p>
-          </div>
-          <IconButton icon={I.X} onClick={onClose} title="Close" disabled={busy} />
-        </div>
+    <Dialog open onOpenChange={(o) => { if (!o && !busy) onClose(); }}>
+      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[460px]">
+        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">Auto-translate</DialogTitle>
+          <DialogDescription className="text-[12.5px]">Translate UI strings using Claude. Requires <span className="font-mono">ANTHROPIC_API_KEY</span> on the server.</DialogDescription>
+        </DialogHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">From</label>
@@ -387,7 +377,7 @@ function AutoTranslateDialog({ locales, base, data, busy, onClose, onRun }: Auto
             <span>Will translate <strong>{Math.min(targetCount, 50)}</strong> key{targetCount === 1 ? "" : "s"}{targetCount > 50 ? ` of ${targetCount} (capped at 50 per run)` : ""}.</span>
           </div>
         </div>
-        <div className="flex justify-end gap-2 border-t border-border bg-card px-5 py-3">
+        <DialogFooter className="border-t border-border bg-card px-5 py-3">
           <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
           <Button
             variant="primary"
@@ -397,9 +387,9 @@ function AutoTranslateDialog({ locales, base, data, busy, onClose, onRun }: Auto
           >
             {busy ? "Translating…" : "Translate"}
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -440,21 +430,12 @@ function ManageLocalesDialog({ locales, defaultLocale, onClose, onSave }: Manage
   };
 
   return (
-    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={onClose}>
-      <div
-        className="relative flex max-h-[min(86vh,720px)] max-w-[92vw] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200 w-[480px]"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="manage-locales-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
-          <div className="flex-1">
-            <h2 id="manage-locales-title" className="m-0 text-base font-semibold tracking-[-0.01em]">Manage locales</h2>
-            <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">Active languages for this workspace. The default is returned by the public API when a requested locale has no string.</p>
-          </div>
-          <IconButton icon={I.X} onClick={onClose} title="Close" />
-        </div>
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[480px]">
+        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">Manage locales</DialogTitle>
+          <DialogDescription className="text-[12.5px]">Active languages for this workspace. The default is returned by the public API when a requested locale has no string.</DialogDescription>
+        </DialogHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
@@ -464,14 +445,16 @@ function ManageLocalesDialog({ locales, defaultLocale, onClose, onSave }: Manage
               {list.map((l) => (
                 <span key={l} className={`inline-flex items-center gap-1 rounded-[6px] border border-border py-0.5 pl-2 pr-1.5 font-mono text-[11px] ${l === def ? "bg-primary text-primary-foreground" : "bg-transparent"}`}>
                   {l}{l === def && " · default"}
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="xs"
                     aria-label={`Remove ${l}`}
                     onClick={() => remove(l)}
                     disabled={list.length <= 1}
-                    className={`inline-flex border-0 bg-transparent p-0 text-inherit ${list.length <= 1 ? "cursor-not-allowed" : "cursor-pointer"}`}
+                    className="size-auto border-0 bg-transparent p-0 text-inherit hover:bg-transparent"
                   >
                     <I.X size={11} />
-                  </button>
+                  </Button>
                 </span>
               ))}
             </div>
@@ -499,13 +482,13 @@ function ManageLocalesDialog({ locales, defaultLocale, onClose, onSave }: Manage
             <div className="text-[11.5px] text-muted-foreground">Used as fallback when the requested locale has no string for a key.</div>
           </div>
         </div>
-        <div className="flex justify-end gap-2 border-t border-border bg-card px-5 py-3">
+        <DialogFooter className="border-t border-border bg-card px-5 py-3">
           <Button variant="ghost" onClick={onClose} disabled={submitting}>Cancel</Button>
           <Button variant="primary" icon={I.Check} onClick={submit} disabled={submitting || list.length === 0}>
             {submitting ? "Saving…" : "Save"}
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

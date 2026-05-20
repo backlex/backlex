@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { I } from "./icons";
 import { type CollectionSchema, type Post } from "./config";
-import { Badge, Button, Checkbox, IconButton, Switch } from "./ui";
+import { Badge, Button, Checkbox, Switch } from "./ui";
 import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
 import {
@@ -11,6 +11,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@workeros/ui/components/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@workeros/ui/components/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@workeros/ui/components/alert-dialog";
 import { cn } from "@workeros/ui/lib/utils";
 import { Select } from "./select";
 import { RelationPicker, FilePicker, MultiFilePicker } from "./relational-pickers";
@@ -862,27 +879,21 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
   const ownerScoped = !!schema?.ownerScoped;
 
   return (
-    <>
-      <div
-        className="fixed inset-0 z-[60] animate-in bg-[oklch(0_0_0/0.32)] fade-in-0 duration-150 dark:bg-[oklch(0_0_0/0.6)]"
-        onClick={onClose}
-      />
-      <div
-        className="fixed bottom-0 right-0 top-0 z-[61] flex w-[min(560px,100vw)] animate-in flex-col border-l border-border bg-card slide-in-from-right duration-200"
-        role="dialog"
-        aria-modal="true"
+    <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <SheetContent
+        side="right"
+        className="w-[min(560px,100vw)] gap-0 border-border bg-card p-0 sm:max-w-none"
       >
-        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
-          <div className="flex-1">
-            <h2 className="m-0 text-base font-semibold tracking-[-0.01em]">{mode === "create" ? `New ${slug || "row"}` : `Edit ${slug || "row"}`}</h2>
-            <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">
-              {mode === "create"
-                ? <>Insert into <span className="font-mono">c_{slug}</span>{ownerScoped ? <>. Owner is set to <span className="font-mono">$user.id</span></> : null}.</>
-                : <>id <span className="font-mono">{(initial as { id?: string })?.id}</span></>}
-            </p>
-          </div>
-          <IconButton icon={I.X} onClick={onClose} title="Close" />
-        </div>
+        <SheetHeader className="flex flex-col gap-0.5 border-b border-border px-5 pb-3.5 pr-12 pt-[18px]">
+          <SheetTitle className="text-base font-semibold tracking-[-0.01em]">
+            {mode === "create" ? `New ${slug || "row"}` : `Edit ${slug || "row"}`}
+          </SheetTitle>
+          <SheetDescription className="text-[12.5px] text-muted-foreground">
+            {mode === "create"
+              ? <>Insert into <span className="font-mono">c_{slug}</span>{ownerScoped ? <>. Owner is set to <span className="font-mono">$user.id</span></> : null}.</>
+              : <>id <span className="font-mono">{(initial as { id?: string })?.id}</span></>}
+          </SheetDescription>
+        </SheetHeader>
 
         {mode === "edit" && (
           <div className="flex gap-0.5 border-b border-border bg-card px-3.5">
@@ -1001,8 +1012,8 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
             </div>
           )}
         </div>
-      </div>
-    </>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -1017,26 +1028,23 @@ export interface ConfirmDialogProps {
 }
 
 export function ConfirmDialog({ open, title, description, actionLabel = "Confirm", destructive, onConfirm, onCancel }: ConfirmDialogProps) {
-  if (!open) return null;
   return (
-    <>
-      <div
-        className="fixed inset-0 z-[60] animate-in bg-[oklch(0_0_0/0.32)] fade-in-0 duration-150 dark:bg-[oklch(0_0_0/0.6)]"
-        onClick={onCancel}
-      />
-      <div
-        className="fixed left-1/2 top-1/2 z-[71] flex w-[min(440px,92vw)] -translate-x-1/2 -translate-y-1/2 animate-in flex-col gap-4 rounded-2xl border border-border bg-popover px-[22px] pb-[18px] pt-[22px] shadow-[0_20px_70px_-10px_oklch(0_0_0/0.4)] fade-in-0 zoom-in-95 duration-150"
-        role="alertdialog"
-      >
-        <div>
-          <h3 className="m-0 text-base font-semibold tracking-[-0.01em]">{title}</h3>
-          <p className="m-0 mt-2 text-[13px] leading-[1.5] text-muted-foreground">{description}</p>
-        </div>
-        <div className="flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
-          <Button variant={destructive ? "destructive" : "primary"} size="sm" onClick={onConfirm}>{actionLabel}</Button>
-        </div>
-      </div>
-    </>
+    <AlertDialog open={open} onOpenChange={(o) => { if (!o) onCancel?.(); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          {description ? <AlertDialogDescription>{description}</AlertDialogDescription> : null}
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            className={destructive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : undefined}
+          >
+            {actionLabel}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

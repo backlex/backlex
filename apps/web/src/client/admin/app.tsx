@@ -48,7 +48,7 @@ import { useCollections, useMetricsOverview } from "./queries";
 import { api } from "@/lib/api";
 import { useUrlState, useUrlStateJson } from "@/lib/use-url-state";
 import { useTheme } from "@/components/theme-provider";
-import { useIsMobile } from "@workeros/ui/hooks/use-mobile";
+import { SidebarInset, SidebarProvider } from "@workeros/ui/components/sidebar";
 import { StoragePage } from "./storage";
 import {
   ActivityPage,
@@ -154,14 +154,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   const activeNav = segs[0] && NAV_IDS.has(segs[0]) ? segs[0] : initialNav;
   const setActiveNav = useCallback((id: string) => { navigate("/" + id); }, [navigate]);
 
-  // Mobile off-canvas sidebar. Below 768px the sidebar is a drawer that slides
-  // over the content; the topbar toggle opens/closes it instead of toggling the
-  // desktop icon-rail collapse.
-  const isMobile = useIsMobile();
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  useEffect(() => { setMobileNavOpen(false); }, [location.pathname]);
-  useEffect(() => { if (!isMobile) setMobileNavOpen(false); }, [isMobile]);
-  const navTo = useCallback((id: string) => { navigate("/" + id); setMobileNavOpen(false); }, [navigate]);
+  const navTo = useCallback((id: string) => { navigate("/" + id); }, [navigate]);
   const [activeTab, setActiveTab] = useState<"items" | "schema" | "settings">("items");
   const [posts, setPosts] = useState<Post[]>([]);
   // Real items load — see effect after activeCollection is declared.
@@ -646,11 +639,15 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   };
 
   return (
-    <div className="app" data-collapsed={tweaks.sidebarCollapsed} data-density={tweaks.density} data-mobile-open={mobileNavOpen}>
-      <Sidebar activeNav={activeNav} setActiveNav={navTo} collapsed={tweaks.sidebarCollapsed} pushToast={pushToast} collectionsCount={collections.length} />
-      {mobileNavOpen && <div className="sidebar-backdrop" onClick={() => setMobileNavOpen(false)} />}
+    <SidebarProvider
+      open={!tweaks.sidebarCollapsed}
+      onOpenChange={(o) => setTweak("sidebarCollapsed", !o)}
+      className="h-svh"
+      data-density={tweaks.density}
+    >
+      <Sidebar activeNav={activeNav} setActiveNav={navTo} pushToast={pushToast} collectionsCount={collections.length} />
 
-      <div className="main">
+      <SidebarInset className="min-h-0 min-w-0">
         <Topbar
           crumbs={
             activeNav === "collections" && activeCollection
@@ -662,10 +659,6 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
           onOpenPalette={() => setPaletteOpen(true)}
           onToggleTheme={toggleDark}
           dark={dark}
-          onToggleSidebar={() => {
-            if (isMobile) setMobileNavOpen((v) => !v);
-            else setTweak("sidebarCollapsed", !tweaks.sidebarCollapsed);
-          }}
           onSignOut={onSignOut}
           user={me}
           onAccountSettings={() => navigate("/account")}
@@ -986,7 +979,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             </Suspense>
           </div>
         </div>
-      </div>
+      </SidebarInset>
 
       <ItemSheet open={sheetOpen} mode={sheetMode} initial={sheetItem} schema={schemaState} onClose={() => setSheetOpen(false)} onSave={onSave} />
       <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onNavigate={onPaletteSelect} items={posts} collections={collections} />
@@ -1061,7 +1054,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
         setAddFieldOpen(false);
       }} />
       {toastNode}
-    </div>
+    </SidebarProvider>
   );
 }
 

@@ -334,7 +334,7 @@ body {
 .card-section:last-child { border-bottom: none; }
 
 /* ─── Filter bar ─── */
-.filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
 /* `.search-input` was dropped during the shadcn migration — every search
    field now uses InputGroup + InputGroupAddon + InputGroupInput from
    @workeros/ui/components/input-group. */
@@ -666,22 +666,6 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .schema-row .name { font-family: 'Geist Mono', monospace; font-size: 12.5px; }
 .schema-row .grip { color: var(--muted-foreground); cursor: grab; }
 
-.alter-preview {
-  background: oklch(from var(--primary) 0.18 0.01 h);
-  color: oklch(from var(--primary) 0.95 0.02 h);
-  font-family: 'Geist Mono', monospace;
-  font-size: 12px;
-  line-height: 1.55;
-  padding: 14px;
-  border-radius: var(--radius-xl);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.alter-preview .kw { color: oklch(0.78 0.18 95); }
-.alter-preview .ident { color: oklch(0.85 0.13 200); }
-.alter-preview .str { color: oklch(from var(--primary) 0.85 0.13 h); }
-.alter-preview .comment { color: oklch(from var(--primary) 0.6 0.02 h); font-style: italic; }
-
 /* ─── Cmd+K palette ─── */
 .palette {
   position: fixed;
@@ -893,229 +877,6 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   display: flex; align-items: center; gap: 8px;
   background: color-mix(in oklch, var(--muted) 30%, var(--card));
 }
-
-/* Storage dropzone */
-.dropzone {
-  display: flex; align-items: center; gap: 14px;
-  padding: 16px 18px;
-  border: 1.5px dashed var(--border);
-  border-radius: var(--radius-2xl);
-  background: color-mix(in oklch, var(--muted) 22%, var(--card));
-  cursor: pointer;
-  transition: all 120ms ease;
-}
-.dropzone:hover {
-  border-color: color-mix(in oklch, var(--primary) 50%, var(--border));
-  background: var(--muted);
-}
-.dropzone.is-over {
-  border-color: var(--primary);
-  border-style: solid;
-  background: var(--muted);
-  transform: scale(1.005);
-}
-.dropzone-icon {
-  width: 40px; height: 40px;
-  display: grid; place-items: center;
-  border-radius: var(--radius-xl);
-  background: var(--muted);
-  color: var(--primary);
-  flex-shrink: 0;
-}
-.dropzone-hint {
-  font-size: 11px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  color: var(--muted-foreground);
-}
-
-/* Image preview area + before/after compare */
-.img-preview {
-  position: relative;
-  background: repeating-conic-gradient(var(--muted) 0% 25%, var(--background) 0% 50%) 50% / 16px 16px;
-  overflow: hidden;
-  display: grid; place-items: center;
-}
-.img-label {
-  position: absolute;
-  font-family: var(--font-mono); font-size: 10.5px;
-  padding: 3px 8px;
-  background: oklch(0 0 0 / 0.6);
-  color: white;
-  border-radius: 999px;
-  letter-spacing: 0.04em;
-  pointer-events: none;
-}
-.compare-track {
-  position: absolute; inset: 0;
-  pointer-events: none;
-}
-.compare-track input[type="range"] {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-  -webkit-appearance: none; appearance: none;
-  background: transparent;
-  margin: 0;
-  pointer-events: auto;
-  cursor: ew-resize;
-}
-.compare-track input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none; appearance: none;
-  width: 4px; height: 100%;
-  background: transparent;
-  cursor: ew-resize;
-}
-.compare-track input[type="range"]::-moz-range-thumb {
-  width: 4px; height: 100%;
-  background: transparent; border: 0;
-  cursor: ew-resize;
-}
-.compare-handle {
-  position: absolute; top: 0; bottom: 0;
-  width: 2px;
-  background: white;
-  box-shadow: 0 0 0 1px oklch(0 0 0 / 0.3);
-  transform: translateX(-1px);
-  pointer-events: none;
-}
-.compare-handle span {
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 28px; height: 28px;
-  transform: translate(-50%, -50%);
-  border-radius: 999px;
-  background: white;
-  box-shadow: 0 2px 8px oklch(0 0 0 / 0.3);
-  display: grid; place-items: center;
-}
-.compare-handle span::before,
-.compare-handle span::after {
-  content: '';
-  position: absolute;
-  top: 50%; transform: translateY(-50%);
-  border: 4px solid transparent;
-}
-.compare-handle span::before {
-  left: 6px;
-  border-right-color: oklch(0.4 0 0);
-}
-.compare-handle span::after {
-  right: 6px;
-  border-left-color: oklch(0.4 0 0);
-}
-
-/* Focal pin */
-.focal-pin {
-  position: absolute;
-  width: 18px; height: 18px;
-  border-radius: 999px;
-  background: white;
-  border: 2px solid oklch(0.55 0.22 22);
-  box-shadow: 0 2px 6px oklch(0 0 0 / 0.4);
-  pointer-events: none;
-  display: grid; place-items: center;
-}
-.focal-pin span {
-  width: 4px; height: 4px;
-  border-radius: 999px;
-  background: oklch(0.55 0.22 22);
-}
-
-/* Focal-point picker grid */
-.focal-grid {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  cursor: crosshair;
-  border: 1px solid var(--border);
-}
-.focal-grid-overlay {
-  position: absolute; inset: 0;
-  background-image:
-    linear-gradient(to right, oklch(1 0 0 / 0.3) 1px, transparent 1px),
-    linear-gradient(to bottom, oklch(1 0 0 / 0.3) 1px, transparent 1px);
-  background-size: 33.33% 33.33%;
-  background-position: 0 0;
-}
-.focal-anchor {
-  position: absolute;
-  width: 12px; height: 12px;
-  transform: translate(-50%, -50%);
-  border-radius: 999px;
-  background: oklch(1 0 0 / 0.6);
-  border: 1.5px solid oklch(0 0 0 / 0.4);
-  cursor: pointer;
-  padding: 0;
-}
-.focal-anchor:hover { background: white; }
-.focal-anchor.on {
-  background: oklch(0.55 0.22 22);
-  border-color: white;
-}
-
-/* Segmented control (format / fit) */
-.seg {
-  display: inline-flex;
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  background: var(--card);
-}
-.seg button {
-  flex: 1;
-  padding: 6px 8px;
-  background: transparent;
-  border: 0; cursor: pointer;
-  font-size: 11.5px;
-  color: var(--muted-foreground);
-}
-.seg button + button { border-left: 1px solid var(--border); }
-.seg button:hover { color: var(--foreground); }
-.seg button.on {
-  background: var(--primary);
-  color: var(--primary-foreground);
-}
-.seg button.on .muted { color: color-mix(in oklch, var(--primary-foreground) 75%, transparent) !important; }
-
-/* Width preset chips */
-.size-chip {
-  flex: 1;
-  padding: 4px 0;
-  font-family: var(--font-mono); font-size: 10.5px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--muted-foreground);
-  cursor: pointer;
-}
-.size-chip:hover { color: var(--foreground); }
-.size-chip.on {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border-color: var(--primary);
-}
-
-.size-readout {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: color-mix(in oklch, var(--muted) 25%, var(--card));
-  font-size: 12px;
-}
-
-.link-btn {
-  background: none; border: 0;
-  color: var(--muted-foreground);
-  font-size: 11px; cursor: pointer;
-  padding: 0;
-}
-.link-btn:hover { color: var(--foreground); text-decoration: underline; }
 
 /* ─── In-panel section tabs ─── (underline strip; used inside the condition /
    permission editor sheet. The colored underline overlaps the strip's bottom
@@ -1888,56 +1649,6 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 }
 .input-affix > input::placeholder { color: var(--muted-foreground); opacity: 0.7; }
 
-/* Storage folder rail */
-.folder-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 6px 8px 6px 0;
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-md);
-  font: inherit;
-  font-size: 12.5px;
-  color: var(--foreground);
-  cursor: pointer;
-  text-align: left;
-  min-width: 0;
-}
-.folder-row:hover { background: var(--accent); }
-.folder-row.active { background: var(--accent); color: var(--foreground); font-weight: 500; }
-.folder-row.active .muted { color: var(--foreground); }
-.folder-row-main {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
-  background: transparent;
-  border: 0;
-  font: inherit;
-  font-size: inherit;
-  color: inherit;
-  cursor: pointer;
-  text-align: left;
-  padding: 0;
-}
-.folder-caret {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  background: transparent;
-  border: 0;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  flex-shrink: 0;
-  padding: 0;
-}
-.folder-caret:hover { color: var(--foreground); }
-
 /* Webhook editor */
 .wh-events {
   display: grid;
@@ -1969,40 +1680,10 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 }
 
 /* ─── Responsive helpers ─── */
-/* Horizontal-scroll wrapper for fixed-width tables / grid "tables" so they
-   never push the page wider than the viewport. */
-.table-scroll {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-/* Master/detail two-pane layout — fixed-width aside + fluid content; stacks on
-   narrow screens. Override the aside width with `style="--md-aside: 320px"`. */
-.master-detail {
-  display: grid;
-  grid-template-columns: var(--md-aside, 280px) minmax(0, 1fr);
-  gap: 14px;
-  align-items: start;
-}
-/* Three-pane (list / list / detail) layout — stacks earlier since it needs
-   more room. */
-.master-detail-3 {
-  display: grid;
-  grid-template-columns: var(--md-a, 280px) var(--md-b, 220px) minmax(0, 1fr);
-  gap: 14px;
-  align-items: start;
-}
 /* Equal-column field rows that collapse to a single column on phones. */
 .cols-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .cols-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 
-@media (max-width: 1024px) {
-  .master-detail-3 { grid-template-columns: minmax(0, 1fr); }
-}
-@media (max-width: 900px) {
-  .master-detail { grid-template-columns: minmax(0, 1fr); }
-}
 @media (max-width: 640px) {
   .cols-2, .cols-3 { grid-template-columns: minmax(0, 1fr); }
 }
@@ -2061,12 +1742,11 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   .tabs .tab { flex: 0 0 auto; }
 
   .split { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .filter-bar { gap: 6px; }
+  
 
   /* Multi-column tables / grid "tables" stay readable and scroll horizontally
      instead of squishing into the viewport. */
-  .table-scroll .table,
-  .table-scroll .schema-row { min-width: 540px; }
+  
 
   /* Wide internal grids → horizontal scroll instead of viewport overflow. */
   .pm-grid-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -2079,35 +1759,6 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 
 @media (max-width: 560px) {
   .users-stats { grid-template-columns: minmax(0, 1fr); }
-}
-
-/* ─── Storage page mobile sticky fix ───
-   The Storage page's Folders panel uses inline `position: sticky; top: 12;
-   maxHeight: calc(100vh - 160px)` so it stays visible alongside the files
-   list on desktop. When `.master-detail` collapses to a single column at
-   <=900px, that sticky+max-height combo turns the Folders panel into a
-   near-viewport-height block that pins to the top of the page and visually
-   overlaps the Files card stacked below it (the inner scroll area also
-   keeps the folder list cramped behind the sticky search header, creating
-   the "content bleeding through" effect).
-
-   On mobile we want the Folders panel to flow normally above the Files
-   card with a sensible bounded height — no sticking, no full-viewport
-   stretch. Scoped via `.storage-master-detail` so other pages that use
-   `.master-detail` (pages.tsx, parity/*.tsx) are unaffected. The inline
-   styles on the panel mean we need `!important` to win the cascade. */
-@media (max-width: 900px) {
-  .storage-master-detail > .card:first-child {
-    position: static !important;
-    top: auto !important;
-    max-height: none !important;
-  }
-  /* Cap the inner scroll viewport so the folder list keeps a tidy height
-     on phones instead of expanding to fit every folder. The selector
-     targets the third child of the Folders card (header, filter, list). */
-  .storage-master-detail > .card:first-child > div:nth-child(3) {
-    max-height: 320px !important;
-  }
 }
 
 /* ─── REST Explorer + OpenAPI responsive ─── */
@@ -2466,196 +2117,6 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 }
 .graph-canvas svg { min-width: 1100px; }
 .edge.on path { opacity: 1 !important; stroke: var(--primary) !important; }
-
-/* ─────────────────────────────────────────────────────────── */
-/* Items view modes (parity v2) */
-/* ─────────────────────────────────────────────────────────── */
-.view-toggle {
-  display: inline-flex;
-  border: 1px solid var(--border);
-  background: var(--card);
-  border-radius: var(--radius-2xl);
-  padding: 3px;
-  gap: 2px;
-}
-.view-toggle-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 11px;
-  border-radius: var(--radius-3xl);
-  border: 0;
-  background: transparent;
-  color: var(--muted-foreground);
-  font-size: 12px;
-  cursor: pointer;
-  font-family: inherit;
-}
-.view-toggle-btn:hover { color: var(--foreground); }
-.view-toggle-btn.on { background: var(--muted); color: var(--foreground); }
-
-/* Kanban */
-.kanban {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(220px, 1fr));
-  gap: 14px;
-  padding: 14px;
-}
-.kb-col {
-  background: color-mix(in oklch, var(--muted) 40%, var(--card));
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  display: flex; flex-direction: column;
-  min-height: 240px;
-}
-.kb-col-head {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-}
-.kb-col-title { font-size: 12.5px; font-weight: 500; text-transform: capitalize; }
-.kb-col-count {
-  font-size: 10.5px;
-  padding: 1px 6px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--muted-foreground);
-}
-.kb-list { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
-.kb-empty {
-  font-size: 11.5px;
-  color: var(--muted-foreground);
-  padding: 22px 0;
-  text-align: center;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius-lg);
-}
-.kb-card {
-  display: flex; flex-direction: column; gap: 6px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 10px 12px;
-  text-align: left;
-  cursor: pointer;
-  font-family: inherit;
-  color: var(--foreground);
-  transition: border-color 120ms, transform 120ms;
-}
-.kb-card:hover { border-color: color-mix(in oklch, var(--foreground) 22%, var(--border)); }
-.kb-card-title { font-size: 12.5px; font-weight: 500; line-height: 1.3; }
-.kb-card-meta { font-size: 11px; color: var(--muted-foreground); }
-.kb-card-foot { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
-.avatar-xs {
-  width: 18px; height: 18px;
-  font-size: 9.5px;
-  font-family: 'Geist Mono', monospace;
-  background: var(--muted);
-  color: var(--muted-foreground);
-  border-radius: 999px;
-  display: grid; place-items: center;
-  border: 1px solid var(--border);
-}
-
-/* Gallery */
-.gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 14px;
-  padding: 14px;
-}
-.gal-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  text-align: left;
-  cursor: pointer;
-  font-family: inherit;
-  color: var(--foreground);
-  overflow: hidden;
-  display: flex; flex-direction: column;
-  transition: border-color 120ms;
-}
-.gal-card:hover { border-color: color-mix(in oklch, var(--foreground) 22%, var(--border)); }
-.gal-thumb {
-  aspect-ratio: 16 / 10;
-  position: relative;
-  display: grid; place-items: end start;
-  padding: 10px;
-}
-.gal-thumb-label {
-  font-size: 10.5px;
-  background: color-mix(in oklch, var(--background) 65%, transparent);
-  color: var(--foreground);
-  padding: 2px 8px;
-  border-radius: var(--radius-md);
-  backdrop-filter: blur(4px);
-}
-.gal-meta { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
-.gal-title { font-size: 12.5px; font-weight: 500; line-height: 1.3; }
-.gal-sub { display: flex; align-items: center; gap: 8px; }
-
-/* Calendar */
-.cal { padding: 14px; }
-.cal-head { display: flex; align-items: center; gap: 8px; padding: 0 4px 12px; }
-.cal-nav-btn {
-  display: inline-grid; place-items: center;
-  width: 24px; height: 24px;
-  border-radius: var(--radius-md);
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--foreground);
-  cursor: pointer;
-}
-.cal-nav-btn:hover { background: var(--accent); }
-.cal-weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--muted-foreground);
-  padding: 0 4px 6px;
-}
-.cal-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-}
-.cal-cell {
-  min-height: 92px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 6px;
-  display: flex; flex-direction: column; gap: 4px;
-}
-.cal-cell.empty { background: transparent; border-color: transparent; }
-.cal-day {
-  font-size: 11px;
-  color: var(--muted-foreground);
-}
-.cal-events { display: flex; flex-direction: column; gap: 3px; min-height: 0; }
-.cal-evt {
-  display: flex; align-items: center; gap: 5px;
-  padding: 3px 6px;
-  background: var(--muted);
-  border-radius: var(--radius-sm);
-  border: 0;
-  cursor: pointer;
-  font-family: inherit;
-  text-align: left;
-  font-size: 10.5px;
-  color: var(--foreground);
-  overflow: hidden;
-}
-.cal-evt:hover { background: var(--accent); }
-.cal-evt-dot { width: 5px; height: 5px; border-radius: 999px; background: var(--muted-foreground); flex-shrink: 0; }
-.cal-evt-published .cal-evt-dot { background: var(--primary); }
-.cal-evt-review .cal-evt-dot { background: oklch(0.7 0.18 70); }
-.cal-evt-draft .cal-evt-dot { background: var(--muted-foreground); }
-.cal-evt-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cal-more { font-size: 10px; color: var(--muted-foreground); padding-left: 6px; }
 
 /* ─────────────────────────────────────────────────────────── */
 /* Notifications bell (parity v2) */

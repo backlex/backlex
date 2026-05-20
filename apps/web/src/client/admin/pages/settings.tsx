@@ -175,7 +175,7 @@ function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
 }
 
 const PRIMARY_PRESETS: { label: string; value: string }[] = [
-  { label: "Lime", value: "oklch(0.841 0.238 128.85)" },
+  { label: "Default", value: "" },
   { label: "Emerald", value: "oklch(0.78 0.21 155)" },
   { label: "Teal", value: "oklch(0.78 0.14 185)" },
   { label: "Cyan", value: "oklch(0.78 0.16 210)" },
@@ -459,7 +459,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
                 disabled={loading}
                 onClick={() => commitPrimary(p.value)}
                 className={`size-7 rounded-full border border-border p-0 ${loading ? "cursor-default" : "cursor-pointer"} ${active ? "shadow-[0_0_0_2px_var(--background),0_0_0_4px_var(--foreground)]" : ""}`}
-                style={{ background: p.value }}
+                style={{ background: p.value || "var(--primary)" }}
               />
             );
           })}

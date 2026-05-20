@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@workeros/ui/components/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
+import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { activityApi, type ApiActivity } from "../api";
 
 const ADMIN_TABLE_CLS =
@@ -81,11 +82,13 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
         URL.revokeObjectURL(url);
         pushToast("Exported as activity.csv.");
       }}>Export</Button>} />
-      <div className="flex flex-wrap items-center gap-2">
-        {["all", "item", "auth", "schema", "role", "storage", "flow", "function", "webhook", "backup"].map((k) => (
-          <button key={k} className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border px-[11px] text-[12.5px] text-foreground hover:bg-accent ${filter === k ? "border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent" : "border-border bg-card"}`} onClick={() => setFilter(k)}>{k} <span className="tabular-nums text-muted-foreground">{k === "all" ? events.length : events.filter((e) => e.action.startsWith(k)).length}</span></button>
-        ))}
-      </div>
+      <Tabs value={filter} onValueChange={(v) => setFilter(v)}>
+        <TabsList className="flex-wrap">
+          {["all", "item", "auth", "schema", "role", "storage", "flow", "function", "webhook", "backup"].map((k) => (
+            <TabsTrigger key={k} value={k}>{k} <span className="tabular-nums text-muted-foreground">{k === "all" ? events.length : events.filter((e) => e.action.startsWith(k)).length}</span></TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
       <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
         <Table className={ADMIN_TABLE_CLS}>
           <TableHeader><TableRow><TableHead className="w-[160px] whitespace-nowrap">Time</TableHead><TableHead className="w-[90px] text-right">Duration</TableHead><TableHead className="w-[140px]">Action</TableHead><TableHead>Resource</TableHead><TableHead>Diff</TableHead><TableHead className="w-[130px]">IP</TableHead></TableRow></TableHeader>

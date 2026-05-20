@@ -14,6 +14,7 @@ import { I } from "../icons";
 import { Badge, Button, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
+import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { i18nApi, settingsApi } from "../api";
 import { I18N_KEY_PATTERN } from "./_shared";
 
@@ -150,8 +151,12 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[11.5px] text-muted-foreground">base</span>
         <Select value={base} onChange={setBase} options={[...locales]} />
-        <button className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border px-[11px] text-[12.5px] text-foreground hover:bg-accent ${showOnly === "all" ? "border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent" : "border-border bg-card"}`} onClick={() => setShowOnly("all")}>All ({data.length})</button>
-        <button className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border px-[11px] text-[12.5px] text-foreground hover:bg-accent ${showOnly === "missing" ? "border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent" : "border-border bg-card"}`} onClick={() => setShowOnly("missing")}>Missing ({data.filter((r) => locales.some((l) => !r[l])).length})</button>
+        <Tabs value={showOnly} onValueChange={(v) => setShowOnly(v)}>
+          <TabsList>
+            <TabsTrigger value="all">All ({data.length})</TabsTrigger>
+            <TabsTrigger value="missing">Missing ({data.filter((r) => locales.some((l) => !r[l])).length})</TabsTrigger>
+          </TabsList>
+        </Tabs>
         <div className="ml-auto">
           <Button variant="outline" icon={I.Globe} onClick={() => setManageOpen(true)}>Manage locales</Button>
         </div>

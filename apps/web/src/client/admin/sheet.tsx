@@ -15,6 +15,7 @@ import {
 import { cn } from "@workeros/ui/lib/utils";
 import { Select } from "./select";
 import { RelationPicker, FilePicker, MultiFilePicker } from "./relational-pickers";
+import { ItemCommentsPanel } from "./item-collaboration";
 
 export interface ItemSheetProps {
   open: boolean;
@@ -102,6 +103,10 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
+  // Collaboration tab only renders in edit mode; create mode keeps the
+  // single-section layout. Reset to "fields" every time the sheet opens.
+  const [activeTab, setActiveTab] = useState<"fields" | "collab">("fields");
+  useEffect(() => { if (open) setActiveTab("fields"); }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -874,22 +879,57 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
           <IconButton icon={I.X} onClick={onClose} title="Close" />
         </div>
 
-        <div className="sheet-body" onKeyDown={onBodyKeyDown}>
-          {fields.length === 0 && (
-            <div className="muted" style={{ fontSize: 13, padding: 12, background: "var(--muted)", borderRadius: "var(--radius-xl)" }}>
-              No editable fields. Add columns from the Schema tab to capture data on this collection.
-            </div>
-          )}
-          {fields.map(renderField)}
-
-          <div className="field" style={{ background: "var(--muted)", padding: 12, borderRadius: "var(--radius-xl)" }}>
-            <div className="field-label" style={{ marginBottom: 6 }}>system fields</div>
-            <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 12, color: "var(--muted-foreground)" }}>
-              <div><span className="font-mono">id</span>: {mode === "create" ? <span className="font-mono">gen_uuid()</span> : <span className="font-mono">{(initial as { id?: string })?.id}</span>}</div>
-              {ownerScoped && <div><span className="font-mono">owner_id</span>: <span className="font-mono">$user.id</span></div>}
-              <div><span className="font-mono">updated_at</span>: <span className="font-mono">now()</span></div>
-            </div>
+        {mode === "edit" && (
+          <div
+            style={{
+              display: "flex",
+              gap: 2,
+              padding: "0 14px",
+              borderBottom: "1px solid var(--border)",
+              background: "var(--card)",
+            }}
+          >
+            <button
+              type="button"
+              className={`sheet-tab ${activeTab === "fields" ? "on" : ""}`}
+              onClick={() => setActiveTab("fields")}
+            >
+              <I.Braces size={12} /> Fields
+              <span className="font-mono" style={{ fontSize: 10.5, color: "var(--muted-foreground)" }}>
+                {fields.length}
+              </span>
+            </button>
+            <button
+              type="button"
+              className={`sheet-tab ${activeTab === "collab" ? "on" : ""}`}
+              onClick={() => setActiveTab("collab")}
+            >
+              <I.MessageSquare size={12} /> Collaboration
+            </button>
           </div>
+        )}
+
+        <div className="sheet-body" onKeyDown={onBodyKeyDown}>
+          {activeTab === "fields" && (
+            <>
+              {fields.length === 0 && (
+                <div className="muted" style={{ fontSize: 13, padding: 12, background: "var(--muted)", borderRadius: "var(--radius-xl)" }}>
+                  No editable fields. Add columns from the Schema tab to capture data on this collection.
+                </div>
+              )}
+              {fields.map(renderField)}
+
+              <div className="field" style={{ background: "var(--muted)", padding: 12, borderRadius: "var(--radius-xl)" }}>
+                <div className="field-label" style={{ marginBottom: 6 }}>system fields</div>
+                <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 12, color: "var(--muted-foreground)" }}>
+                  <div><span className="font-mono">id</span>: {mode === "create" ? <span className="font-mono">gen_uuid()</span> : <span className="font-mono">{(initial as { id?: string })?.id}</span>}</div>
+                  {ownerScoped && <div><span className="font-mono">owner_id</span>: <span className="font-mono">$user.id</span></div>}
+                  <div><span className="font-mono">updated_at</span>: <span className="font-mono">now()</span></div>
+                </div>
+              </div>
+            </>
+          )}
+          {mode === "edit" && activeTab === "collab" && <ItemCommentsPanel />}
         </div>
 
         <div className="sheet-footer">

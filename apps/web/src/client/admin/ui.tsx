@@ -5,7 +5,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ButtonHTMLAttributes,
   type CSSProperties,
@@ -40,6 +39,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@workeros/ui/components/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workeros/ui/components/popover";
 
 export function formatJson(value: unknown): string {
   try {
@@ -324,50 +328,40 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
       color: PALETTE_FALLBACK[0],
     };
 
-  useEffect(() => {
-    if (!wsOpen) return;
-    const close = (e: MouseEvent | Event) => {
-      const target = e.target as HTMLElement | null;
-      if (!target?.closest(".ws-wrap")) setWsOpen(false);
-    };
-    document.addEventListener("click", close as EventListener);
-    return () => document.removeEventListener("click", close as EventListener);
-  }, [wsOpen]);
-
   return (
     <aside className="sidebar">
-      <div className="ws-wrap" style={{ position: "relative" }}>
-        <button className="brand ws-trigger" onClick={() => setWsOpen((v) => !v)} type="button">
-          <BrandMark />
-          <div className="brand-text">
-            <b>{tenant.name}</b>
-            <span>{tenant.project} · {tenant.branch}</span>
-          </div>
-          <I.ChevronDown size={12} className="ws-chev" />
-        </button>
-        {wsOpen && (
-          <div className="ws-pop">
-            <div className="ws-pop-head">
-              <span className="muted">Workspaces</span>
-              <span className="font-mono muted" style={{ fontSize: 10.5 }}>{tenants.length}</span>
+      <Popover open={wsOpen} onOpenChange={setWsOpen}>
+        <PopoverTrigger asChild>
+          <button className="brand ws-trigger" type="button">
+            <BrandMark />
+            <div className="brand-text">
+              <b>{tenant.name}</b>
+              <span>{tenant.project} · {tenant.branch}</span>
             </div>
-            {tenants.map((t) => (
-              <button key={t.id} type="button" className={`ws-opt ${t.id === tenantId ? "on" : ""}`} onClick={() => void switchTenant(t.id)}>
-                <span className="ws-mark" style={{ background: t.color }}>{t.mark}</span>
-                <span className="ws-meta">
-                  <span className="ws-name">{t.name}</span>
-                  <span className="ws-sub font-mono">{t.project} · {t.branch} · {t.env}</span>
-                </span>
-                {t.id === tenantId && <I.Check size={12} />}
-              </button>
-            ))}
-            <div className="ws-pop-foot">
-              <button type="button" className="ws-foot-btn" onClick={() => { setWsOpen(false); setNewWsOpen(true); }}><I.Plus size={12} /> New workspace</button>
-              <button type="button" className="ws-foot-btn" onClick={() => { setWsOpen(false); setActiveNav?.("settings"); }}><I.Settings size={12} /> Manage</button>
-            </div>
+            <I.ChevronDown size={12} className="ws-chev" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="start" sideOffset={4} className="w-[260px] gap-0 rounded-xl p-1.5">
+          <div className="ws-pop-head">
+            <span className="muted">Workspaces</span>
+            <span className="font-mono muted" style={{ fontSize: 10.5 }}>{tenants.length}</span>
           </div>
-        )}
-      </div>
+          {tenants.map((t) => (
+            <button key={t.id} type="button" className={`ws-opt ${t.id === tenantId ? "on" : ""}`} onClick={() => void switchTenant(t.id)}>
+              <span className="ws-mark" style={{ background: t.color }}>{t.mark}</span>
+              <span className="ws-meta">
+                <span className="ws-name">{t.name}</span>
+                <span className="ws-sub font-mono">{t.project} · {t.branch} · {t.env}</span>
+              </span>
+              {t.id === tenantId && <I.Check size={12} />}
+            </button>
+          ))}
+          <div className="ws-pop-foot">
+            <button type="button" className="ws-foot-btn" onClick={() => { setWsOpen(false); setNewWsOpen(true); }}><I.Plus size={12} /> New workspace</button>
+            <button type="button" className="ws-foot-btn" onClick={() => { setWsOpen(false); setActiveNav?.("settings"); }}><I.Settings size={12} /> Manage</button>
+          </div>
+        </PopoverContent>
+      </Popover>
 
       <div className="sidebar-scroll">
         <div className="sidebar-section-label">Workspace</div>
@@ -378,11 +372,11 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
             // (currently empty) static `badge` field on the nav definition.
             const liveBadge = it.id === "collections" ? collectionsCount : it.badge;
             return (
-              <div key={it.id} className="nav-item" data-active={activeNav === it.id} onClick={() => setActiveNav(it.id)}>
+              <button type="button" key={it.id} className="nav-item" data-active={activeNav === it.id} onClick={() => setActiveNav(it.id)}>
                 {IconComp && <IconComp size={15} />}
                 <span className="nav-label">{it.label}</span>
                 {liveBadge != null && <span className="nav-end tabular-nums">{liveBadge}</span>}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -392,10 +386,10 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
           {developers.map((it) => {
             const IconComp = (I as Record<string, IconComponent>)[it.icon as IconKey];
             return (
-              <div key={it.id} className="nav-item" data-active={activeNav === it.id} onClick={() => setActiveNav(it.id)}>
+              <button type="button" key={it.id} className="nav-item" data-active={activeNav === it.id} onClick={() => setActiveNav(it.id)}>
                 {IconComp && <IconComp size={15} />}
                 <span className="nav-label">{it.label}</span>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -405,10 +399,10 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
           {settings.map((it) => {
             const IconComp = (I as Record<string, IconComponent>)[it.icon as IconKey];
             return (
-              <div key={it.id} className="nav-item" data-active={activeNav === it.id} onClick={() => setActiveNav(it.id)}>
+              <button type="button" key={it.id} className="nav-item" data-active={activeNav === it.id} onClick={() => setActiveNav(it.id)}>
                 {IconComp && <IconComp size={15} />}
                 <span className="nav-label">{it.label}</span>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -542,7 +536,6 @@ export function NotificationsBell() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread">("all");
-  const wrapRef = useRef<HTMLDivElement | null>(null);
 
   const listQuery = useNotifications();
   const unreadQuery = useNotificationsUnread();
@@ -565,16 +558,6 @@ export function NotificationsBell() {
     onSuccess: invalidate,
   });
 
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: Event) => {
-      const target = e.target as Node | null;
-      if (wrapRef.current && target && !wrapRef.current.contains(target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
-
   const visible = filter === "unread" ? items.filter((n) => n.readAt == null) : items;
 
   const onItem = (n: ApiNotification) => {
@@ -589,105 +572,104 @@ export function NotificationsBell() {
   };
 
   return (
-    <div ref={wrapRef} className="notif-wrap">
-      <button
-        type="button"
-        className="notif-trigger"
-        onClick={() => setOpen((v) => !v)}
-        aria-label="Notifications"
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button type="button" className="notif-trigger" aria-label="Notifications">
+          <I.Bell size={14} />
+          {unread > 0 && <span className="notif-dot tabular-nums font-mono">{unread}</span>}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        sideOffset={6}
+        className="flex max-h-[540px] w-[380px] flex-col gap-0 overflow-hidden rounded-2xl p-0"
       >
-        <I.Bell size={14} />
-        {unread > 0 && <span className="notif-dot tabular-nums font-mono">{unread}</span>}
-      </button>
-      {open && (
-        <div className="notif-pop">
-          <div className="notif-head">
-            <span style={{ fontSize: 13, fontWeight: 500 }}>Notifications</span>
-            <div className="spacer" />
-            <Tabs value={filter} onValueChange={(v) => setFilter(v as "all" | "unread")}>
-              <TabsList className="h-7">
-                <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
-                <TabsTrigger value="unread" className="text-xs">
-                  Unread {unread > 0 && <span className="count">{unread}</span>}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-          <div className="notif-list">
-            {listQuery.isLoading ? (
-              <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ) : visible.length === 0 ? (
-              <div
-                style={{
-                  padding: 36,
-                  textAlign: "center",
-                  color: "var(--muted-foreground)",
-                  fontSize: 13,
-                }}
-              >
-                <I.Inbox size={22} style={{ marginBottom: 8, opacity: 0.5 }} />
-                <br />
-                You're all caught up.
-              </div>
-            ) : (
-              visible.map((n) => {
-                // No `kind`/`icon` columns on the real row — a flow-sourced
-                // notification gets the Bolt glyph, everything else the Bell.
-                const isFlow = !!n.flowId;
-                const IconComp: IconComponent = isFlow ? I.Bolt : I.Bell;
-                const unreadRow = n.readAt == null;
-                return (
-                  <button
-                    key={n.id}
-                    type="button"
-                    className={`notif-item ${unreadRow ? "unread" : ""}`}
-                    onClick={() => onItem(n)}
-                  >
-                    <span className={isFlow ? "notif-ico notif-ico-flow" : "notif-ico"}>
-                      <IconComp size={13} />
-                    </span>
-                    <div className="notif-body">
-                      <div className="notif-title">{n.title}</div>
-                      {n.body && <div className="notif-text">{n.body}</div>}
-                      <div className="notif-meta font-mono">
-                        {relativeTime(n.createdAt)}
-                      </div>
-                    </div>
-                    {unreadRow && <span className="notif-unread-dot" />}
-                  </button>
-                );
-              })
-            )}
-          </div>
-          <div className="notif-foot">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => markAllMut.mutate()}
-              disabled={markAllMut.isPending || unread === 0}
-            >
-              Mark all read
-            </Button>
-            <div className="spacer" />
-            <Button
-              variant="ghost"
-              size="sm"
-              iconRight={I.ChevronRight}
-              onClick={() => {
-                setOpen(false);
-                navigate("/activity");
+        <div className="notif-head">
+          <span style={{ fontSize: 13, fontWeight: 500 }}>Notifications</span>
+          <div className="spacer" />
+          <Tabs value={filter} onValueChange={(v) => setFilter(v as "all" | "unread")}>
+            <TabsList className="h-7">
+              <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
+              <TabsTrigger value="unread" className="text-xs">
+                Unread {unread > 0 && <span className="count">{unread}</span>}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+        <div className="notif-list">
+          {listQuery.isLoading ? (
+            <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : visible.length === 0 ? (
+            <div
+              style={{
+                padding: 36,
+                textAlign: "center",
+                color: "var(--muted-foreground)",
+                fontSize: 13,
               }}
             >
-              Open inbox
-            </Button>
-          </div>
+              <I.Inbox size={22} style={{ marginBottom: 8, opacity: 0.5 }} />
+              <br />
+              You're all caught up.
+            </div>
+          ) : (
+            visible.map((n) => {
+              // No `kind`/`icon` columns on the real row — a flow-sourced
+              // notification gets the Bolt glyph, everything else the Bell.
+              const isFlow = !!n.flowId;
+              const IconComp: IconComponent = isFlow ? I.Bolt : I.Bell;
+              const unreadRow = n.readAt == null;
+              return (
+                <button
+                  key={n.id}
+                  type="button"
+                  className={`notif-item ${unreadRow ? "unread" : ""}`}
+                  onClick={() => onItem(n)}
+                >
+                  <span className={isFlow ? "notif-ico notif-ico-flow" : "notif-ico"}>
+                    <IconComp size={13} />
+                  </span>
+                  <div className="notif-body">
+                    <div className="notif-title">{n.title}</div>
+                    {n.body && <div className="notif-text">{n.body}</div>}
+                    <div className="notif-meta font-mono">
+                      {relativeTime(n.createdAt)}
+                    </div>
+                  </div>
+                  {unreadRow && <span className="notif-unread-dot" />}
+                </button>
+              );
+            })
+          )}
         </div>
-      )}
-    </div>
+        <div className="notif-foot">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => markAllMut.mutate()}
+            disabled={markAllMut.isPending || unread === 0}
+          >
+            Mark all read
+          </Button>
+          <div className="spacer" />
+          <Button
+            variant="ghost"
+            size="sm"
+            iconRight={I.ChevronRight}
+            onClick={() => {
+              setOpen(false);
+              navigate("/activity");
+            }}
+          >
+            Open inbox
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

@@ -98,22 +98,7 @@ body {
 .ws-trigger .ws-chev { color: var(--muted-foreground); margin-left: auto; }
 .app[data-collapsed="true"] .ws-trigger .ws-chev { display: none; }
 
-.ws-pop {
-  position: absolute;
-  left: 8px; right: 8px; top: calc(100% + 4px);
-  background: var(--popover);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  box-shadow: 0 16px 40px oklch(0 0 0 / 0.18), 0 2px 6px oklch(0 0 0 / 0.06);
-  padding: 6px;
-  z-index: 90;
-  animation: ws-pop-in 140ms ease-out;
-  transform-origin: top center;
-}
-@keyframes ws-pop-in {
-  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0)    scale(1); }
-}
+/* The workspace switcher dropdown uses the shadcn Popover component. */
 .ws-pop-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 6px 10px 8px;
@@ -181,12 +166,16 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   padding: 7px 10px;
   border-radius: var(--radius-xl);
+  background: transparent;
   color: var(--sidebar-foreground);
   cursor: pointer;
+  font-family: inherit;
   font-size: 13.5px;
   font-weight: 500;
+  text-align: left;
   user-select: none;
   border: 1px solid transparent;
 }
@@ -2075,7 +2064,6 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 /* ─────────────────────────────────────────────────────────── */
 /* Notifications bell (parity v2) */
 /* ─────────────────────────────────────────────────────────── */
-.notif-wrap { position: relative; }
 .notif-trigger {
   position: relative;
   width: 32px; height: 32px;
@@ -2101,19 +2089,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   display: grid; place-items: center;
   border: 1.5px solid var(--background);
 }
-.notif-pop {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  width: 380px;
-  background: var(--popover);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-2xl);
-  box-shadow: 0 12px 32px oklch(0 0 0 / 0.12);
-  z-index: 100;
-  display: flex; flex-direction: column;
-  max-height: 540px;
-}
+/* The notifications dropdown uses the shadcn Popover component. */
 .notif-head {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 12px;

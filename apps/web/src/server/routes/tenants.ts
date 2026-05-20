@@ -23,12 +23,12 @@ const slugify = (s: string) =>
     .slice(0, 24);
 
 const PALETTE = [
-  "oklch(0.78 0.16 95)",
-  "oklch(0.72 0.18 145)",
-  "oklch(0.72 0.16 240)",
-  "oklch(0.7 0.16 28)",
-  "oklch(0.7 0.18 320)",
-  "oklch(0.74 0.14 200)",
+  "var(--primary)",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
 ];
 
 const TenantRow = z

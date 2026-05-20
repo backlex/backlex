@@ -88,6 +88,25 @@ describe("tenants: admin can create additional workspaces", () => {
     // Default tenant is still listed alongside the new one.
     expect(body.data.some((t) => t.slug === "default")).toBe(true);
   });
+
+  test("new workspace gets a theme-palette color (--primary or --chart-1..5)", async () => {
+    const create = await h.fetch("/api/tenants", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: `Themed ${suffix}` }),
+    });
+    expect(create.status).toBe(201);
+
+    const list = await h.fetch("/api/tenants");
+    expect(list.status).toBe(200);
+    const body = (await list.json()) as {
+      data: { slug: string; color: string | null }[];
+    };
+    const themed = body.data.find((t) => t.slug === `themed-${suffix}`);
+    expect(themed).toBeDefined();
+    // Part 1: workspace colors are theme CSS-variable tokens, never literals.
+    expect(themed!.color).toMatch(/^var\(--(primary|chart-[1-5])\)$/);
+  });
 });
 
 describe("tenants: collections and items are isolated per workspace", () => {

@@ -23,6 +23,7 @@ import {
   type ApiCollection,
   type ApiPanel,
 } from "../api";
+import { InsightsSkeleton } from "../page-skeletons";
 
 /**
  * 12-column drag/resize grid for the Insights dashboard. Pure DOM (no
@@ -252,6 +253,8 @@ function DashboardGrid({
 
 export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } = {}) {
   const [panels, setPanels] = useState<ApiPanel[]>([]);
+  // First-load gate — drives the page skeleton until panels land.
+  const [loaded, setLoaded] = useState(false);
   const [results, setResults] = useState<Record<string, Record<string, unknown>[]>>({});
   const [runErrors, setRunErrors] = useState<Record<string, string>>({});
   const [editor, setEditor] = useState<{ mode: "create" } | { mode: "edit"; panel: ApiPanel } | null>(null);
@@ -302,7 +305,7 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
       // leave empty
     }
   };
-  useEffect(() => { void reload(); }, []);
+  useEffect(() => { void reload().finally(() => setLoaded(true)); }, []);
 
   const saveLayout = async (id: string, layout: Layout) => {
     // Optimistic — flip the local layout immediately so the drag preview
@@ -325,6 +328,9 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
       onDelete={editing ? undefined : () => setConfirmDelete(p)}
     />
   );
+
+  // First whole-page fetch — insight panels haven't landed yet.
+  if (!loaded) return <InsightsSkeleton />;
 
   return (
     <div className="flex flex-col gap-4.5">

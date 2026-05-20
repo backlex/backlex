@@ -9,6 +9,7 @@ import { I } from "../icons";
 import { Badge, Button, PageHeader } from "../ui";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { collectionsApi, type ApiCollection } from "../api";
+import { SchemaGraphSkeleton } from "../page-skeletons";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
@@ -142,6 +143,9 @@ export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "
     }
   };
 
+  // First whole-page fetch — collections haven't landed yet.
+  if (!loaded) return <SchemaGraphSkeleton />;
+
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
@@ -184,7 +188,7 @@ export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "
         <div className="w-full overflow-auto bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))]">
           {nodes.length === 0 ? (
             <div className="p-10 text-center text-[13px] text-muted-foreground">
-              {loaded ? "No collections to graph — create one to populate the ERD." : "Loading collections…"}
+              No collections to graph — create one to populate the ERD.
             </div>
           ) : (
             <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block min-w-[1100px]">

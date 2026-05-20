@@ -6,12 +6,15 @@ import { FlowBuilder } from "../flow-builder";
 import { compileGraph, decompileGraph, FlowCompileError, type Graph } from "../flow-graph";
 import { api } from "@/lib/api";
 import { fetchSafely } from "./_shared";
+import { FlowsSkeleton } from "../page-skeletons";
 
 export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast: (m: string) => void; activeFlow?: string | null; setActiveFlow?: (id: string | null) => void }) {
   // Flows load from /api/flows on mount. No mock seed — empty workspace
   // hits the empty-state render path on the right pane.
   type FlowRow = { id: string; name: string; trigger: string; actions: string[]; status: string; runs: number; operations: any[] };
   const [flows, setFlows] = useState<FlowRow[]>([]);
+  // First-load gate — drives the page skeleton until flows land.
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     void (async () => {
       const [r, m] = await Promise.all([
@@ -32,6 +35,7 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
           })),
         );
       }
+      setLoaded(true);
     })();
   }, []);
   // The selected flow id is URL-driven (`/flows/:id`). Parent passes activeFlow
@@ -118,6 +122,9 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
       pushToast(e instanceof FlowCompileError ? `Cannot save: ${e.message}` : (e as Error).message);
     }
   };
+
+  // First whole-page fetch — flows haven't landed yet.
+  if (!loaded) return <FlowsSkeleton />;
 
   return (
     <div className="flex flex-col gap-4.5">

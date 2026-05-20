@@ -7,6 +7,7 @@ import { Button } from "@workeros/ui/components/button";
 import { Badge } from "@workeros/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@workeros/ui/components/card";
 import { Separator } from "@workeros/ui/components/separator";
+import { Skeleton } from "@workeros/ui/components/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -356,7 +357,14 @@ export const OpenApiExportPage = () => {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading spec…</p>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex flex-col gap-1.5">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-5 w-20" />
+                </div>
+              ))}
+            </div>
           ) : !doc ? (
             <p className="text-sm text-muted-foreground">Spec unavailable. Try Refresh.</p>
           ) : (
@@ -405,7 +413,13 @@ export const OpenApiExportPage = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
-          {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
+          {loading && (
+            <div className="flex flex-col gap-2">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-9 w-full" />
+              ))}
+            </div>
+          )}
           {!loading && rows.length === 0 && (
             <p className="text-sm text-muted-foreground">No paths in the current spec.</p>
           )}

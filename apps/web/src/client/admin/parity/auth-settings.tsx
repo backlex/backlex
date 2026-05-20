@@ -28,6 +28,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { apiOrigin, copyText, fmtRelative } from "./_shared";
 import { SamlProviderDialog } from "./saml-provider-dialog";
 import { LdapConfigCard } from "./ldap-config-card";
+import { AuthSettingsSkeleton } from "../page-skeletons";
 
 type AuthProviderRow = {
   id: string;
@@ -107,6 +108,9 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
   const [samlDialog, setSamlDialog] = useState<{ mode: "create" } | { mode: "edit"; row: ApiSamlProvider } | null>(null);
   const [confirmRemoveSaml, setConfirmRemoveSaml] = useState<{ id: string } | null>(null);
   const [availableRoles, setAvailableRoles] = useState<{ id: string; name: string }[]>([]);
+  // First-load gate — drives the page skeleton until the auth config +
+  // sessions + providers have all been fetched.
+  const [loaded, setLoaded] = useState(false);
 
   const loadConfig = async () => {
     const cfg = await authAdminApi.config();
@@ -181,6 +185,7 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
       }
       if (cancelled) return;
       await Promise.allSettled([loadSamlProviders(), loadAvailableRoles()]);
+      if (!cancelled) setLoaded(true);
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -306,6 +311,9 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
   };
 
   const userCount = new Set(sessions.map((s) => s.user)).size;
+
+  // First whole-page fetch — auth config + sessions + providers still loading.
+  if (!loaded) return <AuthSettingsSkeleton />;
 
   return (
     <div className="flex flex-col gap-4.5">

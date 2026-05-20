@@ -16,10 +16,13 @@ import {
   DialogTitle,
 } from "@workeros/ui/components/dialog";
 import { fetchSafely } from "./_shared";
+import { FunctionsSkeleton } from "../page-skeletons";
 
 export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void }) {
   type FnRow = { name: string; kind: string; trigger: string; lang: string; invocations: number; p95: number };
   const [funcs, setFuncs] = useState<FnRow[]>([]);
+  // First-load gate — drives the page skeleton until functions land.
+  const [loaded, setLoaded] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
   // Pull invocation counts + p95 from /api/admin/metrics/entities so the
   // sidebar + header show real numbers instead of hardcoded `1102 / 128ms`.
@@ -43,7 +46,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
     }
     return r?.data ?? [];
   };
-  useEffect(() => { void reloadFuncs(); }, []);
+  useEffect(() => { void reloadFuncs().finally(() => setLoaded(true)); }, []);
   const [active, setActive] = useState<FnRow | null>(null);
   // Auto-select first function once funcs are loaded.
   useEffect(() => {
@@ -195,6 +198,9 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
       setRenameBusy(false);
     }
   };
+
+  // First whole-page fetch — functions haven't landed yet.
+  if (!loaded) return <FunctionsSkeleton />;
 
   return (
     <div className="flex flex-col gap-4.5">

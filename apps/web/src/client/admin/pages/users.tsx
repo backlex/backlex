@@ -30,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@workeros/ui/components/dropdown-menu";
 import { rolesApi, usersApi, type ApiUser } from "../api";
+import { UsersSkeleton } from "../page-skeletons";
 
 const ProviderGlyph = ({ kind, size = 12 }: { kind: string; size?: number }) => {
   if (kind === "github") return (
@@ -47,6 +48,8 @@ const PROVIDER_LABEL: Record<string, string> = { password: "password", github: "
 export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
   type UserRow = { id: string; name: string; email: string; roles: string[]; status: string; provider: string; mfa: boolean; last: string; lastIso: string | null; created: string; sessions: number; hue: number };
   const [users, setUsers] = useState<UserRow[]>([]);
+  // First-load gate — drives the page skeleton until the user list lands.
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -82,6 +85,8 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
         );
       } catch (e) {
         pushToast?.((e as Error).message);
+      } finally {
+        if (!cancelled) setLoaded(true);
       }
     })();
     return () => { cancelled = true; };
@@ -166,6 +171,9 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
     }
     setSelected(new Set());
   };
+
+  // First whole-page fetch — the user list hasn't landed yet.
+  if (!loaded) return <UsersSkeleton />;
 
   return (
     <div className="flex flex-col gap-4.5">

@@ -16,6 +16,7 @@ import {
   type ApiTenant,
 } from "../api";
 import { ConfirmDialog } from "../sheet";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { apiOrigin, copyText, fmtRelative } from "./_shared";
 import { SamlProviderDialog } from "./saml-provider-dialog";
 import { LdapConfigCard } from "./ldap-config-card";
@@ -299,27 +300,27 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
   const userCount = new Set(sessions.map((s) => s.user)).size;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="flex flex-col gap-4.5">
       <PageHeader title="Authentication" description={<>Configure sign-in methods, MFA, and session policy. Tokens are signed with <span className="font-mono">$AUTH_SECRET</span>.</>} />
-      <div className="split">
-        <div className="card">
-          <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>Providers</span>
-            <div className="spacer" />
+      <div className="grid grid-cols-[1fr_320px] items-start gap-4 max-[1280px]:grid-cols-1">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
+            <span className="text-[13px] font-medium">Providers</span>
+            <div className="flex-1" />
             <Button size="sm" variant="outline" icon={I.Plus} onClick={() => setAdding(true)}>Add</Button>
           </div>
-          {providers.length === 0 && <div className="card-section muted" style={{ fontSize: 12.5 }}>Couldn't load auth config.</div>}
+          {providers.length === 0 && <div className="border-b border-border px-4 py-3.5 text-[12.5px] text-muted-foreground">Couldn't load auth config.</div>}
           {providers.map((p) => {
             const lockedOff = !p.configured && !p.enabled;
             return (
-            <div key={p.id} className="schema-row" style={{ gridTemplateColumns: "24px 1fr auto auto auto" }}>
+            <div key={p.id} className="grid grid-cols-[24px_1fr_auto_auto_auto] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0">
               <span><I.Shield size={13} /></span>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>{p.name}</div>
-                {p.clientId && <div className="font-mono muted" style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis" }}>{p.clientId}</div>}
-                {!p.clientId && p.discoveryUrl && <div className="font-mono muted" style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis" }}>{p.discoveryUrl}</div>}
-                {p.system && <div className="muted" style={{ fontSize: 11 }}>built-in</div>}
-                {p.enabled && !p.configured && <div style={{ fontSize: 11, color: "var(--destructive)" }}>enabled but not configured — won't appear on sign-in</div>}
+              <div className="min-w-0">
+                <div className="text-[13px] font-medium">{p.name}</div>
+                {p.clientId && <div className="truncate font-mono text-[11px] text-muted-foreground">{p.clientId}</div>}
+                {!p.clientId && p.discoveryUrl && <div className="truncate font-mono text-[11px] text-muted-foreground">{p.discoveryUrl}</div>}
+                {p.system && <div className="text-[11px] text-muted-foreground">built-in</div>}
+                {p.enabled && !p.configured && <div className="text-[11px] text-destructive">enabled but not configured — won't appear on sign-in</div>}
               </div>
               {!p.configured && <Badge variant={p.enabled ? "destructive" : "secondary"}>not configured</Badge>}
               <Button size="sm" variant="ghost" onClick={() => setConfiguring(p)}>Configure</Button>
@@ -333,44 +334,44 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
             );
           })}
         </div>
-        <div className="card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
-          <span style={{ fontSize: 13, fontWeight: 500 }}>Policy</span>
+        <div className="flex flex-col gap-3.5 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground p-[18px]">
+          <span className="text-[13px] font-medium">Policy</span>
           {POLICY_ROWS.map((r) => (
-            <div key={r.key} className="field-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+            <div key={r.key} className="flex items-center justify-between gap-3 border-t border-border pt-3">
               <div>
-                <div className="field-label">{r.label}</div>
-                <div className="field-hint">{r.desc}</div>
+                <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{r.label}</div>
+                <div className="text-[11.5px] text-muted-foreground">{r.desc}</div>
               </div>
               <Switch checked={policy[r.key] ?? r.fallback} onChange={(v) => setPolicyFlag(r.key, v)} />
             </div>
           ))}
-          <div className="field" style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-            <label className="field-label">Session lifetime</label>
+          <div className="flex flex-col gap-1.5 border-t border-border pt-3">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Session lifetime</label>
             <Select value={sessionLifetime} onChange={(v) => void saveSessionLifetime(v)} options={SESSION_LIFETIMES} />
           </div>
-          <div className="field">
-            <label className="field-label">Allowed redirect URLs</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Allowed redirect URLs</label>
             <Textarea
               rows={3}
               value={redirectText}
               onChange={(e) => setRedirectText(e.target.value)}
               onBlur={() => void saveRedirects()}
               placeholder={"https://app.example.com/auth/callback\nhttp://localhost:5173/auth/callback"}
-              style={{ height: "auto", fontFamily: "Geist Mono, monospace", fontSize: 12 }}
+              className="font-mono h-auto text-xs"
             />
-            <span className="field-hint">One URL per line — saved when you click away.</span>
+            <span className="text-[11.5px] text-muted-foreground">One URL per line — saved when you click away.</span>
           </div>
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
           <I.Shield size={13} />
-          <span style={{ fontSize: 13, fontWeight: 500 }}>SAML 2.0 SSO</span>
-          <span className="muted font-mono" style={{ fontSize: 11.5 }}>
+          <span className="text-[13px] font-medium">SAML 2.0 SSO</span>
+          <span className="font-mono text-[11.5px] text-muted-foreground">
             {samlProviders.length} provider{samlProviders.length === 1 ? "" : "s"}
           </span>
-          <div className="spacer" />
+          <div className="flex-1" />
           <Button
             size="sm"
             variant="outline"
@@ -381,33 +382,32 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
           </Button>
         </div>
         {samlProviders.length === 0 && (
-          <div className="card-section muted" style={{ fontSize: 12.5 }}>
+          <div className="border-b border-border px-4 py-3.5 text-[12.5px] text-muted-foreground">
             No SAML providers configured. Add one to enable IdP-based SSO for this workspace's end-users.
           </div>
         )}
         {samlProviders.map((p) => (
           <div
             key={p.id}
-            className="schema-row"
-            style={{ gridTemplateColumns: "24px 1fr auto auto auto auto" }}
+            className="grid items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0 grid-cols-[24px_1fr_auto_auto_auto_auto]"
           >
             <span>
               <I.Shield size={13} />
             </span>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 500 }}>
+            <div className="min-w-0">
+              <div className="text-[13px] font-medium">
                 {p.name}
                 {p.idpTemplate && (
-                  <Badge variant="secondary" style={{ marginLeft: 6 }}>
+                  <Badge variant="secondary" className="ml-1.5">
                     {p.idpTemplate}
                   </Badge>
                 )}
               </div>
-              <div className="font-mono muted" style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis" }}>
+              <div className="truncate font-mono text-[11px] text-muted-foreground">
                 {p.entityId}
               </div>
               {!p.idpCertSet && (
-                <div style={{ fontSize: 11, color: "var(--destructive)" }}>
+                <div className="text-[11px] text-destructive">
                   No signing cert stored — login will fail.
                 </div>
               )}
@@ -445,22 +445,22 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
           .filter((p) => p.enabled && AUTH_OAUTH_IDS.has(p.id))
           .map((p) => p.id);
         const Row = ({ label, value }: { label: string; value: string }) => (
-          <div className="schema-row" style={{ gridTemplateColumns: "1fr auto" }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 12, fontWeight: 500 }}>{label}</div>
-              <div className="font-mono muted" style={{ fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</div>
+          <div className="grid items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0 grid-cols-[1fr_auto]">
+            <div className="min-w-0">
+              <div className="text-xs font-medium">{label}</div>
+              <div className="truncate font-mono text-[11.5px] text-muted-foreground">{value}</div>
             </div>
             <Button size="sm" variant="ghost" onClick={() => void copyText(value, () => pushToast?.("Copied."))}>Copy</Button>
           </div>
         );
         const Snippet = ({ label, code }: { label: string; code: string }) => (
-          <div className="field">
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              <span className="field-label" style={{ margin: 0 }}>{label}</span>
-              <div className="spacer" />
+          <div className="flex flex-col gap-1.5">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{label}</span>
+              <div className="flex-1" />
               <Button size="sm" variant="ghost" onClick={() => void copyText(code, () => pushToast?.("Copied."))}>Copy</Button>
             </div>
-            <pre className="font-mono" style={{ margin: 0, padding: 12, background: "var(--muted)", borderRadius: 8, fontSize: 11.5, overflowX: "auto", whiteSpace: "pre" }}>{code}</pre>
+            <pre className="m-0 overflow-x-auto whitespace-pre rounded-lg bg-muted p-3 font-mono text-[11.5px]">{code}</pre>
           </div>
         );
         const sdkCode =
@@ -488,10 +488,10 @@ curl -X POST ${authBase}/sign-in/email \\
 # use the token on later calls
 curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
         return (
-          <div className="card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
+          <div className="flex flex-col gap-3.5 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground p-[18px]">
             <div>
-              <span style={{ fontSize: 13, fontWeight: 500 }}>Workspace auth API <span className="muted" style={{ fontWeight: 400 }}>· auth as a service</span></span>
-              <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>End-users of the app built on this workspace sign in here — separate from the admin login. Configure providers above.</div>
+              <span className="text-[13px] font-medium">Workspace auth API <span className="font-normal text-muted-foreground">· auth as a service</span></span>
+              <div className="mt-[3px] text-xs text-muted-foreground">End-users of the app built on this workspace sign in here — separate from the admin login. Configure providers above.</div>
             </div>
             <div>
               <Row label="Auth base URL" value={authBase} />
@@ -507,33 +507,31 @@ curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
         );
       })()}
 
-      <div className="card">
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
           <I.Activity size={13} />
-          <span style={{ fontSize: 13, fontWeight: 500 }}>Active sessions</span>
-          <span className="muted font-mono" style={{ fontSize: 11.5 }}>{sessions.length} session{sessions.length === 1 ? "" : "s"} · {userCount} user{userCount === 1 ? "" : "s"}</span>
-          <div className="spacer" />
+          <span className="text-[13px] font-medium">Active sessions</span>
+          <span className="font-mono text-[11.5px] text-muted-foreground">{sessions.length} session{sessions.length === 1 ? "" : "s"} · {userCount} user{userCount === 1 ? "" : "s"}</span>
+          <div className="flex-1" />
           <Button size="sm" variant="outline" icon={I.LogOut} onClick={revokeOthers}>Revoke others</Button>
         </div>
-        <div className="table-scroll">
-        <table className="table">
-          <thead><tr><th>User</th><th>Device</th><th>Location</th><th>IP</th><th>Created</th><th>Last seen</th><th className="col-actions"></th></tr></thead>
-          <tbody>
-            {sessions.length === 0 && <tr><td colSpan={7} className="muted" style={{ padding: 14 }}>No active sessions.</td></tr>}
+        <Table className="[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground">
+          <TableHeader><TableRow><TableHead>User</TableHead><TableHead>Device</TableHead><TableHead>Location</TableHead><TableHead>IP</TableHead><TableHead>Created</TableHead><TableHead>Last seen</TableHead><TableHead className="sticky right-0 bg-card" /></TableRow></TableHeader>
+          <TableBody>
+            {sessions.length === 0 && <TableRow><TableCell colSpan={7} className="text-muted-foreground">No active sessions.</TableCell></TableRow>}
             {sessions.map((s) => (
-              <tr key={s.id}>
-                <td>{s.user}{s.current && <Badge variant="default" style={{ marginLeft: 6 }}>current</Badge>}</td>
-                <td className="font-mono" style={{ fontSize: 11.5 }}>{s.device}</td>
-                <td>{s.loc}</td>
-                <td className="font-mono muted" style={{ fontSize: 11.5 }}>{s.ip}</td>
-                <td className="muted font-mono" style={{ fontSize: 11.5 }}>{s.created}</td>
-                <td className="muted font-mono" style={{ fontSize: 11.5 }}>{s.last}</td>
-                <td className="col-actions" style={{ textAlign: "right" }}>{!s.current && <Button size="sm" variant="ghost" onClick={() => void revokeSession(s.id)}>Revoke</Button>}</td>
-              </tr>
+              <TableRow key={s.id}>
+                <TableCell>{s.user}{s.current && <Badge variant="default" className="ml-1.5">current</Badge>}</TableCell>
+                <TableCell className="font-mono text-[11.5px]">{s.device}</TableCell>
+                <TableCell>{s.loc}</TableCell>
+                <TableCell className="font-mono text-[11.5px] text-muted-foreground">{s.ip}</TableCell>
+                <TableCell className="font-mono text-[11.5px] text-muted-foreground">{s.created}</TableCell>
+                <TableCell className="font-mono text-[11.5px] text-muted-foreground">{s.last}</TableCell>
+                <TableCell className="sticky right-0 bg-card text-right">{!s.current && <Button size="sm" variant="ghost" onClick={() => void revokeSession(s.id)}>Revoke</Button>}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-        </div>
+          </TableBody>
+        </Table>
       </div>
 
       {configuring && (
@@ -627,57 +625,57 @@ function ProviderConfigDialog({ provider, kind, onClose, onSave }: {
   };
 
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog dialog-lg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, width: "92vw" }}>
-        <div className="dialog-head">
+    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={onClose}>
+      <div className="relative flex max-h-[min(86vh,720px)] w-[92vw] max-w-[480px] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
           <div>
-            <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>Configure {provider.name}</div>
-            <div className="muted" style={{ fontSize: 12.5, marginTop: 3 }}>
+            <div className="text-base font-semibold tracking-[-0.01em]">Configure {provider.name}</div>
+            <div className="mt-[3px] text-[12.5px] text-muted-foreground">
               {kind === "oauth" ? "OAuth 2.0 / OIDC sign-in provider." : kind === "custom" ? "Custom OpenID Connect provider." : "Built-in sign-in method."}
             </div>
           </div>
           <IconButton icon={I.X} onClick={onClose} />
         </div>
-        <div className="dialog-body">
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
           {(() => {
             const blocked = (kind === "oauth" || kind === "custom") && !(clientId.trim() && hasSecret);
             return (
-              <div className="field-row">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="field-label">Enabled</div>
-                  <div className="field-hint">{blocked ? "Add a Client ID and secret below first." : "Show this option on the sign-in screen."}</div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Enabled</div>
+                  <div className="text-[11.5px] text-muted-foreground">{blocked ? "Add a Client ID and secret below first." : "Show this option on the sign-in screen."}</div>
                 </div>
                 <Switch checked={enabled && !blocked} disabled={blocked} title={blocked ? "Add a Client ID and secret first" : undefined} onChange={setEnabled} />
               </div>
             );
           })()}
           {kind === "custom" && (
-            <div className="field">
-              <label className="field-label">Display name</label>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Display name</label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme SSO" />
             </div>
           )}
           {(kind === "oauth" || kind === "custom") && (
-            <div className="field">
-              <label className="field-label">Client ID</label>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Client ID</label>
               <Input className="font-mono" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="123456789-abc.apps.example.com" />
             </div>
           )}
           {(kind === "oauth" || kind === "custom") && (
-            <div className="field">
-              <label className="field-label">Client secret {provider.hasSecret && <span className="muted">· stored, leave blank to keep</span>}</label>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Client secret {provider.hasSecret && <span className="text-muted-foreground">· stored, leave blank to keep</span>}</label>
               <Input type="password" className="font-mono" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} placeholder={provider.hasSecret ? "••••••••••••••••" : "paste from the provider"} autoComplete="new-password" />
             </div>
           )}
           {kind === "custom" && (
-            <div className="field">
-              <label className="field-label">Discovery URL <span className="muted">(optional)</span></label>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Discovery URL <span className="text-muted-foreground">(optional)</span></label>
               <Input className="font-mono" value={discoveryUrl} onChange={(e) => setDiscoveryUrl(e.target.value)} placeholder="https://issuer.example.com/.well-known/openid-configuration" />
-              {discoveryBad && <span className="field-hint" style={{ color: "var(--destructive)" }}>Must be a full http(s) URL.</span>}
+              {discoveryBad && <span className="text-[11.5px] text-destructive">Must be a full http(s) URL.</span>}
             </div>
           )}
           {(kind === "oauth" || kind === "custom") && (
-            <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.5 }}>
+            <div className="text-[11.5px] leading-[1.5] text-muted-foreground">
               The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the{" "}
               <span className="font-mono">OAUTH_{provider.id.toUpperCase()}_CLIENT_ID</span> /{" "}
               <span className="font-mono">_CLIENT_SECRET</span> environment variables. Register{" "}
@@ -685,7 +683,7 @@ function ProviderConfigDialog({ provider, kind, onClose, onSave }: {
             </div>
           )}
           {kind === "builtin" && (
-            <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.5 }}>
+            <div className="text-[11.5px] leading-[1.5] text-muted-foreground">
               {provider.id === "email"
                 ? "Email + password is always available — toggle it off to hide the form from the sign-in screen."
                 : provider.id === "passkey"
@@ -694,8 +692,8 @@ function ProviderConfigDialog({ provider, kind, onClose, onSave }: {
             </div>
           )}
         </div>
-        <div className="dialog-foot">
-          <div className="spacer" />
+        <div className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
+          <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
           <Button variant="primary" size="sm" icon={I.Check} disabled={!valid} onClick={submit}>Save</Button>
         </div>
@@ -728,40 +726,40 @@ function AddProviderDialog({ existingIds, onClose, onAdd }: {
   };
 
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog dialog-lg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480, width: "92vw" }}>
-        <div className="dialog-head">
+    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={onClose}>
+      <div className="relative flex max-h-[min(86vh,720px)] w-[92vw] max-w-[480px] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
           <div>
-            <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>Add OIDC provider</div>
-            <div className="muted" style={{ fontSize: 12.5, marginTop: 3 }}>Register a custom OpenID Connect identity provider.</div>
+            <div className="text-base font-semibold tracking-[-0.01em]">Add OIDC provider</div>
+            <div className="mt-[3px] text-[12.5px] text-muted-foreground">Register a custom OpenID Connect identity provider.</div>
           </div>
           <IconButton icon={I.X} onClick={onClose} />
         </div>
-        <div className="dialog-body">
-          <div className="field">
-            <label className="field-label">Display name</label>
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Display name</label>
             <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme SSO" />
-            <span className="field-hint font-mono" style={{ fontSize: 11 }}>
-              id: <span style={{ color: idTaken ? "var(--destructive)" : "var(--foreground)" }}>{slug || "—"}</span>
-              {idTaken && <span style={{ color: "var(--destructive)" }}> · already exists</span>}
+            <span className="font-mono text-[11px] text-muted-foreground">
+              id: <span className={idTaken ? "text-destructive" : "text-foreground"}>{slug || "—"}</span>
+              {idTaken && <span className="text-destructive"> · already exists</span>}
             </span>
           </div>
-          <div className="field">
-            <label className="field-label">Client ID <span className="muted">(optional)</span></label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Client ID <span className="text-muted-foreground">(optional)</span></label>
             <Input className="font-mono" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="abc123" />
           </div>
-          <div className="field">
-            <label className="field-label">Discovery URL <span className="muted">(optional)</span></label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Discovery URL <span className="text-muted-foreground">(optional)</span></label>
             <Input className="font-mono" value={discoveryUrl} onChange={(e) => setDiscoveryUrl(e.target.value)} placeholder="https://issuer.example.com/.well-known/openid-configuration" />
-            {discoveryBad && <span className="field-hint" style={{ color: "var(--destructive)" }}>Must be a full http(s) URL.</span>}
+            {discoveryBad && <span className="text-[11.5px] text-destructive">Must be a full http(s) URL.</span>}
           </div>
-          <div className="muted" style={{ fontSize: 11.5, lineHeight: 1.5 }}>
+          <div className="text-[11.5px] leading-[1.5] text-muted-foreground">
             The provider is added disabled. Set its client secret server-side, then enable it here.
           </div>
         </div>
-        <div className="dialog-foot">
-          <span className="muted" style={{ fontSize: 12 }}>{valid ? "Will be added disabled." : idTaken ? "Pick a unique name." : "Enter a name to continue."}</span>
-          <div className="spacer" />
+        <div className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
+          <span className="text-xs text-muted-foreground">{valid ? "Will be added disabled." : idTaken ? "Pick a unique name." : "Enter a name to continue."}</span>
+          <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
           <Button variant="primary" size="sm" icon={I.Plus} disabled={!valid} onClick={submit}>Add provider</Button>
         </div>

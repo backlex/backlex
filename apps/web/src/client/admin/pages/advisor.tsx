@@ -58,8 +58,12 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
     return Math.max(0, 100 - errs * 18 - warns * 7);
   }, [all]);
 
+  const tabCls = (id: string) =>
+    `inline-flex cursor-pointer items-center gap-1.5 rounded-3xl border-0 px-3.5 py-[5px] text-[12.5px] font-medium ${tab === id ? "bg-card text-foreground shadow-[0_1px_2px_oklch(0_0_0/0.06),0_1px_0_oklch(0_0_0/0.04)]" : "bg-transparent text-muted-foreground"}`;
+  const countCls = (id: string) =>
+    `rounded-sm border border-border px-[5px] py-px font-mono text-[11px] text-muted-foreground ${tab === id ? "bg-muted" : "bg-background"}`;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="flex flex-col gap-4.5">
       <PageHeader
         title="Advisor"
         description="Automated lint over schema, permissions, indexes, and traffic shape. Refreshes hourly — re-runs after every collection change."
@@ -75,30 +79,21 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
       />
 
       {/* Score card */}
-      <div
-        className="card"
-        style={{
-          padding: 20,
-          display: "grid",
-          gridTemplateColumns: "160px 1fr",
-          gap: 22,
-          alignItems: "center",
-        }}
-      >
-        <div style={{ position: "relative", width: 140, height: 140 }}>
+      <div className="grid grid-cols-[160px_1fr] items-center gap-[22px] overflow-hidden rounded-2xl border border-border bg-card p-5 text-card-foreground">
+        <div className="relative size-[140px]">
           <ScoreRing score={score} />
-          <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", textAlign: "center" }}>
+          <div className="absolute inset-0 grid place-items-center text-center">
             <div>
-              <div className="font-mono tabular-nums" style={{ fontSize: 36, fontWeight: 600, letterSpacing: "-0.02em" }}>
+              <div className="font-mono text-[36px] font-semibold tabular-nums tracking-[-0.02em]">
                 {score}
               </div>
-              <div style={{ fontSize: 10.5, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              <div className="text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
                 health
               </div>
             </div>
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
+        <div className="grid grid-cols-2 gap-3.5">
           <SummaryCard
             counts={counts.security}
             active={tab === "security"}
@@ -116,24 +111,24 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
         </div>
       </div>
 
-      <div className="tabs">
-        <button className="tab" data-active={tab === "security"} onClick={() => setTab("security")}>
+      <div className="flex w-fit gap-0.5 rounded-3xl bg-muted p-[3px]">
+        <button className={tabCls("security")} onClick={() => setTab("security")}>
           <I.ShieldAlert size={13} />Security{" "}
-          <span className="count">{counts.security.error + counts.security.warn + counts.security.info}</span>
+          <span className={countCls("security")}>{counts.security.error + counts.security.warn + counts.security.info}</span>
         </button>
-        <button className="tab" data-active={tab === "performance"} onClick={() => setTab("performance")}>
+        <button className={tabCls("performance")} onClick={() => setTab("performance")}>
           <I.Cpu size={13} />Performance{" "}
-          <span className="count">{counts.performance.error + counts.performance.warn + counts.performance.info}</span>
+          <span className={countCls("performance")}>{counts.performance.error + counts.performance.warn + counts.performance.info}</span>
         </button>
       </div>
 
       {/* Findings */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div className="flex flex-col gap-2.5">
         {list.length === 0 ? (
-          <div className="card empty">
-            <div className="ico"><I.CheckCircle size={18} /></div>
-            <h4>All clear in this category</h4>
-            <p>No outstanding findings. The advisor will re-check at the top of the hour.</p>
+          <div className="flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card px-6 py-12 text-center text-card-foreground">
+            <div className="grid size-10 place-items-center rounded-xl bg-muted text-primary"><I.CheckCircle size={18} /></div>
+            <h4 className="m-0 text-[15px] font-semibold">All clear in this category</h4>
+            <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground">No outstanding findings. The advisor will re-check at the top of the hour.</p>
           </div>
         ) : (
           list.map((c) => (
@@ -174,26 +169,26 @@ function SummaryCard({
   label: string;
 }) {
   return (
-    <button type="button" onClick={onClick} className={`summary-card ${active ? "on" : ""}`}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+    <button type="button" onClick={onClick} className={`flex cursor-pointer flex-col rounded-xl border px-4 py-3.5 text-left hover:bg-accent ${active ? "border-[color-mix(in_oklch,var(--foreground)_30%,var(--border))] bg-accent" : "border-border bg-card"}`}>
+      <div className="mb-2.5 flex items-center gap-2">
         <IconComp size={15} />
-        <span style={{ fontSize: 13, fontWeight: 500 }}>{label}</span>
+        <span className="text-[13px] font-medium">{label}</span>
       </div>
-      <div style={{ display: "flex", gap: 16 }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
-          <span className="dot-error" />
+      <div className="flex gap-4">
+        <span className="flex items-center gap-1.5 text-xs">
+          <span className="inline-block size-2 rounded-full bg-destructive" />
           <span className="font-mono tabular-nums">{counts.error}</span>
-          <span style={{ color: "var(--muted-foreground)" }}>err</span>
+          <span className="text-muted-foreground">err</span>
         </span>
-        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
-          <span className="dot-warn" />
+        <span className="flex items-center gap-1.5 text-xs">
+          <span className="inline-block size-2 rounded-full bg-[oklch(0.7_0.18_70)]" />
           <span className="font-mono tabular-nums">{counts.warn}</span>
-          <span style={{ color: "var(--muted-foreground)" }}>warn</span>
+          <span className="text-muted-foreground">warn</span>
         </span>
-        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
-          <span className="dot-info" />
+        <span className="flex items-center gap-1.5 text-xs">
+          <span className="inline-block size-2 rounded-full bg-muted-foreground" />
           <span className="font-mono tabular-nums">{counts.info}</span>
-          <span style={{ color: "var(--muted-foreground)" }}>info</span>
+          <span className="text-muted-foreground">info</span>
         </span>
       </div>
     </button>
@@ -227,40 +222,42 @@ function ScoreRing({ score }: { score: number }) {
 function AdvisorRow({ c, onDismiss, onCopy }: { c: AdvisorCheck; onDismiss: () => void; onCopy: () => void }) {
   const [open, setOpen] = useState(false);
   const Icon = c.level === "error" ? I.AlertTriangle : c.level === "warn" ? I.AlertCircle : I.Info;
+  const rowBorder = c.level === "error"
+    ? "border-[color-mix(in_oklch,var(--destructive)_28%,var(--border))]"
+    : c.level === "warn"
+      ? "border-[color-mix(in_oklch,oklch(0.7_0.18_70)_30%,var(--border))]"
+      : "border-border";
+  const icoCls = c.level === "error"
+    ? "bg-[color-mix(in_oklch,var(--destructive)_16%,var(--card))] text-destructive"
+    : c.level === "warn"
+      ? "bg-[color-mix(in_oklch,oklch(0.75_0.18_70)_18%,var(--card))] text-[oklch(0.55_0.18_70)] dark:text-[oklch(0.85_0.18_70)]"
+      : "bg-muted text-muted-foreground";
   return (
-    <div className={`advisor-row advisor-${c.level}`}>
-      <button type="button" className="advisor-head" onClick={() => setOpen((v) => !v)}>
-        <span className={`advisor-ico advisor-ico-${c.level}`}><Icon size={14} /></span>
-        <span className="advisor-title">{c.title}</span>
-        <span className="advisor-resource font-mono">{c.resource}</span>
-        <span className="advisor-time">{c.detected}</span>
-        <I.ChevronDown size={12} className="advisor-chev" data-open={open} />
+    <div className={`overflow-hidden rounded-2xl border bg-card ${rowBorder}`}>
+      <button type="button" className="grid w-full cursor-pointer grid-cols-[32px_1fr_auto_auto_16px] items-center gap-3 border-0 bg-transparent px-4 py-3 text-left hover:bg-accent" onClick={() => setOpen((v) => !v)}>
+        <span className={`grid size-7 place-items-center rounded-lg ${icoCls}`}><Icon size={14} /></span>
+        <span className="text-[13.5px] font-medium">{c.title}</span>
+        <span className="font-mono text-[11.5px] text-muted-foreground">{c.resource}</span>
+        <span className="text-[11px] text-muted-foreground">{c.detected}</span>
+        <I.ChevronDown size={12} className="text-muted-foreground transition-transform data-[open=true]:rotate-180" data-open={open} />
       </button>
       {open && (
-        <div className="advisor-body">
-          <p style={{ margin: 0, fontSize: 13, color: "var(--foreground)" }}>{c.body}</p>
+        <div className="flex flex-col gap-3 border-t border-dashed border-border px-4 pb-4 pl-[60px] pt-1">
+          <p className="m-0 text-[13px] text-foreground">{c.body}</p>
           <div>
-            <div
-              style={{
-                fontSize: 11,
-                color: "var(--muted-foreground)",
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-                marginBottom: 6,
-              }}
-            >
+            <div className="mb-1.5 text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
               suggested fix
             </div>
-            <pre className="code-block">{c.fix}</pre>
+            <pre className="m-0 overflow-x-auto whitespace-pre rounded-lg bg-muted px-3 py-2.5 font-mono text-[11.5px]">{c.fix}</pre>
           </div>
-          <div style={{ display: "flex", gap: 6 }}>
+          <div className="flex gap-1.5">
             <Button variant="outline" size="sm" icon={I.Copy} onClick={onCopy}>
               Copy fix
             </Button>
             <Button variant="ghost" size="sm" onClick={onDismiss}>
               Dismiss
             </Button>
-            <div className="spacer" />
+            <div className="flex-1" />
             <Button variant="ghost" size="sm" iconRight={I.ExternalLink}>
               Open resource
             </Button>

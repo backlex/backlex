@@ -19,6 +19,7 @@ import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "../icons";
 import { Badge, Button, Switch } from "../ui";
 import { Select } from "../select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import {
   ldapAdminApi,
   type ApiLdapConfig,
@@ -139,8 +140,8 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
 
   if (!loaded) {
     return (
-      <div className="card">
-        <div className="card-section muted" style={{ fontSize: 12.5 }}>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <div className="border-b border-border px-4 py-3.5 text-[12.5px] text-muted-foreground">
           Loading LDAP config…
         </div>
       </div>
@@ -148,55 +149,55 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
   }
 
   return (
-    <div className="card">
-      <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
         <I.Shield size={13} />
-        <span style={{ fontSize: 13, fontWeight: 500 }}>LDAP / Active Directory</span>
+        <span className="text-[13px] font-medium">LDAP / Active Directory</span>
         <Badge variant={cfg.enabled ? "default" : "secondary"}>
           {cfg.enabled ? "enabled" : "disabled"}
         </Badge>
-        <div className="spacer" />
+        <div className="flex-1" />
         <Button size="sm" variant="outline" icon={I.Activity} onClick={() => setTestOpen(true)}>
           Test connection
         </Button>
         <Switch checked={cfg.enabled} onChange={(v) => void toggleEnabled(v)} />
       </div>
 
-      <div className="card-section" style={{ display: "grid", gap: 14 }}>
-        <div className="field">
-          <label className="field-label">LDAP URL</label>
+      <div className="grid gap-3.5 px-4 py-3.5">
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">LDAP URL</label>
           <Input
             value={cfg.url}
             onChange={(e) => patch({ url: e.target.value })}
             placeholder="ldaps://dc1.corp.example:636"
           />
-          <span className="field-hint">Use <span className="font-mono">ldaps://</span> in production; <span className="font-mono">ldap://</span> only on a trusted network.</span>
+          <span className="text-[11.5px] text-muted-foreground">Use <span className="font-mono">ldaps://</span> in production; <span className="font-mono">ldap://</span> only on a trusted network.</span>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          <div className="field">
-            <label className="field-label">Bind DN</label>
+        <div className="grid grid-cols-2 gap-3.5">
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Bind DN</label>
             <Input
               value={cfg.bindDn}
               onChange={(e) => patch({ bindDn: e.target.value })}
               placeholder="cn=workeros,ou=service,dc=corp,dc=example"
             />
           </div>
-          <div className="field">
-            <label className="field-label">
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
               Bind password
               {cfg.secretsSet.bindPassword && !clearPw && (
-                <Badge variant="secondary" style={{ marginLeft: 6 }}>set</Badge>
+                <Badge variant="secondary" className="ml-1.5">set</Badge>
               )}
             </label>
-            <div style={{ display: "flex", gap: 6 }}>
+            <div className="flex gap-1.5">
               <Input
                 type="password"
                 value={pwInput}
                 disabled={clearPw}
                 onChange={(e) => setPwInput(e.target.value)}
                 placeholder={cfg.secretsSet.bindPassword ? "leave blank to keep current" : "service-account password"}
-                style={{ flex: 1 }}
+                className="flex-1"
               />
               {cfg.secretsSet.bindPassword && (
                 <Button size="sm" variant="ghost" onClick={() => setClearPw((v) => !v)}>
@@ -207,8 +208,8 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
           </div>
         </div>
 
-        <div className="field">
-          <label className="field-label">Base DN (search root)</label>
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Base DN (search root)</label>
           <Input
             value={cfg.baseDn}
             onChange={(e) => patch({ baseDn: e.target.value })}
@@ -216,26 +217,26 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
           />
         </div>
 
-        <div className="field">
-          <label className="field-label">User filter</label>
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">User filter</label>
           <Textarea
             rows={2}
             value={cfg.userFilter}
             onChange={(e) => patch({ userFilter: e.target.value })}
-            style={{ height: "auto", fontFamily: "Geist Mono, monospace", fontSize: 12 }}
+            className="font-mono h-auto text-xs"
           />
-          <span className="field-hint">
+          <span className="text-[11.5px] text-muted-foreground">
             <span className="font-mono">{"{{username}}"}</span> is replaced with the submitted username (RFC-4515 escaped).
             Common: AD = <span className="font-mono">(sAMAccountName={"{{username}}"})</span>, OpenLDAP = <span className="font-mono">(uid={"{{username}}"})</span>.
           </span>
         </div>
 
-        <div className="field">
-          <label className="field-label">Attribute map</label>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Attribute map</label>
+          <div className="grid grid-cols-2 gap-2.5">
             {(["email", "firstName", "lastName", "groups"] as const).map((k) => (
-              <div key={k} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span className="muted font-mono" style={{ fontSize: 11, width: 80 }}>{k}</span>
+              <div key={k} className="flex items-center gap-2">
+                <span className="w-20 font-mono text-[11px] text-muted-foreground">{k}</span>
                 <Input
                   value={cfg.attributeMap[k] ?? ""}
                   onChange={(e) =>
@@ -243,19 +244,19 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
                       attributeMap: { ...cfg.attributeMap, [k]: e.target.value },
                     })
                   }
-                  style={{ flex: 1 }}
+                  className="flex-1"
                 />
               </div>
             ))}
           </div>
-          <span className="field-hint">
+          <span className="text-[11.5px] text-muted-foreground">
             AD defaults: <span className="font-mono">mail · givenName · sn · memberOf</span>. OpenLDAP commonly uses <span className="font-mono">mail · givenName · sn · memberOf</span> (or the <span className="font-mono">groupOfNames</span> overlay).
           </span>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-          <div className="field">
-            <label className="field-label">Default role on first sign-in</label>
+        <div className="grid grid-cols-2 gap-3.5">
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Default role on first sign-in</label>
             <Select
               value={cfg.defaultRoleId ?? ""}
               onChange={(v) => patch({ defaultRoleId: v ? v : null })}
@@ -265,8 +266,8 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
               ]}
             />
           </div>
-          <div className="field">
-            <label className="field-label">Rate limit (per email / minute)</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Rate limit (per email / minute)</label>
             <Input
               type="number"
               min={1}
@@ -277,19 +278,19 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
           </div>
         </div>
 
-        <div className="field">
-          <label className="field-label">Allowed email domains (optional)</label>
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Allowed email domains (optional)</label>
           <Input
             value={domainText}
             onChange={(e) => setDomainText(e.target.value)}
             placeholder="corp.example.com, contractor.example.com"
           />
-          <span className="field-hint">Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip.</span>
+          <span className="text-[11.5px] text-muted-foreground">Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip.</span>
         </div>
 
-        <div className="field">
-          <label className="field-label">TLS</label>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">TLS</label>
+          <label className="flex items-center gap-2 text-xs">
             <Switch
               checked={cfg.tlsOptions?.rejectUnauthorized !== false}
               onChange={(v) =>
@@ -305,21 +306,21 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
           </label>
         </div>
 
-        <div className="field">
-          <label className="field-label">
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
             Custom CA PEM (optional)
             {cfg.secretsSet.caPem && !clearCa && (
-              <Badge variant="secondary" style={{ marginLeft: 6 }}>set</Badge>
+              <Badge variant="secondary" className="ml-1.5">set</Badge>
             )}
           </label>
-          <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+          <div className="flex items-start gap-1.5">
             <Textarea
               rows={4}
               disabled={clearCa}
               value={caInput}
               onChange={(e) => setCaInput(e.target.value)}
               placeholder={cfg.secretsSet.caPem ? "leave blank to keep current" : "-----BEGIN CERTIFICATE-----..."}
-              style={{ flex: 1, height: "auto", fontFamily: "Geist Mono, monospace", fontSize: 11.5 }}
+              className="font-mono h-auto flex-1 text-[11.5px]"
             />
             {cfg.secretsSet.caPem && (
               <Button size="sm" variant="ghost" onClick={() => setClearCa((v) => !v)}>
@@ -327,10 +328,10 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
               </Button>
             )}
           </div>
-          <span className="field-hint">Only needed for self-signed LDAPS; the system trust store handles publicly-signed certs.</span>
+          <span className="text-[11.5px] text-muted-foreground">Only needed for self-signed LDAPS; the system trust store handles publicly-signed certs.</span>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+        <div className="flex justify-end gap-2">
           <Button variant="outline" disabled={saving} onClick={() => void load()}>
             Revert
           </Button>
@@ -383,61 +384,61 @@ function LdapTestDialog({
   };
 
   return (
-    <div className="sheet-overlay" role="dialog" aria-modal>
-      <div className="sheet" style={{ maxWidth: 640 }}>
-        <div className="sheet-header">
-          <div style={{ fontSize: 13, fontWeight: 500 }}>Test LDAP connection</div>
-          <div className="spacer" />
+    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" role="dialog" aria-modal onClick={onClose}>
+      <div className="relative flex max-h-[min(86vh,720px)] w-[min(640px,92vw)] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
+          <div className="text-[13px] font-medium">Test LDAP connection</div>
+          <div className="flex-1" />
           <Button variant="ghost" onClick={onClose}>Close</Button>
         </div>
-        <div className="sheet-body" style={{ display: "grid", gap: 12 }}>
-          <div className="field">
-            <label className="field-label">Username</label>
+        <div className="grid flex-1 gap-3 overflow-y-auto px-5 py-[18px]">
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Username</label>
             <Input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="alice"
             />
           </div>
-          <div className="field">
-            <label className="field-label">Password</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Password</label>
             <Input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <div className="flex justify-end gap-2">
             <Button variant="primary" disabled={busy || !username || !password} onClick={() => void run()}>
               {busy ? "Authenticating…" : "Run test"}
             </Button>
           </div>
           {result && result.ok && (
-            <div className="card" style={{ padding: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 6 }}>
+            <div className="rounded-2xl border border-border bg-card p-3 text-card-foreground">
+              <div className="mb-1.5 text-xs font-medium">
                 Authentication succeeded
-                <Badge variant="default" style={{ marginLeft: 6 }}>ok</Badge>
+                <Badge variant="default" className="ml-1.5">ok</Badge>
               </div>
-              <div className="muted font-mono" style={{ fontSize: 11.5, wordBreak: "break-all", marginBottom: 8 }}>
+              <div className="mb-2 font-mono text-[11.5px] [word-break:break-all] text-muted-foreground">
                 {result.dn}
               </div>
-              <table className="table" style={{ fontSize: 12 }}>
-                <thead><tr><th>Field</th><th>Map →</th><th>Value</th></tr></thead>
-                <tbody>
-                  <tr><td>email</td><td className="muted font-mono">{attributeMap.email}</td><td>{result.attributes.email ?? <span className="muted">—</span>}</td></tr>
-                  <tr><td>firstName</td><td className="muted font-mono">{attributeMap.firstName}</td><td>{result.attributes.firstName ?? <span className="muted">—</span>}</td></tr>
-                  <tr><td>lastName</td><td className="muted font-mono">{attributeMap.lastName}</td><td>{result.attributes.lastName ?? <span className="muted">—</span>}</td></tr>
-                  <tr><td>groups</td><td className="muted font-mono">{attributeMap.groups}</td><td className="font-mono" style={{ fontSize: 11 }}>{result.attributes.groups.length === 0 ? <span className="muted">—</span> : result.attributes.groups.join("\n")}</td></tr>
-                </tbody>
-              </table>
+              <Table className="text-xs [&_td]:px-3.5 [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground">
+                <TableHeader><TableRow><TableHead>Field</TableHead><TableHead>Map →</TableHead><TableHead>Value</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  <TableRow><TableCell>email</TableCell><TableCell className="font-mono text-muted-foreground">{attributeMap.email}</TableCell><TableCell>{result.attributes.email ?? <span className="text-muted-foreground">—</span>}</TableCell></TableRow>
+                  <TableRow><TableCell>firstName</TableCell><TableCell className="font-mono text-muted-foreground">{attributeMap.firstName}</TableCell><TableCell>{result.attributes.firstName ?? <span className="text-muted-foreground">—</span>}</TableCell></TableRow>
+                  <TableRow><TableCell>lastName</TableCell><TableCell className="font-mono text-muted-foreground">{attributeMap.lastName}</TableCell><TableCell>{result.attributes.lastName ?? <span className="text-muted-foreground">—</span>}</TableCell></TableRow>
+                  <TableRow><TableCell>groups</TableCell><TableCell className="font-mono text-muted-foreground">{attributeMap.groups}</TableCell><TableCell className="font-mono text-[11px]">{result.attributes.groups.length === 0 ? <span className="text-muted-foreground">—</span> : result.attributes.groups.join("\n")}</TableCell></TableRow>
+                </TableBody>
+              </Table>
             </div>
           )}
           {result && !result.ok && (
-            <div className="card" style={{ padding: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 6, color: "var(--destructive)" }}>
+            <div className="rounded-2xl border border-border bg-card p-3 text-card-foreground">
+              <div className="mb-1.5 text-xs font-medium text-destructive">
                 Authentication failed
               </div>
-              <div className="muted" style={{ fontSize: 12 }}>{result.reason}</div>
+              <div className="text-xs text-muted-foreground">{result.reason}</div>
             </div>
           )}
         </div>

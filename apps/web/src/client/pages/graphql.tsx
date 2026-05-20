@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ComponentPropsWithoutRef,
   type FormEvent,
   type ReactNode,
 } from "react";
@@ -23,6 +24,7 @@ import { Input } from "@workeros/ui/components/input";
 import { Badge } from "@workeros/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@workeros/ui/components/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@workeros/ui/components/collapsible";
 import { Skeleton } from "@workeros/ui/components/skeleton";
 import { cn } from "@workeros/ui/lib/utils";
 import { CodeEditor } from "@/components/code-editor-lazy";
@@ -390,18 +392,17 @@ const SchemaTreeRow = ({
   </button>
 );
 
-interface SectionHeaderProps {
+interface SectionHeaderProps extends ComponentPropsWithoutRef<"button"> {
   icon: ReactNode;
   title: string;
   count: number;
   open: boolean;
-  onToggle: () => void;
 }
 
-const SectionHeader = ({ icon, title, count, open, onToggle }: SectionHeaderProps) => (
+const SectionHeader = ({ icon, title, count, open, ...buttonProps }: SectionHeaderProps) => (
   <button
     type="button"
-    onClick={onToggle}
+    {...buttonProps}
     className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:bg-accent/40"
   >
     {open ? <ChevronDownIcon className="size-3" /> : <ChevronRightIcon className="size-3" />}
@@ -782,115 +783,146 @@ export const GraphqlPage = () => {
             {!schemaLoading && !schemaError && (
               <div className="flex flex-col gap-1">
                 {/* Fallback snippets */}
-                <SectionHeader
-                  icon={<ZapIcon className="size-3" />}
-                  title="Snippets"
-                  count={FALLBACK_SNIPPETS.length}
+                <Collapsible
                   open={openSection.fallbacks ?? true}
-                  onToggle={() => toggleSection("fallbacks")}
-                />
-                {openSection.fallbacks &&
-                  FALLBACK_SNIPPETS.map((s) => (
-                    <SchemaTreeRow
-                      key={s.label}
-                      label={s.label}
-                      onClick={() => applyFallback(s)}
-                      active={active?.kind === "fallback" && active.name === s.label}
-                      indent={1}
+                  onOpenChange={() => toggleSection("fallbacks")}
+                  className="flex flex-col gap-1"
+                >
+                  <CollapsibleTrigger asChild>
+                    <SectionHeader
+                      icon={<ZapIcon className="size-3" />}
+                      title="Snippets"
+                      count={FALLBACK_SNIPPETS.length}
+                      open={openSection.fallbacks ?? true}
                     />
-                  ))}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="flex flex-col gap-1">
+                    {FALLBACK_SNIPPETS.map((s) => (
+                      <SchemaTreeRow
+                        key={s.label}
+                        label={s.label}
+                        onClick={() => applyFallback(s)}
+                        active={active?.kind === "fallback" && active.name === s.label}
+                        indent={1}
+                      />
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
 
                 {/* Queries */}
-                <SectionHeader
-                  icon={<ZapIcon className="size-3" />}
-                  title="Queries"
-                  count={filteredQueries.length}
+                <Collapsible
                   open={openSection.queries ?? true}
-                  onToggle={() => toggleSection("queries")}
-                />
-                {openSection.queries && filteredQueries.length === 0 && (
-                  <div className="px-3 py-1 text-[11px] text-muted-foreground">
-                    {queryFields.length === 0 ? "No queries." : "No matches."}
-                  </div>
-                )}
-                {openSection.queries &&
-                  filteredQueries.map((f) => (
-                    <SchemaTreeRow
-                      key={f.name}
-                      label={f.name}
-                      typeLabel={typeRefToString(f.type)}
-                      description={f.description}
-                      onClick={() => applyFieldSnippet(f, "query")}
-                      active={active?.kind === "query" && active.name === f.name}
-                      indent={1}
+                  onOpenChange={() => toggleSection("queries")}
+                  className="flex flex-col gap-1"
+                >
+                  <CollapsibleTrigger asChild>
+                    <SectionHeader
+                      icon={<ZapIcon className="size-3" />}
+                      title="Queries"
+                      count={filteredQueries.length}
+                      open={openSection.queries ?? true}
                     />
-                  ))}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="flex flex-col gap-1">
+                    {filteredQueries.length === 0 && (
+                      <div className="px-3 py-1 text-[11px] text-muted-foreground">
+                        {queryFields.length === 0 ? "No queries." : "No matches."}
+                      </div>
+                    )}
+                    {filteredQueries.map((f) => (
+                      <SchemaTreeRow
+                        key={f.name}
+                        label={f.name}
+                        typeLabel={typeRefToString(f.type)}
+                        description={f.description}
+                        onClick={() => applyFieldSnippet(f, "query")}
+                        active={active?.kind === "query" && active.name === f.name}
+                        indent={1}
+                      />
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
 
                 {/* Mutations */}
-                <SectionHeader
-                  icon={<PencilIcon className="size-3" />}
-                  title="Mutations"
-                  count={filteredMutations.length}
+                <Collapsible
                   open={openSection.mutations ?? true}
-                  onToggle={() => toggleSection("mutations")}
-                />
-                {openSection.mutations && filteredMutations.length === 0 && (
-                  <div className="px-3 py-1 text-[11px] text-muted-foreground">
-                    {mutationFields.length === 0 ? "No mutations." : "No matches."}
-                  </div>
-                )}
-                {openSection.mutations &&
-                  filteredMutations.map((f) => (
-                    <SchemaTreeRow
-                      key={f.name}
-                      label={f.name}
-                      typeLabel={typeRefToString(f.type)}
-                      description={f.description}
-                      onClick={() => applyFieldSnippet(f, "mutation")}
-                      active={active?.kind === "mutation" && active.name === f.name}
-                      indent={1}
+                  onOpenChange={() => toggleSection("mutations")}
+                  className="flex flex-col gap-1"
+                >
+                  <CollapsibleTrigger asChild>
+                    <SectionHeader
+                      icon={<PencilIcon className="size-3" />}
+                      title="Mutations"
+                      count={filteredMutations.length}
+                      open={openSection.mutations ?? true}
                     />
-                  ))}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="flex flex-col gap-1">
+                    {filteredMutations.length === 0 && (
+                      <div className="px-3 py-1 text-[11px] text-muted-foreground">
+                        {mutationFields.length === 0 ? "No mutations." : "No matches."}
+                      </div>
+                    )}
+                    {filteredMutations.map((f) => (
+                      <SchemaTreeRow
+                        key={f.name}
+                        label={f.name}
+                        typeLabel={typeRefToString(f.type)}
+                        description={f.description}
+                        onClick={() => applyFieldSnippet(f, "mutation")}
+                        active={active?.kind === "mutation" && active.name === f.name}
+                        indent={1}
+                      />
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
 
                 {/* Types */}
-                <SectionHeader
-                  icon={<BoxIcon className="size-3" />}
-                  title="Types"
-                  count={filteredTypes.length}
+                <Collapsible
                   open={openSection.types ?? false}
-                  onToggle={() => toggleSection("types")}
-                />
-                {openSection.types && visibleTypes.length === 0 && (
-                  <div className="px-3 py-1 text-[11px] text-muted-foreground">
-                    No types.
-                  </div>
-                )}
-                {openSection.types &&
-                  visibleTypes.map((t) => (
-                    <SchemaTreeRow
-                      key={t.name}
-                      label={t.name ?? "?"}
-                      typeLabel={t.kind.toLowerCase()}
-                      description={t.description}
-                      onClick={() => applyTypePreview(t)}
-                      active={active?.kind === "type" && active.name === t.name}
-                      indent={1}
+                  onOpenChange={() => toggleSection("types")}
+                  className="flex flex-col gap-1"
+                >
+                  <CollapsibleTrigger asChild>
+                    <SectionHeader
+                      icon={<BoxIcon className="size-3" />}
+                      title="Types"
+                      count={filteredTypes.length}
+                      open={openSection.types ?? false}
                     />
-                  ))}
-                {openSection.types &&
-                  !filter.trim() &&
-                  !showAllTypes &&
-                  filteredTypes.length > MAX_TYPES_INITIAL && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowAllTypes(true)}
-                      className="mx-2 mt-1 h-7 justify-start text-[11px] text-muted-foreground"
-                    >
-                      Show {filteredTypes.length - MAX_TYPES_INITIAL} more…
-                    </Button>
-                  )}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="flex flex-col gap-1">
+                    {visibleTypes.length === 0 && (
+                      <div className="px-3 py-1 text-[11px] text-muted-foreground">
+                        No types.
+                      </div>
+                    )}
+                    {visibleTypes.map((t) => (
+                      <SchemaTreeRow
+                        key={t.name}
+                        label={t.name ?? "?"}
+                        typeLabel={t.kind.toLowerCase()}
+                        description={t.description}
+                        onClick={() => applyTypePreview(t)}
+                        active={active?.kind === "type" && active.name === t.name}
+                        indent={1}
+                      />
+                    ))}
+                    {!filter.trim() &&
+                      !showAllTypes &&
+                      filteredTypes.length > MAX_TYPES_INITIAL && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowAllTypes(true)}
+                          className="mx-2 mt-1 h-7 justify-start text-[11px] text-muted-foreground"
+                        >
+                          Show {filteredTypes.length - MAX_TYPES_INITIAL} more…
+                        </Button>
+                      )}
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
             )}
           </CardContent>

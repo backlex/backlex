@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@workeros/ui/components/dialog";
 import { toast } from "@workeros/ui/components/sonner";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@workeros/ui/components/collapsible";
 import { cn } from "@workeros/ui/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { I } from "@/admin/icons";
@@ -412,22 +413,28 @@ export const OpenApiExportPage = () => {
             const groupRows = rowsByTag.get(tag) ?? [];
             const isOpen = openGroups[tag] ?? false;
             return (
-              <div key={tag} className="overflow-hidden rounded-md border bg-background/50">
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-muted/40"
-                  onClick={() => toggleGroup(tag)}
-                  aria-expanded={isOpen}
-                >
-                  <span className="flex items-center gap-2">
-                    {isOpen ? <I.ChevronDown size={14} /> : <I.ChevronRight size={14} />}
-                    <span className="font-medium">{tag}</span>
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {groupRows.length}
+              <Collapsible
+                key={tag}
+                open={isOpen}
+                onOpenChange={() => toggleGroup(tag)}
+                className="overflow-hidden rounded-md border bg-background/50"
+              >
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-muted/40"
+                    aria-expanded={isOpen}
+                  >
+                    <span className="flex items-center gap-2">
+                      {isOpen ? <I.ChevronDown size={14} /> : <I.ChevronRight size={14} />}
+                      <span className="font-medium">{tag}</span>
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {groupRows.length}
+                      </span>
                     </span>
-                  </span>
-                </button>
-                {isOpen && (
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
                   <div className="flex flex-col divide-y border-t">
                     {groupRows.map((row) => (
                       <div
@@ -456,8 +463,8 @@ export const OpenApiExportPage = () => {
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
+                </CollapsibleContent>
+              </Collapsible>
             );
           })}
         </CardContent>

@@ -10,6 +10,7 @@ import { Button, PageHeader } from "../ui";
 import { useAdvisor, queryKeys } from "../queries";
 import { Skeleton } from "@workeros/ui/components/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@workeros/ui/components/collapsible";
 
 type CheckKind = "security" | "performance";
 type CheckLevel = "error" | "warn" | "info";
@@ -246,15 +247,17 @@ function AdvisorRow({ c, onDismiss, onCopy }: { c: AdvisorCheck; onDismiss: () =
       ? "bg-[color-mix(in_oklch,oklch(0.75_0.18_70)_18%,var(--card))] text-[oklch(0.55_0.18_70)] dark:text-[oklch(0.85_0.18_70)]"
       : "bg-muted text-muted-foreground";
   return (
-    <div className={`overflow-hidden rounded-2xl border bg-card ${rowBorder}`}>
-      <button type="button" className="grid w-full cursor-pointer grid-cols-[32px_1fr_auto_auto_16px] items-center gap-3 border-0 bg-transparent px-4 py-3 text-left hover:bg-accent" onClick={() => setOpen((v) => !v)}>
-        <span className={`grid size-7 place-items-center rounded-lg ${icoCls}`}><Icon size={14} /></span>
-        <span className="text-[13.5px] font-medium">{c.title}</span>
-        <span className="font-mono text-[11.5px] text-muted-foreground">{c.resource}</span>
-        <span className="text-[11px] text-muted-foreground">{c.detected}</span>
-        <I.ChevronDown size={12} className="text-muted-foreground transition-transform data-[open=true]:rotate-180" data-open={open} />
-      </button>
-      {open && (
+    <Collapsible open={open} onOpenChange={setOpen} className={`overflow-hidden rounded-2xl border bg-card ${rowBorder}`}>
+      <CollapsibleTrigger asChild>
+        <button type="button" className="grid w-full cursor-pointer grid-cols-[32px_1fr_auto_auto_16px] items-center gap-3 border-0 bg-transparent px-4 py-3 text-left hover:bg-accent">
+          <span className={`grid size-7 place-items-center rounded-lg ${icoCls}`}><Icon size={14} /></span>
+          <span className="text-[13.5px] font-medium">{c.title}</span>
+          <span className="font-mono text-[11.5px] text-muted-foreground">{c.resource}</span>
+          <span className="text-[11px] text-muted-foreground">{c.detected}</span>
+          <I.ChevronDown size={12} className="text-muted-foreground transition-transform data-[open=true]:rotate-180" data-open={open} />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
         <div className="flex flex-col gap-3 border-t border-dashed border-border px-4 pb-4 pl-[60px] pt-1">
           <p className="m-0 text-[13px] text-foreground">{c.body}</p>
           <div>
@@ -276,7 +279,7 @@ function AdvisorRow({ c, onDismiss, onCopy }: { c: AdvisorCheck; onDismiss: () =
             </Button>
           </div>
         </div>
-      )}
-    </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

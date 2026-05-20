@@ -5,8 +5,12 @@ import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "../icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { i18nApi, settingsApi } from "../api";
 import { I18N_KEY_PATTERN } from "./_shared";
+
+const TR_TABLE_CLS =
+  "[&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
 
 export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void }) {
   const [locales, setLocales] = useState<string[]>(["en"]);
@@ -52,7 +56,7 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
     persist(key, locale, value);
   };
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="flex flex-col gap-4.5">
       <PageHeader
         title="Translations"
         description={<>Multi-locale content. Field-level translations attach to <span className="font-mono">c_*_translations</span> sibling tables; UI strings live here.</>}
@@ -122,25 +126,25 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
           }}
         />
       )}
-      <div className="card" style={{ padding: 14, display: "grid", gridTemplateColumns: `repeat(${locales.length}, 1fr)`, gap: 12 }}>
+      <div className="grid gap-3 overflow-hidden rounded-2xl border border-border bg-card p-3.5 text-card-foreground" style={{ gridTemplateColumns: `repeat(${locales.length}, 1fr)` }}>
         {completion.map((c) => (
           <div key={c.l}>
-            <div className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{c.l}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span className="tabular-nums" style={{ fontWeight: 500 }}>{c.pct}%</span>
-              <div style={{ flex: 1, height: 4, background: "var(--muted)", borderRadius: 2, overflow: "hidden" }}>
-                <div style={{ width: `${c.pct}%`, height: "100%", background: c.pct === 100 ? "oklch(0.7 0.18 145)" : c.pct < 80 ? "oklch(0.78 0.16 75)" : "var(--primary)" }} />
+            <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{c.l}</div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-medium tabular-nums">{c.pct}%</span>
+              <div className="h-1 flex-1 overflow-hidden rounded-[2px] bg-muted">
+                <div className="h-full" style={{ width: `${c.pct}%`, background: c.pct === 100 ? "oklch(0.7 0.18 145)" : c.pct < 80 ? "oklch(0.78 0.16 75)" : "var(--primary)" }} />
               </div>
             </div>
           </div>
         ))}
       </div>
-      <div className="filter-bar">
-        <span className="muted" style={{ fontSize: 11.5 }}>base</span>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[11.5px] text-muted-foreground">base</span>
         <Select value={base} onChange={setBase} options={[...locales]} />
-        <button className={`chip ${showOnly === "all" ? "active" : ""}`} onClick={() => setShowOnly("all")}>All ({data.length})</button>
-        <button className={`chip ${showOnly === "missing" ? "active" : ""}`} onClick={() => setShowOnly("missing")}>Missing ({data.filter((r) => locales.some((l) => !r[l])).length})</button>
-        <div style={{ marginLeft: "auto" }}>
+        <button className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border px-[11px] text-[12.5px] text-foreground hover:bg-accent ${showOnly === "all" ? "border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent" : "border-border bg-card"}`} onClick={() => setShowOnly("all")}>All ({data.length})</button>
+        <button className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border px-[11px] text-[12.5px] text-foreground hover:bg-accent ${showOnly === "missing" ? "border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent" : "border-border bg-card"}`} onClick={() => setShowOnly("missing")}>Missing ({data.filter((r) => locales.some((l) => !r[l])).length})</button>
+        <div className="ml-auto">
           <Button variant="outline" icon={I.Globe} onClick={() => setManageOpen(true)}>Manage locales</Button>
         </div>
       </div>
@@ -167,27 +171,27 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
           }}
         />
       )}
-      <div className="card" style={{ padding: 0, overflow: "auto" }}>
-        <table className="table" style={{ minWidth: 100 + locales.length * 160 }}>
-          <thead>
-            <tr>
-              <th style={{ width: 220, position: "sticky", left: 0, background: "var(--card)", zIndex: 1 }}>Key</th>
-              {locales.map((l) => <th key={l} style={{ minWidth: 160 }}>{l}{l === base && <span className="muted"> · base</span>}</th>)}
-            </tr>
-          </thead>
-          <tbody>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <Table className={TR_TABLE_CLS} style={{ minWidth: 100 + locales.length * 160 }}>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="sticky left-0 z-[1] w-[220px] bg-card">Key</TableHead>
+              {locales.map((l) => <TableHead key={l} className="min-w-[160px]">{l}{l === base && <span className="text-muted-foreground"> · base</span>}</TableHead>)}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {visible.map((r) => (
-              <tr key={r.key}>
-                <td className="font-mono" style={{ fontSize: 12, position: "sticky", left: 0, background: "var(--card)" }}>{r.key}</td>
+              <TableRow key={r.key}>
+                <TableCell className="sticky left-0 bg-card px-3.5 font-mono text-xs">{r.key}</TableCell>
                 {locales.map((l) => (
-                  <td key={l} style={{ padding: 0 }}>
-                    <input value={r[l] || ""} onChange={(e) => update(r.key, l, e.target.value)} placeholder={l === base ? "" : (r[base] || "—")} style={{ width: "100%", border: 0, outline: 0, background: !r[l] ? "color-mix(in oklch, oklch(0.78 0.16 75) 8%, transparent)" : "transparent", padding: "10px 12px", fontSize: 12.5, fontFamily: l === "ja" ? "inherit" : "Geist, sans-serif", color: !r[l] ? "var(--muted-foreground)" : "var(--foreground)" }} />
-                  </td>
+                  <TableCell key={l} className="p-0">
+                    <input value={r[l] || ""} onChange={(e) => update(r.key, l, e.target.value)} placeholder={l === base ? "" : (r[base] || "—")} className={`w-full border-0 px-3 py-2.5 text-[12.5px] outline-0 ${!r[l] ? "bg-[color-mix(in_oklch,oklch(0.78_0.16_75)_8%,transparent)] text-muted-foreground" : "bg-transparent text-foreground"}`} />
+                  </TableCell>
                 ))}
-              </tr>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
@@ -235,26 +239,25 @@ function AddTranslationKeyDialog({ base, locales, existingKeys, onClose, onCreat
   };
 
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
+    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={onClose}>
       <div
-        className="dialog-lg"
+        className="relative flex max-h-[min(86vh,720px)] max-w-[92vw] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200 w-[480px]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-i18n-key-title"
         onClick={(e) => e.stopPropagation()}
-        style={{ width: 480, maxWidth: "92vw" }}
       >
-        <div className="sheet-header" style={{ borderBottom: "1px solid var(--border)" }}>
-          <div style={{ flex: 1 }}>
-            <h2 id="add-i18n-key-title">New translation key</h2>
-            <p>Adds a row to <span className="font-mono">i18n_strings</span>. The key is shared across all locales; values are filled per locale.</p>
+        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
+          <div className="flex-1">
+            <h2 id="add-i18n-key-title" className="m-0 text-base font-semibold tracking-[-0.01em]">New translation key</h2>
+            <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">Adds a row to <span className="font-mono">i18n_strings</span>. The key is shared across all locales; values are filled per locale.</p>
           </div>
           <IconButton icon={I.X} onClick={onClose} title="Close" />
         </div>
-        <div className="dialog-body">
-          <div className="field">
-            <label className="field-label" htmlFor="i18n-new-key">
-              Key <Badge variant="outline" mono>text</Badge> <span style={{ color: "var(--destructive)" }}>*</span>
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground" htmlFor="i18n-new-key">
+              Key <Badge variant="outline" mono>text</Badge> <span className="text-destructive">*</span>
             </label>
             <Input
               id="i18n-new-key"
@@ -274,15 +277,15 @@ function AddTranslationKeyDialog({ base, locales, existingKeys, onClose, onCreat
               }}
             />
             {error ? (
-              <div className="field-error"><I.AlertTriangle size={11} />{error}</div>
+              <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{error}</div>
             ) : (
-              <div className="field-hint">Dotted namespaces are conventional, e.g. <span className="font-mono">common.cancel</span>, <span className="font-mono">auth.signin.title</span>.</div>
+              <div className="text-[11.5px] text-muted-foreground">Dotted namespaces are conventional, e.g. <span className="font-mono">common.cancel</span>, <span className="font-mono">auth.signin.title</span>.</div>
             )}
           </div>
 
-          <div className="field">
-            <label className="field-label" htmlFor="i18n-new-value">
-              Base value <Badge variant="outline" mono>{base}</Badge> <span className="muted" style={{ fontWeight: 400 }}>· optional</span>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground" htmlFor="i18n-new-value">
+              Base value <Badge variant="outline" mono>{base}</Badge> <span className="font-normal text-muted-foreground">· optional</span>
             </label>
             <Textarea
               id="i18n-new-value"
@@ -291,26 +294,26 @@ function AddTranslationKeyDialog({ base, locales, existingKeys, onClose, onCreat
               value={value}
               onChange={(e) => setValue(e.target.value)}
             />
-            <div className="field-hint">Leave blank to create the key with empty values across all locales.</div>
+            <div className="text-[11.5px] text-muted-foreground">Leave blank to create the key with empty values across all locales.</div>
           </div>
 
-          <div className="field" style={{ background: "var(--muted)", padding: 12, borderRadius: "var(--radius-xl)" }}>
-            <div className="field-label" style={{ marginBottom: 6 }}>
+          <div className="flex flex-col gap-1.5 rounded-xl bg-muted p-3">
+            <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground">
               <I.Globe size={12} /> Locales
             </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <div className="flex flex-wrap gap-1.5">
               {locales.map((l) => (
                 <Badge key={l} variant={l === base ? "default" : "outline"} mono>
                   {l}{l === base && " · base"}
                 </Badge>
               ))}
             </div>
-            <div className="field-hint" style={{ marginTop: 6 }}>
+            <div className="mt-1.5 text-[11.5px] text-muted-foreground">
               Other locales stay empty until filled in the matrix.
             </div>
           </div>
         </div>
-        <div className="sheet-footer">
+        <div className="flex justify-end gap-2 border-t border-border bg-card px-5 py-3">
           <Button variant="ghost" onClick={onClose} disabled={submitting}>Cancel</Button>
           <Button variant="primary" icon={I.Plus} onClick={submit} disabled={!valid || submitting}>
             {submitting ? "Creating…" : "Create key"}
@@ -348,44 +351,43 @@ function AutoTranslateDialog({ locales, base, data, busy, onClose, onRun }: Auto
   }, [data, target, source, onlyMissing]);
 
   return (
-    <div className="dialog-backdrop" onClick={busy ? undefined : onClose}>
+    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={busy ? undefined : onClose}>
       <div
-        className="dialog-lg"
+        className="relative flex max-h-[min(86vh,720px)] max-w-[92vw] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200 w-[460px]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="auto-translate-title"
         onClick={(e) => e.stopPropagation()}
-        style={{ width: 460, maxWidth: "92vw" }}
       >
-        <div className="sheet-header" style={{ borderBottom: "1px solid var(--border)" }}>
-          <div style={{ flex: 1 }}>
-            <h2 id="auto-translate-title">Auto-translate</h2>
-            <p>Translate UI strings using Claude. Requires <span className="font-mono">ANTHROPIC_API_KEY</span> on the server.</p>
+        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
+          <div className="flex-1">
+            <h2 id="auto-translate-title" className="m-0 text-base font-semibold tracking-[-0.01em]">Auto-translate</h2>
+            <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">Translate UI strings using Claude. Requires <span className="font-mono">ANTHROPIC_API_KEY</span> on the server.</p>
           </div>
           <IconButton icon={I.X} onClick={onClose} title="Close" disabled={busy} />
         </div>
-        <div className="dialog-body">
-          <div className="field">
-            <label className="field-label">From</label>
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">From</label>
             <Select value={source} onChange={setSource} options={locales} />
           </div>
-          <div className="field">
-            <label className="field-label">To</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">To</label>
             <Select value={target} onChange={setTarget} options={locales.filter((l) => l !== source)} />
           </div>
-          <div className="field-row">
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <span style={{ fontSize: 12.5 }}>Only translate missing keys</span>
-              <span className="muted" style={{ fontSize: 11 }}>When off, existing translations in the target locale are overwritten.</span>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col">
+              <span className="text-[12.5px]">Only translate missing keys</span>
+              <span className="text-[11px] text-muted-foreground">When off, existing translations in the target locale are overwritten.</span>
             </div>
             <Switch checked={onlyMissing} onChange={setOnlyMissing} />
           </div>
-          <div style={{ background: "var(--muted)", padding: 10, borderRadius: "var(--radius-xl)", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
+          <div className="flex items-center gap-1.5 rounded-xl bg-muted p-2.5 text-xs">
             <I.Info size={12} />
             <span>Will translate <strong>{Math.min(targetCount, 50)}</strong> key{targetCount === 1 ? "" : "s"}{targetCount > 50 ? ` of ${targetCount} (capped at 50 per run)` : ""}.</span>
           </div>
         </div>
-        <div className="sheet-footer">
+        <div className="flex justify-end gap-2 border-t border-border bg-card px-5 py-3">
           <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
           <Button
             variant="primary"
@@ -438,45 +440,43 @@ function ManageLocalesDialog({ locales, defaultLocale, onClose, onSave }: Manage
   };
 
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
+    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={onClose}>
       <div
-        className="dialog-lg"
+        className="relative flex max-h-[min(86vh,720px)] max-w-[92vw] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200 w-[480px]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="manage-locales-title"
         onClick={(e) => e.stopPropagation()}
-        style={{ width: 480, maxWidth: "92vw" }}
       >
-        <div className="sheet-header" style={{ borderBottom: "1px solid var(--border)" }}>
-          <div style={{ flex: 1 }}>
-            <h2 id="manage-locales-title">Manage locales</h2>
-            <p>Active languages for this workspace. The default is returned by the public API when a requested locale has no string.</p>
+        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
+          <div className="flex-1">
+            <h2 id="manage-locales-title" className="m-0 text-base font-semibold tracking-[-0.01em]">Manage locales</h2>
+            <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">Active languages for this workspace. The default is returned by the public API when a requested locale has no string.</p>
           </div>
           <IconButton icon={I.X} onClick={onClose} title="Close" />
         </div>
-        <div className="dialog-body">
-          <div className="field">
-            <label className="field-label">
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
               <I.Globe size={12} /> Active locales
             </label>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+            <div className="mb-2 flex flex-wrap gap-1.5">
               {list.map((l) => (
-                <span key={l} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 6px 2px 8px", border: "1px solid var(--border)", borderRadius: 6, background: l === def ? "var(--primary)" : "transparent", color: l === def ? "var(--primary-foreground)" : "inherit", fontSize: 11, fontFamily: "var(--font-mono)" }}>
+                <span key={l} className={`inline-flex items-center gap-1 rounded-[6px] border border-border py-0.5 pl-2 pr-1.5 font-mono text-[11px] ${l === def ? "bg-primary text-primary-foreground" : "bg-transparent"}`}>
                   {l}{l === def && " · default"}
                   <button
                     aria-label={`Remove ${l}`}
                     onClick={() => remove(l)}
                     disabled={list.length <= 1}
-                    style={{ background: "transparent", border: 0, padding: 0, cursor: list.length <= 1 ? "not-allowed" : "pointer", color: "inherit", display: "inline-flex" }}
+                    className={`inline-flex border-0 bg-transparent p-0 text-inherit ${list.length <= 1 ? "cursor-not-allowed" : "cursor-pointer"}`}
                   >
                     <I.X size={11} />
                   </button>
                 </span>
               ))}
             </div>
-            <div style={{ display: "flex", gap: 6 }}>
+            <div className="flex gap-1.5">
               <Input
-                className="font-mono"
                 placeholder="tr, en-GB, …"
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
@@ -486,20 +486,20 @@ function ManageLocalesDialog({ locales, defaultLocale, onClose, onSave }: Manage
                     add();
                   }
                 }}
-                style={{ flex: 1 }}
+                className="font-mono flex-1"
               />
               <Button variant="outline" icon={I.Plus} onClick={add} disabled={!draft.trim() || !LOCALE_PATTERN.test(draft.trim().toLowerCase()) || list.includes(draft.trim().toLowerCase())}>Add</Button>
             </div>
-            <div className="field-hint" style={{ marginTop: 6 }}>BCP-47 short codes — e.g. <span className="font-mono">tr</span>, <span className="font-mono">en-GB</span>, <span className="font-mono">pt-BR</span>.</div>
+            <div className="mt-1.5 text-[11.5px] text-muted-foreground">BCP-47 short codes — e.g. <span className="font-mono">tr</span>, <span className="font-mono">en-GB</span>, <span className="font-mono">pt-BR</span>.</div>
           </div>
 
-          <div className="field">
-            <label className="field-label">Default locale</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Default locale</label>
             <Select value={def} onChange={setDef} options={list} />
-            <div className="field-hint">Used as fallback when the requested locale has no string for a key.</div>
+            <div className="text-[11.5px] text-muted-foreground">Used as fallback when the requested locale has no string for a key.</div>
           </div>
         </div>
-        <div className="sheet-footer">
+        <div className="flex justify-end gap-2 border-t border-border bg-card px-5 py-3">
           <Button variant="ghost" onClick={onClose} disabled={submitting}>Cancel</Button>
           <Button variant="primary" icon={I.Check} onClick={submit} disabled={submitting || list.length === 0}>
             {submitting ? "Saving…" : "Save"}

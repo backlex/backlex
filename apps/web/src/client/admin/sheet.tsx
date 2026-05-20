@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Sheet form for create/edit, ConfirmAction dialog
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { I } from "./icons";
@@ -113,7 +112,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
     const base = buildDefaults();
     if (initial) {
       for (const f of fields) {
-        const v = (initial as Record<string, unknown>)[f.name];
+        const v = (initial as unknown as Record<string, unknown>)[f.name];
         if (v === undefined) continue;
         if (isArrayInterface(f)) {
           // Backend stores tags/multi-selects as JSON arrays; keep them as

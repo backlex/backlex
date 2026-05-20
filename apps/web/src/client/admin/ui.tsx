@@ -5,12 +5,14 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ButtonHTMLAttributes,
   type CSSProperties,
   type MouseEvent,
   type ReactNode,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { NAV_ITEMS, NAV_SETTINGS, NAV_DEVELOPERS } from "./config";
 import { tenantsApi, type ApiTenant } from "./api";
@@ -507,6 +509,157 @@ const resolveAvatarSrc = (image: string | null | undefined): string | null => {
   return `/api/storage/${encodeURIComponent(image)}`;
 };
 
+type NotificationKind = "mention" | "advisor" | "flow" | "deploy" | "member" | "function";
+
+interface NotificationItem {
+  id: string;
+  kind: NotificationKind;
+  unread: boolean;
+  who: string;
+  t: string;
+  title: string;
+  body: string;
+  icon: IconKey;
+}
+
+// TODO(notifications): replace with /api/notifications when the endpoint
+// lands. Same shape the design uses; visual-only mark-as-read for now.
+const NOTIFICATIONS_SEED: NotificationItem[] = [
+  { id: "n_01", kind: "mention", unread: true, who: "kai", t: "2m ago", title: "@rana mentioned you in c_posts/01HZ7K8Q6XYZ", body: "\"Can you confirm the cf-image fit param before I publish?\"", icon: "MessageSquare" },
+  { id: "n_02", kind: "advisor", unread: true, who: "workeros", t: "14m ago", title: "New security check failed", body: "Public read on c_users — anonymous traffic can list emails.", icon: "ShieldAlert" },
+  { id: "n_03", kind: "flow", unread: true, who: "system", t: "38m ago", title: "Flow \"Notify on new comment\" failed 12 times", body: "Webhook target returned 503 — retry budget exhausted.", icon: "Bolt" },
+  { id: "n_04", kind: "deploy", unread: false, who: "jules", t: "1h ago", title: "Production deploy succeeded", body: "workeros-api · cf-workers · build a4e2b9c · in 1m 42s.", icon: "CheckCircle" },
+  { id: "n_05", kind: "member", unread: false, who: "admin", t: "3h ago", title: "priya@workeros.dev joined workspace", body: "Default role: authenticated · invited by rana.", icon: "Users" },
+  { id: "n_06", kind: "function", unread: false, who: "system", t: "1d ago", title: "Cron job \"nightly-rollup\" took 4× longer than baseline", body: "Last run 38.4s · baseline 9.6s · check the p95 query in Logs.", icon: "Clock" },
+];
+
+export function NotificationsBell() {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [items, setItems] = useState<NotificationItem[]>(NOTIFICATIONS_SEED);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const unread = items.filter((n) => n.unread).length;
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: Event) => {
+      const target = e.target as Node | null;
+      if (wrapRef.current && target && !wrapRef.current.contains(target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+
+  const visible = filter === "unread" ? items.filter((n) => n.unread) : items;
+  const markRead = (id: string) =>
+    setItems((arr) => arr.map((n) => (n.id === id ? { ...n, unread: false } : n)));
+  const markAllRead = () => setItems((arr) => arr.map((n) => ({ ...n, unread: false })));
+
+  const onItem = (n: NotificationItem) => {
+    markRead(n.id);
+    // Advisor notifications deep-link to the new Advisor page; other kinds
+    // currently just mark-read.
+    if (n.kind === "advisor") {
+      setOpen(false);
+      navigate("/advisor");
+    }
+  };
+
+  return (
+    <div ref={wrapRef} className="notif-wrap">
+      <button
+        type="button"
+        className="notif-trigger"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Notifications"
+      >
+        <I.Bell size={14} />
+        {unread > 0 && <span className="notif-dot tabular-nums font-mono">{unread}</span>}
+      </button>
+      {open && (
+        <div className="notif-pop">
+          <div className="notif-head">
+            <span style={{ fontSize: 13, fontWeight: 500 }}>Notifications</span>
+            <div className="spacer" />
+            <button
+              type="button"
+              className={`notif-tab ${filter === "all" ? "on" : ""}`}
+              onClick={() => setFilter("all")}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              className={`notif-tab ${filter === "unread" ? "on" : ""}`}
+              onClick={() => setFilter("unread")}
+            >
+              Unread {unread > 0 && <span className="notif-tab-count font-mono">{unread}</span>}
+            </button>
+          </div>
+          <div className="notif-list">
+            {visible.length === 0 ? (
+              <div
+                style={{
+                  padding: 36,
+                  textAlign: "center",
+                  color: "var(--muted-foreground)",
+                  fontSize: 13,
+                }}
+              >
+                <I.Inbox size={22} style={{ marginBottom: 8, opacity: 0.5 }} />
+                <br />
+                You're all caught up.
+              </div>
+            ) : (
+              visible.map((n) => {
+                const IconComp = (I as Record<string, IconComponent>)[n.icon] ?? I.Bell;
+                return (
+                  <button
+                    key={n.id}
+                    type="button"
+                    className={`notif-item ${n.unread ? "unread" : ""}`}
+                    onClick={() => onItem(n)}
+                  >
+                    <span className={`notif-ico notif-ico-${n.kind}`}>
+                      <IconComp size={13} />
+                    </span>
+                    <div className="notif-body">
+                      <div className="notif-title">{n.title}</div>
+                      <div className="notif-text">{n.body}</div>
+                      <div className="notif-meta font-mono">
+                        {n.who} · {n.t}
+                      </div>
+                    </div>
+                    {n.unread && <span className="notif-unread-dot" />}
+                  </button>
+                );
+              })
+            )}
+          </div>
+          <div className="notif-foot">
+            <Button variant="ghost" size="sm" onClick={markAllRead}>
+              Mark all read
+            </Button>
+            <div className="spacer" />
+            <Button
+              variant="ghost"
+              size="sm"
+              iconRight={I.ChevronRight}
+              onClick={() => {
+                setOpen(false);
+                navigate("/activity");
+              }}
+            >
+              Open inbox
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onToggleSidebar, onSignOut, user, onAccountSettings }: TopbarProps) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -536,6 +689,7 @@ export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onToggleSid
         <span className="kbd">⌘K</span>
       </div>
       <IconButton icon={dark ? I.Sun : I.Moon} onClick={onToggleTheme} title="Toggle theme" />
+      <NotificationsBell />
       <div className="user-menu-wrap" style={{ position: "relative" }}>
         <button
           onClick={() => setOpen((v) => !v)}

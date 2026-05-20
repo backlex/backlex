@@ -9,8 +9,8 @@ import { I, type IconComponent, type IconKey } from "../icons";
 import { Badge, Button, IconButton, PageHeader } from "../ui";
 import { Input } from "@workeros/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
-import { Skeleton } from "@workeros/ui/components/skeleton";
 import { useActivity } from "../queries";
+import { LogsSkeleton } from "../page-skeletons";
 import { authorById } from "../items";
 import type { ApiActivity } from "../api";
 
@@ -315,6 +315,9 @@ export function LogsPage({ pushToast }: { pushToast: (m: string, type?: "success
     }
   };
 
+  // First whole-page fetch — activity rows haven't landed yet.
+  if (isLoading) return <LogsSkeleton />;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader
@@ -333,14 +336,7 @@ export function LogsPage({ pushToast }: { pushToast: (m: string, type?: "success
         }
       />
 
-      {isLoading ? (
-        <div className="card" style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-          <Skeleton className="h-9 w-full" />
-          <Skeleton className="h-11 w-full" />
-          <Skeleton className="h-9 w-full" />
-          <Skeleton className="h-64 w-full" />
-        </div>
-      ) : isError ? (
+      {isError ? (
         <div className="card empty">
           <div className="ico"><I.AlertTriangle size={18} /></div>
           <h4>Couldn't load logs</h4>

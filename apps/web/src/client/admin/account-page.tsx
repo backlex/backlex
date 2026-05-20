@@ -28,6 +28,7 @@ import {
 } from "@workeros/ui/components/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { Separator } from "@workeros/ui/components/separator";
+import { Skeleton } from "@workeros/ui/components/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { auth } from "@/lib/auth";
 import { api } from "@/lib/api";
@@ -770,9 +771,16 @@ function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {displayProviders.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              {loadingAccounts ? "Loading…" : "No social providers are enabled for this workspace."}
-            </p>
+            loadingAccounts ? (
+              <div className="flex flex-col gap-2">
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No social providers are enabled for this workspace.
+              </p>
+            )
           )}
           {displayProviders.map((id, idx) => {
             const linked = accountByProvider.get(id);

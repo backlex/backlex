@@ -204,7 +204,7 @@ function FileTrigger({ value, kind, error, onOpen, onClear }: { value: string; k
           >
             {kind === "image" ? <I.Upload size={16} /> : <I.Folder size={16} />}
           </span>
-          <span className="muted" style={{ flex: 1, fontSize: 13 }}>
+          <span className="flex-1 text-[13px] text-muted-foreground">
             {kind === "image" ? "No image selected" : "No file selected"}
           </span>
         </>
@@ -408,21 +408,23 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
   const canCommit = mode === "multi" ? true : selected.length > 0;
 
   return createPortal(
-    <div className="dialog-backdrop" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150"
+      onClick={onClose}
+    >
       <div
-        className="dialog-lg"
+        className="relative flex max-h-[min(88vh,760px)] w-[min(880px,94vw)] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false); }}
         onDrop={onDropFiles}
         role="dialog"
         aria-modal="true"
-        style={{ width: "min(880px, 94vw)", maxHeight: "min(88vh, 760px)" }}
       >
-        <div className="dialog-head">
+        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
           <div>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>{title}</h3>
-            <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--muted-foreground)" }}>
+            <h3 className="m-0 text-base font-semibold tracking-[-0.01em]">{title}</h3>
+            <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">
               {mode === "multi"
                 ? "Pick one or more files. Drag-drop or use Upload to add new ones."
                 : kind === "image"
@@ -433,7 +435,7 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
           <IconButton icon={I.X} title="Close" onClick={onClose} />
         </div>
 
-        <div className="dialog-body" style={{ padding: 0, gap: 0, flexDirection: "row" }}>
+        <div className="flex flex-1 flex-row overflow-y-auto">
           <FolderSidebar
             folders={folders}
             active={activeFolder}
@@ -466,24 +468,23 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
             </div>
 
             <div
-              className={`dropzone ${dragOver ? "is-over" : ""}`}
+              className={`flex cursor-pointer items-center gap-3.5 rounded-2xl border-[1.5px] border-dashed px-3.5 py-2.5 transition-all ${dragOver ? "scale-[1.005] border-solid border-primary bg-muted" : "border-border bg-[color-mix(in_oklch,var(--muted)_22%,var(--card))] hover:border-[color-mix(in_oklch,var(--primary)_50%,var(--border))] hover:bg-muted"}`}
               onClick={() => fileInputRef.current?.click()}
               role="button"
               tabIndex={0}
-              style={{ padding: "10px 14px" }}
             >
-              <div className="dropzone-icon" style={{ width: 32, height: 32 }}>
+              <div className="grid size-8 shrink-0 place-items-center rounded-xl bg-muted text-primary">
                 <I.Upload size={16} />
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>
+              <div className="flex-1">
+                <div className="text-[13px] font-medium">
                   Drop {kind === "image" ? "images" : "files"} here, or click to upload
                 </div>
-                <div className="muted" style={{ fontSize: 12 }}>
+                <div className="text-xs text-muted-foreground">
                   Uploading to <span className="font-mono">{uploadFolder}/</span>.
                 </div>
               </div>
-              <span className="dropzone-hint font-mono">{mode === "multi" ? "multiple ok" : "1 file"}</span>
+              <span className="rounded-full border border-border bg-card px-2 py-[3px] font-mono text-[11px] text-muted-foreground">{mode === "multi" ? "multiple ok" : "1 file"}</span>
             </div>
 
             {uploads.length > 0 && (
@@ -495,10 +496,10 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
             )}
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minHeight: 200 }}>
-              {loading && <div className="muted" style={{ fontSize: 12.5, padding: 12 }}>Loading…</div>}
+              {loading && <div className="p-3 text-[12.5px] text-muted-foreground">Loading…</div>}
               {loadErr && <div style={{ color: "var(--destructive)", fontSize: 12.5, padding: 12 }}>{loadErr}</div>}
               {!loading && !loadErr && filtered.length === 0 && (
-                <div className="muted" style={{ fontSize: 12.5, padding: 12 }}>
+                <div className="p-3 text-[12.5px] text-muted-foreground">
                   {q
                     ? `No ${kind === "image" ? "images" : "files"} match “${q}”.`
                     : activeFolder
@@ -529,8 +530,8 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
           </div>
         </div>
 
-        <div className="dialog-foot">
-          <span className="muted" style={{ fontSize: 12 }}>
+        <div className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
+          <span className="text-xs text-muted-foreground">
             {mode === "multi"
               ? selected.length
                 ? `${selected.length} selected`
@@ -539,7 +540,7 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
                 ? <>Selected <span className="font-mono">{selected[0]}</span></>
                 : "Pick a tile to select it"}
           </span>
-          <div style={{ flex: 1 }} />
+          <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
           <Button variant="primary" size="sm" disabled={!canCommit} onClick={() => onCommit(selected)}>
             {mode === "multi" ? `Use ${selected.length || "0"} file${selected.length === 1 ? "" : "s"}` : "Confirm"}
@@ -577,7 +578,7 @@ function FolderSidebar({ folders, active, onSelect, totalCount }: {
     >
       <I.Folder size={13} />
       <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
-      <span className="muted tabular-nums" style={{ fontSize: 11 }}>{count}</span>
+      <span className="tabular-nums text-[11px] text-muted-foreground">{count}</span>
     </button>
   );
 
@@ -593,13 +594,13 @@ function FolderSidebar({ folders, active, onSelect, totalCount }: {
         display: "flex", flexDirection: "column", gap: 2,
       }}
     >
-      <div className="muted" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.08em", padding: "4px 10px 8px" }}>
+      <div className="px-2.5 pb-2 pt-1 text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">
         Folders
       </div>
       {row("All files", totalCount, active === null, () => onSelect(null), "__all")}
       {folders.map((f) =>
         row(
-          f.name === "(root)" ? <span className="muted">(no folder)</span> : <span className="font-mono">{f.name}</span>,
+          f.name === "(root)" ? <span className="text-muted-foreground">(no folder)</span> : <span className="font-mono">{f.name}</span>,
           f.count,
           active === f.name,
           () => onSelect(f.name),
@@ -607,7 +608,7 @@ function FolderSidebar({ folders, active, onSelect, totalCount }: {
         ),
       )}
       {folders.length === 0 && (
-        <div className="muted" style={{ fontSize: 11.5, padding: "8px 10px" }}>
+        <div className="px-2.5 py-2 text-[11.5px] text-muted-foreground">
           No folders yet — uploads land under <span className="font-mono">uploads/</span>.
         </div>
       )}
@@ -672,7 +673,7 @@ function FileTile({ f, selected, mode, onToggle }: { f: StorageFile; selected: b
         <div className="font-mono" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={f.key}>
           {name}
         </div>
-        <div className="muted tabular-nums" style={{ fontSize: 11 }}>
+        <div className="tabular-nums text-[11px] text-muted-foreground">
           {fmtSize(f.size)}
         </div>
       </div>
@@ -784,12 +785,12 @@ function RelationTrigger({ value, label, error, target, placeholder, onOpen, onC
             {label ?? <span className="font-mono">{value}</span>}
           </span>
           {label && (
-            <span className="muted font-mono" style={{ fontSize: 11 }}>{value.slice(0, 8)}</span>
+            <span className="font-mono text-[11px] text-muted-foreground">{value.slice(0, 8)}</span>
           )}
           <IconButton icon={I.X} title="Clear" onClick={onClear} />
         </>
       ) : (
-        <span className="muted" style={{ flex: 1, fontSize: 13 }}>
+        <span className="flex-1 text-[13px] text-muted-foreground">
           {placeholder ?? `No row from c_${target} selected`}
         </span>
       )}
@@ -843,27 +844,29 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
   }, [rows, q]);
 
   return createPortal(
-    <div className="dialog-backdrop" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150"
+      onClick={onClose}
+    >
       <div
-        className="dialog-lg"
+        className="relative flex max-h-[min(88vh,720px)] w-[min(720px,92vw)] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        style={{ width: "min(720px, 92vw)", maxHeight: "min(88vh, 720px)" }}
       >
-        <div className="dialog-head">
+        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
           <div>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>
+            <h3 className="m-0 text-base font-semibold tracking-[-0.01em]">
               Pick a row from <span className="font-mono">c_{target}</span>
             </h3>
-            <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--muted-foreground)" }}>
+            <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">
               Showing the 100 most recently updated rows. Use search to narrow down.
             </p>
           </div>
           <IconButton icon={I.X} title="Close" onClick={onClose} />
         </div>
 
-        <div className="dialog-body" style={{ padding: 16, gap: 12 }}>
+        <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
           <InputGroup>
             <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
             <InputGroupInput
@@ -875,10 +878,10 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
           </InputGroup>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minHeight: 200 }}>
-            {loading && <div className="muted" style={{ fontSize: 12.5, padding: 12 }}>Loading…</div>}
+            {loading && <div className="p-3 text-[12.5px] text-muted-foreground">Loading…</div>}
             {err && <div style={{ color: "var(--destructive)", fontSize: 12.5, padding: 12 }}>{err}</div>}
             {!loading && !err && filtered.length === 0 && (
-              <div className="muted" style={{ fontSize: 12.5, padding: 12 }}>
+              <div className="p-3 text-[12.5px] text-muted-foreground">
                 {q ? `No rows match “${q}”.` : `c_${target} is empty.`}
               </div>
             )}
@@ -911,9 +914,9 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
                   }} />
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {lbl ?? <span className="muted">(no label)</span>}
+                      {lbl ?? <span className="text-muted-foreground">(no label)</span>}
                     </div>
-                    <div className="muted font-mono" style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div className="truncate font-mono text-[11px] text-muted-foreground">
                       {id}
                     </div>
                   </div>
@@ -923,13 +926,13 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
           </div>
         </div>
 
-        <div className="dialog-foot">
-          <span className="muted" style={{ fontSize: 12 }}>
+        <div className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
+          <span className="text-xs text-muted-foreground">
             {selected
               ? <>Selected <span className="font-mono">{selected}</span></>
               : "Pick a row to select it"}
           </span>
-          <div style={{ flex: 1 }} />
+          <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
           <Button variant="primary" size="sm" disabled={!selected} onClick={() => onCommit(selected)}>Confirm</Button>
         </div>

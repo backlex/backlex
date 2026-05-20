@@ -29,6 +29,7 @@ import { CheckIcon, ChevronsUpDownIcon, LinkIcon } from "lucide-react";
 import { cn } from "@workeros/ui/lib/utils";
 import { api } from "@/lib/api";
 import { useUrlState } from "@/lib/use-url-state";
+import { Skeleton } from "@workeros/ui/components/skeleton";
 import { SkeletonCard } from "./loading";
 
 const ADMIN_TABLE_CLS =
@@ -1777,7 +1778,7 @@ function PaginationFooter({ loaded, total, loading, onLoadMore }: { loaded: numb
       <span className="tabular-nums text-muted-foreground">Showing {loaded} of {total}</span>
       {hasMore && (
         <Button size="sm" variant="outline" onClick={onLoadMore} disabled={loading}>
-          {loading ? "Loading…" : "Load more"}
+          {loading ? <Skeleton className="h-3.5 w-16" /> : "Load more"}
         </Button>
       )}
     </div>

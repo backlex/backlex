@@ -9,10 +9,17 @@
 import { useMemo, useState } from "react";
 import { I, type IconComponent } from "./icons";
 import { Badge, IconButton } from "./ui";
+import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { authorById } from "./items";
 import type { Post } from "./config";
 
 export type ItemsViewMode = "table" | "kanban" | "gallery" | "calendar";
+
+// Rows come from arbitrary user collections, not the design's `posts` mock —
+// any field beyond `id` may be missing. These readers degrade instead of
+// throwing (e.g. `r.word_count.toLocaleString()` on a column-less collection).
+const rowLabel = (r: Post): string => r.title || r.slug || r.id;
+const rowNumber = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
 interface ToggleOption {
   id: ItemsViewMode;
@@ -40,20 +47,16 @@ export function ItemsViewToggle({
   // prototype always had `status` so it never had to guard for this.
   const opts = hasStatus ? ALL_OPTS : ALL_OPTS.filter((o) => o.id !== "kanban");
   return (
-    <div className="inline-flex gap-0.5 rounded-2xl border border-border bg-card p-[3px]">
-      {opts.map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          className={`inline-flex cursor-pointer items-center gap-1.5 rounded-3xl border-0 px-[11px] py-[5px] text-xs ${mode === o.id ? "bg-muted text-foreground" : "bg-transparent text-muted-foreground hover:text-foreground"}`}
-          onClick={() => setMode(o.id)}
-          title={o.label}
-        >
-          <o.icon size={13} />
-          <span>{o.label}</span>
-        </button>
-      ))}
-    </div>
+    <Tabs value={mode} onValueChange={(v) => setMode(v as ItemsViewMode)}>
+      <TabsList>
+        {opts.map((o) => (
+          <TabsTrigger key={o.id} value={o.id} title={o.label}>
+            <o.icon size={13} />
+            <span>{o.label}</span>
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }
 
@@ -88,21 +91,27 @@ export function KanbanBoard({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post)
               ) : (
                 items.map((r) => {
                   const author = authorById(r.author);
+                  const words = rowNumber(r.word_count);
+                  const views = rowNumber(r.view_count);
                   return (
                     <button key={r.id} type="button" className="flex cursor-pointer flex-col gap-1.5 rounded-lg border border-border bg-card px-3 py-2.5 text-left hover:border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))]" onClick={() => onEdit(r)}>
-                      <div className="text-[12.5px] font-medium leading-[1.3]">{r.title}</div>
-                      <div className="text-[11px] text-muted-foreground">
-                        <span className="font-mono">{r.slug}</span>
-                      </div>
+                      <div className="text-[12.5px] font-medium leading-[1.3]">{rowLabel(r)}</div>
+                      {r.slug && (
+                        <div className="text-[11px] text-muted-foreground">
+                          <span className="font-mono">{r.slug}</span>
+                        </div>
+                      )}
                       <div className="mt-0.5 flex items-center gap-1.5">
                         <span className="grid size-[18px] place-items-center rounded-full bg-muted font-mono text-[9.5px] text-muted-foreground">{author.initials}</span>
-                        <span className="font-mono text-[10.5px] tabular-nums text-muted-foreground">
-                          {r.word_count.toLocaleString()} w
-                        </span>
+                        {words != null && (
+                          <span className="font-mono text-[10.5px] tabular-nums text-muted-foreground">
+                            {words.toLocaleString()} w
+                          </span>
+                        )}
                         <div className="flex-1" />
-                        {r.view_count > 0 && (
+                        {views != null && views > 0 && (
                           <span className="inline-flex items-center gap-1 font-mono text-[10.5px] tabular-nums text-muted-foreground">
-                            <I.Eye size={10} /> {r.view_count.toLocaleString()}
+                            <I.Eye size={10} /> {views.toLocaleString()}
                           </span>
                         )}
                       </div>
@@ -142,18 +151,21 @@ export function GalleryGrid({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post)
       {rows.map((r) => {
         const a = hashColor(r.id);
         const b = hashColor(r.id.split("").reverse().join(""));
+        const words = rowNumber(r.word_count);
         return (
           <button key={r.id} type="button" className="cursor-pointer overflow-hidden rounded-xl border border-border bg-card text-left text-foreground hover:border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))]" onClick={() => onEdit(r)}>
             <div className="relative grid aspect-[16/10] p-2.5 [place-items:end_start]" style={{ background: `linear-gradient(135deg, ${a}, ${b})` }}>
-              <span className="rounded-md bg-[color-mix(in_oklch,var(--background)_65%,transparent)] px-2 py-0.5 font-mono text-[10.5px] text-foreground backdrop-blur-[4px]">{r.slug}</span>
+              <span className="rounded-md bg-[color-mix(in_oklch,var(--background)_65%,transparent)] px-2 py-0.5 font-mono text-[10.5px] text-foreground backdrop-blur-[4px]">{r.slug || r.id}</span>
             </div>
             <div className="flex flex-col gap-1.5 px-3 pb-3 pt-2.5">
-              <div className="text-[12.5px] font-medium leading-[1.3]">{r.title}</div>
+              <div className="text-[12.5px] font-medium leading-[1.3]">{rowLabel(r)}</div>
               <div className="flex items-center gap-2">
-                <Badge variant={statusBadgeVariant(r.status)}>{r.status}</Badge>
-                <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-                  {r.word_count.toLocaleString()} w
-                </span>
+                {r.status && <Badge variant={statusBadgeVariant(r.status)}>{r.status}</Badge>}
+                {words != null && (
+                  <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                    {words.toLocaleString()} w
+                  </span>
+                )}
               </div>
             </div>
           </button>
@@ -258,7 +270,7 @@ export function CalendarView({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post
                       type="button"
                       className="flex cursor-pointer items-center gap-[5px] overflow-hidden rounded-sm border-0 bg-muted px-1.5 py-[3px] text-left text-[10.5px] text-foreground hover:bg-accent"
                       onClick={() => onEdit(r)}
-                      title={r.title}
+                      title={rowLabel(r)}
                     >
                       <span
                         className={`size-[5px] shrink-0 rounded-full ${
@@ -269,7 +281,7 @@ export function CalendarView({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post
                               : "bg-muted-foreground"
                         }`}
                       />
-                      <span className="truncate">{r.title}</span>
+                      <span className="truncate">{rowLabel(r)}</span>
                     </button>
                   ))}
                   {(byDay[d] || []).length > 3 && (

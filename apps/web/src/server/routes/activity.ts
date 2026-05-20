@@ -18,7 +18,10 @@ const ActivityRow = z
     action: z.string(),
     collection: z.string().nullable(),
     itemId: z.string().nullable(),
+    ip: z.string().nullable(),
+    userAgent: z.string().nullable(),
     payload: z.unknown().nullable(),
+    response: z.unknown().nullable(),
     durationMs: z.number().int().nullable(),
     createdAt: z.unknown(),
   })

@@ -37,9 +37,36 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@workeros/ui/components/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workeros/ui/components/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workeros/ui/components/select";
+import {
+  Sidebar as ShadcnSidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+  SidebarTrigger,
+} from "@workeros/ui/components/sidebar";
+import { TooltipProvider } from "@workeros/ui/components/tooltip";
 
 export function formatJson(value: unknown): string {
   try {
@@ -252,7 +279,6 @@ const fromApiTenant = (t: ApiTenant, fallback: number): Tenant => ({
 export interface SidebarProps {
   activeNav: string;
   setActiveNav: (id: string) => void;
-  collapsed?: boolean;
   pushToast: (msg: string, type?: "success" | "error") => void;
   collectionsCount?: number;
 }
@@ -264,7 +290,6 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [tenantId, setTenantId] = useState<string | null>(null);
-  const [wsOpen, setWsOpen] = useState(false);
   const [newWsOpen, setNewWsOpen] = useState(false);
 
   const reloadTenants = useCallback(async () => {
@@ -286,7 +311,6 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
     try {
       await tenantsApi.switchTo(id);
       setTenantId(id);
-      setWsOpen(false);
       // Trigger a soft reload so all in-flight queries pick up the new tenant
       // without losing the SPA route.
       window.location.reload();
@@ -304,7 +328,6 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
       });
       pushToast?.(`Workspace "${res.data.slug}" created.`);
       setNewWsOpen(false);
-      setWsOpen(false);
       await tenantsApi.switchTo(res.data.id);
       window.location.reload();
     } catch (e) {
@@ -324,98 +347,87 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
       color: PALETTE_FALLBACK[0],
     };
 
-  useEffect(() => {
-    if (!wsOpen) return;
-    const close = (e: MouseEvent | Event) => {
-      const target = e.target as HTMLElement | null;
-      if (!target?.closest(".ws-wrap")) setWsOpen(false);
-    };
-    document.addEventListener("click", close as EventListener);
-    return () => document.removeEventListener("click", close as EventListener);
-  }, [wsOpen]);
-
   return (
-    <aside className="sidebar">
-      <div className="ws-wrap" style={{ position: "relative" }}>
-        <button className="brand ws-trigger" onClick={() => setWsOpen((v) => !v)} type="button">
-          <BrandMark />
-          <div className="brand-text">
-            <b>{tenant.name}</b>
-            <span>{tenant.project} · {tenant.branch}</span>
-          </div>
-          <I.ChevronDown size={12} className="ws-chev" />
-        </button>
-        {wsOpen && (
-          <div className="ws-pop">
-            <div className="ws-pop-head">
-              <span className="muted">Workspaces</span>
-              <span className="font-mono muted" style={{ fontSize: 10.5 }}>{tenants.length}</span>
-            </div>
+    <TooltipProvider>
+    <ShadcnSidebar collapsible="icon">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
+                  <BrandMark size={32} />
+                  <div className="grid flex-1 text-left leading-tight">
+                    <span className="truncate text-[13.5px] font-semibold">{tenant.name}</span>
+                    <span className="truncate font-mono text-[11px] text-muted-foreground">{tenant.project} · {tenant.branch}</span>
+                  </div>
+                  <I.ChevronDown className="ml-auto" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="right" className="min-w-64">
+            <DropdownMenuLabel className="flex items-center justify-between">
+              <span>Workspaces</span>
+              <span className="font-mono text-[10.5px] text-muted-foreground">{tenants.length}</span>
+            </DropdownMenuLabel>
             {tenants.map((t) => (
-              <button key={t.id} type="button" className={`ws-opt ${t.id === tenantId ? "on" : ""}`} onClick={() => void switchTenant(t.id)}>
+              <DropdownMenuItem key={t.id} className="gap-2.5" onSelect={() => void switchTenant(t.id)}>
                 <span className="ws-mark" style={{ background: t.color }}>{t.mark}</span>
                 <span className="ws-meta">
                   <span className="ws-name">{t.name}</span>
                   <span className="ws-sub font-mono">{t.project} · {t.branch} · {t.env}</span>
                 </span>
                 {t.id === tenantId && <I.Check size={12} />}
-              </button>
+              </DropdownMenuItem>
             ))}
-            <div className="ws-pop-foot">
-              <button type="button" className="ws-foot-btn" onClick={() => { setWsOpen(false); setNewWsOpen(true); }}><I.Plus size={12} /> New workspace</button>
-              <button type="button" className="ws-foot-btn" onClick={() => { setWsOpen(false); setActiveNav?.("settings"); }}><I.Settings size={12} /> Manage</button>
-            </div>
-          </div>
-        )}
-      </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => setNewWsOpen(true)}><I.Plus size={12} /> New workspace</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setActiveNav?.("settings")}><I.Settings size={12} /> Manage</DropdownMenuItem>
+          </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
 
-      <div className="sidebar-scroll">
-        <div className="sidebar-section-label">Workspace</div>
-        <div className="nav">
-          {items.map((it) => {
-            const IconComp = (I as Record<string, IconComponent>)[it.icon as IconKey];
-            // Collections gets a live badge from the parent; other items use the
-            // (currently empty) static `badge` field on the nav definition.
-            const liveBadge = it.id === "collections" ? collectionsCount : it.badge;
-            return (
-              <div key={it.id} className="nav-item" data-active={activeNav === it.id} onClick={() => setActiveNav(it.id)}>
-                {IconComp && <IconComp size={15} />}
-                <span className="nav-label">{it.label}</span>
-                {liveBadge != null && <span className="nav-end tabular-nums">{liveBadge}</span>}
-              </div>
-            );
-          })}
-        </div>
+      <SidebarContent>
+        {[
+          { label: "Workspace", entries: items },
+          { label: "Developers", entries: developers },
+          { label: "Admin", entries: settings },
+        ].map((group) => (
+          <SidebarGroup key={group.label}>
+            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarMenu>
+              {group.entries.map((it) => {
+                const IconComp = (I as Record<string, IconComponent>)[it.icon as IconKey];
+                // Collections gets a live badge from the parent; other items use
+                // the (currently empty) static `badge` field on the nav def.
+                const liveBadge = it.id === "collections" ? collectionsCount : it.badge;
+                return (
+                  <SidebarMenuItem key={it.id}>
+                    <SidebarMenuButton
+                      isActive={activeNav === it.id}
+                      onClick={() => setActiveNav(it.id)}
+                      tooltip={it.label}
+                    >
+                      {IconComp && <IconComp size={15} />}
+                      <span>{it.label}</span>
+                    </SidebarMenuButton>
+                    {liveBadge != null && (
+                      <SidebarMenuBadge className="tabular-nums">{liveBadge}</SidebarMenuBadge>
+                    )}
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroup>
+        ))}
+      </SidebarContent>
 
-        <div className="sidebar-section-label">Developers</div>
-        <div className="nav">
-          {developers.map((it) => {
-            const IconComp = (I as Record<string, IconComponent>)[it.icon as IconKey];
-            return (
-              <div key={it.id} className="nav-item" data-active={activeNav === it.id} onClick={() => setActiveNav(it.id)}>
-                {IconComp && <IconComp size={15} />}
-                <span className="nav-label">{it.label}</span>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="sidebar-section-label">Admin</div>
-        <div className="nav">
-          {settings.map((it) => {
-            const IconComp = (I as Record<string, IconComponent>)[it.icon as IconKey];
-            return (
-              <div key={it.id} className="nav-item" data-active={activeNav === it.id} onClick={() => setActiveNav(it.id)}>
-                {IconComp && <IconComp size={15} />}
-                <span className="nav-label">{it.label}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <SidebarRail />
 
       {newWsOpen && <NewWorkspaceDialog onClose={() => setNewWsOpen(false)} onCreate={createWorkspace} existing={tenants.map((t) => t.name)} />}
-    </aside>
+    </ShadcnSidebar>
+    </TooltipProvider>
   );
 }
 
@@ -448,24 +460,22 @@ function NewWorkspaceDialog({ onClose, onCreate, existing }: { onClose: () => vo
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Environment</label>
-            <div className="flex flex-wrap gap-1.5">
-              {[
-                { id: "development", label: "Development", hint: "local D1" },
-                { id: "staging", label: "Staging", hint: "preview" },
-                { id: "production", label: "Production", hint: "live" },
-              ].map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border bg-card px-[11px] text-[12.5px] text-foreground hover:bg-accent ${
-                    env === p.id ? "border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent" : "border-border"
-                  }`}
-                  onClick={() => setEnv(p.id)}
-                >
-                  {p.label} <span className="ml-1 text-[10.5px] text-muted-foreground">{p.hint}</span>
-                </button>
-              ))}
-            </div>
+            <Select value={env} onValueChange={setEnv}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select environment" />
+              </SelectTrigger>
+              <SelectContent>
+                {[
+                  { id: "development", label: "Development", hint: "local D1" },
+                  { id: "staging", label: "Staging", hint: "preview" },
+                  { id: "production", label: "Production", hint: "live" },
+                ].map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.label} <span className="ml-1 text-[10.5px] text-muted-foreground">{p.hint}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <DialogFooter className="border-t border-border px-[18px] py-3">
@@ -489,7 +499,6 @@ export interface TopbarProps {
   onOpenPalette: () => void;
   onToggleTheme: () => void;
   dark: boolean;
-  onToggleSidebar: () => void;
   onSignOut?: () => void;
   user?: TopbarUser | null;
   onAccountSettings?: () => void;
@@ -542,7 +551,6 @@ export function NotificationsBell() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread">("all");
-  const wrapRef = useRef<HTMLDivElement | null>(null);
 
   const listQuery = useNotifications();
   const unreadQuery = useNotificationsUnread();
@@ -565,16 +573,6 @@ export function NotificationsBell() {
     onSuccess: invalidate,
   });
 
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: Event) => {
-      const target = e.target as Node | null;
-      if (wrapRef.current && target && !wrapRef.current.contains(target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, [open]);
-
   const visible = filter === "unread" ? items.filter((n) => n.readAt == null) : items;
 
   const onItem = (n: ApiNotification) => {
@@ -589,18 +587,18 @@ export function NotificationsBell() {
   };
 
   return (
-    <div ref={wrapRef} className="notif-wrap">
-      <button
-        type="button"
-        className="notif-trigger"
-        onClick={() => setOpen((v) => !v)}
-        aria-label="Notifications"
-      >
-        <I.Bell size={14} />
-        {unread > 0 && <span className="notif-dot tabular-nums font-mono">{unread}</span>}
-      </button>
-      {open && (
-        <div className="notif-pop">
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="notif-trigger"
+          aria-label="Notifications"
+        >
+          <I.Bell size={14} />
+          {unread > 0 && <span className="notif-dot tabular-nums font-mono">{unread}</span>}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="flex max-h-[540px] w-[380px] flex-col overflow-hidden p-0">
           <div className="notif-head">
             <span style={{ fontSize: 13, fontWeight: 500 }}>Notifications</span>
             <div className="spacer" />
@@ -685,16 +683,15 @@ export function NotificationsBell() {
               Open inbox
             </Button>
           </div>
-        </div>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
-export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onToggleSidebar, onSignOut, user, onAccountSettings }: TopbarProps) {
+export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onSignOut, user, onAccountSettings }: TopbarProps) {
   return (
     <div className="topbar">
-      <IconButton icon={I.Sidebar} onClick={onToggleSidebar} title="Toggle sidebar" />
+      <SidebarTrigger title="Toggle sidebar" />
       <div className="crumbs path">
         <span className="sep">/</span>
         {crumbs.map((c, i) => (

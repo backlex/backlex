@@ -37,6 +37,8 @@ import { realtimeRoutes } from "./routes/realtime";
 import { webhooksRoutes } from "./routes/webhooks";
 import { webhookTriggerRoutes } from "./routes/webhook-trigger";
 import { commentsRoutes } from "./routes/comments";
+import { sharedLinksRoutes } from "./routes/shared-links";
+import { sharedPublicRoutes } from "./routes/shared-public";
 import { notificationsRoutes } from "./routes/notifications";
 import { flowsRoutes } from "./routes/flows";
 import { functionsRoutes } from "./routes/functions";
@@ -239,6 +241,9 @@ export const createApp = (env: Env) => {
   // (outgoing dispatch admin) by design.
   app.route("/api/webhook", webhookTriggerRoutes);
   app.route("/api/comments", commentsRoutes);
+  app.route("/api/shared-links", sharedLinksRoutes);
+  // Public, unauthenticated record-share resolution — no `requireUser`.
+  app.route("/api/shared", sharedPublicRoutes);
   app.route("/api/notifications", notificationsRoutes);
   app.route("/api/flows", flowsRoutes);
   app.route("/api/roles", rolesRoutes);

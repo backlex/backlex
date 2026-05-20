@@ -6,6 +6,7 @@ import { Badge, Button, PageHeader, Switch } from "../ui";
 import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
+import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { dbAdminApi } from "../api";
 
 const ADMIN_TABLE_CLS =
@@ -29,10 +30,7 @@ export function DatabasePage({ pushToast, adapter }: { pushToast: (m: string) =>
     })();
     return () => { cancelled = true; };
   }, []);
-  const tabCls = (id: string) =>
-    `inline-flex cursor-pointer items-center gap-1.5 rounded-3xl border-0 px-3.5 py-[5px] text-[12.5px] font-medium ${tab === id ? "bg-card text-foreground shadow-[0_1px_2px_oklch(0_0_0/0.06),0_1px_0_oklch(0_0_0/0.04)]" : "bg-transparent text-muted-foreground"}`;
-  const countCls = (id: string) =>
-    `rounded-sm border border-border px-[5px] py-px font-mono text-[11px] text-muted-foreground ${tab === id ? "bg-muted" : "bg-background"}`;
+  const countCls = "rounded-sm border border-border bg-muted px-[5px] py-px font-mono text-[11px] text-muted-foreground";
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
@@ -40,17 +38,19 @@ export function DatabasePage({ pushToast, adapter }: { pushToast: (m: string) =>
         description={<>Direct access to the underlying engine. Adapter: <span className="font-mono">{ADAPTER_PROFILES[adapter].db}</span>. SQL editor runs through the same permission layer as the API.</>}
         badges={<Badge variant="outline" mono>{ADAPTER_PROFILES[adapter].db}</Badge>}
       />
-      <div className="flex w-fit gap-0.5 rounded-3xl bg-muted p-[3px]">
-        <button className={tabCls("sql")} onClick={() => setTab("sql")}><I.Code size={13} />SQL editor</button>
-        <button className={tabCls("migrations")} onClick={() => setTab("migrations")}>
-          <I.History size={13} />Migrations
-          {migCount !== null && <span className={countCls("migrations")}>{migCount}</span>}
-        </button>
-        <button className={tabCls("backups")} onClick={() => setTab("backups")}>
-          <I.Save size={13} />Backups
-          {backupCount !== null && <span className={countCls("backups")}>{backupCount}</span>}
-        </button>
-      </div>
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList>
+          <TabsTrigger value="sql"><I.Code size={13} />SQL editor</TabsTrigger>
+          <TabsTrigger value="migrations">
+            <I.History size={13} />Migrations
+            {migCount !== null && <span className={countCls}>{migCount}</span>}
+          </TabsTrigger>
+          <TabsTrigger value="backups">
+            <I.Save size={13} />Backups
+            {backupCount !== null && <span className={countCls}>{backupCount}</span>}
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
       {tab === "sql" && <SqlEditor pushToast={pushToast} />}
       {tab === "migrations" && <Migrations pushToast={pushToast} />}
       {tab === "backups" && <Backups pushToast={pushToast} />}

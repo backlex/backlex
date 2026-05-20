@@ -33,6 +33,7 @@ import {
   metricsApi,
   notificationsApi,
   rolesApi,
+  sharedLinksApi,
   tenantsApi,
 } from "./api";
 
@@ -54,6 +55,9 @@ export const queryKeys = {
    *  prefix lets a single invalidate refresh every open thread. */
   comments: (collection: string, itemId: string) =>
     ["comments", collection, itemId] as const,
+  /** Active public share links for a record, keyed by (collection, itemId). */
+  sharedLinks: (collection: string, itemId: string) =>
+    ["shared-links", collection, itemId] as const,
   advisor: () => ["advisor"] as const,
   /** Activity log rows — the Logs page's data source. Keyed by `limit` so a
    *  different page size is a distinct cache entry. */
@@ -143,6 +147,16 @@ export function useComments(collection: string, itemId: string) {
   return useQuery({
     queryKey: queryKeys.comments(collection, itemId),
     queryFn: () => commentsApi.list(collection, itemId),
+    enabled: !!collection && !!itemId,
+  });
+}
+
+/** Active public share links for a single record. Disabled until both ids
+ *  are present. */
+export function useSharedLinks(collection: string, itemId: string) {
+  return useQuery({
+    queryKey: queryKeys.sharedLinks(collection, itemId),
+    queryFn: () => sharedLinksApi.list(collection, itemId),
     enabled: !!collection && !!itemId,
   });
 }

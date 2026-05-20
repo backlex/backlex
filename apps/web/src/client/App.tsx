@@ -5,6 +5,7 @@ import { AdminApp } from "@/admin/app";
 import { auth } from "@/lib/auth";
 import { Forgot } from "@/pages/forgot";
 import { MagicLink } from "@/pages/magic-link";
+import { SharedRecord } from "@/pages/shared-record";
 import { SignIn } from "@/pages/sign-in";
 import { SignUp } from "@/pages/sign-up";
 
@@ -25,6 +26,8 @@ export const App = () => {
         <Route path="/sign-up" element={<SignUp />} />
         <Route path="/magic-link" element={<MagicLink />} />
         <Route path="/forgot" element={<Forgot />} />
+        {/* Public record-share view — outside AuthGate, no session needed. */}
+        <Route path="/s/:token" element={<SharedRecord />} />
         <Route
           path="/*"
           element={

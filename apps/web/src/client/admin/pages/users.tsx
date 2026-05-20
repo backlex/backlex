@@ -22,6 +22,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@workeros/ui/components/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@workeros/ui/components/dropdown-menu";
 import { rolesApi, usersApi, type ApiUser } from "../api";
 
 const ProviderGlyph = ({ kind, size = 12 }: { kind: string; size?: number }) => {
@@ -102,15 +109,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
   const [providerFilter, setProviderFilter] = useState("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [activeUser, setActiveUser] = useState<any>(null);
-  const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const close = () => setMenuOpen(null);
-    window.addEventListener("click", close);
-    return () => window.removeEventListener("click", close);
-  }, [menuOpen]);
 
   const filtered = users.filter((u) => {
     if (q && !(u.name.toLowerCase().includes(q.toLowerCase()) || u.email.toLowerCase().includes(q.toLowerCase()))) return false;
@@ -251,7 +250,6 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
           </TableHeader>
           <TableBody>
             {filtered.map((u) => {
-              const isOpen = menuOpen === u.id;
               return (
                 <TableRow key={u.id} data-selected={selected.has(u.id)} onClick={() => setActiveUser(u)} className="cursor-pointer data-[selected=true]:bg-[color-mix(in_oklch,var(--primary)_10%,var(--card))]">
                   <TableCell onClick={(e) => e.stopPropagation()}>
@@ -285,37 +283,40 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
                   </TableCell>
                   <TableCell className="font-mono text-[11.5px] text-muted-foreground">{u.last}</TableCell>
                   <TableCell className="sticky right-0 bg-card text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="relative">
-                    <IconButton icon={I.More} onClick={(e: any) => { e.stopPropagation(); setMenuOpen(isOpen ? null : u.id); }} />
-                    {isOpen && (
-                      <div className="absolute right-2 top-[calc(100%-4px)] z-30 flex min-w-[180px] flex-col rounded-xl border border-border bg-popover p-1 text-left shadow-[0_8px_24px_oklch(0_0_0/0.16)] [&>button]:flex [&>button]:cursor-pointer [&>button]:items-center [&>button]:gap-2 [&>button]:rounded-md [&>button]:border-0 [&>button]:bg-transparent [&>button]:px-2.5 [&>button]:py-[7px] [&>button]:text-left [&>button]:text-[12.5px] [&>button]:text-foreground [&>button:hover]:bg-accent" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => { setActiveUser(u); setMenuOpen(null); }}><I.Eye size={12} />View profile</button>
-                        <button onClick={() => { pushToast(`Reset link sent to ${u.email}.`); setMenuOpen(null); }}><I.Mail size={12} />Send reset link</button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <IconButton icon={I.More} />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => { setActiveUser(u); }}><I.Eye size={12} />View profile</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => { pushToast(`Reset link sent to ${u.email}.`); }}><I.Mail size={12} />Send reset link</DropdownMenuItem>
                         {u.status !== "suspended" ? (
-                          <button onClick={async () => {
-                            try { await usersApi.suspend(u.id); } catch (e) { pushToast((e as Error).message); }
-                            setUsers((arr) => arr.map((x) => x.id === u.id ? { ...x, status: "suspended", sessions: 0 } : x));
-                            setMenuOpen(null);
-                            pushToast(`${u.email} suspended.`);
-                          }}><I.Lock size={12} />Suspend</button>
+                          <DropdownMenuItem onSelect={() => {
+                            void (async () => {
+                              try { await usersApi.suspend(u.id); } catch (e) { pushToast((e as Error).message); }
+                              setUsers((arr) => arr.map((x) => x.id === u.id ? { ...x, status: "suspended", sessions: 0 } : x));
+                              pushToast(`${u.email} suspended.`);
+                            })();
+                          }}><I.Lock size={12} />Suspend</DropdownMenuItem>
                         ) : (
-                          <button onClick={async () => {
-                            try { await usersApi.activate(u.id); } catch (e) { pushToast((e as Error).message); }
-                            setUsers((arr) => arr.map((x) => x.id === u.id ? { ...x, status: "active" } : x));
-                            setMenuOpen(null);
-                            pushToast(`${u.email} activated.`);
-                          }}><I.Check size={12} />Activate</button>
+                          <DropdownMenuItem onSelect={() => {
+                            void (async () => {
+                              try { await usersApi.activate(u.id); } catch (e) { pushToast((e as Error).message); }
+                              setUsers((arr) => arr.map((x) => x.id === u.id ? { ...x, status: "active" } : x));
+                              pushToast(`${u.email} activated.`);
+                            })();
+                          }}><I.Check size={12} />Activate</DropdownMenuItem>
                         )}
-                        <div className="mx-1.5 my-1 h-px bg-border" />
-                        <button className="!text-destructive" onClick={async () => {
-                          try { await usersApi.remove(u.id); } catch (e) { pushToast((e as Error).message); }
-                          setUsers((arr) => arr.filter((x) => x.id !== u.id));
-                          setMenuOpen(null);
-                          pushToast(`${u.email} deleted.`);
-                        }}><I.Trash size={12} />Delete</button>
-                      </div>
-                    )}
-                    </div>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem variant="destructive" onSelect={() => {
+                          void (async () => {
+                            try { await usersApi.remove(u.id); } catch (e) { pushToast((e as Error).message); }
+                            setUsers((arr) => arr.filter((x) => x.id !== u.id));
+                            pushToast(`${u.email} deleted.`);
+                          })();
+                        }}><I.Trash size={12} />Delete</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               );

@@ -252,6 +252,7 @@ interface Tenant {
   branch: string;
   env: string;
   members?: number;
+  color: string | null;
 }
 
 const fromApiTenant = (t: ApiTenant): Tenant => ({
@@ -261,6 +262,7 @@ const fromApiTenant = (t: ApiTenant): Tenant => ({
   project: t.project,
   branch: t.branch,
   env: t.env,
+  color: t.color,
 });
 
 export interface SidebarProps {
@@ -330,6 +332,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
       project: "—",
       branch: "—",
       env: "—",
+      color: null,
     };
 
   return (
@@ -356,7 +359,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
             </DropdownMenuLabel>
             {tenants.map((t) => (
               <DropdownMenuItem key={t.id} className="gap-2.5" onSelect={() => void switchTenant(t.id)}>
-                <span className="ws-mark">{t.name.charAt(0).toUpperCase()}</span>
+                <span className="ws-mark" style={{ "--ws-color": t.color ?? undefined } as React.CSSProperties}>{t.name.charAt(0).toUpperCase()}</span>
                 <span className="ws-meta">
                   <span className="ws-name">{t.name}</span>
                   <span className="ws-sub font-mono">{t.project} · {t.branch} · {t.env}</span>
@@ -426,7 +429,14 @@ function NewWorkspaceDialog({ onClose, onCreate, existing }: { onClose: () => vo
   const submit = () => { if (valid) onCreate({ name: slug, project, env }); };
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[520px]">
+      <DialogContent
+        className="flex max-h-[min(86vh,720px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[520px]"
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          const el = e.currentTarget as HTMLElement;
+          setTimeout(() => el.querySelector("input")?.focus(), 0);
+        }}
+      >
         <DialogHeader className="flex-row items-center gap-2.5 space-y-0 border-b border-border px-4 py-3.5 pr-12 text-left">
           <I.Plus size={14} />
           <DialogTitle className="text-sm font-medium">New workspace</DialogTitle>
@@ -434,7 +444,7 @@ function NewWorkspaceDialog({ onClose, onCreate, existing }: { onClose: () => vo
         <div className="flex flex-col gap-4 p-[22px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Name</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus placeholder="acme-prod" onKeyDown={(e) => e.key === "Enter" && submit()} />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="acme-prod" onKeyDown={(e) => e.key === "Enter" && submit()} />
             {taken && <span className="text-[11.5px] text-destructive">Workspace "{slug}" already exists.</span>}
             {!taken && slug && <span className="text-[11.5px] text-muted-foreground">URL: <span className="font-mono">workeros.dev/{slug}</span></span>}
             {!slug && <span className="text-[11.5px] text-muted-foreground">Lowercase, alphanumeric, 2–24 chars.</span>}

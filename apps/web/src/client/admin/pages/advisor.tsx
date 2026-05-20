@@ -9,6 +9,7 @@ import { I, type IconComponent } from "../icons";
 import { Button, PageHeader } from "../ui";
 import { useAdvisor, queryKeys } from "../queries";
 import { Skeleton } from "@workeros/ui/components/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 
 type CheckKind = "security" | "performance";
 type CheckLevel = "error" | "warn" | "info";
@@ -54,10 +55,7 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
     return Math.max(0, 100 - errs * 18 - warns * 7);
   }, [all]);
 
-  const tabCls = (id: string) =>
-    `inline-flex cursor-pointer items-center gap-1.5 rounded-3xl border-0 px-3.5 py-[5px] text-[12.5px] font-medium ${tab === id ? "bg-card text-foreground shadow-[0_1px_2px_oklch(0_0_0/0.06),0_1px_0_oklch(0_0_0/0.04)]" : "bg-transparent text-muted-foreground"}`;
-  const countCls = (id: string) =>
-    `rounded-sm border border-border px-[5px] py-px font-mono text-[11px] text-muted-foreground ${tab === id ? "bg-muted" : "bg-background"}`;
+  const countCls = "rounded-sm border border-border bg-muted px-[5px] py-px font-mono text-[11px] text-muted-foreground";
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
@@ -112,16 +110,18 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
         </div>
       </div>
 
-      <div className="flex w-fit gap-0.5 rounded-3xl bg-muted p-[3px]">
-        <button className={tabCls("security")} onClick={() => setTab("security")}>
-          <I.ShieldAlert size={13} />Security{" "}
-          <span className={countCls("security")}>{counts.security.error + counts.security.warn + counts.security.info}</span>
-        </button>
-        <button className={tabCls("performance")} onClick={() => setTab("performance")}>
-          <I.Cpu size={13} />Performance{" "}
-          <span className={countCls("performance")}>{counts.performance.error + counts.performance.warn + counts.performance.info}</span>
-        </button>
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as CheckKind)}>
+        <TabsList>
+          <TabsTrigger value="security">
+            <I.ShieldAlert size={13} />Security{" "}
+            <span className={countCls}>{counts.security.error + counts.security.warn + counts.security.info}</span>
+          </TabsTrigger>
+          <TabsTrigger value="performance">
+            <I.Cpu size={13} />Performance{" "}
+            <span className={countCls}>{counts.performance.error + counts.performance.warn + counts.performance.info}</span>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Findings */}
       <div className="flex flex-col gap-2.5">

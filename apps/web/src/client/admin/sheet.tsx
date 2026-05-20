@@ -4,6 +4,7 @@ import { I } from "./icons";
 import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button, Checkbox, Switch } from "./ui";
 import { Input } from "@workeros/ui/components/input";
+import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { Textarea } from "@workeros/ui/components/textarea";
 import {
   DropdownMenu,
@@ -896,25 +897,23 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
         </SheetHeader>
 
         {mode === "edit" && (
-          <div className="flex gap-0.5 border-b border-border bg-card px-3.5">
-            <button
-              type="button"
-              className={`-mb-px inline-flex cursor-pointer items-center gap-1.5 border-0 border-b-2 bg-transparent px-3.5 py-2.5 text-[12.5px] hover:text-foreground ${activeTab === "fields" ? "border-b-foreground text-foreground" : "border-b-transparent text-muted-foreground"}`}
-              onClick={() => setActiveTab("fields")}
-            >
-              <I.Braces size={12} /> Fields
-              <span className="font-mono text-[10.5px] text-muted-foreground">
-                {fields.length}
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`-mb-px inline-flex cursor-pointer items-center gap-1.5 border-0 border-b-2 bg-transparent px-3.5 py-2.5 text-[12.5px] hover:text-foreground ${activeTab === "collab" ? "border-b-foreground text-foreground" : "border-b-transparent text-muted-foreground"}`}
-              onClick={() => setActiveTab("collab")}
-            >
-              <I.MessageSquare size={12} /> Collaboration
-            </button>
-          </div>
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) => setActiveTab(v as "fields" | "collab")}
+            className="border-b border-border bg-card px-3.5"
+          >
+            <TabsList>
+              <TabsTrigger value="fields">
+                <I.Braces size={12} /> Fields
+                <span className="font-mono text-[10.5px] text-muted-foreground">
+                  {fields.length}
+                </span>
+              </TabsTrigger>
+              <TabsTrigger value="collab">
+                <I.MessageSquare size={12} /> Collaboration
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         )}
 
         <div className="flex flex-1 flex-col gap-8 overflow-auto px-5 py-[18px]" onKeyDown={onBodyKeyDown}>

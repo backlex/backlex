@@ -27,7 +27,7 @@ export const NAV_ITEMS: NavItem[] = [
   { title: "Storage", url: "/storage", icon: HardDriveIcon, keywords: ["files", "uploads", "r2", "s3"] },
   { title: "Vector", url: "/vector", icon: SparklesIcon, keywords: ["embeddings", "search"] },
   { title: "Realtime", url: "/realtime", icon: RadioIcon, keywords: ["sse", "websocket", "channels"] },
-  { title: "Activity", url: "/activity", icon: ActivityIcon, keywords: ["log", "history", "audit"] },
+  { title: "Logs", url: "/logs", icon: ActivityIcon, keywords: ["activity", "log", "history", "audit", "stream"] },
   { title: "Webhooks", url: "/webhooks", icon: WebhookIcon, keywords: ["http", "events"] },
   { title: "Flows", url: "/flows", icon: WorkflowIcon, keywords: ["automation", "triggers"] },
   { title: "Functions", url: "/functions", icon: ZapIcon, keywords: ["serverless", "code", "sandbox"] },

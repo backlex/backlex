@@ -247,7 +247,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
               <I.Activity size={14} />
               <span className="text-[13px] font-medium">Activity</span>
               <div className="flex-1" />
-              <Button variant="ghost" size="sm" iconRight={I.ChevronRight} onClick={() => setActiveNav("activity")}>All events</Button>
+              <Button variant="ghost" size="sm" iconRight={I.ChevronRight} onClick={() => setActiveNav("logs")}>All events</Button>
             </div>
             {activity.length === 0 ? (
               <div className="px-4 py-5 text-center">
@@ -283,7 +283,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
               <span className="text-[13px] font-medium">Recent errors</span>
               <span className="font-mono text-xs text-muted-foreground">last {range} · {(metrics?.totals?.errors ?? recentErrors.reduce((a, e) => a + (e.count ?? 0), 0))} {(metrics?.totals?.errors ?? 0) === 1 ? "event" : "events"}</span>
               <div className="flex-1" />
-              <Button variant="ghost" size="sm" onClick={() => setActiveNav("activity")}>View all</Button>
+              <Button variant="ghost" size="sm" onClick={() => setActiveNav("logs")}>View all</Button>
             </div>
             {recentErrors.length === 0 ? (
               <div className="px-4 py-5 text-center">

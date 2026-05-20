@@ -672,7 +672,7 @@ export function NotificationsBell() {
               iconRight={I.ChevronRight}
               onClick={() => {
                 setOpen(false);
-                navigate("/activity");
+                navigate("/logs");
               }}
             >
               Open inbox

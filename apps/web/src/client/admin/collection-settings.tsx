@@ -124,24 +124,24 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
     (schema.displayTemplate ?? "") !== displayTemplate;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div className="card">
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <div className="flex flex-col gap-3.5">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
           <I.Settings size={14} />
-          <span style={{ fontSize: 13, fontWeight: 500 }}>display</span>
-          <span className="font-mono muted" style={{ fontSize: 12 }}>
+          <span className="text-[13px] font-medium">display</span>
+          <span className="font-mono text-xs text-muted-foreground">
             how this collection shows up in nav and lists
           </span>
         </div>
-        <div className="cols-2" style={{ padding: 16 }}>
-          <div className="field" style={{ gridColumn: "1 / -1" }}>
-            <label className="field-label">Slug</label>
-            <div className={`input-affix ${slugError ? "error" : ""}`}>
+        <div className="grid grid-cols-2 gap-3 p-4 max-[640px]:grid-cols-1">
+          <div className="col-span-full flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Slug</label>
+            <div className={`flex h-9 items-stretch overflow-hidden rounded-md border bg-background ${slugError ? "border-destructive focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--destructive)_22%,transparent)]" : "border-border focus-within:border-ring focus-within:shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_22%,transparent)]"}`}>
               <input
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
                 placeholder={schema.slug}
-                className="font-mono"
+                className="min-w-0 flex-1 border-0 bg-transparent px-3 font-mono text-[13px] outline-0"
               />
               {slugDirty && !slugError && (
                 <Button
@@ -153,30 +153,30 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
                 </Button>
               )}
             </div>
-            <span className="field-hint" style={slugError ? { color: "var(--destructive)" } : undefined}>
+            <span className={`text-[11.5px] ${slugError ? "text-destructive" : "text-muted-foreground"}`}>
               {slugError ??
                 (slugDirty
                   ? <>Will rename <span className="font-mono">{schema.slug}</span> → <span className="font-mono">{slugClean}</span> and update permission rules, webhooks, function patterns, flow steps, revisions, comments, and audit log.</>
                   : <>URL identifier and physical table prefix. Renaming cascades through all references.</>)}
             </span>
           </div>
-          <div className="field">
-            <label className="field-label">Singular</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Singular</label>
             <Input value={singular} onChange={(e) => setSingular(e.target.value)} placeholder="post" />
-            <span className="field-hint">"New post" buttons, etc. Falls back to the slug.</span>
+            <span className="text-[11.5px] text-muted-foreground">"New post" buttons, etc. Falls back to the slug.</span>
           </div>
-          <div className="field">
-            <label className="field-label">Plural</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Plural</label>
             <Input value={plural} onChange={(e) => setPlural(e.target.value)} placeholder="posts" />
-            <span className="field-hint">Page titles, badges. Falls back to the slug.</span>
+            <span className="text-[11.5px] text-muted-foreground">Page titles, badges. Falls back to the slug.</span>
           </div>
-          <div className="field" style={{ gridColumn: "1 / -1" }}>
-            <label className="field-label">Display template</label>
+          <div className="col-span-full flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Display template</label>
             <Input className="font-mono" value={displayTemplate} onChange={(e) => setDisplayTemplate(e.target.value)} placeholder="{{ title }} — {{ status }}" />
-            <span className="field-hint">Mustache-style template for row display in pickers and references.</span>
+            <span className="text-[11.5px] text-muted-foreground">Mustache-style template for row display in pickers and references.</span>
           </div>
-          <div className="field" style={{ gridColumn: "1 / -1" }}>
-            <label className="field-label">Note</label>
+          <div className="col-span-full flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Note</label>
             <Textarea
               rows={3}
               value={note}
@@ -185,7 +185,7 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
             />
           </div>
         </div>
-        <div style={{ padding: "10px 16px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+        <div className="flex justify-end gap-2 border-t border-border px-4 py-2.5">
           <Button
             variant="primary"
             size="sm"
@@ -202,16 +202,16 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
           <I.Shield size={14} />
-          <span style={{ fontSize: 13, fontWeight: 500 }}>scoping &amp; lifecycle</span>
+          <span className="text-[13px] font-medium">scoping &amp; lifecycle</span>
         </div>
-        <div style={{ padding: "10px 16px" }}>
-          <div className="field-row" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 10, marginBottom: 10 }}>
+        <div className="px-4 py-2.5">
+          <div className="mb-2.5 flex items-center justify-between gap-3 border-b border-border pb-2.5">
             <div>
-              <div className="field-label">Owner-scoped</div>
-              <div className="field-hint">
+              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Owner-scoped</div>
+              <div className="text-[11.5px] text-muted-foreground">
                 Each row gets an <span className="font-mono">owner_id</span>; the
                 <span className="font-mono"> authenticated</span> role can only read/update its own rows.
                 Toggling on auto-seeds owner-scoped permissions; toggling off does not remove existing rows
@@ -220,19 +220,19 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
             </div>
             <Switch checked={!!schema.ownerScoped} onChange={(v) => onPatch({ ownerScoped: v })} />
           </div>
-          <div className="field-row" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 10, marginBottom: 10 }}>
+          <div className="mb-2.5 flex items-center justify-between gap-3 border-b border-border pb-2.5">
             <div>
-              <div className="field-label">Tenant-scoped</div>
-              <div className="field-hint">
+              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Tenant-scoped</div>
+              <div className="text-[11.5px] text-muted-foreground">
                 Rows carry a <span className="font-mono">tenant_id</span>. Disabling on an existing collection is unsupported.
               </div>
             </div>
             <Switch checked={schema.tenantScoped !== false} onChange={(v) => onPatch({ tenantScoped: v })} />
           </div>
-          <div className="field-row" style={{ paddingBottom: 4 }}>
+          <div className="flex items-center justify-between gap-3 pb-1">
             <div>
-              <div className="field-label">Versioned (draft / published)</div>
-              <div className="field-hint">
+              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Versioned (draft / published)</div>
+              <div className="text-[11.5px] text-muted-foreground">
                 Adds <span className="font-mono">_status</span> + <span className="font-mono">_published_at</span>.
                 Independent of the user-defined "status" field.
               </div>
@@ -242,25 +242,25 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
           <I.ArrowUpDown size={14} />
-          <span style={{ fontSize: 13, fontWeight: 500 }}>list &amp; sort</span>
-          <span className="font-mono muted" style={{ fontSize: 12 }}>
-            default order when <span style={{ fontFamily: "inherit" }}>?sort=</span> is omitted
+          <span className="text-[13px] font-medium">list &amp; sort</span>
+          <span className="font-mono text-xs text-muted-foreground">
+            default order when <span className="font-sans">?sort=</span> is omitted
           </span>
         </div>
-        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="flex flex-col gap-2.5 p-4">
           {sortClauses.length === 0 ? (
-            <div className="field-hint">
+            <div className="text-[11.5px] text-muted-foreground">
               No default sort configured — list responses fall back to
               <span className="font-mono"> -created_at</span> (newest first).
               Add one or more fields below to pin a different order.
             </div>
           ) : (
             sortClauses.map((clause, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ flex: 1 }}>
+              <div key={i} className="flex items-center gap-2">
+                <div className="flex-1">
                   <Select
                     value={clause.field}
                     onChange={(v) =>
@@ -286,7 +286,7 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
                       ),
                     )
                   }
-                  style={{ minWidth: 64 }}
+                  className="min-w-16"
                 >
                   {clause.dir === "desc" ? (
                     <>
@@ -358,7 +358,7 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
             </Button>
           </div>
         </div>
-        <div style={{ padding: "10px 16px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+        <div className="flex justify-end gap-2 border-t border-border px-4 py-2.5">
           <Button
             variant="primary"
             size="sm"
@@ -374,15 +374,15 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
         // Adopted collections soft-delete (archive). The physical table stays
         // intact, metadata is retained, and the row can be restored from the
         // Archived view in the collections index.
-        <div className="card" style={{ borderColor: "color-mix(in oklch, var(--chart-2, var(--primary)) 35%, var(--border))" }}>
-          <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="overflow-hidden rounded-2xl border border-[color-mix(in_oklch,var(--chart-2,var(--primary))_35%,var(--border))] bg-card text-card-foreground">
+          <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
             <I.Archive size={14} />
-            <span style={{ fontSize: 13, fontWeight: 500, color: "color-mix(in oklch, var(--chart-2, var(--primary)) 80%, var(--foreground))" }}>archive zone</span>
+            <span className="text-[13px] font-medium text-[color-mix(in_oklch,var(--chart-2,var(--primary))_80%,var(--foreground))]">archive zone</span>
           </div>
-          <div style={{ padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+          <div className="flex items-center justify-between gap-4 p-4">
             <div>
-              <div style={{ fontSize: 13, fontWeight: 500 }}>Archive this collection</div>
-              <div className="field-hint">
+              <div className="text-[13px] font-medium">Archive this collection</div>
+              <div className="text-[11.5px] text-muted-foreground">
                 Workeros stops treating <span className="font-mono">{schema.slug}</span> as a collection.
                 The underlying table and its rows stay intact; you can restore from the Archived view.
               </div>
@@ -393,20 +393,20 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
           </div>
         </div>
       ) : (
-        <div className="card" style={{ borderColor: "color-mix(in oklch, var(--destructive) 35%, var(--border))" }}>
-          <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="overflow-hidden rounded-2xl border border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-card text-card-foreground">
+          <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
             <I.Trash size={14} />
-            <span style={{ fontSize: 13, fontWeight: 500, color: "var(--destructive)" }}>danger zone</span>
+            <span className="text-[13px] font-medium text-destructive">danger zone</span>
           </div>
-          <div style={{ padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+          <div className="flex items-center justify-between gap-4 p-4">
             <div>
-              <div style={{ fontSize: 13, fontWeight: 500 }}>Delete this collection</div>
-              <div className="field-hint">
+              <div className="text-[13px] font-medium">Delete this collection</div>
+              <div className="text-[11.5px] text-muted-foreground">
                 Drops the physical table and all rows.
                 Permissions and revisions tied to the slug are removed too. This is irreversible.
               </div>
             </div>
-            <Button variant="primary" size="sm" onClick={onDelete} style={{ background: "var(--destructive)", borderColor: "var(--destructive)" }}>
+            <Button variant="primary" size="sm" onClick={onDelete} className="border-destructive bg-destructive">
               Delete collection
             </Button>
           </div>

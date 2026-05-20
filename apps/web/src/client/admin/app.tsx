@@ -76,9 +76,7 @@ const SchemaGraphPage = lazy(() => import("./pages/schema-graph").then((m) => ({
 const UsersPage = lazy(() => import("./pages/users").then((m) => ({ default: m.UsersPage })));
 const SettingsPage = lazy(() => import("./pages/settings").then((m) => ({ default: m.SettingsPage })));
 
-const PageLoading = () => (
-  <div className="p-8 text-[13px] text-muted-foreground">Loading…</div>
-);
+import { PageSkeleton, CollectionItemsSkeleton } from "./page-skeletons";
 
 const TAB_COUNT_CLS =
   "rounded-sm border border-border bg-muted px-[5px] py-px font-mono text-[11px] text-muted-foreground";
@@ -198,6 +196,10 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
     ownerScoped: false,
     fields: [],
   });
+  // True while the active collection's schema is being fetched for the first
+  // time — drives the collection-detail skeleton so the items/schema tabs
+  // don't flash an empty state before the real schema lands.
+  const [collectionLoading, setCollectionLoading] = useState(false);
   // Kanban needs a status-shaped column to group by. If the URL asks for
   // `?view=kanban` on a collection that has none, fall back to the table view
   // (the toggle already hides the Kanban button in that case).
@@ -329,6 +331,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   useEffect(() => {
     if (!activeCollection) return;
     let cancelled = false;
+    setCollectionLoading(true);
     void (async () => {
       try {
         const res = await collectionsApi.get(activeCollection);
@@ -353,6 +356,8 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
         } as any);
       } catch {
         // leave previous schemaState in place
+      } finally {
+        if (!cancelled) setCollectionLoading(false);
       }
     })();
     return () => { cancelled = true; };
@@ -671,7 +676,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
 
         <div className="scrollarea" style={{ flex: 1 }}>
           <div className="page">
-            <Suspense fallback={<PageLoading />}>
+            <Suspense fallback={<PageSkeleton nav={activeNav} />}>
             {activeNav === "overview" && <OverviewPage adapter={tweaks.adapter} pushToast={pushToast} setActiveNav={setActiveNav} />}
             {activeNav === "database" && <DatabasePage pushToast={pushToast} adapter={tweaks.adapter} />}
             {activeNav === "storage" && <StoragePage pushToast={pushToast} />}
@@ -759,7 +764,10 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                 pushToast={pushToast}
               />
             )}
-            {activeNav === "collections" && activeCollection && <>
+            {activeNav === "collections" && activeCollection && collectionLoading && schemaState.slug !== activeCollection && (
+              <CollectionItemsSkeleton />
+            )}
+            {activeNav === "collections" && activeCollection && !(collectionLoading && schemaState.slug !== activeCollection) && <>
               <Button variant="ghost" size="sm" icon={I.ChevronLeft} onClick={() => setActiveCollection(null)}>All collections</Button>
               <PageHeader
                 slug={activeCollection}

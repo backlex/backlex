@@ -5,6 +5,14 @@ import { I, type IconComponent, type IconKey } from "./icons";
 import type { CollectionListItem } from "./config";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
+import { Input } from "@workeros/ui/components/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
 import { AdoptWizard } from "./adopt-wizard";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { useUrlState } from "@/lib/use-url-state";
@@ -121,8 +129,8 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
           <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search collections by slug or group…" />
         </InputGroup>
         <div className="flex-1" />
-        <button className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border px-[11px] text-[12.5px] text-foreground hover:bg-accent ${view === "grid" ? "border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent" : "border-border bg-card"}`} onClick={() => setView("grid")}><I.Braces size={12} /> Grid</button>
-        <button className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border px-[11px] text-[12.5px] text-foreground hover:bg-accent ${view === "table" ? "border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent" : "border-border bg-card"}`} onClick={() => setView("table")}><I.Inbox size={12} /> Table</button>
+        <Button size="sm" variant={view === "grid" ? "outline" : "ghost"} icon={I.Braces} onClick={() => setView("grid")}>Grid</Button>
+        <Button size="sm" variant={view === "table" ? "outline" : "ghost"} icon={I.Inbox} onClick={() => setView("table")}>Table</Button>
       </div>
 
       {view === "grid" ? (
@@ -437,22 +445,20 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
   };
 
   return (
-    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={onClose}>
-      <div className="relative flex max-h-[90vh] w-full animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200 max-w-[640px]" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[640px]">
+        <DialogHeader className="flex-row items-center gap-2.5 border-b border-border px-4 py-3.5 pr-12 text-left">
           <I.Database size={14} />
-          <span className="text-sm font-medium">New collection</span>
+          <DialogTitle className="text-sm font-medium">New collection</DialogTitle>
           <span className="font-mono text-[11.5px] text-muted-foreground">step {step + 1} of 2</span>
-          <div className="flex-1" />
-          <IconButton icon={I.X} onClick={onClose} />
-        </div>
+        </DialogHeader>
 
         <div className="flex flex-1 flex-col gap-4 overflow-auto p-[22px]">
           {step === 0 && (
             <>
               <div className="flex flex-col gap-1.5">
                 <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Slug</label>
-                <input value={slug} onChange={(e) => setSlug(e.target.value)} autoFocus placeholder="products" className="font-mono" aria-invalid={slugError ? true : undefined} />
+                <Input value={slug} onChange={(e) => setSlug(e.target.value)} autoFocus placeholder="products" className="font-mono" aria-invalid={slugError ? true : undefined} />
                 {slugError && <span className="text-[11.5px] text-destructive">{slugError}</span>}
                 {!slugError && !slugClean && <span className="text-[11.5px] text-muted-foreground">Enter a slug to continue.</span>}
                 {!slugError && slugClean && <span className="text-[11.5px] text-muted-foreground">Slug: <span className="font-mono">{slugClean}</span></span>}
@@ -462,7 +468,7 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
                 <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Group</label>
                 <div className="flex flex-wrap gap-1.5">
                   {["Content", "Marketing", "System", "Other"].map((g) => (
-                    <button key={g} type="button" className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border px-[11px] text-[12.5px] text-foreground hover:bg-accent ${group === g ? "border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent" : "border-border bg-card"}`} onClick={() => setGroup(g)}>{g}</button>
+                    <Button key={g} type="button" size="sm" variant={group === g ? "outline" : "ghost"} onClick={() => setGroup(g)}>{g}</Button>
                   ))}
                 </div>
               </div>
@@ -557,8 +563,8 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
             <Button variant="primary" size="sm" icon={I.Plus} onClick={submit}>Create collection</Button>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -580,14 +586,12 @@ interface CreateChooserDialogProps {
 function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt }: CreateChooserDialogProps) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={onClose}>
-      <div className="relative flex max-h-[90vh] w-full animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200 max-w-[560px]" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[560px]">
+        <DialogHeader className="flex-row items-center gap-2.5 border-b border-border px-4 py-3.5 pr-12 text-left">
           <I.Plus size={14} />
-          <span className="text-sm font-medium">New collection</span>
-          <div className="flex-1" />
-          <IconButton icon={I.X} onClick={onClose} />
-        </div>
+          <DialogTitle className="text-sm font-medium">New collection</DialogTitle>
+        </DialogHeader>
         <div className="grid grid-cols-2 gap-3 p-[22px]">
           <button
             type="button"
@@ -620,7 +624,7 @@ function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt }: Create
           <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -9,6 +9,8 @@ import { I, type IconComponent } from "../icons";
 import { Button, PageHeader } from "../ui";
 import { useAdvisor, queryKeys } from "../queries";
 import { Skeleton } from "@workeros/ui/components/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@workeros/ui/components/collapsible";
 
 type CheckKind = "security" | "performance";
 type CheckLevel = "error" | "warn" | "info";
@@ -54,10 +56,7 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
     return Math.max(0, 100 - errs * 18 - warns * 7);
   }, [all]);
 
-  const tabCls = (id: string) =>
-    `inline-flex cursor-pointer items-center gap-1.5 rounded-3xl border-0 px-3.5 py-[5px] text-[12.5px] font-medium ${tab === id ? "bg-card text-foreground shadow-[0_1px_2px_oklch(0_0_0/0.06),0_1px_0_oklch(0_0_0/0.04)]" : "bg-transparent text-muted-foreground"}`;
-  const countCls = (id: string) =>
-    `rounded-sm border border-border px-[5px] py-px font-mono text-[11px] text-muted-foreground ${tab === id ? "bg-muted" : "bg-background"}`;
+  const countCls = "rounded-sm border border-border bg-muted px-[5px] py-px font-mono text-[11px] text-muted-foreground";
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
@@ -112,16 +111,18 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
         </div>
       </div>
 
-      <div className="flex w-fit gap-0.5 rounded-3xl bg-muted p-[3px]">
-        <button className={tabCls("security")} onClick={() => setTab("security")}>
-          <I.ShieldAlert size={13} />Security{" "}
-          <span className={countCls("security")}>{counts.security.error + counts.security.warn + counts.security.info}</span>
-        </button>
-        <button className={tabCls("performance")} onClick={() => setTab("performance")}>
-          <I.Cpu size={13} />Performance{" "}
-          <span className={countCls("performance")}>{counts.performance.error + counts.performance.warn + counts.performance.info}</span>
-        </button>
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as CheckKind)}>
+        <TabsList>
+          <TabsTrigger value="security">
+            <I.ShieldAlert size={13} />Security{" "}
+            <span className={countCls}>{counts.security.error + counts.security.warn + counts.security.info}</span>
+          </TabsTrigger>
+          <TabsTrigger value="performance">
+            <I.Cpu size={13} />Performance{" "}
+            <span className={countCls}>{counts.performance.error + counts.performance.warn + counts.performance.info}</span>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Findings */}
       <div className="flex flex-col gap-2.5">
@@ -246,15 +247,17 @@ function AdvisorRow({ c, onDismiss, onCopy }: { c: AdvisorCheck; onDismiss: () =
       ? "bg-[color-mix(in_oklch,oklch(0.75_0.18_70)_18%,var(--card))] text-[oklch(0.55_0.18_70)] dark:text-[oklch(0.85_0.18_70)]"
       : "bg-muted text-muted-foreground";
   return (
-    <div className={`overflow-hidden rounded-2xl border bg-card ${rowBorder}`}>
-      <button type="button" className="grid w-full cursor-pointer grid-cols-[32px_1fr_auto_auto_16px] items-center gap-3 border-0 bg-transparent px-4 py-3 text-left hover:bg-accent" onClick={() => setOpen((v) => !v)}>
-        <span className={`grid size-7 place-items-center rounded-lg ${icoCls}`}><Icon size={14} /></span>
-        <span className="text-[13.5px] font-medium">{c.title}</span>
-        <span className="font-mono text-[11.5px] text-muted-foreground">{c.resource}</span>
-        <span className="text-[11px] text-muted-foreground">{c.detected}</span>
-        <I.ChevronDown size={12} className="text-muted-foreground transition-transform data-[open=true]:rotate-180" data-open={open} />
-      </button>
-      {open && (
+    <Collapsible open={open} onOpenChange={setOpen} className={`overflow-hidden rounded-2xl border bg-card ${rowBorder}`}>
+      <CollapsibleTrigger asChild>
+        <button type="button" className="grid w-full cursor-pointer grid-cols-[32px_1fr_auto_auto_16px] items-center gap-3 border-0 bg-transparent px-4 py-3 text-left hover:bg-accent">
+          <span className={`grid size-7 place-items-center rounded-lg ${icoCls}`}><Icon size={14} /></span>
+          <span className="text-[13.5px] font-medium">{c.title}</span>
+          <span className="font-mono text-[11.5px] text-muted-foreground">{c.resource}</span>
+          <span className="text-[11px] text-muted-foreground">{c.detected}</span>
+          <I.ChevronDown size={12} className="text-muted-foreground transition-transform data-[open=true]:rotate-180" data-open={open} />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
         <div className="flex flex-col gap-3 border-t border-dashed border-border px-4 pb-4 pl-[60px] pt-1">
           <p className="m-0 text-[13px] text-foreground">{c.body}</p>
           <div>
@@ -276,7 +279,7 @@ function AdvisorRow({ c, onDismiss, onCopy }: { c: AdvisorCheck; onDismiss: () =
             </Button>
           </div>
         </div>
-      )}
-    </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

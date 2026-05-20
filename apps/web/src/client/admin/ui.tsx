@@ -25,6 +25,21 @@ import { Checkbox as ShadcnCheckbox } from "@workeros/ui/components/checkbox";
 import { Input } from "@workeros/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { Skeleton } from "@workeros/ui/components/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@workeros/ui/components/dropdown-menu";
 
 export function formatJson(value: unknown): string {
   try {
@@ -54,13 +69,14 @@ export function JsonBlock({ label, value, maxHeight = 280 }: { label: string; va
         <I.Braces size={12} />
         <span className="font-semibold uppercase tracking-[0.06em]">{label}</span>
         <div className="flex-1" />
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="xs"
           onClick={copy}
-          className="cursor-pointer rounded border border-border bg-card px-2 py-0.5 font-mono text-[10.5px] text-muted-foreground"
+          className="font-mono text-[10.5px] text-muted-foreground"
         >
           {copied ? "copied" : "copy"}
-        </button>
+        </Button>
       </div>
       <pre
         className="m-0 overflow-auto whitespace-pre rounded-lg border border-border bg-[color-mix(in_oklch,var(--muted)_40%,var(--card))] p-3 font-mono text-[11.5px] leading-[1.55]"
@@ -412,20 +428,12 @@ function NewWorkspaceDialog({ onClose, onCreate, existing }: { onClose: () => vo
   const valid = slug.length >= 2 && !taken;
   const submit = () => { if (valid) onCreate({ name: slug, project, env }); };
   return (
-    <div
-      className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150"
-      onClick={onClose}
-    >
-      <div
-        className="relative flex max-h-[min(86vh,720px)] w-full max-w-[520px] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="flex max-h-[min(86vh,720px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[520px]">
+        <DialogHeader className="flex-row items-center gap-2.5 space-y-0 border-b border-border px-4 py-3.5 pr-12 text-left">
           <I.Plus size={14} />
-          <span className="text-sm font-medium">New workspace</span>
-          <div className="flex-1" />
-          <IconButton icon={I.X} onClick={onClose} />
-        </div>
+          <DialogTitle className="text-sm font-medium">New workspace</DialogTitle>
+        </DialogHeader>
         <div className="flex flex-col gap-4 p-[22px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Name</label>
@@ -460,13 +468,12 @@ function NewWorkspaceDialog({ onClose, onCreate, existing }: { onClose: () => vo
             </div>
           </div>
         </div>
-        <div className="flex gap-2 border-t border-border px-[18px] py-3">
-          <div className="flex-1" />
+        <DialogFooter className="border-t border-border px-[18px] py-3">
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
           <Button variant="primary" size="sm" disabled={!valid} onClick={submit}>Create workspace</Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -685,16 +692,6 @@ export function NotificationsBell() {
 }
 
 export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onToggleSidebar, onSignOut, user, onAccountSettings }: TopbarProps) {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: Event) => {
-      const target = e.target as HTMLElement | null;
-      if (!target?.closest(".user-menu-wrap")) setOpen(false);
-    };
-    document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
-  }, [open]);
   return (
     <div className="topbar">
       <IconButton icon={I.Sidebar} onClick={onToggleSidebar} title="Toggle sidebar" />
@@ -714,57 +711,50 @@ export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onToggleSid
       </div>
       <IconButton icon={dark ? I.Sun : I.Moon} onClick={onToggleTheme} title="Toggle theme" />
       <NotificationsBell />
-      <div className="user-menu-wrap" style={{ position: "relative" }}>
-        <button
-          onClick={() => setOpen((v) => !v)}
-          title={user?.email ?? "Account"}
-          aria-label="Account menu"
-          style={{ background: "transparent", border: 0, padding: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
-        >
-          {(() => {
-            const src = resolveAvatarSrc(user?.image);
-            return src ? (
-              <img src={src} alt="" className="avatar" style={{ objectFit: "cover" }} />
-            ) : (
-              <div className="avatar">{avatarInitials(user)}</div>
-            );
-          })()}
-          <I.ChevronDown size={12} style={{ color: "var(--muted-foreground)" }} />
-        </button>
-        {open && (
-          <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 220, background: "var(--popover)", border: "1px solid var(--border)", borderRadius: "var(--radius-xl)", boxShadow: "0 12px 32px oklch(0 0 0 / 0.12)", padding: 6, zIndex: 100, fontSize: 13 }}>
-            <div style={{ padding: "8px 10px", borderBottom: "1px solid var(--border)", marginBottom: 4 }}>
-              <div style={{ fontWeight: 500 }}>
-                {user?.name || user?.email?.split("@")[0] || "Account"}
-              </div>
-              {user?.email && (
-                <div className="font-mono text-[11.5px] text-muted-foreground">{user.email}</div>
-              )}
-              {user?.isAdmin && (
-                <div className="mt-1">
-                  <span className="inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-3xl border border-[color-mix(in_oklch,var(--primary)_22%,transparent)] bg-[color-mix(in_oklch,var(--primary)_8%,var(--card))] px-2 py-px text-[11px] font-medium tabular-nums text-[oklch(from_var(--primary)_0.38_0.12_h)] dark:text-[oklch(from_var(--primary)_0.92_0.18_h)]">
-                    admin
-                  </span>
-                </div>
-              )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            title={user?.email ?? "Account"}
+            aria-label="Account menu"
+            style={{ background: "transparent", border: 0, padding: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+          >
+            {(() => {
+              const src = resolveAvatarSrc(user?.image);
+              return src ? (
+                <img src={src} alt="" className="avatar" style={{ objectFit: "cover" }} />
+              ) : (
+                <div className="avatar">{avatarInitials(user)}</div>
+              );
+            })()}
+            <I.ChevronDown size={12} style={{ color: "var(--muted-foreground)" }} />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <div style={{ padding: "8px 10px" }}>
+            <div style={{ fontWeight: 500 }}>
+              {user?.name || user?.email?.split("@")[0] || "Account"}
             </div>
-            <button
-              type="button"
-              onClick={() => { setOpen(false); onAccountSettings?.(); }}
-              style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--radius-md)", background: "transparent", border: 0, color: "var(--foreground)", width: "100%", textAlign: "left", cursor: "pointer", font: "inherit" }}
-            >
-              <I.Settings size={13} /> Account settings
-            </button>
-            <button
-              type="button"
-              onClick={onSignOut}
-              style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--radius-md)", background: "transparent", border: 0, color: "var(--destructive)", width: "100%", textAlign: "left", cursor: "pointer", font: "inherit" }}
-            >
-              <I.LogOut size={13} /> Sign out
-            </button>
+            {user?.email && (
+              <div className="font-mono text-[11.5px] text-muted-foreground">{user.email}</div>
+            )}
+            {user?.isAdmin && (
+              <div className="mt-1">
+                <span className="inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-3xl border border-[color-mix(in_oklch,var(--primary)_22%,transparent)] bg-[color-mix(in_oklch,var(--primary)_8%,var(--card))] px-2 py-px text-[11px] font-medium tabular-nums text-[oklch(from_var(--primary)_0.38_0.12_h)] dark:text-[oklch(from_var(--primary)_0.92_0.18_h)]">
+                  admin
+                </span>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => { onAccountSettings?.(); }}>
+            <I.Settings size={13} /> Account settings
+          </DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" onSelect={() => { onSignOut?.(); }}>
+            <I.LogOut size={13} /> Sign out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }

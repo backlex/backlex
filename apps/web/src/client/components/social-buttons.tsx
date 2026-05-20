@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { KeyRoundIcon } from "lucide-react";
+import { Button } from "@workeros/ui/components/button";
 import { auth, useAuthSurface, type PublicProvider } from "@/lib/auth";
 import { notifyError } from "@/lib/error";
 
@@ -106,12 +107,13 @@ export const SocialButtons = ({ callbackURL = "/" }: SocialButtonsProps) => {
   return (
     <div className={`grid gap-2 ${cols}`}>
       {socials.map((p) => (
-        <button
+        <Button
           key={p.id}
           type="button"
+          variant="outline"
           onClick={() => onClick(p.id)}
           disabled={busy !== null}
-          className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-3xl border border-border bg-card text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-60"
+          className="h-10"
         >
           {busy === p.id ? (
             <span className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -119,7 +121,7 @@ export const SocialButtons = ({ callbackURL = "/" }: SocialButtonsProps) => {
             iconFor(p.id)
           )}
           {p.label}
-        </button>
+        </Button>
       ))}
     </div>
   );

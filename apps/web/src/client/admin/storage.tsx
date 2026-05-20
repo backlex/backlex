@@ -15,6 +15,14 @@ import {
   CommandList,
 } from "@workeros/ui/components/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@workeros/ui/components/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
 import { Button as ShadButton } from "@workeros/ui/components/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { CheckIcon, ChevronsUpDownIcon, LinkIcon } from "lucide-react";
@@ -25,11 +33,6 @@ import { SkeletonCard } from "./loading";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
-
-const SCRIM_CLS = "fixed inset-0 z-[60] bg-[oklch(0_0_0/0.32)] dark:bg-[oklch(0_0_0/0.6)]";
-
-const DIALOG_CLS =
-  "fixed left-1/2 top-1/2 z-[71] flex w-[min(440px,92vw)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 rounded-2xl border border-border bg-popover px-[22px] pb-[18px] pt-[22px] shadow-[0_20px_70px_-10px_oklch(0_0_0/0.4)]";
 
 const SIZE_CHIP_BASE = "flex-1 cursor-pointer rounded-md border py-1 font-mono text-[10.5px]";
 const SIZE_CHIP_ON = "border-primary bg-primary text-primary-foreground";
@@ -578,13 +581,6 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
     setDetailOpen(true);
   };
 
-  useEffect(() => {
-    if (!detailOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setDetailOpen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [detailOpen]);
-
   // The page header used to sum bytes across `files`, but with pagination
   // `files` only holds the current page — that number would mislead. The
   // total count comes from the folder-counts endpoint; per-tenant byte
@@ -911,15 +907,14 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
       )}
 
       {newFolderOpen && (
-        <>
-          <div className={SCRIM_CLS} onClick={() => !newFolderBusy && setNewFolderOpen(false)} />
-          <div className={DIALOG_CLS} role="dialog" aria-modal="true" aria-labelledby="new-folder-title">
-            <div>
-              <h3 id="new-folder-title" className="m-0 text-base font-semibold tracking-[-0.01em]">New folder</h3>
-              <p className="m-0 mt-1.5 text-[13px] leading-normal text-muted-foreground">
+        <Dialog open onOpenChange={(o) => { if (!o && !newFolderBusy) setNewFolderOpen(false); }}>
+          <DialogContent className="w-[min(440px,92vw)] gap-4">
+            <DialogHeader className="pr-12 text-left">
+              <DialogTitle className="text-base font-semibold tracking-[-0.01em]">New folder</DialogTitle>
+              <DialogDescription className="text-[13px] leading-normal">
                 Lowercase letters, digits, <span className="font-mono">_</span> and <span className="font-mono">-</span>. Use <span className="font-mono">/</span> in the name to nest under an existing folder.
-              </p>
-            </div>
+              </DialogDescription>
+            </DialogHeader>
             <Input
               ref={newFolderInputRef}
               value={newFolderName}
@@ -932,26 +927,25 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
               disabled={newFolderBusy}
               autoFocus
             />
-            <div className="flex justify-end gap-2">
+            <DialogFooter>
               <Button variant="ghost" size="sm" onClick={() => setNewFolderOpen(false)} disabled={newFolderBusy}>Cancel</Button>
               <Button variant="primary" size="sm" onClick={submitNewFolder} disabled={newFolderBusy || !newFolderName.trim()}>
                 {newFolderBusy ? "Creating…" : "Create folder"}
               </Button>
-            </div>
-          </div>
-        </>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
 
       {importUrlOpen && (
-        <>
-          <div className={SCRIM_CLS} onClick={() => !importBusy && setImportUrlOpen(false)} />
-          <div className={DIALOG_CLS} role="dialog" aria-modal="true" aria-labelledby="import-url-title">
-            <div>
-              <h3 id="import-url-title" className="m-0 text-base font-semibold tracking-[-0.01em]">Import from URL</h3>
-              <p className="m-0 mt-1.5 text-[13px] leading-normal text-muted-foreground">
+        <Dialog open onOpenChange={(o) => { if (!o && !importBusy) setImportUrlOpen(false); }}>
+          <DialogContent className="w-[min(440px,92vw)] gap-4">
+            <DialogHeader className="pr-12 text-left">
+              <DialogTitle className="text-base font-semibold tracking-[-0.01em]">Import from URL</DialogTitle>
+              <DialogDescription className="text-[13px] leading-normal">
                 Server fetches the URL and stores it in this workspace. http/https only — private/internal hosts are rejected.
-              </p>
-            </div>
+              </DialogDescription>
+            </DialogHeader>
             <div className="flex flex-col gap-2.5">
               <div className="flex flex-col gap-1.5">
                 <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Source URL</label>
@@ -987,14 +981,14 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                 </div>
               )}
             </div>
-            <div className="flex justify-end gap-2">
+            <DialogFooter>
               <Button variant="ghost" size="sm" onClick={() => setImportUrlOpen(false)} disabled={importBusy}>Cancel</Button>
               <Button variant="primary" size="sm" onClick={submitImportUrl} disabled={importBusy || !importUrl.trim()}>
                 {importBusy ? "Importing…" : "Import"}
               </Button>
-            </div>
-          </div>
-        </>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
@@ -1140,28 +1134,19 @@ function FileTile({ f, active, onSelect, onCopyUrl }: { f: StoredFile; active: b
 
 function FileDetailModal({ f, onClose, ...rest }: any) {
   return (
-    <div
-      className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150"
-      onClick={onClose}
-    >
-      <div
-        className="relative flex max-h-[min(86vh,720px)] w-[min(720px,92vw)] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="flex max-h-[min(86vh,720px)] w-[min(720px,92vw)] flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <div className="min-w-0 flex-1">
-            <h3 className="m-0 text-[14.5px] font-semibold tracking-[-0.01em]">Edit file</h3>
-            <p className="m-0 mt-0.5 truncate font-mono text-xs text-muted-foreground">{f.key}</p>
+            <DialogTitle className="text-[14.5px] font-semibold tracking-[-0.01em]">Edit file</DialogTitle>
+            <DialogDescription className="mt-0.5 truncate font-mono text-xs">{f.key}</DialogDescription>
           </div>
-          <IconButton icon={I.X} onClick={onClose} title="Close" />
-        </div>
+        </DialogHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-0">
           <FileDetail f={f} {...rest} embedded />
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

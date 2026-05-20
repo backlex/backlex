@@ -8,7 +8,7 @@
 // arrow nav (the prototype hardcoded May 2026; that wouldn't age well).
 import { useMemo, useState } from "react";
 import { I, type IconComponent } from "./icons";
-import { Badge, IconButton } from "./ui";
+import { Badge, Button, IconButton } from "./ui";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { authorById } from "./items";
 import type { Post } from "./config";
@@ -231,15 +231,11 @@ export function CalendarView({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post
   return (
     <div className="p-3.5">
       <div className="flex items-center gap-2 px-1 pb-3">
-        <button type="button" className="inline-grid size-6 cursor-pointer place-items-center rounded-md border border-border bg-transparent text-foreground hover:bg-accent" onClick={prev} aria-label="Previous month">
-          <I.ChevronLeft size={14} />
-        </button>
+        <Button variant="outline" size="xs" icon={I.ChevronLeft} onClick={prev} aria-label="Previous month" />
         <span className="font-medium">
           {MONTH_NAMES[cursor.month]} {cursor.year}
         </span>
-        <button type="button" className="inline-grid size-6 cursor-pointer place-items-center rounded-md border border-border bg-transparent text-foreground hover:bg-accent" onClick={next} aria-label="Next month">
-          <I.ChevronRight size={14} />
-        </button>
+        <Button variant="outline" size="xs" icon={I.ChevronRight} onClick={next} aria-label="Next month" />
         <div className="flex-1" />
         <span className="text-[11.5px] text-muted-foreground">
           scheduled by <span className="font-mono">published_at</span>

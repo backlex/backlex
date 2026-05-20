@@ -10,6 +10,14 @@ import { useEffect, useMemo, useState } from "react";
 import { I } from "./icons";
 import { Badge, Button, IconButton, Switch } from "./ui";
 import { Input } from "@workeros/ui/components/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
 import { Select } from "./select";
 import { getInterface, interfacesForType } from "./interfaces";
 
@@ -117,26 +125,17 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150"
-      onClick={onClose}
-    >
-      <div
-        className="relative flex max-h-[min(86vh,720px)] w-[92vw] max-w-[640px] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
-          <div className="flex flex-1 flex-col gap-1">
-            <div className="text-base font-semibold tracking-[-0.01em]">
-              Edit <span className="font-mono">{draft.name}</span>{" "}
-              <Badge variant="outline" mono>{draft.type}</Badge>
-            </div>
-            <div className="text-[12.5px] text-muted-foreground">
-              Name and type are immutable — drop &amp; re-add the column to change them.
-            </div>
-          </div>
-          <IconButton icon={I.X} onClick={onClose} />
-        </div>
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-h-[min(86vh,720px)] gap-0 overflow-y-auto p-0 sm:max-w-[640px]">
+        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
+            Edit <span className="font-mono">{draft.name}</span>{" "}
+            <Badge variant="outline" mono>{draft.type}</Badge>
+          </DialogTitle>
+          <DialogDescription className="text-[12.5px]">
+            Name and type are immutable — drop &amp; re-add the column to change them.
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="flex flex-col gap-3.5 p-[18px]">
           <div className="flex items-center justify-between gap-3">
@@ -212,11 +211,11 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
           )}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-border px-[18px] py-3">
+        <DialogFooter className="border-t border-border px-[18px] py-3">
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
           <Button variant="primary" size="sm" onClick={submit}>Save field</Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

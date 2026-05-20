@@ -8,6 +8,7 @@ import { Select } from "./select";
 import { Input } from "@workeros/ui/components/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workeros/ui/components/input-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
+import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { getAuthors, subscribeAuthors } from "./authors-cache";
 
 const ADMIN_TABLE_CLS =
@@ -300,17 +301,16 @@ export function FilterBar({ search, setSearch, filters, setFilters, schema, stat
           ...cfg.choices.map((c) => ({ id: c.value, label: c.label ?? c.value })),
         ];
         return (
-          <div className="flex w-fit gap-0.5 rounded-3xl bg-muted p-[3px]">
-            {tabs.map((t) => {
-              const on = status === t.id;
-              return (
-                <button key={t.id} className={`inline-flex cursor-pointer items-center gap-1.5 rounded-3xl border-0 px-3.5 py-[5px] text-[12.5px] font-medium ${on ? "bg-card text-foreground shadow-[0_1px_2px_oklch(0_0_0/0.06),0_1px_0_oklch(0_0_0/0.04)]" : "bg-transparent text-muted-foreground"}`} onClick={() => setStatus(t.id)}>
+          <Tabs value={status} onValueChange={(v) => setStatus(v)}>
+            <TabsList>
+              {tabs.map((t) => (
+                <TabsTrigger key={t.id} value={t.id}>
                   {t.label}
-                  {t.count != null && <span className={`rounded-sm border border-border px-[5px] py-px font-mono text-[11px] text-muted-foreground ${on ? "bg-muted" : "bg-background"}`}>{t.count}</span>}
-                </button>
-              );
-            })}
-          </div>
+                  {t.count != null && <span className="rounded-sm border border-border bg-muted px-[5px] py-px font-mono text-[11px] text-muted-foreground">{t.count}</span>}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         );
       })()}
 

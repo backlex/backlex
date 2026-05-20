@@ -37,6 +37,8 @@ import { realtimeRoutes } from "./routes/realtime";
 import { webhooksRoutes } from "./routes/webhooks";
 import { webhookTriggerRoutes } from "./routes/webhook-trigger";
 import { commentsRoutes } from "./routes/comments";
+import { sharedLinksRoutes } from "./routes/shared-links";
+import { sharedPublicRoutes } from "./routes/shared-public";
 import { notificationsRoutes } from "./routes/notifications";
 import { flowsRoutes } from "./routes/flows";
 import { functionsRoutes } from "./routes/functions";
@@ -62,6 +64,7 @@ import { i18nPublicRoutes } from "./routes/i18n-public";
 import { settingsRoutes } from "./routes/settings";
 import { dbAdminRoutes } from "./routes/db-admin";
 import { metricsRoutes } from "./routes/metrics";
+import { advisorRoutes } from "./routes/advisor";
 import { openapiRoutes } from "./routes/openapi";
 import type { Env } from "./env";
 
@@ -222,6 +225,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/settings", settingsRoutes);
   app.route("/api/admin/db", dbAdminRoutes);
   app.route("/api/admin/metrics", metricsRoutes);
+  app.route("/api/admin/advisor", advisorRoutes);
   app.route("/api/api-keys", apiKeysRoutes);
   app.route("/api/collections", collectionsRoutes);
   app.route("/api/items", itemsRoutes);
@@ -237,6 +241,9 @@ export const createApp = (env: Env) => {
   // (outgoing dispatch admin) by design.
   app.route("/api/webhook", webhookTriggerRoutes);
   app.route("/api/comments", commentsRoutes);
+  app.route("/api/shared-links", sharedLinksRoutes);
+  // Public, unauthenticated record-share resolution — no `requireUser`.
+  app.route("/api/shared", sharedPublicRoutes);
   app.route("/api/notifications", notificationsRoutes);
   app.route("/api/flows", flowsRoutes);
   app.route("/api/roles", rolesRoutes);

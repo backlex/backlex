@@ -21,6 +21,12 @@ import { Badge, Button, Switch } from "../ui";
 import { Select } from "../select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
+import {
   ldapAdminApi,
   type ApiLdapConfig,
   type LdapConfigPatch,
@@ -384,13 +390,11 @@ function LdapTestDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" role="dialog" aria-modal onClick={onClose}>
-      <div className="relative flex max-h-[min(86vh,720px)] w-[min(640px,92vw)] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
-          <div className="text-[13px] font-medium">Test LDAP connection</div>
-          <div className="flex-1" />
-          <Button variant="ghost" onClick={onClose}>Close</Button>
-        </div>
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[640px]">
+        <DialogHeader className="border-b border-border px-5 py-3.5 pr-12 text-left">
+          <DialogTitle className="text-[13px] font-medium">Test LDAP connection</DialogTitle>
+        </DialogHeader>
         <div className="grid flex-1 gap-3 overflow-y-auto px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Username</label>
@@ -442,7 +446,7 @@ function LdapTestDialog({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

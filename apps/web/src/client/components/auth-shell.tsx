@@ -224,15 +224,17 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
       {/* Right: form panel */}
       <div className="relative flex items-center justify-center p-6 md:p-10">
         <div className="relative w-full max-w-[380px]">
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-sm"
             onClick={() => setTheme(dark ? "light" : "dark")}
             aria-label="Toggle theme"
             title="Toggle theme"
-            className="absolute -top-7 right-0 grid size-7 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+            className="absolute -top-7 right-0 text-muted-foreground"
           >
             {dark ? <SunIcon size={14} /> : <MoonIcon size={14} />}
-          </button>
+          </Button>
           {children}
           <div className="mt-7 flex justify-center gap-4 text-xs text-muted-foreground">
             {visibleLinks.map((link) => (

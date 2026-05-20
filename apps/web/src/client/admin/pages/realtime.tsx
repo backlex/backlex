@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { I } from "../icons";
 import { Badge, Button, PageHeader } from "../ui";
 import { RealtimeTail, type RealtimeEvent } from "../extras";
+import { RealtimeSkeleton } from "../page-skeletons";
 
 export function RealtimePage({ events, active, onActiveChange, pushToast }: { events: RealtimeEvent[]; active: string; onActiveChange: (name: string) => void; pushToast: (m: string) => void }) {
   // Channels are derived from real collections — `items:<slug>` per
@@ -11,6 +12,8 @@ export function RealtimePage({ events, active, onActiveChange, pushToast }: { ev
   // showing fabricated numbers.
   type Channel = { name: string; subs: number | null; filter: string };
   const [channels, setChannels] = useState<Channel[]>([{ name: "collections", subs: null, filter: "admin role only" }]);
+  // First-load gate — drives the page skeleton until channels derive.
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -29,6 +32,8 @@ export function RealtimePage({ events, active, onActiveChange, pushToast }: { ev
         if (!cancelled) setChannels(built);
       } catch {
         // keep default
+      } finally {
+        if (!cancelled) setLoaded(true);
       }
     })();
     return () => { cancelled = true; };
@@ -40,6 +45,10 @@ export function RealtimePage({ events, active, onActiveChange, pushToast }: { ev
     if (!channels.some((c) => c.name === active)) onActiveChange(channels[0]!.name);
   }, [channels, active, onActiveChange]);
   const setActive = onActiveChange;
+
+  // First whole-page fetch — channels haven't derived yet.
+  if (!loaded) return <RealtimeSkeleton />;
+
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader

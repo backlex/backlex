@@ -46,41 +46,21 @@ export function JsonBlock({ label, value, maxHeight = 280 }: { label: string; va
   };
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, color: "var(--muted-foreground)", fontSize: 11.5 }}>
+      <div className="mb-1.5 flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
         <I.Braces size={12} />
-        <span style={{ textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{label}</span>
-        <div style={{ flex: 1 }} />
+        <span className="font-semibold uppercase tracking-[0.06em]">{label}</span>
+        <div className="flex-1" />
         <button
           type="button"
           onClick={copy}
-          className="font-mono"
-          style={{
-            fontSize: 10.5,
-            padding: "2px 8px",
-            border: "1px solid var(--border)",
-            borderRadius: 4,
-            background: "var(--card)",
-            color: "var(--muted-foreground)",
-            cursor: "pointer",
-          }}
+          className="cursor-pointer rounded border border-border bg-card px-2 py-0.5 font-mono text-[10.5px] text-muted-foreground"
         >
           {copied ? "copied" : "copy"}
         </button>
       </div>
       <pre
-        className="font-mono"
-        style={{
-          margin: 0,
-          padding: 12,
-          background: "color-mix(in oklch, var(--muted) 40%, var(--card))",
-          border: "1px solid var(--border)",
-          borderRadius: 8,
-          fontSize: 11.5,
-          lineHeight: 1.55,
-          maxHeight,
-          overflow: "auto",
-          whiteSpace: "pre",
-        }}
+        className="m-0 overflow-auto whitespace-pre rounded-lg border border-border bg-[color-mix(in_oklch,var(--muted)_40%,var(--card))] p-3 font-mono text-[11.5px] leading-[1.55]"
+        style={{ maxHeight }}
       >
         {json}
       </pre>
@@ -428,43 +408,56 @@ function NewWorkspaceDialog({ onClose, onCreate, existing }: { onClose: () => vo
   const valid = slug.length >= 2 && !taken;
   const submit = () => { if (valid) onCreate({ name: slug, project, env }); };
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog-lg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520, width: "100%" }}>
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <div
+      className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150"
+      onClick={onClose}
+    >
+      <div
+        className="relative flex max-h-[min(86vh,720px)] w-full max-w-[520px] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
           <I.Plus size={14} />
-          <span style={{ fontSize: 14, fontWeight: 500 }}>New workspace</span>
-          <div className="spacer" />
+          <span className="text-sm font-medium">New workspace</span>
+          <div className="flex-1" />
           <IconButton icon={I.X} onClick={onClose} />
         </div>
-        <div style={{ padding: 22, display: "flex", flexDirection: "column", gap: 16 }}>
-          <div className="field">
-            <label className="field-label">Name</label>
+        <div className="flex flex-col gap-4 p-[22px]">
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Name</label>
             <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus placeholder="acme-prod" onKeyDown={(e) => e.key === "Enter" && submit()} />
-            {taken && <span className="field-hint" style={{ color: "var(--destructive)" }}>Workspace "{slug}" already exists.</span>}
-            {!taken && slug && <span className="field-hint">URL: <span className="font-mono">workeros.dev/{slug}</span></span>}
-            {!slug && <span className="field-hint">Lowercase, alphanumeric, 2–24 chars.</span>}
+            {taken && <span className="text-[11.5px] text-destructive">Workspace "{slug}" already exists.</span>}
+            {!taken && slug && <span className="text-[11.5px] text-muted-foreground">URL: <span className="font-mono">workeros.dev/{slug}</span></span>}
+            {!slug && <span className="text-[11.5px] text-muted-foreground">Lowercase, alphanumeric, 2–24 chars.</span>}
           </div>
-          <div className="field">
-            <label className="field-label">Default project</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Default project</label>
             <Input value={project} onChange={(e) => setProject(e.target.value)} placeholder="default" />
           </div>
-          <div className="field">
-            <label className="field-label">Environment</label>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Environment</label>
+            <div className="flex flex-wrap gap-1.5">
               {[
                 { id: "development", label: "Development", hint: "local D1" },
                 { id: "staging", label: "Staging", hint: "preview" },
                 { id: "production", label: "Production", hint: "live" },
               ].map((p) => (
-                <button key={p.id} type="button" className={`chip ${env === p.id ? "active" : ""}`} onClick={() => setEnv(p.id)}>
-                  {p.label} <span className="muted" style={{ fontSize: 10.5, marginLeft: 4 }}>{p.hint}</span>
+                <button
+                  key={p.id}
+                  type="button"
+                  className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border bg-card px-[11px] text-[12.5px] text-foreground hover:bg-accent ${
+                    env === p.id ? "border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent" : "border-border"
+                  }`}
+                  onClick={() => setEnv(p.id)}
+                >
+                  {p.label} <span className="ml-1 text-[10.5px] text-muted-foreground">{p.hint}</span>
                 </button>
               ))}
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, padding: "12px 18px", borderTop: "1px solid var(--border)" }}>
-          <div className="spacer" />
+        <div className="flex gap-2 border-t border-border px-[18px] py-3">
+          <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
           <Button variant="primary" size="sm" disabled={!valid} onClick={submit}>Create workspace</Button>
         </div>
@@ -714,10 +707,14 @@ export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onToggleSid
                 {user?.name || user?.email?.split("@")[0] || "Account"}
               </div>
               {user?.email && (
-                <div className="muted font-mono" style={{ fontSize: 11.5 }}>{user.email}</div>
+                <div className="font-mono text-[11.5px] text-muted-foreground">{user.email}</div>
               )}
               {user?.isAdmin && (
-                <div style={{ marginTop: 4 }}><span className="badge badge-default">admin</span></div>
+                <div className="mt-1">
+                  <span className="inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-3xl border border-[color-mix(in_oklch,var(--primary)_22%,transparent)] bg-[color-mix(in_oklch,var(--primary)_8%,var(--card))] px-2 py-px text-[11px] font-medium tabular-nums text-[oklch(from_var(--primary)_0.38_0.12_h)] dark:text-[oklch(from_var(--primary)_0.92_0.18_h)]">
+                    admin
+                  </span>
+                </div>
               )}
             </div>
             <button
@@ -780,10 +777,13 @@ export function useToasts(): [ReactNode, (msg: string, type?: "success" | "error
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3200);
   }, []);
   const node = (
-    <div className="toast-stack">
+    <div className="fixed right-[18px] top-[18px] z-[80] flex flex-col gap-2">
       {toasts.map((t) => (
-        <div key={t.id} className={`toast ${t.type === "error" ? "error" : ""}`}>
-          <span className="toast-ico">
+        <div
+          key={t.id}
+          className="flex min-w-[240px] animate-in items-center gap-2.5 rounded-xl border border-border bg-popover px-3.5 py-2.5 text-[13px] text-popover-foreground shadow-[0_10px_30px_-8px_oklch(0_0_0/0.2)] fade-in-0 slide-in-from-top-2 duration-200"
+        >
+          <span className={t.type === "error" ? "flex-none text-destructive" : "flex-none text-primary"}>
             {t.type === "error" ? <I.AlertTriangle size={14} /> : <I.Check size={14} stroke={2.5} />}
           </span>
           <span>{t.msg}</span>

@@ -113,22 +113,29 @@ function cellSummary(state: CellState, action: string, collection: string) {
 }
 
 function CellGlyph({ state }: { state: CellState }) {
+  const variant =
+    state === "all"
+      ? "bg-[color-mix(in_oklch,oklch(from_var(--primary)_0.72_0.18_h)_22%,transparent)] text-[oklch(from_var(--primary)_0.42_0.16_h)]"
+      : state === "none"
+        ? "bg-[color-mix(in_oklch,var(--muted)_80%,transparent)] text-muted-foreground"
+        : "bg-[color-mix(in_oklch,oklch(0.78_0.16_75)_22%,transparent)] text-[oklch(0.48_0.14_70)]";
+  const cls = `inline-grid size-[22px] place-items-center rounded-full ${variant}`;
   if (state === "all") {
     return (
-      <span className="pm-glyph pm-glyph-all" aria-label="full access">
+      <span className={cls} aria-label="full access">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6.2L4.8 8.5L9.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </span>
     );
   }
   if (state === "none") {
     return (
-      <span className="pm-glyph pm-glyph-none" aria-label="no access">
+      <span className={cls} aria-label="no access">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
       </span>
     );
   }
   return (
-    <span className="pm-glyph pm-glyph-custom" aria-label="conditional access">
+    <span className={cls} aria-label="conditional access">
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="2.2" fill="currentColor" /><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5" /></svg>
     </span>
   );
@@ -242,69 +249,79 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
   }, [matrix, activeRole, collections]);
 
   return (
-    <div className="card">
-      <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+    <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-4 py-3.5">
         <I.Shield size={14} />
-        <span style={{ fontSize: 13, fontWeight: 500 }}>permission matrix</span>
-        <span className="font-mono" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+        <span className="text-[13px] font-medium">permission matrix</span>
+        <span className="font-mono text-xs text-muted-foreground">
           {stats.all} all · {stats.custom} custom · {stats.none} none
         </span>
-        <div className="spacer" />
+        <div className="flex-1" />
         {isAdmin && <Badge variant="secondary">bypass — read-only</Badge>}
       </div>
 
-      <div className="pm-roles">
-        {roles.map((r) => (
-          <button
-            key={r.name}
-            type="button"
-            className={`pm-role ${activeRole === r.name ? "on" : ""}`}
-            onClick={() => { setActiveRole(r.name); setPop(null); }}
-          >
-            <I.Users size={12} />
-            <span className="font-mono">{r.name}</span>
-            {r.system && <span className="pm-role-tag">system</span>}
-          </button>
-        ))}
+      <div className="flex flex-wrap gap-1 border-b border-border bg-[color-mix(in_oklch,var(--muted)_22%,var(--card))] px-3.5 py-2.5">
+        {roles.map((r) => {
+          const on = activeRole === r.name;
+          return (
+            <button
+              key={r.name}
+              type="button"
+              className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors ${on ? "border-border bg-card text-foreground shadow-[0_1px_0_oklch(0_0_0/0.04)]" : "border-transparent bg-transparent text-muted-foreground hover:bg-card hover:text-foreground"}`}
+              onClick={() => { setActiveRole(r.name); setPop(null); }}
+            >
+              <I.Users size={12} />
+              <span className="font-mono">{r.name}</span>
+              {r.system && <span className="rounded-[3px] bg-[color-mix(in_oklch,var(--muted)_70%,transparent)] px-[5px] py-px text-[9.5px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">system</span>}
+            </button>
+          );
+        })}
       </div>
 
-      <div className="pm-grid-wrap">
-        <div className="pm-grid" role="grid" aria-label={`Permissions for ${activeRole}`}>
-          <div className="pm-corner" />
+      <div className="relative bg-card p-4">
+        <div className="grid grid-cols-[minmax(160px,1.4fr)_repeat(4,minmax(80px,1fr))] overflow-hidden rounded-xl border border-border bg-card" role="grid" aria-label={`Permissions for ${activeRole}`}>
+          <div className="border-b border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))]" />
           {PM_ACTIONS.map((a) => (
-            <div key={a.v} className="pm-col-head" title={a.title}>
-              <span className="pm-col-letter">{a.label}</span>
-              <span className="pm-col-name">{a.title}</span>
+            <div key={a.v} className="flex flex-col items-center justify-center gap-0.5 border-b border-l border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-2 py-2.5" title={a.title}>
+              <span className="font-mono text-[13px] font-semibold tracking-[0.04em] text-foreground">{a.label}</span>
+              <span className="text-[10.5px] tracking-[0.02em] text-muted-foreground">{a.title}</span>
             </div>
           ))}
 
           {collections.length === 0 && (
-            <div className="pm-empty" style={{ gridColumn: "1 / -1", padding: 24, textAlign: "center", color: "var(--muted-foreground)", fontSize: 12 }}>
+            <div className="col-span-full p-6 text-center text-xs text-muted-foreground">
               No collections yet — create one in the Schema tab to manage permissions here.
             </div>
           )}
           {collections.map((c) => (
             <Fragment key={c}>
-              <div className="pm-row-head">
-                <I.Database size={12} />
+              <div className="flex items-center gap-2 border-t border-border px-3.5 py-3 text-[12.5px] text-foreground first-of-type:border-t-0">
+                <I.Database size={12} className="text-muted-foreground" />
                 <span className="font-mono">{c}</span>
               </div>
               {PM_ACTIONS.map((a) => {
                 const state = (matrix[activeRole]?.[c]?.[a.v] || "none") as CellState;
                 const isOpen = !!pop && pop.collection === c && pop.action === a.v;
+                const cellCls = `relative grid h-11 w-full place-items-center border-0 border-l border-t border-border outline-none transition-[background,box-shadow] focus-visible:z-[2] focus-visible:shadow-[inset_0_0_0_1.5px_color-mix(in_oklch,var(--ring)_70%,transparent)] ${
+                  isOpen
+                    ? "z-[2] bg-[color-mix(in_oklch,var(--primary)_10%,var(--card))] shadow-[inset_0_0_0_1.5px_color-mix(in_oklch,var(--primary)_70%,transparent)]"
+                    : isAdmin
+                      ? "cursor-not-allowed bg-card opacity-85"
+                      : "cursor-pointer bg-card hover:bg-[color-mix(in_oklch,var(--accent)_50%,var(--card))]"
+                }`;
                 const trigger = (
                   <button
                     type="button"
-                    className={`pm-cell pm-cell-${state} ${isOpen ? "is-open" : ""} ${isAdmin ? "is-locked" : ""}`}
+                    className={cellCls}
                     title={cellSummary(state, a.v, c)}
                     aria-label={`${activeRole} · ${a.title} · ${c}: ${state}`}
                   >
                     <CellGlyph state={isAdmin ? "all" : state} />
                   </button>
                 );
-                if (isAdmin) return <div key={a.v} className="pm-cell-wrap">{trigger}</div>;
+                if (isAdmin) return <div key={a.v} className="relative grid">{trigger}</div>;
                 return (
-                  <div key={a.v} className="pm-cell-wrap" style={{ position: "relative" }}>
+                  <div key={a.v} className="group relative grid">
                     <Popover
                       open={isOpen}
                       onOpenChange={(o) => setPop(o ? { collection: c, action: a.v } : null)}
@@ -315,24 +332,24 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
                         sideOffset={6}
                         className="w-auto min-w-[240px] gap-0 rounded-lg p-1.5"
                       >
-                        <div className="pm-pop-head">
-                          <span className="font-mono" style={{ fontSize: 11.5 }}>{activeRole}</span>
-                          <span className="muted">·</span>
-                          <span className="font-mono" style={{ fontSize: 11.5 }}>{a.v}</span>
-                          <span className="muted">·</span>
-                          <span className="font-mono" style={{ fontSize: 11.5 }}>{c}</span>
+                        <div className="mb-1 flex items-center gap-1.5 border-b border-border px-2.5 pb-2 pt-1.5">
+                          <span className="font-mono text-[11.5px]">{activeRole}</span>
+                          <span className="text-muted-foreground">·</span>
+                          <span className="font-mono text-[11.5px]">{a.v}</span>
+                          <span className="text-muted-foreground">·</span>
+                          <span className="font-mono text-[11.5px]">{c}</span>
                         </div>
-                        <button type="button" className="pm-pop-opt" onClick={() => pickState(c, a.v, "all")}>
+                        <button type="button" className="flex w-full cursor-pointer items-center gap-2.5 rounded-md border-0 bg-transparent px-2.5 py-2 text-left text-[12.5px] text-foreground hover:bg-accent" onClick={() => pickState(c, a.v, "all")}>
                           <CellGlyph state="all" />
-                          <span><strong>Full access</strong><span className="muted">no condition; everyone in role</span></span>
+                          <span><strong className="block font-medium">Full access</strong><span className="mt-px block text-[11px] text-muted-foreground">no condition; everyone in role</span></span>
                         </button>
-                        <button type="button" className="pm-pop-opt" onClick={() => pickState(c, a.v, "custom")}>
+                        <button type="button" className="flex w-full cursor-pointer items-center gap-2.5 rounded-md border-0 bg-transparent px-2.5 py-2 text-left text-[12.5px] text-foreground hover:bg-accent" onClick={() => pickState(c, a.v, "custom")}>
                           <CellGlyph state="custom" />
-                          <span><strong>Use custom rule</strong><span className="muted">edit conditions below ↓</span></span>
+                          <span><strong className="block font-medium">Use custom rule</strong><span className="mt-px block text-[11px] text-muted-foreground">edit conditions below ↓</span></span>
                         </button>
-                        <button type="button" className="pm-pop-opt" onClick={() => pickState(c, a.v, "none")}>
+                        <button type="button" className="flex w-full cursor-pointer items-center gap-2.5 rounded-md border-0 bg-transparent px-2.5 py-2 text-left text-[12.5px] text-foreground hover:bg-accent" onClick={() => pickState(c, a.v, "none")}>
                           <CellGlyph state="none" />
-                          <span><strong>No access</strong><span className="muted">denied for this role</span></span>
+                          <span><strong className="block font-medium">No access</strong><span className="mt-px block text-[11px] text-muted-foreground">denied for this role</span></span>
                         </button>
                       </PopoverContent>
                     </Popover>
@@ -340,7 +357,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
                       <IconButton
                         icon={I.Pencil}
                         title="Edit rule"
-                        className="pm-cell-edit"
+                        className="absolute right-[3px] top-[3px] z-[3] size-5 min-w-0 bg-[color-mix(in_oklch,var(--card)_80%,transparent)] p-0 opacity-0 backdrop-blur-[2px] transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
                         onClick={(e) => {
                           e.stopPropagation();
                           setSheetTarget({ role: activeRole, action: a.v, collection: c });
@@ -355,12 +372,12 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
         </div>
       </div>
 
-      <div className="pm-legend">
-        <span><CellGlyph state="all" /> full</span>
-        <span><CellGlyph state="custom" /> custom rule</span>
-        <span><CellGlyph state="none" /> denied</span>
-        <div className="spacer" />
-        <span className="muted" style={{ fontSize: 11.5 }}>Click any cell to set state. Custom opens the rule builder in a dialog.</span>
+      <div className="flex flex-wrap items-center gap-3.5 border-t border-border px-4 py-2.5 text-[11.5px] text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5"><CellGlyph state="all" /> full</span>
+        <span className="inline-flex items-center gap-1.5"><CellGlyph state="custom" /> custom rule</span>
+        <span className="inline-flex items-center gap-1.5"><CellGlyph state="none" /> denied</span>
+        <div className="flex-1" />
+        <span className="text-[11.5px] text-muted-foreground">Click any cell to set state. Custom opens the rule builder in a dialog.</span>
       </div>
 
       <Dialog open={sheetTarget !== null} onOpenChange={(o) => { if (!o) setSheetTarget(null); }}>

@@ -117,71 +117,77 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
   };
 
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog dialog-lg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640, width: "92vw" }}>
-        <div className="dialog-head">
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>
+    <div
+      className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150"
+      onClick={onClose}
+    >
+      <div
+        className="relative flex max-h-[min(86vh,720px)] w-[92vw] max-w-[640px] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
+          <div className="flex flex-1 flex-col gap-1">
+            <div className="text-base font-semibold tracking-[-0.01em]">
               Edit <span className="font-mono">{draft.name}</span>{" "}
               <Badge variant="outline" mono>{draft.type}</Badge>
             </div>
-            <div className="muted" style={{ fontSize: 12.5 }}>
+            <div className="text-[12.5px] text-muted-foreground">
               Name and type are immutable — drop &amp; re-add the column to change them.
             </div>
           </div>
           <IconButton icon={I.X} onClick={onClose} />
         </div>
 
-        <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
-          <div className="field-row">
+        <div className="flex flex-col gap-3.5 p-[18px]">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="field-label">Required</div>
-              <div className="field-hint">Reject inserts/updates that omit this column.</div>
+              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Required</div>
+              <div className="text-[11.5px] text-muted-foreground">Reject inserts/updates that omit this column.</div>
             </div>
             <Switch checked={!!draft.required} onChange={(v) => setDraft((d) => d ? { ...d, required: v } : d)} />
           </div>
 
-          <div className="field-row">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="field-label">Unique</div>
-              <div className="field-hint">No two rows can hold the same value (case-sensitive).</div>
+              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Unique</div>
+              <div className="text-[11.5px] text-muted-foreground">No two rows can hold the same value (case-sensitive).</div>
             </div>
             <Switch checked={!!draft.unique} onChange={(v) => setDraft((d) => d ? { ...d, unique: v } : d)} />
           </div>
 
-          <div className="field">
-            <label className="field-label">Interface</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Interface</label>
             <Select
               value={draft.interface ?? ""}
               onChange={(v) => setDraft((d) => d ? { ...d, interface: (v || undefined) } : d)}
               options={interfaceOpts}
               searchable
             />
-            <span className="field-hint">
+            <span className="text-[11.5px] text-muted-foreground">
               Changes how the value is edited in the item form. Selection interfaces (dropdown, radio, checkboxes…) also enforce their choices server-side.
             </span>
           </div>
 
           {wantsChoices && (
-            <div className="field" style={{ background: "var(--muted)", padding: 12, borderRadius: "var(--radius-xl)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <span className="field-label" style={{ marginBottom: 0 }}>Choices</span>
-                <span className="muted" style={{ fontSize: 11.5 }}>
+            <div className="flex flex-col gap-1.5 rounded-xl bg-muted p-3">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Choices</span>
+                <span className="text-[11.5px] text-muted-foreground">
                   value · label · color (CSS)
                 </span>
-                <div className="spacer" />
+                <div className="flex-1" />
                 <Button size="xs" variant="outline" icon={I.Plus} onClick={addChoice}>Add choice</Button>
               </div>
 
               {choices.length === 0 && (
-                <div className="muted" style={{ fontSize: 12, padding: 8 }}>
+                <div className="p-2 text-xs text-muted-foreground">
                   No choices yet. Click "Add choice" — value is what the column stores.
                 </div>
               )}
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div className="flex flex-col gap-1.5">
                 {choices.map((c, i) => (
-                  <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 90px 32px", gap: 6, alignItems: "center" }}>
+                  <div key={i} className="grid grid-cols-[1fr_1fr_90px_32px] items-center gap-1.5">
                     <Input
                       placeholder="value"
                       value={c.value}
@@ -196,7 +202,7 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
                       type="color"
                       value={c.color ?? "#A1A6B8"}
                       onChange={(e) => setChoice(i, { color: e.target.value })}
-                      style={{ height: 32, width: "100%", borderRadius: 6, border: "1px solid var(--border)", background: "var(--card)", cursor: "pointer" }}
+                      className="h-8 w-full cursor-pointer rounded-[6px] border border-border bg-card"
                     />
                     <IconButton icon={I.Trash} title="Remove choice" onClick={() => removeChoice(i)} />
                   </div>
@@ -206,7 +212,7 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
           )}
         </div>
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "12px 18px", borderTop: "1px solid var(--border)" }}>
+        <div className="flex justify-end gap-2 border-t border-border px-[18px] py-3">
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
           <Button variant="primary" size="sm" onClick={submit}>Save field</Button>
         </div>

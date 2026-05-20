@@ -68,35 +68,47 @@ export function Palette({ open, onClose, onNavigate, items, collections }: Palet
 
   if (!open) return null;
   let runningIdx = 0;
+  const kbd = "rounded-sm border border-border bg-muted px-[5px] py-px";
   return (
     <>
-      <div className="scrim" onClick={onClose} />
-      <div className="palette" role="dialog" aria-modal="true">
-        <div className="palette-input">
+      <div className="fixed inset-0 z-[60] animate-in bg-[oklch(0_0_0/0.32)] fade-in-0 duration-150 dark:bg-[oklch(0_0_0/0.6)]" onClick={onClose} />
+      <div className="fixed left-1/2 top-[18%] z-[70] flex max-h-[60vh] w-[min(640px,92vw)] -translate-x-1/2 animate-in flex-col overflow-hidden rounded-2xl border border-border bg-popover shadow-[0_20px_70px_-10px_oklch(0_0_0/0.4),0_4px_14px_oklch(0_0_0/0.1)] fade-in-0 zoom-in-95 duration-150" role="dialog" aria-modal="true">
+        <div className="flex items-center gap-2.5 border-b border-border px-[18px] py-3.5">
           <I.Search size={15} />
-          <input ref={inputRef} value={q} onChange={(e) => { setQ(e.target.value); setActive(0); }} placeholder="Type a command, collection, or item title…" />
-          <span className="kbd" style={{ fontFamily: "Geist Mono, monospace", fontSize: 10.5, padding: "2px 6px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", background: "var(--muted)", color: "var(--muted-foreground)" }}>esc</span>
+          <input
+            ref={inputRef}
+            value={q}
+            onChange={(e) => { setQ(e.target.value); setActive(0); }}
+            placeholder="Type a command, collection, or item title…"
+            className="flex-1 border-0 bg-transparent text-[14.5px] text-foreground outline-none"
+          />
+          <span className="rounded-sm border border-border bg-muted px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground">esc</span>
         </div>
-        <div className="palette-results">
+        <div className="flex-1 overflow-auto p-1.5">
           {flat.length === 0 ? (
-            <div className="palette-empty">
+            <div className="p-7 text-center text-[13px] text-muted-foreground">
               No matches. Try <span className="font-mono">posts</span> or <span className="font-mono">edge</span>.
             </div>
           ) : (
             groups.map((g) => (
               <Fragment key={g.name}>
-                <div className="palette-group-label">{g.name}</div>
+                <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{g.name}</div>
                 {g.list.map((it) => {
                   const idx = runningIdx++;
                   const IconComp = (I as Record<string, IconComponent>)[it.icon as IconKey];
                   return (
-                    <div key={`${g.name}-${it.id}`} className="palette-item" data-active={idx === active} onMouseEnter={() => setActive(idx)} onClick={() => onNavigate(it)}>
+                    <div
+                      key={`${g.name}-${it.id}`}
+                      className={`flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-[13.5px] ${idx === active ? "bg-accent" : ""}`}
+                      onMouseEnter={() => setActive(idx)}
+                      onClick={() => onNavigate(it)}
+                    >
                       {IconComp && <IconComp size={14} />}
-                      <span style={{ display: "flex", flexDirection: "column" }}>
+                      <span className="flex flex-col">
                         <span>{it.label}</span>
-                        {"sub" in it && it.sub && <span className="font-mono" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>/{it.sub}</span>}
+                        {"sub" in it && it.sub && <span className="font-mono text-[11px] text-muted-foreground">/{it.sub}</span>}
                       </span>
-                      <span className="meta">{it.meta}</span>
+                      <span className="ml-auto font-mono text-[11.5px] text-muted-foreground">{it.meta}</span>
                     </div>
                   );
                 })}
@@ -104,10 +116,10 @@ export function Palette({ open, onClose, onNavigate, items, collections }: Palet
             ))
           )}
         </div>
-        <div className="palette-footer">
-          <span><span className="kbd">↵</span> open</span>
-          <span><span className="kbd">↑↓</span> navigate</span>
-          <span><span className="kbd">esc</span> close</span>
+        <div className="flex items-center gap-3.5 border-t border-border px-3.5 py-2 font-mono text-[11px] text-muted-foreground">
+          <span><span className={kbd}>↵</span> open</span>
+          <span><span className={kbd}>↑↓</span> navigate</span>
+          <span><span className={kbd}>esc</span> close</span>
         </div>
       </div>
     </>
@@ -135,6 +147,15 @@ const formatFullTs = (ms: number | undefined): string => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 };
 
+// Per-event color for the `.ev` label — mirrors the legacy
+// .tail-event[data-event="…"] .ev rules.
+const EV_BASE = "font-mono text-[10.5px] font-semibold uppercase tracking-[0.06em]";
+const EV_COLOR: Record<string, string> = {
+  created: "text-[oklch(from_var(--primary)_0.5_0.16_h)]",
+  updated: "text-[oklch(0.55_0.13_240)]",
+  deleted: "text-destructive",
+};
+
 function RealtimeEventDialog({ ev, channel, onClose }: { ev: RealtimeEvent; channel: string; onClose: () => void }) {
   // Close on ESC for keyboard parity with the other admin dialogs.
   useEffect(() => {
@@ -145,62 +166,59 @@ function RealtimeEventDialog({ ev, channel, onClose }: { ev: RealtimeEvent; chan
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150"
+      onClick={onClose}
+    >
       <div
-        className="dialog-lg"
+        className="relative flex max-h-[min(86vh,720px)] w-[min(720px,92vw)] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label={`${ev.event} event detail`}
       >
-        <div className="dialog-head">
+        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              <span
-                data-event={ev.event}
-                className="tail-event"
-                style={{ padding: 0, border: "none", animation: "none", background: "transparent" }}
-              >
-                <span className="ev">{ev.event}</span>
-              </span>
-              <span className="font-mono" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{channel}</span>
+            <div className="mb-1 flex items-center gap-2">
+              <span className={`${EV_BASE} ${EV_COLOR[ev.event]}`}>{ev.event}</span>
+              <span className="font-mono text-xs text-muted-foreground">{channel}</span>
             </div>
-            <h3 style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>
+            <h3 className="m-0 text-sm font-medium">
               {ev.title || ev.itemId || "(item)"}
             </h3>
           </div>
           <IconButton icon={I.X} onClick={onClose} />
         </div>
-        <div className="dialog-body">
-          <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: "8px 14px", fontSize: 12.5 }}>
-            <span style={{ color: "var(--muted-foreground)" }}>Channel</span>
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
+          <div className="grid grid-cols-[120px_1fr] gap-x-3.5 gap-y-2 text-[12.5px]">
+            <span className="text-muted-foreground">Channel</span>
             <span className="font-mono">{channel}</span>
-            <span style={{ color: "var(--muted-foreground)" }}>Event</span>
+            <span className="text-muted-foreground">Event</span>
             <span className="font-mono">{ev.event}</span>
-            <span style={{ color: "var(--muted-foreground)" }}>Received</span>
+            <span className="text-muted-foreground">Received</span>
             <span className="font-mono">{formatFullTs(ev.receivedAt)}</span>
             {ev.itemId && (
               <>
-                <span style={{ color: "var(--muted-foreground)" }}>Item ID</span>
-                <span className="font-mono" style={{ wordBreak: "break-all" }}>{ev.itemId}</span>
+                <span className="text-muted-foreground">Item ID</span>
+                <span className="font-mono [word-break:break-all]">{ev.itemId}</span>
               </>
             )}
             {ev.who && ev.who !== "system" && (
               <>
-                <span style={{ color: "var(--muted-foreground)" }}>By</span>
-                <span className="font-mono" style={{ wordBreak: "break-all" }}>{ev.who}</span>
+                <span className="text-muted-foreground">By</span>
+                <span className="font-mono [word-break:break-all]">{ev.who}</span>
               </>
             )}
             {ev.field && (
               <>
-                <span style={{ color: "var(--muted-foreground)" }}>Changed field</span>
+                <span className="text-muted-foreground">Changed field</span>
                 <span className="font-mono">{ev.field}</span>
               </>
             )}
           </div>
           <JsonBlock label="Payload" value={ev.raw ?? {}} />
         </div>
-        <div className="dialog-foot">
-          <div className="spacer" style={{ flex: 1 }} />
+        <div className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
+          <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={onClose}>Close</Button>
         </div>
       </div>
@@ -215,26 +233,25 @@ export function RealtimeTail({ events, channel, connected }: { events: RealtimeE
     [events, openId],
   );
   return (
-    <div className="tail">
-      <div className="tail-header">
+    <div className="sticky top-4 flex max-h-[calc(100vh-140px)] flex-col overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="flex items-center gap-2 border-b border-border px-3.5 py-3">
         <I.Zap size={14} />
-        <h3>Live tail</h3>
-        <span className="channel">
-          <span className={`dot ${connected ? "" : "red"}`} style={{ marginRight: 6 }} />
+        <h3 className="m-0 text-[13px] font-semibold">Live tail</h3>
+        <span className="ml-auto flex items-center font-mono text-[11px] text-muted-foreground">
+          <span className={`mr-1.5 size-[7px] shrink-0 rounded-full ${connected ? "bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]" : "bg-destructive shadow-[0_0_0_3px_color-mix(in_oklch,var(--destructive)_25%,transparent)]"}`} />
           {channel}
         </span>
       </div>
       {events.length === 0 ? (
-        <div style={{ padding: 28, color: "var(--muted-foreground)", fontSize: 12.5, textAlign: "center" }}>
+        <div className="p-7 text-center text-[12.5px] text-muted-foreground">
           Subscribed. Waiting for events…
         </div>
       ) : (
-        <div className="tail-list">
+        <div className="flex flex-1 flex-col overflow-auto">
           {events.slice(0, 30).map((ev) => (
             <div
               key={ev.id}
-              className="tail-event"
-              data-event={ev.event}
+              className="flex animate-in cursor-pointer flex-col gap-1 border-b border-border px-3.5 py-2.5 text-xs fade-in-0 slide-in-from-top-1 duration-200 last:border-b-0"
               onClick={() => setOpenId(ev.id)}
               role="button"
               tabIndex={0}
@@ -244,18 +261,17 @@ export function RealtimeTail({ events, channel, connected }: { events: RealtimeE
                   setOpenId(ev.id);
                 }
               }}
-              style={{ cursor: "pointer" }}
               title="Click for full payload"
             >
-              <div className="row1">
-                <span className="ev">{ev.event}</span>
-                <span className="when">{ev.t}</span>
+              <div className="flex items-center gap-1.5">
+                <span className={`${EV_BASE} ${EV_COLOR[ev.event]}`}>{ev.event}</span>
+                <span className="ml-auto font-mono text-[11px] text-muted-foreground">{ev.t}</span>
               </div>
-              <div className="what" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  <span className="id">{ev.title || ev.itemId}</span>
-                  {ev.event === "updated" && ev.field && <> · changed <span style={{ color: "var(--foreground)" }}>{ev.field}</span></>}
-                  {ev.who && <> · by <span style={{ color: "var(--foreground)" }}>{ev.who}</span></>}
+              <div className="flex items-center gap-1.5 font-mono text-[11.5px] leading-[1.35] text-muted-foreground">
+                <span className="min-w-0 flex-1 truncate">
+                  <span className="text-foreground">{ev.title || ev.itemId}</span>
+                  {ev.event === "updated" && ev.field && <> · changed <span className="text-foreground">{ev.field}</span></>}
+                  {ev.who && <> · by <span className="text-foreground">{ev.who}</span></>}
                 </span>
                 <I.ChevronRight size={12} />
               </div>
@@ -304,15 +320,15 @@ export function SchemaView({
   const [overIndex, setOverIndex] = useState<number | null>(null);
 
   return (
-    <div className="card">
-      <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
         <I.Braces size={14} />
-        <span style={{ fontSize: 13, fontWeight: 500 }}>fields</span>
-        <span className="font-mono" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{allFields.length} total · {userFields.length} editable · drag the grip to reorder</span>
-        <div className="spacer" />
+        <span className="text-[13px] font-medium">fields</span>
+        <span className="font-mono text-xs text-muted-foreground">{allFields.length} total · {userFields.length} editable · drag the grip to reorder</span>
+        <div className="flex-1" />
         <Button variant="primary" size="sm" icon={I.Plus} onClick={onAddField}>Add field</Button>
       </div>
-      <div className="table-scroll">
+      <div className="w-full max-w-full overflow-x-auto">
         {allFields.map((f, idx) => {
           // System rows always render after user-defined fields and are
           // never reorderable; dnd handlers only fire for user rows.
@@ -323,7 +339,7 @@ export function SchemaView({
           return (
             <div
               key={f.name}
-              className="schema-row"
+              className="grid grid-cols-[24px_1fr_130px_130px_32px] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0"
               draggable={isUser}
               style={{
                 opacity: isDragging ? 0.4 : 1,
@@ -359,20 +375,20 @@ export function SchemaView({
                 setOverIndex(null);
               }}
             >
-              <span className="grip" style={{ cursor: isUser ? "grab" : "default", opacity: isUser ? 1 : 0.3 }}>
+              <span className="text-muted-foreground" style={{ cursor: isUser ? "grab" : "default", opacity: isUser ? 1 : 0.3 }}>
                 <I.Grip size={14} />
               </span>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                <span className="name">{f.name}</span>
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="font-mono text-[12.5px]">{f.name}</span>
                 {f.system && <Badge variant="secondary">system</Badge>}
                 {f.unique && <Badge variant="outline">unique</Badge>}
                 {!f.nullable && !f.system && <Badge variant="outline">required</Badge>}
               </div>
               <Badge variant="outline" mono>{f.type}</Badge>
-              <span className="font-mono" style={{ fontSize: 11.5, color: "var(--muted-foreground)" }}>
-                {f.default ?? <span style={{ opacity: 0.5 }}>—</span>}
+              <span className="font-mono text-[11.5px] text-muted-foreground">
+                {f.default ?? <span className="opacity-50">—</span>}
               </span>
-              <span style={{ display: "flex", justifyContent: "flex-end", gap: 4 }}>
+              <span className="flex justify-end gap-1">
                 {!f.system && onEditField && (
                   <IconButton icon={I.Pencil} onClick={() => onEditField(f.name)} title="Edit field" />
                 )}
@@ -396,14 +412,17 @@ export function AlterPreview({ pendingField }: { pendingField?: Partial<SchemaFi
     pendingField.type === "boolean" ? "INTEGER" :
     pendingField.type === "json" ? "TEXT" :
     pendingField.type === "timestamp" ? "INTEGER" : "TEXT";
+  const kw = "text-[oklch(0.78_0.18_95)]";
+  const ident = "text-[oklch(0.85_0.13_200)]";
+  const comment = "italic text-[oklch(from_var(--primary)_0.6_0.02_h)]";
   return (
-    <div className="alter-preview">
-      <span className="comment">-- runtime DDL preview · sqlite dialect</span>{"\n"}
-      <span className="kw">ALTER TABLE</span> <span className="ident">"c_posts"</span>{"\n"}
-      {"  "}<span className="kw">ADD COLUMN</span> <span className="ident">"{pendingField.name || "new_field"}"</span> {sqlType}
-      {!pendingField.nullable ? <> <span className="kw">NOT NULL</span></> : null}
-      {pendingField.default ? <> <span className="kw">DEFAULT</span> <span className="str">{pendingField.default}</span></> : null};{"\n"}
-      <span className="comment">-- additive only — no data is rewritten.</span>
+    <div className="whitespace-pre-wrap rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-xs leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)] [word-break:break-word]">
+      <span className={comment}>-- runtime DDL preview · sqlite dialect</span>{"\n"}
+      <span className={kw}>ALTER TABLE</span> <span className={ident}>"c_posts"</span>{"\n"}
+      {"  "}<span className={kw}>ADD COLUMN</span> <span className={ident}>"{pendingField.name || "new_field"}"</span> {sqlType}
+      {!pendingField.nullable ? <> <span className={kw}>NOT NULL</span></> : null}
+      {pendingField.default ? <> <span className={kw}>DEFAULT</span> <span className="text-[oklch(from_var(--primary)_0.85_0.13_h)]">{pendingField.default}</span></> : null};{"\n"}
+      <span className={comment}>-- additive only — no data is rewritten.</span>
     </div>
   );
 }
@@ -411,10 +430,10 @@ export function AlterPreview({ pendingField }: { pendingField?: Partial<SchemaFi
 export function EmptyItems({ onCreate, slug }: { onCreate: () => void; slug?: string }) {
   const tableName = slug ? `c_${slug}` : "this collection";
   return (
-    <div className="empty">
-      <div className="ico"><I.Inbox size={20} /></div>
-      <h4>No items yet</h4>
-      <p>Create the first row in <span className="font-mono">{tableName}</span> via the API or use the New row button.</p>
+    <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+      <div className="grid size-10 place-items-center rounded-xl bg-muted text-primary"><I.Inbox size={20} /></div>
+      <h4 className="m-0 text-[15px] font-semibold">No items yet</h4>
+      <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground">Create the first row in <span className="font-mono">{tableName}</span> via the API or use the New row button.</p>
       <Button variant="primary" size="sm" icon={I.Plus} onClick={onCreate}>New row</Button>
     </div>
   );

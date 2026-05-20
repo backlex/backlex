@@ -120,39 +120,43 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="flex flex-col gap-4.5">
       <PageHeader
         title="Flows"
         description="Triggers fire on collection events, schedules, or webhooks. Each step runs in the sandbox."
         actions={<Button variant="primary" icon={I.Plus} onClick={newFlow}>New flow</Button>}
       />
 
-      <div className="master-detail" style={{ "--md-aside": "320px" } as React.CSSProperties}>
-        <div className="card">
+      <div className="grid grid-cols-[320px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
           {flows.map((f) => (
-            <div key={f.id} onClick={() => setActive(f.id)} className="schema-row" style={{ gridTemplateColumns: "24px 1fr 60px", cursor: "pointer", background: active === f.id ? "var(--accent)" : "transparent" }}>
+            <div
+              key={f.id}
+              onClick={() => setActive(f.id)}
+              className={`grid cursor-pointer grid-cols-[24px_1fr_60px] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0 ${active === f.id ? "bg-accent" : ""}`}
+            >
               <span><I.Bolt size={14} /></span>
-              <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                <span style={{ fontSize: 13, fontWeight: 500 }}>{f.name}</span>
-                <span className="font-mono muted" style={{ fontSize: 11 }}>{f.trigger}</span>
+              <div className="flex min-w-0 flex-col">
+                <span className="text-[13px] font-medium">{f.name}</span>
+                <span className="font-mono text-[11px] text-muted-foreground">{f.trigger}</span>
               </div>
               <Badge variant={f.status === "active" ? "default" : "secondary"}>{f.status}</Badge>
             </div>
           ))}
         </div>
 
-        <div className="card" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 18 }}>
+        <div className="flex flex-col gap-4.5 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
           {!flow ? (
-            <div style={{ padding: 36, textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>
+            <div className="p-9 text-center text-[13px] text-muted-foreground">
               No flow selected. Click <strong>+ New flow</strong> to create your first one.
             </div>
           ) : (
           <>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 16, fontWeight: 600 }}>{flow.name}</span>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="text-base font-semibold">{flow.name}</span>
             <Badge variant={flow.status === "active" ? "default" : "secondary"}>{flow.status}</Badge>
-            <span className="muted tabular-nums" style={{ fontSize: 12 }}>· {Number(flow.runs ?? 0).toLocaleString()} runs</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginLeft: "auto" }}>
+            <span className="tabular-nums text-xs text-muted-foreground">· {Number(flow.runs ?? 0).toLocaleString()} runs</span>
+            <div className="ml-auto flex flex-wrap items-center gap-2.5">
               <Switch checked={flow.status === "active"} onChange={async (next) => {
                 setFlows((arr) => arr.map((f) => f.id === flow.id ? { ...f, status: next ? "active" : "paused" } : f));
                 try {
@@ -176,7 +180,7 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
 
           <FlowPreview trigger={flow.trigger} operations={flow.operations} onEdit={() => openBuilder(flow)} />
 
-          <div className="cols-3">
+          <div className="grid grid-cols-3 gap-3 max-[640px]:grid-cols-1">
             <FlowStatCard flowId={flow.id} flowRuns={flow.runs} />
           </div>
           </>
@@ -330,9 +334,9 @@ function FlowStatCard({ flowId, flowRuns }: { flowId: string; flowRuns: number }
     return () => { cancelled = true; };
   }, [flowId, flowRuns]);
   const tile = (k: string, v: string, ok: boolean) => (
-    <div key={k} className="card" style={{ padding: 12, borderRadius: "var(--radius-xl)" }}>
-      <div className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>{k}</div>
-      <div className="tabular-nums" style={{ fontSize: 18, fontWeight: 600, marginTop: 2, color: ok ? "var(--foreground)" : "var(--destructive)" }}>{v}</div>
+    <div key={k} className="overflow-hidden rounded-xl border border-border bg-card p-3 text-card-foreground">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{k}</div>
+      <div className={`mt-0.5 text-lg font-semibold tabular-nums ${ok ? "text-foreground" : "text-destructive"}`}>{v}</div>
     </div>
   );
   return (

@@ -487,6 +487,30 @@ export const comments = pgTable(
   ],
 );
 
+/**
+ * Public, unauthenticated, read-only share links to a single record. The
+ * plaintext token is shown once on creation; only its SHA-256 hash is stored.
+ * Links never expire but are revocable (`revoked_at`).
+ */
+export const sharedLinks = pgTable(
+  "shared_links",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    collection: text("collection").notNull(),
+    itemId: text("item_id").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    createdBy: text("created_by"),
+    /** Nullable — set when the link is revoked. Null = active. */
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("shared_links_token_idx").on(t.tokenHash),
+    index("shared_links_item_idx").on(t.collection, t.itemId),
+  ],
+);
+
 export const notifications = pgTable(
   "notifications",
   {

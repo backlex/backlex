@@ -7,7 +7,11 @@ import { Badge, Button, Checkbox, IconButton } from "./ui";
 import { Select } from "./select";
 import { Input } from "@workeros/ui/components/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workeros/ui/components/input-group";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { getAuthors, subscribeAuthors } from "./authors-cache";
+
+const ADMIN_TABLE_CLS =
+  "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
 
 export const FIELD_OPS: Record<string, string[]> = {
   text: ["_eq", "_neq", "_contains", "_starts_with", "_ends_with", "_in", "_null"],
@@ -118,11 +122,11 @@ export function evaluateFilter(row: Record<string, unknown>, filter: Record<stri
 function FilterChip({ field, op, value, onRemove, onClick }: { field: string; op: string; value: unknown; onRemove: () => void; onClick?: () => void }) {
   const valStr = Array.isArray(value) ? `[${(value as unknown[]).join(", ")}]` : op === "_null" ? (value ? "is null" : "is not null") : String(value);
   return (
-    <span className="chip active" onClick={onClick}>
-      <span className="key">{field}</span>
-      <span className="op">{op}</span>
-      <span className="val">{valStr}</span>
-      <span className="x" onClick={(e) => { e.stopPropagation(); onRemove(); }}><I.X size={11} /></span>
+    <span className="inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent px-[11px] text-[12.5px] text-foreground" onClick={onClick}>
+      <span className="text-muted-foreground">{field}</span>
+      <span className="font-mono text-[11.5px] text-muted-foreground">{op}</span>
+      <span className="font-mono">{valStr}</span>
+      <span className="grid size-3.5 cursor-pointer place-items-center rounded-full opacity-60 hover:bg-muted hover:opacity-100" onClick={(e) => { e.stopPropagation(); onRemove(); }}><I.X size={11} /></span>
     </span>
   );
 }
@@ -191,16 +195,16 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
   };
 
   return (
-    <div className="popover" style={{ top: 44, left: 0 }}>
-      <div className="popover-row">
-        <Select value={field} onChange={setField} options={editable.map((f) => ({ value: f.name, label: f.name, hint: f.type }))} className="" style={{ flex: 1 }} />
-        <Select value={op} onChange={setOp} options={ops} style={{ flex: "0 0 110px" }} disabled={needsTargetDrill && !nestedSub} />
+    <div className="absolute left-0 top-11 z-50 flex w-[320px] max-w-[calc(100vw-16px)] flex-col gap-1.5 rounded-xl border border-border bg-popover p-2 shadow-[0_12px_30px_-8px_oklch(0_0_0/0.18),0_2px_8px_oklch(0_0_0/0.06)]">
+      <div className="flex items-center gap-1.5">
+        <Select value={field} onChange={setField} options={editable.map((f) => ({ value: f.name, label: f.name, hint: f.type }))} className="flex-1" />
+        <Select value={op} onChange={setOp} options={ops} className="flex-[0_0_110px]" disabled={needsTargetDrill && !nestedSub} />
       </div>
       {/* Nested relation (single FK or array): pick a sub-field on the
           target collection. The server lowers `relation_many` to EXISTS
           and `relation` to a LEFT JOIN — same picker either way. */}
       {needsTargetDrill && (
-        <div className="popover-row">
+        <div className="flex items-center gap-1.5">
           <Select
             value={nestedSub}
             onChange={setNestedSub}
@@ -214,8 +218,7 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
                     : [{ value: "", label: "Target unavailable" }]
             }
             placeholder={fieldDef.to ? "Pick a subfield…" : "—"}
-            className=""
-            style={{ flex: 1 }}
+            className="flex-1"
             disabled={!fieldDef.to || targetLoading || !targetFields}
           />
         </div>
@@ -230,7 +233,7 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
           onKeyDown={(e) => { if (e.key === "Enter") submit(); if (e.key === "Escape") onClose(); }}
         />
       )}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 6, paddingTop: 4 }}>
+      <div className="flex justify-end gap-1.5 pt-1">
         <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
         <Button variant="primary" size="sm" onClick={submit} disabled={!canSubmit}>Add filter</Button>
       </div>
@@ -275,7 +278,7 @@ export function FilterBar({ search, setSearch, filters, setFilters, schema, stat
   }, []);
 
   return (
-    <div className="filter-bar">
+    <div className="flex flex-wrap items-center gap-2">
       <InputGroup>
         <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
         <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Search ${total} items by title or slug…`} />
@@ -297,18 +300,21 @@ export function FilterBar({ search, setSearch, filters, setFilters, schema, stat
           ...cfg.choices.map((c) => ({ id: c.value, label: c.label ?? c.value })),
         ];
         return (
-          <div className="tabs">
-            {tabs.map((t) => (
-              <button key={t.id} className="tab" data-active={status === t.id} onClick={() => setStatus(t.id)}>
-                {t.label}
-                {t.count != null && <span className="count">{t.count}</span>}
-              </button>
-            ))}
+          <div className="flex w-fit gap-0.5 rounded-3xl bg-muted p-[3px]">
+            {tabs.map((t) => {
+              const on = status === t.id;
+              return (
+                <button key={t.id} className={`inline-flex cursor-pointer items-center gap-1.5 rounded-3xl border-0 px-3.5 py-[5px] text-[12.5px] font-medium ${on ? "bg-card text-foreground shadow-[0_1px_2px_oklch(0_0_0/0.06),0_1px_0_oklch(0_0_0/0.04)]" : "bg-transparent text-muted-foreground"}`} onClick={() => setStatus(t.id)}>
+                  {t.label}
+                  {t.count != null && <span className={`rounded-sm border border-border px-[5px] py-px font-mono text-[11px] text-muted-foreground ${on ? "bg-muted" : "bg-background"}`}>{t.count}</span>}
+                </button>
+              );
+            })}
           </div>
         );
       })()}
 
-      <div ref={wrapRef} style={{ position: "relative" }}>
+      <div ref={wrapRef} className="relative">
         <Button variant="outline" size="sm" icon={I.Filter} onClick={() => setPopOpen((v) => !v)}>
           Filter
         </Button>
@@ -347,10 +353,10 @@ export function FilterDSLPreview({ filters, sort, fields }: { filters: FilterCon
   }, [filters, sort, fields]);
   if (!filters.length) return null;
   return (
-    <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", fontFamily: "Geist Mono, monospace", fontSize: 11.5, color: "var(--muted-foreground)", background: "color-mix(in oklch, var(--muted) 50%, transparent)" }}>
-      <span style={{ color: "var(--foreground)" }}>GET</span>{" "}
+    <div className="border-b border-border bg-[color-mix(in_oklch,var(--muted)_50%,transparent)] px-3.5 py-2.5 font-mono text-[11.5px] text-muted-foreground">
+      <span className="text-foreground">GET</span>{" "}
       /api/items/posts?filter=
-      <span style={{ color: "var(--foreground)" }}>{encodeURIComponent(JSON.stringify((dsl as { filter?: unknown }).filter))}</span>
+      <span className="text-foreground">{encodeURIComponent(JSON.stringify((dsl as { filter?: unknown }).filter))}</span>
     </div>
   );
 }
@@ -391,15 +397,15 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
     const isActive = sort.replace("-", "") === id;
     const Arrow = !isActive ? I.ArrowUpDown : dir === "asc" ? I.ArrowUp : I.ArrowDown;
     return (
-      <th
+      <TableHead
         onClick={() => setSort(isActive ? (dir === "asc" ? "-" + id : id) : id)}
-        style={{ cursor: "pointer", userSelect: "none", textAlign: num ? "right" : "left" }}
+        className={`cursor-pointer select-none ${num ? "text-right" : "text-left"}`}
       >
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: isActive ? "var(--foreground)" : "inherit" }}>
+        <span className={`inline-flex items-center gap-1.5 ${isActive ? "text-foreground" : ""}`}>
           {label}
           <Arrow size={11} stroke={2.2} />
         </span>
-      </th>
+      </TableHead>
     );
   };
 
@@ -419,23 +425,22 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
   };
 
   return (
-    <div className="table-scroll">
-    <table className="table">
-      <thead>
-        <tr>
-          <th style={{ width: 38 }}>
+    <Table className={ADMIN_TABLE_CLS}>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[38px]">
             <Checkbox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} />
-          </th>
+          </TableHead>
           <SortHead id="title" label="Title" />
           {has.status && <SortHead id={statusField!.name} label="Status" />}
-          {has.author && <th style={{ width: 110 }}>Author</th>}
+          {has.author && <TableHead className="w-[110px]">Author</TableHead>}
           {has.words && <SortHead id="word_count" label="Words" num />}
           {has.views && <SortHead id="view_count" label="Views" num />}
           <SortHead id="updated_at" label="Updated" />
-          <th className="col-actions" style={{ width: 60, textAlign: "right" }}></th>
-        </tr>
-      </thead>
-      <tbody>
+          <TableHead className="sticky right-0 w-[60px] bg-card text-right" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
         {rows.map((r) => {
           const a = authorById(r.author);
           // Fall back to slug/name/id for the display label so even
@@ -446,72 +451,65 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
           const displayStatus = rawStatus != null ? String(rawStatus) : null;
           const choice = displayStatus ? choiceByValue.get(displayStatus) : null;
           return (
-            <tr key={r.id} data-selected={selected.has(r.id)} onClick={() => onEdit(r)}>
-              <td onClick={(e) => e.stopPropagation()}>
+            <TableRow key={r.id} data-selected={selected.has(r.id)} onClick={() => onEdit(r)} className="cursor-pointer data-[selected=true]:bg-[color-mix(in_oklch,var(--primary)_10%,var(--card))]">
+              <TableCell onClick={(e) => e.stopPropagation()}>
                 <Checkbox checked={selected.has(r.id)} onChange={() => toggleRow(r.id)} />
-              </td>
-              <td>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  <span style={{ fontWeight: 500, color: "var(--foreground)" }}>{String(displayTitle)}</span>
-                  {displaySlug && <span className="font-mono" style={{ fontSize: 11, color: "var(--muted-foreground)" }}>/{String(displaySlug).slice(0, 24)}</span>}
+              </TableCell>
+              <TableCell>
+                <div className="flex flex-col">
+                  <span className="font-medium text-foreground">{String(displayTitle)}</span>
+                  {displaySlug && <span className="font-mono text-[11px] text-muted-foreground">/{String(displaySlug).slice(0, 24)}</span>}
                 </div>
-              </td>
+              </TableCell>
               {has.status && (
-                <td>
+                <TableCell>
                   {displayStatus ? (
                     <Badge variant={choice?.color ? "outline" : statusVariant(displayStatus)}>
                       {choice?.color && (
                         <span
-                          style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: 999,
-                            background: choice.color,
-                            display: "inline-block",
-                            marginRight: 4,
-                          }}
+                          className="mr-1 inline-block size-1.5 rounded-full"
+                          style={{ background: choice.color }}
                         />
                       )}
                       {choice?.label ?? displayStatus}
                     </Badge>
                   ) : (
-                    <span className="muted">—</span>
+                    <span className="text-muted-foreground">—</span>
                   )}
-                </td>
+                </TableCell>
               )}
               {has.author && (
-                <td>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div className="avatar" style={{ width: 22, height: 22, fontSize: 10 }}>{a.initials}</div>
-                    <span className="font-mono" style={{ fontSize: 12 }}>{a.name}</span>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <div className="grid size-[22px] place-items-center rounded-full bg-[linear-gradient(135deg,oklch(from_var(--primary)_0.78_0.18_h),oklch(from_var(--primary)_0.55_0.18_calc(h+15)))] text-[10px] font-semibold text-[oklch(from_var(--primary)_0.18_0.05_h)]">{a.initials}</div>
+                    <span className="font-mono text-xs">{a.name}</span>
                   </div>
-                </td>
+                </TableCell>
               )}
               {has.words && (
-                <td className="tabular-nums" style={{ textAlign: "right" }}>{r.word_count ?? "—"}</td>
+                <TableCell className="text-right tabular-nums">{r.word_count ?? "—"}</TableCell>
               )}
               {has.views && (
-                <td className="tabular-nums" style={{ textAlign: "right", color: r.view_count ? "var(--foreground)" : "var(--muted-foreground)" }}>{r.view_count ? Number(r.view_count).toLocaleString() : "—"}</td>
+                <TableCell className={`text-right tabular-nums ${r.view_count ? "text-foreground" : "text-muted-foreground"}`}>{r.view_count ? Number(r.view_count).toLocaleString() : "—"}</TableCell>
               )}
-              <td style={{ color: "var(--muted-foreground)" }} className="font-mono tabular-nums">{fmtDate(r.updated_at ?? r.updatedAt)}</td>
-              <td className="col-actions" onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}>
+              <TableCell className="font-mono tabular-nums text-muted-foreground">{fmtDate(r.updated_at ?? r.updatedAt)}</TableCell>
+              <TableCell className="sticky right-0 bg-card text-right" onClick={(e) => e.stopPropagation()}>
                 <IconButton icon={I.Pencil} onClick={() => onEdit(r)} title="Edit" />
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           );
         })}
-      </tbody>
-    </table>
-    </div>
+      </TableBody>
+    </Table>
   );
 }
 
 export function BulkBar({ count, onClear, onPublish, onDelete }: { count: number; onClear: () => void; onPublish: () => void; onDelete: () => void }) {
   if (!count) return null;
   return (
-    <div className="bulkbar">
-      <span className="count">{count} selected</span>
-      <div className="spacer" />
+    <div className="flex items-center gap-2.5 border-b border-[color-mix(in_oklch,var(--primary)_30%,var(--border))] bg-muted px-3.5 py-2">
+      <span className="text-[12.5px] font-medium">{count} selected</span>
+      <div className="flex-1" />
       <Button variant="outline" size="sm" icon={I.Check} onClick={onPublish}>Publish</Button>
       <Button variant="outline" size="sm" icon={I.Trash} onClick={onDelete}>Delete</Button>
       <Button variant="ghost" size="sm" onClick={onClear}>Clear</Button>

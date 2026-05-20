@@ -2320,56 +2320,10 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 }
 
 /* ─────────────────────────────────────────────────────────── */
-/* Logs (parity v2) */
+/* Logs (parity v2) — source tabs use the shadcn Tabs component; */
+/* level filters use the shadcn Button. Only the log stream     */
+/* below keeps bespoke styling.                                  */
 /* ─────────────────────────────────────────────────────────── */
-.logs-src {
-  display: flex; gap: 4px;
-  border: 1px solid var(--border);
-  background: var(--card);
-  border-radius: var(--radius-2xl);
-  padding: 4px;
-  width: fit-content;
-}
-.logs-src-tab {
-  display: inline-flex; align-items: center; gap: 7px;
-  padding: 6px 14px;
-  border-radius: var(--radius-3xl);
-  background: transparent;
-  border: 0;
-  font-size: 12.5px;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 120ms, color 120ms;
-}
-.logs-src-tab:hover { color: var(--foreground); }
-.logs-src-tab.on { background: var(--muted); color: var(--foreground); }
-.logs-src-count {
-  font-size: 10.5px;
-  padding: 1px 6px;
-  border-radius: var(--radius-md);
-  background: color-mix(in oklch, var(--muted) 80%, var(--card));
-  border: 1px solid var(--border);
-  color: var(--muted-foreground);
-}
-.logs-src-tab.on .logs-src-count { background: var(--card); }
-
-.logs-level {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 7px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-3xl);
-  background: var(--card);
-  font-size: 12px;
-  cursor: pointer;
-  font-family: inherit;
-  color: var(--foreground);
-  transition: background 120ms, border-color 120ms;
-}
-.logs-level:hover { background: var(--accent); }
-.logs-level.on { border-color: color-mix(in oklch, var(--foreground) 35%, var(--border)); background: var(--accent); }
-.logs-level-dot { width: 8px; height: 8px; border-radius: 999px; }
-
 .log-row {
   display: grid;
   grid-template-columns: 92px 56px 70px 56px 1fr 64px 1.4fr;
@@ -2525,29 +2479,9 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .edge.on path { opacity: 1 !important; stroke: var(--primary) !important; }
 
 /* ─────────────────────────────────────────────────────────── */
-/* Items view modes (parity v2) */
+/* Items view modes (parity v2) — the Table/Kanban/Gallery/    */
+/* Calendar switch uses the shadcn Tabs component.             */
 /* ─────────────────────────────────────────────────────────── */
-.view-toggle {
-  display: inline-flex;
-  border: 1px solid var(--border);
-  background: var(--card);
-  border-radius: var(--radius-2xl);
-  padding: 3px;
-  gap: 2px;
-}
-.view-toggle-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 11px;
-  border-radius: var(--radius-3xl);
-  border: 0;
-  background: transparent;
-  color: var(--muted-foreground);
-  font-size: 12px;
-  cursor: pointer;
-  font-family: inherit;
-}
-.view-toggle-btn:hover { color: var(--foreground); }
-.view-toggle-btn.on { background: var(--muted); color: var(--foreground); }
 
 /* Kanban */
 .kanban {
@@ -2761,26 +2695,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
 }
-.notif-tab {
-  font-size: 11.5px;
-  padding: 3px 10px;
-  border-radius: var(--radius-3xl);
-  border: 0;
-  background: transparent;
-  color: var(--muted-foreground);
-  cursor: pointer;
-  font-family: inherit;
-  display: inline-flex; align-items: center; gap: 5px;
-}
-.notif-tab:hover { color: var(--foreground); }
-.notif-tab.on { background: var(--muted); color: var(--foreground); }
-.notif-tab-count {
-  font-size: 9.5px;
-  background: var(--card);
-  border-radius: 999px;
-  padding: 0 5px;
-  border: 1px solid var(--border);
-}
+/* All / Unread filter uses the shadcn Tabs component. */
 .notif-list { flex: 1; overflow-y: auto; }
 .notif-item {
   display: grid;

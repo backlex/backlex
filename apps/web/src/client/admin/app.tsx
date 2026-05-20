@@ -77,8 +77,14 @@ const UsersPage = lazy(() => import("./pages/users").then((m) => ({ default: m.U
 const SettingsPage = lazy(() => import("./pages/settings").then((m) => ({ default: m.SettingsPage })));
 
 const PageLoading = () => (
-  <div className="muted" style={{ padding: 32, fontSize: 13 }}>Loading…</div>
+  <div className="p-8 text-[13px] text-muted-foreground">Loading…</div>
 );
+
+const TABS_CLS = "flex w-fit gap-0.5 rounded-3xl bg-muted p-[3px]";
+const TAB_CLS =
+  "group inline-flex cursor-pointer items-center gap-1.5 rounded-3xl border-none bg-transparent px-3.5 py-[5px] text-[12.5px] font-medium text-muted-foreground data-[active=true]:bg-card data-[active=true]:text-foreground data-[active=true]:shadow-[0_1px_2px_oklch(0_0_0/0.06),0_1px_0_oklch(0_0_0/0.04)]";
+const TAB_COUNT_CLS =
+  "rounded-sm border border-border bg-background px-[5px] py-px font-mono text-[11px] text-muted-foreground group-data-[active=true]:bg-muted";
 import { AccountPage } from "./account-page";
 import { GraphqlPage } from "@/pages/graphql";
 import { RestExplorerPage } from "@/pages/rest-explorer";
@@ -768,21 +774,21 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                 }
               />
 
-              <div className="tabs">
-                <button className="tab" data-active={activeTab === "items"} onClick={() => setActiveTab("items")}>
-                  <I.Inbox size={13} />Items <span className="count">{posts.length}</span>
+              <div className={TABS_CLS}>
+                <button type="button" className={TAB_CLS} data-active={activeTab === "items"} onClick={() => setActiveTab("items")}>
+                  <I.Inbox size={13} />Items <span className={TAB_COUNT_CLS}>{posts.length}</span>
                 </button>
-                <button className="tab" data-active={activeTab === "schema"} onClick={() => setActiveTab("schema")}>
-                  <I.Braces size={13} />Schema <span className="count">{schemaState.fields.length}</span>
+                <button type="button" className={TAB_CLS} data-active={activeTab === "schema"} onClick={() => setActiveTab("schema")}>
+                  <I.Braces size={13} />Schema <span className={TAB_COUNT_CLS}>{schemaState.fields.length}</span>
                 </button>
-                <button className="tab" data-active={activeTab === "settings"} onClick={() => setActiveTab("settings")}>
+                <button type="button" className={TAB_CLS} data-active={activeTab === "settings"} onClick={() => setActiveTab("settings")}>
                   <I.Settings size={13} />Settings
                 </button>
               </div>
 
               {activeTab === "items" && (
-                <div className="split">
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
+                <div className="grid grid-cols-[1fr_320px] items-start gap-4">
+                  <div className="flex min-w-0 flex-col gap-3">
                     <FilterBar
                       search={search} setSearch={setSearch}
                       filters={filters} setFilters={setFilters}
@@ -790,8 +796,8 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                       status={statusTab} setStatus={setStatusTab}
                       total={tweaks.populated ? posts.length : 0}
                     />
-                    <div className="card">
-                      <div style={{ padding: "10px 12px", display: "flex", alignItems: "center", gap: 8, borderBottom: "1px solid var(--border)" }}>
+                    <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+                      <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
                         <ItemsViewToggle
                           mode={viewMode}
                           setMode={(m) => setView(m)}
@@ -832,11 +838,11 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                         <CalendarView rows={itemsForView} onEdit={openEdit} />
                       )}
                       {viewMode === "table" && pageRows.length > 0 && (
-                        <div className="pagination">
-                          <span className="meta tabular-nums">{(page - 1) * PER_PAGE + 1}-{Math.min(page * PER_PAGE, total)} of {total}</span>
-                          <div className="spacer" />
+                        <div className="flex items-center gap-2 border-t border-border bg-card px-3.5 py-2.5 text-[12.5px] text-muted-foreground">
+                          <span className="font-mono text-xs tabular-nums">{(page - 1) * PER_PAGE + 1}-{Math.min(page * PER_PAGE, total)} of {total}</span>
+                          <div className="flex-1" />
                           <Button variant="ghost" size="sm" icon={I.ChevronLeft} disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</Button>
-                          <span className="meta tabular-nums">page {page} / {totalPages}</span>
+                          <span className="font-mono text-xs tabular-nums">page {page} / {totalPages}</span>
                           <Button variant="ghost" size="sm" iconRight={I.ChevronRight} disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
                         </div>
                       )}
@@ -849,7 +855,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
               )}
 
               {activeTab === "schema" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div className="flex flex-col gap-3.5">
                   <SchemaView
                     schema={schemaState}
                     onAddField={() => setAddFieldOpen(true)}
@@ -1052,13 +1058,13 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
 function RolesPageWithMembers({ pushToast }: { pushToast: (m: string) => void }) {
   const [tab, setTab] = useState<"members" | "roles">("members");
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div className="tabs">
+    <div className="flex flex-col gap-3.5">
+      <div className={TABS_CLS}>
         {[
           { id: "members" as const, label: "Members", icon: I.Users },
           { id: "roles" as const, label: "Roles & permissions", icon: I.Shield },
         ].map((t) => (
-          <button key={t.id} type="button" className="tab" data-active={tab === t.id} onClick={() => setTab(t.id)}>
+          <button key={t.id} type="button" className={TAB_CLS} data-active={tab === t.id} onClick={() => setTab(t.id)}>
             <t.icon size={13} /><span>{t.label}</span>
           </button>
         ))}
@@ -1135,24 +1141,24 @@ function PermissionsPanel({ pushToast }: { pushToast: (m: string) => void }) {
   };
   const close = () => { setEditing(null); setIsNew(false); };
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div className="card">
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <div className="flex flex-col gap-3.5">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
           <I.Shield size={14} />
-          <span style={{ fontSize: 13, fontWeight: 500 }}>roles</span>
-          <span className="font-mono" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{roles.filter((r) => r.system).length} system · {roles.filter((r) => !r.system).length} custom</span>
-          <div className="spacer" />
+          <span className="text-[13px] font-medium">roles</span>
+          <span className="font-mono text-xs text-muted-foreground">{roles.filter((r) => r.system).length} system · {roles.filter((r) => !r.system).length} custom</span>
+          <div className="flex-1" />
           <Button variant="primary" size="sm" icon={I.Plus} onClick={openNew}>Add role</Button>
         </div>
         {roles.map((r) => (
-          <div key={r.name} className="schema-row" style={{ gridTemplateColumns: "24px 200px 1fr 32px" }}>
+          <div key={r.name} className="grid grid-cols-[24px_200px_1fr_32px] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0">
             <span><I.Users size={14} /></span>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span className="font-mono" style={{ fontSize: 13 }}>{r.name}</span>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[13px]">{r.name}</span>
               {r.system && <Badge variant="secondary">system</Badge>}
               {(r.badges || []).map((b) => <Badge key={b} variant="outline">{b}</Badge>)}
             </div>
-            <span className="font-mono" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{r.rule}</span>
+            <span className="font-mono text-xs text-muted-foreground">{r.rule}</span>
             <IconButton icon={I.Pencil} title="Edit" onClick={() => openEdit(r)} />
           </div>
         ))}

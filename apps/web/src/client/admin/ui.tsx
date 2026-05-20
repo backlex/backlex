@@ -388,7 +388,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="group-data-[collapsible=icon]:overflow-y-auto!">
         {[
           { label: "Workspace", entries: items },
           { label: "Developers", entries: developers },

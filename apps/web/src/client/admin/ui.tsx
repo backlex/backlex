@@ -25,6 +25,7 @@ import { Checkbox as ShadcnCheckbox } from "@workeros/ui/components/checkbox";
 import { Input } from "@workeros/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { Skeleton } from "@workeros/ui/components/skeleton";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -371,16 +372,18 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
               <span>Workspaces</span>
               <span className="font-mono text-[10.5px] text-muted-foreground">{tenants.length}</span>
             </DropdownMenuLabel>
-            {tenants.map((t) => (
-              <DropdownMenuItem key={t.id} className="gap-2.5" onSelect={() => void switchTenant(t.id)}>
-                <span className="ws-mark" style={{ "--ws-color": t.color ?? undefined } as React.CSSProperties}>{t.name.charAt(0).toUpperCase()}</span>
-                <span className="ws-meta">
-                  <span className="ws-name">{t.name}</span>
-                  <span className="ws-sub font-mono">{t.project} · {t.branch} · {t.env}</span>
-                </span>
-                {t.id === tenantId && <I.Check size={12} />}
-              </DropdownMenuItem>
-            ))}
+            <ScrollArea className="max-h-[280px]">
+              {tenants.map((t) => (
+                <DropdownMenuItem key={t.id} className="gap-2.5" onSelect={() => void switchTenant(t.id)}>
+                  <span className="ws-mark" style={{ "--ws-color": t.color ?? undefined } as React.CSSProperties}>{t.name.charAt(0).toUpperCase()}</span>
+                  <span className="ws-meta">
+                    <span className="ws-name">{t.name}</span>
+                    <span className="ws-sub font-mono">{t.project} · {t.branch} · {t.env}</span>
+                  </span>
+                  {t.id === tenantId && <I.Check size={12} />}
+                </DropdownMenuItem>
+              ))}
+            </ScrollArea>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => setNewWsOpen(true)}><I.Plus size={12} /> New workspace</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setActiveNav?.("settings")}><I.Settings size={12} /> Manage</DropdownMenuItem>

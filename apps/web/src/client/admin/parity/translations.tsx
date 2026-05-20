@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { i18nApi, settingsApi } from "../api";
 import { I18N_KEY_PATTERN } from "./_shared";
+import { TranslationsSkeleton } from "../page-skeletons";
 
 const TR_TABLE_CLS =
   "[&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
@@ -24,6 +25,8 @@ const TR_TABLE_CLS =
 export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void }) {
   const [locales, setLocales] = useState<string[]>(["en"]);
   const [data, setData] = useState<Record<string, string>[]>([]);
+  // First-load gate — drives the page skeleton until the matrix lands.
+  const [loaded, setLoaded] = useState(false);
   const [base, setBase] = useState("en");
   const [showOnly, setShowOnly] = useState("all");
   const [addOpen, setAddOpen] = useState(false);
@@ -51,6 +54,8 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
         }
       } catch {
         // leave translations empty
+      } finally {
+        if (!cancelled) setLoaded(true);
       }
     })();
     return () => { cancelled = true; };
@@ -64,6 +69,10 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
     setData((arr) => arr.map((r) => r.key === key ? { ...r, [locale]: value } : r));
     persist(key, locale, value);
   };
+
+  // First whole-page fetch — the translation matrix hasn't landed yet.
+  if (!loaded) return <TranslationsSkeleton />;
+
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader

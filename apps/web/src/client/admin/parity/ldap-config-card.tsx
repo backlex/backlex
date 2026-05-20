@@ -16,6 +16,7 @@
 import { useEffect, useState } from "react";
 import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
+import { Skeleton } from "@workeros/ui/components/skeleton";
 import { I } from "../icons";
 import { Badge, Button, Switch } from "../ui";
 import { Select } from "../select";
@@ -145,10 +146,19 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
   };
 
   if (!loaded) {
+    // First-load placeholder — mirrors the card's header strip + body fields.
     return (
       <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
-        <div className="border-b border-border px-4 py-3.5 text-[12.5px] text-muted-foreground">
-          Loading LDAP config…
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
+          <Skeleton className="size-4 rounded" />
+          <Skeleton className="h-4 w-44" />
+          <div className="flex-1" />
+          <Skeleton className="h-8 w-32" />
+        </div>
+        <div className="flex flex-col gap-3 p-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-full" />
+          ))}
         </div>
       </div>
     );

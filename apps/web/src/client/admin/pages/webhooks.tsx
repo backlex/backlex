@@ -15,12 +15,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workeros/ui/components/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@workeros/ui/components/dropdown-menu";
 import { fetchSafely } from "./_shared";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
-const USERS_MENU_CLS =
-  "absolute right-2 top-[calc(100%-4px)] z-30 flex min-w-[180px] flex-col rounded-xl border border-border bg-popover p-1 text-left shadow-[0_8px_24px_oklch(0_0_0/0.16)] [&>button]:flex [&>button]:cursor-pointer [&>button]:items-center [&>button]:gap-2 [&>button]:rounded-md [&>button]:border-0 [&>button]:bg-transparent [&>button]:px-2.5 [&>button]:py-[7px] [&>button]:text-left [&>button]:text-[12.5px] [&>button]:text-foreground [&>button:hover]:bg-accent";
 
 const WH_EVENTS = [
   "items.*.created", "items.*.updated", "items.*.deleted",
@@ -87,14 +92,6 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
   };
   useEffect(() => { void reloadHooks(); }, []);
   const [editor, setEditor] = useState<{ mode: "create" | "edit"; hook: any } | null>(null);
-  const [menuOpen, setMenuOpen] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const close = () => setMenuOpen(null);
-    window.addEventListener("click", close);
-    return () => window.removeEventListener("click", close);
-  }, [menuOpen]);
 
   type DeliveryRow = { id: string; t: string; hook: string; ev: string; code: number; ms: number };
   const [deliveries, setDeliveries] = useState<DeliveryRow[]>([]);
@@ -163,7 +160,6 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
           </TableHeader>
           <TableBody>
             {hooks.map((h) => {
-              const isOpen = menuOpen === h.id;
               return (
                 <TableRow key={h.id} className="cursor-pointer" onClick={() => setEditor({ mode: "edit", hook: h })}>
                   <TableCell>
@@ -188,12 +184,14 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
                         : <Badge variant="destructive">failing</Badge>}
                   </TableCell>
                   <TableCell className="sticky right-0 bg-card text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="relative">
-                      <IconButton icon={I.More} onClick={(e: any) => { e.stopPropagation(); setMenuOpen(isOpen ? null : h.id); }} />
-                      {isOpen && (
-                        <div className={USERS_MENU_CLS} onClick={(e) => e.stopPropagation()}>
-                          <button onClick={() => { setEditor({ mode: "edit", hook: h }); setMenuOpen(null); }}><I.Pencil size={12} />Edit</button>
-                          <button onClick={async () => {
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <IconButton icon={I.More} />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => { setEditor({ mode: "edit", hook: h }); }}><I.Pencil size={12} />Edit</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => {
+                          void (async () => {
                             try {
                               await api(`/api/webhooks/${h.id}/test`, { method: "POST" });
                               pushToast(`Test event sent to ${h.name}.`);
@@ -201,9 +199,10 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
                             } catch (e) {
                               pushToast((e as Error).message);
                             }
-                            setMenuOpen(null);
-                          }}><I.Bolt size={12} />Send test</button>
-                          <button onClick={async () => {
+                          })();
+                        }}><I.Bolt size={12} />Send test</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => {
+                          void (async () => {
                             const next = !h.active;
                             try {
                               await api(`/api/webhooks/${h.id}`, {
@@ -214,21 +213,21 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
                               pushToast((e as Error).message);
                             }
                             setHooks((arr) => arr.map((x) => x.id === h.id ? { ...x, active: next } : x));
-                            setMenuOpen(null);
                             pushToast(`${h.name} ${next ? "resumed" : "paused"}.`);
-                          }}>
-                            {h.active ? <><I.Lock size={12} />Pause</> : <><I.Play size={12} />Resume</>}
-                          </button>
-                          <div className="mx-1.5 my-1 h-px bg-border" />
-                          <button className="!text-destructive" onClick={async () => {
+                          })();
+                        }}>
+                          {h.active ? <><I.Lock size={12} />Pause</> : <><I.Play size={12} />Resume</>}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem variant="destructive" onSelect={() => {
+                          void (async () => {
                             try { await api(`/api/webhooks/${h.id}`, { method: "DELETE" }); } catch (e) { pushToast((e as Error).message); }
                             setHooks((arr) => arr.filter((x) => x.id !== h.id));
-                            setMenuOpen(null);
                             pushToast(`${h.name} deleted.`);
-                          }}><I.Trash size={12} />Delete</button>
-                        </div>
-                      )}
-                    </div>
+                          })();
+                        }}><I.Trash size={12} />Delete</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               );

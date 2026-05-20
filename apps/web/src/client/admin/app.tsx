@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import "./admin.css";
 import "./flow-builder.css";
 import { I } from "./icons";
+import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import {
   ADAPTER_PROFILES,
   NAV_DEVELOPERS,
@@ -80,11 +81,8 @@ const PageLoading = () => (
   <div className="p-8 text-[13px] text-muted-foreground">Loading…</div>
 );
 
-const TABS_CLS = "flex w-fit gap-0.5 rounded-3xl bg-muted p-[3px]";
-const TAB_CLS =
-  "group inline-flex cursor-pointer items-center gap-1.5 rounded-3xl border-none bg-transparent px-3.5 py-[5px] text-[12.5px] font-medium text-muted-foreground data-[active=true]:bg-card data-[active=true]:text-foreground data-[active=true]:shadow-[0_1px_2px_oklch(0_0_0/0.06),0_1px_0_oklch(0_0_0/0.04)]";
 const TAB_COUNT_CLS =
-  "rounded-sm border border-border bg-background px-[5px] py-px font-mono text-[11px] text-muted-foreground group-data-[active=true]:bg-muted";
+  "rounded-sm border border-border bg-muted px-[5px] py-px font-mono text-[11px] text-muted-foreground";
 import { AccountPage } from "./account-page";
 import { GraphqlPage } from "@/pages/graphql";
 import { RestExplorerPage } from "@/pages/rest-explorer";
@@ -784,17 +782,19 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                 }
               />
 
-              <div className={TABS_CLS}>
-                <button type="button" className={TAB_CLS} data-active={activeTab === "items"} onClick={() => setActiveTab("items")}>
-                  <I.Inbox size={13} />Items <span className={TAB_COUNT_CLS}>{posts.length}</span>
-                </button>
-                <button type="button" className={TAB_CLS} data-active={activeTab === "schema"} onClick={() => setActiveTab("schema")}>
-                  <I.Braces size={13} />Schema <span className={TAB_COUNT_CLS}>{schemaState.fields.length}</span>
-                </button>
-                <button type="button" className={TAB_CLS} data-active={activeTab === "settings"} onClick={() => setActiveTab("settings")}>
-                  <I.Settings size={13} />Settings
-                </button>
-              </div>
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "items" | "schema" | "settings")}>
+                <TabsList>
+                  <TabsTrigger value="items">
+                    <I.Inbox size={13} />Items <span className={TAB_COUNT_CLS}>{posts.length}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="schema">
+                    <I.Braces size={13} />Schema <span className={TAB_COUNT_CLS}>{schemaState.fields.length}</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="settings">
+                    <I.Settings size={13} />Settings
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
 
               {activeTab === "items" && (
                 <div className="grid grid-cols-[1fr_320px] items-start gap-4">
@@ -1069,16 +1069,18 @@ function RolesPageWithMembers({ pushToast }: { pushToast: (m: string) => void })
   const [tab, setTab] = useState<"members" | "roles">("members");
   return (
     <div className="flex flex-col gap-3.5">
-      <div className={TABS_CLS}>
-        {[
-          { id: "members" as const, label: "Members", icon: I.Users },
-          { id: "roles" as const, label: "Roles & permissions", icon: I.Shield },
-        ].map((t) => (
-          <button key={t.id} type="button" className={TAB_CLS} data-active={tab === t.id} onClick={() => setTab(t.id)}>
-            <t.icon size={13} /><span>{t.label}</span>
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "members" | "roles")}>
+        <TabsList>
+          {[
+            { id: "members" as const, label: "Members", icon: I.Users },
+            { id: "roles" as const, label: "Roles & permissions", icon: I.Shield },
+          ].map((t) => (
+            <TabsTrigger key={t.id} value={t.id}>
+              <t.icon size={13} /><span>{t.label}</span>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
       {tab === "members" && <MembersPanel roles={[]} pushToast={pushToast} />}
       {tab === "roles" && <PermissionsPanel pushToast={pushToast} />}
     </div>

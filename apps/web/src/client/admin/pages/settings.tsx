@@ -14,6 +14,7 @@ import { useTheme } from "@/components/theme-provider";
 import { applyPrimaryColor } from "@/main";
 import { ColorPicker } from "@workeros/ui/components/color-picker";
 import { Input } from "@workeros/ui/components/input";
+import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { Textarea } from "@workeros/ui/components/textarea";
 
 /** Mirror of `services/workspace-config.ts::isValidColor` — keep in sync. */
@@ -616,29 +617,23 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader title="Settings" description="Self-hosted on Cloudflare Workers. Most config lives in wrangler.toml; this page is a live view + UI for runtime-mutable values." />
-      <div className="flex w-fit gap-0.5 rounded-3xl bg-muted p-[3px]">
-        {[
-          { id: "general", label: "General" },
-          { id: "appearance", label: "Appearance" },
-          { id: "email", label: "Email" },
-          { id: "bindings", label: "Bindings", count: bindings.length },
-          { id: "env", label: "Environment", count: envVars.length },
-          { id: "about", label: "About" },
-        ].map((t) => {
-          const on = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              className={`inline-flex cursor-pointer items-center gap-1.5 rounded-3xl border-0 px-3.5 py-[5px] text-[12.5px] font-medium ${on ? "bg-card text-foreground shadow-[0_1px_2px_oklch(0_0_0/0.06),0_1px_0_oklch(0_0_0/0.04)]" : "bg-transparent text-muted-foreground"}`}
-              onClick={() => setTab(t.id)}
-            >
+      <Tabs value={tab} onValueChange={(v) => setTab(v)}>
+        <TabsList>
+          {[
+            { id: "general", label: "General" },
+            { id: "appearance", label: "Appearance" },
+            { id: "email", label: "Email" },
+            { id: "bindings", label: "Bindings", count: bindings.length },
+            { id: "env", label: "Environment", count: envVars.length },
+            { id: "about", label: "About" },
+          ].map((t) => (
+            <TabsTrigger key={t.id} value={t.id}>
               <span>{t.label}</span>
-              {t.count !== undefined && <span className={`rounded-sm border border-border px-[5px] py-px font-mono text-[11px] text-muted-foreground ${on ? "bg-muted" : "bg-background"}`}>{t.count}</span>}
-            </button>
-          );
-        })}
-      </div>
+              {t.count !== undefined && <span className="rounded-sm border border-border bg-muted px-[5px] py-px font-mono text-[11px] text-muted-foreground">{t.count}</span>}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {tab === "general" && (
         <div className="flex max-w-[720px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">

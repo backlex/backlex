@@ -63,8 +63,10 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
   SidebarTrigger,
 } from "@workeros/ui/components/sidebar";
+import { TooltipProvider } from "@workeros/ui/components/tooltip";
 
 export function formatJson(value: unknown): string {
   try {
@@ -346,20 +348,23 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
     };
 
   return (
-    <ShadcnSidebar>
+    <TooltipProvider>
+    <ShadcnSidebar collapsible="icon">
       <SidebarHeader>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="brand ws-trigger" type="button">
-              <BrandMark />
-              <div className="brand-text">
-                <b>{tenant.name}</b>
-                <span>{tenant.project} · {tenant.branch}</span>
-              </div>
-              <I.ChevronDown size={12} className="ws-chev" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-64">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
+                  <BrandMark size={32} />
+                  <div className="grid flex-1 text-left leading-tight">
+                    <span className="truncate text-[13.5px] font-semibold">{tenant.name}</span>
+                    <span className="truncate font-mono text-[11px] text-muted-foreground">{tenant.project} · {tenant.branch}</span>
+                  </div>
+                  <I.ChevronDown className="ml-auto" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" side="right" className="min-w-64">
             <DropdownMenuLabel className="flex items-center justify-between">
               <span>Workspaces</span>
               <span className="font-mono text-[10.5px] text-muted-foreground">{tenants.length}</span>
@@ -378,7 +383,9 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
             <DropdownMenuItem onSelect={() => setNewWsOpen(true)}><I.Plus size={12} /> New workspace</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setActiveNav?.("settings")}><I.Settings size={12} /> Manage</DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
 
       <SidebarContent>
@@ -400,6 +407,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
                     <SidebarMenuButton
                       isActive={activeNav === it.id}
                       onClick={() => setActiveNav(it.id)}
+                      tooltip={it.label}
                     >
                       {IconComp && <IconComp size={15} />}
                       <span>{it.label}</span>
@@ -415,8 +423,11 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
         ))}
       </SidebarContent>
 
+      <SidebarRail />
+
       {newWsOpen && <NewWorkspaceDialog onClose={() => setNewWsOpen(false)} onCreate={createWorkspace} existing={tenants.map((t) => t.name)} />}
     </ShadcnSidebar>
+    </TooltipProvider>
   );
 }
 

@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workeros/ui/component
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@workeros/ui/components/collapsible";
 import { Separator } from "@workeros/ui/components/separator";
 import { ScrollArea } from "@workeros/ui/components/scroll-area";
+import { RestExplorerSkeleton } from "@/admin/page-skeletons";
 import { cn } from "@workeros/ui/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { CodeEditor } from "@/components/code-editor-lazy";
@@ -1271,9 +1272,6 @@ const EndpointList = ({
       <Separator />
       <ScrollArea className="min-h-0 flex-1">
         <div className="p-2">
-        {loading && endpoints.length === 0 && (
-          <p className="px-2 py-4 text-sm text-muted-foreground">Loading…</p>
-        )}
         {!loading && filtered.length === 0 && (
           <p className="px-2 py-4 text-sm text-muted-foreground">No matches.</p>
         )}
@@ -1388,6 +1386,9 @@ export const RestExplorerPage = () => {
   // For the URL preview on Try-it. Same-origin in browsers.
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
 
+  // First whole-page fetch — the OpenAPI doc hasn't landed yet.
+  if (loading && endpoints.length === 0) return <RestExplorerSkeleton />;
+
   return (
     <div className="flex h-full flex-col gap-4">
       <PageHeader
@@ -1419,9 +1420,7 @@ export const RestExplorerPage = () => {
           ) : (
             <Card className="flex h-full items-center justify-center">
               <CardContent className="py-12 text-center text-sm text-muted-foreground">
-                {loading
-                  ? "Loading OpenAPI doc…"
-                  : "Select an endpoint on the left to inspect it."}
+                Select an endpoint on the left to inspect it.
               </CardContent>
             </Card>
           )}

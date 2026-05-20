@@ -1,5 +1,5 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { and, desc, eq, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gte, like, lte, type SQL } from "drizzle-orm";
 import { AppError, SYSTEM_ROLES } from "@workeros/core";
 import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
@@ -34,15 +34,28 @@ export const activityRoutes = new OpenAPIHono<AppBindings>().openapi(
     tags: ["activity"],
     summary: "List activity log entries",
     description:
-      "Admins see every entry; non-admins see only their own. Filter by `collection` and/or `itemId`. Paginate with `limit` (max 200) and `offset`.",
+      "Admins see every entry; non-admins see only their own. Filter by " +
+      "`collection`, `itemId`, an `action` prefix (e.g. `action=item` matches " +
+      "`item.create`), and/or a `from`/`to` epoch-ms time window. Paginate " +
+      "with `limit` (max 200) and `offset`. Pass `meta=count` to add a " +
+      "`meta.count` total computed against the same filters (ignores " +
+      "`limit`/`offset`).",
     security: SECURITY,
     middleware: [requireUser],
     request: {
       query: z.object({
         collection: z.string().optional(),
         itemId: z.string().optional(),
+        /** Action namespace prefix — matched as `action LIKE '<prefix>%'`. */
+        action: z.string().optional(),
+        /** Inclusive lower bound on `createdAt`, epoch milliseconds. */
+        from: z.coerce.number().int().optional(),
+        /** Inclusive upper bound on `createdAt`, epoch milliseconds. */
+        to: z.coerce.number().int().optional(),
         limit: z.coerce.number().int().min(1).max(200).optional(),
         offset: z.coerce.number().int().min(0).optional(),
+        /** `count` → adds `meta.count` (total rows matching the filters). */
+        meta: z.string().optional(),
       }),
     },
     responses: {
@@ -54,6 +67,7 @@ export const activityRoutes = new OpenAPIHono<AppBindings>().openapi(
               data: z.array(ActivityRow),
               limit: z.number().int(),
               offset: z.number().int(),
+              meta: z.object({ count: z.number().int() }).optional(),
             }),
           },
         },
@@ -69,21 +83,41 @@ export const activityRoutes = new OpenAPIHono<AppBindings>().openapi(
     const q = c.req.valid("query");
     const limit = Math.min(200, Math.max(1, q.limit ?? 50));
     const offset = Math.max(0, q.offset ?? 0);
-    const collection = q.collection;
-    const itemId = q.itemId;
+    const wantCount = q.meta?.split(",").includes("count") ?? false;
 
     const conds: SQL[] = [];
     if (!isAdmin) {
       if (!auth.userId) throw new AppError("UNAUTHORIZED", "Sign in required");
       conds.push(eq(t.userId, auth.userId));
     }
-    if (collection) conds.push(eq(t.collection, collection));
-    if (itemId) conds.push(eq(t.itemId, itemId));
+    if (q.collection) conds.push(eq(t.collection, q.collection));
+    if (q.itemId) conds.push(eq(t.itemId, q.itemId));
+    // Action namespaces are dot-prefixed (`item.create`, `auth.login`), so a
+    // prefix filter is a `LIKE '<prefix>%'`. `%`/`_` in the prefix would be
+    // wildcards, but action namespaces never contain them so it's a non-issue.
+    if (q.action) conds.push(like(t.action, `${q.action}%`));
+    // `createdAt` is a Drizzle `Date` column on both dialects, so comparing
+    // against `new Date(epochMs)` is dialect-agnostic.
+    if (q.from != null) conds.push(gte(t.createdAt, new Date(q.from)));
+    if (q.to != null) conds.push(lte(t.createdAt, new Date(q.to)));
+
+    const where =
+      conds.length === 0
+        ? undefined
+        : conds.length === 1
+          ? conds[0]
+          : and(...conds);
 
     let qb = (ctx.db as any).select().from(t);
-    if (conds.length) qb = qb.where(conds.length === 1 ? conds[0] : and(...conds));
+    if (where) qb = qb.where(where);
     const rows = await qb.orderBy(desc(t.createdAt)).limit(limit).offset(offset);
 
-    return c.json({ data: rows, limit, offset });
+    if (!wantCount) return c.json({ data: rows, limit, offset });
+
+    let cb = (ctx.db as any).select({ value: count() }).from(t);
+    if (where) cb = cb.where(where);
+    const countRows = await cb;
+    const total = Number(countRows[0]?.value ?? 0);
+    return c.json({ data: rows, limit, offset, meta: { count: total } });
   },
 );

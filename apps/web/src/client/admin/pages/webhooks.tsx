@@ -6,7 +6,13 @@ import { Select } from "../select";
 import { api } from "@/lib/api";
 import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { fetchSafely } from "./_shared";
+
+const ADMIN_TABLE_CLS =
+  "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
+const USERS_MENU_CLS =
+  "absolute right-2 top-[calc(100%-4px)] z-30 flex min-w-[180px] flex-col rounded-xl border border-border bg-popover p-1 text-left shadow-[0_8px_24px_oklch(0_0_0/0.16)] [&>button]:flex [&>button]:cursor-pointer [&>button]:items-center [&>button]:gap-2 [&>button]:rounded-md [&>button]:border-0 [&>button]:bg-transparent [&>button]:px-2.5 [&>button]:py-[7px] [&>button]:text-left [&>button]:text-[12.5px] [&>button]:text-foreground [&>button:hover]:bg-accent";
 
 const WH_EVENTS = [
   "items.*.created", "items.*.updated", "items.*.deleted",
@@ -129,127 +135,126 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="flex flex-col gap-4.5">
       <PageHeader
         title="Webhooks"
         description="Outgoing HTTP on collection events. Failed deliveries retry with exponential backoff."
         actions={<Button variant="primary" icon={I.Plus} onClick={() => setEditor({ mode: "create", hook: null })}>New webhook</Button>}
       />
-      <div className="card">
-        <div className="table-scroll">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Endpoint</th>
-              <th>Events</th>
-              <th style={{ textAlign: "right", width: 110 }}>Deliveries</th>
-              <th style={{ width: 110 }}>Success</th>
-              <th style={{ width: 100 }}>Status</th>
-              <th className="col-actions" style={{ width: 44 }}></th>
-            </tr>
-          </thead>
-          <tbody>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <Table className={ADMIN_TABLE_CLS}>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Endpoint</TableHead>
+              <TableHead>Events</TableHead>
+              <TableHead className="w-[110px] text-right">Deliveries</TableHead>
+              <TableHead className="w-[110px]">Success</TableHead>
+              <TableHead className="w-[100px]">Status</TableHead>
+              <TableHead className="sticky right-0 w-11 bg-card" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {hooks.map((h) => {
               const isOpen = menuOpen === h.id;
               return (
-                <tr key={h.id} className="users-row" onClick={() => setEditor({ mode: "edit", hook: h })}>
-                  <td>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-                      <span style={{ fontSize: 13, fontWeight: 500 }}>{h.name}</span>
-                      <span className="muted font-mono" style={{ fontSize: 11.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 360 }}>{h.method} · {h.url}</span>
+                <TableRow key={h.id} className="cursor-pointer" onClick={() => setEditor({ mode: "edit", hook: h })}>
+                  <TableCell>
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-[13px] font-medium">{h.name}</span>
+                      <span className="max-w-[360px] truncate font-mono text-[11.5px] text-muted-foreground">{h.method} · {h.url}</span>
                     </div>
-                  </td>
-                  <td><div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>{h.events.map((e) => <Badge key={e} variant="outline" mono>{e}</Badge>)}</div></td>
-                  <td className="tabular-nums" style={{ textAlign: "right" }}>{h.deliveries.toLocaleString()}</td>
-                  <td>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <div style={{ width: 48, height: 4, borderRadius: 999, background: "var(--muted)", overflow: "hidden" }}>
-                        <div style={{ width: `${h.successRate}%`, height: "100%", background: h.successRate > 95 ? "oklch(0.78 0.15 145)" : h.successRate > 50 ? "oklch(0.78 0.15 80)" : "var(--destructive)" }} />
+                  </TableCell>
+                  <TableCell><div className="flex flex-wrap gap-1">{h.events.map((e) => <Badge key={e} variant="outline" mono>{e}</Badge>)}</div></TableCell>
+                  <TableCell className="text-right tabular-nums">{h.deliveries.toLocaleString()}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1.5">
+                      <div className="h-1 w-12 overflow-hidden rounded-full bg-muted">
+                        <div className="h-full" style={{ width: `${h.successRate}%`, background: h.successRate > 95 ? "oklch(0.78 0.15 145)" : h.successRate > 50 ? "oklch(0.78 0.15 80)" : "var(--destructive)" }} />
                       </div>
-                      <span className="font-mono" style={{ fontSize: 11.5 }}>{h.successRate}%</span>
+                      <span className="font-mono text-[11.5px]">{h.successRate}%</span>
                     </div>
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     {!h.active ? <Badge variant="secondary">paused</Badge>
                       : h.ok ? <Badge variant="default">healthy</Badge>
                         : <Badge variant="destructive">failing</Badge>}
-                  </td>
-                  <td className="col-actions" style={{ textAlign: "right", position: "relative" }} onClick={(e) => e.stopPropagation()}>
-                    <IconButton icon={I.More} onClick={(e: any) => { e.stopPropagation(); setMenuOpen(isOpen ? null : h.id); }} />
-                    {isOpen && (
-                      <div className="users-menu" onClick={(e) => e.stopPropagation()}>
-                        <button onClick={() => { setEditor({ mode: "edit", hook: h }); setMenuOpen(null); }}><I.Pencil size={12} />Edit</button>
-                        <button onClick={async () => {
-                          try {
-                            await api(`/api/webhooks/${h.id}/test`, { method: "POST" });
-                            pushToast(`Test event sent to ${h.name}.`);
-                            await reloadDeliveries();
-                          } catch (e) {
-                            pushToast((e as Error).message);
-                          }
-                          setMenuOpen(null);
-                        }}><I.Bolt size={12} />Send test</button>
-                        <button onClick={async () => {
-                          const next = !h.active;
-                          try {
-                            await api(`/api/webhooks/${h.id}`, {
-                              method: "PATCH",
-                              body: JSON.stringify({ active: next }),
-                            });
-                          } catch (e) {
-                            pushToast((e as Error).message);
-                          }
-                          setHooks((arr) => arr.map((x) => x.id === h.id ? { ...x, active: next } : x));
-                          setMenuOpen(null);
-                          pushToast(`${h.name} ${next ? "resumed" : "paused"}.`);
-                        }}>
-                          {h.active ? <><I.Lock size={12} />Pause</> : <><I.Play size={12} />Resume</>}
-                        </button>
-                        <div className="users-menu-sep" />
-                        <button className="danger" onClick={async () => {
-                          try { await api(`/api/webhooks/${h.id}`, { method: "DELETE" }); } catch (e) { pushToast((e as Error).message); }
-                          setHooks((arr) => arr.filter((x) => x.id !== h.id));
-                          setMenuOpen(null);
-                          pushToast(`${h.name} deleted.`);
-                        }}><I.Trash size={12} />Delete</button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
+                  </TableCell>
+                  <TableCell className="sticky right-0 bg-card text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="relative">
+                      <IconButton icon={I.More} onClick={(e: any) => { e.stopPropagation(); setMenuOpen(isOpen ? null : h.id); }} />
+                      {isOpen && (
+                        <div className={USERS_MENU_CLS} onClick={(e) => e.stopPropagation()}>
+                          <button onClick={() => { setEditor({ mode: "edit", hook: h }); setMenuOpen(null); }}><I.Pencil size={12} />Edit</button>
+                          <button onClick={async () => {
+                            try {
+                              await api(`/api/webhooks/${h.id}/test`, { method: "POST" });
+                              pushToast(`Test event sent to ${h.name}.`);
+                              await reloadDeliveries();
+                            } catch (e) {
+                              pushToast((e as Error).message);
+                            }
+                            setMenuOpen(null);
+                          }}><I.Bolt size={12} />Send test</button>
+                          <button onClick={async () => {
+                            const next = !h.active;
+                            try {
+                              await api(`/api/webhooks/${h.id}`, {
+                                method: "PATCH",
+                                body: JSON.stringify({ active: next }),
+                              });
+                            } catch (e) {
+                              pushToast((e as Error).message);
+                            }
+                            setHooks((arr) => arr.map((x) => x.id === h.id ? { ...x, active: next } : x));
+                            setMenuOpen(null);
+                            pushToast(`${h.name} ${next ? "resumed" : "paused"}.`);
+                          }}>
+                            {h.active ? <><I.Lock size={12} />Pause</> : <><I.Play size={12} />Resume</>}
+                          </button>
+                          <div className="mx-1.5 my-1 h-px bg-border" />
+                          <button className="!text-destructive" onClick={async () => {
+                            try { await api(`/api/webhooks/${h.id}`, { method: "DELETE" }); } catch (e) { pushToast((e as Error).message); }
+                            setHooks((arr) => arr.filter((x) => x.id !== h.id));
+                            setMenuOpen(null);
+                            pushToast(`${h.name} deleted.`);
+                          }}><I.Trash size={12} />Delete</button>
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
               );
             })}
             {hooks.length === 0 && (
-              <tr><td colSpan={6}>
-                <div className="empty" style={{ padding: "32px 0" }}>
+              <TableRow><TableCell colSpan={6}>
+                <div className="flex flex-col items-center gap-3 py-8 text-center">
                   <I.Webhook size={20} />
-                  <h4>No webhooks yet</h4>
-                  <p>Pipe collection events to Slack, your API, or any HTTPS endpoint.</p>
+                  <h4 className="m-0 text-[15px] font-semibold">No webhooks yet</h4>
+                  <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground">Pipe collection events to Slack, your API, or any HTTPS endpoint.</p>
                 </div>
-              </td></tr>
+              </TableCell></TableRow>
             )}
-          </tbody>
-        </table>
-        </div>
+          </TableBody>
+        </Table>
       </div>
 
-      <div className="card">
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <I.Activity size={14} /><span style={{ fontSize: 13, fontWeight: 500 }}>Recent deliveries</span>
-          <div className="spacer" />
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
+          <I.Activity size={14} /><span className="text-[13px] font-medium">Recent deliveries</span>
+          <div className="flex-1" />
           <Button variant="ghost" size="sm" icon={I.Refresh} onClick={() => pushToast("Refreshed.")}>Refresh</Button>
         </div>
-        <div className="table-scroll">
-        <table className="table">
-          <thead><tr><th style={{ width: 100 }}>Time</th><th style={{ width: 80 }}>Hook</th><th>Event</th><th style={{ width: 90, textAlign: "right" }}>Status</th><th style={{ width: 80, textAlign: "right" }}>ms</th><th className="col-actions" style={{ width: 60 }}></th></tr></thead>
-          <tbody>
+        <Table className={ADMIN_TABLE_CLS}>
+          <TableHeader><TableRow><TableHead className="w-[100px]">Time</TableHead><TableHead className="w-[80px]">Hook</TableHead><TableHead>Event</TableHead><TableHead className="w-[90px] text-right">Status</TableHead><TableHead className="w-[80px] text-right">ms</TableHead><TableHead className="sticky right-0 w-[60px] bg-card" /></TableRow></TableHeader>
+          <TableBody>
             {deliveries.map((d, i) => (
-              <tr key={i}>
-                <td className="font-mono muted tabular-nums" style={{ fontSize: 11.5 }}>{d.t}</td>
-                <td className="font-mono" style={{ fontSize: 12 }}>{d.hook}</td>
-                <td className="font-mono" style={{ fontSize: 12 }}>{d.ev}</td>
-                <td className="tabular-nums" style={{ textAlign: "right" }}><Badge variant={d.code < 300 ? "default" : "destructive"}>{d.code}</Badge></td>
-                <td className="tabular-nums muted" style={{ textAlign: "right" }}>{d.ms}</td>
-                <td className="col-actions" style={{ textAlign: "right" }}>
+              <TableRow key={i}>
+                <TableCell className="font-mono text-[11.5px] tabular-nums text-muted-foreground">{d.t}</TableCell>
+                <TableCell className="font-mono text-xs">{d.hook}</TableCell>
+                <TableCell className="font-mono text-xs">{d.ev}</TableCell>
+                <TableCell className="text-right tabular-nums"><Badge variant={d.code < 300 ? "default" : "destructive"}>{d.code}</Badge></TableCell>
+                <TableCell className="text-right tabular-nums text-muted-foreground">{d.ms}</TableCell>
+                <TableCell className="sticky right-0 bg-card text-right">
                   <Button variant="ghost" size="sm" onClick={async () => {
                     try {
                       await api(`/api/webhooks/_deliveries/${d.id}/retry`, { method: "POST" });
@@ -259,21 +264,20 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
                       pushToast((e as Error).message);
                     }
                   }}>Retry</Button>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
             {deliveries.length === 0 && (
-              <tr><td colSpan={6}>
-                <div className="empty" style={{ padding: "32px 0" }}>
+              <TableRow><TableCell colSpan={6}>
+                <div className="flex flex-col items-center gap-3 py-8 text-center">
                   <I.Activity size={20} />
-                  <h4>No deliveries yet</h4>
-                  <p>Outgoing webhook deliveries will show up here once a collection event fires.</p>
+                  <h4 className="m-0 text-[15px] font-semibold">No deliveries yet</h4>
+                  <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground">Outgoing webhook deliveries will show up here once a collection event fires.</p>
                 </div>
-              </td></tr>
+              </TableCell></TableRow>
             )}
-          </tbody>
-        </table>
-        </div>
+          </TableBody>
+        </Table>
       </div>
 
       {editor && <WebhookEditorDialog mode={editor.mode} hook={editor.hook} onClose={() => setEditor(null)} onSave={saveHook} pushToast={pushToast} />}
@@ -304,80 +308,80 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
   };
 
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog-lg" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} style={{ width: 640, maxWidth: "92vw" }}>
-        <div className="sheet-header" style={{ borderBottom: "1px solid var(--border)" }}>
-          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10 }}>
+    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={onClose}>
+      <div className="relative flex max-h-[min(86vh,720px)] w-[640px] max-w-[92vw] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
+          <div className="flex flex-1 items-center gap-2.5">
             <I.Webhook size={16} />
             <div>
-              <h2>{mode === "create" ? "New webhook" : "Edit webhook"}</h2>
-              <p>{mode === "create" ? "POST to any HTTPS endpoint when collection events fire." : <>id <span className="font-mono">{hook?.id}</span></>}</p>
+              <h2 className="m-0 text-base font-semibold tracking-[-0.01em]">{mode === "create" ? "New webhook" : "Edit webhook"}</h2>
+              <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">{mode === "create" ? "POST to any HTTPS endpoint when collection events fire." : <>id <span className="font-mono">{hook?.id}</span></>}</p>
             </div>
           </div>
           <IconButton icon={I.X} onClick={onClose} title="Close" />
         </div>
 
-        <div className="dialog-body">
-          <div className="field">
-            <label className="field-label">Name <span style={{ color: "var(--destructive)" }}>*</span></label>
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Name <span className="text-destructive">*</span></label>
             <Input aria-invalid={!!errors.name} autoFocus value={draft.name} onChange={(e) => update("name", e.target.value)} placeholder="Slack #content" />
-            {errors.name && <div className="field-error"><I.AlertTriangle size={11} />{errors.name}</div>}
+            {errors.name && <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{errors.name}</div>}
           </div>
 
-          <div className="field">
-            <label className="field-label">Endpoint URL <span style={{ color: "var(--destructive)" }}>*</span></label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <Select size="sm" value={draft.method} onChange={(v) => update("method", v)} style={{ width: 100, height: 36 }} options={["POST", "PUT", "PATCH"]} />
-              <Input className="font-mono" aria-invalid={!!errors.url} style={{ flex: 1, fontSize: 12.5 }} value={draft.url} onChange={(e) => update("url", e.target.value)} placeholder="https://api.example.com/webhooks/workeros" />
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Endpoint URL <span className="text-destructive">*</span></label>
+            <div className="flex gap-2">
+              <Select size="sm" value={draft.method} onChange={(v) => update("method", v)} className="h-9 w-[100px]" options={["POST", "PUT", "PATCH"]} />
+              <Input className="font-mono flex-1 text-[12.5px]" aria-invalid={!!errors.url} value={draft.url} onChange={(e) => update("url", e.target.value)} placeholder="https://api.example.com/webhooks/workeros" />
             </div>
-            {errors.url ? <div className="field-error"><I.AlertTriangle size={11} />{errors.url}</div> : <span className="field-hint">Must accept the chosen HTTP method and respond with 2xx within 10s.</span>}
+            {errors.url ? <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{errors.url}</div> : <span className="text-[11.5px] text-muted-foreground">Must accept the chosen HTTP method and respond with 2xx within 10s.</span>}
           </div>
 
-          <div className="field">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <label className="field-label">Events <span style={{ color: "var(--destructive)" }}>*</span></label>
-              <span className="muted" style={{ fontSize: 11.5 }}>{draft.events.length} selected</span>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Events <span className="text-destructive">*</span></label>
+              <span className="text-[11.5px] text-muted-foreground">{draft.events.length} selected</span>
             </div>
-            <div className="wh-events">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-1.5 rounded-xl border border-border bg-muted p-2.5">
               {WH_EVENTS.map((ev) => {
                 const on = draft.events.includes(ev);
                 return (
-                  <button key={ev} type="button" className={`wh-event ${on ? "on" : ""}`} onClick={() => toggleEvent(ev)}>
+                  <button key={ev} type="button" className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 ${on ? "border-[color-mix(in_oklch,var(--primary)_50%,var(--border))] bg-muted text-foreground" : "border-border bg-card text-muted-foreground hover:border-[color-mix(in_oklch,var(--foreground)_25%,var(--border))] hover:text-foreground"}`} onClick={() => toggleEvent(ev)}>
                     {on ? <I.Check size={11} /> : <I.Plus size={11} />}
-                    <span className="font-mono" style={{ fontSize: 11.5 }}>{ev}</span>
+                    <span className="font-mono text-[11.5px]">{ev}</span>
                   </button>
                 );
               })}
             </div>
-            {errors.events && <div className="field-error"><I.AlertTriangle size={11} />{errors.events}</div>}
+            {errors.events && <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{errors.events}</div>}
           </div>
 
-          <div className="field">
-            <label className="field-label">Signing secret</label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <Input className="font-mono" style={{ flex: 1, fontSize: 12.5 }} type={revealSecret ? "text" : "password"} value={draft.secret} readOnly />
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Signing secret</label>
+            <div className="flex gap-2">
+              <Input className="font-mono flex-1 text-[12.5px]" type={revealSecret ? "text" : "password"} value={draft.secret} readOnly />
               <Button variant="outline" size="sm" icon={revealSecret ? I.X : I.Eye} onClick={() => setRevealSecret(!revealSecret)}>{revealSecret ? "Hide" : "Show"}</Button>
               <Button variant="outline" size="sm" icon={I.Refresh} onClick={() => { update("secret", "whsec_" + Math.random().toString(16).slice(2, 14)); pushToast("Secret rotated."); }}>Rotate</Button>
             </div>
-            <span className="field-hint">Sent as <span className="font-mono">X-Workeros-Signature: sha256=…</span>. Verify on the receiver.</span>
+            <span className="text-[11.5px] text-muted-foreground">Sent as <span className="font-mono">X-Workeros-Signature: sha256=…</span>. Verify on the receiver.</span>
           </div>
 
-          <div className="field">
-            <label className="field-label">Custom headers</label>
-            <Textarea className="font-mono" style={{ minHeight: 70, fontSize: 12 }} value={draft.headers} onChange={(e) => update("headers", e.target.value)} placeholder={"Authorization: Bearer …\nX-Tenant: workeros"} />
-            <span className="field-hint">One per line. <span className="font-mono">Content-Type</span> and <span className="font-mono">X-Workeros-*</span> are reserved.</span>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Custom headers</label>
+            <Textarea className="font-mono min-h-[70px] text-xs" value={draft.headers} onChange={(e) => update("headers", e.target.value)} placeholder={"Authorization: Bearer …\nX-Tenant: workeros"} />
+            <span className="text-[11.5px] text-muted-foreground">One per line. <span className="font-mono">Content-Type</span> and <span className="font-mono">X-Workeros-*</span> are reserved.</span>
           </div>
 
-          <div className="field-row">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 500 }}>Active</div>
-              <div className="muted" style={{ fontSize: 11.5 }}>Deliveries pause immediately when off; queued events are dropped after 24h.</div>
+              <div className="text-[12.5px] font-medium">Active</div>
+              <div className="text-[11.5px] text-muted-foreground">Deliveries pause immediately when off; queued events are dropped after 24h.</div>
             </div>
             <Switch checked={draft.active} onChange={(v) => update("active", v)} />
           </div>
         </div>
 
-        <div className="sheet-footer">
+        <div className="flex justify-end gap-2 border-t border-border bg-card px-5 py-3">
           {mode === "edit" && <Button variant="ghost" icon={I.Bolt} onClick={async () => {
             try {
               await api(`/api/webhooks/${draft.id}/test`, { method: "POST" });
@@ -386,7 +390,7 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
               pushToast((e as Error).message);
             }
           }}>Send test</Button>}
-          <div className="spacer" />
+          <div className="flex-1" />
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button variant="primary" onClick={submit}>{mode === "create" ? "Create webhook" : "Save changes"}</Button>
         </div>

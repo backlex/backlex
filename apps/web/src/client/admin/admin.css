@@ -55,8 +55,8 @@ body {
   border-radius: var(--radius-sm);
   display: grid; place-items: center;
   font-family: 'Geist Mono', monospace; font-weight: 700; font-size: 12px;
-  background: var(--primary);
-  color: var(--primary-foreground);
+  background: var(--ws-color, var(--primary));
+  color: oklch(from var(--ws-color, var(--primary)) clamp(0.18, (0.62 - l) * 1000, 0.95) 0.04 h);
   flex: none;
 }
 .ws-meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }

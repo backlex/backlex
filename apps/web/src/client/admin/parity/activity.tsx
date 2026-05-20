@@ -1,8 +1,16 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
 import { I } from "../icons";
-import { Badge, Button, IconButton, JsonBlock, PageHeader } from "../ui";
+import { Badge, Button, JsonBlock, PageHeader } from "../ui";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
+import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { activityApi, type ApiActivity } from "../api";
 
 const ADMIN_TABLE_CLS =
@@ -74,11 +82,13 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
         URL.revokeObjectURL(url);
         pushToast("Exported as activity.csv.");
       }}>Export</Button>} />
-      <div className="flex flex-wrap items-center gap-2">
-        {["all", "item", "auth", "schema", "role", "storage", "flow", "function", "webhook", "backup"].map((k) => (
-          <button key={k} className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border px-[11px] text-[12.5px] text-foreground hover:bg-accent ${filter === k ? "border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent" : "border-border bg-card"}`} onClick={() => setFilter(k)}>{k} <span className="tabular-nums text-muted-foreground">{k === "all" ? events.length : events.filter((e) => e.action.startsWith(k)).length}</span></button>
-        ))}
-      </div>
+      <Tabs value={filter} onValueChange={(v) => setFilter(v)}>
+        <TabsList className="flex-wrap">
+          {["all", "item", "auth", "schema", "role", "storage", "flow", "function", "webhook", "backup"].map((k) => (
+            <TabsTrigger key={k} value={k}>{k} <span className="tabular-nums text-muted-foreground">{k === "all" ? events.length : events.filter((e) => e.action.startsWith(k)).length}</span></TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
       <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
         <Table className={ADMIN_TABLE_CLS}>
           <TableHeader><TableRow><TableHead className="w-[160px] whitespace-nowrap">Time</TableHead><TableHead className="w-[90px] text-right">Duration</TableHead><TableHead className="w-[140px]">Action</TableHead><TableHead>Resource</TableHead><TableHead>Diff</TableHead><TableHead className="w-[130px]">IP</TableHead></TableRow></TableHeader>
@@ -131,13 +141,6 @@ function ActivityEventDialog({
   actionColor: (a: string) => "default" | "secondary" | "destructive" | "outline";
   onClose: () => void;
 }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
   const fullTs = (() => {
     const d = new Date(evt.raw.createdAt);
     return Number.isNaN(d.getTime()) ? evt.t : d.toISOString().replace("T", " ").replace("Z", " UTC");
@@ -147,25 +150,18 @@ function ActivityEventDialog({
   const userAgent = evt.raw.userAgent;
   const durationMs = evt.raw.durationMs;
   return (
-    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={onClose}>
-      <div
-        className="relative flex max-h-[min(86vh,720px)] w-[min(720px,92vw)] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-label={`${evt.action} activity detail`}
-      >
-        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
-          <div>
-            <div className="mb-1 flex items-center gap-2">
-              <Badge variant={actionColor(evt.action)} mono>{evt.action}</Badge>
-              <span className="font-mono text-xs text-muted-foreground">{collection}{itemId ? "/" + itemId : ""}</span>
-            </div>
-            <h3 className="m-0 text-sm font-medium">
-              {evt.actor}
-            </h3>
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[720px]">
+        <DialogTitle className="sr-only">{`${evt.action} activity detail`}</DialogTitle>
+        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+          <div className="mb-1 flex items-center gap-2">
+            <Badge variant={actionColor(evt.action)} mono>{evt.action}</Badge>
+            <span className="font-mono text-xs text-muted-foreground">{collection}{itemId ? "/" + itemId : ""}</span>
           </div>
-          <IconButton icon={I.X} onClick={onClose} />
-        </div>
+          <h3 className="m-0 text-sm font-medium">
+            {evt.actor}
+          </h3>
+        </DialogHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
           <div className="grid grid-cols-[140px_1fr] gap-x-3.5 gap-y-2 text-[12.5px]">
             <span className="text-muted-foreground">Time</span>
@@ -204,11 +200,10 @@ function ActivityEventDialog({
             <JsonBlock label="Response" value={evt.raw.response} />
           )}
         </div>
-        <div className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
-          <div className="flex-1" />
+        <DialogFooter className="border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <Button variant="ghost" size="sm" onClick={onClose}>Close</Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

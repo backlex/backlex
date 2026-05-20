@@ -420,6 +420,30 @@ export const comments = sqliteTable(
   ],
 );
 
+/**
+ * Public, unauthenticated, read-only share links to a single record. The
+ * plaintext token is shown once on creation; only its SHA-256 hash is stored.
+ * Links never expire but are revocable (`revoked_at`).
+ */
+export const sharedLinks = sqliteTable(
+  "shared_links",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    collection: text("collection").notNull(),
+    itemId: text("item_id").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    createdBy: text("created_by"),
+    /** Nullable — set when the link is revoked. Null = active. */
+    revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    uniqueIndex("shared_links_token_idx").on(t.tokenHash),
+    index("shared_links_item_idx").on(t.collection, t.itemId),
+  ],
+);
+
 export const notifications = sqliteTable(
   "notifications",
   {

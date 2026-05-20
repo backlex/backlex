@@ -1,15 +1,39 @@
-// Logs page — multi-source structured log explorer.
+// Logs page — unified log explorer (formerly "Logs" + "Activity log").
 //
-// This is a lens over the `activity` audit table (`GET /api/activity`): there
-// is no separate logging pipeline, the activity log IS the store. Each row is
-// projected into a source (HTTP / Data / Automation / Functions / Storage) and
-// a derived level (info / warn / error), then rendered in the log-row UI.
+// This is the single lens over the `activity` audit table
+// (`GET /api/activity`): there is no separate logging pipeline, the activity
+// log IS the store. The page offers two views over the same data:
+//
+//   - Stream — multi-source structured log explorer. Each row is projected
+//     into a source (HTTP / Data / Automation / Functions / Storage) and a
+//     derived level (info / warn / error).
+//   - Table  — append-only audit trail with Time / Duration / Action /
+//     Resource / Diff / IP columns and a click-through detail modal.
+//
+// The time range and the action-category filter are pushed to the *server*
+// (`from` + `action` query params) and the data layer paginates via
+// `useInfiniteQuery`, so the view is never clipped to the freshest 200 rows.
 import { useMemo, useState, type CSSProperties } from "react";
 import { I, type IconComponent, type IconKey } from "../icons";
-import { Badge, Button, IconButton, PageHeader } from "../ui";
+import { Badge, Button, IconButton, JsonBlock, PageHeader } from "../ui";
 import { Input } from "@workeros/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { Skeleton } from "@workeros/ui/components/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@workeros/ui/components/table";
 import { useActivity } from "../queries";
 import { authorById } from "../items";
 import type { ApiActivity } from "../api";
@@ -17,9 +41,13 @@ import type { ApiActivity } from "../api";
 type LogLevel = "info" | "warn" | "error";
 type LevelFilter = LogLevel | "any";
 type RangeFilter = "15m" | "1h" | "24h" | "7d";
+type ViewMode = "stream" | "table";
 
-/** Source ids the page projects activity rows into. `other` is only surfaced
- *  when at least one row lands there. */
+/** Page size for each server request — also the infinite-query cursor step. */
+const PAGE_SIZE = 100;
+
+/** Source ids the Stream view projects activity rows into. `other` is only
+ *  surfaced when at least one row lands there. */
 type SourceId = "http" | "data" | "automation" | "functions" | "storage" | "other";
 
 interface SourceDef {
@@ -44,6 +72,22 @@ const RANGE_MS: Record<RangeFilter, number> = {
   "7d": 7 * 24 * 60 * 60 * 1000,
 };
 
+/** Action-category chips for the Table view. Each chip sets the server-side
+ *  `action` prefix filter; `all` clears it. */
+const CATEGORY_CHIPS = [
+  "all",
+  "item",
+  "auth",
+  "schema",
+  "role",
+  "storage",
+  "flow",
+  "function",
+  "webhook",
+  "backup",
+] as const;
+type CategoryChip = (typeof CATEGORY_CHIPS)[number];
+
 /** A normalized activity row, projected into the log-row shape. */
 interface LogRow {
   id: string;
@@ -59,8 +103,12 @@ interface LogRow {
   userAgent: string | null;
   msg: string;
   action: string;
+  collection: string | null;
+  itemId: string | null;
   payload: unknown;
   response: unknown;
+  /** Original epoch ms of `createdAt`, kept for ISO rendering. */
+  createdAt: unknown;
 }
 
 /** Map the action category (the part before the first `.`) to a source. */
@@ -148,13 +196,17 @@ function projectRow(a: ApiActivity): LogRow {
     method,
     path,
     ms: a.durationMs,
+    // Always resolve the actor to a human name — never surface the raw UUID.
     user: a.userId ? authorById(a.userId).name : "system",
     ip: a.ip,
     userAgent: a.userAgent,
     msg,
     action,
+    collection: a.collection ?? null,
+    itemId: a.itemId ?? null,
     payload: a.payload,
     response: a.response,
+    createdAt: a.createdAt,
   };
 }
 
@@ -164,29 +216,250 @@ const fmtTime = (ts: number): string => {
   return new Date(ts).toISOString().slice(11, 23);
 };
 
-export function LogsPage({ pushToast }: { pushToast: (m: string, type?: "success" | "error") => void }) {
-  const [src, setSrc] = useState<SourceId | null>(null);
-  const [level, setLevel] = useState<LevelFilter>("any");
+const fmtTableTime = (ts: number): string => {
+  if (!ts) return "—";
+  return new Date(ts).toISOString().replace("T", " ").slice(0, 19);
+};
+
+const formatDuration = (ms: number | null): string => {
+  if (ms == null || !Number.isFinite(ms)) return "—";
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+};
+
+export function LogsPage({
+  pushToast,
+}: {
+  pushToast: (m: string, type?: "success" | "error") => void;
+}) {
+  // View switch + shared controls.
+  const [view, setView] = useState<ViewMode>("stream");
+  const [range, setRange] = useState<RangeFilter>("24h");
   const [q, setQ] = useState("");
   const [live, setLive] = useState(false);
+
+  // Stream-view filters.
+  const [src, setSrc] = useState<SourceId | null>(null);
+  const [level, setLevel] = useState<LevelFilter>("any");
   const [selected, setSelected] = useState<LogRow | null>(null);
-  const [range, setRange] = useState<RangeFilter>("24h");
 
-  const { data, isLoading, isError } = useActivity(200, live);
+  // Table-view filters.
+  const [category, setCategory] = useState<CategoryChip>("all");
+  const [openRow, setOpenRow] = useState<LogRow | null>(null);
 
-  // All activity rows, projected.
+  // `from` is recomputed each render from the range so a refetch always uses
+  // a window relative to *now* (avoids a stale cutoff frozen at mount).
+  const from = Date.now() - RANGE_MS[range];
+
+  // The action prefix only applies to the Table view; the Stream view keeps
+  // its own client-side source projection (HTTP/Data/…). Sending `action`
+  // unconditionally would hide rows from the Stream sources.
+  const actionFilter =
+    view === "table" && category !== "all" ? category : undefined;
+
+  const {
+    data,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useActivity(
+    {
+      // Bucket `from` to whole minutes so small render-to-render drift doesn't
+      // thrash the query key (and the cache) on every keystroke / interval.
+      from: Math.floor(from / 60000) * 60000,
+      action: actionFilter,
+      pageSize: PAGE_SIZE,
+    },
+    live,
+  );
+
+  // Flatten every loaded page into a single projected list.
   const allRows = useMemo<LogRow[]>(
-    () => (data?.data ?? []).map(projectRow),
+    () => (data?.pages ?? []).flatMap((p) => p.data).map(projectRow),
     [data],
   );
 
-  // Rows inside the selected time range.
-  const inRange = useMemo<LogRow[]>(() => {
-    const cutoff = Date.now() - RANGE_MS[range];
-    return allRows.filter((r) => r.ts >= cutoff);
-  }, [allRows, range]);
+  // Server-reported total for the current filters (independent of paging).
+  const totalCount = data?.pages?.[0]?.meta?.count ?? null;
 
-  // Per-source row counts (within the time range) — feeds the tab badges.
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <PageHeader
+        title="Logs"
+        description="Unified log explorer over the activity audit store. Switch between the Stream lens (HTTP, data, automation, functions, storage) and the Table audit trail — both read the same rows."
+        badges={
+          <>
+            <Badge variant="outline" mono>
+              last {range}
+            </Badge>
+            {totalCount != null && (
+              <Badge variant="outline" mono>
+                {totalCount} total
+              </Badge>
+            )}
+          </>
+        }
+        actions={
+          <>
+            <Tabs value={view} onValueChange={(v) => setView(v as ViewMode)}>
+              <TabsList>
+                <TabsTrigger value="stream">
+                  <I.ScrollText size={13} />
+                  <span>Stream</span>
+                </TabsTrigger>
+                <TabsTrigger value="table">
+                  <I.LayoutList size={13} />
+                  <span>Table</span>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <Button
+              variant={live ? "primary" : "outline"}
+              icon={live ? I.Zap : I.Play}
+              onClick={() => {
+                setLive((v) => {
+                  pushToast(v ? "Live tail paused." : "Live tail resumed.");
+                  return !v;
+                });
+              }}
+            >
+              {live ? "Live" : "Resume"}
+            </Button>
+          </>
+        }
+      />
+
+      {/* Shared range control + search */}
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ flex: 1, position: "relative" }}>
+          <I.Search
+            size={13}
+            style={{
+              position: "absolute",
+              left: 12,
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "var(--muted-foreground)",
+            }}
+          />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="search loaded rows — path, action, user, message…"
+            style={{ paddingLeft: 32 }}
+          />
+        </div>
+        <Tabs value={range} onValueChange={(v) => setRange(v as RangeFilter)}>
+          <TabsList>
+            {(["15m", "1h", "24h", "7d"] as RangeFilter[]).map((r) => (
+              <TabsTrigger key={r} value={r}>
+                {r}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {isLoading ? (
+        <div
+          className="card"
+          style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}
+        >
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-11 w-full" />
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      ) : isError ? (
+        <div className="card empty">
+          <div className="ico">
+            <I.AlertTriangle size={18} />
+          </div>
+          <h4>Couldn't load logs</h4>
+          <p>The activity endpoint returned an error. Try again in a moment.</p>
+        </div>
+      ) : allRows.length === 0 ? (
+        <div className="card empty">
+          <div className="ico">
+            <I.ScrollText size={18} />
+          </div>
+          <h4>No activity in this window</h4>
+          <p>
+            Nothing landed in the last {range}. Widen the range, or wait for
+            requests, item writes, and automation runs to flow in.
+          </p>
+        </div>
+      ) : view === "stream" ? (
+        <StreamView
+          rows={allRows}
+          range={range}
+          q={q}
+          src={src}
+          setSrc={setSrc}
+          level={level}
+          setLevel={setLevel}
+          selected={selected}
+          setSelected={setSelected}
+          hasNextPage={!!hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          onLoadMore={() => void fetchNextPage()}
+          pushToast={pushToast}
+        />
+      ) : (
+        <TableView
+          rows={allRows}
+          q={q}
+          category={category}
+          setCategory={setCategory}
+          openRow={openRow}
+          setOpenRow={setOpenRow}
+          totalCount={totalCount}
+          hasNextPage={!!hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          onLoadMore={() => void fetchNextPage()}
+          pushToast={pushToast}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Stream view                                                         */
+/* ------------------------------------------------------------------ */
+
+function StreamView({
+  rows,
+  range,
+  q,
+  src,
+  setSrc,
+  level,
+  setLevel,
+  selected,
+  setSelected,
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
+  pushToast,
+}: {
+  rows: LogRow[];
+  range: RangeFilter;
+  q: string;
+  src: SourceId | null;
+  setSrc: (s: SourceId | null) => void;
+  level: LevelFilter;
+  setLevel: (l: LevelFilter | ((p: LevelFilter) => LevelFilter)) => void;
+  selected: LogRow | null;
+  setSelected: (r: LogRow | null) => void;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  onLoadMore: () => void;
+  pushToast: (m: string, type?: "success" | "error") => void;
+}) {
+  // Per-source row counts (within the loaded window) — feeds the tab badges.
   const sourceCounts = useMemo<Record<SourceId, number>>(() => {
     const out: Record<SourceId, number> = {
       http: 0,
@@ -196,9 +469,9 @@ export function LogsPage({ pushToast }: { pushToast: (m: string, type?: "success
       storage: 0,
       other: 0,
     };
-    for (const r of inRange) out[r.src]++;
+    for (const r of rows) out[r.src]++;
     return out;
-  }, [inRange]);
+  }, [rows]);
 
   // Visible source tabs: the fixed five, plus Other only when it has rows.
   const sources = useMemo(
@@ -221,10 +494,10 @@ export function LogsPage({ pushToast }: { pushToast: (m: string, type?: "success
     return best;
   }, [src, sources, sourceCounts]);
 
-  // Rows for the active source (range-filtered, before level/search).
+  // Rows for the active source (before level/search).
   const sourceRows = useMemo(
-    () => inRange.filter((r) => r.src === activeSrc),
-    [inRange, activeSrc],
+    () => rows.filter((r) => r.src === activeSrc),
+    [rows, activeSrc],
   );
 
   // Derived level counts for the active source — drives the filter buttons.
@@ -246,8 +519,8 @@ export function LogsPage({ pushToast }: { pushToast: (m: string, type?: "success
     });
   }, [sourceRows, level, q]);
 
-  // Sparkline — real per-bucket row counts for the active source across the
-  // selected range (24 buckets).
+  // Sparkline — per-bucket row counts for the active source across the
+  // selected range (48 buckets).
   const spark = useMemo(() => {
     const BUCKETS = 48;
     const span = RANGE_MS[range];
@@ -263,18 +536,16 @@ export function LogsPage({ pushToast }: { pushToast: (m: string, type?: "success
   }, [sourceRows, range]);
   const sparkMax = Math.max(...spark, 1);
 
-  const levelButtons: { k: LevelFilter; label: string; color: string; count: number }[] = [
+  const levelButtons: {
+    k: LevelFilter;
+    label: string;
+    color: string;
+    count: number;
+  }[] = [
     { k: "info", label: "info", color: "var(--muted-foreground)", count: counts.info },
     { k: "warn", label: "warn", color: "oklch(0.65 0.18 70)", count: counts.warn },
     { k: "error", label: "error", color: "var(--destructive)", count: counts.error },
   ];
-
-  const toggleLive = () => {
-    setLive((v) => {
-      pushToast(v ? "Live tail paused." : "Live tail resumed.");
-      return !v;
-    });
-  };
 
   const exportNdjson = () => {
     if (filtered.length === 0) {
@@ -316,185 +587,165 @@ export function LogsPage({ pushToast }: { pushToast: (m: string, type?: "success
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-      <PageHeader
-        title="Logs"
-        description="Structured logs across runtime planes. Same store as the audit log, projected through different lenses — HTTP, data, automation, functions, and storage."
-        badges={<Badge variant="outline" mono>last {range}</Badge>}
-        actions={
-          <>
-            <Button variant="outline" icon={I.Download} onClick={exportNdjson}>
-              Export NDJSON
-            </Button>
-            <Button variant={live ? "primary" : "outline"} icon={live ? I.Zap : I.Play} onClick={toggleLive}>
-              {live ? "Live" : "Resume"}
-            </Button>
-          </>
-        }
-      />
+    <>
+      {/* Source tabs + export */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Tabs
+          value={activeSrc}
+          onValueChange={(v) => {
+            setSrc(v as SourceId);
+            setSelected(null);
+          }}
+        >
+          <TabsList>
+            {sources.map((s) => {
+              const IconComp =
+                (I as Record<string, IconComponent>)[s.icon] ?? I.Activity;
+              return (
+                <TabsTrigger key={s.id} value={s.id}>
+                  <IconComp size={13} />
+                  <span>{s.label}</span>
+                  <span className="count">{sourceCounts[s.id]}</span>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </Tabs>
+        <div style={{ flex: 1 }} />
+        <Button variant="outline" icon={I.Download} onClick={exportNdjson}>
+          Export NDJSON
+        </Button>
+      </div>
 
-      {isLoading ? (
-        <div className="card" style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-          <Skeleton className="h-9 w-full" />
-          <Skeleton className="h-11 w-full" />
-          <Skeleton className="h-9 w-full" />
-          <Skeleton className="h-64 w-full" />
+      {/* Volume + level summary */}
+      <div
+        className="card"
+        style={{
+          padding: 14,
+          display: "grid",
+          gridTemplateColumns: "1fr auto auto auto",
+          gap: 14,
+          alignItems: "center",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 44 }}>
+          {spark.map((v, i) => (
+            <div
+              // Bucket index is a stable position in a fixed-length array.
+              key={`spark-${i}`}
+              title={`${v} ${v === 1 ? "entry" : "entries"}`}
+              style={{
+                flex: 1,
+                height: `${Math.max((v / sparkMax) * 100, v > 0 ? 6 : 2)}%`,
+                background:
+                  v > 0
+                    ? "color-mix(in oklch, var(--primary) 70%, transparent)"
+                    : "var(--muted)",
+                borderRadius: 2,
+                minWidth: 3,
+              }}
+            />
+          ))}
         </div>
-      ) : isError ? (
-        <div className="card empty">
-          <div className="ico"><I.AlertTriangle size={18} /></div>
-          <h4>Couldn't load logs</h4>
-          <p>The activity endpoint returned an error. Try again in a moment.</p>
-        </div>
-      ) : allRows.length === 0 ? (
-        <div className="card empty">
-          <div className="ico"><I.ScrollText size={18} /></div>
-          <h4>No activity yet</h4>
-          <p>Once requests, item writes, and automation runs start flowing, they'll show up here.</p>
-        </div>
-      ) : (
-        <>
-          {/* Source tabs */}
-          <Tabs value={activeSrc} onValueChange={(v) => { setSrc(v as SourceId); setSelected(null); }}>
-            <TabsList>
-              {sources.map((s) => {
-                const IconComp = (I as Record<string, IconComponent>)[s.icon] ?? I.Activity;
-                return (
-                  <TabsTrigger key={s.id} value={s.id}>
-                    <IconComp size={13} />
-                    <span>{s.label}</span>
-                    <span className="count">{sourceCounts[s.id]}</span>
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-          </Tabs>
-
-          {/* Volume + level summary */}
-          <div
-            className="card"
-            style={{
-              padding: 14,
-              display: "grid",
-              gridTemplateColumns: "1fr auto auto auto",
-              gap: 14,
-              alignItems: "center",
-            }}
+        {levelButtons.map((x) => (
+          <Button
+            key={x.k}
+            variant={level === x.k ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => setLevel((cur) => (cur === x.k ? "any" : x.k))}
           >
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 44 }}>
-              {spark.map((v, i) => (
-                <div
-                  key={i}
-                  title={`${v} ${v === 1 ? "entry" : "entries"}`}
-                  style={{
-                    flex: 1,
-                    height: `${Math.max((v / sparkMax) * 100, v > 0 ? 6 : 2)}%`,
-                    background:
-                      v > 0
-                        ? "color-mix(in oklch, var(--primary) 70%, transparent)"
-                        : "var(--muted)",
-                    borderRadius: 2,
-                    minWidth: 3,
-                  }}
-                />
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 999,
+                background: x.color,
+                display: "inline-block",
+              }}
+            />
+            <span className="font-mono">{x.label}</span>
+            <span
+              className="font-mono tabular-nums"
+              style={{ color: "var(--muted-foreground)" }}
+            >
+              {x.count}
+            </span>
+          </Button>
+        ))}
+      </div>
+
+      {/* Log stream + detail */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: selected ? "1fr 400px" : "1fr",
+          gap: 14,
+          alignItems: "start",
+        }}
+      >
+        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          {filtered.length === 0 ? (
+            <div className="empty">
+              <div className="ico">
+                <I.ScrollText size={18} />
+              </div>
+              <h4>No log entries match</h4>
+              <p>Try a wider time range or clear the level filter.</p>
+            </div>
+          ) : (
+            <div>
+              {filtered.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  className={`log-row ${selected?.id === r.id ? "sel" : ""} log-${r.level}`}
+                  onClick={() => setSelected(r)}
+                >
+                  <span className="log-t font-mono">{fmtTime(r.ts)}</span>
+                  <span className={`log-pill log-pill-${r.level}`}>{r.level}</span>
+                  <span className={`log-method log-method-${r.method.toLowerCase()}`}>
+                    {r.method}
+                  </span>
+                  {r.status != null && (
+                    <span
+                      className={`log-status log-s-${Math.floor(r.status / 100)}`}
+                    >
+                      {r.status}
+                    </span>
+                  )}
+                  <span className="log-path font-mono">{r.path}</span>
+                  {r.ms != null && (
+                    <span className="log-ms font-mono tabular-nums">{r.ms}ms</span>
+                  )}
+                  <span className="log-msg">{r.msg}</span>
+                </button>
               ))}
             </div>
-            {levelButtons.map((x) => (
-              <Button
-                key={x.k}
-                variant={level === x.k ? "secondary" : "outline"}
-                size="sm"
-                onClick={() => setLevel((cur) => (cur === x.k ? "any" : x.k))}
-              >
-                <span
-                  style={{ width: 8, height: 8, borderRadius: 999, background: x.color, display: "inline-block" }}
-                />
-                <span className="font-mono">{x.label}</span>
-                <span className="font-mono tabular-nums" style={{ color: "var(--muted-foreground)" }}>
-                  {x.count}
-                </span>
-              </Button>
-            ))}
-          </div>
+          )}
+          <LoadMoreBar
+            loadedLabel={`${filtered.length} shown · ${rows.length} loaded`}
+            hasNextPage={hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            onLoadMore={onLoadMore}
+          />
+        </div>
 
-          {/* Search + range */}
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <div style={{ flex: 1, position: "relative" }}>
-              <I.Search
-                size={13}
-                style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--muted-foreground)" }}
-              />
-              <Input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder="search path, method, user, message…"
-                style={{ paddingLeft: 32 }}
-              />
-            </div>
-            <Tabs value={range} onValueChange={(v) => setRange(v as RangeFilter)}>
-              <TabsList>
-                {(["15m", "1h", "24h", "7d"] as RangeFilter[]).map((r) => (
-                  <TabsTrigger key={r} value={r}>
-                    {r}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
-          </div>
-
-          {/* Log stream + detail */}
-          <div style={{ display: "grid", gridTemplateColumns: selected ? "1fr 400px" : "1fr", gap: 14, alignItems: "start" }}>
-            <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-              {filtered.length === 0 ? (
-                <div className="empty">
-                  <div className="ico"><I.ScrollText size={18} /></div>
-                  <h4>No log entries match</h4>
-                  <p>Try a wider time range or clear the level filter.</p>
-                </div>
-              ) : (
-                <div>
-                  {filtered.map((r) => (
-                    <button
-                      key={r.id}
-                      type="button"
-                      className={`log-row ${selected?.id === r.id ? "sel" : ""} log-${r.level}`}
-                      onClick={() => setSelected(r)}
-                    >
-                      <span className="log-t font-mono">{fmtTime(r.ts)}</span>
-                      <span className={`log-pill log-pill-${r.level}`}>{r.level}</span>
-                      <span className={`log-method log-method-${r.method.toLowerCase()}`}>{r.method}</span>
-                      {r.status != null && (
-                        <span className={`log-status log-s-${Math.floor(r.status / 100)}`}>{r.status}</span>
-                      )}
-                      <span className="log-path font-mono">{r.path}</span>
-                      {r.ms != null && (
-                        <span className="log-ms font-mono tabular-nums">{r.ms}ms</span>
-                      )}
-                      <span className="log-msg">{r.msg}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {selected && (
-              <LogDetail
-                row={selected}
-                onClose={() => setSelected(null)}
-                onCopyId={() => {
-                  try {
-                    void navigator.clipboard.writeText(selected.id);
-                    pushToast("Entry id copied to clipboard.");
-                  } catch {
-                    pushToast("Could not copy entry id.", "error");
-                  }
-                }}
-              />
-            )}
-          </div>
-        </>
-      )}
-    </div>
+        {selected && (
+          <LogDetail
+            row={selected}
+            onClose={() => setSelected(null)}
+            onCopyId={() => {
+              try {
+                void navigator.clipboard.writeText(selected.id);
+                pushToast("Entry id copied to clipboard.");
+              } catch {
+                pushToast("Could not copy entry id.", "error");
+              }
+            }}
+          />
+        )}
+      </div>
+    </>
   );
 }
 
@@ -506,13 +757,31 @@ const sectionLabel: CSSProperties = {
   marginBottom: 6,
 };
 
-function LogDetail({ row, onClose, onCopyId }: { row: LogRow; onClose: () => void; onCopyId: () => void }) {
+function LogDetail({
+  row,
+  onClose,
+  onCopyId,
+}: {
+  row: LogRow;
+  onClose: () => void;
+  onCopyId: () => void;
+}) {
   return (
     <div className="card" style={{ position: "sticky", top: 16 }}>
-      <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div
+        className="card-section"
+        style={{ display: "flex", alignItems: "center", gap: 10 }}
+      >
         <I.ScrollText size={14} />
         <span style={{ fontSize: 13, fontWeight: 500 }}>log entry</span>
-        <span className="font-mono" style={{ fontSize: 11, color: "var(--muted-foreground)", wordBreak: "break-all" }}>
+        <span
+          className="font-mono"
+          style={{
+            fontSize: 11,
+            color: "var(--muted-foreground)",
+            wordBreak: "break-all",
+          }}
+        >
           {row.id}
         </span>
         <div className="spacer" />
@@ -521,17 +790,31 @@ function LogDetail({ row, onClose, onCopyId }: { row: LogRow; onClose: () => voi
       <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 14 }}>
         <div>
           <div style={sectionLabel}>summary</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 6,
+              flexWrap: "wrap",
+            }}
+          >
             <span className={`log-pill log-pill-${row.level}`}>{row.level}</span>
-            <span className={`log-method log-method-${row.method.toLowerCase()}`}>{row.method}</span>
+            <span className={`log-method log-method-${row.method.toLowerCase()}`}>
+              {row.method}
+            </span>
             {row.status != null && (
-              <span className={`log-status log-s-${Math.floor(row.status / 100)}`}>{row.status}</span>
+              <span className={`log-status log-s-${Math.floor(row.status / 100)}`}>
+                {row.status}
+              </span>
             )}
           </div>
           <div className="font-mono" style={{ fontSize: 12.5, wordBreak: "break-all" }}>
             {row.path}
           </div>
-          <div style={{ fontSize: 12.5, marginTop: 6, color: "var(--foreground)" }}>{row.msg}</div>
+          <div style={{ fontSize: 12.5, marginTop: 6, color: "var(--foreground)" }}>
+            {row.msg}
+          </div>
         </div>
 
         <div>
@@ -584,6 +867,322 @@ function KV({ k, v, mono }: { k: string; v: string; mono?: boolean }) {
       <span className={mono ? "font-mono" : undefined} style={{ wordBreak: "break-all" }}>
         {v}
       </span>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Table view                                                          */
+/* ------------------------------------------------------------------ */
+
+const ADMIN_TABLE_CLS =
+  "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
+
+const actionColor = (a: string): "default" | "secondary" | "destructive" | "outline" =>
+  a.startsWith("item.")
+    ? "default"
+    : a.startsWith("auth.")
+      ? "secondary"
+      : a.startsWith("schema.")
+        ? "destructive"
+        : "outline";
+
+/** A short, single-line summary of a row's payload for the Diff column. */
+function diffSummary(payload: unknown): string {
+  if (payload == null) return "—";
+  if (typeof payload === "string") return payload.slice(0, 80);
+  try {
+    return JSON.stringify(payload).slice(0, 80);
+  } catch {
+    return "—";
+  }
+}
+
+function TableView({
+  rows,
+  q,
+  category,
+  setCategory,
+  openRow,
+  setOpenRow,
+  totalCount,
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
+  pushToast,
+}: {
+  rows: LogRow[];
+  q: string;
+  category: CategoryChip;
+  setCategory: (c: CategoryChip) => void;
+  openRow: LogRow | null;
+  setOpenRow: (r: LogRow | null) => void;
+  totalCount: number | null;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  onLoadMore: () => void;
+  pushToast: (m: string, type?: "success" | "error") => void;
+}) {
+  // The action category is enforced server-side, so `rows` is already scoped.
+  // Search is still a client-side text match over the loaded rows.
+  const visible = useMemo(() => {
+    if (!q) return rows;
+    const needle = q.toLowerCase();
+    return rows.filter((r) => {
+      const hay =
+        `${r.action} ${r.path} ${r.collection ?? ""} ${r.user} ${r.ip ?? ""} ${r.msg}`.toLowerCase();
+      return hay.includes(needle);
+    });
+  }, [rows, q]);
+
+  const exportCsv = () => {
+    if (visible.length === 0) {
+      pushToast("Nothing to export — the current view is empty.", "error");
+      return;
+    }
+    const header = "time,actor,action,resource,diff,ip";
+    const csvQuote = (s: string) => `"${String(s).replace(/"/g, '""')}"`;
+    const body = visible
+      .map((r) =>
+        [
+          fmtTableTime(r.ts),
+          r.user,
+          r.action,
+          `${r.collection ?? "—"}${r.itemId ? `/${r.itemId}` : ""}`,
+          diffSummary(r.payload),
+          r.ip ?? "—",
+        ]
+          .map(csvQuote)
+          .join(","),
+      )
+      .join("\n");
+    try {
+      const blob = new Blob([`${header}\n${body}`], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "activity.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+      pushToast(`Exported ${visible.length} rows as activity.csv.`);
+    } catch {
+      pushToast("Could not export logs.", "error");
+    }
+  };
+
+  return (
+    <>
+      {/* Category chips (server-side action filter) + export */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Tabs value={category} onValueChange={(v) => setCategory(v as CategoryChip)}>
+          <TabsList className="flex-wrap">
+            {CATEGORY_CHIPS.map((k) => (
+              <TabsTrigger key={k} value={k}>
+                {k}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+        <div style={{ flex: 1 }} />
+        <Button variant="outline" icon={I.Download} onClick={exportCsv}>
+          Export CSV
+        </Button>
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <Table className={ADMIN_TABLE_CLS}>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[160px] whitespace-nowrap">Time</TableHead>
+              <TableHead className="w-[90px] text-right">Duration</TableHead>
+              <TableHead className="w-[140px]">Action</TableHead>
+              <TableHead>Resource</TableHead>
+              <TableHead>Diff</TableHead>
+              <TableHead className="w-[130px]">IP</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visible.map((r) => (
+              <TableRow
+                key={r.id}
+                onClick={() => setOpenRow(r)}
+                className="cursor-pointer"
+                title="Click for full payload"
+              >
+                <TableCell className="whitespace-nowrap font-mono text-[11.5px] tabular-nums text-muted-foreground">
+                  {fmtTableTime(r.ts)}
+                </TableCell>
+                <TableCell className="whitespace-nowrap text-right font-mono text-[11.5px] tabular-nums text-muted-foreground">
+                  {formatDuration(r.ms)}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={actionColor(r.action)} mono>
+                    {r.action}
+                  </Badge>
+                </TableCell>
+                <TableCell className="font-mono text-xs">
+                  {r.collection ?? "—"}
+                  {r.itemId ? `/${r.itemId}` : ""}
+                </TableCell>
+                <TableCell className="font-mono text-[11.5px] text-muted-foreground">
+                  {diffSummary(r.payload)}
+                </TableCell>
+                <TableCell className="font-mono text-[11.5px] text-muted-foreground">
+                  {r.ip ?? "—"}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <div className="flex items-center justify-between border-t border-border px-3.5 py-2.5">
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {/* Counts are explicit about loaded-vs-total — chip counts that
+             *  reflected only loaded rows were misleading, so they're gone. */}
+            {q
+              ? `${visible.length} match · ${rows.length} loaded`
+              : `${rows.length} loaded`}
+            {totalCount != null ? ` of ${totalCount}` : ""}
+          </span>
+          <Button
+            variant="outline"
+            disabled={!hasNextPage || isFetchingNextPage}
+            onClick={onLoadMore}
+          >
+            {isFetchingNextPage
+              ? "Loading…"
+              : hasNextPage
+                ? "Load more"
+                : "No more rows"}
+          </Button>
+        </div>
+      </div>
+
+      {openRow && (
+        <ActivityEventDialog row={openRow} onClose={() => setOpenRow(null)} />
+      )}
+    </>
+  );
+}
+
+function ActivityEventDialog({
+  row,
+  onClose,
+}: {
+  row: LogRow;
+  onClose: () => void;
+}) {
+  const fullTs = (() => {
+    const d = new Date(row.createdAt as string | number);
+    return Number.isNaN(d.getTime())
+      ? fmtTableTime(row.ts)
+      : d.toISOString().replace("T", " ").replace("Z", " UTC");
+  })();
+  return (
+    <Dialog
+      open
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+    >
+      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[720px]">
+        <DialogTitle className="sr-only">{`${row.action} activity detail`}</DialogTitle>
+        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+          <div className="mb-1 flex items-center gap-2">
+            <Badge variant={actionColor(row.action)} mono>
+              {row.action}
+            </Badge>
+            <span className="font-mono text-xs text-muted-foreground">
+              {row.collection ?? "—"}
+              {row.itemId ? `/${row.itemId}` : ""}
+            </span>
+          </div>
+          <h3 className="m-0 text-sm font-medium">{row.user}</h3>
+        </DialogHeader>
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
+          <div className="grid grid-cols-[140px_1fr] gap-x-3.5 gap-y-2 text-[12.5px]">
+            <span className="text-muted-foreground">Time</span>
+            <span className="font-mono">{fullTs}</span>
+            <span className="text-muted-foreground">Actor</span>
+            <span className="font-mono [word-break:break-all]">{row.user}</span>
+            <span className="text-muted-foreground">Action</span>
+            <span className="font-mono">{row.action}</span>
+            <span className="text-muted-foreground">Collection</span>
+            <span className="font-mono">{row.collection ?? "—"}</span>
+            {row.itemId && (
+              <>
+                <span className="text-muted-foreground">Item ID</span>
+                <span className="font-mono [word-break:break-all]">{row.itemId}</span>
+              </>
+            )}
+            <span className="text-muted-foreground">IP</span>
+            <span className="font-mono">{row.ip ?? "—"}</span>
+            {row.userAgent && (
+              <>
+                <span className="text-muted-foreground">User-Agent</span>
+                <span className="font-mono text-[11.5px] [word-break:break-all]">
+                  {row.userAgent}
+                </span>
+              </>
+            )}
+            {row.ms != null && (
+              <>
+                <span className="text-muted-foreground">Duration</span>
+                <span className="font-mono tabular-nums">{row.ms} ms</span>
+              </>
+            )}
+            <span className="text-muted-foreground">Activity ID</span>
+            <span className="font-mono text-[11.5px] [word-break:break-all]">
+              {row.id}
+            </span>
+          </div>
+          <JsonBlock label="Payload" value={row.payload} />
+          {row.response != null && (
+            <JsonBlock label="Response" value={row.response} />
+          )}
+        </div>
+        <DialogFooter className="border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Shared                                                              */
+/* ------------------------------------------------------------------ */
+
+/** Footer with a loaded-count label and a "Load more" pagination button. */
+function LoadMoreBar({
+  loadedLabel,
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
+}: {
+  loadedLabel: string;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  onLoadMore: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between border-t border-border px-3.5 py-2.5">
+      <span className="text-xs tabular-nums text-muted-foreground">
+        {loadedLabel}
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={!hasNextPage || isFetchingNextPage}
+        onClick={onLoadMore}
+      >
+        {isFetchingNextPage
+          ? "Loading…"
+          : hasNextPage
+            ? "Load more"
+            : "No more rows"}
+      </Button>
     </div>
   );
 }

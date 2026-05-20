@@ -283,7 +283,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
           <div className="border-b border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))]" />
           {PM_ACTIONS.map((a) => (
             <div key={a.v} className="flex flex-col items-center justify-center gap-0.5 border-b border-l border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-2 py-2.5" title={a.title}>
-              <span className="text-[13px] font-semibold tracking-[0.04em] text-foreground">{a.label}</span>
+              <span className="font-mono text-[13px] font-semibold tracking-[0.04em] text-foreground">{a.label}</span>
               <span className="text-[10.5px] tracking-[0.02em] text-muted-foreground">{a.title}</span>
             </div>
           ))}

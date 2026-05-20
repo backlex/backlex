@@ -125,4 +125,8 @@ dist
 
 # TernJS port file
 .tern-port
-.claude/
+
+# Claude Code — ignore local config, keep shared hook + settings tracked
+.claude/*
+!.claude/settings.json
+!.claude/hooks/

@@ -13,15 +13,18 @@ import {
   type ReactNode,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { NAV_ITEMS, NAV_SETTINGS, NAV_DEVELOPERS } from "./config";
-import { tenantsApi, type ApiTenant } from "./api";
+import { notificationsApi, tenantsApi, type ApiNotification, type ApiTenant } from "./api";
+import { useNotifications, useNotificationsUnread, queryKeys } from "./queries";
 import { Button as ShadcnButton } from "@workeros/ui/components/button";
 import { Badge as ShadcnBadge } from "@workeros/ui/components/badge";
 import { Switch as ShadcnSwitch } from "@workeros/ui/components/switch";
 import { Checkbox as ShadcnCheckbox } from "@workeros/ui/components/checkbox";
 import { Input } from "@workeros/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+import { Skeleton } from "@workeros/ui/components/skeleton";
 
 export function formatJson(value: unknown): string {
   try {
@@ -510,37 +513,57 @@ const resolveAvatarSrc = (image: string | null | undefined): string | null => {
   return `/api/storage/${encodeURIComponent(image)}`;
 };
 
-type NotificationKind = "mention" | "advisor" | "flow" | "deploy" | "member" | "function";
-
-interface NotificationItem {
-  id: string;
-  kind: NotificationKind;
-  unread: boolean;
-  who: string;
-  t: string;
-  title: string;
-  body: string;
-  icon: IconKey;
+/** Compact relative-time formatter for notification / comment timestamps.
+ *  Accepts a Unix-ms number, an ISO string, or a Date — the notifications
+ *  schema stores `created_at` as Unix-ms on SQLite and a `Date` on PG. */
+export function relativeTime(input: unknown): string {
+  if (input == null) return "";
+  const d =
+    input instanceof Date
+      ? input
+      : typeof input === "number"
+        ? new Date(input)
+        : new Date(String(input));
+  const ms = d.getTime();
+  if (!Number.isFinite(ms)) return "";
+  const diff = Date.now() - ms;
+  if (diff < 60_000) return "just now";
+  const min = Math.floor(diff / 60_000);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}d ago`;
+  return d.toISOString().slice(0, 10);
 }
-
-// TODO(notifications): replace with /api/notifications when the endpoint
-// lands. Same shape the design uses; visual-only mark-as-read for now.
-const NOTIFICATIONS_SEED: NotificationItem[] = [
-  { id: "n_01", kind: "mention", unread: true, who: "kai", t: "2m ago", title: "@rana mentioned you in c_posts/01HZ7K8Q6XYZ", body: "\"Can you confirm the cf-image fit param before I publish?\"", icon: "MessageSquare" },
-  { id: "n_02", kind: "advisor", unread: true, who: "workeros", t: "14m ago", title: "New security check failed", body: "Public read on c_users — anonymous traffic can list emails.", icon: "ShieldAlert" },
-  { id: "n_03", kind: "flow", unread: true, who: "system", t: "38m ago", title: "Flow \"Notify on new comment\" failed 12 times", body: "Webhook target returned 503 — retry budget exhausted.", icon: "Bolt" },
-  { id: "n_04", kind: "deploy", unread: false, who: "jules", t: "1h ago", title: "Production deploy succeeded", body: "workeros-api · cf-workers · build a4e2b9c · in 1m 42s.", icon: "CheckCircle" },
-  { id: "n_05", kind: "member", unread: false, who: "admin", t: "3h ago", title: "priya@workeros.dev joined workspace", body: "Default role: authenticated · invited by rana.", icon: "Users" },
-  { id: "n_06", kind: "function", unread: false, who: "system", t: "1d ago", title: "Cron job \"nightly-rollup\" took 4× longer than baseline", body: "Last run 38.4s · baseline 9.6s · check the p95 query in Logs.", icon: "Clock" },
-];
 
 export function NotificationsBell() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread">("all");
-  const [items, setItems] = useState<NotificationItem[]>(NOTIFICATIONS_SEED);
   const wrapRef = useRef<HTMLDivElement | null>(null);
-  const unread = items.filter((n) => n.unread).length;
+
+  const listQuery = useNotifications();
+  const unreadQuery = useNotificationsUnread();
+  const items: ApiNotification[] = listQuery.data?.data ?? [];
+  // `read_at == null` is the source of truth for unread; the dedicated
+  // count endpoint drives the badge so it stays fresh even while the popover
+  // is closed.
+  const unread = unreadQuery.data?.data.count ?? items.filter((n) => n.readAt == null).length;
+
+  const invalidate = () => {
+    void qc.invalidateQueries({ queryKey: queryKeys.notifications() });
+  };
+
+  const markReadMut = useMutation({
+    mutationFn: (id: string) => notificationsApi.markRead(id),
+    onSuccess: invalidate,
+  });
+  const markAllMut = useMutation({
+    mutationFn: () => notificationsApi.markAllRead(),
+    onSuccess: invalidate,
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -552,18 +575,16 @@ export function NotificationsBell() {
     return () => document.removeEventListener("mousedown", close);
   }, [open]);
 
-  const visible = filter === "unread" ? items.filter((n) => n.unread) : items;
-  const markRead = (id: string) =>
-    setItems((arr) => arr.map((n) => (n.id === id ? { ...n, unread: false } : n)));
-  const markAllRead = () => setItems((arr) => arr.map((n) => ({ ...n, unread: false })));
+  const visible = filter === "unread" ? items.filter((n) => n.readAt == null) : items;
 
-  const onItem = (n: NotificationItem) => {
-    markRead(n.id);
-    // Advisor notifications deep-link to the new Advisor page; other kinds
-    // currently just mark-read.
-    if (n.kind === "advisor") {
+  const onItem = (n: ApiNotification) => {
+    if (n.readAt == null) markReadMut.mutate(n.id);
+    // Internal URLs deep-link via the router; external / missing URLs just
+    // mark-read. The real schema has no `kind`, so there's no per-category
+    // routing — `url` is the only navigation signal.
+    if (n.url && n.url.startsWith("/")) {
       setOpen(false);
-      navigate("/advisor");
+      navigate(n.url);
     }
   };
 
@@ -593,7 +614,13 @@ export function NotificationsBell() {
             </Tabs>
           </div>
           <div className="notif-list">
-            {visible.length === 0 ? (
+            {listQuery.isLoading ? (
+              <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : visible.length === 0 ? (
               <div
                 style={{
                   padding: 36,
@@ -608,32 +635,41 @@ export function NotificationsBell() {
               </div>
             ) : (
               visible.map((n) => {
-                const IconComp = (I as Record<string, IconComponent>)[n.icon] ?? I.Bell;
+                // No `kind`/`icon` columns on the real row — a flow-sourced
+                // notification gets the Bolt glyph, everything else the Bell.
+                const isFlow = !!n.flowId;
+                const IconComp: IconComponent = isFlow ? I.Bolt : I.Bell;
+                const unreadRow = n.readAt == null;
                 return (
                   <button
                     key={n.id}
                     type="button"
-                    className={`notif-item ${n.unread ? "unread" : ""}`}
+                    className={`notif-item ${unreadRow ? "unread" : ""}`}
                     onClick={() => onItem(n)}
                   >
-                    <span className={`notif-ico notif-ico-${n.kind}`}>
+                    <span className={isFlow ? "notif-ico notif-ico-flow" : "notif-ico"}>
                       <IconComp size={13} />
                     </span>
                     <div className="notif-body">
                       <div className="notif-title">{n.title}</div>
-                      <div className="notif-text">{n.body}</div>
+                      {n.body && <div className="notif-text">{n.body}</div>}
                       <div className="notif-meta font-mono">
-                        {n.who} · {n.t}
+                        {relativeTime(n.createdAt)}
                       </div>
                     </div>
-                    {n.unread && <span className="notif-unread-dot" />}
+                    {unreadRow && <span className="notif-unread-dot" />}
                   </button>
                 );
               })
             )}
           </div>
           <div className="notif-foot">
-            <Button variant="ghost" size="sm" onClick={markAllRead}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => markAllMut.mutate()}
+              disabled={markAllMut.isPending || unread === 0}
+            >
               Mark all read
             </Button>
             <div className="spacer" />

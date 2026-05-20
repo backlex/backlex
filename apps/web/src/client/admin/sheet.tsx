@@ -928,7 +928,12 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
               </div>
             </>
           )}
-          {mode === "edit" && activeTab === "collab" && <ItemCommentsPanel />}
+          {mode === "edit" && activeTab === "collab" && slug && (initial as { id?: string })?.id && (
+            <ItemCommentsPanel
+              collection={slug}
+              itemId={(initial as { id: string }).id}
+            />
+          )}
         </div>
 
         <div className="sheet-footer">

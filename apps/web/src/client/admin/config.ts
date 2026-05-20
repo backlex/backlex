@@ -89,7 +89,6 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "advisor", label: "Advisor", icon: "ShieldAlert" },
   { id: "schema-graph", label: "Schema graph", icon: "Network" },
   { id: "insights", label: "Insights", icon: "BarChart" },
-  { id: "activity", label: "Activity log", icon: "Clock" },
   { id: "revisions", label: "Revisions", icon: "History" },
   { id: "translations", label: "Translations", icon: "Globe" },
 ];

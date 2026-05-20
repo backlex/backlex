@@ -4,6 +4,8 @@ import { I } from "../icons";
 import { Badge, Button, PageHeader } from "../ui";
 import { ConfirmDialog } from "../sheet";
 import { ScrollArea } from "@workeros/ui/components/scroll-area";
+import { Skeleton } from "@workeros/ui/components/skeleton";
+import { RevisionsSkeleton } from "../page-skeletons";
 
 const REV_AUTO_FIELDS = new Set([
   "id",
@@ -193,6 +195,9 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
       ? `live · updated ${fmtRevTs(String(e.snapshot.updatedAt ?? e.snapshot.updated_at ?? ""))}`
       : `${fmtRevTs(e.createdAt)} · ${e.createdBy ?? "system"}`;
 
+  // First whole-page fetch — collections + their items haven't landed yet.
+  if (itemsLoading && items.length === 0) return <RevisionsSkeleton />;
+
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader title="Revisions" description="Every write is versioned. Inspect, diff, or revert any prior state." />
@@ -201,7 +206,14 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
           <div className="border-b border-border px-4 py-3.5 text-xs font-medium">Items <span className="font-mono text-[11px] text-muted-foreground">· c_{collectionSlug}</span></div>
           <ScrollArea className="h-[60vh]">
             {itemsLoading && (
-              <div className="px-3 py-4 text-xs text-muted-foreground">Loading…</div>
+              <div className="flex flex-col gap-2 px-3 py-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="flex flex-col gap-1.5">
+                    <Skeleton className="h-3.5 w-3/4" />
+                    <Skeleton className="h-3 w-1/3" />
+                  </div>
+                ))}
+              </div>
             )}
             {!itemsLoading && items.length === 0 && (
               <div className="px-3 py-4 text-xs text-muted-foreground">No items in this collection yet.</div>
@@ -222,7 +234,14 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
           <div className="border-b border-border px-4 py-3.5 text-xs font-medium">Timeline · {item?.title?.slice(0, 18) ?? "—"}{item ? "…" : ""}</div>
           <ScrollArea className="h-[60vh]">
             {revsLoading && (
-              <div className="px-3 py-4 text-xs text-muted-foreground">Loading…</div>
+              <div className="flex flex-col gap-2 px-3 py-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex flex-col gap-1.5">
+                    <Skeleton className="h-3.5 w-1/2" />
+                    <Skeleton className="h-3 w-2/3" />
+                  </div>
+                ))}
+              </div>
             )}
             {!revsLoading && entries.length === 0 && (
               <div className="px-3 py-4 text-xs text-muted-foreground">{activeId ? "No revisions yet for this item." : "Select an item to see its history."}</div>
@@ -250,9 +269,18 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
         </div>
         <div className="flex flex-col gap-3.5 overflow-hidden rounded-2xl border border-border bg-card p-[18px] text-card-foreground">
           {!active ? (
-            <div className="p-9 text-center text-[13px] text-muted-foreground">
-              {revsLoading ? "Loading…" : "Pick a revision from the timeline to inspect, diff, or revert."}
-            </div>
+            revsLoading ? (
+              <div className="flex flex-col gap-3">
+                <Skeleton className="h-5 w-40" />
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full rounded-xl" />
+                ))}
+              </div>
+            ) : (
+              <div className="p-9 text-center text-[13px] text-muted-foreground">
+                Pick a revision from the timeline to inspect, diff, or revert.
+              </div>
+            )
           ) : (
           <>
           <div className="flex flex-wrap items-center gap-2">

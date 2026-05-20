@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
+import { Skeleton } from "@workeros/ui/components/skeleton";
 import { auth } from "@/lib/auth";
 
 type State = "checking" | "authed" | "anon";
@@ -48,11 +49,14 @@ export const AuthGate = ({ children }: { children: ReactNode }) => {
   }, []);
 
   if (state === "checking") {
+    // Minimal full-screen placeholder while the session resolves — a small
+    // skeleton card stands in for the workspace tile that's about to mount.
     return (
       <div className="grid min-h-svh place-items-center bg-background">
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <span className="size-2 animate-pulse rounded-full bg-foreground/40" />
-          <span>Loading workspace…</span>
+        <div className="flex w-64 flex-col items-center gap-3">
+          <Skeleton className="size-9 rounded-xl" />
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-3 w-24" />
         </div>
       </div>
     );

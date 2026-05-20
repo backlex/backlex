@@ -16,6 +16,7 @@ import {
 import { AdoptWizard } from "./adopt-wizard";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { useUrlState } from "@/lib/use-url-state";
+import { Skeleton } from "@workeros/ui/components/skeleton";
 import { SkeletonRow } from "./loading";
 import { useCollections } from "./queries";
 
@@ -188,6 +189,14 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
               </TableRow>
             </TableHeader>
             <TableBody>
+              {loading && filtered.length === 0 &&
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={`sk-${i}`}>
+                    {Array.from({ length: 8 }).map((_, c) => (
+                      <TableCell key={c}><Skeleton className="h-4 w-3/4" /></TableCell>
+                    ))}
+                  </TableRow>
+                ))}
               {filtered.map((c) => {
                 const Ic = (I as Record<string, IconComponent>)[c.icon as IconKey] || I.Database;
                 return (

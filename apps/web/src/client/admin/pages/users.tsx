@@ -5,6 +5,7 @@ import { Badge, Button, Checkbox, IconButton, PageHeader } from "../ui";
 import { Select } from "../select";
 import { Input } from "@workeros/ui/components/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workeros/ui/components/input-group";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { rolesApi, usersApi, type ApiUser } from "../api";
 
 const ProviderGlyph = ({ kind, size = 12 }: { kind: string; size?: number }) => {
@@ -152,30 +153,30 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="flex flex-col gap-4.5">
       <PageHeader
         title="Users"
         description="The first user to sign up becomes admin; everyone else lands in authenticated. Sessions, providers, and 2FA are tracked per account."
         actions={<Button variant="primary" icon={I.Plus} onClick={() => setInviteOpen(true)}>Invite</Button>}
       />
 
-      <div className="users-stats">
+      <div className="grid grid-cols-4 gap-2.5 max-[900px]:grid-cols-2">
         {[
           { label: "Total users", value: stats.total, hint: `${users.filter((u) => u.status === "active").length} active` },
           { label: "Active in 24h", value: stats.active24h, hint: `${Math.round((stats.active24h / Math.max(1, stats.total)) * 100)}% of base` },
           { label: "Pending invites", value: stats.pending, hint: stats.pending ? "awaiting accept" : "none" },
           { label: "Admins", value: stats.admins, hint: "full access" },
         ].map((s) => (
-          <div key={s.label} className="users-stat">
-            <span className="users-stat-label">{s.label}</span>
-            <span className="users-stat-value">{s.value}</span>
-            <span className="users-stat-hint muted">{s.hint}</span>
+          <div key={s.label} className="flex flex-col gap-1 rounded-xl border border-border bg-card px-4 py-3.5">
+            <span className="text-[11.5px] uppercase tracking-[0.02em] text-muted-foreground">{s.label}</span>
+            <span className="text-[26px] font-semibold tracking-[-0.02em]">{s.value}</span>
+            <span className="text-[11.5px] text-muted-foreground">{s.hint}</span>
           </div>
         ))}
       </div>
 
-      <div className="filter-bar" style={{ gap: 10 }}>
-        <InputGroup style={{ minWidth: 280, flex: "0 1 320px" }}>
+      <div className="flex flex-wrap items-center gap-2.5">
+        <InputGroup className="min-w-[280px] flex-[0_1_320px]">
           <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
           <InputGroupInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or email…" />
           {q && (
@@ -184,94 +185,94 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
             </InputGroupAddon>
           )}
         </InputGroup>
-        <div className="users-filter">
-          <span className="muted">Role</span>
-          <Select size="sm" value={roleFilter} onChange={setRoleFilter} style={{ width: 140 }}
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="text-[11.5px] text-muted-foreground">Role</span>
+          <Select size="sm" value={roleFilter} onChange={setRoleFilter} className="w-[140px]"
             options={[{ value: "all", label: "All roles" }, ...roleNames.map((n) => ({ value: n, label: n }))]} />
         </div>
-        <div className="users-filter">
-          <span className="muted">Status</span>
-          <Select size="sm" value={statusFilter} onChange={setStatusFilter} style={{ width: 140 }}
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="text-[11.5px] text-muted-foreground">Status</span>
+          <Select size="sm" value={statusFilter} onChange={setStatusFilter} className="w-[140px]"
             options={[{ value: "all", label: "All statuses" }, { value: "active", label: "active" }, { value: "invited", label: "invited" }, { value: "suspended", label: "suspended" }]} />
         </div>
-        <div className="users-filter">
-          <span className="muted">Provider</span>
-          <Select size="sm" value={providerFilter} onChange={setProviderFilter} style={{ width: 150 }}
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="text-[11.5px] text-muted-foreground">Provider</span>
+          <Select size="sm" value={providerFilter} onChange={setProviderFilter} className="w-[150px]"
             options={[{ value: "all", label: "All providers" }, { value: "password", label: "password" }, { value: "github", label: "github" }, { value: "google", label: "google" }, { value: "magic", label: "magic link" }]} />
         </div>
-        <div className="spacer" />
-        <span className="muted" style={{ fontSize: 12 }}>{filtered.length} of {users.length}</span>
+        <div className="flex-1" />
+        <span className="text-xs text-muted-foreground">{filtered.length} of {users.length}</span>
       </div>
 
       {selected.size > 0 && (
-        <div className="users-bulk">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[color-mix(in_oklch,var(--primary)_40%,var(--border))] bg-[color-mix(in_oklch,var(--primary)_8%,var(--card))] px-3 py-2">
           <Badge variant="default">{selected.size} selected</Badge>
-          <span className="muted" style={{ fontSize: 12.5 }}>Apply to selection:</span>
+          <span className="text-[12.5px] text-muted-foreground">Apply to selection:</span>
           <Button size="sm" variant="outline" onClick={() => bulk("activate")}>Activate</Button>
           <Button size="sm" variant="outline" onClick={() => bulk("suspend")}>Suspend</Button>
           <Button size="sm" variant="outline" onClick={() => pushToast(`Reset link sent to ${selected.size} user${selected.size === 1 ? "" : "s"}.`)}>Reset password</Button>
-          <Button size="sm" variant="outline" onClick={() => bulk("delete")} style={{ color: "var(--destructive)" }}>Delete</Button>
-          <div className="spacer" />
-          <button type="button" className="rb-rm" onClick={() => setSelected(new Set())} title="Clear selection"><I.X size={12} /></button>
+          <Button size="sm" variant="outline" onClick={() => bulk("delete")} className="text-destructive">Delete</Button>
+          <div className="flex-1" />
+          <button type="button" className="inline-grid size-6 cursor-pointer place-items-center rounded-md border border-transparent bg-transparent text-muted-foreground hover:border-border hover:bg-card hover:text-destructive" onClick={() => setSelected(new Set())} title="Clear selection"><I.X size={12} /></button>
         </div>
       )}
 
-      <div className="card">
-        <div className="table-scroll">
-        <table className="table users-table">
-          <thead>
-            <tr>
-              <th style={{ width: 36 }}>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <Table className="[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-9">
                 <Checkbox checked={allChecked} indeterminate={someChecked} onChange={toggleAll} />
-              </th>
-              <th>User</th>
-              <th style={{ width: 200 }}>Role</th>
-              <th style={{ width: 130 }}>Status</th>
-              <th style={{ width: 140 }}>Provider</th>
-              <th style={{ width: 70, textAlign: "center" }}>2FA</th>
-              <th style={{ width: 120 }}>Last seen</th>
-              <th className="col-actions" style={{ width: 44 }}></th>
-            </tr>
-          </thead>
-          <tbody>
+              </TableHead>
+              <TableHead>User</TableHead>
+              <TableHead className="w-[200px]">Role</TableHead>
+              <TableHead className="w-[130px]">Status</TableHead>
+              <TableHead className="w-[140px]">Provider</TableHead>
+              <TableHead className="w-[70px] text-center">2FA</TableHead>
+              <TableHead className="w-[120px]">Last seen</TableHead>
+              <TableHead className="sticky right-0 w-11 bg-card" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {filtered.map((u) => {
               const isOpen = menuOpen === u.id;
               return (
-                <tr key={u.id} className={`users-row ${selected.has(u.id) ? "on" : ""}`} onClick={() => setActiveUser(u)}>
-                  <td onClick={(e) => e.stopPropagation()}>
+                <TableRow key={u.id} data-selected={selected.has(u.id)} onClick={() => setActiveUser(u)} className="cursor-pointer data-[selected=true]:bg-[color-mix(in_oklch,var(--primary)_10%,var(--card))]">
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox checked={selected.has(u.id)} onChange={() => toggle(u.id)} />
-                  </td>
-                  <td>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div className="avatar users-avatar" style={{ background: `oklch(0.78 0.14 ${u.hue})`, color: `oklch(0.25 0.06 ${u.hue})` }}>{u.name.split(" ").map((p) => p[0]).slice(0, 2).join("")}</div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 1, minWidth: 0 }}>
-                        <span style={{ fontSize: 13, fontWeight: 500 }}>{u.name}</span>
-                        <span className="muted" style={{ fontSize: 11.5 }}>{u.email}</span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2.5">
+                      <div className="grid size-8 place-items-center rounded-full text-[12.5px] font-semibold tracking-[-0.01em]" style={{ background: `oklch(0.78 0.14 ${u.hue})`, color: `oklch(0.25 0.06 ${u.hue})` }}>{u.name.split(" ").map((p) => p[0]).slice(0, 2).join("")}</div>
+                      <div className="flex min-w-0 flex-col gap-px">
+                        <span className="text-[13px] font-medium">{u.name}</span>
+                        <span className="text-[11.5px] text-muted-foreground">{u.email}</span>
                       </div>
                     </div>
-                  </td>
-                  <td>
-                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
                       {u.roles.map((r) => <Badge key={r} variant={r === "admin" ? "default" : "secondary"}>{r}</Badge>)}
                     </div>
-                  </td>
-                  <td>{statusBadge(u.status)}</td>
-                  <td>
-                    <span className="users-provider">
+                  </TableCell>
+                  <TableCell>{statusBadge(u.status)}</TableCell>
+                  <TableCell>
+                    <span className="inline-flex items-center gap-1.5 text-foreground">
                       <ProviderGlyph kind={u.provider} />
-                      <span style={{ fontSize: 12.5 }}>{PROVIDER_LABEL[u.provider]}</span>
+                      <span className="text-[12.5px]">{PROVIDER_LABEL[u.provider]}</span>
                     </span>
-                  </td>
-                  <td style={{ textAlign: "center" }}>
+                  </TableCell>
+                  <TableCell className="text-center">
                     {u.mfa
-                      ? <span className="users-mfa on" title="2FA enabled"><I.Shield size={11} /> on</span>
-                      : <span className="users-mfa off" title="2FA disabled">off</span>}
-                  </td>
-                  <td className="muted font-mono" style={{ fontSize: 11.5 }}>{u.last}</td>
-                  <td className="col-actions" style={{ textAlign: "right", position: "relative" }} onClick={(e) => e.stopPropagation()}>
+                      ? <span className="inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklch,oklch(0.55_0.15_145)_35%,var(--border))] bg-[color-mix(in_oklch,oklch(0.78_0.14_145)_14%,transparent)] px-[7px] py-0.5 font-mono text-[11px] text-[oklch(0.55_0.15_145)]" title="2FA enabled"><I.Shield size={11} /> on</span>
+                      : <span className="inline-flex items-center gap-1 rounded-full border border-border px-[7px] py-0.5 font-mono text-[11px] text-muted-foreground" title="2FA disabled">off</span>}
+                  </TableCell>
+                  <TableCell className="font-mono text-[11.5px] text-muted-foreground">{u.last}</TableCell>
+                  <TableCell className="sticky right-0 bg-card text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="relative">
                     <IconButton icon={I.More} onClick={(e: any) => { e.stopPropagation(); setMenuOpen(isOpen ? null : u.id); }} />
                     {isOpen && (
-                      <div className="users-menu" onClick={(e) => e.stopPropagation()}>
+                      <div className="absolute right-2 top-[calc(100%-4px)] z-30 flex min-w-[180px] flex-col rounded-xl border border-border bg-popover p-1 text-left shadow-[0_8px_24px_oklch(0_0_0/0.16)] [&>button]:flex [&>button]:cursor-pointer [&>button]:items-center [&>button]:gap-2 [&>button]:rounded-md [&>button]:border-0 [&>button]:bg-transparent [&>button]:px-2.5 [&>button]:py-[7px] [&>button]:text-left [&>button]:text-[12.5px] [&>button]:text-foreground [&>button:hover]:bg-accent" onClick={(e) => e.stopPropagation()}>
                         <button onClick={() => { setActiveUser(u); setMenuOpen(null); }}><I.Eye size={12} />View profile</button>
                         <button onClick={() => { pushToast(`Reset link sent to ${u.email}.`); setMenuOpen(null); }}><I.Mail size={12} />Send reset link</button>
                         {u.status !== "suspended" ? (
@@ -289,8 +290,8 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
                             pushToast(`${u.email} activated.`);
                           }}><I.Check size={12} />Activate</button>
                         )}
-                        <div className="users-menu-sep" />
-                        <button className="danger" onClick={async () => {
+                        <div className="mx-1.5 my-1 h-px bg-border" />
+                        <button className="!text-destructive" onClick={async () => {
                           try { await usersApi.remove(u.id); } catch (e) { pushToast((e as Error).message); }
                           setUsers((arr) => arr.filter((x) => x.id !== u.id));
                           setMenuOpen(null);
@@ -298,22 +299,22 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
                         }}><I.Trash size={12} />Delete</button>
                       </div>
                     )}
-                  </td>
-                </tr>
+                    </div>
+                  </TableCell>
+                </TableRow>
               );
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={8}>
-                <div className="empty" style={{ padding: "32px 0" }}>
+              <TableRow><TableCell colSpan={8}>
+                <div className="flex flex-col items-center gap-3 py-8 text-center">
                   <I.Users size={20} />
-                  <h4>No users match</h4>
-                  <p>Adjust your filters or invite a new teammate.</p>
+                  <h4 className="m-0 text-[15px] font-semibold">No users match</h4>
+                  <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground">Adjust your filters or invite a new teammate.</p>
                 </div>
-              </td></tr>
+              </TableCell></TableRow>
             )}
-          </tbody>
-        </table>
-        </div>
+          </TableBody>
+        </Table>
       </div>
 
       {activeUser && <UserDrawer user={activeUser} onClose={() => setActiveUser(null)} pushToast={pushToast} />}
@@ -388,51 +389,51 @@ function UserDrawer({ user, onClose, pushToast }: { user: any; onClose: () => vo
 
   return (
     <>
-      <div className="scrim" onClick={onClose} />
-      <div className="sheet" role="dialog" aria-modal="true">
-        <div className="sheet-header">
-          <div style={{ display: "flex", gap: 12, alignItems: "center", flex: 1, minWidth: 0 }}>
-            <div className="avatar" style={{ width: 40, height: 40, fontSize: 14, background: `oklch(0.78 0.14 ${user.hue})`, color: `oklch(0.25 0.06 ${user.hue})` }}>{user.name.split(" ").map((p: string) => p[0]).slice(0, 2).join("")}</div>
-            <div style={{ minWidth: 0 }}>
-              <h2 style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div className="fixed inset-0 z-[60] animate-in bg-[oklch(0_0_0/0.32)] fade-in-0 duration-150 dark:bg-[oklch(0_0_0/0.6)]" onClick={onClose} />
+      <div className="fixed bottom-0 right-0 top-0 z-[61] flex w-[min(560px,100vw)] animate-in flex-col border-l border-border bg-card slide-in-from-right duration-200" role="dialog" aria-modal="true">
+        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="grid size-10 place-items-center rounded-full text-sm font-semibold tracking-[-0.01em]" style={{ background: `oklch(0.78 0.14 ${user.hue})`, color: `oklch(0.25 0.06 ${user.hue})` }}>{user.name.split(" ").map((p: string) => p[0]).slice(0, 2).join("")}</div>
+            <div className="min-w-0">
+              <h2 className="m-0 flex items-center gap-2 text-base font-semibold tracking-[-0.01em]">
                 {user.name}
                 {user.status === "active" && <Badge variant="default">active</Badge>}
                 {user.status === "invited" && <Badge variant="outline">invited</Badge>}
                 {user.status === "suspended" && <Badge variant="destructive">suspended</Badge>}
               </h2>
-              <p>{user.email} · id <span className="font-mono">{user.id}</span></p>
+              <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">{user.email} · id <span className="font-mono">{user.id}</span></p>
             </div>
           </div>
           <IconButton icon={I.X} onClick={onClose} title="Close" />
         </div>
 
-        <div className="sheet-body">
-          <div className="user-facts">
-            <div><span className="muted">Roles</span><div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>{user.roles.map((r: string) => <Badge key={r} variant={r === "admin" ? "default" : "secondary"}>{r}</Badge>)}</div></div>
-            <div><span className="muted">Provider</span><span className="users-provider"><ProviderGlyph kind={user.provider} size={12} />{PROVIDER_LABEL[user.provider]}</span></div>
-            <div><span className="muted">2FA</span>{user.mfa ? <span className="users-mfa on"><I.Shield size={11} /> enrolled</span> : <span className="users-mfa off">disabled</span>}</div>
-            <div><span className="muted">Created</span><span className="font-mono" style={{ fontSize: 12 }}>{user.created}</span></div>
-            <div><span className="muted">Last seen</span><span className="font-mono" style={{ fontSize: 12 }}>{user.lastIso || "—"}</span></div>
-            <div><span className="muted">Sessions</span><span className="font-mono" style={{ fontSize: 12 }}>{user.sessions} active</span></div>
+        <div className="flex flex-1 flex-col gap-8 overflow-auto px-5 py-[18px]">
+          <div className="grid grid-cols-2 gap-x-3.5 gap-y-2.5 rounded-xl bg-muted px-3.5 py-3 max-[900px]:grid-cols-1">
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Roles</span><div className="flex flex-wrap gap-1">{user.roles.map((r: string) => <Badge key={r} variant={r === "admin" ? "default" : "secondary"}>{r}</Badge>)}</div></div>
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Provider</span><span className="inline-flex items-center gap-1.5 text-foreground"><ProviderGlyph kind={user.provider} size={12} />{PROVIDER_LABEL[user.provider]}</span></div>
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">2FA</span>{user.mfa ? <span className="inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklch,oklch(0.55_0.15_145)_35%,var(--border))] bg-[color-mix(in_oklch,oklch(0.78_0.14_145)_14%,transparent)] px-[7px] py-0.5 font-mono text-[11px] text-[oklch(0.55_0.15_145)]"><I.Shield size={11} /> enrolled</span> : <span className="inline-flex items-center gap-1 rounded-full border border-border px-[7px] py-0.5 font-mono text-[11px] text-muted-foreground">disabled</span>}</div>
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Created</span><span className="font-mono text-xs">{user.created}</span></div>
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Last seen</span><span className="font-mono text-xs">{user.lastIso || "—"}</span></div>
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Sessions</span><span className="font-mono text-xs">{user.sessions} active</span></div>
           </div>
 
           <div>
-            <div className="user-section-head">
+            <div className="mb-2 flex items-center justify-between text-[12.5px] font-medium">
               <span>Active sessions</span>
-              <span className="muted">{sessions.length}</span>
+              <span className="text-[11.5px] font-normal text-muted-foreground">{sessions.length}</span>
             </div>
             {sessions.length === 0 ? (
-              <div className="user-empty">No active sessions.</div>
+              <div className="rounded-xl border border-dashed border-border p-3.5 text-center text-[12.5px] text-muted-foreground">No active sessions.</div>
             ) : (
-              <div className="user-list">
+              <div className="flex flex-col overflow-hidden rounded-xl border border-border">
                 {sessions.map((s) => (
-                  <div key={s.id} className="user-list-row">
-                    <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-                      <span style={{ fontSize: 12.5, fontWeight: 500, display: "flex", gap: 6, alignItems: "center" }}>
+                  <div key={s.id} className="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5 last:border-b-0">
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <span className="flex items-center gap-1.5 text-[12.5px] font-medium">
                         {s.device}
                         {s.current && <Badge variant="outline">this device</Badge>}
                       </span>
-                      <span className="muted font-mono" style={{ fontSize: 11.5 }}>{s.ip} · last seen {s.last}</span>
+                      <span className="font-mono text-[11.5px] text-muted-foreground">{s.ip} · last seen {s.last}</span>
                     </div>
                     <Button size="sm" variant="ghost" onClick={() => pushToast(`Session revoked: ${s.device}`)}>Revoke</Button>
                   </div>
@@ -442,51 +443,51 @@ function UserDrawer({ user, onClose, pushToast }: { user: any; onClose: () => vo
           </div>
 
           <div>
-            <div className="user-section-head">
+            <div className="mb-2 flex items-center justify-between text-[12.5px] font-medium">
               <span>Recent activity</span>
-              <span className="muted">last 30 days</span>
+              <span className="text-[11.5px] font-normal text-muted-foreground">last 30 days</span>
             </div>
-            <div className="user-list">
+            <div className="flex flex-col overflow-hidden rounded-xl border border-border">
               {activity.map((a, i) => (
-                <div key={i} className="user-list-row">
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span className="font-mono" style={{ fontSize: 12 }}>{a.ev}</span>
-                    <span className="muted" style={{ fontSize: 11.5 }}>{a.meta}</span>
+                <div key={i} className="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5 last:border-b-0">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-mono text-xs">{a.ev}</span>
+                    <span className="text-[11.5px] text-muted-foreground">{a.meta}</span>
                   </div>
-                  <span className="muted font-mono" style={{ fontSize: 11.5 }}>{a.t}</span>
+                  <span className="font-mono text-[11.5px] text-muted-foreground">{a.t}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="user-danger">
-            <div className="user-section-head"><span>Danger zone</span></div>
-            <div className="user-danger-row">
+          <div className="rounded-xl border border-[color-mix(in_oklch,var(--destructive)_30%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_5%,var(--card))] px-3.5 py-3">
+            <div className="mb-2 flex items-center justify-between text-[12.5px] font-medium"><span>Danger zone</span></div>
+            <div className="flex items-center justify-between gap-3 border-b border-dashed border-[color-mix(in_oklch,var(--destructive)_18%,var(--border))] py-2 last:border-b-0">
               <div>
-                <div style={{ fontSize: 12.5, fontWeight: 500 }}>Send password reset</div>
-                <div className="muted" style={{ fontSize: 11.5 }}>Emails a one-time link valid for 30 minutes.</div>
+                <div className="text-[12.5px] font-medium">Send password reset</div>
+                <div className="text-[11.5px] text-muted-foreground">Emails a one-time link valid for 30 minutes.</div>
               </div>
               <Button size="sm" variant="outline" onClick={async () => {
                 try { await usersApi.invite(user.email, "authenticated"); } catch (e) { pushToast((e as Error).message); }
                 pushToast(`Reset link sent to ${user.email}.`);
               }}>Send</Button>
             </div>
-            <div className="user-danger-row">
+            <div className="flex items-center justify-between gap-3 border-b border-dashed border-[color-mix(in_oklch,var(--destructive)_18%,var(--border))] py-2 last:border-b-0">
               <div>
-                <div style={{ fontSize: 12.5, fontWeight: 500 }}>Revoke all sessions</div>
-                <div className="muted" style={{ fontSize: 11.5 }}>Forces re-login on every device immediately.</div>
+                <div className="text-[12.5px] font-medium">Revoke all sessions</div>
+                <div className="text-[11.5px] text-muted-foreground">Forces re-login on every device immediately.</div>
               </div>
               <Button size="sm" variant="outline" onClick={async () => {
                 try { await usersApi.revokeAll(user.id); } catch (e) { pushToast((e as Error).message); }
                 pushToast(`Sessions revoked for ${user.email}.`);
               }}>Revoke</Button>
             </div>
-            <div className="user-danger-row">
+            <div className="flex items-center justify-between gap-3 border-b border-dashed border-[color-mix(in_oklch,var(--destructive)_18%,var(--border))] py-2 last:border-b-0">
               <div>
-                <div style={{ fontSize: 12.5, fontWeight: 500, color: "var(--destructive)" }}>Delete user</div>
-                <div className="muted" style={{ fontSize: 11.5 }}>Permanent. Owned items remain; ownership is reassigned to admin.</div>
+                <div className="text-[12.5px] font-medium text-destructive">Delete user</div>
+                <div className="text-[11.5px] text-muted-foreground">Permanent. Owned items remain; ownership is reassigned to admin.</div>
               </div>
-              <Button size="sm" variant="outline" style={{ color: "var(--destructive)" }} onClick={async () => {
+              <Button size="sm" variant="outline" className="text-destructive" onClick={async () => {
                 try { await usersApi.remove(user.id); } catch (e) { pushToast((e as Error).message); }
                 pushToast(`${user.email} deleted.`);
                 onClose();
@@ -495,7 +496,7 @@ function UserDrawer({ user, onClose, pushToast }: { user: any; onClose: () => vo
           </div>
         </div>
 
-        <div className="sheet-footer">
+        <div className="flex justify-end gap-2 border-t border-border bg-card px-5 py-3">
           <Button variant="ghost" onClick={onClose}>Close</Button>
           <Button variant="primary" onClick={() => pushToast("Profile saved.")}>Save changes</Button>
         </div>
@@ -521,33 +522,33 @@ function InviteUserDialog({ roles, onClose, onInvite }: { roles: string[]; onClo
   const [provider, setProvider] = useState("password");
   const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog-lg" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} style={{ width: 460, maxWidth: "92vw" }}>
-        <div className="sheet-header" style={{ borderBottom: "1px solid var(--border)" }}>
-          <div style={{ flex: 1 }}>
-            <h2>Invite user</h2>
-            <p>Send an email invite. The user finishes signup themselves.</p>
+    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={onClose}>
+      <div className="relative flex w-[460px] max-w-[92vw] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
+          <div className="flex-1">
+            <h2 className="m-0 text-base font-semibold tracking-[-0.01em]">Invite user</h2>
+            <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">Send an email invite. The user finishes signup themselves.</p>
           </div>
           <IconButton icon={I.X} onClick={onClose} title="Close" />
         </div>
-        <div className="dialog-body">
-          <div className="field">
-            <label className="field-label">Email</label>
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Email</label>
             <Input autoFocus placeholder="teammate@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-            <span className="field-hint">An invite link will be emailed; valid for 7 days.</span>
+            <span className="text-[11.5px] text-muted-foreground">An invite link will be emailed; valid for 7 days.</span>
           </div>
-          <div className="field">
-            <label className="field-label">Default role</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Default role</label>
             <Select value={role} onChange={setRole} options={roleOptions} />
-            <span className="field-hint">Roles come from <strong>Roles &amp; permissions</strong>. The user also implicitly gets <span className="font-mono">authenticated</span>.</span>
+            <span className="text-[11.5px] text-muted-foreground">Roles come from <strong>Roles &amp; permissions</strong>. The user also implicitly gets <span className="font-mono">authenticated</span>.</span>
           </div>
-          <div className="field">
-            <label className="field-label">Sign-in method</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Sign-in method</label>
             <Select value={provider} onChange={setProvider}
               options={[{ value: "password", label: "password", hint: "set on first login" }, { value: "magic", label: "magic link", hint: "email-only, no password" }, { value: "github", label: "github SSO", hint: "OAuth required" }, { value: "google", label: "google SSO", hint: "OAuth required" }, { value: "saml", label: "SAML SSO", hint: "configure providers under Authentication" }, { value: "ldap", label: "LDAP / AD", hint: "configure directory under Authentication" }]} />
           </div>
         </div>
-        <div className="sheet-footer">
+        <div className="flex justify-end gap-2 border-t border-border bg-card px-5 py-3">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button variant="primary" disabled={!valid} onClick={() => onInvite({ email, role, provider })}>Send invite</Button>
         </div>

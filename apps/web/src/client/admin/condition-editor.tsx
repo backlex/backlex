@@ -99,6 +99,13 @@ function summarizeTree(node: TreeNode): string {
 function newCondition(): CondNode { return { kind: "cond", field: "", op: "_eq", value: "" }; }
 function newGroup(op: "and" | "or" = "and"): GroupNode { return { kind: "group", op, children: [newCondition()] }; }
 
+// Shared rule-builder utility strings — replace the legacy .rb-* classes.
+const RB_RM = "inline-grid size-6 cursor-pointer place-items-center rounded-md border border-transparent bg-transparent text-muted-foreground hover:border-border hover:bg-card hover:text-destructive";
+const RB_ADD = "rounded-md border border-dashed border-border bg-transparent px-2.5 py-1 text-[11.5px] font-medium text-muted-foreground hover:border-ring hover:text-foreground";
+const RB_TOGGLE = "inline-flex overflow-hidden rounded-md border border-border bg-card";
+const RB_INPUT_COND = "h-7 w-full min-w-[120px] border-0 bg-transparent px-2 text-[12.5px] text-foreground outline-none";
+const RB_INPUT_FULL = "h-[30px] min-w-[120px] flex-1 rounded-md border border-border bg-card px-2.5 text-[12.5px] text-foreground outline-none focus:border-ring focus:shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_30%,transparent)]";
+
 function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t: GroupNode) => void; fields: string[] }) {
   const update = (path: number[], mut: (n: any) => void) => {
     const next: GroupNode = JSON.parse(JSON.stringify(tree));
@@ -117,9 +124,9 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
   };
 
   const Group = ({ node, path }: { node: GroupNode; path: number[] }) => (
-    <div className="rb-group">
-      <div className="rb-group-head">
-        <div className="rb-toggle" role="tablist">
+    <div className="rounded-xl border border-border bg-[color-mix(in_oklch,var(--muted)_18%,var(--card))]">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border px-2.5 py-2">
+        <div className={RB_TOGGLE} role="tablist">
           <Button
             size="xs"
             variant={node.op === "and" ? "primary" : "ghost"}
@@ -133,17 +140,17 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
             onClick={() => update(path, (n) => { n.op = "or"; })}
           >OR</Button>
         </div>
-        <span className="muted" style={{ fontSize: 11.5 }}>match {node.op === "and" ? "all" : "any"} of the following</span>
-        <div className="spacer" />
-        <Button size="xs" variant="ghost" className="rb-add" onClick={() => update(path, (n) => n.children.push(newCondition()))}>+ condition</Button>
-        <Button size="xs" variant="ghost" className="rb-add" onClick={() => update(path, (n) => n.children.push(newGroup(node.op === "and" ? "or" : "and")))}>+ group</Button>
+        <span className="text-[11.5px] text-muted-foreground">match {node.op === "and" ? "all" : "any"} of the following</span>
+        <div className="flex-1" />
+        <Button size="xs" variant="ghost" className={RB_ADD} onClick={() => update(path, (n) => n.children.push(newCondition()))}>+ condition</Button>
+        <Button size="xs" variant="ghost" className={RB_ADD} onClick={() => update(path, (n) => n.children.push(newGroup(node.op === "and" ? "or" : "and")))}>+ group</Button>
         {path.length > 0 && (
-          <IconButton icon={I.X} className="rb-rm" title="Remove group" onClick={() => removeAt(path)} />
+          <IconButton icon={I.X} className={RB_RM} title="Remove group" onClick={() => removeAt(path)} />
         )}
       </div>
-      <div className="rb-children">
+      <div className="flex flex-col gap-2 p-2">
         {node.children.map((child, i) => (
-          <div key={i} className={`rb-row ${child.kind === "group" ? "is-group" : ""}`}>
+          <div key={i} className={child.kind === "group" ? "block" : "flex"}>
             {child.kind === "group" ? (
               <Group node={child} path={[...path, i]} />
             ) : (
@@ -152,7 +159,7 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
           </div>
         ))}
         {node.children.length === 0 && (
-          <div className="rb-empty">No conditions — this rule matches everything.</div>
+          <div className="rounded-md border border-dashed border-border p-3 text-center text-xs text-muted-foreground">No conditions — this rule matches everything.</div>
         )}
       </div>
     </div>
@@ -161,7 +168,7 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
   const Cond = ({ node, path }: { node: CondNode; path: number[] }) => {
     const needsValue = node.op !== "_null" && node.op !== "_nnull";
     return (
-      <div className="rb-cond">
+      <div className="flex flex-1 items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1.5">
         <Select
           value={node.field}
           onChange={(v) => update(path, (n) => { n.field = v; })}
@@ -175,9 +182,9 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
           size="sm"
         />
         {needsValue && (
-          <div className="rb-value-wrap" style={{ position: "relative", flex: 1 }}>
+          <div className="relative flex-1">
             <Input
-              className="rb-input w-full"
+              className={RB_INPUT_COND}
               placeholder={node.op === "_in" || node.op === "_nin" ? "a, b, c" : "value or $user.id"}
               value={node.value}
               onChange={(e) => update(path, (n) => { n.value = e.target.value; })}
@@ -188,7 +195,7 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
             </datalist>
           </div>
         )}
-        <IconButton icon={I.X} className="rb-rm" title="Remove" onClick={() => removeAt(path)} />
+        <IconButton icon={I.X} className={RB_RM} title="Remove" onClick={() => removeAt(path)} />
       </div>
     );
   };
@@ -330,43 +337,46 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
   const allowedWriteCount = Object.values(fieldPerms).filter((p) => p.write).length;
 
   return (
-    <div className="card">
-      <div className="ce-tabs">
+    <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <div className="flex gap-1 overflow-x-auto border-b border-border bg-[color-mix(in_oklch,var(--muted)_25%,var(--card))] px-3.5">
         {[
           { id: "item", label: "Item permissions", count: tree.children.length, hint: "rules" },
           { id: "fields", label: "Field permissions", count: `${allowedWriteCount}/${fields.length}`, hint: "writable" },
           { id: "validation", label: "Validation", count: validation.children.length, hint: "rules" },
           { id: "presets", label: "Presets", count: presets.length, hint: "defaults" },
-        ].map((t) => (
-          <Button
-            key={t.id}
-            type="button"
-            variant="ghost"
-            size="xs"
-            className={`ce-tab ${tab === t.id ? "on" : ""}`}
-            aria-pressed={tab === t.id}
-            onClick={() => setTab(t.id as any)}
-          >
-            <span>{t.label}</span>
-            <span className="ce-tab-count">{t.count}</span>
-          </Button>
-        ))}
+        ].map((t) => {
+          const on = tab === t.id;
+          return (
+            <Button
+              key={t.id}
+              type="button"
+              variant="ghost"
+              size="xs"
+              className={`-mb-px inline-flex shrink-0 cursor-pointer items-center gap-2 border-0 border-b-2 bg-transparent px-3.5 py-2.5 text-[12.5px] font-medium hover:text-foreground ${on ? "border-b-primary text-foreground" : "border-b-transparent text-muted-foreground"}`}
+              aria-pressed={on}
+              onClick={() => setTab(t.id as any)}
+            >
+              <span>{t.label}</span>
+              <span className={`rounded-full px-1.5 py-px font-mono text-[11px] ${on ? "bg-[color-mix(in_oklch,var(--primary)_18%,transparent)] text-primary" : "bg-muted text-muted-foreground"}`}>{t.count}</span>
+            </Button>
+          );
+        })}
       </div>
 
-      <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+      <div className="flex flex-col gap-3.5 p-4">
         {tab === "item" && (
           <>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span className="muted" style={{ fontSize: 12.5 }}>{(() => {
-                const r = <span className="font-mono" style={{ color: "var(--foreground)" }}>{role}</span>;
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[12.5px] text-muted-foreground">{(() => {
+                const r = <span className="font-mono text-foreground">{role}</span>;
                 if (action === "read") return <>Rows matching this rule are visible to {r}.</>;
                 if (action === "create") return <>Rows created by {r} must match this rule.</>;
                 if (action === "update") return <>{r} may update rows matching this rule.</>;
                 if (action === "delete") return <>{r} may delete rows matching this rule.</>;
                 return <>Items matching this rule are allowed for {r}.</>;
               })()}</span>
-              <div className="spacer" />
-              <div className="rb-toggle">
+              <div className="flex-1" />
+              <div className={RB_TOGGLE}>
                 <Button
                   type="button"
                   size="xs"
@@ -388,23 +398,16 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
               </div>
             </div>
             {availableFields.length === 0 && (
-              <div className="muted" style={{
-                fontSize: 12,
-                padding: "10px 12px",
-                border: "1px dashed var(--border)",
-                borderRadius: "var(--radius-md)",
-                background: "color-mix(in oklch, var(--muted) 30%, var(--card))",
-              }}>
-                No fields defined for <span className="font-mono" style={{ color: "var(--foreground)" }}>{collection}</span> yet — add fields in the schema editor before writing rules.
+              <div className="rounded-md border border-dashed border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-3 py-2.5 text-xs text-muted-foreground">
+                No fields defined for <span className="font-mono text-foreground">{collection}</span> yet — add fields in the schema editor before writing rules.
               </div>
             )}
             {mode === "builder" ? (
               <RuleBuilder tree={tree} onChange={setTreeDirty} fields={fields} />
             ) : (
-              <div className="field" style={{ marginTop: 0 }}>
+              <div className="flex flex-col gap-1.5">
                 <Textarea
-                  className="font-mono"
-                  style={{ minHeight: 180, padding: 12, lineHeight: 1.5, fontSize: 12.5, resize: "vertical" }}
+                  className="font-mono min-h-[180px] resize-y p-3 text-[12.5px] leading-[1.5]"
                   value={jsonDraft}
                   onChange={(e) => { setJsonDraft(e.target.value); }}
                   onBlur={() => {
@@ -431,12 +434,12 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
                     } catch { /* silent */ }
                   }}
                 />
-                <span className="field-hint">Edit raw DSL. Click Builder to round-trip back to visual.</span>
+                <span className="text-[11.5px] text-muted-foreground">Edit raw DSL. Click Builder to round-trip back to visual.</span>
               </div>
             )}
-            <div className="ce-vars">
+            <div className="flex flex-wrap gap-1 rounded-md border border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] p-1.5">
               {CE_DYNAMIC_VARS.map((v) => (
-                <span key={v.v} className="ce-var" title={v.desc}><span className="font-mono">{v.v}</span><span className="muted">{v.desc}</span></span>
+                <span key={v.v} className="inline-flex items-center gap-[5px] rounded-full border border-border bg-card px-[7px] py-0.5 text-[11px]" title={v.desc}><span className="font-mono">{v.v}</span><span className="text-muted-foreground">{v.desc}</span></span>
               ))}
             </div>
           </>
@@ -444,25 +447,25 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
 
         {tab === "fields" && (
           <>
-            <div className="muted" style={{ fontSize: 12.5 }}>
+            <div className="text-[12.5px] text-muted-foreground">
               Per-field read / write toggles. Hidden fields are stripped from API responses; non-writable fields are rejected on insert/update for this role.
             </div>
-            <div className="field-grid">
-              <div className="fg-head">
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+              <div className="grid grid-cols-[1fr_80px_80px] items-center border-b border-border bg-[color-mix(in_oklch,var(--muted)_40%,var(--card))] px-3.5 py-2 text-[11.5px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
                 <span>Field</span>
-                <span style={{ textAlign: "center" }}>Read</span>
-                <span style={{ textAlign: "center" }}>Write</span>
+                <span className="text-center">Read</span>
+                <span className="text-center">Write</span>
               </div>
               {fields.map((f) => (
-                <div key={f} className="fg-row">
-                  <span className="font-mono" style={{ fontSize: 12.5 }}>{f}</span>
-                  <label className="fg-cell">
+                <div key={f} className="grid grid-cols-[1fr_80px_80px] items-center px-3.5 py-2 text-[12.5px] [&+&]:border-t [&+&]:border-border">
+                  <span className="font-mono text-[12.5px]">{f}</span>
+                  <label className="grid cursor-pointer place-items-center">
                     <Checkbox
                       checked={fieldPerms[f]?.read || false}
                       onChange={(next) => { setFieldPerms((p) => ({ ...p, [f]: { read: next, write: p[f]?.write ?? false } })); setDirty(true); }}
                     />
                   </label>
-                  <label className="fg-cell">
+                  <label className="grid cursor-pointer place-items-center">
                     <Checkbox
                       checked={fieldPerms[f]?.write || false}
                       onChange={(next) => { setFieldPerms((p) => ({ ...p, [f]: { read: p[f]?.read ?? false, write: next } })); setDirty(true); }}
@@ -470,9 +473,9 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
                   </label>
                 </div>
               ))}
-              <div className="fg-foot">
-                <span className="muted">{allowedReadCount} readable · {allowedWriteCount} writable</span>
-                <div className="spacer" />
+              <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_25%,var(--card))] px-3.5 py-2 text-[12.5px]">
+                <span className="text-muted-foreground">{allowedReadCount} readable · {allowedWriteCount} writable</span>
+                <div className="flex-1" />
                 <Button size="sm" variant="ghost" onClick={() => { const o: Record<string, { read: boolean; write: boolean }> = {}; fields.forEach((f) => { o[f] = { read: true, write: true }; }); setFieldPerms(o); setDirty(true); }}>Allow all</Button>
                 <Button size="sm" variant="ghost" onClick={() => { const o: Record<string, { read: boolean; write: boolean }> = {}; fields.forEach((f) => { o[f] = { read: false, write: false }; }); setFieldPerms(o); setDirty(true); }}>Deny all</Button>
               </div>
@@ -482,8 +485,8 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
 
         {tab === "validation" && (
           <>
-            <div className="muted" style={{ fontSize: 12.5 }}>
-              Incoming data must match this rule before insert/update succeeds. Failures return <span className="font-mono" style={{ color: "var(--foreground)" }}>422 invalid_payload</span>.
+            <div className="text-[12.5px] text-muted-foreground">
+              Incoming data must match this rule before insert/update succeeds. Failures return <span className="font-mono text-foreground">422 invalid_payload</span>.
             </div>
             <RuleBuilder tree={validation} onChange={setValidationDirty} fields={fields} />
           </>
@@ -491,22 +494,22 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
 
         {tab === "presets" && (
           <>
-            <div className="muted" style={{ fontSize: 12.5 }}>
+            <div className="text-[12.5px] text-muted-foreground">
               Default values applied on create. The user cannot override these — they are stamped server-side after validation.
             </div>
-            <div className="presets-list">
+            <div className="flex flex-col gap-2 rounded-xl border border-border bg-[color-mix(in_oklch,var(--muted)_18%,var(--card))] p-3">
               {presets.map((p, i) => (
-                <div key={p.id} className="presets-row">
+                <div key={p.id} className="flex items-center gap-2">
                   <Select
                     value={p.key}
                     onChange={(v) => { setPresets((arr) => arr.map((x, j) => j === i ? { ...x, key: v } : x)); setDirty(true); }}
                     options={[{ value: "", label: "field…" }, ...fields.map((f) => ({ value: f, label: f }))]}
                     size="sm"
-                    style={{ minWidth: 160 }}
+                    className="min-w-40"
                   />
-                  <span className="muted">=</span>
+                  <span className="text-muted-foreground">=</span>
                   <Input
-                    className="rb-input flex-1"
+                    className={RB_INPUT_FULL}
                     placeholder="value or $user.id"
                     list={`presets-vars-${p.id}`}
                     value={p.value}
@@ -517,7 +520,7 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
                   </datalist>
                   <IconButton
                     icon={I.X}
-                    className="rb-rm"
+                    className={RB_RM}
                     title="Remove"
                     onClick={() => { setPresets((arr) => arr.filter((_, j) => j !== i)); setDirty(true); }}
                   />
@@ -527,7 +530,7 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
                 type="button"
                 size="xs"
                 variant="ghost"
-                className="rb-add self-start"
+                className={`${RB_ADD} self-start`}
                 onClick={() => { setPresets((arr) => [...arr, { id: Date.now(), key: "", value: "" }]); setDirty(true); }}
               >
                 + preset
@@ -537,29 +540,17 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
         )}
 
         {tab === "item" && (
-          <details style={{
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-md)",
-            background: "var(--card)",
-          }}>
-            <summary style={{
-              cursor: "pointer",
-              padding: "8px 12px",
-              fontSize: 12.5,
-              fontWeight: 500,
-              color: "var(--foreground)",
-              listStyle: "none",
-            }}>
+          <details className="rounded-md border border-border bg-card">
+            <summary className="cursor-pointer px-3 py-2 text-[12.5px] font-medium text-foreground [list-style:none]">
               Test against an item
             </summary>
-            <div style={{ padding: "0 12px 12px 12px" }}>
+            <div className="px-3 pb-3">
               <Textarea
-                className="font-mono"
-                style={{ minHeight: 90, padding: 12, lineHeight: 1.5, fontSize: 12, resize: "vertical" }}
+                className="font-mono min-h-[90px] resize-y p-3 text-xs leading-[1.5]"
                 value={testItem}
                 onChange={(e) => { setTestItem(e.target.value); setTestResult(null); }}
               />
-              <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6, flexWrap: "wrap" }}>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
                 <Button variant="outline" size="sm" icon={I.Zap} onClick={runTest}>Run test</Button>
                 {testResult?.error && <Badge variant="destructive">error: {testResult.error}</Badge>}
                 {testResult && testResult.passed === true && <Badge variant="default">✓ passes · {testResult.ms}ms</Badge>}
@@ -570,15 +561,15 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
         )}
 
         {showSql && (
-          <div className="field">
-            <label className="field-label">Compiled SQL</label>
-            <pre className="alter-preview" style={{ fontSize: 11.5, margin: 0, whiteSpace: "pre-wrap" }}>{compileSql()}</pre>
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Compiled SQL</label>
+            <pre className="m-0 whitespace-pre-wrap rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11.5px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">{compileSql()}</pre>
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 8, paddingTop: 4, borderTop: "1px solid var(--border)", marginTop: 4 }}>
+        <div className="mt-1 flex gap-2 border-t border-border pt-1">
           <Button variant="outline" size="sm" icon={I.Code} onClick={() => setShowSql((v) => !v)}>{showSql ? "Hide" : "View"} compiled SQL</Button>
-          <div className="spacer" />
+          <div className="flex-1" />
           <Button variant="ghost" size="sm" disabled={!dirty} onClick={() => { setTree(presetTree(action)); setDirty(false); setTestResult(null); pushToast("Changes discarded."); }}>Discard</Button>
           <Button variant="primary" size="sm" disabled={!dirty} onClick={async () => {
             try {

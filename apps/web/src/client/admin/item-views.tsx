@@ -74,55 +74,43 @@ const KANBAN_COLS: { id: string; label: string }[] = [
 export function KanbanBoard({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post) => void }) {
   const byStatus = (s: string) => rows.filter((r) => r.status === s);
   return (
-    <div className="kanban">
+    <div className="grid grid-cols-[repeat(4,minmax(220px,1fr))] gap-3.5 p-3.5">
       {KANBAN_COLS.map((c) => {
         const items = byStatus(c.id);
         return (
-          <div key={c.id} className="kb-col">
-            <div className="kb-col-head">
-              <span className="kb-col-title">{c.label}</span>
-              <span className="font-mono tabular-nums kb-col-count">{items.length}</span>
-              <div className="spacer" />
+          <div key={c.id} className="flex min-h-[240px] flex-col rounded-xl border border-border bg-[color-mix(in_oklch,var(--muted)_40%,var(--card))]">
+            <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
+              <span className="text-[12.5px] font-medium capitalize">{c.label}</span>
+              <span className="rounded-md border border-border bg-card px-1.5 py-px font-mono text-[10.5px] tabular-nums text-muted-foreground">{items.length}</span>
+              <div className="flex-1" />
               <IconButton icon={I.Plus} title={`New ${c.label} post`} />
             </div>
-            <div className="kb-list">
+            <div className="flex flex-col gap-2 p-2.5">
               {items.length === 0 ? (
-                <div className="kb-empty">No items</div>
+                <div className="rounded-lg border border-dashed border-border py-[22px] text-center text-[11.5px] text-muted-foreground">No items</div>
               ) : (
                 items.map((r) => {
                   const author = authorById(r.author);
                   const words = rowNumber(r.word_count);
                   const views = rowNumber(r.view_count);
                   return (
-                    <button key={r.id} type="button" className="kb-card" onClick={() => onEdit(r)}>
-                      <div className="kb-card-title">{rowLabel(r)}</div>
+                    <button key={r.id} type="button" className="flex cursor-pointer flex-col gap-1.5 rounded-lg border border-border bg-card px-3 py-2.5 text-left hover:border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))]" onClick={() => onEdit(r)}>
+                      <div className="text-[12.5px] font-medium leading-[1.3]">{rowLabel(r)}</div>
                       {r.slug && (
-                        <div className="kb-card-meta">
+                        <div className="text-[11px] text-muted-foreground">
                           <span className="font-mono">{r.slug}</span>
                         </div>
                       )}
-                      <div className="kb-card-foot">
-                        <span className="avatar-xs">{author.initials}</span>
+                      <div className="mt-0.5 flex items-center gap-1.5">
+                        <span className="grid size-[18px] place-items-center rounded-full bg-muted font-mono text-[9.5px] text-muted-foreground">{author.initials}</span>
                         {words != null && (
-                          <span
-                            className="font-mono tabular-nums"
-                            style={{ color: "var(--muted-foreground)", fontSize: 10.5 }}
-                          >
+                          <span className="font-mono text-[10.5px] tabular-nums text-muted-foreground">
                             {words.toLocaleString()} w
                           </span>
                         )}
-                        <div className="spacer" />
+                        <div className="flex-1" />
                         {views != null && views > 0 && (
-                          <span
-                            className="font-mono tabular-nums"
-                            style={{
-                              color: "var(--muted-foreground)",
-                              fontSize: 10.5,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 4,
-                            }}
-                          >
+                          <span className="inline-flex items-center gap-1 font-mono text-[10.5px] tabular-nums text-muted-foreground">
                             <I.Eye size={10} /> {views.toLocaleString()}
                           </span>
                         )}
@@ -159,25 +147,22 @@ const statusBadgeVariant = (s: Post["status"]): "default" | "secondary" | "outli
 
 export function GalleryGrid({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post) => void }) {
   return (
-    <div className="gallery">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3.5 p-3.5">
       {rows.map((r) => {
         const a = hashColor(r.id);
         const b = hashColor(r.id.split("").reverse().join(""));
         const words = rowNumber(r.word_count);
         return (
-          <button key={r.id} type="button" className="gal-card" onClick={() => onEdit(r)}>
-            <div className="gal-thumb" style={{ background: `linear-gradient(135deg, ${a}, ${b})` }}>
-              <span className="gal-thumb-label font-mono">{r.slug || r.id}</span>
+          <button key={r.id} type="button" className="cursor-pointer overflow-hidden rounded-xl border border-border bg-card text-left text-foreground hover:border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))]" onClick={() => onEdit(r)}>
+            <div className="relative grid aspect-[16/10] p-2.5 [place-items:end_start]" style={{ background: `linear-gradient(135deg, ${a}, ${b})` }}>
+              <span className="rounded-md bg-[color-mix(in_oklch,var(--background)_65%,transparent)] px-2 py-0.5 font-mono text-[10.5px] text-foreground backdrop-blur-[4px]">{r.slug || r.id}</span>
             </div>
-            <div className="gal-meta">
-              <div className="gal-title">{rowLabel(r)}</div>
-              <div className="gal-sub">
+            <div className="flex flex-col gap-1.5 px-3 pb-3 pt-2.5">
+              <div className="text-[12.5px] font-medium leading-[1.3]">{rowLabel(r)}</div>
+              <div className="flex items-center gap-2">
                 {r.status && <Badge variant={statusBadgeVariant(r.status)}>{r.status}</Badge>}
                 {words != null && (
-                  <span
-                    className="font-mono tabular-nums"
-                    style={{ color: "var(--muted-foreground)", fontSize: 11 }}
-                  >
+                  <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
                     {words.toLocaleString()} w
                   </span>
                 )}
@@ -244,48 +229,63 @@ export function CalendarView({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post
     });
 
   return (
-    <div className="cal">
-      <div className="cal-head">
-        <button type="button" className="cal-nav-btn" onClick={prev} aria-label="Previous month">
+    <div className="p-3.5">
+      <div className="flex items-center gap-2 px-1 pb-3">
+        <button type="button" className="inline-grid size-6 cursor-pointer place-items-center rounded-md border border-border bg-transparent text-foreground hover:bg-accent" onClick={prev} aria-label="Previous month">
           <I.ChevronLeft size={14} />
         </button>
-        <span style={{ fontWeight: 500 }}>
+        <span className="font-medium">
           {MONTH_NAMES[cursor.month]} {cursor.year}
         </span>
-        <button type="button" className="cal-nav-btn" onClick={next} aria-label="Next month">
+        <button type="button" className="inline-grid size-6 cursor-pointer place-items-center rounded-md border border-border bg-transparent text-foreground hover:bg-accent" onClick={next} aria-label="Next month">
           <I.ChevronRight size={14} />
         </button>
-        <div className="spacer" />
-        <span className="muted" style={{ fontSize: 11.5 }}>
+        <div className="flex-1" />
+        <span className="text-[11.5px] text-muted-foreground">
           scheduled by <span className="font-mono">published_at</span>
         </span>
       </div>
-      <div className="cal-weekdays">
+      <div className="grid grid-cols-7 gap-1.5 text-[10.5px] uppercase tracking-[0.05em] text-muted-foreground">
         {WEEKDAYS.map((d) => (
           <div key={d}>{d}</div>
         ))}
       </div>
-      <div className="cal-grid">
+      <div className="grid grid-cols-7 gap-1.5">
         {cells.map((d, i) => (
-          <div key={i} className={`cal-cell ${d == null ? "empty" : ""}`}>
+          <div
+            key={i}
+            className={
+              d == null
+                ? "flex min-h-[92px] flex-col gap-1 rounded-md border border-transparent bg-transparent p-1.5"
+                : "flex min-h-[92px] flex-col gap-1 rounded-md border border-border bg-card p-1.5"
+            }
+          >
             {d != null && (
               <>
-                <div className="cal-day font-mono tabular-nums">{d}</div>
-                <div className="cal-events">
+                <div className="font-mono text-[11px] tabular-nums text-muted-foreground">{d}</div>
+                <div className="flex min-h-0 flex-col gap-[3px]">
                   {(byDay[d] || []).slice(0, 3).map((r) => (
                     <button
                       key={r.id}
                       type="button"
-                      className={`cal-evt cal-evt-${r.status || "draft"}`}
+                      className="flex cursor-pointer items-center gap-[5px] overflow-hidden rounded-sm border-0 bg-muted px-1.5 py-[3px] text-left text-[10.5px] text-foreground hover:bg-accent"
                       onClick={() => onEdit(r)}
                       title={rowLabel(r)}
                     >
-                      <span className="cal-evt-dot" />
-                      <span className="cal-evt-title">{rowLabel(r)}</span>
+                      <span
+                        className={`size-[5px] shrink-0 rounded-full ${
+                          r.status === "published"
+                            ? "bg-primary"
+                            : r.status === "review"
+                              ? "bg-[oklch(0.7_0.18_70)]"
+                              : "bg-muted-foreground"
+                        }`}
+                      />
+                      <span className="truncate">{rowLabel(r)}</span>
                     </button>
                   ))}
                   {(byDay[d] || []).length > 3 && (
-                    <div className="cal-more font-mono">+{(byDay[d] || []).length - 3} more</div>
+                    <div className="pl-1.5 font-mono text-[10px] text-muted-foreground">+{(byDay[d] || []).length - 3} more</div>
                   )}
                 </div>
               </>

@@ -10,6 +10,13 @@ import { type CollectionSchema } from "./config";
 import { Badge, Button, IconButton, Switch } from "./ui";
 import { Input } from "@workeros/ui/components/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
 import { Select } from "./select";
 import { AlterPreview } from "./extras";
 import {
@@ -137,21 +144,16 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150"
-      onClick={onClose}
-    >
-      <div
-        className="relative flex max-h-[92vh] w-[94vw] max-w-[760px] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
-          <div className="flex flex-1 flex-col gap-1">
-            <div className="text-base font-semibold tracking-[-0.01em]">Add field to <span className="font-mono">c_{schema?.slug || "posts"}</span></div>
-            <div className="text-[12.5px] text-muted-foreground">Pick an interface, name the column — additive ALTER TABLE, no existing rows are rewritten.</div>
-          </div>
-          <IconButton icon={I.X} onClick={onClose} />
-        </div>
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="flex max-h-[92vh] w-[94vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[760px]">
+        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
+            Add field to <span className="font-mono">c_{schema?.slug || "posts"}</span>
+          </DialogTitle>
+          <DialogDescription className="text-[12.5px]">
+            Pick an interface, name the column — additive ALTER TABLE, no existing rows are rewritten.
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="flex items-center gap-2.5 border-b border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-5 py-3 text-[12.5px]">
           <div className={`inline-flex items-center gap-2 font-medium ${step >= 1 ? "text-foreground" : "text-muted-foreground"}`}>
@@ -333,7 +335,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
             <Button variant="primary" size="sm" icon={I.Check} disabled={!valid} onClick={submit}>Add column</Button>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

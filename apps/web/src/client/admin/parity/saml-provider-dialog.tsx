@@ -21,8 +21,15 @@ import { useEffect, useMemo, useState } from "react";
 import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "../icons";
-import { Badge, Button, IconButton, Switch } from "../ui";
+import { Badge, Button, Switch } from "../ui";
 import { Select } from "../select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
 import {
   samlAdminApi,
   type ApiSamlProvider,
@@ -311,23 +318,16 @@ export function SamlProviderDialog({
   );
 
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
-      <div
-        className="dialog dialog-lg"
-        onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: 720, width: "94vw", maxHeight: "92vh", display: "flex", flexDirection: "column" }}
-      >
-        <div className="dialog-head">
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>
-              {isEdit ? `Configure ${existing!.name}` : "Add SAML provider"}
-            </div>
-            <div className="muted" style={{ fontSize: 12.5, marginTop: 3 }}>
-              SAML 2.0 SSO — workspace end-users.
-            </div>
-          </div>
-          <IconButton icon={I.X} onClick={onClose} />
-        </div>
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="dialog-lg flex max-h-[92vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[720px]">
+        <DialogHeader className="dialog-head pr-12 text-left">
+          <DialogTitle style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>
+            {isEdit ? `Configure ${existing!.name}` : "Add SAML provider"}
+          </DialogTitle>
+          <DialogDescription className="muted" style={{ fontSize: 12.5, marginTop: 3 }}>
+            SAML 2.0 SSO — workspace end-users.
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="dialog-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "flex", gap: 6 }}>
@@ -619,7 +619,7 @@ export function SamlProviderDialog({
             {isEdit ? "Save" : "Add provider"}
           </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

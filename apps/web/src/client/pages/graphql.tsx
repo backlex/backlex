@@ -749,14 +749,16 @@ export const GraphqlPage = () => {
                 className="h-8 pl-7 pr-7 text-xs"
               />
               {filter && (
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => setFilter("")}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  className="absolute right-1 top-1/2 size-6 -translate-y-1/2 text-muted-foreground"
                   aria-label="Clear filter"
                 >
                   <XIcon className="size-3" />
-                </button>
+                </Button>
               )}
             </div>
           </CardHeader>
@@ -879,13 +881,15 @@ export const GraphqlPage = () => {
                   !filter.trim() &&
                   !showAllTypes &&
                   filteredTypes.length > MAX_TYPES_INITIAL && (
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setShowAllTypes(true)}
-                      className="mx-2 mt-1 rounded-md px-2 py-1 text-left text-[11px] text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      className="mx-2 mt-1 h-7 justify-start text-[11px] text-muted-foreground"
                     >
                       Show {filteredTypes.length - MAX_TYPES_INITIAL} more…
-                    </button>
+                    </Button>
                   )}
               </div>
             )}

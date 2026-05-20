@@ -7,6 +7,14 @@ import { ConfirmDialog } from "../sheet";
 import { api } from "@/lib/api";
 import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
 import { fetchSafely } from "./_shared";
 
 export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void }) {
@@ -257,7 +265,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
           </div>
           )}
 
-          <textarea
+          <Textarea
             value={code}
             onChange={(e) => setCode(e.target.value)}
             spellCheck={false}
@@ -411,23 +419,12 @@ function NewFunctionDialog({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150"
-      onClick={onClose}
-    >
-      <div
-        className="relative flex max-h-[90vh] w-[640px] max-w-[94vw] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
-        role="dialog"
-        aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
-          <div className="flex-1">
-            <h2 className="m-0 text-base font-semibold tracking-[-0.01em]">New function</h2>
-            <p className="mb-0 mt-0.5 text-[12.5px] text-muted-foreground">Sandboxed JS. HTTP for manual invoke, event for pub-sub triggers, or cron for scheduled runs.</p>
-          </div>
-          <IconButton icon={I.X} onClick={onClose} title="Close" />
-        </div>
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="flex max-h-[90vh] w-[640px] max-w-[94vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">New function</DialogTitle>
+          <DialogDescription className="mt-0.5 text-[12.5px]">Sandboxed JS. HTTP for manual invoke, event for pub-sub triggers, or cron for scheduled runs.</DialogDescription>
+        </DialogHeader>
 
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
@@ -519,14 +516,14 @@ function NewFunctionDialog({
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-border bg-card px-5 py-3">
+        <DialogFooter className="border-t border-border bg-card px-5 py-3 sm:justify-end">
           <div className="flex-1" />
           <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
           <Button variant="primary" onClick={submit} disabled={!valid || busy}>
             {busy ? "Creating…" : "Create function"}
           </Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

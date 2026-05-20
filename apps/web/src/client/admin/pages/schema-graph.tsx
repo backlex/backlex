@@ -7,7 +7,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { I } from "../icons";
 import { Badge, Button, PageHeader } from "../ui";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { collectionsApi, type ApiCollection } from "../api";
+
+const ADMIN_TABLE_CLS =
+  "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
 
 interface GraphNode {
   slug: string;
@@ -139,7 +143,7 @@ export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="flex flex-col gap-4.5">
       <PageHeader
         title="Schema graph"
         description="Live ERD of dynamic collections. Foreign keys derive from field type · relations panel below shows the join shape used by REST + GraphQL."
@@ -162,28 +166,28 @@ export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "
         }
       />
 
-      <div className="card" style={{ overflow: "hidden" }}>
-        <div className="card-section" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12.5, fontWeight: 500 }}>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3.5">
+          <span className="text-[12.5px] font-medium">
             {nodes.length} collections · {edges.length} relations
           </span>
-          <div className="spacer" />
-          <div style={{ display: "flex", gap: 10, fontSize: 11.5, color: "var(--muted-foreground)" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <span style={{ width: 16, height: 2, background: "var(--foreground)" }} /> fk
+          <div className="flex-1" />
+          <div className="flex gap-2.5 text-[11.5px] text-muted-foreground">
+            <span className="flex items-center gap-[5px]">
+              <span className="h-0.5 w-4 bg-foreground" /> fk
             </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <span style={{ width: 16, height: 0, borderTop: "2px dashed var(--foreground)" }} /> m2m
+            <span className="flex items-center gap-[5px]">
+              <span className="w-4 border-t-2 border-dashed border-foreground" /> m2m
             </span>
           </div>
         </div>
-        <div className="graph-canvas">
+        <div className="w-full overflow-auto bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))]">
           {nodes.length === 0 ? (
-            <div className="muted" style={{ padding: 40, fontSize: 13, textAlign: "center" }}>
+            <div className="p-10 text-center text-[13px] text-muted-foreground">
               {loaded ? "No collections to graph — create one to populate the ERD." : "Loading collections…"}
             </div>
           ) : (
-            <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: "block" }}>
+            <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block min-w-[1100px]">
               <defs>
                 <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
                   <path d="M 24 0 L 0 0 0 24" fill="none" stroke="var(--border)" strokeWidth="1" />
@@ -199,15 +203,15 @@ export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "
                 const inactive = selected != null && selected !== e.from && selected !== e.to;
                 const highlighted = selected != null && (selected === e.from || selected === e.to);
                 return (
-                  <g key={`${e.from}->${e.to}:${i}`} className={`edge ${highlighted ? "on" : ""}`}>
+                  <g key={`${e.from}->${e.to}:${i}`}>
                     <path
                       d={d}
                       fill="none"
-                      stroke="var(--foreground)"
+                      stroke={highlighted ? "var(--primary)" : "var(--foreground)"}
                       strokeWidth="1.5"
                       strokeDasharray={e.kind === "m2m" ? "6 5" : ""}
                       markerEnd="url(#arr)"
-                      opacity={inactive ? 0.18 : 0.55}
+                      opacity={highlighted ? 1 : inactive ? 0.18 : 0.55}
                     />
                   </g>
                 );
@@ -262,50 +266,50 @@ export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "
       </div>
 
       {/* Relations table */}
-      <div className="card">
-        <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
           <I.Network size={14} />
-          <span style={{ fontSize: 13, fontWeight: 500 }}>relations</span>
-          <span className="font-mono" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+          <span className="text-[13px] font-medium">relations</span>
+          <span className="font-mono text-xs text-muted-foreground">
             {edges.length}
           </span>
         </div>
         {edges.length === 0 ? (
-          <div className="muted" style={{ padding: "14px 16px", fontSize: 12 }}>
+          <div className="px-4 py-3.5 text-xs text-muted-foreground">
             No relation-typed fields detected. Add a field with type{" "}
             <span className="font-mono">relation</span> to draw an edge.
           </div>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th style={{ width: 200 }}>from</th>
-                <th style={{ width: 40 }} />
-                <th style={{ width: 200 }}>to</th>
-                <th style={{ width: 80 }}>kind</th>
-                <th>field</th>
-                <th style={{ width: 110 }}>expansion</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table className={ADMIN_TABLE_CLS}>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[200px]">from</TableHead>
+                <TableHead className="w-10" />
+                <TableHead className="w-[200px]">to</TableHead>
+                <TableHead className="w-[80px]">kind</TableHead>
+                <TableHead>field</TableHead>
+                <TableHead className="w-[110px]">expansion</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {edges.map((e, i) => (
-                <tr key={`${e.from}->${e.to}:${i}`}>
-                  <td className="font-mono">c_{e.from}</td>
-                  <td><I.ChevronRight size={12} className="muted" /></td>
-                  <td className="font-mono">c_{e.to}</td>
-                  <td>
+                <TableRow key={`${e.from}->${e.to}:${i}`}>
+                  <TableCell className="font-mono">c_{e.from}</TableCell>
+                  <TableCell><I.ChevronRight size={12} className="text-muted-foreground" /></TableCell>
+                  <TableCell className="font-mono">c_{e.to}</TableCell>
+                  <TableCell>
                     <Badge variant={e.kind === "m2m" ? "secondary" : "outline"}>{e.kind}</Badge>
-                  </td>
-                  <td className="font-mono" style={{ color: "var(--muted-foreground)" }}>
+                  </TableCell>
+                  <TableCell className="font-mono text-muted-foreground">
                     {e.label}
-                  </td>
-                  <td className="font-mono" style={{ color: "var(--muted-foreground)", fontSize: 11.5 }}>
+                  </TableCell>
+                  <TableCell className="font-mono text-[11.5px] text-muted-foreground">
                     fields=*,{e.to.replace(/s$/, "")}.*
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
       </div>
     </div>

@@ -423,20 +423,24 @@ function NewWorkspaceDialog({ onClose, onCreate, existing }: { onClose: () => vo
   const [name, setName] = useState("");
   const [project, setProject] = useState("default");
   const [env, setEnv] = useState("development");
+  // Focus the Name field once the dialog has settled. Deferred so it lands
+  // after the workspace-switcher dropdown finishes restoring focus on close
+  // (otherwise the first typed character is lost). Plain post-mount focus —
+  // deliberately NOT via Radix onOpenAutoFocus, which caused a focus-scope
+  // render loop.
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      document.querySelector<HTMLInputElement>('[role="dialog"] input')?.focus();
+    }, 80);
+    return () => window.clearTimeout(id);
+  }, []);
   const slug = name.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 24);
   const taken = slug && existing.includes(slug);
   const valid = slug.length >= 2 && !taken;
   const submit = () => { if (valid) onCreate({ name: slug, project, env }); };
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent
-        className="flex max-h-[min(86vh,720px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[520px]"
-        onOpenAutoFocus={(e) => {
-          e.preventDefault();
-          const el = e.currentTarget as HTMLElement;
-          setTimeout(() => el.querySelector("input")?.focus(), 0);
-        }}
-      >
+      <DialogContent className="flex max-h-[min(86vh,720px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[520px]">
         <DialogHeader className="flex-row items-center gap-2.5 space-y-0 border-b border-border px-4 py-3.5 pr-12 text-left">
           <I.Plus size={14} />
           <DialogTitle className="text-sm font-medium">New workspace</DialogTitle>

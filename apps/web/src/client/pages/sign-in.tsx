@@ -7,6 +7,7 @@ import {
   KeyRoundIcon,
   MailIcon,
 } from "lucide-react";
+import { Button } from "@workeros/ui/components/button";
 import { Input } from "@workeros/ui/components/input";
 import { Label } from "@workeros/ui/components/label";
 import {
@@ -155,14 +156,16 @@ export const SignIn = () => {
                 placeholder="••••••••"
                 className="h-10 pr-10"
               />
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon-sm"
                 onClick={() => setShow((s) => !s)}
                 aria-label={show ? "Hide password" : "Show password"}
-                className="absolute right-2.5 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full text-muted-foreground hover:text-foreground"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground"
               >
                 {show ? <EyeOffIcon size={14} /> : <EyeIcon size={14} />}
-              </button>
+              </Button>
             </div>
           </div>
 

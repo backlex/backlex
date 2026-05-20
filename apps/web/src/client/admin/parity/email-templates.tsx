@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
 import { Input } from "@workeros/ui/components/input";
+import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "../icons";
 import { Button, PageHeader } from "../ui";
 import { emailTemplatesApi, type ApiEmailTemplate } from "../api";
@@ -168,7 +169,7 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
             <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">From</label><Input value={fromAddress} placeholder="(use the configured default)" onChange={(e) => setFromAddress(e.target.value)} /></div>
             <div className="flex flex-col gap-1.5">
               <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Body (HTML)</label>
-              <textarea value={body} onChange={(e) => setBody(e.target.value)} spellCheck={false} className="min-h-[220px] w-full resize-y rounded-xl border border-border bg-[oklch(0.18_0.01_130)] p-3 font-mono text-[12.5px] leading-[1.55] text-[oklch(0.92_0.02_130)]" />
+              <Textarea value={body} onChange={(e) => setBody(e.target.value)} spellCheck={false} className="min-h-[220px] w-full resize-y rounded-xl border border-border bg-[oklch(0.18_0.01_130)] p-3 font-mono text-[12.5px] leading-[1.55] text-[oklch(0.92_0.02_130)]" />
             </div>
             <div className="flex flex-wrap gap-1.5">
               {(active?.vars ?? []).map((v) => (

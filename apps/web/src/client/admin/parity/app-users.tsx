@@ -1,9 +1,17 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
 import { Input } from "@workeros/ui/components/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { I } from "../icons";
-import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
+import { Badge, Button, PageHeader, Switch } from "../ui";
 import { ConfirmDialog } from "../sheet";
 import {
   appUsersApi,
@@ -200,19 +208,16 @@ function AppUserRolesDialog({
       return n;
     });
   return (
-    <div className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150" onClick={onClose}>
-      <div className="relative flex max-h-[min(86vh,720px)] w-[92vw] max-w-[440px] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
-          <div className="flex-1">
-            <div className="text-base font-semibold tracking-[-0.01em]">Roles · {user.email}</div>
-            <div className="mt-[3px] text-[12.5px] text-muted-foreground">
-              End-users always have the workspace's <span className="font-mono">authenticated</span> role;
-              pick any extra custom roles below. The <span className="font-mono">admin</span> role can't be
-              assigned to end-users.
-            </div>
-          </div>
-          <IconButton icon={I.X} onClick={onClose} />
-        </div>
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[440px]">
+        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">Roles · {user.email}</DialogTitle>
+          <DialogDescription className="text-[12.5px]">
+            End-users always have the workspace's <span className="font-mono">authenticated</span> role;
+            pick any extra custom roles below. The <span className="font-mono">admin</span> role can't be
+            assigned to end-users.
+          </DialogDescription>
+        </DialogHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
           {roles.length === 0 && (
             <div className="text-[12.5px] text-muted-foreground">
@@ -229,12 +234,11 @@ function AppUserRolesDialog({
             </div>
           ))}
         </div>
-        <div className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
-          <div className="flex-1" />
+        <DialogFooter className="border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
           <Button variant="primary" size="sm" icon={I.Check} onClick={() => onSave([...selected])}>Save</Button>
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

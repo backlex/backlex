@@ -144,28 +144,27 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
   };
 
   return (
-    <div className="card">
-      <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+    <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-4 py-3.5">
         <I.Users size={14} />
-        <span style={{ fontSize: 13, fontWeight: 500 }}>members</span>
-        <span className="font-mono" style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{stats.active} active · {stats.invited} invited</span>
-        <div className="spacer" />
-        <div style={{ display: "flex", alignItems: "center", gap: 6, border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: "4px 10px", height: 30, background: "var(--card)" }}>
+        <span className="text-[13px] font-medium">members</span>
+        <span className="font-mono text-xs text-muted-foreground">{stats.active} active · {stats.invited} invited</span>
+        <div className="flex-1" />
+        <div className="flex h-[30px] items-center gap-1.5 rounded-md border border-border bg-card px-2.5">
           <I.Search size={12} />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search members…"
-            className="h-auto border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0 focus-visible:border-0"
-            style={{ width: 160 }}
+            className="h-auto w-40 border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0 focus-visible:border-0"
           />
         </div>
       </div>
 
-      <div className="mp-invite">
-        <I.Mail size={13} />
+      <div className="flex items-center gap-2 border-b border-border bg-[color-mix(in_oklch,var(--muted)_22%,var(--card))] px-3.5 py-2.5">
+        <I.Mail size={13} className="text-muted-foreground" />
         <Input
-          className="mp-invite-input min-w-[200px]"
+          className="h-[30px] min-w-[200px] flex-1 text-[12.5px]"
           placeholder="invite by email…"
           value={invite}
           onChange={(e) => setInvite(e.target.value)}
@@ -180,8 +179,8 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
         <Button variant="primary" size="sm" icon={I.Plus} onClick={sendInvite}>Invite</Button>
       </div>
 
-      <div className="mp-table">
-        <div className="mp-head">
+      <div className="py-1">
+        <div className="grid grid-cols-[1.6fr_1fr_1fr_0.8fr_36px] items-center gap-3 border-b border-border bg-[color-mix(in_oklch,var(--muted)_18%,var(--card))] px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
           <span>Member</span>
           <span>Role</span>
           <span>Last active</span>
@@ -190,12 +189,20 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
         </div>
         {loading && filtered.length === 0 && <SkeletonList rows={4} cols={5} />}
         {filtered.map((m) => (
-          <div key={m.id} className="mp-row">
-            <div className="mp-member">
-              <span className="mp-avatar" style={{ background: m.color }}>{m.avatar}</span>
-              <div className="mp-meta">
-                <span className="mp-name">{m.name}</span>
-                <span className="mp-email font-mono">{m.email}</span>
+          <div
+            key={m.id}
+            className="grid grid-cols-[1.6fr_1fr_1fr_0.8fr_36px] items-center gap-3 px-4 py-2.5 hover:bg-[color-mix(in_oklch,var(--accent)_50%,var(--card))] [&+&]:border-t [&+&]:border-border"
+          >
+            <div className="flex items-center gap-2.5">
+              <span
+                className="grid size-[30px] place-items-center rounded-full font-mono text-[11.5px] font-semibold text-[oklch(0.18_0_0)]"
+                style={{ background: m.color }}
+              >
+                {m.avatar}
+              </span>
+              <div className="flex min-w-0 flex-col gap-px">
+                <span className="text-[13px]">{m.name}</span>
+                <span className="font-mono text-[11px] text-muted-foreground">{m.email}</span>
               </div>
             </div>
             <Select
@@ -210,7 +217,7 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
               size="sm"
               disabled
             />
-            <span className="muted font-mono" style={{ fontSize: 11.5 }}>{m.last}</span>
+            <span className="font-mono text-[11.5px] text-muted-foreground">{m.last}</span>
             <span>
               {m.status === "active" && <Badge variant="secondary">active</Badge>}
               {m.status === "invited" && <Badge variant="outline">pending</Badge>}
@@ -219,7 +226,7 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
           </div>
         ))}
         {!loading && !filtered.length && (
-          <div style={{ padding: 24, textAlign: "center", color: "var(--muted-foreground)", fontSize: 12.5 }}>
+          <div className="p-6 text-center text-[12.5px] text-muted-foreground">
             {q ? `No members match "${q}".` : "No members yet."}
           </div>
         )}

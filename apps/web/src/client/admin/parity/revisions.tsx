@@ -194,64 +194,72 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
       : `${fmtRevTs(e.createdAt)} · ${e.createdBy ?? "system"}`;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div className="flex flex-col gap-4.5">
       <PageHeader title="Revisions" description="Every write is versioned. Inspect, diff, or revert any prior state." />
-      <div className="master-detail-3">
-        <div className="card">
-          <div className="card-section" style={{ fontSize: 12, fontWeight: 500 }}>Items <span className="muted font-mono" style={{ fontSize: 11 }}>· c_{collectionSlug}</span></div>
+      <div className="grid grid-cols-[280px_220px_minmax(0,1fr)] items-start gap-3.5 max-[1024px]:grid-cols-[minmax(0,1fr)]">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          <div className="border-b border-border px-4 py-3.5 text-xs font-medium">Items <span className="font-mono text-[11px] text-muted-foreground">· c_{collectionSlug}</span></div>
           <ScrollArea className="h-[60vh]">
             {itemsLoading && (
-              <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>Loading…</div>
+              <div className="px-3 py-4 text-xs text-muted-foreground">Loading…</div>
             )}
             {!itemsLoading && items.length === 0 && (
-              <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>No items in this collection yet.</div>
+              <div className="px-3 py-4 text-xs text-muted-foreground">No items in this collection yet.</div>
             )}
             {items.map((it) => (
-              <div key={it.id} onClick={() => setActiveId(it.id)} style={{ padding: "8px 12px", borderTop: "1px solid var(--border)", cursor: "pointer", background: activeId === it.id ? "var(--accent)" : "transparent" }}>
-                <div style={{ fontSize: 12.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.title}</div>
-                <div className="font-mono muted" style={{ fontSize: 10.5 }}>{it.id.slice(0, 14)}…</div>
+              <div
+                key={it.id}
+                onClick={() => setActiveId(it.id)}
+                className={`cursor-pointer border-t border-border px-3 py-2 ${activeId === it.id ? "bg-accent" : ""}`}
+              >
+                <div className="truncate text-[12.5px] font-medium">{it.title}</div>
+                <div className="font-mono text-[10.5px] text-muted-foreground">{it.id.slice(0, 14)}…</div>
               </div>
             ))}
           </ScrollArea>
         </div>
-        <div className="card">
-          <div className="card-section" style={{ fontSize: 12, fontWeight: 500 }}>Timeline · {item?.title?.slice(0, 18) ?? "—"}{item ? "…" : ""}</div>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          <div className="border-b border-border px-4 py-3.5 text-xs font-medium">Timeline · {item?.title?.slice(0, 18) ?? "—"}{item ? "…" : ""}</div>
           <ScrollArea className="h-[60vh]">
             {revsLoading && (
-              <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>Loading…</div>
+              <div className="px-3 py-4 text-xs text-muted-foreground">Loading…</div>
             )}
             {!revsLoading && entries.length === 0 && (
-              <div className="muted" style={{ padding: "16px 12px", fontSize: 12 }}>{activeId ? "No revisions yet for this item." : "Select an item to see its history."}</div>
+              <div className="px-3 py-4 text-xs text-muted-foreground">{activeId ? "No revisions yet for this item." : "Select an item to see its history."}</div>
             )}
             {!revsLoading && entries.length === 1 && entries[0].kind === "live" && (
-              <div className="muted" style={{ padding: "10px 12px", fontSize: 11.5, borderTop: "1px solid var(--border)" }}>Only the current state exists — no edits recorded yet.</div>
+              <div className="border-t border-border px-3 py-2.5 text-[11.5px] text-muted-foreground">Only the current state exists — no edits recorded yet.</div>
             )}
             {entries.map((e, i) => {
               const sel = activeIdx === i;
               return (
-                <div key={e.kind === "live" ? "__live" : e.id} onClick={() => setActiveIdx(i)} style={{ padding: "8px 12px", borderTop: "1px solid var(--border)", cursor: "pointer", background: sel ? "var(--accent)" : "transparent", display: "flex", flexDirection: "column", gap: 2 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span className="font-mono" style={{ fontSize: 12, fontWeight: 500 }}>{e.kind === "live" ? "live" : `v${e.v}`}</span>
+                <div
+                  key={e.kind === "live" ? "__live" : e.id}
+                  onClick={() => setActiveIdx(i)}
+                  className={`flex cursor-pointer flex-col gap-0.5 border-t border-border px-3 py-2 ${sel ? "bg-accent" : ""}`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-xs font-medium">{e.kind === "live" ? "live" : `v${e.v}`}</span>
                     <Badge variant={e.kind === "live" ? "default" : "secondary"}>{e.kind === "live" ? "current" : i === entries.length - 1 ? "initial" : "edit"}</Badge>
                   </div>
-                  <div className="muted font-mono" style={{ fontSize: 10.5 }}>{subtitleFor(e)}</div>
+                  <div className="font-mono text-[10.5px] text-muted-foreground">{subtitleFor(e)}</div>
                 </div>
               );
             })}
           </ScrollArea>
         </div>
-        <div className="card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
+        <div className="flex flex-col gap-3.5 overflow-hidden rounded-2xl border border-border bg-card p-[18px] text-card-foreground">
           {!active ? (
-            <div style={{ padding: 36, textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>
+            <div className="p-9 text-center text-[13px] text-muted-foreground">
               {revsLoading ? "Loading…" : "Pick a revision from the timeline to inspect, diff, or revert."}
             </div>
           ) : (
           <>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 14, fontWeight: 600 }}>{titleFor(active)}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold">{titleFor(active)}</span>
             <Badge variant={active.kind === "live" ? "default" : "secondary"}>{active.kind === "live" ? "current" : !hasPrev ? "initial" : "edit"}</Badge>
-            <span className="muted font-mono" style={{ fontSize: 12 }}>{subtitleFor(active)}</span>
-            <div className="spacer" />
+            <span className="font-mono text-xs text-muted-foreground">{subtitleFor(active)}</span>
+            <div className="flex-1" />
             {hasPrev && (
               <Button size="sm" variant="outline" icon={I.Eye} onClick={() => setShowFull((s) => !s)}>
                 {showFull ? "Changes only" : "View full"}
@@ -268,39 +276,42 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
               {reverting ? "Reverting…" : active.kind === "live" ? "Current state" : "Revert to this"}
             </Button>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="flex flex-col gap-2">
             {!hasPrev && (
-              <div className="muted" style={{ fontSize: 12 }}>
+              <div className="text-xs text-muted-foreground">
                 {active.kind === "live"
                   ? "No earlier revisions — showing the current field values."
                   : "Initial revision — the first recorded state of this item."}
               </div>
             )}
             {hasPrev && (
-              <div className="muted" style={{ fontSize: 11.5 }}>
+              <div className="text-[11.5px] text-muted-foreground">
                 {showFull ? "Showing all fields" : `Showing ${changedDiff.length} changed field${changedDiff.length === 1 ? "" : "s"}`} · before = {titleFor(prev)}
               </div>
             )}
             {hasPrev && !showFull && changedDiff.length === 0 && (
-              <div className="muted" style={{ fontSize: 12 }}>No field changes from {titleFor(prev)}.</div>
+              <div className="text-xs text-muted-foreground">No field changes from {titleFor(prev)}.</div>
             )}
             {visibleDiff.map((d) => {
               const isAuto = REV_AUTO_FIELDS.has(d.field);
               return (
-                <div key={d.field} className="card" style={{ padding: 12, borderRadius: "var(--radius-xl)", display: "flex", flexDirection: "column", gap: 8, opacity: d.changed || showFull ? 1 : 0.7 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span className="font-mono" style={{ fontSize: 12, fontWeight: 500 }}>{d.field}</span>
+                <div
+                  key={d.field}
+                  className={`flex flex-col gap-2 overflow-hidden rounded-xl border border-border bg-card p-3 ${d.changed || showFull ? "" : "opacity-70"}`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-xs font-medium">{d.field}</span>
                     {isAuto && <Badge variant="outline">system</Badge>}
                     {!d.changed && <Badge variant="secondary">unchanged</Badge>}
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: hasPrev ? "1fr 1fr" : "1fr", gap: 8 }}>
+                  <div className={`grid gap-2 ${hasPrev ? "grid-cols-2" : "grid-cols-1"}`}>
                     {hasPrev && (
-                      <div style={{ padding: 8, background: d.changed ? "color-mix(in oklch, var(--destructive) 8%, var(--card))" : "var(--card)", border: `1px solid ${d.changed ? "color-mix(in oklch, var(--destructive) 30%, var(--border))" : "var(--border)"}`, borderRadius: "var(--radius-md)", fontFamily: "Geist Mono, monospace", fontSize: 11.5, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                        <div className="muted" style={{ fontSize: 10, marginBottom: 4 }}>before</div>{fmtRevValue(d.before)}
+                      <div className={`whitespace-pre-wrap rounded-md border p-2 font-mono text-[11.5px] [word-break:break-word] ${d.changed ? "border-[color-mix(in_oklch,var(--destructive)_30%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))]" : "border-border bg-card"}`}>
+                        <div className="mb-1 text-[10px] text-muted-foreground">before</div>{fmtRevValue(d.before)}
                       </div>
                     )}
-                    <div style={{ padding: 8, background: d.changed && hasPrev ? "color-mix(in oklch, oklch(0.7 0.18 145) 12%, var(--card))" : "var(--card)", border: `1px solid ${d.changed && hasPrev ? "color-mix(in oklch, oklch(0.7 0.18 145) 40%, var(--border))" : "var(--border)"}`, borderRadius: "var(--radius-md)", fontFamily: "Geist Mono, monospace", fontSize: 11.5, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                      <div className="muted" style={{ fontSize: 10, marginBottom: 4 }}>{hasPrev ? "after" : "value"}</div>{fmtRevValue(d.after)}
+                    <div className={`whitespace-pre-wrap rounded-md border p-2 font-mono text-[11.5px] [word-break:break-word] ${d.changed && hasPrev ? "border-[color-mix(in_oklch,oklch(0.7_0.18_145)_40%,var(--border))] bg-[color-mix(in_oklch,oklch(0.7_0.18_145)_12%,var(--card))]" : "border-border bg-card"}`}>
+                      <div className="mb-1 text-[10px] text-muted-foreground">{hasPrev ? "after" : "value"}</div>{fmtRevValue(d.after)}
                     </div>
                   </div>
                 </div>

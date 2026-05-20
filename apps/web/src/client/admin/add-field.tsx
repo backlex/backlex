@@ -137,25 +137,35 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   };
 
   return (
-    <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog dialog-lg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 760, width: "94vw", display: "flex", flexDirection: "column", maxHeight: "92vh" }}>
-        <div className="dialog-head">
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>Add field to <span className="font-mono">c_{schema?.slug || "posts"}</span></div>
-            <div className="muted" style={{ fontSize: 12.5 }}>Pick an interface, name the column — additive ALTER TABLE, no existing rows are rewritten.</div>
+    <div
+      className="fixed inset-0 z-[70] grid animate-in place-items-center bg-[oklch(0_0_0/0.45)] backdrop-blur-[2px] fade-in-0 duration-150"
+      onClick={onClose}
+    >
+      <div
+        className="relative flex max-h-[92vh] w-[94vw] max-w-[760px] animate-in flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-[0_24px_60px_oklch(0_0_0/0.22),0_2px_8px_oklch(0_0_0/0.08)] fade-in-0 zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pt-[18px]">
+          <div className="flex flex-1 flex-col gap-1">
+            <div className="text-base font-semibold tracking-[-0.01em]">Add field to <span className="font-mono">c_{schema?.slug || "posts"}</span></div>
+            <div className="text-[12.5px] text-muted-foreground">Pick an interface, name the column — additive ALTER TABLE, no existing rows are rewritten.</div>
           </div>
           <IconButton icon={I.X} onClick={onClose} />
         </div>
 
-        <div className="addfield-stepper">
-          <div className={`step ${step >= 1 ? "on" : ""}`}><span className="num">1</span> Interface</div>
-          <div className="step-line" />
-          <div className={`step ${step >= 2 ? "on" : ""}`}><span className="num">2</span> Settings</div>
+        <div className="flex items-center gap-2.5 border-b border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-5 py-3 text-[12.5px]">
+          <div className={`inline-flex items-center gap-2 font-medium ${step >= 1 ? "text-foreground" : "text-muted-foreground"}`}>
+            <span className={`grid size-5 place-items-center rounded-full font-mono text-[11px] font-semibold ${step >= 1 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>1</span> Interface
+          </div>
+          <div className="h-px max-w-[60px] flex-1 bg-border" />
+          <div className={`inline-flex items-center gap-2 font-medium ${step >= 2 ? "text-foreground" : "text-muted-foreground"}`}>
+            <span className={`grid size-5 place-items-center rounded-full font-mono text-[11px] font-semibold ${step >= 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>2</span> Settings
+          </div>
         </div>
 
         {step === 1 && (
-          <div className="addfield-body">
-            <InputGroup style={{ marginBottom: 14 }}>
+          <div className="flex-1 overflow-auto px-5 py-[18px]">
+            <InputGroup className="mb-3.5">
               <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
               <InputGroupInput
                 autoFocus
@@ -165,24 +175,31 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
               />
             </InputGroup>
             {groups.length === 0 && (
-              <div className="muted" style={{ fontSize: 12.5, padding: "16px 4px" }}>No interface matches “{query}”.</div>
+              <div className="px-1 py-4 text-[12.5px] text-muted-foreground">No interface matches “{query}”.</div>
             )}
             {groups.map(({ group, items }) => (
-              <div key={group} style={{ marginBottom: 18 }}>
-                <div className="addfield-group-head">
+              <div key={group} className="mb-[18px]">
+                <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
                   <span>{group}</span>
-                  <span className="muted tabular-nums" style={{ fontSize: 11 }}>{items.length}</span>
-                  <div className="line" />
+                  <span className="tabular-nums text-[11px] text-muted-foreground">{items.length}</span>
+                  <div className="ml-1 h-px flex-1 bg-border" />
                 </div>
-                <div className="addfield-types">
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(184px,1fr))] gap-2">
                   {items.map((t) => {
                     const Ic = (I as Record<string, IconComponent>)[t.icon as IconKey] || I.Code;
+                    const on = interfaceId === t.id;
                     return (
-                      <button key={t.id} type="button" className={`type-card ${interfaceId === t.id ? "active" : ""}`} onClick={() => pickInterface(t.id)} title={t.sub}>
-                        <span className="type-icon"><Ic size={14} /></span>
-                        <span className="type-label">{t.label}</span>
-                        <span className="type-sub">{t.sub}</span>
-                        <span className="type-sql font-mono">{t.type}</span>
+                      <button
+                        key={t.id}
+                        type="button"
+                        className={`grid cursor-pointer grid-cols-[28px_1fr_auto] grid-rows-[auto_auto] items-center gap-x-2.5 rounded-xl border p-3 text-left text-foreground transition-colors ${on ? "border-[color-mix(in_oklch,var(--primary)_60%,var(--border))] bg-[color-mix(in_oklch,var(--primary)_10%,var(--card))]" : "border-border bg-card hover:bg-accent"}`}
+                        onClick={() => pickInterface(t.id)}
+                        title={t.sub}
+                      >
+                        <span className={`row-span-2 grid size-7 place-items-center self-center rounded-[8px] text-foreground ${on ? "bg-[color-mix(in_oklch,var(--primary)_30%,var(--card))]" : "bg-muted"}`}><Ic size={14} /></span>
+                        <span className="text-[13px] font-medium">{t.label}</span>
+                        <span className="col-start-2 text-[11.5px] text-muted-foreground">{t.sub}</span>
+                        <span className="row-span-2 self-center rounded-[6px] bg-muted px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground">{t.type}</span>
                       </button>
                     );
                   })}
@@ -193,67 +210,67 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
         )}
 
         {step === 2 && (
-          <div className="addfield-body cols-2">
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div className="field">
-                <label className="field-label">Name</label>
+          <div className="grid flex-1 grid-cols-2 gap-3 overflow-auto px-5 py-[18px] max-[640px]:grid-cols-1">
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Name</label>
                 <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="reading_time_minutes" />
-                <span className="field-hint font-mono" style={{ fontSize: 11 }}>
-                  column: <span style={{ color: nameTaken ? "var(--destructive)" : "var(--foreground)" }}>{safeName || "—"}</span>
-                  {nameTaken && <span style={{ color: "var(--destructive)" }}> · already exists</span>}
+                <span className="font-mono text-[11px] text-muted-foreground">
+                  column: <span className={nameTaken ? "text-destructive" : "text-foreground"}>{safeName || "—"}</span>
+                  {nameTaken && <span className="text-destructive"> · already exists</span>}
                 </span>
               </div>
 
-              <div className="field">
-                <label className="field-label">Interface</label>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-3xl)", background: "var(--card)" }}>
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Interface</label>
+                <div className="flex items-center gap-2 rounded-3xl border border-border bg-card px-3 py-2">
                   <Icon size={14} />
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>{def.label}</span>
+                  <span className="text-[13px] font-medium">{def.label}</span>
                   <Badge variant="outline" mono>{def.type}</Badge>
-                  <span className="muted" style={{ fontSize: 12 }}>· {def.sub}</span>
-                  <div className="spacer" />
+                  <span className="text-xs text-muted-foreground">· {def.sub}</span>
+                  <div className="flex-1" />
                   <Button variant="ghost" size="sm" onClick={() => setStep(1)}>Change</Button>
                 </div>
               </div>
 
               {def.hasChoices && (
-                <div className="field" style={{ background: "var(--muted)", padding: 12, borderRadius: "var(--radius-xl)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                    <span className="field-label" style={{ marginBottom: 0 }}>Choices</span>
-                    <span className="muted" style={{ fontSize: 11.5 }}>value · label · color</span>
-                    <div className="spacer" />
+                <div className="flex flex-col gap-1.5 rounded-xl bg-muted p-3">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Choices</span>
+                    <span className="text-[11.5px] text-muted-foreground">value · label · color</span>
+                    <div className="flex-1" />
                     <Button size="xs" variant="outline" icon={I.Plus} onClick={addChoice}>Add</Button>
                   </div>
                   {choices.length === 0 && (
-                    <div className="muted" style={{ fontSize: 12, padding: 8 }}>No choices yet — click “Add”. The value is what the column stores.</div>
+                    <div className="p-2 text-xs text-muted-foreground">No choices yet — click “Add”. The value is what the column stores.</div>
                   )}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div className="flex flex-col gap-1.5">
                     {choices.map((c, i) => (
-                      <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 64px 30px", gap: 6, alignItems: "center" }}>
+                      <div key={i} className="grid grid-cols-[1fr_1fr_64px_30px] items-center gap-1.5">
                         <Input placeholder="value" value={c.value} onChange={(e) => setChoice(i, { value: e.target.value })} />
                         <Input placeholder="label (optional)" value={c.label ?? ""} onChange={(e) => setChoice(i, { label: e.target.value })} />
-                        <input type="color" value={c.color ?? "#A1A6B8"} onChange={(e) => setChoice(i, { color: e.target.value })} style={{ height: 30, width: "100%", borderRadius: 6, border: "1px solid var(--border)", background: "var(--card)", cursor: "pointer" }} />
+                        <input type="color" value={c.color ?? "#A1A6B8"} onChange={(e) => setChoice(i, { color: e.target.value })} className="h-[30px] w-full cursor-pointer rounded-[6px] border border-border bg-card" />
                         <IconButton icon={I.Trash} title="Remove choice" onClick={() => removeChoice(i)} />
                       </div>
                     ))}
                   </div>
-                  {missingChoices && <span className="field-hint" style={{ color: "var(--destructive)" }}>A dropdown needs at least one choice.</span>}
+                  {missingChoices && <span className="text-[11.5px] text-destructive">A dropdown needs at least one choice.</span>}
                 </div>
               )}
 
               {def.hasRelation && (
-                <div className="field">
-                  <label className="field-label">References collection</label>
+                <div className="flex flex-col gap-1.5">
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">References collection</label>
                   <Select value={relationTarget} onChange={setRelationTarget} options={relationOptions} placeholder="Pick a collection…" />
-                  <span className="field-hint">
+                  <span className="text-[11.5px] text-muted-foreground">
                     Stores the target row's <span className="font-mono">id</span>.
-                    {missingRelation && <span style={{ color: "var(--destructive)" }}> Required.</span>}
+                    {missingRelation && <span className="text-destructive"> Required.</span>}
                   </span>
                 </div>
               )}
 
-              <div className="field">
-                <label className="field-label">Default value <span className="muted">(optional)</span></label>
+              <div className="flex flex-col gap-1.5">
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Default value <span className="text-muted-foreground">(optional)</span></label>
                 <Input
                   value={defaultValue}
                   onChange={(e) => setDefaultValue(e.target.value)}
@@ -262,39 +279,39 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
               </div>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div className="field-row">
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="field-label">Required</div>
-                  <div className="field-hint">NOT NULL — adding to a table that already has rows needs a default.</div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Required</div>
+                  <div className="text-[11.5px] text-muted-foreground">NOT NULL — adding to a table that already has rows needs a default.</div>
                 </div>
                 <Switch checked={!nullable} onChange={(v) => setNullable(!v)} />
               </div>
-              <div className="field-row">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="field-label">Unique</div>
-                  <div className="field-hint">UNIQUE constraint at the column level.</div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Unique</div>
+                  <div className="text-[11.5px] text-muted-foreground">UNIQUE constraint at the column level.</div>
                 </div>
                 <Switch checked={unique} onChange={setUnique} />
               </div>
-              <div className="field-row">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="field-label">Indexed</div>
-                  <div className="field-hint">B-tree index — speeds up filter/sort by this column.</div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Indexed</div>
+                  <div className="text-[11.5px] text-muted-foreground">B-tree index — speeds up filter/sort by this column.</div>
                 </div>
                 <Switch checked={indexed} onChange={setIndexed} />
               </div>
 
-              <div style={{ marginTop: 6 }}>
-                <div className="field-label" style={{ marginBottom: 6 }}>DDL preview</div>
+              <div className="mt-1.5">
+                <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground">DDL preview</div>
                 <AlterPreview pendingField={{ name: safeName || "new_field", type: def.type as never, nullable, default: defaultValue }} />
               </div>
             </div>
           </div>
         )}
 
-        <div className="dialog-foot">
-          <span className="muted" style={{ fontSize: 12 }}>
+        <div className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
+          <span className="text-xs text-muted-foreground">
             {step === 1
               ? <>Pick a UI interface · {FIELD_INTERFACES.length} available across {INTERFACE_GROUPS.length} groups</>
               : valid
@@ -307,7 +324,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                       ? <>Pick the collection this relation points to.</>
                       : <>Enter a name to continue.</>}
           </span>
-          <div className="spacer" />
+          <div className="flex-1" />
           {step === 2 && <Button variant="ghost" size="sm" onClick={() => setStep(1)} icon={I.ChevronLeft}>Back</Button>}
           <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
           {step === 1 ? (

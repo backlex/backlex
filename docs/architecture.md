@@ -101,6 +101,35 @@ All four downstream consumers see the same event payload. Webhooks +
 flows + functions are fire-and-forget — they don't block the API
 response.
 
+## Activity log
+
+The `activity` table is the single audit/log store — there is no
+separate logging pipeline. Route handlers call `recordActivity` /
+`logActivity` (`services/activity.ts`); actions are dot-namespaced
+(`item.create`, `auth.login`, `request.error`). `GET /api/activity`
+reads it back: admins see every row, non-admins only their own.
+
+Query params (all optional, AND-combined with the non-admin scope):
+
+- `action` — namespace prefix, matched as `action LIKE '<prefix>%'`
+  (`action=item` catches `item.create`, `item.update`, …).
+- `from` / `to` — epoch-ms bounds on `created_at` (a dialect-agnostic
+  `Date` column, so the window is server-enforced on both PG and
+  SQLite).
+- `collection`, `itemId` — exact-match filters.
+- `limit` (≤ 200) / `offset` — pagination.
+- `meta=count` — adds `meta.count`, the total matching the same filters
+  (ignores `limit`/`offset`), via one extra `SELECT COUNT(*)`.
+
+The admin surface is the single **Logs** page (`pages/logs.tsx`), which
+toggles between a **Stream** lens (HTTP / data / automation / functions
+/ storage projection) and a **Table** audit trail. Both views read the
+same rows through a paginated `useInfiniteQuery`, pushing the time range
+(`from`) and the category chip (`action`) to the server so the view is
+never clipped to the freshest 200 rows. (The former standalone
+"Activity log" page was merged into this; `/activity` redirects to
+`/logs`.)
+
 ## Auth pipeline
 
 Per-request middleware in `apps/web/src/server/app.ts`:

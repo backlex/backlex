@@ -1,6 +1,5 @@
 export { DatabasePage } from "./parity/database";
 export { AuthSettingsPage } from "./parity/auth-settings";
-export { ActivityPage } from "./parity/activity";
 export { RevisionsPage } from "./parity/revisions";
 export { InsightsPage } from "./parity/insights";
 export { EmailTemplatesPage } from "./parity/email-templates";

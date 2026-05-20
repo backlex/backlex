@@ -8,9 +8,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { I, type IconComponent } from "../icons";
 import { Button, PageHeader } from "../ui";
 import { useAdvisor, queryKeys } from "../queries";
-import { Skeleton } from "@workeros/ui/components/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@workeros/ui/components/collapsible";
+import { AdvisorSkeleton } from "../page-skeletons";
 
 type CheckKind = "security" | "performance";
 type CheckLevel = "error" | "warn" | "info";
@@ -57,6 +57,10 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
   }, [all]);
 
   const countCls = "rounded-sm border border-border bg-muted px-[5px] py-px font-mono text-[11px] text-muted-foreground";
+
+  // First whole-page fetch — advisor findings haven't landed yet.
+  if (isLoading) return <AdvisorSkeleton />;
+
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
@@ -126,13 +130,7 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
 
       {/* Findings */}
       <div className="flex flex-col gap-2.5">
-        {isLoading ? (
-          <>
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </>
-        ) : isError ? (
+        {isError ? (
           <div className="flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card px-6 py-12 text-center text-card-foreground">
             <div className="grid size-10 place-items-center rounded-xl bg-muted text-primary"><I.AlertTriangle size={18} /></div>
             <h4 className="m-0 text-[15px] font-semibold">Couldn't load advisor findings</h4>

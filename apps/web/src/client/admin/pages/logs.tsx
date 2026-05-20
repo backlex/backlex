@@ -18,7 +18,6 @@ import { I, type IconComponent, type IconKey } from "../icons";
 import { Badge, Button, IconButton, JsonBlock, PageHeader } from "../ui";
 import { Input } from "@workeros/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
-import { Skeleton } from "@workeros/ui/components/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +34,7 @@ import {
   TableRow,
 } from "@workeros/ui/components/table";
 import { useActivity } from "../queries";
+import { LogsSkeleton } from "../page-skeletons";
 import { authorById } from "../items";
 import type { ApiActivity } from "../api";
 
@@ -284,6 +284,9 @@ export function LogsPage({
   // Server-reported total for the current filters (independent of paging).
   const totalCount = data?.pages?.[0]?.meta?.count ?? null;
 
+  // First whole-page fetch — the activity rows haven't landed yet.
+  if (isLoading) return <LogsSkeleton />;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader
@@ -362,17 +365,7 @@ export function LogsPage({
         </Tabs>
       </div>
 
-      {isLoading ? (
-        <div
-          className="card"
-          style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}
-        >
-          <Skeleton className="h-9 w-full" />
-          <Skeleton className="h-11 w-full" />
-          <Skeleton className="h-9 w-full" />
-          <Skeleton className="h-64 w-full" />
-        </div>
-      ) : isError ? (
+      {isError ? (
         <div className="card empty">
           <div className="ico">
             <I.AlertTriangle size={18} />

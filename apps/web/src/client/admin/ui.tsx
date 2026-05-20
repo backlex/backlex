@@ -277,6 +277,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [tenantId, setTenantId] = useState<string | null>(null);
+  const [tenantsLoaded, setTenantsLoaded] = useState(false);
   const [newWsOpen, setNewWsOpen] = useState(false);
 
   const reloadTenants = useCallback(async () => {
@@ -287,6 +288,8 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
       setTenantId(res.active ?? mapped[0]?.id ?? null);
     } catch {
       // Auth gate handles 401; quietly leave the placeholder tile in place.
+    } finally {
+      setTenantsLoaded(true);
     }
   }, []);
 
@@ -325,12 +328,14 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
   const tenant: Tenant =
     tenants.find((t) => t.id === tenantId) ||
     tenants[0] || {
-      id: "loading",
-      name: "loading…",
+      id: "placeholder",
+      name: "—",
       project: "—",
       branch: "—",
       env: "—",
     };
+  // The workspace tile mirrors a skeleton until the tenant list resolves.
+  const tenantPending = !tenantsLoaded && tenants.length === 0;
 
   return (
     <TooltipProvider>
@@ -342,9 +347,18 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
                   <BrandMark size={32} />
-                  <div className="grid flex-1 text-left leading-tight">
-                    <span className="truncate text-[13.5px] font-semibold">{tenant.name}</span>
-                    <span className="truncate font-mono text-[11px] text-muted-foreground">{tenant.project} · {tenant.branch}</span>
+                  <div className="grid flex-1 gap-1 text-left leading-tight">
+                    {tenantPending ? (
+                      <>
+                        <Skeleton className="h-3.5 w-28" />
+                        <Skeleton className="h-3 w-20" />
+                      </>
+                    ) : (
+                      <>
+                        <span className="truncate text-[13.5px] font-semibold">{tenant.name}</span>
+                        <span className="truncate font-mono text-[11px] text-muted-foreground">{tenant.project} · {tenant.branch}</span>
+                      </>
+                    )}
                   </div>
                   <I.ChevronDown className="ml-auto" />
                 </SidebarMenuButton>

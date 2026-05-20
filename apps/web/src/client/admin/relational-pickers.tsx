@@ -22,6 +22,7 @@ import {
 import { I } from "./icons";
 import { Button, IconButton, Checkbox } from "./ui";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
+import { Skeleton } from "@workeros/ui/components/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -469,7 +470,13 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
             )}
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minHeight: 200 }}>
-              {loading && <div className="p-3 text-[12.5px] text-muted-foreground">Loading…</div>}
+              {loading && (
+              <div className="flex flex-col gap-2 p-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-9 w-full" />
+                ))}
+              </div>
+            )}
               {loadErr && <div style={{ color: "var(--destructive)", fontSize: 12.5, padding: 12 }}>{loadErr}</div>}
               {!loading && !loadErr && filtered.length === 0 && (
                 <div className="p-3 text-[12.5px] text-muted-foreground">
@@ -836,7 +843,13 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
           </InputGroup>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1, minHeight: 200 }}>
-            {loading && <div className="p-3 text-[12.5px] text-muted-foreground">Loading…</div>}
+            {loading && (
+              <div className="flex flex-col gap-2 p-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-9 w-full" />
+                ))}
+              </div>
+            )}
             {err && <div style={{ color: "var(--destructive)", fontSize: 12.5, padding: 12 }}>{err}</div>}
             {!loading && !err && filtered.length === 0 && (
               <div className="p-3 text-[12.5px] text-muted-foreground">

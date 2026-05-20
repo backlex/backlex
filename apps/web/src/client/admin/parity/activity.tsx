@@ -11,7 +11,9 @@ import {
 } from "@workeros/ui/components/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+import { Skeleton } from "@workeros/ui/components/skeleton";
 import { activityApi, type ApiActivity } from "../api";
+import { ActivitySkeleton } from "../page-skeletons";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
@@ -67,6 +69,11 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
 
   const visible = filter === "all" ? events : events.filter((e) => e.action.startsWith(filter));
   const actionColor = (a: string) => a.startsWith("item.") ? "default" as const : a.startsWith("auth.") ? "secondary" as const : a.startsWith("schema.") ? "destructive" as const : "outline" as const;
+
+  // First whole-page fetch — show the page-shaped skeleton until the initial
+  // batch of rows lands.
+  if (loading && events.length === 0) return <ActivitySkeleton />;
+
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader title="Activity log" description="Append-only audit trail. Every mutation through the API or UI is logged with actor, IP, and diff." actions={<Button variant="outline" icon={I.Download} onClick={() => {
@@ -121,7 +128,13 @@ export function ActivityPage({ pushToast }: { pushToast: (m: string) => void }) 
             disabled={!hasMore || loading}
             onClick={() => void fetchPage(events.length, true)}
           >
-            {loading ? "Loading…" : hasMore ? "Load more" : "No more rows"}
+            {loading ? (
+              <Skeleton className="h-3.5 w-16" />
+            ) : hasMore ? (
+              "Load more"
+            ) : (
+              "No more rows"
+            )}
           </Button>
         </div>
       </div>

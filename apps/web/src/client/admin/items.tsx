@@ -213,7 +213,7 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
               !fieldDef.to
                 ? [{ value: "", label: "Relation has no target" }]
                 : targetLoading
-                  ? [{ value: "", label: "Loading target…" }]
+                  ? [{ value: "", label: "Fetching subfields…" }]
                   : targetFields
                     ? targetFields.map((f) => ({ value: f.name, label: f.name, hint: f.type }))
                     : [{ value: "", label: "Target unavailable" }]

@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
+import { Skeleton } from "@workeros/ui/components/skeleton";
 import { I } from "./icons";
 import { Select } from "./select";
 import { Badge, Button, IconButton, Switch } from "./ui";
@@ -723,7 +724,11 @@ function Step1Tables({
       )}
 
       {loading && (
-        <div className="muted" style={{ fontSize: 12.5, padding: "16px 4px" }}>Loading tables…</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "12px 4px" }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-full" />
+          ))}
+        </div>
       )}
 
       {!loading && !error && tables.length === 0 && (

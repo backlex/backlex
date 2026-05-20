@@ -16,6 +16,7 @@ import { ColorPicker } from "@workeros/ui/components/color-picker";
 import { Input } from "@workeros/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { Textarea } from "@workeros/ui/components/textarea";
+import { SettingsSkeleton } from "../page-skeletons";
 
 /** Mirror of `services/workspace-config.ts::isValidColor` — keep in sync. */
 const isValidColor = (v: string): boolean => {
@@ -547,6 +548,9 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
   const [from, setFrom] = useState("hello@example.com");
   const [signupOpen, setSignupOpen] = useState(true);
   const [dirty, setDirty] = useState(false);
+  // First-load gate — drives the page skeleton until the General-tab settings
+  // hydrate from the server.
+  const [loaded, setLoaded] = useState(false);
   // Hydrate the General-tab form from /api/admin/settings on mount. APP_URL
   // and EMAIL_FROM come from env (read-only here); openSignup is the
   // runtime-mutable setting persisted in app_settings. The display name lives
@@ -563,6 +567,8 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
         if (typeof d.openSignup === "boolean") setSignupOpen(d.openSignup);
       } catch {
         // keep seed
+      } finally {
+        if (!cancelled) setLoaded(true);
       }
     })();
     return () => { cancelled = true; };
@@ -613,6 +619,9 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
   };
 
   const bindingIcon = (t: string): IconComponent => (({ D1: I.Database, KV: I.Folder, R2: I.Server, DurableObj: I.Bolt, Vectorize: I.Bolt, Hyperdrive: I.Database, Dispatch: I.Bolt, Queue: I.Webhook, AI: I.Bolt } as Record<string, IconComponent>)[t] || I.Folder);
+
+  // First whole-page fetch — General-tab settings haven't hydrated yet.
+  if (!loaded) return <SettingsSkeleton />;
 
   return (
     <div className="flex flex-col gap-4.5">

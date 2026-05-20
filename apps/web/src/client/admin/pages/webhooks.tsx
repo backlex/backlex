@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@workeros/ui/components/dropdown-menu";
 import { fetchSafely } from "./_shared";
+import { WebhooksSkeleton } from "../page-skeletons";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
@@ -57,6 +58,8 @@ function formatHeaderLines(headers: Record<string, string> | null | undefined): 
 export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) {
   type HookRow = { id: string; name: string; url: string; events: string[]; method: string; secret: string; headers: Record<string, string> | null; active: boolean; deliveries: number; ok: boolean; successRate: number; lastDelivery: string };
   const [hooks, setHooks] = useState<HookRow[]>([]);
+  // First-load gate — drives the page skeleton until webhooks land.
+  const [loaded, setLoaded] = useState(false);
   const reloadHooks = async () => {
     const [r, m] = await Promise.all([
       fetchSafely<{ data: any[] }>("/api/webhooks"),
@@ -90,7 +93,7 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
       );
     }
   };
-  useEffect(() => { void reloadHooks(); }, []);
+  useEffect(() => { void reloadHooks().finally(() => setLoaded(true)); }, []);
   const [editor, setEditor] = useState<{ mode: "create" | "edit"; hook: any } | null>(null);
 
   type DeliveryRow = { id: string; t: string; hook: string; ev: string; code: number; ms: number };
@@ -138,6 +141,9 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
     }
     setEditor(null);
   };
+
+  // First whole-page fetch — webhooks haven't landed yet.
+  if (!loaded) return <WebhooksSkeleton />;
 
   return (
     <div className="flex flex-col gap-4.5">

@@ -14,6 +14,7 @@ import {
   type ApiMetrics,
   type ApiRuntime,
 } from "../api";
+import { OverviewSkeleton } from "../page-skeletons";
 
 function Sparkline({ data, color = "var(--primary)", height = 36, fill = true }: { data: number[]; color?: string; height?: number; fill?: boolean }) {
   const w = 100, h = height;
@@ -41,6 +42,10 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
   // throughput like the original mock did (14,820 req).
   const [metrics, setMetrics] = useState<ApiMetrics | null>(null);
   const [runtime, setRuntime] = useState<ApiRuntime | null>(null);
+  // First-load gate — drives the page skeleton until the first metrics
+  // response (for the initial range) lands. Range changes after that refetch
+  // in place without re-blanking the page.
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -61,6 +66,8 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
         if (!cancelled) setMetrics(r.data);
       } catch {
         // leave null → cards render dashes
+      } finally {
+        if (!cancelled) setLoaded(true);
       }
     })();
     return () => { cancelled = true; };
@@ -149,6 +156,9 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
     { label: "Active flows", value: c?.activeFlows ?? 0, sub: `${c?.activeFlows ?? 0} enabled · ${c?.pausedFlows ?? 0} paused`, nav: "flows", icon: I.Bolt },
     { label: "Functions", value: c?.functions ?? 0, sub: "sandboxed handlers", nav: "functions", icon: I.Function },
   ];
+
+  // First whole-page fetch — the initial metrics response hasn't landed yet.
+  if (!loaded) return <OverviewSkeleton />;
 
   return (
     <div className="flex flex-col gap-4.5">

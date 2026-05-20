@@ -7,6 +7,7 @@ import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+import { Skeleton } from "@workeros/ui/components/skeleton";
 import { dbAdminApi } from "../api";
 
 const ADMIN_TABLE_CLS =
@@ -88,6 +89,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
   const [readOnly, setReadOnly] = useState(true);
 
   const [tables, setTables] = useState<{ name: string; rows: number }[]>([]);
+  const [tablesLoaded, setTablesLoaded] = useState(false);
   const [tableFilter, setTableFilter] = useState("");
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +100,8 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
         if (Array.isArray(r.data)) setTables(r.data);
       } catch {
         // leave tables empty
+      } finally {
+        if (!cancelled) setTablesLoaded(true);
       }
     })();
     return () => { cancelled = true; };
@@ -162,9 +166,18 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
             />
           </div>
           <div className="max-h-[280px] overflow-y-auto">
-            {filteredTables.length === 0 ? (
+            {!tablesLoaded ? (
+              // First-load placeholder for the table list.
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-2 border-t border-border px-3 py-1.5">
+                  <Skeleton className="size-3 shrink-0 rounded" />
+                  <Skeleton className="h-3.5 flex-1" />
+                  <Skeleton className="h-3 w-8" />
+                </div>
+              ))
+            ) : filteredTables.length === 0 ? (
               <div className="p-3 text-center text-[11.5px] text-muted-foreground">
-                {tables.length === 0 ? "Loading…" : "No tables match."}
+                {tables.length === 0 ? "This database has no tables." : "No tables match."}
               </div>
             ) : filteredTables.map((t) => (
               <div key={t.name} title={browseSql(t.name)} className="flex cursor-pointer items-center gap-2 border-t border-border px-3 py-1.5" onClick={() => setSql(browseSql(t.name))}>

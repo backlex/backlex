@@ -789,6 +789,48 @@ export const commentsApi = {
     api<{ ok: true }>(`/api/comments/${id}`, { method: "DELETE" }),
 };
 
+/** A public read-only share link for a record (`/api/shared-links`).
+ *  The plaintext `token` is only present on the create response. */
+export interface ApiSharedLink {
+  id: string;
+  createdAt: unknown;
+  revokedAt: unknown;
+}
+
+export interface ApiCreatedSharedLink {
+  id: string;
+  /** One-time plaintext token — only returned here, never on list. */
+  token: string;
+  /** Relative `/s/<token>` path. */
+  url: string;
+}
+
+export const sharedLinksApi = {
+  list: (collection: string, itemId: string) =>
+    api<Envelope<ApiSharedLink[]>>(
+      `/api/shared-links?collection=${encodeURIComponent(collection)}&itemId=${encodeURIComponent(itemId)}`,
+    ),
+  create: (input: { collection: string; itemId: string }) =>
+    api<Envelope<ApiCreatedSharedLink>>(`/api/shared-links`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  revoke: (id: string) =>
+    api<{ ok: true }>(`/api/shared-links/${id}`, { method: "DELETE" }),
+};
+
+/** The public, unauthenticated record-share payload (`GET /api/shared/:token`). */
+export interface ApiSharedRecord {
+  collection: string;
+  item: Record<string, unknown>;
+  fields: { name: string; type: string }[];
+}
+
+export const sharedPublicApi = {
+  get: (token: string) =>
+    api<Envelope<ApiSharedRecord>>(`/api/shared/${encodeURIComponent(token)}`),
+};
+
 /** Advisor finding (`GET /api/admin/advisor`). */
 export interface ApiAdvisorCheck {
   id: string;

@@ -63,6 +63,10 @@ export const UserAttachRoleInput = z
   .object({ roleId: z.string() })
   .openapi("UserAttachRoleInput");
 
+export const UserUpdateInput = z
+  .object({ name: z.string().trim().min(1).max(200) })
+  .openapi("UserUpdateInput");
+
 export const UserInviteInput = z
   .object({ email: z.string().email(), role: z.string().optional() })
   .openapi("UserInviteInput");

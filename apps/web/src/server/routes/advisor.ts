@@ -20,11 +20,13 @@ const AdvisorCheckSchema = z
     id: z.string(),
     kind: z.enum(["security", "performance"]),
     level: z.enum(["error", "warn", "info"]),
+    rule: z.string(),
+    groupTitle: z.string(),
     title: z.string(),
     body: z.string(),
     fix: z.string(),
     resource: z.string(),
-    detected: z.string(),
+    link: z.string().optional(),
   })
   .openapi("AdvisorCheck");
 
@@ -49,7 +51,11 @@ export const advisorRoutes = new OpenAPIHono<AppBindings>().openapi(
         description: "OK",
         content: {
           "application/json": {
-            schema: z.object({ data: z.array(AdvisorCheckSchema) }),
+            schema: z.object({
+              data: z.array(AdvisorCheckSchema),
+              score: z.number(),
+              generatedAt: z.string(),
+            }),
           },
         },
       },
@@ -59,10 +65,10 @@ export const advisorRoutes = new OpenAPIHono<AppBindings>().openapi(
   async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");
-    const data = await runAdvisorChecks(
+    const result = await runAdvisorChecks(
       { db: ctx.db, dialect: ctx.dialect, env: ctx.env },
       auth.tenantId ?? null,
     );
-    return c.json({ data });
+    return c.json(result);
   },
 );

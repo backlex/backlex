@@ -175,6 +175,7 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
           onChange={setInviteRole}
           options={WORKSPACE_ROLES.map((r) => ({ value: r, label: r }))}
           size="sm"
+          className="w-[150px] shrink-0"
         />
         <Button variant="primary" size="sm" icon={I.Plus} onClick={sendInvite}>Invite</Button>
       </div>

@@ -318,13 +318,17 @@ function AdvisorSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={1} />
-      {/* Score card: ~140px score ring on the left + Security/Performance tiles. */}
+      {/* Score card: ~140px score ring on the left + Security/Performance
+          tiles, then a "Last run" line. */}
       <div className="grid grid-cols-[160px_1fr] items-center gap-[22px] rounded-2xl border border-border bg-card p-5">
         <Skeleton className="size-[140px] rounded-full" />
-        <div className="grid grid-cols-2 gap-3.5">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <CardSkeleton key={i} lines={2} />
-          ))}
+        <div className="flex flex-col gap-3.5">
+          <div className="grid grid-cols-2 gap-3.5">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <CardSkeleton key={i} lines={2} />
+            ))}
+          </div>
+          <Skeleton className="h-3 w-32" />
         </div>
       </div>
       <TabStripSkeleton tabs={2} />

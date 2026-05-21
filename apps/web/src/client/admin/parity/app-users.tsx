@@ -2,16 +2,16 @@
 import { useEffect, useState } from "react";
 import { Input } from "@workeros/ui/components/input";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@workeros/ui/components/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@workeros/ui/components/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { I } from "../icons";
-import { Badge, Button, PageHeader, Switch } from "../ui";
+import { Badge, Button, Checkbox, PageHeader } from "../ui";
 import { ConfirmDialog } from "../sheet";
 import {
   appUsersApi,
@@ -28,12 +28,21 @@ import { AppUsersSkeleton } from "../page-skeletons";
 
 const APP_USER_SYSTEM_ROLES = new Set(["admin", "authenticated", "public"]);
 
+const initials = (s: string): string =>
+  s
+    .split(/[\s@.]+/)
+    .filter(Boolean)
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "?";
+
 export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) {
   const [rows, setRows] = useState<ApiAppUser[]>([]);
   const [roles, setRoles] = useState<ApiRole[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [q, setQ] = useState("");
-  const [editRoles, setEditRoles] = useState<ApiAppUser | null>(null);
+  const [activeUser, setActiveUser] = useState<ApiAppUser | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ApiAppUser | null>(null);
 
   useEffect(() => {
@@ -66,6 +75,7 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
     try {
       await appUsersApi.patch(u.id, { status });
       setRows((arr) => arr.map((x) => (x.id === u.id ? { ...x, status } : x)));
+      setActiveUser((cur) => (cur && cur.id === u.id ? { ...cur, status } : cur));
       pushToast?.(`${u.email} ${status === "suspended" ? "suspended" : "reactivated"}.`);
     } catch (e) {
       pushToast?.((e as Error).message);
@@ -75,28 +85,12 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
     try {
       await appUsersApi.remove(u.id);
       setRows((arr) => arr.filter((x) => x.id !== u.id));
+      setActiveUser((cur) => (cur && cur.id === u.id ? null : cur));
       pushToast?.(`${u.email} deleted.`);
     } catch (e) {
       pushToast?.((e as Error).message);
     }
     setConfirmDelete(null);
-  };
-  const saveRoles = async (u: ApiAppUser, roleIds: string[]) => {
-    try {
-      await appUsersApi.setRoles(u.id, roleIds);
-      const byId = new Map(roles.map((r) => [r.id, r] as const));
-      setRows((arr) =>
-        arr.map((x) =>
-          x.id === u.id
-            ? { ...x, roles: roleIds.map((id) => ({ id, name: byId.get(id)?.name ?? id })) }
-            : x,
-        ),
-      );
-      pushToast?.(`Roles updated for ${u.email}.`);
-    } catch (e) {
-      pushToast?.((e as Error).message);
-    }
-    setEditRoles(null);
   };
 
   const fmtDate = (v: string | number): string => {
@@ -134,18 +128,18 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
         </div>
         <Table className="[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground">
           <TableHeader>
-            <TableRow><TableHead>Email</TableHead><TableHead>Name</TableHead><TableHead>Status</TableHead><TableHead>Roles</TableHead><TableHead>Created</TableHead><TableHead className="sticky right-0 bg-card" /></TableRow>
+            <TableRow><TableHead>Email</TableHead><TableHead>Name</TableHead><TableHead>Status</TableHead><TableHead>Roles</TableHead><TableHead>Created</TableHead></TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 && (
-              <TableRow><TableCell colSpan={6} className="text-muted-foreground">
+              <TableRow><TableCell colSpan={5} className="text-muted-foreground">
                 {rows.length === 0
                   ? "No end-users yet — they appear here after signing up via the workspace auth endpoint."
                   : "No matches."}
               </TableCell></TableRow>
             )}
             {filtered.map((u) => (
-              <TableRow key={u.id}>
+              <TableRow key={u.id} onClick={() => setActiveUser(u)} className="cursor-pointer">
                 <TableCell>{u.email}{!u.emailVerified && <Badge variant="outline" className="ml-1.5">unverified</Badge>}</TableCell>
                 <TableCell className="text-muted-foreground">{u.name ?? "—"}</TableCell>
                 <TableCell>{u.status === "suspended" ? <Badge variant="destructive">suspended</Badge> : <Badge variant="default">active</Badge>}</TableCell>
@@ -155,24 +149,22 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
                     : u.roles.map((r) => <Badge key={r.id} variant="secondary" className="mr-1">{r.name}</Badge>)}
                 </TableCell>
                 <TableCell className="font-mono text-[11.5px] text-muted-foreground">{fmtDate(u.createdAt)}</TableCell>
-                <TableCell className="sticky right-0 bg-card text-right">
-                  <Button size="sm" variant="ghost" onClick={() => setEditRoles(u)}>Roles</Button>
-                  {u.status === "suspended"
-                    ? <Button size="sm" variant="ghost" onClick={() => void setStatus(u, "active")}>Activate</Button>
-                    : <Button size="sm" variant="ghost" onClick={() => void setStatus(u, "suspended")}>Suspend</Button>}
-                  <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(u)}>Delete</Button>
-                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
-      {editRoles && (
-        <AppUserRolesDialog
-          user={editRoles}
+      {activeUser && (
+        <AppUserDrawer
+          user={activeUser}
           roles={roles}
-          onClose={() => setEditRoles(null)}
-          onSave={(ids) => void saveRoles(editRoles, ids)}
+          onClose={() => setActiveUser(null)}
+          onPatched={(patch) =>
+            setRows((arr) => arr.map((x) => (x.id === activeUser.id ? { ...x, ...patch } : x)))
+          }
+          onSetStatus={(status) => void setStatus(activeUser, status)}
+          onDelete={() => setConfirmDelete(activeUser)}
+          pushToast={pushToast}
         />
       )}
       <ConfirmDialog
@@ -192,56 +184,222 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
   );
 }
 
-function AppUserRolesDialog({
+function AppUserDrawer({
   user,
   roles,
   onClose,
-  onSave,
+  onPatched,
+  onSetStatus,
+  onDelete,
+  pushToast,
 }: {
   user: ApiAppUser;
   roles: ApiRole[];
   onClose: () => void;
-  onSave: (roleIds: string[]) => void;
+  onPatched: (patch: Partial<ApiAppUser>) => void;
+  onSetStatus: (status: "active" | "suspended") => void;
+  onDelete: () => void;
+  pushToast: (m: string) => void;
 }) {
-  const [selected, setSelected] = useState<Set<string>>(new Set(user.roles.map((r) => r.id)));
-  const setHas = (id: string, on: boolean) =>
-    setSelected((s) => {
+  const [name, setName] = useState(user.name ?? "");
+  const [roleIds, setRoleIds] = useState<Set<string>>(
+    new Set(user.roles.map((r) => r.id)),
+  );
+  const [saving, setSaving] = useState(false);
+  const [sessions, setSessions] = useState<any[]>([]);
+
+  const initialRoleIds = new Set(user.roles.map((r) => r.id));
+  const nameDirty = name.trim() !== (user.name ?? "").trim() && name.trim().length > 0;
+  const rolesDirty =
+    roleIds.size !== initialRoleIds.size ||
+    [...roleIds].some((id) => !initialRoleIds.has(id));
+  const dirty = nameDirty || rolesDirty;
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const j = await appUsersApi.sessions(user.id);
+        if (cancelled) return;
+        const fmtAgo = (ms: number | null): string => {
+          if (!ms) return "—";
+          const d = Date.now() - ms;
+          if (d < 60_000) return "just now";
+          if (d < 3_600_000) return `${Math.floor(d / 60_000)}m ago`;
+          if (d < 86_400_000) return `${Math.floor(d / 3_600_000)}h ago`;
+          return `${Math.floor(d / 86_400_000)}d ago`;
+        };
+        setSessions(
+          (j.data ?? []).map((s, i) => ({
+            id: s.id ?? `s${i}`,
+            device: s.userAgent ?? "Unknown device",
+            ip: s.ipAddress ?? "—",
+            last: fmtAgo(s.updatedAt ?? s.createdAt ?? null),
+          })),
+        );
+      } catch {
+        // leave empty
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user.id]);
+
+  const toggleRole = (id: string, on: boolean) =>
+    setRoleIds((s) => {
       const n = new Set(s);
       if (on) n.add(id); else n.delete(id);
       return n;
     });
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      if (nameDirty) await appUsersApi.patch(user.id, { name: name.trim() });
+      let nextRoles = user.roles;
+      if (rolesDirty) {
+        await appUsersApi.setRoles(user.id, [...roleIds]);
+        const byId = new Map(roles.map((r) => [r.id, r] as const));
+        nextRoles = [...roleIds].map((id) => ({ id, name: byId.get(id)?.name ?? id }));
+      }
+      onPatched({
+        ...(nameDirty ? { name: name.trim() } : {}),
+        ...(rolesDirty ? { roles: nextRoles } : {}),
+      });
+      pushToast(`Profile saved for ${user.email}.`);
+      onClose();
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const fmtDate = (v: string | number): string => {
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? "—" : d.toISOString().slice(0, 10);
+  };
+
   return (
-    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[440px]">
-        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
-          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">Roles · {user.email}</DialogTitle>
-          <DialogDescription className="text-[12.5px]">
-            End-users always have the workspace's <span className="font-mono">authenticated</span> role;
-            pick any extra custom roles below. The <span className="font-mono">admin</span> role can't be
-            assigned to end-users.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
-          {roles.length === 0 && (
-            <div className="text-[12.5px] text-muted-foreground">
-              This workspace has no custom roles yet — create one under <strong>Roles &amp; permissions</strong>.
+    <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <SheetContent side="right" className="w-[min(560px,100vw)] gap-0 p-0 sm:max-w-none">
+        <SheetHeader className="flex-row items-start gap-3 space-y-0 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+          <div className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+            {initials(name || user.email)}
+          </div>
+          <div className="min-w-0">
+            <SheetTitle className="flex items-center gap-2 text-base font-semibold tracking-[-0.01em]">
+              {name || user.email}
+              {user.status === "suspended"
+                ? <Badge variant="destructive">suspended</Badge>
+                : <Badge variant="default">active</Badge>}
+            </SheetTitle>
+            <SheetDescription className="mt-0.5 text-[12.5px]">{user.email} · id <span className="font-mono">{user.id}</span></SheetDescription>
+          </div>
+        </SheetHeader>
+
+        <div className="flex flex-1 flex-col gap-8 overflow-auto px-5 py-[18px]">
+          <div>
+            <div className="mb-2 text-[12.5px] font-medium">Profile</div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Name</label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Display name" />
             </div>
-          )}
-          {roles.map((r) => (
-            <div key={r.id} className="flex items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{r.name}</div>
-                {r.description && <div className="text-[11.5px] text-muted-foreground">{r.description}</div>}
+            <div className="mt-4">
+              <div className="mb-1.5 text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Roles</div>
+              {roles.length === 0 ? (
+                <div className="text-[12.5px] text-muted-foreground">
+                  This workspace has no custom roles yet — create one under <strong>Roles &amp; permissions</strong>.
+                </div>
+              ) : (
+                <div className="flex flex-col overflow-hidden rounded-xl border border-border">
+                  {roles.map((r) => (
+                    <label key={r.id} className="flex cursor-pointer items-center justify-between gap-3 border-b border-border px-3 py-2.5 last:border-b-0">
+                      <div className="min-w-0">
+                        <div className="text-[12.5px] font-medium text-foreground">{r.name}</div>
+                        {r.description && <div className="text-[11.5px] text-muted-foreground">{r.description}</div>}
+                      </div>
+                      <Checkbox checked={roleIds.has(r.id)} onChange={(on) => toggleRole(r.id, on)} />
+                    </label>
+                  ))}
+                </div>
+              )}
+              <div className="mt-1.5 text-[11.5px] text-muted-foreground">
+                End-users always implicitly have <span className="font-mono">authenticated</span>; the <span className="font-mono">admin</span> role can't be assigned.
               </div>
-              <Switch checked={selected.has(r.id)} onChange={(on) => setHas(r.id, on)} />
             </div>
-          ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-x-3.5 gap-y-2.5 rounded-xl bg-muted px-3.5 py-3 max-[900px]:grid-cols-1">
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Email verified</span><span className="font-mono text-xs">{user.emailVerified ? "yes" : "no"}</span></div>
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Status</span><span className="font-mono text-xs">{user.status}</span></div>
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Created</span><span className="font-mono text-xs">{fmtDate(user.createdAt)}</span></div>
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Sessions</span><span className="font-mono text-xs">{sessions.length} active</span></div>
+          </div>
+
+          <div>
+            <div className="mb-2 flex items-center justify-between text-[12.5px] font-medium">
+              <span>Active sessions</span>
+              <span className="text-[11.5px] font-normal text-muted-foreground">{sessions.length}</span>
+            </div>
+            {sessions.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border p-3.5 text-center text-[12.5px] text-muted-foreground">No active sessions.</div>
+            ) : (
+              <div className="flex flex-col overflow-hidden rounded-xl border border-border">
+                {sessions.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5 last:border-b-0">
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-[12.5px] font-medium">{s.device}</span>
+                      <span className="font-mono text-[11.5px] text-muted-foreground">{s.ip} · last seen {s.last}</span>
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={async () => {
+                      try {
+                        await appUsersApi.revokeSession(user.id, s.id);
+                        setSessions((arr) => arr.filter((x) => x.id !== s.id));
+                        pushToast(`Session revoked: ${s.device}`);
+                      } catch (e) {
+                        pushToast((e as Error).message);
+                      }
+                    }}>Revoke</Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-[color-mix(in_oklch,var(--destructive)_30%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_5%,var(--card))] px-3.5 py-3">
+            <div className="mb-2 flex items-center justify-between text-[12.5px] font-medium"><span>Danger zone</span></div>
+            <div className="flex items-center justify-between gap-3 border-b border-dashed border-[color-mix(in_oklch,var(--destructive)_18%,var(--border))] py-2 last:border-b-0">
+              <div>
+                <div className="text-[12.5px] font-medium">{user.status === "suspended" ? "Reactivate end-user" : "Suspend end-user"}</div>
+                <div className="text-[11.5px] text-muted-foreground">
+                  {user.status === "suspended"
+                    ? "Re-enables sign-in for this end-user."
+                    : "Blocks sign-in and drops all active sessions immediately."}
+                </div>
+              </div>
+              {user.status === "suspended" ? (
+                <Button size="sm" variant="outline" onClick={() => onSetStatus("active")}>Activate</Button>
+              ) : (
+                <Button size="sm" variant="outline" onClick={() => onSetStatus("suspended")}>Suspend</Button>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-3 border-b border-dashed border-[color-mix(in_oklch,var(--destructive)_18%,var(--border))] py-2 last:border-b-0">
+              <div>
+                <div className="text-[12.5px] font-medium text-destructive">Delete end-user</div>
+                <div className="text-[11.5px] text-muted-foreground">Permanent. Removes sessions, OAuth accounts and role assignments.</div>
+              </div>
+              <Button size="sm" variant="outline" className="text-destructive" onClick={onDelete}>Delete</Button>
+            </div>
+          </div>
         </div>
-        <DialogFooter className="border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
-          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" size="sm" icon={I.Check} onClick={() => onSave([...selected])}>Save</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+
+        <SheetFooter className="flex-row justify-end gap-2 border-t border-border bg-card px-5 py-3">
+          <Button variant="ghost" onClick={onClose}>Close</Button>
+          <Button variant="primary" disabled={!dirty || saving} onClick={() => void save()}>
+            {saving ? "Saving…" : "Save changes"}
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

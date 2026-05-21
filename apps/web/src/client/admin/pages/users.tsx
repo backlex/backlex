@@ -31,6 +31,7 @@ import {
 } from "@workeros/ui/components/dropdown-menu";
 import { rolesApi, usersApi, type ApiUser } from "../api";
 import { UsersSkeleton } from "../page-skeletons";
+import { auth } from "@/lib/auth";
 
 const ProviderGlyph = ({ kind, size = 12 }: { kind: string; size?: number }) => {
   if (kind === "github") return (
@@ -46,7 +47,7 @@ const ProviderGlyph = ({ kind, size = 12 }: { kind: string; size?: number }) => 
 const PROVIDER_LABEL: Record<string, string> = { password: "password", github: "github", google: "google", magic: "magic link" };
 
 export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
-  type UserRow = { id: string; name: string; email: string; roles: string[]; status: string; provider: string; mfa: boolean; last: string; lastIso: string | null; created: string; sessions: number; hue: number };
+  type UserRow = { id: string; name: string; email: string; roles: string[]; status: string; provider: string; mfa: boolean; last: string; lastIso: string | null; created: string; sessions: number };
   const [users, setUsers] = useState<UserRow[]>([]);
   // First-load gate — drives the page skeleton until the user list lands.
   const [loaded, setLoaded] = useState(false);
@@ -65,7 +66,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
           return `${Math.floor(ms / 86_400_000)}d ago`;
         };
         setUsers(
-          r.data.map((u: ApiUser & { lastSeenAt?: number | null }, i: number) => {
+          r.data.map((u: ApiUser & { lastSeenAt?: number | null }) => {
             const lastSeenAt = u.lastSeenAt ?? null;
             return {
               id: u.id,
@@ -79,7 +80,6 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
               lastIso: lastSeenAt ? new Date(lastSeenAt).toISOString().slice(0, 19).replace("T", " ") : null,
               created: u.createdAt ? String(u.createdAt).slice(0, 10) : "—",
               sessions: 0,
-              hue: 30 + ((i * 47) % 320),
             };
           }) as any,
         );
@@ -265,7 +265,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2.5">
-                      <div className="grid size-8 place-items-center rounded-full text-[12.5px] font-semibold tracking-[-0.01em]" style={{ background: `oklch(0.78 0.14 ${u.hue})`, color: `oklch(0.25 0.06 ${u.hue})` }}>{u.name.split(" ").map((p) => p[0]).slice(0, 2).join("")}</div>
+                      <div className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground text-[12.5px] font-semibold tracking-[-0.01em]">{u.name.split(" ").map((p) => p[0]).slice(0, 2).join("")}</div>
                       <div className="flex min-w-0 flex-col gap-px">
                         <span className="text-[13px] font-medium">{u.name}</span>
                         <span className="text-[11.5px] text-muted-foreground">{u.email}</span>
@@ -368,9 +368,8 @@ function UserDrawer({ user, onClose, pushToast }: { user: any; onClose: () => vo
     let cancelled = false;
     void (async () => {
       try {
-        const r = await fetch(`/api/users/${encodeURIComponent(user.id)}/sessions`, { credentials: "include" });
-        if (!r.ok || cancelled) return;
-        const j = (await r.json()) as { data?: any[] };
+        const j = await usersApi.sessions(user.id);
+        if (cancelled) return;
         const fmtAgo = (ms: number | null): string => {
           if (!ms) return "—";
           const d = Date.now() - ms;
@@ -385,7 +384,6 @@ function UserDrawer({ user, onClose, pushToast }: { user: any; onClose: () => vo
             device: s.userAgent ?? "Unknown device",
             ip: s.ipAddress ?? "—",
             last: fmtAgo(s.updatedAt ?? s.createdAt ?? null),
-            current: i === 0,
           })),
         );
       } catch {
@@ -452,11 +450,18 @@ function UserDrawer({ user, onClose, pushToast }: { user: any; onClose: () => vo
                     <div className="flex min-w-0 flex-col gap-0.5">
                       <span className="flex items-center gap-1.5 text-[12.5px] font-medium">
                         {s.device}
-                        {s.current && <Badge variant="outline">this device</Badge>}
                       </span>
                       <span className="font-mono text-[11.5px] text-muted-foreground">{s.ip} · last seen {s.last}</span>
                     </div>
-                    <Button size="sm" variant="ghost" onClick={() => pushToast(`Session revoked: ${s.device}`)}>Revoke</Button>
+                    <Button size="sm" variant="ghost" onClick={async () => {
+                      try {
+                        await usersApi.revokeSession(user.id, s.id);
+                        setSessions((arr) => arr.filter((x) => x.id !== s.id));
+                        pushToast(`Session revoked: ${s.device}`);
+                      } catch (e) {
+                        pushToast((e as Error).message);
+                      }
+                    }}>Revoke</Button>
                   </div>
                 ))}
               </div>
@@ -489,8 +494,12 @@ function UserDrawer({ user, onClose, pushToast }: { user: any; onClose: () => vo
                 <div className="text-[11.5px] text-muted-foreground">Emails a one-time link valid for 30 minutes.</div>
               </div>
               <Button size="sm" variant="outline" onClick={async () => {
-                try { await usersApi.invite(user.email, "authenticated"); } catch (e) { pushToast((e as Error).message); }
-                pushToast(`Reset link sent to ${user.email}.`);
+                try {
+                  await (auth as unknown as { forgetPassword?: (o: { email: string; redirectTo?: string }) => Promise<{ error?: { message?: string } }> }).forgetPassword?.({ email: user.email, redirectTo: "/reset-password" });
+                  pushToast(`Reset link sent to ${user.email}.`);
+                } catch (e) {
+                  pushToast((e as Error).message);
+                }
               }}>Send</Button>
             </div>
             <div className="flex items-center justify-between gap-3 border-b border-dashed border-[color-mix(in_oklch,var(--destructive)_18%,var(--border))] py-2 last:border-b-0">

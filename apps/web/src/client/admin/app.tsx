@@ -802,7 +802,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
               </Tabs>
 
               {activeTab === "items" && (
-                <div className="grid grid-cols-[1fr_320px] items-start gap-4">
+                <div className="grid grid-cols-[1fr_320px] items-start gap-4 max-[1280px]:grid-cols-1">
                   <div className="flex min-w-0 flex-col gap-3">
                     <FilterBar
                       search={search} setSearch={setSearch}
@@ -1168,14 +1168,14 @@ function PermissionsPanel({ pushToast }: { pushToast: (m: string) => void }) {
           <Button variant="primary" size="sm" icon={I.Plus} onClick={openNew}>Add role</Button>
         </div>
         {roles.map((r) => (
-          <div key={r.name} className="grid grid-cols-[24px_200px_1fr_32px] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0">
+          <div key={r.name} className="grid grid-cols-[24px_200px_1fr_32px] max-[640px]:grid-cols-[24px_1fr_32px] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0">
             <span><I.Users size={14} /></span>
             <div className="flex items-center gap-2">
               <span className="font-mono text-[13px]">{r.name}</span>
               {r.system && <Badge variant="secondary">system</Badge>}
               {(r.badges || []).map((b) => <Badge key={b} variant="outline">{b}</Badge>)}
             </div>
-            <span className="font-mono text-xs text-muted-foreground">{r.rule}</span>
+            <span className="font-mono text-xs text-muted-foreground max-[640px]:hidden">{r.rule}</span>
             <IconButton icon={I.Pencil} title="Edit" onClick={() => openEdit(r)} />
           </div>
         ))}

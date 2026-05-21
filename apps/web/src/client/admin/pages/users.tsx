@@ -29,8 +29,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@workeros/ui/components/dropdown-menu";
-import { rolesApi, usersApi, type ApiUser } from "../api";
+import { rolesApi, usersApi, type ApiRole, type ApiUser } from "../api";
 import { UsersSkeleton } from "../page-skeletons";
+import { auth } from "@/lib/auth";
 
 const ProviderGlyph = ({ kind, size = 12 }: { kind: string; size?: number }) => {
   if (kind === "github") return (
@@ -46,7 +47,7 @@ const ProviderGlyph = ({ kind, size = 12 }: { kind: string; size?: number }) => 
 const PROVIDER_LABEL: Record<string, string> = { password: "password", github: "github", google: "google", magic: "magic link" };
 
 export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
-  type UserRow = { id: string; name: string; email: string; roles: string[]; status: string; provider: string; mfa: boolean; last: string; lastIso: string | null; created: string; sessions: number; hue: number };
+  type UserRow = { id: string; name: string; email: string; roles: string[]; status: string; provider: string; mfa: boolean; last: string; lastIso: string | null; created: string; sessions: number };
   const [users, setUsers] = useState<UserRow[]>([]);
   // First-load gate — drives the page skeleton until the user list lands.
   const [loaded, setLoaded] = useState(false);
@@ -65,7 +66,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
           return `${Math.floor(ms / 86_400_000)}d ago`;
         };
         setUsers(
-          r.data.map((u: ApiUser & { lastSeenAt?: number | null }, i: number) => {
+          r.data.map((u: ApiUser & { lastSeenAt?: number | null }) => {
             const lastSeenAt = u.lastSeenAt ?? null;
             return {
               id: u.id,
@@ -79,7 +80,6 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
               lastIso: lastSeenAt ? new Date(lastSeenAt).toISOString().slice(0, 19).replace("T", " ") : null,
               created: u.createdAt ? String(u.createdAt).slice(0, 10) : "—",
               sessions: 0,
-              hue: 30 + ((i * 47) % 320),
             };
           }) as any,
         );
@@ -94,6 +94,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
   // Real workspace roles for the invite dialog + the role filter — keeps both
   // in sync with whatever exists under Roles & permissions (no hardcoded list).
   const [roleNames, setRoleNames] = useState<string[]>([]);
+  const [allRoles, setAllRoles] = useState<ApiRole[]>([]);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -101,6 +102,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
         const r = await rolesApi.list();
         if (!cancelled && Array.isArray(r.data)) {
           setRoleNames(r.data.map((x) => x.name).filter((n) => n !== "public"));
+          setAllRoles(r.data);
         }
       } catch {
         /* leave empty — the dialog/filter fall back to `authenticated` */
@@ -170,6 +172,10 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
       pushToast((e as Error).message);
     }
     setSelected(new Set());
+  };
+
+  const applyUserPatch = (id: string, patch: { name?: string; roles?: string[] }) => {
+    setUsers((arr) => arr.map((u) => (u.id === id ? { ...u, ...patch } : u)));
   };
 
   // First whole-page fetch — the user list hasn't landed yet.
@@ -265,7 +271,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2.5">
-                      <div className="grid size-8 place-items-center rounded-full text-[12.5px] font-semibold tracking-[-0.01em]" style={{ background: `oklch(0.78 0.14 ${u.hue})`, color: `oklch(0.25 0.06 ${u.hue})` }}>{u.name.split(" ").map((p) => p[0]).slice(0, 2).join("")}</div>
+                      <div className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground text-[12.5px] font-semibold tracking-[-0.01em]">{u.name.split(" ").map((p) => p[0]).slice(0, 2).join("")}</div>
                       <div className="flex min-w-0 flex-col gap-px">
                         <span className="text-[13px] font-medium">{u.name}</span>
                         <span className="text-[11.5px] text-muted-foreground">{u.email}</span>
@@ -342,7 +348,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
         </Table>
       </div>
 
-      {activeUser && <UserDrawer user={activeUser} onClose={() => setActiveUser(null)} pushToast={pushToast} />}
+      {activeUser && <UserDrawer user={activeUser} allRoles={allRoles} onClose={() => setActiveUser(null)} onSaved={applyUserPatch} pushToast={pushToast} />}
       {inviteOpen && <InviteUserDialog roles={roleNames} onClose={() => setInviteOpen(false)} onInvite={async (payload: any) => {
         try {
           await usersApi.invite(payload.email, payload.role);
@@ -356,7 +362,10 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
   );
 }
 
-function UserDrawer({ user, onClose, pushToast }: { user: any; onClose: () => void; pushToast: (m: string) => void }) {
+function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any; allRoles: ApiRole[]; onClose: () => void; onSaved: (id: string, patch: { name?: string; roles?: string[] }) => void; pushToast: (m: string) => void }) {
+  const [name, setName] = useState<string>(user.name ?? "");
+  const [roles, setRoles] = useState<string[]>(user.roles as string[]);
+  const [saving, setSaving] = useState(false);
   // Live sessions for this user — pulled from /api/users/:id/sessions which
   // surfaces sessions.user_agent + sessions.ip_address. Falls back to a
   // single placeholder row when the API returns nothing.
@@ -368,9 +377,8 @@ function UserDrawer({ user, onClose, pushToast }: { user: any; onClose: () => vo
     let cancelled = false;
     void (async () => {
       try {
-        const r = await fetch(`/api/users/${encodeURIComponent(user.id)}/sessions`, { credentials: "include" });
-        if (!r.ok || cancelled) return;
-        const j = (await r.json()) as { data?: any[] };
+        const j = await usersApi.sessions(user.id);
+        if (cancelled) return;
         const fmtAgo = (ms: number | null): string => {
           if (!ms) return "—";
           const d = Date.now() - ms;
@@ -385,7 +393,6 @@ function UserDrawer({ user, onClose, pushToast }: { user: any; onClose: () => vo
             device: s.userAgent ?? "Unknown device",
             ip: s.ipAddress ?? "—",
             last: fmtAgo(s.updatedAt ?? s.createdAt ?? null),
-            current: i === 0,
           })),
         );
       } catch {
@@ -412,14 +419,44 @@ function UserDrawer({ user, onClose, pushToast }: { user: any; onClose: () => vo
     return () => { cancelled = true; };
   }, [user.id]);
 
+  const dirty =
+    name.trim() !== (user.name ?? "").trim() ||
+    [...roles].sort().join(" ") !== [...(user.roles as string[])].sort().join(" ");
+
+  const handleSave = async () => {
+    if (!dirty || saving) return;
+    setSaving(true);
+    try {
+      if (name.trim() && name.trim() !== (user.name ?? "")) {
+        await usersApi.update(user.id, { name: name.trim() });
+      }
+      const before = new Set(user.roles as string[]);
+      const after = new Set(roles);
+      const roleId = (n: string) => allRoles.find((x) => x.name === n)?.id;
+      for (const n of roles) {
+        if (!before.has(n)) { const id = roleId(n); if (id) await usersApi.addRole(user.id, id); }
+      }
+      for (const n of user.roles as string[]) {
+        if (!after.has(n)) { const id = roleId(n); if (id) await usersApi.removeRole(user.id, id); }
+      }
+      onSaved(user.id, { name: name.trim() || (user.name ?? ""), roles });
+      pushToast("Profile saved.");
+      onClose();
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
       <SheetContent side="right" className="w-[min(560px,100vw)] gap-0 p-0 sm:max-w-none">
         <SheetHeader className="flex-row items-start gap-3 space-y-0 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
-          <div className="grid size-10 place-items-center rounded-full text-sm font-semibold tracking-[-0.01em]" style={{ background: `oklch(0.78 0.14 ${user.hue})`, color: `oklch(0.25 0.06 ${user.hue})` }}>{user.name.split(" ").map((p: string) => p[0]).slice(0, 2).join("")}</div>
+          <div className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-sm font-semibold tracking-[-0.01em] text-primary-foreground">{(user.name || user.email).split(" ").map((p: string) => p[0]?.toUpperCase()).filter(Boolean).slice(0, 2).join("")}</div>
           <div className="min-w-0">
             <SheetTitle className="flex items-center gap-2 text-base font-semibold tracking-[-0.01em]">
-              {user.name}
+              {name || user.email}
               {user.status === "active" && <Badge variant="default">active</Badge>}
               {user.status === "invited" && <Badge variant="outline">invited</Badge>}
               {user.status === "suspended" && <Badge variant="destructive">suspended</Badge>}
@@ -429,8 +466,31 @@ function UserDrawer({ user, onClose, pushToast }: { user: any; onClose: () => vo
         </SheetHeader>
 
         <div className="flex flex-1 flex-col gap-8 overflow-auto px-5 py-[18px]">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12.5px] font-medium text-foreground">Name</label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Display name" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12.5px] font-medium text-foreground">Roles</label>
+              <div className="flex flex-col overflow-hidden rounded-xl border border-border">
+                {allRoles.filter((r) => r.name !== "public").map((r) => (
+                  <label key={r.id} className="flex cursor-pointer items-center gap-2.5 border-b border-border px-3 py-2.5 last:border-b-0">
+                    <Checkbox
+                      checked={roles.includes(r.name)}
+                      onChange={() => setRoles((arr) => arr.includes(r.name) ? arr.filter((n) => n !== r.name) : [...arr, r.name])}
+                    />
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-[12.5px] font-medium">{r.name}</span>
+                      {ROLE_HINTS[r.name] && <span className="text-[11.5px] text-muted-foreground">{ROLE_HINTS[r.name]}</span>}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-x-3.5 gap-y-2.5 rounded-xl bg-muted px-3.5 py-3 max-[900px]:grid-cols-1">
-            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Roles</span><div className="flex flex-wrap gap-1">{user.roles.map((r: string) => <Badge key={r} variant={r === "admin" ? "default" : "secondary"}>{r}</Badge>)}</div></div>
             <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Provider</span><span className="inline-flex items-center gap-1.5 text-foreground"><ProviderGlyph kind={user.provider} size={12} />{PROVIDER_LABEL[user.provider]}</span></div>
             <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">2FA</span>{user.mfa ? <span className="inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklch,oklch(0.55_0.15_145)_35%,var(--border))] bg-[color-mix(in_oklch,oklch(0.78_0.14_145)_14%,transparent)] px-[7px] py-0.5 font-mono text-[11px] text-[oklch(0.55_0.15_145)]"><I.Shield size={11} /> enrolled</span> : <span className="inline-flex items-center gap-1 rounded-full border border-border px-[7px] py-0.5 font-mono text-[11px] text-muted-foreground">disabled</span>}</div>
             <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Created</span><span className="font-mono text-xs">{user.created}</span></div>
@@ -452,11 +512,18 @@ function UserDrawer({ user, onClose, pushToast }: { user: any; onClose: () => vo
                     <div className="flex min-w-0 flex-col gap-0.5">
                       <span className="flex items-center gap-1.5 text-[12.5px] font-medium">
                         {s.device}
-                        {s.current && <Badge variant="outline">this device</Badge>}
                       </span>
                       <span className="font-mono text-[11.5px] text-muted-foreground">{s.ip} · last seen {s.last}</span>
                     </div>
-                    <Button size="sm" variant="ghost" onClick={() => pushToast(`Session revoked: ${s.device}`)}>Revoke</Button>
+                    <Button size="sm" variant="ghost" onClick={async () => {
+                      try {
+                        await usersApi.revokeSession(user.id, s.id);
+                        setSessions((arr) => arr.filter((x) => x.id !== s.id));
+                        pushToast(`Session revoked: ${s.device}`);
+                      } catch (e) {
+                        pushToast((e as Error).message);
+                      }
+                    }}>Revoke</Button>
                   </div>
                 ))}
               </div>
@@ -489,8 +556,12 @@ function UserDrawer({ user, onClose, pushToast }: { user: any; onClose: () => vo
                 <div className="text-[11.5px] text-muted-foreground">Emails a one-time link valid for 30 minutes.</div>
               </div>
               <Button size="sm" variant="outline" onClick={async () => {
-                try { await usersApi.invite(user.email, "authenticated"); } catch (e) { pushToast((e as Error).message); }
-                pushToast(`Reset link sent to ${user.email}.`);
+                try {
+                  await (auth as unknown as { forgetPassword?: (o: { email: string; redirectTo?: string }) => Promise<{ error?: { message?: string } }> }).forgetPassword?.({ email: user.email, redirectTo: "/reset-password" });
+                  pushToast(`Reset link sent to ${user.email}.`);
+                } catch (e) {
+                  pushToast((e as Error).message);
+                }
               }}>Send</Button>
             </div>
             <div className="flex items-center justify-between gap-3 border-b border-dashed border-[color-mix(in_oklch,var(--destructive)_18%,var(--border))] py-2 last:border-b-0">
@@ -519,7 +590,7 @@ function UserDrawer({ user, onClose, pushToast }: { user: any; onClose: () => vo
 
         <SheetFooter className="flex-row justify-end gap-2 border-t border-border bg-card px-5 py-3">
           <Button variant="ghost" onClick={onClose}>Close</Button>
-          <Button variant="primary" onClick={() => pushToast("Profile saved.")}>Save changes</Button>
+          <Button variant="primary" onClick={handleSave} disabled={!dirty || saving}>Save changes</Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>

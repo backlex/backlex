@@ -334,6 +334,17 @@ export const usersApi = {
     }),
   removeRole: (userId: string, roleId: string) =>
     api<{ ok: true }>(`/api/users/${userId}/roles/${roleId}`, { method: "DELETE" }),
+  update: (id: string, body: { name: string }) =>
+    api<{ ok: true }>(`/api/users/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  sessions: (id: string) =>
+    api<Envelope<{ id: string; userAgent: string | null; ipAddress: string | null; createdAt: number | null; updatedAt: number | null }[]>>(
+      `/api/users/${id}/sessions`,
+    ),
+  revokeSession: (id: string, sessionId: string) =>
+    api<{ ok: true }>(`/api/users/${id}/sessions/${sessionId}`, { method: "DELETE" }),
 };
 
 export const rolesApi = {
@@ -349,13 +360,19 @@ export const appUsersApi = {
       method: "PUT",
       body: JSON.stringify({ roleIds }),
     }),
-  patch: (id: string, body: { status?: "active" | "suspended" }) =>
+  patch: (id: string, body: { status?: "active" | "suspended"; name?: string }) =>
     api<{ ok: true }>(`/api/app-users/${id}`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
   remove: (id: string) =>
     api<{ ok: true }>(`/api/app-users/${id}`, { method: "DELETE" }),
+  sessions: (id: string) =>
+    api<Envelope<{ id: string; userAgent: string | null; ipAddress: string | null; createdAt: number | null; updatedAt: number | null }[]>>(
+      `/api/app-users/${id}/sessions`,
+    ),
+  revokeSession: (id: string, sessionId: string) =>
+    api<{ ok: true }>(`/api/app-users/${id}/sessions/${sessionId}`, { method: "DELETE" }),
 };
 
 export const functionsApi = {

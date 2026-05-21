@@ -128,6 +128,30 @@ export const createAuth = (
       enabled: true,
       autoSignIn: true,
       minPasswordLength: 8,
+      ...(config.email
+        ? {
+            sendResetPassword: async ({
+              user,
+              url,
+            }: {
+              user: { email: string };
+              url: string;
+            }) => {
+              await config.email!.send({
+                to: user.email,
+                subject: "Reset your workeros password",
+                text:
+                  `We received a request to reset your password.\n\n` +
+                  `Choose a new password: ${url}\n\n` +
+                  `If you didn't request this, you can safely ignore this email.`,
+                html:
+                  `<p>We received a request to reset your password.</p>` +
+                  `<p><a href="${url}">Choose a new password</a></p>` +
+                  `<p>If you didn't request this, you can safely ignore this email.</p>`,
+              });
+            },
+          }
+        : {}),
     },
     session: {
       expiresIn: 60 * 60 * 24 * 7, // 7d

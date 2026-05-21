@@ -83,7 +83,7 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
       />
 
       {/* Score card */}
-      <div className="grid grid-cols-[160px_1fr] items-center gap-[22px] overflow-hidden rounded-2xl border border-border bg-card p-5 text-card-foreground">
+      <div className="grid grid-cols-[160px_1fr] max-[640px]:grid-cols-1 max-[640px]:justify-items-center items-center gap-[22px] overflow-hidden rounded-2xl border border-border bg-card p-5 text-card-foreground">
         <div className="relative size-[140px]">
           <ScoreRing score={score} />
           <div className="absolute inset-0 grid place-items-center text-center">
@@ -247,11 +247,11 @@ function AdvisorRow({ c, onDismiss, onCopy }: { c: AdvisorCheck; onDismiss: () =
   return (
     <Collapsible open={open} onOpenChange={setOpen} className={`overflow-hidden rounded-2xl border bg-card ${rowBorder}`}>
       <CollapsibleTrigger asChild>
-        <button type="button" className="grid w-full cursor-pointer grid-cols-[32px_1fr_auto_auto_16px] items-center gap-3 border-0 bg-transparent px-4 py-3 text-left hover:bg-accent">
+        <button type="button" className="grid w-full cursor-pointer grid-cols-[32px_1fr_auto_auto_16px] max-[640px]:grid-cols-[32px_1fr_16px] items-center gap-3 border-0 bg-transparent px-4 py-3 text-left hover:bg-accent">
           <span className={`grid size-7 place-items-center rounded-lg ${icoCls}`}><Icon size={14} /></span>
-          <span className="text-[13.5px] font-medium">{c.title}</span>
-          <span className="font-mono text-[11.5px] text-muted-foreground">{c.resource}</span>
-          <span className="text-[11px] text-muted-foreground">{c.detected}</span>
+          <span className="min-w-0 truncate text-[13.5px] font-medium">{c.title}</span>
+          <span className="font-mono text-[11.5px] text-muted-foreground max-[640px]:hidden">{c.resource}</span>
+          <span className="text-[11px] text-muted-foreground max-[640px]:hidden">{c.detected}</span>
           <I.ChevronDown size={12} className="text-muted-foreground transition-transform data-[open=true]:rotate-180" data-open={open} />
         </button>
       </CollapsibleTrigger>

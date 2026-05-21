@@ -506,7 +506,7 @@ export const metricsRoutes = new OpenAPIHono<AppBindings>()
       try {
         const rows = await queryAll<{ item_id: string; n: number; last: number | string | null }>(
           { db: ctx.db, dialect: dialectIs },
-          sql.raw(`SELECT item_id, COUNT(*) AS n, MAX(created_at) AS last FROM activity WHERE collection = 'system_flows' AND action = 'run'${tenantAnd} GROUP BY item_id`),
+          sql.raw(`SELECT item_id, COUNT(*) AS n, MAX(created_at) AS last FROM activity WHERE collection = 'system_flows' AND action = 'flow.run'${tenantAnd} GROUP BY item_id`),
         );
         for (const r of rows) {
           if (!r.item_id) continue;
@@ -526,7 +526,7 @@ export const metricsRoutes = new OpenAPIHono<AppBindings>()
       try {
         const rows = await queryAll<{ item_id: string; n: number; last: number | string | null; durations: string }>(
           { db: ctx.db, dialect: dialectIs },
-          sql.raw(`SELECT item_id, COUNT(*) AS n, MAX(created_at) AS last, ${concatExpr} AS durations FROM activity WHERE collection = 'system_functions' AND action = 'invoke'${tenantAnd} GROUP BY item_id`),
+          sql.raw(`SELECT item_id, COUNT(*) AS n, MAX(created_at) AS last, ${concatExpr} AS durations FROM activity WHERE collection = 'system_functions' AND action = 'function.invoke'${tenantAnd} GROUP BY item_id`),
         );
         for (const r of rows) {
           if (!r.item_id) continue;
@@ -551,7 +551,7 @@ export const metricsRoutes = new OpenAPIHono<AppBindings>()
       try {
         const rows = await queryAll<{ item_id: string; n: number; last: number | string | null }>(
           { db: ctx.db, dialect: dialectIs },
-          sql.raw(`SELECT item_id, COUNT(*) AS n, MAX(created_at) AS last FROM activity WHERE collection = 'system_webhooks' AND action IN ('test', 'delivery')${tenantAnd} GROUP BY item_id`),
+          sql.raw(`SELECT item_id, COUNT(*) AS n, MAX(created_at) AS last FROM activity WHERE collection = 'system_webhooks' AND action IN ('webhook.test', 'webhook.delivery')${tenantAnd} GROUP BY item_id`),
         );
         for (const r of rows) {
           if (!r.item_id) continue;

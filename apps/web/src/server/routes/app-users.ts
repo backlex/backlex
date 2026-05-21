@@ -56,8 +56,21 @@ const SetRolesInput = z
   .openapi("AppUserSetRolesInput");
 
 const PatchInput = z
-  .object({ status: z.enum(["active", "suspended"]).optional() })
+  .object({
+    status: z.enum(["active", "suspended"]).optional(),
+    name: z.string().trim().min(1).max(200).optional(),
+  })
   .openapi("AppUserPatchInput");
+
+const AppSessionRow = z
+  .object({
+    id: z.string(),
+    userAgent: z.string().nullable(),
+    ipAddress: z.string().nullable(),
+    createdAt: z.number().nullable(),
+    updatedAt: z.number().nullable(),
+  })
+  .openapi("AppSessionRow");
 
 const TAG = "app-users";
 
@@ -223,7 +236,7 @@ export const appUsersRoutes = new OpenAPIHono<AppBindings>()
       tags: [TAG],
       summary: "Update end-user",
       description:
-        "Currently only `status`. Suspending also drops the user's `app_sessions`.",
+        "Update `status` and/or `name`. Suspending also drops the user's `app_sessions`.",
       security: SECURITY,
       middleware: [requireUser, requireAdmin],
       request: {
@@ -275,6 +288,117 @@ export const appUsersRoutes = new OpenAPIHono<AppBindings>()
             .where(eq(t.appSessions.userId, appUserId));
         }
       }
+      if (body.name !== undefined) {
+        await (ctx.db as any)
+          .update(t.appUsers)
+          .set({
+            name: body.name,
+            updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
+          })
+          .where(and(eq(t.appUsers.id, appUserId), eq(t.appUsers.tenantId, tenantId)));
+      }
+      return c.json({ ok: true });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/{id}/sessions",
+      tags: [TAG],
+      summary: "List an end-user's sessions",
+      description:
+        "Active `app_sessions` for the end-user, newest first. Scoped to the active workspace.",
+      security: SECURITY,
+      middleware: [requireUser, requireAdmin],
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": {
+              schema: z.object({ data: z.array(AppSessionRow) }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    /** List the end-user's `app_sessions`, newest first. */
+    async (c) => {
+      const ctx = c.get("ctx");
+      const tenantId = c.get("auth").tenantId;
+      if (!tenantId) throw new AppError("VALIDATION", "No active workspace");
+      const { id: appUserId } = c.req.valid("param");
+      const t = tablesFor(ctx.dialect);
+      await requireAppUser(ctx.db, ctx.dialect, tenantId, appUserId);
+      const rows = (await (ctx.db as any)
+        .select({
+          id: t.appSessions.id,
+          userAgent: t.appSessions.userAgent,
+          ipAddress: t.appSessions.ipAddress,
+          createdAt: t.appSessions.createdAt,
+          updatedAt: t.appSessions.updatedAt,
+        })
+        .from(t.appSessions)
+        .where(
+          and(
+            eq(t.appSessions.userId, appUserId),
+            eq(t.appSessions.tenantId, tenantId),
+          ),
+        )
+        .orderBy(desc(t.appSessions.createdAt))) as Array<Record<string, unknown>>;
+      const ms = (v: unknown): number | null =>
+        v == null ? null : typeof v === "number" ? v : new Date(v as string).getTime();
+      return c.json({
+        data: rows.map((s) => {
+          const created = ms(s.createdAt);
+          return {
+            id: String(s.id),
+            userAgent: (s.userAgent as string | null) ?? null,
+            ipAddress: (s.ipAddress as string | null) ?? null,
+            createdAt: created,
+            updatedAt: ms(s.updatedAt) ?? created,
+          };
+        }),
+      });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "delete",
+      path: "/{id}/sessions/{sessionId}",
+      tags: [TAG],
+      summary: "Revoke one end-user session",
+      description:
+        "Deletes a single `app_sessions` row. Scoped to the active workspace.",
+      security: SECURITY,
+      middleware: [requireUser, requireAdmin],
+      request: { params: z.object({ id: z.string(), sessionId: z.string() }) },
+      responses: {
+        200: {
+          description: "Revoked",
+          content: { "application/json": { schema: OkSchema } },
+        },
+        ...errorResponses,
+      },
+    }),
+    /** Revoke a single `app_sessions` row for the end-user. */
+    async (c) => {
+      const ctx = c.get("ctx");
+      const tenantId = c.get("auth").tenantId;
+      if (!tenantId) throw new AppError("VALIDATION", "No active workspace");
+      const { id: appUserId, sessionId } = c.req.valid("param");
+      const t = tablesFor(ctx.dialect);
+      await requireAppUser(ctx.db, ctx.dialect, tenantId, appUserId);
+      await (ctx.db as any)
+        .delete(t.appSessions)
+        .where(
+          and(
+            eq(t.appSessions.id, sessionId),
+            eq(t.appSessions.userId, appUserId),
+            eq(t.appSessions.tenantId, tenantId),
+          ),
+        );
       return c.json({ ok: true });
     },
   )

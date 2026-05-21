@@ -66,6 +66,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarTrigger,
+  useSidebar,
 } from "@workeros/ui/components/sidebar";
 import { TooltipProvider } from "@workeros/ui/components/tooltip";
 
@@ -277,6 +278,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
   const items = NAV_ITEMS;
   const settings = NAV_SETTINGS;
   const developers = NAV_DEVELOPERS;
+  const { isMobile, setOpenMobile } = useSidebar();
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [tenantId, setTenantId] = useState<string | null>(null);
@@ -411,7 +413,10 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
                   <SidebarMenuItem key={it.id}>
                     <SidebarMenuButton
                       isActive={activeNav === it.id}
-                      onClick={() => setActiveNav(it.id)}
+                      onClick={() => {
+                        setActiveNav(it.id);
+                        if (isMobile) setOpenMobile(false);
+                      }}
                       tooltip={it.label}
                     >
                       {IconComp && <IconComp size={15} />}

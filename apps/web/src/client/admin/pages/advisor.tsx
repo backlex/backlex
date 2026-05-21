@@ -1,9 +1,12 @@
 // Advisor page — security + performance checks.
 //
 // Findings come from GET /api/admin/advisor (services/advisor.ts) — every
-// check is computed from live DB / env state. Dismiss stays client-side
-// (a local Set) since there's no dismiss endpoint.
+// check is computed from live DB / env state, the score is server-computed,
+// and `generatedAt` is one honest per-run timestamp. The page runs the check
+// on demand (there is no server cron/cache). Dismiss is persisted to
+// localStorage (there is no dismiss endpoint).
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { I, type IconComponent } from "../icons";
 import { Button, PageHeader } from "../ui";
@@ -19,21 +22,73 @@ interface AdvisorCheck {
   id: string;
   kind: CheckKind;
   level: CheckLevel;
+  rule: string;
+  groupTitle: string;
   title: string;
   body: string;
   fix: string;
   resource: string;
-  detected: string;
+  link?: string;
 }
 
 type LevelCounts = { error: number; warn: number; info: number };
 
+const DISMISSED_KEY = "workeros.advisor.dismissed";
+
+/** error → warn → info, for severity ordering. */
+const LEVEL_RANK: Record<CheckLevel, number> = { error: 0, warn: 1, info: 2 };
+
+/** Read the dismissed-finding id set from localStorage (best-effort). */
+function loadDismissed(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DISMISSED_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return new Set(parsed.filter((v) => typeof v === "string"));
+  } catch {
+    // localStorage unavailable / malformed — start empty.
+  }
+  return new Set();
+}
+
+/** Persist the dismissed-finding id set to localStorage (best-effort). */
+function saveDismissed(ids: Set<string>): void {
+  try {
+    localStorage.setItem(DISMISSED_KEY, JSON.stringify([...ids]));
+  } catch {
+    // localStorage unavailable — dismiss stays in-memory for this session.
+  }
+}
+
+/** A run-level local time string, e.g. "14:32 · May 22". */
+function formatGeneratedAt(iso: string): string {
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return iso;
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  const date = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return `${hh}:${mm} · ${date}`;
+}
+
 export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "success" | "error") => void }) {
   const [tab, setTab] = useState<CheckKind>("security");
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [dismissed, setDismissed] = useState<Set<string>>(loadDismissed);
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const { data, isLoading, isError, isFetching } = useAdvisor();
   const checks = useMemo<AdvisorCheck[]>(() => data?.data ?? [], [data]);
+  const score = data?.score ?? 100;
+  const generatedAt = data?.generatedAt ?? null;
+
+  const dismiss = (id: string, title: string) => {
+    setDismissed((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      saveDismissed(next);
+      return next;
+    });
+    pushToast(`Dismissed "${title}".`);
+  };
 
   const all = useMemo(
     () => checks.filter((c) => !dismissed.has(c.id)),
@@ -50,13 +105,35 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
     return out;
   }, [all]);
 
-  const score = useMemo(() => {
-    const errs = all.filter((c) => c.level === "error").length;
-    const warns = all.filter((c) => c.level === "warn").length;
-    return Math.max(0, 100 - errs * 18 - warns * 7);
-  }, [all]);
+  // Group the visible findings by `rule`, preserving severity order: each
+  // group inherits the rank of its worst finding so groups + singletons sort
+  // together. Individual findings still drive every count.
+  const groups = useMemo(() => {
+    const byRule = new Map<string, AdvisorCheck[]>();
+    for (const c of list) {
+      const arr = byRule.get(c.rule);
+      if (arr) arr.push(c);
+      else byRule.set(c.rule, [c]);
+    }
+    const result = [...byRule.values()].map((items) => {
+      const sorted = [...items].sort((a, b) => LEVEL_RANK[a.level] - LEVEL_RANK[b.level]);
+      const worst = sorted[0]!;
+      return { rule: worst.rule, items: sorted, worst };
+    });
+    result.sort((a, b) => LEVEL_RANK[a.worst.level] - LEVEL_RANK[b.worst.level]);
+    return result;
+  }, [list]);
 
   const countCls = "rounded-sm border border-border bg-muted px-[5px] py-px font-mono text-[11px] text-muted-foreground";
+
+  const onCopy = (fix: string) => {
+    try {
+      void navigator.clipboard.writeText(fix);
+      pushToast("Fix copied to clipboard.");
+    } catch {
+      pushToast("Could not copy fix.", "error");
+    }
+  };
 
   // First whole-page fetch — advisor findings haven't landed yet.
   if (isLoading) return <AdvisorSkeleton />;
@@ -65,7 +142,7 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
     <div className="flex flex-col gap-4.5">
       <PageHeader
         title="Advisor"
-        description="Automated lint over schema, permissions, indexes, and traffic shape. Refreshes hourly — re-runs after every collection change."
+        description="Automated lint over schema, permissions, and configuration. Runs on demand against live workspace state."
         actions={
           <Button
             variant="outline"
@@ -97,21 +174,28 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3.5">
-          <SummaryCard
-            counts={counts.security}
-            active={tab === "security"}
-            onClick={() => setTab("security")}
-            icon={I.ShieldAlert}
-            label="Security"
-          />
-          <SummaryCard
-            counts={counts.performance}
-            active={tab === "performance"}
-            onClick={() => setTab("performance")}
-            icon={I.Cpu}
-            label="Performance"
-          />
+        <div className="flex flex-col gap-3.5">
+          <div className="grid grid-cols-2 gap-3.5">
+            <SummaryCard
+              counts={counts.security}
+              active={tab === "security"}
+              onClick={() => setTab("security")}
+              icon={I.ShieldAlert}
+              label="Security"
+            />
+            <SummaryCard
+              counts={counts.performance}
+              active={tab === "performance"}
+              onClick={() => setTab("performance")}
+              icon={I.Cpu}
+              label="Performance"
+            />
+          </div>
+          {generatedAt && (
+            <div className="text-[11.5px] text-muted-foreground">
+              Last run: {formatGeneratedAt(generatedAt)}
+            </div>
+          )}
         </div>
       </div>
 
@@ -143,24 +227,27 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
             <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground">No outstanding findings. Re-run after a schema or permission change.</p>
           </div>
         ) : (
-          list.map((c) => (
-            <AdvisorRow
-              key={c.id}
-              c={c}
-              onDismiss={() => {
-                setDismissed((s) => new Set([...s, c.id]));
-                pushToast(`Dismissed "${c.title}".`);
-              }}
-              onCopy={() => {
-                try {
-                  void navigator.clipboard.writeText(c.fix);
-                  pushToast("Fix copied to clipboard.");
-                } catch {
-                  pushToast("Could not copy fix.", "error");
-                }
-              }}
-            />
-          ))
+          groups.map((g) =>
+            g.items.length === 1 ? (
+              <AdvisorRow
+                key={g.items[0]!.id}
+                c={g.items[0]!}
+                onDismiss={() => dismiss(g.items[0]!.id, g.items[0]!.title)}
+                onCopy={() => onCopy(g.items[0]!.fix)}
+                onOpen={g.items[0]!.link ? () => navigate(g.items[0]!.link!) : undefined}
+              />
+            ) : (
+              <AdvisorGroup
+                key={g.rule}
+                title={g.worst.groupTitle}
+                level={g.worst.level}
+                items={g.items}
+                onDismiss={dismiss}
+                onCopy={onCopy}
+                onOpen={(link) => navigate(link)}
+              />
+            ),
+          )
         )}
       </div>
     </div>
@@ -231,52 +318,166 @@ function ScoreRing({ score }: { score: number }) {
   );
 }
 
-function AdvisorRow({ c, onDismiss, onCopy }: { c: AdvisorCheck; onDismiss: () => void; onCopy: () => void }) {
-  const [open, setOpen] = useState(false);
-  const Icon = c.level === "error" ? I.AlertTriangle : c.level === "warn" ? I.AlertCircle : I.Info;
-  const rowBorder = c.level === "error"
+/** Severity-driven icon + border/icon tints, shared by rows and groups. */
+function levelStyles(level: CheckLevel) {
+  const Icon = level === "error" ? I.AlertTriangle : level === "warn" ? I.AlertCircle : I.Info;
+  const border = level === "error"
     ? "border-[color-mix(in_oklch,var(--destructive)_28%,var(--border))]"
-    : c.level === "warn"
+    : level === "warn"
       ? "border-[color-mix(in_oklch,oklch(0.7_0.18_70)_30%,var(--border))]"
       : "border-border";
-  const icoCls = c.level === "error"
+  const ico = level === "error"
     ? "bg-[color-mix(in_oklch,var(--destructive)_16%,var(--card))] text-destructive"
-    : c.level === "warn"
+    : level === "warn"
       ? "bg-[color-mix(in_oklch,oklch(0.75_0.18_70)_18%,var(--card))] text-[oklch(0.55_0.18_70)] dark:text-[oklch(0.85_0.18_70)]"
       : "bg-muted text-muted-foreground";
+  return { Icon, border, ico };
+}
+
+/** The expanded detail body of a single finding — shared by the standalone
+ *  row and the per-finding entries inside a group. */
+function FindingDetail({
+  c,
+  onDismiss,
+  onCopy,
+  onOpen,
+}: {
+  c: AdvisorCheck;
+  onDismiss: () => void;
+  onCopy: () => void;
+  onOpen?: () => void;
+}) {
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className={`overflow-hidden rounded-2xl border bg-card ${rowBorder}`}>
+    <div className="flex flex-col gap-3 border-t border-dashed border-border px-4 pb-4 pl-[60px] pt-1">
+      <p className="m-0 text-[13px] text-foreground">{c.body}</p>
+      <div>
+        <div className="mb-1.5 text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
+          suggested fix
+        </div>
+        <pre className="m-0 overflow-x-auto whitespace-pre rounded-lg bg-muted px-3 py-2.5 font-mono text-[11.5px]">{c.fix}</pre>
+      </div>
+      <div className="flex gap-1.5">
+        <Button variant="outline" size="sm" icon={I.Copy} onClick={onCopy}>
+          Copy fix
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onDismiss}>
+          Dismiss
+        </Button>
+        <div className="flex-1" />
+        {onOpen && (
+          <Button variant="ghost" size="sm" iconRight={I.ExternalLink} onClick={onOpen}>
+            Open resource
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdvisorRow({
+  c,
+  onDismiss,
+  onCopy,
+  onOpen,
+}: {
+  c: AdvisorCheck;
+  onDismiss: () => void;
+  onCopy: () => void;
+  onOpen?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const { Icon, border, ico } = levelStyles(c.level);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className={`overflow-hidden rounded-2xl border bg-card ${border}`}>
       <CollapsibleTrigger asChild>
-        <button type="button" className="grid w-full cursor-pointer grid-cols-[32px_1fr_auto_auto_16px] max-[640px]:grid-cols-[32px_1fr_16px] items-center gap-3 border-0 bg-transparent px-4 py-3 text-left hover:bg-accent">
-          <span className={`grid size-7 place-items-center rounded-lg ${icoCls}`}><Icon size={14} /></span>
+        <button type="button" className="grid w-full cursor-pointer grid-cols-[32px_1fr_auto_16px] max-[640px]:grid-cols-[32px_1fr_16px] items-center gap-3 border-0 bg-transparent px-4 py-3 text-left hover:bg-accent">
+          <span className={`grid size-7 place-items-center rounded-lg ${ico}`}><Icon size={14} /></span>
           <span className="min-w-0 truncate text-[13.5px] font-medium">{c.title}</span>
           <span className="font-mono text-[11.5px] text-muted-foreground max-[640px]:hidden">{c.resource}</span>
-          <span className="text-[11px] text-muted-foreground max-[640px]:hidden">{c.detected}</span>
           <I.ChevronDown size={12} className="text-muted-foreground transition-transform data-[open=true]:rotate-180" data-open={open} />
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="flex flex-col gap-3 border-t border-dashed border-border px-4 pb-4 pl-[60px] pt-1">
-          <p className="m-0 text-[13px] text-foreground">{c.body}</p>
-          <div>
-            <div className="mb-1.5 text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-              suggested fix
-            </div>
-            <pre className="m-0 overflow-x-auto whitespace-pre rounded-lg bg-muted px-3 py-2.5 font-mono text-[11.5px]">{c.fix}</pre>
-          </div>
-          <div className="flex gap-1.5">
-            <Button variant="outline" size="sm" icon={I.Copy} onClick={onCopy}>
-              Copy fix
-            </Button>
-            <Button variant="ghost" size="sm" onClick={onDismiss}>
-              Dismiss
-            </Button>
-            <div className="flex-1" />
-            <Button variant="ghost" size="sm" iconRight={I.ExternalLink}>
-              Open resource
-            </Button>
-          </div>
+        <FindingDetail c={c} onDismiss={onDismiss} onCopy={onCopy} onOpen={onOpen} />
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+/** A collapsible group of findings that share a `rule`. The header shows the
+ *  category label + a count badge + the worst severity icon; expanding lists
+ *  each individual finding. */
+function AdvisorGroup({
+  title,
+  level,
+  items,
+  onDismiss,
+  onCopy,
+  onOpen,
+}: {
+  title: string;
+  level: CheckLevel;
+  items: AdvisorCheck[];
+  onDismiss: (id: string, title: string) => void;
+  onCopy: (fix: string) => void;
+  onOpen: (link: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const { Icon, border, ico } = levelStyles(level);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className={`overflow-hidden rounded-2xl border bg-card ${border}`}>
+      <CollapsibleTrigger asChild>
+        <button type="button" className="grid w-full cursor-pointer grid-cols-[32px_1fr_auto_16px] items-center gap-3 border-0 bg-transparent px-4 py-3 text-left hover:bg-accent">
+          <span className={`grid size-7 place-items-center rounded-lg ${ico}`}><Icon size={14} /></span>
+          <span className="min-w-0 truncate text-[13.5px] font-medium">{title}</span>
+          <span className="rounded-sm border border-border bg-muted px-[6px] py-px font-mono text-[11px] text-muted-foreground">{items.length}</span>
+          <I.ChevronDown size={12} className="text-muted-foreground transition-transform data-[open=true]:rotate-180" data-open={open} />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="flex flex-col border-t border-dashed border-border">
+          {items.map((c) => (
+            <GroupedFinding
+              key={c.id}
+              c={c}
+              onDismiss={() => onDismiss(c.id, c.title)}
+              onCopy={() => onCopy(c.fix)}
+              onOpen={c.link ? () => onOpen(c.link!) : undefined}
+            />
+          ))}
         </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+/** A single finding rendered inside a group — its own nested collapsible so
+ *  each finding's specific title / resource / body / fix stays addressable. */
+function GroupedFinding({
+  c,
+  onDismiss,
+  onCopy,
+  onOpen,
+}: {
+  c: AdvisorCheck;
+  onDismiss: () => void;
+  onCopy: () => void;
+  onOpen?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const { Icon, ico } = levelStyles(c.level);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="border-b border-dashed border-border last:border-b-0">
+      <CollapsibleTrigger asChild>
+        <button type="button" className="grid w-full cursor-pointer grid-cols-[32px_1fr_auto_16px] max-[640px]:grid-cols-[32px_1fr_16px] items-center gap-3 border-0 bg-transparent px-4 py-2.5 pl-7 text-left hover:bg-accent">
+          <span className={`grid size-6 place-items-center rounded-md ${ico}`}><Icon size={12} /></span>
+          <span className="min-w-0 truncate text-[13px]">{c.title}</span>
+          <span className="font-mono text-[11px] text-muted-foreground max-[640px]:hidden">{c.resource}</span>
+          <I.ChevronDown size={11} className="text-muted-foreground transition-transform data-[open=true]:rotate-180" data-open={open} />
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <FindingDetail c={c} onDismiss={onDismiss} onCopy={onCopy} onOpen={onOpen} />
       </CollapsibleContent>
     </Collapsible>
   );

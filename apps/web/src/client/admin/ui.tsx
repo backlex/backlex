@@ -643,13 +643,15 @@ export function NotificationsBell() {
               <div
                 style={{
                   padding: 36,
-                  textAlign: "center",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 8,
                   color: "var(--muted-foreground)",
                   fontSize: 13,
                 }}
               >
-                <I.Inbox size={22} style={{ marginBottom: 8, opacity: 0.5 }} />
-                <br />
+                <I.Inbox size={22} style={{ opacity: 0.5 }} />
                 You're all caught up.
               </div>
             ) : (
@@ -690,18 +692,6 @@ export function NotificationsBell() {
               disabled={markAllMut.isPending || unread === 0}
             >
               Mark all read
-            </Button>
-            <div className="spacer" />
-            <Button
-              variant="ghost"
-              size="sm"
-              iconRight={I.ChevronRight}
-              onClick={() => {
-                setOpen(false);
-                navigate("/logs");
-              }}
-            >
-              Open inbox
             </Button>
           </div>
       </PopoverContent>

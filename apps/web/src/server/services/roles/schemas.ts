@@ -71,6 +71,16 @@ export const UserInviteInput = z
   .object({ email: z.string().email(), role: z.string().optional() })
   .openapi("UserInviteInput");
 
+export const SessionRow = z
+  .object({
+    id: z.string(),
+    userAgent: z.string().nullable(),
+    ipAddress: z.string().nullable(),
+    createdAt: z.number().nullable(),
+    updatedAt: z.number().nullable(),
+  })
+  .openapi("SessionRow");
+
 export const ROLES_TAG = ["roles"];
 export const PERMISSIONS_TAG = ["permissions"];
 export const USERS_TAG = ["users"];

@@ -1,5 +1,5 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { AppError } from "@workeros/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
@@ -18,6 +18,7 @@ import {
   RoleInput,
   RoleRowSchema,
   SYSTEM_ROLE_NAMES,
+  SessionRow,
   USERS_TAG,
   UserAttachRoleInput,
   UserInviteInput,
@@ -722,6 +723,91 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
           updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
         })
         .where(eq(t.users.id, id));
+      return c.json({ ok: true });
+    },
+  )
+  /** List the user's better-auth sessions, newest first. Gated on the user
+   *  being a member of the active tenant. */
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/{id}/sessions",
+      tags: USERS_TAG,
+      summary: "List a user's sessions",
+      description:
+        "Active better-auth sessions for the user, newest first. Gated on workspace membership.",
+      security: SECURITY,
+      middleware: [requireUser, requireAdminMw],
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: z.object({ data: z.array(SessionRow) }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const tenantId = requireTenant(c);
+      const t = tableFor(ctx.dialect);
+      const { id } = c.req.valid("param");
+      await assertTenantMember(ctx, tenantId, id);
+      const rows = (await (ctx.db as any)
+        .select({
+          id: t.sessions.id,
+          userAgent: t.sessions.userAgent,
+          ipAddress: t.sessions.ipAddress,
+          createdAt: t.sessions.createdAt,
+          updatedAt: t.sessions.updatedAt,
+        })
+        .from(t.sessions)
+        .where(eq(t.sessions.userId, id))
+        .orderBy(desc(t.sessions.createdAt))) as Array<Record<string, unknown>>;
+      const ms = (v: unknown): number | null =>
+        v == null ? null : typeof v === "number" ? v : new Date(v as string).getTime();
+      return c.json({
+        data: rows.map((s) => ({
+          id: String(s.id),
+          userAgent: (s.userAgent as string | null) ?? null,
+          ipAddress: (s.ipAddress as string | null) ?? null,
+          createdAt: ms(s.createdAt),
+          updatedAt: ms(s.updatedAt),
+        })),
+      });
+    },
+  )
+  /** Revoke a single session by id. Gated on workspace membership. */
+  .openapi(
+    createRoute({
+      method: "delete",
+      path: "/{id}/sessions/{sessionId}",
+      tags: USERS_TAG,
+      summary: "Revoke one user session",
+      description:
+        "Deletes a single better-auth session. Gated on workspace membership.",
+      security: SECURITY,
+      middleware: [requireUser, requireAdminMw],
+      request: { params: z.object({ id: z.string(), sessionId: z.string() }) },
+      responses: {
+        200: {
+          description: "Revoked",
+          content: { "application/json": { schema: OkSchema } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const tenantId = requireTenant(c);
+      const t = tableFor(ctx.dialect);
+      const { id, sessionId } = c.req.valid("param");
+      await assertTenantMember(ctx, tenantId, id);
+      await (ctx.db as any)
+        .delete(t.sessions)
+        .where(and(eq(t.sessions.id, sessionId), eq(t.sessions.userId, id)));
       return c.json({ ok: true });
     },
   )

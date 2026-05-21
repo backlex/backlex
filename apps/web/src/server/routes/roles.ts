@@ -22,6 +22,7 @@ import {
   UserAttachRoleInput,
   UserInviteInput,
   UserRow,
+  UserUpdateInput,
 } from "../services/roles/schemas";
 import { tableFor } from "../services/roles/tables";
 
@@ -676,6 +677,51 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
       const { id } = c.req.valid("param");
       await assertTenantMember(ctx, tenantId, id);
       await (ctx.db as any).delete(t.sessions).where(eq(t.sessions.userId, id));
+      return c.json({ ok: true });
+    },
+  )
+  /** Update the user's display name. The global user record is shared, but
+   *  the write is gated on the user being a member of the active tenant so a
+   *  tenant admin can't rename users outside their workspace. */
+  .openapi(
+    createRoute({
+      method: "patch",
+      path: "/{id}",
+      tags: USERS_TAG,
+      summary: "Update a user",
+      description:
+        "Updates the user's display name. Gated on workspace membership.",
+      security: SECURITY,
+      middleware: [requireUser, requireAdminMw],
+      request: {
+        params: z.object({ id: z.string() }),
+        body: {
+          required: true,
+          content: { "application/json": { schema: UserUpdateInput } },
+        },
+      },
+      responses: {
+        200: {
+          description: "Updated",
+          content: { "application/json": { schema: OkSchema } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const tenantId = requireTenant(c);
+      const t = tableFor(ctx.dialect);
+      const { id } = c.req.valid("param");
+      const body = c.req.valid("json");
+      await assertTenantMember(ctx, tenantId, id);
+      await (ctx.db as any)
+        .update(t.users)
+        .set({
+          name: body.name,
+          updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
+        })
+        .where(eq(t.users.id, id));
       return c.json({ ok: true });
     },
   )

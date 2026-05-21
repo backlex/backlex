@@ -332,7 +332,7 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
             <div key={p.id} className="grid grid-cols-[24px_1fr_auto_auto_auto] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0">
               <span><I.Shield size={13} /></span>
               <div className="min-w-0">
-                <div className="text-[13px] font-medium">{p.name}</div>
+                <div className="truncate text-[13px] font-medium">{p.name}</div>
                 {p.clientId && <div className="truncate font-mono text-[11px] text-muted-foreground">{p.clientId}</div>}
                 {!p.clientId && p.discoveryUrl && <div className="truncate font-mono text-[11px] text-muted-foreground">{p.discoveryUrl}</div>}
                 {p.system && <div className="text-[11px] text-muted-foreground">built-in</div>}

@@ -325,6 +325,38 @@ describe("flows engine", () => {
     expect(body.error).toBeUndefined();
   });
 
+  test("/metrics/entities reports flow run counts", async () => {
+    const create = await h.fetch("/api/flows", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "metrics-log",
+        trigger: "manual:",
+        operations: [{ type: "log", message: "metrics-run" }],
+      }),
+    });
+    expect(create.status).toBe(201);
+    const flowId = ((await create.json()) as { data: { id: string } }).data.id;
+
+    const run = await h.fetch(`/api/flows/${flowId}/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hello: "world" }),
+    });
+    expect(run.status).toBe(200);
+    expect(((await run.json()) as { ok: boolean }).ok).toBe(true);
+
+    const metrics = await h.fetch("/api/admin/metrics/entities");
+    expect(metrics.status).toBe(200);
+    const data = (
+      (await metrics.json()) as {
+        data: { flows: Record<string, { runs: number }> };
+      }
+    ).data;
+    expect(data.flows[flowId]).toBeDefined();
+    expect(data.flows[flowId]!.runs).toBeGreaterThanOrEqual(1);
+  });
+
   test("event-triggered flow fires on item create (logs activity row)", async () => {
     const trigger = `event:items:${slug}:created`;
     const create = await h.fetch("/api/flows", {

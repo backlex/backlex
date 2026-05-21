@@ -329,23 +329,25 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
           {providers.map((p) => {
             const lockedOff = !p.configured && !p.enabled;
             return (
-            <div key={p.id} className="grid grid-cols-[24px_1fr_auto_auto_auto] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0">
+            <div key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0">
               <span><I.Shield size={13} /></span>
-              <div className="min-w-0">
-                <div className="text-[13px] font-medium">{p.name}</div>
+              <div className="min-w-0 shrink-0 grow basis-[160px]">
+                <div className="truncate text-[13px] font-medium">{p.name}</div>
                 {p.clientId && <div className="truncate font-mono text-[11px] text-muted-foreground">{p.clientId}</div>}
                 {!p.clientId && p.discoveryUrl && <div className="truncate font-mono text-[11px] text-muted-foreground">{p.discoveryUrl}</div>}
                 {p.system && <div className="text-[11px] text-muted-foreground">built-in</div>}
                 {p.enabled && !p.configured && <div className="text-[11px] text-destructive">enabled but not configured — won't appear on sign-in</div>}
               </div>
               {!p.configured && <Badge variant={p.enabled ? "destructive" : "secondary"}>not configured</Badge>}
-              <Button size="sm" variant="ghost" onClick={() => setConfiguring(p)}>Configure</Button>
-              <Switch
-                checked={p.enabled}
-                disabled={lockedOff}
-                title={lockedOff ? "Configure this provider (add a Client ID) before enabling it" : undefined}
-                onChange={(v) => toggleProvider(p.id, v)}
-              />
+              <div className="flex items-center gap-3">
+                <Button size="sm" variant="ghost" onClick={() => setConfiguring(p)}>Configure</Button>
+                <Switch
+                  checked={p.enabled}
+                  disabled={lockedOff}
+                  title={lockedOff ? "Configure this provider (add a Client ID) before enabling it" : undefined}
+                  onChange={(v) => toggleProvider(p.id, v)}
+                />
+              </div>
             </div>
             );
           })}

@@ -878,13 +878,27 @@ export interface ApiAdvisorCheck {
   id: string;
   kind: "security" | "performance";
   level: "error" | "warn" | "info";
+  /** Stable rule-family identifier — findings sharing it are grouped. */
+  rule: string;
+  /** Category label shown when several findings share the same `rule`. */
+  groupTitle: string;
   title: string;
   body: string;
   fix: string;
   resource: string;
-  detected: string;
+  /** Optional admin SPA route path to the relevant surface. */
+  link?: string;
+}
+
+/** Advisor run result (`GET /api/admin/advisor`). */
+export interface ApiAdvisorResult {
+  data: ApiAdvisorCheck[];
+  /** 0–100 server-computed health score. */
+  score: number;
+  /** ISO timestamp — one honest value per run. */
+  generatedAt: string;
 }
 
 export const advisorApi = {
-  list: () => api<Envelope<ApiAdvisorCheck[]>>(`/api/admin/advisor`),
+  list: () => api<ApiAdvisorResult>(`/api/admin/advisor`),
 };

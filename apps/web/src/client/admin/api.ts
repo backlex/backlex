@@ -334,6 +334,11 @@ export const usersApi = {
     }),
   removeRole: (userId: string, roleId: string) =>
     api<{ ok: true }>(`/api/users/${userId}/roles/${roleId}`, { method: "DELETE" }),
+  update: (id: string, body: { name: string }) =>
+    api<{ ok: true }>(`/api/users/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
 };
 
 export const rolesApi = {

@@ -13,12 +13,12 @@ import {
   DropdownMenuTrigger,
 } from "@workeros/ui/components/dropdown-menu";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@workeros/ui/components/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@workeros/ui/components/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -880,21 +880,18 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
   const ownerScoped = !!schema?.ownerScoped;
 
   return (
-    <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <SheetContent
-        side="right"
-        className="w-[min(560px,100vw)] gap-0 border-border bg-card p-0 sm:max-w-none"
-      >
-        <SheetHeader className="flex flex-col gap-0.5 border-b border-border px-5 pb-3.5 pr-12 pt-[18px]">
-          <SheetTitle className="text-base font-semibold tracking-[-0.01em]">
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="flex max-h-[90vh] w-[94vw] flex-col gap-0 overflow-hidden border-border bg-card p-0 sm:max-w-[560px]">
+        <DialogHeader className="flex flex-col gap-0.5 border-b border-border px-5 pb-3.5 pr-12 pt-[18px]">
+          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
             {mode === "create" ? `New ${slug || "row"}` : `Edit ${slug || "row"}`}
-          </SheetTitle>
-          <SheetDescription className="text-[12.5px] text-muted-foreground">
+          </DialogTitle>
+          <DialogDescription className="text-[12.5px] text-muted-foreground">
             {mode === "create"
               ? <>Insert into <span className="font-mono">c_{slug}</span>{ownerScoped ? <>. Owner is set to <span className="font-mono">$user.id</span></> : null}.</>
               : <>id <span className="font-mono">{(initial as { id?: string })?.id}</span></>}
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         {mode === "edit" && (
           <Tabs
@@ -1011,8 +1008,8 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
             </div>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -323,8 +323,9 @@ function FlowStatCard({ flowId, flowRuns }: { flowId: string; flowRuns: number }
         // `flow.run` (not bare `run`). Failed runs carry `payload.error`.
         const rows = (j.data ?? []).filter((a) => a.action === "flow.run" || a.action === "run");
         const last = rows[0];
-        const lastRunText = last
-          ? `${new Date(last.createdAt ?? last.created_at).toISOString().slice(11, 16)} · ${last.durationMs ?? last.duration_ms ?? 0}ms`
+        const lastDate = last ? new Date(last.createdAt ?? last.created_at) : null;
+        const lastRunText = lastDate
+          ? `${String(lastDate.getHours()).padStart(2, "0")}:${String(lastDate.getMinutes()).padStart(2, "0")} · ${last.durationMs ?? last.duration_ms ?? 0}ms`
           : "—";
         const errs = rows.filter((a) => {
           const p = a.payload;

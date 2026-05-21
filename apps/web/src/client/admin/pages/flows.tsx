@@ -1,5 +1,5 @@
 // Flows page — trigger → operations list + preview canvas + builder modal
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { I, type IconComponent } from "../icons";
 import { Badge, Button, PageHeader, Switch } from "../ui";
 import { FlowBuilder } from "../flow-builder";
@@ -15,6 +15,18 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
   const [flows, setFlows] = useState<FlowRow[]>([]);
   // First-load gate — drives the page skeleton until flows land.
   const [loaded, setLoaded] = useState(false);
+  // Bumped after a manual "Run now" so the KPI card refetches immediately.
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  // FlowStatCard reports the authoritative run count back up so the
+  // header's `· N runs` label stays in sync with the KPI tiles. Stable
+  // identity (useCallback []) — it goes into FlowStatCard's effect deps.
+  const handleRunCount = useCallback((id: string, runs: number) => {
+    setFlows((arr) => {
+      const cur = arr.find((f) => f.id === id);
+      if (!cur || cur.runs === runs) return arr; // no change → skip re-render
+      return arr.map((f) => (f.id === id ? { ...f, runs } : f));
+    });
+  }, []);
   useEffect(() => {
     void (async () => {
       const [r, m] = await Promise.all([
@@ -177,6 +189,9 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
                 try {
                   await api(`/api/flows/${flow.id}/run`, { method: "POST", body: JSON.stringify({}) });
                   pushToast("Test run dispatched.");
+                  // Manual run is synchronous server-side — the activity row
+                  // exists by the time POST resolves, so refetch right away.
+                  setRefreshNonce((n) => n + 1);
                 } catch (e) {
                   pushToast((e as Error).message);
                 }
@@ -188,7 +203,7 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
           <FlowPreview trigger={flow.trigger} operations={flow.operations} onEdit={() => openBuilder(flow)} />
 
           <div className="grid grid-cols-3 gap-3 max-[640px]:grid-cols-1">
-            <FlowStatCard flowId={flow.id} flowRuns={flow.runs} />
+            <FlowStatCard flowId={flow.id} refreshNonce={refreshNonce} onRunCount={handleRunCount} />
           </div>
           </>
           )}
@@ -302,19 +317,28 @@ function FlowPreview({ trigger, operations, onEdit }: { trigger: string; operati
 }
 
 /**
- * Per-flow KPI strip — replaces the hardcoded "14:21 · 184ms / 99.3% / 2"
- * placeholder. Fetches the activity rows for this specific flow id and
- * derives last-run timestamp + duration, success rate (rows without
- * action='error' / payload.error), and last-24h failure count.
+ * Per-flow KPI strip — fetches the activity rows for this specific flow id
+ * and derives last-run timestamp + duration, success rate (rows without
+ * action='error' / payload.error), and last-24h failure count. Refetches
+ * on `refreshNonce` (bumped after a manual run) and polls every 15s so
+ * background event-triggered runs surface without a page reload.
  */
-function FlowStatCard({ flowId, flowRuns }: { flowId: string; flowRuns: number }) {
+function FlowStatCard({
+  flowId,
+  refreshNonce,
+  onRunCount,
+}: {
+  flowId: string;
+  refreshNonce: number;
+  onRunCount?: (flowId: string, runs: number) => void;
+}) {
   const [stats, setStats] = useState<{ lastRun: string; success: string; failures24h: number }>({
     lastRun: "—", success: "—", failures24h: 0,
   });
   useEffect(() => {
     if (!flowId) return;
     let cancelled = false;
-    void (async () => {
+    const load = async () => {
       try {
         const r = await fetch(`/api/activity?collection=system_flows&itemId=${encodeURIComponent(flowId)}&limit=200`, { credentials: "include" });
         if (!r.ok || cancelled) return;
@@ -324,8 +348,12 @@ function FlowStatCard({ flowId, flowRuns }: { flowId: string; flowRuns: number }
         const rows = (j.data ?? []).filter((a) => a.action === "flow.run" || a.action === "run");
         const last = rows[0];
         const lastDate = last ? new Date(last.createdAt ?? last.created_at) : null;
+        // durationMs: null/undefined → not recorded (—); 0 → genuine
+        // sub-millisecond run (<1ms), not missing data.
+        const rawDur = last ? (last.durationMs ?? last.duration_ms) : null;
+        const durText = rawDur == null ? "—" : rawDur === 0 ? "<1ms" : `${rawDur}ms`;
         const lastRunText = lastDate
-          ? `${String(lastDate.getHours()).padStart(2, "0")}:${String(lastDate.getMinutes()).padStart(2, "0")} · ${last.durationMs ?? last.duration_ms ?? 0}ms`
+          ? `${String(lastDate.getHours()).padStart(2, "0")}:${String(lastDate.getMinutes()).padStart(2, "0")} · ${durText}`
           : "—";
         const errs = rows.filter((a) => {
           const p = a.payload;
@@ -334,13 +362,19 @@ function FlowStatCard({ flowId, flowRuns }: { flowId: string; flowRuns: number }
         const successPct = rows.length === 0 ? "—" : `${Math.round(((rows.length - errs.length) / rows.length) * 100)}%`;
         const cutoff = Date.now() - 86_400_000;
         const failures24h = errs.filter((a) => new Date(a.createdAt ?? a.created_at).getTime() >= cutoff).length;
-        if (!cancelled) setStats({ lastRun: lastRunText, success: successPct, failures24h });
+        if (!cancelled) {
+          setStats({ lastRun: lastRunText, success: successPct, failures24h });
+          onRunCount?.(flowId, rows.length);
+        }
       } catch {
         // leave default
       }
-    })();
-    return () => { cancelled = true; };
-  }, [flowId, flowRuns]);
+    };
+    void load();
+    // Poll so background (event-triggered) runs surface without a reload.
+    const iv = setInterval(() => { void load(); }, 15_000);
+    return () => { cancelled = true; clearInterval(iv); };
+  }, [flowId, refreshNonce, onRunCount]);
   const tile = (k: string, v: string, ok: boolean) => (
     <div key={k} className="overflow-hidden rounded-xl border border-border bg-card p-3 text-card-foreground">
       <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{k}</div>

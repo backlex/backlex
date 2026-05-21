@@ -279,7 +279,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
       </div>
 
       <div className="relative bg-card p-4">
-        <div className="grid grid-cols-[minmax(160px,1.4fr)_repeat(4,minmax(80px,1fr))] overflow-hidden rounded-xl border border-border bg-card" role="grid" aria-label={`Permissions for ${activeRole}`}>
+        <div className="grid grid-cols-[minmax(160px,1.4fr)_repeat(4,minmax(80px,1fr))] overflow-x-auto rounded-xl border border-border bg-card" role="grid" aria-label={`Permissions for ${activeRole}`}>
           <div className="border-b border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))]" />
           {PM_ACTIONS.map((a) => (
             <div key={a.v} className="flex flex-col items-center justify-center gap-0.5 border-b border-l border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-2 py-2.5" title={a.title}>

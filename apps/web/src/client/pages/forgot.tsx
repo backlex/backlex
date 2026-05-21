@@ -38,7 +38,7 @@ export const Forgot = () => {
       }
       const res = await c.forgetPassword({
         email,
-        redirectTo: "/sign-in",
+        redirectTo: "/reset-password",
       });
       // For privacy, treat unknown emails as success (email enumeration
       // protection) — the server returns ok regardless.

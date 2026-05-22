@@ -1,14 +1,16 @@
 // Lingui runtime for the admin SPA ("admin chrome" translation).
 //
-// English source strings live inline in the components — the Lingui macro
-// keeps them as the runtime fallback, so `en` needs no catalog. Every other
-// locale is compiled into the bundle from its `.po` file and loaded as a
-// lazy chunk on demand.
+// The Lingui macro compiles `<Trans>` to a hashed message id; the readable
+// text lives only in the compiled catalogs. So `en` needs its catalog too —
+// it is imported eagerly (it is the default + fallback locale and must be
+// ready before first paint). Every other locale is compiled from its `.po`
+// and loaded as a lazy chunk on demand.
 //
 // The active locale is driven by the signed-in user's resolved language
 // preference — see `AdminLocaleSync`, mounted inside `PreferencesProvider`.
 import { useEffect } from "react";
 import { i18n } from "@lingui/core";
+import { messages as enMessages } from "../locales/en/messages.po";
 import { usePreferences } from "./preferences";
 
 /** Locales the admin chrome ships translations for. Adding one is: a new
@@ -41,10 +43,9 @@ export function resolveAdminLocale(
   return DEFAULT_ADMIN_LOCALE;
 }
 
-// Activate `en` synchronously at module load so `<I18nProvider>` always has
-// an active locale before first paint (Lingui throws otherwise). English
-// renders from the inline source messages — no catalog needed.
-i18n.load(DEFAULT_ADMIN_LOCALE, {});
+// Load + activate `en` synchronously at module load so `<I18nProvider>` has
+// an active locale with real text before first paint.
+i18n.load(DEFAULT_ADMIN_LOCALE, enMessages);
 i18n.activate(DEFAULT_ADMIN_LOCALE);
 
 const loaded = new Set<string>([DEFAULT_ADMIN_LOCALE]);

@@ -2,16 +2,23 @@
  * Netlify Edge Function entry. Configured via `netlify.toml`'s
  * `[[edge_functions]]` block to claim `/api/*`.
  *
- * Runtime constraints (Deno-based Edge):
- *   - No fs / no `bun:sqlite` → DATABASE_URL (Postgres) is required.
- *   - Storage falls back to ephemeral fs in this entry unless `S3_BUCKET`
- *     + `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY` are configured —
- *     then the `aws4fetch`-backed S3 adapter takes over.
+ * Runtime constraints (Deno Deploy):
+ *   - No fs, no `bun:sqlite` → DATABASE_URL is required. Deno has a
+ *     `node:net` polyfill, so postgres-js works in principle, but the
+ *     recommended path is `DATABASE_DRIVER=neon-http` (no TCP handshake
+ *     per cold-start, predictable behaviour across both Vercel + Netlify
+ *     edges).
+ *   - Storage: set `S3_BUCKET` + `S3_ACCESS_KEY_ID` +
+ *     `S3_SECRET_ACCESS_KEY` for the `aws4fetch`-backed S3 adapter.
+ *     `buildContext` refuses to fall back to local-fs on edge.
+ *   - SAML / LDAP / Realtime are unavailable; route gates return 503.
  *   - Scheduled functions (cron) live in `netlify/functions/cron.ts`
- *     (separate Node function — see template). They call `/api/_cron/tick`
- *     on this edge function so the dedupe state stays in one place.
+ *     (separate Node function — see template). They POST to
+ *     `/api/_cron/tick` with `x-cron-secret: $CRON_SECRET` so the dedupe
+ *     state stays in one place AND the public path stays gated.
  */
 import { handle } from "hono/netlify";
+import { timingSafeEqual } from "../lib/timing";
 import { createApp } from "../app";
 import { cronTick } from "../services/scheduler";
 import type { Env } from "../env";
@@ -25,6 +32,8 @@ const buildEnv = (): Env => ({
   APP_URL: denoEnv("APP_URL") ?? "http://localhost:5173",
   AUTH_SECRET: denoEnv("AUTH_SECRET") ?? "dev-secret-change-me",
   DATABASE_URL: denoEnv("DATABASE_URL"),
+  DATABASE_DRIVER: denoEnv("DATABASE_DRIVER") as Env["DATABASE_DRIVER"],
+  CRON_SECRET: denoEnv("CRON_SECRET"),
   OPENAI_API_KEY: denoEnv("OPENAI_API_KEY"),
   RESEND_API_KEY: denoEnv("RESEND_API_KEY"),
   EMAIL_FROM: denoEnv("EMAIL_FROM"),
@@ -49,7 +58,12 @@ const buildEnv = (): Env => ({
 const app = createApp(buildEnv());
 
 app.get("/api/_cron/tick", async (c) => {
-  await cronTick(buildEnv());
+  const env = buildEnv();
+  const provided = c.req.header("x-cron-secret") ?? "";
+  if (!env.CRON_SECRET || !timingSafeEqual(provided, env.CRON_SECRET)) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+  await cronTick(env);
   return c.json({ ok: true, ts: Date.now() });
 });
 

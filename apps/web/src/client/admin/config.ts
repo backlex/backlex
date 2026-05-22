@@ -57,9 +57,11 @@ export interface CollectionListItem {
   group: string;
 }
 
+// Nav display labels are NOT stored here: `config.ts` has no JSX, so the
+// Lingui `msg` macro would not be transformed in it. The id→label map lives
+// in `ui.tsx::navLabel` (a JSX module) instead.
 export interface NavItem {
   id: string;
-  label: string;
   icon: IconKey | string;
   badge?: number;
 }
@@ -76,39 +78,39 @@ export type AdapterId = "bun" | "workers" | "vercel";
 // "email") because they're rendered into the address bar by AdminApp's
 // URL-driven nav.
 export const NAV_ITEMS: NavItem[] = [
-  { id: "overview", label: "Overview", icon: "Activity" },
-  { id: "collections", label: "Collections", icon: "Database" },
-  { id: "access", label: "Access", icon: "Shield" },
-  { id: "database", label: "Database", icon: "Server" },
-  { id: "storage", label: "Storage", icon: "Folder" },
-  { id: "flows", label: "Flows", icon: "Bolt" },
-  { id: "functions", label: "Functions", icon: "Function" },
-  { id: "webhooks", label: "Webhooks", icon: "Webhook" },
-  { id: "realtime", label: "Realtime", icon: "Zap" },
-  { id: "logs", label: "Logs", icon: "ScrollText" },
-  { id: "advisor", label: "Advisor", icon: "ShieldAlert" },
-  { id: "schema-graph", label: "Schema graph", icon: "Network" },
-  { id: "insights", label: "Insights", icon: "BarChart" },
-  { id: "revisions", label: "Revisions", icon: "History" },
-  { id: "translations", label: "Translations", icon: "Globe" },
+  { id: "overview", icon: "Activity" },
+  { id: "collections", icon: "Database" },
+  { id: "access", icon: "Shield" },
+  { id: "database", icon: "Server" },
+  { id: "storage", icon: "Folder" },
+  { id: "flows", icon: "Bolt" },
+  { id: "functions", icon: "Function" },
+  { id: "webhooks", icon: "Webhook" },
+  { id: "realtime", icon: "Zap" },
+  { id: "logs", icon: "ScrollText" },
+  { id: "advisor", icon: "ShieldAlert" },
+  { id: "schema-graph", icon: "Network" },
+  { id: "insights", icon: "BarChart" },
+  { id: "revisions", icon: "History" },
+  { id: "translations", icon: "Globe" },
 ];
 
 // Developer-facing tools: REST explorer, GraphQL playground, OpenAPI export.
 // Kept in their own group so they sit together in the sidebar without
 // crowding the workspace nav.
 export const NAV_DEVELOPERS: NavItem[] = [
-  { id: "rest-explorer", label: "REST Explorer", icon: "Braces" },
-  { id: "graphql", label: "GraphQL", icon: "Code" },
-  { id: "openapi", label: "OpenAPI", icon: "Download" },
+  { id: "rest-explorer", icon: "Braces" },
+  { id: "graphql", icon: "Code" },
+  { id: "openapi", icon: "Download" },
 ];
 
 export const NAV_SETTINGS: NavItem[] = [
-  { id: "authentication", label: "Authentication", icon: "Shield" },
-  { id: "users", label: "Users", icon: "Users" },
-  { id: "app-users", label: "App users", icon: "Users" },
-  { id: "api-keys", label: "API keys", icon: "Code" },
-  { id: "email-templates", label: "Email templates", icon: "Mail" },
-  { id: "settings", label: "Settings", icon: "Settings" },
+  { id: "authentication", icon: "Shield" },
+  { id: "users", icon: "Users" },
+  { id: "app-users", icon: "Users" },
+  { id: "api-keys", icon: "Code" },
+  { id: "email-templates", icon: "Mail" },
+  { id: "settings", icon: "Settings" },
 ];
 
 export const ADAPTER_PROFILES: Record<AdapterId, AdapterProfile> = {

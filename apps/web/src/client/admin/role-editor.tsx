@@ -1,6 +1,7 @@
 // @ts-nocheck
 // Role editor dialog
 import { useEffect, useMemo, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "./ui";
 import { Input } from "@workeros/ui/components/input";
 import {
@@ -56,6 +57,7 @@ export interface RoleEditorProps {
 }
 
 export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorProps) {
+  const { t } = useLingui();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [rule, setRule] = useState<RoleMatrix>(defaultRoleRule());
@@ -74,28 +76,28 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto overflow-x-hidden [grid-template-columns:minmax(0,1fr)]">
         <DialogHeader>
-          <DialogTitle>{isNew ? "New role" : `Edit ${role?.name || "role"}`}</DialogTitle>
+          <DialogTitle>{isNew ? <Trans>New role</Trans> : <Trans>Edit {role?.name || "role"}</Trans>}</DialogTitle>
           <DialogDescription>
             {isSystem
-              ? "System role — name is read-only; permissions still editable."
-              : "Custom roles layer additively on top of authenticated."}
+              ? <Trans>System role — name is read-only; permissions still editable.</Trans>
+              : <Trans>Custom roles layer additively on top of authenticated.</Trans>}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex min-w-0 flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Name</label>
-            <Input value={name} disabled={isSystem} onChange={(e) => setName(e.target.value.replace(/[^a-z0-9_-]/g, "_"))} placeholder="editor" />
-            <span className="font-mono text-[11.5px] text-muted-foreground">lowercase, snake_case</span>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans></label>
+            <Input value={name} disabled={isSystem} onChange={(e) => setName(e.target.value.replace(/[^a-z0-9_-]/g, "_"))} placeholder={t`editor`} />
+            <span className="font-mono text-[11.5px] text-muted-foreground"><Trans>lowercase, snake_case</Trans></span>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Description</label>
-            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What this role can do…" />
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Description</Trans></label>
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t`What this role can do…`} />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Permissions (per action)</label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Permissions (per action)</Trans></label>
             <div className="overflow-hidden rounded-xl border border-border">
               {ACTIONS.map((a, i) => (
                 <div
@@ -105,11 +107,11 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
                   <span className="font-mono text-[12.5px] font-medium">{a}</span>
                   <div className="flex flex-wrap gap-1">
                     {[
-                      { v: "none", label: "no access" },
-                      { v: "owner", label: "owner only" },
-                      { v: "auth", label: "any signed-in" },
-                      { v: "published", label: "published only" },
-                      { v: "all", label: "everyone" },
+                      { v: "none", label: t`no access` },
+                      { v: "owner", label: t`owner only` },
+                      { v: "auth", label: t`any signed-in` },
+                      { v: "published", label: t`published only` },
+                      { v: "all", label: t`everyone` },
                     ].map((opt) => (
                       <button
                         key={opt.v}
@@ -127,14 +129,14 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Compiled rule</label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Compiled rule</Trans></label>
             <pre className="m-0 max-w-full overflow-x-auto whitespace-pre rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11.5px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">{compiled}</pre>
-            <span className="text-[11.5px] text-muted-foreground">Generated DSL — saved to <span className="font-mono">role_permissions</span> on save.</span>
+            <span className="text-[11.5px] text-muted-foreground"><Trans>Generated DSL — saved to <span className="font-mono">role_permissions</span> on save.</Trans></span>
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose}><Trans>Cancel</Trans></Button>
           <Button
             variant="primary"
             disabled={!name.trim()}
@@ -146,7 +148,7 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
               rule: ruleSummary(rule),
             })}
           >
-            {isNew ? "Create role" : "Save changes"}
+            {isNew ? <Trans>Create role</Trans> : <Trans>Save changes</Trans>}
           </Button>
         </DialogFooter>
       </DialogContent>

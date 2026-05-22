@@ -6,6 +6,7 @@
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { LinkIcon } from "lucide-react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import {
   Card,
   CardContent,
@@ -17,10 +18,12 @@ import { Badge } from "@workeros/ui/components/badge";
 import { Skeleton } from "@workeros/ui/components/skeleton";
 import { sharedPublicApi } from "@/admin/api";
 
+type Translator = (strings: TemplateStringsArray, ...values: unknown[]) => string;
+
 /** Render a single field value readably — timestamps, booleans, JSON, null. */
-function formatValue(value: unknown): string {
+function formatValue(value: unknown, t: Translator): string {
   if (value === null || value === undefined) return "—";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "boolean") return value ? t`Yes` : t`No`;
   if (typeof value === "string") {
     // ISO-8601 strings render as a localized datetime.
     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) {
@@ -64,7 +67,8 @@ function FieldRow({
   type: string;
   value: unknown;
 }) {
-  const display = formatValue(value);
+  const { t } = useLingui();
+  const display = formatValue(value, t);
   const multiline = display.includes("\n");
   return (
     <div className="flex flex-col gap-1 border-b border-border py-3 last:border-b-0">
@@ -139,10 +143,10 @@ export function SharedRecord() {
       <Shell>
         <Card>
           <CardHeader>
-            <CardTitle>This link is no longer available</CardTitle>
+            <CardTitle><Trans>This link is no longer available</Trans></CardTitle>
             <CardDescription>
-              The share link may have been revoked, or the record it pointed
-              to was removed.
+              <Trans>The share link may have been revoked, or the record it pointed
+              to was removed.</Trans>
             </CardDescription>
           </CardHeader>
         </Card>
@@ -169,15 +173,15 @@ export function SharedRecord() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <LinkIcon size={15} className="text-muted-foreground" />
-            Shared record
+            <Trans>Shared record</Trans>
           </CardTitle>
           <CardDescription>
-            A read-only view of one record from{" "}
-            <span className="font-mono text-foreground">{collection}</span>.
+            <Trans>A read-only view of one record from{" "}
+            <span className="font-mono text-foreground">{collection}</span>.</Trans>
           </CardDescription>
           <div className="mt-1 flex flex-wrap gap-1.5">
-            <Badge variant="secondary">read-only</Badge>
-            <Badge variant="secondary">public link</Badge>
+            <Badge variant="secondary"><Trans>read-only</Trans></Badge>
+            <Badge variant="secondary"><Trans>public link</Trans></Badge>
           </div>
         </CardHeader>
         <CardContent>
@@ -202,7 +206,7 @@ export function SharedRecord() {
         </CardContent>
       </Card>
       <p className="mt-4 text-center text-[11.5px] text-muted-foreground">
-        Shared via workeros · this link can be revoked at any time.
+        <Trans>Shared via workeros · this link can be revoked at any time.</Trans>
       </p>
     </Shell>
   );

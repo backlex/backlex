@@ -1,6 +1,7 @@
 // @ts-nocheck
 // Filter DSL builder + Items DataTable for the workeros admin design.
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "./icons";
 import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button, Checkbox, IconButton } from "./ui";
@@ -121,7 +122,8 @@ export function evaluateFilter(row: Record<string, unknown>, filter: Record<stri
 }
 
 function FilterChip({ field, op, value, onRemove, onClick }: { field: string; op: string; value: unknown; onRemove: () => void; onClick?: () => void }) {
-  const valStr = Array.isArray(value) ? `[${(value as unknown[]).join(", ")}]` : op === "_null" ? (value ? "is null" : "is not null") : String(value);
+  const { t } = useLingui();
+  const valStr = Array.isArray(value) ? `[${(value as unknown[]).join(", ")}]` : op === "_null" ? (value ? t`is null` : t`is not null`) : String(value);
   return (
     <span className="inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent px-[11px] text-[12.5px] text-foreground" onClick={onClick}>
       <span className="text-muted-foreground">{field}</span>
@@ -133,6 +135,7 @@ function FilterChip({ field, op, value, onRemove, onClick }: { field: string; op
 }
 
 function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema; onAdd: (f: FilterCondition) => void; onClose: () => void }) {
+  const { t } = useLingui();
   const editable = schema.fields.filter((f) => !f.system || f.name === "created_at" || f.name === "updated_at");
   const [field, setField] = useState(editable[1]?.name || "title");
   const fieldDef = editable.find((f) => f.name === field) || editable[0];
@@ -211,14 +214,14 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
             onChange={setNestedSub}
             options={
               !fieldDef.to
-                ? [{ value: "", label: "Relation has no target" }]
+                ? [{ value: "", label: t`Relation has no target` }]
                 : targetLoading
-                  ? [{ value: "", label: "Fetching subfields…" }]
+                  ? [{ value: "", label: t`Fetching subfields…` }]
                   : targetFields
                     ? targetFields.map((f) => ({ value: f.name, label: f.name, hint: f.type }))
-                    : [{ value: "", label: "Target unavailable" }]
+                    : [{ value: "", label: t`Target unavailable` }]
             }
-            placeholder={fieldDef.to ? "Pick a subfield…" : "—"}
+            placeholder={fieldDef.to ? t`Pick a subfield…` : "—"}
             className="flex-1"
             disabled={!fieldDef.to || targetLoading || !targetFields}
           />
@@ -235,8 +238,8 @@ function AddFilterPopover({ schema, onAdd, onClose }: { schema: CollectionSchema
         />
       )}
       <div className="flex justify-end gap-1.5 pt-1">
-        <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
-        <Button variant="primary" size="sm" onClick={submit} disabled={!canSubmit}>Add filter</Button>
+        <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>
+        <Button variant="primary" size="sm" onClick={submit} disabled={!canSubmit}><Trans>Add filter</Trans></Button>
       </div>
     </div>
   );
@@ -254,6 +257,7 @@ export interface FilterBarProps {
 }
 
 export function FilterBar({ search, setSearch, filters, setFilters, schema, status, setStatus, total }: FilterBarProps) {
+  const { t } = useLingui();
   const [popOpen, setPopOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
@@ -282,7 +286,7 @@ export function FilterBar({ search, setSearch, filters, setFilters, schema, stat
     <div className="flex flex-wrap items-center gap-2">
       <InputGroup>
         <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
-        <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={`Search ${total} items by title or slug…`} />
+        <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t`Search ${total} items by title or slug…`} />
         {search && (
           <InputGroupAddon align="inline-end">
             <InputGroupButton size="icon-xs" onClick={() => setSearch("")}><I.X size={13} /></InputGroupButton>
@@ -316,7 +320,7 @@ export function FilterBar({ search, setSearch, filters, setFilters, schema, stat
 
       <div ref={wrapRef} className="relative">
         <Button variant="outline" size="sm" icon={I.Filter} onClick={() => setPopOpen((v) => !v)}>
-          Filter
+          <Trans>Filter</Trans>
         </Button>
         {popOpen && <AddFilterPopover schema={schema} onAdd={(f) => setFilters([...filters, f])} onClose={() => setPopOpen(false)} />}
       </div>
@@ -331,7 +335,7 @@ export function FilterBar({ search, setSearch, filters, setFilters, schema, stat
         />
       ))}
       {filters.length > 0 && (
-        <Button variant="ghost" size="sm" onClick={() => setFilters([])}>Clear</Button>
+        <Button variant="ghost" size="sm" onClick={() => setFilters([])}><Trans>Clear</Trans></Button>
       )}
     </div>
   );
@@ -374,6 +378,7 @@ export interface ItemsTableProps {
 }
 
 export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit, schema }: ItemsTableProps) {
+  const { t } = useLingui();
   // Subscribe so the table re-renders when authors-cache populates.
   useSyncExternalStore(subscribeAuthors, getAuthors, getAuthors);
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
@@ -431,12 +436,12 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
           <TableHead className="w-[38px]">
             <Checkbox checked={allSelected} indeterminate={someSelected} onChange={toggleAll} />
           </TableHead>
-          <SortHead id="title" label="Title" />
-          {has.status && <SortHead id={statusField!.name} label="Status" />}
-          {has.author && <TableHead className="w-[110px]">Author</TableHead>}
-          {has.words && <SortHead id="word_count" label="Words" num />}
-          {has.views && <SortHead id="view_count" label="Views" num />}
-          <SortHead id="updated_at" label="Updated" />
+          <SortHead id="title" label={t`Title`} />
+          {has.status && <SortHead id={statusField!.name} label={t`Status`} />}
+          {has.author && <TableHead className="w-[110px]"><Trans>Author</Trans></TableHead>}
+          {has.words && <SortHead id="word_count" label={t`Words`} num />}
+          {has.views && <SortHead id="view_count" label={t`Views`} num />}
+          <SortHead id="updated_at" label={t`Updated`} />
           <TableHead className="sticky right-0 w-[60px] bg-card text-right" />
         </TableRow>
       </TableHeader>
@@ -494,7 +499,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
               )}
               <TableCell className="font-mono tabular-nums text-muted-foreground">{fmtDate(r.updated_at ?? r.updatedAt)}</TableCell>
               <TableCell className="sticky right-0 bg-card text-right" onClick={(e) => e.stopPropagation()}>
-                <IconButton icon={I.Pencil} onClick={() => onEdit(r)} title="Edit" />
+                <IconButton icon={I.Pencil} onClick={() => onEdit(r)} title={t`Edit`} />
               </TableCell>
             </TableRow>
           );
@@ -508,11 +513,11 @@ export function BulkBar({ count, onClear, onPublish, onDelete }: { count: number
   if (!count) return null;
   return (
     <div className="flex items-center gap-2.5 border-b border-[color-mix(in_oklch,var(--primary)_30%,var(--border))] bg-muted px-3.5 py-2">
-      <span className="text-[12.5px] font-medium">{count} selected</span>
+      <span className="text-[12.5px] font-medium"><Trans>{count} selected</Trans></span>
       <div className="flex-1" />
-      <Button variant="outline" size="sm" icon={I.Check} onClick={onPublish}>Publish</Button>
-      <Button variant="outline" size="sm" icon={I.Trash} onClick={onDelete}>Delete</Button>
-      <Button variant="ghost" size="sm" onClick={onClear}>Clear</Button>
+      <Button variant="outline" size="sm" icon={I.Check} onClick={onPublish}><Trans>Publish</Trans></Button>
+      <Button variant="outline" size="sm" icon={I.Trash} onClick={onDelete}><Trans>Delete</Trans></Button>
+      <Button variant="ghost" size="sm" onClick={onClear}><Trans>Clear</Trans></Button>
     </div>
   );
 }

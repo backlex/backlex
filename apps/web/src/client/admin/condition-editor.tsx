@@ -1,5 +1,6 @@
 // Directus-parity permission editor.
 import { useEffect, useMemo, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "./icons";
@@ -107,6 +108,7 @@ const RB_INPUT_COND = "h-7 w-full min-w-[120px] border-0 bg-transparent px-2 tex
 const RB_INPUT_FULL = "h-[30px] min-w-[120px] flex-1 rounded-md border border-border bg-card px-2.5 text-[12.5px] text-foreground outline-none focus:border-ring focus:shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_30%,transparent)]";
 
 function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t: GroupNode) => void; fields: string[] }) {
+  const { t } = useLingui();
   const update = (path: number[], mut: (n: any) => void) => {
     const next: GroupNode = JSON.parse(JSON.stringify(tree));
     let ref: any = next;
@@ -140,12 +142,12 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
             onClick={() => update(path, (n) => { n.op = "or"; })}
           >OR</Button>
         </div>
-        <span className="text-[11.5px] text-muted-foreground">match {node.op === "and" ? "all" : "any"} of the following</span>
+        <span className="text-[11.5px] text-muted-foreground"><Trans>match {node.op === "and" ? "all" : "any"} of the following</Trans></span>
         <div className="flex-1" />
-        <Button size="xs" variant="ghost" className={RB_ADD} onClick={() => update(path, (n) => n.children.push(newCondition()))}>+ condition</Button>
-        <Button size="xs" variant="ghost" className={RB_ADD} onClick={() => update(path, (n) => n.children.push(newGroup(node.op === "and" ? "or" : "and")))}>+ group</Button>
+        <Button size="xs" variant="ghost" className={RB_ADD} onClick={() => update(path, (n) => n.children.push(newCondition()))}><Trans>+ condition</Trans></Button>
+        <Button size="xs" variant="ghost" className={RB_ADD} onClick={() => update(path, (n) => n.children.push(newGroup(node.op === "and" ? "or" : "and")))}><Trans>+ group</Trans></Button>
         {path.length > 0 && (
-          <IconButton icon={I.X} className={RB_RM} title="Remove group" onClick={() => removeAt(path)} />
+          <IconButton icon={I.X} className={RB_RM} title={t`Remove group`} onClick={() => removeAt(path)} />
         )}
       </div>
       <div className="flex flex-col gap-2 p-2">
@@ -159,7 +161,7 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
           </div>
         ))}
         {node.children.length === 0 && (
-          <div className="rounded-md border border-dashed border-border p-3 text-center text-xs text-muted-foreground">No conditions — this rule matches everything.</div>
+          <div className="rounded-md border border-dashed border-border p-3 text-center text-xs text-muted-foreground"><Trans>No conditions — this rule matches everything.</Trans></div>
         )}
       </div>
     </div>
@@ -172,7 +174,7 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
         <Select
           value={node.field}
           onChange={(v) => update(path, (n) => { n.field = v; })}
-          options={[{ value: "", label: "field…" }, ...fields.map((f) => ({ value: f, label: f }))]}
+          options={[{ value: "", label: t`field…` }, ...fields.map((f) => ({ value: f, label: f }))]}
           size="sm"
         />
         <Select
@@ -185,7 +187,7 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
           <div className="relative flex-1">
             <Input
               className={RB_INPUT_COND}
-              placeholder={node.op === "_in" || node.op === "_nin" ? "a, b, c" : "value or $user.id"}
+              placeholder={node.op === "_in" || node.op === "_nin" ? t`a, b, c` : t`value or $user.id`}
               value={node.value}
               onChange={(e) => update(path, (n) => { n.value = e.target.value; })}
               list={`rb-vars-${path.join("-")}`}
@@ -195,7 +197,7 @@ function RuleBuilder({ tree, onChange, fields }: { tree: GroupNode; onChange: (t
             </datalist>
           </div>
         )}
-        <IconButton icon={I.X} className={RB_RM} title="Remove" onClick={() => removeAt(path)} />
+        <IconButton icon={I.X} className={RB_RM} title={t`Remove`} onClick={() => removeAt(path)} />
       </div>
     );
   };
@@ -213,6 +215,7 @@ export interface ConditionEditorProps {
 }
 
 export function ConditionEditor({ role, action, collection, roles, pushToast, availableFields }: ConditionEditorProps) {
+  const { t } = useLingui();
   const [tab, setTab] = useState<"item" | "fields" | "validation" | "presets">("item");
   const [mode, setMode] = useState<"builder" | "json">("builder");
 
@@ -340,10 +343,10 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
     <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
       <div className="flex gap-1 overflow-x-auto border-b border-border bg-[color-mix(in_oklch,var(--muted)_25%,var(--card))] px-3.5">
         {[
-          { id: "item", label: "Item permissions", count: tree.children.length, hint: "rules" },
-          { id: "fields", label: "Field permissions", count: `${allowedWriteCount}/${fields.length}`, hint: "writable" },
-          { id: "validation", label: "Validation", count: validation.children.length, hint: "rules" },
-          { id: "presets", label: "Presets", count: presets.length, hint: "defaults" },
+          { id: "item", label: t`Item permissions`, count: tree.children.length, hint: t`rules` },
+          { id: "fields", label: t`Field permissions`, count: `${allowedWriteCount}/${fields.length}`, hint: t`writable` },
+          { id: "validation", label: t`Validation`, count: validation.children.length, hint: t`rules` },
+          { id: "presets", label: t`Presets`, count: presets.length, hint: t`defaults` },
         ].map((t) => {
           const on = tab === t.id;
           return (
@@ -369,11 +372,11 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[12.5px] text-muted-foreground">{(() => {
                 const r = <span className="font-mono text-foreground">{role}</span>;
-                if (action === "read") return <>Rows matching this rule are visible to {r}.</>;
-                if (action === "create") return <>Rows created by {r} must match this rule.</>;
-                if (action === "update") return <>{r} may update rows matching this rule.</>;
-                if (action === "delete") return <>{r} may delete rows matching this rule.</>;
-                return <>Items matching this rule are allowed for {r}.</>;
+                if (action === "read") return <Trans>Rows matching this rule are visible to {r}.</Trans>;
+                if (action === "create") return <Trans>Rows created by {r} must match this rule.</Trans>;
+                if (action === "update") return <Trans>{r} may update rows matching this rule.</Trans>;
+                if (action === "delete") return <Trans>{r} may delete rows matching this rule.</Trans>;
+                return <Trans>Items matching this rule are allowed for {r}.</Trans>;
               })()}</span>
               <div className="flex-1" />
               <div className={RB_TOGGLE}>
@@ -384,7 +387,7 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
                   aria-pressed={mode === "builder"}
                   onClick={() => setMode("builder")}
                 >
-                  Builder
+                  <Trans>Builder</Trans>
                 </Button>
                 <Button
                   type="button"
@@ -393,13 +396,13 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
                   aria-pressed={mode === "json"}
                   onClick={() => { setJsonDraft(compiledJson); setMode("json"); }}
                 >
-                  JSON
+                  <Trans>JSON</Trans>
                 </Button>
               </div>
             </div>
             {availableFields.length === 0 && (
               <div className="rounded-md border border-dashed border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-3 py-2.5 text-xs text-muted-foreground">
-                No fields defined for <span className="font-mono text-foreground">{collection}</span> yet — add fields in the schema editor before writing rules.
+                <Trans>No fields defined for <span className="font-mono text-foreground">{collection}</span> yet — add fields in the schema editor before writing rules.</Trans>
               </div>
             )}
             {mode === "builder" ? (
@@ -434,7 +437,7 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
                     } catch { /* silent */ }
                   }}
                 />
-                <span className="text-[11.5px] text-muted-foreground">Edit raw DSL. Click Builder to round-trip back to visual.</span>
+                <span className="text-[11.5px] text-muted-foreground"><Trans>Edit raw DSL. Click Builder to round-trip back to visual.</Trans></span>
               </div>
             )}
             <div className="flex flex-wrap gap-1 rounded-md border border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] p-1.5">
@@ -448,13 +451,13 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
         {tab === "fields" && (
           <>
             <div className="text-[12.5px] text-muted-foreground">
-              Per-field read / write toggles. Hidden fields are stripped from API responses; non-writable fields are rejected on insert/update for this role.
+              <Trans>Per-field read / write toggles. Hidden fields are stripped from API responses; non-writable fields are rejected on insert/update for this role.</Trans>
             </div>
             <div className="overflow-hidden rounded-xl border border-border bg-card">
               <div className="grid grid-cols-[1fr_80px_80px] items-center border-b border-border bg-[color-mix(in_oklch,var(--muted)_40%,var(--card))] px-3.5 py-2 text-[11.5px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-                <span>Field</span>
-                <span className="text-center">Read</span>
-                <span className="text-center">Write</span>
+                <span><Trans>Field</Trans></span>
+                <span className="text-center"><Trans>Read</Trans></span>
+                <span className="text-center"><Trans>Write</Trans></span>
               </div>
               {fields.map((f) => (
                 <div key={f} className="grid grid-cols-[1fr_80px_80px] items-center px-3.5 py-2 text-[12.5px] [&+&]:border-t [&+&]:border-border">
@@ -474,10 +477,10 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
                 </div>
               ))}
               <div className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_25%,var(--card))] px-3.5 py-2 text-[12.5px]">
-                <span className="text-muted-foreground">{allowedReadCount} readable · {allowedWriteCount} writable</span>
+                <span className="text-muted-foreground"><Trans>{allowedReadCount} readable · {allowedWriteCount} writable</Trans></span>
                 <div className="flex-1" />
-                <Button size="sm" variant="ghost" onClick={() => { const o: Record<string, { read: boolean; write: boolean }> = {}; fields.forEach((f) => { o[f] = { read: true, write: true }; }); setFieldPerms(o); setDirty(true); }}>Allow all</Button>
-                <Button size="sm" variant="ghost" onClick={() => { const o: Record<string, { read: boolean; write: boolean }> = {}; fields.forEach((f) => { o[f] = { read: false, write: false }; }); setFieldPerms(o); setDirty(true); }}>Deny all</Button>
+                <Button size="sm" variant="ghost" onClick={() => { const o: Record<string, { read: boolean; write: boolean }> = {}; fields.forEach((f) => { o[f] = { read: true, write: true }; }); setFieldPerms(o); setDirty(true); }}><Trans>Allow all</Trans></Button>
+                <Button size="sm" variant="ghost" onClick={() => { const o: Record<string, { read: boolean; write: boolean }> = {}; fields.forEach((f) => { o[f] = { read: false, write: false }; }); setFieldPerms(o); setDirty(true); }}><Trans>Deny all</Trans></Button>
               </div>
             </div>
           </>
@@ -486,7 +489,7 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
         {tab === "validation" && (
           <>
             <div className="text-[12.5px] text-muted-foreground">
-              Incoming data must match this rule before insert/update succeeds. Failures return <span className="font-mono text-foreground">422 invalid_payload</span>.
+              <Trans>Incoming data must match this rule before insert/update succeeds. Failures return <span className="font-mono text-foreground">422 invalid_payload</span>.</Trans>
             </div>
             <RuleBuilder tree={validation} onChange={setValidationDirty} fields={fields} />
           </>
@@ -495,7 +498,7 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
         {tab === "presets" && (
           <>
             <div className="text-[12.5px] text-muted-foreground">
-              Default values applied on create. The user cannot override these — they are stamped server-side after validation.
+              <Trans>Default values applied on create. The user cannot override these — they are stamped server-side after validation.</Trans>
             </div>
             <div className="flex flex-col gap-2 rounded-xl border border-border bg-[color-mix(in_oklch,var(--muted)_18%,var(--card))] p-3">
               {presets.map((p, i) => (
@@ -503,14 +506,14 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
                   <Select
                     value={p.key}
                     onChange={(v) => { setPresets((arr) => arr.map((x, j) => j === i ? { ...x, key: v } : x)); setDirty(true); }}
-                    options={[{ value: "", label: "field…" }, ...fields.map((f) => ({ value: f, label: f }))]}
+                    options={[{ value: "", label: t`field…` }, ...fields.map((f) => ({ value: f, label: f }))]}
                     size="sm"
                     className="min-w-40"
                   />
                   <span className="text-muted-foreground">=</span>
                   <Input
                     className={RB_INPUT_FULL}
-                    placeholder="value or $user.id"
+                    placeholder={t`value or $user.id`}
                     list={`presets-vars-${p.id}`}
                     value={p.value}
                     onChange={(e) => { setPresets((arr) => arr.map((x, j) => j === i ? { ...x, value: e.target.value } : x)); setDirty(true); }}
@@ -521,7 +524,7 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
                   <IconButton
                     icon={I.X}
                     className={RB_RM}
-                    title="Remove"
+                    title={t`Remove`}
                     onClick={() => { setPresets((arr) => arr.filter((_, j) => j !== i)); setDirty(true); }}
                   />
                 </div>
@@ -533,7 +536,7 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
                 className={`${RB_ADD} self-start`}
                 onClick={() => { setPresets((arr) => [...arr, { id: Date.now(), key: "", value: "" }]); setDirty(true); }}
               >
-                + preset
+                <Trans>+ preset</Trans>
               </Button>
             </div>
           </>
@@ -542,7 +545,7 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
         {tab === "item" && (
           <details className="rounded-md border border-border bg-card">
             <summary className="cursor-pointer px-3 py-2 text-[12.5px] font-medium text-foreground [list-style:none]">
-              Test against an item
+              <Trans>Test against an item</Trans>
             </summary>
             <div className="px-3 pb-3">
               <Textarea
@@ -551,10 +554,10 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
                 onChange={(e) => { setTestItem(e.target.value); setTestResult(null); }}
               />
               <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                <Button variant="outline" size="sm" icon={I.Zap} onClick={runTest}>Run test</Button>
-                {testResult?.error && <Badge variant="destructive">error: {testResult.error}</Badge>}
-                {testResult && testResult.passed === true && <Badge variant="default">✓ passes · {testResult.ms}ms</Badge>}
-                {testResult && testResult.passed === false && <Badge variant="destructive">✗ denied</Badge>}
+                <Button variant="outline" size="sm" icon={I.Zap} onClick={runTest}><Trans>Run test</Trans></Button>
+                {testResult?.error && <Badge variant="destructive"><Trans>error: {testResult.error}</Trans></Badge>}
+                {testResult && testResult.passed === true && <Badge variant="default"><Trans>✓ passes · {testResult.ms}ms</Trans></Badge>}
+                {testResult && testResult.passed === false && <Badge variant="destructive"><Trans>✗ denied</Trans></Badge>}
               </div>
             </div>
           </details>
@@ -562,15 +565,15 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
 
         {showSql && (
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Compiled SQL</label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Compiled SQL</Trans></label>
             <pre className="m-0 whitespace-pre-wrap rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11.5px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">{compileSql()}</pre>
           </div>
         )}
 
         <div className="mt-1 flex gap-2 border-t border-border pt-1">
-          <Button variant="outline" size="sm" icon={I.Code} onClick={() => setShowSql((v) => !v)}>{showSql ? "Hide" : "View"} compiled SQL</Button>
+          <Button variant="outline" size="sm" icon={I.Code} onClick={() => setShowSql((v) => !v)}>{showSql ? <Trans>Hide compiled SQL</Trans> : <Trans>View compiled SQL</Trans>}</Button>
           <div className="flex-1" />
-          <Button variant="ghost" size="sm" disabled={!dirty} onClick={() => { setTree(presetTree(action)); setDirty(false); setTestResult(null); pushToast("Changes discarded."); }}>Discard</Button>
+          <Button variant="ghost" size="sm" disabled={!dirty} onClick={() => { setTree(presetTree(action)); setDirty(false); setTestResult(null); pushToast(t`Changes discarded.`); }}><Trans>Discard</Trans></Button>
           <Button variant="primary" size="sm" disabled={!dirty} onClick={async () => {
             try {
               const allowedFields = Object.entries(fieldPerms)
@@ -578,11 +581,11 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
                 .map(([f]) => f);
               await persistRule(role, collection, action, compiledObj, allowedFields.length === fields.length ? null : allowedFields);
               setDirty(false);
-              pushToast(`Permission saved: ${role} · ${action} · ${collection}.`);
+              pushToast(t`Permission saved: ${role} · ${action} · ${collection}.`);
             } catch (e) {
               pushToast((e as Error).message);
             }
-          }}>Save</Button>
+          }}><Trans>Save</Trans></Button>
         </div>
       </div>
     </div>

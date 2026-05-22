@@ -552,6 +552,95 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
 }
 
 /**
+ * Editable copy for the public sign-in screen's brand panel. Both fields are
+ * optional — left blank, the sign-in screen falls back to its built-in default
+ * copy. Persisted to `app_settings` via the same `PATCH /api/admin/settings`
+ * whitelist as the General form, and surfaced to the (unauthenticated) sign-in
+ * page through `/api/auth/providers`.
+ */
+function SignInBrandingCard({ pushToast }: { pushToast: (m: string) => void }) {
+  const { t } = useLingui();
+  const [headline, setHeadline] = useState("");
+  const [tagline, setTagline] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await settingsApi.load();
+      const d = r.data as Record<string, unknown>;
+      setHeadline(typeof d.signInHeadline === "string" ? d.signInHeadline : "");
+      setTagline(typeof d.signInTagline === "string" ? d.signInTagline : "");
+      setDirty(false);
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [pushToast]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await settingsApi.patch({
+        signInHeadline: headline.trim(),
+        signInTagline: tagline.trim(),
+      });
+      setDirty(false);
+      pushToast(t`Sign-in screen saved.`);
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex max-w-[720px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
+      <div className="flex items-start gap-2.5">
+        <I.Info size={14} className="mt-0.5" />
+        <span className="text-xs text-muted-foreground">
+          <Trans>Headline and tagline shown on the public sign-in screen. Leave a field
+          blank to use the built-in default copy.</Trans>
+        </span>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Headline</Trans></label>
+        <Input
+          value={headline}
+          disabled={loading}
+          maxLength={120}
+          placeholder={t`Sign in to workeros.`}
+          onChange={(e) => { setHeadline(e.target.value); setDirty(true); }}
+        />
+        <span className="text-[11.5px] text-muted-foreground"><Trans>Large title in the sign-in brand panel.</Trans></span>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Tagline</Trans></label>
+        <Textarea
+          rows={3}
+          value={tagline}
+          disabled={loading}
+          maxLength={280}
+          onChange={(e) => { setTagline(e.target.value); setDirty(true); }}
+        />
+        <span className="text-[11.5px] text-muted-foreground"><Trans>Short sentence shown under the headline.</Trans></span>
+      </div>
+      <div className="flex justify-end gap-2 border-t border-border pt-2.5">
+        <Button variant="ghost" size="sm" disabled={!dirty || saving || loading} onClick={() => void load()}><Trans>Discard</Trans></Button>
+        <Button variant="primary" size="sm" className="min-w-[5.5rem]" disabled={!dirty || saving || loading} onClick={() => void save()}>
+          {saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Workspace language + time-zone settings. Manages the `i18nLocales` list
  * (the languages this workspace is translated into — the columns of the
  * Translations page and the locale options members may pick), the workspace
@@ -907,7 +996,12 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
         </div>
       )}
 
-      {tab === "appearance" && <AppearanceSettingsCard pushToast={pushToast} />}
+      {tab === "appearance" && (
+        <div className="flex flex-col gap-4">
+          <AppearanceSettingsCard pushToast={pushToast} />
+          <SignInBrandingCard pushToast={pushToast} />
+        </div>
+      )}
 
       {tab === "email" && <EmailSettingsCard pushToast={pushToast} />}
 

@@ -50,20 +50,18 @@ export default defineConfig({
     rollupOptions: {
       output: {
         /**
-         * Pull the long-lived vendor code out of the main bundle so it
+         * Pull the long-lived vendor code into stable named chunks so it
          * caches independently of admin changes and parallel-loads over HTTP/2.
          *
-         * - `react-vendor`: react + react-dom + scheduler (rarely updated,
-         *   biggest single dep block — worth caching aggressively).
-         * - `radix-vendor`: @radix-ui/* + the radix-ui meta package (most of
-         *   the shadcn primitive surface).
-         *
-         * Everything else — smaller deps and dynamic-imported chunks (e.g.
-         * CodeMirror via the code-editor route, lazy admin/pages/* routes) —
-         * is left to Rollup. A blanket "everything in node_modules → vendor"
-         * catch-all would silently hoist those dynamic deps into the eager
-         * bundle and regress first-paint, which is why the rule below stops
-         * after the two explicit groups.
+         * - `react-vendor` / `radix-vendor` — large, rarely-updated cores.
+         * - `vendor` — every other `node_modules` module, pinned to ONE
+         *   deterministic chunk. Letting Rollup auto-split this remainder
+         *   makes the chunk graph unstable across small source edits.
+         * - CodeMirror / xyflow are deliberately left unpinned (`undefined`):
+         *   they are reached only through lazy routes, and forcing them into a
+         *   named chunk either hoists them eager or — when grouped with eager
+         *   `vendor` — makes Rollup drop the dynamically-imported code
+         *   entirely. `undefined` keeps them in their own lazy chunk.
          */
         manualChunks: (id) => {
           if (!id.includes("node_modules")) return undefined;
@@ -80,10 +78,16 @@ export default defineConfig({
           ) {
             return "radix-vendor";
           }
-          // No catch-all: let Rollup decide the rest so dynamic-imported deps
-          // (e.g. CodeMirror in the code-editor route) stay in their own
-          // lazy chunk and don't get hoisted into the main bundle.
-          return undefined;
+          if (
+            id.includes("/node_modules/@codemirror/") ||
+            id.includes("/node_modules/@lezer/") ||
+            id.includes("/node_modules/@uiw/") ||
+            id.includes("/node_modules/codemirror/") ||
+            id.includes("/node_modules/@xyflow/")
+          ) {
+            return undefined;
+          }
+          return "vendor";
         },
       },
     },

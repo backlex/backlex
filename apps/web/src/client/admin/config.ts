@@ -5,6 +5,8 @@
 // each deploy target's adapter layer uses. The *active* adapter is detected at
 // runtime via /api/admin/settings/runtime; every collection / item / metric /
 // user / role surface in the admin reads from its real API endpoint.
+import { msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core";
 import type { IconKey } from "./icons";
 
 export interface Author {
@@ -59,7 +61,7 @@ export interface CollectionListItem {
 
 export interface NavItem {
   id: string;
-  label: string;
+  label: MessageDescriptor;
   icon: IconKey | string;
   badge?: number;
 }
@@ -76,39 +78,39 @@ export type AdapterId = "bun" | "workers" | "vercel";
 // "email") because they're rendered into the address bar by AdminApp's
 // URL-driven nav.
 export const NAV_ITEMS: NavItem[] = [
-  { id: "overview", label: "Overview", icon: "Activity" },
-  { id: "collections", label: "Collections", icon: "Database" },
-  { id: "access", label: "Access", icon: "Shield" },
-  { id: "database", label: "Database", icon: "Server" },
-  { id: "storage", label: "Storage", icon: "Folder" },
-  { id: "flows", label: "Flows", icon: "Bolt" },
-  { id: "functions", label: "Functions", icon: "Function" },
-  { id: "webhooks", label: "Webhooks", icon: "Webhook" },
-  { id: "realtime", label: "Realtime", icon: "Zap" },
-  { id: "logs", label: "Logs", icon: "ScrollText" },
-  { id: "advisor", label: "Advisor", icon: "ShieldAlert" },
-  { id: "schema-graph", label: "Schema graph", icon: "Network" },
-  { id: "insights", label: "Insights", icon: "BarChart" },
-  { id: "revisions", label: "Revisions", icon: "History" },
-  { id: "translations", label: "Translations", icon: "Globe" },
+  { id: "overview", label: msg`Overview`, icon: "Activity" },
+  { id: "collections", label: msg`Collections`, icon: "Database" },
+  { id: "access", label: msg`Access`, icon: "Shield" },
+  { id: "database", label: msg`Database`, icon: "Server" },
+  { id: "storage", label: msg`Storage`, icon: "Folder" },
+  { id: "flows", label: msg`Flows`, icon: "Bolt" },
+  { id: "functions", label: msg`Functions`, icon: "Function" },
+  { id: "webhooks", label: msg`Webhooks`, icon: "Webhook" },
+  { id: "realtime", label: msg`Realtime`, icon: "Zap" },
+  { id: "logs", label: msg`Logs`, icon: "ScrollText" },
+  { id: "advisor", label: msg`Advisor`, icon: "ShieldAlert" },
+  { id: "schema-graph", label: msg`Schema graph`, icon: "Network" },
+  { id: "insights", label: msg`Insights`, icon: "BarChart" },
+  { id: "revisions", label: msg`Revisions`, icon: "History" },
+  { id: "translations", label: msg`Translations`, icon: "Globe" },
 ];
 
 // Developer-facing tools: REST explorer, GraphQL playground, OpenAPI export.
 // Kept in their own group so they sit together in the sidebar without
 // crowding the workspace nav.
 export const NAV_DEVELOPERS: NavItem[] = [
-  { id: "rest-explorer", label: "REST Explorer", icon: "Braces" },
-  { id: "graphql", label: "GraphQL", icon: "Code" },
-  { id: "openapi", label: "OpenAPI", icon: "Download" },
+  { id: "rest-explorer", label: msg`REST Explorer`, icon: "Braces" },
+  { id: "graphql", label: msg`GraphQL`, icon: "Code" },
+  { id: "openapi", label: msg`OpenAPI`, icon: "Download" },
 ];
 
 export const NAV_SETTINGS: NavItem[] = [
-  { id: "authentication", label: "Authentication", icon: "Shield" },
-  { id: "users", label: "Users", icon: "Users" },
-  { id: "app-users", label: "App users", icon: "Users" },
-  { id: "api-keys", label: "API keys", icon: "Code" },
-  { id: "email-templates", label: "Email templates", icon: "Mail" },
-  { id: "settings", label: "Settings", icon: "Settings" },
+  { id: "authentication", label: msg`Authentication`, icon: "Shield" },
+  { id: "users", label: msg`Users`, icon: "Users" },
+  { id: "app-users", label: msg`App users`, icon: "Users" },
+  { id: "api-keys", label: msg`API keys`, icon: "Code" },
+  { id: "email-templates", label: msg`Email templates`, icon: "Mail" },
+  { id: "settings", label: msg`Settings`, icon: "Settings" },
 ];
 
 export const ADAPTER_PROFILES: Record<AdapterId, AdapterProfile> = {

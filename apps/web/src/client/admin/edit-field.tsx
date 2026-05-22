@@ -19,6 +19,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workeros/ui/components/dialog";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { Select } from "./select";
 import { getInterface, interfacesForType } from "./interfaces";
 
@@ -128,7 +129,7 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-h-[min(86vh,720px)] gap-0 overflow-y-auto p-0 sm:max-w-[640px]">
+      <DialogContent className="flex max-h-[min(86vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[640px]">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
             <Trans>Edit <span className="font-mono">{draft.name}</span>{" "}
@@ -139,6 +140,7 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
           </DialogDescription>
         </DialogHeader>
 
+        <ScrollArea className="min-h-0 flex-1">
         <div className="flex flex-col gap-3.5 p-[18px]">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -214,6 +216,7 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
             </div>
           )}
         </div>
+        </ScrollArea>
 
         <DialogFooter className="border-t border-border px-[18px] py-3">
           <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>

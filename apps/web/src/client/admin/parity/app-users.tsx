@@ -11,6 +11,7 @@ import {
   SheetTitle,
 } from "@workeros/ui/components/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { I } from "../icons";
 import { Badge, Button, Checkbox, PageHeader } from "../ui";
 import { ConfirmDialog } from "../sheet";
@@ -300,7 +301,8 @@ function AppUserDrawer({
           </div>
         </SheetHeader>
 
-        <div className="flex flex-1 flex-col gap-8 overflow-auto px-5 py-[18px]">
+        <ScrollArea className="min-h-0 flex-1">
+        <div className="flex flex-col gap-8 px-5 py-[18px]">
           <div>
             <div className="mb-2 text-[12.5px] font-medium"><Trans>Profile</Trans></div>
             <div className="flex flex-col gap-1.5">
@@ -395,6 +397,7 @@ function AppUserDrawer({
             </div>
           </div>
         </div>
+        </ScrollArea>
 
         <SheetFooter className="flex-row justify-end gap-2 border-t border-border bg-card px-5 py-3">
           <Button variant="ghost" onClick={onClose}><Trans>Close</Trans></Button>

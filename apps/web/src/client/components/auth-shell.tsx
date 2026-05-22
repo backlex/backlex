@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@workeros/ui/components/button";
+import { version as appVersion } from "../../../package.json";
 import { useTheme } from "@/components/theme-provider";
 import { useAuthSurface } from "@/lib/auth";
 
@@ -13,15 +14,9 @@ interface AuthShellProps {
   children: ReactNode;
 }
 
-interface Snippet {
-  label: string;
-  body: ReactNode;
-}
-
 interface ModeCopy {
   headline: ReactNode;
   lede: ReactNode;
-  snippets: Snippet[];
 }
 
 const MODE_LINKS: Array<{ mode: AuthMode; to: string; labelKey: string }> = [
@@ -47,25 +42,6 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
       lede: (
         <Trans>Better-auth-style cookies. Sessions stored in your collections database — same DSL as everything else.</Trans>
       ),
-      snippets: [
-        {
-          label: "POST",
-          body: <span className="text-muted-foreground">/api/auth/sign-in/email</span>,
-        },
-        {
-          label: "cookie",
-          body: (
-            <>
-              <span className="text-muted-foreground">workeros_session=</span>
-              <span>eyJhbGciOiJIUz…</span>
-            </>
-          ),
-        },
-        {
-          label: "redirect",
-          body: <span>/admin</span>,
-        },
-      ],
     },
     "sign-up": {
       headline: (
@@ -76,25 +52,6 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
       lede: (
         <Trans>Email is the only required field. Roles assigned post-signup — first user gets admin.</Trans>
       ),
-      snippets: [
-        {
-          label: "POST",
-          body: <span className="text-muted-foreground">/api/auth/sign-up/email</span>,
-        },
-        {
-          label: "role",
-          body: (
-            <>
-              <span>authenticated</span>{" "}
-              <span className="text-muted-foreground">(or admin if first)</span>
-            </>
-          ),
-        },
-        {
-          label: "event",
-          body: <span className="text-muted-foreground">user.created</span>,
-        },
-      ],
     },
     magic: {
       headline: (
@@ -105,17 +62,6 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
       lede: (
         <Trans>A signed link will arrive in your inbox. Single-use, expires in 15 minutes.</Trans>
       ),
-      snippets: [
-        {
-          label: "POST",
-          body: <span className="text-muted-foreground">/api/auth/sign-in/magic-link</span>,
-        },
-        { label: "expires", body: <span>15m</span> },
-        {
-          label: "transport",
-          body: <span className="text-muted-foreground">email · single-use jwt</span>,
-        },
-      ],
     },
     forgot: {
       headline: (
@@ -126,25 +72,6 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
       lede: (
         <Trans>We'll email a reset link. Until you click it, your existing password still works.</Trans>
       ),
-      snippets: [
-        {
-          label: "POST",
-          body: <span className="text-muted-foreground">/api/auth/forget-password</span>,
-        },
-        {
-          label: "token",
-          body: (
-            <>
-              <span>reset_xxx</span>{" "}
-              <span className="text-muted-foreground">· expires 1h</span>
-            </>
-          ),
-        },
-        {
-          label: "audit",
-          body: <span className="text-muted-foreground">password.reset_requested</span>,
-        },
-      ],
     },
     claim: {
       headline: (
@@ -155,29 +82,21 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
       lede: (
         <Trans>Detected an empty users table. The first account on a fresh instance is provisioned as admin automatically.</Trans>
       ),
-      snippets: [
-        {
-          label: "detect",
-          body: <span className="text-muted-foreground">SELECT count(*) FROM users → 0</span>,
-        },
-        {
-          label: "role",
-          body: (
-            <>
-              <span>admin</span>{" "}
-              <span className="text-muted-foreground">(first user policy)</span>
-            </>
-          ),
-        },
-        {
-          label: "next",
-          body: <span className="text-muted-foreground">create your first collection</span>,
-        },
-      ],
     },
   };
 
   const copy = COPY[mode];
+  // Admins can override the sign-in screen's headline/tagline from
+  // Settings → Appearance; a blank value falls back to the default copy.
+  const branding = surface?.branding;
+  const headline: ReactNode =
+    mode === "sign-in" && branding?.signInHeadline?.trim()
+      ? branding.signInHeadline
+      : copy.headline;
+  const lede: ReactNode =
+    mode === "sign-in" && branding?.signInTagline?.trim()
+      ? branding.signInTagline
+      : copy.lede;
 
   // The "Claim instance" link only exists when the server confirms the
   // instance has zero users. Once an admin exists it disappears everywhere
@@ -211,29 +130,14 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
         </div>
 
         <h1 className="mt-auto mb-3 text-balance text-4xl font-semibold leading-[1.05] tracking-tight">
-          <BrandHeadline>{copy.headline}</BrandHeadline>
+          <BrandHeadline>{headline}</BrandHeadline>
         </h1>
         <p className="max-w-[36ch] text-[15px] leading-snug text-muted-foreground">
-          {copy.lede}
+          {lede}
         </p>
 
-        <div className="mt-6 flex flex-col gap-2.5">
-          {copy.snippets.map((s, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-2.5 rounded-2xl border border-border bg-background px-3.5 py-3 font-mono text-xs"
-            >
-              <span className="font-sans text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {s.label}
-              </span>
-              <span className="truncate">{s.body}</span>
-            </div>
-          ))}
-        </div>
-
         <div className="mt-auto flex gap-4 pt-6 font-mono text-xs text-muted-foreground">
-          <span>v0.4.2 · auto-detected</span>
-          <span>workeros.dev/docs/auth</span>
+          <span>v{appVersion}</span>
         </div>
       </div>
 

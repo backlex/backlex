@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@workeros/ui/components/tooltip";
 import "@workeros/ui/globals.css";
 import { App } from "./App";
+import { bootAdminLocale } from "@/admin/i18n";
 import { ThemeProvider } from "@/components/theme-provider";
 
 /**
@@ -110,7 +111,9 @@ const loadBranding = async (): Promise<ResolvedBranding | null> => {
   }
 };
 
-const branding = await loadBranding();
+// Resolve branding AND the admin locale before the first render — the locale
+// catalog must be active up front so the sign-in screen paints translated.
+const [branding] = await Promise.all([loadBranding(), bootAdminLocale()]);
 if (branding) applyBranding(branding);
 
 createRoot(document.getElementById("root")!).render(

@@ -659,13 +659,13 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                   ? "oklch(0.55 0.16 145)"
                   : "var(--muted-foreground)";
               return (
-                <div key={u.id} className="grid grid-cols-[16px_1fr_70px_60px_24px] items-center gap-2.5 text-xs">
+                <div key={u.id} className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs sm:grid sm:grid-cols-[16px_1fr_70px_60px_24px]">
                   {isDone
                     ? <I.Check size={13} className="text-[oklch(0.55_0.16_145)]" />
                     : isFailed
                       ? <I.AlertTriangle size={13} className="text-destructive" />
                       : <I.Upload size={13} className="text-muted-foreground" />}
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="truncate font-mono text-xs">{u.name}</div>
                     <div className="mt-1 h-1 overflow-hidden rounded-sm bg-muted">
                       <div className="h-full transition-[width] duration-200" style={{ width: `${isFailed ? 100 : u.progress}%`, background: barColor }} />

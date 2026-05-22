@@ -6,7 +6,424 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: @lingui/cli\n"
 "Language: en\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/client/admin/extras.tsx
+msgid "(item)"
+msgstr "(item)"
+
+#. placeholder {0}: ev.event
+#: src/client/admin/extras.tsx
+msgid "{0} event detail"
+msgstr "{0} event detail"
+
+#. placeholder {0}: c.count
+#: src/client/admin/extras.tsx
+msgid "{0} items"
+msgstr "{0} items"
+
+#. placeholder {0}: allFields.length
+#. placeholder {1}: userFields.length
+#: src/client/admin/extras.tsx
+msgid "{0} total · {1} editable · drag the grip to reorder"
+msgstr "{0} total · {1} editable · drag the grip to reorder"
+
+#: src/client/admin/config.ts
+msgid "Access"
+msgstr "Access"
+
+#: src/client/admin/ui.tsx
+msgid "Account"
+msgstr "Account"
+
+#: src/client/admin/ui.tsx
+msgid "Account menu"
+msgstr "Account menu"
+
+#: src/client/admin/ui.tsx
+msgid "Account settings"
+msgstr "Account settings"
+
+#: src/client/admin/extras.tsx
+msgid "Actions"
+msgstr "Actions"
+
+#: src/client/admin/extras.tsx
+msgid "Add field"
+msgstr "Add field"
+
+#: src/client/admin/ui.tsx
+msgid "Admin"
+msgstr "Admin"
+
+#: src/client/admin/config.ts
+msgid "Advisor"
+msgstr "Advisor"
+
+#: src/client/admin/ui.tsx
+msgid "All"
+msgstr "All"
 
 #: src/client/admin/app.tsx
 msgid "All collections"
 msgstr "All collections"
+
+#: src/client/admin/config.ts
+msgid "API keys"
+msgstr "API keys"
+
+#: src/client/admin/config.ts
+msgid "App users"
+msgstr "App users"
+
+#: src/client/admin/config.ts
+msgid "Authentication"
+msgstr "Authentication"
+
+#: src/client/admin/extras.tsx
+msgid "by"
+msgstr "by"
+
+#: src/client/admin/extras.tsx
+msgid "By"
+msgstr "By"
+
+#: src/client/admin/ui.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: src/client/admin/extras.tsx
+msgid "changed"
+msgstr "changed"
+
+#: src/client/admin/extras.tsx
+msgid "Changed field"
+msgstr "Changed field"
+
+#: src/client/admin/extras.tsx
+msgid "Channel"
+msgstr "Channel"
+
+#: src/client/admin/extras.tsx
+msgid "Click for full payload"
+msgstr "Click for full payload"
+
+#: src/client/admin/extras.tsx
+msgid "close"
+msgstr "close"
+
+#: src/client/admin/extras.tsx
+msgid "Close"
+msgstr "Close"
+
+#: src/client/admin/config.ts
+#: src/client/admin/extras.tsx
+msgid "Collections"
+msgstr "Collections"
+
+#: src/client/admin/extras.tsx
+msgid "Command palette"
+msgstr "Command palette"
+
+#: src/client/admin/ui.tsx
+msgid "copied"
+msgstr "copied"
+
+#: src/client/admin/ui.tsx
+msgid "copy"
+msgstr "copy"
+
+#: src/client/admin/extras.tsx
+msgid "Create the first row in <0>{tableName}</0> via the API or use the New row button."
+msgstr "Create the first row in <0>{tableName}</0> via the API or use the New row button."
+
+#: src/client/admin/ui.tsx
+msgid "Create workspace"
+msgstr "Create workspace"
+
+#: src/client/admin/config.ts
+msgid "Database"
+msgstr "Database"
+
+#: src/client/admin/ui.tsx
+msgid "Default project"
+msgstr "Default project"
+
+#: src/client/admin/ui.tsx
+msgid "Developers"
+msgstr "Developers"
+
+#: src/client/admin/ui.tsx
+msgid "Development"
+msgstr "Development"
+
+#: src/client/admin/extras.tsx
+msgid "Drop column"
+msgstr "Drop column"
+
+#: src/client/admin/extras.tsx
+msgid "Edit field"
+msgstr "Edit field"
+
+#: src/client/admin/config.ts
+msgid "Email templates"
+msgstr "Email templates"
+
+#: src/client/admin/ui.tsx
+msgid "Environment"
+msgstr "Environment"
+
+#: src/client/admin/extras.tsx
+msgid "Event"
+msgstr "Event"
+
+#: src/client/admin/extras.tsx
+msgid "fields"
+msgstr "fields"
+
+#: src/client/admin/config.ts
+msgid "Flows"
+msgstr "Flows"
+
+#: src/client/admin/config.ts
+msgid "Functions"
+msgstr "Functions"
+
+#: src/client/admin/extras.tsx
+msgid "goto"
+msgstr "goto"
+
+#: src/client/admin/config.ts
+msgid "GraphQL"
+msgstr "GraphQL"
+
+#: src/client/admin/config.ts
+msgid "Insights"
+msgstr "Insights"
+
+#: src/client/admin/extras.tsx
+msgid "Item ID"
+msgstr "Item ID"
+
+#: src/client/admin/extras.tsx
+msgid "Items"
+msgstr "Items"
+
+#: src/client/admin/ui.tsx
+msgid "live"
+msgstr "live"
+
+#: src/client/admin/extras.tsx
+msgid "Live tail"
+msgstr "Live tail"
+
+#: src/client/admin/ui.tsx
+msgid "local D1"
+msgstr "local D1"
+
+#: src/client/admin/config.ts
+msgid "Logs"
+msgstr "Logs"
+
+#: src/client/admin/ui.tsx
+msgid "Lowercase, alphanumeric, 2–24 chars."
+msgstr "Lowercase, alphanumeric, 2–24 chars."
+
+#: src/client/admin/ui.tsx
+msgid "Manage"
+msgstr "Manage"
+
+#: src/client/admin/ui.tsx
+msgid "Mark all read"
+msgstr "Mark all read"
+
+#: src/client/admin/ui.tsx
+msgid "Name"
+msgstr "Name"
+
+#: src/client/admin/extras.tsx
+msgid "navigate"
+msgstr "navigate"
+
+#: src/client/admin/extras.tsx
+msgid "New post"
+msgstr "New post"
+
+#: src/client/admin/extras.tsx
+msgid "New row"
+msgstr "New row"
+
+#: src/client/admin/ui.tsx
+msgid "New workspace"
+msgstr "New workspace"
+
+#: src/client/admin/extras.tsx
+msgid "No items yet"
+msgstr "No items yet"
+
+#: src/client/admin/extras.tsx
+msgid "No matches. Try <0>posts</0> or <1>edge</1>."
+msgstr "No matches. Try <0>posts</0> or <1>edge</1>."
+
+#: src/client/admin/ui.tsx
+msgid "Notifications"
+msgstr "Notifications"
+
+#: src/client/admin/extras.tsx
+msgid "open"
+msgstr "open"
+
+#: src/client/admin/config.ts
+msgid "OpenAPI"
+msgstr "OpenAPI"
+
+#: src/client/admin/config.ts
+msgid "Overview"
+msgstr "Overview"
+
+#: src/client/admin/extras.tsx
+msgid "Pages"
+msgstr "Pages"
+
+#: src/client/admin/extras.tsx
+msgid "Payload"
+msgstr "Payload"
+
+#: src/client/admin/ui.tsx
+msgid "preview"
+msgstr "preview"
+
+#: src/client/admin/ui.tsx
+msgid "Production"
+msgstr "Production"
+
+#: src/client/admin/config.ts
+msgid "Realtime"
+msgstr "Realtime"
+
+#: src/client/admin/extras.tsx
+msgid "Received"
+msgstr "Received"
+
+#: src/client/admin/extras.tsx
+msgid "Refresh"
+msgstr "Refresh"
+
+#: src/client/admin/extras.tsx
+msgid "required"
+msgstr "required"
+
+#: src/client/admin/config.ts
+msgid "REST Explorer"
+msgstr "REST Explorer"
+
+#: src/client/admin/config.ts
+msgid "Revisions"
+msgstr "Revisions"
+
+#: src/client/admin/config.ts
+msgid "Schema graph"
+msgstr "Schema graph"
+
+#: src/client/admin/ui.tsx
+msgid "Search collections, items, settings…"
+msgstr "Search collections, items, settings…"
+
+#: src/client/admin/ui.tsx
+msgid "Select environment"
+msgstr "Select environment"
+
+#: src/client/admin/config.ts
+msgid "Settings"
+msgstr "Settings"
+
+#: src/client/admin/ui.tsx
+msgid "Sign out"
+msgstr "Sign out"
+
+#: src/client/admin/ui.tsx
+msgid "Staging"
+msgstr "Staging"
+
+#: src/client/admin/config.ts
+msgid "Storage"
+msgstr "Storage"
+
+#: src/client/admin/extras.tsx
+msgid "Subscribed. Waiting for events…"
+msgstr "Subscribed. Waiting for events…"
+
+#: src/client/admin/extras.tsx
+msgid "system"
+msgstr "system"
+
+#: src/client/admin/extras.tsx
+msgid "this collection"
+msgstr "this collection"
+
+#: src/client/admin/ui.tsx
+msgid "Toggle sidebar"
+msgstr "Toggle sidebar"
+
+#: src/client/admin/extras.tsx
+#: src/client/admin/ui.tsx
+msgid "Toggle theme"
+msgstr "Toggle theme"
+
+#: src/client/admin/config.ts
+msgid "Translations"
+msgstr "Translations"
+
+#: src/client/admin/extras.tsx
+msgid "Type a command, collection, or item title to navigate."
+msgstr "Type a command, collection, or item title to navigate."
+
+#: src/client/admin/extras.tsx
+msgid "Type a command, collection, or item title…"
+msgstr "Type a command, collection, or item title…"
+
+#: src/client/admin/extras.tsx
+msgid "unique"
+msgstr "unique"
+
+#: src/client/admin/ui.tsx
+msgid "Unread"
+msgstr "Unread"
+
+#: src/client/admin/ui.tsx
+msgid "URL:"
+msgstr "URL:"
+
+#: src/client/admin/config.ts
+msgid "Users"
+msgstr "Users"
+
+#: src/client/admin/config.ts
+msgid "Webhooks"
+msgstr "Webhooks"
+
+#: src/client/admin/ui.tsx
+msgid "Workspace"
+msgstr "Workspace"
+
+#. placeholder {0}: res.data.slug
+#: src/client/admin/ui.tsx
+msgid "Workspace \"{0}\" created."
+msgstr "Workspace \"{0}\" created."
+
+#: src/client/admin/ui.tsx
+msgid "Workspace \"{slug}\" already exists."
+msgstr "Workspace \"{slug}\" already exists."
+
+#: src/client/admin/ui.tsx
+msgid "Workspaces"
+msgstr "Workspaces"
+
+#: src/client/admin/ui.tsx
+msgid "You're all caught up."
+msgstr "You're all caught up."

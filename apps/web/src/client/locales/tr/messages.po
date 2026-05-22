@@ -33,7 +33,7 @@ msgstr ""
 msgid "{0} total · {1} editable · drag the grip to reorder"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Access"
 msgstr ""
 
@@ -61,7 +61,7 @@ msgstr ""
 msgid "Admin"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Advisor"
 msgstr ""
 
@@ -73,15 +73,15 @@ msgstr ""
 msgid "All collections"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "API keys"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "App users"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Authentication"
 msgstr ""
 
@@ -121,8 +121,8 @@ msgstr ""
 msgid "Close"
 msgstr ""
 
-#: src/client/admin/config.ts
 #: src/client/admin/extras.tsx
+#: src/client/admin/ui.tsx
 msgid "Collections"
 msgstr ""
 
@@ -146,7 +146,7 @@ msgstr ""
 msgid "Create workspace"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Database"
 msgstr ""
 
@@ -170,7 +170,7 @@ msgstr ""
 msgid "Edit field"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Email templates"
 msgstr ""
 
@@ -186,11 +186,11 @@ msgstr ""
 msgid "fields"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Flows"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Functions"
 msgstr ""
 
@@ -198,11 +198,11 @@ msgstr ""
 msgid "goto"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "GraphQL"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Insights"
 msgstr ""
 
@@ -226,7 +226,7 @@ msgstr ""
 msgid "local D1"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Logs"
 msgstr ""
 
@@ -278,11 +278,11 @@ msgstr ""
 msgid "open"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "OpenAPI"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Overview"
 msgstr ""
 
@@ -302,7 +302,7 @@ msgstr ""
 msgid "Production"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Realtime"
 msgstr ""
 
@@ -318,15 +318,15 @@ msgstr ""
 msgid "required"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "REST Explorer"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Revisions"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Schema graph"
 msgstr ""
 
@@ -338,7 +338,7 @@ msgstr ""
 msgid "Select environment"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Settings"
 msgstr ""
 
@@ -350,7 +350,7 @@ msgstr ""
 msgid "Staging"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Storage"
 msgstr ""
 
@@ -375,7 +375,7 @@ msgstr ""
 msgid "Toggle theme"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Translations"
 msgstr ""
 
@@ -399,11 +399,11 @@ msgstr ""
 msgid "URL:"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Users"
 msgstr ""
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Webhooks"
 msgstr ""
 

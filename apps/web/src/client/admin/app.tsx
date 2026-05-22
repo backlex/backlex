@@ -81,6 +81,7 @@ import { PageSkeleton, CollectionItemsSkeleton } from "./page-skeletons";
 const TAB_COUNT_CLS =
   "rounded-sm border border-border bg-muted px-[5px] py-px font-mono text-[11px] text-muted-foreground";
 import { AccountPage } from "./account-page";
+import { PreferencesProvider } from "./preferences";
 import { GraphqlPage } from "@/pages/graphql";
 import { RestExplorerPage } from "@/pages/rest-explorer";
 import { OpenApiExportPage } from "@/pages/openapi-export";
@@ -649,6 +650,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
   };
 
   return (
+    <PreferencesProvider>
     <SidebarProvider
       open={!tweaks.sidebarCollapsed}
       onOpenChange={(o) => setTweak("sidebarCollapsed", !o)}
@@ -1067,6 +1069,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
       }} />
       {toastNode}
     </SidebarProvider>
+    </PreferencesProvider>
   );
 }
 

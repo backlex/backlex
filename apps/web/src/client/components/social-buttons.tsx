@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { KeyRoundIcon } from "lucide-react";
+import { useLingui } from "@lingui/react/macro";
 import { Button } from "@workeros/ui/components/button";
 import { auth, useAuthSurface, type PublicProvider } from "@/lib/auth";
 import { notifyError } from "@/lib/error";
@@ -64,6 +65,7 @@ const iconFor = (id: string): ReactNode => {
  * successful round-trip the user lands on `callbackURL`.
  */
 export const SocialButtons = ({ callbackURL = "/" }: SocialButtonsProps) => {
+  const { t } = useLingui();
   const { surface } = useAuthSurface();
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -85,16 +87,16 @@ export const SocialButtons = ({ callbackURL = "/" }: SocialButtonsProps) => {
       };
       const fn = c.signIn.social;
       if (!fn) {
-        notifyError("Social sign-in plugin not enabled");
+        notifyError(t`Social sign-in plugin not enabled`);
         setBusy(null);
         return;
       }
       const res = await fn({ provider, callbackURL });
       if (res?.error) {
-        notifyError(res.error.message ?? `${provider} sign-in failed`);
+        notifyError(res.error.message ?? t`${provider} sign-in failed`);
       }
     } catch (e) {
-      notifyError(e, `${provider} sign-in`);
+      notifyError(e, t`${provider} sign-in`);
     } finally {
       setBusy(null);
     }

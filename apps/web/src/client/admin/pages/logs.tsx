@@ -14,6 +14,7 @@
 // (`from` + `action` query params) and the data layer paginates via
 // `useInfiniteQuery`, so the view is never clipped to the freshest 200 rows.
 import { useMemo, useState, type CSSProperties } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "../icons";
 import { Badge, Button, IconButton, JsonBlock, PageHeader } from "../ui";
 import { Input } from "@workeros/ui/components/input";
@@ -232,6 +233,7 @@ export function LogsPage({
 }: {
   pushToast: (m: string, type?: "success" | "error") => void;
 }) {
+  const { t } = useLingui();
   // View switch + shared controls.
   const [view, setView] = useState<ViewMode>("stream");
   const [range, setRange] = useState<RangeFilter>("24h");
@@ -290,16 +292,16 @@ export function LogsPage({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <PageHeader
-        title="Logs"
-        description="Unified log explorer over the activity audit store. Switch between the Stream lens (HTTP, data, automation, functions, storage) and the Table audit trail — both read the same rows."
+        title={t`Logs`}
+        description={t`Unified log explorer over the activity audit store. Switch between the Stream lens (HTTP, data, automation, functions, storage) and the Table audit trail — both read the same rows.`}
         badges={
           <>
             <Badge variant="outline" mono>
-              last {range}
+              <Trans>last {range}</Trans>
             </Badge>
             {totalCount != null && (
               <Badge variant="outline" mono>
-                {totalCount} total
+                <Trans>{totalCount} total</Trans>
               </Badge>
             )}
           </>
@@ -310,11 +312,11 @@ export function LogsPage({
               <TabsList>
                 <TabsTrigger value="stream">
                   <I.ScrollText size={13} />
-                  <span>Stream</span>
+                  <span><Trans>Stream</Trans></span>
                 </TabsTrigger>
                 <TabsTrigger value="table">
                   <I.LayoutList size={13} />
-                  <span>Table</span>
+                  <span><Trans>Table</Trans></span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -323,12 +325,12 @@ export function LogsPage({
               icon={live ? I.Zap : I.Play}
               onClick={() => {
                 setLive((v) => {
-                  pushToast(v ? "Live tail paused." : "Live tail resumed.");
+                  pushToast(v ? t`Live tail paused.` : t`Live tail resumed.`);
                   return !v;
                 });
               }}
             >
-              {live ? "Live" : "Resume"}
+              {live ? <Trans>Live</Trans> : <Trans>Resume</Trans>}
             </Button>
           </>
         }
@@ -350,7 +352,7 @@ export function LogsPage({
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="search loaded rows — path, action, user, message…"
+            placeholder={t`search loaded rows — path, action, user, message…`}
             style={{ paddingLeft: 32 }}
           />
         </div>
@@ -370,18 +372,20 @@ export function LogsPage({
           <div className="ico">
             <I.AlertTriangle size={18} />
           </div>
-          <h4>Couldn't load logs</h4>
-          <p>The activity endpoint returned an error. Try again in a moment.</p>
+          <h4><Trans>Couldn't load logs</Trans></h4>
+          <p><Trans>The activity endpoint returned an error. Try again in a moment.</Trans></p>
         </div>
       ) : allRows.length === 0 ? (
         <div className="card empty">
           <div className="ico">
             <I.ScrollText size={18} />
           </div>
-          <h4>No activity in this window</h4>
+          <h4><Trans>No activity in this window</Trans></h4>
           <p>
-            Nothing landed in the last {range}. Widen the range, or wait for
-            requests, item writes, and automation runs to flow in.
+            <Trans>
+              Nothing landed in the last {range}. Widen the range, or wait for
+              requests, item writes, and automation runs to flow in.
+            </Trans>
           </p>
         </div>
       ) : view === "stream" ? (
@@ -452,6 +456,7 @@ function StreamView({
   onLoadMore: () => void;
   pushToast: (m: string, type?: "success" | "error") => void;
 }) {
+  const { t } = useLingui();
   // Per-source row counts (within the loaded window) — feeds the tab badges.
   const sourceCounts = useMemo<Record<SourceId, number>>(() => {
     const out: Record<SourceId, number> = {
@@ -542,7 +547,7 @@ function StreamView({
 
   const exportNdjson = () => {
     if (filtered.length === 0) {
-      pushToast("Nothing to export — the current view is empty.", "error");
+      pushToast(t`Nothing to export — the current view is empty.`, "error");
       return;
     }
     const ndjson = filtered
@@ -573,9 +578,9 @@ function StreamView({
       a.download = `logs-${activeSrc}-${Date.now()}.ndjson`;
       a.click();
       URL.revokeObjectURL(url);
-      pushToast(`Exported ${filtered.length} rows as NDJSON.`);
+      pushToast(t`Exported ${filtered.length} rows as NDJSON.`);
     } catch {
-      pushToast("Could not export logs.", "error");
+      pushToast(t`Could not export logs.`, "error");
     }
   };
 
@@ -606,7 +611,7 @@ function StreamView({
         </Tabs>
         <div style={{ flex: 1 }} />
         <Button variant="outline" icon={I.Download} onClick={exportNdjson}>
-          Export NDJSON
+          <Trans>Export NDJSON</Trans>
         </Button>
       </div>
 
@@ -682,8 +687,8 @@ function StreamView({
               <div className="ico">
                 <I.ScrollText size={18} />
               </div>
-              <h4>No log entries match</h4>
-              <p>Try a wider time range or clear the level filter.</p>
+              <h4><Trans>No log entries match</Trans></h4>
+              <p><Trans>Try a wider time range or clear the level filter.</Trans></p>
             </div>
           ) : (
             <div>
@@ -716,7 +721,7 @@ function StreamView({
             </div>
           )}
           <LoadMoreBar
-            loadedLabel={`${filtered.length} shown · ${rows.length} loaded`}
+            loadedLabel={t`${filtered.length} shown · ${rows.length} loaded`}
             hasNextPage={hasNextPage}
             isFetchingNextPage={isFetchingNextPage}
             onLoadMore={onLoadMore}
@@ -730,9 +735,9 @@ function StreamView({
             onCopyId={() => {
               try {
                 void navigator.clipboard.writeText(selected.id);
-                pushToast("Entry id copied to clipboard.");
+                pushToast(t`Entry id copied to clipboard.`);
               } catch {
-                pushToast("Could not copy entry id.", "error");
+                pushToast(t`Could not copy entry id.`, "error");
               }
             }}
           />
@@ -766,7 +771,7 @@ function LogDetail({
         style={{ display: "flex", alignItems: "center", gap: 10 }}
       >
         <I.ScrollText size={14} />
-        <span style={{ fontSize: 13, fontWeight: 500 }}>log entry</span>
+        <span style={{ fontSize: 13, fontWeight: 500 }}><Trans>log entry</Trans></span>
         <span
           className="font-mono"
           style={{
@@ -782,7 +787,7 @@ function LogDetail({
       </div>
       <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 14 }}>
         <div>
-          <div style={sectionLabel}>summary</div>
+          <div style={sectionLabel}><Trans>summary</Trans></div>
           <div
             style={{
               display: "flex",
@@ -811,7 +816,7 @@ function LogDetail({
         </div>
 
         <div>
-          <div style={sectionLabel}>context</div>
+          <div style={sectionLabel}><Trans>context</Trans></div>
           <KV k="id" v={row.id} mono />
           <KV k="time" v={row.ts ? new Date(row.ts).toISOString() : "—"} mono />
           <KV k="duration" v={row.ms != null ? `${row.ms} ms` : "—"} mono />
@@ -822,21 +827,21 @@ function LogDetail({
 
         {row.payload != null && (
           <div>
-            <div style={sectionLabel}>payload</div>
+            <div style={sectionLabel}><Trans>payload</Trans></div>
             <pre className="code-block">{JSON.stringify(row.payload, null, 2)}</pre>
           </div>
         )}
 
         {row.response != null && (
           <div>
-            <div style={sectionLabel}>response</div>
+            <div style={sectionLabel}><Trans>response</Trans></div>
             <pre className="code-block">{JSON.stringify(row.response, null, 2)}</pre>
           </div>
         )}
 
         <div style={{ display: "flex", gap: 6 }}>
           <Button variant="outline" size="sm" icon={I.Copy} onClick={onCopyId}>
-            Copy id
+            <Trans>Copy id</Trans>
           </Button>
         </div>
       </div>
@@ -916,6 +921,7 @@ function TableView({
   onLoadMore: () => void;
   pushToast: (m: string, type?: "success" | "error") => void;
 }) {
+  const { t } = useLingui();
   // The action category is enforced server-side, so `rows` is already scoped.
   // Search is still a client-side text match over the loaded rows.
   const visible = useMemo(() => {
@@ -930,7 +936,7 @@ function TableView({
 
   const exportCsv = () => {
     if (visible.length === 0) {
-      pushToast("Nothing to export — the current view is empty.", "error");
+      pushToast(t`Nothing to export — the current view is empty.`, "error");
       return;
     }
     const header = "time,actor,action,resource,diff,ip";
@@ -957,9 +963,9 @@ function TableView({
       a.download = "activity.csv";
       a.click();
       URL.revokeObjectURL(url);
-      pushToast(`Exported ${visible.length} rows as activity.csv.`);
+      pushToast(t`Exported ${visible.length} rows as activity.csv.`);
     } catch {
-      pushToast("Could not export logs.", "error");
+      pushToast(t`Could not export logs.`, "error");
     }
   };
 
@@ -978,7 +984,7 @@ function TableView({
         </Tabs>
         <div style={{ flex: 1 }} />
         <Button variant="outline" icon={I.Download} onClick={exportCsv}>
-          Export CSV
+          <Trans>Export CSV</Trans>
         </Button>
       </div>
 
@@ -986,12 +992,12 @@ function TableView({
         <Table className={ADMIN_TABLE_CLS}>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[160px] whitespace-nowrap">Time</TableHead>
-              <TableHead className="w-[90px] text-right">Duration</TableHead>
-              <TableHead className="w-[140px]">Action</TableHead>
-              <TableHead>Resource</TableHead>
-              <TableHead>Diff</TableHead>
-              <TableHead className="w-[130px]">IP</TableHead>
+              <TableHead className="w-[160px] whitespace-nowrap"><Trans>Time</Trans></TableHead>
+              <TableHead className="w-[90px] text-right"><Trans>Duration</Trans></TableHead>
+              <TableHead className="w-[140px]"><Trans>Action</Trans></TableHead>
+              <TableHead><Trans>Resource</Trans></TableHead>
+              <TableHead><Trans>Diff</Trans></TableHead>
+              <TableHead className="w-[130px]"><Trans>IP</Trans></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1000,7 +1006,7 @@ function TableView({
                 key={r.id}
                 onClick={() => setOpenRow(r)}
                 className="cursor-pointer"
-                title="Click for full payload"
+                title={t`Click for full payload`}
               >
                 <TableCell className="whitespace-nowrap font-mono text-[11.5px] tabular-nums text-muted-foreground">
                   {fmtTableTime(r.ts)}
@@ -1032,9 +1038,9 @@ function TableView({
             {/* Counts are explicit about loaded-vs-total — chip counts that
              *  reflected only loaded rows were misleading, so they're gone. */}
             {q
-              ? `${visible.length} match · ${rows.length} loaded`
-              : `${rows.length} loaded`}
-            {totalCount != null ? ` of ${totalCount}` : ""}
+              ? t`${visible.length} match · ${rows.length} loaded`
+              : t`${rows.length} loaded`}
+            {totalCount != null ? t` of ${totalCount}` : ""}
           </span>
           <Button
             variant="outline"
@@ -1042,10 +1048,10 @@ function TableView({
             onClick={onLoadMore}
           >
             {isFetchingNextPage
-              ? "Loading…"
+              ? <Trans>Loading…</Trans>
               : hasNextPage
-                ? "Load more"
-                : "No more rows"}
+                ? <Trans>Load more</Trans>
+                : <Trans>No more rows</Trans>}
           </Button>
         </div>
       </div>
@@ -1093,25 +1099,25 @@ function ActivityEventDialog({
         </DialogHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
           <div className="grid grid-cols-[140px_1fr] gap-x-3.5 gap-y-2 text-[12.5px]">
-            <span className="text-muted-foreground">Time</span>
+            <span className="text-muted-foreground"><Trans>Time</Trans></span>
             <span className="font-mono">{fullTs}</span>
-            <span className="text-muted-foreground">Actor</span>
+            <span className="text-muted-foreground"><Trans>Actor</Trans></span>
             <span className="font-mono [word-break:break-all]">{row.user}</span>
-            <span className="text-muted-foreground">Action</span>
+            <span className="text-muted-foreground"><Trans>Action</Trans></span>
             <span className="font-mono">{row.action}</span>
-            <span className="text-muted-foreground">Collection</span>
+            <span className="text-muted-foreground"><Trans>Collection</Trans></span>
             <span className="font-mono">{row.collection ?? "—"}</span>
             {row.itemId && (
               <>
-                <span className="text-muted-foreground">Item ID</span>
+                <span className="text-muted-foreground"><Trans>Item ID</Trans></span>
                 <span className="font-mono [word-break:break-all]">{row.itemId}</span>
               </>
             )}
-            <span className="text-muted-foreground">IP</span>
+            <span className="text-muted-foreground"><Trans>IP</Trans></span>
             <span className="font-mono">{row.ip ?? "—"}</span>
             {row.userAgent && (
               <>
-                <span className="text-muted-foreground">User-Agent</span>
+                <span className="text-muted-foreground"><Trans>User-Agent</Trans></span>
                 <span className="font-mono text-[11.5px] [word-break:break-all]">
                   {row.userAgent}
                 </span>
@@ -1119,11 +1125,11 @@ function ActivityEventDialog({
             )}
             {row.ms != null && (
               <>
-                <span className="text-muted-foreground">Duration</span>
+                <span className="text-muted-foreground"><Trans>Duration</Trans></span>
                 <span className="font-mono tabular-nums">{row.ms} ms</span>
               </>
             )}
-            <span className="text-muted-foreground">Activity ID</span>
+            <span className="text-muted-foreground"><Trans>Activity ID</Trans></span>
             <span className="font-mono text-[11.5px] [word-break:break-all]">
               {row.id}
             </span>
@@ -1135,7 +1141,7 @@ function ActivityEventDialog({
         </div>
         <DialogFooter className="border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <Button variant="ghost" size="sm" onClick={onClose}>
-            Close
+            <Trans>Close</Trans>
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1171,10 +1177,10 @@ function LoadMoreBar({
         onClick={onLoadMore}
       >
         {isFetchingNextPage
-          ? "Loading…"
+          ? <Trans>Loading…</Trans>
           : hasNextPage
-            ? "Load more"
-            : "No more rows"}
+            ? <Trans>Load more</Trans>
+            : <Trans>No more rows</Trans>}
       </Button>
     </div>
   );

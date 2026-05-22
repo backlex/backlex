@@ -1,5 +1,6 @@
 // Flows page — trigger → operations list + preview canvas + builder modal
 import { Fragment, useCallback, useEffect, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent } from "../icons";
 import { Badge, Button, PageHeader, Switch } from "../ui";
 import { FlowBuilder } from "../flow-builder";
@@ -9,6 +10,7 @@ import { fetchSafely } from "./_shared";
 import { FlowsSkeleton } from "../page-skeletons";
 
 export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast: (m: string) => void; activeFlow?: string | null; setActiveFlow?: (id: string | null) => void }) {
+  const { t } = useLingui();
   // Flows load from /api/flows on mount. No mock seed — empty workspace
   // hits the empty-state render path on the right pane.
   type FlowRow = { id: string; name: string; trigger: string; actions: string[]; status: string; runs: number; operations: any[] };
@@ -131,7 +133,7 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
     } catch (e) {
       // Compile errors stay in the builder so the user can fix without losing
       // the canvas; only show a toast and DON'T close the modal.
-      pushToast(e instanceof FlowCompileError ? `Cannot save: ${e.message}` : (e as Error).message);
+      pushToast(e instanceof FlowCompileError ? t`Cannot save: ${e.message}` : (e as Error).message);
     }
   };
 
@@ -141,9 +143,9 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
-        title="Flows"
-        description="Triggers fire on collection events, schedules, or webhooks. Each step runs in the sandbox."
-        actions={<Button variant="primary" icon={I.Plus} onClick={newFlow}>New flow</Button>}
+        title={t`Flows`}
+        description={t`Triggers fire on collection events, schedules, or webhooks. Each step runs in the sandbox.`}
+        actions={<Button variant="primary" icon={I.Plus} onClick={newFlow}><Trans>New flow</Trans></Button>}
       />
 
       <div className="grid grid-cols-[320px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
@@ -167,20 +169,20 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
         <div className="flex flex-col gap-4.5 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
           {!flow ? (
             <div className="p-9 text-center text-[13px] text-muted-foreground">
-              No flow selected. Click <strong>+ New flow</strong> to create your first one.
+              <Trans>No flow selected. Click <strong>+ New flow</strong> to create your first one.</Trans>
             </div>
           ) : (
           <>
           <div className="flex flex-wrap items-center gap-2.5">
             <span className="text-base font-semibold">{flow.name}</span>
             <Badge variant={flow.status === "active" ? "default" : "secondary"}>{flow.status}</Badge>
-            <span className="tabular-nums text-xs text-muted-foreground">· {Number(flow.runs ?? 0).toLocaleString()} runs</span>
+            <span className="tabular-nums text-xs text-muted-foreground">· {Number(flow.runs ?? 0).toLocaleString()} <Trans>runs</Trans></span>
             <div className="ml-auto flex flex-wrap items-center gap-2.5">
               <Switch checked={flow.status === "active"} onChange={async (next) => {
                 setFlows((arr) => arr.map((f) => f.id === flow.id ? { ...f, status: next ? "active" : "paused" } : f));
                 try {
                   await api(`/api/flows/${flow.id}`, { method: "PATCH", body: JSON.stringify({ active: next }) });
-                  pushToast(next ? "Flow resumed." : "Flow paused.");
+                  pushToast(next ? t`Flow resumed.` : t`Flow paused.`);
                 } catch (e) {
                   pushToast((e as Error).message);
                 }
@@ -188,15 +190,15 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
               <Button variant="outline" size="sm" icon={I.Zap} onClick={async () => {
                 try {
                   await api(`/api/flows/${flow.id}/run`, { method: "POST", body: JSON.stringify({}) });
-                  pushToast("Test run dispatched.");
+                  pushToast(t`Test run dispatched.`);
                   // Manual run is synchronous server-side — the activity row
                   // exists by the time POST resolves, so refetch right away.
                   setRefreshNonce((n) => n + 1);
                 } catch (e) {
                   pushToast((e as Error).message);
                 }
-              }}>Run now</Button>
-              <Button variant="primary" size="sm" icon={I.Pencil} onClick={() => openBuilder(flow)}>Edit flow</Button>
+              }}><Trans>Run now</Trans></Button>
+              <Button variant="primary" size="sm" icon={I.Pencil} onClick={() => openBuilder(flow)}><Trans>Edit flow</Trans></Button>
             </div>
           </div>
 
@@ -243,6 +245,7 @@ function describeOpShort(op: any): string {
 }
 
 function FlowPreview({ trigger, operations, onEdit }: { trigger: string; operations: any[]; onEdit: () => void }) {
+  const { t } = useLingui();
   const opKind = (op: any) => (op?.type === "condition" ? "condition" : "action");
   const visible = operations.slice(0, 3);
   const overflow = Math.max(0, operations.length - visible.length);
@@ -286,12 +289,12 @@ function FlowPreview({ trigger, operations, onEdit }: { trigger: string; operati
             color: "var(--muted-foreground)",
           }}
         >
-          +{overflow} more
+          +{overflow} <Trans>more</Trans>
         </div>
       )}
       {operations.length === 0 && (
         <div style={{ position: "absolute", left: X0 + NODE_W + 24, top: Y + 12, fontSize: 12, color: "var(--muted-foreground)" }}>
-          No actions yet — click to add steps.
+          <Trans>No actions yet — click to add steps.</Trans>
         </div>
       )}
       <div
@@ -310,7 +313,7 @@ function FlowPreview({ trigger, operations, onEdit }: { trigger: string; operati
           gap: 6,
         }}
       >
-        <I.Pencil size={11} /> Click to edit
+        <I.Pencil size={11} /> <Trans>Click to edit</Trans>
       </div>
     </div>
   );
@@ -332,6 +335,7 @@ function FlowStatCard({
   refreshNonce: number;
   onRunCount?: (flowId: string, runs: number) => void;
 }) {
+  const { t } = useLingui();
   const [stats, setStats] = useState<{ lastRun: string; success: string; failures24h: number }>({
     lastRun: "—", success: "—", failures24h: 0,
   });
@@ -383,9 +387,9 @@ function FlowStatCard({
   );
   return (
     <>
-      {tile("Last run", stats.lastRun, true)}
-      {tile("Success rate", stats.success, stats.failures24h === 0)}
-      {tile("Failures (24h)", String(stats.failures24h), stats.failures24h === 0)}
+      {tile(t`Last run`, stats.lastRun, true)}
+      {tile(t`Success rate`, stats.success, stats.failures24h === 0)}
+      {tile(t`Failures (24h)`, String(stats.failures24h), stats.failures24h === 0)}
     </>
   );
 }

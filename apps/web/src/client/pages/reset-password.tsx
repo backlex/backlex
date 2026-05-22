@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AlertTriangleIcon } from "lucide-react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@workeros/ui/components/input";
 import { Label } from "@workeros/ui/components/label";
 import { Button } from "@workeros/ui/components/button";
@@ -21,6 +22,7 @@ interface ResetPasswordClient {
 }
 
 export const ResetPassword = () => {
+  const { t } = useLingui();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const token = params.get("token");
@@ -37,30 +39,30 @@ export const ResetPassword = () => {
     e.preventDefault();
     if (!token) return;
     if (password.length < 8) {
-      notifyError("Password must be at least 8 characters");
+      notifyError(t`Password must be at least 8 characters`);
       return;
     }
     if (password !== confirm) {
-      notifyError("Passwords do not match");
+      notifyError(t`Passwords do not match`);
       return;
     }
     setBusy(true);
     try {
       const c = auth as unknown as ResetPasswordClient;
       if (!c.resetPassword) {
-        notifyError("Password reset is not enabled on this instance");
+        notifyError(t`Password reset is not enabled on this instance`);
         setBusy(false);
         return;
       }
       const res = await c.resetPassword({ newPassword: password, token });
       if (res?.error) {
-        notifyError(res.error.message ?? "Failed to reset password");
+        notifyError(res.error.message ?? t`Failed to reset password`);
         setBusy(false);
         return;
       }
       navigate("/sign-in", { replace: true });
     } catch (err) {
-      notifyError(err, "Resetting password");
+      notifyError(err, t`Resetting password`);
     } finally {
       setBusy(false);
     }
@@ -70,8 +72,8 @@ export const ResetPassword = () => {
     <AuthShell mode="forgot">
       <AuthCard>
         <AuthCardHeader
-          title="Choose a new password"
-          description="Set a new password for your account — at least 8 characters."
+          title={<Trans>Choose a new password</Trans>}
+          description={<Trans>Set a new password for your account — at least 8 characters.</Trans>}
         />
 
         {linkInvalid ? (
@@ -79,19 +81,19 @@ export const ResetPassword = () => {
             <div className="grid size-9 place-items-center rounded-full bg-destructive text-destructive-foreground">
               <AlertTriangleIcon size={18} />
             </div>
-            <div className="text-sm font-medium">Reset link invalid</div>
+            <div className="text-sm font-medium"><Trans>Reset link invalid</Trans></div>
             <div className="text-[12.5px] text-muted-foreground">
-              This password reset link is missing its token or has expired.
-              Request a new one and try again.
+              <Trans>This password reset link is missing its token or has expired.
+              Request a new one and try again.</Trans>
             </div>
             <Button asChild type="button" variant="ghost" size="sm" className="self-start">
-              <Link to="/forgot">Request a new link</Link>
+              <Link to="/forgot"><Trans>Request a new link</Trans></Link>
             </Button>
           </div>
         ) : (
           <form className="space-y-4" onSubmit={submit}>
             <div className="space-y-1.5">
-              <Label htmlFor="password">New password</Label>
+              <Label htmlFor="password"><Trans>New password</Trans></Label>
               <Input
                 id="password"
                 type="password"
@@ -105,7 +107,7 @@ export const ResetPassword = () => {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="confirm">Confirm password</Label>
+              <Label htmlFor="confirm"><Trans>Confirm password</Trans></Label>
               <Input
                 id="confirm"
                 type="password"
@@ -119,7 +121,7 @@ export const ResetPassword = () => {
             </div>
 
             <AuthSubmit type="submit" disabled={busy}>
-              {busy ? "Saving…" : "Set new password"}
+              {busy ? <Trans>Saving…</Trans> : <Trans>Set new password</Trans>}
             </AuthSubmit>
           </form>
         )}
@@ -129,7 +131,7 @@ export const ResetPassword = () => {
             to="/sign-in"
             className="font-medium text-foreground hover:underline"
           >
-            ← Back to sign in
+            <Trans>← Back to sign in</Trans>
           </Link>
         </p>
       </AuthCard>

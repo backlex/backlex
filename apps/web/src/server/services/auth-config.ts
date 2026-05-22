@@ -3,6 +3,7 @@ import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { Env } from "../env";
 import { userCount, type DbCtx } from "./seed";
+import { loadAppSettings } from "./settings";
 
 /**
  * Tenant id of the instance-wide `auth_config` row — the fallback used when a
@@ -56,6 +57,12 @@ export interface ResolvedAuthSurface {
    *  provisioned as admin. Lets the client show the "claim instance" copy
    *  only when it actually applies (server-validated, not query-param). */
   firstUserMode: boolean;
+  /** Admin-customised copy for the sign-in screen's brand panel. Empty
+   *  strings mean the client should fall back to its built-in default. */
+  branding: {
+    signInHeadline: string;
+    signInTagline: string;
+  };
 }
 
 interface StoredAuthConfigRow {
@@ -239,10 +246,15 @@ export const resolveAuthSurface = async (
   } catch {
     firstUserMode = true;
   }
+  const settings = await loadAppSettings(ctx.db, ctx.dialect, tenantId ?? null);
   return {
     tenantId: tenantId ?? null,
     providers,
     policy: { openSignup: true, requireEmailVerification: true, ...policy },
     firstUserMode,
+    branding: {
+      signInHeadline: settings.signInHeadline,
+      signInTagline: settings.signInTagline,
+    },
   };
 };

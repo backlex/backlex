@@ -8,6 +8,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { loadAppSettings } from "../services/settings";
+import { timeZoneCode } from "../lib/locale";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.appSettings : sqlite.schema.appSettings;
@@ -39,6 +40,9 @@ const SettingsInput = z
     openSignup: z.boolean().optional(),
     i18nLocales: z.array(LocaleCode).min(1).max(50).optional(),
     i18nDefaultLocale: LocaleCode.optional(),
+    /** Workspace default IANA time zone — applied to users with no personal
+     *  `users.timezone` set. */
+    timezone: timeZoneCode.optional(),
   })
   .strict()
   .refine(
@@ -58,6 +62,7 @@ const SettingsRow = z
     openSignup: z.boolean().optional(),
     i18nLocales: z.array(z.string()).optional(),
     i18nDefaultLocale: z.string().nullable().optional(),
+    timezone: z.string().optional(),
     appUrl: z.string(),
     emailFrom: z.string().nullable(),
   })

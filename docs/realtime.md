@@ -1,7 +1,9 @@
 # Realtime
 
-Permission-aware change feed over Server-Sent Events (Bun, Vercel,
-Netlify) or WebSockets via Durable Objects (Cloudflare Workers).
+Permission-aware change feed over Server-Sent Events. **The client
+transport is always SSE (`EventSource`)** — on Cloudflare Workers the
+route bridges an internal Durable Object WebSocket into an SSE
+response, so admin / SDK code never speaks raw WebSocket.
 
 ## Channels
 
@@ -9,11 +11,17 @@ Netlify) or WebSockets via Durable Objects (Cloudflare Workers).
 |---------------------|---------------|--------------|--------------------------------------------------------|
 | `items:<slug>`      | session/key   | yes          | `created`/`updated`/`deleted` for the collection       |
 | `collections`       | admin only    | yes          | Schema events                                          |
+| `presence:<name>`   | signed-in     | no           | Roster of currently connected members on the channel   |
 | anything else       | none          | no           | Free-form pub/sub (back-compat)                        |
 
-System channels (`items:*`, `collections`) reject external publish —
-events come from the API itself when CRUD routes fire. Free-form
-channels accept any payload via `POST /api/realtime/<channel>/publish`.
+System channels (`items:*`, `collections`, `presence:*`) reject external
+publish — events come from the API itself when CRUD routes fire (or, for
+presence, on join/leave). Free-form channels accept any payload via
+`POST /api/realtime/<channel>/publish`; that endpoint is rate-limited
+per `(channel, ip)`. Admins can also call
+`POST /api/realtime/items:<slug>/test-publish` to inject a synthetic
+`{event,data}` for verifying per-subscriber filtering — no webhook /
+flow / function side-effects fire.
 
 ## Subscribing
 
@@ -68,16 +76,23 @@ permission means subscribe rejects with 401).
 
 ## Hosting matrix
 
-| Host               | Transport          | Notes                                                       |
-|--------------------|--------------------|-------------------------------------------------------------|
-| Bun (self-host)    | SSE                | In-process `Map<channel, Set<Subscriber>>`. Pub/sub stays in one process — fine for single-instance deploys. |
-| Cloudflare Workers | WebSocket via DO   | `RealtimeRoom` Durable Object holds connections; the API forwards publishes via stub. |
-| Vercel Edge        | SSE                | Single-instance: each edge function invocation gets its own Map; multi-region replicas don't share. **Single-region deploys only** if you need fan-out. |
-| Netlify Edge       | SSE                | Same caveat as Vercel.                                      |
+| Host               | Client transport   | Server fan-out                                                                                                  |
+|--------------------|--------------------|------------------------------------------------------------------------------------------------------------------|
+| Bun (self-host)    | SSE                | In-process `Map<channel, Set<Subscriber>>` + a bounded per-channel ring buffer for replay. Single-instance only. |
+| Cloudflare Workers | SSE                | SSE response bridged into the `RealtimeRoom` Durable Object (WebSocket Hibernation API; `seq` + recent-event log persisted in `state.storage`). |
+| Vercel Edge        | SSE                | Single-instance: each edge function invocation gets its own Map; multi-region replicas don't share.              |
+| Netlify Edge       | SSE                | Same caveat as Vercel.                                                                                            |
 
-For multi-region/multi-process realtime on Vercel/Netlify, plug a Pub/Sub
-backend (Redis, NATS, Cloudflare DO + service-to-service) — not yet
-shipped.
+The server still chooses different fan-out paths under the hood (in-proc
+Map on Bun, Durable Object on Workers), but every subscriber sees the
+same SSE wire format: `data:` frames carrying JSON, `id:` carrying a
+monotonic per-channel `seq`, `: ping` keep-alives every 25 s.
+Reconnecting clients with `Last-Event-ID` replay the gap (bounded ring
+buffer on Bun, `storage`-backed log on the DO).
+
+For multi-region / multi-process realtime on Vercel / Netlify, plug a
+Pub/Sub backend (Redis, NATS, Cloudflare DO + service-to-service) — not
+yet shipped.
 
 ## Bun SSE: queue + flush gotcha
 
@@ -97,6 +112,23 @@ curl -X POST /api/realtime/team-chat/publish \
   -d '{"text":"hello"}'
 ```
 
-Free-form channel names (anything that doesn't start with `items:` or
-isn't `collections`) are open — no auth, no filter. Useful for chat-like
-or notification fan-out where you don't need a permission-bound feed.
+Free-form channel names (anything not under `items:*`, `collections`, or
+`presence:*`) are open — no auth, no filter. Useful for chat-like or
+notification fan-out where you don't need a permission-bound feed.
+Publishes are rate-limited per `(channel, ip)` via `lib/rate-limit.ts`.
+
+## Presence channels (`presence:*`)
+
+Any signed-in user can `GET /api/realtime/presence:<name>/subscribe`.
+The server tracks who is currently subscribed to that channel and
+broadcasts the roster on each join / leave. There is no external
+publish endpoint; the server is the only writer.
+
+```ts
+const es = new EventSource("/api/realtime/presence:room-42/subscribe", {
+  withCredentials: true,
+});
+es.addEventListener("message", (ev) => {
+  const e = JSON.parse(ev.data); // { event: "presence", data: { members: [...] } }
+});
+```

@@ -75,3 +75,54 @@ export const loadAppSettings = async (
     return { ...APP_SETTINGS_DEFAULTS };
   }
 };
+
+/**
+ * Login-screen branding — the headline/tagline shown on the public sign-in
+ * page. Unlike {@link AppSettings} these are **instance-global**, not
+ * per-workspace: the sign-in page is reached before any workspace is selected,
+ * so there is no active tenant to scope them to. They live on the
+ * `app_settings` row with a NULL `tenant_id` (the global-settings row).
+ */
+export interface SignInBranding {
+  /** Custom headline; empty string = use the client's built-in default. */
+  signInHeadline: string;
+  /** Custom tagline; empty string = use the client's built-in default. */
+  signInTagline: string;
+}
+
+export const SIGN_IN_BRANDING_DEFAULTS: SignInBranding = {
+  signInHeadline: "",
+  signInTagline: "",
+};
+
+/** Keys persisted by {@link SignInBranding}. The settings route consults this
+ *  to route these keys to the global (`tenant_id IS NULL`) row on write. */
+export const SIGN_IN_BRANDING_KEYS = [
+  "signInHeadline",
+  "signInTagline",
+] as const;
+
+/** Read the instance-global login-screen branding (always the
+ *  `tenant_id IS NULL` row, regardless of any active workspace). */
+export const loadSignInBranding = async (
+  db: PgDb | SqliteDb,
+  dialect: "pg" | "sqlite",
+): Promise<SignInBranding> => {
+  const t = tableFor(dialect);
+  const out: SignInBranding = { ...SIGN_IN_BRANDING_DEFAULTS };
+  try {
+    const rows = (await (db as any)
+      .select()
+      .from(t)
+      .where(isNull(t.tenantId))) as { key: string; value: unknown }[];
+    for (const r of rows) {
+      if (r.key === "signInHeadline" && typeof r.value === "string")
+        out.signInHeadline = r.value;
+      else if (r.key === "signInTagline" && typeof r.value === "string")
+        out.signInTagline = r.value;
+    }
+  } catch {
+    // Pre-migration deploy (table missing) — fall back to empty defaults.
+  }
+  return out;
+};

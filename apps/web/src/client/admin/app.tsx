@@ -82,6 +82,8 @@ const TAB_COUNT_CLS =
   "rounded-sm border border-border bg-muted px-[5px] py-px font-mono text-[11px] text-muted-foreground";
 import { AccountPage } from "./account-page";
 import { PreferencesProvider } from "./preferences";
+import { AdminLocaleSync } from "./i18n";
+import { Trans } from "@lingui/react/macro";
 import { GraphqlPage } from "@/pages/graphql";
 import { RestExplorerPage } from "@/pages/rest-explorer";
 import { OpenApiExportPage } from "@/pages/openapi-export";
@@ -651,6 +653,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
 
   return (
     <PreferencesProvider>
+    <AdminLocaleSync />
     <SidebarProvider
       open={!tweaks.sidebarCollapsed}
       onOpenChange={(o) => setTweak("sidebarCollapsed", !o)}
@@ -770,7 +773,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
               <CollectionItemsSkeleton />
             )}
             {activeNav === "collections" && activeCollection && !(collectionLoading && schemaState.slug !== activeCollection) && <>
-              <Button variant="ghost" size="sm" icon={I.ChevronLeft} onClick={() => setActiveCollection(null)}>All collections</Button>
+              <Button variant="ghost" size="sm" icon={I.ChevronLeft} onClick={() => setActiveCollection(null)}><Trans>All collections</Trans></Button>
               <PageHeader
                 slug={activeCollection}
                 description={<>Dynamic schema. Each collection becomes a physical <span className="font-mono">c_&lt;slug&gt;</span> table at runtime; drop or alter via this UI.</>}

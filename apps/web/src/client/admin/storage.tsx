@@ -1,6 +1,7 @@
 // @ts-nocheck
 // Storage page — preview, batch upload progress, ACL, file detail modal
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "./icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
 import { Input } from "@workeros/ui/components/input";
@@ -90,6 +91,7 @@ interface UploadJob {
 const PAGE_SIZE = 50;
 
 export function StoragePage({ pushToast }: { pushToast: (msg: string) => void }) {
+  const { t } = useLingui();
   const [folders, setFolders] = useState<StoredFolder[]>([]);
   const [files, setFiles] = useState<StoredFile[]>([]);
   const [filesTotal, setFilesTotal] = useState(0);
@@ -374,12 +376,12 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
           if (j?.error?.message) msg = j.error.message;
         } catch { /* keep status line */ }
         setUploads((arr) => arr.map((u) => (u.id === id ? { ...u, status: "failed", error: msg, xhr: undefined } : u)));
-        pushToast?.(`${f.name}: ${msg}`);
+        pushToast?.(t`${f.name}: ${msg}`);
       }
     });
     xhr.addEventListener("error", () => {
-      setUploads((arr) => arr.map((u) => (u.id === id ? { ...u, status: "failed", error: "network error", xhr: undefined } : u)));
-      pushToast?.(`${f.name}: network error`);
+      setUploads((arr) => arr.map((u) => (u.id === id ? { ...u, status: "failed", error: t`network error`, xhr: undefined } : u)));
+      pushToast?.(t`${f.name}: network error`);
     });
     xhr.addEventListener("abort", () => {
       setUploads((arr) => arr.filter((u) => u.id !== id));
@@ -401,7 +403,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
     const target = folder || "uploads";
     const jobs = list.map((f, i) => startUpload(f, target, i));
     setUploads((arr) => [...jobs, ...arr.filter((u) => u.status === "uploading")]);
-    pushToast(`${jobs.length} file${jobs.length === 1 ? "" : "s"} queued for ${target}/.`);
+    pushToast(t`${jobs.length} ${jobs.length === 1 ? "file" : "files"} queued for ${target}/.`);
   };
 
   /** Cancel an in-flight upload — aborts the XHR; the abort handler clears
@@ -432,7 +434,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
     if (!raw) return;
     const clean = raw.toLowerCase().replace(/[^a-z0-9_-]/g, "_");
     if (folders.some((f) => f.name === clean)) {
-      pushToast(`Folder "${clean}" already exists.`);
+      pushToast(t`Folder "${clean}" already exists.`);
       return;
     }
     setNewFolderBusy(true);
@@ -442,7 +444,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         body: JSON.stringify({ name: clean }),
       });
       setFolders((arr) => [...arr, { id: res.data.id, name: clean, count: 0, public: false }]);
-      pushToast(`Folder "${clean}" created.`);
+      pushToast(t`Folder "${clean}" created.`);
       setNewFolderOpen(false);
     } catch (e) {
       pushToast((e as Error).message);
@@ -454,7 +456,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
   const submitImportUrl = async () => {
     const url = importUrl.trim();
     if (!url) {
-      setImportError("URL is required.");
+      setImportError(t`URL is required.`);
       return;
     }
     setImportBusy(true);
@@ -488,7 +490,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         ...fs,
       ]);
       setFilesTotal((n) => n + 1);
-      pushToast(`Imported ${res.data.key.split("/").pop() ?? res.data.key}.`);
+      pushToast(t`Imported ${res.data.key.split("/").pop() ?? res.data.key}.`);
       setImportUrlOpen(false);
       void refreshCounts();
     } catch (e) {
@@ -506,7 +508,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         method: "PATCH",
         body: JSON.stringify({ acl: next }),
       });
-      pushToast(`${key} → ${next}.`);
+      pushToast(t`${key} → ${next}.`);
     } catch (e) {
       // revert on failure
       setFiles((arr) => arr.map((f) => f.key === key ? { ...f, acl: next === "public" ? "private" : "public" } : f));
@@ -570,7 +572,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
     if (selectedKey === key) { setSelectedKey(null); setDetailOpen(false); }
     try {
       await api(`/api/storage/${encodeURIComponent(key)}`, { method: "DELETE" });
-      pushToast(`${key} deleted.`);
+      pushToast(t`${key} deleted.`);
       void refreshCounts();
     } catch (e) {
       pushToast((e as Error).message);
@@ -590,15 +592,15 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
   return (
     <div className="flex flex-col gap-[18px]" onDragOver={(e) => { e.preventDefault(); setDragOver(true); }} onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false); }} onDrop={onDrop}>
       <PageHeader
-        title="Storage"
-        description={<>Adapter auto-selected: R2 binding → R2; S3 env vars → S3; else local filesystem (Bun dev). Public folders are served at <span className="font-mono">/storage/&lt;key&gt;</span>; private require a signed URL.</>}
+        title={<Trans>Storage</Trans>}
+        description={<Trans>Adapter auto-selected: R2 binding → R2; S3 env vars → S3; else local filesystem (Bun dev). Public folders are served at <span className="font-mono">/storage/&lt;key&gt;</span>; private require a signed URL.</Trans>}
         badges={<span className="ml-1 inline-flex gap-1.5">
-          <Badge variant="outline" mono>{folderCounts.total} files</Badge>
+          <Badge variant="outline" mono><Trans>{folderCounts.total} files</Trans></Badge>
         </span>}
         actions={<>
-          <Button variant="outline" icon={I.Folder} onClick={openNewFolder}>New folder</Button>
-          <Button variant="outline" icon={I.Globe} onClick={() => { setImportUrlOpen(true); setImportUrl(""); setImportKey(""); setImportError(null); }}>Import URL</Button>
-          <Button variant="primary" icon={I.Plus} onClick={() => fileInputRef.current?.click()}>Upload</Button>
+          <Button variant="outline" icon={I.Folder} onClick={openNewFolder}><Trans>New folder</Trans></Button>
+          <Button variant="outline" icon={I.Globe} onClick={() => { setImportUrlOpen(true); setImportUrl(""); setImportKey(""); setImportError(null); }}><Trans>Import URL</Trans></Button>
+          <Button variant="primary" icon={I.Plus} onClick={() => fileInputRef.current?.click()}><Trans>Upload</Trans></Button>
           <input ref={fileInputRef} type="file" multiple className="hidden" onChange={(e) => queueUploads(Array.from(e.target.files || []))} />
         </>}
       />
@@ -621,10 +623,10 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         </div>
         <div className="flex min-w-0 flex-col gap-0.5">
           <div className="text-[13.5px] font-medium">
-            Drop files to upload — or <span className="text-primary underline [text-decoration-thickness:1px] underline-offset-2">browse</span>
+            <Trans>Drop files to upload — or <span className="text-primary underline [text-decoration-thickness:1px] underline-offset-2">browse</span></Trans>
           </div>
           <div className="text-xs text-muted-foreground">
-            Target folder: <span className="font-mono text-foreground">{folder || "uploads"}/</span> · max 100 MB per file · jpeg, png, webp, avif transformed on the fly
+            <Trans>Target folder: <span className="font-mono text-foreground">{folder || "uploads"}/</span> · max 100 MB per file · jpeg, png, webp, avif transformed on the fly</Trans>
           </div>
         </div>
         <div className="flex-1" />
@@ -636,12 +638,12 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
           <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
             <I.Activity size={14} />
-            <span className="text-[13px] font-medium">Uploads</span>
+            <span className="text-[13px] font-medium"><Trans>Uploads</Trans></span>
             <span className="font-mono text-[11.5px] text-muted-foreground">
-              {uploads.filter((u) => u.status === "done").length} / {uploads.length} complete
+              <Trans>{uploads.filter((u) => u.status === "done").length} / {uploads.length} complete</Trans>
             </span>
             <div className="flex-1" />
-            <Button variant="ghost" size="sm" onClick={() => setUploads((arr) => arr.filter((u) => u.status === "uploading"))}>Clear done</Button>
+            <Button variant="ghost" size="sm" onClick={() => setUploads((arr) => arr.filter((u) => u.status === "uploading"))}><Trans>Clear done</Trans></Button>
           </div>
           <div className="flex max-h-[180px] flex-col gap-2 overflow-auto px-3.5 py-2">
             {uploads.map((u) => {
@@ -676,7 +678,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                   </div>
                   <span className="text-right text-[11.5px] tabular-nums text-muted-foreground">{fmtSize(u.size)}</span>
                   <span className="text-right text-[11.5px] tabular-nums" style={{ color: pctColor }}>
-                    {isFailed ? "failed" : `${Math.round(u.progress)}%`}
+                    {isFailed ? <Trans>failed</Trans> : `${Math.round(u.progress)}%`}
                   </span>
                   {isUploading ? (
                     <ShadButton
@@ -684,8 +686,8 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                       variant="ghost"
                       size="icon-xs"
                       onClick={() => cancelUpload(u.id)}
-                      title="Cancel upload"
-                      aria-label="Cancel upload"
+                      title={t`Cancel upload`}
+                      aria-label={t`Cancel upload`}
                       className="text-muted-foreground hover:text-foreground"
                     >
                       <I.X size={12} />
@@ -703,10 +705,10 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
       <div className="flex flex-wrap items-center gap-2">
         <InputGroup>
           <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
-          <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search keys…" />
+          <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t`Search keys…`} />
         </InputGroup>
         <span className="font-mono text-[11.5px] text-muted-foreground">
-          {folder ? <>in <span className="text-foreground">{folder}/</span></> : "all folders"} · {filesTotal} files{filesTotal > files.length ? <> · showing {files.length}</> : null}
+          {folder ? <Trans>in <span className="text-foreground">{folder}/</span></Trans> : <Trans>all folders</Trans>} · {filesTotal} <Trans>files</Trans>{filesTotal > files.length ? <> · <Trans>showing {files.length}</Trans></> : null}
         </span>
         <div className="flex-1" />
         {(["grid", "list"] as const).map((v) => (
@@ -718,7 +720,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
             }`}
             onClick={() => setView(v)}
           >
-            {v === "grid" ? <I.Braces size={12} /> : <I.Inbox size={12} />} {v === "grid" ? "Grid" : "List"}
+            {v === "grid" ? <I.Braces size={12} /> : <I.Inbox size={12} />} {v === "grid" ? <Trans>Grid</Trans> : <Trans>List</Trans>}
           </button>
         ))}
       </div>
@@ -727,15 +729,15 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         <div className="sticky top-3 flex max-h-[calc(100vh-160px)] flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground max-[900px]:static max-[900px]:max-h-none">
           <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
             <I.Folder size={13} />
-            <span className="text-[12.5px] font-medium">Folders</span>
+            <span className="text-[12.5px] font-medium"><Trans>Folders</Trans></span>
             <span className="text-[11px] tabular-nums text-muted-foreground">{folders.length}</span>
             <div className="flex-1" />
-            <IconButton icon={I.Plus} title="New folder" onClick={openNewFolder} />
+            <IconButton icon={I.Plus} title={t`New folder`} onClick={openNewFolder} />
           </div>
           <div className="border-b border-border px-2.5 pb-1.5 pt-2">
             <InputGroup className="h-8">
               <InputGroupAddon><I.Search size={12} /></InputGroupAddon>
-              <InputGroupInput value={folderQuery} onChange={(e) => setFolderQuery(e.target.value)} placeholder="Filter folders…" className="text-xs" />
+              <InputGroupInput value={folderQuery} onChange={(e) => setFolderQuery(e.target.value)} placeholder={t`Filter folders…`} className="text-xs" />
             </InputGroup>
           </div>
           <div className="flex-1 overflow-y-auto px-1.5 pb-2 pt-1.5 max-[900px]:max-h-[320px]">
@@ -747,14 +749,14 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
               onClick={() => setFolder(null)}
             >
               <I.Inbox size={12} />
-              <span>All files</span>
+              <span><Trans>All files</Trans></span>
               <span className={`ml-auto text-[11px] tabular-nums ${folder == null ? "text-foreground" : "text-muted-foreground"}`}>{folderCounts.total}</span>
             </button>
             {folderTreeFiltered.length === 0 && (
               <div className="px-2.5 py-3 text-[11.5px] text-muted-foreground">
                 {folders.length === 0
-                  ? <>No folders yet. <button type="button" onClick={openNewFolder} className="cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-primary underline">Create one</button>.</>
-                  : "No folders match."}
+                  ? <Trans>No folders yet. <button type="button" onClick={openNewFolder} className="cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-primary underline">Create one</button>.</Trans>
+                  : <Trans>No folders match.</Trans>}
               </div>
             )}
             {folderTreeFiltered.map((node: any) => {
@@ -770,7 +772,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                   style={{ paddingLeft: 8 + node.depth * 14 }}
                 >
                   {hasKids ? (
-                    <button type="button" className="inline-flex size-3.5 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); toggleCollapse(node.path); }} aria-label="Toggle">
+                    <button type="button" className="inline-flex size-3.5 shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0 text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); toggleCollapse(node.path); }} aria-label={t`Toggle`}>
                       <I.ChevronRight size={11} className={`transition-transform duration-100 ${isOpen ? "rotate-90" : ""}`} />
                     </button>
                   ) : (
@@ -802,7 +804,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
               )}
               {visible.length === 0 && !filesLoading && (
                 <div className="col-span-full p-9 text-center text-[13px] text-muted-foreground">
-                  No files. Drop files anywhere on this page or use Upload.
+                  <Trans>No files. Drop files anywhere on this page or use Upload.</Trans>
                 </div>
               )}
               {visible.map((f) => (
@@ -814,7 +816,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                   onCopyUrl={(k) => {
                     const url = window.location.origin + "/api/storage/" + encodeURI(k);
                     navigator.clipboard?.writeText(url);
-                    pushToast("URL copied: " + (k.split("/").pop() ?? k));
+                    pushToast(t`URL copied: ${k.split("/").pop() ?? k}`);
                   }}
                 />
               ))}
@@ -831,11 +833,11 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
             <Table className={ADMIN_TABLE_CLS}>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Key</TableHead>
-                  <TableHead className="w-[90px]">Type</TableHead>
-                  <TableHead className="w-[80px]">ACL</TableHead>
-                  <TableHead className="w-[90px] text-right">Size</TableHead>
-                  <TableHead className="w-[100px]">Updated</TableHead>
+                  <TableHead><Trans>Key</Trans></TableHead>
+                  <TableHead className="w-[90px]"><Trans>Type</Trans></TableHead>
+                  <TableHead className="w-[80px]"><Trans>ACL</Trans></TableHead>
+                  <TableHead className="w-[90px] text-right"><Trans>Size</Trans></TableHead>
+                  <TableHead className="w-[100px]"><Trans>Updated</Trans></TableHead>
                   <TableHead className="sticky right-0 w-[60px] bg-card" />
                 </TableRow>
               </TableHeader>
@@ -872,7 +874,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                     <TableCell className="text-right tabular-nums">{fmtSize(f.size)}</TableCell>
                     <TableCell className="font-mono text-[11.5px] text-muted-foreground">{f.updated}</TableCell>
                     <TableCell className="sticky right-0 bg-card text-right" onClick={(e) => e.stopPropagation()}>
-                      <IconButton icon={I.Trash} title="Delete" onClick={() => deleteFile(f.key)} />
+                      <IconButton icon={I.Trash} title={t`Delete`} onClick={() => deleteFile(f.key)} />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -901,7 +903,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
           onPatch={(next) => patchFile(selected.key, next)}
           onToggleACL={() => toggleACL(selected.key)}
           onDelete={() => deleteFile(selected.key)}
-          onCopy={(text: string) => { navigator.clipboard?.writeText(text); pushToast("Copied to clipboard."); }}
+          onCopy={(text: string) => { navigator.clipboard?.writeText(text); pushToast(t`Copied to clipboard.`); }}
           onClose={() => setDetailOpen(false)}
           pushToast={pushToast}
         />
@@ -911,9 +913,9 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         <Dialog open onOpenChange={(o) => { if (!o && !newFolderBusy) setNewFolderOpen(false); }}>
           <DialogContent className="w-[min(440px,92vw)] gap-4">
             <DialogHeader className="pr-12 text-left">
-              <DialogTitle className="text-base font-semibold tracking-[-0.01em]">New folder</DialogTitle>
+              <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>New folder</Trans></DialogTitle>
               <DialogDescription className="text-[13px] leading-normal">
-                Lowercase letters, digits, <span className="font-mono">_</span> and <span className="font-mono">-</span>. Use <span className="font-mono">/</span> in the name to nest under an existing folder.
+                <Trans>Lowercase letters, digits, <span className="font-mono">_</span> and <span className="font-mono">-</span>. Use <span className="font-mono">/</span> in the name to nest under an existing folder.</Trans>
               </DialogDescription>
             </DialogHeader>
             <Input
@@ -924,14 +926,14 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                 if (e.key === "Enter") { e.preventDefault(); void submitNewFolder(); }
                 if (e.key === "Escape") { e.preventDefault(); setNewFolderOpen(false); }
               }}
-              placeholder="drafts"
+              placeholder={t`drafts`}
               disabled={newFolderBusy}
               autoFocus
             />
             <DialogFooter>
-              <Button variant="ghost" size="sm" onClick={() => setNewFolderOpen(false)} disabled={newFolderBusy}>Cancel</Button>
+              <Button variant="ghost" size="sm" onClick={() => setNewFolderOpen(false)} disabled={newFolderBusy}><Trans>Cancel</Trans></Button>
               <Button variant="primary" size="sm" onClick={submitNewFolder} disabled={newFolderBusy || !newFolderName.trim()}>
-                {newFolderBusy ? "Creating…" : "Create folder"}
+                {newFolderBusy ? <Trans>Creating…</Trans> : <Trans>Create folder</Trans>}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -942,14 +944,14 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         <Dialog open onOpenChange={(o) => { if (!o && !importBusy) setImportUrlOpen(false); }}>
           <DialogContent className="w-[min(440px,92vw)] gap-4">
             <DialogHeader className="pr-12 text-left">
-              <DialogTitle className="text-base font-semibold tracking-[-0.01em]">Import from URL</DialogTitle>
+              <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Import from URL</Trans></DialogTitle>
               <DialogDescription className="text-[13px] leading-normal">
-                Server fetches the URL and stores it in this workspace. http/https only — private/internal hosts are rejected.
+                <Trans>Server fetches the URL and stores it in this workspace. http/https only — private/internal hosts are rejected.</Trans>
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-2.5">
               <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Source URL</label>
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Source URL</Trans></label>
                 <Input
                   value={importUrl}
                   onChange={(e) => { setImportUrl(e.target.value); setImportError(null); }}
@@ -964,16 +966,16 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
-                  Save as <span className="text-[11px] text-muted-foreground">(optional)</span>
+                  <Trans>Save as <span className="text-[11px] text-muted-foreground">(optional)</span></Trans>
                 </label>
                 <Input
                   value={importKey}
                   onChange={(e) => setImportKey(e.target.value)}
-                  placeholder={folder ? `${folder}/<derived>` : "Defaults to the URL's filename"}
+                  placeholder={folder ? t`${folder}/<derived>` : t`Defaults to the URL's filename`}
                   disabled={importBusy}
                 />
                 <span className="text-[11.5px] text-muted-foreground">
-                  Leave blank to use the URL's last path segment. Slashes auto-create folders ({folder ? <>currently in <span className="font-mono">{folder}/</span></> : "root by default"}).
+                  <Trans>Leave blank to use the URL's last path segment. Slashes auto-create folders ({folder ? <>currently in <span className="font-mono">{folder}/</span></> : <>root by default</>}).</Trans>
                 </span>
               </div>
               {importError && (
@@ -983,9 +985,9 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
               )}
             </div>
             <DialogFooter>
-              <Button variant="ghost" size="sm" onClick={() => setImportUrlOpen(false)} disabled={importBusy}>Cancel</Button>
+              <Button variant="ghost" size="sm" onClick={() => setImportUrlOpen(false)} disabled={importBusy}><Trans>Cancel</Trans></Button>
               <Button variant="primary" size="sm" onClick={submitImportUrl} disabled={importBusy || !importUrl.trim()}>
-                {importBusy ? "Importing…" : "Import"}
+                {importBusy ? <Trans>Importing…</Trans> : <Trans>Import</Trans>}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1065,6 +1067,7 @@ function ImageMock({ hue = 200, focal, style = {} as CSSProperties }: { hue?: nu
 }
 
 function FileTile({ f, active, onSelect, onCopyUrl }: { f: StoredFile; active: boolean; onSelect: () => void; onCopyUrl: (key: string) => void }) {
+  const { t } = useLingui();
   const isImg = Boolean(f.type && f.type.startsWith("image/"));
   const [imgFailed, setImgFailed] = useState(false);
   const sizeStr = f.size > 1024 * 1024 ? (f.size / 1024 / 1024).toFixed(1) + " MB" : (f.size / 1024).toFixed(1) + " KB";
@@ -1114,8 +1117,8 @@ function FileTile({ f, active, onSelect, onCopyUrl }: { f: StoredFile; active: b
             variant="ghost"
             size="icon-xs"
             onClick={(e) => { e.stopPropagation(); onCopyUrl(f.key); }}
-            title="Copy URL"
-            aria-label="Copy URL"
+            title={t`Copy URL`}
+            aria-label={t`Copy URL`}
             className="shrink-0 text-muted-foreground hover:text-foreground"
           >
             <LinkIcon className="size-3" />
@@ -1139,7 +1142,7 @@ function FileDetailModal({ f, onClose, ...rest }: any) {
       <DialogContent className="flex max-h-[min(86vh,720px)] w-[min(720px,92vw)] flex-col gap-0 overflow-hidden p-0">
         <DialogHeader className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <div className="min-w-0 flex-1">
-            <DialogTitle className="text-[14.5px] font-semibold tracking-[-0.01em]">Edit file</DialogTitle>
+            <DialogTitle className="text-[14.5px] font-semibold tracking-[-0.01em]"><Trans>Edit file</Trans></DialogTitle>
             <DialogDescription className="mt-0.5 truncate font-mono text-xs">{f.key}</DialogDescription>
           </div>
         </DialogHeader>
@@ -1152,6 +1155,7 @@ function FileDetailModal({ f, onClose, ...rest }: any) {
 }
 
 function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFmt, fit, setFit, focal, setFocal, folders, onPatch, onToggleACL, onDelete, onCopy, pushToast, embedded }: any) {
+  const { t } = useLingui();
   const fileMeta: FileMetadata = (f.metadata as FileMetadata | null) ?? {};
   // Local edit buffer for the metadata section — flushed to the server via
   // onPatch when the user clicks Save. Re-syncs whenever the underlying
@@ -1195,7 +1199,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
     };
     const ok = await onPatch({ metadata: patch });
     setMetaSaving(false);
-    if (ok) pushToast?.("Metadata saved.");
+    if (ok) pushToast?.(t`Metadata saved.`);
   };
 
   const commitTagDraft = () => {
@@ -1209,7 +1213,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
   const moveToFolder = async (folderId: string | null) => {
     if (!onPatch) return;
     const ok = await onPatch({ folderId });
-    if (ok) pushToast?.(folderId ? "Moved." : "Moved to root.");
+    if (ok) pushToast?.(folderId ? t`Moved.` : t`Moved to root.`);
   };
 
   const url = `/api/storage/${encodeURI(f.key)}`;
@@ -1249,7 +1253,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
       try {
         const res = await fetch(transformedUrl, { method: "HEAD", credentials: "include", cache: "no-store", signal: ctrl.signal });
         if (res.status === 422) {
-          let msg = "Transforms unavailable for this file on this runtime.";
+          let msg = t`Transforms unavailable for this file on this runtime.`;
           try {
             const r2 = await fetch(transformedUrl, { credentials: "include", cache: "no-store", signal: ctrl.signal });
             const j = await r2.json().catch(() => null);
@@ -1321,7 +1325,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
     try {
       const signed = await signOnce(3600);
       onCopy(toAbsolute(withTransformParams(signed)));
-      pushToast?.("Signed URL copied (1h).");
+      pushToast?.(t`Signed URL copied (1h).`);
     } catch (e) {
       pushToast?.((e as Error).message);
     }
@@ -1331,9 +1335,9 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
     <Wrapper {...wrapperProps}>
       {!embedded && (
         <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
-          <span className="text-[13px] font-medium">File detail</span>
+          <span className="text-[13px] font-medium"><Trans>File detail</Trans></span>
           <div className="flex-1" />
-          <IconButton icon={I.Trash} title="Delete" onClick={onDelete} />
+          <IconButton icon={I.Trash} title={t`Delete`} onClick={onDelete} />
         </div>
       )}
 
@@ -1376,23 +1380,23 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
 
       <div className="flex flex-col gap-3 p-3.5 text-[12.5px]">
         <div className="flex flex-col gap-1">
-          <span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Key</span>
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Key</Trans></span>
           <span className="break-all font-mono text-xs">{f.key}</span>
         </div>
 
         <div className="grid grid-cols-3 gap-2.5">
           <div>
-            <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Size</div>
+            <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Size</Trans></div>
             <div className="font-medium tabular-nums">{fmtSize(f.size)}</div>
           </div>
           {isImage && f.w && (
             <div>
-              <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Dim</div>
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Dim</Trans></div>
               <div className="font-mono text-[11.5px] tabular-nums">{f.w}×{f.h}</div>
             </div>
           )}
           <div>
-            <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Updated</div>
+            <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Updated</Trans></div>
             <div className="font-mono text-[11.5px]">{f.updated}</div>
           </div>
         </div>
@@ -1401,9 +1405,9 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
           <div>
             <div className="flex items-center gap-1.5 text-[12.5px] font-medium text-foreground">
               {f.acl === "public" ? <I.Eye size={12} /> : <I.Shield size={12} />}
-              {f.acl === "public" ? "Public" : "Private"}
+              {f.acl === "public" ? <Trans>Public</Trans> : <Trans>Private</Trans>}
             </div>
-            <div className="text-[11.5px] text-muted-foreground">{f.acl === "public" ? "Anyone with the URL can fetch this file." : "Requires a signed URL or auth cookie."}</div>
+            <div className="text-[11.5px] text-muted-foreground">{f.acl === "public" ? <Trans>Anyone with the URL can fetch this file.</Trans> : <Trans>Requires a signed URL or auth cookie.</Trans>}</div>
           </div>
           <Switch checked={f.acl === "public"} onChange={onToggleACL} />
         </div>
@@ -1412,7 +1416,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
         <div className="flex flex-col gap-1.5 border-t border-border pt-3">
           <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
             <span className="flex items-center gap-1.5">
-              <I.Folder size={12} /> Folder
+              <I.Folder size={12} /> <Trans>Folder</Trans>
             </span>
           </label>
           <FolderPicker
@@ -1420,40 +1424,40 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
             value={f.folderId ?? null}
             onChange={(id) => moveToFolder(id)}
           />
-          <span className="text-[11.5px] text-muted-foreground">Logical grouping in the DB. The object's storage key doesn't change.</span>
+          <span className="text-[11.5px] text-muted-foreground"><Trans>Logical grouping in the DB. The object's storage key doesn't change.</Trans></span>
         </div>
 
         {/* Metadata — free-form bag stored in files.metadata jsonb. */}
         <div className="flex flex-col gap-2.5 border-t border-border pt-3">
           <div className="flex items-center gap-2">
             <I.Hash size={13} />
-            <span className="text-xs font-medium uppercase tracking-[0.06em]">Metadata</span>
+            <span className="text-xs font-medium uppercase tracking-[0.06em]"><Trans>Metadata</Trans></span>
             <div className="flex-1" />
-            {metaDirty && <Badge variant="outline" mono>unsaved</Badge>}
+            {metaDirty && <Badge variant="outline" mono><Trans>unsaved</Trans></Badge>}
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Name</label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans></label>
             <Input
               value={metaName}
               onChange={(e) => setMetaName(e.target.value)}
               placeholder={f.key.split("/").pop()}
             />
-            <span className="text-[11.5px] text-muted-foreground">Display label. The storage key stays <span className="font-mono">{f.key}</span>.</span>
+            <span className="text-[11.5px] text-muted-foreground"><Trans>Display label. The storage key stays <span className="font-mono">{f.key}</span>.</Trans></span>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Description</label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Description</Trans></label>
             <Textarea
               value={metaDescription}
               onChange={(e) => setMetaDescription(e.target.value)}
-              placeholder="What this file is about…"
+              placeholder={t`What this file is about…`}
               rows={3}
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Tags</label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Tags</Trans></label>
             <div className="mb-1.5 flex flex-wrap gap-1">
               {metaTags.map((tag) => (
                 <span key={tag} className="inline-flex h-7 items-center gap-1 rounded-3xl border border-border bg-card px-[11px] text-[12.5px] text-foreground">
@@ -1463,15 +1467,15 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
                     variant="ghost"
                     size="icon-xs"
                     onClick={() => setMetaTags(metaTags.filter((t) => t !== tag))}
-                    title="Remove tag"
-                    aria-label={`Remove tag ${tag}`}
+                    title={t`Remove tag`}
+                    aria-label={t`Remove tag ${tag}`}
                     className="size-4 text-muted-foreground hover:text-foreground"
                   >
                     <I.X size={10} />
                   </ShadButton>
                 </span>
               ))}
-              {metaTags.length === 0 && <span className="text-[11.5px] text-muted-foreground">No tags yet.</span>}
+              {metaTags.length === 0 && <span className="text-[11.5px] text-muted-foreground"><Trans>No tags yet.</Trans></span>}
             </div>
             <Input
               value={metaTagDraft}
@@ -1483,25 +1487,25 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
                 }
               }}
               onBlur={commitTagDraft}
-              placeholder="Add a tag and press Enter…"
+              placeholder={t`Add a tag and press Enter…`}
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Author</label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Author</Trans></label>
             <Input
               value={metaAuthor}
               onChange={(e) => setMetaAuthor(e.target.value)}
-              placeholder="Photographer, designer, source…"
+              placeholder={t`Photographer, designer, source…`}
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Location</label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Location</Trans></label>
             <Input
               value={metaLocation}
               onChange={(e) => setMetaLocation(e.target.value)}
-              placeholder="Istanbul, Turkey"
+              placeholder={t`Istanbul, Turkey`}
             />
           </div>
 
@@ -1519,7 +1523,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
               }}
               disabled={!metaDirty || metaSaving}
             >
-              Discard
+              <Trans>Discard</Trans>
             </Button>
             <Button
               size="sm"
@@ -1527,7 +1531,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
               onClick={saveMeta}
               disabled={!metaDirty || metaSaving}
             >
-              {metaSaving ? "Saving…" : "Save metadata"}
+              {metaSaving ? <Trans>Saving…</Trans> : <Trans>Save metadata</Trans>}
             </Button>
           </div>
         </div>
@@ -1537,14 +1541,14 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
             <div className="flex flex-col gap-3 border-t border-border pt-3">
               <div className="flex items-center gap-2">
                 <I.Sliders size={13} />
-                <span className="text-xs font-medium uppercase tracking-[0.06em]">Transform</span>
+                <span className="text-xs font-medium uppercase tracking-[0.06em]"><Trans>Transform</Trans></span>
                 <div className="flex-1" />
-                <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-[11px] text-muted-foreground hover:text-foreground hover:underline" onClick={() => { setW(f.w || 1600); setH(null); setQ(80); setFmt("webp"); setFit("cover"); setFocal({ x: 50, y: 50 }); }}>Reset</button>
+                <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-[11px] text-muted-foreground hover:text-foreground hover:underline" onClick={() => { setW(f.w || 1600); setH(null); setQ(80); setFmt("webp"); setFit("cover"); setFocal({ x: 50, y: 50 }); }}><Trans>Reset</Trans></button>
               </div>
 
               <div className="flex flex-col gap-1.5">
                 <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
-                  Width
+                  <Trans>Width</Trans>
                   <span className="tabular-nums text-muted-foreground">{w}px {f.w && <span className="opacity-60">· {Math.round((w / f.w) * 100)}%</span>}</span>
                 </label>
                 <div className="flex items-center gap-2">
@@ -1559,9 +1563,9 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
 
               <div className="flex flex-col gap-1.5">
                 <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
-                  Height
+                  <Trans>Height</Trans>
                   <span className="tabular-nums text-muted-foreground">
-                    {h != null ? `${h}px` : "auto"}
+                    {h != null ? `${h}px` : t`auto`}
                   </span>
                 </label>
                 <div className="flex items-center gap-2">
@@ -1578,26 +1582,26 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
                   />
                 </div>
                 <div className="mt-1.5 flex flex-wrap gap-1">
-                  <button className={cn(SIZE_CHIP_BASE, (h == null) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(null)} title="Derive from width × source aspect">auto</button>
-                  <button className={cn(SIZE_CHIP_BASE, (h === w) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(w)} title="1:1 square">1:1</button>
-                  <button className={cn(SIZE_CHIP_BASE, (h === Math.round(w * 9 / 16)) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(Math.round(w * 9 / 16))} title="16:9 widescreen">16:9</button>
-                  <button className={cn(SIZE_CHIP_BASE, (h === Math.round(w * 5 / 4)) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(Math.round(w * 5 / 4))} title="4:5 portrait">4:5</button>
-                  <button className={cn(SIZE_CHIP_BASE, (h === Math.round(w * 2 / 3)) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(Math.round(w * 2 / 3))} title="3:2 standard">3:2</button>
+                  <button className={cn(SIZE_CHIP_BASE, (h == null) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(null)} title={t`Derive from width × source aspect`}><Trans>auto</Trans></button>
+                  <button className={cn(SIZE_CHIP_BASE, (h === w) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(w)} title={t`1:1 square`}>1:1</button>
+                  <button className={cn(SIZE_CHIP_BASE, (h === Math.round(w * 9 / 16)) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(Math.round(w * 9 / 16))} title={t`16:9 widescreen`}>16:9</button>
+                  <button className={cn(SIZE_CHIP_BASE, (h === Math.round(w * 5 / 4)) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(Math.round(w * 5 / 4))} title={t`4:5 portrait`}>4:5</button>
+                  <button className={cn(SIZE_CHIP_BASE, (h === Math.round(w * 2 / 3)) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(Math.round(w * 2 / 3))} title={t`3:2 standard`}>3:2</button>
                 </div>
                 <span className="text-[11.5px] text-muted-foreground">
                   {h == null
-                    ? "Auto = preserve source aspect. Pin height to crop to a different aspect (uses Focal point + fit=cover)."
-                    : "Aspect-cropping active. Focal point picks which area is kept."}
+                    ? <Trans>Auto = preserve source aspect. Pin height to crop to a different aspect (uses Focal point + fit=cover).</Trans>
+                    : <Trans>Aspect-cropping active. Focal point picks which area is kept.</Trans>}
                 </span>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Quality <span className="tabular-nums text-muted-foreground">{q}</span></label>
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Quality</Trans> <span className="tabular-nums text-muted-foreground">{q}</span></label>
                 <input type="range" min={10} max={100} step={5} value={q} onChange={(e) => setQ(Number(e.target.value))} className="w-full" />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Format</label>
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Format</Trans></label>
                 <div className="inline-flex w-full divide-x divide-border overflow-hidden rounded-md border border-border bg-card">
                   {[
                     { v: "webp", save: "−45%" },
@@ -1614,7 +1618,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Fit</label>
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Fit</Trans></label>
                 <div className="inline-flex w-full divide-x divide-border overflow-hidden rounded-md border border-border bg-card">
                   {["cover", "contain"].map((o) => (
                     <button key={o} type="button" className={cn(SEG_BTN_BASE, fit === o ? SEG_BTN_ON : SEG_BTN_OFF)} onClick={() => setFit(o)}><span className="font-mono">{o}</span></button>
@@ -1623,7 +1627,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Focal point <span className="font-mono text-muted-foreground">{focal.x}, {focal.y}</span></label>
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Focal point</Trans> <span className="font-mono text-muted-foreground">{focal.x}, {focal.y}</span></label>
                 <div className="relative aspect-[16/9] w-full cursor-crosshair overflow-hidden rounded-md border border-border" onClick={(e: any) => {
                   const r = e.currentTarget.getBoundingClientRect();
                   setFocal({ x: Math.round(((e.clientX - r.left) / r.width) * 100), y: Math.round(((e.clientY - r.top) / r.height) * 100) });
@@ -1644,7 +1648,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
                     <div className="pointer-events-none absolute grid size-[18px] place-items-center rounded-full border-2 border-[oklch(0.55_0.22_22)] bg-white shadow-[0_2px_6px_oklch(0_0_0/0.4)]" style={{ left: `calc(${focal.x}% - 1px)`, top: `calc(${focal.y}% - 1px)` }}><span className="size-1 rounded-full bg-[oklch(0.55_0.22_22)]" /></div>
                   </div>
                 </div>
-                <span className="text-[11.5px] text-muted-foreground">Click anywhere to set the crop pivot for <span className="font-mono">fit=cover</span>.</span>
+                <span className="text-[11.5px] text-muted-foreground"><Trans>Click anywhere to set the crop pivot for <span className="font-mono">fit=cover</span>.</Trans></span>
               </div>
             </div>
 
@@ -1655,29 +1659,29 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
               >
                 <I.Shield size={14} className="mt-0.5 shrink-0 text-[oklch(0.65_0.16_50)]" />
                 <div className="min-w-0">
-                  <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Transform unavailable</div>
+                  <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Transform unavailable</Trans></div>
                   <div className="text-xs leading-[1.4]">{transformError}</div>
                   <div className="mt-1 text-[11.5px] text-muted-foreground">
-                    Showing the original above. Toggle <span className="font-mono">Public</span> to enable edge resizing for this file.
+                    <Trans>Showing the original above. Toggle <span className="font-mono">Public</span> to enable edge resizing for this file.</Trans>
                   </div>
                 </div>
               </div>
             ) : (
               <div className="flex items-center gap-2.5 rounded-md border border-border bg-[color-mix(in_oklch,var(--muted)_25%,var(--card))] px-3 py-2.5 text-xs">
                 <div>
-                  <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Original</div>
+                  <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Original</Trans></div>
                   <div className="tabular-nums">{fmtSize(f.size)}</div>
                 </div>
                 <I.ChevronRight size={14} className="text-muted-foreground" />
                 <div>
-                  <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Transformed</div>
+                  <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Transformed</Trans></div>
                   <div className="font-medium tabular-nums" style={{ color: transformedSize != null ? "oklch(0.55 0.16 145)" : "var(--muted-foreground)" }}>
                     {transformedLoading ? "…" : transformedSize != null ? fmtSize(transformedSize) : "—"}
                   </div>
                 </div>
                 <div className="flex-1" />
                 {transformedSize != null && (
-                  <Badge variant="outline" mono>{Math.round((1 - transformedSize / f.size) * 100)}% smaller</Badge>
+                  <Badge variant="outline" mono><Trans>{Math.round((1 - transformedSize / f.size) * 100)}% smaller</Trans></Badge>
                 )}
               </div>
             )}
@@ -1689,9 +1693,9 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
         </div>
 
         <div className="flex flex-wrap gap-1.5">
-          <Button size="sm" variant="outline" icon={I.Code} onClick={() => onCopy(toAbsolute(effectiveSrc))}>Copy URL</Button>
-          {f.acl === "private" && <Button size="sm" variant="outline" icon={I.Shield} onClick={onSignUrl}>Sign URL</Button>}
-          <Button size="sm" variant="outline" icon={I.Download} onClick={onDownload}>Download</Button>
+          <Button size="sm" variant="outline" icon={I.Code} onClick={() => onCopy(toAbsolute(effectiveSrc))}><Trans>Copy URL</Trans></Button>
+          {f.acl === "private" && <Button size="sm" variant="outline" icon={I.Shield} onClick={onSignUrl}><Trans>Sign URL</Trans></Button>}
+          <Button size="sm" variant="outline" icon={I.Download} onClick={onDownload}><Trans>Download</Trans></Button>
         </div>
       </div>
     </Wrapper>
@@ -1706,6 +1710,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
  * popover. Sentinel "" value means "no folder" (root).
  */
 function FolderPicker({ folders, value, onChange }: { folders: { id: string; name: string }[]; value: string | null; onChange: (id: string | null) => void }) {
+  const { t } = useLingui();
   const [open, setOpen] = useState(false);
   const current = folders.find((f) => f.id === value);
   return (
@@ -1719,7 +1724,7 @@ function FolderPicker({ folders, value, onChange }: { folders: { id: string; nam
           className="w-full justify-between"
         >
           <span className={cn("truncate", !value && "text-muted-foreground")}>
-            {current ? current.name : "— None (root) —"}
+            {current ? current.name : <Trans>— None (root) —</Trans>}
           </span>
           <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
         </ShadButton>
@@ -1733,16 +1738,16 @@ function FolderPicker({ folders, value, onChange }: { folders: { id: string; nam
         align="start"
       >
         <Command>
-          <CommandInput placeholder="Search folders…" />
+          <CommandInput placeholder={t`Search folders…`} />
           <CommandList>
-            <CommandEmpty>No folders match.</CommandEmpty>
+            <CommandEmpty><Trans>No folders match.</Trans></CommandEmpty>
             <CommandGroup>
               <CommandItem
                 value="__root__ none root"
                 onSelect={() => { onChange(null); setOpen(false); }}
               >
                 <CheckIcon className={cn("mr-2 size-4", value == null ? "opacity-100" : "opacity-0")} />
-                <span className="text-muted-foreground">— None (root) —</span>
+                <span className="text-muted-foreground"><Trans>— None (root) —</Trans></span>
               </CommandItem>
               {folders.map((fl) => (
                 <CommandItem
@@ -1770,15 +1775,16 @@ function FolderPicker({ folders, value, onChange }: { folders: { id: string; nam
  * only, infinite-scroll style.
  */
 function PaginationFooter({ loaded, total, loading, onLoadMore }: { loaded: number; total: number; loading: boolean; onLoadMore: () => void }) {
+  const { t } = useLingui();
   const hasMore = loaded < total;
   if (total === 0) return null;
   if (!hasMore && !loading) return null;
   return (
     <div className="flex items-center justify-center gap-3 border-t border-border px-3.5 py-3 text-xs">
-      <span className="tabular-nums text-muted-foreground">Showing {loaded} of {total}</span>
+      <span className="tabular-nums text-muted-foreground"><Trans>Showing {loaded} of {total}</Trans></span>
       {hasMore && (
         <Button size="sm" variant="outline" onClick={onLoadMore} disabled={loading}>
-          {loading ? <Skeleton className="h-3.5 w-16" /> : "Load more"}
+          {loading ? <Skeleton className="h-3.5 w-16" /> : <Trans>Load more</Trans>}
         </Button>
       )}
     </div>

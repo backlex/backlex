@@ -46,6 +46,7 @@ export interface TenantAuthConfig {
   socialProviders?: {
     google?: OAuthProviderConfig;
     github?: OAuthProviderConfig;
+    apple?: OAuthProviderConfig;
   };
   email?: EmailAdapter;
   plugins?: ReadonlyArray<AuthPlugin>;

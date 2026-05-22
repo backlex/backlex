@@ -304,7 +304,14 @@ function ProfileCard({
           >
             Discard
           </Button>
-          <Button size="sm" disabled={!dirty || saving} onClick={save}>
+          {/* Fixed min width so the label swap (Save ⇄ Saving…) doesn't
+              resize the button and shove the Discard button sideways. */}
+          <Button
+            size="sm"
+            className="min-w-[5.5rem]"
+            disabled={!dirty || saving}
+            onClick={save}
+          >
             {saving ? "Saving…" : "Save"}
           </Button>
         </div>
@@ -995,7 +1002,14 @@ function PreferencesCard({ pushToast }: { pushToast: (m: string) => void }) {
           >
             Discard
           </Button>
-          <Button size="sm" disabled={!dirty || saving} onClick={save}>
+          {/* Fixed min width so the label swap (Save ⇄ Saving…) doesn't
+              resize the button and shove the Discard button sideways. */}
+          <Button
+            size="sm"
+            className="min-w-[5.5rem]"
+            disabled={!dirty || saving}
+            onClick={save}
+          >
             {saving ? "Saving…" : "Save"}
           </Button>
         </div>

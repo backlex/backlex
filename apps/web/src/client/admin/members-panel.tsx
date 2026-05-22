@@ -205,8 +205,8 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
                 {m.avatar}
               </span>
               <div className="flex min-w-0 flex-col gap-px">
-                <span className="text-[13px]">{m.name}</span>
-                <span className="font-mono text-[11px] text-muted-foreground">{m.email}</span>
+                <span className="truncate text-[13px]">{m.name}</span>
+                <span className="truncate font-mono text-[11px] text-muted-foreground" title={m.email}>{m.email}</span>
               </div>
             </div>
             <Select

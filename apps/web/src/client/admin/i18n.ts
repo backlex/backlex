@@ -3,8 +3,7 @@
 // English source strings live inline in the components — the Lingui macro
 // keeps them as the runtime fallback, so `en` needs no catalog. Every other
 // locale is compiled into the bundle from its `.po` file and loaded as a
-// lazy chunk on demand. Per-workspace customisations (the "Admin UI"
-// translations tab) are fetched as message-id overrides and merged on top.
+// lazy chunk on demand.
 //
 // The active locale is driven by the signed-in user's resolved language
 // preference — see `AdminLocaleSync`, mounted inside `PreferencesProvider`.
@@ -50,26 +49,9 @@ i18n.activate(DEFAULT_ADMIN_LOCALE);
 
 const loaded = new Set<string>([DEFAULT_ADMIN_LOCALE]);
 
-/** Per-workspace overrides of the admin chrome, keyed by Lingui message id.
- *  Served public + cacheable; any error just means "no overrides". */
-async function fetchAdminOverrides(
-  locale: string,
-): Promise<Record<string, string>> {
-  try {
-    const res = await fetch(`/api/i18n/_admin/${encodeURIComponent(locale)}`, {
-      credentials: "include",
-    });
-    if (!res.ok) return {};
-    const json = (await res.json()) as { messages?: Record<string, string> };
-    return json.messages ?? {};
-  } catch {
-    return {};
-  }
-}
-
 /** Load (once) and activate `tag`'s admin locale. Pulls the compiled `.po`
- *  catalog as a lazy chunk, then merges per-workspace DB overrides on top.
- *  Safe to call repeatedly; failures degrade to the English source. */
+ *  catalog as a lazy chunk. Safe to call repeatedly; a failed chunk load
+ *  degrades to the English source. */
 export async function activateAdminLocale(
   tag: string | null | undefined,
 ): Promise<void> {
@@ -88,8 +70,7 @@ export async function activateAdminLocale(
         // catalog chunk failed to load — fall through to the English source
       }
     }
-    const overrides = await fetchAdminOverrides(locale);
-    i18n.load(locale, { ...messages, ...overrides });
+    i18n.load(locale, messages);
     loaded.add(locale);
   }
   i18n.activate(locale);

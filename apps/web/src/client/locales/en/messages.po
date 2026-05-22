@@ -33,7 +33,7 @@ msgstr "{0} items"
 msgid "{0} total · {1} editable · drag the grip to reorder"
 msgstr "{0} total · {1} editable · drag the grip to reorder"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Access"
 msgstr "Access"
 
@@ -61,7 +61,7 @@ msgstr "Add field"
 msgid "Admin"
 msgstr "Admin"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Advisor"
 msgstr "Advisor"
 
@@ -73,15 +73,15 @@ msgstr "All"
 msgid "All collections"
 msgstr "All collections"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "API keys"
 msgstr "API keys"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "App users"
 msgstr "App users"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Authentication"
 msgstr "Authentication"
 
@@ -121,8 +121,8 @@ msgstr "close"
 msgid "Close"
 msgstr "Close"
 
-#: src/client/admin/config.ts
 #: src/client/admin/extras.tsx
+#: src/client/admin/ui.tsx
 msgid "Collections"
 msgstr "Collections"
 
@@ -146,7 +146,7 @@ msgstr "Create the first row in <0>{tableName}</0> via the API or use the New ro
 msgid "Create workspace"
 msgstr "Create workspace"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Database"
 msgstr "Database"
 
@@ -170,7 +170,7 @@ msgstr "Drop column"
 msgid "Edit field"
 msgstr "Edit field"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Email templates"
 msgstr "Email templates"
 
@@ -186,11 +186,11 @@ msgstr "Event"
 msgid "fields"
 msgstr "fields"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Flows"
 msgstr "Flows"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Functions"
 msgstr "Functions"
 
@@ -198,11 +198,11 @@ msgstr "Functions"
 msgid "goto"
 msgstr "goto"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "GraphQL"
 msgstr "GraphQL"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Insights"
 msgstr "Insights"
 
@@ -226,7 +226,7 @@ msgstr "Live tail"
 msgid "local D1"
 msgstr "local D1"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Logs"
 msgstr "Logs"
 
@@ -278,11 +278,11 @@ msgstr "Notifications"
 msgid "open"
 msgstr "open"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "OpenAPI"
 msgstr "OpenAPI"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Overview"
 msgstr "Overview"
 
@@ -302,7 +302,7 @@ msgstr "preview"
 msgid "Production"
 msgstr "Production"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Realtime"
 msgstr "Realtime"
 
@@ -318,15 +318,15 @@ msgstr "Refresh"
 msgid "required"
 msgstr "required"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "REST Explorer"
 msgstr "REST Explorer"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Revisions"
 msgstr "Revisions"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Schema graph"
 msgstr "Schema graph"
 
@@ -338,7 +338,7 @@ msgstr "Search collections, items, settings…"
 msgid "Select environment"
 msgstr "Select environment"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Settings"
 msgstr "Settings"
 
@@ -350,7 +350,7 @@ msgstr "Sign out"
 msgid "Staging"
 msgstr "Staging"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Storage"
 msgstr "Storage"
 
@@ -375,7 +375,7 @@ msgstr "Toggle sidebar"
 msgid "Toggle theme"
 msgstr "Toggle theme"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Translations"
 msgstr "Translations"
 
@@ -399,11 +399,11 @@ msgstr "Unread"
 msgid "URL:"
 msgstr "URL:"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Users"
 msgstr "Users"
 
-#: src/client/admin/config.ts
+#: src/client/admin/ui.tsx
 msgid "Webhooks"
 msgstr "Webhooks"
 

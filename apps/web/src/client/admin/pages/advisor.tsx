@@ -14,6 +14,7 @@ import { Button, PageHeader } from "../ui";
 import { useAdvisor, queryKeys } from "../queries";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@workeros/ui/components/collapsible";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { AdvisorSkeleton } from "../page-skeletons";
 
 type CheckKind = "security" | "performance";
@@ -356,7 +357,7 @@ function FindingDetail({
         <div className="mb-1.5 text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
           <Trans>suggested fix</Trans>
         </div>
-        <pre className="m-0 overflow-x-auto whitespace-pre rounded-lg bg-muted px-3 py-2.5 font-mono text-[11.5px]">{c.fix}</pre>
+        <ScrollArea className="rounded-lg"><pre className="m-0 whitespace-pre rounded-lg bg-muted px-3 py-2.5 font-mono text-[11.5px]">{c.fix}</pre></ScrollArea>
       </div>
       <div className="flex gap-1.5">
         <Button variant="outline" size="sm" icon={I.Copy} onClick={onCopy}>

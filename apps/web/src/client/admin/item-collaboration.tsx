@@ -48,6 +48,9 @@ function ShareLinkCard({
   const { t } = useLingui();
   const qc = useQueryClient();
   const [freshUrl, setFreshUrl] = useState<string | null>(null);
+  // Captured from the create response so the just-minted state can revoke
+  // immediately, without waiting for the list query to refetch.
+  const [freshId, setFreshId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const linksQuery = useSharedLinks(collection, itemId);
@@ -63,6 +66,7 @@ function ShareLinkCard({
     mutationFn: () => sharedLinksApi.create({ collection, itemId }),
     onSuccess: (res) => {
       setFreshUrl(`${window.location.origin}${res.data.url}`);
+      setFreshId(res.data.id);
       invalidate();
       pushToast?.(t`Share link created.`);
     },
@@ -73,6 +77,7 @@ function ShareLinkCard({
     mutationFn: (id: string) => sharedLinksApi.revoke(id),
     onSuccess: () => {
       setFreshUrl(null);
+      setFreshId(null);
       invalidate();
       pushToast?.(t`Share link revoked.`);
     },
@@ -115,6 +120,20 @@ function ShareLinkCard({
                 onClick={() => copy(freshUrl)}
               >
                 {copied ? <Trans>Copied</Trans> : <Trans>Copy</Trans>}
+              </Button>
+              {/* Revoke right here — no need to close + reopen the panel.
+                  Prefer the id captured at creation; fall back to the
+                  list query's row once it has refetched. */}
+              <Button
+                variant="outline"
+                icon={I.Trash}
+                onClick={() => {
+                  const id = freshId ?? activeLink?.id;
+                  if (id) revokeMut.mutate(id);
+                }}
+                disabled={revokeMut.isPending || (!freshId && !activeLink)}
+              >
+                {revokeMut.isPending ? <Trans>Revoking…</Trans> : <Trans>Revoke</Trans>}
               </Button>
             </div>
             <span className={FIELD_HINT_CLS}>

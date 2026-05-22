@@ -47,7 +47,7 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
         </>
       ),
       lede: (
-        <Trans>Better-auth-style cookies. Sessions stored in your collections database — same DSL as everything else.</Trans>
+        <Trans>Welcome back. Pick up where you left off — content, data, and APIs all in one place.</Trans>
       ),
     },
     "sign-up": {

@@ -1259,10 +1259,6 @@ msgstr "BCP-47 short codes — e.g. <0>tr</0>, <1>en-GB</1>, <2>pt-BR</2>."
 msgid "before"
 msgstr "before"
 
-#: src/client/components/auth-shell.tsx
-msgid "Better-auth-style cookies. Sessions stored in your collections database — same DSL as everything else."
-msgstr "Better-auth-style cookies. Sessions stored in your collections database — same DSL as everything else."
-
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Bind DN"
 msgstr "Bind DN"
@@ -7698,6 +7694,10 @@ msgstr "Wed"
 #: src/client/pages/sign-in.tsx
 msgid "Welcome back"
 msgstr "Welcome back"
+
+#: src/client/components/auth-shell.tsx
+msgid "Welcome back. Pick up where you left off — content, data, and APIs all in one place."
+msgstr "Welcome back. Pick up where you left off — content, data, and APIs all in one place."
 
 #: src/client/admin/storage.tsx
 msgid "What this file is about…"

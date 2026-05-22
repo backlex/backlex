@@ -206,16 +206,19 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
 
       <div className="flex min-w-0 flex-col gap-3">
         <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
-          <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
-            <span className="text-xs font-medium">query.sql</span>
-            {isWrite && <Badge variant="destructive">WRITE</Badge>}
-            <div className="flex-1" />
-            <label className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-              <I.Lock size={11} /> <Trans>read-only</Trans>
-              <Switch checked={readOnly} onChange={setReadOnly} />
-            </label>
-            <Button size="sm" variant="outline" icon={I.Save} onClick={() => pushToast(t`Saved as snippet.`)}><Trans>Save</Trans></Button>
-            <Button size="sm" variant="primary" icon={I.Play} disabled={running || (readOnly && isWrite)} onClick={run}>{running ? <Trans>Running…</Trans> : <Trans>Run</Trans>}</Button>
+          <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-border px-4 py-3.5">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="text-xs font-medium">query.sql</span>
+              {isWrite && <Badge variant="destructive">WRITE</Badge>}
+            </div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <label className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[11.5px] text-muted-foreground">
+                <I.Lock size={11} /> <Trans>read-only</Trans>
+                <Switch checked={readOnly} onChange={setReadOnly} />
+              </label>
+              <Button size="sm" variant="outline" icon={I.Save} onClick={() => pushToast(t`Saved as snippet.`)}><Trans>Save</Trans></Button>
+              <Button size="sm" variant="primary" icon={I.Play} disabled={running || (readOnly && isWrite)} onClick={run}>{running ? <Trans>Running…</Trans> : <Trans>Run</Trans>}</Button>
+            </div>
           </div>
           <Textarea value={sql} onChange={(e) => setSql(e.target.value)} spellCheck={false} className="w-full resize-y rounded-none border-0 bg-[oklch(0.18_0.01_130)] p-3.5 font-mono text-[13px] leading-[1.55] text-[oklch(0.92_0.02_130)] outline-0 min-h-[180px]" />
           {readOnly && isWrite && (
@@ -225,12 +228,15 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
           )}
         </div>
         <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
-          <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
-            <span className="text-xs font-medium"><Trans>Result</Trans></span>
-            <span className="font-mono text-[11px] text-muted-foreground">{result.count} <Trans>rows</Trans> · {result.ms}ms</span>
-            <div className="flex-1" />
-            <Button size="sm" variant="ghost" icon={I.Download} onClick={() => pushToast(t`Exported result.csv.`)}>CSV</Button>
-            <Button size="sm" variant="ghost" icon={I.Code} onClick={() => pushToast(t`Copied JSON.`)}>JSON</Button>
+          <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-border px-4 py-3.5">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+              <span className="text-xs font-medium"><Trans>Result</Trans></span>
+              <span className="font-mono text-[11px] text-muted-foreground">{result.count} <Trans>rows</Trans> · {result.ms}ms</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Button size="sm" variant="ghost" icon={I.Download} onClick={() => pushToast(t`Exported result.csv.`)}>CSV</Button>
+              <Button size="sm" variant="ghost" icon={I.Code} onClick={() => pushToast(t`Copied JSON.`)}>JSON</Button>
+            </div>
           </div>
           {result.rows.length === 0 ? (
             <div className="px-4 py-6 text-center text-[12.5px] text-muted-foreground">

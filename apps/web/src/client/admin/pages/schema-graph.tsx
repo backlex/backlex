@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
-import { Badge, Button, PageHeader } from "../ui";
+import { Badge, Button, IconButton, PageHeader } from "../ui";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { collectionsApi, type ApiCollection } from "../api";
@@ -51,6 +51,11 @@ const COLS = 3;
 const ORIGIN_X = 80;
 const ORIGIN_Y = 60;
 
+const ZOOM_MIN = 0.4;
+const ZOOM_MAX = 2;
+const ZOOM_STEP = 0.2;
+const clampZoom = (z: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(z * 100) / 100));
+
 function buildGraph(collections: ApiCollection[]): { nodes: GraphNode[]; edges: GraphEdge[] } {
   const slugs = new Set(collections.map((c) => c.slug));
   const nodes: GraphNode[] = collections.map((c, i) => {
@@ -92,6 +97,7 @@ export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "
   const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [zoom, setZoom] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -187,6 +193,28 @@ export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "
               <span className="w-4 border-t-2 border-dashed border-foreground" /> <Trans>m2m</Trans>
             </span>
           </div>
+          {nodes.length > 0 && (
+            <div className="flex items-center rounded-lg border border-border">
+              <IconButton
+                icon={I.Minus}
+                onClick={() => setZoom((z) => clampZoom(z - ZOOM_STEP))}
+                title={t`Zoom out`}
+              />
+              <button
+                type="button"
+                onClick={() => setZoom(1)}
+                title={t`Reset zoom`}
+                className="min-w-[3rem] px-1 text-center font-mono text-[11.5px] tabular-nums text-muted-foreground hover:text-foreground"
+              >
+                {Math.round(zoom * 100)}%
+              </button>
+              <IconButton
+                icon={I.Plus}
+                onClick={() => setZoom((z) => clampZoom(z + ZOOM_STEP))}
+                title={t`Zoom in`}
+              />
+            </div>
+          )}
         </div>
         <ScrollArea className="w-full bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))]">
           {nodes.length === 0 ? (
@@ -194,7 +222,7 @@ export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "
               <Trans>No collections to graph — create one to populate the ERD.</Trans>
             </div>
           ) : (
-            <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block min-w-[1100px]">
+            <svg width={W * zoom} height={H * zoom} viewBox={`0 0 ${W} ${H}`} className="block">
               <defs>
                 <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
                   <path d="M 24 0 L 0 0 0 24" fill="none" stroke="var(--border)" strokeWidth="1" />

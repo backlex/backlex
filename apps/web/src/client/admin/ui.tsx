@@ -14,6 +14,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { NAV_ITEMS, NAV_SETTINGS, NAV_DEVELOPERS } from "./config";
 import { notificationsApi, tenantsApi, type ApiNotification, type ApiTenant } from "./api";
@@ -81,6 +82,7 @@ export function formatJson(value: unknown): string {
 }
 
 export function JsonBlock({ label, value, maxHeight = 280 }: { label: string; value: unknown; maxHeight?: number }) {
+  const { t } = useLingui();
   const json = useMemo(() => formatJson(value), [value]);
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -104,7 +106,7 @@ export function JsonBlock({ label, value, maxHeight = 280 }: { label: string; va
           onClick={copy}
           className="font-mono text-[10.5px] text-muted-foreground"
         >
-          {copied ? "copied" : "copy"}
+          {copied ? t`copied` : t`copy`}
         </Button>
       </div>
       <pre
@@ -278,6 +280,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
   const items = NAV_ITEMS;
   const settings = NAV_SETTINGS;
   const developers = NAV_DEVELOPERS;
+  const { t, i18n } = useLingui();
   const { isMobile, setOpenMobile } = useSidebar();
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -321,7 +324,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
         project: data.project || undefined,
         env: data.env as "development" | "staging" | "production",
       });
-      pushToast?.(`Workspace "${res.data.slug}" created.`);
+      pushToast?.(t`Workspace "${res.data.slug}" created.`);
       setNewWsOpen(false);
       await tenantsApi.switchTo(res.data.id);
       window.location.reload();
@@ -371,7 +374,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" side={isMobile ? "bottom" : "right"} sideOffset={4} className="min-w-64">
             <DropdownMenuLabel className="flex items-center justify-between">
-              <span>Workspaces</span>
+              <span><Trans>Workspaces</Trans></span>
               <span className="font-mono text-[10.5px] text-muted-foreground">{tenants.length}</span>
             </DropdownMenuLabel>
             <ScrollArea viewportClassName="max-h-[280px]">
@@ -387,8 +390,8 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
               ))}
             </ScrollArea>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => setNewWsOpen(true)}><I.Plus size={12} /> New workspace</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setActiveNav?.("settings")}><I.Settings size={12} /> Manage</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setNewWsOpen(true)}><I.Plus size={12} /> <Trans>New workspace</Trans></DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setActiveNav?.("settings")}><I.Settings size={12} /> <Trans>Manage</Trans></DropdownMenuItem>
           </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
@@ -397,11 +400,11 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
 
       <SidebarContent className="group-data-[collapsible=icon]:overflow-y-auto!">
         {[
-          { label: "Workspace", entries: items },
-          { label: "Developers", entries: developers },
-          { label: "Admin", entries: settings },
+          { key: "workspace", label: <Trans>Workspace</Trans>, entries: items },
+          { key: "developers", label: <Trans>Developers</Trans>, entries: developers },
+          { key: "admin", label: <Trans>Admin</Trans>, entries: settings },
         ].map((group) => (
-          <SidebarGroup key={group.label}>
+          <SidebarGroup key={group.key}>
             <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
             <SidebarMenu>
               {group.entries.map((it) => {
@@ -417,10 +420,10 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
                         setActiveNav(it.id);
                         if (isMobile) setOpenMobile(false);
                       }}
-                      tooltip={it.label}
+                      tooltip={i18n._(it.label)}
                     >
                       {IconComp && <IconComp size={15} />}
-                      <span>{it.label}</span>
+                      <span>{i18n._(it.label)}</span>
                     </SidebarMenuButton>
                     {liveBadge != null && (
                       <SidebarMenuBadge className="tabular-nums">{liveBadge}</SidebarMenuBadge>
@@ -442,6 +445,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
 }
 
 function NewWorkspaceDialog({ onClose, onCreate, existing }: { onClose: () => void; onCreate: (data: { name: string; project: string; env: string }) => void; existing: string[] }) {
+  const { t } = useLingui();
   const [name, setName] = useState("");
   const [project, setProject] = useState("default");
   const [env, setEnv] = useState("development");
@@ -465,31 +469,31 @@ function NewWorkspaceDialog({ onClose, onCreate, existing }: { onClose: () => vo
       <DialogContent className="flex max-h-[min(86vh,720px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[520px]">
         <DialogHeader className="flex-row items-center gap-2.5 space-y-0 border-b border-border px-4 py-3.5 pr-12 text-left">
           <I.Plus size={14} />
-          <DialogTitle className="text-sm font-medium">New workspace</DialogTitle>
+          <DialogTitle className="text-sm font-medium"><Trans>New workspace</Trans></DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4 p-[22px]">
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Name</label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans></label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="acme-prod" onKeyDown={(e) => e.key === "Enter" && submit()} />
-            {taken && <span className="text-[11.5px] text-destructive">Workspace "{slug}" already exists.</span>}
-            {!taken && slug && <span className="text-[11.5px] text-muted-foreground">URL: <span className="font-mono">workeros.dev/{slug}</span></span>}
-            {!slug && <span className="text-[11.5px] text-muted-foreground">Lowercase, alphanumeric, 2–24 chars.</span>}
+            {taken && <span className="text-[11.5px] text-destructive"><Trans>Workspace "{slug}" already exists.</Trans></span>}
+            {!taken && slug && <span className="text-[11.5px] text-muted-foreground"><Trans>URL:</Trans> <span className="font-mono">workeros.dev/{slug}</span></span>}
+            {!slug && <span className="text-[11.5px] text-muted-foreground"><Trans>Lowercase, alphanumeric, 2–24 chars.</Trans></span>}
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Default project</label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Default project</Trans></label>
             <Input value={project} onChange={(e) => setProject(e.target.value)} placeholder="default" />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Environment</label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Environment</Trans></label>
             <Select value={env} onValueChange={setEnv}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select environment" />
+                <SelectValue placeholder={t`Select environment`} />
               </SelectTrigger>
               <SelectContent>
                 {[
-                  { id: "development", label: "Development", hint: "local D1" },
-                  { id: "staging", label: "Staging", hint: "preview" },
-                  { id: "production", label: "Production", hint: "live" },
+                  { id: "development", label: t`Development`, hint: t`local D1` },
+                  { id: "staging", label: t`Staging`, hint: t`preview` },
+                  { id: "production", label: t`Production`, hint: t`live` },
                 ].map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.label} <span className="ml-1 text-[10.5px] text-muted-foreground">{p.hint}</span>
@@ -500,8 +504,8 @@ function NewWorkspaceDialog({ onClose, onCreate, existing }: { onClose: () => vo
           </div>
         </div>
         <DialogFooter className="border-t border-border px-[18px] py-3">
-          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" size="sm" disabled={!valid} onClick={submit}>Create workspace</Button>
+          <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>
+          <Button variant="primary" size="sm" disabled={!valid} onClick={submit}><Trans>Create workspace</Trans></Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -568,6 +572,7 @@ export function relativeTime(input: unknown): string {
 }
 
 export function NotificationsBell() {
+  const { t } = useLingui();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -613,7 +618,7 @@ export function NotificationsBell() {
         <button
           type="button"
           className="notif-trigger"
-          aria-label="Notifications"
+          aria-label={t`Notifications`}
         >
           <I.Bell size={14} />
           {unread > 0 && <span className="notif-dot tabular-nums font-mono">{unread}</span>}
@@ -621,13 +626,13 @@ export function NotificationsBell() {
       </PopoverTrigger>
       <PopoverContent align="end" className="flex max-h-[540px] w-[380px] flex-col overflow-hidden p-0">
           <div className="notif-head">
-            <span style={{ fontSize: 13, fontWeight: 500 }}>Notifications</span>
+            <span style={{ fontSize: 13, fontWeight: 500 }}><Trans>Notifications</Trans></span>
             <div className="spacer" />
             <Tabs value={filter} onValueChange={(v) => setFilter(v as "all" | "unread")}>
               <TabsList className="h-7">
-                <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
+                <TabsTrigger value="all" className="text-xs"><Trans>All</Trans></TabsTrigger>
                 <TabsTrigger value="unread" className="text-xs">
-                  Unread {unread > 0 && <span className="count">{unread}</span>}
+                  <Trans>Unread</Trans> {unread > 0 && <span className="count">{unread}</span>}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -652,7 +657,7 @@ export function NotificationsBell() {
                 }}
               >
                 <I.Inbox size={22} style={{ opacity: 0.5 }} />
-                You're all caught up.
+                <Trans>You're all caught up.</Trans>
               </div>
             ) : (
               visible.map((n) => {
@@ -691,7 +696,7 @@ export function NotificationsBell() {
               onClick={() => markAllMut.mutate()}
               disabled={markAllMut.isPending || unread === 0}
             >
-              Mark all read
+              <Trans>Mark all read</Trans>
             </Button>
           </div>
       </PopoverContent>
@@ -700,9 +705,10 @@ export function NotificationsBell() {
 }
 
 export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onSignOut, user, onAccountSettings }: TopbarProps) {
+  const { t } = useLingui();
   return (
     <div className="topbar">
-      <SidebarTrigger title="Toggle sidebar" />
+      <SidebarTrigger title={t`Toggle sidebar`} />
       <div className="crumbs path">
         <span className="sep">/</span>
         {crumbs.map((c, i) => (
@@ -714,17 +720,17 @@ export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onSignOut, 
       </div>
       <div className="kbar" onClick={onOpenPalette}>
         <I.Search size={13} />
-        <span>Search collections, items, settings…</span>
+        <span><Trans>Search collections, items, settings…</Trans></span>
         <span className="kbd">⌘K</span>
       </div>
-      <IconButton icon={dark ? I.Sun : I.Moon} onClick={onToggleTheme} title="Toggle theme" />
+      <IconButton icon={dark ? I.Sun : I.Moon} onClick={onToggleTheme} title={t`Toggle theme`} />
       <NotificationsBell />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            title={user?.email ?? "Account"}
-            aria-label="Account menu"
+            title={user?.email ?? t`Account`}
+            aria-label={t`Account menu`}
             style={{ background: "transparent", border: 0, padding: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
           >
             {(() => {
@@ -741,7 +747,7 @@ export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onSignOut, 
         <DropdownMenuContent align="end">
           <div style={{ padding: "8px 10px" }}>
             <div style={{ fontWeight: 500 }}>
-              {user?.name || user?.email?.split("@")[0] || "Account"}
+              {user?.name || user?.email?.split("@")[0] || t`Account`}
             </div>
             {user?.email && (
               <div className="font-mono text-[11.5px] text-muted-foreground">{user.email}</div>
@@ -756,10 +762,10 @@ export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onSignOut, 
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => { onAccountSettings?.(); }}>
-            <I.Settings size={13} /> Account settings
+            <I.Settings size={13} /> <Trans>Account settings</Trans>
           </DropdownMenuItem>
           <DropdownMenuItem variant="destructive" onSelect={() => { onSignOut?.(); }}>
-            <I.LogOut size={13} /> Sign out
+            <I.LogOut size={13} /> <Trans>Sign out</Trans>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

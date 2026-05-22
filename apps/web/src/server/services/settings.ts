@@ -3,6 +3,7 @@ import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { PgDb } from "@workeros/db/pg";
 import type { SqliteDb } from "@workeros/db/sqlite";
+import { DEFAULT_TIMEZONE, isValidTimeZone } from "../lib/locale";
 
 /**
  * Runtime-mutable instance settings, backed by the `app_settings` key/value
@@ -21,12 +22,16 @@ export interface AppSettings {
   /** Locale returned by the public endpoint when the requested one has no
    *  string. Must exist in `i18nLocales`. */
   i18nDefaultLocale: string;
+  /** Workspace default IANA time zone. Used to render dates for users who
+   *  haven't set a personal one (`users.timezone`). */
+  timezone: string;
 }
 
 export const APP_SETTINGS_DEFAULTS: AppSettings = {
   openSignup: true,
   i18nLocales: ["en", "tr", "de", "es", "fr", "ja"],
   i18nDefaultLocale: "en",
+  timezone: DEFAULT_TIMEZONE,
 };
 
 const isStringArray = (v: unknown): v is string[] =>
@@ -57,6 +62,8 @@ export const loadAppSettings = async (
         out.i18nLocales = r.value;
       else if (r.key === "i18nDefaultLocale" && typeof r.value === "string")
         out.i18nDefaultLocale = r.value;
+      else if (r.key === "timezone" && isValidTimeZone(r.value))
+        out.timezone = r.value;
     }
     if (!out.i18nLocales.includes(out.i18nDefaultLocale)) {
       out.i18nDefaultLocale = out.i18nLocales[0] ?? "en";

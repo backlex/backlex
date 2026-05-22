@@ -85,6 +85,12 @@ export const users = pgTable(
     emailVerified: boolean("email_verified").notNull().default(false),
     name: text("name"),
     image: text("image"),
+    /** Preferred UI locale (BCP-47, e.g. `tr`, `en-US`). NULL = inherit the
+     *  workspace default (`app_settings.i18nDefaultLocale`). */
+    locale: text("locale"),
+    /** Preferred IANA time zone (e.g. `Europe/Istanbul`). NULL = inherit the
+     *  workspace default (`app_settings.timezone`). */
+    timezone: text("timezone"),
     /** Tenant the user landed on at login. UI may switch via cookie. */
     activeTenantId: text("active_tenant_id"),
     /** active | suspended. */

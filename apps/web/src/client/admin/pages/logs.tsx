@@ -338,8 +338,15 @@ export function LogsPage({
       />
 
       {/* Shared range control + search */}
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <div style={{ flex: 1, position: "relative" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ flex: 1, position: "relative", minWidth: 180 }}>
           <I.Search
             size={13}
             style={{
@@ -590,6 +597,7 @@ function StreamView({
       {/* Source tabs + export */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Tabs
+          className="min-w-0"
           value={activeSrc}
           onValueChange={(v) => {
             setSrc(v as SourceId);
@@ -617,17 +625,11 @@ function StreamView({
       </div>
 
       {/* Volume + level summary */}
-      <div
-        className="card"
-        style={{
-          padding: 14,
-          display: "grid",
-          gridTemplateColumns: "1fr auto auto auto",
-          gap: 14,
-          alignItems: "center",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 44 }}>
+      <div className="card flex flex-col gap-3 p-3.5 sm:flex-row sm:items-center sm:gap-3.5">
+        <div
+          className="sm:flex-1"
+          style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 44 }}
+        >
           {spark.map((v, i) => (
             <div
               // Bucket index is a stable position in a fixed-length array.
@@ -646,41 +648,40 @@ function StreamView({
             />
           ))}
         </div>
-        {levelButtons.map((x) => (
-          <Button
-            key={x.k}
-            variant={level === x.k ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => setLevel((cur) => (cur === x.k ? "any" : x.k))}
-          >
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 999,
-                background: x.color,
-                display: "inline-block",
-              }}
-            />
-            <span className="font-mono">{x.label}</span>
-            <span
-              className="font-mono tabular-nums"
-              style={{ color: "var(--muted-foreground)" }}
+        <div className="flex flex-wrap gap-2">
+          {levelButtons.map((x) => (
+            <Button
+              key={x.k}
+              variant={level === x.k ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setLevel((cur) => (cur === x.k ? "any" : x.k))}
             >
-              {x.count}
-            </span>
-          </Button>
-        ))}
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 999,
+                  background: x.color,
+                  display: "inline-block",
+                }}
+              />
+              <span className="font-mono">{x.label}</span>
+              <span
+                className="font-mono tabular-nums"
+                style={{ color: "var(--muted-foreground)" }}
+              >
+                {x.count}
+              </span>
+            </Button>
+          ))}
+        </div>
       </div>
 
       {/* Log stream + detail */}
       <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: selected ? "1fr 400px" : "1fr",
-          gap: 14,
-          alignItems: "start",
-        }}
+        className={`grid items-start gap-3.5${
+          selected ? " lg:grid-cols-[1fr_400px]" : ""
+        }`}
       >
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           {filtered.length === 0 ? (
@@ -974,7 +975,11 @@ function TableView({
     <>
       {/* Category chips (server-side action filter) + export */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Tabs value={category} onValueChange={(v) => setCategory(v as CategoryChip)}>
+        <Tabs
+          className="min-w-0"
+          value={category}
+          onValueChange={(v) => setCategory(v as CategoryChip)}
+        >
           <TabsList className="flex-wrap">
             {CATEGORY_CHIPS.map((k) => (
               <TabsTrigger key={k} value={k}>

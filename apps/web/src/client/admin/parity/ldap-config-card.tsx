@@ -169,17 +169,18 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
-        <I.Shield size={13} />
+      <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3.5">
+        <I.Shield size={13} className="shrink-0" />
         <span className="text-[13px] font-medium"><Trans>LDAP / Active Directory</Trans></span>
         <Badge variant={cfg.enabled ? "default" : "secondary"}>
           {cfg.enabled ? <Trans>enabled</Trans> : <Trans>disabled</Trans>}
         </Badge>
-        <div className="flex-1" />
-        <Button size="sm" variant="outline" icon={I.Activity} onClick={() => setTestOpen(true)}>
-          <Trans>Test connection</Trans>
-        </Button>
-        <Switch checked={cfg.enabled} onChange={(v) => void toggleEnabled(v)} />
+        <div className="ml-auto flex items-center gap-2">
+          <Button size="sm" variant="outline" icon={I.Activity} onClick={() => setTestOpen(true)}>
+            <Trans>Test connection</Trans>
+          </Button>
+          <Switch checked={cfg.enabled} onChange={(v) => void toggleEnabled(v)} />
+        </div>
       </div>
 
       <div className="grid gap-3.5 px-4 py-3.5">
@@ -193,7 +194,7 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
           <span className="text-[11.5px] text-muted-foreground"><Trans>Use <span className="font-mono">ldaps://</span> in production; <span className="font-mono">ldap://</span> only on a trusted network.</Trans></span>
         </div>
 
-        <div className="grid grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-2 gap-3.5 max-[640px]:grid-cols-1">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Bind DN</Trans></label>
             <Input
@@ -252,7 +253,7 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
 
         <div className="flex flex-col gap-1.5">
           <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Attribute map</Trans></label>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5 max-[640px]:grid-cols-1">
             {(["email", "firstName", "lastName", "groups"] as const).map((k) => (
               <div key={k} className="flex items-center gap-2">
                 <span className="w-20 font-mono text-[11px] text-muted-foreground">{k}</span>
@@ -273,7 +274,7 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
           </span>
         </div>
 
-        <div className="grid grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-2 gap-3.5 max-[640px]:grid-cols-1">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Default role on first sign-in</Trans></label>
             <Select

@@ -1,9 +1,50 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwind from "@tailwindcss/vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { lingui } from "@lingui/vite-plugin";
+import * as babel from "@babel/core";
 import { fileURLToPath, URL } from "node:url";
+
+/**
+ * Runs the Lingui macro on EVERY client `.ts`/`.tsx` that imports it.
+ *
+ * The macro must not be delegated to `@vitejs/plugin-react`'s Babel pass:
+ * plugin-react skips Babel for files its heuristic deems JSX-free, so a
+ * macro in such a file survives to runtime and throws ("executed outside
+ * the context of compilation"). This `enforce: "pre"` pass transforms the
+ * macro on all client files first; plugin-react then does the JSX/TS pass.
+ */
+function linguiMacro(): Plugin {
+  return {
+    name: "lingui-macro",
+    enforce: "pre",
+    async transform(code, id) {
+      const file = id.split("?")[0];
+      if (!file.includes("/src/client/") || !/\.[cm]?tsx?$/.test(file)) {
+        return null;
+      }
+      if (!code.includes("@lingui/")) return null;
+      const result = await babel.transformAsync(code, {
+        filename: file,
+        babelrc: false,
+        configFile: false,
+        sourceMaps: true,
+        // Parse TS (+ JSX for .tsx); apply ONLY the macro plugin — types and
+        // JSX are left intact for plugin-react / esbuild to handle next.
+        parserOpts: {
+          plugins: file.endsWith("x")
+            ? ["typescript", "jsx"]
+            : ["typescript"],
+        },
+        plugins: ["@lingui/babel-plugin-lingui-macro"],
+      });
+      return result?.code != null
+        ? { code: result.code, map: result.map }
+        : null;
+    },
+  };
+}
 
 /**
  * Single Vite app for both admin SPA and the Hono Worker. The
@@ -14,11 +55,11 @@ import { fileURLToPath, URL } from "node:url";
  * bundles the Worker; `wrangler deploy` ships both.
  */
 export default defineConfig({
-  // `@lingui/babel-plugin-lingui-macro` runs inside plugin-react's Babel pass
-  // so it only touches client `.tsx` (the Worker bundle never sees it).
+  // `linguiMacro()` transforms the Lingui macro (must run before react()).
   // `lingui()` compiles `.po` catalog imports to runtime message objects.
   plugins: [
-    react({ babel: { plugins: ["@lingui/babel-plugin-lingui-macro"] } }),
+    linguiMacro(),
+    react(),
     lingui(),
     tailwind(),
     cloudflare(),

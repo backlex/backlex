@@ -775,6 +775,30 @@ export const meApi = {
   get: () => api<Envelope<ApiMe>>(`/api/me`),
 };
 
+/** Resolved locale + time-zone preferences for the signed-in admin
+ *  (`GET /api/account/preferences`). `user.*` is the raw, possibly-unset
+ *  choice; `effective.*` is what the UI should actually use. */
+export interface ApiAccountPreferences {
+  user: { locale: string | null; timezone: string | null };
+  workspace: { defaultLocale: string; locales: string[]; timezone: string };
+  effective: { locale: string; timezone: string };
+}
+
+export const accountApi = {
+  getPreferences: () =>
+    api<Envelope<ApiAccountPreferences>>(`/api/account/preferences`),
+  /** Pass `null` to clear a field back to the workspace default; omit it to
+   *  leave the stored value unchanged. */
+  patchPreferences: (body: {
+    locale?: string | null;
+    timezone?: string | null;
+  }) =>
+    api<{ ok: true }>(`/api/account/preferences`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+};
+
 /** In-app notification row (`/api/notifications`). The real schema has no
  *  `kind`/`icon`/`who` columns — the bell derives an icon from `flowId`. */
 export interface ApiNotification {

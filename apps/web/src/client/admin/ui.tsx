@@ -369,7 +369,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
                   <I.ChevronDown className="ml-auto" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="right" className="min-w-64">
+              <DropdownMenuContent align="start" side={isMobile ? "bottom" : "right"} sideOffset={4} className="min-w-64">
             <DropdownMenuLabel className="flex items-center justify-between">
               <span>Workspaces</span>
               <span className="font-mono text-[10.5px] text-muted-foreground">{tenants.length}</span>

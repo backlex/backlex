@@ -61,9 +61,16 @@ Settings and Account forms.
 
 ## Scope
 
-The locale drives **date/number formatting** (via `Intl`) and is the default
-locale for the workspace i18n string resolution (`/api/i18n`). It does **not**
-translate the admin SPA's own chrome — admin UI strings remain English. The
-workspace i18n string system (`i18n_strings` table, Translations page) is the
-surface for translating *content*, and its locale columns are exactly the
-`i18nLocales` list managed above.
+The locale has three jobs:
+
+1. **Date/number formatting** — the `Intl`-backed formatters above.
+2. **Admin SPA chrome** — the admin's own UI strings (nav, buttons, dialogs,
+   toasts) are translated via Lingui; the effective locale picks the catalog.
+   See `docs/admin-i18n.md`.
+3. **Workspace content** — it is the default locale for the workspace i18n
+   string resolution (`/api/i18n`). The `i18n_strings` table and the
+   Translations page are the surface for translating *content* the admin
+   authors; its locale columns are exactly the `i18nLocales` list above.
+
+Jobs 2 and 3 are independent systems: Lingui catalogs (`.po` files, shipped in
+the bundle) for the admin chrome, the `i18n_strings` table for content.

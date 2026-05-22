@@ -6448,13 +6448,17 @@ msgstr "Set the config object via the API once the panel exists."
 msgid "Set them in <0>wrangler.toml [vars]</0> / <1>wrangler secret put</1> (or <2>apps/web/.env</2> on self-host) and redeploy. This panel only reports which keys are present — secret values are never sent to the browser."
 msgstr "Set them in <0>wrangler.toml [vars]</0> / <1>wrangler secret put</1> (or <2>apps/web/.env</2> on self-host) and redeploy. This panel only reports which keys are present — secret values are never sent to the browser."
 
+#: src/client/admin/account-page.tsx
+msgid "Sets the admin display language and how dates and numbers are formatted. Only languages with a bundled translation are listed."
+msgstr "Sets the admin display language and how dates and numbers are formatted. Only languages with a bundled translation are listed."
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Sets the attribute map to that IdP's defaults — you can still tweak later."
 msgstr "Sets the attribute map to that IdP's defaults — you can still tweak later."
 
 #: src/client/admin/account-page.tsx
-msgid "Sets the locale used to format dates and numbers across the admin. Choose \"Workspace default\" to follow the workspace language."
-msgstr "Sets the locale used to format dates and numbers across the admin. Choose \"Workspace default\" to follow the workspace language."
+#~ msgid "Sets the locale used to format dates and numbers across the admin. Choose \"Workspace default\" to follow the workspace language."
+#~ msgstr "Sets the locale used to format dates and numbers across the admin. Choose \"Workspace default\" to follow the workspace language."
 
 #: src/client/pages/sign-up.tsx
 msgid "Setting up passkey…"

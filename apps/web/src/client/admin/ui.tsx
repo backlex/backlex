@@ -841,7 +841,7 @@ export function PageHeader({ title, slug, description, actions, badges }: PageHe
   return (
     <div className="flex flex-wrap items-start justify-between gap-[18px]">
       <div className="flex min-w-0 flex-col gap-1">
-        <h1 className="m-0 flex items-center gap-2.5 text-2xl font-semibold tracking-tight">
+        <h1 className="m-0 flex flex-wrap items-center gap-2.5 text-2xl font-semibold tracking-tight">
           {slug ? <span className="font-mono text-[22px] font-medium">{slug}</span> : title}
           {badges}
         </h1>

@@ -7,6 +7,7 @@ import {
   KeyRoundIcon,
   MailIcon,
 } from "lucide-react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@workeros/ui/components/button";
 import { Input } from "@workeros/ui/components/input";
 import { Label } from "@workeros/ui/components/label";
@@ -29,6 +30,7 @@ const passkeysSupported = (): boolean =>
   typeof window.PublicKeyCredential !== "undefined";
 
 export const SignIn = () => {
+  const { t } = useLingui();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
@@ -57,14 +59,14 @@ export const SignIn = () => {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      setError("Enter your email and password.");
+      setError(t`Enter your email and password.`);
       return;
     }
     setError(null);
     setBusy("email");
     const res = await auth.signIn.email({ email, password });
     if (res.error) {
-      setError(res.error.message ?? "Sign-in failed");
+      setError(res.error.message ?? t`Sign-in failed`);
       setBusy(null);
       return;
     }
@@ -83,13 +85,13 @@ export const SignIn = () => {
         };
       };
       if (!c.signIn.passkey) {
-        setError("Passkey plugin not enabled");
+        setError(t`Passkey plugin not enabled`);
         setBusy(null);
         return;
       }
       const res = await c.signIn.passkey({ autoFill: false });
       if (res?.error) {
-        setError(res.error.message ?? "Passkey sign-in failed");
+        setError(res.error.message ?? t`Passkey sign-in failed`);
         setBusy(null);
         return;
       }
@@ -104,13 +106,13 @@ export const SignIn = () => {
     <AuthShell mode="sign-in">
       <AuthCard>
         <AuthCardHeader
-          title="Welcome back"
-          description="Sign in with your email and password, or use a provider."
+          title={<Trans>Welcome back</Trans>}
+          description={<Trans>Sign in with your email and password, or use a provider.</Trans>}
         />
 
         <SocialButtons callbackURL={next} />
 
-        <AuthDivider>or with email</AuthDivider>
+        <AuthDivider><Trans>or with email</Trans></AuthDivider>
 
         {error && (
           <AuthError>
@@ -121,7 +123,7 @@ export const SignIn = () => {
 
         <form className="space-y-4" onSubmit={submit}>
           <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email"><Trans>Email</Trans></Label>
             <Input
               id="email"
               type="email"
@@ -130,19 +132,19 @@ export const SignIn = () => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder={t`you@example.com`}
               className="h-10"
             />
           </div>
 
           <div className="space-y-1.5">
             <div className="flex items-baseline justify-between">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password"><Trans>Password</Trans></Label>
               <Link
                 to="/forgot"
                 className="text-[11.5px] text-muted-foreground hover:text-foreground hover:underline"
               >
-                Forgot?
+                <Trans>Forgot?</Trans>
               </Link>
             </div>
             <div className="relative">
@@ -161,7 +163,7 @@ export const SignIn = () => {
                 variant="ghost"
                 size="icon-sm"
                 onClick={() => setShow((s) => !s)}
-                aria-label={show ? "Hide password" : "Show password"}
+                aria-label={show ? t`Hide password` : t`Show password`}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground"
               >
                 {show ? <EyeOffIcon size={14} /> : <EyeIcon size={14} />}
@@ -170,12 +172,12 @@ export const SignIn = () => {
           </div>
 
           <AuthSubmit type="submit" disabled={busy !== null}>
-            {busy === "email" ? "Signing in…" : "Sign in"}
+            {busy === "email" ? <Trans>Signing in…</Trans> : <Trans>Sign in</Trans>}
           </AuthSubmit>
 
           <AuthOutline asChild>
             <Link to="/magic-link">
-              <MailIcon /> Send a magic link instead
+              <MailIcon /> <Trans>Send a magic link instead</Trans>
             </Link>
           </AuthOutline>
 
@@ -186,15 +188,15 @@ export const SignIn = () => {
               disabled={busy !== null}
             >
               <KeyRoundIcon />
-              {busy === "passkey" ? "Signing in…" : "Sign in with passkey"}
+              {busy === "passkey" ? <Trans>Signing in…</Trans> : <Trans>Sign in with passkey</Trans>}
             </AuthOutline>
           )}
         </form>
 
         <AuthFootLink
           to="/sign-up"
-          prefix="Don't have an account?"
-          label="Sign up"
+          prefix={t`Don't have an account?`}
+          label={t`Sign up`}
         />
       </AuthCard>
     </AuthShell>

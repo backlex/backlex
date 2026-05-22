@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useEffect, useMemo, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { ADAPTER_PROFILES, type AdapterId } from "../config";
 import { Badge, Button, PageHeader, Switch } from "../ui";
@@ -14,6 +15,7 @@ const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
 
 export function DatabasePage({ pushToast, adapter }: { pushToast: (m: string) => void; adapter: AdapterId }) {
+  const { t } = useLingui();
   const [tab, setTab] = useState("sql");
   const [migCount, setMigCount] = useState<number | null>(null);
   const [backupCount, setBackupCount] = useState<number | null>(null);
@@ -35,19 +37,19 @@ export function DatabasePage({ pushToast, adapter }: { pushToast: (m: string) =>
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
-        title="Database"
-        description={<>Direct access to the underlying engine. Adapter: <span className="font-mono">{ADAPTER_PROFILES[adapter].db}</span>. SQL editor runs through the same permission layer as the API.</>}
+        title={t`Database`}
+        description={<><Trans>Direct access to the underlying engine. Adapter: <span className="font-mono">{ADAPTER_PROFILES[adapter].db}</span>. SQL editor runs through the same permission layer as the API.</Trans></>}
         badges={<Badge variant="outline" mono>{ADAPTER_PROFILES[adapter].db}</Badge>}
       />
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="sql"><I.Code size={13} />SQL editor</TabsTrigger>
+          <TabsTrigger value="sql"><I.Code size={13} /><Trans>SQL editor</Trans></TabsTrigger>
           <TabsTrigger value="migrations">
-            <I.History size={13} />Migrations
+            <I.History size={13} /><Trans>Migrations</Trans>
             {migCount !== null && <span className={countCls}>{migCount}</span>}
           </TabsTrigger>
           <TabsTrigger value="backups">
-            <I.Save size={13} />Backups
+            <I.Save size={13} /><Trans>Backups</Trans>
             {backupCount !== null && <span className={countCls}>{backupCount}</span>}
           </TabsTrigger>
         </TabsList>
@@ -79,6 +81,7 @@ const quoteIdent = (n: string) => `"${n.replace(/"/g, '""')}"`;
 const browseSql = (table: string) => `SELECT *\nFROM ${quoteIdent(table)}\nLIMIT 50;`;
 
 function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
+  const { t } = useLingui();
   const [sql, setSql] = useState("SELECT 1;");
   const [result, setResult] = useState<{ rows: Record<string, unknown>[]; ms: number; count: number }>({
     rows: [],
@@ -140,7 +143,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
       const last = res.data[res.data.length - 1];
       const rows = (last?.rows ?? []) as Record<string, unknown>[];
       setResult({ rows, count: rows.length, ms: res.ms });
-      pushToast(`Query ok · ${rows.length} row(s) · ${res.ms}ms`);
+      pushToast(t`Query ok · ${rows.length} row(s) · ${res.ms}ms`);
     } catch (e) {
       pushToast((e as Error).message);
     } finally {
@@ -153,7 +156,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
       <div className="flex flex-col gap-2.5">
         <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
           <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
-            <I.Database size={13} /><span className="text-xs font-medium">Tables</span>
+            <I.Database size={13} /><span className="text-xs font-medium"><Trans>Tables</Trans></span>
             <div className="flex-1" />
             <span className="font-mono text-[11px] text-muted-foreground">{filteredTables.length === tables.length ? tables.length : `${filteredTables.length}/${tables.length}`}</span>
           </div>
@@ -161,7 +164,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
             <Input
               value={tableFilter}
               onChange={(e) => setTableFilter(e.target.value)}
-              placeholder="Filter tables…"
+              placeholder={t`Filter tables…`}
               spellCheck={false}
             />
           </div>
@@ -177,7 +180,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
               ))
             ) : filteredTables.length === 0 ? (
               <div className="p-3 text-center text-[11.5px] text-muted-foreground">
-                {tables.length === 0 ? "This database has no tables." : "No tables match."}
+                {tables.length === 0 ? <Trans>This database has no tables.</Trans> : <Trans>No tables match.</Trans>}
               </div>
             ) : filteredTables.map((t) => (
               <div key={t.name} title={browseSql(t.name)} className="flex cursor-pointer items-center gap-2 border-t border-border px-3 py-1.5" onClick={() => setSql(browseSql(t.name))}>
@@ -189,10 +192,10 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
           </div>
         </div>
         <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
-          <div className="border-b border-border px-4 py-3.5 text-xs font-medium">Snippets</div>
+          <div className="border-b border-border px-4 py-3.5 text-xs font-medium"><Trans>Snippets</Trans></div>
           <div className="max-h-[220px] overflow-y-auto">
             {snippets.length === 0 ? (
-              <div className="border-t border-border px-3 py-2.5 text-[11.5px] text-muted-foreground">No tables yet.</div>
+              <div className="border-t border-border px-3 py-2.5 text-[11.5px] text-muted-foreground"><Trans>No tables yet.</Trans></div>
             ) : snippets.map((s) => (
               <div key={s.name} title={s.sql} onClick={() => setSql(s.sql)} className="cursor-pointer truncate border-t border-border px-3 py-2 text-xs">{s.name}</div>
             ))}
@@ -207,30 +210,30 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
             {isWrite && <Badge variant="destructive">WRITE</Badge>}
             <div className="flex-1" />
             <label className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-              <I.Lock size={11} /> read-only
+              <I.Lock size={11} /> <Trans>read-only</Trans>
               <Switch checked={readOnly} onChange={setReadOnly} />
             </label>
-            <Button size="sm" variant="outline" icon={I.Save} onClick={() => pushToast("Saved as snippet.")}>Save</Button>
-            <Button size="sm" variant="primary" icon={I.Play} disabled={running || (readOnly && isWrite)} onClick={run}>{running ? "Running…" : "Run"}</Button>
+            <Button size="sm" variant="outline" icon={I.Save} onClick={() => pushToast(t`Saved as snippet.`)}><Trans>Save</Trans></Button>
+            <Button size="sm" variant="primary" icon={I.Play} disabled={running || (readOnly && isWrite)} onClick={run}>{running ? <Trans>Running…</Trans> : <Trans>Run</Trans>}</Button>
           </div>
           <Textarea value={sql} onChange={(e) => setSql(e.target.value)} spellCheck={false} className="w-full resize-y rounded-none border-0 bg-[oklch(0.18_0.01_130)] p-3.5 font-mono text-[13px] leading-[1.55] text-[oklch(0.92_0.02_130)] outline-0 min-h-[180px]" />
           {readOnly && isWrite && (
             <div className="flex items-center gap-1.5 border-t border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))] px-3.5 py-2 text-[11.5px] text-destructive">
-              <I.AlertTriangle size={12} /> Writes blocked. Toggle "read-only" off to run mutations.
+              <I.AlertTriangle size={12} /> <Trans>Writes blocked. Toggle "read-only" off to run mutations.</Trans>
             </div>
           )}
         </div>
         <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
           <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
-            <span className="text-xs font-medium">Result</span>
-            <span className="font-mono text-[11px] text-muted-foreground">{result.count} rows · {result.ms}ms</span>
+            <span className="text-xs font-medium"><Trans>Result</Trans></span>
+            <span className="font-mono text-[11px] text-muted-foreground">{result.count} <Trans>rows</Trans> · {result.ms}ms</span>
             <div className="flex-1" />
-            <Button size="sm" variant="ghost" icon={I.Download} onClick={() => pushToast("Exported result.csv.")}>CSV</Button>
-            <Button size="sm" variant="ghost" icon={I.Code} onClick={() => pushToast("Copied JSON.")}>JSON</Button>
+            <Button size="sm" variant="ghost" icon={I.Download} onClick={() => pushToast(t`Exported result.csv.`)}>CSV</Button>
+            <Button size="sm" variant="ghost" icon={I.Code} onClick={() => pushToast(t`Copied JSON.`)}>JSON</Button>
           </div>
           {result.rows.length === 0 ? (
             <div className="px-4 py-6 text-center text-[12.5px] text-muted-foreground">
-              {result.ms > 0 ? "Query returned no rows." : "Run a query to see results."}
+              {result.ms > 0 ? <Trans>Query returned no rows.</Trans> : <Trans>Run a query to see results.</Trans>}
             </div>
           ) : (
             <Table className={ADMIN_TABLE_CLS}>
@@ -286,12 +289,12 @@ function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
     <div className="grid grid-cols-[380px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
       <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
-          <span className="text-xs font-medium">Migrations</span>
+          <span className="text-xs font-medium"><Trans>Migrations</Trans></span>
           <div className="flex-1" />
           <span className="font-mono text-[11px] text-muted-foreground">{migs.length}</span>
         </div>
         {migs.length === 0 && (
-          <div className="px-3 py-4 text-xs text-muted-foreground">No migrations applied yet.</div>
+          <div className="px-3 py-4 text-xs text-muted-foreground"><Trans>No migrations applied yet.</Trans></div>
         )}
         {migs.map((m) => (
           <div
@@ -306,24 +309,24 @@ function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
               </div>
               <div className="text-[11px] text-muted-foreground">{m.t}</div>
             </div>
-            <Badge variant="default">applied</Badge>
+            <Badge variant="default"><Trans>applied</Trans></Badge>
           </div>
         ))}
       </div>
       <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
         {!active ? (
-          <div className="p-9 text-center text-[13px] text-muted-foreground">Pick a migration to inspect its details.</div>
+          <div className="p-9 text-center text-[13px] text-muted-foreground"><Trans>Pick a migration to inspect its details.</Trans></div>
         ) : (
           <>
             <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
               <span className="font-mono text-xs font-medium">{active.tag ?? active.hash.slice(0, 12)}</span>
             </div>
             <div className="flex flex-col gap-2 p-4 text-xs">
-              <div><span className="text-muted-foreground">Folder tag</span><div className="font-mono">{active.tag ?? <em className="text-muted-foreground">unknown — manifest out of sync, run <code>bun run --cwd packages/db manifest</code></em>}</div></div>
-              <div><span className="text-muted-foreground">Hash</span><div className="font-mono [word-break:break-all]">{active.hash}</div></div>
-              <div><span className="text-muted-foreground">Applied at</span><div className="font-mono">{active.t}</div></div>
+              <div><span className="text-muted-foreground"><Trans>Folder tag</Trans></span><div className="font-mono">{active.tag ?? <em className="text-muted-foreground"><Trans>unknown — manifest out of sync, run <code>bun run --cwd packages/db manifest</code></Trans></em>}</div></div>
+              <div><span className="text-muted-foreground"><Trans>Hash</Trans></span><div className="font-mono [word-break:break-all]">{active.hash}</div></div>
+              <div><span className="text-muted-foreground"><Trans>Applied at</Trans></span><div className="font-mono">{active.t}</div></div>
               <div className="mt-2 text-[11.5px] text-muted-foreground">
-                Migrations are applied via <code>bun run db:migrate:&lt;dialect&gt;</code> at deploy time. Drizzle tracks them by content hash; the folder tag comes from the build-time manifest. Rollbacks are not supported — write a forward migration instead.
+                <Trans>Migrations are applied via <code>bun run db:migrate:&lt;dialect&gt;</code> at deploy time. Drizzle tracks them by content hash; the folder tag comes from the build-time manifest. Rollbacks are not supported — write a forward migration instead.</Trans>
               </div>
             </div>
           </>
@@ -334,6 +337,7 @@ function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
 }
 
 function Backups({ pushToast }: { pushToast: (m: string) => void }) {
+  const { t } = useLingui();
   type Backup = { id: string; t: string; size: string; kind: string; tables: number; label: string | undefined };
   const [backups, setBackups] = useState<Backup[]>([]);
   const reload = async () => {
@@ -359,7 +363,7 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
   const backupNow = async () => {
     try {
       await dbAdminApi.backupNow();
-      pushToast("Manual backup queued.");
+      pushToast(t`Manual backup queued.`);
       await reload();
     } catch (e) {
       pushToast((e as Error).message);
@@ -368,19 +372,19 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
   return (
     <div className="flex flex-col gap-3.5">
       <div className="grid grid-cols-3 gap-3 overflow-hidden rounded-2xl border border-border bg-card p-3.5 text-card-foreground max-[640px]:grid-cols-1">
-        <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Schedule</div><div className="font-medium">Daily 03:00 UTC</div></div>
-        <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Retention</div><div className="font-medium">30 days</div></div>
-        <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Destination</div><div className="font-mono text-xs font-medium">r2://workeros-backups/</div></div>
+        <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Schedule</Trans></div><div className="font-medium"><Trans>Daily 03:00 UTC</Trans></div></div>
+        <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Retention</Trans></div><div className="font-medium"><Trans>30 days</Trans></div></div>
+        <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Destination</Trans></div><div className="font-mono text-xs font-medium">r2://workeros-backups/</div></div>
       </div>
       <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
-          <span className="text-xs font-medium">Backups</span>
+          <span className="text-xs font-medium"><Trans>Backups</Trans></span>
           <div className="flex-1" />
-          <Button size="sm" variant="primary" icon={I.Save} onClick={backupNow}>Back up now</Button>
+          <Button size="sm" variant="primary" icon={I.Save} onClick={backupNow}><Trans>Back up now</Trans></Button>
         </div>
         <Table className={ADMIN_TABLE_CLS}>
           <TableHeader>
-            <TableRow><TableHead>ID</TableHead><TableHead>Created</TableHead><TableHead>Tables</TableHead><TableHead>Size</TableHead><TableHead>Kind</TableHead><TableHead className="sticky right-0 bg-card" /></TableRow>
+            <TableRow><TableHead>ID</TableHead><TableHead><Trans>Created</Trans></TableHead><TableHead><Trans>Tables</Trans></TableHead><TableHead><Trans>Size</Trans></TableHead><TableHead><Trans>Kind</Trans></TableHead><TableHead className="sticky right-0 bg-card" /></TableRow>
           </TableHeader>
           <TableBody>
             {backups.map((b) => (
@@ -399,8 +403,8 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
-                  }}>Download</Button>
-                  <Button size="sm" variant="ghost" icon={I.History} onClick={() => pushToast(`Restored from ${b.id} (dry-run).`)}>Restore</Button>
+                  }}><Trans>Download</Trans></Button>
+                  <Button size="sm" variant="ghost" icon={I.History} onClick={() => pushToast(t`Restored from ${b.id} (dry-run).`)}><Trans>Restore</Trans></Button>
                 </TableCell>
               </TableRow>
             ))}

@@ -1,6 +1,7 @@
 // @ts-nocheck
 // Members panel — workspace member management for multi-tenant.
 import { useMemo, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useQueryClient } from "@tanstack/react-query";
 import { Input } from "@workeros/ui/components/input";
 import { I } from "./icons";
@@ -76,6 +77,7 @@ export interface MembersPanelProps {
 }
 
 export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
+  const { t } = useLingui();
   /**
    * Workspace-level roles — these live on `tenant_members.role`, not on the
    * global `roles` table. The system roles (admin/authenticated/public) the
@@ -118,12 +120,12 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
 
   const sendInvite = async () => {
     const email = invite.trim().toLowerCase();
-    if (!email || !/.+@.+\..+/.test(email)) { pushToast("Enter a valid email."); return; }
-    if (!tenantId) { pushToast("No active workspace."); return; }
-    if (members.find((m) => m.email === email)) { pushToast(`${email} is already a member.`); return; }
+    if (!email || !/.+@.+\..+/.test(email)) { pushToast(t`Enter a valid email.`); return; }
+    if (!tenantId) { pushToast(t`No active workspace.`); return; }
+    if (members.find((m) => m.email === email)) { pushToast(t`${email} is already a member.`); return; }
     try {
       await tenantsApi.invite(tenantId, { email, role: inviteRole });
-      pushToast(`Invite sent to ${email}.`);
+      pushToast(t`Invite sent to ${email}.`);
       setInvite("");
       // Refetch members list (and any other view that observes the same
       // subtree). Tenants list itself didn't change — leave it cached.
@@ -147,15 +149,15 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
     <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
       <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-4 py-3.5">
         <I.Users size={14} />
-        <span className="text-[13px] font-medium">members</span>
-        <span className="font-mono text-xs text-muted-foreground">{stats.active} active · {stats.invited} invited</span>
+        <span className="text-[13px] font-medium"><Trans>members</Trans></span>
+        <span className="font-mono text-xs text-muted-foreground"><Trans>{stats.active} active · {stats.invited} invited</Trans></span>
         <div className="flex-1" />
         <div className="flex h-[30px] items-center gap-1.5 rounded-md border border-border bg-card px-2.5">
           <I.Search size={12} />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search members…"
+            placeholder={t`Search members…`}
             className="h-auto w-40 border-0 bg-transparent p-0 text-xs shadow-none focus-visible:ring-0 focus-visible:border-0"
           />
         </div>
@@ -165,7 +167,7 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
         <I.Mail size={13} className="text-muted-foreground" />
         <Input
           className="h-[30px] min-w-[200px] flex-1 text-[12.5px]"
-          placeholder="invite by email…"
+          placeholder={t`invite by email…`}
           value={invite}
           onChange={(e) => setInvite(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") sendInvite(); }}
@@ -177,15 +179,15 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
           size="sm"
           className="w-[150px] shrink-0"
         />
-        <Button variant="primary" size="sm" icon={I.Plus} onClick={sendInvite}>Invite</Button>
+        <Button variant="primary" size="sm" icon={I.Plus} onClick={sendInvite}><Trans>Invite</Trans></Button>
       </div>
 
       <div className="overflow-x-auto py-1">
         <div className="grid min-w-[520px] grid-cols-[1.6fr_1fr_1fr_0.8fr_36px] items-center gap-3 border-b border-border bg-[color-mix(in_oklch,var(--muted)_18%,var(--card))] px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-          <span>Member</span>
-          <span>Role</span>
-          <span>Last active</span>
-          <span>Status</span>
+          <span><Trans>Member</Trans></span>
+          <span><Trans>Role</Trans></span>
+          <span><Trans>Last active</Trans></span>
+          <span><Trans>Status</Trans></span>
           <span />
         </div>
         {loading && filtered.length === 0 && <SkeletonList rows={4} cols={5} />}
@@ -220,15 +222,15 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
             />
             <span className="font-mono text-[11.5px] text-muted-foreground">{m.last}</span>
             <span>
-              {m.status === "active" && <Badge variant="secondary">active</Badge>}
-              {m.status === "invited" && <Badge variant="outline">pending</Badge>}
+              {m.status === "active" && <Badge variant="secondary"><Trans>active</Trans></Badge>}
+              {m.status === "invited" && <Badge variant="outline"><Trans>pending</Trans></Badge>}
             </span>
-            <IconButton icon={I.Trash} title="Remove" onClick={() => remove(m.id)} />
+            <IconButton icon={I.Trash} title={t`Remove`} onClick={() => remove(m.id)} />
           </div>
         ))}
         {!loading && !filtered.length && (
           <div className="p-6 text-center text-[12.5px] text-muted-foreground">
-            {q ? `No members match "${q}".` : "No members yet."}
+            {q ? <Trans>No members match "{q}".</Trans> : <Trans>No members yet.</Trans>}
           </div>
         )}
       </div>

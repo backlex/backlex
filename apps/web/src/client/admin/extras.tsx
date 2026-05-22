@@ -1,9 +1,10 @@
 // @ts-nocheck
 // Cmd+K palette + Realtime event tail + Schema view + Empty states
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { NAV_ITEMS, NAV_SETTINGS, type CollectionListItem, type CollectionSchema, type Post, type SchemaField } from "./config";
-import { Badge, Button, IconButton, JsonBlock } from "./ui";
+import { Badge, Button, IconButton, JsonBlock, navLabel } from "./ui";
 import { Input } from "@workeros/ui/components/input";
 import {
   Dialog,
@@ -29,6 +30,7 @@ export interface PaletteProps {
 }
 
 export function Palette({ open, onClose, onNavigate, items, collections }: PaletteProps) {
+  const { t, i18n } = useLingui();
   const [q, setQ] = useState("");
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -43,23 +45,23 @@ export function Palette({ open, onClose, onNavigate, items, collections }: Palet
 
   const groups = useMemo(() => {
     const ql = q.toLowerCase().trim();
-    const nav: PaletteSelection[] = NAV_ITEMS.concat(NAV_SETTINGS).map((n) => ({ kind: "page", id: n.id, label: n.label, icon: String(n.icon), meta: "goto" })).filter((x) => !ql || x.label.toLowerCase().includes(ql));
-    const cols: PaletteSelection[] = collections.map((c) => ({ kind: "collection", id: c.slug, label: c.slug, icon: "Database", meta: `${c.count} items` })).filter((x) => !ql || x.label.toLowerCase().includes(ql));
+    const nav: PaletteSelection[] = NAV_ITEMS.concat(NAV_SETTINGS).map((n) => ({ kind: "page", id: n.id, label: i18n._(navLabel(n.id)), icon: String(n.icon), meta: t`goto` })).filter((x) => !ql || x.label.toLowerCase().includes(ql));
+    const cols: PaletteSelection[] = collections.map((c) => ({ kind: "collection", id: c.slug, label: c.slug, icon: "Database", meta: t`${c.count} items` })).filter((x) => !ql || x.label.toLowerCase().includes(ql));
     const its: PaletteSelection[] = ql
       ? items.filter((i) => i.title.toLowerCase().includes(ql) || i.slug.toLowerCase().includes(ql)).slice(0, 8).map((i) => ({ kind: "item", id: i.id, label: i.title, sub: i.slug, icon: "Inbox", meta: i.status }))
       : [];
     const actions: PaletteSelection[] = [
-      { kind: "action", id: "new-post", label: "New post", icon: "Plus", meta: "C" },
-      { kind: "action", id: "refresh", label: "Refresh", icon: "Refresh", meta: "R" },
-      { kind: "action", id: "toggle-theme", label: "Toggle theme", icon: "Moon", meta: "D" },
+      { kind: "action", id: "new-post", label: t`New post`, icon: "Plus", meta: "C" },
+      { kind: "action", id: "refresh", label: t`Refresh`, icon: "Refresh", meta: "R" },
+      { kind: "action", id: "toggle-theme", label: t`Toggle theme`, icon: "Moon", meta: "D" },
     ].filter((x) => !ql || x.label.toLowerCase().includes(ql));
     return [
-      { name: "Items", list: its },
-      { name: "Collections", list: cols },
-      { name: "Pages", list: nav },
-      { name: "Actions", list: actions },
+      { name: t`Items`, list: its },
+      { name: t`Collections`, list: cols },
+      { name: t`Pages`, list: nav },
+      { name: t`Actions`, list: actions },
     ].filter((g) => g.list.length);
-  }, [q, items, collections]);
+  }, [q, items, collections, i18n, t]);
 
   const flat = useMemo(() => groups.flatMap((g) => g.list), [groups]);
 
@@ -84,15 +86,15 @@ export function Palette({ open, onClose, onNavigate, items, collections }: Palet
         showCloseButton={false}
         className="top-[18%] flex max-h-[60vh] w-[min(640px,92vw)] translate-y-0 flex-col gap-0 overflow-hidden bg-popover p-0 sm:max-w-none"
       >
-        <DialogTitle className="sr-only">Command palette</DialogTitle>
-        <DialogDescription className="sr-only">Type a command, collection, or item title to navigate.</DialogDescription>
+        <DialogTitle className="sr-only"><Trans>Command palette</Trans></DialogTitle>
+        <DialogDescription className="sr-only"><Trans>Type a command, collection, or item title to navigate.</Trans></DialogDescription>
         <div className="flex items-center gap-2.5 border-b border-border px-[18px] py-3.5">
           <I.Search size={15} />
           <Input
             ref={inputRef}
             value={q}
             onChange={(e) => { setQ(e.target.value); setActive(0); }}
-            placeholder="Type a command, collection, or item title…"
+            placeholder={t`Type a command, collection, or item title…`}
             className="h-auto flex-1 border-0 bg-transparent p-0 text-[14.5px] text-foreground shadow-none focus-visible:ring-0"
           />
           <span className="rounded-sm border border-border bg-muted px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground">esc</span>
@@ -100,7 +102,7 @@ export function Palette({ open, onClose, onNavigate, items, collections }: Palet
         <div className="flex-1 overflow-auto p-1.5">
           {flat.length === 0 ? (
             <div className="p-7 text-center text-[13px] text-muted-foreground">
-              No matches. Try <span className="font-mono">posts</span> or <span className="font-mono">edge</span>.
+              <Trans>No matches. Try <span className="font-mono">posts</span> or <span className="font-mono">edge</span>.</Trans>
             </div>
           ) : (
             groups.map((g) => (
@@ -130,9 +132,9 @@ export function Palette({ open, onClose, onNavigate, items, collections }: Palet
           )}
         </div>
         <div className="flex items-center gap-3.5 border-t border-border px-3.5 py-2 font-mono text-[11px] text-muted-foreground">
-          <span><span className={kbd}>↵</span> open</span>
-          <span><span className={kbd}>↑↓</span> navigate</span>
-          <span><span className={kbd}>esc</span> close</span>
+          <span><span className={kbd}>↵</span> <Trans>open</Trans></span>
+          <span><span className={kbd}>↑↓</span> <Trans>navigate</Trans></span>
+          <span><span className={kbd}>esc</span> <Trans>close</Trans></span>
         </div>
       </DialogContent>
     </Dialog>
@@ -170,6 +172,7 @@ const EV_COLOR: Record<string, string> = {
 };
 
 function RealtimeEventDialog({ ev, channel, onClose }: { ev: RealtimeEvent; channel: string; onClose: () => void }) {
+  const { t } = useLingui();
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="flex max-h-[min(86vh,720px)] w-[min(720px,92vw)] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
@@ -179,42 +182,42 @@ function RealtimeEventDialog({ ev, channel, onClose }: { ev: RealtimeEvent; chan
             <span className="font-mono text-xs text-muted-foreground">{channel}</span>
           </div>
           <DialogTitle className="text-sm font-medium">
-            {ev.title || ev.itemId || "(item)"}
+            {ev.title || ev.itemId || t`(item)`}
           </DialogTitle>
-          <DialogDescription className="sr-only">{`${ev.event} event detail`}</DialogDescription>
+          <DialogDescription className="sr-only">{t`${ev.event} event detail`}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
           <div className="grid grid-cols-[120px_1fr] gap-x-3.5 gap-y-2 text-[12.5px]">
-            <span className="text-muted-foreground">Channel</span>
+            <span className="text-muted-foreground"><Trans>Channel</Trans></span>
             <span className="font-mono">{channel}</span>
-            <span className="text-muted-foreground">Event</span>
+            <span className="text-muted-foreground"><Trans>Event</Trans></span>
             <span className="font-mono">{ev.event}</span>
-            <span className="text-muted-foreground">Received</span>
+            <span className="text-muted-foreground"><Trans>Received</Trans></span>
             <span className="font-mono">{formatFullTs(ev.receivedAt)}</span>
             {ev.itemId && (
               <>
-                <span className="text-muted-foreground">Item ID</span>
+                <span className="text-muted-foreground"><Trans>Item ID</Trans></span>
                 <span className="font-mono [word-break:break-all]">{ev.itemId}</span>
               </>
             )}
             {ev.who && ev.who !== "system" && (
               <>
-                <span className="text-muted-foreground">By</span>
+                <span className="text-muted-foreground"><Trans>By</Trans></span>
                 <span className="font-mono [word-break:break-all]">{ev.who}</span>
               </>
             )}
             {ev.field && (
               <>
-                <span className="text-muted-foreground">Changed field</span>
+                <span className="text-muted-foreground"><Trans>Changed field</Trans></span>
                 <span className="font-mono">{ev.field}</span>
               </>
             )}
           </div>
-          <JsonBlock label="Payload" value={ev.raw ?? {}} />
+          <JsonBlock label={t`Payload`} value={ev.raw ?? {}} />
         </div>
         <DialogFooter className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <div className="flex-1" />
-          <Button variant="ghost" size="sm" onClick={onClose}>Close</Button>
+          <Button variant="ghost" size="sm" onClick={onClose}><Trans>Close</Trans></Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -222,6 +225,7 @@ function RealtimeEventDialog({ ev, channel, onClose }: { ev: RealtimeEvent; chan
 }
 
 export function RealtimeTail({ events, channel, connected }: { events: RealtimeEvent[]; channel: string; connected?: boolean }) {
+  const { t } = useLingui();
   const [openId, setOpenId] = useState<string | null>(null);
   const openEvent = useMemo(
     () => events.find((e) => e.id === openId) ?? null,
@@ -231,7 +235,7 @@ export function RealtimeTail({ events, channel, connected }: { events: RealtimeE
     <div className="sticky top-4 flex max-h-[calc(100vh-140px)] flex-col overflow-hidden rounded-2xl border border-border bg-card">
       <div className="flex items-center gap-2 border-b border-border px-3.5 py-3">
         <I.Zap size={14} />
-        <h3 className="m-0 text-[13px] font-semibold">Live tail</h3>
+        <h3 className="m-0 text-[13px] font-semibold"><Trans>Live tail</Trans></h3>
         <span className="ml-auto flex items-center font-mono text-[11px] text-muted-foreground">
           <span className={`mr-1.5 size-[7px] shrink-0 rounded-full ${connected ? "bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]" : "bg-destructive shadow-[0_0_0_3px_color-mix(in_oklch,var(--destructive)_25%,transparent)]"}`} />
           {channel}
@@ -239,7 +243,7 @@ export function RealtimeTail({ events, channel, connected }: { events: RealtimeE
       </div>
       {events.length === 0 ? (
         <div className="p-7 text-center text-[12.5px] text-muted-foreground">
-          Subscribed. Waiting for events…
+          <Trans>Subscribed. Waiting for events…</Trans>
         </div>
       ) : (
         <div className="flex flex-1 flex-col overflow-auto">
@@ -256,7 +260,7 @@ export function RealtimeTail({ events, channel, connected }: { events: RealtimeE
                   setOpenId(ev.id);
                 }
               }}
-              title="Click for full payload"
+              title={t`Click for full payload`}
             >
               <div className="flex items-center gap-1.5">
                 <span className={`${EV_BASE} ${EV_COLOR[ev.event]}`}>{ev.event}</span>
@@ -265,8 +269,8 @@ export function RealtimeTail({ events, channel, connected }: { events: RealtimeE
               <div className="flex items-center gap-1.5 font-mono text-[11.5px] leading-[1.35] text-muted-foreground">
                 <span className="min-w-0 flex-1 truncate">
                   <span className="text-foreground">{ev.title || ev.itemId}</span>
-                  {ev.event === "updated" && ev.field && <> · changed <span className="text-foreground">{ev.field}</span></>}
-                  {ev.who && <> · by <span className="text-foreground">{ev.who}</span></>}
+                  {ev.event === "updated" && ev.field && <> · <Trans>changed</Trans> <span className="text-foreground">{ev.field}</span></>}
+                  {ev.who && <> · <Trans>by</Trans> <span className="text-foreground">{ev.who}</span></>}
                 </span>
                 <I.ChevronRight size={12} />
               </div>
@@ -294,6 +298,7 @@ export function SchemaView({
   onEditField?: (name: string) => void;
   onReorderFields?: (fromIndex: number, toIndex: number) => void;
 }) {
+  const { t } = useLingui();
   // schema.fields contains ONLY user-defined columns (the API's source of
   // truth). The schema page also wants to surface the implicit system
   // columns (id / created_at / updated_at / owner_id) so users can see
@@ -318,10 +323,10 @@ export function SchemaView({
     <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
       <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
         <I.Braces size={14} />
-        <span className="text-[13px] font-medium">fields</span>
-        <span className="font-mono text-xs text-muted-foreground">{allFields.length} total · {userFields.length} editable · drag the grip to reorder</span>
+        <span className="text-[13px] font-medium"><Trans>fields</Trans></span>
+        <span className="font-mono text-xs text-muted-foreground"><Trans>{allFields.length} total · {userFields.length} editable · drag the grip to reorder</Trans></span>
         <div className="flex-1" />
-        <Button variant="primary" size="sm" icon={I.Plus} onClick={onAddField}>Add field</Button>
+        <Button variant="primary" size="sm" icon={I.Plus} onClick={onAddField}><Trans>Add field</Trans></Button>
       </div>
       <div className="w-full max-w-full overflow-x-auto">
         {allFields.map((f, idx) => {
@@ -375,9 +380,9 @@ export function SchemaView({
               </span>
               <div className="flex min-w-0 items-center gap-2">
                 <span className="font-mono text-[12.5px]">{f.name}</span>
-                {f.system && <Badge variant="secondary">system</Badge>}
-                {f.unique && <Badge variant="outline">unique</Badge>}
-                {!f.nullable && !f.system && <Badge variant="outline">required</Badge>}
+                {f.system && <Badge variant="secondary"><Trans>system</Trans></Badge>}
+                {f.unique && <Badge variant="outline"><Trans>unique</Trans></Badge>}
+                {!f.nullable && !f.system && <Badge variant="outline"><Trans>required</Trans></Badge>}
               </div>
               <Badge variant="outline" mono>{f.type}</Badge>
               <span className="font-mono text-[11.5px] text-muted-foreground">
@@ -385,10 +390,10 @@ export function SchemaView({
               </span>
               <span className="flex justify-end gap-1">
                 {!f.system && onEditField && (
-                  <IconButton icon={I.Pencil} onClick={() => onEditField(f.name)} title="Edit field" />
+                  <IconButton icon={I.Pencil} onClick={() => onEditField(f.name)} title={t`Edit field`} />
                 )}
                 {!f.system && (
-                  <IconButton icon={I.Trash} onClick={() => onDropField(f.name)} title="Drop column" />
+                  <IconButton icon={I.Trash} onClick={() => onDropField(f.name)} title={t`Drop column`} />
                 )}
               </span>
             </div>
@@ -423,13 +428,14 @@ export function AlterPreview({ pendingField }: { pendingField?: Partial<SchemaFi
 }
 
 export function EmptyItems({ onCreate, slug }: { onCreate: () => void; slug?: string }) {
-  const tableName = slug ? `c_${slug}` : "this collection";
+  const { t } = useLingui();
+  const tableName = slug ? `c_${slug}` : t`this collection`;
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
       <div className="grid size-10 place-items-center rounded-xl bg-muted text-primary"><I.Inbox size={20} /></div>
-      <h4 className="m-0 text-[15px] font-semibold">No items yet</h4>
-      <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground">Create the first row in <span className="font-mono">{tableName}</span> via the API or use the New row button.</p>
-      <Button variant="primary" size="sm" icon={I.Plus} onClick={onCreate}>New row</Button>
+      <h4 className="m-0 text-[15px] font-semibold"><Trans>No items yet</Trans></h4>
+      <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground"><Trans>Create the first row in <span className="font-mono">{tableName}</span> via the API or use the New row button.</Trans></p>
+      <Button variant="primary" size="sm" icon={I.Plus} onClick={onCreate}><Trans>New row</Trans></Button>
     </div>
   );
 }

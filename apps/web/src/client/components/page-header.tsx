@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRightIcon } from "lucide-react";
 import { cn } from "@workeros/ui/lib/utils";
+import { useLingui } from "@lingui/react/macro";
 
 export interface BreadcrumbItem {
   label: string;
@@ -28,12 +29,14 @@ export const PageHeader = ({
   breadcrumbs,
   actions,
   titleClassName,
-}: PageHeaderProps) => (
+}: PageHeaderProps) => {
+  const { t } = useLingui();
+  return (
   <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
     <div className="min-w-0 space-y-1">
       {breadcrumbs && breadcrumbs.length > 0 && (
         <nav
-          aria-label="Breadcrumb"
+          aria-label={t`Breadcrumb`}
           className="flex items-center gap-1 text-xs text-muted-foreground"
         >
           {breadcrumbs.map((item, i) => (
@@ -59,4 +62,5 @@ export const PageHeader = ({
     </div>
     {actions && <div className="flex shrink-0 gap-2">{actions}</div>}
   </div>
-);
+  );
+};

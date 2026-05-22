@@ -8,6 +8,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent } from "../icons";
 import { Button, PageHeader } from "../ui";
 import { useAdvisor, queryKeys } from "../queries";
@@ -71,6 +72,7 @@ function formatGeneratedAt(iso: string): string {
 }
 
 export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "success" | "error") => void }) {
+  const { t } = useLingui();
   const [tab, setTab] = useState<CheckKind>("security");
   const [dismissed, setDismissed] = useState<Set<string>>(loadDismissed);
   const navigate = useNavigate();
@@ -87,7 +89,7 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
       saveDismissed(next);
       return next;
     });
-    pushToast(`Dismissed "${title}".`);
+    pushToast(t`Dismissed "${title}".`);
   };
 
   const all = useMemo(
@@ -129,9 +131,9 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
   const onCopy = (fix: string) => {
     try {
       void navigator.clipboard.writeText(fix);
-      pushToast("Fix copied to clipboard.");
+      pushToast(t`Fix copied to clipboard.`);
     } catch {
-      pushToast("Could not copy fix.", "error");
+      pushToast(t`Could not copy fix.`, "error");
     }
   };
 
@@ -141,8 +143,8 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
-        title="Advisor"
-        description="Automated lint over schema, permissions, and configuration. Runs on demand against live workspace state."
+        title={t`Advisor`}
+        description={t`Automated lint over schema, permissions, and configuration. Runs on demand against live workspace state.`}
         actions={
           <Button
             variant="outline"
@@ -151,10 +153,10 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
             onClick={() => {
               void qc
                 .invalidateQueries({ queryKey: queryKeys.advisor() })
-                .then(() => pushToast("Advisor re-ran."));
+                .then(() => pushToast(t`Advisor re-ran.`));
             }}
           >
-            {isFetching ? "Re-running…" : "Re-run all"}
+            {isFetching ? <Trans>Re-running…</Trans> : <Trans>Re-run all</Trans>}
           </Button>
         }
       />
@@ -169,7 +171,7 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
                 {score}
               </div>
               <div className="text-[10.5px] uppercase tracking-[0.06em] text-muted-foreground">
-                health
+                <Trans>health</Trans>
               </div>
             </div>
           </div>
@@ -181,19 +183,19 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
               active={tab === "security"}
               onClick={() => setTab("security")}
               icon={I.ShieldAlert}
-              label="Security"
+              label={t`Security`}
             />
             <SummaryCard
               counts={counts.performance}
               active={tab === "performance"}
               onClick={() => setTab("performance")}
               icon={I.Cpu}
-              label="Performance"
+              label={t`Performance`}
             />
           </div>
           {generatedAt && (
             <div className="text-[11.5px] text-muted-foreground">
-              Last run: {formatGeneratedAt(generatedAt)}
+              <Trans>Last run: {formatGeneratedAt(generatedAt)}</Trans>
             </div>
           )}
         </div>
@@ -202,11 +204,11 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
       <Tabs value={tab} onValueChange={(v) => setTab(v as CheckKind)}>
         <TabsList>
           <TabsTrigger value="security">
-            <I.ShieldAlert size={13} />Security{" "}
+            <I.ShieldAlert size={13} /><Trans>Security</Trans>{" "}
             <span className={countCls}>{counts.security.error + counts.security.warn + counts.security.info}</span>
           </TabsTrigger>
           <TabsTrigger value="performance">
-            <I.Cpu size={13} />Performance{" "}
+            <I.Cpu size={13} /><Trans>Performance</Trans>{" "}
             <span className={countCls}>{counts.performance.error + counts.performance.warn + counts.performance.info}</span>
           </TabsTrigger>
         </TabsList>
@@ -217,14 +219,14 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
         {isError ? (
           <div className="flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card px-6 py-12 text-center text-card-foreground">
             <div className="grid size-10 place-items-center rounded-xl bg-muted text-primary"><I.AlertTriangle size={18} /></div>
-            <h4 className="m-0 text-[15px] font-semibold">Couldn't load advisor findings</h4>
-            <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground">The advisor endpoint returned an error. Re-run to try again.</p>
+            <h4 className="m-0 text-[15px] font-semibold"><Trans>Couldn't load advisor findings</Trans></h4>
+            <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground"><Trans>The advisor endpoint returned an error. Re-run to try again.</Trans></p>
           </div>
         ) : list.length === 0 ? (
           <div className="flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card px-6 py-12 text-center text-card-foreground">
             <div className="grid size-10 place-items-center rounded-xl bg-muted text-primary"><I.CheckCircle size={18} /></div>
-            <h4 className="m-0 text-[15px] font-semibold">All clear in this category</h4>
-            <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground">No outstanding findings. Re-run after a schema or permission change.</p>
+            <h4 className="m-0 text-[15px] font-semibold"><Trans>All clear in this category</Trans></h4>
+            <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground"><Trans>No outstanding findings. Re-run after a schema or permission change.</Trans></p>
           </div>
         ) : (
           groups.map((g) =>
@@ -277,17 +279,17 @@ function SummaryCard({
         <span className="flex items-center gap-1.5 text-xs">
           <span className="inline-block size-2 rounded-full bg-destructive" />
           <span className="font-mono tabular-nums">{counts.error}</span>
-          <span className="text-muted-foreground">err</span>
+          <span className="text-muted-foreground"><Trans>err</Trans></span>
         </span>
         <span className="flex items-center gap-1.5 text-xs">
           <span className="inline-block size-2 rounded-full bg-[oklch(0.7_0.18_70)]" />
           <span className="font-mono tabular-nums">{counts.warn}</span>
-          <span className="text-muted-foreground">warn</span>
+          <span className="text-muted-foreground"><Trans>warn</Trans></span>
         </span>
         <span className="flex items-center gap-1.5 text-xs">
           <span className="inline-block size-2 rounded-full bg-muted-foreground" />
           <span className="font-mono tabular-nums">{counts.info}</span>
-          <span className="text-muted-foreground">info</span>
+          <span className="text-muted-foreground"><Trans>info</Trans></span>
         </span>
       </div>
     </button>
@@ -352,21 +354,21 @@ function FindingDetail({
       <p className="m-0 text-[13px] text-foreground">{c.body}</p>
       <div>
         <div className="mb-1.5 text-[11px] uppercase tracking-[0.05em] text-muted-foreground">
-          suggested fix
+          <Trans>suggested fix</Trans>
         </div>
         <pre className="m-0 overflow-x-auto whitespace-pre rounded-lg bg-muted px-3 py-2.5 font-mono text-[11.5px]">{c.fix}</pre>
       </div>
       <div className="flex gap-1.5">
         <Button variant="outline" size="sm" icon={I.Copy} onClick={onCopy}>
-          Copy fix
+          <Trans>Copy fix</Trans>
         </Button>
         <Button variant="ghost" size="sm" onClick={onDismiss}>
-          Dismiss
+          <Trans>Dismiss</Trans>
         </Button>
         <div className="flex-1" />
         {onOpen && (
           <Button variant="ghost" size="sm" iconRight={I.ExternalLink} onClick={onOpen}>
-            Open resource
+            <Trans>Open resource</Trans>
           </Button>
         )}
       </div>

@@ -1,6 +1,7 @@
 // @ts-nocheck
 // Collections index — grid of all collections + new-collection wizard
 import { useEffect, useMemo, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "./icons";
 import type { CollectionListItem } from "./config";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
@@ -42,6 +43,7 @@ export interface CollectionsIndexProps {
 }
 
 export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArchived, onToggleArchived, onRestore, onOpenApi, pushToast }: CollectionsIndexProps) {
+  const { t } = useLingui();
   const [search, setSearch] = useUrlState("q", "");
   const [view, setView] = useState<"grid" | "table">("grid");
   const [adoptOpen, setAdoptOpen] = useState(false);
@@ -77,14 +79,14 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
   return (
     <div className="flex min-w-0 flex-col gap-4.5">
       <PageHeader
-        title="Collections"
-        description={<>Each collection is a physical table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations.</>}
+        title={<Trans>Collections</Trans>}
+        description={<Trans>Each collection is a physical table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations.</Trans>}
         badges={<span className="ml-1 inline-flex flex-wrap gap-1.5">
           <Badge variant={showArchived ? "secondary" : "outline"} mono>
-            {collections.length} {showArchived ? "archived" : "collections"}
+            {collections.length} {showArchived ? <Trans>archived</Trans> : <Trans>collections</Trans>}
           </Badge>
           {!showArchived && (
-            <Badge variant="outline" mono>{collections.reduce((a, c) => a + c.count, 0).toLocaleString()} rows</Badge>
+            <Badge variant="outline" mono><Trans>{collections.reduce((a, c) => a + c.count, 0).toLocaleString()} rows</Trans></Badge>
           )}
         </span>}
         actions={<>
@@ -93,15 +95,15 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
               variant="outline"
               icon={showArchived ? I.Inbox : I.Archive}
               onClick={() => onToggleArchived(!showArchived)}
-              title={showArchived ? "Show active collections" : "Show archived collections"}
+              title={showArchived ? t`Show active collections` : t`Show archived collections`}
             >
-              {showArchived ? "View active" : "View archived"}
+              {showArchived ? <Trans>View active</Trans> : <Trans>View archived</Trans>}
             </Button>
           )}
           {!showArchived && <>
-            <Button variant="outline" icon={I.Code}>Schema</Button>
-            <Button variant="outline" icon={I.ExternalLink} onClick={() => onOpenApi?.()}>API docs</Button>
-            <Button variant="primary" icon={I.Plus} onClick={() => setChooserOpen(true)}>New collection</Button>
+            <Button variant="outline" icon={I.Code}><Trans>Schema</Trans></Button>
+            <Button variant="outline" icon={I.ExternalLink} onClick={() => onOpenApi?.()}><Trans>API docs</Trans></Button>
+            <Button variant="primary" icon={I.Plus} onClick={() => setChooserOpen(true)}><Trans>New collection</Trans></Button>
           </>}
         </>}
       />
@@ -110,7 +112,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
         onClose={() => setAdoptOpen(false)}
         onComplete={({ slug }) => {
           setAdoptOpen(false);
-          pushToast?.(`Adopted "${slug}". Reloading…`);
+          pushToast?.(t`Adopted "${slug}". Reloading…`);
           // Easiest reliable refresh — the index reads `collections` from the
           // parent, which fetches once on mount. A reload keeps that contract
           // intact without threading a new "refresh" callback through.
@@ -127,11 +129,11 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
       <div className="flex flex-wrap items-center gap-2">
         <InputGroup>
           <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
-          <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search collections by slug or group…" />
+          <InputGroupInput value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t`Search collections by slug or group…`} />
         </InputGroup>
         <div className="flex-1" />
-        <Button size="sm" variant={view === "grid" ? "outline" : "ghost"} icon={I.Braces} onClick={() => setView("grid")}>Grid</Button>
-        <Button size="sm" variant={view === "table" ? "outline" : "ghost"} icon={I.Inbox} onClick={() => setView("table")}>Table</Button>
+        <Button size="sm" variant={view === "grid" ? "outline" : "ghost"} icon={I.Braces} onClick={() => setView("grid")}><Trans>Grid</Trans></Button>
+        <Button size="sm" variant={view === "table" ? "outline" : "ghost"} icon={I.Inbox} onClick={() => setView("table")}><Trans>Table</Trans></Button>
       </div>
 
       {view === "grid" ? (
@@ -166,7 +168,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
                 {!showArchived && (
                   <button onClick={onNew} className="grid min-h-[138px] cursor-pointer place-items-center gap-1.5 rounded-2xl border-[1.5px] border-dashed border-border bg-transparent text-muted-foreground">
                     <I.Plus size={18} />
-                    <span className="text-[12.5px] font-medium">New collection</span>
+                    <span className="text-[12.5px] font-medium"><Trans>New collection</Trans></span>
                   </button>
                 )}
               </div>
@@ -178,13 +180,13 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
           <Table className={ADMIN_TABLE_CLS}>
             <TableHeader>
               <TableRow>
-                <TableHead>Slug</TableHead>
-                <TableHead className="w-[110px]">Group</TableHead>
-                <TableHead className="w-[90px] text-right">Rows</TableHead>
-                <TableHead className="w-[80px] text-right">Fields</TableHead>
-                <TableHead className="w-[110px] text-right">Writes 24h</TableHead>
-                <TableHead className="w-[110px]">Last write</TableHead>
-                <TableHead className="w-[130px]">Permissions</TableHead>
+                <TableHead><Trans>Slug</Trans></TableHead>
+                <TableHead className="w-[110px]"><Trans>Group</Trans></TableHead>
+                <TableHead className="w-[90px] text-right"><Trans>Rows</Trans></TableHead>
+                <TableHead className="w-[80px] text-right"><Trans>Fields</Trans></TableHead>
+                <TableHead className="w-[110px] text-right"><Trans>Writes 24h</Trans></TableHead>
+                <TableHead className="w-[110px]"><Trans>Last write</Trans></TableHead>
+                <TableHead className="w-[130px]"><Trans>Permissions</Trans></TableHead>
                 <TableHead className="sticky right-0 w-[60px] bg-card" />
               </TableRow>
             </TableHeader>
@@ -205,7 +207,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
                       <div className="flex items-center gap-2">
                         <span className="grid size-6 place-items-center rounded-md bg-muted"><Ic size={12} /></span>
                         <span className="font-mono text-[13px] font-medium">{c.slug}</span>
-                        {c.singleton && <Badge variant="outline">singleton</Badge>}
+                        {c.singleton && <Badge variant="outline"><Trans>singleton</Trans></Badge>}
                       </div>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{c.group}</TableCell>
@@ -215,16 +217,16 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
                     <TableCell className="font-mono text-[11.5px] text-muted-foreground">{c.lastWrite}</TableCell>
                     <TableCell>
                       {showArchived
-                        ? <Badge variant="secondary">archived</Badge>
-                        : c.ownerScoped ? <Badge variant="default">owner-scoped</Badge> : <Badge variant="secondary">public read</Badge>}
+                        ? <Badge variant="secondary"><Trans>archived</Trans></Badge>
+                        : c.ownerScoped ? <Badge variant="default"><Trans>owner-scoped</Trans></Badge> : <Badge variant="secondary"><Trans>public read</Trans></Badge>}
                     </TableCell>
                     <TableCell className="sticky right-0 bg-card text-right" onClick={(e) => e.stopPropagation()}>
                       {showArchived
                         ? onRestore && (
-                            <IconButton icon={I.RotateCcw} title="Restore collection" onClick={() => onRestore(c.slug)} />
+                            <IconButton icon={I.RotateCcw} title={t`Restore collection`} onClick={() => onRestore(c.slug)} />
                           )
                         : onDelete && (
-                            <IconButton icon={I.Trash} title="Delete collection" onClick={() => onDelete(c.slug)} />
+                            <IconButton icon={I.Trash} title={t`Delete collection`} onClick={() => onDelete(c.slug)} />
                           )}
                     </TableCell>
                   </TableRow>
@@ -239,6 +241,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
 }
 
 function CollectionCard({ c, onOpen, archived, onRestore, onOpenApi }: { c: CollectionListItem; onOpen: () => void; archived?: boolean; onRestore?: () => void; onOpenApi?: () => void }) {
+  const { t } = useLingui();
   const Ic = (I as Record<string, IconComponent>)[c.icon as IconKey] || I.Database;
   return (
     <div
@@ -249,13 +252,13 @@ function CollectionCard({ c, onOpen, archived, onRestore, onOpenApi }: { c: Coll
         <span className="grid size-8 place-items-center rounded-lg border border-border bg-muted text-muted-foreground"><Ic size={15} /></span>
         <div className="flex min-w-0 flex-1 flex-col">
           <span className="truncate font-mono text-[13.5px] font-semibold">{c.slug}</span>
-          <span className="truncate text-[11.5px] text-muted-foreground">{c.fields} fields · {c.singleton ? "singleton" : c.ownerScoped ? "owner-scoped" : "public read"}</span>
+          <span className="truncate text-[11.5px] text-muted-foreground"><Trans>{c.fields} fields · {c.singleton ? "singleton" : c.ownerScoped ? "owner-scoped" : "public read"}</Trans></span>
         </div>
         {archived && (
           <span className="ml-auto">
             <Badge variant="secondary">
               <I.Archive size={10} />
-              <span className="ml-1">archived</span>
+              <span className="ml-1"><Trans>archived</Trans></span>
             </Badge>
           </span>
         )}
@@ -275,14 +278,14 @@ function CollectionCard({ c, onOpen, archived, onRestore, onOpenApi }: { c: Coll
                 icon={I.RotateCcw}
                 onClick={(e) => { e.stopPropagation(); onRestore(); }}
               >
-                Restore
+                <Trans>Restore</Trans>
               </Button>
             )}
-            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onOpen(); }}>Open</Button>
+            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onOpen(); }}><Trans>Open</Trans></Button>
           </>
         ) : (
           <>
-            <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onOpen(); }}>Open</Button>
+            <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onOpen(); }}><Trans>Open</Trans></Button>
             <Button size="sm" variant="ghost" iconRight={I.ExternalLink} onClick={(e) => { e.stopPropagation(); onOpenApi?.(); }}>API</Button>
           </>
         )}
@@ -308,6 +311,7 @@ export interface NewCollectionDialogProps {
 }
 
 export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: NewCollectionDialogProps) {
+  const { t } = useLingui();
   const [step, setStep] = useState(0);
   const [slug, setSlug] = useState("");
   const [group, setGroup] = useState("Content");
@@ -343,7 +347,7 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
   if (!open) return null;
 
   const slugClean = slug.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_").replace(/^_+|_+$/g, "");
-  const slugError = !slugClean ? null : existingSlugs.includes(slugClean) ? `${slugClean} already exists` : !/^[a-z][a-z0-9_]*$/.test(slugClean) ? "must start with a letter" : null;
+  const slugError = !slugClean ? null : existingSlugs.includes(slugClean) ? t`${slugClean} already exists` : !/^[a-z][a-z0-9_]*$/.test(slugClean) ? t`must start with a letter` : null;
 
   // Default status choices when the wizard injects a status field — Directus-
   // shaped (value/label/color). Keep these aligned with the badge palette in
@@ -378,10 +382,10 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
       options?: { choices?: typeof DEFAULT_STATUS_CHOICES };
     }>;
   }> = [
-    { id: "blank", name: "Blank", desc: "Just system fields. Add your own columns.", icon: "Braces", fields: [] },
+    { id: "blank", name: t`Blank`, desc: t`Just system fields. Add your own columns.`, icon: "Braces", fields: [] },
     {
       id: "content",
-      name: "Content",
+      name: t`Content`,
       desc: "title · slug · status · body · published_at",
       icon: "Inbox",
       fields: [
@@ -395,7 +399,7 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
     },
     {
       id: "taxonomy",
-      name: "Taxonomy",
+      name: t`Taxonomy`,
       desc: "name · slug · description · parent_id",
       icon: "Hash",
       fields: [
@@ -407,7 +411,7 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
     },
     {
       id: "people",
-      name: "People",
+      name: t`People`,
       desc: "name · email · avatar · bio · links",
       icon: "Users",
       fields: [
@@ -458,23 +462,23 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
       <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[640px]">
         <DialogHeader className="flex-row items-center gap-2.5 border-b border-border px-4 py-3.5 pr-12 text-left">
           <I.Database size={14} />
-          <DialogTitle className="text-sm font-medium">New collection</DialogTitle>
-          <span className="font-mono text-[11.5px] text-muted-foreground">step {step + 1} of 2</span>
+          <DialogTitle className="text-sm font-medium"><Trans>New collection</Trans></DialogTitle>
+          <span className="font-mono text-[11.5px] text-muted-foreground"><Trans>step {step + 1} of 2</Trans></span>
         </DialogHeader>
 
         <div className="flex flex-1 flex-col gap-4 overflow-auto p-[22px]">
           {step === 0 && (
             <>
               <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Slug</label>
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Slug</Trans></label>
                 <Input value={slug} onChange={(e) => setSlug(e.target.value)} autoFocus placeholder="products" className="font-mono" aria-invalid={slugError ? true : undefined} />
                 {slugError && <span className="text-[11.5px] text-destructive">{slugError}</span>}
-                {!slugError && !slugClean && <span className="text-[11.5px] text-muted-foreground">Enter a slug to continue.</span>}
-                {!slugError && slugClean && <span className="text-[11.5px] text-muted-foreground">Slug: <span className="font-mono">{slugClean}</span></span>}
+                {!slugError && !slugClean && <span className="text-[11.5px] text-muted-foreground"><Trans>Enter a slug to continue.</Trans></span>}
+                {!slugError && slugClean && <span className="text-[11.5px] text-muted-foreground"><Trans>Slug: <span className="font-mono">{slugClean}</span></Trans></span>}
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Group</label>
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Group</Trans></label>
                 <div className="flex flex-wrap gap-1.5">
                   {["Content", "Marketing", "System", "Other"].map((g) => (
                     <Button key={g} type="button" size="sm" variant={group === g ? "outline" : "ghost"} onClick={() => setGroup(g)}>{g}</Button>
@@ -483,7 +487,7 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Start from</label>
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Start from</Trans></label>
                 <div className="grid grid-cols-2 gap-2">
                   {templates.map((t) => {
                     const Ic = (I as Record<string, IconComponent>)[t.icon as IconKey] || I.Braces;
@@ -494,7 +498,7 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
                           <Ic size={13} />
                           <span className="text-[13px] font-medium">{t.name}</span>
                           <div className="flex-1" />
-                          <span className="tabular-nums text-[11px] text-muted-foreground">{t.fields.length} fields</span>
+                          <span className="tabular-nums text-[11px] text-muted-foreground"><Trans>{t.fields.length} fields</Trans></span>
                         </div>
                         <span className="text-[11.5px] leading-[1.4] text-muted-foreground">{t.desc}</span>
                       </button>
@@ -509,47 +513,47 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
             <>
               <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
                 <div>
-                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Tenant-scoped <Badge variant="secondary">recommended</Badge></div>
-                  <div className="text-[11.5px] text-muted-foreground">Auto-add <span className="font-mono">tenant_id</span>; row-level security isolates data per workspace. All read/write rules get <span className="font-mono">tenant_id = $user.tenant_id</span> injected.</div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Tenant-scoped</Trans> <Badge variant="secondary"><Trans>recommended</Trans></Badge></div>
+                  <div className="text-[11.5px] text-muted-foreground"><Trans>Auto-add <span className="font-mono">tenant_id</span>; row-level security isolates data per workspace. All read/write rules get <span className="font-mono">tenant_id = $user.tenant_id</span> injected.</Trans></div>
                 </div>
                 <Switch checked={tenantScoped} onChange={setTenantScoped} />
               </div>
               <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
                 <div>
-                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Owner-scoped</div>
-                  <div className="text-[11.5px] text-muted-foreground">Auto-add <span className="font-mono">owner_id</span>; the <span className="font-mono">authenticated</span> role can only read/update its own rows.</div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Owner-scoped</Trans></div>
+                  <div className="text-[11.5px] text-muted-foreground"><Trans>Auto-add <span className="font-mono">owner_id</span>; the <span className="font-mono">authenticated</span> role can only read/update its own rows.</Trans></div>
                 </div>
                 <Switch checked={ownerScoped} onChange={setOwnerScoped} />
               </div>
               <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
                 <div>
-                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Timestamps</div>
-                  <div className="text-[11.5px] text-muted-foreground">Add <span className="font-mono">created_at</span> and <span className="font-mono">updated_at</span>.</div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Timestamps</Trans></div>
+                  <div className="text-[11.5px] text-muted-foreground"><Trans>Add <span className="font-mono">created_at</span> and <span className="font-mono">updated_at</span>.</Trans></div>
                 </div>
                 <Switch checked={timestamps} onChange={setTimestamps} />
               </div>
               <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
                 <div>
-                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Soft delete</div>
-                  <div className="text-[11.5px] text-muted-foreground">Add <span className="font-mono">deleted_at</span>; deletes mark rows instead of removing them.</div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Soft delete</Trans></div>
+                  <div className="text-[11.5px] text-muted-foreground"><Trans>Add <span className="font-mono">deleted_at</span>; deletes mark rows instead of removing them.</Trans></div>
                 </div>
                 <Switch checked={softDelete} onChange={setSoftDelete} />
               </div>
               <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
                 <div>
-                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Status field</div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Status field</Trans></div>
                   <div className="text-[11.5px] text-muted-foreground">
-                    Add a <span className="font-mono">status</span> dropdown with{" "}
+                    <Trans>Add a <span className="font-mono">status</span> dropdown with{" "}
                     <span className="font-mono">draft / review / published / archived</span>{" "}
-                    + per-option color. List view auto-shows status tabs and badges.
+                    + per-option color. List view auto-shows status tabs and badges.</Trans>
                   </div>
                 </div>
                 <Switch checked={withStatus} onChange={setWithStatus} />
               </div>
               <div className="flex items-center justify-between gap-3 pb-1">
                 <div>
-                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Singleton</div>
-                  <div className="text-[11.5px] text-muted-foreground">Locked to one row — useful for site settings.</div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Singleton</Trans></div>
+                  <div className="text-[11.5px] text-muted-foreground"><Trans>Locked to one row — useful for site settings.</Trans></div>
                 </div>
                 <Switch checked={singleton} onChange={setSingleton} />
               </div>
@@ -560,16 +564,16 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
         </div>
 
         <div className="flex items-center gap-2 border-t border-border px-4 py-3.5">
-          {step === 1 && <Button variant="ghost" size="sm" icon={I.ChevronLeft} onClick={() => setStep(0)}>Back</Button>}
+          {step === 1 && <Button variant="ghost" size="sm" icon={I.ChevronLeft} onClick={() => setStep(0)}><Trans>Back</Trans></Button>}
           <div className="flex-1" />
-          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>
           {step === 0 ? (
             <Button variant="primary" size="sm" iconRight={I.ChevronRight} onClick={() => {
               if (!slugClean || slugError) return;
               setStep(1);
-            }} title={!slugClean ? "Enter a slug first" : slugError || ""}>Next</Button>
+            }} title={!slugClean ? t`Enter a slug first` : slugError || ""}><Trans>Next</Trans></Button>
           ) : (
-            <Button variant="primary" size="sm" icon={I.Plus} onClick={submit}>Create collection</Button>
+            <Button variant="primary" size="sm" icon={I.Plus} onClick={submit}><Trans>Create collection</Trans></Button>
           )}
         </div>
       </DialogContent>
@@ -593,13 +597,14 @@ interface CreateChooserDialogProps {
 }
 
 function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt }: CreateChooserDialogProps) {
+  const { t } = useLingui();
   if (!open) return null;
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[560px]">
         <DialogHeader className="flex-row items-center gap-2.5 border-b border-border px-4 py-3.5 pr-12 text-left">
           <I.Plus size={14} />
-          <DialogTitle className="text-sm font-medium">New collection</DialogTitle>
+          <DialogTitle className="text-sm font-medium"><Trans>New collection</Trans></DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3 p-[22px]">
           <button
@@ -609,9 +614,9 @@ function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt }: Create
           >
             <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted"><I.Braces size={16} /></span>
             <div className="flex flex-col gap-1">
-              <span className="text-[13.5px] font-semibold">Empty or template</span>
+              <span className="text-[13.5px] font-semibold"><Trans>Empty or template</Trans></span>
               <span className="text-xs leading-[1.45] text-muted-foreground">
-                Create a new physical table from scratch. Pick a preset (Content / Taxonomy / People / Blank) and configure scope toggles.
+                <Trans>Create a new physical table from scratch. Pick a preset (Content / Taxonomy / People / Blank) and configure scope toggles.</Trans>
               </span>
             </div>
           </button>
@@ -622,16 +627,16 @@ function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt }: Create
           >
             <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted"><I.Database size={16} /></span>
             <div className="flex flex-col gap-1">
-              <span className="text-[13.5px] font-semibold">From existing table</span>
+              <span className="text-[13.5px] font-semibold"><Trans>From existing table</Trans></span>
               <span className="text-xs leading-[1.45] text-muted-foreground">
-                Register a table that already exists in your database. No DDL is run on the table — workeros only writes its own metadata.
+                <Trans>Register a table that already exists in your database. No DDL is run on the table — workeros only writes its own metadata.</Trans>
               </span>
             </div>
           </button>
         </div>
         <div className="flex items-center gap-2 border-t border-border px-4 py-3.5">
           <div className="flex-1" />
-          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>
         </div>
       </DialogContent>
     </Dialog>

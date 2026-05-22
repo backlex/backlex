@@ -424,6 +424,30 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
     if (list.length > 0) queueUploads(list);
   };
 
+  // Cmd/Ctrl+V — upload files/images straight from the clipboard. The drop
+  // zone advertises this, so a real listener has to back the hint. Pasted
+  // screenshots all arrive named "image.png"; stamp them unique so a second
+  // paste doesn't silently overwrite the first.
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+      const fileItems = Array.from(e.clipboardData?.items ?? []).filter((it) => it.kind === "file");
+      if (fileItems.length === 0) return;
+      e.preventDefault();
+      const list: File[] = [];
+      fileItems.forEach((it, i) => {
+        const f = it.getAsFile();
+        if (!f) return;
+        list.push(/^image\.\w+$/i.test(f.name) ? new File([f], `pasted-${Date.now()}-${i}-${f.name}`, { type: f.type }) : f);
+      });
+      if (list.length > 0) queueUploads(list);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [folder]);
+
   const openNewFolder = () => {
     setNewFolderName("");
     setNewFolderOpen(true);
@@ -631,7 +655,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
           </div>
         </div>
         <div className="flex-1" />
-        <span className="rounded-full border border-border bg-card px-2 py-[3px] font-mono text-[11px] text-muted-foreground">⌘V to paste</span>
+        <span className="hidden rounded-full border border-border bg-card px-2 py-[3px] font-mono text-[11px] text-muted-foreground pointer-fine:inline-block">⌘V to paste</span>
         <input ref={dropFileInputRef} type="file" multiple className="hidden" onChange={(e) => queueUploads(Array.from(e.target.files || []))} />
       </div>
 

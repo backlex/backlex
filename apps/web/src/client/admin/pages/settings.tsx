@@ -124,7 +124,7 @@ function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
       : "";
 
   return (
-    <div className="flex max-w-[720px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
+    <div className="flex max-w-[920px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
       <div className="flex items-start gap-2.5">
         <I.Info size={14} className="mt-0.5" />
         <span className="text-xs text-muted-foreground">
@@ -350,7 +350,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
   const faviconSrc = previewUrl(faviconFileKey, faviconBust);
 
   return (
-    <div className="flex max-w-[720px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
+    <div className="flex max-w-[920px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
       <div className="flex flex-col gap-1.5">
         <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Workspace name</Trans></label>
         <Input
@@ -605,7 +605,7 @@ function SignInBrandingCard({ pushToast }: { pushToast: (m: string) => void }) {
   };
 
   return (
-    <div className="flex max-w-[720px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
+    <div className="flex max-w-[920px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
       <div className="flex items-start gap-2.5">
         <I.Info size={14} className="mt-0.5" />
         <span className="text-xs text-muted-foreground">
@@ -739,7 +739,7 @@ function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) 
   };
 
   return (
-    <div className="flex max-w-[720px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
+    <div className="flex max-w-[920px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
       <div className="flex items-start gap-2.5">
         <I.Globe size={14} className="mt-0.5" />
         <span className="text-xs text-muted-foreground">
@@ -965,20 +965,20 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
 
       {tab === "general" && (
         <div className="flex flex-col gap-4">
-        <div className="flex max-w-[720px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
+        <div className="flex max-w-[920px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
           <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <div>
               <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">APP_URL</div>
               <div className="text-[11.5px] text-muted-foreground"><Trans>Public origin of this Worker — set via <span className="font-mono">wrangler.toml [vars]</span> (or <span className="font-mono">.env</span> on self-host). Used for CORS, OAuth callbacks and absolute links. Read-only here.</Trans></div>
             </div>
-            <span className="max-w-[280px] truncate font-mono text-[12.5px] text-muted-foreground" title={appUrl}>{appUrl}</span>
+            <span className="break-all text-right font-mono text-[12.5px] text-muted-foreground">{appUrl}</span>
           </div>
           <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <div>
               <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">EMAIL_FROM</div>
               <div className="text-[11.5px] text-muted-foreground"><Trans>Sender address for transactional email — set via <span className="font-mono">wrangler secret put</span> / <span className="font-mono">.env</span>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here.</Trans></div>
             </div>
-            <span className="font-mono text-[12.5px] text-muted-foreground">{from || t`(not set)`}</span>
+            <span className="break-all text-right font-mono text-[12.5px] text-muted-foreground">{from || t`(not set)`}</span>
           </div>
           <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <div>
@@ -1104,7 +1104,7 @@ class_name = "RealtimeRoom"`}</pre>
       )}
 
       {tab === "about" && (
-        <div className="flex max-w-[720px] flex-col gap-3">
+        <div className="flex max-w-[920px] flex-col gap-3">
           <div className="flex flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
             {[
               [t`Version`, "v0.9.4 (a8b2f1c)"],

@@ -5189,8 +5189,12 @@ msgid "PNG, JPG or WebP. Shown in the header and on any author display."
 msgstr "PNG, JPG veya WebP. Başlıkta ve yazar görünümlerinde gösterilir."
 
 #: src/client/admin/pages/settings.tsx
-msgid "PNG, JPG, SVG or WebP. Replaces any previous upload."
-msgstr "PNG, JPG, SVG veya WebP. Önceki yüklemeyi değiştirir."
+msgid "PNG, JPG, SVG or WebP — square images display best. Replaces any previous upload."
+msgstr "PNG, JPG, SVG veya WebP — kare görseller en iyi görüntülenir. Önceki yüklemeyi değiştirir."
+
+#: src/client/admin/pages/settings.tsx
+#~ msgid "PNG, JPG, SVG or WebP. Replaces any previous upload."
+#~ msgstr "PNG, JPG, SVG veya WebP. Önceki yüklemeyi değiştirir."
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Policy"

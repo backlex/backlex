@@ -13,6 +13,7 @@ import {
 } from "../api";
 import { useTheme } from "@/components/theme-provider";
 import { applyPrimaryColor } from "@/main";
+import { refreshBranding } from "@/lib/branding";
 import { ColorPicker } from "@workeros/ui/components/color-picker";
 import { Input } from "@workeros/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
@@ -331,6 +332,9 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
       });
       applyPrimaryColor(nextPrimary);
       setDirty(false);
+      // Re-pull the resolved branding so the sidebar (and login) brand area
+      // pick up the new logo / workspace name without a page reload.
+      void refreshBranding();
       pushToast(t`Branding saved.`);
     } catch (e) {
       pushToast((e as Error).message);
@@ -369,7 +373,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
       <div className="flex items-center justify-between gap-3 border-t border-border pt-3.5">
         <div>
           <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Logo</Trans></div>
-          <div className="text-[11.5px] text-muted-foreground"><Trans>PNG, JPG, SVG or WebP. Replaces any previous upload.</Trans></div>
+          <div className="text-[11.5px] text-muted-foreground"><Trans>PNG, JPG, SVG or WebP — square images display best. Replaces any previous upload.</Trans></div>
         </div>
         <div className="flex items-center gap-3">
           {logoSrc && (

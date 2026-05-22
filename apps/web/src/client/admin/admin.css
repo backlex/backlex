@@ -49,6 +49,13 @@ body {
   letter-spacing: -0.04em;
   font-family: 'Geist Mono', monospace;
 }
+/* Uploaded-logo variant: drop the primary fill and fit the image inside the
+   rounded square (square logos fill edge-to-edge, others letterbox). */
+.brand-mark--image {
+  background: transparent;
+  object-fit: contain;
+  padding: 1px;
+}
 /* ─── Workspace switcher ─── */
 .ws-mark {
   width: 26px; height: 26px;

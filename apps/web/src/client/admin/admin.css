@@ -1810,6 +1810,25 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .log-ms { font-size: 11px; color: var(--muted-foreground); text-align: right; }
 .log-msg { font-size: 11.5px; color: var(--muted-foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* On phones the fixed 7-column log grid is far wider than the viewport.
+   Reflow it into a stacked layout: meta on the first line, then path and
+   message each on their own full-width line. */
+@media (max-width: 640px) {
+  .log-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+  }
+  .log-ms { margin-left: auto; }
+  .log-path,
+  .log-msg {
+    flex-basis: 100%;
+    min-width: 0;
+    order: 1;
+  }
+  .log-msg { order: 2; }
+}
+
 .code-block {
   font-family: 'Geist Mono', monospace;
   font-size: 11.5px;

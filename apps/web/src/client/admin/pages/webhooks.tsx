@@ -23,6 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@workeros/ui/components/dropdown-menu";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { fetchSafely } from "./_shared";
 import { WebhooksSkeleton } from "../page-skeletons";
 
@@ -334,7 +335,8 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
           </div>
         </DialogHeader>
 
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
+        <ScrollArea className="min-h-0 flex-1">
+        <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans> <span className="text-destructive">*</span></label>
             <Input aria-invalid={!!errors.name} autoFocus value={draft.name} onChange={(e) => update("name", e.target.value)} placeholder={t`Slack #content`} />
@@ -393,6 +395,7 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
             <Switch checked={draft.active} onChange={(v) => update("active", v)} />
           </div>
         </div>
+        </ScrollArea>
 
         <DialogFooter className="border-t border-border bg-card px-5 py-3 sm:justify-end">
           {mode === "edit" && <Button variant="ghost" icon={I.Bolt} onClick={async () => {

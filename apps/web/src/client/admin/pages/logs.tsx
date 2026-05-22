@@ -34,6 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from "@workeros/ui/components/table";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { useActivity } from "../queries";
 import { LogsSkeleton } from "../page-skeletons";
 import { authorById } from "../items";
@@ -1097,7 +1098,8 @@ function ActivityEventDialog({
           </div>
           <h3 className="m-0 text-sm font-medium">{row.user}</h3>
         </DialogHeader>
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
+        <ScrollArea className="min-h-0 flex-1">
+        <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="grid grid-cols-[140px_1fr] gap-x-3.5 gap-y-2 text-[12.5px]">
             <span className="text-muted-foreground"><Trans>Time</Trans></span>
             <span className="font-mono">{fullTs}</span>
@@ -1139,6 +1141,7 @@ function ActivityEventDialog({
             <JsonBlock label="Response" value={row.response} />
           )}
         </div>
+        </ScrollArea>
         <DialogFooter className="border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <Button variant="ghost" size="sm" onClick={onClose}>
             <Trans>Close</Trans>

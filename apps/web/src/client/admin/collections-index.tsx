@@ -7,6 +7,7 @@ import type { CollectionListItem } from "./config";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
 import { Input } from "@workeros/ui/components/input";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -466,7 +467,8 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
           <span className="font-mono text-[11.5px] text-muted-foreground"><Trans>step {step + 1} of 2</Trans></span>
         </DialogHeader>
 
-        <div className="flex flex-1 flex-col gap-4 overflow-auto p-[22px]">
+        <ScrollArea className="min-h-0 flex-1">
+        <div className="flex flex-col gap-4 p-[22px]">
           {step === 0 && (
             <>
               <div className="flex flex-col gap-1.5">
@@ -562,6 +564,7 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
             </>
           )}
         </div>
+        </ScrollArea>
 
         <div className="flex items-center gap-2 border-t border-border px-4 py-3.5">
           {step === 1 && <Button variant="ghost" size="sm" icon={I.ChevronLeft} onClick={() => setStep(0)}><Trans>Back</Trans></Button>}

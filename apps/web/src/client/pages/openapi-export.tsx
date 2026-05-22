@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@workeros/ui/components/dialog";
 import { toast } from "@workeros/ui/components/sonner";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@workeros/ui/components/collapsible";
 import { cn } from "@workeros/ui/lib/utils";
 import { PageHeader } from "@/components/page-header";
@@ -500,9 +501,11 @@ export const OpenApiExportPage = () => {
               <Trans>Drop in a workspace API key (<code className="font-mono">pak_…</code>) before running.</Trans>
             </DialogDescription>
           </DialogHeader>
-          <pre className="max-h-[40vh] overflow-auto rounded-md border bg-muted/30 p-3 font-mono text-xs">
-            {curlText}
-          </pre>
+          <ScrollArea className="rounded-md" viewportClassName="max-h-[40vh]">
+            <pre className="rounded-md border bg-muted/30 p-3 font-mono text-xs">
+              {curlText}
+            </pre>
+          </ScrollArea>
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => setCurlOpen(false)}>
               <Trans>Close</Trans>

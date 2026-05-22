@@ -1,0 +1,116 @@
+/* Animated primary light beams for the auth brand panel.
+   Ported verbatim from the workeros auth design handoff (auth.css):
+   three radial-gradient clouds doing a seamless diagonal sweep. */
+
+/* Keep the brand copy above the beams. */
+.auth-brand > :not(.auth-beams) {
+  position: relative;
+  z-index: 1;
+}
+
+.auth-beams {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: normal;
+  --beam-cool: var(--primary);
+  --beam-core: var(--primary);
+  --beam-warm: var(--primary);
+}
+
+.auth-beams .beam {
+  position: absolute;
+  top: -40%;
+  bottom: -40%;
+  left: -30%;
+  width: 55%;
+  transform: translate3d(-60%, 0, 0) rotate(18deg);
+  transform-origin: center;
+  will-change: transform, opacity;
+  border-radius: 50%;
+}
+
+/* Back beam — wide, soft halo */
+.auth-beams .beam-back {
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklch, var(--beam-cool) 55%, transparent) 0%,
+    color-mix(in oklch, var(--beam-cool) 20%, transparent) 45%,
+    transparent 75%
+  );
+  filter: blur(80px);
+  opacity: 0.45;
+  animation: beam-sweep-back 14s linear infinite;
+  animation-delay: 0s;
+}
+
+/* Mid beam — primary cloud */
+.auth-beams .beam-mid {
+  width: 36%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklch, var(--beam-core) 65%, transparent) 0%,
+    color-mix(in oklch, var(--beam-core) 25%, transparent) 50%,
+    transparent 80%
+  );
+  filter: blur(55px);
+  opacity: 0.6;
+  animation: beam-sweep-mid 14s linear infinite;
+  animation-delay: -4.8s;
+}
+
+/* Front beam — tighter, brighter ribbon */
+.auth-beams .beam-front {
+  width: 22%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklch, var(--beam-warm) 70%, transparent) 0%,
+    color-mix(in oklch, var(--beam-warm) 28%, transparent) 50%,
+    transparent 80%
+  );
+  filter: blur(40px);
+  opacity: 0.65;
+  animation: beam-sweep-front 14s linear infinite;
+  animation-delay: -9s;
+}
+
+/* Subtle film grain to dim the bloom */
+.auth-beams .beam-grain {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(1px 1px at 22% 18%, color-mix(in oklch, var(--foreground) 8%, transparent) 50%, transparent 51%),
+    radial-gradient(1px 1px at 71% 44%, color-mix(in oklch, var(--foreground) 6%, transparent) 50%, transparent 51%),
+    radial-gradient(1px 1px at 41% 81%, color-mix(in oklch, var(--foreground) 7%, transparent) 50%, transparent 51%),
+    radial-gradient(1px 1px at 88% 76%, color-mix(in oklch, var(--foreground) 5%, transparent) 50%, transparent 51%);
+  background-size: 220px 220px;
+  opacity: 0.35;
+  mix-blend-mode: overlay;
+}
+
+/* Per-beam keyframes — each starts/ends fully off-screen so the loop
+   never fades; widths differ so the visible-area cadence stays even. */
+@keyframes beam-sweep-back {
+  0%   { transform: translate3d(-100%, 0, 0) rotate(18deg); }
+  100% { transform: translate3d(280%, 0, 0) rotate(18deg); }
+}
+@keyframes beam-sweep-mid {
+  0%   { transform: translate3d(-180%, 0, 0) rotate(18deg); }
+  100% { transform: translate3d(480%, 0, 0) rotate(18deg); }
+}
+@keyframes beam-sweep-front {
+  0%   { transform: translate3d(-350%, 0, 0) rotate(18deg); }
+  100% { transform: translate3d(1100%, 0, 0) rotate(18deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-beams .beam-back,
+  .auth-beams .beam-mid,
+  .auth-beams .beam-front {
+    animation: none;
+    opacity: 0.3;
+    transform: translate3d(60%, 0, 0) rotate(18deg);
+  }
+}

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useQueryClient } from "@tanstack/react-query";
 import { Input } from "@workeros/ui/components/input";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { I } from "./icons";
 import { Badge, Button, IconButton } from "./ui";
 import { Select } from "./select";
@@ -182,7 +183,7 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
         <Button variant="primary" size="sm" icon={I.Plus} onClick={sendInvite}><Trans>Invite</Trans></Button>
       </div>
 
-      <div className="overflow-x-auto py-1">
+      <ScrollArea className="py-1">
         <div className="grid min-w-[520px] grid-cols-[1.6fr_1fr_1fr_0.8fr_36px] items-center gap-3 border-b border-border bg-[color-mix(in_oklch,var(--muted)_18%,var(--card))] px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
           <span><Trans>Member</Trans></span>
           <span><Trans>Role</Trans></span>
@@ -233,7 +234,7 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
             {q ? <Trans>No members match "{q}".</Trans> : <Trans>No members yet.</Trans>}
           </div>
         )}
-      </div>
+      </ScrollArea>
     </div>
   );
 }

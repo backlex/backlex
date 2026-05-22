@@ -9,6 +9,7 @@ import { Textarea } from "@workeros/ui/components/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { Skeleton } from "@workeros/ui/components/skeleton";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { dbAdminApi } from "../api";
 
 const ADMIN_TABLE_CLS =
@@ -168,7 +169,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
               spellCheck={false}
             />
           </div>
-          <div className="max-h-[280px] overflow-y-auto">
+          <ScrollArea viewportClassName="max-h-[280px]">
             {!tablesLoaded ? (
               // First-load placeholder for the table list.
               Array.from({ length: 6 }).map((_, i) => (
@@ -189,17 +190,17 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
                 <span className="font-mono text-[10.5px] tabular-nums text-muted-foreground">{t.rows.toLocaleString()}</span>
               </div>
             ))}
-          </div>
+          </ScrollArea>
         </div>
         <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
           <div className="border-b border-border px-4 py-3.5 text-xs font-medium"><Trans>Snippets</Trans></div>
-          <div className="max-h-[220px] overflow-y-auto">
+          <ScrollArea viewportClassName="max-h-[220px]">
             {snippets.length === 0 ? (
               <div className="border-t border-border px-3 py-2.5 text-[11.5px] text-muted-foreground"><Trans>No tables yet.</Trans></div>
             ) : snippets.map((s) => (
               <div key={s.name} title={s.sql} onClick={() => setSql(s.sql)} className="cursor-pointer truncate border-t border-border px-3 py-2 text-xs">{s.name}</div>
             ))}
-          </div>
+          </ScrollArea>
         </div>
       </div>
 

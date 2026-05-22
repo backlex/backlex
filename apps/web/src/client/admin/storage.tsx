@@ -16,6 +16,7 @@ import {
   CommandList,
 } from "@workeros/ui/components/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@workeros/ui/components/popover";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -645,7 +646,8 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
             <div className="flex-1" />
             <Button variant="ghost" size="sm" onClick={() => setUploads((arr) => arr.filter((u) => u.status === "uploading"))}><Trans>Clear done</Trans></Button>
           </div>
-          <div className="flex max-h-[180px] flex-col gap-2 overflow-auto px-3.5 py-2">
+          <ScrollArea viewportClassName="max-h-[180px]">
+          <div className="flex flex-col gap-2 px-3.5 py-2">
             {uploads.map((u) => {
               const isDone = u.status === "done";
               const isFailed = u.status === "failed";
@@ -699,6 +701,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
               );
             })}
           </div>
+          </ScrollArea>
         </div>
       )}
 
@@ -740,7 +743,8 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
               <InputGroupInput value={folderQuery} onChange={(e) => setFolderQuery(e.target.value)} placeholder={t`Filter folders…`} className="text-xs" />
             </InputGroup>
           </div>
-          <div className="flex-1 overflow-y-auto px-1.5 pb-2 pt-1.5 max-[900px]:max-h-[320px]">
+          <ScrollArea className="min-h-0 flex-1" viewportClassName="max-[900px]:max-h-[320px]">
+          <div className="px-1.5 pb-2 pt-1.5">
             <button
               type="button"
               className={`flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-md border-0 py-1.5 pl-2.5 pr-2 text-left text-[12.5px] text-foreground hover:bg-accent ${
@@ -790,6 +794,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
               );
             })}
           </div>
+          </ScrollArea>
         </div>
         <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
           {view === "grid" ? (
@@ -1146,9 +1151,11 @@ function FileDetailModal({ f, onClose, ...rest }: any) {
             <DialogDescription className="mt-0.5 truncate font-mono text-xs">{f.key}</DialogDescription>
           </div>
         </DialogHeader>
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-0">
+        <ScrollArea className="min-h-0 flex-1">
+        <div className="flex flex-col gap-4 p-0">
           <FileDetail f={f} {...rest} embedded />
         </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

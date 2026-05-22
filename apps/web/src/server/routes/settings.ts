@@ -43,6 +43,9 @@ const SettingsInput = z
     /** Workspace default IANA time zone — applied to users with no personal
      *  `users.timezone` set. */
     timezone: timeZoneCode.optional(),
+    /** Custom copy for the public sign-in screen — blank = built-in default. */
+    signInHeadline: z.string().max(120).optional(),
+    signInTagline: z.string().max(280).optional(),
   })
   .strict()
   .refine(

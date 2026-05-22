@@ -3166,6 +3166,14 @@ msgstr "Hashed with argon2id · stored in <0>users.password_hash</0>."
 msgid "Have an account?"
 msgstr "Have an account?"
 
+#: src/client/admin/pages/settings.tsx
+msgid "Headline"
+msgstr "Headline"
+
+#: src/client/admin/pages/settings.tsx
+msgid "Headline and tagline shown on the public sign-in screen. Leave a field blank to use the built-in default copy."
+msgstr "Headline and tagline shown on the public sign-in screen. Leave a field blank to use the built-in default copy."
+
 #: src/client/admin/pages/advisor.tsx
 msgid "health"
 msgstr "health"
@@ -3559,6 +3567,10 @@ msgstr "Languages"
 #: src/client/admin/pages/settings.tsx
 msgid "Languages this workspace is translated into — they become the columns on the <0>Translations</0> page and the locale options members can pick in their account. The <1>default</1> applies to anyone who hasn't chosen one."
 msgstr "Languages this workspace is translated into — they become the columns on the <0>Translations</0> page and the locale options members can pick in their account. The <1>default</1> applies to anyone who hasn't chosen one."
+
+#: src/client/admin/pages/settings.tsx
+msgid "Large title in the sign-in brand panel."
+msgstr "Large title in the sign-in brand panel."
 
 #: src/client/admin/pages/logs.tsx
 msgid "last {range}"
@@ -6476,6 +6488,10 @@ msgid "Shared via workeros · this link can be revoked at any time."
 msgstr "Shared via workeros · this link can be revoked at any time."
 
 #: src/client/admin/pages/settings.tsx
+msgid "Short sentence shown under the headline."
+msgstr "Short sentence shown under the headline."
+
+#: src/client/admin/pages/settings.tsx
 msgid "Short tagline for the workspace."
 msgstr "Short tagline for the workspace."
 
@@ -6567,6 +6583,10 @@ msgstr "Sign in"
 msgid "Sign in to <0>workeros</0>."
 msgstr "Sign in to <0>workeros</0>."
 
+#: src/client/admin/pages/settings.tsx
+msgid "Sign in to workeros."
+msgstr "Sign in to workeros."
+
 #: src/client/pages/sign-in.tsx
 msgid "Sign in with passkey"
 msgstr "Sign in with passkey"
@@ -6611,6 +6631,10 @@ msgstr "Sign-in failed"
 #: src/client/admin/pages/users.tsx
 msgid "Sign-in method"
 msgstr "Sign-in method"
+
+#: src/client/admin/pages/settings.tsx
+msgid "Sign-in screen saved."
+msgstr "Sign-in screen saved."
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Sign-up / sign-in / get-session / sign-out"
@@ -6907,6 +6931,10 @@ msgstr "Table"
 #: src/client/admin/parity/database.tsx
 msgid "Tables"
 msgstr "Tables"
+
+#: src/client/admin/pages/settings.tsx
+msgid "Tagline"
+msgstr "Tagline"
 
 #: src/client/admin/storage.tsx
 #: src/client/pages/openapi-export.tsx

@@ -22,6 +22,11 @@ export interface AuthSurface {
     [key: string]: unknown;
   };
   firstUserMode: boolean;
+  /** Admin-customised sign-in screen copy. Empty strings = use the default. */
+  branding?: {
+    signInHeadline: string;
+    signInTagline: string;
+  };
 }
 
 let surfaceCache: Promise<AuthSurface> | null = null;

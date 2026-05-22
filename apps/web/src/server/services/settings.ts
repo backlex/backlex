@@ -25,6 +25,12 @@ export interface AppSettings {
   /** Workspace default IANA time zone. Used to render dates for users who
    *  haven't set a personal one (`users.timezone`). */
   timezone: string;
+  /** Custom headline for the public sign-in screen's brand panel. Empty
+   *  string = use the built-in default copy. */
+  signInHeadline: string;
+  /** Custom tagline shown under the sign-in headline. Empty string = use the
+   *  built-in default copy. */
+  signInTagline: string;
 }
 
 export const APP_SETTINGS_DEFAULTS: AppSettings = {
@@ -32,6 +38,8 @@ export const APP_SETTINGS_DEFAULTS: AppSettings = {
   i18nLocales: ["en", "tr", "de", "es", "fr", "ja"],
   i18nDefaultLocale: "en",
   timezone: DEFAULT_TIMEZONE,
+  signInHeadline: "",
+  signInTagline: "",
 };
 
 const isStringArray = (v: unknown): v is string[] =>
@@ -64,6 +72,10 @@ export const loadAppSettings = async (
         out.i18nDefaultLocale = r.value;
       else if (r.key === "timezone" && isValidTimeZone(r.value))
         out.timezone = r.value;
+      else if (r.key === "signInHeadline" && typeof r.value === "string")
+        out.signInHeadline = r.value;
+      else if (r.key === "signInTagline" && typeof r.value === "string")
+        out.signInTagline = r.value;
     }
     if (!out.i18nLocales.includes(out.i18nDefaultLocale)) {
       out.i18nDefaultLocale = out.i18nLocales[0] ?? "en";

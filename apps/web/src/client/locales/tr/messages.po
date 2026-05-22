@@ -1259,10 +1259,6 @@ msgstr "BCP-47 kısa kodlar — örn. <0>tr</0>, <1>en-GB</1>, <2>pt-BR</2>."
 msgid "before"
 msgstr "önce"
 
-#: src/client/components/auth-shell.tsx
-msgid "Better-auth-style cookies. Sessions stored in your collections database — same DSL as everything else."
-msgstr "Better-auth tarzı çerezler. Oturumlar koleksiyonlar veritabanınızda saklanır — diğer her şeyle aynı DSL."
-
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Bind DN"
 msgstr "Bind DN"
@@ -7706,6 +7702,10 @@ msgstr "Çar"
 #: src/client/pages/sign-in.tsx
 msgid "Welcome back"
 msgstr "Tekrar hoş geldiniz"
+
+#: src/client/components/auth-shell.tsx
+msgid "Welcome back. Pick up where you left off — content, data, and APIs all in one place."
+msgstr "Tekrar hoş geldin. Kaldığın yerden devam et — içerik, veri ve API'lar tek yerde."
 
 #: src/client/admin/storage.tsx
 msgid "What this file is about…"

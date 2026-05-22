@@ -3171,8 +3171,12 @@ msgid "Headline"
 msgstr "Başlık"
 
 #: src/client/admin/pages/settings.tsx
-msgid "Headline and tagline shown on the public sign-in screen. Leave a field blank to use the built-in default copy."
-msgstr "Genel giriş ekranında gösterilen başlık ve slogan. Yerleşik varsayılan metni kullanmak için bir alanı boş bırakın."
+#~ msgid "Headline and tagline shown on the public sign-in screen. Leave a field blank to use the built-in default copy."
+#~ msgstr "Genel giriş ekranında gösterilen başlık ve slogan. Yerleşik varsayılan metni kullanmak için bir alanı boş bırakın."
+
+#: src/client/admin/pages/settings.tsx
+msgid "Headline and tagline shown on the public sign-in screen. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default copy."
+msgstr "Genel giriş ekranında gösterilen başlık ve slogan. Bu ayar tüm instance genelinde geçerlidir — giriş sayfası herhangi bir workspace seçilmeden önce açılır. Yerleşik varsayılan metni kullanmak için bir alanı boş bırakın."
 
 #: src/client/admin/pages/advisor.tsx
 msgid "health"

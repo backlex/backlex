@@ -7,6 +7,7 @@ import { Badge, Button, Checkbox, Switch } from "./ui";
 import { Input } from "@workeros/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { Textarea } from "@workeros/ui/components/textarea";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -915,7 +916,8 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
           </Tabs>
         )}
 
-        <div className="flex flex-1 flex-col gap-8 overflow-auto px-5 py-[18px]" onKeyDown={onBodyKeyDown}>
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="flex flex-col gap-8 px-5 py-[18px]" onKeyDown={onBodyKeyDown}>
           {activeTab === "fields" && (
             <>
               {fields.length === 0 && (
@@ -941,7 +943,8 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
               itemId={(initial as { id: string }).id}
             />
           )}
-        </div>
+          </div>
+        </ScrollArea>
 
         <div className="flex justify-end gap-2 border-t border-border bg-card px-5 py-3">
           {/* "Cancel" reads as "throw away changes" — once the form is clean

@@ -3171,8 +3171,12 @@ msgid "Headline"
 msgstr "Headline"
 
 #: src/client/admin/pages/settings.tsx
-msgid "Headline and tagline shown on the public sign-in screen. Leave a field blank to use the built-in default copy."
-msgstr "Headline and tagline shown on the public sign-in screen. Leave a field blank to use the built-in default copy."
+#~ msgid "Headline and tagline shown on the public sign-in screen. Leave a field blank to use the built-in default copy."
+#~ msgstr "Headline and tagline shown on the public sign-in screen. Leave a field blank to use the built-in default copy."
+
+#: src/client/admin/pages/settings.tsx
+msgid "Headline and tagline shown on the public sign-in screen. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default copy."
+msgstr "Headline and tagline shown on the public sign-in screen. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default copy."
 
 #: src/client/admin/pages/advisor.tsx
 msgid "health"

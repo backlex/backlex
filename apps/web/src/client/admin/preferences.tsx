@@ -124,7 +124,12 @@ let cachedTimezoneOptions: SelectOptionLite[] | null = null;
  *  Computed once and cached — UTC sorts first, then alphabetical. */
 export const timezoneOptions = (): SelectOptionLite[] => {
   if (cachedTimezoneOptions) return cachedTimezoneOptions;
-  const zones = [...new Set(supportedTimeZones())].sort((a, b) => {
+  const zoneSet = new Set(supportedTimeZones());
+  // `Intl.supportedValuesOf("timeZone")` omits the bare "UTC" id on most
+  // engines (it lists "Etc/UTC" instead) — but "UTC" is the stored default,
+  // so it must always be a selectable option or the picker renders blank.
+  zoneSet.add("UTC");
+  const zones = [...zoneSet].sort((a, b) => {
     if (a === "UTC") return -1;
     if (b === "UTC") return 1;
     return a.localeCompare(b);

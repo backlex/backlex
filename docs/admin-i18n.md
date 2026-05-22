@@ -44,7 +44,12 @@ message objects.
 - `AdminLocaleSync` — mounted inside `PreferencesProvider`; re-activates the
   Lingui locale whenever the signed-in user's resolved language preference
   changes. So the admin language follows the **same** preference that already
-  drives date/number formatting — there is no separate language switch.
+  drives date/number formatting — there is no separate language switch. It
+  stays idle while `PreferencesProvider` is still `loading`: until the
+  `/api/account/preferences` call resolves, `usePreferences().locale` reports
+  the `DEFAULT_LOCALE` (`en`) fallback, and activating that would flip the
+  boot locale to English and back. The boot locale set by `bootAdminLocale`
+  stays active until the resolved preference is actually known.
 
 An unsupported tag (e.g. `pt-BR` when only `en`/`tr` ship) falls back to
 English.

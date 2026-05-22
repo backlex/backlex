@@ -6,6 +6,7 @@ import { Button } from "@workeros/ui/components/button";
 import { version as appVersion } from "../../../package.json";
 import { useTheme } from "@/components/theme-provider";
 import { useAuthSurface } from "@/lib/auth";
+import { useWorkspaceBranding } from "@/lib/branding";
 
 export type AuthMode = "sign-in" | "sign-up" | "magic" | "forgot" | "claim";
 
@@ -31,6 +32,11 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
   const { theme, setTheme } = useTheme();
   const dark = theme === "dark";
   const { surface } = useAuthSurface();
+  const wsBranding = useWorkspaceBranding();
+  // Brand lockup: uploaded logo + admin-set workspace name when configured,
+  // else the bundled "w" mark and "workeros" wordmark.
+  const brandName = wsBranding?.workspaceName?.trim() || "workeros";
+  const brandLogo = wsBranding?.logoUrl ?? null;
 
   const COPY: Record<AuthMode, ModeCopy> = {
     "sign-in": {
@@ -123,10 +129,18 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
         }}
       >
         <div className="flex items-center gap-2.5 font-mono text-sm font-semibold tracking-tight">
-          <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground text-xs font-bold">
-            w
-          </span>
-          workeros
+          {brandLogo ? (
+            <img
+              src={brandLogo}
+              alt=""
+              className="size-7 rounded-lg object-contain"
+            />
+          ) : (
+            <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground text-xs font-bold">
+              {brandName.charAt(0).toLowerCase()}
+            </span>
+          )}
+          {brandName}
         </div>
 
         <h1 className="mt-auto mb-3 text-balance text-4xl font-semibold leading-[1.05] tracking-tight">

@@ -32,14 +32,23 @@ import { Skeleton } from "@workeros/ui/components/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { auth } from "@/lib/auth";
 import { api } from "@/lib/api";
+import { accountApi } from "./api";
+import { Select } from "./select";
+import {
+  localeLabel,
+  makeFormatters,
+  timezoneOptions,
+  usePreferences,
+} from "./preferences";
 
 interface SessionRow {
   id: string;
   token: string;
   device: string;
   ip: string;
-  created: string;
-  last: string;
+  /** Raw timestamps — formatted at render time in the user's time zone. */
+  createdAt: string | number | null;
+  lastAt: string | number | null;
   current: boolean;
 }
 
@@ -58,24 +67,6 @@ interface ProvidersResp {
   providers: { id: string; name?: string; enabled?: boolean }[];
 }
 
-const fmtRelative = (iso: string | number | null | undefined): string => {
-  if (iso == null) return "—";
-  const t = new Date(iso).getTime();
-  if (!Number.isFinite(t)) return "—";
-  const ms = Date.now() - t;
-  if (ms < 60_000) return "just now";
-  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
-  if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
-  return `${Math.floor(ms / 86_400_000)}d ago`;
-};
-
-const fmtCreated = (iso: string | number | null | undefined): string => {
-  if (iso == null) return "—";
-  const t = new Date(iso).getTime();
-  if (!Number.isFinite(t)) return "—";
-  return new Date(t).toISOString().replace("T", " ").slice(0, 19);
-};
-
 const errMsg = (e: unknown): string => {
   if (!e) return "Unknown error";
   if (typeof e === "string") return e;
@@ -93,7 +84,12 @@ const unwrap = <T,>(res: { data?: T | null; error?: { message?: string } | null 
   return (res?.data ?? null) as T;
 };
 
-type AccountTab = "profile" | "security" | "sessions" | "connected";
+type AccountTab =
+  | "profile"
+  | "preferences"
+  | "security"
+  | "sessions"
+  | "connected";
 
 export function AccountPage({ pushToast }: { pushToast: (m: string) => void }) {
   const session = auth.useSession();
@@ -109,17 +105,21 @@ export function AccountPage({ pushToast }: { pushToast: (m: string) => void }) {
     <div className="flex flex-col gap-5">
       <PageHeader
         title="Account"
-        description="Your personal profile, password, sessions, and connected credentials. Workspace-wide settings live under the Settings page."
+        description="Your personal profile, preferences, password, sessions, and connected credentials. Workspace-wide settings live under the Settings page."
       />
       <Tabs value={tab} onValueChange={(v) => setTab(v as AccountTab)}>
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="preferences">Preferences</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="sessions">Sessions</TabsTrigger>
           <TabsTrigger value="connected">Connected</TabsTrigger>
         </TabsList>
         <TabsContent value="profile">
           <ProfileCard user={sessionUser} pushToast={pushToast} refetch={() => session.refetch()} />
+        </TabsContent>
+        <TabsContent value="preferences">
+          <PreferencesCard pushToast={pushToast} />
         </TabsContent>
         <TabsContent value="security">
           <SecurityCard pushToast={pushToast} />
@@ -494,6 +494,7 @@ function SessionsCard({
   currentToken: string | null;
   pushToast: (m: string) => void;
 }) {
+  const { formatDateTime, formatRelative } = usePreferences();
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -506,8 +507,8 @@ function SessionsCard({
         token: s.token,
         device: (s.userAgent ?? "unknown agent").slice(0, 64),
         ip: s.ipAddress ?? "—",
-        created: fmtCreated(s.createdAt),
-        last: fmtRelative(s.updatedAt ?? s.createdAt),
+        createdAt: s.createdAt ?? null,
+        lastAt: s.updatedAt ?? s.createdAt ?? null,
         current: !!currentToken && s.token === currentToken,
       }));
       // Current session first.
@@ -572,8 +573,8 @@ function SessionsCard({
                   {s.current && <Badge className="ml-2">current</Badge>}
                 </TableCell>
                 <TableCell className="font-mono text-xs text-muted-foreground">{s.ip}</TableCell>
-                <TableCell className="font-mono text-xs text-muted-foreground">{s.created}</TableCell>
-                <TableCell className="font-mono text-xs text-muted-foreground">{s.last}</TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground">{formatDateTime(s.createdAt)}</TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground">{formatRelative(s.lastAt)}</TableCell>
                 <TableCell className="text-right">
                   {!s.current && (
                     <Button size="sm" variant="ghost" onClick={() => void revoke(s.token, s.id.slice(0, 6) + "…")}>
@@ -612,6 +613,7 @@ const PROVIDER_LABELS: Record<string, string> = {
 };
 
 function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
+  const { formatRelative } = usePreferences();
   const [providers, setProviders] = useState<string[]>([]);
   const [accounts, setAccounts] = useState<LinkedAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
@@ -845,7 +847,7 @@ function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <Label>{p.name || "Unnamed passkey"}</Label>
-                  <p className="text-sm text-muted-foreground">Added {fmtRelative(p.createdAt)}</p>
+                  <p className="text-sm text-muted-foreground">Added {formatRelative(p.createdAt)}</p>
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => void removePasskey(p.id)}>
                   Remove
@@ -856,5 +858,148 @@ function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Preferences (language + time zone)
+// --------------------------------------------------------------------------
+
+function PreferencesCard({ pushToast }: { pushToast: (m: string) => void }) {
+  const { prefs, loading, refresh } = usePreferences();
+  // "" = inherit the workspace default; a code = a personal override.
+  const [locale, setLocale] = useState("");
+  const [timezone, setTimezone] = useState("");
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Hydrate from the server payload once it lands.
+  useEffect(() => {
+    if (!prefs) return;
+    setLocale(prefs.user.locale ?? "");
+    setTimezone(prefs.user.timezone ?? "");
+    setDirty(false);
+  }, [prefs?.user.locale, prefs?.user.timezone]);
+
+  const workspace = prefs?.workspace ?? {
+    defaultLocale: "en",
+    locales: ["en"],
+    timezone: "UTC",
+  };
+
+  const languageOpts = useMemo(
+    () => [
+      {
+        value: "",
+        label: `Workspace default — ${localeLabel(workspace.defaultLocale)}`,
+      },
+      ...workspace.locales.map((code) => ({
+        value: code,
+        label: localeLabel(code),
+      })),
+    ],
+    [workspace.defaultLocale, workspace.locales],
+  );
+
+  const timezoneOpts = useMemo(
+    () => [
+      { value: "", label: `Workspace default — ${workspace.timezone}` },
+      ...timezoneOptions(),
+    ],
+    [workspace.timezone],
+  );
+
+  // Live preview of the *pending* selection (not yet saved).
+  const previewLocale = locale || workspace.defaultLocale || "en";
+  const previewTz = timezone || workspace.timezone || "UTC";
+  const preview = useMemo(
+    () => makeFormatters(previewLocale, previewTz).formatDateTime(new Date()),
+    [previewLocale, previewTz],
+  );
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await accountApi.patchPreferences({
+        locale: locale || null,
+        timezone: timezone || null,
+      });
+      await refresh();
+      setDirty(false);
+      pushToast("Preferences saved.");
+    } catch (e) {
+      pushToast(errMsg(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading && !prefs) {
+    return (
+      <Card className="max-w-3xl">
+        <CardContent className="flex flex-col gap-4 pt-6">
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="max-w-3xl">
+      <CardContent className="flex flex-col gap-6 pt-6">
+        <div className="flex flex-col gap-2">
+          <Label>Language</Label>
+          <Select
+            value={locale}
+            onChange={(v) => {
+              setLocale(v);
+              setDirty(true);
+            }}
+            options={languageOpts}
+          />
+          <p className="text-sm text-muted-foreground">
+            Sets the locale used to format dates and numbers across the admin.
+            Choose “Workspace default” to follow the workspace language.
+          </p>
+        </div>
+        <Separator />
+        <div className="flex flex-col gap-2">
+          <Label>Time zone</Label>
+          <Select
+            value={timezone}
+            onChange={(v) => {
+              setTimezone(v);
+              setDirty(true);
+            }}
+            options={timezoneOpts}
+          />
+          <p className="text-sm text-muted-foreground">
+            Timestamps across the admin render in this zone.
+          </p>
+        </div>
+        <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
+          <span className="text-muted-foreground">Preview: </span>
+          <span className="font-mono">{preview}</span>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!dirty || saving}
+            onClick={() => {
+              setLocale(prefs?.user.locale ?? "");
+              setTimezone(prefs?.user.timezone ?? "");
+              setDirty(false);
+            }}
+          >
+            Discard
+          </Button>
+          <Button size="sm" disabled={!dirty || saving} onClick={save}>
+            {saving ? "Saving…" : "Save"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

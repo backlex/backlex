@@ -34,6 +34,7 @@ import { PageHeader } from "@/components/page-header";
 import { auth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import { accountApi } from "./api";
+import { ADMIN_LOCALES } from "./i18n";
 import { Select } from "./select";
 import {
   localeLabel,
@@ -900,19 +901,27 @@ function PreferencesCard({ pushToast }: { pushToast: (m: string) => void }) {
     timezone: "UTC",
   };
 
-  const languageOpts = useMemo(
-    () => [
+  // The picker offers only locales the admin SPA actually ships a translation
+  // for (`ADMIN_LOCALES`) — not the workspace's content-translation list
+  // (`i18nLocales`), which may include languages with no `.po` catalog. A code
+  // stored before this list was scoped is kept selectable so the picker still
+  // reflects the saved value instead of rendering blank.
+  const languageOpts = useMemo<{ value: string; label: string }[]>(() => {
+    const opts: { value: string; label: string }[] = [
       {
         value: "",
         label: t`Workspace default — ${localeLabel(workspace.defaultLocale)}`,
       },
-      ...workspace.locales.map((code) => ({
-        value: code,
+      ...ADMIN_LOCALES.map((code) => ({
+        value: code as string,
         label: localeLabel(code),
       })),
-    ],
-    [workspace.defaultLocale, workspace.locales, t],
-  );
+    ];
+    if (locale && !(ADMIN_LOCALES as readonly string[]).includes(locale)) {
+      opts.push({ value: locale, label: localeLabel(locale) });
+    }
+    return opts;
+  }, [workspace.defaultLocale, locale, t]);
 
   const timezoneOpts = useMemo(
     () => [
@@ -972,8 +981,8 @@ function PreferencesCard({ pushToast }: { pushToast: (m: string) => void }) {
             options={languageOpts}
           />
           <p className="text-sm text-muted-foreground">
-            <Trans>Sets the locale used to format dates and numbers across the admin.
-            Choose "Workspace default" to follow the workspace language.</Trans>
+            <Trans>Sets the admin display language and how dates and numbers are
+            formatted. Only languages with a bundled translation are listed.</Trans>
           </p>
         </div>
         <Separator />

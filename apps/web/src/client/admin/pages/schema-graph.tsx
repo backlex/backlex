@@ -5,6 +5,7 @@
 // (when present) is the target collection slug. Anything without a relation
 // renders as an isolated node. Layout is a simple deterministic grid.
 import { useEffect, useMemo, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { Badge, Button, PageHeader } from "../ui";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
@@ -85,6 +86,7 @@ function buildGraph(collections: ApiCollection[]): { nodes: GraphNode[]; edges: 
 }
 
 export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "success" | "error") => void }) {
+  const { t } = useLingui();
   const [collections, setCollections] = useState<ApiCollection[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -137,9 +139,9 @@ export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      pushToast("Schema exported · schema.json");
+      pushToast(t`Schema exported · schema.json`);
     } catch {
-      pushToast("Export failed.", "error");
+      pushToast(t`Export failed.`, "error");
     }
   };
 
@@ -149,22 +151,22 @@ export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
-        title="Schema graph"
-        description="Live ERD of dynamic collections. Foreign keys derive from field type · relations panel below shows the join shape used by REST + GraphQL."
+        title={t`Schema graph`}
+        description={t`Live ERD of dynamic collections. Foreign keys derive from field type · relations panel below shows the join shape used by REST + GraphQL.`}
         actions={
           <>
             <Button variant="outline" icon={I.Download} onClick={onExport}>
-              Export
+              <Trans>Export</Trans>
             </Button>
             <Button
               variant="outline"
               icon={I.Refresh}
               onClick={() => {
                 setReloadKey((k) => k + 1);
-                pushToast("Graph refreshed from collections metadata.");
+                pushToast(t`Graph refreshed from collections metadata.`);
               }}
             >
-              Refresh
+              <Trans>Refresh</Trans>
             </Button>
           </>
         }
@@ -173,22 +175,22 @@ export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "
       <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
         <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3.5">
           <span className="text-[12.5px] font-medium">
-            {nodes.length} collections · {edges.length} relations
+            <Trans>{nodes.length} collections · {edges.length} relations</Trans>
           </span>
           <div className="flex-1" />
           <div className="flex gap-2.5 text-[11.5px] text-muted-foreground">
             <span className="flex items-center gap-[5px]">
-              <span className="h-0.5 w-4 bg-foreground" /> fk
+              <span className="h-0.5 w-4 bg-foreground" /> <Trans>fk</Trans>
             </span>
             <span className="flex items-center gap-[5px]">
-              <span className="w-4 border-t-2 border-dashed border-foreground" /> m2m
+              <span className="w-4 border-t-2 border-dashed border-foreground" /> <Trans>m2m</Trans>
             </span>
           </div>
         </div>
         <div className="w-full overflow-auto bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))]">
           {nodes.length === 0 ? (
             <div className="p-10 text-center text-[13px] text-muted-foreground">
-              No collections to graph — create one to populate the ERD.
+              <Trans>No collections to graph — create one to populate the ERD.</Trans>
             </div>
           ) : (
             <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block min-w-[1100px]">
@@ -273,26 +275,26 @@ export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "
       <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
         <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
           <I.Network size={14} />
-          <span className="text-[13px] font-medium">relations</span>
+          <span className="text-[13px] font-medium"><Trans>relations</Trans></span>
           <span className="font-mono text-xs text-muted-foreground">
             {edges.length}
           </span>
         </div>
         {edges.length === 0 ? (
           <div className="px-4 py-3.5 text-xs text-muted-foreground">
-            No relation-typed fields detected. Add a field with type{" "}
-            <span className="font-mono">relation</span> to draw an edge.
+            <Trans>No relation-typed fields detected. Add a field with type{" "}
+            <span className="font-mono">relation</span> to draw an edge.</Trans>
           </div>
         ) : (
           <Table className={ADMIN_TABLE_CLS}>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[200px]">from</TableHead>
+                <TableHead className="w-[200px]"><Trans>from</Trans></TableHead>
                 <TableHead className="w-10" />
-                <TableHead className="w-[200px]">to</TableHead>
-                <TableHead className="w-[80px]">kind</TableHead>
-                <TableHead>field</TableHead>
-                <TableHead className="w-[110px]">expansion</TableHead>
+                <TableHead className="w-[200px]"><Trans>to</Trans></TableHead>
+                <TableHead className="w-[80px]"><Trans>kind</Trans></TableHead>
+                <TableHead><Trans>field</Trans></TableHead>
+                <TableHead className="w-[110px]"><Trans>expansion</Trans></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

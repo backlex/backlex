@@ -5,6 +5,7 @@
 // supports. Step 2 captures the column name + interface-specific options
 // (dropdown choices, relation target) and the NOT NULL / UNIQUE flags.
 import { useEffect, useMemo, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { type CollectionSchema } from "./config";
 import { Badge, Button, IconButton, Switch } from "./ui";
@@ -44,6 +45,7 @@ export interface AddFieldDialogProps {
 }
 
 export function AddFieldDialog({ open, schema, collections, onClose, onCreate }: AddFieldDialogProps) {
+  const { t } = useLingui();
   const [name, setName] = useState("");
   const [interfaceId, setInterfaceId] = useState("input");
   const [query, setQuery] = useState("");
@@ -148,20 +150,20 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       <DialogContent className="flex max-h-[92vh] w-[94vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[760px]">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
-            Add field to <span className="font-mono">c_{schema?.slug || "posts"}</span>
+            <Trans>Add field to <span className="font-mono">c_{schema?.slug || "posts"}</span></Trans>
           </DialogTitle>
           <DialogDescription className="text-[12.5px]">
-            Pick an interface, name the column — additive ALTER TABLE, no existing rows are rewritten.
+            <Trans>Pick an interface, name the column — additive ALTER TABLE, no existing rows are rewritten.</Trans>
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex items-center gap-2.5 border-b border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-5 py-3 text-[12.5px]">
           <div className={`inline-flex items-center gap-2 font-medium ${step >= 1 ? "text-foreground" : "text-muted-foreground"}`}>
-            <span className={`grid size-5 place-items-center rounded-full font-mono text-[11px] font-semibold ${step >= 1 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>1</span> Interface
+            <span className={`grid size-5 place-items-center rounded-full font-mono text-[11px] font-semibold ${step >= 1 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>1</span> <Trans>Interface</Trans>
           </div>
           <div className="h-px max-w-[60px] flex-1 bg-border" />
           <div className={`inline-flex items-center gap-2 font-medium ${step >= 2 ? "text-foreground" : "text-muted-foreground"}`}>
-            <span className={`grid size-5 place-items-center rounded-full font-mono text-[11px] font-semibold ${step >= 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>2</span> Settings
+            <span className={`grid size-5 place-items-center rounded-full font-mono text-[11px] font-semibold ${step >= 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>2</span> <Trans>Settings</Trans>
           </div>
         </div>
 
@@ -173,11 +175,11 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                 autoFocus
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder={`Search ${FIELD_INTERFACES.length} interfaces — input, markdown, dropdown, relation…`}
+                placeholder={t`Search ${FIELD_INTERFACES.length} interfaces — input, markdown, dropdown, relation…`}
               />
             </InputGroup>
             {groups.length === 0 && (
-              <div className="px-1 py-4 text-[12.5px] text-muted-foreground">No interface matches “{query}”.</div>
+              <div className="px-1 py-4 text-[12.5px] text-muted-foreground"><Trans>No interface matches "{query}".</Trans></div>
             )}
             {groups.map(({ group, items }) => (
               <div key={group} className="mb-[18px]">
@@ -215,64 +217,64 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
           <div className="grid flex-1 grid-cols-2 gap-3 overflow-auto px-5 py-[18px] max-[640px]:grid-cols-1">
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Name</label>
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans></label>
                 <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="reading_time_minutes" />
                 <span className="font-mono text-[11px] text-muted-foreground">
-                  column: <span className={nameTaken ? "text-destructive" : "text-foreground"}>{safeName || "—"}</span>
-                  {nameTaken && <span className="text-destructive"> · already exists</span>}
+                  <Trans>column: <span className={nameTaken ? "text-destructive" : "text-foreground"}>{safeName || "—"}</span></Trans>
+                  {nameTaken && <span className="text-destructive"><Trans> · already exists</Trans></span>}
                 </span>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Interface</label>
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Interface</Trans></label>
                 <div className="flex items-center gap-2 rounded-3xl border border-border bg-card px-3 py-2">
                   <Icon size={14} />
                   <span className="text-[13px] font-medium">{def.label}</span>
                   <Badge variant="outline" mono>{def.type}</Badge>
                   <span className="text-xs text-muted-foreground">· {def.sub}</span>
                   <div className="flex-1" />
-                  <Button variant="ghost" size="sm" onClick={() => setStep(1)}>Change</Button>
+                  <Button variant="ghost" size="sm" onClick={() => setStep(1)}><Trans>Change</Trans></Button>
                 </div>
               </div>
 
               {def.hasChoices && (
                 <div className="flex flex-col gap-1.5 rounded-xl bg-muted p-3">
                   <div className="mb-2 flex items-center gap-2">
-                    <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Choices</span>
-                    <span className="text-[11.5px] text-muted-foreground">value · label · color</span>
+                    <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Choices</Trans></span>
+                    <span className="text-[11.5px] text-muted-foreground"><Trans>value · label · color</Trans></span>
                     <div className="flex-1" />
-                    <Button size="xs" variant="outline" icon={I.Plus} onClick={addChoice}>Add</Button>
+                    <Button size="xs" variant="outline" icon={I.Plus} onClick={addChoice}><Trans>Add</Trans></Button>
                   </div>
                   {choices.length === 0 && (
-                    <div className="p-2 text-xs text-muted-foreground">No choices yet — click “Add”. The value is what the column stores.</div>
+                    <div className="p-2 text-xs text-muted-foreground"><Trans>No choices yet — click "Add". The value is what the column stores.</Trans></div>
                   )}
                   <div className="flex flex-col gap-1.5">
                     {choices.map((c, i) => (
                       <div key={i} className="grid grid-cols-[1fr_1fr_64px_30px] items-center gap-1.5">
-                        <Input placeholder="value" value={c.value} onChange={(e) => setChoice(i, { value: e.target.value })} />
-                        <Input placeholder="label (optional)" value={c.label ?? ""} onChange={(e) => setChoice(i, { label: e.target.value })} />
+                        <Input placeholder={t`value`} value={c.value} onChange={(e) => setChoice(i, { value: e.target.value })} />
+                        <Input placeholder={t`label (optional)`} value={c.label ?? ""} onChange={(e) => setChoice(i, { label: e.target.value })} />
                         <input type="color" value={c.color ?? "#A1A6B8"} onChange={(e) => setChoice(i, { color: e.target.value })} className="h-[30px] w-full cursor-pointer rounded-[6px] border border-border bg-card" />
-                        <IconButton icon={I.Trash} title="Remove choice" onClick={() => removeChoice(i)} />
+                        <IconButton icon={I.Trash} title={t`Remove choice`} onClick={() => removeChoice(i)} />
                       </div>
                     ))}
                   </div>
-                  {missingChoices && <span className="text-[11.5px] text-destructive">A dropdown needs at least one choice.</span>}
+                  {missingChoices && <span className="text-[11.5px] text-destructive"><Trans>A dropdown needs at least one choice.</Trans></span>}
                 </div>
               )}
 
               {def.hasRelation && (
                 <div className="flex flex-col gap-1.5">
-                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">References collection</label>
-                  <Select value={relationTarget} onChange={setRelationTarget} options={relationOptions} placeholder="Pick a collection…" />
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>References collection</Trans></label>
+                  <Select value={relationTarget} onChange={setRelationTarget} options={relationOptions} placeholder={t`Pick a collection…`} />
                   <span className="text-[11.5px] text-muted-foreground">
-                    Stores the target row's <span className="font-mono">id</span>.
-                    {missingRelation && <span className="text-destructive"> Required.</span>}
+                    <Trans>Stores the target row's <span className="font-mono">id</span>.</Trans>
+                    {missingRelation && <span className="text-destructive"><Trans> Required.</Trans></span>}
                   </span>
                 </div>
               )}
 
               <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Default value <span className="text-muted-foreground">(optional)</span></label>
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Default value <span className="text-muted-foreground">(optional)</span></Trans></label>
                 <Input
                   value={defaultValue}
                   onChange={(e) => setDefaultValue(e.target.value)}
@@ -284,28 +286,28 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
             <div className="flex flex-col gap-2.5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Required</div>
-                  <div className="text-[11.5px] text-muted-foreground">NOT NULL — adding to a table that already has rows needs a default.</div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Required</Trans></div>
+                  <div className="text-[11.5px] text-muted-foreground"><Trans>NOT NULL — adding to a table that already has rows needs a default.</Trans></div>
                 </div>
                 <Switch checked={!nullable} onChange={(v) => setNullable(!v)} />
               </div>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Unique</div>
-                  <div className="text-[11.5px] text-muted-foreground">UNIQUE constraint at the column level.</div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Unique</Trans></div>
+                  <div className="text-[11.5px] text-muted-foreground"><Trans>UNIQUE constraint at the column level.</Trans></div>
                 </div>
                 <Switch checked={unique} onChange={setUnique} />
               </div>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Indexed</div>
-                  <div className="text-[11.5px] text-muted-foreground">B-tree index — speeds up filter/sort by this column.</div>
+                  <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Indexed</Trans></div>
+                  <div className="text-[11.5px] text-muted-foreground"><Trans>B-tree index — speeds up filter/sort by this column.</Trans></div>
                 </div>
                 <Switch checked={indexed} onChange={setIndexed} />
               </div>
 
               <div className="mt-1.5">
-                <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground">DDL preview</div>
+                <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>DDL preview</Trans></div>
                 <AlterPreview pendingField={{ name: safeName || "new_field", type: def.type as never, nullable, default: defaultValue }} />
               </div>
             </div>
@@ -315,24 +317,24 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
         <div className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <span className="text-xs text-muted-foreground">
             {step === 1
-              ? <>Pick a UI interface · {FIELD_INTERFACES.length} available across {INTERFACE_GROUPS.length} groups</>
+              ? <Trans>Pick a UI interface · {FIELD_INTERFACES.length} available across {INTERFACE_GROUPS.length} groups</Trans>
               : valid
-                ? <>Will run on save.</>
+                ? <Trans>Will run on save.</Trans>
                 : nameTaken
-                  ? <>Name conflicts with an existing column.</>
+                  ? <Trans>Name conflicts with an existing column.</Trans>
                   : missingChoices
-                    ? <>Add at least one dropdown choice.</>
+                    ? <Trans>Add at least one dropdown choice.</Trans>
                     : missingRelation
-                      ? <>Pick the collection this relation points to.</>
-                      : <>Enter a name to continue.</>}
+                      ? <Trans>Pick the collection this relation points to.</Trans>
+                      : <Trans>Enter a name to continue.</Trans>}
           </span>
           <div className="flex-1" />
-          {step === 2 && <Button variant="ghost" size="sm" onClick={() => setStep(1)} icon={I.ChevronLeft}>Back</Button>}
-          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          {step === 2 && <Button variant="ghost" size="sm" onClick={() => setStep(1)} icon={I.ChevronLeft}><Trans>Back</Trans></Button>}
+          <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>
           {step === 1 ? (
-            <Button variant="primary" size="sm" iconRight={I.ChevronRight} onClick={() => setStep(2)}>Next</Button>
+            <Button variant="primary" size="sm" iconRight={I.ChevronRight} onClick={() => setStep(2)}><Trans>Next</Trans></Button>
           ) : (
-            <Button variant="primary" size="sm" icon={I.Check} disabled={!valid} onClick={submit}>Add column</Button>
+            <Button variant="primary" size="sm" icon={I.Check} disabled={!valid} onClick={submit}><Trans>Add column</Trans></Button>
           )}
         </div>
       </DialogContent>

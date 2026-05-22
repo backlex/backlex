@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,14 +29,18 @@ interface ConfirmActionProps {
 export const ConfirmAction = ({
   title,
   description,
-  actionLabel = "Confirm",
-  cancelLabel = "Cancel",
+  actionLabel,
+  cancelLabel,
   destructive = false,
   onConfirm,
   children,
 }: ConfirmActionProps) => {
+  const { t } = useLingui();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  const resolvedActionLabel = actionLabel ?? t`Confirm`;
+  const resolvedCancelLabel = cancelLabel ?? t`Cancel`;
 
   const handle = async () => {
     setBusy(true);
@@ -58,7 +63,7 @@ export const ConfirmAction = ({
           )}
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={busy}>{cancelLabel}</AlertDialogCancel>
+          <AlertDialogCancel disabled={busy}>{resolvedCancelLabel}</AlertDialogCancel>
           <AlertDialogAction
             onClick={(e) => {
               e.preventDefault();
@@ -67,7 +72,7 @@ export const ConfirmAction = ({
             className={destructive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : undefined}
             disabled={busy}
           >
-            {busy ? "Working…" : actionLabel}
+            {busy ? <Trans>Working…</Trans> : resolvedActionLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

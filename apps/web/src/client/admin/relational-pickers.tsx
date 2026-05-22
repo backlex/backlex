@@ -19,6 +19,7 @@ import {
   type ChangeEvent,
   type ReactNode,
 } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "./icons";
 import { Button, IconButton, Checkbox } from "./ui";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
@@ -164,6 +165,7 @@ export function MultiFilePicker({ value, onChange, error }: MultiFilePickerProps
 // ─────────────────────────────────────────────────────────────────────────────
 
 function FileTrigger({ value, kind, error, onOpen, onClear }: { value: string; kind: "file" | "image"; error: boolean; onOpen: () => void; onClear: () => void }) {
+  const { t } = useLingui();
   return (
     <div
       style={{
@@ -181,7 +183,7 @@ function FileTrigger({ value, kind, error, onOpen, onClear }: { value: string; k
           <span className="font-mono" style={{ fontSize: 12.5, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingLeft: 2 }} title={value}>
             {value}
           </span>
-          <IconButton icon={I.X} title="Clear" onClick={onClear} />
+          <IconButton icon={I.X} title={t`Clear`} onClick={onClear} />
         </>
       ) : (
         <>
@@ -195,18 +197,19 @@ function FileTrigger({ value, kind, error, onOpen, onClear }: { value: string; k
             {kind === "image" ? <I.Upload size={16} /> : <I.Folder size={16} />}
           </span>
           <span className="flex-1 text-[13px] text-muted-foreground">
-            {kind === "image" ? "No image selected" : "No file selected"}
+            {kind === "image" ? <Trans>No image selected</Trans> : <Trans>No file selected</Trans>}
           </span>
         </>
       )}
       <Button size="sm" variant="outline" onClick={onOpen}>
-        {value ? "Change" : kind === "image" ? "Pick image" : "Pick file"}
+        {value ? <Trans>Change</Trans> : kind === "image" ? <Trans>Pick image</Trans> : <Trans>Pick file</Trans>}
       </Button>
     </div>
   );
 }
 
 function MultiFileTrigger({ value, error, onOpen, onRemove }: { value: string[]; error: boolean; onOpen: () => void; onRemove: (k: string) => void }) {
+  const { t } = useLingui();
   return (
     <div
       style={{
@@ -232,14 +235,14 @@ function MultiFileTrigger({ value, error, onOpen, onRemove }: { value: string[];
             size="xs"
             icon={I.X}
             onClick={() => onRemove(k)}
-            aria-label={`Remove ${k}`}
+            aria-label={t`Remove ${k}`}
             className="size-[18px] rounded-full p-0 text-muted-foreground"
           />
         </span>
       ))}
       <div style={{ flex: 1 }} />
       <Button size="sm" variant="outline" icon={I.Plus} onClick={onOpen}>
-        {value.length ? "Manage" : "Pick files"}
+        {value.length ? <Trans>Manage</Trans> : <Trans>Pick files</Trans>}
       </Button>
     </div>
   );
@@ -258,6 +261,7 @@ interface FileBrowserModalProps {
 }
 
 function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: FileBrowserModalProps) {
+  const { t } = useLingui();
   const [files, setFiles] = useState<StorageFile[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadErr, setLoadErr] = useState<string | null>(null);
@@ -386,7 +390,7 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
     e.target.value = "";
   }, [uploadFiles]);
 
-  const title = kind === "image" ? "Pick an image" : mode === "multi" ? "Pick files" : "Pick a file";
+  const title = kind === "image" ? t`Pick an image` : mode === "multi" ? t`Pick files` : t`Pick a file`;
   const accept = kind === "image" ? "image/*" : undefined;
   const canCommit = mode === "multi" ? true : selected.length > 0;
 
@@ -402,10 +406,10 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]">{title}</DialogTitle>
           <DialogDescription className="text-[12.5px]">
             {mode === "multi"
-              ? "Pick one or more files. Drag-drop or use Upload to add new ones."
+              ? <Trans>Pick one or more files. Drag-drop or use Upload to add new ones.</Trans>
               : kind === "image"
-                ? "Pick an existing image, or drop a new one to upload."
-                : "Pick an existing file, or drop a new one to upload."}
+                ? <Trans>Pick an existing image, or drop a new one to upload.</Trans>
+                : <Trans>Pick an existing file, or drop a new one to upload.</Trans>}
           </DialogDescription>
         </DialogHeader>
 
@@ -425,11 +429,11 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
                   autoFocus
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder={kind === "image" ? "Search images by key…" : "Search files by key…"}
+                  placeholder={kind === "image" ? t`Search images by key…` : t`Search files by key…`}
                 />
               </InputGroup>
               <Button variant="outline" size="sm" icon={I.Upload} onClick={() => fileInputRef.current?.click()}>
-                Upload
+                <Trans>Upload</Trans>
               </Button>
               <input
                 ref={fileInputRef}
@@ -452,13 +456,13 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
               </div>
               <div className="flex-1">
                 <div className="text-[13px] font-medium">
-                  Drop {kind === "image" ? "images" : "files"} here, or click to upload
+                  {kind === "image" ? <Trans>Drop images here, or click to upload</Trans> : <Trans>Drop files here, or click to upload</Trans>}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  Uploading to <span className="font-mono">{uploadFolder}/</span>.
+                  <Trans>Uploading to <span className="font-mono">{uploadFolder}/</span>.</Trans>
                 </div>
               </div>
-              <span className="rounded-full border border-border bg-card px-2 py-[3px] font-mono text-[11px] text-muted-foreground">{mode === "multi" ? "multiple ok" : "1 file"}</span>
+              <span className="rounded-full border border-border bg-card px-2 py-[3px] font-mono text-[11px] text-muted-foreground">{mode === "multi" ? <Trans>multiple ok</Trans> : <Trans>1 file</Trans>}</span>
             </div>
 
             {uploads.length > 0 && (
@@ -481,10 +485,10 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
               {!loading && !loadErr && filtered.length === 0 && (
                 <div className="p-3 text-[12.5px] text-muted-foreground">
                   {q
-                    ? `No ${kind === "image" ? "images" : "files"} match “${q}”.`
+                    ? (kind === "image" ? t`No images match "${q}".` : t`No files match "${q}".`)
                     : activeFolder
-                      ? `Folder ${activeFolder === "(root)" ? "(no folder)" : activeFolder + "/"} is empty.`
-                      : `No ${kind === "image" ? "images" : "files"} uploaded yet — drop one above to get started.`}
+                      ? (activeFolder === "(root)" ? t`Folder (no folder) is empty.` : t`Folder ${activeFolder + "/"} is empty.`)
+                      : (kind === "image" ? t`No images uploaded yet — drop one above to get started.` : t`No files uploaded yet — drop one above to get started.`)}
                 </div>
               )}
               {!loading && !loadErr && filtered.length > 0 && (
@@ -514,16 +518,16 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
           <span className="text-xs text-muted-foreground">
             {mode === "multi"
               ? selected.length
-                ? `${selected.length} selected`
-                : "Nothing selected yet"
+                ? <Trans>{selected.length} selected</Trans>
+                : <Trans>Nothing selected yet</Trans>
               : selected[0]
-                ? <>Selected <span className="font-mono">{selected[0]}</span></>
-                : "Pick a tile to select it"}
+                ? <Trans>Selected <span className="font-mono">{selected[0]}</span></Trans>
+                : <Trans>Pick a tile to select it</Trans>}
           </span>
           <div className="flex-1" />
-          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>
           <Button variant="primary" size="sm" disabled={!canCommit} onClick={() => onCommit(selected)}>
-            {mode === "multi" ? `Use ${selected.length || "0"} file${selected.length === 1 ? "" : "s"}` : "Confirm"}
+            {mode === "multi" ? t`Use ${selected.length || "0"} file${selected.length === 1 ? "" : "s"}` : <Trans>Confirm</Trans>}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -537,6 +541,7 @@ function FolderSidebar({ folders, active, onSelect, totalCount }: {
   onSelect: (folder: string | null) => void;
   totalCount: number;
 }) {
+  const { t } = useLingui();
   const row = (label: ReactNode, count: number, isActive: boolean, onClick: () => void, key: string) => (
     <button
       key={key}
@@ -574,12 +579,12 @@ function FolderSidebar({ folders, active, onSelect, totalCount }: {
       }}
     >
       <div className="px-2.5 pb-2 pt-1 text-[10.5px] uppercase tracking-[0.08em] text-muted-foreground">
-        Folders
+        <Trans>Folders</Trans>
       </div>
-      {row("All files", totalCount, active === null, () => onSelect(null), "__all")}
+      {row(t`All files`, totalCount, active === null, () => onSelect(null), "__all")}
       {folders.map((f) =>
         row(
-          f.name === "(root)" ? <span className="text-muted-foreground">(no folder)</span> : <span className="font-mono">{f.name}</span>,
+          f.name === "(root)" ? <span className="text-muted-foreground"><Trans>(no folder)</Trans></span> : <span className="font-mono">{f.name}</span>,
           f.count,
           active === f.name,
           () => onSelect(f.name),
@@ -588,7 +593,7 @@ function FolderSidebar({ folders, active, onSelect, totalCount }: {
       )}
       {folders.length === 0 && (
         <div className="px-2.5 py-2 text-[11.5px] text-muted-foreground">
-          No folders yet — uploads land under <span className="font-mono">uploads/</span>.
+          <Trans>No folders yet — uploads land under <span className="font-mono">uploads/</span>.</Trans>
         </div>
       )}
     </aside>
@@ -661,6 +666,7 @@ function FileTile({ f, selected, mode, onToggle }: { f: StorageFile; selected: b
 }
 
 function UploadRow({ u }: { u: { id: string; name: string; status: "uploading" | "done" | "error"; error?: string } }) {
+  const { t } = useLingui();
   const Icon = u.status === "uploading" ? I.Upload : u.status === "done" ? I.Check : I.AlertTriangle;
   const color = u.status === "error" ? "var(--destructive)" : u.status === "done" ? "oklch(0.7 0.18 145)" : "var(--muted-foreground)";
   return (
@@ -668,7 +674,7 @@ function UploadRow({ u }: { u: { id: string; name: string; status: "uploading" |
       <Icon size={13} />
       <span className="font-mono" style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.name}</span>
       <span style={{ color, fontSize: 11 }}>
-        {u.status === "uploading" ? "uploading…" : u.status === "done" ? "uploaded" : (u.error || "failed")}
+        {u.status === "uploading" ? t`uploading…` : u.status === "done" ? t`uploaded` : (u.error || t`failed`)}
       </span>
     </div>
   );
@@ -747,6 +753,7 @@ function RelationTrigger({ value, label, error, target, placeholder, onOpen, onC
   onOpen: () => void;
   onClear: () => void;
 }) {
+  const { t } = useLingui();
   return (
     <div
       style={{
@@ -766,15 +773,15 @@ function RelationTrigger({ value, label, error, target, placeholder, onOpen, onC
           {label && (
             <span className="font-mono text-[11px] text-muted-foreground">{value.slice(0, 8)}</span>
           )}
-          <IconButton icon={I.X} title="Clear" onClick={onClear} />
+          <IconButton icon={I.X} title={t`Clear`} onClick={onClear} />
         </>
       ) : (
         <span className="flex-1 text-[13px] text-muted-foreground">
-          {placeholder ?? `No row from c_${target} selected`}
+          {placeholder ?? t`No row from c_${target} selected`}
         </span>
       )}
       <Button size="sm" variant="outline" onClick={onOpen}>
-        {value ? "Change" : "Pick row"}
+        {value ? <Trans>Change</Trans> : <Trans>Pick row</Trans>}
       </Button>
     </div>
   );
@@ -787,6 +794,7 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
   onClose: () => void;
   seedLabels: (rows: Array<Record<string, unknown>>) => void;
 }) {
+  const { t } = useLingui();
   const [rows, setRows] = useState<Array<Record<string, unknown>> | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -824,10 +832,10 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
       <DialogContent className="flex max-h-[min(88vh,720px)] w-[min(720px,92vw)] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
-            Pick a row from <span className="font-mono">c_{target}</span>
+            <Trans>Pick a row from <span className="font-mono">c_{target}</span></Trans>
           </DialogTitle>
           <DialogDescription className="text-[12.5px]">
-            Showing the 100 most recently updated rows. Use search to narrow down.
+            <Trans>Showing the 100 most recently updated rows. Use search to narrow down.</Trans>
           </DialogDescription>
         </DialogHeader>
 
@@ -838,7 +846,7 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
               autoFocus
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search by label or id…"
+              placeholder={t`Search by label or id…`}
             />
           </InputGroup>
 
@@ -853,7 +861,7 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
             {err && <div style={{ color: "var(--destructive)", fontSize: 12.5, padding: 12 }}>{err}</div>}
             {!loading && !err && filtered.length === 0 && (
               <div className="p-3 text-[12.5px] text-muted-foreground">
-                {q ? `No rows match “${q}”.` : `c_${target} is empty.`}
+                {q ? t`No rows match "${q}".` : t`c_${target} is empty.`}
               </div>
             )}
             {filtered.map((r) => {
@@ -885,7 +893,7 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
                   }} />
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {lbl ?? <span className="text-muted-foreground">(no label)</span>}
+                      {lbl ?? <span className="text-muted-foreground"><Trans>(no label)</Trans></span>}
                     </div>
                     <div className="truncate font-mono text-[11px] text-muted-foreground">
                       {id}
@@ -900,12 +908,12 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
         <DialogFooter className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <span className="text-xs text-muted-foreground">
             {selected
-              ? <>Selected <span className="font-mono">{selected}</span></>
-              : "Pick a row to select it"}
+              ? <Trans>Selected <span className="font-mono">{selected}</span></Trans>
+              : <Trans>Pick a row to select it</Trans>}
           </span>
           <div className="flex-1" />
-          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" size="sm" disabled={!selected} onClick={() => onCommit(selected)}>Confirm</Button>
+          <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>
+          <Button variant="primary" size="sm" disabled={!selected} onClick={() => onCommit(selected)}><Trans>Confirm</Trans></Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwind from "@tailwindcss/vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
+import { lingui } from "@lingui/vite-plugin";
 import { fileURLToPath, URL } from "node:url";
 
 /**
@@ -13,7 +14,15 @@ import { fileURLToPath, URL } from "node:url";
  * bundles the Worker; `wrangler deploy` ships both.
  */
 export default defineConfig({
-  plugins: [react(), tailwind(), cloudflare()],
+  // `@lingui/babel-plugin-lingui-macro` runs inside plugin-react's Babel pass
+  // so it only touches client `.tsx` (the Worker bundle never sees it).
+  // `lingui()` compiles `.po` catalog imports to runtime message objects.
+  plugins: [
+    react({ babel: { plugins: ["@lingui/babel-plugin-lingui-macro"] } }),
+    lingui(),
+    tailwind(),
+    cloudflare(),
+  ],
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src/client", import.meta.url)),

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent } from "../icons";
 import { type AdapterId } from "../config";
-import { Badge, Button, PageHeader, Switch } from "../ui";
+import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
 import {
   emailConfigApi,
@@ -766,25 +766,26 @@ function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) 
                 <span className="font-mono text-[11.5px] text-muted-foreground">{code}</span>
                 <div className="flex-1" />
                 {isDefault ? (
-                  <Badge variant="default"><Trans>default</Trans></Badge>
+                  <span
+                    title={t`Default language`}
+                    className="flex size-8 items-center justify-center text-primary"
+                  >
+                    <I.Star size={14} fill="currentColor" />
+                  </span>
                 ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                  <IconButton
+                    icon={I.Star}
+                    title={t`Make default`}
                     disabled={loading}
                     onClick={() => { setDefaultLocale(code); setDirty(true); }}
-                  >
-                    <Trans>Make default</Trans>
-                  </Button>
+                  />
                 )}
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <IconButton
+                  icon={I.Trash}
+                  title={t`Remove`}
                   disabled={loading || locales.length <= 1}
                   onClick={() => removeLocale(code)}
-                >
-                  <Trans>Remove</Trans>
-                </Button>
+                />
               </div>
             );
           })}

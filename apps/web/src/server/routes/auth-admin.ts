@@ -203,16 +203,22 @@ export const authAdminRoutes = new OpenAPIHono<AppBindings>()
         .from(t.config)
         .where(eq(t.config.tenantId, tenantId))
         .limit(1);
+      const d = envAuthDefaults(ctx.env);
       if (rows[0]) {
         return c.json({
           data: {
             ...rows[0],
-            providers: sanitizeProvidersForRead(rows[0].providers),
+            // Merge env-derived built-in providers beneath the stored map so
+            // providers introduced after this row was first written (e.g.
+            // apple) still surface. Stored entries win for any key they define.
+            providers: sanitizeProvidersForRead({
+              ...d.providers,
+              ...((rows[0].providers ?? {}) as Record<string, unknown>),
+            }),
           },
         });
       }
 
-      const d = envAuthDefaults(ctx.env);
       return c.json({
         data: {
           tenantId,

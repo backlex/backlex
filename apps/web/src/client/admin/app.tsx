@@ -673,8 +673,6 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                 : [activeNav]
           }
           onOpenPalette={() => setPaletteOpen(true)}
-          onToggleTheme={toggleDark}
-          dark={dark}
           onSignOut={onSignOut}
           user={me}
           onAccountSettings={() => navigate("/account")}

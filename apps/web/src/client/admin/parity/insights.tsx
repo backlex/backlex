@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode }
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useIsMobile } from "@workeros/ui/hooks/use-mobile";
 import { Input } from "@workeros/ui/components/input";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { Textarea } from "@workeros/ui/components/textarea";
 import {
   Dialog,
@@ -739,7 +740,8 @@ function PanelEditorDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
+        <ScrollArea className="min-h-0 flex-1">
+        <div className="flex flex-col gap-4 px-5 py-[18px]">
           {topError && (
             <div className="flex items-start gap-2 rounded-md border border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))] p-2.5 text-[12.5px] text-destructive">
               <I.AlertTriangle size={13} className="mt-px shrink-0" />
@@ -981,6 +983,7 @@ function PanelEditorDialog({
             </div>
           )}
         </div>
+        </ScrollArea>
 
         <DialogFooter className="border-t border-border bg-card px-5 py-3">
           <Button variant="ghost" onClick={onClose} disabled={busy}><Trans>Cancel</Trans></Button>
@@ -997,7 +1000,7 @@ function PreviewTable({ rows }: { rows: Record<string, unknown>[] }) {
   const cols = Object.keys(rows[0] ?? {}).slice(0, 6);
   const max = 5;
   return (
-    <div className="overflow-x-auto rounded-md border border-border bg-card">
+    <ScrollArea className="rounded-md border border-border bg-card">
       <table className="w-full border-collapse text-[11.5px]">
         <thead>
           <tr>
@@ -1019,7 +1022,7 @@ function PreviewTable({ rows }: { rows: Record<string, unknown>[] }) {
         </tbody>
       </table>
       {rows.length > max && <div className="border-t border-border px-2 py-1.5 text-[11px] text-muted-foreground"><Trans>… and {rows.length - max} more</Trans></div>}
-    </div>
+    </ScrollArea>
   );
 }
 

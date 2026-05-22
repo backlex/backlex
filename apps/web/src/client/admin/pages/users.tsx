@@ -30,6 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@workeros/ui/components/dropdown-menu";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { rolesApi, usersApi, type ApiRole, type ApiUser } from "../api";
 import { UsersSkeleton } from "../page-skeletons";
 import { auth } from "@/lib/auth";
@@ -468,7 +469,8 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
           </div>
         </SheetHeader>
 
-        <div className="flex flex-1 flex-col gap-8 overflow-auto px-5 py-[18px]">
+        <ScrollArea className="min-h-0 flex-1">
+        <div className="flex flex-col gap-8 px-5 py-[18px]">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-[12.5px] font-medium text-foreground"><Trans>Name</Trans></label>
@@ -590,6 +592,7 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
             </div>
           </div>
         </div>
+        </ScrollArea>
 
         <SheetFooter className="flex-row justify-end gap-2 border-t border-border bg-card px-5 py-3">
           <Button variant="ghost" onClick={onClose}><Trans>Close</Trans></Button>
@@ -624,7 +627,8 @@ function InviteUserDialog({ roles, onClose, onInvite }: { roles: string[]; onClo
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Invite user</Trans></DialogTitle>
           <DialogDescription className="mt-0.5 text-[12.5px]"><Trans>Send an email invite. The user finishes signup themselves.</Trans></DialogDescription>
         </DialogHeader>
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
+        <ScrollArea className="min-h-0 flex-1">
+        <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Email</Trans></label>
             <Input autoFocus placeholder="teammate@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -641,6 +645,7 @@ function InviteUserDialog({ roles, onClose, onInvite }: { roles: string[]; onClo
               options={[{ value: "password", label: "password", hint: t`set on first login` }, { value: "magic", label: "magic link", hint: t`email-only, no password` }, { value: "github", label: "github SSO", hint: t`OAuth required` }, { value: "google", label: "google SSO", hint: t`OAuth required` }, { value: "saml", label: "SAML SSO", hint: t`configure providers under Authentication` }, { value: "ldap", label: "LDAP / AD", hint: t`configure directory under Authentication` }]} />
           </div>
         </div>
+        </ScrollArea>
         <DialogFooter className="border-t border-border bg-card px-5 py-3 sm:justify-end">
           <Button variant="ghost" onClick={onClose}><Trans>Cancel</Trans></Button>
           <Button variant="primary" disabled={!valid} onClick={() => onInvite({ email, role, provider })}><Trans>Send invite</Trans></Button>

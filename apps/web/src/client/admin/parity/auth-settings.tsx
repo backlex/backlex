@@ -5,7 +5,7 @@ import { Input } from "@workeros/ui/components/input";
 import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "../icons";
-import { Badge, Button, PageHeader, Switch } from "../ui";
+import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
 import {
   Dialog,
@@ -537,7 +537,7 @@ curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
           <Button size="sm" variant="outline" icon={I.LogOut} onClick={revokeOthers}><Trans>Revoke others</Trans></Button>
         </div>
         <Table className="[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground">
-          <TableHeader><TableRow><TableHead><Trans>User</Trans></TableHead><TableHead><Trans>Device</Trans></TableHead><TableHead><Trans>Location</Trans></TableHead><TableHead>IP</TableHead><TableHead><Trans>Created</Trans></TableHead><TableHead><Trans>Last seen</Trans></TableHead><TableHead className="sticky right-0 bg-card" /></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead><Trans>User</Trans></TableHead><TableHead><Trans>Device</Trans></TableHead><TableHead><Trans>Location</Trans></TableHead><TableHead>IP</TableHead><TableHead><Trans>Created</Trans></TableHead><TableHead><Trans>Last seen</Trans></TableHead><TableHead className="sticky right-0 w-11 border-l border-border bg-card shadow-[-8px_0_12px_-8px_oklch(0_0_0/0.18)]" /></TableRow></TableHeader>
           <TableBody>
             {sessions.length === 0 && <TableRow><TableCell colSpan={7} className="text-muted-foreground"><Trans>No active sessions.</Trans></TableCell></TableRow>}
             {sessions.map((s) => (
@@ -548,7 +548,7 @@ curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
                 <TableCell className="font-mono text-[11.5px] text-muted-foreground">{s.ip}</TableCell>
                 <TableCell className="font-mono text-[11.5px] text-muted-foreground">{s.created}</TableCell>
                 <TableCell className="font-mono text-[11.5px] text-muted-foreground">{s.last}</TableCell>
-                <TableCell className="sticky right-0 bg-card text-right">{!s.current && <Button size="sm" variant="ghost" onClick={() => void revokeSession(s.id)}><Trans>Revoke</Trans></Button>}</TableCell>
+                <TableCell className="sticky right-0 border-l border-border bg-card text-right shadow-[-8px_0_12px_-8px_oklch(0_0_0/0.18)]">{!s.current && <IconButton icon={I.LogOut} onClick={() => void revokeSession(s.id)} title={t`Revoke`} className="text-muted-foreground hover:text-destructive" />}</TableCell>
               </TableRow>
             ))}
           </TableBody>

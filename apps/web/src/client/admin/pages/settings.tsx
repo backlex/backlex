@@ -370,7 +370,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
         />
         <span className="text-[11.5px] text-muted-foreground"><Trans>Short tagline for the workspace.</Trans></span>
       </div>
-      <div className="flex items-center justify-between gap-3 border-t border-border pt-3.5">
+      <div className="flex flex-col gap-2 border-t border-border pt-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <div>
           <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Logo</Trans></div>
           <div className="text-[11.5px] text-muted-foreground"><Trans>PNG, JPG, SVG or WebP — square images display best. Replaces any previous upload.</Trans></div>
@@ -414,7 +414,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
           )}
         </div>
       </div>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <div>
           <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Favicon</Trans></div>
           <div className="text-[11.5px] text-muted-foreground"><Trans>PNG or ICO recommended (≤ 64 KB).</Trans></div>
@@ -508,7 +508,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
             : <Trans>Use a hex value (#rrggbb), or a CSS color function: rgb(), hsl(), oklch(), oklab().</Trans>}
         </span>
       </div>
-      <div className="flex items-start justify-between gap-3 border-t border-border pt-3.5">
+      <div className="flex flex-col gap-2 border-t border-border pt-3.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
         <div>
           <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Workspace default theme</Trans></div>
           <div className="text-[11.5px] text-muted-foreground"><Trans>Applied to users with no local override yet.</Trans></div>
@@ -527,7 +527,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
           ))}
         </div>
       </div>
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
         <div>
           <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>My theme</Trans></div>
           <div className="text-[11.5px] text-muted-foreground"><Trans>Your own preference — stored locally, not synced.</Trans></div>
@@ -965,28 +965,28 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
       {tab === "general" && (
         <div className="flex flex-col gap-4">
         <div className="flex max-w-[720px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <div>
               <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">APP_URL</div>
               <div className="text-[11.5px] text-muted-foreground"><Trans>Public origin of this Worker — set via <span className="font-mono">wrangler.toml [vars]</span> (or <span className="font-mono">.env</span> on self-host). Used for CORS, OAuth callbacks and absolute links. Read-only here.</Trans></div>
             </div>
             <span className="max-w-[280px] truncate font-mono text-[12.5px] text-muted-foreground" title={appUrl}>{appUrl}</span>
           </div>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <div>
               <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">EMAIL_FROM</div>
               <div className="text-[11.5px] text-muted-foreground"><Trans>Sender address for transactional email — set via <span className="font-mono">wrangler secret put</span> / <span className="font-mono">.env</span>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here.</Trans></div>
             </div>
             <span className="font-mono text-[12.5px] text-muted-foreground">{from || t`(not set)`}</span>
           </div>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <div>
               <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Open sign-up</Trans></div>
               <div className="text-[11.5px] text-muted-foreground"><Trans>When off, new account creation is rejected on every path (email/password, social, magic-link). The first user is always allowed so a fresh instance can bootstrap its admin.</Trans></div>
             </div>
             <Switch checked={signupOpen} onChange={(v) => { setSignupOpen(v); setDirty(true); }} />
           </div>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <div>
               <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Runtime</Trans></div>
               <div className="text-[11.5px] text-muted-foreground"><Trans>Auto-detected from <span className="font-mono">env</span> bindings.</Trans></div>

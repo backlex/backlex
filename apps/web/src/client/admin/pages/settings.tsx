@@ -912,35 +912,33 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
             </div>
           </div>
           <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
-            <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
-              <I.Server size={14} /><span className="text-[13px] font-medium">worker bindings</span>
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 border-b border-border px-4 py-3.5">
+              <I.Server size={14} className="shrink-0" /><span className="whitespace-nowrap text-[13px] font-medium">worker bindings</span>
               <span className="font-mono text-xs text-muted-foreground">{bindings.filter((b) => b.status === "connected").length} connected · {bindings.filter((b) => b.status !== "connected").length} optional</span>
               <div className="flex-1" />
               <Button variant="ghost" size="sm" icon={I.Refresh} onClick={() => pushToast("Bindings refreshed.")}>Refresh</Button>
             </div>
-            <div className="w-full max-w-full overflow-x-auto">
-            <div className="grid grid-cols-[24px_110px_160px_1fr_120px] items-center gap-3 border-b border-border bg-muted px-3.5 py-[11px] text-[11px] uppercase tracking-[0.4px] text-muted-foreground">
+            <div className="hidden grid-cols-[24px_110px_160px_1fr_120px] items-center gap-3 border-b border-border bg-muted px-3.5 py-[11px] text-[11px] uppercase tracking-[0.4px] text-muted-foreground md:grid">
               <span></span><span>Type</span><span>Name</span><span>Resource</span><span>Status</span>
             </div>
             {bindings.map((b) => {
               const Ic = bindingIcon(b.type);
               return (
-                <div key={b.id} className="grid grid-cols-[24px_110px_160px_1fr_120px] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0">
-                  <span><Ic size={14} /></span>
+                <div key={b.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border px-3.5 py-3 text-[13px] last:border-b-0 md:grid md:grid-cols-[24px_110px_160px_1fr_120px] md:gap-3 md:py-[11px]">
+                  <span className="shrink-0"><Ic size={14} /></span>
                   <span className="font-mono text-[12.5px]">{b.type}</span>
-                  <span className="font-mono text-[13px]">{b.name}</span>
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="font-mono text-xs text-muted-foreground">{b.target}</span>
+                  <span className="order-last w-full break-all font-mono text-[13px] md:order-none md:w-auto md:break-normal">{b.name}</span>
+                  <div className="order-last flex w-full min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 md:order-none md:w-auto md:flex-nowrap">
+                    <span className="break-all font-mono text-xs text-muted-foreground">{b.target}</span>
                     {b.warn && <span className="text-[11.5px] text-muted-foreground">· {b.warn}</span>}
                   </div>
-                  <span>
+                  <span className="ml-auto shrink-0 md:ml-0">
                     {b.status === "connected" && <Badge variant="default">connected</Badge>}
                     {b.status === "optional" && <Badge variant="secondary">unbound</Badge>}
                   </span>
                 </div>
               );
             })}
-            </div>
           </div>
           <div className="overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground">
             <div className="mb-2 flex items-center gap-2">
@@ -980,19 +978,17 @@ class_name = "RealtimeRoom"`}</pre>
               <I.Lock size={14} /><span className="text-[13px] font-medium">environment</span>
               <span className="font-mono text-xs text-muted-foreground">{envVars.filter((v) => v.value !== "(unset)").length} set · {envVars.filter((v) => v.value === "(unset)").length} unset</span>
             </div>
-            <div className="w-full max-w-full overflow-x-auto">
-            <div className="grid grid-cols-[24px_1fr_120px_110px] items-center gap-3 border-b border-border bg-muted px-3.5 py-[11px] text-[11px] uppercase tracking-[0.4px] text-muted-foreground">
+            <div className="hidden grid-cols-[24px_1fr_120px_110px] items-center gap-3 border-b border-border bg-muted px-3.5 py-[11px] text-[11px] uppercase tracking-[0.4px] text-muted-foreground md:grid">
               <span></span><span>Key</span><span>Kind</span><span>Status</span>
             </div>
             {envVars.map((v) => (
-              <div key={v.id} className="grid grid-cols-[24px_1fr_120px_110px] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0">
-                <span>{v.secret ? <I.Lock size={13} /> : <I.Hash size={13} />}</span>
-                <span className="font-mono text-[12.5px]">{v.key}</span>
+              <div key={v.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-3.5 py-3 text-[13px] last:border-b-0 md:grid md:grid-cols-[24px_1fr_120px_110px] md:gap-3 md:py-[11px]">
+                <span className="shrink-0">{v.secret ? <I.Lock size={13} /> : <I.Hash size={13} />}</span>
+                <span className="min-w-0 flex-1 break-all font-mono text-[12.5px] md:flex-none md:break-normal">{v.key}</span>
                 <span className="text-[11.5px] text-muted-foreground">{v.secret ? "secret" : "plain"}</span>
-                <span>{v.value === "(unset)" ? <Badge variant="secondary">unset</Badge> : <Badge variant="default">set</Badge>}</span>
+                <span className="ml-auto shrink-0 md:ml-0">{v.value === "(unset)" ? <Badge variant="secondary">unset</Badge> : <Badge variant="default">set</Badge>}</span>
               </div>
             ))}
-            </div>
           </div>
         </div>
       )}

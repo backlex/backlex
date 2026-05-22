@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workeros/ui/components/dialog";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 
 const ACTIONS = ["read", "create", "update", "delete"] as const;
 
@@ -74,7 +75,7 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto overflow-x-hidden [grid-template-columns:minmax(0,1fr)]">
+      <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{isNew ? <Trans>New role</Trans> : <Trans>Edit {role?.name || "role"}</Trans>}</DialogTitle>
           <DialogDescription>
@@ -84,6 +85,7 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
           </DialogDescription>
         </DialogHeader>
 
+        <ScrollArea className="min-h-0 flex-1">
         <div className="flex min-w-0 flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans></label>
@@ -130,10 +132,13 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
 
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Compiled rule</Trans></label>
-            <pre className="m-0 max-w-full overflow-x-auto whitespace-pre rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11.5px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">{compiled}</pre>
+            <ScrollArea className="rounded-xl">
+            <pre className="m-0 whitespace-pre rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11.5px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">{compiled}</pre>
+            </ScrollArea>
             <span className="text-[11.5px] text-muted-foreground"><Trans>Generated DSL — saved to <span className="font-mono">role_permissions</span> on save.</Trans></span>
           </div>
         </div>
+        </ScrollArea>
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}><Trans>Cancel</Trans></Button>

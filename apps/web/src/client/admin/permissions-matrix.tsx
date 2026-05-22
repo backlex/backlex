@@ -18,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workeros/ui/components/dialog";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { api } from "@/lib/api";
 import type { RoleData } from "./role-editor";
 import { ConditionEditor } from "./condition-editor";
@@ -282,7 +283,8 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
       </div>
 
       <div className="relative bg-card p-4">
-        <div className="grid grid-cols-[minmax(160px,1.4fr)_repeat(4,minmax(80px,1fr))] overflow-x-auto rounded-xl border border-border bg-card" role="grid" aria-label={t`Permissions for ${activeRole}`}>
+        <ScrollArea className="rounded-xl border border-border bg-card">
+        <div className="grid grid-cols-[minmax(160px,1.4fr)_repeat(4,minmax(80px,1fr))]" role="grid" aria-label={t`Permissions for ${activeRole}`}>
           <div className="border-b border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))]" />
           {PM_ACTIONS.map((a) => (
             <div key={a.v} className="flex flex-col items-center justify-center gap-0.5 border-b border-l border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-2 py-2.5" title={a.title}>
@@ -364,6 +366,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
             </Fragment>
           ))}
         </div>
+        </ScrollArea>
       </div>
 
       <div className="flex flex-wrap items-center gap-3.5 border-t border-border px-4 py-2.5 text-[11.5px] text-muted-foreground">
@@ -375,13 +378,14 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
       </div>
 
       <Dialog open={sheetTarget !== null} onOpenChange={(o) => { if (!o) setSheetTarget(null); }}>
-        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto overflow-x-hidden [grid-template-columns:minmax(0,1fr)]">
+        <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle><Trans>Edit rule</Trans></DialogTitle>
             <DialogDescription className="font-mono">
               {sheetTarget ? `${sheetTarget.role} · ${sheetTarget.action} · ${sheetTarget.collection}` : ""}
             </DialogDescription>
           </DialogHeader>
+          <ScrollArea className="min-h-0 flex-1">
           {sheetTarget && (
             <div className="min-w-0">
               <ConditionEditor
@@ -394,6 +398,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
               />
             </div>
           )}
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>

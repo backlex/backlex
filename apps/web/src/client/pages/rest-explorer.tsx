@@ -1173,7 +1173,8 @@ const EndpointDetail = ({
               <TabsTrigger value="try"><Trans>Try it</Trans></TabsTrigger>
             </TabsList>
           </div>
-          <div className="flex-1 overflow-auto p-4">
+          <ScrollArea className="min-h-0 flex-1">
+            <div className="p-4">
             <TabsContent value="overview" className="mt-0">
               <OverviewTab ep={ep} doc={doc} />
             </TabsContent>
@@ -1186,7 +1187,8 @@ const EndpointDetail = ({
             <TabsContent value="try" className="mt-0">
               <TryItTab ep={ep} doc={doc} baseUrl={baseUrl} />
             </TabsContent>
-          </div>
+            </div>
+          </ScrollArea>
         </Tabs>
       </CardContent>
     </Card>
@@ -1420,7 +1422,7 @@ export const RestExplorerPage = () => {
             loading={loading}
           />
         </div>
-        <div className="rest-explorer-detail min-h-0 overflow-auto">
+        <ScrollArea className="rest-explorer-detail min-h-0">
           {selected ? (
             <EndpointDetail ep={selected} doc={doc} baseUrl={baseUrl} />
           ) : (
@@ -1430,7 +1432,7 @@ export const RestExplorerPage = () => {
               </CardContent>
             </Card>
           )}
-        </div>
+        </ScrollArea>
       </div>
     </div>
   );

@@ -131,3 +131,15 @@
     cursor: pointer;
     }
 }
+
+/* iOS Safari zooms the page in when a focused text field has a font-size
+   below 16px, and several admin inputs override it down to ~12.5px. Pin
+   form controls to 16px on touch devices so tapping one never zooms.
+   Unlayered so it wins over Tailwind's `text-*` utilities. */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

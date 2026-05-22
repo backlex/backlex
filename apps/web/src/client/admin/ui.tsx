@@ -203,11 +203,12 @@ export interface IconButtonProps {
   variant?: ButtonVariant;
   title?: string;
   className?: string;
+  disabled?: boolean;
 }
 
-export function IconButton({ icon: IconComp, onClick, title, className }: IconButtonProps) {
+export function IconButton({ icon: IconComp, onClick, title, className, disabled, variant = "ghost" }: IconButtonProps) {
   return (
-    <ShadcnButton variant="ghost" size="icon-sm" type="button" onClick={onClick} title={title} className={className}>
+    <ShadcnButton variant={mapButtonVariant(variant)} size="icon-sm" type="button" onClick={onClick} title={title} disabled={disabled} className={className}>
       <IconComp size={14} />
     </ShadcnButton>
   );

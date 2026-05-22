@@ -692,8 +692,12 @@ function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) 
 
       <div className="flex flex-col gap-1.5">
         <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Add a language</label>
+        {/* Remount on every list change so the picker resets to its
+            placeholder after each add — it's an action trigger, not a
+            field that retains a value. */}
         <Select
-          value=""
+          key={`add-lang-${locales.join("|")}`}
+          value={undefined}
           placeholder="Pick a language…"
           disabled={loading}
           onChange={(v: string) => addLocale(v)}

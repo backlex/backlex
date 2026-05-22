@@ -16,6 +16,7 @@
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@workeros/ui/components/input";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { Textarea } from "@workeros/ui/components/textarea";
 import { Skeleton } from "@workeros/ui/components/skeleton";
 import { I } from "../icons";
@@ -408,7 +409,8 @@ function LdapTestDialog({
         <DialogHeader className="border-b border-border px-5 py-3.5 pr-12 text-left">
           <DialogTitle className="text-[13px] font-medium"><Trans>Test LDAP connection</Trans></DialogTitle>
         </DialogHeader>
-        <div className="grid flex-1 gap-3 overflow-y-auto px-5 py-[18px]">
+        <ScrollArea className="min-h-0 flex-1">
+        <div className="grid gap-3 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Username</Trans></label>
             <Input
@@ -459,6 +461,7 @@ function LdapTestDialog({
             </div>
           )}
         </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );

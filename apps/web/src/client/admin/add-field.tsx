@@ -11,6 +11,7 @@ import { type CollectionSchema } from "./config";
 import { Badge, Button, IconButton, Switch } from "./ui";
 import { Input } from "@workeros/ui/components/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -168,7 +169,8 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
         </div>
 
         {step === 1 && (
-          <div className="flex-1 overflow-auto px-5 py-[18px]">
+          <ScrollArea className="min-h-0 flex-1">
+            <div className="px-5 py-[18px]">
             <InputGroup className="mb-3.5">
               <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
               <InputGroupInput
@@ -210,11 +212,13 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          </ScrollArea>
         )}
 
         {step === 2 && (
-          <div className="grid flex-1 grid-cols-2 gap-3 overflow-auto px-5 py-[18px] max-[640px]:grid-cols-1">
+          <ScrollArea className="min-h-0 flex-1">
+            <div className="grid grid-cols-2 gap-3 px-5 py-[18px] max-[640px]:grid-cols-1">
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans></label>
@@ -311,7 +315,8 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                 <AlterPreview pendingField={{ name: safeName || "new_field", type: def.type as never, nullable, default: defaultValue }} />
               </div>
             </div>
-          </div>
+            </div>
+          </ScrollArea>
         )}
 
         <div className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">

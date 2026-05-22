@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@workeros/ui/components/input";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "../icons";
 import { Badge, Button, PageHeader, Switch } from "../ui";
@@ -480,7 +481,7 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
               <div className="flex-1" />
               <Button size="sm" variant="ghost" onClick={() => void copyText(code, () => pushToast?.(t`Copied.`))}><Trans>Copy</Trans></Button>
             </div>
-            <pre className="m-0 overflow-x-auto whitespace-pre rounded-lg bg-muted p-3 font-mono text-[11.5px]">{code}</pre>
+            <ScrollArea className="rounded-lg"><pre className="m-0 whitespace-pre rounded-lg bg-muted p-3 font-mono text-[11.5px]">{code}</pre></ScrollArea>
           </div>
         );
         const sdkCode =
@@ -654,7 +655,8 @@ function ProviderConfigDialog({ provider, kind, onClose, onSave }: {
             {kind === "oauth" ? <Trans>OAuth 2.0 / OIDC sign-in provider.</Trans> : kind === "custom" ? <Trans>Custom OpenID Connect provider.</Trans> : <Trans>Built-in sign-in method.</Trans>}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
+        <ScrollArea className="min-h-0 flex-1">
+        <div className="flex flex-col gap-4 px-5 py-[18px]">
           {(() => {
             const blocked = (kind === "oauth" || kind === "custom") && !(clientId.trim() && hasSecret);
             return (
@@ -710,6 +712,7 @@ function ProviderConfigDialog({ provider, kind, onClose, onSave }: {
             </div>
           )}
         </div>
+        </ScrollArea>
         <DialogFooter className="border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>
           <Button variant="primary" size="sm" icon={I.Check} disabled={!valid} onClick={submit}><Trans>Save</Trans></Button>
@@ -750,7 +753,8 @@ function AddProviderDialog({ existingIds, onClose, onAdd }: {
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Add OIDC provider</Trans></DialogTitle>
           <DialogDescription className="text-[12.5px]"><Trans>Register a custom OpenID Connect identity provider.</Trans></DialogDescription>
         </DialogHeader>
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
+        <ScrollArea className="min-h-0 flex-1">
+        <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Display name</Trans></label>
             <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder={t`Acme SSO`} />
@@ -772,6 +776,7 @@ function AddProviderDialog({ existingIds, onClose, onAdd }: {
             <Trans>The provider is added disabled. Set its client secret server-side, then enable it here.</Trans>
           </div>
         </div>
+        </ScrollArea>
         <DialogFooter className="items-center border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3 sm:justify-start">
           <span className="text-xs text-muted-foreground">{valid ? <Trans>Will be added disabled.</Trans> : idTaken ? <Trans>Pick a unique name.</Trans> : <Trans>Enter a name to continue.</Trans>}</span>
           <div className="flex-1" />

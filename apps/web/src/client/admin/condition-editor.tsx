@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@workeros/ui/components/input";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "./icons";
 import { Badge, Button, Checkbox, IconButton } from "./ui";
@@ -341,7 +342,8 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
-      <div className="flex gap-1 overflow-x-auto border-b border-border bg-[color-mix(in_oklch,var(--muted)_25%,var(--card))] px-3.5">
+      <ScrollArea className="border-b border-border bg-[color-mix(in_oklch,var(--muted)_25%,var(--card))]">
+      <div className="flex gap-1 px-3.5">
         {[
           { id: "item", label: t`Item permissions`, count: tree.children.length, hint: t`rules` },
           { id: "fields", label: t`Field permissions`, count: `${allowedWriteCount}/${fields.length}`, hint: t`writable` },
@@ -365,6 +367,7 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
           );
         })}
       </div>
+      </ScrollArea>
 
       <div className="flex flex-col gap-3.5 p-4">
         {tab === "item" && (

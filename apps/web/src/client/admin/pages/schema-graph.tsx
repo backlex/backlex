@@ -9,6 +9,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { Badge, Button, PageHeader } from "../ui";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { collectionsApi, type ApiCollection } from "../api";
 import { SchemaGraphSkeleton } from "../page-skeletons";
 
@@ -187,7 +188,7 @@ export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "
             </span>
           </div>
         </div>
-        <div className="w-full overflow-auto bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))]">
+        <ScrollArea className="w-full bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))]">
           {nodes.length === 0 ? (
             <div className="p-10 text-center text-[13px] text-muted-foreground">
               <Trans>No collections to graph — create one to populate the ERD.</Trans>
@@ -268,7 +269,7 @@ export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "
               ))}
             </svg>
           )}
-        </div>
+        </ScrollArea>
       </div>
 
       {/* Relations table */}

@@ -24,6 +24,7 @@ import { I } from "./icons";
 import { Button, IconButton, Checkbox } from "./ui";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
 import { Skeleton } from "@workeros/ui/components/skeleton";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -413,7 +414,8 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-1 flex-row overflow-y-auto">
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="flex flex-row">
           <FolderSidebar
             folders={folders}
             active={activeFolder}
@@ -512,7 +514,8 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
               )}
             </div>
           </div>
-        </div>
+          </div>
+        </ScrollArea>
 
         <DialogFooter className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <span className="text-xs text-muted-foreground">
@@ -839,7 +842,8 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="flex flex-col gap-3 p-4">
           <InputGroup>
             <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
             <InputGroupInput
@@ -903,7 +907,8 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
               );
             })}
           </div>
-        </div>
+          </div>
+        </ScrollArea>
 
         <DialogFooter className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <span className="text-xs text-muted-foreground">

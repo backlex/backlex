@@ -6,6 +6,7 @@ import { I, type IconComponent, type IconKey } from "./icons";
 import { NAV_ITEMS, NAV_SETTINGS, type CollectionListItem, type CollectionSchema, type Post, type SchemaField } from "./config";
 import { Badge, Button, IconButton, JsonBlock, navLabel } from "./ui";
 import { Input } from "@workeros/ui/components/input";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -99,7 +100,8 @@ export function Palette({ open, onClose, onNavigate, items, collections }: Palet
           />
           <span className="rounded-sm border border-border bg-muted px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground">esc</span>
         </div>
-        <div className="flex-1 overflow-auto p-1.5">
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="p-1.5">
           {flat.length === 0 ? (
             <div className="p-7 text-center text-[13px] text-muted-foreground">
               <Trans>No matches. Try <span className="font-mono">posts</span> or <span className="font-mono">edge</span>.</Trans>
@@ -130,7 +132,8 @@ export function Palette({ open, onClose, onNavigate, items, collections }: Palet
               </Fragment>
             ))
           )}
-        </div>
+          </div>
+        </ScrollArea>
         <div className="flex items-center gap-3.5 border-t border-border px-3.5 py-2 font-mono text-[11px] text-muted-foreground">
           <span><span className={kbd}>↵</span> <Trans>open</Trans></span>
           <span><span className={kbd}>↑↓</span> <Trans>navigate</Trans></span>
@@ -186,7 +189,8 @@ function RealtimeEventDialog({ ev, channel, onClose }: { ev: RealtimeEvent; chan
           </DialogTitle>
           <DialogDescription className="sr-only">{t`${ev.event} event detail`}</DialogDescription>
         </DialogHeader>
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="grid grid-cols-[120px_1fr] gap-x-3.5 gap-y-2 text-[12.5px]">
             <span className="text-muted-foreground"><Trans>Channel</Trans></span>
             <span className="font-mono">{channel}</span>
@@ -214,7 +218,8 @@ function RealtimeEventDialog({ ev, channel, onClose }: { ev: RealtimeEvent; chan
             )}
           </div>
           <JsonBlock label={t`Payload`} value={ev.raw ?? {}} />
-        </div>
+          </div>
+        </ScrollArea>
         <DialogFooter className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={onClose}><Trans>Close</Trans></Button>
@@ -246,7 +251,8 @@ export function RealtimeTail({ events, channel, connected }: { events: RealtimeE
           <Trans>Subscribed. Waiting for events…</Trans>
         </div>
       ) : (
-        <div className="flex flex-1 flex-col overflow-auto">
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="flex flex-col">
           {events.slice(0, 30).map((ev) => (
             <div
               key={ev.id}
@@ -276,7 +282,8 @@ export function RealtimeTail({ events, channel, connected }: { events: RealtimeE
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        </ScrollArea>
       )}
       {openEvent && (
         <RealtimeEventDialog ev={openEvent} channel={channel} onClose={() => setOpenId(null)} />
@@ -328,7 +335,7 @@ export function SchemaView({
         <div className="flex-1" />
         <Button variant="primary" size="sm" icon={I.Plus} onClick={onAddField}><Trans>Add field</Trans></Button>
       </div>
-      <div className="w-full max-w-full overflow-x-auto">
+      <ScrollArea className="w-full max-w-full">
         {allFields.map((f, idx) => {
           // System rows always render after user-defined fields and are
           // never reorderable; dnd handlers only fire for user rows.
@@ -399,7 +406,7 @@ export function SchemaView({
             </div>
           );
         })}
-      </div>
+      </ScrollArea>
     </div>
   );
 }

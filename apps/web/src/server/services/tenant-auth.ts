@@ -123,10 +123,15 @@ export const getTenantAuth = async (
   const storedRow = await loadAuthConfigRow(ctx, tenant.id);
   const stored = (storedRow?.providers ?? null) as Record<string, unknown> | null;
 
-  const social: { google?: OAuthProviderConfig; github?: OAuthProviderConfig } = {};
+  const social: {
+    google?: OAuthProviderConfig;
+    github?: OAuthProviderConfig;
+    apple?: OAuthProviderConfig;
+  } = {};
   for (const [key, envId, envSecret] of [
     ["google", env.OAUTH_GOOGLE_CLIENT_ID, env.OAUTH_GOOGLE_CLIENT_SECRET],
     ["github", env.OAUTH_GITHUB_CLIENT_ID, env.OAUTH_GITHUB_CLIENT_SECRET],
+    ["apple", env.OAUTH_APPLE_CLIENT_ID, env.OAUTH_APPLE_CLIENT_SECRET],
   ] as const) {
     const cfg = providerEntry(stored, key);
     if (cfg.enabled === false) continue; // workspace turned this provider off

@@ -105,12 +105,20 @@ export async function bootAdminLocale(): Promise<void> {
 
 /** Side-effect-only component: keeps the active Lingui locale in sync with
  *  the signed-in user's resolved language preference. Renders nothing —
- *  mount it inside `PreferencesProvider`. */
+ *  mount it inside `PreferencesProvider`.
+ *
+ *  Gated on `loading`: until the preferences API resolves, `usePreferences`
+ *  reports the `DEFAULT_LOCALE` ("en") fallback rather than the user's real
+ *  locale. Activating that fallback would flip the chrome to English and
+ *  straight back — the exact flash `bootAdminLocale` already paints around.
+ *  So we wait: the boot locale stays active until the resolved preference is
+ *  actually known, then we activate it once. */
 export function AdminLocaleSync(): null {
-  const { locale } = usePreferences();
+  const { locale, loading } = usePreferences();
   useEffect(() => {
+    if (loading) return;
     void activateAdminLocale(locale);
-  }, [locale]);
+  }, [locale, loading]);
   return null;
 }
 

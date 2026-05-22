@@ -415,6 +415,8 @@ export const metricsRoutes = new OpenAPIHono<AppBindings>()
       // with their counts, last-seen, and a human message pulled from the payload.
       const errBuckets = new Map<string, { code: string; resource: string; msg: string; count: number; last: number }>();
       for (const r of rows) {
+        const ts = typeof r.created_at === "number" ? r.created_at : new Date(r.created_at).getTime();
+        if (ts < start) continue;
         const payload = parsePayload(r.payload);
         if (!isErrorRow(r.action, r.collection, payload)) continue;
         const code = typeof payload?.code === "string" && payload.code ? payload.code : "ERR";
@@ -423,7 +425,6 @@ export const metricsRoutes = new OpenAPIHono<AppBindings>()
           : r.action;
         const msg = errorMessageOf(payload, r.action);
         const key = `${r.action}::${code}`;
-        const ts = typeof r.created_at === "number" ? r.created_at : new Date(r.created_at).getTime();
         const cur = errBuckets.get(key);
         if (cur) {
           cur.count += 1;

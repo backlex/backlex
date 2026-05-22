@@ -581,8 +581,6 @@ export interface TopbarUser {
 export interface TopbarProps {
   crumbs: ReactNode[];
   onOpenPalette: () => void;
-  onToggleTheme: () => void;
-  dark: boolean;
   onSignOut?: () => void;
   user?: TopbarUser | null;
   onAccountSettings?: () => void;
@@ -763,7 +761,7 @@ export function NotificationsBell() {
   );
 }
 
-export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onSignOut, user, onAccountSettings }: TopbarProps) {
+export function Topbar({ crumbs, onOpenPalette, onSignOut, user, onAccountSettings }: TopbarProps) {
   const { t } = useLingui();
   return (
     <div className="topbar">
@@ -782,7 +780,6 @@ export function Topbar({ crumbs, onOpenPalette, onToggleTheme, dark, onSignOut, 
         <span><Trans>Search collections, items, settings…</Trans></span>
         <span className="kbd">⌘K</span>
       </div>
-      <IconButton icon={dark ? I.Sun : I.Moon} onClick={onToggleTheme} title={t`Toggle theme`} />
       <NotificationsBell />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

@@ -15,6 +15,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { NAV_ITEMS, NAV_SETTINGS, NAV_DEVELOPERS } from "./config";
 import { notificationsApi, tenantsApi, type ApiNotification, type ApiTenant } from "./api";
@@ -276,6 +278,43 @@ export interface SidebarProps {
   collectionsCount?: number;
 }
 
+/**
+ * Display labels for the sidebar / command-palette nav, keyed by the nav id
+ * defined in `config.ts`. Kept here (a JSX module) rather than in `config.ts`
+ * because the Lingui `msg` macro is only transformed in files plugin-react
+ * runs Babel on — i.e. files that contain JSX.
+ */
+const NAV_LABELS: Record<string, MessageDescriptor> = {
+  overview: msg`Overview`,
+  collections: msg`Collections`,
+  access: msg`Access`,
+  database: msg`Database`,
+  storage: msg`Storage`,
+  flows: msg`Flows`,
+  functions: msg`Functions`,
+  webhooks: msg`Webhooks`,
+  realtime: msg`Realtime`,
+  logs: msg`Logs`,
+  advisor: msg`Advisor`,
+  "schema-graph": msg`Schema graph`,
+  insights: msg`Insights`,
+  revisions: msg`Revisions`,
+  translations: msg`Translations`,
+  "rest-explorer": msg`REST Explorer`,
+  graphql: msg`GraphQL`,
+  openapi: msg`OpenAPI`,
+  authentication: msg`Authentication`,
+  users: msg`Users`,
+  "app-users": msg`App users`,
+  "api-keys": msg`API keys`,
+  "email-templates": msg`Email templates`,
+  settings: msg`Settings`,
+};
+
+/** Lingui descriptor for a nav id; falls back to the raw id if unknown. */
+export const navLabel = (id: string): MessageDescriptor =>
+  NAV_LABELS[id] ?? { id };
+
 export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }: SidebarProps) {
   const items = NAV_ITEMS;
   const settings = NAV_SETTINGS;
@@ -420,10 +459,10 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
                         setActiveNav(it.id);
                         if (isMobile) setOpenMobile(false);
                       }}
-                      tooltip={i18n._(it.label)}
+                      tooltip={i18n._(navLabel(it.id))}
                     >
                       {IconComp && <IconComp size={15} />}
-                      <span>{i18n._(it.label)}</span>
+                      <span>{i18n._(navLabel(it.id))}</span>
                     </SidebarMenuButton>
                     {liveBadge != null && (
                       <SidebarMenuBadge className="tabular-nums">{liveBadge}</SidebarMenuBadge>

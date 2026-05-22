@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useSearchParams } from "react-router-dom";
 import { RefreshCwIcon, SearchIcon, SendIcon, ChevronRightIcon } from "lucide-react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@workeros/ui/components/button";
 import { Input } from "@workeros/ui/components/input";
 import { Badge } from "@workeros/ui/components/badge";
@@ -371,7 +372,7 @@ const PropertyRow = ({
         <code className="font-mono text-[11px] text-muted-foreground">{typeLabel(s)}</code>
         {required && (
           <Badge variant="outline" className="h-4 border-destructive/40 px-1.5 text-[9.5px] font-medium uppercase tracking-wide text-destructive">
-            required
+            <Trans>required</Trans>
           </Badge>
         )}
         {s?.enum && s.enum.length > 0 && (
@@ -435,7 +436,7 @@ const SchemaTree = ({
 }) => {
   const s = dereference(doc, schema);
   if (!s) {
-    return <p className="text-sm text-muted-foreground">No schema.</p>;
+    return <p className="text-sm text-muted-foreground"><Trans>No schema.</Trans></p>;
   }
   if (s.properties) {
     return (
@@ -515,7 +516,7 @@ const ParametersTable = ({
               <code className="font-mono text-[11px] text-muted-foreground">{typeLabel(p.schema)}</code>
               {p.required && (
                 <Badge variant="outline" className="h-4 border-destructive/40 px-1.5 text-[9.5px] font-medium uppercase tracking-wide text-destructive">
-                  required
+                  <Trans>required</Trans>
                 </Badge>
               )}
               <Badge variant="outline" className="h-4 px-1.5 text-[9.5px] font-medium uppercase tracking-wide">
@@ -621,7 +622,7 @@ const OverviewTab = ({
           security
         </span>
         {security.length === 0 ? (
-          <span className="text-xs text-muted-foreground">none (public)</span>
+          <span className="text-xs text-muted-foreground"><Trans>none (public)</Trans></span>
         ) : (
           <div className="flex flex-wrap gap-1">
             {security.map((req, i) => {
@@ -638,7 +639,7 @@ const OverviewTab = ({
       {Object.keys(schemes).length > 0 && security.length > 0 && (
         <div className="rounded-md border bg-muted/30 p-3">
           <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Resolved schemes
+            <Trans>Resolved schemes</Trans>
           </h4>
           <div className="flex flex-col gap-1.5 text-[12px]">
             {Array.from(new Set(security.flatMap((s) => Object.keys(s)))).map((name) => {
@@ -696,7 +697,7 @@ const RequestTab = ({
             )}
             {body.required && (
               <Badge variant="outline" className="h-4 border-destructive/40 px-1.5 text-[9.5px] font-medium uppercase tracking-wide text-destructive">
-                required
+                <Trans>required</Trans>
               </Badge>
             )}
           </div>
@@ -708,12 +709,12 @@ const RequestTab = ({
               <SchemaTree schema={json.media.schema} doc={doc} />
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No JSON content defined.</p>
+            <p className="text-sm text-muted-foreground"><Trans>No JSON content defined.</Trans></p>
           )}
         </div>
       )}
       {!body && pathParams.length === 0 && query.length === 0 && header.length === 0 && (
-        <p className="text-sm text-muted-foreground">No parameters or body.</p>
+        <p className="text-sm text-muted-foreground"><Trans>No parameters or body.</Trans></p>
       )}
     </div>
   );
@@ -775,7 +776,7 @@ const ResponseSection = ({
           {json ? (
             <SchemaTree schema={json.media.schema} doc={doc} />
           ) : (
-            <p className="text-sm text-muted-foreground">No content schema.</p>
+            <p className="text-sm text-muted-foreground"><Trans>No content schema.</Trans></p>
           )}
         </div>
       </CollapsibleContent>
@@ -793,7 +794,7 @@ const ResponseTab = ({
   const responses = ep.operation.responses ?? {};
   const entries = Object.entries(responses).sort(([a], [b]) => a.localeCompare(b));
   if (entries.length === 0) {
-    return <p className="text-sm text-muted-foreground">No responses defined.</p>;
+    return <p className="text-sm text-muted-foreground"><Trans>No responses defined.</Trans></p>;
   }
   // Default-open the first 2xx; collapse the rest.
   const firstOk = entries.find(([s]) => /^2\d\d$/.test(s))?.[0];
@@ -850,6 +851,7 @@ const TryItTab = ({
   doc: OpenApiDoc | null;
   baseUrl: string;
 }) => {
+  const { t } = useLingui();
   const { path: pathParams, query, header } = splitParameters(ep);
   const body = ep.operation.requestBody;
   const json = pickJsonMedia(body?.content);
@@ -1082,7 +1084,7 @@ const TryItTab = ({
       <div className="flex items-center gap-2">
         <Button type="button" onClick={send} disabled={running}>
           <SendIcon className="size-4" />
-          {running ? "Sending…" : "Send"}
+          {running ? <Trans>Sending…</Trans> : <Trans>Send</Trans>}
         </Button>
         {result && (
           <span className="text-xs text-muted-foreground tabular-nums">
@@ -1107,7 +1109,9 @@ const TryItTab = ({
               size="sm"
               onClick={() => setShowHeaders((v) => !v)}
             >
-              {showHeaders ? "Hide headers" : "Show headers"} ({Object.keys(result.headers).length})
+              {showHeaders
+                ? <Trans>Hide headers ({Object.keys(result.headers).length})</Trans>
+                : <Trans>Show headers ({Object.keys(result.headers).length})</Trans>}
             </Button>
           </div>
           {showHeaders && (
@@ -1146,7 +1150,7 @@ const EndpointDetail = ({
           <CardTitle className="font-mono text-base break-all">{ep.path}</CardTitle>
           {ep.operation.deprecated && (
             <Badge variant="destructive" className="font-mono text-[10px] uppercase">
-              deprecated
+              <Trans>deprecated</Trans>
             </Badge>
           )}
         </div>
@@ -1163,10 +1167,10 @@ const EndpointDetail = ({
         >
           <div className="px-4 pt-4">
             <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="request">Request</TabsTrigger>
-              <TabsTrigger value="response">Response</TabsTrigger>
-              <TabsTrigger value="try">Try it</TabsTrigger>
+              <TabsTrigger value="overview"><Trans>Overview</Trans></TabsTrigger>
+              <TabsTrigger value="request"><Trans>Request</Trans></TabsTrigger>
+              <TabsTrigger value="response"><Trans>Response</Trans></TabsTrigger>
+              <TabsTrigger value="try"><Trans>Try it</Trans></TabsTrigger>
             </TabsList>
           </div>
           <div className="flex-1 overflow-auto p-4">
@@ -1212,6 +1216,7 @@ const EndpointList = ({
   onRefetch,
   loading,
 }: EndpointListProps) => {
+  const { t } = useLingui();
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return endpoints;
@@ -1249,7 +1254,7 @@ const EndpointList = ({
             <Input
               value={search}
               onChange={(e) => onSearch(e.target.value)}
-              placeholder="Filter endpoints…"
+              placeholder={t`Filter endpoints…`}
               className="h-8 pl-7 text-[12.5px]"
             />
           </div>
@@ -1259,21 +1264,21 @@ const EndpointList = ({
             size="icon-sm"
             onClick={onRefetch}
             disabled={loading}
-            title="Refetch /api/openapi.json"
+            title={t`Refetch /api/openapi.json`}
           >
             <RefreshCwIcon className={cn("size-3.5", loading && "animate-spin")} />
           </Button>
         </div>
         <div className="flex items-baseline justify-between text-[11px] text-muted-foreground tabular-nums">
-          <span>{filtered.length} endpoints</span>
-          <span>{grouped.length} tags</span>
+          <span><Trans>{filtered.length} endpoints</Trans></span>
+          <span><Trans>{grouped.length} tags</Trans></span>
         </div>
       </CardHeader>
       <Separator />
       <ScrollArea className="min-h-0 flex-1">
         <div className="p-2">
         {!loading && filtered.length === 0 && (
-          <p className="px-2 py-4 text-sm text-muted-foreground">No matches.</p>
+          <p className="px-2 py-4 text-sm text-muted-foreground"><Trans>No matches.</Trans></p>
         )}
         {grouped.map(([tag, eps]) => (
           <div key={tag} className="mb-3">
@@ -1322,6 +1327,7 @@ const EndpointList = ({
 // ────────────────────────────────────────────────────────────────────────────
 
 export const RestExplorerPage = () => {
+  const { t } = useLingui();
   const [doc, setDoc] = useState<OpenApiDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -1392,8 +1398,8 @@ export const RestExplorerPage = () => {
   return (
     <div className="flex h-full flex-col gap-4">
       <PageHeader
-        title="REST Explorer"
-        description="Live browser for every endpoint under /api. Built from the OpenAPI doc your workspace exposes at /api/openapi.json — including the dynamic /api/items/{slug} routes for your collections."
+        title={t`REST Explorer`}
+        description={t`Live browser for every endpoint under /api. Built from the OpenAPI doc your workspace exposes at /api/openapi.json — including the dynamic /api/items/{slug} routes for your collections.`}
         actions={
           doc?.info?.version ? (
             <Badge variant="outline" className="font-mono text-[10.5px]">
@@ -1420,7 +1426,7 @@ export const RestExplorerPage = () => {
           ) : (
             <Card className="flex h-full items-center justify-center">
               <CardContent className="py-12 text-center text-sm text-muted-foreground">
-                Select an endpoint on the left to inspect it.
+                <Trans>Select an endpoint on the left to inspect it.</Trans>
               </CardContent>
             </Card>
           )}

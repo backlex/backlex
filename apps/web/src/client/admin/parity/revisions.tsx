@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useEffect, useMemo, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { Badge, Button, PageHeader } from "../ui";
 import { ConfirmDialog } from "../sheet";
@@ -46,6 +47,7 @@ const fmtRevTs = (v: string | number): string => {
 
 export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "success" | "error") => void } = {}) {
   const toast = pushToast ?? (() => {});
+  const { t } = useLingui();
 
   // Revisions are scoped to a (collection, itemId) pair, so we need both to
   // query the API. Pick the first existing collection on mount, then its items.
@@ -179,7 +181,7 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
         throw new Error(body?.error?.message ?? `Revert failed (${r.status})`);
       }
       setConfirmRev(null);
-      toast("Reverted — a new revision was recorded.");
+      toast(t`Reverted — a new revision was recorded.`);
       await loadItems(collectionSlug);
       await loadTimeline(collectionSlug, activeId);
     } catch (e) {
@@ -189,10 +191,10 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
     }
   };
 
-  const titleFor = (e: Entry) => (e.kind === "live" ? "Current" : `Revision v${e.v}`);
+  const titleFor = (e: Entry) => (e.kind === "live" ? t`Current` : t`Revision v${e.v}`);
   const subtitleFor = (e: Entry) =>
     e.kind === "live"
-      ? `live · updated ${fmtRevTs(String(e.snapshot.updatedAt ?? e.snapshot.updated_at ?? ""))}`
+      ? t`live · updated ${fmtRevTs(String(e.snapshot.updatedAt ?? e.snapshot.updated_at ?? ""))}`
       : `${fmtRevTs(e.createdAt)} · ${e.createdBy ?? "system"}`;
 
   // First whole-page fetch — collections + their items haven't landed yet.
@@ -200,10 +202,10 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
 
   return (
     <div className="flex flex-col gap-4.5">
-      <PageHeader title="Revisions" description="Every write is versioned. Inspect, diff, or revert any prior state." />
+      <PageHeader title={t`Revisions`} description={t`Every write is versioned. Inspect, diff, or revert any prior state.`} />
       <div className="grid grid-cols-[280px_220px_minmax(0,1fr)] items-start gap-3.5 max-[1024px]:grid-cols-[minmax(0,1fr)]">
         <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
-          <div className="border-b border-border px-4 py-3.5 text-xs font-medium">Items <span className="font-mono text-[11px] text-muted-foreground">· c_{collectionSlug}</span></div>
+          <div className="border-b border-border px-4 py-3.5 text-xs font-medium"><Trans>Items</Trans> <span className="font-mono text-[11px] text-muted-foreground">· c_{collectionSlug}</span></div>
           <ScrollArea className="h-[60vh]">
             {itemsLoading && (
               <div className="flex flex-col gap-2 px-3 py-3">
@@ -216,7 +218,7 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
               </div>
             )}
             {!itemsLoading && items.length === 0 && (
-              <div className="px-3 py-4 text-xs text-muted-foreground">No items in this collection yet.</div>
+              <div className="px-3 py-4 text-xs text-muted-foreground"><Trans>No items in this collection yet.</Trans></div>
             )}
             {items.map((it) => (
               <div
@@ -231,7 +233,7 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
           </ScrollArea>
         </div>
         <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
-          <div className="border-b border-border px-4 py-3.5 text-xs font-medium">Timeline · {item?.title?.slice(0, 18) ?? "—"}{item ? "…" : ""}</div>
+          <div className="border-b border-border px-4 py-3.5 text-xs font-medium"><Trans>Timeline</Trans> · {item?.title?.slice(0, 18) ?? "—"}{item ? "…" : ""}</div>
           <ScrollArea className="h-[60vh]">
             {revsLoading && (
               <div className="flex flex-col gap-2 px-3 py-3">
@@ -244,10 +246,10 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
               </div>
             )}
             {!revsLoading && entries.length === 0 && (
-              <div className="px-3 py-4 text-xs text-muted-foreground">{activeId ? "No revisions yet for this item." : "Select an item to see its history."}</div>
+              <div className="px-3 py-4 text-xs text-muted-foreground">{activeId ? <Trans>No revisions yet for this item.</Trans> : <Trans>Select an item to see its history.</Trans>}</div>
             )}
             {!revsLoading && entries.length === 1 && entries[0].kind === "live" && (
-              <div className="border-t border-border px-3 py-2.5 text-[11.5px] text-muted-foreground">Only the current state exists — no edits recorded yet.</div>
+              <div className="border-t border-border px-3 py-2.5 text-[11.5px] text-muted-foreground"><Trans>Only the current state exists — no edits recorded yet.</Trans></div>
             )}
             {entries.map((e, i) => {
               const sel = activeIdx === i;
@@ -258,8 +260,8 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
                   className={`flex cursor-pointer flex-col gap-0.5 border-t border-border px-3 py-2 ${sel ? "bg-accent" : ""}`}
                 >
                   <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-xs font-medium">{e.kind === "live" ? "live" : `v${e.v}`}</span>
-                    <Badge variant={e.kind === "live" ? "default" : "secondary"}>{e.kind === "live" ? "current" : i === entries.length - 1 ? "initial" : "edit"}</Badge>
+                    <span className="font-mono text-xs font-medium">{e.kind === "live" ? t`live` : `v${e.v}`}</span>
+                    <Badge variant={e.kind === "live" ? "default" : "secondary"}>{e.kind === "live" ? <Trans>current</Trans> : i === entries.length - 1 ? <Trans>initial</Trans> : <Trans>edit</Trans>}</Badge>
                   </div>
                   <div className="font-mono text-[10.5px] text-muted-foreground">{subtitleFor(e)}</div>
                 </div>
@@ -278,19 +280,19 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
               </div>
             ) : (
               <div className="p-9 text-center text-[13px] text-muted-foreground">
-                Pick a revision from the timeline to inspect, diff, or revert.
+                <Trans>Pick a revision from the timeline to inspect, diff, or revert.</Trans>
               </div>
             )
           ) : (
           <>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold">{titleFor(active)}</span>
-            <Badge variant={active.kind === "live" ? "default" : "secondary"}>{active.kind === "live" ? "current" : !hasPrev ? "initial" : "edit"}</Badge>
+            <Badge variant={active.kind === "live" ? "default" : "secondary"}>{active.kind === "live" ? <Trans>current</Trans> : !hasPrev ? <Trans>initial</Trans> : <Trans>edit</Trans>}</Badge>
             <span className="font-mono text-xs text-muted-foreground">{subtitleFor(active)}</span>
             <div className="flex-1" />
             {hasPrev && (
               <Button size="sm" variant="outline" icon={I.Eye} onClick={() => setShowFull((s) => !s)}>
-                {showFull ? "Changes only" : "View full"}
+                {showFull ? <Trans>Changes only</Trans> : <Trans>View full</Trans>}
               </Button>
             )}
             <Button
@@ -298,27 +300,27 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
               variant="primary"
               icon={I.History}
               disabled={active.kind === "live" || reverting}
-              title={active.kind === "live" ? "This is already the current state" : "Restore this snapshot"}
+              title={active.kind === "live" ? t`This is already the current state` : t`Restore this snapshot`}
               onClick={() => active.kind === "rev" && setConfirmRev({ id: active.id, v: active.v, createdAt: active.createdAt })}
             >
-              {reverting ? "Reverting…" : active.kind === "live" ? "Current state" : "Revert to this"}
+              {reverting ? <Trans>Reverting…</Trans> : active.kind === "live" ? <Trans>Current state</Trans> : <Trans>Revert to this</Trans>}
             </Button>
           </div>
           <div className="flex flex-col gap-2">
             {!hasPrev && (
               <div className="text-xs text-muted-foreground">
                 {active.kind === "live"
-                  ? "No earlier revisions — showing the current field values."
-                  : "Initial revision — the first recorded state of this item."}
+                  ? <Trans>No earlier revisions — showing the current field values.</Trans>
+                  : <Trans>Initial revision — the first recorded state of this item.</Trans>}
               </div>
             )}
             {hasPrev && (
               <div className="text-[11.5px] text-muted-foreground">
-                {showFull ? "Showing all fields" : `Showing ${changedDiff.length} changed field${changedDiff.length === 1 ? "" : "s"}`} · before = {titleFor(prev)}
+                {showFull ? <Trans>Showing all fields</Trans> : <Trans>Showing {changedDiff.length} changed field{changedDiff.length === 1 ? "" : "s"}</Trans>} · before = {titleFor(prev)}
               </div>
             )}
             {hasPrev && !showFull && changedDiff.length === 0 && (
-              <div className="text-xs text-muted-foreground">No field changes from {titleFor(prev)}.</div>
+              <div className="text-xs text-muted-foreground"><Trans>No field changes from {titleFor(prev)}.</Trans></div>
             )}
             {visibleDiff.map((d) => {
               const isAuto = REV_AUTO_FIELDS.has(d.field);
@@ -329,17 +331,17 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
                 >
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono text-xs font-medium">{d.field}</span>
-                    {isAuto && <Badge variant="outline">system</Badge>}
-                    {!d.changed && <Badge variant="secondary">unchanged</Badge>}
+                    {isAuto && <Badge variant="outline"><Trans>system</Trans></Badge>}
+                    {!d.changed && <Badge variant="secondary"><Trans>unchanged</Trans></Badge>}
                   </div>
                   <div className={`grid gap-2 ${hasPrev ? "grid-cols-2" : "grid-cols-1"}`}>
                     {hasPrev && (
                       <div className={`whitespace-pre-wrap rounded-md border p-2 font-mono text-[11.5px] [word-break:break-word] ${d.changed ? "border-[color-mix(in_oklch,var(--destructive)_30%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))]" : "border-border bg-card"}`}>
-                        <div className="mb-1 text-[10px] text-muted-foreground">before</div>{fmtRevValue(d.before)}
+                        <div className="mb-1 text-[10px] text-muted-foreground"><Trans>before</Trans></div>{fmtRevValue(d.before)}
                       </div>
                     )}
                     <div className={`whitespace-pre-wrap rounded-md border p-2 font-mono text-[11.5px] [word-break:break-word] ${d.changed && hasPrev ? "border-[color-mix(in_oklch,oklch(0.7_0.18_145)_40%,var(--border))] bg-[color-mix(in_oklch,oklch(0.7_0.18_145)_12%,var(--card))]" : "border-border bg-card"}`}>
-                      <div className="mb-1 text-[10px] text-muted-foreground">{hasPrev ? "after" : "value"}</div>{fmtRevValue(d.after)}
+                      <div className="mb-1 text-[10px] text-muted-foreground">{hasPrev ? <Trans>after</Trans> : <Trans>value</Trans>}</div>{fmtRevValue(d.after)}
                     </div>
                   </div>
                 </div>
@@ -352,13 +354,13 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
       </div>
       <ConfirmDialog
         open={!!confirmRev}
-        title={confirmRev ? `Revert to revision v${confirmRev.v}?` : "Revert?"}
+        title={confirmRev ? t`Revert to revision v${confirmRev.v}?` : t`Revert?`}
         description={
           confirmRev
-            ? `This rewrites the item to the v${confirmRev.v} snapshot from ${fmtRevTs(confirmRev.createdAt)}. The current state is preserved as a new revision, so this is undoable.`
+            ? t`This rewrites the item to the v${confirmRev.v} snapshot from ${fmtRevTs(confirmRev.createdAt)}. The current state is preserved as a new revision, so this is undoable.`
             : ""
         }
-        actionLabel={reverting ? "Reverting…" : "Revert"}
+        actionLabel={reverting ? t`Reverting…` : t`Revert`}
         onConfirm={() => confirmRev && void doRevert(confirmRev)}
         onCancel={() => { if (!reverting) setConfirmRev(null); }}
       />

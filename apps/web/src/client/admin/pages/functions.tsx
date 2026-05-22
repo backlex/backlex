@@ -1,5 +1,6 @@
 // Functions page — sandboxed JS editor + invocation logs + new-function wizard
 import { useEffect, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
@@ -19,6 +20,7 @@ import { fetchSafely } from "./_shared";
 import { FunctionsSkeleton } from "../page-skeletons";
 
 export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void }) {
+  const { t } = useLingui();
   type FnRow = { name: string; kind: string; trigger: string; lang: string; invocations: number; p95: number };
   const [funcs, setFuncs] = useState<FnRow[]>([]);
   // First-load gate — drives the page skeleton until functions land.
@@ -81,17 +83,17 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
   const renameError = renameDraft === null
     ? null
     : renameDraft.trim().length === 0
-      ? "Required."
+      ? t`Required.`
       : !nameRegex.test(renameDraft.trim())
-        ? "Lowercase letters, digits, _ or -; must start with a letter."
+        ? t`Lowercase letters, digits, _ or -; must start with a letter.`
         : renameDraft.trim() !== active?.name && funcs.some((f) => f.name === renameDraft.trim())
-          ? "A function with that name already exists."
+          ? t`A function with that name already exists.`
           : null;
 
   const run = async () => {
-    if (!active) { pushToast("Select a function to run."); return; }
+    if (!active) { pushToast(t`Select a function to run.`); return; }
     setRunning(true);
-    setLogs([{ t: new Date().toISOString().slice(11, 19), lvl: "info", msg: `invoking ${active.name}…` }]);
+    setLogs([{ t: new Date().toISOString().slice(11, 19), lvl: "info", msg: t`invoking ${active.name}…` }]);
     try {
       // The invoke route returns the SandboxResult directly (no `{data: …}`
       // wrapper): `{ ok, logs: string[], error?, value?, durationMs }`. Map
@@ -103,11 +105,11 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
       const ts = new Date().toISOString().slice(11, 19);
       const logLines = (r.logs ?? []).map((m) => ({ t: ts, lvl: "info", msg: m }));
       const summary = r.ok
-        ? { t: ts, lvl: "info", msg: `done · ${r.durationMs ?? "—"}ms · result: ${JSON.stringify(r.value ?? null).slice(0, 200)}` }
-        : { t: ts, lvl: "error", msg: r.error ?? "function failed" };
+        ? { t: ts, lvl: "info", msg: t`done · ${r.durationMs ?? "—"}ms · result: ${JSON.stringify(r.value ?? null).slice(0, 200)}` }
+        : { t: ts, lvl: "error", msg: r.error ?? t`function failed` };
       setLogs((arr) => [...arr, ...logLines, summary]);
-      if (r.ok) pushToast("Function ran successfully.");
-      else pushToast(r.error ?? "Function failed");
+      if (r.ok) pushToast(t`Function ran successfully.`);
+      else pushToast(r.error ?? t`Function failed`);
     } catch (e) {
       // Non-2xx responses parse the same way: api() throws AppError with the
       // server's message. For the function endpoint a 500 still carries the
@@ -124,7 +126,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
     }
   };
   const saveCode = async () => {
-    if (!active) { pushToast("Select a function to save."); return; }
+    if (!active) { pushToast(t`Select a function to save.`); return; }
     try {
       const r = await api<{ data: { id: string }[] }>("/api/functions");
       const match = r.data.find((f: any) => f.name === active.name);
@@ -146,7 +148,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
           }),
         });
       }
-      pushToast("Function saved.");
+      pushToast(t`Function saved.`);
     } catch (e) {
       pushToast((e as Error).message);
     }
@@ -156,7 +158,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
       const r = await api<{ data: { id: string; name: string }[] }>("/api/functions");
       const match = r.data.find((f) => f.name === name);
       if (!match) {
-        pushToast("Function not found on server.");
+        pushToast(t`Function not found on server.`);
         await reloadFuncs();
         return;
       }
@@ -167,7 +169,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
         setLogs([]);
       }
       await reloadFuncs();
-      pushToast(`Function "${name}" deleted.`);
+      pushToast(t`Function "${name}" deleted.`);
     } catch (e) {
       pushToast((e as Error).message);
     }
@@ -180,7 +182,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
       const r = await api<{ data: { id: string; name: string }[] }>("/api/functions");
       const match = r.data.find((f) => f.name === oldName);
       if (!match) {
-        pushToast("Function not found on server.");
+        pushToast(t`Function not found on server.`);
         await reloadFuncs();
         return;
       }
@@ -191,7 +193,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
       setActive((a) => (a && a.name === oldName ? { ...a, name: target } : a));
       setRenameDraft(null);
       await reloadFuncs();
-      pushToast(`Function renamed to "${target}".`);
+      pushToast(t`Function renamed to "${target}".`);
     } catch (e) {
       pushToast((e as Error).message);
     } finally {
@@ -205,15 +207,15 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
-        title="Functions"
-        description="Sandboxed JS — HTTP, event-trigger, or cron. Provider auto-selected per runtime."
-        actions={<Button variant="primary" icon={I.Plus} onClick={() => setNewOpen(true)}>New function</Button>}
+        title={t`Functions`}
+        description={t`Sandboxed JS — HTTP, event-trigger, or cron. Provider auto-selected per runtime.`}
+        actions={<Button variant="primary" icon={I.Plus} onClick={() => setNewOpen(true)}><Trans>New function</Trans></Button>}
       />
 
       <div className="grid grid-cols-[300px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
         <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
           {funcs.length === 0 && (
-            <div className="px-3 py-4 text-xs text-muted-foreground">No functions yet — click + New function.</div>
+            <div className="px-3 py-4 text-xs text-muted-foreground"><Trans>No functions yet — click + New function.</Trans></div>
           )}
           {funcs.map((f) => (
             <div
@@ -234,7 +236,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
         <div className="flex flex-col gap-3">
           {!active ? (
             <div className="overflow-hidden rounded-2xl border border-border bg-card p-9 text-center text-[13px] text-muted-foreground">
-              No function selected. Click <strong>+ New function</strong> to create one.
+              <Trans>No function selected. Click <strong>+ New function</strong> to create one.</Trans>
             </div>
           ) : (
           <>
@@ -252,21 +254,21 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
                   else if (e.key === "Escape" && !renameBusy) setRenameDraft(null);
                 }}
               />
-              <Button variant="primary" size="sm" icon={I.Check} disabled={!!renameError || renameBusy || renameDraft.trim() === active.name} onClick={() => void renameFunction(active.name, renameDraft)}>{renameBusy ? "Renaming…" : "Rename"}</Button>
-              <Button variant="ghost" size="sm" icon={I.X} onClick={() => setRenameDraft(null)} disabled={renameBusy}>Cancel</Button>
+              <Button variant="primary" size="sm" icon={I.Check} disabled={!!renameError || renameBusy || renameDraft.trim() === active.name} onClick={() => void renameFunction(active.name, renameDraft)}>{renameBusy ? <Trans>Renaming…</Trans> : <Trans>Rename</Trans>}</Button>
+              <Button variant="ghost" size="sm" icon={I.X} onClick={() => setRenameDraft(null)} disabled={renameBusy}><Trans>Cancel</Trans></Button>
               {renameError && <span className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{renameError}</span>}
             </div>
           ) : (
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-lg font-semibold">{active.name}</span>
-            <IconButton icon={I.Pencil} title="Rename function" onClick={() => setRenameDraft(active.name)} />
+            <IconButton icon={I.Pencil} title={t`Rename function`} onClick={() => setRenameDraft(active.name)} />
             <Badge variant="outline">{active.kind}</Badge>
             <span className="font-mono text-xs text-muted-foreground">· {active.trigger}</span>
             <div className="ml-auto flex flex-wrap items-center gap-2">
-              <span className="text-xs text-muted-foreground">{Number(active.invocations ?? 0).toLocaleString()} invocations · p95 {active.p95 ?? 0}ms</span>
-              <Button variant="outline" size="sm" icon={I.Trash} onClick={() => active && setConfirmDelete(active.name)} className="text-destructive">Delete</Button>
-              <Button variant="outline" size="sm" icon={I.Save} onClick={saveCode}>Save</Button>
-              <Button variant="primary" size="sm" icon={I.Zap} onClick={run} disabled={running}>{running ? "Running…" : "Run"}</Button>
+              <span className="text-xs text-muted-foreground">{Number(active.invocations ?? 0).toLocaleString()} <Trans>invocations · p95</Trans> {active.p95 ?? 0}ms</span>
+              <Button variant="outline" size="sm" icon={I.Trash} onClick={() => active && setConfirmDelete(active.name)} className="text-destructive"><Trans>Delete</Trans></Button>
+              <Button variant="outline" size="sm" icon={I.Save} onClick={saveCode}><Trans>Save</Trans></Button>
+              <Button variant="primary" size="sm" icon={I.Zap} onClick={run} disabled={running}>{running ? <Trans>Running…</Trans> : <Trans>Run</Trans>}</Button>
             </div>
           </div>
           )}
@@ -280,13 +282,13 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
 
           <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
             <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
-              <I.Code size={14} /><span className="text-[13px] font-medium">Logs</span>
-              <span className="font-mono text-[11.5px] text-muted-foreground">last invocation</span>
+              <I.Code size={14} /><span className="text-[13px] font-medium"><Trans>Logs</Trans></span>
+              <span className="font-mono text-[11.5px] text-muted-foreground"><Trans>last invocation</Trans></span>
               <div className="flex-1" />
-              <Button variant="ghost" size="sm" onClick={() => setLogs([])}>Clear</Button>
+              <Button variant="ghost" size="sm" onClick={() => setLogs([])}><Trans>Clear</Trans></Button>
             </div>
             <div className="max-h-[260px] min-h-[130px] overflow-auto bg-[oklch(0.18_0.01_130)] p-3 font-mono text-xs text-[oklch(0.92_0.02_130)]">
-              {logs.length === 0 && <div className="text-[oklch(0.6_0.02_130)]">No logs yet — click Run.</div>}
+              {logs.length === 0 && <div className="text-[oklch(0.6_0.02_130)]"><Trans>No logs yet — click Run.</Trans></div>}
               {logs.map((l, i) => (
                 <div key={i}>
                   <span className="text-[oklch(0.6_0.02_130)]">{l.t}</span>{" "}
@@ -319,7 +321,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
               });
             }
             setNewOpen(false);
-            pushToast(`Function "${created.name}" created.`);
+            pushToast(t`Function "${created.name}" created.`);
           }}
           onError={(msg) => pushToast(msg)}
         />
@@ -327,9 +329,9 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
 
       <ConfirmDialog
         open={!!confirmDelete}
-        title={confirmDelete ? <>Delete function <span className="font-mono">{confirmDelete}</span>?</> : "Delete function?"}
-        description="This permanently removes the function and its code. Triggers, flow steps, or callers that reference it will stop working. This can't be undone."
-        actionLabel="Delete function"
+        title={confirmDelete ? <><Trans>Delete function</Trans> <span className="font-mono">{confirmDelete}</span>?</> : <Trans>Delete function?</Trans>}
+        description={t`This permanently removes the function and its code. Triggers, flow steps, or callers that reference it will stop working. This can't be undone.`}
+        actionLabel={t`Delete function`}
         destructive
         onCancel={() => setConfirmDelete(null)}
         onConfirm={() => {
@@ -363,6 +365,7 @@ function NewFunctionDialog({
   onCreated: (created: { name: string; trigger: string; pattern: string | null }) => void;
   onError: (msg: string) => void;
 }) {
+  const { t } = useLingui();
   type Trigger = "http" | "event" | "cron";
   const [name, setName] = useState("");
   const [trigger, setTrigger] = useState<Trigger>("http");
@@ -376,28 +379,28 @@ function NewFunctionDialog({
     t === "http" ? SAMPLE_HTTP : t === "event" ? SAMPLE_EVENT : SAMPLE_CRON;
 
   const onTriggerChange = (next: string) => {
-    const t = next as Trigger;
-    setTrigger(t);
-    setCode(sampleFor(t));
-    if (t === "cron") setPattern("*/5 * * * *");
-    else if (t === "event") setPattern("items:*:*");
+    const trig = next as Trigger;
+    setTrigger(trig);
+    setCode(sampleFor(trig));
+    if (trig === "cron") setPattern("*/5 * * * *");
+    else if (trig === "event") setPattern("items:*:*");
     else setPattern("");
   };
 
   const nameRegex = /^[a-z][a-z0-9_-]*$/;
   const nameError = name.length === 0
-    ? "Required."
+    ? t`Required.`
     : !nameRegex.test(name)
-      ? "Lowercase letters, digits, _ or -; must start with a letter."
+      ? t`Lowercase letters, digits, _ or -; must start with a letter.`
       : existing.includes(name)
-        ? "A function with that name already exists."
+        ? t`A function with that name already exists.`
         : null;
   const patternRequired = trigger !== "http";
-  const patternError = patternRequired && !pattern.trim() ? "Required." : null;
-  const codeError = code.trim().length === 0 ? "Required." : null;
+  const patternError = patternRequired && !pattern.trim() ? t`Required.` : null;
+  const codeError = code.trim().length === 0 ? t`Required.` : null;
   const timeoutError =
     !Number.isFinite(timeoutMs) || timeoutMs < 50 || timeoutMs > 60_000
-      ? "Must be between 50 and 60000."
+      ? t`Must be between 50 and 60000.`
       : null;
   const valid = !nameError && !patternError && !codeError && !timeoutError;
 
@@ -428,13 +431,13 @@ function NewFunctionDialog({
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="flex max-h-[90vh] w-[640px] max-w-[94vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
-          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">New function</DialogTitle>
-          <DialogDescription className="mt-0.5 text-[12.5px]">Sandboxed JS. HTTP for manual invoke, event for pub-sub triggers, or cron for scheduled runs.</DialogDescription>
+          <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>New function</Trans></DialogTitle>
+          <DialogDescription className="mt-0.5 text-[12.5px]"><Trans>Sandboxed JS. HTTP for manual invoke, event for pub-sub triggers, or cron for scheduled runs.</Trans></DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Name <span className="text-destructive">*</span></label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans> <span className="text-destructive">*</span></label>
             <Input
               className="font-mono"
               aria-invalid={!!(nameError && name)}
@@ -446,25 +449,25 @@ function NewFunctionDialog({
             {nameError && name ? (
               <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{nameError}</div>
             ) : (
-              <span className="text-[11.5px] text-muted-foreground">Lowercase, digits, <span className="font-mono">_</span> or <span className="font-mono">-</span>. You can rename it later.</span>
+              <span className="text-[11.5px] text-muted-foreground"><Trans>Lowercase, digits, <span className="font-mono">_</span> or <span className="font-mono">-</span>. You can rename it later.</Trans></span>
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
             <div className="flex flex-col gap-1.5">
-              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Trigger</label>
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Trigger</Trans></label>
               <Select
                 value={trigger}
                 onChange={onTriggerChange}
                 options={[
-                  { value: "http", label: "http", hint: "manual invoke via POST /api/functions/:name/invoke" },
-                  { value: "event", label: "event", hint: "fires on matching pub-sub channel events" },
-                  { value: "cron", label: "cron", hint: "scheduled — granularity is 1 minute" },
+                  { value: "http", label: "http", hint: t`manual invoke via POST /api/functions/:name/invoke` },
+                  { value: "event", label: "event", hint: t`fires on matching pub-sub channel events` },
+                  { value: "cron", label: "cron", hint: t`scheduled — granularity is 1 minute` },
                 ]}
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Timeout (ms)</label>
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Timeout (ms)</Trans></label>
               <Input
                 aria-invalid={!!timeoutError}
                 type="number"
@@ -479,7 +482,7 @@ function NewFunctionDialog({
 
           {trigger !== "http" && (
             <div className="flex flex-col gap-1.5">
-              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{trigger === "cron" ? "Cron expression" : "Event pattern"} <span className="text-destructive">*</span></label>
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{trigger === "cron" ? <Trans>Cron expression</Trans> : <Trans>Event pattern</Trans>} <span className="text-destructive">*</span></label>
               <Input
                 className="font-mono"
                 aria-invalid={!!patternError}
@@ -492,15 +495,15 @@ function NewFunctionDialog({
               ) : (
                 <span className="text-[11.5px] text-muted-foreground">
                   {trigger === "cron"
-                    ? "5-field cron (minute hour day month weekday)."
-                    : "Examples: items:posts:created, items:posts:*, items:*:*"}
+                    ? <Trans>5-field cron (minute hour day month weekday).</Trans>
+                    : <Trans>Examples: items:posts:created, items:posts:*, items:*:*</Trans>}
                 </span>
               )}
             </div>
           )}
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Code <span className="text-destructive">*</span></label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Code</Trans> <span className="text-destructive">*</span></label>
             <Textarea
               className="font-mono min-h-[200px] text-xs whitespace-pre"
               aria-invalid={!!codeError}
@@ -509,14 +512,14 @@ function NewFunctionDialog({
               spellCheck={false}
             />
             <span className="text-[11.5px] text-muted-foreground">
-              Globals: <span className="font-mono">ctx.data</span>, <span className="font-mono">ctx.user</span>, <span className="font-mono">console.log</span>. Sync-only in v1; runs in QuickJS-WASM sandbox.
+              <Trans>Globals: <span className="font-mono">ctx.data</span>, <span className="font-mono">ctx.user</span>, <span className="font-mono">console.log</span>. Sync-only in v1; runs in QuickJS-WASM sandbox.</Trans>
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-[12.5px] font-medium">Active</div>
-              <div className="text-[11.5px] text-muted-foreground">When paused, triggers stop firing and HTTP invokes are rejected.</div>
+              <div className="text-[12.5px] font-medium"><Trans>Active</Trans></div>
+              <div className="text-[11.5px] text-muted-foreground"><Trans>When paused, triggers stop firing and HTTP invokes are rejected.</Trans></div>
             </div>
             <Switch checked={active} onChange={setActiveFlag} />
           </div>
@@ -524,9 +527,9 @@ function NewFunctionDialog({
 
         <DialogFooter className="border-t border-border bg-card px-5 py-3 sm:justify-end">
           <div className="flex-1" />
-          <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose} disabled={busy}><Trans>Cancel</Trans></Button>
           <Button variant="primary" onClick={submit} disabled={!valid || busy}>
-            {busy ? "Creating…" : "Create function"}
+            {busy ? <Trans>Creating…</Trans> : <Trans>Create function</Trans>}
           </Button>
         </DialogFooter>
       </DialogContent>

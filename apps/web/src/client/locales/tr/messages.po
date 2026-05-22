@@ -13,8 +13,238 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: src/client/admin/add-field.tsx
+msgid " · already exists"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid " · base"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid " · default"
+msgstr ""
+
+#. placeholder {0}: new Date(k.expiresAt).toLocaleString()
+#: src/client/pages/api-keys.tsx
+msgid " · expired {0}"
+msgstr ""
+
+#. placeholder {0}: new Date(k.expiresAt).toLocaleString()
+#: src/client/pages/api-keys.tsx
+msgid " · expires {0}"
+msgstr ""
+
+#. placeholder {0}: new Date(k.lastUsedAt).toLocaleString()
+#: src/client/pages/api-keys.tsx
+msgid " · last used {0}"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid " · never used"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid " · no expiry"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid " (admin)"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid " (inactive)"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid " of {totalCount}"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid " Required."
+msgstr ""
+
+#: src/client/admin/sheet.tsx
+msgid " Set the target collection in the field settings."
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "— none —"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "— None (root) —"
+msgstr ""
+
+#. placeholder {0}: rows.length - max
+#: src/client/admin/parity/insights.tsx
+msgid "… and {0} more"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "…or a custom code (e.g. zh-Hant)"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/translations.tsx
+msgid "· optional"
+msgstr ""
+
+#. placeholder {0}: agg.groupBy
+#: src/client/admin/parity/insights.tsx
+msgid "\"{0}\" is not a column on this collection."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "\"{bad}\" isn't a valid URL — use e.g. https://app.example.com/auth/callback."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "\"{c}\" is not a valid language code."
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "\"New post\" buttons, etc. Falls back to the slug."
+msgstr ""
+
 #: src/client/admin/extras.tsx
 msgid "(item)"
+msgstr ""
+
+#: src/client/admin/parity/email-templates.tsx
+msgid "(new template)"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "(no folder)"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "(no label)"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "(none — no collections)"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "(none — no functions yet)"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "(none — no templates yet)"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "(none — use literal subject/body)"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "(none)"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "(not set)"
+msgstr ""
+
+#: src/client/admin/parity/email-templates.tsx
+msgid "(unnamed)"
+msgstr ""
+
+#: src/client/admin/parity/email-templates.tsx
+msgid "(use the configured default)"
+msgstr ""
+
+#. placeholder {0}: s.ip
+#. placeholder {1}: s.last
+#: src/client/admin/pages/users.tsx
+msgid "{0} · last seen {1}"
+msgstr ""
+
+#. placeholder {0}: jobs.length
+#. placeholder {1}: jobs.length === 1 ? "file" : "files"
+#: src/client/admin/storage.tsx
+msgid "{0} {1} queued for {target}/."
+msgstr ""
+
+#. placeholder {0}: verb === "delete" ? "Deleted" : verb === "suspend" ? "Suspended" : "Activated"
+#. placeholder {1}: ids.length
+#. placeholder {2}: ids.length === 1 ? "" : "s"
+#: src/client/admin/pages/users.tsx
+msgid "{0} {1} user{2}."
+msgstr ""
+
+#. placeholder {0}: h.name
+#. placeholder {1}: next ? t`resumed` : t`paused`
+#: src/client/admin/pages/webhooks.tsx
+msgid "{0} {1}."
+msgstr ""
+
+#. placeholder {0}: uploads.filter((u) => u.status === "done").length
+#. placeholder {1}: uploads.length
+#: src/client/admin/storage.tsx
+msgid "{0} / {1} complete"
+msgstr ""
+
+#. placeholder {0}: u.email
+#: src/client/admin/pages/users.tsx
+msgid "{0} activated."
+msgstr ""
+
+#. placeholder {0}: user.sessions
+#. placeholder {0}: users.filter((u) => u.status === "active").length
+#: src/client/admin/pages/users.tsx
+msgid "{0} active"
+msgstr ""
+
+#. placeholder {0}: stats.active
+#. placeholder {1}: stats.invited
+#: src/client/admin/members-panel.tsx
+msgid "{0} active · {1} invited"
+msgstr ""
+
+#. placeholder {0}: stats.all
+#. placeholder {1}: stats.custom
+#. placeholder {2}: stats.none
+#: src/client/admin/permissions-matrix.tsx
+msgid "{0} all · {1} custom · {2} none"
+msgstr ""
+
+#. placeholder {0}: nodes.length
+#. placeholder {1}: edges.length
+#: src/client/admin/pages/schema-graph.tsx
+msgid "{0} collections · {1} relations"
+msgstr ""
+
+#. placeholder {0}: t.columns
+#: src/client/admin/adopt-wizard.tsx
+msgid "{0} cols"
+msgstr ""
+
+#. placeholder {0}: bindings.filter((b) => b.status === "connected").length
+#. placeholder {1}: bindings.filter((b) => b.status !== "connected").length
+#: src/client/admin/pages/settings.tsx
+msgid "{0} connected · {1} optional"
+msgstr ""
+
+#. placeholder {0}: h.name
+#. placeholder {0}: u.email
+#. placeholder {0}: user.email
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/pages/webhooks.tsx
+msgid "{0} deleted."
+msgstr ""
+
+#. placeholder {0}: c?.activeFlows ?? 0
+#. placeholder {1}: c?.pausedFlows ?? 0
+#: src/client/admin/pages/overview.tsx
+msgid "{0} enabled · {1} paused"
+msgstr ""
+
+#. placeholder {0}: filtered.length
+#: src/client/pages/rest-explorer.tsx
+msgid "{0} endpoints"
 msgstr ""
 
 #. placeholder {0}: ev.event
@@ -22,9 +252,112 @@ msgstr ""
 msgid "{0} event detail"
 msgstr ""
 
+#. placeholder {0}: c.fields.length
+#. placeholder {0}: t.fields.length
+#: src/client/admin/collections-index.tsx
+#: src/client/admin/parity/insights.tsx
+msgid "{0} fields"
+msgstr ""
+
+#. placeholder {0}: c.fields
+#. placeholder {1}: c.singleton ? "singleton" : c.ownerScoped ? "owner-scoped" : "public read"
+#: src/client/admin/collections-index.tsx
+msgid "{0} fields · {1}"
+msgstr ""
+
+#. placeholder {0}: folderCounts.total
+#: src/client/admin/storage.tsx
+msgid "{0} files"
+msgstr ""
+
+#. placeholder {0}: f.name
+#: src/client/admin/sheet.tsx
+msgid "{0} is required"
+msgstr ""
+
 #. placeholder {0}: c.count
 #: src/client/admin/extras.tsx
 msgid "{0} items"
+msgstr ""
+
+#. placeholder {0}: rows.length
+#: src/client/admin/pages/logs.tsx
+msgid "{0} loaded"
+msgstr ""
+
+#. placeholder {0}: visible.length
+#. placeholder {1}: rows.length
+#: src/client/admin/pages/logs.tsx
+msgid "{0} match · {1} loaded"
+msgstr ""
+
+#. placeholder {0}: filtered.length
+#. placeholder {1}: users.length
+#: src/client/admin/pages/users.tsx
+msgid "{0} of {1}"
+msgstr ""
+
+#. placeholder {0}: includedFields.length
+#. placeholder {1}: columns.length
+#: src/client/admin/adopt-wizard.tsx
+msgid "{0} of {1} columns mapped"
+msgstr ""
+
+#. placeholder {0}: selected.size
+#: src/client/admin/app.tsx
+msgid "{0} posts deleted."
+msgstr ""
+
+#. placeholder {0}: selected.size
+#: src/client/admin/app.tsx
+msgid "{0} posts published."
+msgstr ""
+
+#. placeholder {0}: collections.reduce((a, c) => a + c.count, 0).toLocaleString()
+#: src/client/admin/collections-index.tsx
+msgid "{0} rows"
+msgstr ""
+
+#. placeholder {0}: draft.events.length
+#. placeholder {0}: selected.length
+#. placeholder {0}: selected.size
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/pages/webhooks.tsx
+#: src/client/admin/relational-pickers.tsx
+msgid "{0} selected"
+msgstr ""
+
+#. placeholder {0}: envVars.filter((v) => v.value !== "(unset)").length
+#. placeholder {1}: envVars.filter((v) => v.value === "(unset)").length
+#: src/client/admin/pages/settings.tsx
+msgid "{0} set · {1} unset"
+msgstr ""
+
+#. placeholder {0}: AUTH_PROVIDER_NAMES[id] ?? id
+#: src/client/admin/parity/auth-settings.tsx
+msgid "{0} settings saved."
+msgstr ""
+
+#. placeholder {0}: filtered.length
+#. placeholder {1}: rows.length
+#: src/client/admin/pages/logs.tsx
+msgid "{0} shown · {1} loaded"
+msgstr ""
+
+#. placeholder {0}: u.email
+#: src/client/admin/pages/users.tsx
+msgid "{0} suspended."
+msgstr ""
+
+#. placeholder {0}: roles.filter((r) => r.system).length
+#. placeholder {1}: roles.filter((r) => !r.system).length
+#: src/client/admin/app.tsx
+msgid "{0} system · {1} custom"
+msgstr ""
+
+#. placeholder {0}: grouped.length
+#: src/client/pages/rest-explorer.tsx
+msgid "{0} tags"
 msgstr ""
 
 #. placeholder {0}: allFields.length
@@ -33,10 +366,265 @@ msgstr ""
 msgid "{0} total · {1} editable · drag the grip to reorder"
 msgstr ""
 
+#. placeholder {0}: (page - 1) * PER_PAGE + 1
+#. placeholder {1}: Math.min(page * PER_PAGE, total)
+#: src/client/admin/app.tsx
+msgid "{0}-{1} of {total}"
+msgstr ""
+
+#. placeholder {0}: f.name
+#: src/client/admin/storage.tsx
+msgid "{0}: {msg}"
+msgstr ""
+
+#. placeholder {0}: f.name
+#: src/client/admin/storage.tsx
+msgid "{0}: network error"
+msgstr ""
+
+#. placeholder {0}: Math.round((stats.active24h / Math.max(1, stats.total)) * 100)
+#: src/client/admin/pages/users.tsx
+msgid "{0}% of base"
+msgstr ""
+
+#. placeholder {0}: Math.round((1 - transformedSize / f.size) * 100)
+#: src/client/admin/storage.tsx
+msgid "{0}% smaller"
+msgstr ""
+
+#. placeholder {0}: Math.floor(d / 86_400_000)
+#. placeholder {0}: Math.floor(diff / 86_400_000)
+#. placeholder {0}: Math.floor(ms / 86_400_000)
+#: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/webhooks.tsx
+#: src/client/admin/parity/app-users.tsx
+msgid "{0}d ago"
+msgstr ""
+
+#. placeholder {0}: Math.floor(d / 3_600_000)
+#. placeholder {0}: Math.floor(diff / 3_600_000)
+#. placeholder {0}: Math.floor(ms / 3_600_000)
+#: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/webhooks.tsx
+#: src/client/admin/parity/app-users.tsx
+msgid "{0}h ago"
+msgstr ""
+
+#. placeholder {0}: Math.floor(d / 60_000)
+#. placeholder {0}: Math.floor(diff / 60_000)
+#. placeholder {0}: Math.floor(ms / 60_000)
+#: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/webhooks.tsx
+#: src/client/admin/parity/app-users.tsx
+msgid "{0}m ago"
+msgstr ""
+
+#. placeholder {0}: a.title
+#: src/client/admin/permissions-matrix.tsx
+msgid "{activeRole} · {0} · {c}: {state}"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "{allowedReadCount} readable · {allowedWriteCount} writable"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "{c} is already in the list."
+msgstr ""
+
+#: src/client/admin/items.tsx
+msgid "{count} selected"
+msgstr ""
+
+#: src/client/admin/members-panel.tsx
+msgid "{email} is already a member."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "{folder}/<derived>"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "{key} → {next}."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "{key} deleted."
+msgstr ""
+
+#: src/client/components/social-buttons.tsx
+msgid "{provider} sign-in"
+msgstr ""
+
+#: src/client/components/social-buttons.tsx
+msgid "{provider} sign-in failed"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "{r} may delete rows matching this rule."
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "{r} may update rows matching this rule."
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+#: src/client/admin/collections-index.tsx
+msgid "{slugClean} already exists"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "{totalCount} total"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "* (all collections)"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "•••••••• (stored — leave blank to keep)"
+msgstr ""
+
+#: src/client/pages/forgot.tsx
+#: src/client/pages/reset-password.tsx
+msgid "← Back to sign in"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "+ condition"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "+ group"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "+ preset"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "<0>{{username}}</0> is replaced with the submitted username (RFC-4515 escaped). Common: AD = <1>(sAMAccountName={{username}})</1>, OpenLDAP = <2>(uid={{username}})</2>."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "<0>{fieldsCount}</0> fields registered."
+msgstr ""
+
+#. placeholder {0}: testResult.ms
+#: src/client/admin/condition-editor.tsx
+msgid "✓ passes · {0}ms"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "✗ denied"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "1 file"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "1 year"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "1:1 square"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "16:9 widescreen"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "2FA"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "2FA disabled"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "2FA enabled"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "3:2 standard"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+#: src/client/pages/api-keys.tsx
+msgid "30 days"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "4:5 portrait"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "5-field cron (minute hour day month weekday)."
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "7 days"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "90 days"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid "A dropdown needs at least one choice."
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "A function with that name already exists."
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "A key with this name already exists."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "A panel with that name already exists."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "A provider with id \"{id}\" already exists."
+msgstr ""
+
+#: src/client/pages/shared-record.tsx
+msgid "A read-only view of one record from <0>{collection}</0>."
+msgstr ""
+
+#: src/client/components/auth-shell.tsx
+msgid "A signed link will arrive in your inbox. Single-use, expires in 15 minutes."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "A single value — counter fits best; sparkline / bars need multiple rows."
+msgstr ""
+
+#: src/client/admin/parity/email-templates.tsx
+msgid "A template with key \"{trimmedKey}\" already exists."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "A value is stored. Type a new one to replace it, or leave blank to keep it."
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "a, b, c"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "About"
+msgstr ""
+
 #: src/client/admin/ui.tsx
 msgid "Access"
 msgstr ""
 
+#: src/client/admin/account-page.tsx
 #: src/client/admin/ui.tsx
 msgid "Account"
 msgstr ""
@@ -49,40 +637,694 @@ msgstr ""
 msgid "Account settings"
 msgstr ""
 
+#: src/client/admin/storage.tsx
+msgid "ACL"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Acme Okta"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Acme SSO"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "ACS URL"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Action"
+msgstr ""
+
 #: src/client/admin/extras.tsx
 msgid "Actions"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-users.tsx
+msgid "Activate"
+msgstr ""
+
+#: src/client/admin/members-panel.tsx
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-users.tsx
+msgid "active"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/webhooks.tsx
+msgid "Active"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Active flows"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Active in 24h"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Active languages for this workspace. The default is returned by the public API when a requested locale has no string."
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Active locales"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Active sessions"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Active users"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Active users (24h)"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Activity"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Activity ID"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Actor"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "AD defaults: <0>mail · givenName · sn · memberOf</0>. OpenLDAP commonly uses <1>mail · givenName · sn · memberOf</1> (or the <2>groupOfNames</2> overlay)."
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Adapter auto-selected from bindings/env."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Adapter auto-selected: R2 binding → R2; S3 env vars → S3; else local filesystem (Bun dev). Public folders are served at <0>/storage/<key></0>; private require a signed URL."
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/pages/settings.tsx
+#: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/translations.tsx
+msgid "Add"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Add <0>created_at</0> and <1>updated_at</1>."
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Add <0>deleted_at</0>; deletes mark rows instead of removing them."
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Add a <0>status</0> dropdown with <1>draft / review / published / archived</1> + per-option color. List view auto-shows status tabs and badges."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Add a Client ID and secret below first."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Add a Client ID and secret first"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Add a language"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Add a tag and press Enter…"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid "Add at least one dropdown choice."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Add at least one step before saving"
+msgstr ""
+
+#: src/client/admin/edit-field.tsx
+msgid "Add choice"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid "Add column"
 msgstr ""
 
 #: src/client/admin/extras.tsx
 msgid "Add field"
 msgstr ""
 
+#. placeholder {0}: schema?.slug || "posts"
+#: src/client/admin/add-field.tsx
+msgid "Add field to <0>c_{0}</0>"
+msgstr ""
+
+#: src/client/admin/items.tsx
+msgid "Add filter"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Add next step"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Add OIDC provider"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Add passkey"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Add provider"
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Add role"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Add SAML"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Add SAML provider"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "Add sort"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Add step"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Add to false branch"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Add to true branch"
+msgstr ""
+
+#. placeholder {0}: formatRelative(p.createdAt)
+#: src/client/admin/account-page.tsx
+msgid "Added {0}"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Added provider \"{id}\"."
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "Adds <0>_status</0> + <1>_published_at</1>. Independent of the user-defined \"status\" field."
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Adds a row to <0>i18n_strings</0>. The key is shared across all locales; values are filled per locale."
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Adjust your filters or invite a new teammate."
+msgstr ""
+
 #: src/client/admin/ui.tsx
 msgid "Admin"
 msgstr ""
 
+#: src/client/admin/pages/realtime.tsx
+msgid "admin role only"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Admins"
+msgstr ""
+
+#. placeholder {0}: fk.referencesTable
+#: src/client/admin/adopt-wizard.tsx
+msgid "Adopt <0>{0}</0> as a workeros collection first, then revisit this step."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Adopt as relation"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "adopt as workeros relations"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Adopt existing table"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Adopted \"{slug}\". Reloading…"
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
 #: src/client/admin/ui.tsx
 msgid "Advisor"
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Advisor re-ran."
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "after"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Aggregate function"
+msgstr ""
+
+#. placeholder {0}: aliasConflicts.map((c) => c.column).join(", ")
+#: src/client/admin/adopt-wizard.tsx
+msgid "alias conflict on {0}"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Alias from another column"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "alice"
 msgstr ""
 
 #: src/client/admin/ui.tsx
 msgid "All"
 msgstr ""
 
+#. placeholder {0}: data.length
+#: src/client/admin/parity/translations.tsx
+msgid "All ({0})"
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "All clear in this category"
+msgstr ""
+
 #: src/client/admin/app.tsx
 msgid "All collections"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "All events"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+#: src/client/admin/storage.tsx
+msgid "All files"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "all folders"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "All other devices signed out."
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "All providers"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "All roles"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "All statuses"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Allow all"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Allowed email domains (optional)"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Allowed redirect URLs"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "already exists"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Already have an account?"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "already set"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Already verified?"
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "An active share link exists for this record. For security the link URL is shown only once, at creation. Revoke it and create a new one if you need a fresh copyable URL."
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "An admin has turned off public sign-up for this instance. Ask for an invite, or sign in if you already have an account."
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "An invite link will be emailed; valid for 7 days."
+msgstr ""
+
+#: src/client/admin/role-editor.tsx
+msgid "any signed-in"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Anyone with the URL can fetch this file."
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "Anyone with this link can view the record — copy it now, the token is shown only once."
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "API docs"
 msgstr ""
 
 #: src/client/admin/ui.tsx
 msgid "API keys"
 msgstr ""
 
+#: src/client/pages/api-keys.tsx
+msgid "API Keys"
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
 #: src/client/admin/ui.tsx
 msgid "App users"
 msgstr ""
 
+#: src/client/admin/pages/settings.tsx
+msgid "Appearance"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "applied"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Applied at"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Applied to members who haven't set a personal time zone in their account."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Applied to users with no local override yet."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Apply"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Apply to selection:"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Applying…"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "April"
+msgstr ""
+
+#: src/client/admin/app.tsx
+#: src/client/admin/collection-settings.tsx
+msgid "Archive collection"
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Archive collection <0>c_{activeCollection}</0>?"
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Archive collection <0>c_{slug}</0>?"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "Archive this collection"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "archive zone"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "archived"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "Archived"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "asc"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "Ascending"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Aspect-cropping active. Focal point picks which area is kept."
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "At least 8 characters"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "At least 8 characters."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "At least one language is required."
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Attribute map"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "August"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Auth base URL"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Authenticating…"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/ui.tsx
 msgid "Authentication"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Authentication failed"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Authentication succeeded"
+msgstr ""
+
+#: src/client/admin/items.tsx
+#: src/client/admin/storage.tsx
+msgid "Author"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "auto"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Auto = preserve source aspect. Pin height to crop to a different aspect (uses Focal point + fit=cover)."
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Auto-add <0>owner_id</0>; the <1>authenticated</1> role can only read/update its own rows."
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Auto-add <0>tenant_id</0>; row-level security isolates data per workspace. All read/write rules get <1>tenant_id = $user.tenant_id</1> injected."
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "auto-creates c_<slug> table"
+msgstr ""
+
+#: src/client/admin/sheet.tsx
+msgid "Auto-derived from title until edited."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Auto-detected from <0>env</0> bindings."
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Auto-translate"
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Automated lint over schema, permissions, and configuration. Runs on demand against live workspace state."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Avatar"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Avatar preview"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "awaiting accept"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid "B-tree index — speeds up filter/sort by this column."
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/collections-index.tsx
+#: src/client/admin/flow-builder.tsx
+msgid "Back"
+msgstr ""
+
+#: src/client/pages/forgot.tsx
+#: src/client/pages/magic-link.tsx
+msgid "Back to sign in"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Back up now"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Backups"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "base"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Base DN (search root)"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Base value"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "BCP-47 codes — a language plus an optional region/script (e.g. <0>pt-BR</0>, <1>zh-Hant</1>)."
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "BCP-47 short codes — e.g. <0>tr</0>, <1>en-GB</1>, <2>pt-BR</2>."
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "before"
+msgstr ""
+
+#: src/client/components/auth-shell.tsx
+msgid "Better-auth-style cookies. Sessions stored in your collections database — same DSL as everything else."
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Bind DN"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Bind password"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Bindings"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Bindings are read-only here"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Bindings refreshed."
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Blank"
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "Blocks sign-in and drops all active sessions immediately."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Body"
+msgstr ""
+
+#: src/client/admin/parity/email-templates.tsx
+msgid "Body (HTML)"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Body (text)"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Branding saved."
+msgstr ""
+
+#: src/client/components/page-header.tsx
+msgid "Breadcrumb"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard."
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Builder"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "built-in"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Built-in sign-in method."
 msgstr ""
 
 #: src/client/admin/extras.tsx
@@ -93,8 +1335,73 @@ msgstr ""
 msgid "By"
 msgstr ""
 
+#: src/client/admin/permissions-matrix.tsx
+msgid "bypass — read-only"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "c_{target} is empty."
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "Calendar"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Can't unlink your only sign-in method."
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/collections-index.tsx
+#: src/client/admin/edit-field.tsx
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/items.tsx
+#: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/pages/webhooks.tsx
+#: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/saml-provider-dialog.tsx
+#: src/client/admin/parity/translations.tsx
+#: src/client/admin/relational-pickers.tsx
+#: src/client/admin/role-editor.tsx
+#: src/client/admin/sheet.tsx
+#: src/client/admin/storage.tsx
 #: src/client/admin/ui.tsx
+#: src/client/components/confirm-action.tsx
+#: src/client/pages/api-keys.tsx
 msgid "Cancel"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Cancel clear"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Cancel upload"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Cannot delete the trigger."
+msgstr ""
+
+#. placeholder {0}: e.message
+#: src/client/admin/pages/flows.tsx
+msgid "Cannot save: {0}"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Caps the number of grouped rows returned (default 50, max 200)."
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/relational-pickers.tsx
+msgid "Change"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Change password"
 msgstr ""
 
 #: src/client/admin/extras.tsx
@@ -105,12 +1412,117 @@ msgstr ""
 msgid "Changed field"
 msgstr ""
 
+#: src/client/admin/condition-editor.tsx
+msgid "Changes discarded."
+msgstr ""
+
+#: src/client/admin/edit-field.tsx
+msgid "Changes how the value is edited in the item form. Selection interfaces (dropdown, radio, checkboxes…) also enforce their choices server-side."
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "Changes only"
+msgstr ""
+
 #: src/client/admin/extras.tsx
 msgid "Channel"
 msgstr ""
 
+#: src/client/admin/pages/realtime.tsx
+msgid "Channels refreshed."
+msgstr ""
+
+#: src/client/pages/magic-link.tsx
+#: src/client/pages/sign-up.tsx
+msgid "Check your inbox"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Choices"
+msgstr ""
+
+#: src/client/pages/reset-password.tsx
+msgid "Choose a new password"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "ci-bot (optional)"
+msgstr ""
+
+#: src/client/components/auth-shell.tsx
+msgid "Claim instance"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Claim this instance"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Claiming…"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/items.tsx
+#: src/client/admin/pages/functions.tsx
+#: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/relational-pickers.tsx
+#: src/client/components/date-picker.tsx
+msgid "Clear"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Clear done"
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "Clear filter"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Clear selection"
+msgstr ""
+
+#: src/client/admin/permissions-matrix.tsx
+msgid "Click any cell to set state. Custom opens the rule builder in a dialog."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Click any step to edit its configuration. Drag to rearrange. Click <0>+</0> on a step to add the next."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Click anywhere to set the crop pivot for <0>fit=cover</0>."
+msgstr ""
+
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/logs.tsx
 msgid "Click for full payload"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Click Run to simulate."
+msgstr ""
+
+#: src/client/pages/forgot.tsx
+msgid "Click the link in your inbox to set a new password. The token expires in 1 hour. Your existing password still works in the meantime."
+msgstr ""
+
+#: src/client/admin/pages/flows.tsx
+msgid "Click to edit"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Client ID"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Client ID <0>(optional)</0>"
+msgstr ""
+
+#. placeholder {0}: provider.hasSecret && <span className="text-muted-foreground">· stored, leave blank to keep</span>
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Client secret {0}"
 msgstr ""
 
 #: src/client/admin/extras.tsx
@@ -118,40 +1530,703 @@ msgid "close"
 msgstr ""
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/logs.tsx
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-users.tsx
+#: src/client/admin/sheet.tsx
+#: src/client/pages/openapi-export.tsx
 msgid "Close"
 msgstr ""
 
+#: src/client/pages/sign-up.tsx
+msgid "Closed instance."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/functions.tsx
+msgid "Code"
+msgstr ""
+
+#: src/client/admin/sheet.tsx
+msgid "Collaboration"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/logs.tsx
+#: src/client/admin/parity/insights.tsx
+msgid "Collection"
+msgstr ""
+
+#. placeholder {0}: c.slug
+#: src/client/admin/app.tsx
+msgid "Collection c_{0} created."
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Collection c_{slug} archived. Restore it from the Archived view."
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Collection c_{slug} dropped."
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Collection c_{slug} restored."
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Collection settings saved."
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Collection wizard opened."
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "collections"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/overview.tsx
 #: src/client/admin/ui.tsx
 msgid "Collections"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Column"
+msgstr ""
+
+#. placeholder {0}: (field as any).name
+#: src/client/admin/app.tsx
+msgid "Column \"{0}\" added to c_{slug}."
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Column \"{name}\" dropped."
+msgstr ""
+
+#. placeholder {0}: c.column
+#. placeholder {1}: c.logical
+#: src/client/admin/adopt-wizard.tsx
+msgid "Column <0>{0}</0> is aliased to  <1>{1}</1> AND included as a regular field. Pick one."
+msgstr ""
+
+#. placeholder {0}: c.column
+#. placeholder {1}: c.manualType
+#: src/client/admin/adopt-wizard.tsx
+msgid "Column <0>{0}</0> is mapped to <1>{1}</1> in the field list but also toggled \"Adopt as relation\". The FK panel will override the field type."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Column:"
+msgstr ""
+
+#. placeholder {0}: safeName || "—"
+#: src/client/admin/add-field.tsx
+msgid "column: <0>{0}</0>"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Comma-separated; prefix with <0>-</0> for descending. Leave blank to fall back to <1>-created_at</1>."
 msgstr ""
 
 #: src/client/admin/extras.tsx
 msgid "Command palette"
 msgstr ""
 
+#: src/client/admin/item-collaboration.tsx
+msgid "Comment deleted."
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "Comment posted."
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "comments"
+msgstr ""
+
+#: src/client/admin/role-editor.tsx
+msgid "Compiled rule"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Compiled SQL"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "composite — not supported"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Composite (multi-column) FKs cannot be adopted as a workeros relation"
+msgstr ""
+
+#: src/client/admin/permissions-matrix.tsx
+msgid "conditional access"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "config-only panel rendered from props"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Configure"
+msgstr ""
+
+#. placeholder {0}: existing!.name
+#. placeholder {0}: provider.name
+#: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Configure {0}"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "configure directory under Authentication"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "configure providers under Authentication"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Configure sign-in methods, MFA, and session policy. Tokens are signed with <0>$AUTH_SECRET</0>."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Configure this provider (add a Client ID) before enabling it"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+#: src/client/admin/sheet.tsx
+#: src/client/components/confirm-action.tsx
+msgid "Confirm"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Confirm new password"
+msgstr ""
+
+#: src/client/pages/reset-password.tsx
+msgid "Confirm password"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/settings.tsx
+msgid "connected"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Connected"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "console (dev)"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Content"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "context"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Continue"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "conventional column present"
+msgstr ""
+
 #: src/client/admin/ui.tsx
 msgid "copied"
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "Copied"
+msgstr ""
+
+#: src/client/pages/openapi-export.tsx
+msgid "Copied curl snippet."
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Copied JSON."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Copied to clipboard."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Copied."
 msgstr ""
 
 #: src/client/admin/ui.tsx
 msgid "copy"
 msgstr ""
 
+#: src/client/admin/item-collaboration.tsx
+#: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/saml-provider-dialog.tsx
+#: src/client/pages/openapi-export.tsx
+msgid "Copy"
+msgstr ""
+
+#. placeholder {0}: row.path
+#: src/client/pages/openapi-export.tsx
+msgid "Copy curl example for {0}"
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Copy fix"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Copy id"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Copy URL"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "corp.example.com, contractor.example.com"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Could not copy entry id."
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Could not copy fix."
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "Could not copy link."
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "Could not create share link."
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "Could not delete comment."
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Could not export logs."
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "Could not post comment."
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "Could not revoke share link."
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Couldn't load advisor findings"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Couldn't load auth config."
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Couldn't load logs"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "count / sum / average over a collection — no SQL"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "Create"
+msgstr ""
+
+#. placeholder {0}: slug || "row"
+#: src/client/admin/sheet.tsx
+msgid "Create {0}"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "Create a key to authenticate programmatic access (CI, scripts, third-party apps)."
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Create a new physical table from scratch. Pick a preset (Content / Taxonomy / People / Blank) and configure scope toggles."
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Create account"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Create an account"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Create collection"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Create folder"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Create function"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Create key"
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "Create new link"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Create panel"
+msgstr ""
+
+#: src/client/admin/role-editor.tsx
+msgid "Create role"
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "Create share link"
+msgstr ""
+
 #: src/client/admin/extras.tsx
 msgid "Create the first row in <0>{tableName}</0> via the API or use the New row button."
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Create webhook"
 msgstr ""
 
 #: src/client/admin/ui.tsx
 msgid "Create workspace"
 msgstr ""
 
+#: src/client/components/auth-shell.tsx
+msgid "Create your <0>workeros</0> account."
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Create your admin account"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/database.tsx
+msgid "Created"
+msgstr ""
+
+#. placeholder {0}: new Date(k.createdAt).toLocaleString()
+#: src/client/pages/api-keys.tsx
+msgid "created {0}"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Creating account…"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "Creating key"
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+#: src/client/admin/pages/functions.tsx
+#: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/translations.tsx
+#: src/client/admin/storage.tsx
+#: src/client/pages/api-keys.tsx
+msgid "Creating…"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Cron expression"
+msgstr ""
+
+#: src/client/pages/openapi-export.tsx
+msgid "curl example"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/revisions.tsx
+msgid "current"
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "Current"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Current password"
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "Current state"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Custom CA PEM (optional)"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "Custom date…"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Custom headers"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Custom OpenID Connect provider."
+msgstr ""
+
+#: src/client/admin/role-editor.tsx
+msgid "Custom roles layer additively on top of authenticated."
+msgstr ""
+
+#: src/client/admin/permissions-matrix.tsx
+msgid "custom rule"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Daily 03:00 UTC"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "danger zone"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-users.tsx
+msgid "Danger zone"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Dark"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/pages/graphql.tsx
+msgid "Data"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+#: src/client/admin/parity/database.tsx
 #: src/client/admin/ui.tsx
 msgid "Database"
 msgstr ""
 
+#: src/client/admin/adopt-wizard.tsx
+msgid "DB type"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid "DDL preview"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "December"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "default"
+msgstr ""
+
+#: src/client/admin/edit-field.tsx
+msgid "Default (auto)"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Default locale"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "default order when <0>?sort=</0> is omitted"
+msgstr ""
+
 #: src/client/admin/ui.tsx
 msgid "Default project"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Default role"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Default role on first sign-in"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Default sort <0>(optional)</0>"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Default time zone"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid "Default value <0>(optional)</0>"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Default values applied on create. The user cannot override these — they are stamped server-side after validation."
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "defaults"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Defaults to the URL's filename"
+msgstr ""
+
+#: src/client/admin/app.tsx
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/items.tsx
+#: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/pages/webhooks.tsx
+#: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/storage.tsx
+msgid "Delete"
+msgstr ""
+
+#. placeholder {0}: confirmDelete.name
+#: src/client/admin/parity/insights.tsx
+msgid "Delete \"{0}\"?"
+msgstr ""
+
+#. placeholder {0}: selected.size
+#: src/client/admin/app.tsx
+msgid "Delete {0} posts?"
+msgstr ""
+
+#: src/client/admin/app.tsx
+#: src/client/admin/collection-settings.tsx
+#: src/client/admin/collections-index.tsx
+msgid "Delete collection"
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Delete collection <0>c_{activeCollection}</0>?"
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Delete collection <0>c_{slug}</0>?"
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "Delete end-user"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Delete function"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Delete function?"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Delete panel"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Delete SAML provider?"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "Delete this collection"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Delete user"
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "deleted."
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Deliveries"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Deliveries pause immediately when off; queued events are dropped after 24h."
+msgstr ""
+
+#: src/client/admin/permissions-matrix.tsx
+msgid "denied"
+msgstr ""
+
+#: src/client/admin/permissions-matrix.tsx
+msgid "denied for this role"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Deny all"
+msgstr ""
+
+#: src/client/pages/rest-explorer.tsx
+msgid "deprecated"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Derive from width × source aspect"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "desc"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "Descending"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+#: src/client/admin/parity/insights.tsx
+#: src/client/admin/role-editor.tsx
+#: src/client/admin/storage.tsx
+msgid "Description"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Destination"
+msgstr ""
+
+#: src/client/components/auth-shell.tsx
+msgid "Detected an empty users table. The first account on a fresh instance is provisioned as admin automatically."
+msgstr ""
+
+#. placeholder {0}: inspect.pk.dbType
+#: src/client/admin/adopt-wizard.tsx
+msgid "Detected from the source table. <0>{0}</0>"
 msgstr ""
 
 #: src/client/admin/ui.tsx
@@ -162,146 +2237,3192 @@ msgstr ""
 msgid "Development"
 msgstr ""
 
+#: src/client/admin/account-page.tsx
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Device"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Diff"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Dim"
+msgstr ""
+
+#. placeholder {0}: ADAPTER_PROFILES[adapter].db
+#: src/client/admin/parity/database.tsx
+msgid "Direct access to the underlying engine. Adapter: <0>{0}</0>. SQL editor runs through the same permission layer as the API."
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "disabled"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/condition-editor.tsx
+#: src/client/admin/pages/settings.tsx
+#: src/client/admin/storage.tsx
+msgid "Discard"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Discovery URL <0>(optional)</0>"
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+#: src/client/pages/api-keys.tsx
+msgid "Dismiss"
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Dismissed \"{title}\"."
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "display"
+msgstr ""
+
+#. placeholder {0}: f.key
+#: src/client/admin/storage.tsx
+msgid "Display label. The storage key stays <0>{0}</0>."
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Display name"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Display name <0>(optional)</0>"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "Display template"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Distinct users with a session in the last 24h"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Docs"
+msgstr ""
+
+#: src/client/pages/sign-in.tsx
+msgid "Don't have an account?"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Done"
+msgstr ""
+
+#. placeholder {0}: r.durationMs ?? "—"
+#. placeholder {1}: JSON.stringify(r.value ?? null).slice(0, 200)
+#: src/client/admin/pages/functions.tsx
+msgid "done · {0}ms · result: {1}"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Dotted namespaces are conventional, e.g. <0>common.cancel</0>, <1>auth.signin.title</1>."
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+#: src/client/admin/storage.tsx
+msgid "Download"
+msgstr ""
+
+#: src/client/pages/openapi-export.tsx
+msgid "Download JSON"
+msgstr ""
+
+#: src/client/pages/openapi-export.tsx
+msgid "Download YAML"
+msgstr ""
+
+#: src/client/pages/openapi-export.tsx
+msgid "Downloading…"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "draft"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "Draft"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "drafts"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Drag to move"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Drag to resize"
+msgstr ""
+
+#: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
 msgid "Drop column"
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Drop column \"{name}\"?"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Drop files here, or click to upload"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Drop files to upload — or <0>browse</0>"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Drop images here, or click to upload"
+msgstr ""
+
+#: src/client/pages/openapi-export.tsx
+msgid "Drop in a workspace API key (<0>pak_…</0>) before running."
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "Drops the physical table and all rows. Permissions and revisions tied to the slug are removed too. This is irreversible."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Dry run — no real side-effects"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Dry-run summary"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/logs.tsx
+msgid "Duration"
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Dynamic schema. Each collection becomes a physical <0>c_<slug></0> table at runtime; drop or alter via this UI."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "e.g. 30s, 5m, 1h, 2d. ≤ 30s sleeps inline; longer waits persist to the scheduler."
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Each collection is a physical table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations."
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "Each row gets an <0>owner_id</0>; the<1> authenticated</1> role can only read/update its own rows. Toggling on auto-seeds owner-scoped permissions; toggling off does not remove existing rows or rules."
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "edit"
+msgstr ""
+
+#: src/client/admin/app.tsx
+#: src/client/admin/items.tsx
+#: src/client/admin/pages/webhooks.tsx
+msgid "Edit"
+msgstr ""
+
+#. placeholder {0}: role?.name || "role"
+#. placeholder {0}: slug || "row"
+#: src/client/admin/role-editor.tsx
+#: src/client/admin/sheet.tsx
+msgid "Edit {0}"
+msgstr ""
+
+#. placeholder {0}: draft.name
+#. placeholder {1}: draft.type
+#: src/client/admin/edit-field.tsx
+msgid "Edit <0>{0}</0> <1>{1}</1>"
+msgstr ""
+
+#: src/client/admin/permissions-matrix.tsx
+msgid "edit conditions below ↓"
 msgstr ""
 
 #: src/client/admin/extras.tsx
 msgid "Edit field"
 msgstr ""
 
+#: src/client/admin/storage.tsx
+msgid "Edit file"
+msgstr ""
+
+#: src/client/admin/pages/flows.tsx
+msgid "Edit flow"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Edit layout"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Edit panel"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Edit raw DSL. Click Builder to round-trip back to visual."
+msgstr ""
+
+#: src/client/admin/permissions-matrix.tsx
+msgid "Edit rule"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Edit them in <0>wrangler.toml</0> and redeploy. This panel reflects the live binding map from <1>env</1>."
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Edit webhook"
+msgstr ""
+
+#. placeholder {0}: panel?.id
+#: src/client/admin/parity/insights.tsx
+msgid "Editing <0>{0}</0>."
+msgstr ""
+
+#: src/client/admin/role-editor.tsx
+msgid "editor"
+msgstr ""
+
+#: src/client/admin/parity/email-templates.tsx
+msgid "Editor"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-users.tsx
+#: src/client/pages/forgot.tsx
+#: src/client/pages/magic-link.tsx
+#: src/client/pages/sign-in.tsx
+#: src/client/pages/sign-up.tsx
+msgid "Email"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Email + password is always available — toggle it off to hide the form from the sign-in screen."
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Email attribute"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Email changes aren't supported yet — contact an admin if you need to switch addresses."
+msgstr ""
+
+#: src/client/components/auth-shell.tsx
+msgid "Email is the only required field. Roles assigned post-signup — first user gets admin."
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "email magic link"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Email settings saved."
+msgstr ""
+
+#: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/ui.tsx
 msgid "Email templates"
 msgstr ""
 
+#: src/client/admin/pages/settings.tsx
+msgid "Email transport for <0>this workspace</0>. Resolution order: this config → the instance-wide default → the deployment's <1>EMAIL_PROVIDER</1> / env keys. Secret values are encrypted at rest and never shown again."
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "Email verified"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "EMAIL_FROM set"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "email-only, no password"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Emails a one-time link valid for 30 minutes."
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Empty or template"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "enabled"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Enabled"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "enabled but not configured — won't appear on sign-in"
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "End-users"
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "End-users always implicitly have <0>authenticated</0>; the <1>admin</1> role can't be assigned."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "End-users of the app built on this workspace sign in here — separate from the admin login. Configure providers above."
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "End-users of the application built on this workspace — a pool separate from the admin/control-plane <0>users</0>. They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Endpoint"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Endpoint URL"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Enrol a passkey now"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "enrolled"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Enter a name to continue."
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Enter a slug first"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Enter a slug to continue."
+msgstr ""
+
+#: src/client/admin/members-panel.tsx
+msgid "Enter a valid email."
+msgstr ""
+
+#: src/client/pages/forgot.tsx
+msgid "Enter the email you signed up with — we'll send a reset link."
+msgstr ""
+
+#: src/client/pages/sign-in.tsx
+msgid "Enter your email and password."
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Entry id copied to clipboard."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "environment"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
 #: src/client/admin/ui.tsx
 msgid "Environment"
 msgstr ""
 
+#: src/client/admin/pages/settings.tsx
+msgid "Environment variables are read-only here"
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "err"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Error handling"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Error rate"
+msgstr ""
+
+#. placeholder {0}: testResult.error
+#: src/client/admin/condition-editor.tsx
+msgid "error: {0}"
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "errors"
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "Errors"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Evaluates against current step context. Use <0>{{ var }}</0> for interpolation."
+msgstr ""
+
 #: src/client/admin/extras.tsx
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/webhooks.tsx
 msgid "Event"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Event pattern"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Events"
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "Every write is versioned. Inspect, diff, or revert any prior state."
+msgstr ""
+
+#: src/client/admin/role-editor.tsx
+msgid "everyone"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Examples: items:posts:created, items:posts:*, items:*:*"
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "Execute"
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "Execute a query to see results here."
+msgstr ""
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "expansion"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "expired"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "Expires"
+msgstr ""
+
+#: src/client/admin/pages/schema-graph.tsx
+#: src/client/admin/parity/translations.tsx
+msgid "Export"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Export CSV"
+msgstr ""
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Export failed."
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Export NDJSON"
+msgstr ""
+
+#. placeholder {0}: visible.length
+#: src/client/admin/pages/logs.tsx
+msgid "Exported {0} rows as activity.csv."
+msgstr ""
+
+#. placeholder {0}: filtered.length
+#: src/client/admin/pages/logs.tsx
+msgid "Exported {0} rows as NDJSON."
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Exported result.csv."
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Exported translations.json."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "External identity rows are kept as an audit trail."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Fail flow"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+#: src/client/admin/storage.tsx
+msgid "failed"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Failed to load tables: {error}"
+msgstr ""
+
+#: src/client/pages/reset-password.tsx
+msgid "Failed to reset password"
+msgstr ""
+
+#: src/client/pages/magic-link.tsx
+msgid "Failed to send magic link"
+msgstr ""
+
+#: src/client/pages/forgot.tsx
+msgid "Failed to send reset link"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "failing"
+msgstr ""
+
+#: src/client/admin/pages/flows.tsx
+msgid "Failures (24h)"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Faster, phishing-resistant sign-in. Your device will prompt for biometric or PIN after the account is created. You can add or remove passkeys later in Settings."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Favicon"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "February"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Fetch & parse"
+msgstr ""
+
+#: src/client/admin/items.tsx
+msgid "Fetching subfields…"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Fetching…"
+msgstr ""
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "field"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+#: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Field"
+msgstr ""
+
+#. placeholder {0}: (next as { name?: string }).name
+#: src/client/admin/app.tsx
+msgid "Field \"{0}\" updated."
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Field permissions"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Field type"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "field…"
 msgstr ""
 
 #: src/client/admin/extras.tsx
 msgid "fields"
 msgstr ""
 
+#: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/collections-index.tsx
+#: src/client/admin/sheet.tsx
+msgid "Fields"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "File detail"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "files"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Files"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Fill the required fields."
+msgstr ""
+
+#: src/client/admin/items.tsx
+#: src/client/admin/parity/insights.tsx
+msgid "Filter"
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "Filter by email / name…"
+msgstr ""
+
+#: src/client/pages/rest-explorer.tsx
+msgid "Filter endpoints…"
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "Filter fields & types…"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Filter folders…"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Filter tables by name…"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Filter tables…"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "fires on matching pub-sub channel events"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "First name"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "First-user policy."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Fit"
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Fix copied to clipboard."
+msgstr ""
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "fk"
+msgstr ""
+
+#. placeholder {0}: fkColumnConflicts.map((c) => c.column).join(", ")
+#: src/client/admin/adopt-wizard.tsx
+msgid "FK conflict on {0}"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "flags + aliases — no DDL is run on the table"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Flow draft created."
+msgstr ""
+
+#: src/client/admin/pages/flows.tsx
+msgid "Flow paused."
+msgstr ""
+
+#: src/client/admin/pages/flows.tsx
+msgid "Flow resumed."
+msgstr ""
+
+#: src/client/admin/pages/flows.tsx
 #: src/client/admin/ui.tsx
 msgid "Flows"
 msgstr ""
 
+#: src/client/admin/storage.tsx
+msgid "Focal point"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Folder"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Folder \"{clean}\" already exists."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Folder \"{clean}\" created."
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Folder (no folder) is empty."
+msgstr ""
+
+#. placeholder {0}: activeFolder + "/"
+#: src/client/admin/relational-pickers.tsx
+msgid "Folder {0} is empty."
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Folder tag"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+#: src/client/admin/storage.tsx
+msgid "Folders"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Forces re-login on every device immediately."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Foreign keys adopted as relations:"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Foreign keys detected"
+msgstr ""
+
+#: src/client/pages/sign-in.tsx
+msgid "Forgot?"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Format"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "Fri"
+msgstr ""
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "from"
+msgstr ""
+
+#: src/client/admin/parity/email-templates.tsx
+#: src/client/admin/parity/translations.tsx
+msgid "From"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "From address"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "From existing table"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "From template"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Frontend SDK"
+msgstr ""
+
+#: src/client/admin/permissions-matrix.tsx
+msgid "full"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/permissions-matrix.tsx
+msgid "full access"
+msgstr ""
+
+#: src/client/admin/permissions-matrix.tsx
+msgid "Full access"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Function"
+msgstr ""
+
+#. placeholder {0}: created.name
+#: src/client/admin/pages/functions.tsx
+msgid "Function \"{0}\" created."
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Function \"{name}\" deleted."
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "function failed"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Function failed"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Function not found on server."
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Function ran successfully."
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Function renamed to \"{target}\"."
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Function saved."
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Function scaffold ready."
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/overview.tsx
 #: src/client/admin/ui.tsx
 msgid "Functions"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "FUNCTIONS_EXEC_URL set"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "Gallery"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "General"
+msgstr ""
+
+#: src/client/admin/role-editor.tsx
+msgid "Generated DSL — saved to <0>role_permissions</0> on save."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "GitHub"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. Sync-only in v1; runs in QuickJS-WASM sandbox."
 msgstr ""
 
 #: src/client/admin/extras.tsx
 msgid "goto"
 msgstr ""
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Graph refreshed from collections metadata."
+msgstr ""
+
 #: src/client/admin/ui.tsx
+#: src/client/pages/graphql.tsx
 msgid "GraphQL"
 msgstr ""
 
+#: src/client/admin/collections-index.tsx
+#: src/client/admin/storage.tsx
+msgid "Grid"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Group"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Group by"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Groups"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Hash"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Hashed with argon2id · stored in <0>users.password_hash</0>."
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Have an account?"
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "health"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Health"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "healthy"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Height"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Hide"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Hide compiled SQL"
+msgstr ""
+
+#. placeholder {0}: Object.keys(result.headers).length
+#: src/client/pages/rest-explorer.tsx
+msgid "Hide headers ({0})"
+msgstr ""
+
+#: src/client/pages/sign-in.tsx
+msgid "Hide password"
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "Hide variables"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Hook"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "how this collection shows up in nav and lists"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "http · event · cron"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "I agree to the <0>Terms</0> and <1>Privacy</1>."
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "id"
+msgstr ""
+
+#. placeholder {0}: (initial as { id?: string })?.id
+#: src/client/admin/sheet.tsx
+msgid "id <0>{0}</0>"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+#: src/client/pages/graphql.tsx
+msgid "idle"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "IdP entity ID (Issuer)"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "IdP signing cert (PEM)"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "IdP signing certificate (PEM) is required."
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "IdP SLO URL <0>(optional)</0>"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "IdP SSO URL"
+msgstr ""
+
+#. placeholder {0}: email || t`your address`
+#: src/client/pages/magic-link.tsx
+msgid "If <0>{0}</0> matches an account, a sign-in link is on its way. It expires in 15 minutes."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Import"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Import from URL"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Import metadata"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Import URL"
+msgstr ""
+
+#. placeholder {0}: res.data.key.split("/").pop() ?? res.data.key
+#: src/client/admin/storage.tsx
+msgid "Imported {0}."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Importing…"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "in <0>{folder}/</0>"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "In review"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "in-isolate, sync only"
+msgstr ""
+
+#: src/client/admin/pages/realtime.tsx
+msgid "In-process pub/sub on Bun, Durable Objects on Workers. Permission filter applies on subscribe + publish."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Include"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Incoming data must match this rule before insert/update succeeds. Failures return <0>422 invalid_payload</0>."
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid "Indexed"
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "info"
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "initial"
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "Initial revision — the first recorded state of this item."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Input"
+msgstr ""
+
+#. placeholder {0}: ownerScoped ? <>. Owner is set to <span className="font-mono">$user.id</span></> : null
+#: src/client/admin/sheet.tsx
+msgid "Insert into <0>c_{slug}</0>{0}."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Insight panels chart a collection aggregate (count / sum / average …) or a saved SQL query as a counter, sparkline, bars, donut, or table. Click <0>+ New panel</0> to build your first one — pick a collection, no SQL required."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/ui.tsx
 msgid "Insights"
 msgstr ""
 
+#: src/client/admin/adopt-wizard.tsx
+msgid "Inspect failed: {inspectError}"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Integer between 1 and 200."
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Interface"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/collection-settings.tsx
+msgid "Internal description for teammates."
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "Introspection-driven explorer for /api/graphql. Schema is generated from your workspace's collections at request time — click a query or mutation in the tree to drop a runnable snippet into the editor."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Invalid aggregate config."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Invalid SQL."
+msgstr ""
+
+#: src/client/admin/members-panel.tsx
+#: src/client/admin/pages/users.tsx
+msgid "Invite"
+msgstr ""
+
+#: src/client/admin/members-panel.tsx
+msgid "invite by email…"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Invite dialog opened."
+msgstr ""
+
+#. placeholder {0}: payload.email
+#: src/client/admin/pages/users.tsx
+msgid "Invite sent to {0}."
+msgstr ""
+
+#: src/client/admin/members-panel.tsx
+msgid "Invite sent to {email}."
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/users.tsx
+msgid "Invite user"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "invited"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "invocations · p95"
+msgstr ""
+
+#. placeholder {0}: active.name
+#: src/client/admin/pages/functions.tsx
+msgid "invoking {0}…"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/pages/logs.tsx
+msgid "IP"
+msgstr ""
+
+#: src/client/admin/items.tsx
+msgid "is not null"
+msgstr ""
+
+#: src/client/admin/items.tsx
+msgid "is null"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Istanbul, Turkey"
+msgstr ""
+
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/logs.tsx
 msgid "Item ID"
 msgstr ""
 
+#: src/client/admin/condition-editor.tsx
+msgid "Item permissions"
+msgstr ""
+
+#: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
+#: src/client/admin/parity/revisions.tsx
 msgid "Items"
 msgstr ""
 
+#: src/client/admin/condition-editor.tsx
+msgid "Items matching this rule are allowed for {r}."
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Items refreshed."
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "January"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "JSON"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "JSON object — template strings are interpolated before insert/update."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "JSON or template string. Becomes <0>data</0> inside the function."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "JSON or template string. Webhook defaults to the event payload when empty."
+msgstr ""
+
+#. placeholder {0}: (e as Error).message
+#: src/client/admin/parity/insights.tsx
+msgid "JSON parse error: {0}"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "July"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "June"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/webhooks.tsx
+#: src/client/admin/parity/app-users.tsx
+msgid "just now"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Just system fields. Add your own columns."
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "Kanban"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "key"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+#: src/client/admin/parity/email-templates.tsx
+#: src/client/admin/parity/translations.tsx
+#: src/client/admin/storage.tsx
+msgid "Key"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Key \"{key}\" added with {base} value."
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Key \"{key}\" added."
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Key must be 120 characters or fewer."
+msgstr ""
+
+#: src/client/admin/parity/email-templates.tsx
+msgid "Key must be 2–40 chars (letters, digits, dash, underscore)."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "keys"
+msgstr ""
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "kind"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+#: src/client/admin/parity/database.tsx
+#: src/client/admin/parity/insights.tsx
+msgid "Kind"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "label (optional)"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Lands in {pending}"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Language"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Languages"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Languages this workspace is translated into — they become the columns on the <0>Translations</0> page and the locale options members can pick in their account. The <1>default</1> applies to anyone who hasn't chosen one."
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "last {range}"
+msgstr ""
+
+#. placeholder {0}: metrics?.totals?.errors ?? recentErrors.reduce((a, e) => a + (e.count ?? 0), 0)
+#. placeholder {1}: (metrics?.totals?.errors ?? 0) === 1 ? "event" : "events"
+#: src/client/admin/pages/overview.tsx
+msgid "last {range} · {0} {1}"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Last 1 hour"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Last 15 minutes"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Last 24 hours"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "last 30 days"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Last 30 days"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Last 7 days"
+msgstr ""
+
+#: src/client/admin/members-panel.tsx
+msgid "Last active"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "last invocation"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Last name"
+msgstr ""
+
+#: src/client/admin/pages/flows.tsx
+msgid "Last run"
+msgstr ""
+
+#. placeholder {0}: formatGeneratedAt(generatedAt)
+#: src/client/admin/pages/advisor.tsx
+msgid "Last run: {0}"
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "last seen"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Last seen"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+#: src/client/admin/pages/overview.tsx
+msgid "Last write"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "LDAP / Active Directory"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "LDAP config saved."
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "LDAP disabled."
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "LDAP enabled."
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "LDAP URL"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Leave blank to create the key with empty values across all locales."
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "leave blank to keep current"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Leave blank to keep the stored cert."
+msgstr ""
+
+#. placeholder {0}: folder ? <>currently in <span className="font-mono">{folder}/</span></> : <>root by default</>
+#: src/client/admin/storage.tsx
+msgid "Leave blank to use the URL's last path segment. Slashes auto-create folders ({0})."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "leave empty for admins"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "leave empty to pass the trigger payload"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Leave to user"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "License"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Light"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Limit"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Link"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Link by verified email"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Linked — you can sign in with this provider."
+msgstr ""
+
+#. placeholder {0}: PROVIDER_LABELS[provider] ?? provider
+#: src/client/admin/account-page.tsx
+msgid "Linked {0}."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "List"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "list & sort"
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
 #: src/client/admin/ui.tsx
 msgid "live"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Live"
+msgstr ""
+
+#. placeholder {0}: fmtRevTs(String(e.snapshot.updatedAt ?? e.snapshot.updated_at ?? ""))
+#: src/client/admin/parity/revisions.tsx
+msgid "live · updated {0}"
+msgstr ""
+
+#: src/client/pages/rest-explorer.tsx
+msgid "Live browser for every endpoint under /api. Built from the OpenAPI doc your workspace exposes at /api/openapi.json — including the dynamic /api/items/{slug} routes for your collections."
+msgstr ""
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Live ERD of dynamic collections. Foreign keys derive from field type · relations panel below shows the join shape used by REST + GraphQL."
 msgstr ""
 
 #: src/client/admin/extras.tsx
 msgid "Live tail"
 msgstr ""
 
+#: src/client/admin/pages/logs.tsx
+msgid "Live tail paused."
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Live tail resumed."
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+#: src/client/admin/storage.tsx
+msgid "Load more"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "Loading API keys"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Loading…"
+msgstr ""
+
 #: src/client/admin/ui.tsx
 msgid "local D1"
 msgstr ""
 
+#: src/client/admin/parity/translations.tsx
+msgid "Locales"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Locales updated."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/storage.tsx
+msgid "Location"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Locked to one row — useful for site settings."
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "log entry"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Logical grouping in the DB. The object's storage key doesn't change."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Logo"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/logs.tsx
 #: src/client/admin/ui.tsx
 msgid "Logs"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "logs to stdout"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "Long-lived bearer tokens (`pak_…`) for CI, scripts, third-party integrations. A key impersonates its owner — optionally narrowed to a single role and/or given an expiry date."
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "Long-lived keys widen blast radius. Prefer the shortest expiry that works — you can always rotate."
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Lowercase letters, digits, _ or -; must start with a letter."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Lowercase letters, digits, <0>_</0> and <1>-</1>. Use <2>/</2> in the name to nest under an existing folder."
+msgstr ""
+
+#: src/client/admin/sheet.tsx
+msgid "lowercase letters, digits, and dashes only"
 msgstr ""
 
 #: src/client/admin/ui.tsx
 msgid "Lowercase, alphanumeric, 2–24 chars."
 msgstr ""
 
+#: src/client/admin/pages/functions.tsx
+msgid "Lowercase, digits, <0>_</0> or <1>-</1>. You can rename it later."
+msgstr ""
+
+#: src/client/admin/role-editor.tsx
+msgid "lowercase, snake_case"
+msgstr ""
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "m2m"
+msgstr ""
+
+#: src/client/pages/openapi-export.tsx
+msgid "Machine-readable spec for every /api endpoint in this workspace — including dynamic /api/items/{slug} entries for your collections. Import into Postman, Insomnia, Swagger UI, or any code-gen tool."
+msgstr ""
+
+#: src/client/components/auth-shell.tsx
+#: src/client/pages/magic-link.tsx
+msgid "Magic link"
+msgstr ""
+
+#: src/client/pages/magic-link.tsx
+msgid "Magic-link plugin not enabled on the server"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Make default"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+#: src/client/admin/relational-pickers.tsx
 #: src/client/admin/ui.tsx
 msgid "Manage"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Manage locales"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Manual backup queued."
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Manual entry"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "manual invoke via POST /api/functions/:name/invoke"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Map →"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "March"
 msgstr ""
 
 #: src/client/admin/ui.tsx
 msgid "Mark all read"
 msgstr ""
 
+#. placeholder {0}: node.op === "and" ? "all" : "any"
+#: src/client/admin/condition-editor.tsx
+msgid "match {0} of the following"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Max 500 characters."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Max 80 characters."
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "May"
+msgstr ""
+
+#: src/client/admin/members-panel.tsx
+msgid "Member"
+msgstr ""
+
+#: src/client/admin/members-panel.tsx
+msgid "members"
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Members"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Message"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/storage.tsx
+msgid "Metadata"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Metadata imported."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Metadata saved."
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Metadata URL"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Metadata XML"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Method"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Migrations"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Migrations are applied via <0>bun run db:migrate:<dialect></0> at deploy time. Drizzle tracks them by content hash; the folder tag comes from the build-time manifest. Rollbacks are not supported — write a forward migration instead."
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "Mint a public link that shows this record read-only — no sign-in required to view it."
+msgstr ""
+
+#. placeholder {0}: data.filter((r) => locales.some((l) => !r[l])).length
+#: src/client/admin/parity/translations.tsx
+msgid "Missing ({0})"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "Mon"
+msgstr ""
+
+#: src/client/admin/pages/flows.tsx
+msgid "more"
+msgstr ""
+
+#: src/client/admin/sheet.tsx
+msgid "More save options"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "Move down"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "Move up"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Moved to root."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Moved."
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Multi-locale content. Field-level translations attach to <0>c_*_translations</0> sibling tables; UI strings live here."
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "multiple ok"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Must accept the chosen HTTP method and respond with 2xx within 10s."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Must be a full http(s) URL."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Must be a JSON object."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Must be an integer or number column."
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Must be between 50 and 60000."
+msgstr ""
+
+#: src/client/admin/sheet.tsx
+msgid "must be valid json"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "must start with a letter"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/collection-settings.tsx
+msgid "must start with a letter; snake_case only"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "must start with http:// or https://"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "Mustache-style template for row display in pickers and references."
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "Mutations"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "My theme"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/add-field.tsx
+#: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/pages/webhooks.tsx
+#: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/email-templates.tsx
+#: src/client/admin/parity/insights.tsx
+#: src/client/admin/role-editor.tsx
+#: src/client/admin/storage.tsx
 #: src/client/admin/ui.tsx
+#: src/client/pages/api-keys.tsx
 msgid "Name"
+msgstr ""
+
+#: src/client/admin/edit-field.tsx
+msgid "Name and type are immutable — drop & re-add the column to change them."
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid "Name conflicts with an existing column."
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "name is required"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Name this passkey (e.g. MacBook Touch ID)"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "NameID format"
 msgstr ""
 
 #: src/client/admin/extras.tsx
 msgid "navigate"
 msgstr ""
 
+#: src/client/admin/storage.tsx
+msgid "network error"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "Never (no expiry)"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "New"
+msgstr ""
+
+#. placeholder {0}: slug || "row"
+#: src/client/admin/sheet.tsx
+msgid "New {0}"
+msgstr ""
+
+#. placeholder {0}: KANBAN_LABELS[c.id] ?? c.label
+#: src/client/admin/item-views.tsx
+msgid "New {0} post"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "New API key"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+#: src/client/admin/pages/overview.tsx
+msgid "New collection"
+msgstr ""
+
+#: src/client/admin/pages/flows.tsx
+#: src/client/admin/pages/overview.tsx
+msgid "New flow"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "New folder"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/overview.tsx
+msgid "New function"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "New insight panel"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+#: src/client/pages/api-keys.tsx
+msgid "New key"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "New panel"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/pages/reset-password.tsx
+msgid "New password"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "New password and confirmation don't match."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "New password must be at least 8 characters."
+msgstr ""
+
+#: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
 msgid "New post"
+msgstr ""
+
+#: src/client/admin/role-editor.tsx
+msgid "New role"
 msgstr ""
 
 #: src/client/admin/extras.tsx
 msgid "New row"
 msgstr ""
 
+#: src/client/admin/parity/email-templates.tsx
+msgid "New template"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "New translation key"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "New webhook"
+msgstr ""
+
 #: src/client/admin/ui.tsx
 msgid "New workspace"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/app.tsx
+#: src/client/admin/collections-index.tsx
+msgid "Next"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "Next month"
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "no"
+msgstr ""
+
+#: src/client/admin/permissions-matrix.tsx
+#: src/client/admin/role-editor.tsx
+msgid "no access"
+msgstr ""
+
+#: src/client/admin/permissions-matrix.tsx
+msgid "No access"
+msgstr ""
+
+#: src/client/admin/pages/flows.tsx
+msgid "No actions yet — click to add steps."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/auth-settings.tsx
+msgid "No active sessions."
+msgstr ""
+
+#: src/client/admin/members-panel.tsx
+msgid "No active workspace."
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "No activity in this window"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "No activity recorded."
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "No API keys yet"
+msgstr ""
+
+#: src/client/admin/pages/realtime.tsx
+msgid "No channels — create a collection to get one."
+msgstr ""
+
+#: src/client/admin/sheet.tsx
+msgid "No choices configured."
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid "No choices yet — click \"Add\". The value is what the column stores."
+msgstr ""
+
+#: src/client/admin/edit-field.tsx
+msgid "No choices yet. Click \"Add choice\" — value is what the column stores."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "No collections"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "No collections in this workspace yet — create one first, or switch <0>Kind</0> to <1>sql</1>."
+msgstr ""
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "No collections to graph — create one to populate the ERD."
+msgstr ""
+
+#: src/client/admin/permissions-matrix.tsx
+msgid "No collections yet — create one in the Schema tab to manage permissions here."
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "No comments yet — start the thread below."
+msgstr ""
+
+#: src/client/admin/permissions-matrix.tsx
+msgid "no condition; everyone in role"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "No conditions — this rule matches everything."
+msgstr ""
+
+#: src/client/pages/rest-explorer.tsx
+msgid "No content schema."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "No data yet — run the panel."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "No DDL on the table."
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "No default sort configured — list responses fall back to<0> -created_at</0> (newest first). Add one or more fields below to pin a different order."
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "No deliveries yet"
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "No earlier revisions — showing the current field values."
+msgstr ""
+
+#: src/client/admin/sheet.tsx
+msgid "No editable fields. Add columns from the Schema tab to capture data on this collection."
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "No end-users yet — they appear here after signing up via the workspace auth endpoint."
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "No errors recorded."
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "No errors."
+msgstr ""
+
+#. placeholder {0}: titleFor(prev)
+#: src/client/admin/parity/revisions.tsx
+msgid "No field changes from {0}."
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "No fields defined for <0>{collection}</0> yet — add fields in the schema editor before writing rules."
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "No file selected"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "No files match \"{q}\"."
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "No files uploaded yet — drop one above to get started."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "No files. Drop files anywhere on this page or use Upload."
+msgstr ""
+
+#: src/client/admin/pages/flows.tsx
+msgid "No flow selected. Click <0>+ New flow</0> to create your first one."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "No folders match."
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "No folders yet — uploads land under <0>uploads/</0>."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "No folders yet. <0>Create one</0>."
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "No function selected. Click <0>+ New function</0> to create one."
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "No functions yet — click + New function."
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "No image selected"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "No images match \"{q}\"."
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "No images uploaded yet — drop one above to get started."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "No insight panels yet"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid "No interface matches \"{query}\"."
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "No items"
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "No items in this collection yet."
 msgstr ""
 
 #: src/client/admin/extras.tsx
 msgid "No items yet"
 msgstr ""
 
+#: src/client/pages/rest-explorer.tsx
+msgid "No JSON content defined."
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "No log entries match"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "No logs yet — click Run."
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+#: src/client/pages/graphql.tsx
+#: src/client/pages/rest-explorer.tsx
+msgid "No matches."
+msgstr ""
+
 #: src/client/admin/extras.tsx
 msgid "No matches. Try <0>posts</0> or <1>edge</1>."
+msgstr ""
+
+#: src/client/admin/members-panel.tsx
+msgid "No members match \"{q}\"."
+msgstr ""
+
+#: src/client/admin/members-panel.tsx
+msgid "No members yet."
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "No migrations applied yet."
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "No more rows"
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "No mutations."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "No numeric columns"
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "No outstanding findings. Re-run after a schema or permission change."
+msgstr ""
+
+#: src/client/pages/rest-explorer.tsx
+msgid "No parameters or body."
+msgstr ""
+
+#: src/client/pages/openapi-export.tsx
+msgid "No paths in the current spec."
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "No queries."
+msgstr ""
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "No relation-typed fields detected. Add a field with type <0>relation</0> to draw an edge."
+msgstr ""
+
+#: src/client/pages/rest-explorer.tsx
+msgid "No responses defined."
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "No revisions yet for this item."
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "No row from c_{target} selected"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "No rows match \"{q}\"."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "No rows returned."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "No SAML providers configured. Add one to enable IdP-based SSO for this workspace's end-users."
+msgstr ""
+
+#: src/client/pages/rest-explorer.tsx
+msgid "No schema."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "No signing cert stored — login will fail."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "No social providers are enabled for this workspace."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "No tables found that can be adopted."
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "No tables match."
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "No tables yet."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "No tags yet."
+msgstr ""
+
+#: src/client/admin/parity/email-templates.tsx
+msgid "No templates yet — use \"New template\" to add one."
+msgstr ""
+
+#: src/client/admin/edit-field.tsx
+msgid "No two rows can hold the same value (case-sensitive)."
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "No types."
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "No users match"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "No webhooks yet"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "none"
+msgstr ""
+
+#: src/client/pages/rest-explorer.tsx
+msgid "none (public)"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+#: src/client/admin/parity/auth-settings.tsx
+msgid "not configured"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Not linked."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Not needed for count"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid "NOT NULL — adding to a table that already has rows needs a default."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Not owner-scoped"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Not signed in."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Not used"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/collection-settings.tsx
+msgid "Note"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Nothing landed in the last {range}. Widen the range, or wait for requests, item writes, and automation runs to flow in."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Nothing selected"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Nothing selected yet"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Nothing to export — the current view is empty."
 msgstr ""
 
 #: src/client/admin/ui.tsx
 msgid "Notifications"
 msgstr ""
 
+#: src/client/admin/item-views.tsx
+msgid "November"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "numeric column average"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "numeric column maximum"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "numeric column minimum"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "numeric column total"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "OAuth 2.0 / OIDC sign-in provider."
+msgstr ""
+
+#. placeholder {0}: AUTH_PROVIDER_NAMES[id] ?? id
+#: src/client/admin/parity/auth-settings.tsx
+msgid "OAuth redirect URI to register with {0}"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "OAuth required"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "October"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "off"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Off keeps the provider configured but hidden from sign-in."
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "ok"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/users.tsx
+msgid "on"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "On error"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "Once you leave this page, the secret can’t be retrieved — only revoked."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "One or more adopted FKs are missing a target collection."
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "One per line. <0>Content-Type</0> and <1>X-Workeros-*</1> are reserved."
+msgstr ""
+
+#. placeholder {0}: agg.groupBy
+#: src/client/admin/parity/insights.tsx
+msgid "One row per \"{0}\" — bars / donut / table show the breakdown; counter shows only the first."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "One URL per line — saved when you click away."
+msgstr ""
+
+#: src/client/components/auth-shell.tsx
+msgid "One-time link, no <0>password</0>."
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Only needed for self-signed LDAPS; the system trust store handles publicly-signed certs."
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "Only the current state exists — no edits recorded yet."
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Only translate missing keys"
+msgstr ""
+
 #: src/client/admin/extras.tsx
 msgid "open"
 msgstr ""
 
-#: src/client/admin/ui.tsx
-msgid "OpenAPI"
+#: src/client/admin/collections-index.tsx
+msgid "Open"
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Open resource"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Open sign-up"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Open-source · MIT licensed"
 msgstr ""
 
 #: src/client/admin/ui.tsx
+#: src/client/pages/openapi-export.tsx
+msgid "OpenAPI"
+msgstr ""
+
+#: src/client/pages/openapi-export.tsx
+msgid "OpenAPI spec refreshed."
+msgstr ""
+
+#: src/client/pages/openapi-export.tsx
+msgid "Operations"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "optional"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "Optional — a timestamped name is generated if you leave this blank."
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "Optional — the key stops working after this time."
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "or"
+msgstr ""
+
+#: src/client/pages/sign-in.tsx
+#: src/client/pages/sign-up.tsx
+msgid "or with email"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Original"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Other locales stay empty until filled in the matrix."
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Outgoing HTTP on collection events. Failed deliveries retry with exponential backoff."
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Outgoing webhook deliveries will show up here once a collection event fires."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Overrides the `--primary` token used across the admin and any published surfaces."
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+#: src/client/admin/ui.tsx
+#: src/client/pages/rest-explorer.tsx
 msgid "Overview"
+msgstr ""
+
+#: src/client/admin/role-editor.tsx
+msgid "owner only"
+msgstr ""
+
+#: src/client/admin/pages/realtime.tsx
+msgid "owner_id _eq $user.id"
+msgstr ""
+
+#: src/client/admin/app.tsx
+#: src/client/admin/collections-index.tsx
+msgid "owner-scoped"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+#: src/client/admin/collections-index.tsx
+msgid "Owner-scoped"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "Owner’s full access (no restriction)"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "p95 latency"
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "page {page} / {totalPages}"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "Page titles, badges. Falls back to the slug."
 msgstr ""
 
 #: src/client/admin/extras.tsx
 msgid "Pages"
 msgstr ""
 
+#: src/client/admin/parity/insights.tsx
+msgid "Panel \"{name}\" created."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Panel \"{name}\" deleted."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Panel \"{name}\" saved."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "parent not adopted"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Passkey added."
+msgstr ""
+
+#: src/client/pages/sign-in.tsx
+msgid "Passkey plugin not enabled"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Passkey removed."
+msgstr ""
+
+#: src/client/pages/sign-in.tsx
+msgid "Passkey sign-in failed"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Passkeys"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/pages/sign-in.tsx
+#: src/client/pages/sign-up.tsx
+msgid "Password"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Password changed; other sessions signed out."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Password changed."
+msgstr ""
+
+#: src/client/pages/reset-password.tsx
+msgid "Password must be at least 8 characters"
+msgstr ""
+
+#: src/client/pages/forgot.tsx
+#: src/client/pages/reset-password.tsx
+msgid "Password reset is not enabled on this instance"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Password set."
+msgstr ""
+
+#: src/client/pages/reset-password.tsx
+msgid "Passwords do not match"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Paste a base64 SAMLResponse"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "paste from the provider"
+msgstr ""
+
+#: src/client/pages/openapi-export.tsx
+msgid "Paths"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Pause"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "paused"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "payload"
+msgstr ""
+
 #: src/client/admin/extras.tsx
 msgid "Payload"
+msgstr ""
+
+#: src/client/admin/members-panel.tsx
+msgid "pending"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Pending invites"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "People"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Per-field read / write toggles. Hidden fields are stripped from API responses; non-writable fields are rejected on insert/update for this role."
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Performance"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Permanent. Owned items remain; ownership is reassigned to admin."
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "Permanent. Removes sessions, OAuth accounts and role assignments."
+msgstr ""
+
+#. placeholder {0}: confirmDelete.email
+#: src/client/admin/parity/app-users.tsx
+msgid "Permanently delete {0}? Their sessions, OAuth accounts and role assignments are removed too. This can't be undone."
+msgstr ""
+
+#: src/client/admin/pages/realtime.tsx
+msgid "permission · read"
+msgstr ""
+
+#: src/client/admin/permissions-matrix.tsx
+msgid "permission matrix"
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Permission rules, webhook patterns, function triggers, flow steps, revisions, comments, and audit log entries that reference <0>{slug}</0> will be updated. The physical table is not renamed."
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Permission saved: {role} · {action} · {collection}."
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Permissions"
+msgstr ""
+
+#: src/client/admin/role-editor.tsx
+msgid "Permissions (per action)"
+msgstr ""
+
+#: src/client/admin/permissions-matrix.tsx
+msgid "Permissions for {activeRole}"
+msgstr ""
+
+#. placeholder {0}: ownerScoped ? "authenticated role gets owner-scoped seed" : "admin-only by default"
+#: src/client/admin/adopt-wizard.tsx
+msgid "Permissions: {0}."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Photographer, designer, source…"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "physical c_<slug> tables"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Pick a collection and an aggregate below — no query to write."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Pick a collection first"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/parity/insights.tsx
+msgid "Pick a collection…"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "pick a column for the aliased system field"
+msgstr ""
+
+#: src/client/components/date-picker.tsx
+msgid "Pick a date…"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "Pick a field…"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Pick a file"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Pick a language…"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Pick a migration to inspect its details."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Pick a numeric field…"
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "Pick a revision from the timeline to inspect, diff, or revert."
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Pick a row from <0>c_{target}</0>"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Pick a row to select it"
+msgstr ""
+
+#: src/client/admin/sheet.tsx
+msgid "Pick a status…"
+msgstr ""
+
+#: src/client/admin/items.tsx
+msgid "Pick a subfield…"
+msgstr ""
+
+#. placeholder {0}: tables.length
+#: src/client/admin/adopt-wizard.tsx
+msgid "Pick a table to inspect · {0} available"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "pick a target collection for the adopted FK"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Pick a target collection."
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Pick a template"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Pick a tile to select it"
+msgstr ""
+
+#. placeholder {0}: FIELD_INTERFACES.length
+#. placeholder {1}: INTERFACE_GROUPS.length
+#: src/client/admin/add-field.tsx
+msgid "Pick a UI interface · {0} available across {1} groups"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Pick a unique name."
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Pick an existing file, or drop a new one to upload."
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Pick an existing image, or drop a new one to upload."
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Pick an image"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid "Pick an interface, name the column — additive ALTER TABLE, no existing rows are rewritten."
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "pick at least one event"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Pick collection…"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Pick column…"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Pick file"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Pick files"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Pick image"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Pick one or more files. Drag-drop or use Upload to add new ones."
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Pick row"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid "Pick the collection this relation points to."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Pick type…"
+msgstr ""
+
+#: src/client/admin/sheet.tsx
+msgid "Pick…"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Pipe collection events to Slack, your API, or any HTTPS endpoint."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "plain"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/collection-settings.tsx
+msgid "Plural"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "PNG or ICO recommended (≤ 64 KB)."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "PNG, JPG or WebP. Shown in the header and on any author display."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "PNG, JPG, SVG or WebP. Replaces any previous upload."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Policy"
+msgstr ""
+
+#. placeholder {0}: (nu.title ?? "").slice(0, 38)
+#. placeholder {1}: (nu.title ?? "").length > 38 ? "…" : ""
+#: src/client/admin/app.tsx
+msgid "Post \"{0}{1}\" created."
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Post saved."
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "POST to any HTTPS endpoint when collection events fire."
+msgstr ""
+
+#: src/client/pages/magic-link.tsx
+msgid "Prefer a password?"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Preferences"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Preferences saved."
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Presets"
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Prev"
 msgstr ""
 
 #: src/client/admin/ui.tsx
 msgid "preview"
 msgstr ""
 
+#: src/client/admin/parity/email-templates.tsx
+msgid "Preview"
+msgstr ""
+
+#. placeholder {0}: preview?.rows.length ?? 0
+#. placeholder {1}: preview?.ms ?? 0
+#: src/client/admin/parity/insights.tsx
+msgid "Preview · {0} rows · {1}ms"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Preview error"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Preview: "
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "Previous month"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Primary color"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Primary color must be a hex (#rrggbb) or a CSS color function."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Primary key"
+msgstr ""
+
+#. placeholder {0}: inspect.pk.dbType
+#: src/client/admin/adopt-wizard.tsx
+msgid "primary key {0} is unsupported"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Private"
+msgstr ""
+
 #: src/client/admin/ui.tsx
 msgid "Production"
 msgstr ""
 
+#: src/client/admin/account-page.tsx
+#: src/client/admin/parity/app-users.tsx
+msgid "Profile"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "profile is active."
+msgstr ""
+
+#. placeholder {0}: user.email
+#: src/client/admin/parity/app-users.tsx
+msgid "Profile saved for {0}."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/pages/users.tsx
+msgid "Profile saved."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "provider"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/users.tsx
+msgid "Provider"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Provider created."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Provider deleted."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Provider discovery"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Provider saved."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "providers"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Providers"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Public"
+msgstr ""
+
+#: src/client/pages/shared-record.tsx
+msgid "public link"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Public origin of this Worker — set via <0>wrangler.toml [vars]</0> (or <1>.env</1> on self-host). Used for CORS, OAuth callbacks and absolute links. Read-only here."
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "public read"
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "Public read-only link"
+msgstr ""
+
+#: src/client/admin/items.tsx
+msgid "Publish"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "Published"
+msgstr ""
+
+#: src/client/admin/role-editor.tsx
+msgid "published only"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Quality"
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "Queries"
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "Query"
+msgstr ""
+
+#. placeholder {0}: rows.length
+#. placeholder {1}: res.ms
+#: src/client/admin/parity/database.tsx
+msgid "Query ok · {0} row(s) · {1}ms"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Query returned no rows."
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Rana"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Rate limit (per email / minute)"
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "Raw"
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "Re-enables sign-in for this end-user."
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Re-run all"
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "Re-running…"
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "Reactivate end-user"
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "reactivated"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Read"
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+#: src/client/admin/parity/database.tsx
+#: src/client/pages/shared-record.tsx
+msgid "read-only"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "read-only SELECT against the workspace database"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Ready to create."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Ready to register <0>{slugClean}</0>"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Ready to save."
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/realtime.tsx
 #: src/client/admin/ui.tsx
 msgid "Realtime"
 msgstr ""
@@ -310,60 +5431,1728 @@ msgstr ""
 msgid "Received"
 msgstr ""
 
+#: src/client/admin/pages/users.tsx
+msgid "Recent activity"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Recent deliveries"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Recent errors"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Recipient (userId)"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+#: src/client/pages/sign-up.tsx
+msgid "recommended"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Redelivered."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Redirecting…"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid "References collection"
+msgstr ""
+
+#: src/client/pages/rest-explorer.tsx
+msgid "Refetch /api/openapi.json"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/overview.tsx
+#: src/client/admin/pages/realtime.tsx
+#: src/client/admin/pages/schema-graph.tsx
+#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/webhooks.tsx
+#: src/client/pages/openapi-export.tsx
 msgid "Refresh"
 msgstr ""
 
+#: src/client/pages/openapi-export.tsx
+msgid "Refresh spec"
+msgstr ""
+
+#: src/client/admin/app.tsx
+#: src/client/admin/pages/webhooks.tsx
+msgid "Refreshed."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/pages/openapi-export.tsx
+msgid "Refreshing…"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Register a custom OpenID Connect identity provider."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Register a physical table as a workeros collection. No DDL is run on the table — only the collection metadata row + field registrations are written."
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Register a table that already exists in your database. No DDL is run on the table — workeros only writes its own metadata."
+msgstr ""
+
+#: src/client/admin/edit-field.tsx
+msgid "Reject inserts/updates that omit this column."
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Reject responses whose assertion isn't signed by the IdP."
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Reject unauthorized certs (recommended)"
+msgstr ""
+
+#: src/client/admin/items.tsx
+msgid "Relation has no target"
+msgstr ""
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "relations"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Released"
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "Reload schema"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/collection-settings.tsx
+#: src/client/admin/condition-editor.tsx
+#: src/client/admin/members-panel.tsx
+#: src/client/admin/pages/settings.tsx
+msgid "Remove"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Remove {k}"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Remove {l}"
+msgstr ""
+
+#: src/client/admin/sheet.tsx
+msgid "Remove {tag}"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Remove choice"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Remove group"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Remove tag"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Remove tag {tag}"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+#: src/client/admin/pages/functions.tsx
+msgid "Rename"
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Rename <0>c_{slug}</0> → <1>c_{nextSlug}</1>?"
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Rename collection"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Rename function"
+msgstr ""
+
+#. placeholder {0}: totals ? ` (${totals} updated)` : ""
+#: src/client/admin/app.tsx
+msgid "Renamed to c_{nextSlug}{0}."
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Renaming…"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/pages/settings.tsx
+msgid "Replace"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Repository"
+msgstr ""
+
+#: src/client/pages/rest-explorer.tsx
+msgid "Request"
+msgstr ""
+
+#: src/client/pages/reset-password.tsx
+msgid "Request a new link"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Requests"
+msgstr ""
+
 #: src/client/admin/extras.tsx
+#: src/client/pages/rest-explorer.tsx
 msgid "required"
 msgstr ""
 
+#: src/client/admin/add-field.tsx
+#: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Required"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Required for every provider — must be a verified sender/domain for the chosen transport."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Required for sum/avg/min/max."
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+#: src/client/admin/parity/insights.tsx
+msgid "Required."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Requires a signed URL or auth cookie."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+#: src/client/admin/storage.tsx
+msgid "Reset"
+msgstr ""
+
+#: src/client/pages/reset-password.tsx
+msgid "Reset link invalid"
+msgstr ""
+
+#: src/client/pages/forgot.tsx
+msgid "Reset link sent"
+msgstr ""
+
+#. placeholder {0}: selected.size
+#. placeholder {1}: selected.size === 1 ? "" : "s"
+#: src/client/admin/pages/users.tsx
+msgid "Reset link sent to {0} user{1}."
+msgstr ""
+
+#. placeholder {0}: u.email
+#. placeholder {0}: user.email
+#: src/client/admin/pages/users.tsx
+msgid "Reset link sent to {0}."
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Reset password"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Reset view"
+msgstr ""
+
+#: src/client/components/auth-shell.tsx
+msgid "Reset your <0>password</0>."
+msgstr ""
+
+#: src/client/pages/forgot.tsx
+msgid "Reset your password"
+msgstr ""
+
+#: src/client/pages/reset-password.tsx
+msgid "Resetting password"
+msgstr ""
+
+#: src/client/pages/rest-explorer.tsx
+msgid "Resolved schemes"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+#: src/client/admin/pages/settings.tsx
+msgid "Resource"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "response"
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+#: src/client/pages/rest-explorer.tsx
+msgid "Response"
+msgstr ""
+
 #: src/client/admin/ui.tsx
+#: src/client/pages/rest-explorer.tsx
 msgid "REST Explorer"
 msgstr ""
 
+#: src/client/admin/collections-index.tsx
+#: src/client/admin/parity/database.tsx
+msgid "Restore"
+msgstr ""
+
+#: src/client/admin/app.tsx
+#: src/client/admin/collections-index.tsx
+msgid "Restore collection"
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Restore collection <0>c_{slug}</0>?"
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "Restore this snapshot"
+msgstr ""
+
+#. placeholder {0}: b.id
+#: src/client/admin/parity/database.tsx
+msgid "Restored from {0} (dry-run)."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Restricts the authenticated role to its own rows. Pick where ownership lives — a side table, the conventional <0>owner_id</0> column, or an aliased column."
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Result"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Result is piped into <0>$last</0> for the next step."
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+#: src/client/admin/pages/webhooks.tsx
+msgid "Resume"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "resumed"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Retention"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/webhooks.tsx
+msgid "Retry"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/parity/revisions.tsx
+msgid "Revert"
+msgstr ""
+
+#. placeholder {0}: confirmRev.v
+#: src/client/admin/parity/revisions.tsx
+msgid "Revert to revision v{0}?"
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "Revert to this"
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "Revert?"
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "Reverted — a new revision was recorded."
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "Reverting…"
+msgstr ""
+
+#. placeholder {0}: e.v
+#: src/client/admin/parity/revisions.tsx
+msgid "Revision v{0}"
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
 #: src/client/admin/ui.tsx
 msgid "Revisions"
 msgstr ""
 
+#: src/client/admin/item-collaboration.tsx
+msgid "revocable anytime"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/item-collaboration.tsx
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/auth-settings.tsx
+#: src/client/pages/api-keys.tsx
+msgid "Revoke"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Revoke all sessions"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Revoke others"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "Revoke this API key?"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "revoked"
+msgstr ""
+
+#. placeholder {0}: r.removed
+#. placeholder {1}: r.removed === 1 ? "" : "s"
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Revoked {0} other session{1}."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Revokes every active session except the one you're on right now."
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "Revoking key"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/item-collaboration.tsx
+msgid "Revoking…"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Risk: a hostile IdP can take over any local account that shares an email. Off by default."
+msgstr ""
+
+#: src/client/admin/members-panel.tsx
+#: src/client/admin/pages/users.tsx
+msgid "Role"
+msgstr ""
+
+#. placeholder {0}: data.name
+#: src/client/admin/app.tsx
+msgid "Role \"{0}\" already exists."
+msgstr ""
+
+#. placeholder {0}: data.name
+#: src/client/admin/app.tsx
+msgid "Role \"{0}\" created."
+msgstr ""
+
+#. placeholder {0}: data.name
+#: src/client/admin/app.tsx
+msgid "Role \"{0}\" saved."
+msgstr ""
+
+#. placeholder {0}: k.roleName ?? k.roleId
+#: src/client/pages/api-keys.tsx
+msgid "role: {0}"
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "roles"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-users.tsx
+msgid "Roles"
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Roles & permissions"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Roles come from <0>Roles & permissions</0>. The user also implicitly gets <1>authenticated</1>."
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Rotate"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "row count (no field needed)"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Row id"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "rows"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+#: src/client/admin/pages/overview.tsx
+msgid "Rows"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Rows carry a <0>tenant_id</0>. Adopted tables usually don't — leave off unless you know the source already partitions by tenant."
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "Rows carry a <0>tenant_id</0>. Disabling on an existing collection is unsupported."
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Rows created by {r} must match this rule."
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Rows matching this rule are visible to {r}."
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "rules"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/functions.tsx
+#: src/client/admin/parity/database.tsx
+msgid "Run"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Run a query to see results."
+msgstr ""
+
+#: src/client/admin/pages/flows.tsx
+msgid "Run now"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Run preview"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Run test"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/functions.tsx
+#: src/client/admin/parity/database.tsx
+#: src/client/admin/parity/insights.tsx
+#: src/client/pages/graphql.tsx
+msgid "Running…"
+msgstr ""
+
+#: src/client/admin/pages/flows.tsx
+msgid "runs"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "runs daily at 09:00 UTC"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Runtime"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Same DSL as roles & permissions. Operators: <0>_eq</0>, <1>_in</1>, <2>_gte</2>, … Variables: <3>$user.id</3>, <4>$now</4>, …"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "SAML 2.0 SSO"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "SAML 2.0 SSO — workspace end-users."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Sample event payload"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Sandbox"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "sandboxed handlers"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Sandboxed JS — HTTP, event-trigger, or cron. Provider auto-selected per runtime."
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Sandboxed JS. HTTP for manual invoke, event for pub-sub triggers, or cron for scheduled runs."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Sandboxed JS. Returns into <0>$last</0>."
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "Sat"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/condition-editor.tsx
+#: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/settings.tsx
+#: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/database.tsx
+#: src/client/admin/parity/email-templates.tsx
+#: src/client/admin/parity/saml-provider-dialog.tsx
+#: src/client/admin/parity/translations.tsx
+#: src/client/admin/sheet.tsx
+msgid "Save"
+msgstr ""
+
+#: src/client/admin/sheet.tsx
+msgid "Save and continue"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Save as <0>(optional)</0>"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/pages/webhooks.tsx
+#: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/role-editor.tsx
+msgid "Save changes"
+msgstr ""
+
+#: src/client/admin/edit-field.tsx
+msgid "Save field"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Save flow"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Save metadata"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "Save sort"
+msgstr ""
+
+#: src/client/admin/parity/email-templates.tsx
+msgid "Save the template before sending a test."
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "Save this secret now"
+msgstr ""
+
+#. placeholder {0}: urls.length
+#. placeholder {1}: urls.length === 1 ? "" : "s"
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Saved {0} redirect URL{1}."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Saved as a row in <0>saved_panels</0>. Collection panels aggregate one collection (count / sum / average …); SQL panels run a read-only SELECT against the workspace database."
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Saved as snippet."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/pages/settings.tsx
+#: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/parity/translations.tsx
+#: src/client/admin/sheet.tsx
+#: src/client/admin/storage.tsx
+#: src/client/pages/reset-password.tsx
+msgid "Saving…"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/database.tsx
+msgid "Schedule"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "scheduled — granularity is 1 minute"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "scheduled by <0>published_at</0>"
+msgstr ""
+
+#: src/client/admin/app.tsx
+#: src/client/admin/collections-index.tsx
+#: src/client/pages/graphql.tsx
+msgid "Schema"
+msgstr ""
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Schema exported · schema.json"
+msgstr ""
+
+#: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/ui.tsx
 msgid "Schema graph"
+msgstr ""
+
+#: src/client/pages/openapi-export.tsx
+msgid "Schemas"
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "Scope to role"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "scoping & lifecycle"
+msgstr ""
+
+#. placeholder {0}: FIELD_INTERFACES.length
+#: src/client/admin/add-field.tsx
+msgid "Search {0} interfaces — input, markdown, dropdown, relation…"
+msgstr ""
+
+#: src/client/admin/items.tsx
+msgid "Search {total} items by title or slug…"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Search by label or id…"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Search by name or email…"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Search collections by slug or group…"
 msgstr ""
 
 #: src/client/admin/ui.tsx
 msgid "Search collections, items, settings…"
 msgstr ""
 
+#: src/client/admin/relational-pickers.tsx
+msgid "Search files by key…"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Search folders…"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Search images by key…"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Search keys…"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "search loaded rows — path, action, user, message…"
+msgstr ""
+
+#: src/client/admin/members-panel.tsx
+msgid "Search members…"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Search steps…"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "secret"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Secret rotated."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/pages/advisor.tsx
+msgid "Security"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Select"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Select a collection…"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Select a function to run."
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Select a function to save."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Select a function…"
+msgstr ""
+
+#: src/client/pages/rest-explorer.tsx
+msgid "Select an endpoint on the left to inspect it."
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "Select an item to see its history."
+msgstr ""
+
 #: src/client/admin/ui.tsx
 msgid "Select environment"
 msgstr ""
 
+#: src/client/admin/select.tsx
+msgid "Select…"
+msgstr ""
+
+#. placeholder {0}: selected[0]
+#: src/client/admin/relational-pickers.tsx
+msgid "Selected <0>{0}</0>"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Selected <0>{selected}</0>"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Self-hosted on Cloudflare Workers. Most config lives in wrangler.toml; this page is a live view + UI for runtime-mutable values."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Self-hosted on Cloudflare Workers. No telemetry, no billing — just clone, deploy, run."
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+#: src/client/admin/pages/users.tsx
+#: src/client/pages/rest-explorer.tsx
+msgid "Send"
+msgstr ""
+
+#: src/client/pages/sign-in.tsx
+msgid "Send a magic link instead"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Send an email invite. The user finishes signup themselves."
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Send invite"
+msgstr ""
+
+#: src/client/pages/magic-link.tsx
+msgid "Send link"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Send password reset"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+#: src/client/pages/forgot.tsx
+msgid "Send reset link"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+#: src/client/admin/parity/email-templates.tsx
+msgid "Send test"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Send test email"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Sender address for transactional email — set via <0>wrangler secret put</0> / <1>.env</1>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here."
+msgstr ""
+
+#: src/client/pages/magic-link.tsx
+msgid "Sending magic link"
+msgstr ""
+
+#: src/client/pages/forgot.tsx
+msgid "Sending reset link"
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+#: src/client/admin/pages/settings.tsx
+#: src/client/pages/forgot.tsx
+#: src/client/pages/magic-link.tsx
+#: src/client/pages/rest-explorer.tsx
+msgid "Sending…"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Sends a one-time sign-in link by email — requires a configured email adapter (set RESEND_API_KEY + EMAIL_FROM)."
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Sent as <0>X-Workeros-Signature: sha256=…</0>. Verify on the receiver."
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "September"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Server fetches the URL and stores it in this workspace. http/https only — private/internal hosts are rejected."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Server log line. Use <0>{{ data.* }}</0> for interpolation."
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "service-account password"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "session"
+msgstr ""
+
+#. placeholder {0}: id.slice(0, 6)
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Session {0}… revoked."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Session {label} revoked."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Session lifetime"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Session lifetime set to {v}."
+msgstr ""
+
+#. placeholder {0}: s.device
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-users.tsx
+msgid "Session revoked: {0}"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "sessions"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-users.tsx
+msgid "Sessions"
+msgstr ""
+
+#. placeholder {0}: user.email
+#: src/client/admin/pages/users.tsx
+msgid "Sessions revoked for {0}."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "set"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Set <0>openSignup</0> to <1>true</1> in admin → Auth Settings to re-open."
+msgstr ""
+
+#: src/client/pages/reset-password.tsx
+msgid "Set a new password for your account — at least 8 characters."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Set a password"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "set EMAIL_FROM + a provider key"
+msgstr ""
+
+#: src/client/pages/reset-password.tsx
+msgid "Set new password"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "set on first login"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Set password"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Set the config object via the API once the panel exists."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Set them in <0>wrangler.toml [vars]</0> / <1>wrangler secret put</1> (or <2>apps/web/.env</2> on self-host) and redeploy. This panel only reports which keys are present — secret values are never sent to the browser."
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Sets the attribute map to that IdP's defaults — you can still tweak later."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Sets the locale used to format dates and numbers across the admin. Choose \"Workspace default\" to follow the workspace language."
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Setting up passkey…"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/app.tsx
+#: src/client/admin/pages/settings.tsx
 #: src/client/admin/ui.tsx
 msgid "Settings"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Settings saved."
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "Share link copied."
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "Share link created."
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "Share link revoked."
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "share this record"
+msgstr ""
+
+#: src/client/pages/shared-record.tsx
+msgid "Shared record"
+msgstr ""
+
+#: src/client/pages/shared-record.tsx
+msgid "Shared via workeros · this link can be revoked at any time."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Short tagline for the workspace."
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Show"
+msgstr ""
+
+#. placeholder {0}: filteredTypes.length - MAX_TYPES_INITIAL
+#: src/client/pages/graphql.tsx
+msgid "Show {0} more…"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Show active collections"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Show archived collections"
+msgstr ""
+
+#. placeholder {0}: Object.keys(result.headers).length
+#: src/client/pages/rest-explorer.tsx
+msgid "Show headers ({0})"
+msgstr ""
+
+#: src/client/pages/sign-in.tsx
+msgid "Show password"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Show this option on the sign-in screen."
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "Show variables"
+msgstr ""
+
+#. placeholder {0}: files.length
+#: src/client/admin/storage.tsx
+msgid "showing {0}"
+msgstr ""
+
+#. placeholder {0}: changedDiff.length
+#. placeholder {1}: changedDiff.length === 1 ? "" : "s"
+#: src/client/admin/parity/revisions.tsx
+msgid "Showing {0} changed field{1}"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Showing {loaded} of {total}"
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "Showing all fields"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Showing the 100 most recently updated rows. Use search to narrow down."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Showing the original above. Toggle <0>Public</0> to enable edge resizing for this file."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Shown as the panel title on the dashboard."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Shown in author bylines and the header dropdown."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Shown in the sidebar and the browser title."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Side-table (item_ownership)"
+msgstr ""
+
+#: src/client/components/auth-shell.tsx
+#: src/client/pages/magic-link.tsx
+#: src/client/pages/sign-in.tsx
+#: src/client/pages/sign-up.tsx
+msgid "Sign in"
+msgstr ""
+
+#: src/client/components/auth-shell.tsx
+msgid "Sign in to <0>workeros</0>."
+msgstr ""
+
+#: src/client/pages/sign-in.tsx
+msgid "Sign in with passkey"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Sign in with Touch ID, Face ID, a Windows Hello PIN, or a hardware security key."
+msgstr ""
+
+#: src/client/pages/sign-in.tsx
+msgid "Sign in with your email and password, or use a provider."
 msgstr ""
 
 #: src/client/admin/ui.tsx
 msgid "Sign out"
 msgstr ""
 
+#: src/client/admin/account-page.tsx
+msgid "Sign out elsewhere"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Sign out from all other devices"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Sign out other devices"
+msgstr ""
+
+#: src/client/components/auth-shell.tsx
+#: src/client/pages/sign-in.tsx
+msgid "Sign up"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Sign URL"
+msgstr ""
+
+#: src/client/pages/sign-in.tsx
+msgid "Sign-in failed"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Sign-in method"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Sign-up / sign-in / get-session / sign-out"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Sign-up failed"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Sign-up is disabled"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Signature algorithm"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Signed URL copied (1h)."
+msgstr ""
+
+#: src/client/pages/sign-in.tsx
+msgid "Signing in…"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Signing secret"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "single scalar value"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "singleton"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Singleton"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/collection-settings.tsx
+msgid "Singular"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+#: src/client/admin/parity/database.tsx
+#: src/client/admin/storage.tsx
+msgid "Size"
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Slack #content"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "SLO URL"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/collection-settings.tsx
+#: src/client/admin/collections-index.tsx
+#: src/client/admin/pages/overview.tsx
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Slug"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/collection-settings.tsx
+msgid "slug is required"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Slug: <0>{slugClean}</0>"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+#: src/client/pages/graphql.tsx
+msgid "Snippets"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Social sign-in"
+msgstr ""
+
+#: src/client/components/social-buttons.tsx
+msgid "Social sign-in plugin not enabled"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Soft delete"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Source URL"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "SP entity ID"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "SP URLs <0>(paste into the IdP console)</0>"
+msgstr ""
+
+#: src/client/pages/openapi-export.tsx
+msgid "Spec unavailable. Try Refresh."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "SQL"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "SQL editor"
+msgstr ""
+
 #: src/client/admin/ui.tsx
 msgid "Staging"
 msgstr ""
 
+#: src/client/admin/collections-index.tsx
+msgid "Start from"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "static panels render their config object verbatim — set it from the API once the panel exists."
+msgstr ""
+
+#: src/client/admin/items.tsx
+#: src/client/admin/members-panel.tsx
+#: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/pages/webhooks.tsx
+#: src/client/admin/parity/app-users.tsx
+msgid "Status"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Status field"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Status refreshed."
+msgstr ""
+
+#. placeholder {0}: step + 1
+#: src/client/admin/collections-index.tsx
+msgid "step {0} of 2"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Step log"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Steps"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+#: src/client/admin/storage.tsx
 #: src/client/admin/ui.tsx
 msgid "Storage"
+msgstr ""
+
+#: src/client/admin/sheet.tsx
+msgid "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup."
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "stored objects"
+msgstr ""
+
+#: src/client/admin/sheet.tsx
+msgid "Stores a list of storage keys. Upload new files on the <0>Storage</0> page."
+msgstr ""
+
+#. placeholder {0}: target || "—"
+#: src/client/admin/sheet.tsx
+msgid "Stores a row id from <0>c_{0}</0>."
+msgstr ""
+
+#: src/client/admin/sheet.tsx
+msgid "Stores the storage key. Upload new files on the <0>Storage</0> page."
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid "Stores the target row's <0>id</0>."
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Stream"
+msgstr ""
+
+#: src/client/admin/pages/realtime.tsx
+msgid "sub"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/email-templates.tsx
+msgid "Subject"
+msgstr ""
+
+#: src/client/admin/parity/email-templates.tsx
+msgid "Subject is required."
 msgstr ""
 
 #: src/client/admin/extras.tsx
 msgid "Subscribed. Waiting for events…"
 msgstr ""
 
+#: src/client/admin/pages/webhooks.tsx
+msgid "Success"
+msgstr ""
+
+#: src/client/admin/pages/flows.tsx
+msgid "Success rate"
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "suggested fix"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "suggested: {suggestedAlias}"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "summary"
+msgstr ""
+
+#: src/client/pages/openapi-export.tsx
+msgid "Summary"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "Sun"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-users.tsx
+msgid "Suspend"
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "Suspend end-user"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-users.tsx
+msgid "suspended"
+msgstr ""
+
+#: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
+#: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/revisions.tsx
+#: src/client/admin/permissions-matrix.tsx
 msgid "system"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "System"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "System columns (optional)"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "System columns:"
+msgstr ""
+
+#: src/client/admin/sheet.tsx
+msgid "system fields"
+msgstr ""
+
+#: src/client/admin/role-editor.tsx
+msgid "System role — name is read-only; permissions still editable."
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "System roles ship with the platform; custom roles layer additively."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/collections-index.tsx
+#: src/client/admin/item-views.tsx
+#: src/client/admin/pages/logs.tsx
+msgid "Table"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Tables"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+#: src/client/pages/openapi-export.tsx
+msgid "Tags"
+msgstr ""
+
+#. placeholder {0}: folder || "uploads"
+#: src/client/admin/storage.tsx
+msgid "Target folder: <0>{0}/</0> · max 100 MB per file · jpeg, png, webp, avif transformed on the fly"
+msgstr ""
+
+#: src/client/admin/items.tsx
+msgid "Target unavailable"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Target:"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Taxonomy"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Template"
+msgstr ""
+
+#: src/client/admin/parity/email-templates.tsx
+msgid "Template saved."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/collection-settings.tsx
+#: src/client/admin/collections-index.tsx
+msgid "Tenant-scoped"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Tenant-scoped lookup at run time. Inactive functions throw at execution."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Test"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Test against an item"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Test assertion"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Test connection"
+msgstr ""
+
+#. placeholder {0}: r.to
+#: src/client/admin/pages/settings.tsx
+msgid "Test email sent to {0}."
+msgstr ""
+
+#: src/client/admin/parity/email-templates.tsx
+msgid "Test email sent."
+msgstr ""
+
+#. placeholder {0}: draft.name
+#. placeholder {0}: h.name
+#: src/client/admin/pages/webhooks.tsx
+msgid "Test event sent to {0}."
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Test LDAP connection"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Test run"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Test run · {name}"
+msgstr ""
+
+#: src/client/admin/pages/flows.tsx
+msgid "Test run dispatched."
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "The activity endpoint returned an error. Try again in a moment."
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "The advisor endpoint returned an error. Re-run to try again."
+msgstr ""
+
+#. placeholder {0}: provider.id.toUpperCase()
+#. placeholder {1}: provider.id
+#: src/client/admin/parity/auth-settings.tsx
+msgid "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{app-url}/api/t/{workspace}/auth/callback/{1}</2> as the redirect URI with the provider."
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "The first account on a fresh instance is provisioned as <0>admin</0> automatically. You can demote yourself later."
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "The first user to sign up becomes admin; everyone else lands in authenticated. Sessions, providers, and 2FA are tracked per account."
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "The full secret is shown once after creation — copy it somewhere safe."
+msgstr ""
+
+#. placeholder {0}: k.name
+#: src/client/pages/api-keys.tsx
+msgid "The key \"{0}\" will stop working immediately. This cannot be undone."
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "The physical table and all rows are dropped. This is irreversible."
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "The physical table and all rows are dropped. This is irreversible. Permissions, revisions, and webhooks tied to this collection are removed too."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "The provider is added disabled. Set its client secret server-side, then enable it here."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "The query runs verbatim. The visualization hint above explains how its columns map to the chart."
+msgstr ""
+
+#: src/client/pages/shared-record.tsx
+msgid "The share link may have been revoked, or the record it pointed to was removed."
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "These rows will be removed from c_posts. This deletes the underlying records — revisions remain available."
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "This <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> is irreversible. Existing data in the column is lost."
 msgstr ""
 
 #: src/client/admin/extras.tsx
 msgid "this collection"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "This database has no tables."
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "This is already the current state"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "This is the first user on this instance."
+msgstr ""
+
+#: src/client/pages/shared-record.tsx
+msgid "This link is no longer available"
+msgstr ""
+
+#: src/client/pages/reset-password.tsx
+msgid "This password reset link is missing its token or has expired. Request a new one and try again."
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "This permanently removes the function and its code. Triggers, flow steps, or callers that reference it will stop working. This can't be undone."
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "This removes the panel from <0>saved_panels</0> and any dashboards that reference it. The query itself isn't run again. This action can't be undone."
+msgstr ""
+
+#. placeholder {0}: confirmRev.v
+#. placeholder {1}: fmtRevTs(confirmRev.createdAt)
+#: src/client/admin/parity/revisions.tsx
+msgid "This rewrites the item to the v{0} snapshot from {1}. The current state is preserved as a new revision, so this is undoable."
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "This workspace has no custom roles yet — create one under <0>Roles & permissions</0>."
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "Thu"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+#: src/client/admin/pages/webhooks.tsx
+#: src/client/components/date-picker.tsx
+msgid "Time"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Time zone"
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "Timeline"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/functions.tsx
+msgid "Timeout (ms)"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Timestamps"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Timestamps across the admin render in this zone."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/items.tsx
+#: src/client/pages/openapi-export.tsx
+msgid "Title"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "TLS"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/schema-graph.tsx
+msgid "to"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/translations.tsx
+msgid "To"
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "to execute"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Toggle"
 msgstr ""
 
 #: src/client/admin/ui.tsx
@@ -372,11 +7161,88 @@ msgstr ""
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/ui.tsx
+#: src/client/components/auth-shell.tsx
 msgid "Toggle theme"
 msgstr ""
 
+#: src/client/admin/pages/overview.tsx
+msgid "Top collections"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "Total users"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Transform"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Transform unavailable"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Transformed"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Translate"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Translate UI strings using Claude. Requires <0>ANTHROPIC_API_KEY</0> on the server."
+msgstr ""
+
+#. placeholder {0}: res.translated
+#. placeholder {1}: res.remaining ? ` (${res.remaining} more queued — run again)` : ""
+#: src/client/admin/parity/translations.tsx
+msgid "Translated {0}{1}."
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Translating…"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Translation for {base}"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
 #: src/client/admin/ui.tsx
 msgid "Translations"
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "Trigger"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "trigger → action graph"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Trigger only fires when the row matches this filter (after the change)."
+msgstr ""
+
+#: src/client/admin/pages/flows.tsx
+msgid "Triggers fire on collection events, schedules, or webhooks. Each step runs in the sandbox."
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Try a wider time range or clear the level filter."
+msgstr ""
+
+#: src/client/pages/rest-explorer.tsx
+msgid "Try it"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "Tue"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+#: src/client/admin/storage.tsx
+msgid "Type"
 msgstr ""
 
 #: src/client/admin/extras.tsx
@@ -387,24 +7253,493 @@ msgstr ""
 msgid "Type a command, collection, or item title…"
 msgstr ""
 
+#: src/client/admin/sheet.tsx
+msgid "Type and press Enter…"
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "Types"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "unbound"
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "unchanged"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "Unified log explorer over the activity audit store. Switch between the Stream lens (HTTP, data, automation, functions, storage) and the Table audit trail — both read the same rows."
+msgstr ""
+
 #: src/client/admin/extras.tsx
 msgid "unique"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Unique"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid "UNIQUE constraint at the column level."
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "unknown — manifest out of sync, run <0>bun run --cwd packages/db manifest</0>"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "unknown agent"
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "Unknown device"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Unlink"
+msgstr ""
+
+#. placeholder {0}: PROVIDER_LABELS[account.providerId] ?? account.providerId
+#: src/client/admin/account-page.tsx
+msgid "Unlinked {0}."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Unnamed passkey"
 msgstr ""
 
 #: src/client/admin/ui.tsx
 msgid "Unread"
 msgstr ""
 
+#: src/client/admin/parity/email-templates.tsx
+#: src/client/admin/storage.tsx
+msgid "unsaved"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "unset"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "unsupported"
+msgstr ""
+
+#. placeholder {0}: inspect.pk.dbType
+#: src/client/admin/adopt-wizard.tsx
+msgid "unsupported pk type: {0}"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Until you confirm your email, sign-in won't work. Didn't get it? Check spam, or wait a minute and try sign-in — we'll re-send on demand."
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "unverified"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Update password"
+msgstr ""
+
+#: src/client/admin/items.tsx
+#: src/client/admin/storage.tsx
+msgid "Updated"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/pages/settings.tsx
+#: src/client/admin/relational-pickers.tsx
+#: src/client/admin/storage.tsx
+msgid "Upload"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "uploaded"
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "Uploading to <0>{uploadFolder}/</0>."
+msgstr ""
+
+#: src/client/admin/relational-pickers.tsx
+msgid "uploading…"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+#: src/client/admin/pages/settings.tsx
+msgid "Uploading…"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Uploads"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "URL"
+msgstr ""
+
+#. placeholder {0}: k.split("/").pop() ?? k
+#: src/client/admin/storage.tsx
+msgid "URL copied: {0}"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "URL identifier and physical table prefix. Renaming cascades through all references."
+msgstr ""
+
+#. placeholder {0}: inspect.table
+#: src/client/admin/adopt-wizard.tsx
+msgid "URL identifier. References the existing <0>{0}</0> table (no physical rename)."
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "url is required"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "URL is required."
+msgstr ""
+
 #: src/client/admin/ui.tsx
 msgid "URL:"
 msgstr ""
 
+#: src/client/admin/adopt-wizard.tsx
+msgid "Use \"{label}\" column"
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Use \"owner_id\" column"
+msgstr ""
+
+#. placeholder {0}: selected.length || "0"
+#. placeholder {1}: selected.length === 1 ? "" : "s"
+#: src/client/admin/relational-pickers.tsx
+msgid "Use {0} file{1}"
+msgstr ""
+
+#. placeholder {0}: p.label
+#: src/client/admin/pages/settings.tsx
+msgid "Use {0} palette"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Use <0>ldaps://</0> in production; <1>ldap://</1> only on a trusted network."
+msgstr ""
+
+#: src/client/pages/magic-link.tsx
+msgid "Use a different email"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Use a hex value (#rrggbb), or a CSS color function: rgb(), hsl(), oklch(), oklab()."
+msgstr ""
+
+#: src/client/admin/permissions-matrix.tsx
+msgid "Use custom rule"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Use letters, digits, dots, dashes, or underscores. Must start with a letter or digit."
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "Used as fallback when the requested locale has no string for a key."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Used by revision tracking and the updated_at projection."
+msgstr ""
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "Used for default sort, audit, and the created_at projection."
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Used in the ACS / metadata URLs below."
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "user"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/auth-settings.tsx
+msgid "User"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "User filter"
+msgstr ""
+
+#: src/client/admin/pages/logs.tsx
+msgid "User-Agent"
+msgstr ""
+
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Username"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "users"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
 #: src/client/admin/ui.tsx
 msgid "Users"
 msgstr ""
 
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Users enrol a passkey after signing in once with another method."
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Validation"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+#: src/client/admin/parity/revisions.tsx
+msgid "value"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+#: src/client/admin/parity/ldap-config-card.tsx
+msgid "Value"
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid "value · label · color"
+msgstr ""
+
+#: src/client/admin/edit-field.tsx
+msgid "value · label · color (CSS)"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "value or $user.id"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "Variables"
+msgstr ""
+
+#: src/client/pages/graphql.tsx
+msgid "Variables (JSON)"
+msgstr ""
+
+#: src/client/admin/parity/email-templates.tsx
+msgid "Variables use Liquid-style <0>{{ user.email }}</0>. Template renders run through the Functions sandbox."
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "vector index"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Vectorize"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "Verification required."
+msgstr ""
+
+#: src/client/admin/parity/email-templates.tsx
+msgid "verify"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Verify"
+msgstr ""
+
+#: src/client/admin/parity/email-templates.tsx
+msgid "Verify email"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Verifying…"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+#: src/client/pages/openapi-export.tsx
+msgid "Version"
+msgstr ""
+
+#: src/client/admin/collection-settings.tsx
+msgid "Versioned (draft / published)"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "View active"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "View all"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "View archived"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "View compiled SQL"
+msgstr ""
+
+#: src/client/admin/parity/revisions.tsx
+msgid "View full"
+msgstr ""
+
+#: src/client/admin/pages/users.tsx
+msgid "View profile"
+msgstr ""
+
+#: src/client/admin/items.tsx
+msgid "Views"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Visualization"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Waiting for browser…"
+msgstr ""
+
+#: src/client/admin/parity/saml-provider-dialog.tsx
+msgid "Want signed assertions"
+msgstr ""
+
+#: src/client/admin/pages/advisor.tsx
+msgid "warn"
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "We sent a verification link to {email}. Click it to finish creating your account."
+msgstr ""
+
+#: src/client/components/auth-shell.tsx
+msgid "We'll email a reset link. Until you click it, your existing password still works."
+msgstr ""
+
+#: src/client/pages/magic-link.tsx
+msgid "We'll email a single-use sign-in link. No password needed."
+msgstr ""
+
+#. placeholder {0}: data.name
+#: src/client/admin/pages/webhooks.tsx
+msgid "Webhook \"{0}\" created."
+msgstr ""
+
+#. placeholder {0}: data.name
+#: src/client/admin/pages/webhooks.tsx
+msgid "Webhook \"{0}\" updated."
+msgstr ""
+
+#: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/ui.tsx
 msgid "Webhooks"
+msgstr ""
+
+#: src/client/admin/item-views.tsx
+msgid "Wed"
+msgstr ""
+
+#: src/client/pages/sign-in.tsx
+msgid "Welcome back"
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "What this file is about…"
+msgstr ""
+
+#: src/client/admin/role-editor.tsx
+msgid "What this role can do…"
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "When (filter DSL)"
+msgstr ""
+
+#: src/client/admin/parity/translations.tsx
+msgid "When off, existing translations in the target locale are overwritten."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "When off, new account creation is rejected on every path (email/password, social, magic-link). The first user is always allowed so a fresh instance can bootstrap its admin."
+msgstr ""
+
+#: src/client/admin/pages/functions.tsx
+msgid "When paused, triggers stop firing and HTTP invokes are rejected."
+msgstr ""
+
+#: src/client/admin/flow-builder.tsx
+msgid "When set, body is rendered from the stored template at run time. Otherwise the literal Subject + Body fields below are used."
+msgstr ""
+
+#: src/client/pages/api-keys.tsx
+msgid "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
+msgstr ""
+
+#: src/client/admin/storage.tsx
+msgid "Width"
+msgstr ""
+
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Will be added disabled."
+msgstr ""
+
+#. placeholder {0}: inspect.table
+#: src/client/admin/adopt-wizard.tsx
+msgid "Will create collection metadata row referencing physical table <0>{0}</0>."
+msgstr ""
+
+#. placeholder {0}: schema.slug
+#: src/client/admin/collection-settings.tsx
+msgid "Will rename <0>{0}</0> → <1>{slugClean}</1> and update permission rules, webhooks, function patterns, flow steps, revisions, comments, and audit log."
+msgstr ""
+
+#: src/client/admin/add-field.tsx
+msgid "Will run on save."
+msgstr ""
+
+#. placeholder {0}: Math.min(targetCount, 50)
+#. placeholder {1}: targetCount === 1 ? "" : "s"
+#. placeholder {2}: targetCount > 50 ? ` of ${targetCount} (capped at 50 per run)` : ""
+#: src/client/admin/parity/translations.tsx
+msgid "Will translate <0>{0}</0> key{1}{2}."
+msgstr ""
+
+#: src/client/admin/items.tsx
+msgid "Words"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "worker bindings"
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "worker thread + RPC"
+msgstr ""
+
+#. placeholder {0}: schema.slug
+#: src/client/admin/collection-settings.tsx
+msgid "Workeros stops treating <0>{0}</0> as a collection. The underlying table and its rows stay intact; you can restore from the Archived view."
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Workeros stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view."
+msgstr ""
+
+#: src/client/admin/app.tsx
+msgid "Workeros will start treating this table as a collection again. Owner-scoped permissions are re-seeded if they were configured."
+msgstr ""
+
+#: src/client/components/confirm-action.tsx
+msgid "Working…"
 msgstr ""
 
 #: src/client/admin/ui.tsx
@@ -420,10 +7755,119 @@ msgstr ""
 msgid "Workspace \"{slug}\" already exists."
 msgstr ""
 
+#: src/client/admin/parity/auth-settings.tsx
+msgid "Workspace auth API <0>· auth as a service</0>"
+msgstr ""
+
+#. placeholder {0}: localeLabel(workspace.defaultLocale)
+#. placeholder {0}: workspace.timezone
+#: src/client/admin/account-page.tsx
+msgid "Workspace default — {0}"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Workspace default theme"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "workspace favicon"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Workspace language settings saved."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "workspace logo"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Workspace name"
+msgstr ""
+
 #: src/client/admin/ui.tsx
 msgid "Workspaces"
 msgstr ""
 
+#: src/client/admin/pages/settings.tsx
+msgid "Wrangler"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "wrangler.toml snippet"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "writable"
+msgstr ""
+
+#: src/client/admin/condition-editor.tsx
+msgid "Write"
+msgstr ""
+
+#: src/client/admin/item-collaboration.tsx
+msgid "Write a comment · ⌘+Enter to send"
+msgstr ""
+
+#: src/client/admin/parity/insights.tsx
+msgid "Write a read-only SELECT below."
+msgstr ""
+
+#: src/client/admin/pages/overview.tsx
+msgid "Writes (1h)"
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+msgid "Writes 24h"
+msgstr ""
+
+#: src/client/admin/parity/database.tsx
+msgid "Writes blocked. Toggle \"read-only\" off to run mutations."
+msgstr ""
+
+#: src/client/admin/parity/app-users.tsx
+msgid "yes"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "You haven't registered any passkeys yet."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "You signed in with a social provider. Setting a password lets you also sign in with email + password."
+msgstr ""
+
+#: src/client/pages/sign-up.tsx
+msgid "You'll get the authenticated role by default."
+msgstr ""
+
 #: src/client/admin/ui.tsx
 msgid "You're all caught up."
+msgstr ""
+
+#: src/client/components/auth-shell.tsx
+msgid "You're the <0>first</0>. Claim this instance."
+msgstr ""
+
+#: src/client/pages/forgot.tsx
+#: src/client/pages/magic-link.tsx
+#: src/client/pages/sign-in.tsx
+#: src/client/pages/sign-up.tsx
+msgid "you@example.com"
+msgstr ""
+
+#: src/client/pages/magic-link.tsx
+msgid "your address"
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Your display name"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "Your own preference — stored locally, not synced."
+msgstr ""
+
+#: src/client/admin/account-page.tsx
+msgid "Your personal profile, preferences, password, sessions, and connected credentials. Workspace-wide settings live under the Settings page."
 msgstr ""

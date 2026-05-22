@@ -12,6 +12,7 @@
 // flows; this wizard's submit just sets `adopted: true` and passes the
 // introspected `physicalTable`/`pkColumn`/alias columns.
 import { useEffect, useMemo, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
 import { Skeleton } from "@workeros/ui/components/skeleton";
@@ -140,6 +141,7 @@ async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
+  const { t } = useLingui();
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
   // Step 1
@@ -322,9 +324,9 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
     .replace(/^_+|_+$/g, "");
   const slugValid = SLUG_RE.test(slugClean);
   const slugError = !slugClean
-    ? "slug is required"
+    ? t`slug is required`
     : !slugValid
-      ? "must start with a letter; snake_case only"
+      ? t`must start with a letter; snake_case only`
       : null;
 
   const includedFields = columns.filter((c) => c.include && c.type);
@@ -493,21 +495,21 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
         <div className="dialog-head">
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>
-              Adopt existing table
+              <Trans>Adopt existing table</Trans>
             </div>
             <div className="muted" style={{ fontSize: 12.5 }}>
-              Register a physical table as a workeros collection. No DDL is run on the table — only the collection metadata row + field registrations are written.
+              <Trans>Register a physical table as a workeros collection. No DDL is run on the table — only the collection metadata row + field registrations are written.</Trans>
             </div>
           </div>
           <IconButton icon={I.X} onClick={onClose} />
         </div>
 
         <div className="addfield-stepper">
-          <div className={`step ${step >= 1 ? "on" : ""}`}><span className="num">1</span> Table</div>
+          <div className={`step ${step >= 1 ? "on" : ""}`}><span className="num">1</span> <Trans>Table</Trans></div>
           <div className="step-line" />
-          <div className={`step ${step >= 2 ? "on" : ""}`}><span className="num">2</span> Fields</div>
+          <div className={`step ${step >= 2 ? "on" : ""}`}><span className="num">2</span> <Trans>Fields</Trans></div>
           <div className="step-line" />
-          <div className={`step ${step >= 3 ? "on" : ""}`}><span className="num">3</span> Metadata</div>
+          <div className={`step ${step >= 3 ? "on" : ""}`}><span className="num">3</span> <Trans>Metadata</Trans></div>
         </div>
 
         {step === 1 && (
@@ -581,32 +583,33 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
         <div className="dialog-foot">
           <span className="muted" style={{ fontSize: 12 }}>
             {step === 1 && (
-              <>Pick a table to inspect · {tables.length} available</>
+              <Trans>Pick a table to inspect · {tables.length} available</Trans>
             )}
             {step === 2 && inspect && (
               <>
-                {includedFields.length} of {columns.length} columns mapped
+                <Trans>{includedFields.length} of {columns.length} columns mapped</Trans>
                 {!inspect.pk.supported && (
-                  <span style={{ color: "var(--destructive)" }}> · primary key {inspect.pk.dbType} is unsupported</span>
+                  <span style={{ color: "var(--destructive)" }}> · <Trans>primary key {inspect.pk.dbType} is unsupported</Trans></span>
                 )}
                 {aliasConflicts.length > 0 && (
                   <span style={{ color: "var(--destructive)" }}>
-                    {" · "}alias conflict on {aliasConflicts.map((c) => c.column).join(", ")}
+                    {" · "}
+                    <Trans>alias conflict on {aliasConflicts.map((c) => c.column).join(", ")}</Trans>
                   </span>
                 )}
                 {aliasMissingColumn && (
                   <span style={{ color: "var(--destructive)" }}>
-                    {" · "}pick a column for the aliased system field
+                    {" · "}<Trans>pick a column for the aliased system field</Trans>
                   </span>
                 )}
                 {fkColumnConflicts.length > 0 && (
                   <span style={{ color: "var(--destructive)" }}>
-                    {" · "}FK conflict on {fkColumnConflicts.map((c) => c.column).join(", ")}
+                    {" · "}<Trans>FK conflict on {fkColumnConflicts.map((c) => c.column).join(", ")}</Trans>
                   </span>
                 )}
                 {fkMissingTarget && (
                   <span style={{ color: "var(--destructive)" }}>
-                    {" · "}pick a target collection for the adopted FK
+                    {" · "}<Trans>pick a target collection for the adopted FK</Trans>
                   </span>
                 )}
               </>
@@ -616,7 +619,7 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
                 {slugError ? (
                   <span style={{ color: "var(--destructive)" }}>{slugError}</span>
                 ) : (
-                  <>Ready to register <span className="font-mono">{slugClean}</span></>
+                  <Trans>Ready to register <span className="font-mono">{slugClean}</span></Trans>
                 )}
               </>
             )}
@@ -630,10 +633,10 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
               disabled={applying}
               onClick={() => setStep((s) => (s === 3 ? 2 : 1) as 1 | 2 | 3)}
             >
-              Back
+              <Trans>Back</Trans>
             </Button>
           )}
-          <Button variant="ghost" size="sm" disabled={applying} onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" size="sm" disabled={applying} onClick={onClose}><Trans>Cancel</Trans></Button>
           {step === 2 && (
             <Button
               variant="primary"
@@ -650,7 +653,7 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
               }
               onClick={() => setStep(3)}
             >
-              Next
+              <Trans>Next</Trans>
             </Button>
           )}
           {step === 3 && (
@@ -661,7 +664,7 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
               disabled={!canApply}
               onClick={apply}
             >
-              {applying ? "Applying…" : "Apply"}
+              {applying ? <Trans>Applying…</Trans> : <Trans>Apply</Trans>}
             </Button>
           )}
         </div>
@@ -691,6 +694,7 @@ function Step1Tables({
   inspectLoading: boolean;
   inspectError: string | null;
 }) {
+  const { t } = useLingui();
   return (
     <div className="addfield-body">
       <div className="field" style={{ marginBottom: 14 }}>
@@ -698,7 +702,7 @@ function Step1Tables({
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filter tables by name…"
+          placeholder={t`Filter tables by name…`}
         />
       </div>
 
@@ -713,13 +717,13 @@ function Step1Tables({
             fontSize: 12.5,
           }}
         >
-          Inspect failed: {inspectError}
+          <Trans>Inspect failed: {inspectError}</Trans>
         </div>
       )}
 
       {error && (
         <div className="muted" style={{ fontSize: 12.5, padding: "16px 4px", color: "var(--destructive)" }}>
-          Failed to load tables: {error}
+          <Trans>Failed to load tables: {error}</Trans>
         </div>
       )}
 
@@ -733,7 +737,7 @@ function Step1Tables({
 
       {!loading && !error && tables.length === 0 && (
         <div className="muted" style={{ fontSize: 12.5, padding: "16px 4px" }}>
-          No tables found that can be adopted.
+          <Trans>No tables found that can be adopted.</Trans>
         </div>
       )}
 
@@ -774,7 +778,7 @@ function Step1Tables({
                   )}
                 </div>
                 <span className="muted tabular-nums" style={{ fontSize: 12 }}>
-                  {t.columns} cols
+                  <Trans>{t.columns} cols</Trans>
                 </span>
                 <span className="muted tabular-nums font-mono" style={{ fontSize: 12 }}>
                   ~{t.rowCount} rows
@@ -786,7 +790,7 @@ function Step1Tables({
                     disabled={disabled || inspectLoading}
                     onClick={() => onSelect(t.name)}
                   >
-                    {inspectLoading ? "…" : "Select"}
+                    {inspectLoading ? "…" : <Trans>Select</Trans>}
                   </Button>
                 </div>
               </div>
@@ -855,6 +859,7 @@ function Step2Fields({
   fkColumnConflicts: { column: string; manualType: string }[];
   fkMissingTarget: boolean;
 }) {
+  const { t } = useLingui();
   const patch = (i: number, p: Partial<ColumnDraft>) =>
     setColumns((cs) => cs.map((c, idx) => (idx === i ? { ...c, ...p } : c)));
 
@@ -887,7 +892,7 @@ function Step2Fields({
         <Badge variant="outline" mono>pk: {inspect.pk.column}</Badge>
         {!inspect.pk.supported && (
           <Badge variant="destructive" mono>
-            unsupported pk type: {inspect.pk.dbType}
+            <Trans>unsupported pk type: {inspect.pk.dbType}</Trans>
           </Badge>
         )}
       </div>
@@ -935,11 +940,11 @@ function Step2Fields({
             fontWeight: 600,
           }}
         >
-          <span>Column</span>
-          <span>DB type</span>
-          <span>Include</span>
-          <span>Field type</span>
-          <span style={{ textAlign: "right" }}>Required</span>
+          <span><Trans>Column</Trans></span>
+          <span><Trans>DB type</Trans></span>
+          <span><Trans>Include</Trans></span>
+          <span><Trans>Field type</Trans></span>
+          <span style={{ textAlign: "right" }}><Trans>Required</Trans></span>
         </div>
         {columns.map((c, i) => {
           const reserved = c.reserved;
@@ -975,7 +980,7 @@ function Step2Fields({
                   <Badge variant="destructive" mono>reserved: {reserved}</Badge>
                 )}
                 {unsupported && !reserved && (
-                  <Badge variant="outline" mono>unsupported</Badge>
+                  <Badge variant="outline" mono><Trans>unsupported</Trans></Badge>
                 )}
               </div>
               <span className="font-mono muted" style={{ fontSize: 12 }}>{c.dbType}</span>
@@ -988,7 +993,7 @@ function Step2Fields({
                 value={c.type || undefined}
                 onChange={(v) => patch(i, { type: v as FieldType })}
                 options={FIELD_TYPE_OPTIONS}
-                placeholder={unsupported ? "unsupported" : "Pick type…"}
+                placeholder={unsupported ? t`unsupported` : t`Pick type…`}
                 disabled={unsupported || !c.include}
                 size="sm"
               />
@@ -1020,15 +1025,15 @@ function Step2Fields({
       >
         <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <I.Settings size={13} />
-          <span style={{ fontSize: 13, fontWeight: 500 }}>System columns (optional)</span>
+          <span style={{ fontSize: 13, fontWeight: 500 }}><Trans>System columns (optional)</Trans></span>
           <span className="font-mono muted" style={{ fontSize: 12 }}>
-            flags + aliases — no DDL is run on the table
+            <Trans>flags + aliases — no DDL is run on the table</Trans>
           </span>
         </div>
         <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 14 }}>
           <TimeFieldRow
             label="created_at"
-            hint="Used for default sort, audit, and the created_at projection."
+            hint={t`Used for default sort, audit, and the created_at projection.`}
             conventionalPresent={inspect.systemColumnsPresent.createdAt}
             suggestedAlias={inspect.aliasSuggestions.createdAt}
             mode={createdAtMode}
@@ -1039,7 +1044,7 @@ function Step2Fields({
           />
           <TimeFieldRow
             label="updated_at"
-            hint="Used by revision tracking and the updated_at projection."
+            hint={t`Used by revision tracking and the updated_at projection.`}
             conventionalPresent={inspect.systemColumnsPresent.updatedAt}
             suggestedAlias={inspect.aliasSuggestions.updatedAt}
             mode={updatedAtMode}
@@ -1075,8 +1080,8 @@ function Step2Fields({
                 <div key={c.logical} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <I.AlertTriangle size={12} />
                   <span>
-                    Column <span className="font-mono">{c.column}</span> is aliased to {" "}
-                    <span className="font-mono">{c.logical}</span> AND included as a regular field. Pick one.
+                    <Trans>Column <span className="font-mono">{c.column}</span> is aliased to {" "}
+                    <span className="font-mono">{c.logical}</span> AND included as a regular field. Pick one.</Trans>
                   </span>
                 </div>
               ))}
@@ -1117,6 +1122,7 @@ function ForeignKeysPanel({
   fkColumnConflicts: { column: string; manualType: string }[];
   fkMissingTarget: boolean;
 }) {
+  const { t } = useLingui();
   const options = availableCollections.map((c) => ({ value: c.slug, label: c.slug }));
   const patch = (
     i: number,
@@ -1130,9 +1136,9 @@ function ForeignKeysPanel({
     >
       <div className="card-section" style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <I.Link size={13} />
-        <span style={{ fontSize: 13, fontWeight: 500 }}>Foreign keys detected</span>
+        <span style={{ fontSize: 13, fontWeight: 500 }}><Trans>Foreign keys detected</Trans></span>
         <span className="font-mono muted" style={{ fontSize: 12 }}>
-          {fkDrafts.length} {fkDrafts.length === 1 ? "key" : "keys"} — adopt as workeros relations
+          {fkDrafts.length} {fkDrafts.length === 1 ? <Trans>key</Trans> : <Trans>keys</Trans>} — <Trans>adopt as workeros relations</Trans>
         </span>
       </div>
       <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 14 }}>
@@ -1153,7 +1159,7 @@ function ForeignKeysPanel({
                 borderBottom: i === fkDrafts.length - 1 ? "none" : "1px solid var(--border)",
                 opacity: composite ? 0.6 : 1,
               }}
-              title={composite ? "Composite (multi-column) FKs cannot be adopted as a workeros relation" : undefined}
+              title={composite ? t`Composite (multi-column) FKs cannot be adopted as a workeros relation` : undefined}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <span className="font-mono" style={{ fontSize: 13, fontWeight: 500 }}>
@@ -1162,23 +1168,23 @@ function ForeignKeysPanel({
                 <span className="muted" style={{ fontSize: 12 }}>→</span>
                 <span className="font-mono" style={{ fontSize: 13 }}>{fk.referencesTable}</span>
                 {composite && (
-                  <Badge variant="outline" mono>composite — not supported</Badge>
+                  <Badge variant="outline" mono><Trans>composite — not supported</Trans></Badge>
                 )}
                 {!composite && fk.targetSlug && (
                   <Badge variant="outline" mono>target: {fk.targetSlug}</Badge>
                 )}
                 {!composite && noTarget && (
-                  <Badge variant="destructive" mono>parent not adopted</Badge>
+                  <Badge variant="destructive" mono><Trans>parent not adopted</Trans></Badge>
                 )}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <span className="muted" style={{ fontSize: 12 }}>Target:</span>
+                <span className="muted" style={{ fontSize: 12 }}><Trans>Target:</Trans></span>
                 <div style={{ minWidth: 220 }}>
                   <Select
                     value={fk.targetSlug || undefined}
                     onChange={(v) => patch(i, { targetSlug: v })}
                     options={options}
-                    placeholder={composite ? "—" : "Pick collection…"}
+                    placeholder={composite ? "—" : t`Pick collection…`}
                     disabled={composite || options.length === 0}
                     size="sm"
                   />
@@ -1190,18 +1196,18 @@ function ForeignKeysPanel({
                     onChange={(v) => patch(i, { adopt: v })}
                   />
                   <span className="muted" style={{ fontSize: 12 }}>
-                    Adopt as relation
+                    <Trans>Adopt as relation</Trans>
                   </span>
                 </div>
                 {noTarget && (
                   <span className="muted" style={{ fontSize: 11.5 }}>
-                    Adopt <span className="font-mono">{fk.referencesTable}</span> as a workeros
-                    collection first, then revisit this step.
+                    <Trans>Adopt <span className="font-mono">{fk.referencesTable}</span> as a workeros
+                    collection first, then revisit this step.</Trans>
                   </span>
                 )}
                 {targetMissing && fk.adopt && (
                   <span style={{ color: "var(--destructive)", fontSize: 11.5 }}>
-                    Pick a target collection.
+                    <Trans>Pick a target collection.</Trans>
                   </span>
                 )}
               </div>
@@ -1226,16 +1232,16 @@ function ForeignKeysPanel({
               <div key={c.column} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <I.AlertTriangle size={12} />
                 <span>
-                  Column <span className="font-mono">{c.column}</span> is mapped to{" "}
+                  <Trans>Column <span className="font-mono">{c.column}</span> is mapped to{" "}
                   <span className="font-mono">{c.manualType}</span> in the field list but also
-                  toggled "Adopt as relation". The FK panel will override the field type.
+                  toggled "Adopt as relation". The FK panel will override the field type.</Trans>
                 </span>
               </div>
             ))}
             {fkMissingTarget && (
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <I.AlertTriangle size={12} />
-                <span>One or more adopted FKs are missing a target collection.</span>
+                <span><Trans>One or more adopted FKs are missing a target collection.</Trans></span>
               </div>
             )}
           </div>
@@ -1299,6 +1305,7 @@ function TimeFieldRow({
   setAlias: (v: string) => void;
   options: { value: string; label: string; hint?: string }[];
 }) {
+  const { t } = useLingui();
   const aliasAvailable = options.length > 0;
   return (
     <div
@@ -1313,26 +1320,26 @@ function TimeFieldRow({
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <span className="field-label font-mono" style={{ margin: 0 }}>{label}</span>
         {conventionalPresent && (
-          <Badge variant="outline" mono>conventional column present</Badge>
+          <Badge variant="outline" mono><Trans>conventional column present</Trans></Badge>
         )}
         {suggestedAlias && !conventionalPresent && (
-          <Badge variant="outline" mono>suggested: {suggestedAlias}</Badge>
+          <Badge variant="outline" mono><Trans>suggested: {suggestedAlias}</Trans></Badge>
         )}
       </div>
       <div className="field-hint" style={{ marginTop: -2 }}>{hint}</div>
       <ModeSegment<TimeMode>
         value={mode}
         options={[
-          { value: "none", label: "Not used", onSelect: () => setMode("none") },
+          { value: "none", label: t`Not used`, onSelect: () => setMode("none") },
           {
             value: "conventional",
-            label: `Use "${label}" column`,
+            label: t`Use "${label}" column`,
             disabled: !conventionalPresent,
             onSelect: () => setMode("conventional"),
           },
           {
             value: "alias",
-            label: "Alias from another column",
+            label: t`Alias from another column`,
             disabled: !aliasAvailable,
             onSelect: () => {
               setMode("alias");
@@ -1343,13 +1350,13 @@ function TimeFieldRow({
       />
       {mode === "alias" && (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span className="muted" style={{ fontSize: 12 }}>Column:</span>
+          <span className="muted" style={{ fontSize: 12 }}><Trans>Column:</Trans></span>
           <div style={{ minWidth: 240 }}>
             <Select
               value={alias || undefined}
               onChange={(v) => setAlias(v)}
               options={options}
-              placeholder="Pick column…"
+              placeholder={t`Pick column…`}
               size="sm"
             />
           </div>
@@ -1381,39 +1388,40 @@ function OwnerFieldRow({
   setAlias: (v: string) => void;
   options: { value: string; label: string; hint?: string }[];
 }) {
+  const { t } = useLingui();
   const aliasAvailable = options.length > 0;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <span className="field-label font-mono" style={{ margin: 0 }}>owner_id</span>
         {conventionalPresent && (
-          <Badge variant="outline" mono>conventional column present</Badge>
+          <Badge variant="outline" mono><Trans>conventional column present</Trans></Badge>
         )}
         {suggestedAlias && !conventionalPresent && (
-          <Badge variant="outline" mono>suggested: {suggestedAlias}</Badge>
+          <Badge variant="outline" mono><Trans>suggested: {suggestedAlias}</Trans></Badge>
         )}
       </div>
       <div className="field-hint" style={{ marginTop: -2 }}>
-        Restricts the authenticated role to its own rows. Pick where ownership lives — a side table, the conventional <span className="font-mono">owner_id</span> column, or an aliased column.
+        <Trans>Restricts the authenticated role to its own rows. Pick where ownership lives — a side table, the conventional <span className="font-mono">owner_id</span> column, or an aliased column.</Trans>
       </div>
       <ModeSegment<OwnerMode>
         value={mode}
         options={[
-          { value: "none", label: "Not owner-scoped", onSelect: () => setMode("none") },
+          { value: "none", label: t`Not owner-scoped`, onSelect: () => setMode("none") },
           {
             value: "side-table",
-            label: "Side-table (item_ownership)",
+            label: t`Side-table (item_ownership)`,
             onSelect: () => setMode("side-table"),
           },
           {
             value: "conventional",
-            label: 'Use "owner_id" column',
+            label: t`Use "owner_id" column`,
             disabled: !conventionalPresent,
             onSelect: () => setMode("conventional"),
           },
           {
             value: "alias",
-            label: "Alias from another column",
+            label: t`Alias from another column`,
             disabled: !aliasAvailable,
             onSelect: () => {
               setMode("alias");
@@ -1424,13 +1432,13 @@ function OwnerFieldRow({
       />
       {mode === "alias" && (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span className="muted" style={{ fontSize: 12 }}>Column:</span>
+          <span className="muted" style={{ fontSize: 12 }}><Trans>Column:</Trans></span>
           <div style={{ minWidth: 240 }}>
             <Select
               value={alias || undefined}
               onChange={(v) => setAlias(v)}
               options={options}
-              placeholder="Pick column…"
+              placeholder={t`Pick column…`}
               size="sm"
             />
           </div>
@@ -1504,6 +1512,7 @@ function Step3Metadata({
   }[];
   applyError: string | null;
 }) {
+  const { t } = useLingui();
   // Build a list of "system column wiring" lines for the dry-run summary.
   // Each entry maps a logical system field to the physical resolution
   // (conventional, alias <- column, side table, or "not used").
@@ -1529,7 +1538,7 @@ function Step3Metadata({
     <div className="addfield-body cols-2">
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div className="field">
-          <label className="field-label">Slug</label>
+          <label className="field-label"><Trans>Slug</Trans></label>
           <Input
             className="font-mono"
             value={slug}
@@ -1541,33 +1550,33 @@ function Step3Metadata({
             style={slugError ? { color: "var(--destructive)" } : undefined}
           >
             {slugError ?? (
-              <>
+              <Trans>
                 URL identifier. References the existing <span className="font-mono">{inspect.table}</span> table (no physical rename).
-              </>
+              </Trans>
             )}
           </span>
         </div>
         <div className="cols-2" style={{ gap: 12 }}>
           <div className="field">
-            <label className="field-label">Singular</label>
+            <label className="field-label"><Trans>Singular</Trans></label>
             <Input value={singular} onChange={(e) => setSingular(e.target.value)} placeholder="product" />
           </div>
           <div className="field">
-            <label className="field-label">Plural</label>
+            <label className="field-label"><Trans>Plural</Trans></label>
             <Input value={plural} onChange={(e) => setPlural(e.target.value)} placeholder="products" />
           </div>
         </div>
         <div className="field">
-          <label className="field-label">Note</label>
+          <label className="field-label"><Trans>Note</Trans></label>
           <Textarea
             rows={3}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Internal description for teammates."
+            placeholder={t`Internal description for teammates.`}
           />
         </div>
         <div className="field">
-          <label className="field-label">Default sort <span className="muted">(optional)</span></label>
+          <label className="field-label"><Trans>Default sort <span className="muted">(optional)</span></Trans></label>
           <Input
             className="font-mono"
             value={defaultSort}
@@ -1575,14 +1584,14 @@ function Step3Metadata({
             placeholder="-created_at,id"
           />
           <span className="field-hint">
-            Comma-separated; prefix with <span className="font-mono">-</span> for descending. Leave blank to fall back to <span className="font-mono">-created_at</span>.
+            <Trans>Comma-separated; prefix with <span className="font-mono">-</span> for descending. Leave blank to fall back to <span className="font-mono">-created_at</span>.</Trans>
           </span>
         </div>
         <div className="field">
-          <label className="field-label">Primary key</label>
+          <label className="field-label"><Trans>Primary key</Trans></label>
           <Input className="font-mono" value={inspect.pk.column} readOnly disabled />
           <span className="field-hint">
-            Detected from the source table. <span className="font-mono">{inspect.pk.dbType}</span>
+            <Trans>Detected from the source table. <span className="font-mono">{inspect.pk.dbType}</span></Trans>
           </span>
         </div>
       </div>
@@ -1590,9 +1599,9 @@ function Step3Metadata({
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <div className="field-row" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 10, marginBottom: 10 }}>
           <div>
-            <div className="field-label">Tenant-scoped</div>
+            <div className="field-label"><Trans>Tenant-scoped</Trans></div>
             <div className="field-hint">
-              Rows carry a <span className="font-mono">tenant_id</span>. Adopted tables usually don't — leave off unless you know the source already partitions by tenant.
+              <Trans>Rows carry a <span className="font-mono">tenant_id</span>. Adopted tables usually don't — leave off unless you know the source already partitions by tenant.</Trans>
             </div>
           </div>
           <Switch checked={tenantScoped} onChange={setTenantScoped} />
@@ -1608,19 +1617,19 @@ function Step3Metadata({
           }}
         >
           <div className="field-label" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <I.Eye size={12} /> Dry-run summary
+            <I.Eye size={12} /> <Trans>Dry-run summary</Trans>
           </div>
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, lineHeight: 1.6 }}>
             <li>
-              Will create collection metadata row referencing physical table <span className="font-mono">{inspect.table}</span>.
+              <Trans>Will create collection metadata row referencing physical table <span className="font-mono">{inspect.table}</span>.</Trans>
             </li>
-            <li>No DDL on the table.</li>
+            <li><Trans>No DDL on the table.</Trans></li>
             <li>
-              <span className="tabular-nums">{fieldsCount}</span> fields registered.
+              <Trans><span className="tabular-nums">{fieldsCount}</span> fields registered.</Trans>
             </li>
             {systemColumnLines.length > 0 && (
               <li>
-                System columns:
+                <Trans>System columns:</Trans>
                 <ul style={{ margin: "2px 0 0", paddingLeft: 16 }}>
                   {systemColumnLines.map((line) => (
                     <li key={line} className="font-mono" style={{ fontSize: 12 }}>{line}</li>
@@ -1630,7 +1639,7 @@ function Step3Metadata({
             )}
             {activeFkRelations.length > 0 && (
               <li>
-                Foreign keys adopted as relations:
+                <Trans>Foreign keys adopted as relations:</Trans>
                 <ul style={{ margin: "2px 0 0", paddingLeft: 16 }}>
                   {activeFkRelations.map((fk) => (
                     <li key={fk.column} className="font-mono" style={{ fontSize: 12 }}>
@@ -1641,10 +1650,10 @@ function Step3Metadata({
               </li>
             )}
             <li>
-              Permissions:{" "}
+              <Trans>Permissions:{" "}
               {ownerScoped
                 ? "authenticated role gets owner-scoped seed"
-                : "admin-only by default"}.
+                : "admin-only by default"}.</Trans>
             </li>
           </ul>
         </div>

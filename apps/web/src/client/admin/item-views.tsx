@@ -7,6 +7,7 @@
 // CalendarView, ItemsViewToggle}. Calendar uses the current real month with
 // arrow nav (the prototype hardcoded May 2026; that wouldn't age well).
 import { useMemo, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent } from "./icons";
 import { Badge, Button, IconButton } from "./ui";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
@@ -43,6 +44,13 @@ export function ItemsViewToggle({
   setMode: (next: ItemsViewMode) => void;
   hasStatus: boolean;
 }) {
+  const { t } = useLingui();
+  const LABELS: Record<ItemsViewMode, string> = {
+    table: t`Table`,
+    kanban: t`Kanban`,
+    gallery: t`Gallery`,
+    calendar: t`Calendar`,
+  };
   // Hide Kanban when there's no status-shaped column to group by; the design's
   // prototype always had `status` so it never had to guard for this.
   const opts = hasStatus ? ALL_OPTS : ALL_OPTS.filter((o) => o.id !== "kanban");
@@ -50,9 +58,9 @@ export function ItemsViewToggle({
     <Tabs value={mode} onValueChange={(v) => setMode(v as ItemsViewMode)}>
       <TabsList>
         {opts.map((o) => (
-          <TabsTrigger key={o.id} value={o.id} title={o.label}>
+          <TabsTrigger key={o.id} value={o.id} title={LABELS[o.id]}>
             <o.icon size={13} />
-            <span>{o.label}</span>
+            <span>{LABELS[o.id]}</span>
           </TabsTrigger>
         ))}
       </TabsList>
@@ -72,6 +80,13 @@ const KANBAN_COLS: { id: string; label: string }[] = [
 ];
 
 export function KanbanBoard({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post) => void }) {
+  const { t } = useLingui();
+  const KANBAN_LABELS: Record<string, string> = {
+    draft: t`Draft`,
+    review: t`In review`,
+    published: t`Published`,
+    archived: t`Archived`,
+  };
   const byStatus = (s: string) => rows.filter((r) => r.status === s);
   return (
     <div className="grid grid-cols-[repeat(4,minmax(220px,1fr))] gap-3.5 p-3.5">
@@ -80,14 +95,14 @@ export function KanbanBoard({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post)
         return (
           <div key={c.id} className="flex min-h-[240px] flex-col rounded-xl border border-border bg-[color-mix(in_oklch,var(--muted)_40%,var(--card))]">
             <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
-              <span className="text-[12.5px] font-medium capitalize">{c.label}</span>
+              <span className="text-[12.5px] font-medium capitalize">{KANBAN_LABELS[c.id] ?? c.label}</span>
               <span className="rounded-md border border-border bg-card px-1.5 py-px font-mono text-[10.5px] tabular-nums text-muted-foreground">{items.length}</span>
               <div className="flex-1" />
-              <IconButton icon={I.Plus} title={`New ${c.label} post`} />
+              <IconButton icon={I.Plus} title={t`New ${KANBAN_LABELS[c.id] ?? c.label} post`} />
             </div>
             <div className="flex flex-col gap-2 p-2.5">
               {items.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-border py-[22px] text-center text-[11.5px] text-muted-foreground">No items</div>
+                <div className="rounded-lg border border-dashed border-border py-[22px] text-center text-[11.5px] text-muted-foreground"><Trans>No items</Trans></div>
               ) : (
                 items.map((r) => {
                   const author = authorById(r.author);
@@ -179,13 +194,13 @@ export function GalleryGrid({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post)
 // Calendar
 // ─────────────────────────────────────────────────────────────────
 
-const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
-const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
 export function CalendarView({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post) => void }) {
+  const { t } = useLingui();
+  const MONTH_LABELS = [
+    t`January`, t`February`, t`March`, t`April`, t`May`, t`June`,
+    t`July`, t`August`, t`September`, t`October`, t`November`, t`December`,
+  ];
+  const WEEKDAY_LABELS = [t`Mon`, t`Tue`, t`Wed`, t`Thu`, t`Fri`, t`Sat`, t`Sun`];
   const today = useMemo(() => new Date(), []);
   const [cursor, setCursor] = useState<{ year: number; month: number }>({
     year: today.getUTCFullYear(),
@@ -231,19 +246,19 @@ export function CalendarView({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post
   return (
     <div className="p-3.5">
       <div className="flex items-center gap-2 px-1 pb-3">
-        <Button variant="outline" size="xs" icon={I.ChevronLeft} onClick={prev} aria-label="Previous month" />
+        <Button variant="outline" size="xs" icon={I.ChevronLeft} onClick={prev} aria-label={t`Previous month`} />
         <span className="font-medium">
-          {MONTH_NAMES[cursor.month]} {cursor.year}
+          {MONTH_LABELS[cursor.month]} {cursor.year}
         </span>
-        <Button variant="outline" size="xs" icon={I.ChevronRight} onClick={next} aria-label="Next month" />
+        <Button variant="outline" size="xs" icon={I.ChevronRight} onClick={next} aria-label={t`Next month`} />
         <div className="flex-1" />
         <span className="text-[11.5px] text-muted-foreground">
-          scheduled by <span className="font-mono">published_at</span>
+          <Trans>scheduled by <span className="font-mono">published_at</span></Trans>
         </span>
       </div>
       <div className="grid grid-cols-7 gap-1.5 text-[10.5px] uppercase tracking-[0.05em] text-muted-foreground">
-        {WEEKDAYS.map((d) => (
-          <div key={d}>{d}</div>
+        {WEEKDAY_LABELS.map((d, i) => (
+          <div key={i}>{d}</div>
         ))}
       </div>
       <div className="grid grid-cols-7 gap-1.5">

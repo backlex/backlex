@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@workeros/ui/components/input";
 import {
   Sheet,
@@ -38,6 +39,7 @@ const initials = (s: string): string =>
     .toUpperCase() || "?";
 
 export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) {
+  const { t } = useLingui();
   const [rows, setRows] = useState<ApiAppUser[]>([]);
   const [roles, setRoles] = useState<ApiRole[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -76,7 +78,7 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
       await appUsersApi.patch(u.id, { status });
       setRows((arr) => arr.map((x) => (x.id === u.id ? { ...x, status } : x)));
       setActiveUser((cur) => (cur && cur.id === u.id ? { ...cur, status } : cur));
-      pushToast?.(`${u.email} ${status === "suspended" ? "suspended" : "reactivated"}.`);
+      pushToast?.(`${u.email} ${status === "suspended" ? t`suspended` : t`reactivated`}.`);
     } catch (e) {
       pushToast?.((e as Error).message);
     }
@@ -86,7 +88,7 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
       await appUsersApi.remove(u.id);
       setRows((arr) => arr.filter((x) => x.id !== u.id));
       setActiveUser((cur) => (cur && cur.id === u.id ? null : cur));
-      pushToast?.(`${u.email} deleted.`);
+      pushToast?.(`${u.email} ${t`deleted.`}`);
     } catch (e) {
       pushToast?.((e as Error).message);
     }
@@ -104,23 +106,23 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
-        title="App users"
+        title={t`App users`}
         description={
           <>
-            End-users of the application built on this workspace — a pool separate from the
+            <Trans>End-users of the application built on this workspace — a pool separate from the
             admin/control-plane <span className="font-mono">users</span>. They sign up via this
-            workspace's own auth endpoint (see <strong>Authentication → Workspace auth API</strong>).
+            workspace's own auth endpoint (see <strong>Authentication → Workspace auth API</strong>).</Trans>
           </>
         }
       />
       <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
           <I.Users size={13} />
-          <span className="text-[13px] font-medium">End-users</span>
+          <span className="text-[13px] font-medium"><Trans>End-users</Trans></span>
           <span className="font-mono text-[11.5px] text-muted-foreground">{rows.length}</span>
           <div className="flex-1" />
           <Input
-            placeholder="Filter by email / name…"
+            placeholder={t`Filter by email / name…`}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             className="min-w-0 flex-1 max-w-[240px]"
@@ -128,21 +130,21 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
         </div>
         <Table className="[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground">
           <TableHeader>
-            <TableRow><TableHead>Email</TableHead><TableHead>Name</TableHead><TableHead>Status</TableHead><TableHead>Roles</TableHead><TableHead>Created</TableHead></TableRow>
+            <TableRow><TableHead><Trans>Email</Trans></TableHead><TableHead><Trans>Name</Trans></TableHead><TableHead><Trans>Status</Trans></TableHead><TableHead><Trans>Roles</Trans></TableHead><TableHead><Trans>Created</Trans></TableHead></TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 && (
               <TableRow><TableCell colSpan={5} className="text-muted-foreground">
                 {rows.length === 0
-                  ? "No end-users yet — they appear here after signing up via the workspace auth endpoint."
-                  : "No matches."}
+                  ? <Trans>No end-users yet — they appear here after signing up via the workspace auth endpoint.</Trans>
+                  : <Trans>No matches.</Trans>}
               </TableCell></TableRow>
             )}
             {filtered.map((u) => (
               <TableRow key={u.id} onClick={() => setActiveUser(u)} className="cursor-pointer">
-                <TableCell>{u.email}{!u.emailVerified && <Badge variant="outline" className="ml-1.5">unverified</Badge>}</TableCell>
+                <TableCell>{u.email}{!u.emailVerified && <Badge variant="outline" className="ml-1.5"><Trans>unverified</Trans></Badge>}</TableCell>
                 <TableCell className="text-muted-foreground">{u.name ?? "—"}</TableCell>
-                <TableCell>{u.status === "suspended" ? <Badge variant="destructive">suspended</Badge> : <Badge variant="default">active</Badge>}</TableCell>
+                <TableCell>{u.status === "suspended" ? <Badge variant="destructive"><Trans>suspended</Trans></Badge> : <Badge variant="default"><Trans>active</Trans></Badge>}</TableCell>
                 <TableCell>
                   {u.roles.length === 0
                     ? <span className="text-xs text-muted-foreground">authenticated</span>
@@ -169,13 +171,13 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
       )}
       <ConfirmDialog
         open={!!confirmDelete}
-        title="Delete end-user"
+        title={t`Delete end-user`}
         description={
           confirmDelete
-            ? `Permanently delete ${confirmDelete.email}? Their sessions, OAuth accounts and role assignments are removed too. This can't be undone.`
+            ? t`Permanently delete ${confirmDelete.email}? Their sessions, OAuth accounts and role assignments are removed too. This can't be undone.`
             : ""
         }
-        actionLabel="Delete"
+        actionLabel={t`Delete`}
         destructive
         onConfirm={() => confirmDelete && void doDelete(confirmDelete)}
         onCancel={() => setConfirmDelete(null)}
@@ -201,6 +203,7 @@ function AppUserDrawer({
   onDelete: () => void;
   pushToast: (m: string) => void;
 }) {
+  const { t } = useLingui();
   const [name, setName] = useState(user.name ?? "");
   const [roleIds, setRoleIds] = useState<Set<string>>(
     new Set(user.roles.map((r) => r.id)),
@@ -224,15 +227,15 @@ function AppUserDrawer({
         const fmtAgo = (ms: number | null): string => {
           if (!ms) return "—";
           const d = Date.now() - ms;
-          if (d < 60_000) return "just now";
-          if (d < 3_600_000) return `${Math.floor(d / 60_000)}m ago`;
-          if (d < 86_400_000) return `${Math.floor(d / 3_600_000)}h ago`;
-          return `${Math.floor(d / 86_400_000)}d ago`;
+          if (d < 60_000) return t`just now`;
+          if (d < 3_600_000) return t`${Math.floor(d / 60_000)}m ago`;
+          if (d < 86_400_000) return t`${Math.floor(d / 3_600_000)}h ago`;
+          return t`${Math.floor(d / 86_400_000)}d ago`;
         };
         setSessions(
           (j.data ?? []).map((s, i) => ({
             id: s.id ?? `s${i}`,
-            device: s.userAgent ?? "Unknown device",
+            device: s.userAgent ?? t`Unknown device`,
             ip: s.ipAddress ?? "—",
             last: fmtAgo(s.updatedAt ?? s.createdAt ?? null),
           })),
@@ -265,7 +268,7 @@ function AppUserDrawer({
         ...(nameDirty ? { name: name.trim() } : {}),
         ...(rolesDirty ? { roles: nextRoles } : {}),
       });
-      pushToast(`Profile saved for ${user.email}.`);
+      pushToast(t`Profile saved for ${user.email}.`);
       onClose();
     } catch (e) {
       pushToast((e as Error).message);
@@ -290,8 +293,8 @@ function AppUserDrawer({
             <SheetTitle className="flex items-center gap-2 text-base font-semibold tracking-[-0.01em]">
               {name || user.email}
               {user.status === "suspended"
-                ? <Badge variant="destructive">suspended</Badge>
-                : <Badge variant="default">active</Badge>}
+                ? <Badge variant="destructive"><Trans>suspended</Trans></Badge>
+                : <Badge variant="default"><Trans>active</Trans></Badge>}
             </SheetTitle>
             <SheetDescription className="mt-0.5 text-[12.5px]">{user.email} · id <span className="font-mono">{user.id}</span></SheetDescription>
           </div>
@@ -299,16 +302,16 @@ function AppUserDrawer({
 
         <div className="flex flex-1 flex-col gap-8 overflow-auto px-5 py-[18px]">
           <div>
-            <div className="mb-2 text-[12.5px] font-medium">Profile</div>
+            <div className="mb-2 text-[12.5px] font-medium"><Trans>Profile</Trans></div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Name</label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Display name" />
+              <label className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Name</Trans></label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t`Display name`} />
             </div>
             <div className="mt-4">
-              <div className="mb-1.5 text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Roles</div>
+              <div className="mb-1.5 text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Roles</Trans></div>
               {roles.length === 0 ? (
                 <div className="text-[12.5px] text-muted-foreground">
-                  This workspace has no custom roles yet — create one under <strong>Roles &amp; permissions</strong>.
+                  <Trans>This workspace has no custom roles yet — create one under <strong>Roles &amp; permissions</strong>.</Trans>
                 </div>
               ) : (
                 <div className="flex flex-col overflow-hidden rounded-xl border border-border">
@@ -324,42 +327,42 @@ function AppUserDrawer({
                 </div>
               )}
               <div className="mt-1.5 text-[11.5px] text-muted-foreground">
-                End-users always implicitly have <span className="font-mono">authenticated</span>; the <span className="font-mono">admin</span> role can't be assigned.
+                <Trans>End-users always implicitly have <span className="font-mono">authenticated</span>; the <span className="font-mono">admin</span> role can't be assigned.</Trans>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-x-3.5 gap-y-2.5 rounded-xl bg-muted px-3.5 py-3 max-[900px]:grid-cols-1">
-            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Email verified</span><span className="font-mono text-xs">{user.emailVerified ? "yes" : "no"}</span></div>
-            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Status</span><span className="font-mono text-xs">{user.status}</span></div>
-            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Created</span><span className="font-mono text-xs">{fmtDate(user.createdAt)}</span></div>
-            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Sessions</span><span className="font-mono text-xs">{sessions.length} active</span></div>
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Email verified</Trans></span><span className="font-mono text-xs">{user.emailVerified ? t`yes` : t`no`}</span></div>
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Status</Trans></span><span className="font-mono text-xs">{user.status}</span></div>
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Created</Trans></span><span className="font-mono text-xs">{fmtDate(user.createdAt)}</span></div>
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Sessions</Trans></span><span className="font-mono text-xs">{sessions.length} <Trans>active</Trans></span></div>
           </div>
 
           <div>
             <div className="mb-2 flex items-center justify-between text-[12.5px] font-medium">
-              <span>Active sessions</span>
+              <span><Trans>Active sessions</Trans></span>
               <span className="text-[11.5px] font-normal text-muted-foreground">{sessions.length}</span>
             </div>
             {sessions.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border p-3.5 text-center text-[12.5px] text-muted-foreground">No active sessions.</div>
+              <div className="rounded-xl border border-dashed border-border p-3.5 text-center text-[12.5px] text-muted-foreground"><Trans>No active sessions.</Trans></div>
             ) : (
               <div className="flex flex-col overflow-hidden rounded-xl border border-border">
                 {sessions.map((s) => (
                   <div key={s.id} className="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5 last:border-b-0">
                     <div className="flex min-w-0 flex-col gap-0.5">
                       <span className="text-[12.5px] font-medium">{s.device}</span>
-                      <span className="font-mono text-[11.5px] text-muted-foreground">{s.ip} · last seen {s.last}</span>
+                      <span className="font-mono text-[11.5px] text-muted-foreground">{s.ip} · <Trans>last seen</Trans> {s.last}</span>
                     </div>
                     <Button size="sm" variant="ghost" onClick={async () => {
                       try {
                         await appUsersApi.revokeSession(user.id, s.id);
                         setSessions((arr) => arr.filter((x) => x.id !== s.id));
-                        pushToast(`Session revoked: ${s.device}`);
+                        pushToast(t`Session revoked: ${s.device}`);
                       } catch (e) {
                         pushToast((e as Error).message);
                       }
-                    }}>Revoke</Button>
+                    }}><Trans>Revoke</Trans></Button>
                   </div>
                 ))}
               </div>
@@ -367,36 +370,36 @@ function AppUserDrawer({
           </div>
 
           <div className="rounded-xl border border-[color-mix(in_oklch,var(--destructive)_30%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_5%,var(--card))] px-3.5 py-3">
-            <div className="mb-2 flex items-center justify-between text-[12.5px] font-medium"><span>Danger zone</span></div>
+            <div className="mb-2 flex items-center justify-between text-[12.5px] font-medium"><span><Trans>Danger zone</Trans></span></div>
             <div className="flex items-center justify-between gap-3 border-b border-dashed border-[color-mix(in_oklch,var(--destructive)_18%,var(--border))] py-2 last:border-b-0">
               <div>
-                <div className="text-[12.5px] font-medium">{user.status === "suspended" ? "Reactivate end-user" : "Suspend end-user"}</div>
+                <div className="text-[12.5px] font-medium">{user.status === "suspended" ? <Trans>Reactivate end-user</Trans> : <Trans>Suspend end-user</Trans>}</div>
                 <div className="text-[11.5px] text-muted-foreground">
                   {user.status === "suspended"
-                    ? "Re-enables sign-in for this end-user."
-                    : "Blocks sign-in and drops all active sessions immediately."}
+                    ? <Trans>Re-enables sign-in for this end-user.</Trans>
+                    : <Trans>Blocks sign-in and drops all active sessions immediately.</Trans>}
                 </div>
               </div>
               {user.status === "suspended" ? (
-                <Button size="sm" variant="outline" onClick={() => onSetStatus("active")}>Activate</Button>
+                <Button size="sm" variant="outline" onClick={() => onSetStatus("active")}><Trans>Activate</Trans></Button>
               ) : (
-                <Button size="sm" variant="outline" onClick={() => onSetStatus("suspended")}>Suspend</Button>
+                <Button size="sm" variant="outline" onClick={() => onSetStatus("suspended")}><Trans>Suspend</Trans></Button>
               )}
             </div>
             <div className="flex items-center justify-between gap-3 border-b border-dashed border-[color-mix(in_oklch,var(--destructive)_18%,var(--border))] py-2 last:border-b-0">
               <div>
-                <div className="text-[12.5px] font-medium text-destructive">Delete end-user</div>
-                <div className="text-[11.5px] text-muted-foreground">Permanent. Removes sessions, OAuth accounts and role assignments.</div>
+                <div className="text-[12.5px] font-medium text-destructive"><Trans>Delete end-user</Trans></div>
+                <div className="text-[11.5px] text-muted-foreground"><Trans>Permanent. Removes sessions, OAuth accounts and role assignments.</Trans></div>
               </div>
-              <Button size="sm" variant="outline" className="text-destructive" onClick={onDelete}>Delete</Button>
+              <Button size="sm" variant="outline" className="text-destructive" onClick={onDelete}><Trans>Delete</Trans></Button>
             </div>
           </div>
         </div>
 
         <SheetFooter className="flex-row justify-end gap-2 border-t border-border bg-card px-5 py-3">
-          <Button variant="ghost" onClick={onClose}>Close</Button>
+          <Button variant="ghost" onClick={onClose}><Trans>Close</Trans></Button>
           <Button variant="primary" disabled={!dirty || saving} onClick={() => void save()}>
-            {saving ? "Saving…" : "Save changes"}
+            {saving ? <Trans>Saving…</Trans> : <Trans>Save changes</Trans>}
           </Button>
         </SheetFooter>
       </SheetContent>

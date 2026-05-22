@@ -18,6 +18,7 @@
  * `@/admin/ui` (the local re-export of @workeros/ui).
  */
 import { useEffect, useMemo, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
 import { I } from "../icons";
@@ -139,6 +140,7 @@ export function SamlProviderDialog({
   onSaved,
   pushToast,
 }: SamlProviderDialogProps) {
+  const { t } = useLingui();
   const isEdit = !!existing;
   const [mode, setMode] = useState<Mode>(isEdit ? "manual" : "template");
 
@@ -212,7 +214,7 @@ export function SamlProviderDialog({
       setIdpCertPem(d.idpCertPem);
       setSpEntityId(d.spEntityIdSuggested);
       setMode("manual");
-      pushToast?.("Metadata imported.");
+      pushToast?.(t`Metadata imported.`);
     } catch (e) {
       pushToast?.((e as Error).message);
     } finally {
@@ -259,15 +261,15 @@ export function SamlProviderDialog({
         if (!body.idpCertPem) delete patch.idpCertPem;
         const res = await samlAdminApi.update(existing.id, patch);
         onSaved(res.data);
-        pushToast?.("Provider saved.");
+        pushToast?.(t`Provider saved.`);
       } else {
         if (!body.idpCertPem) {
-          pushToast?.("IdP signing certificate (PEM) is required.");
+          pushToast?.(t`IdP signing certificate (PEM) is required.`);
           return;
         }
         const res = await samlAdminApi.create(body);
         onSaved(res.data);
-        pushToast?.("Provider created.");
+        pushToast?.(t`Provider created.`);
       }
     } catch (e) {
       pushToast?.((e as Error).message);
@@ -310,9 +312,9 @@ export function SamlProviderDialog({
       <Button
         size="sm"
         variant="ghost"
-        onClick={() => void copyText(value, () => pushToast?.("Copied."))}
+        onClick={() => void copyText(value, () => pushToast?.(t`Copied.`))}
       >
-        Copy
+        <Trans>Copy</Trans>
       </Button>
     </div>
   );
@@ -322,24 +324,24 @@ export function SamlProviderDialog({
       <DialogContent className="dialog-lg flex max-h-[92vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[720px]">
         <DialogHeader className="dialog-head pr-12 text-left">
           <DialogTitle style={{ fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em" }}>
-            {isEdit ? `Configure ${existing!.name}` : "Add SAML provider"}
+            {isEdit ? t`Configure ${existing!.name}` : <Trans>Add SAML provider</Trans>}
           </DialogTitle>
           <DialogDescription className="muted" style={{ fontSize: 12.5, marginTop: 3 }}>
-            SAML 2.0 SSO — workspace end-users.
+            <Trans>SAML 2.0 SSO — workspace end-users.</Trans>
           </DialogDescription>
         </DialogHeader>
 
         <div className="dialog-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "flex", gap: 6 }}>
-            {!isEdit && <TabButton id="template">From template</TabButton>}
-            {!isEdit && <TabButton id="import">Import metadata</TabButton>}
-            <TabButton id="manual">Manual entry</TabButton>
-            {isEdit && <TabButton id="test">Test assertion</TabButton>}
+            {!isEdit && <TabButton id="template"><Trans>From template</Trans></TabButton>}
+            {!isEdit && <TabButton id="import"><Trans>Import metadata</Trans></TabButton>}
+            <TabButton id="manual"><Trans>Manual entry</Trans></TabButton>
+            {isEdit && <TabButton id="test"><Trans>Test assertion</Trans></TabButton>}
           </div>
 
           {mode === "template" && (
             <div className="field">
-              <label className="field-label">Pick a template</label>
+              <label className="field-label"><Trans>Pick a template</Trans></label>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
                 {IDP_TEMPLATES.map((t) => (
                   <Button
@@ -353,7 +355,7 @@ export function SamlProviderDialog({
                 ))}
               </div>
               <span className="field-hint">
-                Sets the attribute map to that IdP's defaults — you can still tweak later.
+                <Trans>Sets the attribute map to that IdP's defaults — you can still tweak later.</Trans>
               </span>
             </div>
           )}
@@ -361,7 +363,7 @@ export function SamlProviderDialog({
           {mode === "import" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div className="field">
-                <label className="field-label">Metadata XML</label>
+                <label className="field-label"><Trans>Metadata XML</Trans></label>
                 <Textarea
                   rows={6}
                   value={importXml}
@@ -370,9 +372,9 @@ export function SamlProviderDialog({
                   style={{ height: "auto", fontFamily: "Geist Mono, monospace", fontSize: 12 }}
                 />
               </div>
-              <div className="muted" style={{ fontSize: 11.5 }}>or</div>
+              <div className="muted" style={{ fontSize: 11.5 }}><Trans>or</Trans></div>
               <div className="field">
-                <label className="field-label">Metadata URL</label>
+                <label className="field-label"><Trans>Metadata URL</Trans></label>
                 <Input
                   className="font-mono"
                   value={importUrl}
@@ -387,7 +389,7 @@ export function SamlProviderDialog({
                   disabled={importing || (!importXml.trim() && !importUrl.trim())}
                   onClick={runImport}
                 >
-                  {importing ? "Fetching…" : "Fetch & parse"}
+                  {importing ? <Trans>Fetching…</Trans> : <Trans>Fetch &amp; parse</Trans>}
                 </Button>
               </div>
             </div>
@@ -396,26 +398,26 @@ export function SamlProviderDialog({
           {mode === "manual" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div className="field">
-                <label className="field-label">Display name</label>
+                <label className="field-label"><Trans>Display name</Trans></label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Acme Okta"
+                  placeholder={t`Acme Okta`}
                   autoFocus
                 />
               </div>
               <div className="field">
-                <label className="field-label">Slug</label>
+                <label className="field-label"><Trans>Slug</Trans></label>
                 <Input
                   className="font-mono"
                   value={slug || effectiveSlug}
                   onChange={(e) => setSlug(e.target.value)}
                   placeholder="okta"
                 />
-                <span className="field-hint">Used in the ACS / metadata URLs below.</span>
+                <span className="field-hint"><Trans>Used in the ACS / metadata URLs below.</Trans></span>
               </div>
               <div className="field">
-                <label className="field-label">IdP entity ID (Issuer)</label>
+                <label className="field-label"><Trans>IdP entity ID (Issuer)</Trans></label>
                 <Input
                   className="font-mono"
                   value={entityId}
@@ -424,7 +426,7 @@ export function SamlProviderDialog({
                 />
               </div>
               <div className="field">
-                <label className="field-label">IdP SSO URL</label>
+                <label className="field-label"><Trans>IdP SSO URL</Trans></label>
                 <Input
                   className="font-mono"
                   value={ssoUrl}
@@ -433,7 +435,7 @@ export function SamlProviderDialog({
                 />
               </div>
               <div className="field">
-                <label className="field-label">IdP SLO URL <span className="muted">(optional)</span></label>
+                <label className="field-label"><Trans>IdP SLO URL <span className="muted">(optional)</span></Trans></label>
                 <Input
                   className="font-mono"
                   value={sloUrl}
@@ -443,7 +445,7 @@ export function SamlProviderDialog({
               </div>
               <div className="field">
                 <label className="field-label">
-                  IdP signing cert (PEM) {existing && existing.idpCertSet && <Badge variant="secondary">already set</Badge>}
+                  <Trans>IdP signing cert (PEM)</Trans> {existing && existing.idpCertSet && <Badge variant="secondary"><Trans>already set</Trans></Badge>}
                 </label>
                 <Textarea
                   rows={6}
@@ -453,11 +455,11 @@ export function SamlProviderDialog({
                   style={{ height: "auto", fontFamily: "Geist Mono, monospace", fontSize: 12 }}
                 />
                 {existing && existing.idpCertSet && (
-                  <span className="field-hint">Leave blank to keep the stored cert.</span>
+                  <span className="field-hint"><Trans>Leave blank to keep the stored cert.</Trans></span>
                 )}
               </div>
               <div className="field">
-                <label className="field-label">SP entity ID</label>
+                <label className="field-label"><Trans>SP entity ID</Trans></label>
                 <Input
                   className="font-mono"
                   value={spEntityId}
@@ -467,7 +469,7 @@ export function SamlProviderDialog({
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
                 <div className="field">
-                  <label className="field-label">Email attribute</label>
+                  <label className="field-label"><Trans>Email attribute</Trans></label>
                   <Input
                     className="font-mono"
                     value={attrMap.email ?? ""}
@@ -476,7 +478,7 @@ export function SamlProviderDialog({
                   />
                 </div>
                 <div className="field">
-                  <label className="field-label">First name</label>
+                  <label className="field-label"><Trans>First name</Trans></label>
                   <Input
                     className="font-mono"
                     value={attrMap.firstName ?? ""}
@@ -485,7 +487,7 @@ export function SamlProviderDialog({
                   />
                 </div>
                 <div className="field">
-                  <label className="field-label">Last name</label>
+                  <label className="field-label"><Trans>Last name</Trans></label>
                   <Input
                     className="font-mono"
                     value={attrMap.lastName ?? ""}
@@ -494,7 +496,7 @@ export function SamlProviderDialog({
                   />
                 </div>
                 <div className="field">
-                  <label className="field-label">Groups</label>
+                  <label className="field-label"><Trans>Groups</Trans></label>
                   <Input
                     className="font-mono"
                     value={attrMap.groups ?? ""}
@@ -506,55 +508,55 @@ export function SamlProviderDialog({
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
                 <div className="field">
-                  <label className="field-label">Default role</label>
+                  <label className="field-label"><Trans>Default role</Trans></label>
                   <Select
                     value={defaultRoleId ?? ""}
                     onChange={(v) => setDefaultRoleId(v || null)}
                     options={[
-                      { value: "", label: "— none —" },
+                      { value: "", label: t`— none —` },
                       ...availableRoles.map((r) => ({ value: r.id, label: r.name })),
                     ]}
                   />
                 </div>
                 <div className="field">
-                  <label className="field-label">NameID format</label>
+                  <label className="field-label"><Trans>NameID format</Trans></label>
                   <Select value={nameIdFormat} onChange={(v) => setNameIdFormat(v)} options={NAMEID_FORMATS} />
                 </div>
                 <div className="field">
-                  <label className="field-label">Signature algorithm</label>
+                  <label className="field-label"><Trans>Signature algorithm</Trans></label>
                   <Select value={sigAlg} onChange={(v) => setSigAlg(v)} options={SIG_ALGS} />
                 </div>
               </div>
 
               <div className="field-row" style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
                 <div>
-                  <div className="field-label">Want signed assertions</div>
-                  <div className="field-hint">Reject responses whose assertion isn't signed by the IdP.</div>
+                  <div className="field-label"><Trans>Want signed assertions</Trans></div>
+                  <div className="field-hint"><Trans>Reject responses whose assertion isn't signed by the IdP.</Trans></div>
                 </div>
                 <Switch checked={wantSigned} onChange={setWantSigned} />
               </div>
               <div className="field-row">
                 <div>
-                  <div className="field-label">Link by verified email</div>
+                  <div className="field-label"><Trans>Link by verified email</Trans></div>
                   <div className="field-hint">
-                    Risk: a hostile IdP can take over any local account that shares an email. Off by default.
+                    <Trans>Risk: a hostile IdP can take over any local account that shares an email. Off by default.</Trans>
                   </div>
                 </div>
                 <Switch checked={linkByEmail} onChange={setLinkByEmail} />
               </div>
               <div className="field-row">
                 <div>
-                  <div className="field-label">Enabled</div>
-                  <div className="field-hint">Off keeps the provider configured but hidden from sign-in.</div>
+                  <div className="field-label"><Trans>Enabled</Trans></div>
+                  <div className="field-hint"><Trans>Off keeps the provider configured but hidden from sign-in.</Trans></div>
                 </div>
                 <Switch checked={enabled} onChange={setEnabled} />
               </div>
 
               <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-                <span style={{ fontSize: 12, fontWeight: 500 }}>SP URLs <span className="muted">(paste into the IdP console)</span></span>
-                <Row label="ACS URL" value={acsUrl} />
-                <Row label="Metadata URL" value={metadataUrl} />
-                <Row label="SLO URL" value={sloAcsUrl} />
+                <span style={{ fontSize: 12, fontWeight: 500 }}><Trans>SP URLs <span className="muted">(paste into the IdP console)</span></Trans></span>
+                <Row label={t`ACS URL`} value={acsUrl} />
+                <Row label={t`Metadata URL`} value={metadataUrl} />
+                <Row label={t`SLO URL`} value={sloAcsUrl} />
               </div>
             </div>
           )}
@@ -562,7 +564,7 @@ export function SamlProviderDialog({
           {mode === "test" && existing && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div className="field">
-                <label className="field-label">Paste a base64 SAMLResponse</label>
+                <label className="field-label"><Trans>Paste a base64 SAMLResponse</Trans></label>
                 <Textarea
                   rows={6}
                   value={testInput}
@@ -578,7 +580,7 @@ export function SamlProviderDialog({
                   disabled={testBusy || testInput.trim().length === 0}
                   onClick={runTest}
                 >
-                  {testBusy ? "Verifying…" : "Verify"}
+                  {testBusy ? <Trans>Verifying…</Trans> : <Trans>Verify</Trans>}
                 </Button>
               </div>
               {testResult ? (
@@ -603,11 +605,11 @@ export function SamlProviderDialog({
 
         <div className="dialog-foot">
           <span className="muted" style={{ fontSize: 12 }}>
-            {validToSubmit ? (isEdit ? "Ready to save." : "Ready to create.") : "Fill the required fields."}
+            {validToSubmit ? (isEdit ? <Trans>Ready to save.</Trans> : <Trans>Ready to create.</Trans>) : <Trans>Fill the required fields.</Trans>}
           </span>
           <div className="spacer" />
           <Button variant="ghost" size="sm" onClick={onClose}>
-            Cancel
+            <Trans>Cancel</Trans>
           </Button>
           <Button
             variant="primary"
@@ -616,7 +618,7 @@ export function SamlProviderDialog({
             disabled={!validToSubmit}
             onClick={submit}
           >
-            {isEdit ? "Save" : "Add provider"}
+            {isEdit ? <Trans>Save</Trans> : <Trans>Add provider</Trans>}
           </Button>
         </div>
       </DialogContent>

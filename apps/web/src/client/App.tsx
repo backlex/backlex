@@ -1,5 +1,7 @@
 import { Route, Routes, useNavigate } from "react-router-dom";
+import { I18nProvider } from "@lingui/react";
 import { Toaster } from "@workeros/ui/components/sonner";
+import { i18n } from "@/admin/i18n";
 import { AuthGate } from "@/components/auth-gate";
 import { AdminApp } from "@/admin/app";
 import { auth } from "@/lib/auth";
@@ -21,7 +23,7 @@ export const App = () => {
     navigate("/sign-in", { replace: true });
   };
   return (
-    <>
+    <I18nProvider i18n={i18n}>
       <Routes>
         <Route path="/sign-in" element={<SignIn />} />
         <Route path="/sign-up" element={<SignUp />} />
@@ -40,6 +42,6 @@ export const App = () => {
         />
       </Routes>
       <Toaster richColors closeButton position="top-right" />
-    </>
+    </I18nProvider>
   );
 };

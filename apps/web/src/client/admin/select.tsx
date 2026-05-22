@@ -4,6 +4,7 @@
 // need to change, but delegates rendering + keyboard nav to the shadcn
 // Radix-based Select primitive.
 import { createElement, type CSSProperties, type ReactNode } from "react";
+import { useLingui } from "@lingui/react/macro";
 import {
   Select as UiSelect,
   SelectContent,
@@ -54,13 +55,15 @@ export function Select({
   value,
   onChange,
   options,
-  placeholder = "Select…",
+  placeholder,
   className = "",
   style,
   size = "md",
   disabled,
   defaultValue,
 }: SelectProps) {
+  const { t } = useLingui();
+  const resolvedPlaceholder = placeholder ?? t`Select…`;
   const norm: SelectOption[] = (options || []).map((o) =>
     typeof o === "object" ? (o as SelectOption) : { value: String(o), label: String(o) },
   );
@@ -95,7 +98,7 @@ export function Select({
           className,
         )}
       >
-        <SelectValue placeholder={placeholder} />
+        <SelectValue placeholder={resolvedPlaceholder} />
       </SelectTrigger>
       <SelectContent>
         {norm.map((o) => {

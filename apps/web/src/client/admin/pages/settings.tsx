@@ -552,11 +552,12 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
 }
 
 /**
- * Editable copy for the public sign-in screen's brand panel. Both fields are
- * optional — left blank, the sign-in screen falls back to its built-in default
- * copy. Persisted to `app_settings` via the same `PATCH /api/admin/settings`
- * whitelist as the General form, and surfaced to the (unauthenticated) sign-in
- * page through `/api/auth/providers`.
+ * Editable copy for the public sign-in screen's brand panel. These are
+ * instance-global — the sign-in page is reached before any workspace is
+ * selected — so they persist on the `tenant_id IS NULL` `app_settings` row.
+ * Both fields are optional; left blank, the sign-in screen falls back to its
+ * built-in default copy. Surfaced to the (unauthenticated) sign-in page
+ * through `/api/auth/providers`.
  */
 function SignInBrandingCard({ pushToast }: { pushToast: (m: string) => void }) {
   const { t } = useLingui();
@@ -604,8 +605,9 @@ function SignInBrandingCard({ pushToast }: { pushToast: (m: string) => void }) {
       <div className="flex items-start gap-2.5">
         <I.Info size={14} className="mt-0.5" />
         <span className="text-xs text-muted-foreground">
-          <Trans>Headline and tagline shown on the public sign-in screen. Leave a field
-          blank to use the built-in default copy.</Trans>
+          <Trans>Headline and tagline shown on the public sign-in screen. This applies
+          instance-wide — the sign-in page is reached before any workspace is selected.
+          Leave a field blank to use the built-in default copy.</Trans>
         </span>
       </div>
       <div className="flex flex-col gap-1.5">

@@ -119,7 +119,7 @@ function ageBump(t: string) {
   return t;
 }
 
-export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOptions) {
+export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions) {
   const { t } = useLingui();
   const [tweaks, setTweaks] = useState(DEFAULTS);
   const setTweak = useCallback(<K extends keyof typeof DEFAULTS>(k: K, v: (typeof DEFAULTS)[K]) => {

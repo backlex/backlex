@@ -5707,6 +5707,10 @@ msgstr "Reset your <0>password</0>."
 msgid "Reset your password"
 msgstr "Reset your password"
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Reset zoom"
+msgstr "Reset zoom"
+
 #: src/client/pages/reset-password.tsx
 msgid "Resetting password"
 msgstr "Resetting password"
@@ -7200,7 +7204,6 @@ msgid "Toggle sidebar"
 msgstr "Toggle sidebar"
 
 #: src/client/admin/extras.tsx
-#: src/client/admin/ui.tsx
 #: src/client/components/auth-shell.tsx
 msgid "Toggle theme"
 msgstr "Toggle theme"
@@ -7911,3 +7914,11 @@ msgstr "Your own preference — stored locally, not synced."
 #: src/client/admin/account-page.tsx
 msgid "Your personal profile, preferences, password, sessions, and connected credentials. Workspace-wide settings live under the Settings page."
 msgstr "Your personal profile, preferences, password, sessions, and connected credentials. Workspace-wide settings live under the Settings page."
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Zoom in"
+msgstr "Zoom in"
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Zoom out"
+msgstr "Zoom out"

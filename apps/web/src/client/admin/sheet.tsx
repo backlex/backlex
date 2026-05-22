@@ -884,7 +884,12 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[90vh] w-[94vw] flex-col gap-0 overflow-hidden border-border bg-card p-0 sm:max-w-[560px]">
+      <DialogContent
+        className={cn(
+          "grid max-h-[90vh] w-[94vw] gap-0 overflow-hidden border-border bg-card p-0 sm:max-w-[560px]",
+          mode === "edit" ? "grid-rows-[auto_auto_1fr_auto]" : "grid-rows-[auto_1fr_auto]",
+        )}
+      >
         <DialogHeader
           className={cn(
             "flex flex-col gap-0.5 px-5 pb-3.5 pr-12 pt-[18px]",
@@ -925,7 +930,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
           </Tabs>
         )}
 
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea className="min-h-0">
           <div className="flex flex-col gap-8 px-5 py-[18px]" onKeyDown={onBodyKeyDown}>
           {activeTab === "fields" && (
             <>

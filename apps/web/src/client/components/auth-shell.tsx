@@ -136,20 +136,7 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
           <div className="beam beam-front" />
           <div className="beam-grain" />
         </div>
-        <div className="flex items-center gap-2.5 font-mono text-sm font-semibold tracking-tight">
-          {brandLogo ? (
-            <img
-              src={brandLogo}
-              alt=""
-              className="size-7 rounded-lg object-contain"
-            />
-          ) : (
-            <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground text-xs font-bold">
-              {brandName.charAt(0).toLowerCase()}
-            </span>
-          )}
-          {brandName}
-        </div>
+        <BrandLockup brandLogo={brandLogo} brandName={brandName} />
 
         <h1 className="mt-auto mb-3 text-balance text-4xl font-semibold leading-[1.05] tracking-tight">
           <BrandHeadline>{headline}</BrandHeadline>
@@ -177,6 +164,9 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
           >
             {dark ? <SunIcon size={14} /> : <MoonIcon size={14} />}
           </Button>
+          <div className="mb-8 md:hidden">
+            <BrandLockup brandLogo={brandLogo} brandName={brandName} />
+          </div>
           {children}
           <div className="mt-7 flex justify-center gap-4 text-xs text-muted-foreground">
             {visibleLinks.map((link) => (
@@ -205,6 +195,33 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
  */
 const BrandHeadline = ({ children }: { children: ReactNode }) => (
   <span className="[&_em]:not-italic [&_em]:text-primary">{children}</span>
+);
+
+/**
+ * Workspace logo + name lockup, shared by the desktop brand panel and the
+ * mobile form-column header so mobile users still see the workspace identity.
+ */
+const BrandLockup = ({
+  brandLogo,
+  brandName,
+}: {
+  brandLogo: string | null;
+  brandName: string;
+}) => (
+  <div className="flex items-center gap-2.5 font-mono text-sm font-semibold tracking-tight">
+    {brandLogo ? (
+      <img
+        src={brandLogo}
+        alt=""
+        className="size-7 rounded-lg object-contain"
+      />
+    ) : (
+      <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground text-xs font-bold">
+        {brandName.charAt(0).toLowerCase()}
+      </span>
+    )}
+    {brandName}
+  </div>
 );
 
 /** Reusable card body container for individual auth screens. */

@@ -885,7 +885,16 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="flex max-h-[90vh] w-[94vw] flex-col gap-0 overflow-hidden border-border bg-card p-0 sm:max-w-[560px]">
-        <DialogHeader className="flex flex-col gap-0.5 border-b border-border px-5 pb-3.5 pr-12 pt-[18px]">
+        <DialogHeader
+          className={cn(
+            "flex flex-col gap-0.5 px-5 pb-3.5 pr-12 pt-[18px]",
+            // In edit mode the Tabs row below carries the divider, so the
+            // header skips its own border — otherwise the tab pill ends up
+            // squeezed between two lines. Create mode keeps the border since
+            // there's no Tabs row to separate the header from the body.
+            mode === "create" && "border-b border-border",
+          )}
+        >
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
             {mode === "create" ? t`New ${slug || "row"}` : t`Edit ${slug || "row"}`}
           </DialogTitle>
@@ -900,7 +909,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
           <Tabs
             value={activeTab}
             onValueChange={(v) => setActiveTab(v as "fields" | "collab")}
-            className="border-b border-border bg-card px-3.5"
+            className="border-b border-border bg-card px-3.5 py-2.5"
           >
             <TabsList>
               <TabsTrigger value="fields">

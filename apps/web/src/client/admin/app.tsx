@@ -164,6 +164,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   const navTo = useCallback((id: string) => { navigate("/" + id); }, [navigate]);
   const [activeTab, setActiveTab] = useState<"items" | "schema" | "settings">("items");
   const [posts, setPosts] = useState<Post[]>([]);
+  const [itemsLoaded, setItemsLoaded] = useState(false);
   // Real items load — see effect after activeCollection is declared.
   const [search, setSearch] = useUrlState("q", "");
   const [filters, setFilters] = useUrlStateJson<FilterCondition[]>("filter", []);
@@ -292,6 +293,13 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     return () => clearTimeout(t);
   }, [search, debouncedSearch]);
 
+  // Force the items skeleton back on whenever we switch collections, so the
+  // empty state can never flash before the first list fetch for the new
+  // collection has landed.
+  useEffect(() => {
+    setItemsLoaded(false);
+  }, [activeCollection]);
+
   // Items refetch — keyed off the active collection AND every filter input
   // so typing / chipping / status-tabbing fires a request. Empty / missing
   // / auth-fail falls back to whatever's currently cached.
@@ -326,6 +334,8 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
         }
       } catch {
         // keep whatever is currently in `posts`
+      } finally {
+        if (!cancelled) setItemsLoaded(true);
       }
     })();
     return () => { cancelled = true; };
@@ -768,10 +778,10 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                 pushToast={pushToast}
               />
             )}
-            {activeNav === "collections" && activeCollection && collectionLoading && schemaState.slug !== activeCollection && (
+            {activeNav === "collections" && activeCollection && ((collectionLoading && schemaState.slug !== activeCollection) || !itemsLoaded) && (
               <CollectionItemsSkeleton />
             )}
-            {activeNav === "collections" && activeCollection && !(collectionLoading && schemaState.slug !== activeCollection) && <>
+            {activeNav === "collections" && activeCollection && !((collectionLoading && schemaState.slug !== activeCollection) || !itemsLoaded) && <>
               <Button variant="ghost" size="sm" icon={I.ChevronLeft} onClick={() => setActiveCollection(null)}><Trans>All collections</Trans></Button>
               <PageHeader
                 slug={activeCollection}

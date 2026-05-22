@@ -5715,6 +5715,10 @@ msgstr "<0>Parolanızı</0> sıfırlayın."
 msgid "Reset your password"
 msgstr "Parolanızı sıfırlayın"
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Reset zoom"
+msgstr "Yakınlaştırmayı sıfırla"
+
 #: src/client/pages/reset-password.tsx
 msgid "Resetting password"
 msgstr "Parola sıfırlanıyor"
@@ -7208,7 +7212,6 @@ msgid "Toggle sidebar"
 msgstr "Kenar çubuğunu aç/kapat"
 
 #: src/client/admin/extras.tsx
-#: src/client/admin/ui.tsx
 #: src/client/components/auth-shell.tsx
 msgid "Toggle theme"
 msgstr "Temayı değiştir"
@@ -7923,3 +7926,11 @@ msgstr "Kişisel tercihiniz — yerel olarak saklanır, senkronize edilmez."
 #: src/client/admin/account-page.tsx
 msgid "Your personal profile, preferences, password, sessions, and connected credentials. Workspace-wide settings live under the Settings page."
 msgstr "Kişisel profiliniz, tercihleriniz, parolanız, oturumlarınız ve bağlı kimlik bilgileriniz. Çalışma alanı genelindeki ayarlar Ayarlar sayfasındadır."
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Zoom in"
+msgstr "Yakınlaştır"
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Zoom out"
+msgstr "Uzaklaştır"

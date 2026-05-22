@@ -1,5 +1,6 @@
 // Overview page — adapter dashboard, runtime stats, recent activity + errors
 import { useEffect, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { ADAPTER_PROFILES, type AdapterId } from "../config";
 import { Badge, Button, PageHeader } from "../ui";
@@ -35,6 +36,7 @@ function Sparkline({ data, color = "var(--primary)", height = 36, fill = true }:
 }
 
 export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: AdapterId; pushToast: (m: string) => void; setActiveNav: (id: string) => void }) {
+  const { t } = useLingui();
   const profile = ADAPTER_PROFILES[adapter];
   const [range, setRange] = useState("1h");
   // Live metrics: refetched on range change. While offline / unauthenticated
@@ -84,19 +86,19 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
 
   const p95 = metrics?.totals.p95Ms ?? 0;
   const todayMetrics = [
-    { label: "Requests", value: totalRequests.toLocaleString(), delta: range, up: true, series: reqSeries, color: "var(--primary)" },
-    { label: "p95 latency", value: p95 ? `${p95}ms` : "—", delta: "duration_ms", up: p95 < 500, series: latSeries, color: "oklch(0.65 0.15 240)" },
-    { label: "Error rate", value: errorPct, delta: "errors", up: (metrics?.totals.errorRate ?? 0) < 0.05, series: errSeries, color: "oklch(0.7 0.18 22)" },
-    { label: "Active users", value: String(activeUsers), delta: range, up: activeUsers > 0, series: errSeries, color: "oklch(0.72 0.16 145)" },
+    { label: t`Requests`, value: totalRequests.toLocaleString(), delta: range, up: true, series: reqSeries, color: "var(--primary)" },
+    { label: t`p95 latency`, value: p95 ? `${p95}ms` : "—", delta: "duration_ms", up: p95 < 500, series: latSeries, color: "oklch(0.65 0.15 240)" },
+    { label: t`Error rate`, value: errorPct, delta: "errors", up: (metrics?.totals.errorRate ?? 0) < 0.05, series: errSeries, color: "oklch(0.7 0.18 22)" },
+    { label: t`Active users`, value: String(activeUsers), delta: range, up: activeUsers > 0, series: errSeries, color: "oklch(0.72 0.16 145)" },
   ];
 
   const fmtAgo = (ts: number | null | undefined): string => {
     if (!ts) return "—";
     const ms = Date.now() - ts;
-    if (ms < 60_000) return "just now";
-    if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}m ago`;
-    if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}h ago`;
-    return `${Math.floor(ms / 86_400_000)}d ago`;
+    if (ms < 60_000) return t`just now`;
+    if (ms < 3_600_000) return t`${Math.floor(ms / 60_000)}m ago`;
+    if (ms < 86_400_000) return t`${Math.floor(ms / 3_600_000)}h ago`;
+    return t`${Math.floor(ms / 86_400_000)}d ago`;
   };
   const fmtBytes = (n: number) => {
     if (!n) return "—";
@@ -143,18 +145,18 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
   }));
 
   const quickActions = [
-    { label: "New collection", icon: I.Database, hint: "auto-creates c_<slug> table", onClick: () => { setActiveNav("collections"); pushToast("Collection wizard opened."); } },
-    { label: "New function", icon: I.Function, hint: "http · event · cron", onClick: () => { setActiveNav("functions"); pushToast("Function scaffold ready."); } },
-    { label: "New flow", icon: I.Bolt, hint: "trigger → action graph", onClick: () => { setActiveNav("flows"); pushToast("Flow draft created."); } },
-    { label: "Invite user", icon: I.Users, hint: "email magic link", onClick: () => { setActiveNav("users"); pushToast("Invite dialog opened."); } },
+    { label: t`New collection`, icon: I.Database, hint: t`auto-creates c_<slug> table`, onClick: () => { setActiveNav("collections"); pushToast(t`Collection wizard opened.`); } },
+    { label: t`New function`, icon: I.Function, hint: t`http · event · cron`, onClick: () => { setActiveNav("functions"); pushToast(t`Function scaffold ready.`); } },
+    { label: t`New flow`, icon: I.Bolt, hint: t`trigger → action graph`, onClick: () => { setActiveNav("flows"); pushToast(t`Flow draft created.`); } },
+    { label: t`Invite user`, icon: I.Users, hint: t`email magic link`, onClick: () => { setActiveNav("users"); pushToast(t`Invite dialog opened.`); } },
   ];
 
   const c = metrics?.counts;
   const stats = [
-    { label: "Collections", value: c?.collections ?? 0, sub: "physical c_<slug> tables", nav: "collections", icon: I.Database },
-    { label: "Files", value: c?.files ?? 0, sub: "stored objects", nav: "storage", icon: I.Folder },
-    { label: "Active flows", value: c?.activeFlows ?? 0, sub: `${c?.activeFlows ?? 0} enabled · ${c?.pausedFlows ?? 0} paused`, nav: "flows", icon: I.Bolt },
-    { label: "Functions", value: c?.functions ?? 0, sub: "sandboxed handlers", nav: "functions", icon: I.Function },
+    { label: t`Collections`, value: c?.collections ?? 0, sub: t`physical c_<slug> tables`, nav: "collections", icon: I.Database },
+    { label: t`Files`, value: c?.files ?? 0, sub: t`stored objects`, nav: "storage", icon: I.Folder },
+    { label: t`Active flows`, value: c?.activeFlows ?? 0, sub: t`${c?.activeFlows ?? 0} enabled · ${c?.pausedFlows ?? 0} paused`, nav: "flows", icon: I.Bolt },
+    { label: t`Functions`, value: c?.functions ?? 0, sub: t`sandboxed handlers`, nav: "functions", icon: I.Function },
   ];
 
   // First whole-page fetch — the initial metrics response hasn't landed yet.
@@ -163,17 +165,17 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
-        title="Overview"
-        description={<>Adapter auto-selected from bindings/env. <span className="font-mono">{adapter}</span> profile is active.</>}
+        title={t`Overview`}
+        description={<><Trans>Adapter auto-selected from bindings/env.</Trans> <span className="font-mono">{adapter}</span> <Trans>profile is active.</Trans></>}
         actions={<>
           <Select size="sm" value={range} onChange={setRange} options={[
-            { value: "15m", label: "Last 15 minutes" },
-            { value: "1h", label: "Last 1 hour" },
-            { value: "24h", label: "Last 24 hours" },
-            { value: "7d", label: "Last 7 days" },
-            { value: "30d", label: "Last 30 days" },
+            { value: "15m", label: t`Last 15 minutes` },
+            { value: "1h", label: t`Last 1 hour` },
+            { value: "24h", label: t`Last 24 hours` },
+            { value: "7d", label: t`Last 7 days` },
+            { value: "30d", label: t`Last 30 days` },
           ]} className="w-[170px]" />
-          <Button variant="outline" icon={I.Refresh} onClick={() => pushToast("Status refreshed.")}>Refresh</Button>
+          <Button variant="outline" icon={I.Refresh} onClick={() => pushToast(t`Status refreshed.`)}><Trans>Refresh</Trans></Button>
         </>}
       />
 
@@ -232,12 +234,12 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
           <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
             <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
               <I.Database size={14} />
-              <span className="text-[13px] font-medium">Top collections</span>
+              <span className="text-[13px] font-medium"><Trans>Top collections</Trans></span>
               <div className="flex-1" />
-              <Button variant="ghost" size="sm" onClick={() => setActiveNav("collections")} iconRight={I.ChevronRight}>Manage</Button>
+              <Button variant="ghost" size="sm" onClick={() => setActiveNav("collections")} iconRight={I.ChevronRight}><Trans>Manage</Trans></Button>
             </div>
             <Table className={ADMIN_TABLE_CLS}>
-              <TableHeader><TableRow><TableHead>Slug</TableHead><TableHead className="w-[80px] text-right">Rows</TableHead><TableHead className="w-[90px] text-right">Size</TableHead><TableHead className="w-[110px] text-right">Writes (1h)</TableHead><TableHead className="w-[100px]">Last write</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead><Trans>Slug</Trans></TableHead><TableHead className="w-[80px] text-right"><Trans>Rows</Trans></TableHead><TableHead className="w-[90px] text-right"><Trans>Size</Trans></TableHead><TableHead className="w-[110px] text-right"><Trans>Writes (1h)</Trans></TableHead><TableHead className="w-[100px]"><Trans>Last write</Trans></TableHead></TableRow></TableHeader>
               <TableBody>
                 {collections.map((c) => (
                   <TableRow key={c.slug} className="cursor-pointer" onClick={() => setActiveNav("collections")}>
@@ -255,13 +257,13 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
           <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
             <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
               <I.Activity size={14} />
-              <span className="text-[13px] font-medium">Activity</span>
+              <span className="text-[13px] font-medium"><Trans>Activity</Trans></span>
               <div className="flex-1" />
-              <Button variant="ghost" size="sm" iconRight={I.ChevronRight} onClick={() => setActiveNav("logs")}>All events</Button>
+              <Button variant="ghost" size="sm" iconRight={I.ChevronRight} onClick={() => setActiveNav("logs")}><Trans>All events</Trans></Button>
             </div>
             {activity.length === 0 ? (
               <div className="px-4 py-5 text-center">
-                <span className="text-[12.5px] text-muted-foreground">No activity recorded.</span>
+                <span className="text-[12.5px] text-muted-foreground"><Trans>No activity recorded.</Trans></span>
               </div>
             ) : (
               <div className="py-1">
@@ -290,14 +292,14 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
           <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
             <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
               <I.AlertTriangle size={14} />
-              <span className="text-[13px] font-medium">Recent errors</span>
-              <span className="font-mono text-xs text-muted-foreground">last {range} · {(metrics?.totals?.errors ?? recentErrors.reduce((a, e) => a + (e.count ?? 0), 0))} {(metrics?.totals?.errors ?? 0) === 1 ? "event" : "events"}</span>
+              <span className="text-[13px] font-medium"><Trans>Recent errors</Trans></span>
+              <span className="font-mono text-xs text-muted-foreground"><Trans>last {range} · {(metrics?.totals?.errors ?? recentErrors.reduce((a, e) => a + (e.count ?? 0), 0))} {(metrics?.totals?.errors ?? 0) === 1 ? "event" : "events"}</Trans></span>
               <div className="flex-1" />
-              <Button variant="ghost" size="sm" onClick={() => setActiveNav("logs")}>View all</Button>
+              <Button variant="ghost" size="sm" onClick={() => setActiveNav("logs")}><Trans>View all</Trans></Button>
             </div>
             {recentErrors.length === 0 ? (
               <div className="px-4 py-5 text-center">
-                <span className="text-[12.5px] text-muted-foreground">No errors recorded.</span>
+                <span className="text-[12.5px] text-muted-foreground"><Trans>No errors recorded.</Trans></span>
               </div>
             ) : recentErrors.map((e, i) => (
               <div key={i} className={`flex items-center gap-3 px-4 py-2.5 ${i < recentErrors.length - 1 ? "border-b border-border" : ""}`}>
@@ -316,7 +318,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
         <div className="flex flex-col gap-3.5">
           <div className="flex flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground">
             <div className="flex items-center gap-2">
-              <I.Globe size={14} /><span className="text-[13px] font-medium">Health</span>
+              <I.Globe size={14} /><span className="text-[13px] font-medium"><Trans>Health</Trans></span>
               <div className="flex-1" />
               <span className="inline-flex items-center gap-1.5 rounded-3xl border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className="size-[7px] shrink-0 rounded-full bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]" />{adapter === "workers" ? "cf workers" : adapter}</span>
             </div>
@@ -349,14 +351,14 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
               const emailConnected = emailProvider !== null;
               const remoteExec = envSet.has("FUNCTIONS_EXEC_URL");
               const sandboxValue = remoteExec ? "remote-http" : adapter === "bun" ? "bun-worker" : "quickjs";
-              const sandboxHint = remoteExec ? "FUNCTIONS_EXEC_URL set" : adapter === "bun" ? "worker thread + RPC" : "in-isolate, sync only";
+              const sandboxHint = remoteExec ? t`FUNCTIONS_EXEC_URL set` : adapter === "bun" ? t`worker thread + RPC` : t`in-isolate, sync only`;
               const rows = [
-                ["Database", profile.db, dbStatus === "connected" ? "connected" : "optional", dbBinding?.target ?? profile.db],
-                ["Storage", profile.storage, storageStatus === "connected" ? "connected" : "optional", storageBinding?.target ?? profile.storage],
-                ["Realtime", profile.realtime, realtimeStatus === "connected" ? "connected" : "optional", realtimeBinding?.target ?? profile.realtime],
-                ["Sandbox", sandboxValue, remoteExec || adapter === "bun" ? "connected" : "idle", sandboxHint],
-                ["Vectorize", "vector index", vectorizeBinding ? "connected" : "optional", vectorizeBinding?.target ?? "—"],
-                ["Email", emailProvider ?? (adapter === "bun" ? "console (dev)" : "not configured"), emailConnected ? "connected" : "idle", emailConnected ? "EMAIL_FROM set" : adapter === "bun" ? "logs to stdout" : "set EMAIL_FROM + a provider key"],
+                [t`Database`, profile.db, dbStatus === "connected" ? t`connected` : t`optional`, dbBinding?.target ?? profile.db],
+                [t`Storage`, profile.storage, storageStatus === "connected" ? t`connected` : t`optional`, storageBinding?.target ?? profile.storage],
+                [t`Realtime`, profile.realtime, realtimeStatus === "connected" ? t`connected` : t`optional`, realtimeBinding?.target ?? profile.realtime],
+                [t`Sandbox`, sandboxValue, remoteExec || adapter === "bun" ? t`connected` : t`idle`, sandboxHint],
+                [t`Vectorize`, t`vector index`, vectorizeBinding ? t`connected` : t`optional`, vectorizeBinding?.target ?? "—"],
+                [t`Email`, emailProvider ?? (adapter === "bun" ? t`console (dev)` : t`not configured`), emailConnected ? t`connected` : t`idle`, emailConnected ? t`EMAIL_FROM set` : adapter === "bun" ? t`logs to stdout` : t`set EMAIL_FROM + a provider key`],
               ];
               return rows;
             })().map(([k, v, status, hint], i, arr) => (
@@ -365,7 +367,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
                   <div className="text-[12.5px] font-medium">{k}</div>
                   <div className="font-mono text-[11.5px] text-muted-foreground">{v} · {hint}</div>
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded-3xl border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className={`size-[7px] shrink-0 rounded-full ${status === "idle" ? "bg-[oklch(0.78_0.16_75)] shadow-[0_0_0_3px_oklch(0.78_0.16_75/0.2)]" : "bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]"}`} />{status}</span>
+                <span className="inline-flex items-center gap-1.5 rounded-3xl border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className={`size-[7px] shrink-0 rounded-full ${status === t`idle` ? "bg-[oklch(0.78_0.16_75)] shadow-[0_0_0_3px_oklch(0.78_0.16_75/0.2)]" : "bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]"}`} />{status}</span>
               </div>
             ))}
           </div>

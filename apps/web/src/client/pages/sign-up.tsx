@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { KeyRoundIcon, MailCheckIcon, ShieldIcon } from "lucide-react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@workeros/ui/components/input";
 import { Label } from "@workeros/ui/components/label";
 import { Checkbox } from "@workeros/ui/components/checkbox";
@@ -41,6 +42,7 @@ interface PasskeyClient {
 }
 
 export const SignUp = () => {
+  const { t } = useLingui();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -97,7 +99,7 @@ export const SignUp = () => {
     if (res.error) {
       setBusy(false);
       setStage("form");
-      notifyError(res.error.message ?? "Sign-up failed");
+      notifyError(res.error.message ?? t`Sign-up failed`);
       return;
     }
 
@@ -152,15 +154,15 @@ export const SignUp = () => {
       <AuthShell mode="sign-up">
         <AuthCard>
           <AuthCardHeader
-            title="Sign-up is disabled"
-            description="An admin has turned off public sign-up for this instance. Ask for an invite, or sign in if you already have an account."
+            title={<Trans>Sign-up is disabled</Trans>}
+            description={<Trans>An admin has turned off public sign-up for this instance. Ask for an invite, or sign in if you already have an account.</Trans>}
           />
           <AuthCallout icon={<ShieldIcon size={16} />}>
-            <strong>Closed instance.</strong> Set{" "}
+            <strong><Trans>Closed instance.</Trans></strong> <Trans>Set{" "}
             <span className="font-mono">openSignup</span> to <em>true</em> in
-            admin → Auth Settings to re-open.
+            admin → Auth Settings to re-open.</Trans>
           </AuthCallout>
-          <AuthFootLink to="/sign-in" prefix="Have an account?" label="Sign in" />
+          <AuthFootLink to="/sign-in" prefix={t`Have an account?`} label={t`Sign in`} />
         </AuthCard>
       </AuthShell>
     );
@@ -171,15 +173,15 @@ export const SignUp = () => {
       <AuthShell mode="sign-up">
         <AuthCard>
           <AuthCardHeader
-            title="Check your inbox"
-            description={`We sent a verification link to ${email}. Click it to finish creating your account.`}
+            title={<Trans>Check your inbox</Trans>}
+            description={<Trans>We sent a verification link to {email}. Click it to finish creating your account.</Trans>}
           />
           <AuthCallout icon={<MailCheckIcon size={16} />}>
-            <strong>Verification required.</strong> Until you confirm your
+            <strong><Trans>Verification required.</Trans></strong> <Trans>Until you confirm your
             email, sign-in won't work. Didn't get it? Check spam, or wait a
-            minute and try sign-in — we'll re-send on demand.
+            minute and try sign-in — we'll re-send on demand.</Trans>
           </AuthCallout>
-          <AuthFootLink to="/sign-in" prefix="Already verified?" label="Sign in" />
+          <AuthFootLink to="/sign-in" prefix={t`Already verified?`} label={t`Sign in`} />
         </AuthCard>
       </AuthShell>
     );
@@ -189,45 +191,45 @@ export const SignUp = () => {
     <AuthShell mode={isFirst ? "claim" : "sign-up"}>
       <AuthCard>
         <AuthCardHeader
-          title={isFirst ? "Create your admin account" : "Create an account"}
+          title={isFirst ? <Trans>Create your admin account</Trans> : <Trans>Create an account</Trans>}
           description={
             isFirst
-              ? "This is the first user on this instance."
-              : "You'll get the authenticated role by default."
+              ? <Trans>This is the first user on this instance.</Trans>
+              : <Trans>You'll get the authenticated role by default.</Trans>
           }
         />
 
         {isFirst && (
           <AuthCallout icon={<ShieldIcon size={16} />}>
-            <strong>First-user policy.</strong> The first account on a fresh
+            <strong><Trans>First-user policy.</Trans></strong> <Trans>The first account on a fresh
             instance is provisioned as{" "}
             <span className="font-mono">admin</span> automatically. You can
-            demote yourself later.
+            demote yourself later.</Trans>
           </AuthCallout>
         )}
 
         <SocialButtons />
 
-        {hasSocials && <AuthDivider>or with email</AuthDivider>}
+        {hasSocials && <AuthDivider><Trans>or with email</Trans></AuthDivider>}
 
         <form className="space-y-4" onSubmit={submit}>
           <div className="space-y-1.5">
             <Label htmlFor="name" className="flex items-center gap-1">
-              Display name{" "}
-              <span className="text-muted-foreground font-normal">(optional)</span>
+              <Trans>Display name{" "}
+              <span className="text-muted-foreground font-normal">(optional)</span></Trans>
             </Label>
             <Input
               id="name"
               autoComplete="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Rana"
+              placeholder={t`Rana`}
               className="h-10"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email"><Trans>Email</Trans></Label>
             <Input
               id="email"
               type="email"
@@ -235,13 +237,13 @@ export const SignUp = () => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder={t`you@example.com`}
               className="h-10"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password"><Trans>Password</Trans></Label>
             <Input
               id="password"
               type="password"
@@ -250,7 +252,7 @@ export const SignUp = () => {
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 8 characters"
+              placeholder={t`At least 8 characters`}
               className="h-10"
             />
             {password && (
@@ -273,8 +275,8 @@ export const SignUp = () => {
               </div>
             )}
             <p className="text-[11.5px] text-muted-foreground">
-              Hashed with argon2id · stored in{" "}
-              <span className="font-mono">users.password_hash</span>.
+              <Trans>Hashed with argon2id · stored in{" "}
+              <span className="font-mono">users.password_hash</span>.</Trans>
             </p>
           </div>
 
@@ -288,15 +290,15 @@ export const SignUp = () => {
               <span className="flex-1">
                 <span className="flex items-center gap-1.5 font-medium text-foreground">
                   <KeyRoundIcon className="size-3.5 text-primary" />
-                  Enrol a passkey now
+                  <Trans>Enrol a passkey now</Trans>
                   <span className="rounded-md border border-primary/30 bg-card px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wide text-primary">
-                    recommended
+                    <Trans>recommended</Trans>
                   </span>
                 </span>
                 <span className="mt-0.5 block text-[11.5px] text-muted-foreground">
-                  Faster, phishing-resistant sign-in. Your device will prompt
+                  <Trans>Faster, phishing-resistant sign-in. Your device will prompt
                   for biometric or PIN after the account is created. You can
-                  add or remove passkeys later in Settings.
+                  add or remove passkeys later in Settings.</Trans>
                 </span>
               </span>
             </label>
@@ -309,9 +311,9 @@ export const SignUp = () => {
               className="mt-0.5"
             />
             <span>
-              I agree to the{" "}
+              <Trans>I agree to the{" "}
               <span className="font-medium text-foreground">Terms</span> and{" "}
-              <span className="font-medium text-foreground">Privacy</span>.
+              <span className="font-medium text-foreground">Privacy</span>.</Trans>
             </span>
           </label>
 
@@ -320,21 +322,21 @@ export const SignUp = () => {
             disabled={!email || !password || !agreed || busy}
           >
             {stage === "enrolling"
-              ? "Setting up passkey…"
+              ? <Trans>Setting up passkey…</Trans>
               : stage === "creating"
                 ? isFirst
-                  ? "Claiming…"
-                  : "Creating account…"
+                  ? <Trans>Claiming…</Trans>
+                  : <Trans>Creating account…</Trans>
                 : isFirst
-                  ? "Claim this instance"
-                  : "Create account"}
+                  ? <Trans>Claim this instance</Trans>
+                  : <Trans>Create account</Trans>}
           </AuthSubmit>
         </form>
 
         <AuthFootLink
           to="/sign-in"
-          prefix="Already have an account?"
-          label="Sign in"
+          prefix={t`Already have an account?`}
+          label={t`Sign in`}
         />
       </AuthCard>
     </AuthShell>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CalendarIcon, XIcon } from "lucide-react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@workeros/ui/components/button";
 import { Calendar } from "@workeros/ui/components/calendar";
 import { Input } from "@workeros/ui/components/input";
@@ -22,21 +23,22 @@ const toDate = (v: string | number | null | undefined): Date | undefined => {
 const pad = (n: number) => String(n).padStart(2, "0");
 const toTimeString = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
-const fmtLabel = (d: Date | undefined, withTime: boolean): string => {
-  if (!d) return "Pick a date…";
-  return withTime
-    ? `${d.toLocaleDateString()} ${toTimeString(d)}`
-    : d.toLocaleDateString();
-};
-
 /**
  * Calendar + Popover + optional time input. Emits ISO 8601 strings on change
  * (or null when cleared). Suitable for `timestamp` collection fields.
  */
 export const DatePicker = ({ value, onChange, withTime = true }: DatePickerProps) => {
+  const { t } = useLingui();
   const [open, setOpen] = useState(false);
   const date = toDate(value);
   const time = date ? toTimeString(date) : "00:00";
+
+  const fmtLabel = (d: Date | undefined, wt: boolean): string => {
+    if (!d) return t`Pick a date…`;
+    return wt
+      ? `${d.toLocaleDateString()} ${toTimeString(d)}`
+      : d.toLocaleDateString();
+  };
 
   const setDate = (d: Date | undefined) => {
     if (!d) {
@@ -80,7 +82,7 @@ export const DatePicker = ({ value, onChange, withTime = true }: DatePickerProps
           />
           {withTime && (
             <div className="flex items-center gap-2 border-t p-3">
-              <Label className="text-xs text-muted-foreground">Time</Label>
+              <Label className="text-xs text-muted-foreground"><Trans>Time</Trans></Label>
               <Input
                 type="time"
                 value={time}
@@ -96,7 +98,7 @@ export const DatePicker = ({ value, onChange, withTime = true }: DatePickerProps
           type="button"
           variant="ghost"
           size="icon-sm"
-          title="Clear"
+          title={t`Clear`}
           onClick={() => onChange(null)}
         >
           <XIcon />

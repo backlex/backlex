@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useIsMobile } from "@workeros/ui/hooks/use-mobile";
 import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
@@ -53,6 +54,7 @@ function DashboardGrid({
   onLayoutChange: (id: string, layout: { x: number; y: number; w: number; h: number }) => void;
   renderPanel: (panel: ApiPanel) => ReactNode;
 }) {
+  const { t } = useLingui();
   const COLS = 12;
   const ROW_H = 84;
   const GAP = 12;
@@ -216,7 +218,7 @@ function DashboardGrid({
                     borderRadius: "var(--radius-md)",
                     zIndex: 3,
                   }}
-                  title="Drag to move"
+                  title={t`Drag to move`}
                 >
                   <div style={{ position: "absolute", top: 6, left: 6, fontSize: 10.5, fontWeight: 500, color: "var(--primary)", background: "var(--card)", padding: "2px 6px", borderRadius: 4, display: "flex", alignItems: "center", gap: 4 }}>
                     <I.Pencil size={10} />{xv},{yv} · {wv}×{hv}
@@ -240,7 +242,7 @@ function DashboardGrid({
                     zIndex: 4,
                     boxShadow: "0 1px 2px rgba(0,0,0,0.25)",
                   }}
-                  title="Drag to resize"
+                  title={t`Drag to resize`}
                 />
               </>
             )}
@@ -252,6 +254,7 @@ function DashboardGrid({
 }
 
 export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } = {}) {
+  const { t } = useLingui();
   const [panels, setPanels] = useState<ApiPanel[]>([]);
   // First-load gate — drives the page skeleton until panels land.
   const [loaded, setLoaded] = useState(false);
@@ -335,8 +338,8 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
-        title="Insights"
-        description="Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard."
+        title={t`Insights`}
+        description={t`Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard.`}
         actions={
           <div className="flex flex-wrap gap-2">
             {!isMobile && (
@@ -346,10 +349,10 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
                 onClick={() => setEditingLayout((v) => !v)}
                 disabled={panels.length === 0}
               >
-                {editing ? "Done" : "Edit layout"}
+                {editing ? <Trans>Done</Trans> : <Trans>Edit layout</Trans>}
               </Button>
             )}
-            <Button variant="primary" icon={I.Plus} onClick={() => setEditor({ mode: "create" })}>New panel</Button>
+            <Button variant="primary" icon={I.Plus} onClick={() => setEditor({ mode: "create" })}><Trans>New panel</Trans></Button>
           </div>
         }
       />
@@ -364,10 +367,10 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
       ) : (
         <div className="flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card p-12 text-center text-muted-foreground">
           <I.BarChart size={28} className="text-muted-foreground" />
-          <div className="text-sm font-medium text-foreground">No insight panels yet</div>
+          <div className="text-sm font-medium text-foreground"><Trans>No insight panels yet</Trans></div>
           <div className="max-w-[460px] text-[12.5px] leading-[1.5]">
-            Insight panels chart a collection aggregate (count / sum / average …) or a saved SQL query as a counter, sparkline, bars, donut, or table.
-            Click <strong>+ New panel</strong> to build your first one — pick a collection, no SQL required.
+            <Trans>Insight panels chart a collection aggregate (count / sum / average …) or a saved SQL query as a counter, sparkline, bars, donut, or table.
+            Click <strong>+ New panel</strong> to build your first one — pick a collection, no SQL required.</Trans>
           </div>
         </div>
       )}
@@ -381,21 +384,21 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
           onSaved={async (name, mode) => {
             setEditor(null);
             await reload();
-            pushToast?.(mode === "create" ? `Panel "${name}" created.` : `Panel "${name}" saved.`);
+            pushToast?.(mode === "create" ? t`Panel "${name}" created.` : t`Panel "${name}" saved.`);
           }}
         />
       )}
 
       <ConfirmDialog
         open={!!confirmDelete}
-        title={confirmDelete ? `Delete "${confirmDelete.name}"?` : ""}
+        title={confirmDelete ? t`Delete "${confirmDelete.name}"?` : ""}
         description={
-          <>
+          <Trans>
             This removes the panel from <span className="font-mono">saved_panels</span> and any dashboards that reference it.
             The query itself isn't run again. This action can't be undone.
-          </>
+          </Trans>
         }
-        actionLabel="Delete panel"
+        actionLabel={t`Delete panel`}
         destructive
         onCancel={() => setConfirmDelete(null)}
         onConfirm={async () => {
@@ -405,7 +408,7 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
             await panelsApi.remove(confirmDelete.id);
             setConfirmDelete(null);
             await reload();
-            pushToast?.(`Panel "${name}" deleted.`);
+            pushToast?.(t`Panel "${name}" deleted.`);
           } catch (e) {
             setConfirmDelete(null);
             pushToast?.((e as Error).message);
@@ -498,6 +501,7 @@ function PanelEditorDialog({
   onClose: () => void;
   onSaved: (name: string, mode: "create" | "edit") => void;
 }) {
+  const { t } = useLingui();
   const [name, setName] = useState(panel?.name ?? "");
   const [description, setDescription] = useState(panel?.description ?? "");
   const [kind, setKind] = useState<PanelKind>((panel?.kind as PanelKind) ?? "items-aggregate");
@@ -559,19 +563,19 @@ function PanelEditorDialog({
   const nameError =
     serverErrors.name ??
     (trimmedName.length === 0
-      ? "Required."
+      ? t`Required.`
       : trimmedName.length > 80
-        ? "Max 80 characters."
+        ? t`Max 80 characters.`
         : otherNames.includes(trimmedName)
-          ? "A panel with that name already exists."
+          ? t`A panel with that name already exists.`
           : null);
 
   const sqlCheck = isReadOnlySelect(sqlText);
   const sqlError =
     serverErrors.sql ??
-    (kind === "sql" && !sqlCheck.ok ? sqlCheck.reason ?? "Invalid SQL." : null);
+    (kind === "sql" && !sqlCheck.ok ? sqlCheck.reason ?? t`Invalid SQL.` : null);
 
-  const descError = serverErrors.description ?? (description.length > 500 ? "Max 500 characters." : null);
+  const descError = serverErrors.description ?? (description.length > 500 ? t`Max 500 characters.` : null);
 
   // items-aggregate validation. Field/groupBy must reference real columns;
   // sum/avg/min/max require a numeric field; filter must parse as JSON.
@@ -581,28 +585,28 @@ function PanelEditorDialog({
   const groupByOptions = ["", ...allFieldsList, ...SYSTEM_GROUP_COLUMNS];
   let aggError: { collection?: string; agg?: string; field?: string; groupBy?: string; filter?: string; limit?: string } = {};
   if (kind === "items-aggregate") {
-    if (!agg.collection) aggError.collection = "Required.";
+    if (!agg.collection) aggError.collection = t`Required.`;
     if (agg.agg !== "count") {
-      if (!agg.field) aggError.field = "Required for sum/avg/min/max.";
+      if (!agg.field) aggError.field = t`Required for sum/avg/min/max.`;
       else if (numericFields.length > 0 && !numericFields.some((f) => f.name === agg.field)) {
-        aggError.field = "Must be an integer or number column.";
+        aggError.field = t`Must be an integer or number column.`;
       }
     }
     if (agg.groupBy && !groupByOptions.includes(agg.groupBy)) {
-      aggError.groupBy = `"${agg.groupBy}" is not a column on this collection.`;
+      aggError.groupBy = t`"${agg.groupBy}" is not a column on this collection.`;
     }
     if (agg.filter.trim()) {
       try {
         const parsed = JSON.parse(agg.filter);
         if (typeof parsed !== "object" || parsed === null) {
-          aggError.filter = "Must be a JSON object.";
+          aggError.filter = t`Must be a JSON object.`;
         }
       } catch (e) {
-        aggError.filter = `JSON parse error: ${(e as Error).message}`;
+        aggError.filter = t`JSON parse error: ${(e as Error).message}`;
       }
     }
     if (agg.limit && (!/^\d+$/.test(agg.limit) || Number(agg.limit) < 1 || Number(agg.limit) > 200)) {
-      aggError.limit = "Integer between 1 and 200.";
+      aggError.limit = t`Integer between 1 and 200.`;
     }
   }
   // Merge server-side aggregate errors back in (server returns flat strings).
@@ -618,10 +622,10 @@ function PanelEditorDialog({
   const vizHint =
     kind === "items-aggregate"
       ? agg.groupBy
-        ? `One row per "${agg.groupBy}" — bars / donut / table show the breakdown; counter shows only the first.`
-        : "A single value — counter fits best; sparkline / bars need multiple rows."
+        ? t`One row per "${agg.groupBy}" — bars / donut / table show the breakdown; counter shows only the first.`
+        : t`A single value — counter fits best; sparkline / bars need multiple rows.`
       : kind === "sql"
-        ? "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
+        ? t`Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns.`
         : `${VIZ_DESCRIPTIONS[viz]}.`;
 
   /** Compose the items-aggregate config payload. Returns null if not applicable. */
@@ -651,7 +655,7 @@ function PanelEditorDialog({
     if (kind === "sql") {
       if (!sqlCheck.ok) {
         setPreview(null);
-        setPreviewError(sqlCheck.reason ?? "Invalid SQL.");
+        setPreviewError(sqlCheck.reason ?? t`Invalid SQL.`);
         return;
       }
       setPreviewBusy(true);
@@ -674,7 +678,7 @@ function PanelEditorDialog({
       if (Object.keys(aggError).length > 0) {
         setPreview(null);
         const first = Object.values(aggError)[0];
-        setPreviewError(first ?? "Invalid aggregate config.");
+        setPreviewError(first ?? t`Invalid aggregate config.`);
         return;
       }
       const cfg = composeAggregateConfig();
@@ -727,11 +731,11 @@ function PanelEditorDialog({
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[720px]">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
-          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">{mode === "create" ? "New insight panel" : `Edit panel`}</DialogTitle>
+          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">{mode === "create" ? <Trans>New insight panel</Trans> : <Trans>Edit panel</Trans>}</DialogTitle>
           <DialogDescription className="text-[12.5px]">
             {mode === "create"
-              ? <>Saved as a row in <span className="font-mono">saved_panels</span>. Collection panels aggregate one collection (count / sum / average …); SQL panels run a read-only SELECT against the workspace database.</>
-              : <>Editing <span className="font-mono">{panel?.id}</span>.</>}
+              ? <Trans>Saved as a row in <span className="font-mono">saved_panels</span>. Collection panels aggregate one collection (count / sum / average …); SQL panels run a read-only SELECT against the workspace database.</Trans>
+              : <Trans>Editing <span className="font-mono">{panel?.id}</span>.</Trans>}
           </DialogDescription>
         </DialogHeader>
 
@@ -745,33 +749,33 @@ function PanelEditorDialog({
 
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground" htmlFor="panel-name">
-              Name <span className="text-destructive">*</span>
+              <Trans>Name</Trans> <span className="text-destructive">*</span>
             </label>
             <Input
               id="panel-name"
               aria-invalid={!!(nameError && (name || serverErrors.name))}
               autoFocus
               autoComplete="off"
-              placeholder="Active users (24h)"
+              placeholder={t`Active users (24h)`}
               value={name}
               onChange={(e) => { setName(e.target.value); clearServerError("name"); }}
             />
             {nameError && (name || serverErrors.name) ? (
               <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{nameError}</div>
             ) : (
-              <span className="text-[11.5px] text-muted-foreground">Shown as the panel title on the dashboard.</span>
+              <span className="text-[11.5px] text-muted-foreground"><Trans>Shown as the panel title on the dashboard.</Trans></span>
             )}
           </div>
 
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground" htmlFor="panel-desc">
-              Description <span className="font-normal text-muted-foreground">· optional</span>
+              <Trans>Description</Trans> <span className="font-normal text-muted-foreground"><Trans>· optional</Trans></span>
             </label>
             <Input
               id="panel-desc"
               aria-invalid={!!descError}
               autoComplete="off"
-              placeholder="Distinct users with a session in the last 24h"
+              placeholder={t`Distinct users with a session in the last 24h`}
               value={description}
               onChange={(e) => { setDescription(e.target.value); clearServerError("description"); }}
             />
@@ -780,22 +784,22 @@ function PanelEditorDialog({
 
           <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
             <div className="flex flex-col gap-1.5">
-              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Kind</label>
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Kind</Trans></label>
               <Select
                 value={kind}
                 onChange={(v) => { setKind(v as PanelKind); setPreview(null); setPreviewError(null); clearServerError("kind"); }}
                 options={[
-                  { value: "items-aggregate", label: "collection", hint: "count / sum / average over a collection — no SQL" },
-                  { value: "sql", label: "sql", hint: "read-only SELECT against the workspace database" },
-                  { value: "static", label: "static", hint: "config-only panel rendered from props" },
+                  { value: "items-aggregate", label: "collection", hint: t`count / sum / average over a collection — no SQL` },
+                  { value: "sql", label: "sql", hint: t`read-only SELECT against the workspace database` },
+                  { value: "static", label: "static", hint: t`config-only panel rendered from props` },
                 ]}
               />
               {serverErrors.kind
                 ? <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{serverErrors.kind}</div>
-                : <span className="text-[11.5px] text-muted-foreground">{kind === "items-aggregate" ? "Pick a collection and an aggregate below — no query to write." : kind === "sql" ? "Write a read-only SELECT below." : "Set the config object via the API once the panel exists."}</span>}
+                : <span className="text-[11.5px] text-muted-foreground">{kind === "items-aggregate" ? <Trans>Pick a collection and an aggregate below — no query to write.</Trans> : kind === "sql" ? <Trans>Write a read-only SELECT below.</Trans> : <Trans>Set the config object via the API once the panel exists.</Trans>}</span>}
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Visualization</label>
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Visualization</Trans></label>
               <Select
                 value={viz}
                 onChange={(v) => { setViz(v as PanelViz); clearServerError("viz"); }}
@@ -815,7 +819,7 @@ function PanelEditorDialog({
             <>
               <div className="flex flex-col gap-1.5">
                 <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground" htmlFor="panel-sql">
-                  SQL <Badge variant="outline" mono>SELECT only</Badge> <span className="text-destructive">*</span>
+                  <Trans>SQL</Trans> <Badge variant="outline" mono>SELECT only</Badge> <span className="text-destructive">*</span>
                   <div className="flex-1" />
                   <Button
                     size="sm"
@@ -825,7 +829,7 @@ function PanelEditorDialog({
                     disabled={previewBusy || !sqlCheck.ok}
                     className="ml-auto"
                   >
-                    {previewBusy ? "Running…" : "Run preview"}
+                    {previewBusy ? <Trans>Running…</Trans> : <Trans>Run preview</Trans>}
                   </Button>
                 </label>
                 <Textarea
@@ -840,7 +844,7 @@ function PanelEditorDialog({
                   <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{sqlError}</div>
                 ) : (
                   <span className="text-[11.5px] text-muted-foreground">
-                    The query runs verbatim. The visualization hint above explains how its columns map to the chart.
+                    <Trans>The query runs verbatim. The visualization hint above explains how its columns map to the chart.</Trans>
                   </span>
                 )}
               </div>
@@ -853,29 +857,29 @@ function PanelEditorDialog({
             <>
               <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
                 <div className="flex flex-col gap-1.5">
-                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Collection <span className="text-destructive">*</span></label>
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Collection</Trans> <span className="text-destructive">*</span></label>
                   <Select
                     value={agg.collection}
                     onChange={(v) => setAgg((s) => ({ ...s, collection: v, field: "", groupBy: "" }))}
-                    placeholder={collections.length === 0 ? "No collections" : "Pick a collection…"}
-                    options={collections.map((c) => ({ value: c.slug, label: c.slug, hint: `${c.fields.length} fields` }))}
+                    placeholder={collections.length === 0 ? t`No collections` : t`Pick a collection…`}
+                    options={collections.map((c) => ({ value: c.slug, label: c.slug, hint: t`${c.fields.length} fields` }))}
                   />
                   {aggError.collection && collections.length > 0 && <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{aggError.collection}</div>}
                   {collectionsLoaded && collections.length === 0 && (
-                    <span className="text-[11.5px] text-muted-foreground">No collections in this workspace yet — create one first, or switch <strong>Kind</strong> to <span className="font-mono">sql</span>.</span>
+                    <span className="text-[11.5px] text-muted-foreground"><Trans>No collections in this workspace yet — create one first, or switch <strong>Kind</strong> to <span className="font-mono">sql</span>.</Trans></span>
                   )}
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Aggregate function</label>
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Aggregate function</Trans></label>
                   <Select
                     value={agg.agg}
                     onChange={(v) => setAgg((s) => ({ ...s, agg: v as ItemsAggFunc, field: v === "count" ? "" : s.field }))}
                     options={[
-                      { value: "count", label: "count", hint: "row count (no field needed)" },
-                      { value: "sum", label: "sum", hint: "numeric column total" },
-                      { value: "avg", label: "avg", hint: "numeric column average" },
-                      { value: "min", label: "min", hint: "numeric column minimum" },
-                      { value: "max", label: "max", hint: "numeric column maximum" },
+                      { value: "count", label: "count", hint: t`row count (no field needed)` },
+                      { value: "sum", label: "sum", hint: t`numeric column total` },
+                      { value: "avg", label: "avg", hint: t`numeric column average` },
+                      { value: "min", label: "min", hint: t`numeric column minimum` },
+                      { value: "max", label: "max", hint: t`numeric column maximum` },
                     ]}
                   />
                 </div>
@@ -884,28 +888,28 @@ function PanelEditorDialog({
               <div className="grid grid-cols-2 gap-3 max-[640px]:grid-cols-1">
                 <div className="flex flex-col gap-1.5">
                   <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
-                    Field {agg.agg !== "count" && <span className="text-destructive">*</span>}
+                    <Trans>Field</Trans> {agg.agg !== "count" && <span className="text-destructive">*</span>}
                   </label>
                   <Select
                     value={agg.field}
                     onChange={(v) => setAgg((s) => ({ ...s, field: v }))}
-                    placeholder={agg.agg === "count" ? "Not needed for count" : numericFields.length === 0 ? "No numeric columns" : "Pick a numeric field…"}
+                    placeholder={agg.agg === "count" ? t`Not needed for count` : numericFields.length === 0 ? t`No numeric columns` : t`Pick a numeric field…`}
                     disabled={agg.agg === "count" || !agg.collection || numericFields.length === 0}
                     options={numericFields.map((f) => ({ value: f.name, label: f.name, hint: f.type }))}
                   />
                   {aggError.field && <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{aggError.field}</div>}
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Group by <span className="font-normal text-muted-foreground">· optional</span></label>
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Group by</Trans> <span className="font-normal text-muted-foreground"><Trans>· optional</Trans></span></label>
                   <Select
                     value={agg.groupBy}
                     onChange={(v) => setAgg((s) => ({ ...s, groupBy: v }))}
-                    placeholder={!agg.collection ? "Pick a collection first" : "(none)"}
+                    placeholder={!agg.collection ? t`Pick a collection first` : t`(none)`}
                     disabled={!agg.collection}
                     options={[
-                      { value: "", label: "(none)", hint: "single scalar value" },
+                      { value: "", label: t`(none)`, hint: t`single scalar value` },
                       ...allFieldsList.map((n) => ({ value: n, label: n })),
-                      ...SYSTEM_GROUP_COLUMNS.map((n) => ({ value: n, label: n, hint: "system" })),
+                      ...SYSTEM_GROUP_COLUMNS.map((n) => ({ value: n, label: n, hint: t`system` })),
                     ]}
                   />
                   {aggError.groupBy && <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{aggError.groupBy}</div>}
@@ -914,7 +918,7 @@ function PanelEditorDialog({
 
               <div className="flex flex-col gap-1.5">
                 <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
-                  Filter <Badge variant="outline" mono>JSON DSL</Badge> <span className="font-normal text-muted-foreground">· optional</span>
+                  <Trans>Filter</Trans> <Badge variant="outline" mono>JSON DSL</Badge> <span className="font-normal text-muted-foreground"><Trans>· optional</Trans></span>
                 </label>
                 <Textarea
                   className="font-mono min-h-[80px] whitespace-pre text-xs"
@@ -928,14 +932,14 @@ function PanelEditorDialog({
                   <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{aggError.filter}</div>
                 ) : (
                   <span className="text-[11.5px] text-muted-foreground">
-                    Same DSL as roles &amp; permissions. Operators: <span className="font-mono">_eq</span>, <span className="font-mono">_in</span>, <span className="font-mono">_gte</span>, … Variables: <span className="font-mono">$user.id</span>, <span className="font-mono">$now</span>, …
+                    <Trans>Same DSL as roles &amp; permissions. Operators: <span className="font-mono">_eq</span>, <span className="font-mono">_in</span>, <span className="font-mono">_gte</span>, … Variables: <span className="font-mono">$user.id</span>, <span className="font-mono">$now</span>, …</Trans>
                   </span>
                 )}
               </div>
 
               {agg.groupBy && (
                 <div className="flex flex-col gap-1.5">
-                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Limit <span className="font-normal text-muted-foreground">· optional</span></label>
+                  <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Limit</Trans> <span className="font-normal text-muted-foreground"><Trans>· optional</Trans></span></label>
                   <Input
                     className="tabular-nums"
                     aria-invalid={!!aggError.limit}
@@ -949,7 +953,7 @@ function PanelEditorDialog({
                   {aggError.limit ? (
                     <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{aggError.limit}</div>
                   ) : (
-                    <span className="text-[11.5px] text-muted-foreground">Caps the number of grouped rows returned (default 50, max 200).</span>
+                    <span className="text-[11.5px] text-muted-foreground"><Trans>Caps the number of grouped rows returned (default 50, max 200).</Trans></span>
                   )}
                 </div>
               )}
@@ -962,7 +966,7 @@ function PanelEditorDialog({
                   onClick={runPreview}
                   disabled={previewBusy || Object.keys(aggError).length > 0 || !agg.collection}
                 >
-                  {previewBusy ? "Running…" : "Run preview"}
+                  {previewBusy ? <Trans>Running…</Trans> : <Trans>Run preview</Trans>}
                 </Button>
               </div>
 
@@ -973,15 +977,15 @@ function PanelEditorDialog({
           {kind === "static" && (
             <div className="flex items-start gap-2 rounded-xl bg-muted p-3 text-[12.5px] text-muted-foreground">
               <I.AlertTriangle size={12} className="mt-0.5 shrink-0" />
-              <span>static panels render their config object verbatim — set it from the API once the panel exists.</span>
+              <Trans>static panels render their config object verbatim — set it from the API once the panel exists.</Trans>
             </div>
           )}
         </div>
 
         <DialogFooter className="border-t border-border bg-card px-5 py-3">
-          <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose} disabled={busy}><Trans>Cancel</Trans></Button>
           <Button variant="primary" icon={mode === "create" ? I.Plus : I.Save} onClick={submit} disabled={!valid || busy}>
-            {busy ? (mode === "create" ? "Creating…" : "Saving…") : mode === "create" ? "Create panel" : "Save changes"}
+            {busy ? (mode === "create" ? <Trans>Creating…</Trans> : <Trans>Saving…</Trans>) : mode === "create" ? <Trans>Create panel</Trans> : <Trans>Save changes</Trans>}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1014,7 +1018,7 @@ function PreviewTable({ rows }: { rows: Record<string, unknown>[] }) {
           ))}
         </tbody>
       </table>
-      {rows.length > max && <div className="border-t border-border px-2 py-1.5 text-[11px] text-muted-foreground">… and {rows.length - max} more</div>}
+      {rows.length > max && <div className="border-t border-border px-2 py-1.5 text-[11px] text-muted-foreground"><Trans>… and {rows.length - max} more</Trans></div>}
     </div>
   );
 }
@@ -1065,8 +1069,8 @@ function PreviewBlock({
     <div className="flex flex-col gap-1.5 rounded-md bg-muted p-2.5">
       <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground">
         {previewError
-          ? <><I.AlertTriangle size={12} className="text-destructive" /> Preview error</>
-          : <><I.Activity size={12} /> Preview · {preview?.rows.length ?? 0} rows · {preview?.ms ?? 0}ms</>}
+          ? <><I.AlertTriangle size={12} className="text-destructive" /> <Trans>Preview error</Trans></>
+          : <><I.Activity size={12} /> <Trans>Preview · {preview?.rows.length ?? 0} rows · {preview?.ms ?? 0}ms</Trans></>}
       </div>
       {previewError ? (
         <div className="whitespace-pre-wrap font-mono text-[11.5px] text-destructive">{previewError}</div>
@@ -1079,7 +1083,7 @@ function PreviewBlock({
           </div>
         </>
       ) : (
-        <div className="text-xs text-muted-foreground">No rows returned.</div>
+        <div className="text-xs text-muted-foreground"><Trans>No rows returned.</Trans></div>
       )}
     </div>
   );
@@ -1133,7 +1137,7 @@ function RealPanel({
   if (rows.length === 0) {
     return (
       <Panel title={panel.name} sub={sub} onEdit={onEdit} onDelete={onDelete}>
-        <div className="py-4 text-xs text-muted-foreground">No data yet — run the panel.</div>
+        <div className="py-4 text-xs text-muted-foreground"><Trans>No data yet — run the panel.</Trans></div>
       </Panel>
     );
   }
@@ -1212,13 +1216,14 @@ function Panel({
   onEdit?: () => void;
   onDelete?: () => void;
 }) {
+  const { t } = useLingui();
   return (
     <div className="flex flex-col gap-2 overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground">
       <div className="flex items-baseline gap-2">
         <span className="text-[13px] font-medium">{title}</span>
         <span className="flex-1 text-[11.5px] text-muted-foreground">{sub}</span>
-        {onEdit && <IconButton icon={I.Pencil} onClick={onEdit} title="Edit panel" />}
-        {onDelete && <IconButton icon={I.Trash} onClick={onDelete} title="Delete panel" />}
+        {onEdit && <IconButton icon={I.Pencil} onClick={onEdit} title={t`Edit panel`} />}
+        {onDelete && <IconButton icon={I.Trash} onClick={onDelete} title={t`Delete panel`} />}
       </div>
       {children}
     </div>

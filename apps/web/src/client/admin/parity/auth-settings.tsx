@@ -409,12 +409,12 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
         {samlProviders.map((p) => (
           <div
             key={p.id}
-            className="grid items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0 grid-cols-[24px_1fr_auto_auto_auto_auto]"
+            className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-3.5 py-3 text-[13px] last:border-b-0 md:grid md:grid-cols-[24px_1fr_auto_auto_auto_auto] md:gap-3 md:py-[11px]"
           >
-            <span>
+            <span className="shrink-0">
               <I.Shield size={13} />
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="text-[13px] font-medium">
                 {p.name}
                 {p.idpTemplate && (

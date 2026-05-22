@@ -27,6 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@workeros/ui/component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@workeros/ui/components/collapsible";
 import { Skeleton } from "@workeros/ui/components/skeleton";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { cn } from "@workeros/ui/lib/utils";
 import { CodeEditor } from "@/components/code-editor-lazy";
 import { PageHeader } from "@/components/page-header";
@@ -766,7 +767,9 @@ export const GraphqlPage = () => {
               )}
             </div>
           </CardHeader>
-          <CardContent className="flex-1 overflow-auto p-2 pt-0">
+          <CardContent className="min-h-0 flex-1 p-0">
+            <ScrollArea className="size-full">
+            <div className="p-2 pt-0">
             {schemaLoading && (
               <div className="flex flex-col gap-2 p-2">
                 <Skeleton className="h-4 w-32" />
@@ -928,6 +931,8 @@ export const GraphqlPage = () => {
                 </Collapsible>
               </div>
             )}
+            </div>
+            </ScrollArea>
           </CardContent>
         </Card>
 

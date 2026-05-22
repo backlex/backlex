@@ -5,8 +5,6 @@
 // each deploy target's adapter layer uses. The *active* adapter is detected at
 // runtime via /api/admin/settings/runtime; every collection / item / metric /
 // user / role surface in the admin reads from its real API endpoint.
-import { msg } from "@lingui/core/macro";
-import type { MessageDescriptor } from "@lingui/core";
 import type { IconKey } from "./icons";
 
 export interface Author {
@@ -59,9 +57,11 @@ export interface CollectionListItem {
   group: string;
 }
 
+// Nav display labels are NOT stored here: `config.ts` has no JSX, so the
+// Lingui `msg` macro would not be transformed in it. The id→label map lives
+// in `ui.tsx::navLabel` (a JSX module) instead.
 export interface NavItem {
   id: string;
-  label: MessageDescriptor;
   icon: IconKey | string;
   badge?: number;
 }
@@ -78,39 +78,39 @@ export type AdapterId = "bun" | "workers" | "vercel";
 // "email") because they're rendered into the address bar by AdminApp's
 // URL-driven nav.
 export const NAV_ITEMS: NavItem[] = [
-  { id: "overview", label: msg`Overview`, icon: "Activity" },
-  { id: "collections", label: msg`Collections`, icon: "Database" },
-  { id: "access", label: msg`Access`, icon: "Shield" },
-  { id: "database", label: msg`Database`, icon: "Server" },
-  { id: "storage", label: msg`Storage`, icon: "Folder" },
-  { id: "flows", label: msg`Flows`, icon: "Bolt" },
-  { id: "functions", label: msg`Functions`, icon: "Function" },
-  { id: "webhooks", label: msg`Webhooks`, icon: "Webhook" },
-  { id: "realtime", label: msg`Realtime`, icon: "Zap" },
-  { id: "logs", label: msg`Logs`, icon: "ScrollText" },
-  { id: "advisor", label: msg`Advisor`, icon: "ShieldAlert" },
-  { id: "schema-graph", label: msg`Schema graph`, icon: "Network" },
-  { id: "insights", label: msg`Insights`, icon: "BarChart" },
-  { id: "revisions", label: msg`Revisions`, icon: "History" },
-  { id: "translations", label: msg`Translations`, icon: "Globe" },
+  { id: "overview", icon: "Activity" },
+  { id: "collections", icon: "Database" },
+  { id: "access", icon: "Shield" },
+  { id: "database", icon: "Server" },
+  { id: "storage", icon: "Folder" },
+  { id: "flows", icon: "Bolt" },
+  { id: "functions", icon: "Function" },
+  { id: "webhooks", icon: "Webhook" },
+  { id: "realtime", icon: "Zap" },
+  { id: "logs", icon: "ScrollText" },
+  { id: "advisor", icon: "ShieldAlert" },
+  { id: "schema-graph", icon: "Network" },
+  { id: "insights", icon: "BarChart" },
+  { id: "revisions", icon: "History" },
+  { id: "translations", icon: "Globe" },
 ];
 
 // Developer-facing tools: REST explorer, GraphQL playground, OpenAPI export.
 // Kept in their own group so they sit together in the sidebar without
 // crowding the workspace nav.
 export const NAV_DEVELOPERS: NavItem[] = [
-  { id: "rest-explorer", label: msg`REST Explorer`, icon: "Braces" },
-  { id: "graphql", label: msg`GraphQL`, icon: "Code" },
-  { id: "openapi", label: msg`OpenAPI`, icon: "Download" },
+  { id: "rest-explorer", icon: "Braces" },
+  { id: "graphql", icon: "Code" },
+  { id: "openapi", icon: "Download" },
 ];
 
 export const NAV_SETTINGS: NavItem[] = [
-  { id: "authentication", label: msg`Authentication`, icon: "Shield" },
-  { id: "users", label: msg`Users`, icon: "Users" },
-  { id: "app-users", label: msg`App users`, icon: "Users" },
-  { id: "api-keys", label: msg`API keys`, icon: "Code" },
-  { id: "email-templates", label: msg`Email templates`, icon: "Mail" },
-  { id: "settings", label: msg`Settings`, icon: "Settings" },
+  { id: "authentication", icon: "Shield" },
+  { id: "users", icon: "Users" },
+  { id: "app-users", icon: "Users" },
+  { id: "api-keys", icon: "Code" },
+  { id: "email-templates", icon: "Mail" },
+  { id: "settings", icon: "Settings" },
 ];
 
 export const ADAPTER_PROFILES: Record<AdapterId, AdapterProfile> = {

@@ -1,5 +1,6 @@
 // Flow builder — detailed editor opened from Flows page
 import { useEffect, useRef, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { Badge, Button, IconButton, Switch } from "./ui";
 import { Select } from "./select";
@@ -62,6 +63,7 @@ export interface FlowBuilderProps {
 }
 
 export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilderProps) {
+  const { t } = useLingui();
   const [name, setName] = useState(initial?.name || "New flow");
   const [enabled, setEnabled] = useState(initial?.enabled ?? false);
   const [nodes, setNodes] = useState<any[]>(initial?.nodes || STARTER_NODES);
@@ -143,7 +145,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
   };
 
   const removeNode = (id: string) => {
-    if (nodes.find((n) => n.id === id)?.kind === "trigger") { pushToast("Cannot delete the trigger."); return; }
+    if (nodes.find((n) => n.id === id)?.kind === "trigger") { pushToast(t`Cannot delete the trigger.`); return; }
     setNodes((arr) => arr.filter((n) => n.id !== id));
     setEdges((arr) => arr.filter((e) => e.from !== id && e.to !== id));
     if (selectedId === id) setSelectedId("n1");
@@ -183,17 +185,17 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
     <div className="fb-overlay">
       <div className="fb-shell">
         <div className="fb-header">
-          <IconButton icon={I.ChevronLeft} onClick={onClose} title="Back" />
+          <IconButton icon={I.ChevronLeft} onClick={onClose} title={t`Back`} />
           <div className="fb-title">
             <Input className="fb-name" value={name} onChange={(e) => setName(e.target.value)} />
             <span className="font-mono text-[11.5px] text-muted-foreground">flow_{(initial?.id || "draft").slice(-6)}</span>
           </div>
-          <Badge variant={enabled ? "default" : "secondary"}>{enabled ? "enabled" : "draft"}</Badge>
+          <Badge variant={enabled ? "default" : "secondary"}>{enabled ? <Trans>enabled</Trans> : <Trans>draft</Trans>}</Badge>
           <div className="flex-1" />
           <Button variant="outline" size="sm" icon={I.Code}>JSON</Button>
-          <Button variant="outline" size="sm" icon={I.Zap} onClick={() => setTestOpen(true)}>Test run</Button>
+          <Button variant="outline" size="sm" icon={I.Zap} onClick={() => setTestOpen(true)}><Trans>Test run</Trans></Button>
           <Switch checked={enabled} onChange={setEnabled} />
-          <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" size="sm" onClick={onClose}><Trans>Cancel</Trans></Button>
           {(() => {
             // Don't disable the native button — leave it clickable so the
             // user gets a toast explaining *why* it's a no-op. (A disabled
@@ -205,15 +207,15 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
                 size="sm"
                 icon={I.Check}
                 style={isEmpty ? { opacity: 0.5 } : undefined}
-                title={isEmpty ? "Add at least one step before saving" : undefined}
+                title={isEmpty ? t`Add at least one step before saving` : undefined}
                 onClick={() => {
                   if (isEmpty) {
-                    pushToast("Add at least one step before saving");
+                    pushToast(t`Add at least one step before saving`);
                     return;
                   }
                   onSave({ id: initial?.id, name, enabled, nodes, edges });
                 }}
-              >Save flow</Button>
+              ><Trans>Save flow</Trans></Button>
             );
           })()}
         </div>
@@ -221,7 +223,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
         <div className="fb-body">
           <div className="fb-rail">
             <div className="fb-rail-section">
-              <div className="fb-rail-h">Steps</div>
+              <div className="fb-rail-h"><Trans>Steps</Trans></div>
               <div className="fb-rail-list">
                 {nodes.map((n, i) => {
                   const m = nodeMeta(n);
@@ -242,7 +244,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
               </div>
             </div>
             <div className="fb-rail-section">
-              <div className="fb-rail-h">Variables</div>
+              <div className="fb-rail-h"><Trans>Variables</Trans></div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "4px 6px" }}>
                 {[
                   ["{{ event.type }}", "string"],
@@ -264,14 +266,14 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
 
           <div className="fb-canvas-wrap">
             <div className="fb-canvas-toolbar">
-              <Button variant="ghost" size="sm" icon={I.Plus} onClick={() => { setPaletteFor({ from: nodes[nodes.length - 1].id, branch: null }); setPaletteOpen(true); }}>Add step</Button>
+              <Button variant="ghost" size="sm" icon={I.Plus} onClick={() => { setPaletteFor({ from: nodes[nodes.length - 1].id, branch: null }); setPaletteOpen(true); }}><Trans>Add step</Trans></Button>
               <span className="text-xs text-muted-foreground">·</span>
               <span className="text-xs tabular-nums text-muted-foreground">{nodes.length} steps · {edges.length} edges</span>
               <div className="flex-1" />
               <button className="fb-zoom-btn" onClick={() => setZoom((z) => Math.max(0.5, z - 0.1))}><I.Minus size={12} /></button>
               <span className="font-mono tabular-nums" style={{ fontSize: 11.5, minWidth: 36, textAlign: "center" }}>{Math.round(zoom * 100)}%</span>
               <button className="fb-zoom-btn" onClick={() => setZoom((z) => Math.min(2, z + 0.1))}><I.Plus size={12} /></button>
-              <button className="fb-zoom-btn" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} title="Reset view"><I.Refresh size={12} /></button>
+              <button className="fb-zoom-btn" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} title={t`Reset view`}><I.Refresh size={12} /></button>
             </div>
             <div className="fb-canvas" ref={canvasRef} onClick={() => setSelectedId(null)}>
               <div className="fb-grid" style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
@@ -312,7 +314,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
                       <div className="fb-node-body">
                         {n.kind === "trigger" && (
                           <>
-                            <span className="text-muted-foreground">on</span> <span className="font-mono">{n.config.collection || "posts"}</span>
+                            <span className="text-muted-foreground"><Trans>on</Trans></span> <span className="font-mono">{n.config.collection || "posts"}</span>
                             {n.config.when && <div className="fb-mono-dim">{n.config.when}</div>}
                           </>
                         )}
@@ -324,7 +326,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
                         )}
                         {n.kind === "action" && n.type === "email" && (
                           <>
-                            <span className="text-muted-foreground">to</span> <span className="font-mono">{n.config.to}</span>
+                            <span className="text-muted-foreground"><Trans>to</Trans></span> <span className="font-mono">{n.config.to}</span>
                             {n.config.templateKey && <span className="text-muted-foreground"> · tpl <span className="font-mono">{n.config.templateKey}</span></span>}
                           </>
                         )}
@@ -337,15 +339,15 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
                       </div>
                       {n.kind === "control" && n.type === "if" ? (
                         <>
-                          <button className="fb-port fb-port-true" title="Add to true branch" onClick={(e) => { e.stopPropagation(); setPaletteFor({ from: n.id, branch: "true" }); setPaletteOpen(true); }}>+</button>
-                          <button className="fb-port fb-port-false" title="Add to false branch" onClick={(e) => { e.stopPropagation(); setPaletteFor({ from: n.id, branch: "false" }); setPaletteOpen(true); }}>+</button>
+                          <button className="fb-port fb-port-true" title={t`Add to true branch`} onClick={(e) => { e.stopPropagation(); setPaletteFor({ from: n.id, branch: "true" }); setPaletteOpen(true); }}>+</button>
+                          <button className="fb-port fb-port-false" title={t`Add to false branch`} onClick={(e) => { e.stopPropagation(); setPaletteFor({ from: n.id, branch: "false" }); setPaletteOpen(true); }}>+</button>
                         </>
                       ) : (
-                        <button className="fb-port fb-port-out" title="Add next step" onClick={(e) => { e.stopPropagation(); setPaletteFor({ from: n.id, branch: null }); setPaletteOpen(true); }}>+</button>
+                        <button className="fb-port fb-port-out" title={t`Add next step`} onClick={(e) => { e.stopPropagation(); setPaletteFor({ from: n.id, branch: null }); setPaletteOpen(true); }}>+</button>
                       )}
                       {sel && n.kind !== "trigger" && (
                         <div className="fb-node-actions">
-                          <button onClick={(e) => { e.stopPropagation(); removeNode(n.id); }} title="Delete"><I.Trash size={11} /></button>
+                          <button onClick={(e) => { e.stopPropagation(); removeNode(n.id); }} title={t`Delete`}><I.Trash size={11} /></button>
                         </div>
                       )}
                     </div>
@@ -390,12 +392,13 @@ function defaultConfigFor(kind: string, type: string) {
 }
 
 function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collections = [] }: { node?: any; onChange: (patch: any) => void; emailTemplates?: ApiEmailTemplate[]; fns?: ApiFunction[]; collections?: ApiCollection[] }) {
+  const { t } = useLingui();
   if (!node) return (
     <div className="fb-inspector">
       <div className="fb-inspector-empty">
         <I.Bolt size={20} />
-        <div style={{ fontSize: 13, fontWeight: 500, marginTop: 8 }}>Nothing selected</div>
-        <div className="mt-1 max-w-[220px] text-center text-xs text-muted-foreground">Click any step to edit its configuration. Drag to rearrange. Click <span className="font-mono">+</span> on a step to add the next.</div>
+        <div style={{ fontSize: 13, fontWeight: 500, marginTop: 8 }}><Trans>Nothing selected</Trans></div>
+        <div className="mt-1 max-w-[220px] text-center text-xs text-muted-foreground"><Trans>Click any step to edit its configuration. Drag to rearrange. Click <span className="font-mono">+</span> on a step to add the next.</Trans></div>
       </div>
     </div>
   );
@@ -414,27 +417,27 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
         {node.kind === "trigger" && (
           <>
             <div className="flex flex-col gap-1.5">
-              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Event</label>
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Event</Trans></label>
               <Select value={node.type} onChange={(v) => onChange({ type: v })} options={TRIGGERS.map((t) => ({ value: t.id, label: t.pending ? `${t.label} (${t.pending})` : t.label }))} />
             </div>
             {node.type.startsWith("item.") && (
               <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Collection</label>
-                <Select value={node.config.collection} onChange={(v) => onChange({ config: { collection: v } })} options={["posts", "comments", "authors", "tags", { value: "*", label: "* (all collections)" }]} />
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Collection</Trans></label>
+                <Select value={node.config.collection} onChange={(v) => onChange({ config: { collection: v } })} options={["posts", "comments", "authors", "tags", { value: "*", label: t`* (all collections)` }]} />
               </div>
             )}
             {node.type === "cron" && (
               <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Schedule</label>
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Schedule</Trans></label>
                 <Input value={node.config.cron || "0 9 * * *"} onChange={(e) => onChange({ config: { cron: e.target.value } })} placeholder="0 9 * * *" />
-                <span className="font-mono text-[11.5px] text-muted-foreground">runs daily at 09:00 UTC</span>
+                <span className="font-mono text-[11.5px] text-muted-foreground"><Trans>runs daily at 09:00 UTC</Trans></span>
               </div>
             )}
             {node.type.startsWith("item.") && (
               <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">When (filter DSL)</label>
+                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>When (filter DSL)</Trans></label>
                 <Textarea rows={3} value={node.config.when} onChange={(e) => onChange({ config: { when: e.target.value } })} placeholder='{ "status": { "_eq": "published" } }' />
-                <span className="text-[11.5px] text-muted-foreground">Trigger only fires when the row matches this filter (after the change).</span>
+                <span className="text-[11.5px] text-muted-foreground"><Trans>Trigger only fires when the row matches this filter (after the change).</Trans></span>
               </div>
             )}
           </>
@@ -442,9 +445,9 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
         {node.kind === "control" && node.type === "if" && (
           <>
             <div className="flex flex-col gap-1.5">
-              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Test</label>
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Test</Trans></label>
               <Textarea rows={3} value={node.config.test} onChange={(e) => onChange({ config: { test: e.target.value } })} />
-              <span className="text-[11.5px] text-muted-foreground">Evaluates against current step context. Use <span className="font-mono">{"{{ var }}"}</span> for interpolation.</span>
+              <span className="text-[11.5px] text-muted-foreground"><Trans>Evaluates against current step context. Use <span className="font-mono">{"{{ var }}"}</span> for interpolation.</Trans></span>
             </div>
             <div className="whitespace-pre-wrap break-words rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">
               <span className="text-[oklch(0.78_0.18_95)]">if</span> ({node.config.test}) {"{ → true }"} <br /> <span className="text-[oklch(0.78_0.18_95)]">else</span> {"{ → false }"}
@@ -453,23 +456,23 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
         )}
         {node.kind === "action" && node.type === "email" && (
           <>
-            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">To</label><Input value={node.config.to} onChange={(e) => onChange({ config: { to: e.target.value } })} placeholder="{{ data.author.email }}" /></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>To</Trans></label><Input value={node.config.to} onChange={(e) => onChange({ config: { to: e.target.value } })} placeholder="{{ data.author.email }}" /></div>
             <div className="flex flex-col gap-1.5">
-              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Template</label>
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Template</Trans></label>
               <Select
                 value={node.config.templateKey || ""}
                 onChange={(v) => onChange({ config: { templateKey: v } })}
                 options={[
-                  { value: "", label: emailTemplates.length === 0 ? "(none — no templates yet)" : "(none — use literal subject/body)" },
+                  { value: "", label: emailTemplates.length === 0 ? t`(none — no templates yet)` : t`(none — use literal subject/body)` },
                   ...emailTemplates.map((t) => ({ value: t.key, label: `${t.name} · ${t.key}` })),
                 ]}
               />
-              <span className="text-[11.5px] text-muted-foreground">When set, body is rendered from the stored template at run time. Otherwise the literal Subject + Body fields below are used.</span>
+              <span className="text-[11.5px] text-muted-foreground"><Trans>When set, body is rendered from the stored template at run time. Otherwise the literal Subject + Body fields below are used.</Trans></span>
             </div>
             {!node.config.templateKey && (
               <>
-                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Subject</label><Input value={node.config.subject || ""} onChange={(e) => onChange({ config: { subject: e.target.value } })} /></div>
-                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Body (text)</label><Textarea rows={4} value={node.config.text || ""} onChange={(e) => onChange({ config: { text: e.target.value } })} placeholder="Hi {{ data.author.name }}, …" /></div>
+                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Subject</Trans></label><Input value={node.config.subject || ""} onChange={(e) => onChange({ config: { subject: e.target.value } })} /></div>
+                <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Body (text)</Trans></label><Textarea rows={4} value={node.config.text || ""} onChange={(e) => onChange({ config: { text: e.target.value } })} placeholder="Hi {{ data.author.name }}, …" /></div>
               </>
             )}
           </>
@@ -477,93 +480,93 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
         {node.kind === "action" && node.type === "fn" && (
           <>
             <div className="flex flex-col gap-1.5">
-              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Function</label>
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Function</Trans></label>
               <Select
                 value={node.config.fn || ""}
                 onChange={(v) => onChange({ config: { fn: v } })}
                 options={[
-                  { value: "", label: fns.length === 0 ? "(none — no functions yet)" : "Select a function…" },
-                  ...fns.map((f) => ({ value: f.name, label: `${f.name}${f.active ? "" : " (inactive)"}` })),
+                  { value: "", label: fns.length === 0 ? t`(none — no functions yet)` : t`Select a function…` },
+                  ...fns.map((f) => ({ value: f.name, label: `${f.name}${f.active ? "" : t` (inactive)`}` })),
                 ]}
               />
-              <span className="text-[11.5px] text-muted-foreground">Tenant-scoped lookup at run time. Inactive functions throw at execution.</span>
+              <span className="text-[11.5px] text-muted-foreground"><Trans>Tenant-scoped lookup at run time. Inactive functions throw at execution.</Trans></span>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Input</label>
-              <Textarea className="font-mono" rows={3} value={node.config.input || ""} onChange={(e) => onChange({ config: { input: e.target.value } })} placeholder="leave empty to pass the trigger payload" />
-              <span className="text-[11.5px] text-muted-foreground">JSON or template string. Becomes <span className="font-mono">data</span> inside the function.</span>
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Input</Trans></label>
+              <Textarea className="font-mono" rows={3} value={node.config.input || ""} onChange={(e) => onChange({ config: { input: e.target.value } })} placeholder={t`leave empty to pass the trigger payload`} />
+              <span className="text-[11.5px] text-muted-foreground"><Trans>JSON or template string. Becomes <span className="font-mono">data</span> inside the function.</Trans></span>
             </div>
           </>
         )}
         {node.kind === "action" && (node.type === "webhook" || node.type === "request") && (
           <>
             <div className="flex flex-col gap-1.5">
-              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Method</label>
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Method</Trans></label>
               <Select
                 value={node.config.method || (node.type === "request" ? "GET" : "POST")}
                 onChange={(v) => onChange({ config: { method: v } })}
                 options={["GET", "POST", "PUT", "PATCH", "DELETE"]}
               />
             </div>
-            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">URL</label><Input value={node.config.url} onChange={(e) => onChange({ config: { url: e.target.value } })} /></div>
-            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Body</label><Textarea className="font-mono" rows={3} value={node.config.body || ""} onChange={(e) => onChange({ config: { body: e.target.value } })} placeholder='{ "key": "{{ data.title }}" }' /><span className="text-[11.5px] text-muted-foreground">JSON or template string. Webhook defaults to the event payload when empty.</span></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>URL</Trans></label><Input value={node.config.url} onChange={(e) => onChange({ config: { url: e.target.value } })} /></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Body</Trans></label><Textarea className="font-mono" rows={3} value={node.config.body || ""} onChange={(e) => onChange({ config: { body: e.target.value } })} placeholder='{ "key": "{{ data.title }}" }' /><span className="text-[11.5px] text-muted-foreground"><Trans>JSON or template string. Webhook defaults to the event payload when empty.</Trans></span></div>
           </>
         )}
         {node.kind === "action" && node.type === "log" && (
-          <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Message</label><Input value={node.config.message || ""} onChange={(e) => onChange({ config: { message: e.target.value } })} /><span className="text-[11.5px] text-muted-foreground">Server log line. Use <span className="font-mono">{"{{ data.* }}"}</span> for interpolation.</span></div>
+          <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Message</Trans></label><Input value={node.config.message || ""} onChange={(e) => onChange({ config: { message: e.target.value } })} /><span className="text-[11.5px] text-muted-foreground"><Trans>Server log line. Use <span className="font-mono">{"{{ data.* }}"}</span> for interpolation.</Trans></span></div>
         )}
         {node.kind === "action" && node.type === "notification" && (
           <>
-            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Title</label><Input value={node.config.title || ""} onChange={(e) => onChange({ config: { title: e.target.value } })} /></div>
-            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Body</label><Textarea rows={2} value={node.config.body || ""} onChange={(e) => onChange({ config: { body: e.target.value } })} /></div>
-            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">URL</label><Input value={node.config.url || ""} onChange={(e) => onChange({ config: { url: e.target.value } })} placeholder="/posts/{{ data.id }}" /></div>
-            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Recipient (userId)</label><Input value={node.config.userId ?? ""} onChange={(e) => onChange({ config: { userId: e.target.value || null } })} placeholder="leave empty for admins" /></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Title</Trans></label><Input value={node.config.title || ""} onChange={(e) => onChange({ config: { title: e.target.value } })} /></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Body</Trans></label><Textarea rows={2} value={node.config.body || ""} onChange={(e) => onChange({ config: { body: e.target.value } })} /></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>URL</Trans></label><Input value={node.config.url || ""} onChange={(e) => onChange({ config: { url: e.target.value } })} placeholder="/posts/{{ data.id }}" /></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Recipient (userId)</Trans></label><Input value={node.config.userId ?? ""} onChange={(e) => onChange({ config: { userId: e.target.value || null } })} placeholder={t`leave empty for admins`} /></div>
           </>
         )}
         {node.kind === "action" && node.type === "transform" && (
-          <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Value</label><Textarea className="font-mono" rows={3} value={node.config.value || ""} onChange={(e) => onChange({ config: { value: e.target.value } })} placeholder="{{ data.title }}" /><span className="text-[11.5px] text-muted-foreground">Result is piped into <span className="font-mono">$last</span> for the next step.</span></div>
+          <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Value</Trans></label><Textarea className="font-mono" rows={3} value={node.config.value || ""} onChange={(e) => onChange({ config: { value: e.target.value } })} placeholder="{{ data.title }}" /><span className="text-[11.5px] text-muted-foreground"><Trans>Result is piped into <span className="font-mono">$last</span> for the next step.</Trans></span></div>
         )}
         {node.kind === "action" && node.type === "run-script" && (
           <>
-            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Code</label><Textarea className="font-mono" rows={6} value={node.config.code || ""} onChange={(e) => onChange({ config: { code: e.target.value } })} /><span className="text-[11.5px] text-muted-foreground">Sandboxed JS. Returns into <span className="font-mono">$last</span>.</span></div>
-            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Timeout (ms)</label><Input type="number" value={node.config.timeoutMs ?? 5000} onChange={(e) => onChange({ config: { timeoutMs: Number(e.target.value) || 5000 } })} /></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Code</Trans></label><Textarea className="font-mono" rows={6} value={node.config.code || ""} onChange={(e) => onChange({ config: { code: e.target.value } })} /><span className="text-[11.5px] text-muted-foreground"><Trans>Sandboxed JS. Returns into <span className="font-mono">$last</span>.</Trans></span></div>
+            <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Timeout (ms)</Trans></label><Input type="number" value={node.config.timeoutMs ?? 5000} onChange={(e) => onChange({ config: { timeoutMs: Number(e.target.value) || 5000 } })} /></div>
           </>
         )}
         {node.kind === "action" && (node.type === "item.create" || node.type === "item.update") && (
           <>
             <div className="flex flex-col gap-1.5">
-              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Collection</label>
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Collection</Trans></label>
               <Select
                 value={node.config.collection || ""}
                 onChange={(v) => onChange({ config: { collection: v } })}
                 options={[
-                  { value: "", label: collections.length === 0 ? "(none — no collections)" : "Select a collection…" },
+                  { value: "", label: collections.length === 0 ? t`(none — no collections)` : t`Select a collection…` },
                   ...collections.map((c) => ({ value: c.slug, label: c.slug })),
                 ]}
               />
             </div>
             {node.type === "item.update" && (
-              <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Row id</label><Input value={node.config.id || ""} onChange={(e) => onChange({ config: { id: e.target.value } })} placeholder="{{ data.id }}" /></div>
+              <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Row id</Trans></label><Input value={node.config.id || ""} onChange={(e) => onChange({ config: { id: e.target.value } })} placeholder="{{ data.id }}" /></div>
             )}
             <div className="flex flex-col gap-1.5">
-              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Data</label>
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Data</Trans></label>
               <Textarea className="font-mono" rows={5} value={node.config.data || ""} onChange={(e) => onChange({ config: { data: e.target.value } })} placeholder='{ "title": "{{ data.title }}" }' />
-              <span className="text-[11.5px] text-muted-foreground">JSON object — template strings are interpolated before insert/update.</span>
+              <span className="text-[11.5px] text-muted-foreground"><Trans>JSON object — template strings are interpolated before insert/update.</Trans></span>
             </div>
           </>
         )}
         {node.kind === "action" && node.type === "delay" && (
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Duration</label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Duration</Trans></label>
             <Input value={node.config.duration || ""} onChange={(e) => onChange({ config: { duration: e.target.value } })} placeholder="5m" />
-            <span className="text-[11.5px] text-muted-foreground">e.g. 30s, 5m, 1h, 2d. ≤ 30s sleeps inline; longer waits persist to the scheduler.</span>
+            <span className="text-[11.5px] text-muted-foreground"><Trans>e.g. 30s, 5m, 1h, 2d. ≤ 30s sleeps inline; longer waits persist to the scheduler.</Trans></span>
           </div>
         )}
 
-        <div className="fb-section-divider"><span>Error handling</span></div>
+        <div className="fb-section-divider"><span><Trans>Error handling</Trans></span></div>
         <div className="flex items-center justify-between gap-3">
-          <div><div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">On error</div></div>
-          <Select value={node.config.onError || "retry"} onChange={(v) => onChange({ config: { onError: v } })} options={[{ value: "retry", label: "Retry" }, { value: "continue", label: "Continue" }, { value: "fail", label: "Fail flow" }]} style={{ maxWidth: 130 }} />
+          <div><div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>On error</Trans></div></div>
+          <Select value={node.config.onError || "retry"} onChange={(v) => onChange({ config: { onError: v } })} options={[{ value: "retry", label: t`Retry` }, { value: "continue", label: t`Continue` }, { value: "fail", label: t`Fail flow` }]} style={{ maxWidth: 130 }} />
         </div>
       </div>
     </div>
@@ -571,6 +574,7 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
 }
 
 function NodePalette({ onSelect, onClose, branch }: { onSelect: (cat: any) => void; onClose: () => void; branch?: string | null }) {
+  const { t } = useLingui();
   const [q, setQ] = useState("");
   const list = [
     ...ACTIONS.map((a) => ({ ...a, kind: "action" })),
@@ -581,9 +585,9 @@ function NodePalette({ onSelect, onClose, branch }: { onSelect: (cat: any) => vo
       <div className="fb-palette" onClick={(e) => e.stopPropagation()}>
         <div className="fb-palette-head">
           <I.Search size={13} />
-          <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search steps…" />
+          <Input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t`Search steps…`} />
           {branch && <Badge variant="outline">{branch} branch</Badge>}
-          <IconButton icon={I.X} onClick={onClose} title="Close" />
+          <IconButton icon={I.X} onClick={onClose} title={t`Close`} />
         </div>
         <div className="fb-palette-grid">
           {list.map((x) => {
@@ -596,7 +600,7 @@ function NodePalette({ onSelect, onClose, branch }: { onSelect: (cat: any) => vo
                 disabled={!!pending}
                 onClick={() => { if (!pending) onSelect(x); }}
                 style={pending ? { opacity: 0.55, cursor: "not-allowed" } : undefined}
-                title={pending ? `Lands in ${pending}` : undefined}
+                title={pending ? t`Lands in ${pending}` : undefined}
               >
                 <span className={`fb-kind fb-kind-${x.kind}`}><Icon size={13} /></span>
                 <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1, alignItems: "flex-start" }}>
@@ -614,6 +618,7 @@ function NodePalette({ onSelect, onClose, branch }: { onSelect: (cat: any) => vo
 }
 
 function TestRunPanel({ name, nodes, edges: _edges, onClose }: { name: string; nodes: any[]; edges: any[]; onClose: () => void }) {
+  const { t } = useLingui();
   const [payload, setPayload] = useState(`{
   "type": "items.posts.updated",
   "data": {
@@ -650,25 +655,25 @@ function TestRunPanel({ name, nodes, edges: _edges, onClose }: { name: string; n
         <div className="fb-test-head">
           <I.Zap size={14} />
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600 }}>Test run · {name}</div>
-            <div className="text-[11.5px] text-muted-foreground">Dry run — no real side-effects</div>
+            <div style={{ fontSize: 14, fontWeight: 600 }}><Trans>Test run · {name}</Trans></div>
+            <div className="text-[11.5px] text-muted-foreground"><Trans>Dry run — no real side-effects</Trans></div>
           </div>
           <div className="flex-1" />
-          <IconButton icon={I.X} onClick={onClose} title="Close" />
+          <IconButton icon={I.X} onClick={onClose} title={t`Close`} />
         </div>
         <div className="fb-test-body">
           <div>
-            <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground">Sample event payload</div>
+            <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Sample event payload</Trans></div>
             <Textarea className="font-mono" rows={14} value={payload} onChange={(e) => setPayload(e.target.value)} style={{ fontSize: 11.5, lineHeight: 1.5 }} />
             <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-              <Button variant="primary" icon={I.Zap} onClick={run} disabled={running}>{running ? "Running…" : "Run"}</Button>
-              <Button variant="ghost" onClick={() => setSteps([])}>Clear</Button>
+              <Button variant="primary" icon={I.Zap} onClick={run} disabled={running}>{running ? <Trans>Running…</Trans> : <Trans>Run</Trans>}</Button>
+              <Button variant="ghost" onClick={() => setSteps([])}><Trans>Clear</Trans></Button>
             </div>
           </div>
           <div>
-            <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground">Step log</div>
+            <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Step log</Trans></div>
             <div className="fb-test-steps">
-              {steps.length === 0 && <div className="p-4 text-[12.5px] text-muted-foreground">Click Run to simulate.</div>}
+              {steps.length === 0 && <div className="p-4 text-[12.5px] text-muted-foreground"><Trans>Click Run to simulate.</Trans></div>}
               {steps.map((s, i) => (
                 <div key={i} className="fb-test-step" data-status={s.status}>
                   <span className="fb-test-num tabular-nums">{i + 1}</span>

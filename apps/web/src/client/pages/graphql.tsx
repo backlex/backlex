@@ -19,6 +19,7 @@ import {
   RefreshCwIcon,
   XIcon,
 } from "lucide-react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@workeros/ui/components/button";
 import { Input } from "@workeros/ui/components/input";
 import { Badge } from "@workeros/ui/components/badge";
@@ -426,6 +427,8 @@ interface ActiveSelection {
 const MAX_TYPES_INITIAL = 40;
 
 export const GraphqlPage = () => {
+  const { t } = useLingui();
+
   // Editor state
   const [query, setQuery] = useState<string>(FALLBACK_SNIPPETS[0]!.query);
   const [variables, setVariables] = useState<string>("{}");
@@ -711,8 +714,8 @@ export const GraphqlPage = () => {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="GraphQL"
-        description="Introspection-driven explorer for /api/graphql. Schema is generated from your workspace's collections at request time — click a query or mutation in the tree to drop a runnable snippet into the editor."
+        title={t`GraphQL`}
+        description={t`Introspection-driven explorer for /api/graphql. Schema is generated from your workspace's collections at request time — click a query or mutation in the tree to drop a runnable snippet into the editor.`}
         actions={
           <Button
             type="button"
@@ -724,7 +727,7 @@ export const GraphqlPage = () => {
             <RefreshCwIcon
               className={cn("size-4", schemaLoading && "animate-spin")}
             />
-            Reload schema
+            <Trans>Reload schema</Trans>
           </Button>
         }
       />
@@ -734,7 +737,7 @@ export const GraphqlPage = () => {
         <Card className="flex h-fit max-h-[calc(100vh-220px)] flex-col overflow-hidden lg:sticky lg:top-4">
           <CardHeader className="gap-2">
             <CardTitle className="flex items-center justify-between text-sm">
-              <span>Schema</span>
+              <span><Trans>Schema</Trans></span>
               {schema && (
                 <Badge variant="outline" className="font-mono text-[10px]">
                   {queryFields.length}q · {mutationFields.length}m
@@ -746,7 +749,7 @@ export const GraphqlPage = () => {
               <Input
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                placeholder="Filter fields & types…"
+                placeholder={t`Filter fields & types…`}
                 className="h-8 pl-7 pr-7 text-xs"
               />
               {filter && (
@@ -756,7 +759,7 @@ export const GraphqlPage = () => {
                   size="icon-sm"
                   onClick={() => setFilter("")}
                   className="absolute right-1 top-1/2 size-6 -translate-y-1/2 text-muted-foreground"
-                  aria-label="Clear filter"
+                  aria-label={t`Clear filter`}
                 >
                   <XIcon className="size-3" />
                 </Button>
@@ -791,7 +794,7 @@ export const GraphqlPage = () => {
                   <CollapsibleTrigger asChild>
                     <SectionHeader
                       icon={<ZapIcon className="size-3" />}
-                      title="Snippets"
+                      title={t`Snippets`}
                       count={FALLBACK_SNIPPETS.length}
                       open={openSection.fallbacks ?? true}
                     />
@@ -818,7 +821,7 @@ export const GraphqlPage = () => {
                   <CollapsibleTrigger asChild>
                     <SectionHeader
                       icon={<ZapIcon className="size-3" />}
-                      title="Queries"
+                      title={t`Queries`}
                       count={filteredQueries.length}
                       open={openSection.queries ?? true}
                     />
@@ -826,7 +829,7 @@ export const GraphqlPage = () => {
                   <CollapsibleContent className="flex flex-col gap-1">
                     {filteredQueries.length === 0 && (
                       <div className="px-3 py-1 text-[11px] text-muted-foreground">
-                        {queryFields.length === 0 ? "No queries." : "No matches."}
+                        {queryFields.length === 0 ? <Trans>No queries.</Trans> : <Trans>No matches.</Trans>}
                       </div>
                     )}
                     {filteredQueries.map((f) => (
@@ -852,7 +855,7 @@ export const GraphqlPage = () => {
                   <CollapsibleTrigger asChild>
                     <SectionHeader
                       icon={<PencilIcon className="size-3" />}
-                      title="Mutations"
+                      title={t`Mutations`}
                       count={filteredMutations.length}
                       open={openSection.mutations ?? true}
                     />
@@ -860,7 +863,7 @@ export const GraphqlPage = () => {
                   <CollapsibleContent className="flex flex-col gap-1">
                     {filteredMutations.length === 0 && (
                       <div className="px-3 py-1 text-[11px] text-muted-foreground">
-                        {mutationFields.length === 0 ? "No mutations." : "No matches."}
+                        {mutationFields.length === 0 ? <Trans>No mutations.</Trans> : <Trans>No matches.</Trans>}
                       </div>
                     )}
                     {filteredMutations.map((f) => (
@@ -886,7 +889,7 @@ export const GraphqlPage = () => {
                   <CollapsibleTrigger asChild>
                     <SectionHeader
                       icon={<BoxIcon className="size-3" />}
-                      title="Types"
+                      title={t`Types`}
                       count={filteredTypes.length}
                       open={openSection.types ?? false}
                     />
@@ -894,7 +897,7 @@ export const GraphqlPage = () => {
                   <CollapsibleContent className="flex flex-col gap-1">
                     {visibleTypes.length === 0 && (
                       <div className="px-3 py-1 text-[11px] text-muted-foreground">
-                        No types.
+                        <Trans>No types.</Trans>
                       </div>
                     )}
                     {visibleTypes.map((t) => (
@@ -918,7 +921,7 @@ export const GraphqlPage = () => {
                           onClick={() => setShowAllTypes(true)}
                           className="mx-2 mt-1 h-7 justify-start text-[11px] text-muted-foreground"
                         >
-                          Show {filteredTypes.length - MAX_TYPES_INITIAL} more…
+                          <Trans>Show {filteredTypes.length - MAX_TYPES_INITIAL} more…</Trans>
                         </Button>
                       )}
                   </CollapsibleContent>
@@ -933,7 +936,7 @@ export const GraphqlPage = () => {
           <Card className="flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between gap-2">
               <CardTitle className="flex items-center gap-2 text-sm">
-                <span>Query</span>
+                <span><Trans>Query</Trans></span>
                 {operationName && (
                   <Badge variant="outline" className="font-mono text-[10px]">
                     {operationName}
@@ -947,7 +950,7 @@ export const GraphqlPage = () => {
                   size="sm"
                   onClick={() => setVariablesOpen((v) => !v)}
                 >
-                  {variablesOpen ? "Hide variables" : "Show variables"}
+                  {variablesOpen ? <Trans>Hide variables</Trans> : <Trans>Show variables</Trans>}
                 </Button>
                 <Button
                   type="button"
@@ -956,7 +959,7 @@ export const GraphqlPage = () => {
                   disabled={running}
                 >
                   <PlayIcon className="size-4" />
-                  {running ? "Running…" : "Execute"}
+                  {running ? <Trans>Running…</Trans> : <Trans>Execute</Trans>}
                 </Button>
               </div>
             </CardHeader>
@@ -971,7 +974,7 @@ export const GraphqlPage = () => {
                 {variablesOpen && (
                   <div className="flex flex-col gap-1">
                     <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                      Variables (JSON)
+                      <Trans>Variables (JSON)</Trans>
                     </div>
                     <CodeEditor
                       value={variables}
@@ -990,7 +993,7 @@ export const GraphqlPage = () => {
                     <kbd className="rounded border bg-muted px-1 py-0.5 font-mono text-[10px]">
                       ↵
                     </kbd>{" "}
-                    to execute
+                    <Trans>to execute</Trans>
                   </span>
                   {tookMs !== null && (
                     <span className="ml-auto tabular-nums">{tookMs} ms</span>
@@ -1005,26 +1008,26 @@ export const GraphqlPage = () => {
           <Card className="flex flex-col">
             <CardHeader className="flex flex-row items-center justify-between gap-2">
               <CardTitle className="flex items-center gap-2 text-sm">
-                <span>Response</span>
-                {status === "ok" && <Badge variant="default">ok</Badge>}
-                {status === "errors" && <Badge variant="destructive">errors</Badge>}
-                {status === "idle" && <Badge variant="outline">idle</Badge>}
+                <span><Trans>Response</Trans></span>
+                {status === "ok" && <Badge variant="default"><Trans>ok</Trans></Badge>}
+                {status === "errors" && <Badge variant="destructive"><Trans>errors</Trans></Badge>}
+                {status === "idle" && <Badge variant="outline"><Trans>idle</Trans></Badge>}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {result ? (
                 <Tabs defaultValue="data">
                   <TabsList>
-                    <TabsTrigger value="data">Data</TabsTrigger>
+                    <TabsTrigger value="data"><Trans>Data</Trans></TabsTrigger>
                     <TabsTrigger value="errors" disabled={!result.errors?.length}>
-                      Errors
+                      <Trans>Errors</Trans>
                       {result.errors?.length ? (
                         <Badge variant="destructive" className="ml-1 font-mono text-[10px]">
                           {result.errors.length}
                         </Badge>
                       ) : null}
                     </TabsTrigger>
-                    <TabsTrigger value="raw">Raw</TabsTrigger>
+                    <TabsTrigger value="raw"><Trans>Raw</Trans></TabsTrigger>
                   </TabsList>
                   <TabsContent value="data" className="pt-3">
                     <JsonBlock
@@ -1041,7 +1044,7 @@ export const GraphqlPage = () => {
                         maxHeight={420}
                       />
                     ) : (
-                      <div className="text-xs text-muted-foreground">No errors.</div>
+                      <div className="text-xs text-muted-foreground"><Trans>No errors.</Trans></div>
                     )}
                   </TabsContent>
                   <TabsContent value="raw" className="pt-3">
@@ -1050,7 +1053,7 @@ export const GraphqlPage = () => {
                 </Tabs>
               ) : (
                 <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-8 text-center text-xs text-muted-foreground">
-                  Execute a query to see results here.
+                  <Trans>Execute a query to see results here.</Trans>
                 </div>
               )}
             </CardContent>

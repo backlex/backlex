@@ -82,6 +82,8 @@ const TAB_COUNT_CLS =
   "rounded-sm border border-border bg-muted px-[5px] py-px font-mono text-[11px] text-muted-foreground";
 import { AccountPage } from "./account-page";
 import { PreferencesProvider } from "./preferences";
+import { AdminLocaleSync } from "./i18n";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { GraphqlPage } from "@/pages/graphql";
 import { RestExplorerPage } from "@/pages/rest-explorer";
 import { OpenApiExportPage } from "@/pages/openapi-export";
@@ -118,6 +120,7 @@ function ageBump(t: string) {
 }
 
 export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOptions) {
+  const { t } = useLingui();
   const [tweaks, setTweaks] = useState(DEFAULTS);
   const setTweak = useCallback(<K extends keyof typeof DEFAULTS>(k: K, v: (typeof DEFAULTS)[K]) => {
     setTweaks((t) => ({ ...t, [k]: v }));
@@ -421,7 +424,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
         openCreate();
       } else if (e.key.toLowerCase() === "r" && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
-        pushToast("Refreshed.");
+        pushToast(t`Refreshed.`);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -586,7 +589,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
         return false;
       }
       setPosts((p) => [nu, ...p]);
-      pushToast(`Post "${(nu.title ?? "").slice(0, 38)}${(nu.title ?? "").length > 38 ? "…" : ""}" created.`);
+      pushToast(t`Post "${(nu.title ?? "").slice(0, 38)}${(nu.title ?? "").length > 38 ? "…" : ""}" created.`);
       // Flip the sheet into edit mode on the freshly-created row so subsequent
       // saves PATCH it rather than re-inserting.
       setSheetMode("edit");
@@ -600,7 +603,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
       }
       const updated = { ...sheetItem, ...draft, updated_at: new Date().toISOString() } as Post;
       setPosts((p) => p.map((x) => x.id === sheetItem.id ? updated : x));
-      pushToast("Post saved.");
+      pushToast(t`Post saved.`);
       // Hand the sheet a new object reference so its useEffect re-syncs the
       // draft to the server-confirmed values.
       setSheetItem(updated);
@@ -611,27 +614,27 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
 
   const onBulkPublish = () => {
     setPosts((p) => p.map((x) => selected.has(x.id) ? { ...x, status: "published", published_at: new Date().toISOString(), updated_at: new Date().toISOString() } : x));
-    pushToast(`${selected.size} posts published.`);
+    pushToast(t`${selected.size} posts published.`);
     setSelected(new Set());
   };
   const onBulkDelete = () => {
     setConfirm({
-      title: `Delete ${selected.size} posts?`,
-      description: `These rows will be removed from c_posts. This deletes the underlying records — revisions remain available.`,
-      actionLabel: "Delete",
+      title: t`Delete ${selected.size} posts?`,
+      description: t`These rows will be removed from c_posts. This deletes the underlying records — revisions remain available.`,
+      actionLabel: t`Delete`,
       destructive: true,
       onConfirm: async () => {
         const ids = [...selected];
         await Promise.allSettled(ids.map((id) => itemsApi.remove(activeCollection || "posts", id)));
         setPosts((p) => p.filter((x) => !selected.has(x.id)));
-        pushToast(`${selected.size} posts deleted.`);
+        pushToast(t`${selected.size} posts deleted.`);
         setSelected(new Set());
         setConfirm(null);
       },
     });
   };
 
-  const refresh = () => pushToast("Items refreshed.");
+  const refresh = () => pushToast(t`Items refreshed.`);
 
   const onPaletteSelect = (sel: any) => {
     setPaletteOpen(false);
@@ -651,6 +654,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
 
   return (
     <PreferencesProvider>
+    <AdminLocaleSync />
     <SidebarProvider
       open={!tweaks.sidebarCollapsed}
       onOpenChange={(o) => setTweak("sidebarCollapsed", !o)}
@@ -704,7 +708,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             {activeNav === "account" && <AccountPage pushToast={pushToast} />}
             {activeNav === "access" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-                <PageHeader title="Roles & permissions" description="System roles ship with the platform; custom roles layer additively." />
+                <PageHeader title={t`Roles & permissions`} description={t`System roles ship with the platform; custom roles layer additively.`} />
                 <RolesPageWithMembers pushToast={pushToast} />
               </div>
             )}
@@ -723,12 +727,12 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                   const adopted = !!target?.adopted;
                   setConfirm({
                     title: adopted
-                      ? <>Archive collection <span className="font-mono">c_{slug}</span>?</>
-                      : <>Delete collection <span className="font-mono">c_{slug}</span>?</>,
+                      ? <Trans>Archive collection <span className="font-mono">c_{slug}</span>?</Trans>
+                      : <Trans>Delete collection <span className="font-mono">c_{slug}</span>?</Trans>,
                     description: adopted
-                      ? <>Workeros stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view.</>
-                      : <>The physical table and all rows are dropped. This is irreversible. Permissions, revisions, and webhooks tied to this collection are removed too.</>,
-                    actionLabel: adopted ? "Archive collection" : "Delete collection",
+                      ? <Trans>Workeros stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view.</Trans>
+                      : <Trans>The physical table and all rows are dropped. This is irreversible. Permissions, revisions, and webhooks tied to this collection are removed too.</Trans>,
+                    actionLabel: adopted ? t`Archive collection` : t`Delete collection`,
                     destructive: !adopted,
                     onConfirm: async () => {
                       try {
@@ -736,8 +740,8 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                         invalidateCollections();
                         if (activeCollection === slug) setActiveCollection(null);
                         pushToast(resp.archived
-                          ? `Collection c_${slug} archived. Restore it from the Archived view.`
-                          : `Collection c_${slug} dropped.`);
+                          ? t`Collection c_${slug} archived. Restore it from the Archived view.`
+                          : t`Collection c_${slug} dropped.`);
                       } catch (e) {
                         pushToast((e as Error).message, "error");
                       }
@@ -746,14 +750,14 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                   });
                 }}
                 onRestore={(slug) => setConfirm({
-                  title: <>Restore collection <span className="font-mono">c_{slug}</span>?</>,
-                  description: <>Workeros will start treating this table as a collection again. Owner-scoped permissions are re-seeded if they were configured.</>,
-                  actionLabel: "Restore collection",
+                  title: <Trans>Restore collection <span className="font-mono">c_{slug}</span>?</Trans>,
+                  description: <Trans>Workeros will start treating this table as a collection again. Owner-scoped permissions are re-seeded if they were configured.</Trans>,
+                  actionLabel: t`Restore collection`,
                   destructive: false,
                   onConfirm: async () => {
                     try {
                       await collectionsApi.restore(slug);
-                      pushToast(`Collection c_${slug} restored.`);
+                      pushToast(t`Collection c_${slug} restored.`);
                       // Refresh both list entries — the restored row falls
                       // off the archived list and back onto the active one.
                       invalidateCollections();
@@ -770,21 +774,21 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
               <CollectionItemsSkeleton />
             )}
             {activeNav === "collections" && activeCollection && !(collectionLoading && schemaState.slug !== activeCollection) && <>
-              <Button variant="ghost" size="sm" icon={I.ChevronLeft} onClick={() => setActiveCollection(null)}>All collections</Button>
+              <Button variant="ghost" size="sm" icon={I.ChevronLeft} onClick={() => setActiveCollection(null)}><Trans>All collections</Trans></Button>
               <PageHeader
                 slug={activeCollection}
-                description={<>Dynamic schema. Each collection becomes a physical <span className="font-mono">c_&lt;slug&gt;</span> table at runtime; drop or alter via this UI.</>}
+                description={<Trans>Dynamic schema. Each collection becomes a physical <span className="font-mono">c_&lt;slug&gt;</span> table at runtime; drop or alter via this UI.</Trans>}
                 badges={
                   <span style={{ display: "inline-flex", gap: 6, marginLeft: 4 }}>
-                    {schemaState.ownerScoped && <Badge variant="default">owner-scoped</Badge>}
+                    {schemaState.ownerScoped && <Badge variant="default"><Trans>owner-scoped</Trans></Badge>}
                     <Badge variant="outline" mono>{ADAPTER_PROFILES[tweaks.adapter].db}</Badge>
                   </span>
                 }
                 actions={
                   <>
-                    <Button variant="outline" icon={I.Refresh} onClick={refresh}>Refresh</Button>
+                    <Button variant="outline" icon={I.Refresh} onClick={refresh}><Trans>Refresh</Trans></Button>
                     <Button variant="outline" icon={I.ExternalLink} onClick={() => navigate(`/rest-explorer?slug=${encodeURIComponent(activeCollection)}`)}>API</Button>
-                    <Button variant="primary" icon={I.Plus} onClick={openCreate}>New post</Button>
+                    <Button variant="primary" icon={I.Plus} onClick={openCreate}><Trans>New post</Trans></Button>
                   </>
                 }
               />
@@ -792,13 +796,13 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "items" | "schema" | "settings")}>
                 <TabsList>
                   <TabsTrigger value="items">
-                    <I.Inbox size={13} />Items <span className={TAB_COUNT_CLS}>{posts.length}</span>
+                    <I.Inbox size={13} /><Trans>Items</Trans> <span className={TAB_COUNT_CLS}>{posts.length}</span>
                   </TabsTrigger>
                   <TabsTrigger value="schema">
-                    <I.Braces size={13} />Schema <span className={TAB_COUNT_CLS}>{schemaState.fields.length}</span>
+                    <I.Braces size={13} /><Trans>Schema</Trans> <span className={TAB_COUNT_CLS}>{schemaState.fields.length}</span>
                   </TabsTrigger>
                   <TabsTrigger value="settings">
-                    <I.Settings size={13} />Settings
+                    <I.Settings size={13} /><Trans>Settings</Trans>
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -856,11 +860,11 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                       )}
                       {viewMode === "table" && pageRows.length > 0 && (
                         <div className="flex items-center gap-2 border-t border-border bg-card px-3.5 py-2.5 text-[12.5px] text-muted-foreground">
-                          <span className="font-mono text-xs tabular-nums">{(page - 1) * PER_PAGE + 1}-{Math.min(page * PER_PAGE, total)} of {total}</span>
+                          <span className="font-mono text-xs tabular-nums"><Trans>{(page - 1) * PER_PAGE + 1}-{Math.min(page * PER_PAGE, total)} of {total}</Trans></span>
                           <div className="flex-1" />
-                          <Button variant="ghost" size="sm" icon={I.ChevronLeft} disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</Button>
-                          <span className="font-mono text-xs tabular-nums">page {page} / {totalPages}</span>
-                          <Button variant="ghost" size="sm" iconRight={I.ChevronRight} disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
+                          <Button variant="ghost" size="sm" icon={I.ChevronLeft} disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}><Trans>Prev</Trans></Button>
+                          <span className="font-mono text-xs tabular-nums"><Trans>page {page} / {totalPages}</Trans></span>
+                          <Button variant="ghost" size="sm" iconRight={I.ChevronRight} disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}><Trans>Next</Trans></Button>
                         </div>
                       )}
                     </div>
@@ -895,9 +899,9 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                       }
                     }}
                     onDropField={(name) => setConfirm({
-                      title: `Drop column "${name}"?`,
-                      description: <>This <span className="font-mono">ALTER TABLE c_posts DROP COLUMN "{name}"</span> is irreversible. Existing data in the column is lost.</>,
-                      actionLabel: "Drop column",
+                      title: t`Drop column "${name}"?`,
+                      description: <Trans>This <span className="font-mono">ALTER TABLE c_posts DROP COLUMN "{name}"</span> is irreversible. Existing data in the column is lost.</Trans>,
+                      actionLabel: t`Drop column`,
                       destructive: true,
                       onConfirm: async () => {
                         const slug = activeCollection || "posts";
@@ -905,7 +909,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                         try {
                           await collectionsApi.patch(slug, { fields: next as any });
                           setSchemaState((s) => ({ ...s, fields: next }));
-                          pushToast(`Column "${name}" dropped.`);
+                          pushToast(t`Column "${name}" dropped.`);
                         } catch (e) {
                           pushToast((e as Error).message);
                         }
@@ -923,9 +927,9 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                   onRename={async (nextSlug) => {
                     const slug = activeCollection || "posts";
                     setConfirm({
-                      title: <>Rename <span className="font-mono">c_{slug}</span> → <span className="font-mono">c_{nextSlug}</span>?</>,
-                      description: <>Permission rules, webhook patterns, function triggers, flow steps, revisions, comments, and audit log entries that reference <span className="font-mono">{slug}</span> will be updated. The physical table is not renamed.</>,
-                      actionLabel: "Rename collection",
+                      title: <Trans>Rename <span className="font-mono">c_{slug}</span> → <span className="font-mono">c_{nextSlug}</span>?</Trans>,
+                      description: <Trans>Permission rules, webhook patterns, function triggers, flow steps, revisions, comments, and audit log entries that reference <span className="font-mono">{slug}</span> will be updated. The physical table is not renamed.</Trans>,
+                      actionLabel: t`Rename collection`,
                       destructive: false,
                       onConfirm: async () => {
                         try {
@@ -940,7 +944,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                               .map(([k, n]) => `${n} ${k}`)
                               .join(", ")
                             : "";
-                          pushToast(`Renamed to c_${nextSlug}${totals ? ` (${totals} updated)` : ""}.`);
+                          pushToast(t`Renamed to c_${nextSlug}${totals ? ` (${totals} updated)` : ""}.`);
                         } catch (e) {
                           pushToast((e as Error).message, "error");
                         }
@@ -954,7 +958,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                     setSchemaState((s) => ({ ...s, ...patch }));
                     try {
                       await collectionsApi.patch(slug, patch as any);
-                      pushToast(`Collection settings saved.`);
+                      pushToast(t`Collection settings saved.`);
                     } catch (e) {
                       setSchemaState(prev);
                       pushToast((e as Error).message, "error");
@@ -964,12 +968,12 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                     const adopted = !!(schemaState as { adopted?: boolean }).adopted;
                     setConfirm({
                       title: adopted
-                        ? <>Archive collection <span className="font-mono">c_{activeCollection}</span>?</>
-                        : <>Delete collection <span className="font-mono">c_{activeCollection}</span>?</>,
+                        ? <Trans>Archive collection <span className="font-mono">c_{activeCollection}</span>?</Trans>
+                        : <Trans>Delete collection <span className="font-mono">c_{activeCollection}</span>?</Trans>,
                       description: adopted
-                        ? <>Workeros stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view.</>
-                        : <>The physical table and all rows are dropped. This is irreversible.</>,
-                      actionLabel: adopted ? "Archive collection" : "Delete collection",
+                        ? <Trans>Workeros stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view.</Trans>
+                        : <Trans>The physical table and all rows are dropped. This is irreversible.</Trans>,
+                      actionLabel: adopted ? t`Archive collection` : t`Delete collection`,
                       destructive: !adopted,
                       onConfirm: async () => {
                         const slug = activeCollection || "posts";
@@ -978,8 +982,8 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
                           invalidateCollections();
                           setActiveCollection(null);
                           pushToast(resp.archived
-                            ? `Collection c_${slug} archived. Restore it from the Archived view.`
-                            : `Collection c_${slug} dropped.`);
+                            ? t`Collection c_${slug} archived. Restore it from the Archived view.`
+                            : t`Collection c_${slug} dropped.`);
                         } catch (e) {
                           pushToast((e as Error).message, "error");
                         }
@@ -1018,7 +1022,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
             // Refetch — the new row comes back metrics-enriched from the
             // canonical list rather than the wizard's partial draft.
             invalidateCollections();
-            pushToast(`Collection c_${c.slug} created.`);
+            pushToast(t`Collection c_${c.slug} created.`);
             created = true;
           } catch (e) {
             pushToast((e as Error).message, "error");
@@ -1040,7 +1044,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
           setSchemaState((s) => ({ ...s, fields: merged }));
           try {
             await collectionsApi.patch(slug, { fields: merged as any });
-            pushToast(`Field "${(next as { name?: string }).name}" updated.`);
+            pushToast(t`Field "${(next as { name?: string }).name}" updated.`);
           } catch (e) {
             setSchemaState((s) => ({ ...s, fields: prev }));
             pushToast((e as Error).message, "error");
@@ -1061,7 +1065,7 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
           const slug = activeCollection || "posts";
           await collectionsApi.patch(slug, { fields: merged.fields as any });
           setSchemaState(merged);
-          pushToast(`Column "${(field as any).name}" added to c_${slug}.`);
+          pushToast(t`Column "${(field as any).name}" added to c_${slug}.`);
         } catch (e) {
           pushToast((e as Error).message);
         }
@@ -1074,14 +1078,15 @@ export function AdminApp({ initialNav = "collections", onSignOut }: AdminAppOpti
 }
 
 function RolesPageWithMembers({ pushToast }: { pushToast: (m: string) => void }) {
+  const { t } = useLingui();
   const [tab, setTab] = useState<"members" | "roles">("members");
   return (
     <div className="flex flex-col gap-3.5">
       <Tabs value={tab} onValueChange={(v) => setTab(v as "members" | "roles")}>
         <TabsList>
           {[
-            { id: "members" as const, label: "Members", icon: I.Users },
-            { id: "roles" as const, label: "Roles & permissions", icon: I.Shield },
+            { id: "members" as const, label: t`Members`, icon: I.Users },
+            { id: "roles" as const, label: t`Roles & permissions`, icon: I.Shield },
           ].map((t) => (
             <TabsTrigger key={t.id} value={t.id}>
               <t.icon size={13} /><span>{t.label}</span>
@@ -1096,6 +1101,7 @@ function RolesPageWithMembers({ pushToast }: { pushToast: (m: string) => void })
 }
 
 function PermissionsPanel({ pushToast }: { pushToast: (m: string) => void }) {
+  const { t } = useLingui();
   const [roles, setRoles] = useState<RoleData[]>([]);
   useEffect(() => {
     let cancelled = false;
@@ -1127,7 +1133,7 @@ function PermissionsPanel({ pushToast }: { pushToast: (m: string) => void }) {
   const openEdit = (r: RoleData) => { setEditing(r); setIsNew(false); };
   const save = async (data: RoleData) => {
     if (isNew) {
-      if (roles.find((r) => r.name === data.name)) { pushToast(`Role "${data.name}" already exists.`); return; }
+      if (roles.find((r) => r.name === data.name)) { pushToast(t`Role "${data.name}" already exists.`); return; }
       try {
         await api(`/api/roles`, {
           method: "POST",
@@ -1137,7 +1143,7 @@ function PermissionsPanel({ pushToast }: { pushToast: (m: string) => void }) {
         pushToast((e as Error).message);
       }
       setRoles((arr) => [...arr, { ...data, badges: [] }]);
-      pushToast(`Role "${data.name}" created.`);
+      pushToast(t`Role "${data.name}" created.`);
     } else if (editing) {
       try {
         // Roles are loaded via /api/roles which returns id; the editor only
@@ -1154,7 +1160,7 @@ function PermissionsPanel({ pushToast }: { pushToast: (m: string) => void }) {
         pushToast((e as Error).message);
       }
       setRoles((arr) => arr.map((r) => r.name === editing.name ? { ...r, ...data } : r));
-      pushToast(`Role "${data.name}" saved.`);
+      pushToast(t`Role "${data.name}" saved.`);
     }
     setEditing(null);
     setIsNew(false);
@@ -1165,21 +1171,21 @@ function PermissionsPanel({ pushToast }: { pushToast: (m: string) => void }) {
       <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
         <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
           <I.Shield size={14} />
-          <span className="text-[13px] font-medium">roles</span>
-          <span className="font-mono text-xs text-muted-foreground">{roles.filter((r) => r.system).length} system · {roles.filter((r) => !r.system).length} custom</span>
+          <span className="text-[13px] font-medium"><Trans>roles</Trans></span>
+          <span className="font-mono text-xs text-muted-foreground"><Trans>{roles.filter((r) => r.system).length} system · {roles.filter((r) => !r.system).length} custom</Trans></span>
           <div className="flex-1" />
-          <Button variant="primary" size="sm" icon={I.Plus} onClick={openNew}>Add role</Button>
+          <Button variant="primary" size="sm" icon={I.Plus} onClick={openNew}><Trans>Add role</Trans></Button>
         </div>
         {roles.map((r) => (
           <div key={r.name} className="grid grid-cols-[24px_200px_1fr_32px] max-[640px]:grid-cols-[24px_1fr_32px] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0">
             <span><I.Users size={14} /></span>
             <div className="flex items-center gap-2">
               <span className="font-mono text-[13px]">{r.name}</span>
-              {r.system && <Badge variant="secondary">system</Badge>}
+              {r.system && <Badge variant="secondary"><Trans>system</Trans></Badge>}
               {(r.badges || []).map((b) => <Badge key={b} variant="outline">{b}</Badge>)}
             </div>
             <span className="font-mono text-xs text-muted-foreground max-[640px]:hidden">{r.rule}</span>
-            <IconButton icon={I.Pencil} title="Edit" onClick={() => openEdit(r)} />
+            <IconButton icon={I.Pencil} title={t`Edit`} onClick={() => openEdit(r)} />
           </div>
         ))}
       </div>

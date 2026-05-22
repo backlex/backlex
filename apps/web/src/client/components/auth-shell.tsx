@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { MoonIcon, SunIcon } from "lucide-react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@workeros/ui/components/button";
 import { useTheme } from "@/components/theme-provider";
 import { useAuthSurface } from "@/lib/auth";
@@ -19,163 +20,178 @@ interface Snippet {
 
 interface ModeCopy {
   headline: ReactNode;
-  lede: string;
+  lede: ReactNode;
   snippets: Snippet[];
 }
 
-const COPY: Record<AuthMode, ModeCopy> = {
-  "sign-in": {
-    headline: (
-      <>
-        Sign in to <em>workeros</em>.
-      </>
-    ),
-    lede:
-      "Better-auth-style cookies. Sessions stored in your collections database — same DSL as everything else.",
-    snippets: [
-      {
-        label: "POST",
-        body: <span className="text-muted-foreground">/api/auth/sign-in/email</span>,
-      },
-      {
-        label: "cookie",
-        body: (
-          <>
-            <span className="text-muted-foreground">workeros_session=</span>
-            <span>eyJhbGciOiJIUz…</span>
-          </>
-        ),
-      },
-      {
-        label: "redirect",
-        body: <span>/admin</span>,
-      },
-    ],
-  },
-  "sign-up": {
-    headline: (
-      <>
-        Create your <em>workeros</em> account.
-      </>
-    ),
-    lede:
-      "Email is the only required field. Roles assigned post-signup — first user gets admin.",
-    snippets: [
-      {
-        label: "POST",
-        body: <span className="text-muted-foreground">/api/auth/sign-up/email</span>,
-      },
-      {
-        label: "role",
-        body: (
-          <>
-            <span>authenticated</span>{" "}
-            <span className="text-muted-foreground">(or admin if first)</span>
-          </>
-        ),
-      },
-      {
-        label: "event",
-        body: <span className="text-muted-foreground">user.created</span>,
-      },
-    ],
-  },
-  magic: {
-    headline: (
-      <>
-        One-time link, no <em>password</em>.
-      </>
-    ),
-    lede:
-      "A signed link will arrive in your inbox. Single-use, expires in 15 minutes.",
-    snippets: [
-      {
-        label: "POST",
-        body: <span className="text-muted-foreground">/api/auth/sign-in/magic-link</span>,
-      },
-      { label: "expires", body: <span>15m</span> },
-      {
-        label: "transport",
-        body: <span className="text-muted-foreground">email · single-use jwt</span>,
-      },
-    ],
-  },
-  forgot: {
-    headline: (
-      <>
-        Reset your <em>password</em>.
-      </>
-    ),
-    lede:
-      "We'll email a reset link. Until you click it, your existing password still works.",
-    snippets: [
-      {
-        label: "POST",
-        body: <span className="text-muted-foreground">/api/auth/forget-password</span>,
-      },
-      {
-        label: "token",
-        body: (
-          <>
-            <span>reset_xxx</span>{" "}
-            <span className="text-muted-foreground">· expires 1h</span>
-          </>
-        ),
-      },
-      {
-        label: "audit",
-        body: <span className="text-muted-foreground">password.reset_requested</span>,
-      },
-    ],
-  },
-  claim: {
-    headline: (
-      <>
-        You're the <em>first</em>. Claim this instance.
-      </>
-    ),
-    lede:
-      "Detected an empty users table. The first account on a fresh instance is provisioned as admin automatically.",
-    snippets: [
-      {
-        label: "detect",
-        body: <span className="text-muted-foreground">SELECT count(*) FROM users → 0</span>,
-      },
-      {
-        label: "role",
-        body: (
-          <>
-            <span>admin</span>{" "}
-            <span className="text-muted-foreground">(first user policy)</span>
-          </>
-        ),
-      },
-      {
-        label: "next",
-        body: <span className="text-muted-foreground">create your first collection</span>,
-      },
-    ],
-  },
-};
-
-const MODE_LINKS: Array<{ mode: AuthMode; to: string; label: string }> = [
-  { mode: "sign-in", to: "/sign-in", label: "Sign in" },
-  { mode: "sign-up", to: "/sign-up", label: "Sign up" },
-  { mode: "magic", to: "/magic-link", label: "Magic link" },
-  { mode: "claim", to: "/sign-up?claim=1", label: "Claim instance" },
+const MODE_LINKS: Array<{ mode: AuthMode; to: string; labelKey: string }> = [
+  { mode: "sign-in", to: "/sign-in", labelKey: "Sign in" },
+  { mode: "sign-up", to: "/sign-up", labelKey: "Sign up" },
+  { mode: "magic", to: "/magic-link", labelKey: "Magic link" },
+  { mode: "claim", to: "/sign-up?claim=1", labelKey: "Claim instance" },
 ];
 
 export const AuthShell = ({ mode, children }: AuthShellProps) => {
-  const copy = COPY[mode];
+  const { t } = useLingui();
   const { theme, setTheme } = useTheme();
   const dark = theme === "dark";
   const { surface } = useAuthSurface();
+
+  const COPY: Record<AuthMode, ModeCopy> = {
+    "sign-in": {
+      headline: (
+        <>
+          <Trans>Sign in to <em>workeros</em>.</Trans>
+        </>
+      ),
+      lede: (
+        <Trans>Better-auth-style cookies. Sessions stored in your collections database — same DSL as everything else.</Trans>
+      ),
+      snippets: [
+        {
+          label: "POST",
+          body: <span className="text-muted-foreground">/api/auth/sign-in/email</span>,
+        },
+        {
+          label: "cookie",
+          body: (
+            <>
+              <span className="text-muted-foreground">workeros_session=</span>
+              <span>eyJhbGciOiJIUz…</span>
+            </>
+          ),
+        },
+        {
+          label: "redirect",
+          body: <span>/admin</span>,
+        },
+      ],
+    },
+    "sign-up": {
+      headline: (
+        <>
+          <Trans>Create your <em>workeros</em> account.</Trans>
+        </>
+      ),
+      lede: (
+        <Trans>Email is the only required field. Roles assigned post-signup — first user gets admin.</Trans>
+      ),
+      snippets: [
+        {
+          label: "POST",
+          body: <span className="text-muted-foreground">/api/auth/sign-up/email</span>,
+        },
+        {
+          label: "role",
+          body: (
+            <>
+              <span>authenticated</span>{" "}
+              <span className="text-muted-foreground">(or admin if first)</span>
+            </>
+          ),
+        },
+        {
+          label: "event",
+          body: <span className="text-muted-foreground">user.created</span>,
+        },
+      ],
+    },
+    magic: {
+      headline: (
+        <>
+          <Trans>One-time link, no <em>password</em>.</Trans>
+        </>
+      ),
+      lede: (
+        <Trans>A signed link will arrive in your inbox. Single-use, expires in 15 minutes.</Trans>
+      ),
+      snippets: [
+        {
+          label: "POST",
+          body: <span className="text-muted-foreground">/api/auth/sign-in/magic-link</span>,
+        },
+        { label: "expires", body: <span>15m</span> },
+        {
+          label: "transport",
+          body: <span className="text-muted-foreground">email · single-use jwt</span>,
+        },
+      ],
+    },
+    forgot: {
+      headline: (
+        <>
+          <Trans>Reset your <em>password</em>.</Trans>
+        </>
+      ),
+      lede: (
+        <Trans>We'll email a reset link. Until you click it, your existing password still works.</Trans>
+      ),
+      snippets: [
+        {
+          label: "POST",
+          body: <span className="text-muted-foreground">/api/auth/forget-password</span>,
+        },
+        {
+          label: "token",
+          body: (
+            <>
+              <span>reset_xxx</span>{" "}
+              <span className="text-muted-foreground">· expires 1h</span>
+            </>
+          ),
+        },
+        {
+          label: "audit",
+          body: <span className="text-muted-foreground">password.reset_requested</span>,
+        },
+      ],
+    },
+    claim: {
+      headline: (
+        <>
+          <Trans>You're the <em>first</em>. Claim this instance.</Trans>
+        </>
+      ),
+      lede: (
+        <Trans>Detected an empty users table. The first account on a fresh instance is provisioned as admin automatically.</Trans>
+      ),
+      snippets: [
+        {
+          label: "detect",
+          body: <span className="text-muted-foreground">SELECT count(*) FROM users → 0</span>,
+        },
+        {
+          label: "role",
+          body: (
+            <>
+              <span>admin</span>{" "}
+              <span className="text-muted-foreground">(first user policy)</span>
+            </>
+          ),
+        },
+        {
+          label: "next",
+          body: <span className="text-muted-foreground">create your first collection</span>,
+        },
+      ],
+    },
+  };
+
+  const copy = COPY[mode];
+
   // The "Claim instance" link only exists when the server confirms the
   // instance has zero users. Once an admin exists it disappears everywhere
   // — the sign-up page itself also stops honouring `?claim=1`.
   const visibleLinks = MODE_LINKS.filter(
     (l) => l.mode !== "claim" || surface?.firstUserMode === true,
   );
+
+  const linkLabels: Record<string, string> = {
+    "Sign in": t`Sign in`,
+    "Sign up": t`Sign up`,
+    "Magic link": t`Magic link`,
+    "Claim instance": t`Claim instance`,
+  };
 
   return (
     <div className="grid min-h-svh w-full grid-cols-1 bg-background text-foreground md:grid-cols-2">
@@ -229,8 +245,8 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
             variant="ghost"
             size="icon-sm"
             onClick={() => setTheme(dark ? "light" : "dark")}
-            aria-label="Toggle theme"
-            title="Toggle theme"
+            aria-label={t`Toggle theme`}
+            title={t`Toggle theme`}
             className="absolute -top-7 right-0 text-muted-foreground"
           >
             {dark ? <SunIcon size={14} /> : <MoonIcon size={14} />}
@@ -247,7 +263,7 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
                     : "hover:text-foreground"
                 }
               >
-                {link.label}
+                {linkLabels[link.labelKey] ?? link.labelKey}
               </Link>
             ))}
           </div>

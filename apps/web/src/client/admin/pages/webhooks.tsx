@@ -1,5 +1,6 @@
 // Webhooks page — outgoing HTTP on collection events + delivery log + editor
 import { useEffect, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
@@ -56,6 +57,7 @@ function formatHeaderLines(headers: Record<string, string> | null | undefined): 
 }
 
 export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) {
+  const { t } = useLingui();
   type HookRow = { id: string; name: string; url: string; events: string[]; method: string; secret: string; headers: Record<string, string> | null; active: boolean; deliveries: number; ok: boolean; successRate: number; lastDelivery: string };
   const [hooks, setHooks] = useState<HookRow[]>([]);
   // First-load gate — drives the page skeleton until webhooks land.
@@ -69,10 +71,10 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
     const fmtAgo = (ms: number | null): string => {
       if (!ms) return "—";
       const diff = Date.now() - ms;
-      if (diff < 60_000) return "just now";
-      if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-      if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-      return `${Math.floor(diff / 86_400_000)}d ago`;
+      if (diff < 60_000) return t`just now`;
+      if (diff < 3_600_000) return t`${Math.floor(diff / 60_000)}m ago`;
+      if (diff < 86_400_000) return t`${Math.floor(diff / 3_600_000)}h ago`;
+      return t`${Math.floor(diff / 86_400_000)}d ago`;
     };
     if (Array.isArray(r?.data)) {
       setHooks(
@@ -127,13 +129,13 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
           method: "POST",
           body: JSON.stringify({ name: data.name, url: data.url, events: data.events, secret: data.secret, active: data.active, headers }),
         });
-        pushToast(`Webhook "${data.name}" created.`);
+        pushToast(t`Webhook "${data.name}" created.`);
       } else {
         await api(`/api/webhooks/${editor!.hook.id}`, {
           method: "PATCH",
           body: JSON.stringify({ name: data.name, url: data.url, events: data.events, active: data.active, headers }),
         });
-        pushToast(`Webhook "${data.name}" updated.`);
+        pushToast(t`Webhook "${data.name}" updated.`);
       }
       await reloadHooks();
     } catch (e) {
@@ -148,19 +150,19 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
-        title="Webhooks"
-        description="Outgoing HTTP on collection events. Failed deliveries retry with exponential backoff."
-        actions={<Button variant="primary" icon={I.Plus} onClick={() => setEditor({ mode: "create", hook: null })}>New webhook</Button>}
+        title={t`Webhooks`}
+        description={t`Outgoing HTTP on collection events. Failed deliveries retry with exponential backoff.`}
+        actions={<Button variant="primary" icon={I.Plus} onClick={() => setEditor({ mode: "create", hook: null })}><Trans>New webhook</Trans></Button>}
       />
       <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
         <Table className={ADMIN_TABLE_CLS}>
           <TableHeader>
             <TableRow>
-              <TableHead>Endpoint</TableHead>
-              <TableHead>Events</TableHead>
-              <TableHead className="w-[110px] text-right">Deliveries</TableHead>
-              <TableHead className="w-[110px]">Success</TableHead>
-              <TableHead className="w-[100px]">Status</TableHead>
+              <TableHead><Trans>Endpoint</Trans></TableHead>
+              <TableHead><Trans>Events</Trans></TableHead>
+              <TableHead className="w-[110px] text-right"><Trans>Deliveries</Trans></TableHead>
+              <TableHead className="w-[110px]"><Trans>Success</Trans></TableHead>
+              <TableHead className="w-[100px]"><Trans>Status</Trans></TableHead>
               <TableHead className="sticky right-0 w-11 bg-card" />
             </TableRow>
           </TableHeader>
@@ -185,9 +187,9 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
                     </div>
                   </TableCell>
                   <TableCell>
-                    {!h.active ? <Badge variant="secondary">paused</Badge>
-                      : h.ok ? <Badge variant="default">healthy</Badge>
-                        : <Badge variant="destructive">failing</Badge>}
+                    {!h.active ? <Badge variant="secondary"><Trans>paused</Trans></Badge>
+                      : h.ok ? <Badge variant="default"><Trans>healthy</Trans></Badge>
+                        : <Badge variant="destructive"><Trans>failing</Trans></Badge>}
                   </TableCell>
                   <TableCell className="sticky right-0 bg-card text-right" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
@@ -195,18 +197,18 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
                         <IconButton icon={I.More} />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => { setEditor({ mode: "edit", hook: h }); }}><I.Pencil size={12} />Edit</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => { setEditor({ mode: "edit", hook: h }); }}><I.Pencil size={12} /><Trans>Edit</Trans></DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => {
                           void (async () => {
                             try {
                               await api(`/api/webhooks/${h.id}/test`, { method: "POST" });
-                              pushToast(`Test event sent to ${h.name}.`);
+                              pushToast(t`Test event sent to ${h.name}.`);
                               await reloadDeliveries();
                             } catch (e) {
                               pushToast((e as Error).message);
                             }
                           })();
-                        }}><I.Bolt size={12} />Send test</DropdownMenuItem>
+                        }}><I.Bolt size={12} /><Trans>Send test</Trans></DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => {
                           void (async () => {
                             const next = !h.active;
@@ -219,19 +221,19 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
                               pushToast((e as Error).message);
                             }
                             setHooks((arr) => arr.map((x) => x.id === h.id ? { ...x, active: next } : x));
-                            pushToast(`${h.name} ${next ? "resumed" : "paused"}.`);
+                            pushToast(t`${h.name} ${next ? t`resumed` : t`paused`}.`);
                           })();
                         }}>
-                          {h.active ? <><I.Lock size={12} />Pause</> : <><I.Play size={12} />Resume</>}
+                          {h.active ? <><I.Lock size={12} /><Trans>Pause</Trans></> : <><I.Play size={12} /><Trans>Resume</Trans></>}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem variant="destructive" onSelect={() => {
                           void (async () => {
                             try { await api(`/api/webhooks/${h.id}`, { method: "DELETE" }); } catch (e) { pushToast((e as Error).message); }
                             setHooks((arr) => arr.filter((x) => x.id !== h.id));
-                            pushToast(`${h.name} deleted.`);
+                            pushToast(t`${h.name} deleted.`);
                           })();
-                        }}><I.Trash size={12} />Delete</DropdownMenuItem>
+                        }}><I.Trash size={12} /><Trans>Delete</Trans></DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -242,8 +244,8 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
               <TableRow><TableCell colSpan={6}>
                 <div className="flex flex-col items-center gap-3 py-8 text-center">
                   <I.Webhook size={20} />
-                  <h4 className="m-0 text-[15px] font-semibold">No webhooks yet</h4>
-                  <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground">Pipe collection events to Slack, your API, or any HTTPS endpoint.</p>
+                  <h4 className="m-0 text-[15px] font-semibold"><Trans>No webhooks yet</Trans></h4>
+                  <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground"><Trans>Pipe collection events to Slack, your API, or any HTTPS endpoint.</Trans></p>
                 </div>
               </TableCell></TableRow>
             )}
@@ -253,12 +255,12 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
 
       <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
         <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
-          <I.Activity size={14} /><span className="text-[13px] font-medium">Recent deliveries</span>
+          <I.Activity size={14} /><span className="text-[13px] font-medium"><Trans>Recent deliveries</Trans></span>
           <div className="flex-1" />
-          <Button variant="ghost" size="sm" icon={I.Refresh} onClick={() => pushToast("Refreshed.")}>Refresh</Button>
+          <Button variant="ghost" size="sm" icon={I.Refresh} onClick={() => pushToast(t`Refreshed.`)}><Trans>Refresh</Trans></Button>
         </div>
         <Table className={ADMIN_TABLE_CLS}>
-          <TableHeader><TableRow><TableHead className="w-[100px]">Time</TableHead><TableHead className="w-[80px]">Hook</TableHead><TableHead>Event</TableHead><TableHead className="w-[90px] text-right">Status</TableHead><TableHead className="w-[80px] text-right">ms</TableHead><TableHead className="sticky right-0 w-[60px] bg-card" /></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead className="w-[100px]"><Trans>Time</Trans></TableHead><TableHead className="w-[80px]"><Trans>Hook</Trans></TableHead><TableHead><Trans>Event</Trans></TableHead><TableHead className="w-[90px] text-right"><Trans>Status</Trans></TableHead><TableHead className="w-[80px] text-right">ms</TableHead><TableHead className="sticky right-0 w-[60px] bg-card" /></TableRow></TableHeader>
           <TableBody>
             {deliveries.map((d, i) => (
               <TableRow key={i}>
@@ -271,12 +273,12 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
                   <Button variant="ghost" size="sm" onClick={async () => {
                     try {
                       await api(`/api/webhooks/_deliveries/${d.id}/retry`, { method: "POST" });
-                      pushToast("Redelivered.");
+                      pushToast(t`Redelivered.`);
                       await reloadDeliveries();
                     } catch (e) {
                       pushToast((e as Error).message);
                     }
-                  }}>Retry</Button>
+                  }}><Trans>Retry</Trans></Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -284,8 +286,8 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
               <TableRow><TableCell colSpan={6}>
                 <div className="flex flex-col items-center gap-3 py-8 text-center">
                   <I.Activity size={20} />
-                  <h4 className="m-0 text-[15px] font-semibold">No deliveries yet</h4>
-                  <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground">Outgoing webhook deliveries will show up here once a collection event fires.</p>
+                  <h4 className="m-0 text-[15px] font-semibold"><Trans>No deliveries yet</Trans></h4>
+                  <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground"><Trans>Outgoing webhook deliveries will show up here once a collection event fires.</Trans></p>
                 </div>
               </TableCell></TableRow>
             )}
@@ -299,6 +301,7 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
 }
 
 function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode: "create" | "edit"; hook: any; onClose: () => void; onSave: (data: any) => void; pushToast: (m: string) => void }) {
+  const { t } = useLingui();
   const blank = { name: "", url: "", method: "POST", events: [], secret: "whsec_" + Math.random().toString(16).slice(2, 14), active: true, headers: "" };
   const [draft, setDraft] = useState<any>(hook ? { ...hook, headers: formatHeaderLines(hook.headers) } : blank);
   const [revealSecret, setRevealSecret] = useState(false);
@@ -311,10 +314,10 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
 
   const submit = () => {
     const e: Record<string, string> = {};
-    if (!String(draft.name || "").trim()) e.name = "name is required";
-    if (!String(draft.url || "").trim()) e.url = "url is required";
-    else if (!/^https?:\/\//.test(draft.url)) e.url = "must start with http:// or https://";
-    if (!draft.events.length) e.events = "pick at least one event";
+    if (!String(draft.name || "").trim()) e.name = t`name is required`;
+    if (!String(draft.url || "").trim()) e.url = t`url is required`;
+    else if (!/^https?:\/\//.test(draft.url)) e.url = t`must start with http:// or https://`;
+    if (!draft.events.length) e.events = t`pick at least one event`;
     setErrors(e);
     if (Object.keys(e).length) return;
     onSave(draft);
@@ -326,31 +329,31 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
         <DialogHeader className="flex-row items-start gap-2.5 space-y-0 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <I.Webhook size={16} className="mt-0.5" />
           <div>
-            <DialogTitle className="text-base font-semibold tracking-[-0.01em]">{mode === "create" ? "New webhook" : "Edit webhook"}</DialogTitle>
-            <DialogDescription className="mt-0.5 text-[12.5px]">{mode === "create" ? "POST to any HTTPS endpoint when collection events fire." : <>id <span className="font-mono">{hook?.id}</span></>}</DialogDescription>
+            <DialogTitle className="text-base font-semibold tracking-[-0.01em]">{mode === "create" ? <Trans>New webhook</Trans> : <Trans>Edit webhook</Trans>}</DialogTitle>
+            <DialogDescription className="mt-0.5 text-[12.5px]">{mode === "create" ? <Trans>POST to any HTTPS endpoint when collection events fire.</Trans> : <><Trans>id</Trans> <span className="font-mono">{hook?.id}</span></>}</DialogDescription>
           </div>
         </DialogHeader>
 
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Name <span className="text-destructive">*</span></label>
-            <Input aria-invalid={!!errors.name} autoFocus value={draft.name} onChange={(e) => update("name", e.target.value)} placeholder="Slack #content" />
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans> <span className="text-destructive">*</span></label>
+            <Input aria-invalid={!!errors.name} autoFocus value={draft.name} onChange={(e) => update("name", e.target.value)} placeholder={t`Slack #content`} />
             {errors.name && <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{errors.name}</div>}
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Endpoint URL <span className="text-destructive">*</span></label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Endpoint URL</Trans> <span className="text-destructive">*</span></label>
             <div className="flex gap-2">
               <Select size="sm" value={draft.method} onChange={(v) => update("method", v)} className="h-9 w-[100px]" options={["POST", "PUT", "PATCH"]} />
               <Input className="font-mono flex-1 text-[12.5px]" aria-invalid={!!errors.url} value={draft.url} onChange={(e) => update("url", e.target.value)} placeholder="https://api.example.com/webhooks/workeros" />
             </div>
-            {errors.url ? <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{errors.url}</div> : <span className="text-[11.5px] text-muted-foreground">Must accept the chosen HTTP method and respond with 2xx within 10s.</span>}
+            {errors.url ? <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{errors.url}</div> : <span className="text-[11.5px] text-muted-foreground"><Trans>Must accept the chosen HTTP method and respond with 2xx within 10s.</Trans></span>}
           </div>
 
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Events <span className="text-destructive">*</span></label>
-              <span className="text-[11.5px] text-muted-foreground">{draft.events.length} selected</span>
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Events</Trans> <span className="text-destructive">*</span></label>
+              <span className="text-[11.5px] text-muted-foreground"><Trans>{draft.events.length} selected</Trans></span>
             </div>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-1.5 rounded-xl border border-border bg-muted p-2.5">
               {WH_EVENTS.map((ev) => {
@@ -367,25 +370,25 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Signing secret</label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Signing secret</Trans></label>
             <div className="flex gap-2">
               <Input className="font-mono flex-1 text-[12.5px]" type={revealSecret ? "text" : "password"} value={draft.secret} readOnly />
-              <Button variant="outline" size="sm" icon={revealSecret ? I.X : I.Eye} onClick={() => setRevealSecret(!revealSecret)}>{revealSecret ? "Hide" : "Show"}</Button>
-              <Button variant="outline" size="sm" icon={I.Refresh} onClick={() => { update("secret", "whsec_" + Math.random().toString(16).slice(2, 14)); pushToast("Secret rotated."); }}>Rotate</Button>
+              <Button variant="outline" size="sm" icon={revealSecret ? I.X : I.Eye} onClick={() => setRevealSecret(!revealSecret)}>{revealSecret ? <Trans>Hide</Trans> : <Trans>Show</Trans>}</Button>
+              <Button variant="outline" size="sm" icon={I.Refresh} onClick={() => { update("secret", "whsec_" + Math.random().toString(16).slice(2, 14)); pushToast(t`Secret rotated.`); }}><Trans>Rotate</Trans></Button>
             </div>
-            <span className="text-[11.5px] text-muted-foreground">Sent as <span className="font-mono">X-Workeros-Signature: sha256=…</span>. Verify on the receiver.</span>
+            <span className="text-[11.5px] text-muted-foreground"><Trans>Sent as <span className="font-mono">X-Workeros-Signature: sha256=…</span>. Verify on the receiver.</Trans></span>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Custom headers</label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Custom headers</Trans></label>
             <Textarea className="font-mono min-h-[70px] text-xs" value={draft.headers} onChange={(e) => update("headers", e.target.value)} placeholder={"Authorization: Bearer …\nX-Tenant: workeros"} />
-            <span className="text-[11.5px] text-muted-foreground">One per line. <span className="font-mono">Content-Type</span> and <span className="font-mono">X-Workeros-*</span> are reserved.</span>
+            <span className="text-[11.5px] text-muted-foreground"><Trans>One per line. <span className="font-mono">Content-Type</span> and <span className="font-mono">X-Workeros-*</span> are reserved.</Trans></span>
           </div>
 
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-[12.5px] font-medium">Active</div>
-              <div className="text-[11.5px] text-muted-foreground">Deliveries pause immediately when off; queued events are dropped after 24h.</div>
+              <div className="text-[12.5px] font-medium"><Trans>Active</Trans></div>
+              <div className="text-[11.5px] text-muted-foreground"><Trans>Deliveries pause immediately when off; queued events are dropped after 24h.</Trans></div>
             </div>
             <Switch checked={draft.active} onChange={(v) => update("active", v)} />
           </div>
@@ -395,14 +398,14 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
           {mode === "edit" && <Button variant="ghost" icon={I.Bolt} onClick={async () => {
             try {
               await api(`/api/webhooks/${draft.id}/test`, { method: "POST" });
-              pushToast(`Test event sent to ${draft.name}.`);
+              pushToast(t`Test event sent to ${draft.name}.`);
             } catch (e) {
               pushToast((e as Error).message);
             }
-          }}>Send test</Button>}
+          }}><Trans>Send test</Trans></Button>}
           <div className="flex-1" />
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" onClick={submit}>{mode === "create" ? "Create webhook" : "Save changes"}</Button>
+          <Button variant="ghost" onClick={onClose}><Trans>Cancel</Trans></Button>
+          <Button variant="primary" onClick={submit}>{mode === "create" ? <Trans>Create webhook</Trans> : <Trans>Save changes</Trans>}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

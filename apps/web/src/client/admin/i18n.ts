@@ -20,9 +20,20 @@ export type AdminLocale = (typeof ADMIN_LOCALES)[number];
 
 export const DEFAULT_ADMIN_LOCALE: AdminLocale = "en";
 
-/** Lazy `.po` loaders per non-source locale. `en` is intentionally absent —
- *  English renders straight from the inline source messages. Catalogs live
- *  in `src/client/locales` (see `lingui.config.ts`), one level up. */
+/** localStorage key for the last active locale — lets the next boot paint
+ *  the right language before the preferences API responds. */
+const LOCALE_STORAGE_KEY = "workeros.adminLocale";
+
+function persistLocale(locale: string): void {
+  try {
+    localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+  } catch {
+    // storage unavailable (private mode etc.) — non-fatal
+  }
+}
+
+/** Lazy `.po` loaders per non-default locale. `en` is absent — its catalog
+ *  is imported eagerly above. Catalogs live in `src/client/locales`. */
 const CATALOG_LOADERS: Record<
   string,
   () => Promise<{ messages: Record<string, string> }>
@@ -57,6 +68,7 @@ export async function activateAdminLocale(
   tag: string | null | undefined,
 ): Promise<void> {
   const locale = resolveAdminLocale(tag);
+  persistLocale(locale);
   if (locale === DEFAULT_ADMIN_LOCALE) {
     i18n.activate(locale);
     return;
@@ -75,6 +87,20 @@ export async function activateAdminLocale(
     loaded.add(locale);
   }
   i18n.activate(locale);
+}
+
+/** Resolve + activate the boot locale before first paint: the locale
+ *  persisted from a previous session, else the browser language. Awaited in
+ *  `main.tsx` so the sign-in screen and first render are already translated
+ *  (no English flash). `AdminLocaleSync` refines it once the user is known. */
+export async function bootAdminLocale(): Promise<void> {
+  let stored: string | null = null;
+  try {
+    stored = localStorage.getItem(LOCALE_STORAGE_KEY);
+  } catch {
+    // storage unavailable — fall back to the browser language
+  }
+  await activateAdminLocale(stored ?? navigator.language);
 }
 
 /** Side-effect-only component: keeps the active Lingui locale in sync with

@@ -129,7 +129,7 @@ export const createApp = (env: Env) => {
   // better-auth's own DB writes route to primary, while route handlers use
   // the session-bound `ctx.db` and get replica reads.
   app.use("*", async (c, next) => {
-    const baseCtx = buildContext(env);
+    const baseCtx = await buildContext(env);
     let ctx: Ctx = baseCtx;
     let session: { getBookmark: () => string | null } | null = null;
     if (env.D1) {

@@ -57,7 +57,7 @@ export const pgvectorAdapter = (db: PgDb): VectorAdapter => ({
     assertDim(model, values, "Query vector");
     const table = tableFor(model);
     const lit = `[${values.join(",")}]`;
-    const rows = await db.execute<{
+    const result = await db.execute<{
       id: string;
       score: number;
       metadata: unknown;
@@ -70,6 +70,12 @@ export const pgvectorAdapter = (db: PgDb): VectorAdapter => ({
       ORDER BY embedding <=> ${lit}::vector
       LIMIT ${topK}
     `);
+    // postgres-js returns the row array directly; neon-http wraps it in
+    // `{ rows: [...] }`. Normalize so the rest of the code is driver-agnostic.
+    const rows: Array<{ id: string; score: number; metadata: unknown }> =
+      Array.isArray(result)
+        ? (result as Array<{ id: string; score: number; metadata: unknown }>)
+        : ((result as { rows: Array<{ id: string; score: number; metadata: unknown }> }).rows ?? []);
     return rows.map((r) => ({
       id: r.id,
       score: Number(r.score),

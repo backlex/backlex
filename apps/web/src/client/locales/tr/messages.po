@@ -2053,12 +2053,16 @@ msgid "December"
 msgstr "Aralık"
 
 #: src/client/admin/pages/settings.tsx
-msgid "default"
-msgstr "varsayılan"
+#~ msgid "default"
+#~ msgstr "varsayılan"
 
 #: src/client/admin/edit-field.tsx
 msgid "Default (auto)"
 msgstr "Varsayılan (otomatik)"
+
+#: src/client/admin/pages/settings.tsx
+msgid "Default language"
+msgstr "Varsayılan dil"
 
 #: src/client/admin/parity/translations.tsx
 msgid "Default locale"
@@ -7208,7 +7212,6 @@ msgid "Toggle sidebar"
 msgstr "Kenar çubuğunu aç/kapat"
 
 #: src/client/admin/extras.tsx
-#: src/client/admin/ui.tsx
 #: src/client/components/auth-shell.tsx
 msgid "Toggle theme"
 msgstr "Temayı değiştir"

@@ -2053,12 +2053,16 @@ msgid "December"
 msgstr "December"
 
 #: src/client/admin/pages/settings.tsx
-msgid "default"
-msgstr "default"
+#~ msgid "default"
+#~ msgstr "default"
 
 #: src/client/admin/edit-field.tsx
 msgid "Default (auto)"
 msgstr "Default (auto)"
+
+#: src/client/admin/pages/settings.tsx
+msgid "Default language"
+msgstr "Default language"
 
 #: src/client/admin/parity/translations.tsx
 msgid "Default locale"
@@ -7200,7 +7204,6 @@ msgid "Toggle sidebar"
 msgstr "Toggle sidebar"
 
 #: src/client/admin/extras.tsx
-#: src/client/admin/ui.tsx
 #: src/client/components/auth-shell.tsx
 msgid "Toggle theme"
 msgstr "Toggle theme"

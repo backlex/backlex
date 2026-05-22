@@ -7,7 +7,11 @@ import type { MiddlewareHandler } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
-import { loadAppSettings } from "../services/settings";
+import {
+  loadAppSettings,
+  loadSignInBranding,
+  SIGN_IN_BRANDING_KEYS,
+} from "../services/settings";
 import { timeZoneCode } from "../lib/locale";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -43,6 +47,10 @@ const SettingsInput = z
     /** Workspace default IANA time zone — applied to users with no personal
      *  `users.timezone` set. */
     timezone: timeZoneCode.optional(),
+    /** Instance-global copy for the public sign-in screen — persisted on the
+     *  `tenant_id IS NULL` row, not per-workspace. Blank = built-in default. */
+    signInHeadline: z.string().max(120).optional(),
+    signInTagline: z.string().max(280).optional(),
   })
   .strict()
   .refine(
@@ -121,14 +129,14 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>()
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
-      const settings = await loadAppSettings(
-        ctx.db,
-        ctx.dialect,
-        auth.tenantId ?? null,
-      );
+      const [settings, branding] = await Promise.all([
+        loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null),
+        loadSignInBranding(ctx.db, ctx.dialect),
+      ]);
       return c.json({
         data: {
           ...settings,
+          ...branding,
           appUrl: ctx.env.APP_URL,
           emailFrom: ctx.env.EMAIL_FROM ?? null,
         },
@@ -164,15 +172,24 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>()
       const auth = c.get("auth");
       const body = c.req.valid("json");
       const t = tableFor(ctx.dialect);
+      const globalKeys = new Set<string>(SIGN_IN_BRANDING_KEYS);
       for (const [key, value] of Object.entries(body)) {
         if (value === undefined) continue;
+        // Login-screen branding is instance-global — the sign-in page is shown
+        // before any workspace is selected — so it always lands on the
+        // `tenant_id IS NULL` row. Everything else is scoped to the workspace.
+        const scopeTenantId = globalKeys.has(key)
+          ? null
+          : (auth.tenantId ?? null);
         const existing = (await (ctx.db as any)
           .select({ id: t.id })
           .from(t)
           .where(
             and(
               eq(t.key, key),
-              auth.tenantId ? eq(t.tenantId, auth.tenantId) : isNull(t.tenantId),
+              scopeTenantId
+                ? eq(t.tenantId, scopeTenantId)
+                : isNull(t.tenantId),
             ),
           )
           .limit(1)) as { id: string }[];
@@ -187,7 +204,7 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>()
         } else {
           await (ctx.db as any).insert(t).values({
             id: crypto.randomUUID(),
-            tenantId: auth.tenantId ?? null,
+            tenantId: scopeTenantId,
             key,
             value,
           });

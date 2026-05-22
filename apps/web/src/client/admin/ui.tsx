@@ -21,6 +21,7 @@ import { I, type IconComponent, type IconKey } from "./icons";
 import { NAV_ITEMS, NAV_SETTINGS, NAV_DEVELOPERS } from "./config";
 import { notificationsApi, tenantsApi, type ApiNotification, type ApiTenant } from "./api";
 import { useNotifications, useNotificationsUnread, queryKeys } from "./queries";
+import { useWorkspaceBranding } from "@/lib/branding";
 import { Button as ShadcnButton } from "@workeros/ui/components/button";
 import { Badge as ShadcnBadge } from "@workeros/ui/components/badge";
 import { Switch as ShadcnSwitch } from "@workeros/ui/components/switch";
@@ -123,12 +124,27 @@ export function JsonBlock({ label, value, maxHeight = 280 }: { label: string; va
 
 export interface BrandMarkProps {
   size?: number;
+  /** Uploaded workspace logo. When set it renders instead of the initial. */
+  logoUrl?: string | null;
+  /** Source for the fallback initial when no logo is configured (defaults to "w"). */
+  label?: string;
 }
 
-export function BrandMark({ size = 32 }: BrandMarkProps) {
+export function BrandMark({ size = 32, logoUrl, label }: BrandMarkProps) {
+  if (logoUrl) {
+    return (
+      <img
+        src={logoUrl}
+        alt=""
+        className="brand-mark brand-mark--image"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+  const initial = label?.trim().charAt(0).toLowerCase() || "w";
   return (
     <div className="brand-mark" style={{ width: size, height: size, fontSize: size * 0.55 }}>
-      w
+      {initial}
     </div>
   );
 }
@@ -321,6 +337,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
   const developers = NAV_DEVELOPERS;
   const { t, i18n } = useLingui();
   const { isMobile, setOpenMobile } = useSidebar();
+  const branding = useWorkspaceBranding();
 
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [tenantId, setTenantId] = useState<string | null>(null);
@@ -384,6 +401,10 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
     };
   // The workspace tile mirrors a skeleton until the tenant list resolves.
   const tenantPending = !tenantsLoaded && tenants.length === 0;
+  // Brand name: the admin-set workspace name (Settings → Appearance) wins;
+  // otherwise fall back to the tenant/project name. The brand mark shows the
+  // uploaded logo when present, else the initial of whichever name applies.
+  const brandName = branding?.workspaceName?.trim() || tenant.name;
 
   return (
     <TooltipProvider>
@@ -394,7 +415,7 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
-                  <BrandMark size={32} />
+                  <BrandMark size={32} logoUrl={branding?.logoUrl} label={brandName} />
                   <div className="grid flex-1 gap-1 text-left leading-tight">
                     {tenantPending ? (
                       <>
@@ -403,8 +424,8 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
                       </>
                     ) : (
                       <>
-                        <span className="truncate text-[13.5px] font-semibold">{tenant.name}</span>
-                        <span className="truncate font-mono text-[11px] text-muted-foreground">{tenant.project} · {tenant.branch}</span>
+                        <span className="truncate text-[13.5px] font-semibold">{brandName}</span>
+                        <span className="truncate font-mono text-[11px] text-muted-foreground">{tenant.env}</span>
                       </>
                     )}
                   </div>

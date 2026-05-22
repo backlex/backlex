@@ -334,7 +334,7 @@ export function SchemaView({
           return (
             <div
               key={f.name}
-              className="grid grid-cols-[24px_1fr_130px_130px_32px] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0"
+              className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border px-3.5 py-3 text-[13px] last:border-b-0 md:grid md:grid-cols-[24px_1fr_130px_130px_32px] md:gap-3 md:py-[11px]"
               draggable={isUser}
               style={{
                 opacity: isDragging ? 0.4 : 1,
@@ -370,11 +370,11 @@ export function SchemaView({
                 setOverIndex(null);
               }}
             >
-              <span className="text-muted-foreground" style={{ cursor: isUser ? "grab" : "default", opacity: isUser ? 1 : 0.3 }}>
+              <span className="shrink-0 text-muted-foreground" style={{ cursor: isUser ? "grab" : "default", opacity: isUser ? 1 : 0.3 }}>
                 <I.Grip size={14} />
               </span>
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="font-mono text-[12.5px]">{f.name}</span>
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                <span className="break-all font-mono text-[12.5px] md:break-normal">{f.name}</span>
                 {f.system && <Badge variant="secondary">system</Badge>}
                 {f.unique && <Badge variant="outline">unique</Badge>}
                 {!f.nullable && !f.system && <Badge variant="outline">required</Badge>}
@@ -383,7 +383,7 @@ export function SchemaView({
               <span className="font-mono text-[11.5px] text-muted-foreground">
                 {f.default ?? <span className="opacity-50">—</span>}
               </span>
-              <span className="flex justify-end gap-1">
+              <span className="ml-auto flex justify-end gap-1 md:ml-0">
                 {!f.system && onEditField && (
                   <IconButton icon={I.Pencil} onClick={() => onEditField(f.name)} title="Edit field" />
                 )}

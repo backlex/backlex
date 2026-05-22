@@ -186,13 +186,15 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
 
               <div className="flex flex-col gap-1.5">
                 {choices.map((c, i) => (
-                  <div key={i} className="grid grid-cols-[1fr_1fr_90px_32px] items-center gap-1.5">
+                  <div key={i} className="flex flex-wrap items-center gap-1.5">
                     <Input
+                      className="min-w-[7.5rem] flex-1"
                       placeholder="value"
                       value={c.value}
                       onChange={(e) => setChoice(i, { value: e.target.value })}
                     />
                     <Input
+                      className="min-w-[7.5rem] flex-1"
                       placeholder="label (optional)"
                       value={c.label ?? ""}
                       onChange={(e) => setChoice(i, { label: e.target.value })}
@@ -201,7 +203,7 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
                       type="color"
                       value={c.color ?? "#A1A6B8"}
                       onChange={(e) => setChoice(i, { color: e.target.value })}
-                      className="h-8 w-full cursor-pointer rounded-[6px] border border-border bg-card"
+                      className="h-8 w-[90px] shrink-0 cursor-pointer rounded-[6px] border border-border bg-card"
                     />
                     <IconButton icon={I.Trash} title="Remove choice" onClick={() => removeChoice(i)} />
                   </div>

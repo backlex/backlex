@@ -74,7 +74,7 @@ const KANBAN_COLS: { id: string; label: string }[] = [
 export function KanbanBoard({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post) => void }) {
   const byStatus = (s: string) => rows.filter((r) => r.status === s);
   return (
-    <div className="grid grid-cols-[repeat(4,minmax(220px,1fr))] gap-3.5 p-3.5">
+    <div className="grid grid-cols-[repeat(4,minmax(220px,1fr))] gap-3.5 p-3.5 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
       {KANBAN_COLS.map((c) => {
         const items = byStatus(c.id);
         return (

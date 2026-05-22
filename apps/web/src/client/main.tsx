@@ -7,6 +7,7 @@ import "@workeros/ui/globals.css";
 import { App } from "./App";
 import { bootAdminLocale } from "@/admin/i18n";
 import { ThemeProvider } from "@/components/theme-provider";
+import { primeBranding } from "@/lib/branding";
 
 /**
  * Single QueryClient shared across the admin app. Reasonable defaults for an
@@ -115,6 +116,9 @@ const loadBranding = async (): Promise<ResolvedBranding | null> => {
 // catalog must be active up front so the sign-in screen paints translated.
 const [branding] = await Promise.all([loadBranding(), bootAdminLocale()]);
 if (branding) applyBranding(branding);
+// Seed the shared branding store so the sidebar / login brand area can read
+// the resolved logo + workspace name without a second fetch.
+primeBranding(branding);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

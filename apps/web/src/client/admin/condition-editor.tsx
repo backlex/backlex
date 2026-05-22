@@ -454,14 +454,14 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
               <Trans>Per-field read / write toggles. Hidden fields are stripped from API responses; non-writable fields are rejected on insert/update for this role.</Trans>
             </div>
             <div className="overflow-hidden rounded-xl border border-border bg-card">
-              <div className="grid grid-cols-[1fr_80px_80px] items-center border-b border-border bg-[color-mix(in_oklch,var(--muted)_40%,var(--card))] px-3.5 py-2 text-[11.5px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+              <div className="grid grid-cols-[minmax(0,1fr)_80px_80px] items-center border-b border-border bg-[color-mix(in_oklch,var(--muted)_40%,var(--card))] px-3.5 py-2 text-[11.5px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
                 <span><Trans>Field</Trans></span>
                 <span className="text-center"><Trans>Read</Trans></span>
                 <span className="text-center"><Trans>Write</Trans></span>
               </div>
               {fields.map((f) => (
-                <div key={f} className="grid grid-cols-[1fr_80px_80px] items-center px-3.5 py-2 text-[12.5px] [&+&]:border-t [&+&]:border-border">
-                  <span className="font-mono text-[12.5px]">{f}</span>
+                <div key={f} className="grid grid-cols-[minmax(0,1fr)_80px_80px] items-center px-3.5 py-2 text-[12.5px] [&+&]:border-t [&+&]:border-border">
+                  <span className="truncate font-mono text-[12.5px]">{f}</span>
                   <label className="grid cursor-pointer place-items-center">
                     <Checkbox
                       checked={fieldPerms[f]?.read || false}

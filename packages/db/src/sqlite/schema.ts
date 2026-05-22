@@ -62,6 +62,10 @@ export const users = sqliteTable(
     emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
     name: text("name"),
     image: text("image"),
+    /** Preferred UI locale (BCP-47). NULL = inherit the workspace default. */
+    locale: text("locale"),
+    /** Preferred IANA time zone. NULL = inherit the workspace default. */
+    timezone: text("timezone"),
     activeTenantId: text("active_tenant_id"),
     status: text("status").notNull().default("active"),
     suspendedAt: integer("suspended_at", { mode: "timestamp_ms" }),

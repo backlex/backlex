@@ -1,5 +1,5 @@
 // Settings page — general/appearance/email/bindings/env/about tabs
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { I, type IconComponent } from "../icons";
 import { type AdapterId } from "../config";
 import { Badge, Button, PageHeader, Switch } from "../ui";
@@ -17,6 +17,12 @@ import { Input } from "@workeros/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { Textarea } from "@workeros/ui/components/textarea";
 import { SettingsSkeleton } from "../page-skeletons";
+import {
+  LOCALE_CODE_RE,
+  languageOptions,
+  localeLabel,
+  timezoneOptions,
+} from "../preferences";
 
 /** Mirror of `services/workspace-config.ts::isValidColor` — keep in sync. */
 const isValidColor = (v: string): boolean => {
@@ -542,6 +548,210 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
   );
 }
 
+/**
+ * Workspace language + time-zone settings. Manages the `i18nLocales` list
+ * (the languages this workspace is translated into — the columns of the
+ * Translations page and the locale options members may pick), the workspace
+ * default language, and the default time zone. Persisted to `app_settings`
+ * via the same `PATCH /api/admin/settings` whitelist as the General form.
+ */
+function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) {
+  const [locales, setLocales] = useState<string[]>(["en"]);
+  const [defaultLocale, setDefaultLocale] = useState("en");
+  const [timezone, setTimezone] = useState("UTC");
+  const [customCode, setCustomCode] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await settingsApi.load();
+      const d = r.data as Record<string, unknown>;
+      const list =
+        Array.isArray(d.i18nLocales) && d.i18nLocales.length > 0
+          ? (d.i18nLocales as string[])
+          : ["en"];
+      setLocales(list);
+      setDefaultLocale(
+        typeof d.i18nDefaultLocale === "string" &&
+          list.includes(d.i18nDefaultLocale)
+          ? d.i18nDefaultLocale
+          : (list[0] ?? "en"),
+      );
+      setTimezone(typeof d.timezone === "string" ? d.timezone : "UTC");
+      setDirty(false);
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [pushToast]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const addLocale = (code: string) => {
+    const c = code.trim();
+    if (!c) return;
+    if (!LOCALE_CODE_RE.test(c)) {
+      pushToast(`"${c}" is not a valid language code.`);
+      return;
+    }
+    if (locales.some((x) => x.toLowerCase() === c.toLowerCase())) {
+      pushToast(`${c} is already in the list.`);
+      return;
+    }
+    setLocales((arr) => [...arr, c]);
+    setDirty(true);
+  };
+
+  const removeLocale = (code: string) => {
+    if (locales.length <= 1) {
+      pushToast("At least one language is required.");
+      return;
+    }
+    const next = locales.filter((x) => x !== code);
+    setLocales(next);
+    // Reassigning the default keeps the server-side invariant satisfied
+    // (i18nDefaultLocale must be a member of i18nLocales).
+    if (defaultLocale === code) setDefaultLocale(next[0] ?? "en");
+    setDirty(true);
+  };
+
+  const addOptions = useMemo(() => languageOptions(locales), [locales]);
+  const tzOptions = useMemo(() => timezoneOptions(), []);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await settingsApi.patch({
+        i18nLocales: locales,
+        i18nDefaultLocale: defaultLocale,
+        timezone,
+      });
+      setDirty(false);
+      pushToast("Workspace language settings saved.");
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex max-w-[720px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
+      <div className="flex items-start gap-2.5">
+        <I.Globe size={14} className="mt-0.5" />
+        <span className="text-xs text-muted-foreground">
+          Languages this workspace is translated into — they become the columns
+          on the <b>Translations</b> page and the locale options members can
+          pick in their account. The <b>default</b> applies to anyone who hasn’t
+          chosen one.
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Languages</label>
+        <div className="flex flex-col gap-1.5">
+          {locales.map((code) => {
+            const isDefault = code === defaultLocale;
+            return (
+              <div
+                key={code}
+                className="flex items-center gap-2.5 rounded-xl border border-border bg-background px-3 py-2"
+              >
+                <span className="text-[13px]">{localeLabel(code)}</span>
+                <span className="font-mono text-[11.5px] text-muted-foreground">{code}</span>
+                <div className="flex-1" />
+                {isDefault ? (
+                  <Badge variant="default">default</Badge>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={loading}
+                    onClick={() => { setDefaultLocale(code); setDirty(true); }}
+                  >
+                    Make default
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={loading || locales.length <= 1}
+                  onClick={() => removeLocale(code)}
+                >
+                  Remove
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Add a language</label>
+        <Select
+          value=""
+          placeholder="Pick a language…"
+          disabled={loading}
+          onChange={(v: string) => addLocale(v)}
+          options={addOptions}
+        />
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="…or a custom code (e.g. zh-Hant)"
+            value={customCode}
+            disabled={loading}
+            onChange={(e) => setCustomCode(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addLocale(customCode);
+                setCustomCode("");
+              }
+            }}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={loading || !customCode.trim()}
+            onClick={() => { addLocale(customCode); setCustomCode(""); }}
+          >
+            Add
+          </Button>
+        </div>
+        <span className="text-[11.5px] text-muted-foreground">
+          BCP-47 codes — a language plus an optional region/script (e.g.{" "}
+          <span className="font-mono">pt-BR</span>,{" "}
+          <span className="font-mono">zh-Hant</span>).
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-1.5 border-t border-border pt-3.5">
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Default time zone</label>
+        <Select
+          value={timezone}
+          disabled={loading}
+          onChange={(v: string) => { setTimezone(v); setDirty(true); }}
+          options={tzOptions}
+        />
+        <span className="text-[11.5px] text-muted-foreground">
+          Applied to members who haven’t set a personal time zone in their account.
+        </span>
+      </div>
+
+      <div className="flex justify-end gap-2 border-t border-border pt-2.5">
+        <Button variant="ghost" size="sm" disabled={!dirty || saving || loading} onClick={() => void load()}>Discard</Button>
+        <Button variant="primary" size="sm" disabled={!dirty || saving || loading} onClick={() => void save()}>
+          {saving ? "Saving…" : "Save"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushToast: (m: string) => void }) {
   const [tab, setTab] = useState("general");
   const [appUrl, setAppUrl] = useState("http://localhost:8787");
@@ -645,6 +855,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
       </Tabs>
 
       {tab === "general" && (
+        <div className="flex flex-col gap-4">
         <div className="flex max-w-[720px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -678,6 +889,8 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
             <Button variant="ghost" size="sm" disabled={!dirty} onClick={() => setDirty(false)}>Discard</Button>
             <Button variant="primary" size="sm" disabled={!dirty} onClick={persistGeneral}>Save</Button>
           </div>
+        </div>
+        <WorkspaceLocaleCard pushToast={pushToast} />
         </div>
       )}
 

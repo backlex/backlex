@@ -748,7 +748,9 @@ function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) 
 
       <div className="flex justify-end gap-2 border-t border-border pt-2.5">
         <Button variant="ghost" size="sm" disabled={!dirty || saving || loading} onClick={() => void load()}>Discard</Button>
-        <Button variant="primary" size="sm" disabled={!dirty || saving || loading} onClick={() => void save()}>
+        {/* Fixed min width so the Save ⇄ Saving… swap doesn't resize the
+            button and shift the Discard button. */}
+        <Button variant="primary" size="sm" className="min-w-[5.5rem]" disabled={!dirty || saving || loading} onClick={() => void save()}>
           {saving ? "Saving…" : "Save"}
         </Button>
       </div>

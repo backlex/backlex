@@ -16,6 +16,7 @@ import {
 } from "@workeros/ui/components/card";
 import { Badge } from "@workeros/ui/components/badge";
 import { Skeleton } from "@workeros/ui/components/skeleton";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { sharedPublicApi } from "@/admin/api";
 
 type Translator = (strings: TemplateStringsArray, ...values: unknown[]) => string;
@@ -81,9 +82,11 @@ function FieldRow({
         </span>
       </div>
       {multiline ? (
-        <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-lg bg-muted px-2.5 py-2 font-mono text-[12px] text-foreground">
-          {display}
-        </pre>
+        <ScrollArea className="rounded-lg">
+          <pre className="whitespace-pre-wrap break-words rounded-lg bg-muted px-2.5 py-2 font-mono text-[12px] text-foreground">
+            {display}
+          </pre>
+        </ScrollArea>
       ) : (
         <span className="break-words text-[13.5px] text-foreground">
           {display}

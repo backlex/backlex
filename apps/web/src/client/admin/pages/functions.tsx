@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workeros/ui/components/dialog";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { fetchSafely } from "./_shared";
 import { FunctionsSkeleton } from "../page-skeletons";
 
@@ -287,7 +288,8 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
               <div className="flex-1" />
               <Button variant="ghost" size="sm" onClick={() => setLogs([])}><Trans>Clear</Trans></Button>
             </div>
-            <div className="max-h-[260px] min-h-[130px] overflow-auto bg-[oklch(0.18_0.01_130)] p-3 font-mono text-xs text-[oklch(0.92_0.02_130)]">
+            <ScrollArea className="bg-[oklch(0.18_0.01_130)]" viewportClassName="max-h-[260px] min-h-[130px]">
+            <div className="p-3 font-mono text-xs text-[oklch(0.92_0.02_130)]">
               {logs.length === 0 && <div className="text-[oklch(0.6_0.02_130)]"><Trans>No logs yet — click Run.</Trans></div>}
               {logs.map((l, i) => (
                 <div key={i}>
@@ -297,6 +299,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
                 </div>
               ))}
             </div>
+            </ScrollArea>
           </div>
           </>
           )}
@@ -435,7 +438,8 @@ function NewFunctionDialog({
           <DialogDescription className="mt-0.5 text-[12.5px]"><Trans>Sandboxed JS. HTTP for manual invoke, event for pub-sub triggers, or cron for scheduled runs.</Trans></DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
+        <ScrollArea className="min-h-0 flex-1">
+        <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans> <span className="text-destructive">*</span></label>
             <Input
@@ -524,6 +528,7 @@ function NewFunctionDialog({
             <Switch checked={active} onChange={setActiveFlag} />
           </div>
         </div>
+        </ScrollArea>
 
         <DialogFooter className="border-t border-border bg-card px-5 py-3 sm:justify-end">
           <div className="flex-1" />

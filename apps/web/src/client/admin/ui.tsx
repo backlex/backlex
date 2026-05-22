@@ -111,12 +111,11 @@ export function JsonBlock({ label, value, maxHeight = 280 }: { label: string; va
           {copied ? t`copied` : t`copy`}
         </Button>
       </div>
-      <pre
-        className="m-0 overflow-auto whitespace-pre rounded-lg border border-border bg-[color-mix(in_oklch,var(--muted)_40%,var(--card))] p-3 font-mono text-[11.5px] leading-[1.55]"
-        style={{ maxHeight }}
-      >
-        {json}
-      </pre>
+      <ScrollArea className="rounded-lg" viewportStyle={{ maxHeight }}>
+        <pre className="m-0 whitespace-pre rounded-lg border border-border bg-[color-mix(in_oklch,var(--muted)_40%,var(--card))] p-3 font-mono text-[11.5px] leading-[1.55]">
+          {json}
+        </pre>
+      </ScrollArea>
     </div>
   );
 }

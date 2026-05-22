@@ -6,10 +6,12 @@ import { cn } from "@workeros/ui/lib/utils"
 function ScrollArea({
   className,
   viewportClassName,
+  viewportStyle,
   children,
   ...props
 }: React.ComponentProps<typeof ScrollAreaPrimitive.Root> & {
   viewportClassName?: string
+  viewportStyle?: React.CSSProperties
 }) {
   return (
     <ScrollAreaPrimitive.Root
@@ -23,10 +25,12 @@ function ScrollArea({
           "size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1",
           viewportClassName
         )}
+        style={viewportStyle}
       >
         {children}
       </ScrollAreaPrimitive.Viewport>
       <ScrollBar />
+      <ScrollBar orientation="horizontal" />
       <ScrollAreaPrimitive.Corner />
     </ScrollAreaPrimitive.Root>
   )

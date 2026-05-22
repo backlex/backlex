@@ -6,6 +6,7 @@ import { Button } from "@workeros/ui/components/button";
 import { version as appVersion } from "../../../package.json";
 import { useTheme } from "@/components/theme-provider";
 import { useAuthSurface } from "@/lib/auth";
+import "./auth-shell.css";
 import { useWorkspaceBranding } from "@/lib/branding";
 
 export type AuthMode = "sign-in" | "sign-up" | "magic" | "forgot" | "claim";
@@ -122,12 +123,19 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
     <div className="grid min-h-svh w-full grid-cols-1 bg-background text-foreground md:grid-cols-2">
       {/* Left: brand panel */}
       <div
-        className="relative hidden flex-col overflow-hidden border-r border-border p-8 md:flex md:p-10"
+        className="auth-brand relative hidden flex-col overflow-hidden border-r border-border p-8 md:flex md:p-10"
         style={{
           background:
             "radial-gradient(900px 500px at 110% 0%, color-mix(in oklab, var(--primary) 22%, transparent), transparent 60%), linear-gradient(180deg, color-mix(in oklab, var(--primary) 6%, var(--card)) 0%, var(--card) 100%)",
         }}
       >
+        {/* Animated primary light beams — diagonal sweep behind the brand copy. */}
+        <div className="auth-beams" aria-hidden="true">
+          <div className="beam beam-back" />
+          <div className="beam beam-mid" />
+          <div className="beam beam-front" />
+          <div className="beam-grain" />
+        </div>
         <div className="flex items-center gap-2.5 font-mono text-sm font-semibold tracking-tight">
           {brandLogo ? (
             <img

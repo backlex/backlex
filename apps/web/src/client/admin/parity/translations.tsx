@@ -147,13 +147,13 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
           }}
         />
       )}
-      <div className="grid gap-3 overflow-hidden rounded-2xl border border-border bg-card p-3.5 text-card-foreground" style={{ gridTemplateColumns: `repeat(${locales.length}, 1fr)` }}>
+      <div className="grid gap-x-4 gap-y-3 overflow-hidden rounded-2xl border border-border bg-card p-3.5 text-card-foreground" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(118px, 1fr))" }}>
         {completion.map((c) => (
-          <div key={c.l}>
-            <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{c.l}</div>
+          <div key={c.l} className="min-w-0">
+            <div className="truncate text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{c.l}</div>
             <div className="flex items-center gap-1.5">
               <span className="font-medium tabular-nums">{c.pct}%</span>
-              <div className="h-1 flex-1 overflow-hidden rounded-[2px] bg-muted">
+              <div className="h-1 min-w-0 flex-1 overflow-hidden rounded-[2px] bg-muted">
                 <div className="h-full" style={{ width: `${c.pct}%`, background: c.pct === 100 ? "oklch(0.7 0.18 145)" : c.pct < 80 ? "oklch(0.78 0.16 75)" : "var(--primary)" }} />
               </div>
             </div>

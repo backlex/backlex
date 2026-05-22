@@ -3166,6 +3166,18 @@ msgstr "argon2id ile hashlendi · <0>users.password_hash</0> alanında saklanır
 msgid "Have an account?"
 msgstr "Hesabınız var mı?"
 
+#: src/client/admin/pages/settings.tsx
+msgid "Headline"
+msgstr "Başlık"
+
+#: src/client/admin/pages/settings.tsx
+#~ msgid "Headline and tagline shown on the public sign-in screen. Leave a field blank to use the built-in default copy."
+#~ msgstr "Genel giriş ekranında gösterilen başlık ve slogan. Yerleşik varsayılan metni kullanmak için bir alanı boş bırakın."
+
+#: src/client/admin/pages/settings.tsx
+msgid "Headline and tagline shown on the public sign-in screen. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default copy."
+msgstr "Genel giriş ekranında gösterilen başlık ve slogan. Bu ayar tüm instance genelinde geçerlidir — giriş sayfası herhangi bir workspace seçilmeden önce açılır. Yerleşik varsayılan metni kullanmak için bir alanı boş bırakın."
+
 #: src/client/admin/pages/advisor.tsx
 msgid "health"
 msgstr "sağlık"
@@ -3559,6 +3571,10 @@ msgstr "Diller"
 #: src/client/admin/pages/settings.tsx
 msgid "Languages this workspace is translated into — they become the columns on the <0>Translations</0> page and the locale options members can pick in their account. The <1>default</1> applies to anyone who hasn't chosen one."
 msgstr "Bu çalışma alanının çevrildiği diller — <0>Çeviriler</0> sayfasındaki sütunlar ve üyelerin hesaplarında seçebileceği yerel ayar seçenekleri olurlar. <1>Varsayılan</1>, seçim yapmamış herkese uygulanır."
+
+#: src/client/admin/pages/settings.tsx
+msgid "Large title in the sign-in brand panel."
+msgstr "Giriş marka panelindeki büyük başlık."
 
 #: src/client/admin/pages/logs.tsx
 msgid "last {range}"
@@ -6484,6 +6500,10 @@ msgid "Shared via workeros · this link can be revoked at any time."
 msgstr "workeros aracılığıyla paylaşıldı · bu bağlantı istediğiniz zaman iptal edilebilir."
 
 #: src/client/admin/pages/settings.tsx
+msgid "Short sentence shown under the headline."
+msgstr "Başlığın altında gösterilen kısa cümle."
+
+#: src/client/admin/pages/settings.tsx
 msgid "Short tagline for the workspace."
 msgstr "Çalışma alanı için kısa slogan."
 
@@ -6575,6 +6595,10 @@ msgstr "Giriş yap"
 msgid "Sign in to <0>workeros</0>."
 msgstr "<0>workeros</0>'a giriş yapın."
 
+#: src/client/admin/pages/settings.tsx
+msgid "Sign in to workeros."
+msgstr "workeros'a giriş yapın."
+
 #: src/client/pages/sign-in.tsx
 msgid "Sign in with passkey"
 msgstr "Passkey ile giriş yap"
@@ -6619,6 +6643,10 @@ msgstr "Giriş başarısız"
 #: src/client/admin/pages/users.tsx
 msgid "Sign-in method"
 msgstr "Giriş yöntemi"
+
+#: src/client/admin/pages/settings.tsx
+msgid "Sign-in screen saved."
+msgstr "Giriş ekranı kaydedildi."
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Sign-up / sign-in / get-session / sign-out"
@@ -6915,6 +6943,10 @@ msgstr "Tablo"
 #: src/client/admin/parity/database.tsx
 msgid "Tables"
 msgstr "Tablolar"
+
+#: src/client/admin/pages/settings.tsx
+msgid "Tagline"
+msgstr "Slogan"
 
 #: src/client/admin/storage.tsx
 #: src/client/pages/openapi-export.tsx

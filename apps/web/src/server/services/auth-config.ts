@@ -3,7 +3,7 @@ import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { Env } from "../env";
 import { userCount, type DbCtx } from "./seed";
-import { loadAppSettings } from "./settings";
+import { loadSignInBranding } from "./settings";
 
 /**
  * Tenant id of the instance-wide `auth_config` row — the fallback used when a
@@ -57,8 +57,9 @@ export interface ResolvedAuthSurface {
    *  provisioned as admin. Lets the client show the "claim instance" copy
    *  only when it actually applies (server-validated, not query-param). */
   firstUserMode: boolean;
-  /** Admin-customised copy for the sign-in screen's brand panel. Empty
-   *  strings mean the client should fall back to its built-in default. */
+  /** Admin-customised copy for the sign-in screen's brand panel — instance-
+   *  global (not per-workspace, since the sign-in page has no active tenant).
+   *  Empty strings mean the client should fall back to its built-in default. */
   branding: {
     signInHeadline: string;
     signInTagline: string;
@@ -246,15 +247,14 @@ export const resolveAuthSurface = async (
   } catch {
     firstUserMode = true;
   }
-  const settings = await loadAppSettings(ctx.db, ctx.dialect, tenantId ?? null);
+  // Login-screen copy is instance-global — read it from the `tenant_id IS NULL`
+  // row, not the request's resolved workspace.
+  const branding = await loadSignInBranding(ctx.db, ctx.dialect);
   return {
     tenantId: tenantId ?? null,
     providers,
     policy: { openSignup: true, requireEmailVerification: true, ...policy },
     firstUserMode,
-    branding: {
-      signInHeadline: settings.signInHeadline,
-      signInTagline: settings.signInTagline,
-    },
+    branding,
   };
 };

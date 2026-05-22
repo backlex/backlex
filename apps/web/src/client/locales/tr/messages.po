@@ -6456,13 +6456,17 @@ msgstr "Panel oluşturulduktan sonra API aracılığıyla yapılandırma nesnesi
 msgid "Set them in <0>wrangler.toml [vars]</0> / <1>wrangler secret put</1> (or <2>apps/web/.env</2> on self-host) and redeploy. This panel only reports which keys are present — secret values are never sent to the browser."
 msgstr "<0>wrangler.toml [vars]</0> / <1>wrangler secret put</1> (veya öz barındırmada <2>apps/web/.env</2>) içine ayarlayın ve yeniden dağıtın. Bu panel yalnızca hangi anahtarların mevcut olduğunu bildirir — gizli değerler hiçbir zaman tarayıcıya gönderilmez."
 
+#: src/client/admin/account-page.tsx
+msgid "Sets the admin display language and how dates and numbers are formatted. Only languages with a bundled translation are listed."
+msgstr "Yönetici panelinin görüntü dilini ve tarihler ile sayıların nasıl biçimlendirileceğini belirler. Yalnızca paketlenmiş çevirisi olan diller listelenir."
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Sets the attribute map to that IdP's defaults — you can still tweak later."
 msgstr "Özellik haritasını o IdP'nin varsayılanlarına ayarlar — daha sonra yine de düzenleyebilirsiniz."
 
 #: src/client/admin/account-page.tsx
-msgid "Sets the locale used to format dates and numbers across the admin. Choose \"Workspace default\" to follow the workspace language."
-msgstr "Yönetici panelinde tarihleri ve sayıları biçimlendirmek için kullanılan yerel ayarı belirler. Çalışma alanı dilini takip etmek için \"Çalışma alanı varsayılanı\" seçin."
+#~ msgid "Sets the locale used to format dates and numbers across the admin. Choose \"Workspace default\" to follow the workspace language."
+#~ msgstr "Yönetici panelinde tarihleri ve sayıları biçimlendirmek için kullanılan yerel ayarı belirler. Çalışma alanı dilini takip etmek için \"Çalışma alanı varsayılanı\" seçin."
 
 #: src/client/pages/sign-up.tsx
 msgid "Setting up passkey…"

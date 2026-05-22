@@ -1,5 +1,6 @@
 // Sheet form for create/edit, ConfirmAction dialog
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "./icons";
 import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button, Checkbox, Switch } from "./ui";
@@ -103,6 +104,7 @@ const readChoices = (f: SchemaField): Array<{ value: string; label?: string; col
 };
 
 export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: ItemSheetProps) {
+  const { t } = useLingui();
   const fields = useMemo(() => {
     const all = (schema?.fields ?? []) as SchemaField[];
     // Only render user-defined columns; system columns are surfaced read-only
@@ -179,12 +181,12 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
         v === null ||
         (typeof v === "string" && !v.trim()) ||
         (Array.isArray(v) && v.length === 0);
-      if (empty) e[f.name] = `${f.name} is required`;
+      if (empty) e[f.name] = t`${f.name} is required`;
     }
     // slug format check, only if a slug column exists
     const slugVal = draft.slug;
     if (typeof slugVal === "string" && slugVal && !/^[a-z0-9-]+$/.test(slugVal)) {
-      e.slug = "lowercase letters, digits, and dashes only";
+      e.slug = t`lowercase letters, digits, and dashes only`;
     }
     // raw JSON editors: validate parseable JSON. Array-shape interfaces
     // (tags/checkboxes/etc.) hold arrays in the draft and skip this check.
@@ -192,7 +194,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       if (f.type !== "json" || isArrayInterface(f)) continue;
       const raw = draft[f.name];
       if (typeof raw !== "string" || !raw.trim()) continue;
-      try { JSON.parse(raw); } catch { e[f.name] = "must be valid json"; }
+      try { JSON.parse(raw); } catch { e[f.name] = t`must be valid json`; }
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -310,7 +312,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
             value={current}
             onChange={setField}
             options={options}
-            placeholder={f.name === "status" ? "Pick a status…" : "Pick…"}
+            placeholder={f.name === "status" ? t`Pick a status…` : t`Pick…`}
           />
           {errBlock}
         </div>
@@ -324,7 +326,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
         <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "4px 2px" }}>
-            {choices.length === 0 && <div className="text-xs text-muted-foreground">No choices configured.</div>}
+            {choices.length === 0 && <div className="text-xs text-muted-foreground"><Trans>No choices configured.</Trans></div>}
             {choices.map((c) => {
               const on = current === c.value;
               return (
@@ -370,7 +372,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
         <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "4px 2px" }}>
-            {choices.length === 0 && <div className="text-xs text-muted-foreground">No choices configured.</div>}
+            {choices.length === 0 && <div className="text-xs text-muted-foreground"><Trans>No choices configured.</Trans></div>}
             {choices.map((c) => {
               const on = selected.includes(c.value);
               return (
@@ -408,7 +410,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
         <div key={f.name} className="flex flex-col gap-1.5">
           {label}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "4px 2px" }}>
-            {choices.length === 0 && <div className="text-xs text-muted-foreground">No choices configured.</div>}
+            {choices.length === 0 && <div className="text-xs text-muted-foreground"><Trans>No choices configured.</Trans></div>}
             {choices.map((c) => {
               const on = selected.includes(c.value);
               return (
@@ -460,16 +462,16 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
               background: "var(--card)", padding: "6px 10px", minHeight: 36,
             }}
           >
-            {tags.map((t, i) => (
+            {tags.map((tag, i) => (
               <span
-                key={`${t}::${i}`}
+                key={`${tag}::${i}`}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 4,
                   padding: "3px 4px 3px 10px", borderRadius: 999,
                   background: "var(--muted)", fontSize: 12,
                 }}
               >
-                {t}
+                {tag}
                 <button
                   type="button"
                   onClick={() => setField(tags.filter((_, j) => j !== i))}
@@ -478,7 +480,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
                     width: 18, height: 18, borderRadius: 999, border: "none",
                     background: "transparent", cursor: "pointer", color: "var(--muted-foreground)",
                   }}
-                  aria-label={`Remove ${t}`}
+                  aria-label={t`Remove ${tag}`}
                 >
                   <I.X size={11} />
                 </button>
@@ -492,7 +494,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
                 else if (e.key === "Backspace" && !input && tags.length) setField(tags.slice(0, -1));
               }}
               onBlur={() => input && add(input)}
-              placeholder={tags.length ? "" : "Type and press Enter…"}
+              placeholder={tags.length ? "" : t`Type and press Enter…`}
               style={{
                 flex: 1, minWidth: 100, border: "none", outline: "none",
                 background: "transparent", font: "inherit", fontSize: 13, padding: "2px 0",
@@ -751,7 +753,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
             onChange={(e) => setField(e.target.value)}
           />
           {iface === "richtext" && (
-            <div className="text-[11.5px] text-muted-foreground">Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup.</div>
+            <div className="text-[11.5px] text-muted-foreground"><Trans>Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup.</Trans></div>
           )}
           {errBlock}
         </div>
@@ -801,8 +803,8 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
             />
           )}
           <div className="text-[11.5px] text-muted-foreground">
-            Stores a row id from <span className="font-mono">c_{target || "—"}</span>.
-            {!target && " Set the target collection in the field settings."}
+            <Trans>Stores a row id from <span className="font-mono">c_{target || "—"}</span>.</Trans>
+            {!target && <Trans> Set the target collection in the field settings.</Trans>}
           </div>
           {errBlock}
         </div>
@@ -819,7 +821,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
             error={!!err}
           />
           <div className="text-[11.5px] text-muted-foreground">
-            Stores the storage key. Upload new files on the <span className="font-mono">Storage</span> page.
+            <Trans>Stores the storage key. Upload new files on the <span className="font-mono">Storage</span> page.</Trans>
           </div>
           {errBlock}
         </div>
@@ -832,7 +834,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
           {label}
           <MultiFilePicker value={arr} onChange={setField} error={!!err} />
           <div className="text-[11.5px] text-muted-foreground">
-            Stores a list of storage keys. Upload new files on the <span className="font-mono">Storage</span> page.
+            <Trans>Stores a list of storage keys. Upload new files on the <span className="font-mono">Storage</span> page.</Trans>
           </div>
           {errBlock}
         </div>
@@ -871,7 +873,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
         />
         {err
           ? <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{err}</div>
-          : autoSlug && <div className="text-[11.5px] text-muted-foreground">Auto-derived from title until edited.</div>}
+          : autoSlug && <div className="text-[11.5px] text-muted-foreground"><Trans>Auto-derived from title until edited.</Trans></div>}
       </div>
     );
   };
@@ -884,12 +886,12 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
       <DialogContent className="flex max-h-[90vh] w-[94vw] flex-col gap-0 overflow-hidden border-border bg-card p-0 sm:max-w-[560px]">
         <DialogHeader className="flex flex-col gap-0.5 border-b border-border px-5 pb-3.5 pr-12 pt-[18px]">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
-            {mode === "create" ? `New ${slug || "row"}` : `Edit ${slug || "row"}`}
+            {mode === "create" ? t`New ${slug || "row"}` : t`Edit ${slug || "row"}`}
           </DialogTitle>
           <DialogDescription className="text-[12.5px] text-muted-foreground">
             {mode === "create"
-              ? <>Insert into <span className="font-mono">c_{slug}</span>{ownerScoped ? <>. Owner is set to <span className="font-mono">$user.id</span></> : null}.</>
-              : <>id <span className="font-mono">{(initial as { id?: string })?.id}</span></>}
+              ? <Trans>Insert into <span className="font-mono">c_{slug}</span>{ownerScoped ? <>. Owner is set to <span className="font-mono">$user.id</span></> : null}.</Trans>
+              : <Trans>id <span className="font-mono">{(initial as { id?: string })?.id}</span></Trans>}
           </DialogDescription>
         </DialogHeader>
 
@@ -901,13 +903,13 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
           >
             <TabsList>
               <TabsTrigger value="fields">
-                <I.Braces size={12} /> Fields
+                <I.Braces size={12} /> <Trans>Fields</Trans>
                 <span className="font-mono text-[10.5px] text-muted-foreground">
                   {fields.length}
                 </span>
               </TabsTrigger>
               <TabsTrigger value="collab">
-                <I.MessageSquare size={12} /> Collaboration
+                <I.MessageSquare size={12} /> <Trans>Collaboration</Trans>
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -918,13 +920,13 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
             <>
               {fields.length === 0 && (
                 <div className="rounded-xl bg-muted p-3 text-[13px] text-muted-foreground">
-                  No editable fields. Add columns from the Schema tab to capture data on this collection.
+                  <Trans>No editable fields. Add columns from the Schema tab to capture data on this collection.</Trans>
                 </div>
               )}
               {fields.map(renderField)}
 
               <div className="flex flex-col gap-1.5 rounded-xl bg-muted p-3">
-                <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground">system fields</div>
+                <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>system fields</Trans></div>
                 <div className="flex flex-wrap gap-3.5 text-xs text-muted-foreground">
                   <div><span className="font-mono">id</span>: {mode === "create" ? <span className="font-mono">gen_uuid()</span> : <span className="font-mono">{(initial as { id?: string })?.id}</span>}</div>
                   {ownerScoped && <div><span className="font-mono">owner_id</span>: <span className="font-mono">$user.id</span></div>}
@@ -946,7 +948,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
               (no touched fields) we relabel to "Close" so the user knows
               dismissing the sheet won't lose anything. */}
           <Button variant="ghost" size="sm" onClick={onClose}>
-            {Object.keys(touched).length === 0 ? "Close" : "Cancel"}
+            {Object.keys(touched).length === 0 ? <Trans>Close</Trans> : <Trans>Cancel</Trans>}
           </Button>
           {mode === "create" ? (
             // Create mode has only one save action — no split button needed.
@@ -956,7 +958,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
               onClick={() => void submit({ close: true })}
               disabled={saving}
             >
-              {saving ? "Saving…" : `Create ${slug || "row"}`}
+              {saving ? <Trans>Saving…</Trans> : t`Create ${slug || "row"}`}
             </Button>
           ) : (
             // Edit mode: split-button. Primary "Save" closes the sheet on
@@ -978,7 +980,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
                 disabled={saving}
                 className={cn("rounded-2xl rounded-r-none border-r-0")}
               >
-                {saving ? "Saving…" : "Save"}
+                {saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
               </Button>
               {/* `modal={false}` so the menu doesn't try to lock body scroll
                   / focus while the sheet itself already owns the modal stack,
@@ -993,7 +995,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
                     variant="primary"
                     size="sm"
                     disabled={saving}
-                    aria-label="More save options"
+                    aria-label={t`More save options`}
                     className={cn("rounded-2xl rounded-l-none border-l-0 px-2")}
                   >
                     <I.ChevronDown size={14} />
@@ -1001,7 +1003,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="z-[70]">
                   <DropdownMenuItem onSelect={() => void submit({ close: false })}>
-                    Save and continue
+                    <Trans>Save and continue</Trans>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -1023,7 +1025,9 @@ export interface ConfirmDialogProps {
   onCancel?: () => void;
 }
 
-export function ConfirmDialog({ open, title, description, actionLabel = "Confirm", destructive, onConfirm, onCancel }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, title, description, actionLabel, destructive, onConfirm, onCancel }: ConfirmDialogProps) {
+  const { t } = useLingui();
+  const resolvedLabel = actionLabel ?? t`Confirm`;
   return (
     <AlertDialog open={open} onOpenChange={(o) => { if (!o) onCancel?.(); }}>
       <AlertDialogContent>
@@ -1032,12 +1036,12 @@ export function ConfirmDialog({ open, title, description, actionLabel = "Confirm
           {description ? <AlertDialogDescription>{description}</AlertDialogDescription> : null}
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel onClick={onCancel}><Trans>Cancel</Trans></AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             className={destructive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : undefined}
           >
-            {actionLabel}
+            {resolvedLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

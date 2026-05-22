@@ -1,5 +1,6 @@
 // Users page — workspace user table + role/provider filters + invite + drawer
 import { useEffect, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { Badge, Button, Checkbox, IconButton, PageHeader } from "../ui";
 import { Select } from "../select";
@@ -47,6 +48,7 @@ const ProviderGlyph = ({ kind, size = 12 }: { kind: string; size?: number }) => 
 const PROVIDER_LABEL: Record<string, string> = { password: "password", github: "github", google: "google", magic: "magic link" };
 
 export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
+  const { t } = useLingui();
   type UserRow = { id: string; name: string; email: string; roles: string[]; status: string; provider: string; mfa: boolean; last: string; lastIso: string | null; created: string; sessions: number };
   const [users, setUsers] = useState<UserRow[]>([]);
   // First-load gate — drives the page skeleton until the user list lands.
@@ -146,9 +148,9 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
   const someChecked = selected.size > 0 && selected.size < filtered.length;
 
   const statusBadge = (s: string) => {
-    if (s === "active") return <Badge variant="default">active</Badge>;
-    if (s === "invited") return <Badge variant="outline">invited</Badge>;
-    if (s === "suspended") return <Badge variant="destructive">suspended</Badge>;
+    if (s === "active") return <Badge variant="default"><Trans>active</Trans></Badge>;
+    if (s === "invited") return <Badge variant="outline"><Trans>invited</Trans></Badge>;
+    if (s === "suspended") return <Badge variant="destructive"><Trans>suspended</Trans></Badge>;
     return <Badge variant="secondary">{s}</Badge>;
   };
 
@@ -167,7 +169,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
         await Promise.allSettled(ids.map((id) => usersApi.activate(id)));
         setUsers((arr) => arr.map((u) => (selected.has(u.id) ? { ...u, status: "active" } : u)));
       }
-      pushToast(`${verb === "delete" ? "Deleted" : verb === "suspend" ? "Suspended" : "Activated"} ${ids.length} user${ids.length === 1 ? "" : "s"}.`);
+      pushToast(t`${verb === "delete" ? "Deleted" : verb === "suspend" ? "Suspended" : "Activated"} ${ids.length} user${ids.length === 1 ? "" : "s"}.`);
     } catch (e) {
       pushToast((e as Error).message);
     }
@@ -184,17 +186,17 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
-        title="Users"
-        description="The first user to sign up becomes admin; everyone else lands in authenticated. Sessions, providers, and 2FA are tracked per account."
-        actions={<Button variant="primary" icon={I.Plus} onClick={() => setInviteOpen(true)}>Invite</Button>}
+        title={t`Users`}
+        description={t`The first user to sign up becomes admin; everyone else lands in authenticated. Sessions, providers, and 2FA are tracked per account.`}
+        actions={<Button variant="primary" icon={I.Plus} onClick={() => setInviteOpen(true)}><Trans>Invite</Trans></Button>}
       />
 
       <div className="grid grid-cols-4 gap-2.5 max-[900px]:grid-cols-2">
         {[
-          { label: "Total users", value: stats.total, hint: `${users.filter((u) => u.status === "active").length} active` },
-          { label: "Active in 24h", value: stats.active24h, hint: `${Math.round((stats.active24h / Math.max(1, stats.total)) * 100)}% of base` },
-          { label: "Pending invites", value: stats.pending, hint: stats.pending ? "awaiting accept" : "none" },
-          { label: "Admins", value: stats.admins, hint: "full access" },
+          { label: t`Total users`, value: stats.total, hint: t`${users.filter((u) => u.status === "active").length} active` },
+          { label: t`Active in 24h`, value: stats.active24h, hint: t`${Math.round((stats.active24h / Math.max(1, stats.total)) * 100)}% of base` },
+          { label: t`Pending invites`, value: stats.pending, hint: stats.pending ? t`awaiting accept` : t`none` },
+          { label: t`Admins`, value: stats.admins, hint: t`full access` },
         ].map((s) => (
           <div key={s.label} className="flex flex-col gap-1 rounded-xl border border-border bg-card px-4 py-3.5">
             <span className="text-[11.5px] uppercase tracking-[0.02em] text-muted-foreground">{s.label}</span>
@@ -207,7 +209,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
       <div className="flex flex-wrap items-center gap-2.5">
         <InputGroup className="min-w-[280px] flex-[0_1_320px]">
           <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
-          <InputGroupInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or email…" />
+          <InputGroupInput value={q} onChange={(e) => setQ(e.target.value)} placeholder={t`Search by name or email…`} />
           {q && (
             <InputGroupAddon align="inline-end">
               <InputGroupButton size="icon-xs" onClick={() => setQ("")}><I.X size={11} /></InputGroupButton>
@@ -215,34 +217,34 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
           )}
         </InputGroup>
         <div className="flex items-center gap-1.5 text-xs">
-          <span className="text-[11.5px] text-muted-foreground">Role</span>
+          <span className="text-[11.5px] text-muted-foreground"><Trans>Role</Trans></span>
           <Select size="sm" value={roleFilter} onChange={setRoleFilter} className="w-[140px]"
-            options={[{ value: "all", label: "All roles" }, ...roleNames.map((n) => ({ value: n, label: n }))]} />
+            options={[{ value: "all", label: t`All roles` }, ...roleNames.map((n) => ({ value: n, label: n }))]} />
         </div>
         <div className="flex items-center gap-1.5 text-xs">
-          <span className="text-[11.5px] text-muted-foreground">Status</span>
+          <span className="text-[11.5px] text-muted-foreground"><Trans>Status</Trans></span>
           <Select size="sm" value={statusFilter} onChange={setStatusFilter} className="w-[140px]"
-            options={[{ value: "all", label: "All statuses" }, { value: "active", label: "active" }, { value: "invited", label: "invited" }, { value: "suspended", label: "suspended" }]} />
+            options={[{ value: "all", label: t`All statuses` }, { value: "active", label: "active" }, { value: "invited", label: "invited" }, { value: "suspended", label: "suspended" }]} />
         </div>
         <div className="flex items-center gap-1.5 text-xs">
-          <span className="text-[11.5px] text-muted-foreground">Provider</span>
+          <span className="text-[11.5px] text-muted-foreground"><Trans>Provider</Trans></span>
           <Select size="sm" value={providerFilter} onChange={setProviderFilter} className="w-[150px]"
-            options={[{ value: "all", label: "All providers" }, { value: "password", label: "password" }, { value: "github", label: "github" }, { value: "google", label: "google" }, { value: "magic", label: "magic link" }]} />
+            options={[{ value: "all", label: t`All providers` }, { value: "password", label: "password" }, { value: "github", label: "github" }, { value: "google", label: "google" }, { value: "magic", label: "magic link" }]} />
         </div>
         <div className="flex-1" />
-        <span className="text-xs text-muted-foreground">{filtered.length} of {users.length}</span>
+        <span className="text-xs text-muted-foreground"><Trans>{filtered.length} of {users.length}</Trans></span>
       </div>
 
       {selected.size > 0 && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[color-mix(in_oklch,var(--primary)_40%,var(--border))] bg-[color-mix(in_oklch,var(--primary)_8%,var(--card))] px-3 py-2">
-          <Badge variant="default">{selected.size} selected</Badge>
-          <span className="text-[12.5px] text-muted-foreground">Apply to selection:</span>
-          <Button size="sm" variant="outline" onClick={() => bulk("activate")}>Activate</Button>
-          <Button size="sm" variant="outline" onClick={() => bulk("suspend")}>Suspend</Button>
-          <Button size="sm" variant="outline" onClick={() => pushToast(`Reset link sent to ${selected.size} user${selected.size === 1 ? "" : "s"}.`)}>Reset password</Button>
-          <Button size="sm" variant="outline" onClick={() => bulk("delete")} className="text-destructive">Delete</Button>
+          <Badge variant="default"><Trans>{selected.size} selected</Trans></Badge>
+          <span className="text-[12.5px] text-muted-foreground"><Trans>Apply to selection:</Trans></span>
+          <Button size="sm" variant="outline" onClick={() => bulk("activate")}><Trans>Activate</Trans></Button>
+          <Button size="sm" variant="outline" onClick={() => bulk("suspend")}><Trans>Suspend</Trans></Button>
+          <Button size="sm" variant="outline" onClick={() => pushToast(t`Reset link sent to ${selected.size} user${selected.size === 1 ? "" : "s"}.`)}><Trans>Reset password</Trans></Button>
+          <Button size="sm" variant="outline" onClick={() => bulk("delete")} className="text-destructive"><Trans>Delete</Trans></Button>
           <div className="flex-1" />
-          <Button variant="ghost" size="xs" icon={I.X} onClick={() => setSelected(new Set())} title="Clear selection" />
+          <Button variant="ghost" size="xs" icon={I.X} onClick={() => setSelected(new Set())} title={t`Clear selection`} />
         </div>
       )}
 
@@ -253,12 +255,12 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
               <TableHead className="w-9">
                 <Checkbox checked={allChecked} indeterminate={someChecked} onChange={toggleAll} />
               </TableHead>
-              <TableHead>User</TableHead>
-              <TableHead className="w-[200px]">Role</TableHead>
-              <TableHead className="w-[130px]">Status</TableHead>
-              <TableHead className="w-[140px]">Provider</TableHead>
-              <TableHead className="w-[70px] text-center">2FA</TableHead>
-              <TableHead className="w-[120px]">Last seen</TableHead>
+              <TableHead><Trans>User</Trans></TableHead>
+              <TableHead className="w-[200px]"><Trans>Role</Trans></TableHead>
+              <TableHead className="w-[130px]"><Trans>Status</Trans></TableHead>
+              <TableHead className="w-[140px]"><Trans>Provider</Trans></TableHead>
+              <TableHead className="w-[70px] text-center"><Trans>2FA</Trans></TableHead>
+              <TableHead className="w-[120px]"><Trans>Last seen</Trans></TableHead>
               <TableHead className="sticky right-0 w-11 bg-card" />
             </TableRow>
           </TableHeader>
@@ -292,8 +294,8 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
                   </TableCell>
                   <TableCell className="text-center">
                     {u.mfa
-                      ? <span className="inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklch,oklch(0.55_0.15_145)_35%,var(--border))] bg-[color-mix(in_oklch,oklch(0.78_0.14_145)_14%,transparent)] px-[7px] py-0.5 font-mono text-[11px] text-[oklch(0.55_0.15_145)]" title="2FA enabled"><I.Shield size={11} /> on</span>
-                      : <span className="inline-flex items-center gap-1 rounded-full border border-border px-[7px] py-0.5 font-mono text-[11px] text-muted-foreground" title="2FA disabled">off</span>}
+                      ? <span className="inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklch,oklch(0.55_0.15_145)_35%,var(--border))] bg-[color-mix(in_oklch,oklch(0.78_0.14_145)_14%,transparent)] px-[7px] py-0.5 font-mono text-[11px] text-[oklch(0.55_0.15_145)]" title={t`2FA enabled`}><I.Shield size={11} /> <Trans>on</Trans></span>
+                      : <span className="inline-flex items-center gap-1 rounded-full border border-border px-[7px] py-0.5 font-mono text-[11px] text-muted-foreground" title={t`2FA disabled`}><Trans>off</Trans></span>}
                   </TableCell>
                   <TableCell className="font-mono text-[11.5px] text-muted-foreground">{u.last}</TableCell>
                   <TableCell className="sticky right-0 bg-card text-right" onClick={(e) => e.stopPropagation()}>
@@ -302,33 +304,33 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
                         <IconButton icon={I.More} />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => { setActiveUser(u); }}><I.Eye size={12} />View profile</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => { pushToast(`Reset link sent to ${u.email}.`); }}><I.Mail size={12} />Send reset link</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => { setActiveUser(u); }}><I.Eye size={12} /><Trans>View profile</Trans></DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => { pushToast(t`Reset link sent to ${u.email}.`); }}><I.Mail size={12} /><Trans>Send reset link</Trans></DropdownMenuItem>
                         {u.status !== "suspended" ? (
                           <DropdownMenuItem onSelect={() => {
                             void (async () => {
                               try { await usersApi.suspend(u.id); } catch (e) { pushToast((e as Error).message); }
                               setUsers((arr) => arr.map((x) => x.id === u.id ? { ...x, status: "suspended", sessions: 0 } : x));
-                              pushToast(`${u.email} suspended.`);
+                              pushToast(t`${u.email} suspended.`);
                             })();
-                          }}><I.Lock size={12} />Suspend</DropdownMenuItem>
+                          }}><I.Lock size={12} /><Trans>Suspend</Trans></DropdownMenuItem>
                         ) : (
                           <DropdownMenuItem onSelect={() => {
                             void (async () => {
                               try { await usersApi.activate(u.id); } catch (e) { pushToast((e as Error).message); }
                               setUsers((arr) => arr.map((x) => x.id === u.id ? { ...x, status: "active" } : x));
-                              pushToast(`${u.email} activated.`);
+                              pushToast(t`${u.email} activated.`);
                             })();
-                          }}><I.Check size={12} />Activate</DropdownMenuItem>
+                          }}><I.Check size={12} /><Trans>Activate</Trans></DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem variant="destructive" onSelect={() => {
                           void (async () => {
                             try { await usersApi.remove(u.id); } catch (e) { pushToast((e as Error).message); }
                             setUsers((arr) => arr.filter((x) => x.id !== u.id));
-                            pushToast(`${u.email} deleted.`);
+                            pushToast(t`${u.email} deleted.`);
                           })();
-                        }}><I.Trash size={12} />Delete</DropdownMenuItem>
+                        }}><I.Trash size={12} /><Trans>Delete</Trans></DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -339,8 +341,8 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
               <TableRow><TableCell colSpan={8}>
                 <div className="flex flex-col items-center gap-3 py-8 text-center">
                   <I.Users size={20} />
-                  <h4 className="m-0 text-[15px] font-semibold">No users match</h4>
-                  <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground">Adjust your filters or invite a new teammate.</p>
+                  <h4 className="m-0 text-[15px] font-semibold"><Trans>No users match</Trans></h4>
+                  <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground"><Trans>Adjust your filters or invite a new teammate.</Trans></p>
                 </div>
               </TableCell></TableRow>
             )}
@@ -352,7 +354,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
       {inviteOpen && <InviteUserDialog roles={roleNames} onClose={() => setInviteOpen(false)} onInvite={async (payload: any) => {
         try {
           await usersApi.invite(payload.email, payload.role);
-          pushToast(`Invite sent to ${payload.email}.`);
+          pushToast(t`Invite sent to ${payload.email}.`);
         } catch (e) {
           pushToast((e as Error).message);
         }
@@ -363,6 +365,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
 }
 
 function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any; allRoles: ApiRole[]; onClose: () => void; onSaved: (id: string, patch: { name?: string; roles?: string[] }) => void; pushToast: (m: string) => void }) {
+  const { t } = useLingui();
   const [name, setName] = useState<string>(user.name ?? "");
   const [roles, setRoles] = useState<string[]>(user.roles as string[]);
   const [saving, setSaving] = useState(false);
@@ -440,7 +443,7 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
         if (!after.has(n)) { const id = roleId(n); if (id) await usersApi.removeRole(user.id, id); }
       }
       onSaved(user.id, { name: name.trim() || (user.name ?? ""), roles });
-      pushToast("Profile saved.");
+      pushToast(t`Profile saved.`);
       onClose();
     } catch (e) {
       pushToast((e as Error).message);
@@ -457,9 +460,9 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
           <div className="min-w-0">
             <SheetTitle className="flex items-center gap-2 text-base font-semibold tracking-[-0.01em]">
               {name || user.email}
-              {user.status === "active" && <Badge variant="default">active</Badge>}
-              {user.status === "invited" && <Badge variant="outline">invited</Badge>}
-              {user.status === "suspended" && <Badge variant="destructive">suspended</Badge>}
+              {user.status === "active" && <Badge variant="default"><Trans>active</Trans></Badge>}
+              {user.status === "invited" && <Badge variant="outline"><Trans>invited</Trans></Badge>}
+              {user.status === "suspended" && <Badge variant="destructive"><Trans>suspended</Trans></Badge>}
             </SheetTitle>
             <SheetDescription className="mt-0.5 text-[12.5px]">{user.email} · id <span className="font-mono">{user.id}</span></SheetDescription>
           </div>
@@ -468,11 +471,11 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
         <div className="flex flex-1 flex-col gap-8 overflow-auto px-5 py-[18px]">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-[12.5px] font-medium text-foreground">Name</label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Display name" />
+              <label className="text-[12.5px] font-medium text-foreground"><Trans>Name</Trans></label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t`Display name`} />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-[12.5px] font-medium text-foreground">Roles</label>
+              <label className="text-[12.5px] font-medium text-foreground"><Trans>Roles</Trans></label>
               <div className="flex flex-col overflow-hidden rounded-xl border border-border">
                 {allRoles.filter((r) => r.name !== "public").map((r) => (
                   <label key={r.id} className="flex cursor-pointer items-center gap-2.5 border-b border-border px-3 py-2.5 last:border-b-0">
@@ -491,20 +494,20 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
           </div>
 
           <div className="grid grid-cols-2 gap-x-3.5 gap-y-2.5 rounded-xl bg-muted px-3.5 py-3 max-[900px]:grid-cols-1">
-            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Provider</span><span className="inline-flex items-center gap-1.5 text-foreground"><ProviderGlyph kind={user.provider} size={12} />{PROVIDER_LABEL[user.provider]}</span></div>
-            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">2FA</span>{user.mfa ? <span className="inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklch,oklch(0.55_0.15_145)_35%,var(--border))] bg-[color-mix(in_oklch,oklch(0.78_0.14_145)_14%,transparent)] px-[7px] py-0.5 font-mono text-[11px] text-[oklch(0.55_0.15_145)]"><I.Shield size={11} /> enrolled</span> : <span className="inline-flex items-center gap-1 rounded-full border border-border px-[7px] py-0.5 font-mono text-[11px] text-muted-foreground">disabled</span>}</div>
-            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Created</span><span className="font-mono text-xs">{user.created}</span></div>
-            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Last seen</span><span className="font-mono text-xs">{user.lastIso || "—"}</span></div>
-            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground">Sessions</span><span className="font-mono text-xs">{user.sessions} active</span></div>
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Provider</Trans></span><span className="inline-flex items-center gap-1.5 text-foreground"><ProviderGlyph kind={user.provider} size={12} />{PROVIDER_LABEL[user.provider]}</span></div>
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>2FA</Trans></span>{user.mfa ? <span className="inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklch,oklch(0.55_0.15_145)_35%,var(--border))] bg-[color-mix(in_oklch,oklch(0.78_0.14_145)_14%,transparent)] px-[7px] py-0.5 font-mono text-[11px] text-[oklch(0.55_0.15_145)]"><I.Shield size={11} /> <Trans>enrolled</Trans></span> : <span className="inline-flex items-center gap-1 rounded-full border border-border px-[7px] py-0.5 font-mono text-[11px] text-muted-foreground"><Trans>disabled</Trans></span>}</div>
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Created</Trans></span><span className="font-mono text-xs">{user.created}</span></div>
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Last seen</Trans></span><span className="font-mono text-xs">{user.lastIso || "—"}</span></div>
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Sessions</Trans></span><span className="font-mono text-xs"><Trans>{user.sessions} active</Trans></span></div>
           </div>
 
           <div>
             <div className="mb-2 flex items-center justify-between text-[12.5px] font-medium">
-              <span>Active sessions</span>
+              <span><Trans>Active sessions</Trans></span>
               <span className="text-[11.5px] font-normal text-muted-foreground">{sessions.length}</span>
             </div>
             {sessions.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border p-3.5 text-center text-[12.5px] text-muted-foreground">No active sessions.</div>
+              <div className="rounded-xl border border-dashed border-border p-3.5 text-center text-[12.5px] text-muted-foreground"><Trans>No active sessions.</Trans></div>
             ) : (
               <div className="flex flex-col overflow-hidden rounded-xl border border-border">
                 {sessions.map((s) => (
@@ -513,17 +516,17 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
                       <span className="flex items-center gap-1.5 text-[12.5px] font-medium">
                         {s.device}
                       </span>
-                      <span className="font-mono text-[11.5px] text-muted-foreground">{s.ip} · last seen {s.last}</span>
+                      <span className="font-mono text-[11.5px] text-muted-foreground"><Trans>{s.ip} · last seen {s.last}</Trans></span>
                     </div>
                     <Button size="sm" variant="ghost" onClick={async () => {
                       try {
                         await usersApi.revokeSession(user.id, s.id);
                         setSessions((arr) => arr.filter((x) => x.id !== s.id));
-                        pushToast(`Session revoked: ${s.device}`);
+                        pushToast(t`Session revoked: ${s.device}`);
                       } catch (e) {
                         pushToast((e as Error).message);
                       }
-                    }}>Revoke</Button>
+                    }}><Trans>Revoke</Trans></Button>
                   </div>
                 ))}
               </div>
@@ -532,8 +535,8 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
 
           <div>
             <div className="mb-2 flex items-center justify-between text-[12.5px] font-medium">
-              <span>Recent activity</span>
-              <span className="text-[11.5px] font-normal text-muted-foreground">last 30 days</span>
+              <span><Trans>Recent activity</Trans></span>
+              <span className="text-[11.5px] font-normal text-muted-foreground"><Trans>last 30 days</Trans></span>
             </div>
             <div className="flex flex-col overflow-hidden rounded-xl border border-border">
               {activity.map((a, i) => (
@@ -549,48 +552,48 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
           </div>
 
           <div className="rounded-xl border border-[color-mix(in_oklch,var(--destructive)_30%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_5%,var(--card))] px-3.5 py-3">
-            <div className="mb-2 flex items-center justify-between text-[12.5px] font-medium"><span>Danger zone</span></div>
+            <div className="mb-2 flex items-center justify-between text-[12.5px] font-medium"><span><Trans>Danger zone</Trans></span></div>
             <div className="flex items-center justify-between gap-3 border-b border-dashed border-[color-mix(in_oklch,var(--destructive)_18%,var(--border))] py-2 last:border-b-0">
               <div>
-                <div className="text-[12.5px] font-medium">Send password reset</div>
-                <div className="text-[11.5px] text-muted-foreground">Emails a one-time link valid for 30 minutes.</div>
+                <div className="text-[12.5px] font-medium"><Trans>Send password reset</Trans></div>
+                <div className="text-[11.5px] text-muted-foreground"><Trans>Emails a one-time link valid for 30 minutes.</Trans></div>
               </div>
               <Button size="sm" variant="outline" onClick={async () => {
                 try {
                   await (auth as unknown as { forgetPassword?: (o: { email: string; redirectTo?: string }) => Promise<{ error?: { message?: string } }> }).forgetPassword?.({ email: user.email, redirectTo: "/reset-password" });
-                  pushToast(`Reset link sent to ${user.email}.`);
+                  pushToast(t`Reset link sent to ${user.email}.`);
                 } catch (e) {
                   pushToast((e as Error).message);
                 }
-              }}>Send</Button>
+              }}><Trans>Send</Trans></Button>
             </div>
             <div className="flex items-center justify-between gap-3 border-b border-dashed border-[color-mix(in_oklch,var(--destructive)_18%,var(--border))] py-2 last:border-b-0">
               <div>
-                <div className="text-[12.5px] font-medium">Revoke all sessions</div>
-                <div className="text-[11.5px] text-muted-foreground">Forces re-login on every device immediately.</div>
+                <div className="text-[12.5px] font-medium"><Trans>Revoke all sessions</Trans></div>
+                <div className="text-[11.5px] text-muted-foreground"><Trans>Forces re-login on every device immediately.</Trans></div>
               </div>
               <Button size="sm" variant="outline" onClick={async () => {
                 try { await usersApi.revokeAll(user.id); } catch (e) { pushToast((e as Error).message); }
-                pushToast(`Sessions revoked for ${user.email}.`);
-              }}>Revoke</Button>
+                pushToast(t`Sessions revoked for ${user.email}.`);
+              }}><Trans>Revoke</Trans></Button>
             </div>
             <div className="flex items-center justify-between gap-3 border-b border-dashed border-[color-mix(in_oklch,var(--destructive)_18%,var(--border))] py-2 last:border-b-0">
               <div>
-                <div className="text-[12.5px] font-medium text-destructive">Delete user</div>
-                <div className="text-[11.5px] text-muted-foreground">Permanent. Owned items remain; ownership is reassigned to admin.</div>
+                <div className="text-[12.5px] font-medium text-destructive"><Trans>Delete user</Trans></div>
+                <div className="text-[11.5px] text-muted-foreground"><Trans>Permanent. Owned items remain; ownership is reassigned to admin.</Trans></div>
               </div>
               <Button size="sm" variant="outline" className="text-destructive" onClick={async () => {
                 try { await usersApi.remove(user.id); } catch (e) { pushToast((e as Error).message); }
-                pushToast(`${user.email} deleted.`);
+                pushToast(t`${user.email} deleted.`);
                 onClose();
-              }}>Delete</Button>
+              }}><Trans>Delete</Trans></Button>
             </div>
           </div>
         </div>
 
         <SheetFooter className="flex-row justify-end gap-2 border-t border-border bg-card px-5 py-3">
-          <Button variant="ghost" onClick={onClose}>Close</Button>
-          <Button variant="primary" onClick={handleSave} disabled={!dirty || saving}>Save changes</Button>
+          <Button variant="ghost" onClick={onClose}><Trans>Close</Trans></Button>
+          <Button variant="primary" onClick={handleSave} disabled={!dirty || saving}><Trans>Save changes</Trans></Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>
@@ -602,6 +605,7 @@ const ROLE_HINTS: Record<string, string> = {
   authenticated: "standard signed-in user",
 };
 function InviteUserDialog({ roles, onClose, onInvite }: { roles: string[]; onClose: () => void; onInvite: (data: any) => void }) {
+  const { t } = useLingui();
   const roleOptions = (roles.length ? roles : ["authenticated"]).map((name) => ({
     value: name,
     label: name,
@@ -617,29 +621,29 @@ function InviteUserDialog({ roles, onClose, onInvite }: { roles: string[]; onClo
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="flex w-[460px] max-w-[92vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
-          <DialogTitle className="text-base font-semibold tracking-[-0.01em]">Invite user</DialogTitle>
-          <DialogDescription className="mt-0.5 text-[12.5px]">Send an email invite. The user finishes signup themselves.</DialogDescription>
+          <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Invite user</Trans></DialogTitle>
+          <DialogDescription className="mt-0.5 text-[12.5px]"><Trans>Send an email invite. The user finishes signup themselves.</Trans></DialogDescription>
         </DialogHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Email</label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Email</Trans></label>
             <Input autoFocus placeholder="teammate@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-            <span className="text-[11.5px] text-muted-foreground">An invite link will be emailed; valid for 7 days.</span>
+            <span className="text-[11.5px] text-muted-foreground"><Trans>An invite link will be emailed; valid for 7 days.</Trans></span>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Default role</label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Default role</Trans></label>
             <Select value={role} onChange={setRole} options={roleOptions} />
-            <span className="text-[11.5px] text-muted-foreground">Roles come from <strong>Roles &amp; permissions</strong>. The user also implicitly gets <span className="font-mono">authenticated</span>.</span>
+            <span className="text-[11.5px] text-muted-foreground"><Trans>Roles come from <strong>Roles &amp; permissions</strong>. The user also implicitly gets <span className="font-mono">authenticated</span>.</Trans></span>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Sign-in method</label>
+            <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Sign-in method</Trans></label>
             <Select value={provider} onChange={setProvider}
-              options={[{ value: "password", label: "password", hint: "set on first login" }, { value: "magic", label: "magic link", hint: "email-only, no password" }, { value: "github", label: "github SSO", hint: "OAuth required" }, { value: "google", label: "google SSO", hint: "OAuth required" }, { value: "saml", label: "SAML SSO", hint: "configure providers under Authentication" }, { value: "ldap", label: "LDAP / AD", hint: "configure directory under Authentication" }]} />
+              options={[{ value: "password", label: "password", hint: t`set on first login` }, { value: "magic", label: "magic link", hint: t`email-only, no password` }, { value: "github", label: "github SSO", hint: t`OAuth required` }, { value: "google", label: "google SSO", hint: t`OAuth required` }, { value: "saml", label: "SAML SSO", hint: t`configure providers under Authentication` }, { value: "ldap", label: "LDAP / AD", hint: t`configure directory under Authentication` }]} />
           </div>
         </div>
         <DialogFooter className="border-t border-border bg-card px-5 py-3 sm:justify-end">
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" disabled={!valid} onClick={() => onInvite({ email, role, provider })}>Send invite</Button>
+          <Button variant="ghost" onClick={onClose}><Trans>Cancel</Trans></Button>
+          <Button variant="primary" disabled={!valid} onClick={() => onInvite({ email, role, provider })}><Trans>Send invite</Trans></Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

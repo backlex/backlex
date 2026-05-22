@@ -3,6 +3,7 @@
 // with method badges + a per-path curl-snippet preview. Two header buttons
 // stream the full doc to disk as JSON or YAML.
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@workeros/ui/components/button";
 import { Badge } from "@workeros/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@workeros/ui/components/card";
@@ -160,6 +161,7 @@ const buildCurl = (method: HttpMethod, path: string): string => {
 // --- Page ----------------------------------------------------------------
 
 export const OpenApiExportPage = () => {
+  const { t } = useLingui();
   const [doc, setDoc] = useState<OpenApiDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -179,14 +181,14 @@ export const OpenApiExportPage = () => {
     try {
       const json = await api<OpenApiDoc>("/api/openapi.json");
       setDoc(json);
-      if (isRefresh) toast.success("OpenAPI spec refreshed.");
+      if (isRefresh) toast.success(t`OpenAPI spec refreshed.`);
     } catch (err) {
       notifyError(err, "while loading OpenAPI spec");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load(false);
@@ -289,7 +291,7 @@ export const OpenApiExportPage = () => {
   const copyCurl = async () => {
     try {
       await navigator.clipboard.writeText(curlText);
-      toast.success("Copied curl snippet.");
+      toast.success(t`Copied curl snippet.`);
     } catch (err) {
       notifyError(err, "while copying to clipboard");
     }
@@ -312,8 +314,8 @@ export const OpenApiExportPage = () => {
         horizontal room.
       */}
       <PageHeader
-        title="OpenAPI"
-        description="Machine-readable spec for every /api endpoint in this workspace — including dynamic /api/items/{slug} entries for your collections. Import into Postman, Insomnia, Swagger UI, or any code-gen tool."
+        title={t`OpenAPI`}
+        description={t`Machine-readable spec for every /api endpoint in this workspace — including dynamic /api/items/{slug} entries for your collections. Import into Postman, Insomnia, Swagger UI, or any code-gen tool.`}
         actions={
           <div className="openapi-actions flex flex-wrap items-center justify-end gap-2">
             <Button
@@ -321,10 +323,10 @@ export const OpenApiExportPage = () => {
               size="sm"
               disabled={refreshing || loading}
               onClick={() => void load(true)}
-              aria-label="Refresh spec"
+              aria-label={t`Refresh spec`}
             >
               <I.Refresh size={14} className={cn(refreshing && "animate-spin")} />
-              {refreshing ? "Refreshing…" : "Refresh"}
+              {refreshing ? <Trans>Refreshing…</Trans> : <Trans>Refresh</Trans>}
             </Button>
             <Button
               variant="outline"
@@ -333,7 +335,7 @@ export const OpenApiExportPage = () => {
               onClick={() => void downloadJson()}
             >
               <I.Download size={14} />
-              {downloading === "json" ? "Downloading…" : "Download JSON"}
+              {downloading === "json" ? <Trans>Downloading…</Trans> : <Trans>Download JSON</Trans>}
             </Button>
             <Button
               size="sm"
@@ -341,7 +343,7 @@ export const OpenApiExportPage = () => {
               onClick={() => void downloadYaml()}
             >
               <I.Download size={14} />
-              {downloading === "yaml" ? "Downloading…" : "Download YAML"}
+              {downloading === "yaml" ? <Trans>Downloading…</Trans> : <Trans>Download YAML</Trans>}
             </Button>
           </div>
         }
@@ -352,7 +354,7 @@ export const OpenApiExportPage = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <I.Info size={16} />
-            Summary
+            <Trans>Summary</Trans>
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -366,22 +368,22 @@ export const OpenApiExportPage = () => {
               ))}
             </div>
           ) : !doc ? (
-            <p className="text-sm text-muted-foreground">Spec unavailable. Try Refresh.</p>
+            <p className="text-sm text-muted-foreground"><Trans>Spec unavailable. Try Refresh.</Trans></p>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-                <Stat label="Title" value={summary.title} />
-                <Stat label="Version" value={summary.version} />
-                <Stat label="Paths" value={String(summary.pathCount)} />
-                <Stat label="Operations" value={String(summary.operationCount)} />
-                <Stat label="Schemas" value={String(summary.schemaCount)} />
+                <Stat label={t`Title`} value={summary.title} />
+                <Stat label={t`Version`} value={summary.version} />
+                <Stat label={t`Paths`} value={String(summary.pathCount)} />
+                <Stat label={t`Operations`} value={String(summary.operationCount)} />
+                <Stat label={t`Schemas`} value={String(summary.schemaCount)} />
               </div>
               {summary.tagCounts.size > 0 && (
                 <>
                   <Separator />
                   <div className="flex flex-col gap-2">
                     <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Tags
+                      <Trans>Tags</Trans>
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {Array.from(summary.tagCounts.entries())
@@ -406,7 +408,7 @@ export const OpenApiExportPage = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <I.Code size={16} />
-            Paths
+            <Trans>Paths</Trans>
             {rows.length > 0 && (
               <span className="font-mono text-xs text-muted-foreground">{rows.length}</span>
             )}
@@ -421,7 +423,7 @@ export const OpenApiExportPage = () => {
             </div>
           )}
           {!loading && rows.length === 0 && (
-            <p className="text-sm text-muted-foreground">No paths in the current spec.</p>
+            <p className="text-sm text-muted-foreground"><Trans>No paths in the current spec.</Trans></p>
           )}
           {tagOrder.map((tag) => {
             const groupRows = rowsByTag.get(tag) ?? [];
@@ -469,7 +471,7 @@ export const OpenApiExportPage = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => openCurlFor(row)}
-                          aria-label={`Copy curl example for ${row.path}`}
+                          aria-label={t`Copy curl example for ${row.path}`}
                         >
                           <I.Code size={14} />
                           curl
@@ -490,13 +492,12 @@ export const OpenApiExportPage = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <I.Code size={16} />
-              curl example
+              <Trans>curl example</Trans>
             </DialogTitle>
             <DialogDescription>
               <span className="font-mono">{curlSubtitle}</span>
               <br />
-              Drop in a workspace API key (<code className="font-mono">pak_…</code>) before
-              running.
+              <Trans>Drop in a workspace API key (<code className="font-mono">pak_…</code>) before running.</Trans>
             </DialogDescription>
           </DialogHeader>
           <pre className="max-h-[40vh] overflow-auto rounded-md border bg-muted/30 p-3 font-mono text-xs">
@@ -504,11 +505,11 @@ export const OpenApiExportPage = () => {
           </pre>
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => setCurlOpen(false)}>
-              Close
+              <Trans>Close</Trans>
             </Button>
             <Button size="sm" onClick={() => void copyCurl()}>
               <I.Save size={14} />
-              Copy
+              <Trans>Copy</Trans>
             </Button>
           </div>
         </DialogContent>

@@ -1,5 +1,6 @@
 // Settings page — general/appearance/email/bindings/env/about tabs
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent } from "../icons";
 import { type AdapterId } from "../config";
 import { Badge, Button, PageHeader, Switch } from "../ui";
@@ -55,6 +56,7 @@ const EMAIL_PROVIDER_FIELDS: Record<string, { hint: string; config: [string, str
 };
 
 function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
+  const { t } = useLingui();
   const [cfg, setCfg] = useState<any>(null);
   const [provider, setProvider] = useState("inherit");
   const [from, setFrom] = useState("");
@@ -94,7 +96,7 @@ function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
         else cfgOut[key] = v == null ? "" : String(v);
       }
       await emailConfigApi.put({ provider, fromAddress: from || null, config: cfgOut, secrets });
-      pushToast("Email settings saved.");
+      pushToast(t`Email settings saved.`);
       await load();
     } catch (e) {
       pushToast((e as Error).message);
@@ -107,7 +109,7 @@ function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
     setTesting(true);
     try {
       const r = await emailConfigApi.sendTest();
-      pushToast(`Test email sent to ${r.to}.`);
+      pushToast(t`Test email sent to ${r.to}.`);
     } catch (e) {
       pushToast((e as Error).message);
     } finally {
@@ -125,21 +127,21 @@ function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
       <div className="flex items-start gap-2.5">
         <I.Info size={14} className="mt-0.5" />
         <span className="text-xs text-muted-foreground">
-          Email transport for <b>this workspace</b>. Resolution order: this config → the instance-wide
-          default → the deployment’s <span className="font-mono">EMAIL_PROVIDER</span> / env keys. Secret
-          values are encrypted at rest and never shown again.
+          <Trans>Email transport for <b>this workspace</b>. Resolution order: this config → the instance-wide
+          default → the deployment's <span className="font-mono">EMAIL_PROVIDER</span> / env keys. Secret
+          values are encrypted at rest and never shown again.</Trans>
         </span>
       </div>
       <div className="flex flex-col gap-1.5">
-        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Provider</label>
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Provider</Trans></label>
         <Select value={provider} onChange={(v: string) => { setProvider(v); mark(); }} options={EMAIL_PROVIDER_OPTIONS} />
         <span className="text-[11.5px] text-muted-foreground">{fields.hint}{envHint}</span>
       </div>
       {provider !== "inherit" && provider !== "console" && (
         <div className="flex flex-col gap-1.5">
-          <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">From address</label>
+          <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>From address</Trans></label>
           <Input placeholder="hello@yourdomain.com" value={from} onChange={(e) => { setFrom(e.target.value); mark(); }} />
-          <span className="text-[11.5px] text-muted-foreground">Required for every provider — must be a verified sender/domain for the chosen transport.</span>
+          <span className="text-[11.5px] text-muted-foreground"><Trans>Required for every provider — must be a verified sender/domain for the chosen transport.</Trans></span>
         </div>
       )}
       {fields.config.map(([key, label, placeholder, type]) => (
@@ -163,18 +165,18 @@ function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
           <Input
             type="password"
             autoComplete="new-password"
-            placeholder={cfg?.secretsSet?.[key] ? "•••••••• (stored — leave blank to keep)" : ""}
+            placeholder={cfg?.secretsSet?.[key] ? t`•••••••• (stored — leave blank to keep)` : ""}
             value={secrets[key] ?? ""}
             onChange={(e) => { setSecrets((s) => ({ ...s, [key]: e.target.value })); mark(); }}
           />
-          {cfg?.secretsSet?.[key] && <span className="text-[11.5px] text-muted-foreground">A value is stored. Type a new one to replace it, or leave blank to keep it.</span>}
+          {cfg?.secretsSet?.[key] && <span className="text-[11.5px] text-muted-foreground"><Trans>A value is stored. Type a new one to replace it, or leave blank to keep it.</Trans></span>}
         </div>
       ))}
       <div className="flex items-center justify-between gap-2 border-t border-border pt-2.5">
-        <Button variant="outline" size="sm" disabled={testing} onClick={() => void sendTest()}>{testing ? "Sending…" : "Send test email"}</Button>
+        <Button variant="outline" size="sm" disabled={testing} onClick={() => void sendTest()}>{testing ? <Trans>Sending…</Trans> : <Trans>Send test email</Trans>}</Button>
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" disabled={!dirty || saving} onClick={() => void load()}>Discard</Button>
-          <Button variant="primary" size="sm" disabled={!dirty || saving} onClick={() => void save()}>{saving ? "Saving…" : "Save"}</Button>
+          <Button variant="ghost" size="sm" disabled={!dirty || saving} onClick={() => void load()}><Trans>Discard</Trans></Button>
+          <Button variant="primary" size="sm" disabled={!dirty || saving} onClick={() => void save()}>{saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}</Button>
         </div>
       </div>
     </div>
@@ -203,6 +205,7 @@ const PRIMARY_PRESETS: { label: string; value: string }[] = [
  * (`branding/logo` / `branding/favicon`) — re-uploading replaces.
  */
 function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
+  const { t } = useLingui();
   const { theme: userTheme, setTheme: setUserTheme } = useTheme();
   const [workspaceName, setWorkspaceName] = useState("");
   const [description, setDescription] = useState("");
@@ -312,7 +315,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
 
   const save = async () => {
     if (!primaryColorOk) {
-      pushToast("Primary color must be a hex (#rrggbb) or a CSS color function.");
+      pushToast(t`Primary color must be a hex (#rrggbb) or a CSS color function.`);
       return;
     }
     setSaving(true);
@@ -328,7 +331,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
       });
       applyPrimaryColor(nextPrimary);
       setDirty(false);
-      pushToast("Branding saved.");
+      pushToast(t`Branding saved.`);
     } catch (e) {
       pushToast((e as Error).message);
     } finally {
@@ -345,34 +348,34 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
   return (
     <div className="flex max-w-[720px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
       <div className="flex flex-col gap-1.5">
-        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Workspace name</label>
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Workspace name</Trans></label>
         <Input
           value={workspaceName}
           disabled={loading}
           onChange={(e) => { setWorkspaceName(e.target.value); setDirty(true); }}
         />
-        <span className="text-[11.5px] text-muted-foreground">Shown in the sidebar and the browser title.</span>
+        <span className="text-[11.5px] text-muted-foreground"><Trans>Shown in the sidebar and the browser title.</Trans></span>
       </div>
       <div className="flex flex-col gap-1.5">
-        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Description</label>
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Description</Trans></label>
         <Textarea
           rows={3}
           value={description}
           disabled={loading}
           onChange={(e) => { setDescription(e.target.value); setDirty(true); }}
         />
-        <span className="text-[11.5px] text-muted-foreground">Short tagline for the workspace.</span>
+        <span className="text-[11.5px] text-muted-foreground"><Trans>Short tagline for the workspace.</Trans></span>
       </div>
       <div className="flex items-center justify-between gap-3 border-t border-border pt-3.5">
         <div>
-          <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Logo</div>
-          <div className="text-[11.5px] text-muted-foreground">PNG, JPG, SVG or WebP. Replaces any previous upload.</div>
+          <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Logo</Trans></div>
+          <div className="text-[11.5px] text-muted-foreground"><Trans>PNG, JPG, SVG or WebP. Replaces any previous upload.</Trans></div>
         </div>
         <div className="flex items-center gap-3">
           {logoSrc && (
             <img
               src={logoSrc}
-              alt="workspace logo"
+              alt={t`workspace logo`}
               className="size-14 rounded-[6px] bg-muted object-contain p-1"
             />
           )}
@@ -393,7 +396,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
             disabled={uploadingLogo || loading}
             onClick={() => logoInputRef.current?.click()}
           >
-            {uploadingLogo ? "Uploading…" : logoFileKey ? "Replace" : "Upload"}
+            {uploadingLogo ? <Trans>Uploading…</Trans> : logoFileKey ? <Trans>Replace</Trans> : <Trans>Upload</Trans>}
           </Button>
           {logoFileKey && (
             <Button
@@ -402,21 +405,21 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
               disabled={uploadingLogo || loading}
               onClick={() => { setLogoFileKey(null); setDirty(true); }}
             >
-              Remove
+              <Trans>Remove</Trans>
             </Button>
           )}
         </div>
       </div>
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Favicon</div>
-          <div className="text-[11.5px] text-muted-foreground">PNG or ICO recommended (≤ 64 KB).</div>
+          <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Favicon</Trans></div>
+          <div className="text-[11.5px] text-muted-foreground"><Trans>PNG or ICO recommended (≤ 64 KB).</Trans></div>
         </div>
         <div className="flex items-center gap-3">
           {faviconSrc && (
             <img
               src={faviconSrc}
-              alt="workspace favicon"
+              alt={t`workspace favicon`}
               className="size-8 rounded-[6px] bg-muted object-contain p-0.5"
             />
           )}
@@ -437,7 +440,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
             disabled={uploadingFavicon || loading}
             onClick={() => faviconInputRef.current?.click()}
           >
-            {uploadingFavicon ? "Uploading…" : faviconFileKey ? "Replace" : "Upload"}
+            {uploadingFavicon ? <Trans>Uploading…</Trans> : faviconFileKey ? <Trans>Replace</Trans> : <Trans>Upload</Trans>}
           </Button>
           {faviconFileKey && (
             <Button
@@ -446,13 +449,13 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
               disabled={uploadingFavicon || loading}
               onClick={() => { setFaviconFileKey(null); setDirty(true); }}
             >
-              Remove
+              <Trans>Remove</Trans>
             </Button>
           )}
         </div>
       </div>
       <div className="flex flex-col gap-1.5 border-t border-border pt-3.5">
-        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Primary color</label>
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Primary color</Trans></label>
         <div className="mb-2.5 flex flex-wrap gap-2">
           {PRIMARY_PRESETS.map((p) => {
             const active = primaryColor.trim() === p.value;
@@ -461,7 +464,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
                 key={p.value}
                 type="button"
                 title={p.label}
-                aria-label={`Use ${p.label} palette`}
+                aria-label={t`Use ${p.label} palette`}
                 aria-pressed={active}
                 disabled={loading}
                 onClick={() => commitPrimary(p.value)}
@@ -491,20 +494,20 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
               disabled={loading}
               onClick={() => commitPrimary("")}
             >
-              Reset
+              <Trans>Reset</Trans>
             </Button>
           )}
         </div>
         <span className="text-[11.5px] text-muted-foreground">
           {primaryColorOk
-            ? "Overrides the `--primary` token used across the admin and any published surfaces."
-            : "Use a hex value (#rrggbb), or a CSS color function: rgb(), hsl(), oklch(), oklab()."}
+            ? <Trans>Overrides the `--primary` token used across the admin and any published surfaces.</Trans>
+            : <Trans>Use a hex value (#rrggbb), or a CSS color function: rgb(), hsl(), oklch(), oklab().</Trans>}
         </span>
       </div>
       <div className="flex items-start justify-between gap-3 border-t border-border pt-3.5">
         <div>
-          <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Workspace default theme</div>
-          <div className="text-[11.5px] text-muted-foreground">Applied to users with no local override yet.</div>
+          <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Workspace default theme</Trans></div>
+          <div className="text-[11.5px] text-muted-foreground"><Trans>Applied to users with no local override yet.</Trans></div>
         </div>
         <div className="flex flex-wrap gap-1.5">
           {(["", "light", "dark", "system"] as const).map((opt) => (
@@ -515,15 +518,15 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
               disabled={loading}
               onClick={() => { setDefaultTheme(opt); setDirty(true); }}
             >
-              {opt === "" ? "Leave to user" : opt === "light" ? "Light" : opt === "dark" ? "Dark" : "System"}
+              {opt === "" ? <Trans>Leave to user</Trans> : opt === "light" ? <Trans>Light</Trans> : opt === "dark" ? <Trans>Dark</Trans> : <Trans>System</Trans>}
             </Button>
           ))}
         </div>
       </div>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">My theme</div>
-          <div className="text-[11.5px] text-muted-foreground">Your own preference — stored locally, not synced.</div>
+          <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>My theme</Trans></div>
+          <div className="text-[11.5px] text-muted-foreground"><Trans>Your own preference — stored locally, not synced.</Trans></div>
         </div>
         <div className="flex flex-wrap gap-1.5">
           {(["light", "dark", "system"] as const).map((opt) => (
@@ -533,15 +536,15 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
               size="sm"
               onClick={() => setUserTheme(opt)}
             >
-              {opt === "light" ? "Light" : opt === "dark" ? "Dark" : "System"}
+              {opt === "light" ? <Trans>Light</Trans> : opt === "dark" ? <Trans>Dark</Trans> : <Trans>System</Trans>}
             </Button>
           ))}
         </div>
       </div>
       <div className="flex justify-end gap-2 pt-1.5">
-        <Button variant="ghost" size="sm" disabled={!dirty || saving || loading} onClick={() => void load()}>Discard</Button>
+        <Button variant="ghost" size="sm" disabled={!dirty || saving || loading} onClick={() => void load()}><Trans>Discard</Trans></Button>
         <Button variant="primary" size="sm" disabled={!dirty || saving || loading} onClick={() => void save()}>
-          {saving ? "Saving…" : "Save"}
+          {saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
         </Button>
       </div>
     </div>
@@ -556,6 +559,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
  * via the same `PATCH /api/admin/settings` whitelist as the General form.
  */
 function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) {
+  const { t } = useLingui();
   const [locales, setLocales] = useState<string[]>(["en"]);
   const [defaultLocale, setDefaultLocale] = useState("en");
   const [timezone, setTimezone] = useState("UTC");
@@ -595,11 +599,11 @@ function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) 
     const c = code.trim();
     if (!c) return;
     if (!LOCALE_CODE_RE.test(c)) {
-      pushToast(`"${c}" is not a valid language code.`);
+      pushToast(t`"${c}" is not a valid language code.`);
       return;
     }
     if (locales.some((x) => x.toLowerCase() === c.toLowerCase())) {
-      pushToast(`${c} is already in the list.`);
+      pushToast(t`${c} is already in the list.`);
       return;
     }
     setLocales((arr) => [...arr, c]);
@@ -608,7 +612,7 @@ function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) 
 
   const removeLocale = (code: string) => {
     if (locales.length <= 1) {
-      pushToast("At least one language is required.");
+      pushToast(t`At least one language is required.`);
       return;
     }
     const next = locales.filter((x) => x !== code);
@@ -631,7 +635,7 @@ function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) 
         timezone,
       });
       setDirty(false);
-      pushToast("Workspace language settings saved.");
+      pushToast(t`Workspace language settings saved.`);
     } catch (e) {
       pushToast((e as Error).message);
     } finally {
@@ -644,15 +648,17 @@ function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) 
       <div className="flex items-start gap-2.5">
         <I.Globe size={14} className="mt-0.5" />
         <span className="text-xs text-muted-foreground">
-          Languages this workspace is translated into — they become the columns
-          on the <b>Translations</b> page and the locale options members can
-          pick in their account. The <b>default</b> applies to anyone who hasn’t
-          chosen one.
+          <Trans>
+            Languages this workspace is translated into — they become the columns
+            on the <b>Translations</b> page and the locale options members can
+            pick in their account. The <b>default</b> applies to anyone who hasn't
+            chosen one.
+          </Trans>
         </span>
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Languages</label>
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Languages</Trans></label>
         <div className="flex flex-col gap-1.5">
           {locales.map((code) => {
             const isDefault = code === defaultLocale;
@@ -665,7 +671,7 @@ function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) 
                 <span className="font-mono text-[11.5px] text-muted-foreground">{code}</span>
                 <div className="flex-1" />
                 {isDefault ? (
-                  <Badge variant="default">default</Badge>
+                  <Badge variant="default"><Trans>default</Trans></Badge>
                 ) : (
                   <Button
                     variant="ghost"
@@ -673,7 +679,7 @@ function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) 
                     disabled={loading}
                     onClick={() => { setDefaultLocale(code); setDirty(true); }}
                   >
-                    Make default
+                    <Trans>Make default</Trans>
                   </Button>
                 )}
                 <Button
@@ -682,7 +688,7 @@ function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) 
                   disabled={loading || locales.length <= 1}
                   onClick={() => removeLocale(code)}
                 >
-                  Remove
+                  <Trans>Remove</Trans>
                 </Button>
               </div>
             );
@@ -691,21 +697,21 @@ function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) 
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Add a language</label>
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Add a language</Trans></label>
         {/* Remount on every list change so the picker resets to its
             placeholder after each add — it's an action trigger, not a
             field that retains a value. */}
         <Select
           key={`add-lang-${locales.join("|")}`}
           value={undefined}
-          placeholder="Pick a language…"
+          placeholder={t`Pick a language…`}
           disabled={loading}
           onChange={(v: string) => addLocale(v)}
           options={addOptions}
         />
         <div className="flex items-center gap-2">
           <Input
-            placeholder="…or a custom code (e.g. zh-Hant)"
+            placeholder={t`…or a custom code (e.g. zh-Hant)`}
             value={customCode}
             disabled={loading}
             onChange={(e) => setCustomCode(e.target.value)}
@@ -723,18 +729,18 @@ function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) 
             disabled={loading || !customCode.trim()}
             onClick={() => { addLocale(customCode); setCustomCode(""); }}
           >
-            Add
+            <Trans>Add</Trans>
           </Button>
         </div>
         <span className="text-[11.5px] text-muted-foreground">
-          BCP-47 codes — a language plus an optional region/script (e.g.{" "}
+          <Trans>BCP-47 codes — a language plus an optional region/script (e.g.{" "}
           <span className="font-mono">pt-BR</span>,{" "}
-          <span className="font-mono">zh-Hant</span>).
+          <span className="font-mono">zh-Hant</span>).</Trans>
         </span>
       </div>
 
       <div className="flex flex-col gap-1.5 border-t border-border pt-3.5">
-        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Default time zone</label>
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Default time zone</Trans></label>
         <Select
           value={timezone}
           disabled={loading}
@@ -742,16 +748,16 @@ function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) 
           options={tzOptions}
         />
         <span className="text-[11.5px] text-muted-foreground">
-          Applied to members who haven’t set a personal time zone in their account.
+          <Trans>Applied to members who haven't set a personal time zone in their account.</Trans>
         </span>
       </div>
 
       <div className="flex justify-end gap-2 border-t border-border pt-2.5">
-        <Button variant="ghost" size="sm" disabled={!dirty || saving || loading} onClick={() => void load()}>Discard</Button>
+        <Button variant="ghost" size="sm" disabled={!dirty || saving || loading} onClick={() => void load()}><Trans>Discard</Trans></Button>
         {/* Fixed min width so the Save ⇄ Saving… swap doesn't resize the
             button and shift the Discard button. */}
         <Button variant="primary" size="sm" className="min-w-[5.5rem]" disabled={!dirty || saving || loading} onClick={() => void save()}>
-          {saving ? "Saving…" : "Save"}
+          {saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
         </Button>
       </div>
     </div>
@@ -759,6 +765,7 @@ function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) 
 }
 
 export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushToast: (m: string) => void }) {
+  const { t } = useLingui();
   const [tab, setTab] = useState("general");
   const [appUrl, setAppUrl] = useState("http://localhost:8787");
   const [from, setFrom] = useState("hello@example.com");
@@ -828,7 +835,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
     try {
       await settingsApi.patch({ openSignup: signupOpen });
       setDirty(false);
-      pushToast("Settings saved.");
+      pushToast(t`Settings saved.`);
     } catch (e) {
       pushToast((e as Error).message);
     }
@@ -841,20 +848,20 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
 
   return (
     <div className="flex flex-col gap-4.5">
-      <PageHeader title="Settings" description="Self-hosted on Cloudflare Workers. Most config lives in wrangler.toml; this page is a live view + UI for runtime-mutable values." />
+      <PageHeader title={t`Settings`} description={t`Self-hosted on Cloudflare Workers. Most config lives in wrangler.toml; this page is a live view + UI for runtime-mutable values.`} />
       <Tabs value={tab} onValueChange={(v) => setTab(v)}>
         <TabsList>
           {[
-            { id: "general", label: "General" },
-            { id: "appearance", label: "Appearance" },
-            { id: "email", label: "Email" },
-            { id: "bindings", label: "Bindings", count: bindings.length },
-            { id: "env", label: "Environment", count: envVars.length },
-            { id: "about", label: "About" },
-          ].map((t) => (
-            <TabsTrigger key={t.id} value={t.id}>
-              <span>{t.label}</span>
-              {t.count !== undefined && <span className="rounded-sm border border-border bg-muted px-[5px] py-px font-mono text-[11px] text-muted-foreground">{t.count}</span>}
+            { id: "general", label: t`General` },
+            { id: "appearance", label: t`Appearance` },
+            { id: "email", label: t`Email` },
+            { id: "bindings", label: t`Bindings`, count: bindings.length },
+            { id: "env", label: t`Environment`, count: envVars.length },
+            { id: "about", label: t`About` },
+          ].map((tabItem) => (
+            <TabsTrigger key={tabItem.id} value={tabItem.id}>
+              <span>{tabItem.label}</span>
+              {tabItem.count !== undefined && <span className="rounded-sm border border-border bg-muted px-[5px] py-px font-mono text-[11px] text-muted-foreground">{tabItem.count}</span>}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -866,34 +873,34 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">APP_URL</div>
-              <div className="text-[11.5px] text-muted-foreground">Public origin of this Worker — set via <span className="font-mono">wrangler.toml [vars]</span> (or <span className="font-mono">.env</span> on self-host). Used for CORS, OAuth callbacks and absolute links. Read-only here.</div>
+              <div className="text-[11.5px] text-muted-foreground"><Trans>Public origin of this Worker — set via <span className="font-mono">wrangler.toml [vars]</span> (or <span className="font-mono">.env</span> on self-host). Used for CORS, OAuth callbacks and absolute links. Read-only here.</Trans></div>
             </div>
             <span className="max-w-[280px] truncate font-mono text-[12.5px] text-muted-foreground" title={appUrl}>{appUrl}</span>
           </div>
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">EMAIL_FROM</div>
-              <div className="text-[11.5px] text-muted-foreground">Sender address for transactional email — set via <span className="font-mono">wrangler secret put</span> / <span className="font-mono">.env</span>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here.</div>
+              <div className="text-[11.5px] text-muted-foreground"><Trans>Sender address for transactional email — set via <span className="font-mono">wrangler secret put</span> / <span className="font-mono">.env</span>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here.</Trans></div>
             </div>
-            <span className="font-mono text-[12.5px] text-muted-foreground">{from || "(not set)"}</span>
+            <span className="font-mono text-[12.5px] text-muted-foreground">{from || t`(not set)`}</span>
           </div>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Open sign-up</div>
-              <div className="text-[11.5px] text-muted-foreground">When off, new account creation is rejected on every path (email/password, social, magic-link). The first user is always allowed so a fresh instance can bootstrap its admin.</div>
+              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Open sign-up</Trans></div>
+              <div className="text-[11.5px] text-muted-foreground"><Trans>When off, new account creation is rejected on every path (email/password, social, magic-link). The first user is always allowed so a fresh instance can bootstrap its admin.</Trans></div>
             </div>
             <Switch checked={signupOpen} onChange={(v) => { setSignupOpen(v); setDirty(true); }} />
           </div>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">Runtime</div>
-              <div className="text-[11.5px] text-muted-foreground">Auto-detected from <span className="font-mono">env</span> bindings.</div>
+              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Runtime</Trans></div>
+              <div className="text-[11.5px] text-muted-foreground"><Trans>Auto-detected from <span className="font-mono">env</span> bindings.</Trans></div>
             </div>
             <span className="inline-flex items-center gap-1.5 rounded-3xl border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className="size-[7px] shrink-0 rounded-full bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]" />{adapter}</span>
           </div>
           <div className="flex justify-end gap-2 pt-1.5">
-            <Button variant="ghost" size="sm" disabled={!dirty} onClick={() => setDirty(false)}>Discard</Button>
-            <Button variant="primary" size="sm" disabled={!dirty} onClick={persistGeneral}>Save</Button>
+            <Button variant="ghost" size="sm" disabled={!dirty} onClick={() => setDirty(false)}><Trans>Discard</Trans></Button>
+            <Button variant="primary" size="sm" disabled={!dirty} onClick={persistGeneral}><Trans>Save</Trans></Button>
           </div>
         </div>
         <WorkspaceLocaleCard pushToast={pushToast} />
@@ -909,19 +916,19 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
           <div className="flex items-start gap-2.5 overflow-hidden rounded-2xl border border-border bg-muted p-3.5">
             <I.Info size={14} className="mt-0.5" />
             <div className="flex flex-col gap-0.5">
-              <span className="text-[12.5px] font-medium">Bindings are read-only here</span>
-              <span className="text-xs text-muted-foreground">Edit them in <span className="font-mono text-foreground">wrangler.toml</span> and redeploy. This panel reflects the live binding map from <span className="font-mono text-foreground">env</span>.</span>
+              <span className="text-[12.5px] font-medium"><Trans>Bindings are read-only here</Trans></span>
+              <span className="text-xs text-muted-foreground"><Trans>Edit them in <span className="font-mono text-foreground">wrangler.toml</span> and redeploy. This panel reflects the live binding map from <span className="font-mono text-foreground">env</span>.</Trans></span>
             </div>
           </div>
           <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 border-b border-border px-4 py-3.5">
-              <I.Server size={14} className="shrink-0" /><span className="whitespace-nowrap text-[13px] font-medium">worker bindings</span>
-              <span className="font-mono text-xs text-muted-foreground">{bindings.filter((b) => b.status === "connected").length} connected · {bindings.filter((b) => b.status !== "connected").length} optional</span>
+              <I.Server size={14} className="shrink-0" /><span className="whitespace-nowrap text-[13px] font-medium"><Trans>worker bindings</Trans></span>
+              <span className="font-mono text-xs text-muted-foreground"><Trans>{bindings.filter((b) => b.status === "connected").length} connected · {bindings.filter((b) => b.status !== "connected").length} optional</Trans></span>
               <div className="flex-1" />
-              <Button variant="ghost" size="sm" icon={I.Refresh} onClick={() => pushToast("Bindings refreshed.")}>Refresh</Button>
+              <Button variant="ghost" size="sm" icon={I.Refresh} onClick={() => pushToast(t`Bindings refreshed.`)}><Trans>Refresh</Trans></Button>
             </div>
             <div className="hidden grid-cols-[24px_110px_160px_1fr_120px] items-center gap-3 border-b border-border bg-muted px-3.5 py-[11px] text-[11px] uppercase tracking-[0.4px] text-muted-foreground md:grid">
-              <span></span><span>Type</span><span>Name</span><span>Resource</span><span>Status</span>
+              <span></span><span><Trans>Type</Trans></span><span><Trans>Name</Trans></span><span><Trans>Resource</Trans></span><span><Trans>Status</Trans></span>
             </div>
             {bindings.map((b) => {
               const Ic = bindingIcon(b.type);
@@ -935,8 +942,8 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
                     {b.warn && <span className="text-[11.5px] text-muted-foreground">· {b.warn}</span>}
                   </div>
                   <span className="ml-auto shrink-0 md:ml-0">
-                    {b.status === "connected" && <Badge variant="default">connected</Badge>}
-                    {b.status === "optional" && <Badge variant="secondary">unbound</Badge>}
+                    {b.status === "connected" && <Badge variant="default"><Trans>connected</Trans></Badge>}
+                    {b.status === "optional" && <Badge variant="secondary"><Trans>unbound</Trans></Badge>}
                   </span>
                 </div>
               );
@@ -945,7 +952,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
           <div className="overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground">
             <div className="mb-2 flex items-center gap-2">
               <I.Code size={13} />
-              <span className="text-[12.5px] font-medium">wrangler.toml snippet</span>
+              <span className="text-[12.5px] font-medium"><Trans>wrangler.toml snippet</Trans></span>
             </div>
             <pre className="m-0 whitespace-pre-wrap rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11.5px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">{`[[d1_databases]]
 binding = "D1"
@@ -971,24 +978,24 @@ class_name = "RealtimeRoom"`}</pre>
           <div className="flex items-start gap-2.5 overflow-hidden rounded-2xl border border-border bg-muted p-3.5">
             <I.Info size={14} className="mt-0.5" />
             <div className="flex flex-col gap-0.5">
-              <span className="text-[12.5px] font-medium">Environment variables are read-only here</span>
-              <span className="text-xs text-muted-foreground">Set them in <span className="font-mono text-foreground">wrangler.toml [vars]</span> / <span className="font-mono text-foreground">wrangler secret put</span> (or <span className="font-mono text-foreground">apps/web/.env</span> on self-host) and redeploy. This panel only reports which keys are present — secret values are never sent to the browser.</span>
+              <span className="text-[12.5px] font-medium"><Trans>Environment variables are read-only here</Trans></span>
+              <span className="text-xs text-muted-foreground"><Trans>Set them in <span className="font-mono text-foreground">wrangler.toml [vars]</span> / <span className="font-mono text-foreground">wrangler secret put</span> (or <span className="font-mono text-foreground">apps/web/.env</span> on self-host) and redeploy. This panel only reports which keys are present — secret values are never sent to the browser.</Trans></span>
             </div>
           </div>
           <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
             <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-4 py-3.5">
-              <I.Lock size={14} /><span className="text-[13px] font-medium">environment</span>
-              <span className="font-mono text-xs text-muted-foreground">{envVars.filter((v) => v.value !== "(unset)").length} set · {envVars.filter((v) => v.value === "(unset)").length} unset</span>
+              <I.Lock size={14} /><span className="text-[13px] font-medium"><Trans>environment</Trans></span>
+              <span className="font-mono text-xs text-muted-foreground"><Trans>{envVars.filter((v) => v.value !== "(unset)").length} set · {envVars.filter((v) => v.value === "(unset)").length} unset</Trans></span>
             </div>
             <div className="hidden grid-cols-[24px_1fr_120px_110px] items-center gap-3 border-b border-border bg-muted px-3.5 py-[11px] text-[11px] uppercase tracking-[0.4px] text-muted-foreground md:grid">
-              <span></span><span>Key</span><span>Kind</span><span>Status</span>
+              <span></span><span><Trans>Key</Trans></span><span><Trans>Kind</Trans></span><span><Trans>Status</Trans></span>
             </div>
             {envVars.map((v) => (
               <div key={v.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-3.5 py-3 text-[13px] last:border-b-0 md:grid md:grid-cols-[24px_1fr_120px_110px] md:gap-3 md:py-[11px]">
                 <span className="shrink-0">{v.secret ? <I.Lock size={13} /> : <I.Hash size={13} />}</span>
                 <span className="min-w-0 flex-1 break-all font-mono text-[12.5px] md:flex-none md:break-normal">{v.key}</span>
-                <span className="text-[11.5px] text-muted-foreground">{v.secret ? "secret" : "plain"}</span>
-                <span className="ml-auto shrink-0 md:ml-0">{v.value === "(unset)" ? <Badge variant="secondary">unset</Badge> : <Badge variant="default">set</Badge>}</span>
+                <span className="text-[11.5px] text-muted-foreground">{v.secret ? <Trans>secret</Trans> : <Trans>plain</Trans>}</span>
+                <span className="ml-auto shrink-0 md:ml-0">{v.value === "(unset)" ? <Badge variant="secondary"><Trans>unset</Trans></Badge> : <Badge variant="default"><Trans>set</Trans></Badge>}</span>
               </div>
             ))}
           </div>
@@ -999,12 +1006,12 @@ class_name = "RealtimeRoom"`}</pre>
         <div className="flex max-w-[720px] flex-col gap-3">
           <div className="flex flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
             {[
-              ["Version", "v0.9.4 (a8b2f1c)"],
-              ["Released", "2025-10-12"],
-              ["Runtime", adapter],
-              ["Wrangler", "3.78.0"],
-              ["License", "MIT"],
-              ["Repository", "github.com/workeros/workeros"],
+              [t`Version`, "v0.9.4 (a8b2f1c)"],
+              [t`Released`, "2025-10-12"],
+              [t`Runtime`, adapter],
+              [t`Wrangler`, "3.78.0"],
+              [t`License`, "MIT"],
+              [t`Repository`, "github.com/workeros/workeros"],
             ].map(([k, v]) => (
               <div key={k} className="flex items-center justify-between gap-3">
                 <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{k}</span>
@@ -1015,12 +1022,12 @@ class_name = "RealtimeRoom"`}</pre>
           <div className="flex items-center gap-2.5 overflow-hidden rounded-2xl border border-border bg-card p-[18px] text-card-foreground">
             <I.Shield size={14} />
             <div className="flex flex-col gap-0.5">
-              <span className="text-[13px] font-medium">Open-source · MIT licensed</span>
-              <span className="text-xs text-muted-foreground">Self-hosted on Cloudflare Workers. No telemetry, no billing — just clone, deploy, run.</span>
+              <span className="text-[13px] font-medium"><Trans>Open-source · MIT licensed</Trans></span>
+              <span className="text-xs text-muted-foreground"><Trans>Self-hosted on Cloudflare Workers. No telemetry, no billing — just clone, deploy, run.</Trans></span>
             </div>
             <div className="flex-1" />
-            <Button variant="outline" size="sm" icon={I.Code}>GitHub</Button>
-            <Button variant="ghost" size="sm" icon={I.Folder}>Docs</Button>
+            <Button variant="outline" size="sm" icon={I.Code}><Trans>GitHub</Trans></Button>
+            <Button variant="ghost" size="sm" icon={I.Folder}><Trans>Docs</Trans></Button>
           </div>
         </div>
       )}

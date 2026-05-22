@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { MailIcon } from "lucide-react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@workeros/ui/components/input";
 import { Label } from "@workeros/ui/components/label";
 import { Button } from "@workeros/ui/components/button";
@@ -21,6 +22,7 @@ interface ForgetPasswordClient {
 }
 
 export const Forgot = () => {
+  const { t } = useLingui();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -32,7 +34,7 @@ export const Forgot = () => {
     try {
       const c = auth as unknown as ForgetPasswordClient;
       if (!c.forgetPassword) {
-        notifyError("Password reset is not enabled on this instance");
+        notifyError(t`Password reset is not enabled on this instance`);
         setBusy(false);
         return;
       }
@@ -43,13 +45,13 @@ export const Forgot = () => {
       // For privacy, treat unknown emails as success (email enumeration
       // protection) — the server returns ok regardless.
       if (res?.error) {
-        notifyError(res.error.message ?? "Failed to send reset link");
+        notifyError(res.error.message ?? t`Failed to send reset link`);
         setBusy(false);
         return;
       }
       setSent(true);
     } catch (err) {
-      notifyError(err, "Sending reset link");
+      notifyError(err, t`Sending reset link`);
     } finally {
       setBusy(false);
     }
@@ -59,8 +61,8 @@ export const Forgot = () => {
     <AuthShell mode="forgot">
       <AuthCard>
         <AuthCardHeader
-          title="Reset your password"
-          description="Enter the email you signed up with — we'll send a reset link."
+          title={<Trans>Reset your password</Trans>}
+          description={<Trans>Enter the email you signed up with — we'll send a reset link.</Trans>}
         />
 
         {sent ? (
@@ -68,20 +70,20 @@ export const Forgot = () => {
             <div className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground">
               <MailIcon size={18} />
             </div>
-            <div className="text-sm font-medium">Reset link sent</div>
+            <div className="text-sm font-medium"><Trans>Reset link sent</Trans></div>
             <div className="text-[12.5px] text-muted-foreground">
-              Click the link in your inbox to set a new password. The token
+              <Trans>Click the link in your inbox to set a new password. The token
               expires in 1 hour. Your existing password still works in the
-              meantime.
+              meantime.</Trans>
             </div>
             <Button asChild type="button" variant="ghost" size="sm" className="self-start">
-              <Link to="/sign-in">Back to sign in</Link>
+              <Link to="/sign-in"><Trans>Back to sign in</Trans></Link>
             </Button>
           </div>
         ) : (
           <form className="space-y-4" onSubmit={submit}>
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email"><Trans>Email</Trans></Label>
               <Input
                 id="email"
                 type="email"
@@ -90,13 +92,13 @@ export const Forgot = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder={t`you@example.com`}
                 className="h-10"
               />
             </div>
 
             <AuthSubmit type="submit" disabled={busy}>
-              {busy ? "Sending…" : "Send reset link"}
+              {busy ? <Trans>Sending…</Trans> : <Trans>Send reset link</Trans>}
             </AuthSubmit>
           </form>
         )}
@@ -106,7 +108,7 @@ export const Forgot = () => {
             to="/sign-in"
             className="font-medium text-foreground hover:underline"
           >
-            ← Back to sign in
+            <Trans>← Back to sign in</Trans>
           </Link>
         </p>
       </AuthCard>

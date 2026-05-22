@@ -1,6 +1,7 @@
 // @ts-nocheck
 // Directus-parity permission matrix
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "./icons";
 import { Badge, IconButton } from "./ui";
 import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
@@ -119,6 +120,7 @@ function cellSummary(state: CellState, action: string, collection: string) {
 }
 
 function CellGlyph({ state }: { state: CellState }) {
+  const { t } = useLingui();
   const variant =
     state === "all"
       ? "bg-[color-mix(in_oklch,oklch(from_var(--primary)_0.72_0.18_h)_22%,transparent)] text-[oklch(from_var(--primary)_0.42_0.16_h)]"
@@ -128,20 +130,20 @@ function CellGlyph({ state }: { state: CellState }) {
   const cls = `inline-grid size-[22px] place-items-center rounded-full ${variant}`;
   if (state === "all") {
     return (
-      <span className={cls} aria-label="full access">
+      <span className={cls} aria-label={t`full access`}>
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6.2L4.8 8.5L9.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </span>
     );
   }
   if (state === "none") {
     return (
-      <span className={cls} aria-label="no access">
+      <span className={cls} aria-label={t`no access`}>
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
       </span>
     );
   }
   return (
-    <span className={cls} aria-label="conditional access">
+    <span className={cls} aria-label={t`conditional access`}>
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="2.2" fill="currentColor" /><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1.5" /></svg>
     </span>
   );
@@ -153,6 +155,7 @@ export interface PermissionsMatrixProps {
 }
 
 export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) {
+  const { t } = useLingui();
   const [activeRole, setActiveRole] = useState(roles[1]?.name || "authenticated");
   const [matrix, setMatrix] = useState<Matrix>(() => emptyMatrix(roles, []));
   const [sheetTarget, setSheetTarget] = useState<{ role: string; action: string; collection: string } | null>(null);
@@ -238,7 +241,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
     if (val === "custom") {
       setSheetTarget({ role: activeRole, action, collection });
     } else {
-      pushToast?.(`${activeRole} · ${action} · ${collection} → ${val === "all" ? "full access" : "no access"}`);
+      pushToast?.(`${activeRole} · ${action} · ${collection} → ${val === "all" ? t`full access` : t`no access`}`);
     }
   };
 
@@ -256,12 +259,12 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
     <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
       <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-4 py-3.5">
         <I.Shield size={14} />
-        <span className="text-[13px] font-medium">permission matrix</span>
+        <span className="text-[13px] font-medium"><Trans>permission matrix</Trans></span>
         <span className="font-mono text-xs text-muted-foreground">
-          {stats.all} all · {stats.custom} custom · {stats.none} none
+          <Trans>{stats.all} all · {stats.custom} custom · {stats.none} none</Trans>
         </span>
         <div className="flex-1" />
-        {isAdmin && <Badge variant="secondary">bypass — read-only</Badge>}
+        {isAdmin && <Badge variant="secondary"><Trans>bypass — read-only</Trans></Badge>}
       </div>
 
       <div className="border-b border-border bg-[color-mix(in_oklch,var(--muted)_22%,var(--card))] px-3.5 py-2.5">
@@ -271,7 +274,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
               <TabsTrigger key={r.name} value={r.name}>
                 <I.Users size={12} />
                 <span className="font-mono">{r.name}</span>
-                {r.system && <span className="rounded-[3px] bg-[color-mix(in_oklch,var(--muted)_70%,transparent)] px-[5px] py-px text-[9.5px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">system</span>}
+                {r.system && <span className="rounded-[3px] bg-[color-mix(in_oklch,var(--muted)_70%,transparent)] px-[5px] py-px text-[9.5px] font-semibold uppercase tracking-[0.05em] text-muted-foreground"><Trans>system</Trans></span>}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -279,7 +282,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
       </div>
 
       <div className="relative bg-card p-4">
-        <div className="grid grid-cols-[minmax(160px,1.4fr)_repeat(4,minmax(80px,1fr))] overflow-x-auto rounded-xl border border-border bg-card" role="grid" aria-label={`Permissions for ${activeRole}`}>
+        <div className="grid grid-cols-[minmax(160px,1.4fr)_repeat(4,minmax(80px,1fr))] overflow-x-auto rounded-xl border border-border bg-card" role="grid" aria-label={t`Permissions for ${activeRole}`}>
           <div className="border-b border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))]" />
           {PM_ACTIONS.map((a) => (
             <div key={a.v} className="flex flex-col items-center justify-center gap-0.5 border-b border-l border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-2 py-2.5" title={a.title}>
@@ -290,7 +293,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
 
           {collections.length === 0 && (
             <div className="col-span-full p-6 text-center text-xs text-muted-foreground">
-              No collections yet — create one in the Schema tab to manage permissions here.
+              <Trans>No collections yet — create one in the Schema tab to manage permissions here.</Trans>
             </div>
           )}
           {collections.map((c) => (
@@ -311,7 +314,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
                     type="button"
                     className={cellCls}
                     title={cellSummary(state, a.v, c)}
-                    aria-label={`${activeRole} · ${a.title} · ${c}: ${state}`}
+                    aria-label={t`${activeRole} · ${a.title} · ${c}: ${state}`}
                   >
                     <CellGlyph state={isAdmin ? "all" : state} />
                   </button>
@@ -327,28 +330,28 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
                           onSelect={() => pickState(c, a.v, "all")}
                         >
                           <CellGlyph state="all" />
-                          <span><strong className="block font-medium">Full access</strong><span className="mt-px block text-[11px] text-muted-foreground">no condition; everyone in role</span></span>
+                          <span><strong className="block font-medium"><Trans>Full access</Trans></strong><span className="mt-px block text-[11px] text-muted-foreground"><Trans>no condition; everyone in role</Trans></span></span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="gap-2.5"
                           onSelect={() => pickState(c, a.v, "custom")}
                         >
                           <CellGlyph state="custom" />
-                          <span><strong className="block font-medium">Use custom rule</strong><span className="mt-px block text-[11px] text-muted-foreground">edit conditions below ↓</span></span>
+                          <span><strong className="block font-medium"><Trans>Use custom rule</Trans></strong><span className="mt-px block text-[11px] text-muted-foreground"><Trans>edit conditions below ↓</Trans></span></span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="gap-2.5"
                           onSelect={() => pickState(c, a.v, "none")}
                         >
                           <CellGlyph state="none" />
-                          <span><strong className="block font-medium">No access</strong><span className="mt-px block text-[11px] text-muted-foreground">denied for this role</span></span>
+                          <span><strong className="block font-medium"><Trans>No access</Trans></strong><span className="mt-px block text-[11px] text-muted-foreground"><Trans>denied for this role</Trans></span></span>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                     {state === "custom" && (
                       <IconButton
                         icon={I.Pencil}
-                        title="Edit rule"
+                        title={t`Edit rule`}
                         className="absolute right-[3px] top-[3px] z-[3] size-5 min-w-0 bg-[color-mix(in_oklch,var(--card)_80%,transparent)] p-0 opacity-0 backdrop-blur-[2px] transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
                         onClick={() => {
                           setSheetTarget({ role: activeRole, action: a.v, collection: c });
@@ -364,17 +367,17 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
       </div>
 
       <div className="flex flex-wrap items-center gap-3.5 border-t border-border px-4 py-2.5 text-[11.5px] text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5"><CellGlyph state="all" /> full</span>
-        <span className="inline-flex items-center gap-1.5"><CellGlyph state="custom" /> custom rule</span>
-        <span className="inline-flex items-center gap-1.5"><CellGlyph state="none" /> denied</span>
+        <span className="inline-flex items-center gap-1.5"><CellGlyph state="all" /> <Trans>full</Trans></span>
+        <span className="inline-flex items-center gap-1.5"><CellGlyph state="custom" /> <Trans>custom rule</Trans></span>
+        <span className="inline-flex items-center gap-1.5"><CellGlyph state="none" /> <Trans>denied</Trans></span>
         <div className="flex-1" />
-        <span className="text-[11.5px] text-muted-foreground">Click any cell to set state. Custom opens the rule builder in a dialog.</span>
+        <span className="text-[11.5px] text-muted-foreground"><Trans>Click any cell to set state. Custom opens the rule builder in a dialog.</Trans></span>
       </div>
 
       <Dialog open={sheetTarget !== null} onOpenChange={(o) => { if (!o) setSheetTarget(null); }}>
         <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto overflow-x-hidden [grid-template-columns:minmax(0,1fr)]">
           <DialogHeader>
-            <DialogTitle>Edit rule</DialogTitle>
+            <DialogTitle><Trans>Edit rule</Trans></DialogTitle>
             <DialogDescription className="font-mono">
               {sheetTarget ? `${sheetTarget.role} · ${sheetTarget.action} · ${sheetTarget.collection}` : ""}
             </DialogDescription>

@@ -11,6 +11,7 @@ import {
   LogOutIcon,
   ShieldIcon,
 } from "lucide-react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@workeros/ui/components/button";
 import { Badge } from "@workeros/ui/components/badge";
 import { Input } from "@workeros/ui/components/input";
@@ -104,16 +105,16 @@ export function AccountPage({ pushToast }: { pushToast: (m: string) => void }) {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        title="Account"
-        description="Your personal profile, preferences, password, sessions, and connected credentials. Workspace-wide settings live under the Settings page."
+        title={<Trans>Account</Trans>}
+        description={<Trans>Your personal profile, preferences, password, sessions, and connected credentials. Workspace-wide settings live under the Settings page.</Trans>}
       />
       <Tabs value={tab} onValueChange={(v) => setTab(v as AccountTab)}>
         <TabsList>
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="preferences">Preferences</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="sessions">Sessions</TabsTrigger>
-          <TabsTrigger value="connected">Connected</TabsTrigger>
+          <TabsTrigger value="profile"><Trans>Profile</Trans></TabsTrigger>
+          <TabsTrigger value="preferences"><Trans>Preferences</Trans></TabsTrigger>
+          <TabsTrigger value="security"><Trans>Security</Trans></TabsTrigger>
+          <TabsTrigger value="sessions"><Trans>Sessions</Trans></TabsTrigger>
+          <TabsTrigger value="connected"><Trans>Connected</Trans></TabsTrigger>
         </TabsList>
         <TabsContent value="profile">
           <ProfileCard user={sessionUser} pushToast={pushToast} refetch={() => session.refetch()} />
@@ -148,6 +149,7 @@ function ProfileCard({
   pushToast: (m: string) => void;
   refetch: () => void;
 }) {
+  const { t } = useLingui();
   const [name, setName] = useState("");
   const [image, setImage] = useState<string | null>(null);
   const [imageBust, setImageBust] = useState<string>("");
@@ -176,7 +178,7 @@ function ProfileCard({
 
   const upload = async (file: File) => {
     if (!user?.id) {
-      pushToast("Not signed in.");
+      pushToast(t`Not signed in.`);
       return;
     }
     const ext = (file.name.split(".").pop() ?? "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
@@ -208,7 +210,7 @@ function ProfileCard({
     try {
       unwrap(await auth.updateUser({ name: name.trim(), image }));
       setDirty(false);
-      pushToast("Profile saved.");
+      pushToast(t`Profile saved.`);
       refetch();
     } catch (e) {
       pushToast(errMsg(e));
@@ -224,14 +226,14 @@ function ProfileCard({
       <CardContent className="flex flex-col gap-6 pt-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <Label>Avatar</Label>
+            <Label><Trans>Avatar</Trans></Label>
             <p className="text-sm text-muted-foreground">
-              PNG, JPG or WebP. Shown in the header and on any author display.
+              <Trans>PNG, JPG or WebP. Shown in the header and on any author display.</Trans>
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Avatar className="size-14">
-              {previewSrc && <AvatarImage src={previewSrc} alt="Avatar preview" />}
+              {previewSrc && <AvatarImage src={previewSrc} alt={t`Avatar preview`} />}
               <AvatarFallback>{initial}</AvatarFallback>
             </Avatar>
             <input
@@ -251,7 +253,7 @@ function ProfileCard({
               disabled={uploading || !user?.id}
               onClick={() => fileInput.current?.click()}
             >
-              {uploading ? "Uploading…" : image ? "Replace" : "Upload"}
+              {uploading ? <Trans>Uploading…</Trans> : image ? <Trans>Replace</Trans> : <Trans>Upload</Trans>}
             </Button>
             {image && (
               <Button
@@ -263,14 +265,14 @@ function ProfileCard({
                   setDirty(true);
                 }}
               >
-                Remove
+                <Trans>Remove</Trans>
               </Button>
             )}
           </div>
         </div>
         <Separator />
         <div className="flex flex-col gap-2">
-          <Label htmlFor="account-name">Name</Label>
+          <Label htmlFor="account-name"><Trans>Name</Trans></Label>
           <Input
             id="account-name"
             value={name}
@@ -278,15 +280,15 @@ function ProfileCard({
               setName(e.target.value);
               setDirty(true);
             }}
-            placeholder="Your display name"
+            placeholder={t`Your display name`}
           />
-          <p className="text-sm text-muted-foreground">Shown in author bylines and the header dropdown.</p>
+          <p className="text-sm text-muted-foreground"><Trans>Shown in author bylines and the header dropdown.</Trans></p>
         </div>
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <Label>Email</Label>
+            <Label><Trans>Email</Trans></Label>
             <p className="text-sm text-muted-foreground">
-              Email changes aren't supported yet — contact an admin if you need to switch addresses.
+              <Trans>Email changes aren't supported yet — contact an admin if you need to switch addresses.</Trans>
             </p>
           </div>
           <span className="font-mono text-sm text-muted-foreground">{user?.email ?? "—"}</span>
@@ -302,7 +304,7 @@ function ProfileCard({
               setDirty(false);
             }}
           >
-            Discard
+            <Trans>Discard</Trans>
           </Button>
           {/* Fixed min width so the label swap (Save ⇄ Saving…) doesn't
               resize the button and shove the Discard button sideways. */}
@@ -312,7 +314,7 @@ function ProfileCard({
             disabled={!dirty || saving}
             onClick={save}
           >
-            {saving ? "Saving…" : "Save"}
+            {saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
           </Button>
         </div>
       </CardContent>
@@ -325,6 +327,7 @@ function ProfileCard({
 // --------------------------------------------------------------------------
 
 function SecurityCard({ pushToast }: { pushToast: (m: string) => void }) {
+  const { t } = useLingui();
   const [hasPassword, setHasPassword] = useState<boolean | null>(null);
   const [oldPw, setOldPw] = useState("");
   const [newPw, setNewPw] = useState("");
@@ -353,13 +356,13 @@ function SecurityCard({ pushToast }: { pushToast: (m: string) => void }) {
   }, []);
 
   const submitChange = async () => {
-    if (newPw.length < 8) { pushToast("New password must be at least 8 characters."); return; }
-    if (newPw !== confirmPw) { pushToast("New password and confirmation don't match."); return; }
+    if (newPw.length < 8) { pushToast(t`New password must be at least 8 characters.`); return; }
+    if (newPw !== confirmPw) { pushToast(t`New password and confirmation don't match.`); return; }
     setSaving(true);
     try {
       if (hasPassword) {
         unwrap(await auth.changePassword({ currentPassword: oldPw, newPassword: newPw, revokeOtherSessions: revokeOthers }));
-        pushToast(revokeOthers ? "Password changed; other sessions signed out." : "Password changed.");
+        pushToast(revokeOthers ? t`Password changed; other sessions signed out.` : t`Password changed.`);
       } else {
         // `setPassword` is a sensitive-session-gated server endpoint that the
         // typed client doesn't expose; reach it through the raw API path. The
@@ -376,7 +379,7 @@ function SecurityCard({ pushToast }: { pushToast: (m: string) => void }) {
           throw new Error(body || `set-password failed (${res.status})`);
         }
         setHasPassword(true);
-        pushToast("Password set.");
+        pushToast(t`Password set.`);
       }
       setOldPw(""); setNewPw(""); setConfirmPw(""); setRevokeOthers(false);
     } catch (e) {
@@ -390,7 +393,7 @@ function SecurityCard({ pushToast }: { pushToast: (m: string) => void }) {
     setRevoking(true);
     try {
       unwrap(await auth.revokeOtherSessions());
-      pushToast("All other devices signed out.");
+      pushToast(t`All other devices signed out.`);
     } catch (e) {
       pushToast(errMsg(e));
     } finally {
@@ -404,18 +407,18 @@ function SecurityCard({ pushToast }: { pushToast: (m: string) => void }) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <LockIcon className="size-4" />
-            {hasPassword === false ? "Set a password" : "Change password"}
+            {hasPassword === false ? <Trans>Set a password</Trans> : <Trans>Change password</Trans>}
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {hasPassword === false && (
             <p className="text-sm text-muted-foreground">
-              You signed in with a social provider. Setting a password lets you also sign in with email + password.
+              <Trans>You signed in with a social provider. Setting a password lets you also sign in with email + password.</Trans>
             </p>
           )}
           {hasPassword !== false && (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="old-pw">Current password</Label>
+              <Label htmlFor="old-pw"><Trans>Current password</Trans></Label>
               <Input
                 id="old-pw"
                 type="password"
@@ -426,7 +429,7 @@ function SecurityCard({ pushToast }: { pushToast: (m: string) => void }) {
             </div>
           )}
           <div className="flex flex-col gap-2">
-            <Label htmlFor="new-pw">New password</Label>
+            <Label htmlFor="new-pw"><Trans>New password</Trans></Label>
             <Input
               id="new-pw"
               type="password"
@@ -434,10 +437,10 @@ function SecurityCard({ pushToast }: { pushToast: (m: string) => void }) {
               value={newPw}
               onChange={(e) => setNewPw(e.target.value)}
             />
-            <p className="text-sm text-muted-foreground">At least 8 characters.</p>
+            <p className="text-sm text-muted-foreground"><Trans>At least 8 characters.</Trans></p>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="confirm-pw">Confirm new password</Label>
+            <Label htmlFor="confirm-pw"><Trans>Confirm new password</Trans></Label>
             <Input
               id="confirm-pw"
               type="password"
@@ -453,7 +456,7 @@ function SecurityCard({ pushToast }: { pushToast: (m: string) => void }) {
                 checked={revokeOthers}
                 onCheckedChange={(v) => setRevokeOthers(v === true)}
               />
-              Sign out from all other devices
+              <Trans>Sign out from all other devices</Trans>
             </label>
           )}
           <div className="flex justify-end">
@@ -462,7 +465,7 @@ function SecurityCard({ pushToast }: { pushToast: (m: string) => void }) {
               disabled={saving || !newPw || !confirmPw || (hasPassword !== false && !oldPw)}
               onClick={submitChange}
             >
-              {saving ? "Saving…" : hasPassword === false ? "Set password" : "Update password"}
+              {saving ? <Trans>Saving…</Trans> : hasPassword === false ? <Trans>Set password</Trans> : <Trans>Update password</Trans>}
             </Button>
           </div>
         </CardContent>
@@ -472,16 +475,16 @@ function SecurityCard({ pushToast }: { pushToast: (m: string) => void }) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <LogOutIcon className="size-4" />
-            Sign out elsewhere
+            <Trans>Sign out elsewhere</Trans>
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <p className="text-sm text-muted-foreground">
-            Revokes every active session except the one you're on right now.
+            <Trans>Revokes every active session except the one you're on right now.</Trans>
           </p>
           <div className="flex justify-end">
             <Button variant="outline" size="sm" disabled={revoking} onClick={signOutOthers}>
-              {revoking ? "Revoking…" : "Sign out other devices"}
+              {revoking ? <Trans>Revoking…</Trans> : <Trans>Sign out other devices</Trans>}
             </Button>
           </div>
         </CardContent>
@@ -501,6 +504,7 @@ function SessionsCard({
   currentToken: string | null;
   pushToast: (m: string) => void;
 }) {
+  const { t } = useLingui();
   const { formatDateTime, formatRelative } = usePreferences();
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -512,7 +516,7 @@ function SessionsCard({
       const rows = (Array.isArray(list) ? list : []).map((s): SessionRow => ({
         id: s.id,
         token: s.token,
-        device: (s.userAgent ?? "unknown agent").slice(0, 64),
+        device: (s.userAgent ?? t`unknown agent`).slice(0, 64),
         ip: s.ipAddress ?? "—",
         createdAt: s.createdAt ?? null,
         lastAt: s.updatedAt ?? s.createdAt ?? null,
@@ -526,7 +530,7 @@ function SessionsCard({
     } finally {
       setLoading(false);
     }
-  }, [currentToken, pushToast]);
+  }, [currentToken, pushToast, t]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -534,7 +538,7 @@ function SessionsCard({
     try {
       unwrap(await auth.revokeSession({ token }));
       setSessions((arr) => arr.filter((s) => s.token !== token));
-      pushToast(`Session ${label} revoked.`);
+      pushToast(t`Session ${label} revoked.`);
     } catch (e) {
       pushToast(errMsg(e));
     }
@@ -545,23 +549,23 @@ function SessionsCard({
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <ActivityIcon className="size-4" />
-          Active sessions
+          <Trans>Active sessions</Trans>
           <span className="font-mono text-xs text-muted-foreground">
             {sessions.length} session{sessions.length === 1 ? "" : "s"}
           </span>
         </CardTitle>
         <Button size="sm" variant="ghost" onClick={() => void load()}>
-          {loading ? "Refreshing…" : "Refresh"}
+          {loading ? <Trans>Refreshing…</Trans> : <Trans>Refresh</Trans>}
         </Button>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Device</TableHead>
-              <TableHead>IP</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Last seen</TableHead>
+              <TableHead><Trans>Device</Trans></TableHead>
+              <TableHead><Trans>IP</Trans></TableHead>
+              <TableHead><Trans>Created</Trans></TableHead>
+              <TableHead><Trans>Last seen</Trans></TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -569,7 +573,7 @@ function SessionsCard({
             {!loading && sessions.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} className="text-muted-foreground">
-                  No active sessions.
+                  <Trans>No active sessions.</Trans>
                 </TableCell>
               </TableRow>
             )}
@@ -577,7 +581,7 @@ function SessionsCard({
               <TableRow key={s.id}>
                 <TableCell>
                   {s.device}
-                  {s.current && <Badge className="ml-2">current</Badge>}
+                  {s.current && <Badge className="ml-2"><Trans>current</Trans></Badge>}
                 </TableCell>
                 <TableCell className="font-mono text-xs text-muted-foreground">{s.ip}</TableCell>
                 <TableCell className="font-mono text-xs text-muted-foreground">{formatDateTime(s.createdAt)}</TableCell>
@@ -585,7 +589,7 @@ function SessionsCard({
                 <TableCell className="text-right">
                   {!s.current && (
                     <Button size="sm" variant="ghost" onClick={() => void revoke(s.token, s.id.slice(0, 6) + "…")}>
-                      Revoke
+                      <Trans>Revoke</Trans>
                     </Button>
                   )}
                 </TableCell>
@@ -620,6 +624,7 @@ const PROVIDER_LABELS: Record<string, string> = {
 };
 
 function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
+  const { t } = useLingui();
   const { formatRelative } = usePreferences();
   const [providers, setProviders] = useState<string[]>([]);
   const [accounts, setAccounts] = useState<LinkedAccount[]>([]);
@@ -705,7 +710,7 @@ function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
       }
       // Some flows complete in-place; fall through to reload list.
       await loadAccounts();
-      pushToast(`Linked ${PROVIDER_LABELS[provider] ?? provider}.`);
+      pushToast(t`Linked ${PROVIDER_LABELS[provider] ?? provider}.`);
     } catch (e) {
       pushToast(errMsg(e));
     } finally {
@@ -715,13 +720,13 @@ function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
 
   const unlink = async (account: LinkedAccount) => {
     if (accounts.length <= 1) {
-      pushToast("Can't unlink your only sign-in method.");
+      pushToast(t`Can't unlink your only sign-in method.`);
       return;
     }
     try {
       unwrap(await auth.unlinkAccount({ accountId: account.id, providerId: account.providerId }));
       setAccounts((arr) => arr.filter((a) => a.id !== account.id));
-      pushToast(`Unlinked ${PROVIDER_LABELS[account.providerId] ?? account.providerId}.`);
+      pushToast(t`Unlinked ${PROVIDER_LABELS[account.providerId] ?? account.providerId}.`);
     } catch (e) {
       pushToast(errMsg(e));
     }
@@ -738,7 +743,7 @@ function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
       }
       setNewPkName("");
       await loadPasskeys();
-      pushToast("Passkey added.");
+      pushToast(t`Passkey added.`);
     } catch (e) {
       pushToast(errMsg(e));
     } finally {
@@ -753,7 +758,7 @@ function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
         body: JSON.stringify({ id }),
       });
       setPasskeys((arr) => arr.filter((p) => p.id !== id));
-      pushToast("Passkey removed.");
+      pushToast(t`Passkey removed.`);
     } catch (e) {
       pushToast(errMsg(e));
     }
@@ -775,7 +780,7 @@ function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <GlobeIcon className="size-4" />
-            Social sign-in
+            <Trans>Social sign-in</Trans>
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
@@ -787,7 +792,7 @@ function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No social providers are enabled for this workspace.
+                <Trans>No social providers are enabled for this workspace.</Trans>
               </p>
             )
           )}
@@ -799,12 +804,12 @@ function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
                   <div>
                     <Label>{PROVIDER_LABELS[id] ?? id}</Label>
                     <p className="text-sm text-muted-foreground">
-                      {linked ? "Linked — you can sign in with this provider." : "Not linked."}
+                      {linked ? <Trans>Linked — you can sign in with this provider.</Trans> : <Trans>Not linked.</Trans>}
                     </p>
                   </div>
                   {linked ? (
                     <Button size="sm" variant="ghost" onClick={() => void unlink(linked)}>
-                      Unlink
+                      <Trans>Unlink</Trans>
                     </Button>
                   ) : (
                     <Button
@@ -813,7 +818,7 @@ function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
                       disabled={linking === id}
                       onClick={() => void link(id)}
                     >
-                      {linking === id ? "Redirecting…" : "Link"}
+                      {linking === id ? <Trans>Redirecting…</Trans> : <Trans>Link</Trans>}
                     </Button>
                   )}
                 </div>
@@ -827,37 +832,37 @@ function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <ShieldIcon className="size-4" />
-            Passkeys
+            <Trans>Passkeys</Trans>
             <span className="font-mono text-xs text-muted-foreground">{passkeys.length}</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <p className="text-sm text-muted-foreground">
-            Sign in with Touch ID, Face ID, a Windows Hello PIN, or a hardware security key.
+            <Trans>Sign in with Touch ID, Face ID, a Windows Hello PIN, or a hardware security key.</Trans>
           </p>
           <div className="flex items-center gap-2">
             <Input
               value={newPkName}
               onChange={(e) => setNewPkName(e.target.value)}
-              placeholder="Name this passkey (e.g. MacBook Touch ID)"
+              placeholder={t`Name this passkey (e.g. MacBook Touch ID)`}
               className="flex-1"
             />
             <Button size="sm" disabled={addingPk} onClick={addPasskey}>
-              {addingPk ? "Waiting for browser…" : "Add passkey"}
+              {addingPk ? <Trans>Waiting for browser…</Trans> : <Trans>Add passkey</Trans>}
             </Button>
           </div>
           {!loadingPk && passkeys.length === 0 && (
-            <p className="text-sm text-muted-foreground">You haven't registered any passkeys yet.</p>
+            <p className="text-sm text-muted-foreground"><Trans>You haven't registered any passkeys yet.</Trans></p>
           )}
           {passkeys.map((p, idx) => (
             <div key={p.id} className={idx > 0 ? "border-t pt-3" : undefined}>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <Label>{p.name || "Unnamed passkey"}</Label>
-                  <p className="text-sm text-muted-foreground">Added {formatRelative(p.createdAt)}</p>
+                  <Label>{p.name || <Trans>Unnamed passkey</Trans>}</Label>
+                  <p className="text-sm text-muted-foreground"><Trans>Added {formatRelative(p.createdAt)}</Trans></p>
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => void removePasskey(p.id)}>
-                  Remove
+                  <Trans>Remove</Trans>
                 </Button>
               </div>
             </div>
@@ -873,6 +878,7 @@ function ConnectedCard({ pushToast }: { pushToast: (m: string) => void }) {
 // --------------------------------------------------------------------------
 
 function PreferencesCard({ pushToast }: { pushToast: (m: string) => void }) {
+  const { t } = useLingui();
   const { prefs, loading, refresh } = usePreferences();
   // "" = inherit the workspace default; a code = a personal override.
   const [locale, setLocale] = useState("");
@@ -898,22 +904,22 @@ function PreferencesCard({ pushToast }: { pushToast: (m: string) => void }) {
     () => [
       {
         value: "",
-        label: `Workspace default — ${localeLabel(workspace.defaultLocale)}`,
+        label: t`Workspace default — ${localeLabel(workspace.defaultLocale)}`,
       },
       ...workspace.locales.map((code) => ({
         value: code,
         label: localeLabel(code),
       })),
     ],
-    [workspace.defaultLocale, workspace.locales],
+    [workspace.defaultLocale, workspace.locales, t],
   );
 
   const timezoneOpts = useMemo(
     () => [
-      { value: "", label: `Workspace default — ${workspace.timezone}` },
+      { value: "", label: t`Workspace default — ${workspace.timezone}` },
       ...timezoneOptions(),
     ],
-    [workspace.timezone],
+    [workspace.timezone, t],
   );
 
   // Live preview of the *pending* selection (not yet saved).
@@ -933,7 +939,7 @@ function PreferencesCard({ pushToast }: { pushToast: (m: string) => void }) {
       });
       await refresh();
       setDirty(false);
-      pushToast("Preferences saved.");
+      pushToast(t`Preferences saved.`);
     } catch (e) {
       pushToast(errMsg(e));
     } finally {
@@ -956,7 +962,7 @@ function PreferencesCard({ pushToast }: { pushToast: (m: string) => void }) {
     <Card className="max-w-3xl">
       <CardContent className="flex flex-col gap-6 pt-6">
         <div className="flex flex-col gap-2">
-          <Label>Language</Label>
+          <Label><Trans>Language</Trans></Label>
           <Select
             value={locale}
             onChange={(v) => {
@@ -966,13 +972,13 @@ function PreferencesCard({ pushToast }: { pushToast: (m: string) => void }) {
             options={languageOpts}
           />
           <p className="text-sm text-muted-foreground">
-            Sets the locale used to format dates and numbers across the admin.
-            Choose “Workspace default” to follow the workspace language.
+            <Trans>Sets the locale used to format dates and numbers across the admin.
+            Choose "Workspace default" to follow the workspace language.</Trans>
           </p>
         </div>
         <Separator />
         <div className="flex flex-col gap-2">
-          <Label>Time zone</Label>
+          <Label><Trans>Time zone</Trans></Label>
           <Select
             value={timezone}
             onChange={(v) => {
@@ -982,11 +988,11 @@ function PreferencesCard({ pushToast }: { pushToast: (m: string) => void }) {
             options={timezoneOpts}
           />
           <p className="text-sm text-muted-foreground">
-            Timestamps across the admin render in this zone.
+            <Trans>Timestamps across the admin render in this zone.</Trans>
           </p>
         </div>
         <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
-          <span className="text-muted-foreground">Preview: </span>
+          <span className="text-muted-foreground"><Trans>Preview: </Trans></span>
           <span className="font-mono">{preview}</span>
         </div>
         <div className="flex justify-end gap-2 pt-2">
@@ -1000,7 +1006,7 @@ function PreferencesCard({ pushToast }: { pushToast: (m: string) => void }) {
               setDirty(false);
             }}
           >
-            Discard
+            <Trans>Discard</Trans>
           </Button>
           {/* Fixed min width so the label swap (Save ⇄ Saving…) doesn't
               resize the button and shove the Discard button sideways. */}
@@ -1010,7 +1016,7 @@ function PreferencesCard({ pushToast }: { pushToast: (m: string) => void }) {
             disabled={!dirty || saving}
             onClick={save}
           >
-            {saving ? "Saving…" : "Save"}
+            {saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
           </Button>
         </div>
       </CardContent>

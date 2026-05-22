@@ -3,6 +3,7 @@
 // Both halves are real: the comment thread reads/writes /api/comments and
 // the share card mints/revokes public read-only links via /api/shared-links.
 import { useState, type KeyboardEvent } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { I } from "./icons";
 import { Button, relativeTime } from "./ui";
@@ -44,6 +45,7 @@ function ShareLinkCard({
   itemId: string;
   pushToast?: (m: string, type?: "success" | "error") => void;
 }) {
+  const { t } = useLingui();
   const qc = useQueryClient();
   const [freshUrl, setFreshUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -62,9 +64,9 @@ function ShareLinkCard({
     onSuccess: (res) => {
       setFreshUrl(`${window.location.origin}${res.data.url}`);
       invalidate();
-      pushToast?.("Share link created.");
+      pushToast?.(t`Share link created.`);
     },
-    onError: () => pushToast?.("Could not create share link.", "error"),
+    onError: () => pushToast?.(t`Could not create share link.`, "error"),
   });
 
   const revokeMut = useMutation({
@@ -72,19 +74,19 @@ function ShareLinkCard({
     onSuccess: () => {
       setFreshUrl(null);
       invalidate();
-      pushToast?.("Share link revoked.");
+      pushToast?.(t`Share link revoked.`);
     },
-    onError: () => pushToast?.("Could not revoke share link.", "error"),
+    onError: () => pushToast?.(t`Could not revoke share link.`, "error"),
   });
 
   const copy = (url: string) => {
     try {
       void navigator.clipboard.writeText(url);
       setCopied(true);
-      pushToast?.("Share link copied.");
+      pushToast?.(t`Share link copied.`);
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      pushToast?.("Could not copy link.", "error");
+      pushToast?.(t`Could not copy link.`, "error");
     }
   };
 
@@ -92,7 +94,7 @@ function ShareLinkCard({
     <div className={CARD_CLS}>
       <div className={CARD_SECTION_CLS}>
         <I.Share size={13} />
-        <span className="text-[12.5px] font-medium">share this record</span>
+        <span className="text-[12.5px] font-medium"><Trans>share this record</Trans></span>
       </div>
       <div className="flex flex-col gap-2.5 p-3.5">
         {linksQuery.isLoading ? (
@@ -100,7 +102,7 @@ function ShareLinkCard({
         ) : freshUrl ? (
           // Just-minted link — the only moment we can show the full URL.
           <div className={FIELD_CLS}>
-            <label className={FIELD_LABEL_CLS}>Public read-only link</label>
+            <label className={FIELD_LABEL_CLS}><Trans>Public read-only link</Trans></label>
             <div className="flex gap-1.5">
               <Input
                 className="flex-1 font-mono text-[11.5px]"
@@ -112,22 +114,22 @@ function ShareLinkCard({
                 icon={copied ? I.Check : I.Copy}
                 onClick={() => copy(freshUrl)}
               >
-                {copied ? "Copied" : "Copy"}
+                {copied ? <Trans>Copied</Trans> : <Trans>Copy</Trans>}
               </Button>
             </div>
             <span className={FIELD_HINT_CLS}>
-              Anyone with this link can view the record — copy it now, the
-              token is shown only once.
+              <Trans>Anyone with this link can view the record — copy it now, the
+              token is shown only once.</Trans>
             </span>
           </div>
         ) : activeLink ? (
           // A link already exists but its token is no longer recoverable.
           <div className={FIELD_CLS}>
-            <label className={FIELD_LABEL_CLS}>Public read-only link</label>
+            <label className={FIELD_LABEL_CLS}><Trans>Public read-only link</Trans></label>
             <div className="text-xs text-muted-foreground">
-              An active share link exists for this record. For security the
+              <Trans>An active share link exists for this record. For security the
               link URL is shown only once, at creation. Revoke it and create a
-              new one if you need a fresh copyable URL.
+              new one if you need a fresh copyable URL.</Trans>
             </div>
             <div className="mt-1 flex gap-1.5">
               <Button
@@ -136,7 +138,7 @@ function ShareLinkCard({
                 onClick={() => revokeMut.mutate(activeLink.id)}
                 disabled={revokeMut.isPending}
               >
-                {revokeMut.isPending ? "Revoking…" : "Revoke"}
+                {revokeMut.isPending ? <Trans>Revoking…</Trans> : <Trans>Revoke</Trans>}
               </Button>
               <Button
                 variant="outline"
@@ -144,17 +146,17 @@ function ShareLinkCard({
                 onClick={() => createMut.mutate()}
                 disabled={createMut.isPending || revokeMut.isPending}
               >
-                Create new link
+                <Trans>Create new link</Trans>
               </Button>
             </div>
           </div>
         ) : (
           // No link yet — offer to mint one.
           <div className={FIELD_CLS}>
-            <label className={FIELD_LABEL_CLS}>Public read-only link</label>
+            <label className={FIELD_LABEL_CLS}><Trans>Public read-only link</Trans></label>
             <div className="mb-0.5 text-xs text-muted-foreground">
-              Mint a public link that shows this record read-only — no sign-in
-              required to view it.
+              <Trans>Mint a public link that shows this record read-only — no sign-in
+              required to view it.</Trans>
             </div>
             <Button
               variant="primary"
@@ -162,16 +164,16 @@ function ShareLinkCard({
               onClick={() => createMut.mutate()}
               disabled={createMut.isPending}
             >
-              {createMut.isPending ? "Creating…" : "Create share link"}
+              {createMut.isPending ? <Trans>Creating…</Trans> : <Trans>Create share link</Trans>}
             </Button>
           </div>
         )}
         <div className="flex flex-wrap gap-1.5">
           <span className={CHIP_CLS}>
-            <I.Eye size={11} /> read-only
+            <I.Eye size={11} /> <Trans>read-only</Trans>
           </span>
           <span className={CHIP_CLS}>
-            <I.Trash size={11} /> revocable anytime
+            <I.Trash size={11} /> <Trans>revocable anytime</Trans>
           </span>
         </div>
       </div>
@@ -188,6 +190,7 @@ export function ItemCommentsPanel({
   itemId: string;
   pushToast?: (m: string, type?: "success" | "error") => void;
 }) {
+  const { t } = useLingui();
   const qc = useQueryClient();
   const [draft, setDraft] = useState("");
 
@@ -213,18 +216,18 @@ export function ItemCommentsPanel({
     onSuccess: () => {
       setDraft("");
       invalidate();
-      pushToast?.("Comment posted.");
+      pushToast?.(t`Comment posted.`);
     },
-    onError: () => pushToast?.("Could not post comment.", "error"),
+    onError: () => pushToast?.(t`Could not post comment.`, "error"),
   });
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => commentsApi.remove(id),
     onSuccess: () => {
       invalidate();
-      pushToast?.("Comment deleted.");
+      pushToast?.(t`Comment deleted.`);
     },
-    onError: () => pushToast?.("Could not delete comment.", "error"),
+    onError: () => pushToast?.(t`Could not delete comment.`, "error"),
   });
 
   const send = () => {
@@ -255,7 +258,7 @@ export function ItemCommentsPanel({
       <div className={CARD_CLS}>
         <div className={CARD_SECTION_CLS}>
           <I.MessageSquare size={13} />
-          <span className="text-[12.5px] font-medium">comments</span>
+          <span className="text-[12.5px] font-medium"><Trans>comments</Trans></span>
           <span className="font-mono text-[11.5px] text-muted-foreground">
             {comments.length}
           </span>
@@ -268,7 +271,7 @@ export function ItemCommentsPanel({
             </>
           ) : ordered.length === 0 ? (
             <div className="py-2 text-[12.5px] text-muted-foreground">
-              No comments yet — start the thread below.
+              <Trans>No comments yet — start the thread below.</Trans>
             </div>
           ) : (
             ordered.map((c) => {
@@ -304,7 +307,7 @@ export function ItemCommentsPanel({
         <div className="flex items-start gap-1.5 border-t border-border p-3">
           <div className={`mt-1 ${AVATAR_XS_CLS}`}>{myAuthor.initials}</div>
           <Textarea
-            placeholder="Write a comment · ⌘+Enter to send"
+            placeholder={t`Write a comment · ⌘+Enter to send`}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={onDraftKey}
@@ -318,7 +321,7 @@ export function ItemCommentsPanel({
             onClick={send}
             disabled={!draft.trim() || createMut.isPending}
           >
-            {createMut.isPending ? "Sending…" : "Send"}
+            {createMut.isPending ? <Trans>Sending…</Trans> : <Trans>Send</Trans>}
           </Button>
         </div>
       </div>

@@ -36,6 +36,7 @@ import * as sqlite from "@workeros/db/sqlite";
 import type { PgDb } from "@workeros/db/pg";
 import type { SqliteDb } from "@workeros/db/sqlite";
 import { assignAppUserRoleByName, ensureSystemRoles } from "./seed";
+import { invalidateUserRoles } from "./permissions-cache";
 import { SYSTEM_ROLES } from "@workeros/core";
 
 type DbCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite" };
@@ -364,16 +365,23 @@ export const provisionAppUser = async (
   }
 
   // 7. Reconcile group → role assignments.
+  let rolesChanged = false;
   if (groups && groupsToRoles) {
     const prior = new Set(priorRoles ?? []);
     const now = new Set(newRoles);
     // Remove roles previously assigned via SSO but no longer in the group set.
     for (const rid of prior) {
-      if (!now.has(rid)) await removeAppUserRole(ctx, appUserId, rid);
+      if (!now.has(rid)) {
+        await removeAppUserRole(ctx, appUserId, rid);
+        rolesChanged = true;
+      }
     }
     // Add roles that just appeared.
     for (const rid of now) {
-      if (!prior.has(rid)) await upsertAppUserRole(ctx, appUserId, rid);
+      if (!prior.has(rid)) {
+        await upsertAppUserRole(ctx, appUserId, rid);
+        rolesChanged = true;
+      }
     }
     if (externalIdentityId) {
       await touchExternalIdentity(ctx, externalIdentityId, {
@@ -382,6 +390,12 @@ export const provisionAppUser = async (
         authnContext,
       });
     }
+  }
+
+  // New users always had the `authenticated` role attached at step 5; existing
+  // users only need an invalidate if SSO actually flipped their bindings.
+  if (isNew || rolesChanged) {
+    invalidateUserRoles(tenantId, appUserId);
   }
 
   return { appUserId, isNew, rolesAssigned: newRoles };

@@ -26,6 +26,11 @@ import {
   UserUpdateInput,
 } from "../services/roles/schemas";
 import { tableFor } from "../services/roles/tables";
+import {
+  invalidateTenantPermissions,
+  invalidateTenantRoles,
+  invalidateUserRoles,
+} from "../services/permissions-cache";
 
 export const rolesRoutes = new OpenAPIHono<AppBindings>()
   .openapi(
@@ -147,6 +152,11 @@ export const rolesRoutes = new OpenAPIHono<AppBindings>()
           updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
         })
         .where(and(eq(t.roles.id, id), eq(t.roles.tenantId, tenantId)));
+      // Admin flag could've flipped → any cached role row for this tenant is
+      // suspect; permission rows are still tied to role IDs but flushing both
+      // is cheap and removes the foot-gun.
+      invalidateTenantRoles(tenantId);
+      invalidateTenantPermissions(tenantId);
       return c.json({ ok: true });
     },
   )
@@ -185,6 +195,10 @@ export const rolesRoutes = new OpenAPIHono<AppBindings>()
       await (ctx.db as any)
         .delete(t.roles)
         .where(and(eq(t.roles.id, id), eq(t.roles.tenantId, tenantId)));
+      // Users in this tenant may have lost a role; permissions keyed on the
+      // dropped role ID are now ghosts. Flush both slices.
+      invalidateTenantRoles(tenantId);
+      invalidateTenantPermissions(tenantId);
       return c.json({ ok: true });
     },
   )
@@ -277,6 +291,7 @@ export const rolesRoutes = new OpenAPIHono<AppBindings>()
         fields: body.fields ?? null,
         condition: body.condition ?? null,
       });
+      invalidateTenantPermissions(tenantId);
       return c.json({ data: { id: permId, ...body } }, 201);
     },
   );
@@ -317,6 +332,7 @@ export const permissionsRoutes = new OpenAPIHono<AppBindings>().openapi(
       throw new AppError("NOT_FOUND", "Permission not found in this workspace");
     }
     await (ctx.db as any).delete(t.permissions).where(eq(t.permissions.id, id));
+    invalidateTenantPermissions(tenantId);
     return c.json({ ok: true });
   },
 );
@@ -476,6 +492,7 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
         .insert(t.userRoles)
         .values({ userId, roleId: body.roleId })
         .onConflictDoNothing();
+      invalidateUserRoles(tenantId, userId);
       return c.json({ ok: true });
     },
   )
@@ -510,6 +527,7 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
       await (ctx.db as any)
         .delete(t.userRoles)
         .where(and(eq(t.userRoles.userId, id), eq(t.userRoles.roleId, roleId)));
+      invalidateUserRoles(tenantId, id);
       return c.json({ ok: true });
     },
   )
@@ -866,6 +884,7 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
             eq(t.tenantMembers.userId, id),
           ),
         );
+      invalidateUserRoles(tenantId, id);
       return c.json({ ok: true });
     },
   );

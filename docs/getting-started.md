@@ -1,3 +1,8 @@
+---
+title: Getting started
+description: Clone, install, run — five minutes from zero to your first collection.
+---
+
 # Getting started
 
 Five minutes from clone to first item.

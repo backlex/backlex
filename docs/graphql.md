@@ -1,3 +1,8 @@
+---
+title: GraphQL
+description: graphql-yoga endpoint with a schema generated on the fly from your collection metadata.
+---
+
 # GraphQL
 
 `/api/graphql` exposes a `graphql-yoga` endpoint with a schema generated

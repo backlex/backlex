@@ -1,3 +1,8 @@
+---
+title: Adopting existing tables
+description: Point a collection at a table you already own — no DDL, no migrations.
+---
+
 # Adopting Existing Tables
 
 workeros normally creates a fresh physical table (`c_<slug>`) for every

@@ -47,6 +47,13 @@ export interface Ctx {
   env: Env;
   dialect: "pg" | "sqlite";
   db: PgDb | SqliteDb;
+  /** Read-only client for lag-tolerant queries. Points at the configured
+   *  Postgres read replica when `HYPERDRIVE_REPLICA` / `DATABASE_REPLICA_URL`
+   *  is set; otherwise falls back to {@link Ctx.db}. SQLite/D1 always alias
+   *  the primary. Do NOT use for reads-after-write — replication lag means
+   *  the row may not be visible yet. Default everywhere else is `ctx.db`;
+   *  routes opt in by saying `ctx.dbRead` explicitly. */
+  dbRead: PgDb | SqliteDb;
   auth: Auth;
   /** Deployment-level email adapter (env-derived). Most callers should prefer
    *  {@link Ctx.emailFor} so a workspace's own `email_config` is honoured. */
@@ -146,6 +153,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   }
 
   let db: PgDb | SqliteDb;
+  let pgDriver: PgDriver | undefined;
   if (override) {
     db = override.db;
   } else if (env.D1) {
@@ -153,22 +161,35 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   } else if (pgUrl) {
     // Default driver: postgres-js. Force neon-http on Vercel Edge (no
     // node:net); allow explicit override on every runtime.
-    const driver: PgDriver =
+    pgDriver =
       env.DATABASE_DRIVER ??
       (isStatelessEdge() ? "neon-http" : "postgres-js");
-    if (driver === "postgres-js" && isStatelessEdge()) {
+    if (pgDriver === "postgres-js" && isStatelessEdge()) {
       throw new AppError(
         "UNAVAILABLE",
         "postgres-js does not work on Vercel Edge — set DATABASE_DRIVER=neon-http",
       );
     }
-    db = createPgClient(pgUrl, driver);
+    db = createPgClient(pgUrl, pgDriver);
   } else {
     // SQLite + no D1 → Bun self-host. Dynamically import so the top-level
     // sqlite module stays edge-safe (no `bun:sqlite` at module init).
     const { createBunSqliteClient } = await import("@workeros/db/sqlite/bun");
     db = createBunSqliteClient(env.SQLITE_PATH);
   }
+
+  // Read replica (pg only). HYPERDRIVE_REPLICA (Workers) wins over the raw
+  // URL — same precedence as the primary. Tests share the override; SQLite/D1
+  // alias the primary because there's no replica equivalent. The driver
+  // tracks the primary so behaviour stays consistent across runtimes.
+  const pgReplicaUrl =
+    dialect === "pg"
+      ? env.HYPERDRIVE_REPLICA?.connectionString ?? env.DATABASE_REPLICA_URL
+      : undefined;
+  const dbRead: PgDb | SqliteDb =
+    pgReplicaUrl && pgDriver && !override
+      ? createPgClient(pgReplicaUrl, pgDriver)
+      : db;
 
   const dbCtx = { db, dialect };
 
@@ -357,6 +378,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     env,
     dialect,
     db,
+    dbRead,
     auth,
     email,
     emailFor,

@@ -3,8 +3,6 @@ title: Admin SPA translation (Lingui)
 description: How the admin chrome — nav, buttons, dialogs, toasts — is translated with Lingui 6.
 ---
 
-# Admin SPA translation (Lingui)
-
 The admin SPA's own UI strings — the "admin chrome": nav, buttons, page
 titles, dialogs, toasts, form labels — are translatable via
 [Lingui](https://lingui.dev) 6. This is **separate** from the workspace

@@ -3,8 +3,6 @@ title: Permissions DSL
 description: JSON permission language shared by REST, GraphQL, realtime filters, and DB persistence.
 ---
 
-# Permissions DSL
-
 workeros has its own JSON permission language. Same DSL is used for:
 
 - Role permission `condition` field (DB persistence)

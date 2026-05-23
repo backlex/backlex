@@ -1,0 +1,65 @@
+/*
+ * workeros docs theme — pulls from packages/ui/src/styles/globals.css.
+ * Accent is the lime/green primary; gray scale derives from the neutral
+ * 285-hue palette (matches the admin SPA).
+ */
+
+:root {
+  --sl-font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --sl-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
+    Monaco, Consolas, monospace;
+}
+
+/* Light theme */
+:root[data-theme="light"] {
+  /* primary: oklch(0.841 0.238 128.85) → lime */
+  --sl-color-accent-low: oklch(0.96 0.06 128.85);
+  --sl-color-accent: oklch(0.768 0.233 130.85);
+  --sl-color-accent-high: oklch(0.453 0.124 128.85);
+
+  --sl-color-white: oklch(0.141 0.005 285.823);
+  --sl-color-gray-1: oklch(0.21 0.006 285.885);
+  --sl-color-gray-2: oklch(0.32 0.008 285.938);
+  --sl-color-gray-3: oklch(0.45 0.012 285.938);
+  --sl-color-gray-4: oklch(0.552 0.016 285.938);
+  --sl-color-gray-5: oklch(0.705 0.015 286.067);
+  --sl-color-gray-6: oklch(0.92 0.004 286.32);
+  --sl-color-gray-7: oklch(0.967 0.001 286.375);
+  --sl-color-black: oklch(1 0 0);
+
+  --sl-color-bg: oklch(1 0 0);
+  --sl-color-bg-nav: oklch(0.985 0 0);
+  --sl-color-bg-sidebar: oklch(0.985 0 0);
+  --sl-color-text: oklch(0.141 0.005 285.823);
+  --sl-color-text-accent: oklch(0.453 0.124 128.85);
+}
+
+/* Dark theme */
+:root[data-theme="dark"] {
+  /* primary: oklch(0.768 0.233 130.85) → brighter lime for dark backgrounds */
+  --sl-color-accent-low: oklch(0.274 0.072 130.85);
+  --sl-color-accent: oklch(0.768 0.233 130.85);
+  --sl-color-accent-high: oklch(0.897 0.196 130.85);
+
+  --sl-color-white: oklch(0.985 0 0);
+  --sl-color-gray-1: oklch(0.967 0.001 286.375);
+  --sl-color-gray-2: oklch(0.92 0.004 286.32);
+  --sl-color-gray-3: oklch(0.705 0.015 286.067);
+  --sl-color-gray-4: oklch(0.552 0.016 285.938);
+  --sl-color-gray-5: oklch(0.45 0.012 285.938);
+  --sl-color-gray-6: oklch(0.274 0.006 286.033);
+  --sl-color-gray-7: oklch(0.21 0.006 285.885);
+  --sl-color-black: oklch(0.141 0.005 285.823);
+
+  --sl-color-bg: oklch(0.141 0.005 285.823);
+  --sl-color-bg-nav: oklch(0.21 0.006 285.885);
+  --sl-color-bg-sidebar: oklch(0.21 0.006 285.885);
+  --sl-color-text: oklch(0.985 0 0);
+  --sl-color-text-accent: oklch(0.897 0.196 130.85);
+}
+
+/* Small visual tweaks to harmonize with the admin SPA. */
+.site-title {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}

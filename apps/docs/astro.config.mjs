@@ -23,7 +23,7 @@ export default defineConfig({
         {
           label: "Start",
           items: [
-            { slug: "getting-started" },
+            { label: "Getting started", link: "/" },
             { slug: "architecture" },
           ],
         },
@@ -54,7 +54,7 @@ export default defineConfig({
           label: "Developer",
           items: [
             { slug: "graphql" },
-            { slug: "functions" },
+            { slug: "sandbox" },
             { slug: "sdk-and-cli" },
             { slug: "admin-i18n" },
             { slug: "locale-timezone" },

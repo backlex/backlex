@@ -3,8 +3,6 @@ title: Querying the items API
 description: One Directus-shaped URL for filter, search, sort, projection, pagination, and counts.
 ---
 
-# Querying the items API
-
 `GET /api/items/<slug>` is workeros' Directus-shaped REST query endpoint:
 one URL covers filter, full-text search, sort, projection, pagination,
 count metadata, and locale projection. Parsing lives in

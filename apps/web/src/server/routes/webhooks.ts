@@ -6,7 +6,7 @@ import * as pg from "@workeros/db/pg";
 import * as sqlite from "@workeros/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
-import { listDeliveries, retryDelivery } from "../services/webhooks";
+import { fireDelivery, listDeliveries, retryDelivery } from "../services/webhooks";
 import { logActivity } from "../services/activity";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 
@@ -351,7 +351,6 @@ export const webhooksRoutes = new OpenAPIHono<AppBindings>()
         }[];
       const h = hook[0];
       if (!h) throw new AppError("NOT_FOUND", "Webhook not found");
-      const { fireDelivery } = await import("../services/webhooks");
       const payload = {
         type: "webhook.test",
         data: { hookId: h.id, ts: new Date().toISOString() },

@@ -24,7 +24,7 @@ import {
   type FieldType,
 } from "@workeros/db";
 import type { AuthSubject, Condition } from "@workeros/core";
-import { resolvePermission } from "./permissions";
+import { resolvePermission, type PermResolveCache } from "./permissions";
 import { publishEvent } from "./events";
 import type { Ctx } from "../context";
 
@@ -38,6 +38,11 @@ interface CollectionRow {
 interface GqlCtx {
   ctx: Ctx;
   auth: AuthSubject;
+  /** Per-request L1 permission cache, threaded through every resolver so a
+   *  single GraphQL query doesn't re-resolve the same (collection, action)
+   *  pair across `list`/`get`/sub-selections. Populated by the GraphQL
+   *  route via `getRequestPermCache(c)`. */
+  permCache?: PermResolveCache;
 }
 
 const JSONScalar = new GraphQLScalarType({
@@ -306,8 +311,8 @@ const listResolver = async (
   collection: CollectionRow,
   args: { filter?: Condition; sort?: string; limit?: number; offset?: number },
 ) => {
-  const { ctx, auth } = gqlCtx;
-  const perm = await resolvePermission(ctx, auth, collection.slug, "read");
+  const { ctx, auth, permCache } = gqlCtx;
+  const perm = await resolvePermission(ctx, auth, collection.slug, "read", permCache);
   if (!perm.allowed) denyOrThrow(auth, collection.slug);
 
   const table = collection.physicalTable;
@@ -334,8 +339,8 @@ const getResolver = async (
   collection: CollectionRow,
   id: string,
 ) => {
-  const { ctx, auth } = gqlCtx;
-  const perm = await resolvePermission(ctx, auth, collection.slug, "read");
+  const { ctx, auth, permCache } = gqlCtx;
+  const perm = await resolvePermission(ctx, auth, collection.slug, "read", permCache);
   if (!perm.allowed) denyOrThrow(auth, collection.slug);
 
   const table = collection.physicalTable;
@@ -359,8 +364,8 @@ const createResolver = async (
   collection: CollectionRow,
   args: { data: Record<string, unknown> },
 ) => {
-  const { ctx, auth } = gqlCtx;
-  const perm = await resolvePermission(ctx, auth, collection.slug, "create");
+  const { ctx, auth, permCache } = gqlCtx;
+  const perm = await resolvePermission(ctx, auth, collection.slug, "create", permCache);
   if (!perm.allowed) {
     throw new GraphQLError(
       auth.userId ? `No create permission for ${collection.slug}` : "Sign in required",
@@ -416,8 +421,8 @@ const updateResolver = async (
   collection: CollectionRow,
   args: { id: string; data: Record<string, unknown> },
 ) => {
-  const { ctx, auth } = gqlCtx;
-  const perm = await resolvePermission(ctx, auth, collection.slug, "update");
+  const { ctx, auth, permCache } = gqlCtx;
+  const perm = await resolvePermission(ctx, auth, collection.slug, "update", permCache);
   if (!perm.allowed) {
     throw new GraphQLError(
       auth.userId ? `No update permission for ${collection.slug}` : "Sign in required",
@@ -473,8 +478,8 @@ const deleteResolver = async (
   collection: CollectionRow,
   args: { id: string },
 ) => {
-  const { ctx, auth } = gqlCtx;
-  const perm = await resolvePermission(ctx, auth, collection.slug, "delete");
+  const { ctx, auth, permCache } = gqlCtx;
+  const perm = await resolvePermission(ctx, auth, collection.slug, "delete", permCache);
   if (!perm.allowed) {
     throw new GraphQLError(
       auth.userId ? `No delete permission for ${collection.slug}` : "Sign in required",

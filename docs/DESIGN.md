@@ -1,3 +1,8 @@
+---
+title: Design system
+description: Source of truth for how the admin looks and behaves — tokens, components, and patterns.
+---
+
 # workeros design system
 
 This is the source of truth for how the admin looks and behaves. It is

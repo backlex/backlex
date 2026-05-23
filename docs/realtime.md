@@ -1,3 +1,8 @@
+---
+title: Realtime
+description: Permission-aware change feed over SSE, with a Durable Object bridge on Workers.
+---
+
 # Realtime
 
 Permission-aware change feed over Server-Sent Events. **The client

@@ -17,6 +17,10 @@ import { makeHarnessPg, type PgTestHarness } from "./setup-pg";
 let setupError: Error | undefined;
 let harness: PgTestHarness | undefined;
 
+// pglite unpacks a WASM postgres + pgvector tarball at boot; on a cold CI
+// runner that can easily exceed bun-test's default 5s beforeAll timeout, so
+// bump generously. When pgvector can't load we still want the catch path —
+// not a hook-timeout panic that fails the whole suite.
 beforeAll(async () => {
   try {
     harness = await makeHarnessPg();
@@ -24,7 +28,7 @@ beforeAll(async () => {
     setupError = err instanceof Error ? err : new Error(String(err));
     console.warn("[pg-smoke] harness setup failed — skipping pg path tests:", setupError.message);
   }
-});
+}, 60_000);
 
 afterAll(async () => {
   await harness?.cleanup();

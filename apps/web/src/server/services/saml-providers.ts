@@ -15,6 +15,7 @@ import * as sqlite from "@workeros/db/sqlite";
 import type { PgDb } from "@workeros/db/pg";
 import type { SqliteDb } from "@workeros/db/sqlite";
 import type { SamlAdapter, SamlProviderConfig } from "@workeros/core/adapters";
+import { AppError } from "@workeros/core";
 import { decryptSecret, encryptSecret } from "../lib/crypto";
 import { buildSamlAdapter } from "../lib/auth-select";
 import type { Env } from "../env";
@@ -295,5 +296,16 @@ export const resolveSamlProvider = async (
     nameIdFormat: row.nameIdFormat,
     attributeMap: row.attributeMap ?? {},
   };
-  return { adapter: buildSamlAdapter(), cfg, row };
+  const adapter = buildSamlAdapter();
+  if (!adapter) {
+    // Vercel Edge / Netlify Edge can't load samlify (its xml-crypto
+    // dependency relies on a `node:crypto` surface neither runtime exposes).
+    // Surface a clear 503 instead of letting the route blow up on
+    // `resolved.adapter.buildAuthnRequest`.
+    throw new AppError(
+      "UNAVAILABLE",
+      "SAML is not available on this runtime — deploy to Bun or Cloudflare Workers",
+    );
+  }
+  return { adapter, cfg, row };
 };

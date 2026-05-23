@@ -3,8 +3,6 @@ title: Architecture
 description: The big picture of workeros in one page — repo shape, runtimes, and adapter layers.
 ---
 
-# Architecture
-
 The big picture in one page.
 
 ## Repo shape

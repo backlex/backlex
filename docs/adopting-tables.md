@@ -76,13 +76,17 @@ Three optional toggles live on this step: **created_at**,
 if the column already exists — workeros never adds them. None of these
 toggles run DDL; they only set flags on the collection row.
 
-### 3. Metadata + apply
+### 3. Metadata + create
 
-`POST /api/admin/adopt/apply` with `{ table, slug, singular, plural,
-fields, pkColumn, addCreatedAt, addUpdatedAt, ownerScoped }` is atomic:
-writes the `collections` row (with `adopted = true`, `physical_table`,
-`pk_column`) and seeds default permission rows. No DDL —
-`applyCollection` is a no-op when `adopted = true`.
+`POST /api/collections` with `{ adopted: true, physicalTable, slug,
+singular, plural, fields, pkColumn, hasCreatedAt, hasUpdatedAt,
+createdAtColumn, updatedAtColumn, ownerIdColumn, ownerScoped }` is
+atomic: writes the `collections` row (with `adopted = true`,
+`physical_table = <your table>`, `pk_column`) and seeds default
+permission rows. No DDL — `applyCollection` short-circuits when
+`adopted = true`. The same endpoint handles managed collections when
+`adopted` is omitted or `false`; **there is no separate
+`/adopt/apply`** anymore.
 
 ## Lifecycle
 
@@ -183,8 +187,8 @@ data only ever lived in workeros, so `DELETE` means what it says.
 
 ```bash
 # Adopt + later archive + restore
-curl -sX POST localhost:5173/api/admin/adopt/apply \
-  -d '{"table":"legacy_orders","slug":"legacy_orders","pkColumn":"id","fields":[...]}'
+curl -sX POST localhost:5173/api/collections \
+  -d '{"adopted":true,"physicalTable":"legacy_orders","slug":"legacy_orders","pkColumn":"id","fields":[...]}'
 
 # Some time later — admin archives
 curl -sX DELETE localhost:5173/api/collections/legacy_orders
@@ -281,11 +285,12 @@ curl -sX POST localhost:5173/api/admin/adopt/inspect \
   -d '{"table": "legacy_orders"}' \
   --cookie better-auth.session_token=...
 
-# Apply — explicit alias mapping
-curl -sX POST localhost:5173/api/admin/adopt/apply \
+# Create — explicit alias mapping
+curl -sX POST localhost:5173/api/collections \
   -H 'Content-Type: application/json' \
   -d '{
-    "table": "legacy_orders",
+    "adopted": true,
+    "physicalTable": "legacy_orders",
     "slug": "orders",
     "pkColumn": "id",
     "ownerScoped": true,
@@ -300,7 +305,7 @@ curl -s localhost:5173/api/items/orders?sort=-created_at
 
 ### Type validation
 
-`apply` checks the aliased column's FieldType before persisting:
+The create endpoint checks the aliased column's FieldType before persisting:
 
 - `createdAtColumn` / `updatedAtColumn` — must be `timestamp` or
   `integer` (Unix-ms epochs are fine on SQLite).
@@ -311,8 +316,8 @@ Mismatches return `VALIDATION` with the offending field name.
 ### Limits
 
 - An aliased column **cannot also appear in the regular `fields`
-  list** — apply rejects the duplicate and the wizard surfaces a
-  warning. Pick one role for the column.
+  list** — the create endpoint rejects the duplicate and the wizard
+  surfaces a warning. Pick one role for the column.
 - If your table already has a column literally named `created_at` /
   `updated_at` / `owner_id`, leave the alias `null` and use
   `addCreatedAt: true` (etc.) instead — there's nothing to alias.
@@ -404,11 +409,12 @@ curl -sX POST localhost:5173/api/admin/adopt/inspect \
 # Response includes:
 # "foreignKeys": [{"column": "customer_id", "referencesTable": "customers", ...}]
 
-# Apply — customer_id becomes a relation field
-curl -sX POST localhost:5173/api/admin/adopt/apply \
+# Create — customer_id becomes a relation field
+curl -sX POST localhost:5173/api/collections \
   -H 'Content-Type: application/json' \
   -d '{
-    "table": "orders",
+    "adopted": true,
+    "physicalTable": "orders",
     "slug": "orders",
     "pkColumn": "id",
     "fields": [
@@ -425,11 +431,9 @@ curl -sX POST localhost:5173/api/items/orders \
 
 ## What we don't do (and why)
 
-- **DDL on adopted tables.** `applyCollection` is a no-op when
+- **DDL on adopted tables.** `applyCollection` short-circuits when
   `adopted = true`; `dropField` rejects the call. The whole point is
   to leave your schema alone.
-- **Foreign-key auto-detection.** Planned. Relations between adopted
-  collections are mapped by hand for now.
 - **Data migration / row backfill.** Adoption never copies rows.
 - **Renaming columns / changing types.** Out of scope — do it in your
   migration layer.
@@ -448,12 +452,13 @@ CREATE TABLE products (
 );
 ```
 
-`/adopt/inspect` suggests `text` / `number` / `integer` / `timestamp`.
-`/adopt/apply` with `pkColumn: "id"`, `addCreatedAt: true`,
+`POST /api/admin/adopt/inspect` suggests `text` / `number` /
+`integer` / `timestamp`. `POST /api/collections` with `adopted: true`,
+`physicalTable: "products"`, `pkColumn: "id"`, `hasCreatedAt: true`,
 `ownerScoped: false` writes the collection row, and
 `GET /api/items/products?limit=10` reads straight from the table. The
 wizard at **Collections → Import from database** drives the same three
-steps; both paths land on the same `apply` endpoint.
+steps; both paths land on the same `POST /api/collections` endpoint.
 
 ## Troubleshooting
 

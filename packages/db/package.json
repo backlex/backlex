@@ -10,7 +10,8 @@
     "./pg": "./src/pg/index.ts",
     "./pg/schema": "./src/pg/schema.ts",
     "./sqlite": "./src/sqlite/index.ts",
-    "./sqlite/schema": "./src/sqlite/schema.ts"
+    "./sqlite/schema": "./src/sqlite/schema.ts",
+    "./sqlite/bun": "./src/sqlite/bun.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -23,6 +24,7 @@
     "studio:pg": "drizzle-kit studio --config=drizzle.pg.config.ts"
   },
   "dependencies": {
+    "@neondatabase/serverless": "1.1.0",
     "@workeros/core": "workspace:*",
     "drizzle-orm": "1.0.0-beta.22",
     "postgres": "^3.4.5"

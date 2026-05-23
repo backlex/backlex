@@ -14,8 +14,11 @@
  *   - SAML / LDAP / Realtime are unavailable; `buildContext` and the route
  *     gates return 503 for those features on this runtime.
  *   - Cron triggers configured via `vercel.json::crons` hit
- *     `/api/_cron/tick`. The route requires `x-cron-secret: $CRON_SECRET`
- *     to keep the public internet from triggering jobs.
+ *     `/api/_cron/tick`. The route accepts EITHER `x-cron-secret:
+ *     $CRON_SECRET` (manual callers) OR `Authorization: Bearer $CRON_SECRET`
+ *     (what Vercel's cron sends automatically when CRON_SECRET is set as a
+ *     project env var). Without a match the route 401s so the public
+ *     internet can't trigger jobs.
  */
 import { handle } from "hono/vercel";
 import { timingSafeEqual } from "../lib/timing";
@@ -61,8 +64,14 @@ const app = createApp(buildEnv());
 // internet caller could trigger jobs at arbitrary rates.
 app.get("/api/_cron/tick", async (c) => {
   const env = buildEnv();
-  const provided = c.req.header("x-cron-secret") ?? "";
-  if (!env.CRON_SECRET || !timingSafeEqual(provided, env.CRON_SECRET)) {
+  const headerSecret = c.req.header("x-cron-secret") ?? "";
+  const bearer = c.req.header("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
+  const provided = headerSecret || bearer;
+  if (
+    !env.CRON_SECRET ||
+    !provided ||
+    !timingSafeEqual(provided, env.CRON_SECRET)
+  ) {
     return c.json({ error: "unauthorized" }, 401);
   }
   await cronTick(env);

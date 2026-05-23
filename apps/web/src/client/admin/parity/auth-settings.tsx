@@ -58,6 +58,8 @@ const AUTH_PROVIDER_NAMES: Record<string, string> = {
 };
 const AUTH_OAUTH_IDS = new Set(["github", "google", "apple", "microsoft", "discord"]);
 const SESSION_LIFETIMES = ["1h", "24h", "7d", "30d", "90d"];
+const appUrlPlaceholder = "{app-url}";
+const workspacePlaceholder = "{workspace}";
 const POLICY_ROWS: { key: string; label: string; desc: string; fallback: boolean }[] = [
   { key: "requireEmailVerification", label: "Require email verification", desc: "Users must confirm their email before sign-in.", fallback: true },
   { key: "mfaTotp", label: "Multi-factor (TOTP)", desc: "Users can enroll an authenticator app.", fallback: true },
@@ -699,7 +701,7 @@ function ProviderConfigDialog({ provider, kind, onClose, onSave }: {
               <Trans>The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the{" "}
               <span className="font-mono">OAUTH_{provider.id.toUpperCase()}_CLIENT_ID</span> /{" "}
               <span className="font-mono">_CLIENT_SECRET</span> environment variables. Register{" "}
-              <span className="font-mono">{"{app-url}"}/api/t/{"{workspace}"}/auth/callback/{provider.id}</span> as the redirect URI with the provider.</Trans>
+              <span className="font-mono">{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{provider.id}</span> as the redirect URI with the provider.</Trans>
             </div>
           )}
           {kind === "builtin" && (

@@ -6362,8 +6362,8 @@ msgid "Server fetches the URL and stores it in this workspace. http/https only â
 msgstr "Server fetches the URL and stores it in this workspace. http/https only â€” private/internal hosts are rejected."
 
 #: src/client/admin/flow-builder.tsx
-msgid "Server log line. Use <0>{{ data.* }}</0> for interpolation."
-msgstr "Server log line. Use <0>{{ data.* }}</0> for interpolation."
+msgid "Server log line. Use <0>{dataInterpolationExample}</0> for interpolation."
+msgstr "Server log line. Use <0>{dataInterpolationExample}</0> for interpolation."
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "service-account password"
@@ -7050,8 +7050,8 @@ msgstr "The advisor endpoint returned an error. Re-run to try again."
 #. placeholder {0}: provider.id.toUpperCase()
 #. placeholder {1}: provider.id
 #: src/client/admin/parity/auth-settings.tsx
-msgid "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{app-url}/api/t/{workspace}/auth/callback/{1}</2> as the redirect URI with the provider."
-msgstr "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{app-url}/api/t/{workspace}/auth/callback/{1}</2> as the redirect URI with the provider."
+msgid "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> as the redirect URI with the provider."
+msgstr "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> as the redirect URI with the provider."
 
 #: src/client/pages/sign-up.tsx
 msgid "The first account on a fresh instance is provisioned as <0>admin</0> automatically. You can demote yourself later."
@@ -7576,8 +7576,8 @@ msgid "Variables (JSON)"
 msgstr "Variables (JSON)"
 
 #: src/client/admin/parity/email-templates.tsx
-msgid "Variables use Liquid-style <0>{{ user.email }}</0>. Template renders run through the Functions sandbox."
-msgstr "Variables use Liquid-style <0>{{ user.email }}</0>. Template renders run through the Functions sandbox."
+msgid "Variables use Liquid-style <0>{userEmailExample}</0>. Template renders run through the Functions sandbox."
+msgstr "Variables use Liquid-style <0>{userEmailExample}</0>. Template renders run through the Functions sandbox."
 
 #: src/client/admin/pages/overview.tsx
 msgid "vector index"

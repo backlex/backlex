@@ -130,3 +130,5 @@ dist
 .claude/*
 !.claude/settings.json
 !.claude/hooks/
+.vercel
+.env*

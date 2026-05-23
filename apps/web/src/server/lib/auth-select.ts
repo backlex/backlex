@@ -3,20 +3,38 @@
  * `email-select.ts` and `image-select.ts`. Covers SAML (Phase 1) and LDAP
  * (Phase 2).
  *
- * SAML works on every runtime — samlify uses `node:crypto`, which Workers
- * provides under `nodejs_compat` (apps/web/wrangler.toml).
+ * SAML works on Bun and Cloudflare Workers (samlify uses `node:crypto`,
+ * which Workers expose under `nodejs_compat`). Vercel Edge (V8 isolate, no
+ * full node:crypto) and Netlify Edge (Deno Deploy) do NOT support samlify;
+ * `buildSamlAdapter` returns `undefined` on those and the route layer maps
+ * that to a 503 "UNAVAILABLE".
  *
- * LDAP needs raw TCP via `node:net`/`node:tls`, which Workers don't expose.
- * `buildLdapAdapter` returns `undefined` on Workers; the route layer maps
- * that to a 503 "UNAVAILABLE" so tenants either configure SAML or run the
- * app on Bun / Vercel / Netlify.
+ * LDAP needs raw TCP via `node:net`/`node:tls`. None of the edge runtimes
+ * expose that, so `buildLdapAdapter` returns `undefined` on every edge
+ * runtime; the route layer maps that to a 503 "UNAVAILABLE" so tenants
+ * either configure SAML or run the app on Bun / a Node host.
  */
 import type { LdapAdapter, SamlAdapter } from "@workeros/core/adapters";
 import { samlifySamlAdapter } from "../adapters/saml.samlify";
 import { ldaptsLdapAdapter, type LdapSpec } from "../adapters/ldap.ldapts";
-import { onCloudflareWorkers } from "./email-select";
+import { isEdgeRuntime, isStatelessEdge } from "./runtime";
 
-export const buildSamlAdapter = (): SamlAdapter => samlifySamlAdapter();
+/**
+ * Wire a {@link SamlAdapter}. Returns `undefined` on Vercel Edge / Netlify
+ * Edge — samlify's transitive `xml-crypto` dependency relies on Node's
+ * `crypto` module surface that those runtimes don't fully provide. Callers
+ * should surface that as 503 "SAML is not available on this runtime —
+ * deploy to Bun or Cloudflare Workers instead".
+ */
+export const buildSamlAdapter = (): SamlAdapter | undefined => {
+  if (isStatelessEdge()) {
+    console.warn(
+      "[saml] not available on Vercel Edge / Netlify Edge — deploy to Bun or Cloudflare Workers instead",
+    );
+    return undefined;
+  }
+  return samlifySamlAdapter();
+};
 
 /**
  * Tests-only override: when set, `buildLdapAdapter` returns this adapter
@@ -37,14 +55,14 @@ export const __setLdapAdapterFactoryForTests = (
 
 /**
  * Wire an {@link LdapAdapter} for a resolved LDAP config. Returns `undefined`
- * on Cloudflare Workers (no raw TCP); callers should surface that as
+ * on every edge runtime (no raw TCP); callers should surface that as
  * 503 "LDAP is not available on this runtime — configure SAML instead".
  */
 export const buildLdapAdapter = (spec: LdapSpec): LdapAdapter | undefined => {
   if (ldapAdapterOverride) return ldapAdapterOverride(spec);
-  if (onCloudflareWorkers()) {
+  if (isEdgeRuntime()) {
     console.warn(
-      "[ldap] not available on Cloudflare Workers — configure SAML instead",
+      "[ldap] not available on edge runtimes (Cloudflare Workers / Vercel Edge / Netlify Edge) — configure SAML instead",
     );
     return undefined;
   }

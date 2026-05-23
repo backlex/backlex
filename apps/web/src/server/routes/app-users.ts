@@ -7,6 +7,7 @@ import * as sqlite from "@workeros/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { invalidateUserRoles } from "../services/permissions-cache";
 
 /**
  * Manage the workspace end-user pool (`app_users`) — the customers of the
@@ -226,6 +227,7 @@ export const appUsersRoutes = new OpenAPIHono<AppBindings>()
           .insert(t.appUserRoles)
           .values({ appUserId, roleId: r.id });
       }
+      invalidateUserRoles(tenantId, appUserId);
       return c.json({ ok: true, roleIds: valid.map((r) => r.id) });
     },
   )
@@ -434,6 +436,7 @@ export const appUsersRoutes = new OpenAPIHono<AppBindings>()
       const accounts =
         ctx.dialect === "pg" ? pg.schema.appAccounts : sqlite.schema.appAccounts;
       await (ctx.db as any).delete(t.appUserRoles).where(eq(t.appUserRoles.appUserId, appUserId));
+      invalidateUserRoles(tenantId, appUserId);
       await (ctx.db as any).delete(t.appSessions).where(eq(t.appSessions.userId, appUserId));
       await (ctx.db as any).delete(accounts).where(eq(accounts.userId, appUserId));
       // `app_verifications` keys on the identifier (email/token), not a user id —

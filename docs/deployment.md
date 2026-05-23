@@ -83,7 +83,9 @@ Workers users still get a sandbox — sync only.
 `vercel.json` at the repo root deploys both admin (static SPA from
 `apps/web/dist/client`) and API (`api/index.ts` — a tiny shim that
 re-exports `apps/web/src/server/entries/vercel.ts` as an Edge Function).
-Cron triggers ping `/api/_cron/tick` once per minute.
+Cron triggers ping `/api/_cron/tick` once per day at 00:00 UTC (Hobby
+plan only allows daily; upgrade to Pro and edit `vercel.json` if you need
+a finer interval).
 
 ### Git integration (recommended)
 

@@ -112,6 +112,42 @@ const recordRecent = (channel: string, payload: unknown): number => {
 export const currentSeq = (channel: string): number =>
   recent.get(channel)?.seq ?? 0;
 
+/**
+ * Read-only diagnostic snapshot of a channel's in-process state. Mirrors the
+ * shape of the DO `/stats` endpoint so the admin route can return the same
+ * payload regardless of runtime. Returns zeroes for an unknown channel.
+ */
+export interface ChannelStats {
+  connectedSockets: number;
+  presenceMembers: number;
+  currentSeq: number;
+  logSize: number;
+}
+
+export const getLocalChannelStats = (channel: string): ChannelStats => {
+  const subs = subscribers.get(channel)?.size ?? 0;
+  const room = presenceRooms.get(channel);
+  // Presence rosters dedupe by userId — count unique members, not raw sockets.
+  let presenceMembers = 0;
+  if (room) {
+    const ids = new Set<string>();
+    for (const m of room.values()) ids.add(m.userId);
+    presenceMembers = ids.size;
+  }
+  const r = recent.get(channel);
+  return {
+    connectedSockets: subs,
+    presenceMembers,
+    currentSeq: r?.seq ?? 0,
+    logSize: r?.entries.length ?? 0,
+  };
+};
+
+/** Channels that currently have at least one in-process subscriber. Used by
+ *  the admin route to enumerate active free-form channels on the Bun path —
+ *  on Workers there's no equivalent (DOs aren't enumerable). */
+export const listLocalChannels = (): string[] => [...subscribers.keys()];
+
 export const subscribeLocal = (
   channel: string,
   sub: Subscriber,

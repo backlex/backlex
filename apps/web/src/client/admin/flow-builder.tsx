@@ -8,6 +8,8 @@ import { Input } from "@workeros/ui/components/input";
 import { Textarea } from "@workeros/ui/components/textarea";
 import { emailTemplatesApi, functionsApi, collectionsApi, type ApiEmailTemplate, type ApiFunction, type ApiCollection } from "./api";
 
+const dataInterpolationExample = "{{ data.* }}";
+
 // `pending` marks steps the runtime doesn't execute yet. The compiler will
 // drop them with a warning, so the palette disables the entries entirely
 // until the matching backend phase lands (see flow-graph.ts PHASE_PENDING).
@@ -513,7 +515,7 @@ function FlowInspector({ node, onChange, emailTemplates = [], fns = [], collecti
           </>
         )}
         {node.kind === "action" && node.type === "log" && (
-          <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Message</Trans></label><Input value={node.config.message || ""} onChange={(e) => onChange({ config: { message: e.target.value } })} /><span className="text-[11.5px] text-muted-foreground"><Trans>Server log line. Use <span className="font-mono">{"{{ data.* }}"}</span> for interpolation.</Trans></span></div>
+          <div className="flex flex-col gap-1.5"><label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Message</Trans></label><Input value={node.config.message || ""} onChange={(e) => onChange({ config: { message: e.target.value } })} /><span className="text-[11.5px] text-muted-foreground"><Trans>Server log line. Use <span className="font-mono">{dataInterpolationExample}</span> for interpolation.</Trans></span></div>
         )}
         {node.kind === "action" && node.type === "notification" && (
           <>

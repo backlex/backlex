@@ -3,8 +3,6 @@ title: SDK & CLI
 description: The @workeros/client typed fetch wrapper and the workeros CLI for project scaffolding.
 ---
 
-# SDK + CLI
-
 Two packages ship for client-side and developer-side use.
 
 ## `@workeros/client`

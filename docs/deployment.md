@@ -3,8 +3,6 @@ title: Deployment
 description: Ship the same source to Bun, Cloudflare Workers, Vercel Edge, or Netlify Edge.
 ---
 
-# Deployment
-
 workeros runs on four targets from the same source. Pick one based on the
 constraints you need.
 

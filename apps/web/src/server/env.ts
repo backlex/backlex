@@ -10,11 +10,19 @@ export interface Env {
   AUTH_SECRET: string;
   // Postgres URL (self-host or Hyperdrive). One of DATABASE_URL or D1 is required.
   DATABASE_URL?: string;
+  /** Optional read-replica Postgres URL. When set (pg dialect only), `ctx.dbRead`
+   *  resolves to a second Drizzle client pointed at this URL; lag-tolerant
+   *  read paths can opt into it explicitly. Unset, omitted, or non-pg
+   *  dialect → `ctx.dbRead === ctx.db` (silent fallback to primary). Replication
+   *  lag means reads-after-write may miss the freshly written row — keep
+   *  post-mutation reads on `ctx.db`. On Workers, prefer the
+   *  `HYPERDRIVE_REPLICA` binding (set in wrangler.toml) over a raw URL. */
+  DATABASE_REPLICA_URL?: string;
   /** Postgres driver. `postgres-js` (default) uses `node:net`/`node:tls` — works
    *  on Bun, Node, Cloudflare Workers (nodejs_compat), and Netlify Edge (Deno
    *  polyfill). `neon-http` uses fetch() and is the only viable driver on
    *  Vercel Edge; it requires a Neon database URL (or a self-hosted wsproxy
-   *  in front of any Postgres). */
+   *  in front of any Postgres). Applies to both primary and replica URLs. */
   DATABASE_DRIVER?: "postgres-js" | "neon-http";
   /** Shared secret for the `/api/_cron/tick` endpoint on Vercel/Netlify. The
    *  request must send `x-cron-secret: <CRON_SECRET>`. When unset, the
@@ -41,6 +49,11 @@ export interface Env {
   VECTORIZE_BGE_M3?: VectorizeIndex;
   VECTORIZE_SELF_HOST_BGE_M3?: VectorizeIndex;
   HYPERDRIVE?: Hyperdrive;
+  /** Optional read-replica Hyperdrive binding. When present (Workers only),
+   *  `ctx.dbRead` is built from its connection string; takes precedence over
+   *  `DATABASE_REPLICA_URL`. Wire in `wrangler.toml` exactly like `HYPERDRIVE`
+   *  but pointed at the replica's Hyperdrive config. */
+  HYPERDRIVE_REPLICA?: Hyperdrive;
   REALTIME?: DurableObjectNamespace;
   /** Per-key counter for the rate limiter (`lib/rate-limit.ts`). One DO per
    *  `(label, ip)` key — collapses isolate-rotation drift into a single

@@ -131,6 +131,24 @@ export class RealtimeRoom {
       return new Response(null, { status: 101, webSocket: client });
     }
 
+    if (url.pathname === "/stats") {
+      // Read-only diagnostic snapshot. No auth at the DO level — DOs aren't
+      // reachable from outside the Worker, so the admin gate runs once at
+      // the route layer (`routes/realtime-admin.ts`) and trusts what the DO
+      // returns.
+      const sockets = this.state.getWebSockets();
+      let presenceMembers = 0;
+      for (const ws of sockets) {
+        if (this.attachment(ws).presence) presenceMembers += 1;
+      }
+      return Response.json({
+        connectedSockets: sockets.length,
+        presenceMembers,
+        currentSeq: this.seq,
+        logSize: this.log.length,
+      });
+    }
+
     if (url.pathname === "/publish" && req.method === "POST") {
       const text = await req.text();
       this.seq += 1;

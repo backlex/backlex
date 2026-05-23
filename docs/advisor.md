@@ -1,3 +1,8 @@
+---
+title: Advisor
+description: Automated lint over live workspace state — schema, permissions, and configuration.
+---
+
 # Advisor
 
 The Advisor is an admin-only page (`/advisor` in the admin SPA) that runs an

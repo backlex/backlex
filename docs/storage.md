@@ -1,3 +1,8 @@
+---
+title: Storage
+description: Per-tenant object storage with ACLs, image transforms, and signed URLs on fs, R2, or S3.
+---
+
 # Storage
 
 Object storage with per-tenant isolation, public/private ACL, on-the-fly

@@ -1,3 +1,8 @@
+---
+title: Functions / sandbox
+description: User-uploaded JavaScript that runs server-side in an isolated sandbox.
+---
+
 # Functions / sandbox
 
 User-uploaded JavaScript that runs server-side in an isolated sandbox.

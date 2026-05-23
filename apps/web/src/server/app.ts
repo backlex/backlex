@@ -65,6 +65,7 @@ import { i18nPublicRoutes } from "./routes/i18n-public";
 import { settingsRoutes } from "./routes/settings";
 import { dbAdminRoutes } from "./routes/db-admin";
 import { metricsRoutes } from "./routes/metrics";
+import { realtimeAdminRoutes } from "./routes/realtime-admin";
 import { advisorRoutes } from "./routes/advisor";
 import { openapiRoutes } from "./routes/openapi";
 import type { Env } from "./env";
@@ -227,6 +228,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/settings", settingsRoutes);
   app.route("/api/admin/db", dbAdminRoutes);
   app.route("/api/admin/metrics", metricsRoutes);
+  app.route("/api/admin/realtime", realtimeAdminRoutes);
   app.route("/api/admin/advisor", advisorRoutes);
   app.route("/api/api-keys", apiKeysRoutes);
   app.route("/api/collections", collectionsRoutes);

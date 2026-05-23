@@ -5,12 +5,14 @@ constraints you need.
 
 |                    | Bun (self-host)   | Cloudflare Workers   | Vercel Edge          | Netlify Edge         |
 |--------------------|-------------------|----------------------|----------------------|----------------------|
-| **Database**       | SQLite or PG      | D1 or Hyperdrive→PG  | PG (Neon HTTP)       | PG (Neon HTTP)       |
-| **Storage**        | local fs / S3 / `Bun.S3Client` | R2 (S3 fallback) | S3 (`aws4fetch`)     | S3 (`aws4fetch`)     |
-| **Realtime**       | in-proc + SSE     | Durable Objects + WS | SSE (single-instance only) | SSE (single-instance only) |
+| **Database**       | SQLite or PG      | D1 or Hyperdrive→PG  | PG via `DATABASE_DRIVER=neon-http` (required) | PG (postgres-js works under Deno; `neon-http` recommended) |
+| **Storage**        | local fs / S3 / `Bun.S3Client` | R2 (S3 fallback) | S3 (`aws4fetch`) **required** — boot fails without it | S3 (`aws4fetch`) **required** — boot fails without it |
+| **Realtime**       | in-proc + SSE     | Durable Objects + WS | 503 (not supported)  | 503 (not supported)  |
+| **SAML**           | yes               | yes (nodejs_compat)  | 503 (xml-crypto unavailable) | 503 (xml-crypto unavailable) |
+| **LDAP / SMTP**    | yes               | 503 (no raw TCP)     | 503 (no raw TCP)     | 503 (no raw TCP)     |
 | **Sandbox**        | Bun worker        | QuickJS / remote HTTP | QuickJS / remote HTTP | QuickJS / remote HTTP |
 | **Image**          | `Bun.Image`       | CF Image Resize      | passthrough          | passthrough          |
-| **Cron**           | setInterval       | wrangler triggers    | vercel.json crons    | scheduled functions  |
+| **Cron**           | setInterval       | wrangler triggers    | vercel.json crons (needs `x-cron-secret: $CRON_SECRET`) | scheduled functions (needs `x-cron-secret: $CRON_SECRET`) |
 | **Cost**           | VPS               | $0–5/mo              | $0–20/mo             | $0–19/mo             |
 
 ## Bun (self-host)

@@ -10,6 +10,18 @@ export interface Env {
   AUTH_SECRET: string;
   // Postgres URL (self-host or Hyperdrive). One of DATABASE_URL or D1 is required.
   DATABASE_URL?: string;
+  /** Postgres driver. `postgres-js` (default) uses `node:net`/`node:tls` — works
+   *  on Bun, Node, Cloudflare Workers (nodejs_compat), and Netlify Edge (Deno
+   *  polyfill). `neon-http` uses fetch() and is the only viable driver on
+   *  Vercel Edge; it requires a Neon database URL (or a self-hosted wsproxy
+   *  in front of any Postgres). */
+  DATABASE_DRIVER?: "postgres-js" | "neon-http";
+  /** Shared secret for the `/api/_cron/tick` endpoint on Vercel/Netlify. The
+   *  request must send `x-cron-secret: <CRON_SECRET>`. When unset, the
+   *  endpoint refuses every request (the public internet should not be able
+   *  to trigger cron). Cloudflare Workers and Bun run cron internally and
+   *  don't expose this endpoint. */
+  CRON_SECRET?: string;
   /** SQLite file path for Bun self-host. Defaults to `./.data/workeros.sqlite`.
    *  Override for tests (e.g. a temp file per run) or alternate disk layouts. */
   SQLITE_PATH?: string;

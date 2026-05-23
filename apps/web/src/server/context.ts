@@ -1,5 +1,5 @@
-import { createPgClient, type PgDb } from "@workeros/db/pg";
-import { createD1Client, createBunSqliteClient, type SqliteDb } from "@workeros/db/sqlite";
+import { createPgClient, type PgDb, type PgDriver } from "@workeros/db/pg";
+import { createD1Client, type SqliteDb } from "@workeros/db/sqlite";
 import { createAuth, type Auth, type OAuthProviderConfig } from "@workeros/auth";
 import { SYSTEM_ROLES } from "@workeros/core";
 import type {
@@ -38,6 +38,8 @@ import {
 } from "./services/seed";
 import { loadAppSettings } from "./services/settings";
 import { publishEvent } from "./services/events";
+import { isCloudflareWorkers, isStatelessEdge } from "./lib/runtime";
+import { AppError } from "@workeros/core";
 import type { Env } from "./env";
 
 export interface Ctx {
@@ -88,18 +90,84 @@ export const invalidateAllEmailCaches = (env: Env): void => {
   emailCaches.get(env as unknown as object)?.clear();
 };
 
-export const buildContext = (env: Env): Ctx => {
+/** In-flight buildContext promise, deduped per `env` so concurrent first
+ *  requests in the same isolate don't both pay the (async) build cost. */
+const ctxBuilding = new WeakMap<object, Promise<Ctx>>();
+
+/** Tests-only: pre-seed the db + dialect for a specific `Env`, so a pg test
+ *  can hand `buildContext` a `pglite`-backed drizzle client instead of
+ *  having buildContext open the real Postgres / Bun-SQLite path. Cleared
+ *  automatically with the env; tests pass a fresh env per harness. */
+const testDbOverrides = new WeakMap<
+  object,
+  { db: PgDb | SqliteDb; dialect: "pg" | "sqlite" }
+>();
+export const __setDbOverrideForTests = (
+  env: Env,
+  db: PgDb | SqliteDb,
+  dialect: "pg" | "sqlite",
+): void => {
+  testDbOverrides.set(env as unknown as object, { db, dialect });
+};
+
+export const buildContext = (env: Env): Promise<Ctx> => {
   const cached = ctxCache.get(env as unknown as object);
-  if (cached) return cached;
+  if (cached) return Promise.resolve(cached);
+  const inFlight = ctxBuilding.get(env as unknown as object);
+  if (inFlight) return inFlight;
+  const p = assembleContext(env);
+  ctxBuilding.set(env as unknown as object, p);
+  p.finally(() => ctxBuilding.delete(env as unknown as object));
+  return p;
+};
 
-  const dialect: "pg" | "sqlite" =
-    env.D1 ? "sqlite" : env.DATABASE_URL ? "pg" : "sqlite";
+const assembleContext = async (env: Env): Promise<Ctx> => {
+  const override = testDbOverrides.get(env as unknown as object);
 
-  const db: PgDb | SqliteDb = env.D1
-    ? createD1Client(env.D1)
-    : env.DATABASE_URL
-      ? createPgClient(env.DATABASE_URL)
-      : createBunSqliteClient(env.SQLITE_PATH);
+  // Picks the most specific available PG URL. Hyperdrive (CF Workers) sits in
+  // front of the real Postgres and is the connection clients should use when
+  // bound; we fall back to `DATABASE_URL` everywhere else.
+  const pgUrl = env.HYPERDRIVE?.connectionString ?? env.DATABASE_URL;
+
+  const dialect: "pg" | "sqlite" = override
+    ? override.dialect
+    : env.D1 ? "sqlite" : pgUrl ? "pg" : "sqlite";
+
+  // Edge runtimes that can't open node:net (Vercel Edge / Netlify Deno
+  // Deploy) don't have a working Bun-SQLite path and have no D1 binding —
+  // they MUST run on Postgres. Fail fast with a clear message instead of
+  // crashing on `bun:sqlite` resolution.
+  if (!env.D1 && !pgUrl && isStatelessEdge()) {
+    throw new AppError(
+      "UNAVAILABLE",
+      "Edge runtime requires DATABASE_URL (Postgres). Set DATABASE_URL and, on Vercel Edge, DATABASE_DRIVER=neon-http (Neon DB or a self-hosted wsproxy).",
+    );
+  }
+
+  let db: PgDb | SqliteDb;
+  if (override) {
+    db = override.db;
+  } else if (env.D1) {
+    db = createD1Client(env.D1);
+  } else if (pgUrl) {
+    // Default driver: postgres-js. Force neon-http on Vercel Edge (no
+    // node:net); allow explicit override on every runtime.
+    const driver: PgDriver =
+      env.DATABASE_DRIVER ??
+      (isStatelessEdge() ? "neon-http" : "postgres-js");
+    if (driver === "postgres-js" && isStatelessEdge()) {
+      throw new AppError(
+        "UNAVAILABLE",
+        "postgres-js does not work on Vercel Edge — set DATABASE_DRIVER=neon-http",
+      );
+    }
+    db = createPgClient(pgUrl, driver);
+  } else {
+    // SQLite + no D1 → Bun self-host. Dynamically import so the top-level
+    // sqlite module stays edge-safe (no `bun:sqlite` at module init).
+    const { createBunSqliteClient } = await import("@workeros/db/sqlite/bun");
+    db = createBunSqliteClient(env.SQLITE_PATH);
+  }
 
   const dbCtx = { db, dialect };
 
@@ -228,6 +296,13 @@ export const buildContext = (env: Env): Ctx => {
       endpoint: env.S3_ENDPOINT,
     };
     storage = bunS3Storage(s3Cfg) ?? s3FetchStorage(s3Cfg);
+  } else if (isStatelessEdge() || isCloudflareWorkers()) {
+    // No persistent FS on any edge runtime; the local-fs adapter would
+    // silently lose every upload between invocations.
+    throw new AppError(
+      "UNAVAILABLE",
+      "Edge runtime requires R2 binding (Cloudflare) or S3-compatible config (S3_BUCKET + S3_ACCESS_KEY_ID + S3_SECRET_ACCESS_KEY).",
+    );
   } else {
     storage = fsStorage("./.data/files");
   }

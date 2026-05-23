@@ -12,7 +12,7 @@ Picked by `buildContext(env)` in `apps/web/src/server/context.ts`:
 | Condition                          | Adapter                              |
 |------------------------------------|--------------------------------------|
 | `env.R2` binding present           | `r2Storage` (Workers)                |
-| `env.S3_BUCKET` set on Bun         | `s3BunStorage` (`Bun.S3Client`)      |
+| `env.S3_BUCKET` set on Bun         | `bunS3Storage` (`Bun.S3Client`)      |
 | `env.S3_BUCKET` set elsewhere      | `s3FetchStorage` (`aws4fetch`)       |
 | otherwise                          | `fsStorage("./.data/files")` (dev)   |
 

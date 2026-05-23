@@ -3,8 +3,6 @@ title: SSO (SAML & LDAP)
 description: Per-tenant SAML 2.0 and LDAP/Active Directory sign-in for the workspace end-user pool.
 ---
 
-# SSO (SAML 2.0)
-
 workeros supports per-tenant SAML 2.0 SSO **and** LDAP / Active Directory
 for the **workspace end-user pool** (the `app_users` table, served via
 `/api/t/<slug>/auth/*`). The admin app itself stays on the existing

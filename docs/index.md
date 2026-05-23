@@ -1,29 +1,98 @@
 ---
-title: Workeros
-description: Self-hostable Supabase/Directus alternative — admin, API, runtime.
-template: splash
-hero:
-  title: Workeros
-  tagline: One repo, four runtimes, full Supabase/Directus parity.
-  actions:
-    - text: Get started
-      link: /getting-started/
-      icon: right-arrow
-      variant: primary
-    - text: View on GitHub
-      link: https://github.com/workeros/workeros
-      icon: external
+title: Getting started
+description: Clone, install, run — five minutes from zero to your first collection.
 ---
 
-## Explore
+Five minutes from clone to first item.
 
-- **[Architecture](/architecture/)** — repo shape, adapters, dialects, runtimes.
-- **[Querying](/querying/)** — Directus-shaped REST query (filter / sort / projection / pagination / counts).
-- **[Permissions](/permissions/)** — JSON DSL that backs REST filters, GraphQL, realtime, and DB rules.
-- **[Realtime](/realtime/)** — permission-aware SSE change feed with a Workers Durable Object bridge.
-- **[Deployment](/deployment/)** — Bun, Cloudflare Workers, Vercel Edge, Netlify Edge.
-- **[SSO](/sso/)** — per-tenant SAML 2.0 and LDAP / Active Directory.
-- **[GraphQL](/graphql/)** — schema generated on the fly from collection metadata.
-- **[Functions](/functions/)** — sandboxed JS that runs server-side.
-- **[Storage](/storage/)** — per-tenant object storage with ACLs, signed URLs, image transforms.
-- **[SDK & CLI](/sdk-and-cli/)** — `@workeros/client` and the `workeros` CLI.
+## Prerequisites
+
+- Bun ≥ 1.1 (`curl -fsSL https://bun.sh/install | bash`)
+- Optional: Postgres 14+ for production. Dev defaults to Bun's built-in SQLite.
+
+## Install + run
+
+```bash
+git clone https://github.com/your/workeros && cd workeros
+bun install
+cp apps/web/.dev.vars.example apps/web/.dev.vars
+
+# Apply migrations to local SQLite
+bun run db:migrate:sqlite
+
+# Start Vite + Cloudflare miniflare in one process on :5173
+# (admin SPA + Worker bundled — no separate API port, no proxy)
+bun run dev
+```
+
+Open `http://localhost:5173/sign-up` and create the first user — they
+auto-receive the `admin` role. Subsequent sign-ups get `authenticated`.
+
+## Your first collection
+
+In the admin UI, go to **Collections → New** and define:
+
+```
+slug: posts
+fields:
+  - title (text, required)
+  - body (longtext)
+  - published (boolean)
+  - views (integer)
+ownerScoped: true
+```
+
+Click **Create**. The API runs `CREATE TABLE c_posts (...)` against the
+live database — no redeploy.
+
+## Your first items
+
+Click on `posts` in the list, then **+ New item**. Type-aware inputs
+render based on field type (textarea for longtext, checkbox for boolean,
+number input for views). Save.
+
+The owner-scoped flag auto-seeds permissions for the `authenticated`
+role: each user only reads/writes their own items. Admin sees all.
+
+## Query
+
+```bash
+# REST
+curl http://localhost:5173/api/items/posts?limit=10 \
+  --cookie "$(cat /tmp/cookie.txt)"
+
+# REST with filter (DSL — same as permissions)
+curl "http://localhost:5173/api/items/posts?filter=$(echo '{"published":{"_eq":true},"views":{"_gt":10}}' | jq -sRr @uri)&sort=-views"
+
+# GraphQL
+curl -X POST http://localhost:5173/api/graphql \
+  -H "content-type: application/json" \
+  -d '{"query":"{ posts(sort:\"-views\", limit:5) { id title views } }"}'
+```
+
+## Generate types for your client
+
+```bash
+bun run workeros gen-types http://localhost:5173 --out src/types.ts
+```
+
+The CLI fetches `/api/collections` and emits one TypeScript interface per
+collection plus a `Collections` registry. Use with `@workeros/client`:
+
+```ts
+import { createClient } from "@workeros/client";
+import type { Posts } from "./types";
+
+const wks = createClient({ url: "http://localhost:5173" });
+const r = await wks.from<Posts>("posts").list({
+  filter: { published: { _eq: true } },
+  sort: "-views",
+  limit: 10,
+});
+```
+
+## What next
+
+- [Permissions DSL](permissions.md) — granular role + condition rules
+- [Sandbox functions](sandbox.md) — JavaScript code that runs in a sandbox
+- [Deployment](deployment.md) — push to Bun, Workers, Vercel, or Netlify

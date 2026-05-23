@@ -15,6 +15,9 @@ bun run lint               # biome lint apps + packages (no formatter)
 bun run lint:fix           # biome lint --write (safe auto-fixes)
 bun run build              # vite build (admin SPA + worker bundle)
 bun run deploy             # vite build + wrangler deploy (CF)
+bun run test               # bun test (apps/web/tests/, fresh temp SQLite per spec)
+bun workeros <cmd>         # workeros CLI (packages/cli/bin/workeros.ts) — see docs/sdk-and-cli.md
+bun run --cwd apps/web i18n:extract  # lingui extract → apps/web/src/client/locales/*.po
 
 # DB — pick the dialect explicitly; there is no shared command:
 bun run db:generate:pg     # drizzle-kit generate against packages/db/src/pg/schema.ts
@@ -28,6 +31,7 @@ bun run db:migrate:pg      # needs DATABASE_URL; also CREATE EXTENSION vector
 bun run db:migrate:sqlite  # writes to ./.data/workeros.sqlite (Bun SQLite)
 bun run db:migrate:d1      # apply drizzle/sqlite migrations to a local D1
 bun run db:migrate:d1:remote # same, but to the deployed CF D1 (--remote)
+bun run db:studio          # drizzle-kit studio against the active dialect config
 ```
 
 Tests run on Bun's native runner (`bun:test`). The suite lives in `apps/web/tests/` and is invoked via `bun test` (from the repo root or `apps/web`). Each spec spins a fresh temp SQLite in-process through `tests/setup.ts::makeHarness`; no external server / DB is required. CI runs the same `bun run test` as a pre-deploy gate (`.github/workflows/deploy.yml`).
@@ -91,6 +95,19 @@ After pushing, report the workflow run URL back to the user. Don't claim "deploy
 
 ## Architecture
 
+### Repo layout
+
+Bun workspaces — every package is source-consumed (no build step between them), so editing a `packages/*` file is picked up immediately by both apps.
+
+- `apps/web` — Hono API + React admin SPA in one workspace (see "One app, four runtimes" below).
+- `apps/docs` — Astro Starlight user-facing docs site; the Worker serves it at `/docs` after build.
+- `packages/db` — dual-dialect Drizzle (PG + SQLite); see "Dual-dialect Drizzle".
+- `packages/auth` — better-auth wrapper; `createAuth(db, dialect, config)`.
+- `packages/core` — runtime-agnostic types: `Env`, `AppError`, adapter contracts (`storage`/`vector`/`email`/`image`/`saml`/`ldap`), permission DSL types.
+- `packages/ui` — shared shadcn design system; see "UI package".
+- `packages/cli` — `workeros` binary, invoked via `bun workeros <cmd>`; see `docs/sdk-and-cli.md`.
+- `packages/client` — public TypeScript SDK end-user apps consume against the workeros API.
+
 ### One app, four runtimes
 
 `apps/web` is a single workspace that ships **both** the Hono API and the React admin SPA. The Vite config uses `@cloudflare/vite-plugin` so a single `bun run dev` spins up the SPA with HMR AND the Worker via miniflare on port 5173. `bun run build` emits `apps/web/dist/client` (SPA) + `apps/web/dist/workeros_api` (Worker bundle); `wrangler deploy` ships both as one Worker (Static Assets binding for the SPA).
@@ -121,14 +138,17 @@ Selection rules — keep these consistent if you add a new adapter:
 | dialect   | `D1` binding → `sqlite`; `HYPERDRIVE` / `DATABASE_URL` → `pg`; else `sqlite` |
 | db        | D1 client / `postgres-js` (default) or `neon-http` (Vercel Edge, forced; opt-in elsewhere via `DATABASE_DRIVER=neon-http`) / Bun SQLite at `./.data/workeros.sqlite` (lazy-loaded so edge bundles don't import `bun:sqlite`) |
 | dbRead    | Opt-in read replica (pg only). `HYPERDRIVE_REPLICA` binding (Workers) or `DATABASE_REPLICA_URL` env builds a second client; unset → `dbRead === db`. SQLite/D1 always alias the primary. Use for lag-tolerant reads only — post-mutation reads stay on `db` |
-| storage   | `R2` binding → `r2Storage`; `S3_*` → `bunS3Storage`/`s3FetchStorage`; Bun self-host → `fsStorage("./.data/files")`; edge runtimes without R2/S3 **throw** at boot |
+| storage   | `R2` binding → `r2Storage`; `S3_*` → `bunS3Storage`/`s3FetchStorage`; Bun self-host → `fsStorage("./.data/files")`; edge runtimes without R2/S3 **throw** at boot. Blob I/O is the adapter; image transforms / folder hierarchy / signed serves are dialect-independent helpers in `services/storage/{transforms,folders,serve}.ts` |
 | vector    | `VECTORIZE` → `vectorizeAdapter`; pg dialect → `pgvectorAdapter`; else throws |
+| ai        | Optional `AI` binding (Workers AI) wires the embeddings provider — commented out in `wrangler.toml` (`@cf/baai/bge-m3`); enable when running embedding pipelines on Workers |
 | realtime  | `REALTIME` (DO) → SSE-over-DO-WebSocket bridge; Bun self-host → in-process pub/sub + SSE; Vercel/Netlify Edge → 503 (subscribe + publish) |
 | saml      | Bun + Cloudflare Workers (nodejs_compat) supported; Vercel/Netlify Edge → 503 (samlify can't load) |
 | ldap      | Bun + Node self-host supported; every edge runtime → 503 (no raw TCP) |
 | smtp      | Same as LDAP — Bun + Node only; edge runtimes fall back to console adapter with a warning |
 
 Adapter contracts live in `packages/core/src/adapters/{storage,vector,email,image}.ts`. Concrete implementations live in `apps/web/src/server/adapters/*` (e.g. `storage.fs.ts` vs `storage.r2.ts`). Realtime is **not** behind a `Ctx` adapter — it branches on `env.REALTIME` directly in `routes/realtime.ts` + `services/events.ts` (see the Realtime section below).
+
+Cross-cutting helpers worth knowing: `services/permissions-cache.ts` (per-request L1 cache on top of the permissions resolver — bulk loops hit it for free, no opt-in needed) and `services/cors-origins.ts` (per-tenant allow-list reused by SAML relayState validation as the open-redirect guard).
 
 ### Dual-dialect Drizzle (system tables only)
 
@@ -185,6 +205,40 @@ Granular permissions live in three system tables: `roles`, `user_roles`, `permis
 - **`ownerScoped: true`** on a collection is sugar: it auto-seeds permissions for the `authenticated` role with `{ owner_id: { _eq: "$user.id" } }` on read/update/delete and unrestricted create. After seeding, the permission system is the source of truth — toggling `ownerScoped` again only adds missing actions (never removes existing rows).
 
 When wiring a new resource (collections, files, etc.), add a `requirePermission` middleware and apply `c.var.permission.whereSql` / `c.var.permission.fields` rather than rolling your own auth check.
+
+### Key services & features
+
+The route + service files an agent should know exist before searching blindly. Each line: feature → primary route/service paths → gotcha or deep-dive pointer. The four major subsystems (Auth, Realtime, Query API, Hybrid schema) have their own sections below — this list is the rest.
+
+**Data plane**
+- **Revisions** (`routes/revisions.ts`, `services/revisions.ts`) — change history per item; `routes/items.ts` already snapshots before mutating, don't double-write.
+- **Comments** (`routes/comments.ts`) — item-scoped threads, permission-checked via the parent collection (no separate permission row).
+- **Activity log** (`routes/activity.ts`, `services/activity.ts`) — central audit trail; mutating routes call `logActivity(...)` after success. Add it when introducing new write endpoints.
+- **Storage + folders** (`routes/storage.ts`, `routes/folders.ts`, `services/storage/*`) — uploads, folder tree, signed serves, on-the-fly image transforms. See `docs/storage.md`.
+
+**Query surfaces**
+- **GraphQL** (`routes/graphql.ts`, `routes/graphql.openapi.ts`, `services/graphql.ts`) — schema auto-generated from collections; uses the L1 permission cache so deep queries don't N+1 the resolver. See `docs/graphql.md`.
+- **OpenAPI** (`routes/openapi.ts`, `routes/openapi-metadata.ts`, `services/openapi-dynamic.ts`) — spec generated dynamically from collection schemas + per-route `.openapi(...)` decorators (`@hono/zod-openapi`); a new route shows up automatically if you decorate it.
+- **Public surfaces** (`routes/i18n-public.ts`, `routes/shared-public.ts`, `routes/shared-links.ts`, `services/shared-links.ts`) — unauthenticated endpoints used by signed share-link URLs and the public i18n bundle. Never apply `requirePermission` here; gate via the share-link token instead.
+- **i18n strings** (`routes/i18n.ts`, `services/i18n.ts`, `services/i18n-translate.ts`) — content-translation system (multilingual values for user-managed collections), distinct from the admin SPA's Lingui chrome translations.
+
+**Automation**
+- **Webhooks** (`routes/webhooks.ts`, `routes/webhook-trigger.ts`, `services/webhooks.ts`) — outbound delivery with HMAC `X-Workeros-Signature` + retry; the trigger route is the inbound side that flows/functions hook into.
+- **Flows** (`routes/flows.ts`, `services/flows.ts`) — visual workflow builder; trigger keys are `event` / `cron` / `webhook` / `manual`, operations are a serialized DSL evaluated server-side.
+- **Functions** (`routes/functions.ts`, `services/functions.ts`, `services/sandbox/*`, `routes/sandbox-rpc.ts`) — sandboxed JS execution. Provider picked by runtime: QuickJS on Workers, Bun Worker on self-host, optional HTTP executor. The sandbox calls back into the host (e.g. `email.send`, `db.query`) through `sandbox-rpc.ts` — RPC surface, not direct imports. See `docs/sandbox.md`.
+- **Scheduler** (`services/scheduler.ts`, `services/scheduled-tasks.ts`) — cron expression parsing + delayed-task ledger; driven by the `scheduled` Worker entry and the Vercel/Netlify cron routes.
+- **Notifications** (`routes/notifications.ts`) — in-app notification feed; activity/flows write into it.
+- **Email templates** (`routes/email-templates.ts`) — per-tenant overrides for transactional templates; pairs with the per-workspace email config already documented in "API keys + Email + OAuth".
+
+**Workspace admin**
+- **App users + tenants** (`routes/app-users.ts`, `routes/tenants.ts`, `routes/tenant-auth.ts`) — multi-tenant end-user pool (distinct from the control-plane admin pool): invite flow, tenant switching, per-tenant sign-in routes.
+- **Settings + workspace config** (`routes/settings.ts`, `services/settings.ts`, `routes/workspace-config.ts`, `services/workspace-config.ts`) — `settings` is the `app_settings` whitelist (i18n defaults, timezone, …); `workspace-config` is per-tenant overrides for runtime knobs.
+- **Roles admin + collection rename** (`routes/roles.ts`, `services/collection-rename.ts`) — roles admin is the editor for the permission DSL; `collection-rename` is the only safe path to rename a collection (renames the physical table + updates permission rows in one transaction).
+- **Advisor** (`routes/advisor.ts`, `services/advisor.ts`) — security/performance/config rule checks surfaced in the admin UI with fix recommendations. See `docs/advisor.md`.
+- **Panels** (`routes/panels.ts`) — dashboard widget definitions.
+- **Metrics** (`routes/metrics.ts`) — request/error counters + time-series rollups for the admin dashboard.
+- **Realtime admin + DB admin** (`routes/realtime-admin.ts`, `routes/db-admin.ts`) — subscriber counts + test-publish, and schema introspection + diagnostics. Both admin-only.
+- **Backup** (`services/backup.ts`) — workspace export/restore primitives.
 
 ### Hybrid schema ownership: dynamic collections via runtime DDL
 
@@ -246,3 +300,25 @@ Shared design system in `packages/ui`, built from the shadcn `radix-luma` preset
 - ESM only (`"type": "module"`); workspace packages are consumed by source path (e.g. `"main": "./src/index.ts"`) — no build step between packages, so editing a `packages/*` file is picked up immediately by both apps.
 - Drizzle is on the `1.0.0-beta.22` line. APIs differ from the 0.x docs; pin all `drizzle-orm` / `drizzle-kit` versions together when upgrading.
 - `noUncheckedIndexedAccess` plus the dual-dialect union is why `routes/items.ts` casts to `any` in a few places — match that pattern rather than reaching for type assertions per-call.
+
+## Where to dig deeper
+
+Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; reach for these when you need the full surface area of a feature.
+
+| Topic | Guide |
+|---|---|
+| Docs site landing | `docs/index.md` |
+| Architecture overview | `docs/architecture.md`, `docs/DESIGN.md` |
+| Deployment (CF / Vercel / Netlify) | `docs/deployment.md` |
+| Permissions DSL | `docs/permissions.md` |
+| Query API (REST) | `docs/querying.md` |
+| GraphQL | `docs/graphql.md` |
+| Realtime / SSE | `docs/realtime.md` |
+| Storage + transforms | `docs/storage.md` |
+| Functions sandbox | `docs/sandbox.md` |
+| Advisor rules | `docs/advisor.md` |
+| SSO (SAML / LDAP) | `docs/sso.md` |
+| Adopting existing tables | `docs/adopting-tables.md` |
+| Locale + timezone | `docs/locale-timezone.md` |
+| Admin SPA i18n (Lingui) | `docs/admin-i18n.md` |
+| CLI + SDK | `docs/sdk-and-cli.md` |

@@ -12,7 +12,7 @@ constraints you need.
 | **LDAP / SMTP**    | yes               | 503 (no raw TCP)     | 503 (no raw TCP)     | 503 (no raw TCP)     |
 | **Sandbox**        | Bun worker        | QuickJS / remote HTTP | QuickJS / remote HTTP | QuickJS / remote HTTP |
 | **Image**          | `Bun.Image`       | CF Image Resize      | passthrough          | passthrough          |
-| **Cron**           | setInterval       | wrangler triggers    | vercel.json crons (needs `x-cron-secret: $CRON_SECRET`) | scheduled functions (needs `x-cron-secret: $CRON_SECRET`) |
+| **Cron**           | setInterval       | wrangler triggers    | vercel.json crons (Vercel sends `Authorization: Bearer $CRON_SECRET` automatically) | scheduled function pings `/api/_cron/tick` with `x-cron-secret: $CRON_SECRET` |
 | **Cost**           | VPS               | $0–5/mo              | $0–20/mo             | $0–19/mo             |
 
 ## Bun (self-host)
@@ -78,8 +78,40 @@ Workers users still get a sandbox — sync only.
 ## Vercel
 
 `vercel.json` at the repo root deploys both admin (static SPA from
-`apps/web/dist/client`) and API (`apps/web/src/server/entries/vercel.ts`
-as Edge Function). Cron triggers ping `/api/_cron/tick` once per minute.
+`apps/web/dist/client`) and API (`api/index.ts` — a tiny shim that
+re-exports `apps/web/src/server/entries/vercel.ts` as an Edge Function).
+Cron triggers ping `/api/_cron/tick` once per minute.
+
+### Git integration (recommended)
+
+The typical setup is to connect the GitHub repo from the Vercel dashboard
+and let every push to `main` auto-deploy. No GitHub Actions workflow is
+needed.
+
+1. **vercel.com → Add New → Project** → pick the workeros repo.
+2. **Framework Preset:** `Other`. The `vercel.json` in the repo root
+   overrides install/build/output, so the preset only affects defaults.
+3. **Root Directory:** leave at repo root (`/`). Do *not* point it at
+   `apps/web`; the build command already runs Vite inside the workspace.
+4. **Environment Variables** — set these on Production (and ideally
+   Preview too). Minimum:
+   - `APP_URL` — `https://your-project.vercel.app` (or the custom domain)
+   - `AUTH_SECRET` — `openssl rand -hex 32`
+   - `DATABASE_URL` — Neon HTTP connection string
+   - `DATABASE_DRIVER=neon-http` — forced on by the Vercel entry, but
+     declare it for clarity
+   - `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (+ optional
+     `S3_ENDPOINT`, `S3_REGION`) — edge boot fails without storage
+   - `CRON_SECRET` — `openssl rand -hex 32`. Vercel automatically attaches
+     `Authorization: Bearer $CRON_SECRET` to cron requests; the route also
+     accepts `x-cron-secret` for manual callers
+   - Optional: `EMAIL_PROVIDER`+`EMAIL_FROM`+provider creds,
+     `OAUTH_*_CLIENT_ID/SECRET`, `AUTH_PLUGINS`, etc. — see the table below
+5. **Deploy.** Every push to `main` ships to Production; every PR gets a
+   Preview URL. The first request runs DB migrations against
+   `DATABASE_URL` automatically.
+
+### CLI alternative
 
 ```bash
 vercel link
@@ -158,7 +190,35 @@ readable by anyone who knows the key path — see `docs/storage.md`
 ## Netlify
 
 `netlify.toml` at the repo root mirrors Vercel — admin SPA + edge
-function for `/api/*` + scheduled function for cron.
+function for `/api/*` + scheduled function for cron. Edge function source
+lives in `apps/web/netlify/edge-functions/entry.ts`, scheduled function in
+`apps/web/netlify/functions/cron.ts`.
+
+### Git integration (recommended)
+
+1. **app.netlify.com → Add new site → Import an existing project** → pick
+   the workeros repo.
+2. **Base directory:** leave empty (repo root). The `netlify.toml` already
+   sets `base = ""`.
+3. **Build command, Publish directory:** leave empty too — `netlify.toml`
+   overrides both (`command = "DEPLOY_TARGET=netlify bun install
+   --frozen-lockfile && DEPLOY_TARGET=netlify bun run --cwd apps/web
+   build"`, `publish = "apps/web/dist/client"`).
+4. **Bun runtime:** `BUN_VERSION` is pinned to `1.3.14` in
+   `[build.environment]`. Override per-site if you need a newer version.
+5. **Environment Variables** (Site configuration → Environment variables):
+   - `APP_URL` — `https://your-site.netlify.app` (or custom domain)
+   - `AUTH_SECRET`, `DATABASE_URL`, `DATABASE_DRIVER=neon-http`,
+     `S3_BUCKET` + `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY` (+
+     optional `S3_ENDPOINT`, `S3_REGION`) — same as Vercel
+   - `CRON_SECRET` — the scheduled function reads this and attaches
+     `x-cron-secret` when pinging `/api/_cron/tick`. Without it the cron
+     function 500s loudly instead of silently dropping ticks
+   - Optional providers — same as Vercel
+6. **Deploy.** Every push to `main` ships to Production; every PR gets a
+   Deploy Preview.
+
+### CLI alternative
 
 ```bash
 netlify init

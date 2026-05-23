@@ -52,6 +52,8 @@ VALUES ('<user-id>', (SELECT id FROM roles WHERE name='admin'), strftime('%s','n
 
 Every working session runs on its own branch. Merging into `main` triggers `.github/workflows/deploy.yml`, which runs `bun run build` and `wrangler deploy` against the `workeros-api` Worker. Required GitHub secrets: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
 
+The repo also ships native-git deploy configs for **Vercel** (`vercel.json` + `api/index.ts` shim) and **Netlify** (`netlify.toml` + `apps/web/netlify/{edge-functions,functions}/`). These work via dashboard "connect repo" → push triggers build, no GitHub Actions involved. Both deploys serve the admin SPA + API from the same origin; runtime caveats (Postgres needs `DATABASE_DRIVER=neon-http`, storage needs S3, SAML/LDAP/Realtime 503) live in `docs/deployment.md`. The Vercel cron route accepts both `x-cron-secret` and `Authorization: Bearer $CRON_SECRET` (Vercel attaches the latter automatically); the Netlify scheduled function attaches `x-cron-secret` itself.
+
 **Always create a new branch BEFORE doing any work.** This is mandatory — do not edit files, run commands that mutate state, or otherwise begin a task while still checked out on `main` (or any other unrelated branch). The very first step of every new task is:
 
 ```bash

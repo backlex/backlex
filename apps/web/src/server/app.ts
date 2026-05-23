@@ -10,6 +10,7 @@ import { sessionMiddleware } from "./middleware/session";
 import { tenantMiddleware } from "./middleware/tenant";
 import { authRateLimitMiddleware } from "./lib/auth-rate-limit";
 import type { PermissionVar } from "./middleware/permission";
+import type { PermResolveCache } from "./services/permissions";
 import {
   ensureDefaultTenant,
   ensureSystemRoles,
@@ -101,6 +102,12 @@ export type AppBindings = {
       appSessionTenantId?: string | null;
     };
     permission: PermissionVar;
+    /** Per-request L1 permission cache. Lazily initialized by the first
+     *  `requirePermission` (or any explicit `getRequestPermCache(c)` call)
+     *  and reused by subsequent `resolvePermission` calls in the same
+     *  request — GraphQL, expand, shared-links, etc. — so a single request
+     *  never hits the same `(collection, action)` lookup twice. */
+    permCache?: PermResolveCache;
   };
 };
 

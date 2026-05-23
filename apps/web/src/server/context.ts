@@ -37,6 +37,7 @@ import {
   userCount,
 } from "./services/seed";
 import { loadAppSettings } from "./services/settings";
+import { invalidateUserRoles } from "./services/permissions-cache";
 import { publishEvent } from "./services/events";
 import { isCloudflareWorkers, isStatelessEdge } from "./lib/runtime";
 import { AppError } from "@workeros/core";
@@ -254,6 +255,9 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
         const role =
           total <= 1 ? SYSTEM_ROLES.admin : SYSTEM_ROLES.authenticated;
         await assignRoleByName(dbCtx, tenantId, user.id, role);
+        // Drop any cached "no roles" entry from the public path so the first
+        // protected call after sign-up sees the freshly assigned role.
+        invalidateUserRoles(tenantId, user.id);
         await ensureTenantMembership(
           dbCtx,
           tenantId,

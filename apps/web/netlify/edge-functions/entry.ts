@@ -3,4 +3,4 @@
 // so the runtime-agnostic core stays in one place.
 export { default } from "../../src/server/entries/netlify.ts";
 
-export const config = { path: "/*" };
+export const config = { path: "/api/*" };

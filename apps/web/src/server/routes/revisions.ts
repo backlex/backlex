@@ -7,6 +7,7 @@ import * as sqlite from "@workeros/db/sqlite";
 import type { Context } from "hono";
 import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
+import { resolvePermission } from "../services/permissions";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import {
   getRevision,
@@ -143,7 +144,6 @@ export const revisionsRoutes = new OpenAPIHono<AppBindings>()
       // Permission check on the target collection (update).
       // We re-resolve here rather than via middleware, since the target slug
       // is dynamic from the revision row.
-      const { resolvePermission } = await import("../services/permissions");
       const perm = await resolvePermission(ctx, auth, rev.collection, "update");
       if (!perm.allowed) {
         throw new AppError(

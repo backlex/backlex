@@ -8,6 +8,8 @@ import { Button, PageHeader } from "../ui";
 import { emailTemplatesApi, type ApiEmailTemplate } from "../api";
 import { EmailTemplatesSkeleton } from "../page-skeletons";
 
+const userEmailExample = "{{ user.email }}";
+
 export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => void }) {
   const { t } = useLingui();
   type Tpl = { id: string; key: string; name: string; subject: string; vars: string[]; bodyHtml?: string; fromAddress?: string | null; isNew?: boolean };
@@ -141,7 +143,7 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
 
   return (
     <div className="flex flex-col gap-4.5">
-      <PageHeader title={t`Email templates`} description={<><Trans>Variables use Liquid-style <span className="font-mono">{"{{ user.email }}"}</span>. Template renders run through the Functions sandbox.</Trans></>} actions={<Button size="sm" variant="outline" icon={I.Plus} onClick={onNew}><Trans>New template</Trans></Button>} />
+      <PageHeader title={t`Email templates`} description={<><Trans>Variables use Liquid-style <span className="font-mono">{userEmailExample}</span>. Template renders run through the Functions sandbox.</Trans></>} actions={<Button size="sm" variant="outline" icon={I.Plus} onClick={onNew}><Trans>New template</Trans></Button>} />
       <div className="grid grid-cols-[240px_minmax(0,1fr)_minmax(0,1fr)] items-start gap-3.5 max-[1024px]:grid-cols-[minmax(0,1fr)]">
         <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
           {templates.length === 0 && !active?.isNew && (

@@ -6370,8 +6370,8 @@ msgid "Server fetches the URL and stores it in this workspace. http/https only �
 msgstr "Sunucu URL'yi getirir ve bu çalışma alanında depolar. Yalnızca http/https — özel/dahili hostlar reddedilir."
 
 #: src/client/admin/flow-builder.tsx
-msgid "Server log line. Use <0>{{ data.* }}</0> for interpolation."
-msgstr "Sunucu günlük satırı. İçleme için <0>{{ data.* }}</0> kullanın."
+msgid "Server log line. Use <0>{dataInterpolationExample}</0> for interpolation."
+msgstr "Sunucu günlük satırı. İçleme için <0>{dataInterpolationExample}</0> kullanın."
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "service-account password"
@@ -7058,8 +7058,8 @@ msgstr "Danışman uç noktası hata döndürdü. Tekrar denemek için yeniden �
 #. placeholder {0}: provider.id.toUpperCase()
 #. placeholder {1}: provider.id
 #: src/client/admin/parity/auth-settings.tsx
-msgid "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{app-url}/api/t/{workspace}/auth/callback/{1}</2> as the redirect URI with the provider."
-msgstr "İstemci gizli anahtarı bekleme sırasında şifrelenir. Her iki alanı da boş bırakırsanız giriş, <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> ortam değişkenlerine döner. Sağlayıcıda yönlendirme URI'si olarak <2>{app-url}/api/t/{workspace}/auth/callback/{1}</2> adresini kaydedin."
+msgid "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> as the redirect URI with the provider."
+msgstr "İstemci gizli anahtarı bekleme sırasında şifrelenir. Her iki alanı da boş bırakırsanız giriş, <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> ortam değişkenlerine döner. Sağlayıcıda yönlendirme URI'si olarak <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> adresini kaydedin."
 
 #: src/client/pages/sign-up.tsx
 msgid "The first account on a fresh instance is provisioned as <0>admin</0> automatically. You can demote yourself later."
@@ -7584,8 +7584,8 @@ msgid "Variables (JSON)"
 msgstr "Değişkenler (JSON)"
 
 #: src/client/admin/parity/email-templates.tsx
-msgid "Variables use Liquid-style <0>{{ user.email }}</0>. Template renders run through the Functions sandbox."
-msgstr "Değişkenler Liquid stili <0>{{ user.email }}</0> kullanır. Şablon işlemeleri Fonksiyonlar kum havuzundan geçer."
+msgid "Variables use Liquid-style <0>{userEmailExample}</0>. Template renders run through the Functions sandbox."
+msgstr "Değişkenler Liquid stili <0>{userEmailExample}</0> kullanır. Şablon işlemeleri Fonksiyonlar kum havuzundan geçer."
 
 #: src/client/admin/pages/overview.tsx
 msgid "vector index"

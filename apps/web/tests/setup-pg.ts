@@ -74,7 +74,19 @@ export const makeHarnessPg = async (
 ): Promise<PgTestHarness> => {
   const pg = new PGlite({ extensions: { vector } });
   const db = drizzle(pg, { schema });
-  await applyPgMigrations(db, pg);
+  try {
+    await applyPgMigrations(db, pg);
+  } catch (err) {
+    // Close the WASM instance so the bun test runner doesn't see a lingering
+    // open handle (which it counts as an "unfinished" run → exit 100 even on
+    // pass).
+    try {
+      await pg.close();
+    } catch {
+      // already closing
+    }
+    throw err;
+  }
 
   const env: Env = {
     APP_URL: DEFAULT_APP_URL,

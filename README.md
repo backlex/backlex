@@ -15,7 +15,7 @@ Admin UI · Typed SDK · CLI · Type generation
 |-------------|-----------------------------------------------------------------------|
 | API         | [Hono](https://hono.dev) (Bun + Workers + Vercel + Netlify edge)      |
 | ORM         | [Drizzle](https://orm.drizzle.team) v1 beta — PG + SQLite/D1          |
-| Auth        | [better-auth](https://better-auth.com) — email, OAuth, magic-link, OTP, passkey |
+| Auth        | [better-auth](https://better-auth.com) — email, OAuth (Google/GitHub/Apple), magic-link, OTP, passkey, SAML 2.0 SSO, LDAP/AD |
 | Storage     | local FS (Bun dev) / Cloudflare R2 (Workers) / S3-compatible (any runtime: AWS, R2, B2, MinIO, Spaces, Wasabi) |
 | Vectors     | `pgvector` (PG) / Cloudflare Vectorize (Workers)                      |
 | Realtime    | SSE in Bun / Durable Objects on Workers                               |
@@ -140,12 +140,15 @@ GET    /health
 GET    /api/api-keys            list
 POST   /api/api-keys            create — secret returned once
 DELETE /api/api-keys/:id        revoke
-GET    /api/collections         list
-POST   /api/collections         creates physical c_<slug> table
-PATCH  /api/collections/:slug   ALTER TABLE for new fields
-DELETE /api/collections/:slug   DROP TABLE
-GET    /api/items/:slug         filter / sort / fields / limit / offset / meta=count
-GET    /api/items/:slug/:id
+GET    /api/collections         list (active by default; ?include_archived=true)
+POST   /api/collections         unified: managed (CREATE TABLE c_<prefix>_<slug>) or adopted (metadata only)
+PATCH  /api/collections/:slug   additive ALTER TABLE; no-op on adopted
+DELETE /api/collections/:slug   DROP TABLE on managed; soft-archive on adopted
+POST   /api/collections/:slug/restore  un-archive an adopted collection
+GET    /api/admin/adopt/tables  list tables eligible for adoption
+POST   /api/admin/adopt/inspect inspect columns + FKs of a candidate table
+GET    /api/items/:slug         filter / sort / fields / expand / q / locale / limit / offset / meta
+GET    /api/items/:slug/:id     (also accepts ?expand=)
 POST   /api/items/:slug
 PATCH  /api/items/:slug/:id
 DELETE /api/items/:slug/:id
@@ -158,9 +161,11 @@ POST   /api/folders             create
 GET    /api/activity            list activity entries
 GET    /api/revisions/:collection/:itemId
 POST   /api/revisions/:id/revert
-GET    /api/realtime/items:<slug>/subscribe   permission-filtered change feed
-GET    /api/realtime/collections/subscribe    admin-only schema events
-*      /api/realtime/:channel/{subscribe,publish}   free-form (no filter)
+GET    /api/realtime/items:<slug>/subscribe   permission-filtered change feed (SSE, with Last-Event-ID resume)
+GET    /api/realtime/collections/subscribe    admin-only schema events (SSE)
+GET    /api/realtime/presence:<name>/subscribe  signed-in members roster (SSE)
+*      /api/realtime/:channel/{subscribe,publish}   free-form (no filter; publish rate-limited)
+POST   /api/realtime/items:<slug>/test-publish     admin-only synthetic event injector
 GET    /api/webhooks            admin
 POST   /api/webhooks            admin
 GET    /api/flows               admin
@@ -174,7 +179,23 @@ GET    /api/permissions
 DELETE /api/permissions/:id     admin
 GET    /api/users               admin
 POST   /api/users/:id/roles     admin
+GET    /api/account/preferences per-user locale/timezone (resolved + raw)
+PATCH  /api/account/preferences update per-user locale/timezone
+GET    /api/admin/saml/providers  admin — list per-tenant SAML providers
+GET    /api/admin/ldap-config   admin — per-tenant LDAP config (secrets write-only)
+GET    /api/admin/email-config  admin — per-workspace email transport
+GET    /api/admin/advisor       admin — schema + permissions lint findings + score
+GET    /api/admin/settings      admin — workspace settings (whitelist PATCH)
+POST   /api/t/<slug>/auth/saml/<provider>/{login,acs,metadata,slo}  per-tenant SAML
+POST   /api/t/<slug>/auth/ldap/sign-in        per-tenant LDAP sign-in
+POST   /api/t/<slug>/auth/token/refresh       refresh-token → access-token JWT
+GET    /api/i18n                workspace content translations
+GET    /api/notifications       per-user notification feed
+GET    /api/comments            per-item comment threads
+GET    /api/metrics             admin — overview KPIs / charts
+GET    /api/activity            audit log (admin sees all; others own rows)
 *      /api/graphql             GraphQL (queries + mutations)
+GET    /api/openapi             OpenAPI 3.1 description of the public surface
 GET    /api/_cron/tick          internal — used by Vercel/Netlify cron
 POST   /api/_internal/sandbox-rpc   internal — Bearer-auth, used by the remote-http executor
 ```
@@ -184,10 +205,17 @@ POST   /api/_internal/sandbox-rpc   internal — Bearer-auth, used by the remote
 - [Getting started](docs/getting-started.md) — first user, first collection, first item
 - [Deployment](docs/deployment.md) — Bun / Workers / Vercel / Netlify side by side
 - [Permissions DSL](docs/permissions.md) — operators, variables, examples
+- [Querying items](docs/querying.md) — filter / sort / projection / expand / locale / meta
+- [Adopting tables](docs/adopting-tables.md) — wrap an existing table without DDL
 - [Functions / sandbox](docs/functions.md) — three providers, RPC bridge, security
 - [SDK + CLI](docs/sdk-and-cli.md) — `@workeros/client` + `workeros` commands
 - [GraphQL](docs/graphql.md) — auto-schema, relations, mutations
 - [Realtime](docs/realtime.md) — channels, permission filtering, hosting
+- [Storage](docs/storage.md) — adapters, image transforms, signed URLs
+- [SSO + LDAP](docs/sso.md) — per-tenant SAML 2.0, LDAP / Active Directory
+- [Advisor](docs/advisor.md) — automated lint over schema, permissions, config
+- [Locale + timezone](docs/locale-timezone.md) — workspace + per-user preferences
+- [Admin SPA translation](docs/admin-i18n.md) — Lingui catalogs for the admin chrome
 - [Adapter pattern](docs/architecture.md) — runtime-agnostic interfaces
 - [Design system](docs/DESIGN.md) — admin tokens, layout principles, component contracts, voice
 
@@ -198,7 +226,9 @@ Cross-runtime concerns live behind interfaces in `@workeros/core/adapters`:
 - `StorageAdapter` — `fsStorage` (Bun dev) / `r2Storage` (Workers) / `bunS3Storage` (Bun + S3) / `s3FetchStorage` (any runtime + S3)
 - `VectorAdapter` — `pgvectorAdapter` (PG) / `vectorizeAdapter` (Workers)
 - `RealtimeAdapter` — in-proc + SSE (Bun) / Durable Object + WS (Workers)
-- `EmailAdapter` — `consoleEmail` (dev) / `resendEmail` / `sendgridEmail` / `mailgunEmail` / `sesEmail` (HTTP APIs, any runtime) / `smtpEmail` (nodemailer, not on Workers) — pick via `EMAIL_PROVIDER`
+- `EmailAdapter` — `consoleEmail` (dev) / `resendEmail` / `sendgridEmail` / `mailgunEmail` / `sesEmail` (HTTP APIs, any runtime) / `smtpEmail` (nodemailer, not on Workers) — pick via `EMAIL_PROVIDER`, or use per-workspace `email_config`
+- `SamlAdapter` — `samlify` (works on all runtimes via `nodejs_compat` on Workers); per-tenant configs in `saml_providers`
+- `LdapAdapter` — `ldapts` (Bun / Vercel / Netlify); Workers fall through to a throwing shim — use SAML there
 - `ImageAdapter` — `bunImage` (`Bun.Image`) / `cfImage` (CF Image Resize) / `passthroughImage`
 
 `apps/web/src/server/context.ts` picks the right adapter based on bindings/env.

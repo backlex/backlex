@@ -7,8 +7,8 @@ The big picture in one page.
 ```
 workeros/
 ├─ apps/
-│  ├─ api/                 Hono app, four entries (bun, worker, vercel, netlify)
-│  └─ admin/               Vite + React + shadcn admin panel
+│  └─ web/                 One workspace — Hono API + Vite + React admin SPA
+│                          (server/ + client/ + entries/{bun,worker,vercel,netlify}.ts)
 └─ packages/
    ├─ core/                Types only (DSL, errors, adapter interfaces)
    ├─ db/                  Drizzle schemas (pg + sqlite) + dynamic-DDL applier + DSL compiler
@@ -28,26 +28,36 @@ picks the right implementation based on bindings/env.
 |---------------------|--------------------|-------------------------|-----------------------|
 | `StorageAdapter`    | `fsStorage` / `bunS3Storage` | `r2Storage` / `s3FetchStorage` | `s3FetchStorage`     |
 | `VectorAdapter`     | `pgvectorAdapter`  | `vectorizeAdapter`      | `pgvectorAdapter`     |
-| `RealtimeAdapter`   | in-proc + SSE      | DO + WebSocket          | in-proc + SSE         |
-| `EmailAdapter`      | console / Resend   | Resend                  | Resend                |
+| Realtime            | in-proc + SSE      | DO (Hibernation API) → SSE bridge | in-proc + SSE |
+| `EmailAdapter`      | `console`/`resend`/`sendgrid`/`mailgun`/`ses`/`smtp` | same minus `smtp` (no raw TCP) | `console`/`resend`/`sendgrid`/`mailgun`/`ses`/`smtp` |
 | `ImageAdapter`      | `bunImage`         | `cfImage`               | `passthroughImage`    |
+| `SamlAdapter`       | `samlify`          | `samlify` (via `nodejs_compat`) | `samlify`         |
+| `LdapAdapter`       | `ldapts`           | — (no raw TCP; aliased to a throwing shim) | `ldapts`     |
 
 ## Hybrid schema ownership
 
 System tables (`users`, `sessions`, `roles`, `permissions`, `files`,
-`activity`, `revisions`, `webhooks`, `flows`, `functions`, `passkey`)
-live in `packages/db/src/{pg,sqlite}/schema.ts` — Drizzle owns them, and
-they migrate via the standard Drizzle pipeline.
+`activity`, `revisions`, `webhooks`, `flows`, `functions`, plus auth /
+SSO tables: `app_sessions`, `app_users`, `app_verifications`,
+`saml_providers`, `ldap_configs`, `external_identities`, `email_config`,
+`auth_config`, `api_keys`, `i18n_strings`, `tenants`, `app_settings`,
+`item_ownership`) live in `packages/db/src/{pg,sqlite}/schema.ts` —
+Drizzle owns them, and they migrate via hand-written SQL under
+`packages/db/drizzle/{pg,sqlite}/`.
 
-User collections (`posts`, `comments`, anything you create from admin
-or the API) live in physical tables `c_<slug>` created at request time
-by `packages/db/src/schema-applier.ts`. The metadata in `collections`
-drives a CREATE/ALTER/DROP cycle whenever a `POST/PATCH/DELETE
-/api/collections` lands.
+User collections live in **physical tables** whose name is whatever the
+collection metadata row's `physical_table` column says — the default
+the unified create endpoint picks is `c_<tenantPrefix12>_<slug>`, but
+adopted collections can wrap any existing table name. `POST /api/collections`
+is the single create endpoint and runs DDL only on managed collections
+(`adopted: false`); `adopted: true` writes the metadata row alone.
+`PATCH/DELETE /api/collections/:slug` apply the same managed-vs-adopted
+split.
 
 `applyCollection` is **additive only** — it never drops or alters
-existing columns. Field removal goes through the explicit `dropField`
-function so admins can audit destructive moves.
+existing columns and short-circuits on adopted collections. Field
+removal goes through the explicit `dropField` function so admins can
+audit destructive moves.
 
 ## Permission DSL
 
@@ -161,17 +171,21 @@ realtime fan-out is per-instance.
 
 ```
 packages/db/drizzle/
-  pg/         drizzle-kit-generated PG migrations
-  sqlite/     drizzle-kit-generated SQLite migrations
+  pg/         PG migrations (hand-written SQL)
+  sqlite/     SQLite migrations (hand-written SQL)
 ```
 
-Both dialects must be edited in lockstep. After schema changes:
+Migrations in this repo are **hand-written SQL** — `db:generate:*` is
+only used to refresh the drizzle snapshot. Both dialects must be edited
+in lockstep. After schema changes:
 
 ```bash
-bun run db:generate:pg
+bun run db:generate:pg         # refresh snapshot only (interactive TTY)
 bun run db:generate:sqlite
-bun run db:migrate:pg          # needs DATABASE_URL
-bun run db:migrate:sqlite      # default to ./.data/workeros.sqlite
+bun run db:migrate:pg          # needs DATABASE_URL; also CREATE EXTENSION vector
+bun run db:migrate:sqlite      # writes to ./.data/workeros.sqlite
+bun run db:migrate:d1          # apply sqlite migrations to a local D1
+bun run db:migrate:d1:remote   # same, but to deployed CF D1
 # or via the CLI:
 bun run workeros migrate
 ```

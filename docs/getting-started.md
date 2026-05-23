@@ -55,14 +55,14 @@ role: each user only reads/writes their own items. Admin sees all.
 
 ```bash
 # REST
-curl http://localhost:8787/api/items/posts?limit=10 \
+curl http://localhost:5173/api/items/posts?limit=10 \
   --cookie "$(cat /tmp/cookie.txt)"
 
 # REST with filter (DSL — same as permissions)
-curl "http://localhost:8787/api/items/posts?filter=$(echo '{"published":{"_eq":true},"views":{"_gt":10}}' | jq -sRr @uri)&sort=-views"
+curl "http://localhost:5173/api/items/posts?filter=$(echo '{"published":{"_eq":true},"views":{"_gt":10}}' | jq -sRr @uri)&sort=-views"
 
 # GraphQL
-curl -X POST http://localhost:8787/api/graphql \
+curl -X POST http://localhost:5173/api/graphql \
   -H "content-type: application/json" \
   -d '{"query":"{ posts(sort:\"-views\", limit:5) { id title views } }"}'
 ```
@@ -70,7 +70,7 @@ curl -X POST http://localhost:8787/api/graphql \
 ## Generate types for your client
 
 ```bash
-bun run workeros gen-types http://localhost:8787 --out src/types.ts
+bun run workeros gen-types http://localhost:5173 --out src/types.ts
 ```
 
 The CLI fetches `/api/collections` and emits one TypeScript interface per
@@ -80,7 +80,7 @@ collection plus a `Collections` registry. Use with `@workeros/client`:
 import { createClient } from "@workeros/client";
 import type { Posts } from "./types";
 
-const wks = createClient({ url: "http://localhost:8787" });
+const wks = createClient({ url: "http://localhost:5173" });
 const r = await wks.from<Posts>("posts").list({
   filter: { published: { _eq: true } },
   sort: "-views",

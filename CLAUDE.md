@@ -118,6 +118,7 @@ Selection rules — keep these consistent if you add a new adapter:
 |-----------|-----------------------------------------------------------------------|
 | dialect   | `D1` binding → `sqlite`; `HYPERDRIVE` / `DATABASE_URL` → `pg`; else `sqlite` |
 | db        | D1 client / `postgres-js` (default) or `neon-http` (Vercel Edge, forced; opt-in elsewhere via `DATABASE_DRIVER=neon-http`) / Bun SQLite at `./.data/workeros.sqlite` (lazy-loaded so edge bundles don't import `bun:sqlite`) |
+| dbRead    | Opt-in read replica (pg only). `HYPERDRIVE_REPLICA` binding (Workers) or `DATABASE_REPLICA_URL` env builds a second client; unset → `dbRead === db`. SQLite/D1 always alias the primary. Use for lag-tolerant reads only — post-mutation reads stay on `db` |
 | storage   | `R2` binding → `r2Storage`; `S3_*` → `bunS3Storage`/`s3FetchStorage`; Bun self-host → `fsStorage("./.data/files")`; edge runtimes without R2/S3 **throw** at boot |
 | vector    | `VECTORIZE` → `vectorizeAdapter`; pg dialect → `pgvectorAdapter`; else throws |
 | realtime  | `REALTIME` (DO) → SSE-over-DO-WebSocket bridge; Bun self-host → in-process pub/sub + SSE; Vercel/Netlify Edge → 503 (subscribe + publish) |

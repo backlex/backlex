@@ -3,8 +3,6 @@ title: Realtime
 description: Permission-aware change feed over SSE, with a Durable Object bridge on Workers.
 ---
 
-# Realtime
-
 Permission-aware change feed over Server-Sent Events. **The client
 transport is always SSE (`EventSource`)** — on Cloudflare Workers the
 route bridges an internal Durable Object WebSocket into an SSE

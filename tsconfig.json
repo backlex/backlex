@@ -1,4 +1,9 @@
 {
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["@cloudflare/workers-types"]
+  },
   "files": [],
   "references": [
     { "path": "./packages/core" },
@@ -7,7 +12,6 @@
     { "path": "./packages/ui" },
     { "path": "./packages/client" },
     { "path": "./packages/cli" },
-    { "path": "./apps/api" },
-    { "path": "./apps/admin" }
+    { "path": "./apps/web" }
   ]
 }

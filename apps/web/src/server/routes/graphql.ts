@@ -3,6 +3,7 @@ import { createYoga } from "graphql-yoga";
 import { AppError } from "@workeros/core";
 import type { AppBindings } from "../app";
 import { getSchema } from "../services/graphql";
+import { getRequestPermCache } from "../middleware/permission";
 
 export const graphqlRoutes = new Hono<AppBindings>().all("/", async (c) => {
   const ctx = c.get("ctx");
@@ -11,10 +12,11 @@ export const graphqlRoutes = new Hono<AppBindings>().all("/", async (c) => {
     throw new AppError("UNAUTHORIZED", "Active tenant required");
   }
   const schema = await getSchema(ctx, auth.tenantId);
+  const permCache = getRequestPermCache(c);
   const yoga = createYoga({
     schema,
     graphqlEndpoint: "/api/graphql",
-    context: () => ({ ctx, auth }),
+    context: () => ({ ctx, auth, permCache }),
     landingPage: false,
     graphiql: { defaultQuery: "{ _empty }" },
   });

@@ -17,6 +17,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { inspectTable, RESERVED_NAMES } from "../services/adopt";
 import { seedOwnerScopedPermissions } from "../services/seed";
+import { invalidateTenantPermissions } from "../services/permissions-cache";
 import { logActivity } from "../services/activity";
 import { cascadeSlugRename } from "../services/collection-rename";
 import { embedAndUpsertBatch, isVectorizable } from "../services/vectorize";
@@ -220,6 +221,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)));
     if (existing[0].ownerScoped ?? existing[0].owner_scoped) {
       await seedOwnerScopedPermissions({ db, dialect }, tenantId, slug);
+      invalidateTenantPermissions(tenantId);
     }
     await logActivity(c, {
       action: "restore",
@@ -487,6 +489,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
     });
     if (body.ownerScoped) {
       await seedOwnerScopedPermissions({ db, dialect }, tenantId, body.slug);
+      invalidateTenantPermissions(tenantId);
     }
     const created = {
       id,
@@ -593,6 +596,9 @@ export const collectionsRoutes = new Hono<AppBindings>()
 
     if (nextSlug !== slug) {
       renameCounts = await cascadeSlugRename(db, dialect, tenantId, slug, nextSlug);
+      // Permission rows just got their `collection` rewritten; cached entries
+      // keyed by the old slug would still claim allow=true.
+      invalidateTenantPermissions(tenantId);
     }
 
     await applyCollection(db, dialect, {
@@ -605,6 +611,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
     });
     if (merged.ownerScoped) {
       await seedOwnerScopedPermissions({ db, dialect }, tenantId, nextSlug);
+      invalidateTenantPermissions(tenantId);
     }
     const updateResponse = { ok: true, slug: nextSlug, renamed: renameCounts };
     await logActivity(c, {
@@ -649,6 +656,9 @@ export const collectionsRoutes = new Hono<AppBindings>()
       await (db as any)
         .delete(t)
         .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)));
+      // Permission rows referencing this slug are now ghosts; cached lookups
+      // would still say "allowed" for a slug that no longer exists.
+      invalidateTenantPermissions(tenantId);
     }
     await logActivity(c, {
       action: adopted ? "archive" : "delete",

@@ -9,12 +9,17 @@ import {
 } from "@workeros/core";
 import { combineConditions } from "@workeros/db";
 import type { DbCtx } from "./seed";
+import {
+  type CachedRoleRow,
+  type CachedStaticPermission,
+  getCachedRoles,
+  getCachedStaticPermission,
+  setCachedRoles,
+  setCachedStaticPermission,
+  sortRoleIds,
+} from "./permissions-cache";
 
-interface RoleRow {
-  id: string;
-  name: string;
-  admin: boolean;
-}
+type RoleRow = CachedRoleRow;
 
 interface PermissionRow {
   id: string;
@@ -46,18 +51,27 @@ export const loadRolesForUser = async (
   apiKeyRoleId: string | null = null,
   plane: "platform" | "app" = "platform",
 ): Promise<RoleRow[]> => {
-  const t = tablesFor(ctx.dialect);
   // Without an active tenant we can't pick the right copy of public/admin/etc.,
   // so deny everything by returning no roles. This is the safe default — the
   // request just hits the public-deny branch in resolvePermission.
   if (!tenantId) return [];
+  // L2 cache hit short-circuits both the role join and the underlying DB
+  // round-trip. TTL is short (1s) so role demotion is felt almost immediately
+  // even across isolates; explicit writes also invalidate.
+  const cacheKey = { plane, tenantId, userId, apiKeyRoleId };
+  const cached = getCachedRoles(cacheKey);
+  if (cached) return cached;
+  const t = tablesFor(ctx.dialect);
   // Role-scoped API key: the effective role set is exactly the bound role —
   // no implicit `authenticated`, no other roles the owner happens to have —
   // and only while the owner still holds it. If they lost it (or it was
   // deleted), the key resolves to no roles → denied. A scoped key therefore
   // can never grant more than its owner currently has.
   if (apiKeyRoleId) {
-    if (!userId) return [];
+    if (!userId) {
+      setCachedRoles(cacheKey, []);
+      return [];
+    }
     const rows = (await (ctx.db as any)
       .select({ id: t.roles.id, name: t.roles.name, admin: t.roles.admin })
       .from(t.userRoles)
@@ -69,10 +83,11 @@ export const loadRolesForUser = async (
           eq(t.roles.id, apiKeyRoleId),
         ),
       )) as RoleRow[];
+    setCachedRoles(cacheKey, rows);
     return rows;
   }
   if (!userId) {
-    const rows = await (ctx.db as any)
+    const rows = (await (ctx.db as any)
       .select()
       .from(t.roles)
       .where(
@@ -80,8 +95,9 @@ export const loadRolesForUser = async (
           eq(t.roles.tenantId, tenantId),
           eq(t.roles.name, SYSTEM_ROLES.public),
         ),
-      );
-    return rows as RoleRow[];
+      )) as RoleRow[];
+    setCachedRoles(cacheKey, rows);
+    return rows;
   }
   // App-plane identities (workspace end-users from `app_users`) get the
   // workspace's `authenticated` role plus whatever custom roles a workspace
@@ -119,6 +135,7 @@ export const loadRolesForUser = async (
           ),
         ),
       )) as RoleRow[];
+    setCachedRoles(cacheKey, rows);
     return rows;
   }
   // Only consider roles that belong to the active tenant. A user can have
@@ -147,6 +164,7 @@ export const loadRolesForUser = async (
         ),
       ),
     )) as RoleRow[];
+  setCachedRoles(cacheKey, rows);
   return rows;
 };
 
@@ -167,12 +185,26 @@ export interface ResolvedPermission {
   fields: Set<string> | null;
 }
 
+/** Per-request L1 cache. Keyed by `"<collection>:<action>"` because `auth`
+ *  is fixed for the lifetime of one request. Optional — when omitted the
+ *  resolver falls back to L2+L3 only. */
+export type PermResolveCache = Map<string, ResolvedPermission>;
+
 export const resolvePermission = async (
   ctx: DbCtx,
   auth: AuthSubject,
   collection: string,
   action: Action,
+  requestCache?: PermResolveCache,
 ): Promise<ResolvedPermission> => {
+  // L1 — same request, same (collection, action) → return the prior result
+  // verbatim. `whereSql` already carries this request's auth bindings.
+  const memoKey = `${collection}:${action}`;
+  if (requestCache) {
+    const hit = requestCache.get(memoKey);
+    if (hit) return hit;
+  }
+
   const roles = await loadRolesForUser(
     ctx,
     auth.userId,
@@ -180,67 +212,109 @@ export const resolvePermission = async (
     auth.apiKeyRoleId ?? null,
     auth.plane ?? "platform",
   );
+
+  const remember = (r: ResolvedPermission): ResolvedPermission => {
+    requestCache?.set(memoKey, r);
+    return r;
+  };
+
   if (roles.some((r) => r.admin)) {
-    return {
+    return remember({
       allowed: true,
       isAdmin: true,
       whereSql: null,
       conditions: null,
       fields: null,
-    };
+    });
   }
   if (roles.length === 0) {
-    return {
+    return remember({
       allowed: false,
       isAdmin: false,
       whereSql: null,
       conditions: null,
       fields: null,
-    };
-  }
-  const t = tablesFor(ctx.dialect);
-  const rows = (await (ctx.db as any)
-    .select()
-    .from(t.permissions)
-    .where(
-      and(
-        inArray(
-          t.permissions.roleId,
-          roles.map((r) => r.id),
-        ),
-        eq(t.permissions.action, action),
-        or(
-          eq(t.permissions.collection, collection),
-          eq(t.permissions.collection, "*"),
-        ),
-      ),
-    )) as PermissionRow[];
-
-  if (rows.length === 0) {
-    return {
-      allowed: false,
-      isAdmin: false,
-      whereSql: null,
-      conditions: null,
-      fields: null,
-    };
+    });
   }
 
-  const rawConditions = rows.map((r) => r.condition);
-  const whereSql = combineConditions(rawConditions, auth);
-  const conditions: Condition[] | null = rawConditions.some((c) => c == null)
-    ? null
-    : (rawConditions as Condition[]);
+  // L3 — static permission rows for this (tenant, roleSet, collection,
+  // action). Keyed by the role set so two users with the same bundle share
+  // one entry. Conditions are cached raw; we rebind `whereSql` with the
+  // current `auth` after every hit so `$user.id` etc. always reflect the
+  // live identity.
+  const tenantId = auth.tenantId!;
+  const permCacheKey = {
+    tenantId,
+    roleIds: sortRoleIds(roles.map((r) => r.id)),
+    collection,
+    action,
+  };
+  let staticPerm: CachedStaticPermission | undefined =
+    getCachedStaticPermission(permCacheKey);
+  if (!staticPerm) {
+    const t = tablesFor(ctx.dialect);
+    const rows = (await (ctx.db as any)
+      .select()
+      .from(t.permissions)
+      .where(
+        and(
+          inArray(
+            t.permissions.roleId,
+            roles.map((r) => r.id),
+          ),
+          eq(t.permissions.action, action),
+          or(
+            eq(t.permissions.collection, collection),
+            eq(t.permissions.collection, "*"),
+          ),
+        ),
+      )) as PermissionRow[];
 
-  let fields: Set<string> | null = null;
-  for (const r of rows) {
-    if (!r.fields) {
-      fields = null;
-      break;
+    if (rows.length === 0) {
+      staticPerm = {
+        allowed: false,
+        isAdmin: false,
+        rawConditions: [],
+        fields: null,
+      };
+    } else {
+      const rawConditions = rows.map((r) => r.condition);
+      let fields: string[] | null = null;
+      for (const r of rows) {
+        if (!r.fields) {
+          fields = null;
+          break;
+        }
+        if (!fields) fields = [];
+        for (const f of r.fields) if (!fields.includes(f)) fields.push(f);
+      }
+      staticPerm = {
+        allowed: true,
+        isAdmin: false,
+        rawConditions,
+        fields,
+      };
     }
-    if (!fields) fields = new Set();
-    for (const f of r.fields) fields.add(f);
+    setCachedStaticPermission(permCacheKey, staticPerm);
   }
 
-  return { allowed: true, isAdmin: false, whereSql, conditions, fields };
+  if (!staticPerm.allowed) {
+    return remember({
+      allowed: false,
+      isAdmin: false,
+      whereSql: null,
+      conditions: null,
+      fields: null,
+    });
+  }
+
+  const whereSql = combineConditions(staticPerm.rawConditions, auth);
+  const conditions: Condition[] | null = staticPerm.rawConditions.some(
+    (c) => c == null,
+  )
+    ? null
+    : (staticPerm.rawConditions as Condition[]);
+  const fields = staticPerm.fields ? new Set(staticPerm.fields) : null;
+
+  return remember({ allowed: true, isAdmin: false, whereSql, conditions, fields });
 };

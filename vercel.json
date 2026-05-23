@@ -4,9 +4,6 @@
   "installCommand": "bun install --frozen-lockfile",
   "buildCommand": "DEPLOY_TARGET=vercel bun run --cwd apps/web build",
   "outputDirectory": "apps/web/dist/client",
-  "functions": {
-    "api/index.ts": { "runtime": "edge" }
-  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index" },
     { "source": "/((?!api/|assets/).*)", "destination": "/index.html" }

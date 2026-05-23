@@ -58,7 +58,7 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
   const prev = lastTickAt ?? new Date(now.getTime() - 60_000);
   lastTickAt = now;
 
-  const ctx = buildContext(env);
+  const ctx = await buildContext(env);
   const t = tableFor(ctx.dialect);
   const rows = (await (ctx.db as any)
     .select()

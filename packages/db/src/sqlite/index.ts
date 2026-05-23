@@ -1,10 +1,11 @@
 import { drizzle as drizzleD1, type DrizzleD1Database } from "drizzle-orm/d1";
-import { drizzle as drizzleBunSqlite, type SQLiteBunDatabase } from "drizzle-orm/bun-sqlite";
-import { Database } from "bun:sqlite";
-import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import type { SQLiteBunDatabase } from "drizzle-orm/bun-sqlite";
 import * as schema from "./schema";
 
+/** Type-only re-export of the Bun client union. The runtime
+ *  `createBunSqliteClient` factory lives in `@workeros/db/sqlite/bun` and
+ *  is loaded via dynamic `await import()` so this top-level module stays
+ *  edge-safe (no `bun:sqlite` import at module init). */
 export type SqliteDb =
   | DrizzleD1Database<typeof schema>
   | SQLiteBunDatabase<typeof schema>;
@@ -53,13 +54,6 @@ export const createD1SessionClient = (
     db: drizzleD1(session, { schema }),
     getBookmark: () => session.getBookmark?.() ?? null,
   };
-};
-
-export const createBunSqliteClient = (path = "./.data/workeros.sqlite"): SqliteDb => {
-  mkdirSync(dirname(path), { recursive: true });
-  const db = new Database(path, { create: true });
-  db.exec("PRAGMA journal_mode = WAL");
-  return drizzleBunSqlite({ client: db, schema });
 };
 
 export { schema };

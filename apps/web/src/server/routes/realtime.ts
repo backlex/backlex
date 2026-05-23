@@ -16,6 +16,7 @@ import {
   type SubscriptionMeta,
 } from "../services/events";
 import { rateLimitOk } from "../lib/rate-limit";
+import { isStatelessEdge } from "../lib/runtime";
 
 const ITEMS_PREFIX = "items:";
 const PRESENCE_PREFIX = "presence:";
@@ -190,6 +191,15 @@ const publishToChannel = async (
       method: "POST",
       body: JSON.stringify(payload),
     });
+  } else if (isStatelessEdge()) {
+    // Vercel Edge / Netlify Edge: every invocation is a fresh isolate, so
+    // module-level subscribers from `publishLocal` would never see the
+    // publish. Deploy to Cloudflare Workers (with REALTIME DO binding) or
+    // Bun self-host for realtime.
+    throw new AppError(
+      "UNAVAILABLE",
+      "Realtime is not available on Vercel Edge / Netlify Edge — deploy to Cloudflare Workers (with REALTIME Durable Object binding) or Bun.",
+    );
   } else {
     publishLocal(channel, payload);
   }
@@ -414,6 +424,16 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
           }
         }
       });
+    }
+
+    // Stateless edges (Vercel Edge / Netlify Edge) lose subscribers between
+    // invocations — the in-process `subscribeLocal` map doesn't survive. Bail
+    // with a clear 503 instead of pretending the stream is live.
+    if (isStatelessEdge()) {
+      throw new AppError(
+        "UNAVAILABLE",
+        "Realtime is not available on Vercel Edge / Netlify Edge — deploy to Cloudflare Workers (with REALTIME Durable Object binding) or Bun.",
+      );
     }
 
     // Bun / self-host: in-process pub/sub straight onto an SSE stream.

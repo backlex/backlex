@@ -116,11 +116,14 @@ Selection rules — keep these consistent if you add a new adapter:
 
 | Concern   | Rule                                                                  |
 |-----------|-----------------------------------------------------------------------|
-| dialect   | `D1` binding → `sqlite`; `DATABASE_URL` → `pg`; else `sqlite`         |
-| db        | D1 client / `postgres-js` / Bun SQLite at `./.data/workeros.sqlite`   |
-| storage   | `R2` binding → `r2Storage`; else `fsStorage("./.data/files")`         |
+| dialect   | `D1` binding → `sqlite`; `HYPERDRIVE` / `DATABASE_URL` → `pg`; else `sqlite` |
+| db        | D1 client / `postgres-js` (default) or `neon-http` (Vercel Edge, forced; opt-in elsewhere via `DATABASE_DRIVER=neon-http`) / Bun SQLite at `./.data/workeros.sqlite` (lazy-loaded so edge bundles don't import `bun:sqlite`) |
+| storage   | `R2` binding → `r2Storage`; `S3_*` → `bunS3Storage`/`s3FetchStorage`; Bun self-host → `fsStorage("./.data/files")`; edge runtimes without R2/S3 **throw** at boot |
 | vector    | `VECTORIZE` → `vectorizeAdapter`; pg dialect → `pgvectorAdapter`; else throws |
-| realtime  | `REALTIME` (DO) → SSE-over-DO-WebSocket bridge; else in-process pub/sub + SSE |
+| realtime  | `REALTIME` (DO) → SSE-over-DO-WebSocket bridge; Bun self-host → in-process pub/sub + SSE; Vercel/Netlify Edge → 503 (subscribe + publish) |
+| saml      | Bun + Cloudflare Workers (nodejs_compat) supported; Vercel/Netlify Edge → 503 (samlify can't load) |
+| ldap      | Bun + Node self-host supported; every edge runtime → 503 (no raw TCP) |
+| smtp      | Same as LDAP — Bun + Node only; edge runtimes fall back to console adapter with a warning |
 
 Adapter contracts live in `packages/core/src/adapters/{storage,vector,email,image}.ts`. Concrete implementations live in `apps/web/src/server/adapters/*` (e.g. `storage.fs.ts` vs `storage.r2.ts`). Realtime is **not** behind a `Ctx` adapter — it branches on `env.REALTIME` directly in `routes/realtime.ts` + `services/events.ts` (see the Realtime section below).
 

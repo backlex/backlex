@@ -5,6 +5,7 @@ import { sendgridEmail } from "../adapters/email.sendgrid";
 import { mailgunEmail } from "../adapters/email.mailgun";
 import { sesEmail } from "../adapters/email.ses";
 import { smtpEmail } from "../adapters/email.smtp";
+import { isCloudflareWorkers, isEdgeRuntime } from "./runtime";
 import type { Env } from "../env";
 
 /**
@@ -43,9 +44,8 @@ export const EMAIL_PROVIDER_IDS = [
 ] as const;
 export type EmailConfigProviderId = (typeof EMAIL_PROVIDER_IDS)[number];
 
-export const onCloudflareWorkers = (): boolean =>
-  typeof navigator !== "undefined" &&
-  (navigator as { userAgent?: string }).userAgent === "Cloudflare-Workers";
+/** @deprecated re-export for back-compat — use `lib/runtime.ts` directly. */
+export const onCloudflareWorkers = isCloudflareWorkers;
 
 /**
  * Turn a resolved {@link EmailSpec} into a live adapter. Returns `undefined`
@@ -65,9 +65,9 @@ export const buildEmailAdapter = (spec: EmailSpec): EmailAdapter | undefined => 
     case "ses":
       return sesEmail(spec.accessKeyId, spec.secretAccessKey, spec.region, spec.from);
     case "smtp": {
-      if (onCloudflareWorkers()) {
+      if (isEdgeRuntime()) {
         console.warn(
-          "[email] SMTP is not supported on Cloudflare Workers (no raw TCP) — use resend/sendgrid/mailgun/ses instead",
+          "[email] SMTP is not supported on edge runtimes (Cloudflare Workers / Vercel Edge / Netlify Edge — no raw TCP) — use resend/sendgrid/mailgun/ses instead",
         );
         return undefined;
       }

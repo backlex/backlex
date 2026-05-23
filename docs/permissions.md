@@ -45,7 +45,8 @@ Resolved against the request's auth subject:
 - `$user.id` — current user's id (null when anonymous)
 - `$user.email`
 - `$user.roles` — array of role names
-- `$now` — Date.now()
+- `$tenant.id` (aka `$user.tenant_id`) — active workspace id
+- `$now` — `Date.now()`
 
 `$user.id` resolving to null short-circuits comparison ops to false, so
 anonymous users never accidentally match `{ owner_id: { _eq: "$user.id" } }`.

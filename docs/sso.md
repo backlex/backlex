@@ -1,11 +1,14 @@
 # SSO (SAML 2.0)
 
-workeros supports per-tenant SAML 2.0 SSO for the **workspace end-user pool**
-(the `app_users` table, served via `/api/t/<slug>/auth/*`). The admin app
-itself stays on the existing `/api/auth/*` better-auth surface.
+workeros supports per-tenant SAML 2.0 SSO **and** LDAP / Active Directory
+for the **workspace end-user pool** (the `app_users` table, served via
+`/api/t/<slug>/auth/*`). The admin app itself stays on the existing
+`/api/auth/*` better-auth surface.
 
-> Phase 2 will add LDAP. The data layer (`external_identities`) is already
-> shaped so an LDAP login lands in the same row store as SAML.
+Both flows land in the same `external_identities` row store (SAML rows
+carry `provider_type = 'saml'`, LDAP rows `provider_type = 'ldap'`).
+SAML is covered first; LDAP / AD reference is at the bottom of this
+page.
 
 ## How it fits together
 
@@ -138,9 +141,9 @@ assignments aren't touched.
 
 ---
 
-## LDAP / Active Directory (Phase 2)
+## LDAP / Active Directory
 
-LDAP / AD is the second federated-identity option after SAML. Use it when
+LDAP / AD is the second federated-identity option alongside SAML. Use it when
 your customer wants to keep username + password sign-in but bind against
 their existing directory (no IdP-side SAML configuration needed).
 

@@ -2,7 +2,7 @@
 
 [build]
   base = ""
-  command = "DEPLOY_TARGET=netlify bun install --frozen-lockfile && DEPLOY_TARGET=netlify bun run --cwd apps/web build"
+  command = "DEPLOY_TARGET=netlify bun install --frozen-lockfile && DEPLOY_TARGET=netlify bun run --cwd apps/web build && bun scripts/build-netlify-fn.ts"
   publish = "apps/web/dist/client"
 
 [build.environment]
@@ -33,7 +33,8 @@
 
 [functions]
   directory = "apps/web/netlify/functions"
-  # Keep Netlify's default (nft-based) bundler. The esbuild bundler
-  # opt-in confuses runtime detection so the Function gets wrapped as
-  # v1 (looks for `exports.handler`) instead of v2 (Web Standard
-  # `export default`), which is what our handler actually uses.
+  # Keep Netlify's default (nft) bundler. The Function `api.mjs` is
+  # pre-bundled by `scripts/build-netlify-fn.ts` during the build
+  # command — Bun inlines our `.ts` workspace packages there, which
+  # Netlify's bundler can't do on its own. nft then just walks the
+  # remaining npm imports and symlinks them into the zip.

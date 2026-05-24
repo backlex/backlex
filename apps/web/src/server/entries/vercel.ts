@@ -1,16 +1,15 @@
 /**
- * Vercel Function entry. Wired in `vercel.json` rewrites so any
- * `/api/*` path is handled by this single function. The `api/index.mjs`
- * shim (pre-bundled by `scripts/build-vercel-fn.ts` from
- * `vercel-fn-entry.ts`) imports the Hono app exported here and forwards
- * requests via `app.fetch(req)`.
+ * Vercel Function entry. The catch-all route `api/[...all].ts` is the
+ * Vercel-facing function; `scripts/build-vercel-fn.ts` pre-bundles
+ * `vercel-fn-entry.ts` (which imports the Hono app exported here) into
+ * `api/[...all].mjs` so the bundler doesn't have to transpile our
+ * `.ts`-source workspace packages.
  *
- * Deploys as a Node 22 serverless function — moved off Vercel Edge
- * because Edge can't transpile our `.ts` workspace package sources
- * (same issue Netlify Functions hits without pre-bundling). Node 22
- * keeps node:net/tls/crypto available, so SAML/LDAP/SMTP load.
+ * Deploys as a Node serverless function (Vercel default — Node 24 LTS
+ * as of writing) under Fluid Compute. Node keeps node:net/tls/crypto
+ * available, so SAML/LDAP/SMTP load.
  *
- * Runtime constraints (Node 22 Lambda):
+ * Runtime constraints:
  *   - DATABASE_URL is required. `DATABASE_DRIVER=neon-http` is still
  *     recommended (Vercel functions are short-lived; HTTP avoids the
  *     TCP handshake cost per cold start), and it's the path
@@ -18,10 +17,10 @@
  *   - Storage: set `S3_BUCKET` + `S3_ACCESS_KEY_ID` +
  *     `S3_SECRET_ACCESS_KEY` so the adapter switches to S3. The
  *     function zip has no local fs to fall back on.
- *   - Realtime SSE loads but is impractical (Lambda is stateless,
- *     module-level pub/sub Maps don't share across invocations,
- *     and function execution time caps the SSE stream).
- *   - Cron triggers configured via `vercel.json::crons` hit
+ *   - Realtime SSE loads but is impractical (Vercel functions are
+ *     stateless, module-level pub/sub Maps don't share across
+ *     invocations, and function execution time caps the SSE stream).
+ *   - Cron triggers configured via `vercel.ts::crons` hit
  *     `/api/_cron/tick`. The route accepts EITHER `x-cron-secret:
  *     $CRON_SECRET` (manual callers) OR `Authorization: Bearer $CRON_SECRET`
  *     (what Vercel's cron sends automatically when CRON_SECRET is set as a
@@ -84,6 +83,6 @@ app.get("/api/_cron/tick", async (c) => {
 });
 
 // Expose the Hono instance. `vercel-fn-entry.ts` (pre-bundled into
-// `api/index.mjs`) wraps it with `(req) => app.fetch(req)` — the same
-// pattern Netlify uses, just a different output path.
+// `api/[...all].mjs`) wraps it in the Web Standard `{ fetch(req) }`
+// object literal Vercel's Node runtime requires for fetch-handler mode.
 export default app;

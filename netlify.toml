@@ -1,19 +1,22 @@
-# Root config — deploys admin SPA (static) + API (edge function) together.
+# Root config — deploys admin SPA (static) + API (Node Lambda function) together.
 
 [build]
   base = ""
   command = "DEPLOY_TARGET=netlify bun install --frozen-lockfile && DEPLOY_TARGET=netlify bun run --cwd apps/web build"
   publish = "apps/web/dist/client"
-  edge_functions = "apps/web/netlify/edge-functions"
 
 [build.environment]
   BUN_VERSION = "1.3.14"
 
-# Edge function claims the API surface. Anything outside /api/* falls through
-# to static + SPA fallback below.
-[[edge_functions]]
-  function = "entry"
-  path = "/api/*"
+# API surface — Hono app served by a Node 22 serverless function.
+# Edge Functions were dropped because Netlify's Deno edge bundler can't
+# resolve this repo's npm/workspace dep tree (postgres-js, drizzle, samlify,
+# quickjs, etc.). Functions run on Node 22, which matches our Bun/Node-compat
+# source tree without code changes.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
 
 # Single-page-app fallback so client-side routes (/collections, /settings,
 # /functions, …) all serve admin's index.html.
@@ -22,12 +25,14 @@
   to = "/index.html"
   status = 200
 
-# Cron — pings the same /_cron/tick the edge entry serves so dedupe state
-# stays in one place. The scheduled function adds x-cron-secret from env.
+# Cron — pings /api/_cron/tick (handled inside the Hono app) so dedupe
+# state stays in one place. The scheduled function attaches x-cron-secret.
 [[scheduled_functions]]
   function = "cron"
   cron = "* * * * *"
 
 [functions]
   directory = "apps/web/netlify/functions"
-  deno_import_map = "apps/web/netlify/edge-functions/import_map.json"
+  # Bundle every transitive dep into the Function so Node 22 doesn't have to
+  # walk the workspace at runtime. esbuild is Netlify's default bundler.
+  node_bundler = "esbuild"

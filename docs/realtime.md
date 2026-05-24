@@ -79,12 +79,12 @@ permission means subscribe rejects with 401).
 
 ## Hosting matrix
 
-| Host               | Client transport   | Server fan-out                                                                                                  |
-|--------------------|--------------------|------------------------------------------------------------------------------------------------------------------|
-| Bun (self-host)    | SSE                | In-process `Map<channel, Set<Subscriber>>` + a bounded per-channel ring buffer for replay. Single-instance only. |
-| Cloudflare Workers | SSE                | SSE response bridged into the `RealtimeRoom` Durable Object (WebSocket Hibernation API; `seq` + recent-event log persisted in `state.storage`). |
-| Vercel Edge        | SSE                | Single-instance: each edge function invocation gets its own Map; multi-region replicas don't share.              |
-| Netlify Edge       | SSE                | Same caveat as Vercel.                                                                                            |
+| Host                                | Client transport   | Server fan-out                                                                                                  |
+|-------------------------------------|--------------------|------------------------------------------------------------------------------------------------------------------|
+| Bun (self-host)                     | SSE                | In-process `Map<channel, Set<Subscriber>>` + a bounded per-channel ring buffer for replay. Single-instance only. |
+| Cloudflare Workers                  | SSE                | SSE response bridged into the `RealtimeRoom` Durable Object (WebSocket Hibernation API; `seq` + recent-event log persisted in `state.storage`). |
+| Vercel Functions (Node 22)          | SSE                | Loads but impractical: Lambda is stateless, so each cold-started function instance gets its own Map; the SSE stream also caps at the function execution limit. |
+| Netlify Functions (Node 22)         | SSE                | Same caveat as Vercel.                                                                                            |
 
 The server still chooses different fan-out paths under the hood (in-proc
 Map on Bun, Durable Object on Workers), but every subscriber sees the

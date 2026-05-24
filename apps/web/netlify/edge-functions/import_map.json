@@ -4,7 +4,6 @@
     "hono/cookie": "npm:hono@4.12.16/cookie",
     "hono/cors": "npm:hono@4.12.16/cors",
     "hono/logger": "npm:hono@4.12.16/logger",
-    "hono/netlify": "npm:hono@4.12.16/netlify",
     "hono/secure-headers": "npm:hono@4.12.16/secure-headers",
     "hono/streaming": "npm:hono@4.12.16/streaming"
   }

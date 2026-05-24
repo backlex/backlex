@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "bun install --frozen-lockfile",
-  "buildCommand": "DEPLOY_TARGET=vercel bun run --cwd apps/web build",
+  "buildCommand": "DEPLOY_TARGET=vercel bun run --cwd apps/web build && bun scripts/build-vercel-fn.ts",
   "outputDirectory": "apps/web/dist/client",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index" },

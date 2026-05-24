@@ -30,8 +30,30 @@ jobs:
       - name: Smoke tests
         run: bun run test
 
+  # Mirror of test.yml::build-targets — gates production deploys on the
+  # same per-target build verification that runs on PRs. Without this a
+  # PR that bypassed CI (workflow_dispatch, force-merge) could still
+  # break Vercel/Netlify on next push to main.
+  build-targets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build all targets
+        run: bun run build:targets
+
   deploy:
-    needs: test
+    needs: [test, build-targets]
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-cloudflare

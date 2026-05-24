@@ -1,6 +1,7 @@
 /**
  * Vercel Function source entry, pre-bundled by
- * `scripts/build-vercel-fn.ts` into `api/index.mjs`.
+ * `scripts/build-vercel-output.ts` into the Build Output API tree at
+ * `.vercel/output/functions/api/index.func/index.mjs`.
  *
  * Three constraints stacked on top of each other:
  *
@@ -17,12 +18,12 @@
  *
  * 3. URL reconstruction — Vercel's "Other Frameworks" filesystem routing
  *    only matches literal filenames (no `[...slug]` outside Next.js), so
- *    `vercel.ts::rewrites` funnels every `/api/*` path through this
- *    single file at `/api/index?__path=<captured-rest>`. By the time the
- *    request lands in the function, `request.url.pathname` is
- *    `/api/index` — Hono's router would route that as the literal path
- *    and miss every real route. We rebuild the URL from `__path` so Hono
- *    sees the original `/api/auth/get-session` etc.
+ *    the Build Output `config.json` routes every `/api/*` request to
+ *    this single function as `/api/index?__path=<captured-rest>`. By the
+ *    time the request lands here, `request.url.pathname` is `/api/index`
+ *    — Hono's router would route that as the literal path and miss every
+ *    real route. We rebuild the URL from `__path` so Hono sees the
+ *    original `/api/auth/get-session` etc.
  */
 import app from "./vercel";
 

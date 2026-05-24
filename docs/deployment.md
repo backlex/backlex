@@ -1,21 +1,21 @@
 ---
 title: Deployment
-description: Ship the same source to Bun, Cloudflare Workers, Vercel Edge, or Netlify (Node serverless).
+description: Ship the same source to Bun, Cloudflare Workers, Vercel, or Netlify (all Node serverless except Bun and Workers).
 ---
 
 workeros runs on four targets from the same source. Pick one based on the
 constraints you need.
 
-|                    | Bun (self-host)   | Cloudflare Workers   | Vercel Edge          | Netlify Functions (Node 22) |
+|                    | Bun (self-host)   | Cloudflare Workers   | Vercel Functions (Node 22, Build Output API) | Netlify Functions (Node 22) |
 |--------------------|-------------------|----------------------|----------------------|------------------------------|
-| **Database**       | SQLite or PG      | D1 or Hyperdrive→PG  | PG via `DATABASE_DRIVER=neon-http` (required) | PG via `DATABASE_DRIVER=neon-http` (recommended) |
-| **Storage**        | local fs / S3 / `Bun.S3Client` | R2 (S3 fallback) | S3 (`aws4fetch`) **required** — boot fails without it | S3 (`aws4fetch`) **required** — boot fails without it |
-| **Realtime**       | in-proc + SSE     | Durable Objects + WS | 503 (not supported)  | loads but impractical (Lambda is stateless, SSE capped by function execution limit) |
-| **SAML**           | yes               | yes (nodejs_compat)  | 503 (xml-crypto unavailable) | yes (Node 22 native crypto) |
-| **LDAP / SMTP**    | yes               | 503 (no raw TCP)     | 503 (no raw TCP)     | yes (Node 22 has raw TCP) |
+| **Database**       | SQLite or PG      | D1 or Hyperdrive→PG  | PG via `DATABASE_DRIVER=neon-http` (recommended — HTTP avoids cold-start TCP handshake) | PG via `DATABASE_DRIVER=neon-http` (recommended) |
+| **Storage**        | local fs / S3 / `Bun.S3Client` | R2 (S3 fallback) | S3 (`aws4fetch`) **required** — Lambda zip has no local fs | S3 (`aws4fetch`) **required** — Lambda zip has no local fs |
+| **Realtime**       | in-proc + SSE     | Durable Objects + WS | loads but impractical (Lambda is stateless, SSE capped by function execution limit) | loads but impractical (same Lambda caveat) |
+| **SAML**           | yes               | yes (nodejs_compat)  | yes (Node 22 native crypto) | yes (Node 22 native crypto) |
+| **LDAP / SMTP**    | yes               | 503 (no raw TCP)     | yes (Node 22 has raw TCP) | yes (Node 22 has raw TCP) |
 | **Sandbox**        | Bun worker        | QuickJS / remote HTTP | QuickJS / remote HTTP | QuickJS / remote HTTP |
 | **Image**          | `Bun.Image`       | CF Image Resize      | passthrough          | passthrough          |
-| **Cron**           | setInterval       | wrangler triggers    | vercel.json crons (Vercel sends `Authorization: Bearer $CRON_SECRET` automatically) | scheduled function pings `/api/_cron/tick` with `x-cron-secret: $CRON_SECRET` |
+| **Cron**           | setInterval       | wrangler triggers    | `.vercel/output/config.json` crons (emitted by `scripts/build-vercel-output.ts`; Vercel sends `Authorization: Bearer $CRON_SECRET` automatically) | scheduled function pings `/api/_cron/tick` with `x-cron-secret: $CRON_SECRET` |
 | **Cost**           | VPS               | $0–5/mo              | $0–20/mo             | $0–19/mo             |
 
 ## Bun (self-host)
@@ -80,33 +80,88 @@ Workers users still get a sandbox — sync only.
 
 ## Vercel
 
-`vercel.json` at the repo root deploys both admin (static SPA from
-`apps/web/dist/client`) and API (`api/index.ts` — a tiny shim that
-re-exports `apps/web/src/server/entries/vercel.ts` as an Edge Function).
-Cron triggers ping `/api/_cron/tick` once per day at 00:00 UTC (Hobby
-plan only allows daily; upgrade to Pro and edit `vercel.json` if you need
-a finer interval).
+`vercel.ts` at the repo root configures the install/build commands;
+everything else (routing, function registration, crons) is emitted by
+`scripts/build-vercel-output.ts` into `.vercel/output/` using the
+**Vercel Build Output API**. The pipeline ships:
+
+- A single Node serverless function under Fluid Compute that handles
+  every `/api/*` path (pre-bundled by Bun, runtime `nodejs22.x`, 60s
+  `maxDuration`).
+- The admin SPA as static assets.
+- A cron entry that pings `/api/_cron/tick` once per day at 00:00 UTC
+  (Hobby plan only allows daily; edit `scripts/build-vercel-output.ts`'s
+  `config.json` block + upgrade to Pro for finer intervals).
+
+### Why Build Output API (and not zero-config)?
+
+Three things ruled out the simpler paths:
+
+1. **Vercel's function bundler doesn't transpile `.ts` workspace
+   packages.** Our `packages/{core,auth,db}` export `.ts` source via
+   `package.json::exports`; the bundler ships them as broken symlinks
+   and Lambda module evaluation crashes at load.
+2. **Vercel's Node runtime keys off the handler shape.** A bare
+   `export default async function (req)` is read as the legacy Express
+   signature `(IncomingMessage, ServerResponse)` — Hono can't consume
+   that. The Web Standard `export default { fetch(req): Response }`
+   shape opts into the modern path (Hono's `app.fetch` matches it).
+3. **Zero-config function discovery runs before `buildCommand`.** Any
+   `api/*.mjs` our build script writes is invisible to that scan, and
+   declaring it via `vercel.ts::functions` fails the deploy in the same
+   pre-build step (`"pattern doesn't match any Serverless Functions
+   inside the api directory"`).
+
+The Build Output API takes precedence over all three: when
+`.vercel/output/` exists after the build step, Vercel uses it verbatim
+and skips its own discovery + validation entirely.
+
+### How the build works
+
+The build command chains the Vite SPA build with the output script:
+`DEPLOY_TARGET=vercel bun run --cwd apps/web build && bun
+scripts/build-vercel-output.ts`. The output script:
+
+1. Pre-bundles `apps/web/src/server/entries/vercel-fn-entry.ts` with
+   `Bun.build()` into
+   `.vercel/output/functions/api/index.func/index.mjs`. The bundle
+   inlines every workspace and npm dep (because Vercel's nft tracer
+   can't follow Bun's `node_modules/.bun` monorepo store) and aliases
+   `bun:sqlite` to its throwing shim (Node ESM can't parse the `bun:`
+   specifier).
+2. Writes the matching `.vc-config.json` (`nodejs22.x` runtime, `fetch`
+   handler, 60s `maxDuration`).
+3. Copies `apps/web/dist/client/` into `.vercel/output/static/`.
+4. Writes `.vercel/output/config.json` (v3 schema) with the routing —
+   a rewrite that funnels every `/api/(.*)` request into the single
+   function as `/api/index?__path=$1`, then a `handle: "filesystem"`
+   pass, then an SPA fallback — and the cron entry.
+
+The handler at `vercel-fn-entry.ts` reads `__path` from the rewritten
+URL's query string and rebuilds `request.url` so Hono routes the
+original `/api/auth/get-session` etc. instead of the literal
+`/api/index`.
 
 ### Git integration (recommended)
 
-The typical setup is to connect the GitHub repo from the Vercel dashboard
-and let every push to `main` auto-deploy. No GitHub Actions workflow is
-needed.
+Connect the GitHub repo from the Vercel dashboard and let every push to
+`main` auto-deploy. No GitHub Actions workflow is needed.
 
 1. **vercel.com → Add New → Project** → pick the workeros repo.
-2. **Framework Preset:** `Other`. The `vercel.json` in the repo root
-   overrides install/build/output, so the preset only affects defaults.
+2. **Framework Preset:** `Other`. `vercel.ts` overrides install/build,
+   and the Build Output API takes over from there — the preset only
+   affects defaults that get overridden anyway.
 3. **Root Directory:** leave at repo root (`/`). Do *not* point it at
    `apps/web`; the build command already runs Vite inside the workspace.
 4. **Environment Variables** — set these on Production (and ideally
    Preview too). Minimum:
    - `APP_URL` — `https://your-project.vercel.app` (or the custom domain)
    - `AUTH_SECRET` — `openssl rand -hex 32`
-   - `DATABASE_URL` — Neon HTTP connection string
-   - `DATABASE_DRIVER=neon-http` — forced on by the Vercel entry, but
-     declare it for clarity
+   - `DATABASE_URL` — Postgres connection string (Neon recommended)
+   - `DATABASE_DRIVER=neon-http` — recommended on serverless Lambdas;
+     HTTP avoids the TCP handshake cost per cold start
    - `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (+ optional
-     `S3_ENDPOINT`, `S3_REGION`) — edge boot fails without storage
+     `S3_ENDPOINT`, `S3_REGION`) — Lambda zip has no local fs
    - `CRON_SECRET` — `openssl rand -hex 32`. Vercel automatically attaches
      `Authorization: Bearer $CRON_SECRET` to cron requests; the route also
      accepts `x-cron-secret` for manual callers
@@ -120,31 +175,28 @@ needed.
 
 ```bash
 vercel link
-vercel env add DATABASE_URL    # Neon HTTP recommended for Edge
+vercel env add DATABASE_URL
+vercel env add DATABASE_DRIVER  # neon-http
 vercel env add AUTH_SECRET
 vercel deploy --prod
 ```
 
-### Database driver on Edge
+### Database driver on Vercel
 
-Vercel's edge runtime doesn't expose `node:net`, so plain `postgres-js`
-won't connect. Two options:
+Node 22 Lambdas expose `node:net`/`node:tls`, so plain `postgres-js`
+works — but every cold start pays the TCP handshake. `neon-http` over
+`@neondatabase/serverless` skips that and is the recommended path. Set
+`DATABASE_DRIVER=neon-http`; the Vercel context honors it.
 
-1. **Neon HTTP** — `@neondatabase/serverless` works over HTTP.
-   ```bash
-   bun add @neondatabase/serverless --workspace=@workeros/db
-   ```
-   Then swap `createPgClient` to use Neon's pooler. (Drizzle has
-   `drizzle-orm/neon-http` adapter.) workeros doesn't ship this swap by
-   default — apply locally if you target Vercel.
+`Vercel Postgres` (legacy product name, now a Neon-managed integration
+inside the Vercel dashboard) uses the same Neon driver — point
+`DATABASE_URL` at it and the configuration is identical.
 
-2. **Vercel Postgres** — same Neon driver, managed inside Vercel.
+### Storage on Vercel
 
-### Storage on Edge
-
-Edge functions can't write to disk; set the S3 env vars and the storage
-adapter switches to the S3 path automatically. Works with AWS S3,
-Cloudflare R2, Backblaze B2, MinIO, DigitalOcean Spaces, Wasabi —
+Lambda zips have no writable filesystem; set the S3 env vars and the
+storage adapter switches to the S3 path automatically. Works with AWS
+S3, Cloudflare R2, Backblaze B2, MinIO, DigitalOcean Spaces, Wasabi —
 anything that speaks the S3 API.
 
 ```bash
@@ -164,6 +216,20 @@ Selection priority in `buildContext`:
 
 Pre-signed URLs are exposed via the `signedUrl(key, ttlSeconds)` adapter
 method (e.g. for direct browser uploads / public CDN links).
+
+### Runtime caveats
+
+Vercel Functions run on Node 22, so the Bun-self-host surface is
+mostly available — SAML, LDAP, SMTP all load (full
+`node:crypto`/`node:net`/`node:tls`). Two exceptions:
+
+- **Realtime SSE** loads but is impractical: Lambda is stateless, so
+  the in-process pub/sub `Map` doesn't survive cold starts, and
+  function execution time caps the SSE stream. Use Cloudflare Workers
+  (Durable Object) or Bun self-host for realtime.
+- **`bun:sqlite`** is aliased to a throwing shim. Always set
+  `DATABASE_DRIVER=neon-http` (or any non-sqlite driver) so the
+  sqlite code path never loads.
 
 ### Image transforms on Workers
 
@@ -298,7 +364,7 @@ mostly available — SAML, LDAP, SMTP, samlify all load (full
 | `FUNCTIONS_EXEC_URL`         | no        | Base URL of a remote-http function executor  |
 | `SANDBOX_RPC_TOKEN`          | no        | remote-http only — shared secret for ctx.* RPC |
 | `SELF_URL`                   | no        | Required for cron-triggered remote-http RPC  |
-| `S3_BUCKET` + `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY` | no¹ | ¹ Required on Vercel Edge / Netlify Functions (no local fs in a Lambda zip); optional on Bun (defaults to fsStorage) and Workers (R2 binding preferred) |
+| `S3_BUCKET` + `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY` | no¹ | ¹ Required on Vercel / Netlify Functions (no local fs in a Lambda zip); optional on Bun (defaults to fsStorage) and Workers (R2 binding preferred) |
 | `S3_ENDPOINT`                | no        | Custom S3 endpoint for R2/B2/MinIO/Spaces    |
 | `S3_REGION`                  | no        | Defaults to `auto`                           |
 | `R2_PUBLIC_BASE`             | no        | Workers only. Public origin for the R2 bucket; activates cf.image edge resizing for public-ACL files. See `docs/storage.md`. |

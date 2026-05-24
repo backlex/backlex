@@ -141,10 +141,10 @@ Selection rules — keep these consistent if you add a new adapter:
 | storage   | `R2` binding → `r2Storage`; `S3_*` → `bunS3Storage`/`s3FetchStorage`; Bun self-host → `fsStorage("./.data/files")`; edge runtimes without R2/S3 **throw** at boot. Blob I/O is the adapter; image transforms / folder hierarchy / signed serves are dialect-independent helpers in `services/storage/{transforms,folders,serve}.ts` |
 | vector    | `VECTORIZE` → `vectorizeAdapter`; pg dialect → `pgvectorAdapter`; else throws |
 | ai        | Optional `AI` binding (Workers AI) wires the embeddings provider — commented out in `wrangler.toml` (`@cf/baai/bge-m3`); enable when running embedding pipelines on Workers |
-| realtime  | `REALTIME` (DO) → SSE-over-DO-WebSocket bridge; Bun self-host → in-process pub/sub + SSE; Vercel Edge → 503 (subscribe + publish); Netlify Node Function loads the SSE handler but is impractical (Lambda is stateless, so module-level pub/sub Maps don't share across invocations, and function execution caps SSE streams) |
-| saml      | Bun + Cloudflare Workers (nodejs_compat) + Netlify Node Functions supported; Vercel Edge → 503 (samlify can't load) |
-| ldap      | Bun + Node self-host + Netlify Node Functions supported; Vercel Edge / Cloudflare Workers → 503 (no raw TCP) |
-| smtp      | Same as LDAP — Bun + Node (incl. Netlify Functions) only; Vercel Edge / Cloudflare Workers fall back to console adapter with a warning |
+| realtime  | `REALTIME` (DO) → SSE-over-DO-WebSocket bridge; Bun self-host → in-process pub/sub + SSE; Vercel + Netlify Node Functions load the SSE handler but it's impractical (Lambdas are stateless, so module-level pub/sub Maps don't share across invocations, and function execution caps SSE streams) |
+| saml      | Bun + Cloudflare Workers (nodejs_compat) + Vercel + Netlify Node Functions all supported (samlify + xml-crypto need `node:crypto`, which Node 22 Lambdas have natively) |
+| ldap      | Bun + Node self-host + Vercel + Netlify Node Functions supported (ldapts uses `node:net`/`node:tls`, available on every Node Lambda); Cloudflare Workers → 503 (no raw TCP) |
+| smtp      | Same as LDAP — Bun + Node (incl. Vercel + Netlify Node Functions); Cloudflare Workers fall back to console adapter with a warning |
 
 Adapter contracts live in `packages/core/src/adapters/{storage,vector,email,image}.ts`. Concrete implementations live in `apps/web/src/server/adapters/*` (e.g. `storage.fs.ts` vs `storage.r2.ts`). Realtime is **not** behind a `Ctx` adapter — it branches on `env.REALTIME` directly in `routes/realtime.ts` + `services/events.ts` (see the Realtime section below).
 

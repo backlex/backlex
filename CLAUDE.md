@@ -31,7 +31,7 @@ bun run db:migrate:d1:remote # same, but to the deployed CF D1 (--remote)
 bun run db:studio          # drizzle-kit studio against the active dialect config
 ```
 
-Tests run on Bun's native runner (`bun:test`). The suite lives in `apps/web/tests/` and is invoked via `bun test` (from the repo root or `apps/web`). Each spec spins a fresh temp SQLite in-process through `tests/setup.ts::makeHarness`; no external server / DB is required. CI runs the same `bun run test` as a pre-deploy gate (`.github/workflows/deploy.yml`).
+Tests run on Bun's native runner (`bun:test`). The suite lives in `apps/web/tests/` and is invoked via `bun test` (from the repo root or `apps/web`). Each spec spins a fresh temp SQLite in-process through `tests/setup.ts::makeHarness`; no external server / DB is required. CI runs the same `bun run test` as a pre-deploy gate (`.github/workflows/test.yml`, on every PR and every push to `main`).
 
 ## Local test admin
 
@@ -51,9 +51,12 @@ VALUES ('<user-id>', (SELECT id FROM roles WHERE name='admin'), strftime('%s','n
 
 ## Workflow: branch → merge → auto-deploy
 
-Every working session runs on its own branch. Merging into `main` triggers `.github/workflows/deploy.yml`, which runs `bun run build` and `wrangler deploy` against the `workeros-api` Worker. Required GitHub secrets: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+Every working session runs on its own branch. Merging into `main` triggers two independent paths:
 
-The repo also ships native-git deploy configs for **Vercel** (`vercel.ts` + `api/[...all].mjs`) and **Netlify** (`netlify.toml` + `apps/web/netlify/functions/`). Runtime caveats live in `docs/deployment.md`.
+- **Cloudflare Workers Builds (native git integration)** — the `workeros-api` Worker is connected to this repo from the CF dashboard. On every push to `main` it runs the build command (`bun run db:migrate:d1:remote && bun run build`) and then deploys with `bunx wrangler deploy`. No GitHub secrets needed; CF Builds is auto-authenticated.
+- **`.github/workflows/test.yml`** — runs lint + typecheck + `bun test` + `bun run build:targets` on every PR **and** every push to `main`. Acts as a redundant gate that catches regressions in the four-runtime build matrix (Bun / CF / Vercel / Netlify) which Workers Builds doesn't exercise on its own.
+
+The repo also ships native-git deploy configs for **Vercel** (`vercel.ts` + Build Output API) and **Netlify** (`netlify.toml` + `apps/web/netlify/functions/`). All three platforms (CF / Vercel / Netlify) use their own native git integration — no GitHub Actions deploy workflow exists for any of them. Runtime caveats live in `docs/deployment.md`.
 
 **Always create a new branch BEFORE doing any work.** This is mandatory — do not edit files, run commands that mutate state, or otherwise begin a task while still checked out on `main`. The very first step of every new task is:
 
@@ -79,14 +82,14 @@ git pull origin main
 # 3. Direct-merge the feature branch (no PR)
 git merge <feat/branch-name>
 
-# 4. Push — this triggers the Cloudflare deploy workflow
+# 4. Push — this triggers Cloudflare Workers Builds (deploy) + test.yml (gate)
 git push origin main
 
-# 5. Confirm the workflow started
-gh run list --workflow deploy.yml --limit 1
+# 5. Confirm the test gate started (Actions)
+gh run list --workflow test.yml --limit 1
 ```
 
-After pushing, report the workflow run URL back to the user. Don't claim "deployed" until the run is green — `gh run watch` or `gh run view <id>` confirms.
+After pushing, report the test.yml run URL back to the user. The actual Worker deploy runs in **Cloudflare dashboard → Workers & Pages → workeros-api → Deployments** (not visible to `gh`). Don't claim "deployed" until both are green — `gh run watch` confirms the gate; the CF dashboard (or `wrangler deployments list`) confirms the deploy.
 
 **After the deploy run goes green**, smoke-test the change against the live URL with the puppeteer MCP server (`mcp__puppeteer__puppeteer_*` tools). The default target is the production deploy unless the user names a specific URL. Drive the relevant flow end-to-end (sign in, exercise the feature touched by this branch, watch for console/network errors via `puppeteer_evaluate`) and screenshot the result. Report what you tested and what you saw — don't call it shipped without that pass.
 

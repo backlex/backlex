@@ -7,6 +7,8 @@
  *
  *   bun run packages/db/src/sqlite/migrate-d1.ts            # local D1
  *   bun run packages/db/src/sqlite/migrate-d1.ts --remote   # production D1
+ *   bun run packages/db/src/sqlite/migrate-d1.ts --config=apps/web/wrangler.ci.toml
+ *                                                           # alternate config
  */
 import { spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
@@ -18,6 +20,7 @@ import { fileURLToPath } from "node:url";
 const args = process.argv.slice(2);
 const remote = args.includes("--remote");
 const persistTo = args.find((a) => a.startsWith("--persist-to="))?.slice("--persist-to=".length);
+const configPath = args.find((a) => a.startsWith("--config="))?.slice("--config=".length);
 const dbName = process.env.D1_DATABASE_NAME ?? "workeros";
 const cwd = resolve(fileURLToPath(import.meta.url), "../../../../../apps/web");
 
@@ -28,9 +31,16 @@ const order = readdirSync(root)
 
 const remoteFlag = remote ? "--remote" : "--local";
 const persistFlag = !remote && persistTo ? `--persist-to=${persistTo}` : "";
+// `cwd` is apps/web inside the wrangler subprocess, so a relative
+// --config path the caller passed (from their own cwd) wouldn't
+// resolve. Anchor it to process.cwd() so the path means what the
+// caller meant.
+const configFlag = configPath
+  ? `--config=${resolve(process.cwd(), configPath)}`
+  : "";
 
 const wrangler = (extraArgs: string[]) => {
-  const cmd = ["bunx", "wrangler", ...extraArgs].filter(Boolean);
+  const cmd = ["bunx", "wrangler", configFlag, ...extraArgs].filter(Boolean);
   return spawnSync(cmd[0]!, cmd.slice(1), { cwd, encoding: "utf8" });
 };
 

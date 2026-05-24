@@ -33,6 +33,7 @@
 
 [functions]
   directory = "apps/web/netlify/functions"
-  # Bundle every transitive dep into the Function so Node 22 doesn't have to
-  # walk the workspace at runtime. esbuild is Netlify's default bundler.
-  node_bundler = "esbuild"
+  # Keep Netlify's default (nft-based) bundler. The esbuild bundler
+  # opt-in confuses runtime detection so the Function gets wrapped as
+  # v1 (looks for `exports.handler`) instead of v2 (Web Standard
+  # `export default`), which is what our handler actually uses.

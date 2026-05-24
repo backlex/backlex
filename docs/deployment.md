@@ -54,6 +54,30 @@ wrangler d1 migrations apply workeros --remote
 wrangler deploy
 ```
 
+### Git integration (recommended)
+
+Connect the GitHub repo from the Cloudflare dashboard and let every push to
+`main` auto-deploy. No GitHub Actions workflow is needed.
+
+1. **dash.cloudflare.com → Workers & Pages → workeros-api → Settings → Builds**
+   → **Connect** → pick the workeros repo.
+2. **Production branch:** `main`.
+3. **Build command:** `bun run db:migrate:d1:remote && bun run build`
+   (the migration runs first so deploy never fronts a schema mismatch; the
+   build container's `wrangler` is auto-authenticated, no token needed).
+4. **Deploy command:** `bunx wrangler deploy` (defaults to the
+   `apps/web/wrangler.toml` config the build command produced).
+5. **Root directory:** leave at repo root (`/`).
+6. **Build environment variables** — the build container needs the same
+   `wrangler.toml` bindings as production. Secrets stay on the Worker
+   (`wrangler secret put …`); only build-time vars belong here.
+7. **Deploy.** Every push to `main` ships to Production; non-production
+   branches get preview URLs automatically.
+
+PR test gating still runs in GitHub Actions (`.github/workflows/test.yml`)
+— lint + typecheck + `bun test` + `bun run build:targets` exercise all four
+runtimes (Bun / CF / Vercel / Netlify) on every PR and push to `main`.
+
 ### remote-http sandbox (optional, DB-aware functions on edge)
 
 QuickJS-WASM runs functions in-isolate everywhere but is sync-only with no

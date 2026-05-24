@@ -59,14 +59,15 @@ jobs:
   # selection (isStatelessEdge etc.), cookie / auth round-trips on a
   # real fetch boundary, and the cron-secret gate on Vercel/Netlify
   # entries. No external service calls — postgres is a job-scoped
-  # service container, Cloudflare is excluded (its [ai] binding needs
-  # wrangler login; build-targets already covers CF bundle validation).
+  # service container; CF uses `wrangler dev --local` against
+  # wrangler.ci.toml (sibling of wrangler.toml minus the [ai] binding
+  # so wrangler login isn't required).
   runtime-smoke:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        runtime: [bun, vercel, netlify]
+        runtime: [bun, vercel, netlify, cloudflare]
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -82,6 +83,9 @@ jobs:
           --health-retries 15
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/workeros_smoke
+      # Disable wrangler's opt-in telemetry call — CF runtime smoke
+      # shouldn't reach out to any external service.
+      WRANGLER_SEND_METRICS: "false"
     steps:
       - uses: actions/checkout@v4
 

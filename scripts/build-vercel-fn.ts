@@ -16,17 +16,16 @@
  * doesn't choke on the `bun:` protocol at load time.
  */
 import { fileURLToPath } from "node:url";
-import { mkdirSync, renameSync, existsSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync } from "node:fs";
 
 const SOURCE = "apps/web/src/server/entries/vercel-fn-entry.ts";
 const OUTPUT_DIR = "api";
-// Catch-all filename — Vercel's filesystem routing treats `[...all]` as a
-// dynamic segment that captures any path under `/api/*`. Bun.build's
-// `naming` field interprets `[...]` as a template directive, so we emit
-// to a temp name first and rename afterwards.
-const FINAL_NAME = "[...all].mjs";
-const TEMP_NAME = "index.mjs";
+// Output filename — Vercel's "Other Frameworks" filesystem routing
+// treats filenames as literal URL segments. Catch-all syntax like
+// `[...all].mjs` only works in Next.js — for everyone else, route all
+// `/api/*` paths through `vercel.ts::rewrites` into this single file,
+// then reconstruct the original URL inside the function (see
+// `vercel-fn-entry.ts`).
 const SHIM_BUN_SQLITE = fileURLToPath(
   new URL("../apps/web/src/server/shims/bun-sqlite-shim.ts", import.meta.url),
 );
@@ -36,7 +35,7 @@ mkdirSync(OUTPUT_DIR, { recursive: true });
 const result = await Bun.build({
   entrypoints: [SOURCE],
   outdir: OUTPUT_DIR,
-  naming: TEMP_NAME,
+  naming: "index.mjs",
   target: "node",
   format: "esm",
   splitting: false,
@@ -59,11 +58,6 @@ if (!result.success) {
   process.exit(1);
 }
 
-const tempPath = join(OUTPUT_DIR, TEMP_NAME);
-const finalPath = join(OUTPUT_DIR, FINAL_NAME);
-if (existsSync(finalPath)) rmSync(finalPath);
-renameSync(tempPath, finalPath);
-
 const out = result.outputs[0];
 const size = out ? (out.size / 1024 / 1024).toFixed(2) : "?";
-console.log(`✓ Pre-bundled Vercel function → ${finalPath} (${size} MB)`);
+console.log(`✓ Pre-bundled Vercel function → ${OUTPUT_DIR}/index.mjs (${size} MB)`);

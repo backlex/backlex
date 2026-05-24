@@ -1,18 +1,18 @@
 ---
 title: Deployment
-description: Ship the same source to Bun, Cloudflare Workers, Vercel Edge, or Netlify Edge.
+description: Ship the same source to Bun, Cloudflare Workers, Vercel Edge, or Netlify (Node serverless).
 ---
 
 workeros runs on four targets from the same source. Pick one based on the
 constraints you need.
 
-|                    | Bun (self-host)   | Cloudflare Workers   | Vercel Edge          | Netlify Edge         |
-|--------------------|-------------------|----------------------|----------------------|----------------------|
-| **Database**       | SQLite or PG      | D1 or Hyperdrive→PG  | PG via `DATABASE_DRIVER=neon-http` (required) | PG (postgres-js works under Deno; `neon-http` recommended) |
+|                    | Bun (self-host)   | Cloudflare Workers   | Vercel Edge          | Netlify Functions (Node 22) |
+|--------------------|-------------------|----------------------|----------------------|------------------------------|
+| **Database**       | SQLite or PG      | D1 or Hyperdrive→PG  | PG via `DATABASE_DRIVER=neon-http` (required) | PG via `DATABASE_DRIVER=neon-http` (recommended) |
 | **Storage**        | local fs / S3 / `Bun.S3Client` | R2 (S3 fallback) | S3 (`aws4fetch`) **required** — boot fails without it | S3 (`aws4fetch`) **required** — boot fails without it |
-| **Realtime**       | in-proc + SSE     | Durable Objects + WS | 503 (not supported)  | 503 (not supported)  |
-| **SAML**           | yes               | yes (nodejs_compat)  | 503 (xml-crypto unavailable) | 503 (xml-crypto unavailable) |
-| **LDAP / SMTP**    | yes               | 503 (no raw TCP)     | 503 (no raw TCP)     | 503 (no raw TCP)     |
+| **Realtime**       | in-proc + SSE     | Durable Objects + WS | 503 (not supported)  | loads but impractical (Lambda is stateless, SSE capped by function execution limit) |
+| **SAML**           | yes               | yes (nodejs_compat)  | 503 (xml-crypto unavailable) | yes (Node 22 native crypto) |
+| **LDAP / SMTP**    | yes               | 503 (no raw TCP)     | 503 (no raw TCP)     | yes (Node 22 has raw TCP) |
 | **Sandbox**        | Bun worker        | QuickJS / remote HTTP | QuickJS / remote HTTP | QuickJS / remote HTTP |
 | **Image**          | `Bun.Image`       | CF Image Resize      | passthrough          | passthrough          |
 | **Cron**           | setInterval       | wrangler triggers    | vercel.json crons (Vercel sends `Authorization: Bearer $CRON_SECRET` automatically) | scheduled function pings `/api/_cron/tick` with `x-cron-secret: $CRON_SECRET` |
@@ -194,10 +194,39 @@ readable by anyone who knows the key path — see `docs/storage.md`
 
 ## Netlify
 
-`netlify.toml` at the repo root mirrors Vercel — admin SPA + edge
-function for `/api/*` + scheduled function for cron. Edge function source
-lives in `apps/web/netlify/edge-functions/entry.ts`, scheduled function in
-`apps/web/netlify/functions/cron.ts`.
+`netlify.toml` at the repo root deploys the admin SPA + a Node 22
+serverless function for `/api/*` + a scheduled function for cron.
+
+- API function source: `apps/web/src/server/entries/netlify-fn-entry.ts`
+  (a thin Web Standard `(req) => app.fetch(req)` shim).
+- Scheduled function source: `apps/web/netlify/functions/cron.ts`.
+- Both use Netlify Functions **v2** (Web Standard `export default`).
+  Mixing v1 (`export const handler`) with v2 in the same `functions/`
+  directory makes the runtime fall back to v1 for the whole directory —
+  keep new functions v2.
+
+### Why pre-bundle?
+
+The API function is pre-bundled by `scripts/build-netlify-fn.ts`
+during the build command, **not** by Netlify's nft bundler. Two
+incompatibilities forced this:
+
+1. Netlify's bundler doesn't transpile TypeScript, and our workspace
+   packages (`packages/{core,auth,db}`) export `.ts` source via their
+   `package.json` `exports` field. The bundler ships them as symlinks
+   to a `packages/` directory that isn't in the function zip, so
+   Lambda module evaluation crashes at load time.
+2. Even after working around (1), Netlify's nft tracer doesn't follow
+   imports through Bun's monorepo `node_modules/.bun` store, so npm
+   deps like `postgres` (imported transitively by `drizzle-orm/postgres-js`)
+   end up missing from the zip.
+
+The pre-bundle uses `Bun.build()` with a resolve plugin that aliases
+`bun:sqlite` to `apps/web/src/server/shims/bun-sqlite-shim.ts` (Bun
+specifier the Node ESM loader can't parse otherwise). The output is
+a single self-contained `apps/web/netlify/functions/api.mjs` that
+Netlify's bundler just zips. The pre-bundled artifact is gitignored —
+build runs it fresh every deploy.
 
 ### Git integration (recommended)
 
@@ -206,9 +235,10 @@ lives in `apps/web/netlify/edge-functions/entry.ts`, scheduled function in
 2. **Base directory:** leave empty (repo root). The `netlify.toml` already
    sets `base = ""`.
 3. **Build command, Publish directory:** leave empty too — `netlify.toml`
-   overrides both (`command = "DEPLOY_TARGET=netlify bun install
-   --frozen-lockfile && DEPLOY_TARGET=netlify bun run --cwd apps/web
-   build"`, `publish = "apps/web/dist/client"`).
+   overrides both. The build command chains the Vite build with the
+   pre-bundle script: `DEPLOY_TARGET=netlify bun install --frozen-lockfile
+   && DEPLOY_TARGET=netlify bun run --cwd apps/web build && bun
+   scripts/build-netlify-fn.ts`.
 4. **Bun runtime:** `BUN_VERSION` is pinned to `1.3.14` in
    `[build.environment]`. Override per-site if you need a newer version.
 5. **Environment Variables** (Site configuration → Environment variables):
@@ -225,15 +255,33 @@ lives in `apps/web/netlify/edge-functions/entry.ts`, scheduled function in
 
 ### CLI alternative
 
+The Netlify CLI's monorepo prompt asks which workspace you're targeting;
+pass `--filter @workeros/web` to keep it non-interactive:
+
 ```bash
-netlify init
-netlify env:set DATABASE_URL postgres://...
-netlify env:set AUTH_SECRET $(openssl rand -hex 32)
-netlify deploy --prod
+netlify env:set DATABASE_URL postgres://... --filter @workeros/web
+netlify env:set AUTH_SECRET $(openssl rand -hex 32) --filter @workeros/web
+netlify deploy --build --prod --filter @workeros/web
 ```
 
-The same edge-runtime caveats apply: Postgres needs an HTTP-friendly
-driver; storage needs S3.
+For a brand-new site, `netlify api createSiteInTeam` plus a manual
+"Link site to Git" in the dashboard avoids the interactive flow
+entirely (you need the GitHub OAuth + deploy key only Netlify's
+dashboard can provision).
+
+### Runtime caveats
+
+Netlify Functions run on Node 22, so the Bun-self-host surface is
+mostly available — SAML, LDAP, SMTP, samlify all load (full
+`node:crypto`/`node:net`/`node:tls`). Two exceptions:
+
+- **Realtime SSE** loads but is impractical: Lambda is stateless, so
+  the in-process pub/sub `Map` doesn't survive cold starts, and
+  function execution time caps the SSE stream. Use Cloudflare Workers
+  (Durable Object) or Bun self-host for realtime.
+- **`bun:sqlite`** is aliased to a throwing shim. Always set
+  `DATABASE_DRIVER=neon-http` (or any non-sqlite driver) so the
+  sqlite code path never loads.
 
 ## Environment variables (all targets)
 
@@ -250,7 +298,7 @@ driver; storage needs S3.
 | `FUNCTIONS_EXEC_URL`         | no        | Base URL of a remote-http function executor  |
 | `SANDBOX_RPC_TOKEN`          | no        | remote-http only — shared secret for ctx.* RPC |
 | `SELF_URL`                   | no        | Required for cron-triggered remote-http RPC  |
-| `S3_BUCKET` + `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY` | no¹ | ¹ Required on Vercel/Netlify edge (no fs); optional on Bun (defaults to fsStorage) and Workers (R2 binding preferred) |
+| `S3_BUCKET` + `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY` | no¹ | ¹ Required on Vercel Edge / Netlify Functions (no local fs in a Lambda zip); optional on Bun (defaults to fsStorage) and Workers (R2 binding preferred) |
 | `S3_ENDPOINT`                | no        | Custom S3 endpoint for R2/B2/MinIO/Spaces    |
 | `S3_REGION`                  | no        | Defaults to `auto`                           |
 | `R2_PUBLIC_BASE`             | no        | Workers only. Public origin for the R2 bucket; activates cf.image edge resizing for public-ACL files. See `docs/storage.md`. |

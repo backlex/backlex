@@ -23,6 +23,9 @@ node_modules.bun
 .netlify/
 deno.lock
 
+# Pre-bundled Netlify function (built by scripts/build-netlify-fn.ts)
+apps/web/netlify/functions/api.mjs
+
 # drizzle
 drizzle/meta
 

@@ -1,9 +1,10 @@
 /**
- * Vercel Function entry. The catch-all route `api/[...all].ts` is the
- * Vercel-facing function; `scripts/build-vercel-fn.ts` pre-bundles
+ * Vercel Function entry. `scripts/build-vercel-fn.ts` pre-bundles
  * `vercel-fn-entry.ts` (which imports the Hono app exported here) into
- * `api/[...all].mjs` so the bundler doesn't have to transpile our
- * `.ts`-source workspace packages.
+ * `api/index.mjs`; `vercel.ts::rewrites` funnels every `/api/*` path
+ * through that single function (Vercel's "Other Frameworks" filesystem
+ * routing matches literal filenames only — no `[...slug]` outside
+ * Next.js).
  *
  * Deploys as a Node serverless function (Vercel default — Node 24 LTS
  * as of writing) under Fluid Compute. Node keeps node:net/tls/crypto
@@ -83,6 +84,6 @@ app.get("/api/_cron/tick", async (c) => {
 });
 
 // Expose the Hono instance. `vercel-fn-entry.ts` (pre-bundled into
-// `api/[...all].mjs`) wraps it in the Web Standard `{ fetch(req) }`
+// `api/index.mjs`) wraps it in the Web Standard `{ fetch(req) }`
 // object literal Vercel's Node runtime requires for fetch-handler mode.
 export default app;

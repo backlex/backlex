@@ -39,6 +39,7 @@ export default defineConfig({
           label: "Runtime",
           items: [
             { slug: "deployment" },
+            { slug: "testing" },
             { slug: "storage" },
             { slug: "realtime" },
             { slug: "advisor" },

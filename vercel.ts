@@ -7,11 +7,14 @@ export const config: VercelConfig = {
     "DEPLOY_TARGET=vercel bun run --cwd apps/web build && bun scripts/build-vercel-fn.ts",
   outputDirectory: "apps/web/dist/client",
 
-  // No /api/* rewrite — `api/[...all].ts` (the pre-bundled Vercel function)
-  // already catches every `/api/*` path via Vercel's filesystem routing,
-  // and `request.url` arrives intact (a rewrite to `/api/index` would
-  // strip the original path and confuse Hono's router).
   rewrites: [
+    // Catch-all for `/api/*` — Vercel's "Other Frameworks" filesystem
+    // routing only does literal filename matching (no [...slug] syntax
+    // outside Next.js), so every API path is funneled into the single
+    // pre-bundled function at `api/index.mjs`. The capture group is
+    // passed through as `__path` so the handler in `vercel-fn-entry.ts`
+    // can rebuild the original URL before forwarding to Hono.
+    routes.rewrite("/api/(.*)", "/api/index?__path=$1"),
     // SPA fallback: anything not /api/* and not /assets/* serves index.html
     // so the React client-side router can take over.
     routes.rewrite("/((?!api/|assets/).*)", "/index.html"),

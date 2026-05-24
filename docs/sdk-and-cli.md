@@ -43,10 +43,21 @@ off();
 await wks.auth.signUp({ email, password, name });
 await wks.auth.signIn({ email, password });
 await wks.auth.signOut();
-const session = await wks.auth.session();
+const session = await wks.auth.getSession();
 
-// Storage
-await wks.storage.put("avatars/me.png", file, "image/png");
+// OAuth: returns { url } the browser navigates to (provider id from auth.providers()).
+const { url } = await wks.auth.signInSocial("google", { callbackURL: "/" });
+// Magic-link sign-in (requires the magic-link plugin on the workspace).
+await wks.auth.signInMagicLink({ email, callbackURL: "/" });
+// Describes the sign-in surface (provider list + policy flags) for rendering UI.
+const surface = await wks.auth.providers();
+
+// Workspace token (app mode) — persist across reloads and restore via createClient({ token }).
+const token = wks.auth.getToken();
+wks.auth.setToken(token);
+
+// Storage — folderId is optional and scopes the file under a system_folders row.
+await wks.storage.put("avatars/me.png", file, "image/png", folderId);
 const res = await wks.storage.download("avatars/me.png");
 const blob = await res.blob();
 await wks.storage.list("avatars/");

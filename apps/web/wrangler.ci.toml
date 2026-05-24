@@ -1,0 +1,139 @@
+name = "workeros-api"
+main = "src/server/entries/worker.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# bun:sqlite is imported transitively (drizzle's bun-sqlite driver +
+# packages/db's createBunSqliteClient). The worker never calls those code
+# paths — D1 is selected via env.D1 — but esbuild still resolves the import.
+# The shim throws if anything ever does call it on Workers.
+# nodemailer is imported by the SMTP email adapter; SMTP needs raw TCP and is
+# never selected on Workers (HTTP providers — resend/sendgrid/mailgun/ses —
+# are used instead), so it's aliased to a throwing stub here too.
+# ldapts is imported by the LDAP/AD auth adapter; LDAP also needs raw TCP and
+# is never selected on Workers (use SAML SSO instead). Same shim pattern.
+[alias]
+"bun:sqlite" = "./src/server/shims/bun-sqlite-shim.ts"
+"nodemailer" = "./src/server/shims/nodemailer-shim.ts"
+"ldapts" = "./src/server/shims/ldapts-shim.ts"
+
+[vars]
+APP_URL = "https://workeros-api.kinyasfurkan.workers.dev"
+# Public r2.dev origin for the `workeros-files` R2 bucket. Lets the storage
+# route ask Cloudflare Image Resizing to transform public files at the edge
+# (no bytes through the Worker isolate). Only used when the row's ACL is
+# `public` — private files stay behind the Worker. Enabled with:
+#   wrangler r2 bucket dev-url enable workeros-files
+R2_PUBLIC_BASE = "https://pub-608efd24875b4982a0592efb86a9b63c.r2.dev"
+# Comma-separated better-auth plugins enabled at boot. Mirrored in
+# packages/auth/src/client.ts (passkey + magic-link plugin clients).
+AUTH_PLUGINS = "passkey,magic-link,email-otp,anonymous"
+# Transactional email. EMAIL_FROM isn't a secret so it lives here; the
+# provider API key is a secret — set it with `wrangler secret put RESEND_API_KEY`.
+# Use a verified domain address here once DNS is set up (onboarding@resend.dev
+# is Resend's shared test sender — fine to start, rate-limited for real use).
+EMAIL_PROVIDER = "resend"
+EMAIL_FROM = "onboarding@resend.dev"
+# Extra origins allowed to make cross-origin, credentialled requests (on top
+# of APP_URL and the origins derived from each workspace's
+# auth_config.redirectUrls). Set this if customer apps live on other domains:
+# EXTRA_TRUSTED_ORIGINS = "https://app.customer-a.com,https://app.customer-b.com"
+
+# Serve the Vite SPA build (./dist) as static assets from the same Worker.
+# SPA fallback returns index.html for unknown paths so React Router handles
+# routing client-side. /api/* + /health are forced through the Worker so
+# there's no chance of a static file shadowing the API.
+[assets]
+directory = "./dist/client"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*", "/health"]
+# Override these in `.dev.vars` or via `wrangler secret put`:
+# AUTH_SECRET = "..."
+# DATABASE_URL = "postgres://..." # only if you want PG via Hyperdrive
+# OPENAI_API_KEY = "..."
+# EMBEDDING_HTTP_URL = "https://embed.internal.example.com" # TEI/Ollama container
+# EMBEDDING_HTTP_TOKEN = "..." # optional bearer for the embeddings endpoint
+# Email — EMAIL_PROVIDER picks one (console | resend | sendgrid | mailgun |
+# ses); unset = auto-detect from whichever provider's keys are set, else log
+# to stdout. All providers need EMAIL_FROM (use a verified domain in prod).
+# NOTE: the `smtp` provider is NOT available on Workers (no raw TCP) — use one
+# of the HTTP providers below here. SMTP only works on Bun / Vercel / Netlify.
+# EMAIL_PROVIDER = "resend"
+# EMAIL_FROM = "onboarding@resend.dev"
+# RESEND_API_KEY = "re_..."
+# SENDGRID_API_KEY = "SG...."
+# MAILGUN_API_KEY = "key-..." ; MAILGUN_DOMAIN = "mg.example.com" ; MAILGUN_HOST = "api.eu.mailgun.net"
+# SES_REGION = "us-east-1" ; SES_ACCESS_KEY_ID = "AKIA..." ; SES_SECRET_ACCESS_KEY = "..."
+# FUNCTIONS_EXEC_URL = "https://fn-exec.example.com" # out-of-isolate executor;
+#   see templates/fn-exec-server. When set, the `remote-http` sandbox provider
+#   runs functions there (with ctx.db/fetch/email) instead of the in-isolate
+#   QuickJS-WASM sandbox (sync-only). Pair with SANDBOX_RPC_TOKEN + SELF_URL.
+# SANDBOX_RPC_TOKEN = "..." # openssl rand -hex 32 — required for ctx.* bridges.
+
+# D1 (SQLite) — primary edge DB.
+[[d1_databases]]
+binding = "D1"
+database_name = "workeros"
+database_id = "5053e4b4-bd46-4bde-b4c2-48dbaed12ce2"
+
+# R2 — file storage.
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "workeros-files"
+
+# Vectorize — one index per embedding model. The model registry in
+# packages/core/src/embedding-models.ts pins each binding to a specific
+# dimension; the routes/adapter pick the right index by model name.
+#
+# All bindings are OPT-IN. Cloudflare validates every binding at deploy
+# time, so referencing an index that doesn't exist in your account breaks
+# the deploy. Uncomment ONLY the models you actually want, and create
+# their indexes first with:
+#   wrangler vectorize create workeros-openai-1536        --dimensions=1536 --metric=cosine
+#   wrangler vectorize create workeros-openai-3072        --dimensions=3072 --metric=cosine
+#   wrangler vectorize create workeros-bge-m3             --dimensions=1024 --metric=cosine
+#   wrangler vectorize create workeros-self-host-bge-m3   --dimensions=1024 --metric=cosine
+
+# OpenAI text-embedding-3-small (1536). Needs OPENAI_API_KEY.
+# [[vectorize]]
+# binding = "VECTORIZE_OPENAI"
+# index_name = "workeros-openai-1536"
+
+# OpenAI text-embedding-3-large (3072). Needs OPENAI_API_KEY.
+# Note: pgvector HNSW caps at 2000 dims — use IVFFlat for the PG table.
+# [[vectorize]]
+# binding = "VECTORIZE_OPENAI_LARGE"
+# index_name = "workeros-openai-3072"
+
+
+# Optional: Hyperdrive proxy in front of Postgres for PG-on-edge.
+# [[hyperdrive]]
+# binding = "HYPERDRIVE"
+# id = "REPLACE_WITH_HYPERDRIVE_ID"
+
+# Durable Object for realtime fan-out.
+[[durable_objects.bindings]]
+name = "REALTIME"
+class_name = "RealtimeRoom"
+
+# Durable Object backing the rate limiter (lib/rate-limit.ts). One DO per
+# (label, ip) — collapses isolate-rotation drift into a single authoritative
+# counter, so the limit can't be bypassed by spreading requests across the
+# many isolates Cloudflare may spin up per colo. Bun / Vercel / Netlify
+# don't have this binding and fall back to the in-process Map.
+[[durable_objects.bindings]]
+name = "RATE_LIMIT"
+class_name = "RateLimitRoom"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["RealtimeRoom"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["RateLimitRoom"]
+
+# Cron triggers — every minute. Adjust as needed (Cloudflare allows
+# multiple expressions but minimum granularity is 1 minute).
+[triggers]
+crons = ["* * * * *"]

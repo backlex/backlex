@@ -26,6 +26,9 @@ deno.lock
 # Pre-bundled Netlify function (built by scripts/build-netlify-fn.ts)
 apps/web/netlify/functions/api.mjs
 
+# Pre-bundled Vercel function (built by scripts/build-vercel-fn.ts)
+api/index.mjs
+
 # drizzle
 drizzle/meta
 

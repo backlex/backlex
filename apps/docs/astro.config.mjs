@@ -48,6 +48,7 @@ export default defineConfig({
           label: "Auth",
           items: [
             { slug: "sso" },
+            { slug: "api-keys-and-email" },
           ],
         },
         {
@@ -64,6 +65,7 @@ export default defineConfig({
           label: "Internals",
           items: [
             { slug: "design" },
+            { slug: "service-map" },
           ],
         },
       ],

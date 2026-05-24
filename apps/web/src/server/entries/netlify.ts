@@ -17,7 +17,6 @@
  *     `/api/_cron/tick` with `x-cron-secret: $CRON_SECRET` so the dedupe
  *     state stays in one place AND the public path stays gated.
  */
-import { handle } from "hono/netlify";
 import { timingSafeEqual } from "../lib/timing";
 import { createApp } from "../app";
 import { cronTick } from "../services/scheduler";
@@ -67,4 +66,9 @@ app.get("/api/_cron/tick", async (c) => {
   return c.json({ ok: true, ts: Date.now() });
 });
 
-export default handle(app);
+// Expose the Hono instance directly. The edge function shim in
+// `apps/web/netlify/edge-functions/entry.ts` calls `app.fetch(req)` —
+// no Hono Netlify adapter needed, which keeps `hono/netlify` out of
+// the Deno edge bundle (Netlify's experimental npm resolver can't
+// load it).
+export default app;

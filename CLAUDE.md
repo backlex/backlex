@@ -56,7 +56,7 @@ VALUES ('<user-id>', (SELECT id FROM roles WHERE name='admin'), strftime('%s','n
 
 Every working session runs on its own branch. Merging into `main` triggers `.github/workflows/deploy.yml`, which runs `bun run build` and `wrangler deploy` against the `workeros-api` Worker. Required GitHub secrets: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
 
-The repo also ships native-git deploy configs for **Vercel** (`vercel.json` + `api/index.ts` shim) and **Netlify** (`netlify.toml` + `apps/web/netlify/{edge-functions,functions}/`). These work via dashboard "connect repo" → push triggers build, no GitHub Actions involved. Both deploys serve the admin SPA + API from the same origin; runtime caveats (Postgres needs `DATABASE_DRIVER=neon-http`, storage needs S3, SAML/LDAP/Realtime 503) live in `docs/deployment.md`. The Vercel cron route accepts both `x-cron-secret` and `Authorization: Bearer $CRON_SECRET` (Vercel attaches the latter automatically); the Netlify scheduled function attaches `x-cron-secret` itself.
+The repo also ships native-git deploy configs for **Vercel** (`vercel.json` + `api/index.ts` shim) and **Netlify** (`netlify.toml` + `apps/web/netlify/functions/`). These work via dashboard "connect repo" → push triggers build, no GitHub Actions involved. Both deploys serve the admin SPA + API from the same origin; runtime caveats live in `docs/deployment.md`. Vercel deploys to its Edge runtime (Postgres needs `DATABASE_DRIVER=neon-http`, SAML/LDAP/Realtime → 503). Netlify deploys to a Node 22 serverless function — the function entry is **pre-bundled** by `scripts/build-netlify-fn.ts` (Bun inlines `@workeros/*` workspace TS source; npm deps are inlined too because Netlify's nft tracer can't follow Bun's `node_modules/.bun` monorepo store). The Vercel cron route accepts both `x-cron-secret` and `Authorization: Bearer $CRON_SECRET` (Vercel attaches the latter automatically); the Netlify scheduled function attaches `x-cron-secret` itself.
 
 **Always create a new branch BEFORE doing any work.** This is mandatory — do not edit files, run commands that mutate state, or otherwise begin a task while still checked out on `main` (or any other unrelated branch). The very first step of every new task is:
 
@@ -119,7 +119,7 @@ Layout under `apps/web/src/`:
   - `bun.ts` — `Bun.serve` for self-host
   - `worker.ts` — `default { fetch, scheduled }` + `export RealtimeRoom`
   - `vercel.ts` — `hono/vercel` adapter
-  - `netlify.ts` — `hono/netlify` adapter
+  - `netlify.ts` — exports the Hono app instance. The Netlify Function shim (`netlify-fn-entry.ts`, pre-bundled by `scripts/build-netlify-fn.ts` into `apps/web/netlify/functions/api.mjs`) calls `app.fetch(req)` directly — no Hono Netlify adapter, Netlify Functions v2 takes a Web Standard `(Request, Context) => Response` handler.
 - `server/app.ts` — `createApp(env)` builds the Hono app, mounts middleware + routes.
 - `server/env.ts` — runtime-agnostic `Env` interface; Cloudflare binding fields (`D1`, `R2`, `VECTORIZE`, `REALTIME`, `HYPERDRIVE`) are optional and only present on Workers.
 
@@ -141,10 +141,10 @@ Selection rules — keep these consistent if you add a new adapter:
 | storage   | `R2` binding → `r2Storage`; `S3_*` → `bunS3Storage`/`s3FetchStorage`; Bun self-host → `fsStorage("./.data/files")`; edge runtimes without R2/S3 **throw** at boot. Blob I/O is the adapter; image transforms / folder hierarchy / signed serves are dialect-independent helpers in `services/storage/{transforms,folders,serve}.ts` |
 | vector    | `VECTORIZE` → `vectorizeAdapter`; pg dialect → `pgvectorAdapter`; else throws |
 | ai        | Optional `AI` binding (Workers AI) wires the embeddings provider — commented out in `wrangler.toml` (`@cf/baai/bge-m3`); enable when running embedding pipelines on Workers |
-| realtime  | `REALTIME` (DO) → SSE-over-DO-WebSocket bridge; Bun self-host → in-process pub/sub + SSE; Vercel/Netlify Edge → 503 (subscribe + publish) |
-| saml      | Bun + Cloudflare Workers (nodejs_compat) supported; Vercel/Netlify Edge → 503 (samlify can't load) |
-| ldap      | Bun + Node self-host supported; every edge runtime → 503 (no raw TCP) |
-| smtp      | Same as LDAP — Bun + Node only; edge runtimes fall back to console adapter with a warning |
+| realtime  | `REALTIME` (DO) → SSE-over-DO-WebSocket bridge; Bun self-host → in-process pub/sub + SSE; Vercel Edge → 503 (subscribe + publish); Netlify Node Function loads the SSE handler but is impractical (Lambda is stateless, so module-level pub/sub Maps don't share across invocations, and function execution caps SSE streams) |
+| saml      | Bun + Cloudflare Workers (nodejs_compat) + Netlify Node Functions supported; Vercel Edge → 503 (samlify can't load) |
+| ldap      | Bun + Node self-host + Netlify Node Functions supported; Vercel Edge / Cloudflare Workers → 503 (no raw TCP) |
+| smtp      | Same as LDAP — Bun + Node (incl. Netlify Functions) only; Vercel Edge / Cloudflare Workers fall back to console adapter with a warning |
 
 Adapter contracts live in `packages/core/src/adapters/{storage,vector,email,image}.ts`. Concrete implementations live in `apps/web/src/server/adapters/*` (e.g. `storage.fs.ts` vs `storage.r2.ts`). Realtime is **not** behind a `Ctx` adapter — it branches on `env.REALTIME` directly in `routes/realtime.ts` + `services/events.ts` (see the Realtime section below).
 

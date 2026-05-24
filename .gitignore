@@ -26,8 +26,9 @@ deno.lock
 # Pre-bundled Netlify function (built by scripts/build-netlify-fn.ts)
 apps/web/netlify/functions/api.mjs
 
-# Pre-bundled Vercel function (built by scripts/build-vercel-fn.ts)
-api/index.mjs
+# Pre-bundled Vercel function (built by scripts/build-vercel-fn.ts) —
+# output filename is `[...all].mjs` (catch-all), so glob it.
+api/*.mjs
 
 # drizzle
 drizzle/meta

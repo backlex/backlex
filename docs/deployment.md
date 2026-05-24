@@ -65,8 +65,12 @@ Connect the GitHub repo from the Cloudflare dashboard and let every push to
 3. **Build command:** `bun run db:migrate:d1:remote && bun run build`
    (the migration runs first so deploy never fronts a schema mismatch; the
    build container's `wrangler` is auto-authenticated, no token needed).
-4. **Deploy command:** `bunx wrangler deploy` (defaults to the
-   `apps/web/wrangler.toml` config the build command produced).
+4. **Deploy command:** `cd apps/web && bunx wrangler deploy` — the
+   `cd` is mandatory. wrangler 4 detects Bun workspaces and refuses
+   to run from repo root with `"application detection logic has been
+   run in the root of a workspace"`. `apps/web/` is where
+   `wrangler.toml` lives and where the Vite build emits
+   `dist/workeros_api/` + `dist/client/`.
 5. **Root directory:** leave at repo root (`/`).
 6. **Build environment variables** — the build container needs the same
    `wrangler.toml` bindings as production. Secrets stay on the Worker

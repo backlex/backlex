@@ -4,6 +4,7 @@
   base = ""
   command = "DEPLOY_TARGET=netlify bun install --frozen-lockfile && DEPLOY_TARGET=netlify bun run --cwd apps/web build"
   publish = "apps/web/dist/client"
+  edge_functions = "apps/web/netlify/edge-functions"
 
 [build.environment]
   BUN_VERSION = "1.3.14"
@@ -29,6 +30,4 @@
 
 [functions]
   directory = "apps/web/netlify/functions"
-
-[edge_functions]
-  directory = "apps/web/netlify/edge-functions"
+  deno_import_map = "apps/web/netlify/edge-functions/import_map.json"

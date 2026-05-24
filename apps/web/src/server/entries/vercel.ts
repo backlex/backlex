@@ -1,18 +1,26 @@
 /**
- * Vercel Edge Function entry. Mount in `vercel.json` rewrites so any
- * `/api/*` path is handled by this single function.
+ * Vercel Function entry. Wired in `vercel.json` rewrites so any
+ * `/api/*` path is handled by this single function. The `api/index.mjs`
+ * shim (pre-bundled by `scripts/build-vercel-fn.ts` from
+ * `vercel-fn-entry.ts`) imports the Hono app exported here and forwards
+ * requests via `app.fetch(req)`.
  *
- * Runtime constraints (Edge):
- *   - No fs, no `bun:sqlite`, no `node:net`/`node:tls` → DATABASE_URL is
- *     required AND `DATABASE_DRIVER=neon-http` must be set (postgres-js
- *     can't open TCP from a V8 isolate). Point DATABASE_URL at a Neon DB
- *     or a self-hosted Neon `wsproxy` fronting any Postgres.
- *   - No CF bindings — set `S3_BUCKET` + `S3_ACCESS_KEY_ID` +
- *     `S3_SECRET_ACCESS_KEY` so the storage adapter switches to the
- *     `aws4fetch`-backed S3 path. `buildContext` refuses to fall back to
- *     local-fs on edge (every upload would be lost between invocations).
- *   - SAML / LDAP / Realtime are unavailable; `buildContext` and the route
- *     gates return 503 for those features on this runtime.
+ * Deploys as a Node 22 serverless function — moved off Vercel Edge
+ * because Edge can't transpile our `.ts` workspace package sources
+ * (same issue Netlify Functions hits without pre-bundling). Node 22
+ * keeps node:net/tls/crypto available, so SAML/LDAP/SMTP load.
+ *
+ * Runtime constraints (Node 22 Lambda):
+ *   - DATABASE_URL is required. `DATABASE_DRIVER=neon-http` is still
+ *     recommended (Vercel functions are short-lived; HTTP avoids the
+ *     TCP handshake cost per cold start), and it's the path
+ *     `buildContext` defaults to under `vercel` profile detection.
+ *   - Storage: set `S3_BUCKET` + `S3_ACCESS_KEY_ID` +
+ *     `S3_SECRET_ACCESS_KEY` so the adapter switches to S3. The
+ *     function zip has no local fs to fall back on.
+ *   - Realtime SSE loads but is impractical (Lambda is stateless,
+ *     module-level pub/sub Maps don't share across invocations,
+ *     and function execution time caps the SSE stream).
  *   - Cron triggers configured via `vercel.json::crons` hit
  *     `/api/_cron/tick`. The route accepts EITHER `x-cron-secret:
  *     $CRON_SECRET` (manual callers) OR `Authorization: Bearer $CRON_SECRET`
@@ -20,13 +28,10 @@
  *     project env var). Without a match the route 401s so the public
  *     internet can't trigger jobs.
  */
-import { handle } from "hono/vercel";
 import { timingSafeEqual } from "../lib/timing";
 import { createApp } from "../app";
 import { cronTick } from "../services/scheduler";
 import type { Env } from "../env";
-
-export const config = { runtime: "edge" };
 
 const buildEnv = (): Env => ({
   APP_URL: process.env.APP_URL ?? "http://localhost:5173",
@@ -78,4 +83,7 @@ app.get("/api/_cron/tick", async (c) => {
   return c.json({ ok: true, ts: Date.now() });
 });
 
-export default handle(app);
+// Expose the Hono instance. `vercel-fn-entry.ts` (pre-bundled into
+// `api/index.mjs`) wraps it with `(req) => app.fetch(req)` — the same
+// pattern Netlify uses, just a different output path.
+export default app;

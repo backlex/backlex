@@ -5,43 +5,54 @@
  * - Source: `apps/web/src/server/entries/netlify-fn-entry.ts`
  * - Output: `apps/web/netlify/functions/api.mjs`
  *
- * Workspace `@workeros/*` deps are INLINED via Bun's bundler. npm deps stay
- * external — Netlify's nft bundler symlinks them from `apps/web/node_modules`
- * into the function zip, and Lambda resolves them at runtime.
+ * Everything is inlined — workspace `@workeros/*` and every npm dep —
+ * because Bun's monorepo `node_modules/.bun` store layout confuses
+ * Netlify's nft tracer (e.g. `postgres` ends up missing from the zip
+ * even though `drizzle-orm/postgres-js` imports it). A self-contained
+ * single-file Function avoids the whole class of resolution issues.
+ *
+ * The Bun-specific `bun:sqlite` module is aliased to a throwing shim
+ * so Node ESM doesn't choke on the `bun:` protocol at load time. The
+ * sqlite path is never taken on Netlify anyway — we always pick
+ * neon-http via `DATABASE_DRIVER`.
  */
-import { $ } from "bun";
+import { fileURLToPath } from "node:url";
+import { mkdirSync } from "node:fs";
 
 const SOURCE = "apps/web/src/server/entries/netlify-fn-entry.ts";
-const OUTPUT = "apps/web/netlify/functions/api.mjs";
+const OUTPUT_DIR = "apps/web/netlify/functions";
+const SHIM_BUN_SQLITE = fileURLToPath(
+  new URL("../apps/web/src/server/shims/bun-sqlite-shim.ts", import.meta.url),
+);
 
-// npm deps that should stay external. Workspace `@workeros/*` deliberately
-// not in this list so Bun inlines their `.ts` source into the bundle.
-const EXTERNAL = [
-  "hono", "hono/*",
-  "drizzle-orm", "drizzle-orm/*",
-  "@neondatabase/serverless", "@neondatabase/*",
-  "postgres",
-  "better-auth", "better-auth/*", "@better-auth/*",
-  "@hono/*",
-  "@asteasolutions/zod-to-openapi",
-  "samlify",
-  "ldapts",
-  "nodemailer",
-  "@cf-wasm/*",
-  "graphql", "graphql-yoga", "graphql/*",
-  "aws4fetch",
-  "zod",
-  "cron-parser",
-  "bun:sqlite",
-  "@netlify/*",
-  "xml-crypto",
-  "xml2js",
-  "xmldom",
-  "@xmldom/*",
-];
+mkdirSync(OUTPUT_DIR, { recursive: true });
 
-const externalArgs = EXTERNAL.flatMap((e) => ["--external", e]);
+const result = await Bun.build({
+  entrypoints: [SOURCE],
+  outdir: OUTPUT_DIR,
+  naming: "api.mjs",
+  target: "node",
+  format: "esm",
+  splitting: false,
+  sourcemap: "none",
+  minify: false,
+  plugins: [
+    {
+      name: "bun-sqlite-shim",
+      setup(builder) {
+        builder.onResolve({ filter: /^bun:sqlite$/ }, () => ({
+          path: SHIM_BUN_SQLITE,
+        }));
+      },
+    },
+  ],
+});
 
-await $`bun build ${SOURCE} --target=node --format=esm --outfile=${OUTPUT} ${externalArgs}`;
+if (!result.success) {
+  for (const log of result.logs) console.error(log);
+  process.exit(1);
+}
 
-console.log(`✓ Pre-bundled Netlify function → ${OUTPUT}`);
+const out = result.outputs[0];
+const size = out ? (out.size / 1024 / 1024).toFixed(2) : "?";
+console.log(`✓ Pre-bundled Netlify function → ${OUTPUT_DIR}/api.mjs (${size} MB, ${out?.kind})`);

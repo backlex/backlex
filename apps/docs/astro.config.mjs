@@ -47,6 +47,7 @@ export default defineConfig({
         {
           label: "Auth",
           items: [
+            { slug: "auth-planes" },
             { slug: "sso" },
             { slug: "api-keys-and-email" },
           ],

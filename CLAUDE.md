@@ -168,6 +168,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Docs site landing | `docs/index.md` |
 | Architecture overview | `docs/architecture.md`, `docs/DESIGN.md` |
 | Deployment (CF / Vercel / Netlify) | `docs/deployment.md` |
+| Testing (3-layer pyramid + CI gates) | `docs/testing.md` |
 | Service map (route + service inventory) | `docs/service-map.md` |
 | Permissions DSL | `docs/permissions.md` |
 | Query API (REST) | `docs/querying.md` |

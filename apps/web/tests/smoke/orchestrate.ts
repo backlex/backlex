@@ -125,10 +125,80 @@ const bundleProfile = (bundlePath: string): RuntimeProfile => ({
   checkCron: true,
 });
 
+// Cloudflare profile — `wrangler dev --local` against wrangler.ci.toml
+// (a sibling of wrangler.toml with the [ai] binding removed; that one
+// binding is the only thing that needs a real CF login). D1 is the
+// canonical dialect on CF Workers, so we apply the same sqlite
+// migrations to a temp miniflare state dir via `migrate-d1.ts`. The
+// worker entry doesn't register /api/_cron/tick — CF cron is the
+// `scheduled(event, env, ctx)` handler instead — so checkCron stays
+// off for this profile.
+const cloudflareProfile: RuntimeProfile = {
+  setupDb: async () => {
+    const dir = mkdtempSync(join(tmpdir(), "workeros-smoke-cf-"));
+    const r = await runOnce(
+      "bun",
+      [
+        "run",
+        "packages/db/src/sqlite/migrate-d1.ts",
+        "--config=apps/web/wrangler.ci.toml",
+        `--persist-to=${dir}`,
+      ],
+      REPO_ROOT,
+      {},
+    );
+    if (r.code !== 0) {
+      throw new Error(`D1 migration failed (exit ${r.code}):\n${r.output}`);
+    }
+    return {
+      env: { CF_PERSIST_DIR: dir },
+      cleanup: () => rmSync(dir, { recursive: true, force: true }),
+    };
+  },
+  spawnServer: (env) =>
+    spawn(
+      "bunx",
+      [
+        "wrangler",
+        "dev",
+        "-c",
+        "wrangler.ci.toml",
+        "--local",
+        "--persist-to",
+        env.CF_PERSIST_DIR!,
+        "--port",
+        String(PORT),
+        "--ip",
+        "127.0.0.1",
+      ],
+      {
+        // wrangler dev reads [assets] from wrangler.ci.toml's own
+        // directory; running from apps/web keeps dist/client resolvable.
+        cwd: resolve(REPO_ROOT, "apps/web"),
+        env: {
+          ...process.env,
+          APP_URL,
+          // CF's runtime check (isCloudflareWorkers) is keyed off
+          // navigator.userAgent === "Cloudflare-Workers", which
+          // workerd sets automatically. We don't need to nudge it.
+          AUTH_SECRET:
+            process.env.AUTH_SECRET ?? "smoke-secret-not-for-prod-stable",
+          // Don't leak the job-level DATABASE_URL into the worker — it
+          // would force the postgres-js path (which Workers can't run)
+          // when D1 is the intended dialect here.
+          DATABASE_URL: "",
+        },
+        stdio: "inherit",
+      },
+    ),
+  checkCron: false,
+};
+
 const profiles: Record<string, RuntimeProfile> = {
   bun: sqliteProfile,
   vercel: bundleProfile(".vercel/output/functions/api/index.func/index.mjs"),
   netlify: bundleProfile("apps/web/netlify/functions/api.mjs"),
+  cloudflare: cloudflareProfile,
 };
 
 const profile = profiles[RUNTIME];

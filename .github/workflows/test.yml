@@ -52,3 +52,54 @@ jobs:
 
       - name: Build all targets
         run: bun run build:targets
+
+  # Boots each runtime in-runner and exercises the same smoke contract
+  # over real HTTP. Catches runtime-specific regressions the build job
+  # can't see: bundle import-time errors, runtime-conditional adapter
+  # selection (isStatelessEdge etc.), cookie / auth round-trips on a
+  # real fetch boundary, and the cron-secret gate on Vercel/Netlify
+  # entries. No external service calls — postgres is a job-scoped
+  # service container, Cloudflare is excluded (its [ai] binding needs
+  # wrangler login; build-targets already covers CF bundle validation).
+  runtime-smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [bun, vercel, netlify]
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: workeros_smoke
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/workeros_smoke
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build all targets
+        run: bun run build:targets
+
+      - name: Run ${{ matrix.runtime }} smoke
+        env:
+          SMOKE_RUNTIME: ${{ matrix.runtime }}
+          PORT: 8787
+        run: bun apps/web/tests/smoke/orchestrate.ts

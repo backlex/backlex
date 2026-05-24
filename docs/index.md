@@ -94,5 +94,6 @@ const r = await wks.from<Posts>("posts").list({
 ## What next
 
 - [Permissions DSL](permissions.md) — granular role + condition rules
+- [Auth planes](auth-planes.md) — admin pool vs workspace end-user pool
 - [Sandbox functions](sandbox.md) — JavaScript code that runs in a sandbox
 - [Deployment](deployment.md) — push to Bun, Workers, Vercel, or Netlify

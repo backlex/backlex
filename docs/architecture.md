@@ -27,15 +27,15 @@ Every cross-runtime concern hides behind a TypeScript interface in
 `@workeros/core/adapters`. `apps/web/src/server/context.ts::buildContext`
 picks the right implementation based on bindings/env.
 
-| Interface           | Bun                | Cloudflare Workers      | Vercel/Netlify Edge   |
-|---------------------|--------------------|-------------------------|-----------------------|
-| `StorageAdapter`    | `fsStorage` / `bunS3Storage` | `r2Storage` / `s3FetchStorage` | `s3FetchStorage`     |
+| Interface           | Bun                | Cloudflare Workers      | Vercel / Netlify (Node 22) |
+|---------------------|--------------------|-------------------------|----------------------------|
+| `StorageAdapter`    | `fsStorage` / `bunS3Storage` | `r2Storage` / `s3FetchStorage` | `s3FetchStorage` (S3 env vars required — Lambda zip has no local fs) |
 | `VectorAdapter`     | `pgvectorAdapter`  | `vectorizeAdapter`      | `pgvectorAdapter`     |
-| Realtime            | in-proc + SSE      | DO (Hibernation API) → SSE bridge | in-proc + SSE |
+| Realtime            | in-proc + SSE      | DO (Hibernation API) → SSE bridge | SSE loads but impractical — Lambda is stateless, function timeout caps the stream |
 | `EmailAdapter`      | `console`/`resend`/`sendgrid`/`mailgun`/`ses`/`smtp` | same minus `smtp` (no raw TCP) | `console`/`resend`/`sendgrid`/`mailgun`/`ses`/`smtp` |
 | `ImageAdapter`      | `bunImage`         | `cfImage`               | `passthroughImage`    |
-| `SamlAdapter`       | `samlify`          | `samlify` (via `nodejs_compat`) | `samlify`         |
-| `LdapAdapter`       | `ldapts`           | — (no raw TCP; aliased to a throwing shim) | `ldapts`     |
+| `SamlAdapter`       | `samlify`          | `samlify` (via `nodejs_compat`) | `samlify` (Node 22 native crypto) |
+| `LdapAdapter`       | `ldapts`           | — (no raw TCP; aliased to a throwing shim) | `ldapts` (Node 22 has raw TCP) |
 
 ## Hybrid schema ownership
 

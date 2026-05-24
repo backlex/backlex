@@ -21,11 +21,8 @@ bun run --cwd apps/web i18n:extract  # lingui extract → apps/web/src/client/lo
 
 # DB — pick the dialect explicitly; there is no shared command:
 bun run db:generate:pg     # drizzle-kit generate against packages/db/src/pg/schema.ts
-                           # ⚠ requires an interactive TTY (drizzle-kit asks
-                           # 'did you mean rename' for any column-pair that
-                           # looks similar). Run from your own terminal —
-                           # CI/sandbox shells without a TTY will fail with
-                           # 'Interactive prompts require a TTY terminal'.
+                           # ⚠ requires an interactive TTY (drizzle-kit prompts
+                           # on column renames); run from your own terminal.
 bun run db:generate:sqlite
 bun run db:migrate:pg      # needs DATABASE_URL; also CREATE EXTENSION vector
 bun run db:migrate:sqlite  # writes to ./.data/workeros.sqlite (Bun SQLite)
@@ -56,16 +53,16 @@ VALUES ('<user-id>', (SELECT id FROM roles WHERE name='admin'), strftime('%s','n
 
 Every working session runs on its own branch. Merging into `main` triggers `.github/workflows/deploy.yml`, which runs `bun run build` and `wrangler deploy` against the `workeros-api` Worker. Required GitHub secrets: `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
 
-The repo also ships native-git deploy configs for **Vercel** (`vercel.ts` + `api/[...all].mjs` pre-bundled by `scripts/build-vercel-fn.ts`) and **Netlify** (`netlify.toml` + `apps/web/netlify/functions/`). These work via dashboard "connect repo" → push triggers build, no GitHub Actions involved. Both deploys serve the admin SPA + API from the same origin; runtime caveats live in `docs/deployment.md`. Vercel deploys to a Node serverless function under Fluid Compute (Postgres needs `DATABASE_DRIVER=neon-http` to skip the TCP handshake on cold starts) — same pre-bundle pattern as Netlify (Bun inlines `@workeros/*` workspace TS source; npm deps are inlined too because Vercel's dep tracer can't follow Bun's `node_modules/.bun` monorepo store). Netlify deploys to a Node 22 serverless function with the same pre-bundle pipeline. The Vercel cron route accepts both `x-cron-secret` and `Authorization: Bearer $CRON_SECRET` (Vercel attaches the latter automatically); the Netlify scheduled function attaches `x-cron-secret` itself.
+The repo also ships native-git deploy configs for **Vercel** (`vercel.ts` + `api/[...all].mjs`) and **Netlify** (`netlify.toml` + `apps/web/netlify/functions/`). Runtime caveats live in `docs/deployment.md`.
 
-**Always create a new branch BEFORE doing any work.** This is mandatory — do not edit files, run commands that mutate state, or otherwise begin a task while still checked out on `main` (or any other unrelated branch). The very first step of every new task is:
+**Always create a new branch BEFORE doing any work.** This is mandatory — do not edit files, run commands that mutate state, or otherwise begin a task while still checked out on `main`. The very first step of every new task is:
 
 ```bash
 git checkout main && git pull origin main
 git checkout -b feat/<short-topic>
 ```
 
-Only after the new branch exists may you proceed with edits, commits, etc. If you find yourself on `main` with uncommitted changes when a task begins, stop and create the branch first (a `git stash` + branch + `git stash pop` is fine).
+If you find yourself on `main` with uncommitted changes when a task begins, stop and create the branch first (`git stash` + branch + `git stash pop` is fine).
 
 **Branch naming:** `feat/<short-topic>` (e.g. `feat/admin-functions-page`).
 
@@ -93,213 +90,71 @@ After pushing, report the workflow run URL back to the user. Don't claim "deploy
 
 **After the deploy run goes green**, smoke-test the change against the live URL with the puppeteer MCP server (`mcp__puppeteer__puppeteer_*` tools). The default target is the production deploy unless the user names a specific URL. Drive the relevant flow end-to-end (sign in, exercise the feature touched by this branch, watch for console/network errors via `puppeteer_evaluate`) and screenshot the result. Report what you tested and what you saw — don't call it shipped without that pass.
 
-## Architecture
+## Architecture (one-screen orientation)
+
+For the full picture, see `docs/architecture.md`. The minimum an agent needs to know up front:
 
 ### Repo layout
 
 Bun workspaces — every package is source-consumed (no build step between them), so editing a `packages/*` file is picked up immediately by both apps.
 
-- `apps/web` — Hono API + React admin SPA in one workspace (see "One app, four runtimes" below).
+- `apps/web` — Hono API + React admin SPA in one workspace.
 - `apps/docs` — Astro Starlight user-facing docs site; the Worker serves it at `/docs` after build.
-- `packages/db` — dual-dialect Drizzle (PG + SQLite); see "Dual-dialect Drizzle".
+- `packages/db` — dual-dialect Drizzle (PG + SQLite) + dynamic-DDL applier + permission DSL compiler.
 - `packages/auth` — better-auth wrapper; `createAuth(db, dialect, config)`.
-- `packages/core` — runtime-agnostic types: `Env`, `AppError`, adapter contracts (`storage`/`vector`/`email`/`image`/`saml`/`ldap`), permission DSL types.
-- `packages/ui` — shared shadcn design system; see "UI package".
+- `packages/core` — runtime-agnostic types: `Env`, `AppError`, adapter contracts, permission DSL types.
+- `packages/ui` — shared shadcn design system (see below).
 - `packages/cli` — `workeros` binary, invoked via `bun workeros <cmd>`; see `docs/sdk-and-cli.md`.
 - `packages/client` — public TypeScript SDK end-user apps consume against the workeros API.
 
 ### One app, four runtimes
 
-`apps/web` is a single workspace that ships **both** the Hono API and the React admin SPA. The Vite config uses `@cloudflare/vite-plugin` so a single `bun run dev` spins up the SPA with HMR AND the Worker via miniflare on port 5173. `bun run build` emits `apps/web/dist/client` (SPA) + `apps/web/dist/workeros_api` (Worker bundle); `wrangler deploy` ships both as one Worker (Static Assets binding for the SPA).
+`apps/web` ships **both** the Hono API and the React admin SPA. `bun run dev` spins both up on port 5173 via `@cloudflare/vite-plugin`. Production: one Worker serves the SPA (Static Assets binding) + the API. Layout under `apps/web/src/`:
 
-Layout under `apps/web/src/`:
-
-- `client/` — Vite + React + Tailwind v4 admin (`@/` alias points here). Entry `client/main.tsx`.
-- `server/` — Hono app + adapters + routes + services. Four entries in `server/entries/`:
-  - `bun.ts` — `Bun.serve` for self-host
-  - `worker.ts` — `default { fetch, scheduled }` + `export RealtimeRoom`
-  - `vercel.ts` — `hono/vercel` adapter
-  - `netlify.ts` — exports the Hono app instance. The Netlify Function shim (`netlify-fn-entry.ts`, pre-bundled by `scripts/build-netlify-fn.ts` into `apps/web/netlify/functions/api.mjs`) calls `app.fetch(req)` directly — no Hono Netlify adapter, Netlify Functions v2 takes a Web Standard `(Request, Context) => Response` handler.
+- `client/` — Vite + React + Tailwind v4 admin (`@/` alias). Entry `client/main.tsx`.
+- `server/` — Hono app + adapters + routes + services. Four entries in `server/entries/`: `bun.ts`, `worker.ts`, `vercel.ts`, `netlify.ts`.
 - `server/app.ts` — `createApp(env)` builds the Hono app, mounts middleware + routes.
-- `server/env.ts` — runtime-agnostic `Env` interface; Cloudflare binding fields (`D1`, `R2`, `VECTORIZE`, `REALTIME`, `HYPERDRIVE`) are optional and only present on Workers.
+- `server/env.ts` — runtime-agnostic `Env` interface; Cloudflare binding fields are optional and only present on Workers.
 
-The admin's API client (`client/lib/api.ts`) defaults to relative `/api/...` paths, so same-origin deploys (CF Workers + Static Assets) work without `VITE_API_URL`. Set `VITE_API_URL` only for cross-origin setups.
+The admin's API client (`client/lib/api.ts`) defaults to relative `/api/...` paths, so same-origin deploys work without `VITE_API_URL`. Set `VITE_API_URL` only for cross-origin setups.
 
-Anything runtime-specific must stay behind the adapter layer — do not branch on `typeof process` etc. inside route code.
+**Anything runtime-specific must stay behind the adapter layer** — do not branch on `typeof process` etc. inside route code. Adapter contracts live in `packages/core/src/adapters/{storage,vector,email,image,saml,ldap}.ts`; concrete implementations live in `apps/web/src/server/adapters/*`. The selection rules (dialect, db driver, storage, vector, email, realtime transport, saml, ldap, smtp) live in `apps/web/src/server/context.ts::buildContext(env)` — see the adapter table in `docs/architecture.md` before adding a new one.
 
-### Context + adapter wiring
+### Hybrid schema ownership
 
-`src/context.ts::buildContext(env)` is the single place that decides the runtime profile. It returns a `Ctx` (db, auth, storage, vector, dialect) attached to every request as `c.get("ctx")`. The auth state lives in `c.get("auth")` (set by `middleware/session.ts`).
+System tables live in `packages/db/src/{pg,sqlite}/schema.ts` (Drizzle, dual-dialect — **always edit both files** when changing schema). User collections live in **physical tables** whose name is whatever the collection metadata row's `physical_table` column says — the default the unified create endpoint picks is `c_<tenantPrefix12>_<slug>`, but adopted collections can wrap any existing table name.
 
-Selection rules — keep these consistent if you add a new adapter:
+`POST /api/collections` is the single create endpoint:
+- `adopted: false` (default) — workeros creates the physical table (managed).
+- `adopted: true` — table already exists; workeros only writes the metadata row.
 
-| Concern   | Rule                                                                  |
-|-----------|-----------------------------------------------------------------------|
-| dialect   | `D1` binding → `sqlite`; `HYPERDRIVE` / `DATABASE_URL` → `pg`; else `sqlite` |
-| db        | D1 client / `postgres-js` (default) or `neon-http` (recommended on Vercel/Netlify Lambdas via `DATABASE_DRIVER=neon-http`; HTTP avoids the per-cold-start TCP handshake) / Bun SQLite at `./.data/workeros.sqlite` (lazy-loaded so edge bundles don't import `bun:sqlite`) |
-| dbRead    | Opt-in read replica (pg only). `HYPERDRIVE_REPLICA` binding (Workers) or `DATABASE_REPLICA_URL` env builds a second client; unset → `dbRead === db`. SQLite/D1 always alias the primary. Use for lag-tolerant reads only — post-mutation reads stay on `db` |
-| storage   | `R2` binding → `r2Storage`; `S3_*` → `bunS3Storage`/`s3FetchStorage`; Bun self-host → `fsStorage("./.data/files")`; edge runtimes without R2/S3 **throw** at boot. Blob I/O is the adapter; image transforms / folder hierarchy / signed serves are dialect-independent helpers in `services/storage/{transforms,folders,serve}.ts` |
-| vector    | `VECTORIZE` → `vectorizeAdapter`; pg dialect → `pgvectorAdapter`; else throws |
-| ai        | Optional `AI` binding (Workers AI) wires the embeddings provider — commented out in `wrangler.toml` (`@cf/baai/bge-m3`); enable when running embedding pipelines on Workers |
-| realtime  | `REALTIME` (DO) → SSE-over-DO-WebSocket bridge; Bun self-host → in-process pub/sub + SSE; Vercel + Netlify Node Functions load the SSE handler but it's impractical (Lambdas are stateless, so module-level pub/sub Maps don't share across invocations, and function execution caps SSE streams) |
-| saml      | Bun + Cloudflare Workers (nodejs_compat) + Vercel + Netlify Node Functions all supported (samlify + xml-crypto need `node:crypto`, which Node 22 Lambdas have natively) |
-| ldap      | Bun + Node self-host + Vercel + Netlify Node Functions supported (ldapts uses `node:net`/`node:tls`, available on every Node Lambda); Cloudflare Workers → 503 (no raw TCP) |
-| smtp      | Same as LDAP — Bun + Node (incl. Vercel + Netlify Node Functions); Cloudflare Workers fall back to console adapter with a warning |
-
-Adapter contracts live in `packages/core/src/adapters/{storage,vector,email,image}.ts`. Concrete implementations live in `apps/web/src/server/adapters/*` (e.g. `storage.fs.ts` vs `storage.r2.ts`). Realtime is **not** behind a `Ctx` adapter — it branches on `env.REALTIME` directly in `routes/realtime.ts` + `services/events.ts` (see the Realtime section below).
-
-Cross-cutting helpers worth knowing: `services/permissions-cache.ts` (per-request L1 cache on top of the permissions resolver — bulk loops hit it for free, no opt-in needed) and `services/cors-origins.ts` (per-tenant allow-list reused by SAML relayState validation as the open-redirect guard).
-
-### Dual-dialect Drizzle (system tables only)
-
-`packages/db` ships **two parallel schemas** — `src/pg/schema.ts` and `src/sqlite/schema.ts` — exported via subpaths (`@workeros/db/pg`, `@workeros/db/sqlite`, plus `/schema` variants). System tables (`users`, `sessions`, `accounts`, `verifications`, `collections`, `embeddings`, `files`) exist in both; column types differ where the dialects do (`integer` timestamps + JSON-as-text on SQLite, native `timestamp` + `jsonb` on PG; `pgvector` only on PG).
-
-When changing schema, **always edit both files** and regenerate both migration sets (`db:generate:pg` and `db:generate:sqlite`). Drizzle-kit configs live at `packages/db/drizzle.{pg,sqlite}.config.ts`.
-
-`db` is typed as `PgDb | SqliteDb`; route handlers cast to `any` when running shared queries because the union is structurally compatible at the SQL builder level but not in the type system.
-
-### API keys + Email + OAuth (Phase 5)
-
-- **API keys**: `api_keys` table; full key format is `pak_<8-hex prefix>_<32-hex secret>`. Only the SHA-256 of the secret is stored; the plaintext is returned exactly once on POST and never retrievable. `apps/web/src/server/services/api-keys.ts` handles create/list/revoke + lookup. Auth middleware (`middleware/session.ts`) tries the better-auth cookie session first, then falls back to `Authorization: Bearer pak_...`. Resolved key impersonates its `user_id` so the request inherits that user's roles + permissions, and pins the request to the key's `tenant_id`. **`name` is optional** on POST (a timestamped default is generated) and **`expires_at` is optional** (lookup rejects expired keys). **Role scoping**: a key may set `role_id` — when present, the request resolves permissions against *only* that role (no implicit `authenticated`), and only while the owner still holds it (`loadRolesForUser`/`loadTenantRoleNames` both gate on `(user_roles ⋈ roles) WHERE role.id = key.role_id`). So a scoped key can never grant more than its owner currently has. Creation rejects a `role_id` the owner doesn't hold (admins included — grant yourself the role first if you want a narrow self-key). `GET /api/api-keys/available-roles` lists the roles the caller may bind (admins: every workspace role; others: only roles they hold). `auth.apiKeyRoleId` carries the scope through the middleware chain (set in `app.ts` `AppBindings` and `AuthSubject` in `@workeros/core`).
-- **EmailAdapter**: interface in `packages/core/src/adapters/email.ts` (`send({to, subject, text, html?, from?})`). Implementations live in `apps/web/src/server/adapters/email.{console,resend,sendgrid,mailgun,ses,smtp}.ts`. `apps/web/src/server/lib/email-select.ts` is the single place adapters get wired: `EmailSpec` (the normalized union both layers below compile to) + `buildEmailAdapter(spec)` + `selectEmailAdapter(env)`. `selectEmailAdapter` picks the deployment transport from `EMAIL_PROVIDER` (`console | resend | sendgrid | mailgun | ses | smtp`); when unset it auto-detects from whichever provider has complete credentials (priority: resend → sendgrid → mailgun → ses → smtp), else the console adapter (logs to stdout — fine for dev). Every provider also needs `EMAIL_FROM`. The HTTP providers (resend/sendgrid/mailgun/ses) work on every runtime — SES is SigV4-signed via `aws4fetch`. **`smtp` is nodemailer-based and only works off Cloudflare Workers** (no raw TCP): the Worker bundle aliases `nodemailer` to a throwing stub (`shims/nodemailer-shim.ts`, wired in both `wrangler.toml [alias]` and `vite.config.ts`) and `buildEmailAdapter` skips it on Workers with a warning.
-  - **Per-workspace email**: the `email_config` table (PK `tenant_id`, or the `_global` sentinel for the instance-wide override row) holds `provider` + `from_address` + non-secret `config` (jsonb) + `secrets` (jsonb of `enc:v1:…` ciphertext, AES-256-GCM via `lib/crypto`, keyed off `AUTH_SECRET` — same scheme as `auth_config.clientSecretEnc`). `provider = "inherit"` (or a blank/incomplete row) falls through: workspace row → `_global` row → `selectEmailAdapter(env)`. `services/email-config.ts` (`loadEmailConfigRow`, `resolveEmailAdapter`) mirrors `services/auth-config.ts`; the admin route is `routes/email-config.ts` (`GET`/`PUT`/`POST /test`, admin-only — secrets are write-only, GET returns only `secretsSet` flags) and a `PUT` invalidates `getTenantAuth`'s cache via `invalidateTenantAuth`. Reads degrade to env-default if the table isn't migrated yet. **Always send via `ctx.emailFor(tenantId)` (memoized per request) — not `ctx.email`** (`ctx.email` is the env-derived deployment default, the fallback `emailFor` ends at; use it only for system mail with no workspace context). `sendTemplatedEmail`, `getTenantAuth` (end-user verification/magic-link/OTP/reset mail), the Functions-sandbox `email.send` RPC, and the workspace-invite mailers all already route through `emailFor`. Never reach for an email SDK directly.
-- **OAuth providers**: `OAUTH_GOOGLE_CLIENT_ID/SECRET`, `OAUTH_GITHUB_CLIENT_ID/SECRET`, and `OAUTH_APPLE_CLIENT_ID/SECRET` env vars (Apple's `_CLIENT_ID` is the Service ID; `_CLIENT_SECRET` is the JWT signed with the Apple key). If both id+secret are present for a provider, it's wired into better-auth's `socialProviders` automatically. Per-workspace overrides live in `auth_config.socialProviders` (`services/auth-config.ts`); a workspace with a configured provider takes precedence over env-level wiring. Endpoints follow better-auth conventions (`/api/auth/sign-in/social`, `/api/auth/callback/<provider>`).
-
-When adding a new auth surface, prefer extending the better-auth plugin set (passes through `databaseHooks` so the first-user-becomes-admin logic still applies) over rolling a parallel sign-in flow.
-
-### Realtime (permission-aware change feed)
-
-`apps/web/src/server/services/events.ts` is the publish/subscribe core. Item CRUD routes call `publishEvent(env, "items:<slug>", { event, data })` after a successful write. Subscribers receive only events that pass their permission filter. **The client transport is always SSE (`EventSource`)** — on Workers the route bridges the DO WebSocket into an SSE response, so admin/client code never speaks raw WebSocket.
-
-- **Channels**: `items:<slug>` (per-collection change feed, permission-filtered), `collections` (admin-only schema events), `presence:<name>` (signed-in members roster), and any other free-form name (no auth/filter).
-- **Subscribe gate** in `apps/web/src/server/routes/realtime.ts::gateForChannel`: `items:*` resolves `read` permission and bundles `{authSubject, conditions, fields}` as `SubscriptionMeta`; `collections` requires the `admin` role; `presence:*` requires a signed-in user; free-form channels have no gate. All non-free-form channels reject external `POST /:channel/publish`.
-- **`POST /:channel/test-publish`** — admin-only synthetic `{event,data}` injector for `items:*` channels (no webhook/flow side effects); used to verify per-subscriber filtering. `POST /:channel/publish` (free-form only) is rate-limited per `(channel, ip)` via `lib/rate-limit.ts`.
-- **Filter evaluation** uses `matchesCondition` (in-memory, dialect-free) from `packages/db/src/permission.ts` — same DSL the SQL compiler uses. `lookup` tries snake_case first, then camelCase fallback so it works against both raw rows and deserialized API payloads.
-- **Per-subscriber projection**: if the role's `fields` allow-list is set, the event payload is filtered to that list (system fields `id, createdAt, updatedAt, ownerId` are always kept).
-- **SSE niceties** (both paths): `: ping` comment frame every 25s (proxy keep-alive), `retry:` hint on the `ready` event, and `Last-Event-ID` resumption — each event carries a monotonic per-channel `seq` as the SSE `id`; reconnecting subscribers replay the gap (a bounded ring buffer on Bun, a `storage`-backed log on the DO).
-- **Bun**: `subscribeLocal`/`publishLocal` keep module-level `Map<channel, Set<Subscriber>>`. SSE handler uses a queue + wakeable promise so writes from external request handlers reliably flush — don't `void stream.writeSSE(...)` from sync callbacks; queue and let the SSE async loop `await` each write. Presence rooms live in a parallel `Map` (`joinPresence`).
-- **Workers**: `RealtimeRoom` Durable Object accepts sockets via the **WebSocket Hibernation API** (`state.acceptWebSocket`, per-socket `serializeAttachment({meta, presence})`); `seq` + recent-event log persist in `state.storage`. The DO applies the same `matchesCondition` + projection on publish, broadcasts the presence roster on join/leave, and wraps every outgoing frame as `{__seq, msg}` so the SSE bridge can echo the id.
-
-When emitting events from a new resource, follow `items.ts`: fetch the existing row before DELETE so the `deleted` event carries the last known state. If you change the wire shape, change it in `events.ts`, `realtime-room.ts`, the bridge in `routes/realtime.ts`, **and** `client/pages/realtime.tsx`.
-
-### Query API for items (Directus-style)
-
-`GET /api/items/:slug` accepts a Directus-shaped query string parsed by `apps/web/src/server/lib/query.ts::parseQuery`:
-
-- `filter=<JSON>` — same DSL as `permissions.condition`. Compiled via `compileCondition` and AND'd with `permission.whereSql`. Filter fields are validated against the collection schema **and** the permission `fields` allow-list (so users can't probe fields they aren't allowed to read).
-- `sort=field,-other` — `-` prefix = `DESC`, comma-separated for multi-column. Default: `-created_at`.
-- `fields=a,b,c` — projection at SQL level via `resolveProjection`. System columns (`id, created_at, updated_at`, plus `owner_id` if scoped) are always added back so deserialization works.
-- `limit` (1-200, default 50) and `offset`.
-- `meta=filter_count,total_count` (or `*`) — adds `meta: { filter_count, total_count }` to the response. Each requested count costs one extra `SELECT COUNT(*)`.
-
-Non-list endpoints (`GET /:id`, `POST`, `PATCH`, `DELETE`) don't accept query parameters — they use `requirePermission` only.
-
-### Roles & permissions
-
-Granular permissions live in three system tables: `roles`, `user_roles`, `permissions`. Each `permission` row binds a role to a (collection, action) pair with optional `condition` (mini DSL) and `fields` allow-list.
-
-- **Mini DSL** in `packages/core/src/permission.ts` (types) + `packages/db/src/permission.ts` (compiler). Operators: `_eq, _neq, _in, _nin, _gt, _gte, _lt, _lte, _null, _contains, _starts_with, _ends_with`. Logical: `$and, $or, $not` (top-level keys are implicit `$and`). Variables: `$user.id, $user.email, $user.roles, $tenant.id` (aka `$user.tenant_id`), `$now`. The compiler emits a Drizzle `SQL` fragment; never string-concatenate user input.
-- **System roles** (auto-seeded on first request): `admin` (bypass), `authenticated` (any signed-in user, additive), `public` (anonymous). The first user to sign up gets `admin`; subsequent users get `authenticated`. Hook lives in `packages/auth/src/index.ts` via `databaseHooks.user.create.after`, wired from `apps/web/src/server/context.ts`.
-- **Resolver** in `apps/web/src/server/services/permissions.ts`: loads user's roles + implicit `authenticated`, queries matching permission rows, OR-combines conditions across roles, unions field allow-lists. `null` condition on any matching row = unrestricted (most permissive wins).
-- **Middleware** `requirePermission(collection, action)` in `apps/web/src/server/middleware/permission.ts`. Sets `c.var.permission` for the route; routes `WHERE`-AND the resolved `whereSql` and project response by `fields` set. `items.ts` uses this for all 5 CRUD endpoints.
-- **`ownerScoped: true`** on a collection is sugar: it auto-seeds permissions for the `authenticated` role with `{ owner_id: { _eq: "$user.id" } }` on read/update/delete and unrestricted create. After seeding, the permission system is the source of truth — toggling `ownerScoped` again only adds missing actions (never removes existing rows).
-
-When wiring a new resource (collections, files, etc.), add a `requirePermission` middleware and apply `c.var.permission.whereSql` / `c.var.permission.fields` rather than rolling your own auth check.
-
-### Key services & features
-
-The route + service files an agent should know exist before searching blindly. Each line: feature → primary route/service paths → gotcha or deep-dive pointer. The four major subsystems (Auth, Realtime, Query API, Hybrid schema) have their own sections below — this list is the rest.
-
-**Data plane**
-- **Revisions** (`routes/revisions.ts`, `services/revisions.ts`) — change history per item; `routes/items.ts` already snapshots before mutating, don't double-write.
-- **Comments** (`routes/comments.ts`) — item-scoped threads, permission-checked via the parent collection (no separate permission row).
-- **Activity log** (`routes/activity.ts`, `services/activity.ts`) — central audit trail; mutating routes call `logActivity(...)` after success. Add it when introducing new write endpoints.
-- **Storage + folders** (`routes/storage.ts`, `routes/folders.ts`, `services/storage/*`) — uploads, folder tree, signed serves, on-the-fly image transforms. See `docs/storage.md`.
-
-**Query surfaces**
-- **GraphQL** (`routes/graphql.ts`, `routes/graphql.openapi.ts`, `services/graphql.ts`) — schema auto-generated from collections; uses the L1 permission cache so deep queries don't N+1 the resolver. See `docs/graphql.md`.
-- **OpenAPI** (`routes/openapi.ts`, `routes/openapi-metadata.ts`, `services/openapi-dynamic.ts`) — spec generated dynamically from collection schemas + per-route `.openapi(...)` decorators (`@hono/zod-openapi`); a new route shows up automatically if you decorate it.
-- **Public surfaces** (`routes/i18n-public.ts`, `routes/shared-public.ts`, `routes/shared-links.ts`, `services/shared-links.ts`) — unauthenticated endpoints used by signed share-link URLs and the public i18n bundle. Never apply `requirePermission` here; gate via the share-link token instead.
-- **i18n strings** (`routes/i18n.ts`, `services/i18n.ts`, `services/i18n-translate.ts`) — content-translation system (multilingual values for user-managed collections), distinct from the admin SPA's Lingui chrome translations.
-
-**Automation**
-- **Webhooks** (`routes/webhooks.ts`, `routes/webhook-trigger.ts`, `services/webhooks.ts`) — outbound delivery with HMAC `X-Workeros-Signature` + retry; the trigger route is the inbound side that flows/functions hook into.
-- **Flows** (`routes/flows.ts`, `services/flows.ts`) — visual workflow builder; trigger keys are `event` / `cron` / `webhook` / `manual`, operations are a serialized DSL evaluated server-side.
-- **Functions** (`routes/functions.ts`, `services/functions.ts`, `services/sandbox/*`, `routes/sandbox-rpc.ts`) — sandboxed JS execution. Provider picked by runtime: QuickJS on Workers, Bun Worker on self-host, optional HTTP executor. The sandbox calls back into the host (e.g. `email.send`, `db.query`) through `sandbox-rpc.ts` — RPC surface, not direct imports. See `docs/sandbox.md`.
-- **Scheduler** (`services/scheduler.ts`, `services/scheduled-tasks.ts`) — cron expression parsing + delayed-task ledger; driven by the `scheduled` Worker entry and the Vercel/Netlify cron routes.
-- **Notifications** (`routes/notifications.ts`) — in-app notification feed; activity/flows write into it.
-- **Email templates** (`routes/email-templates.ts`) — per-tenant overrides for transactional templates; pairs with the per-workspace email config already documented in "API keys + Email + OAuth".
-
-**Workspace admin**
-- **App users + tenants** (`routes/app-users.ts`, `routes/tenants.ts`, `routes/tenant-auth.ts`) — multi-tenant end-user pool (distinct from the control-plane admin pool): invite flow, tenant switching, per-tenant sign-in routes.
-- **Settings + workspace config** (`routes/settings.ts`, `services/settings.ts`, `routes/workspace-config.ts`, `services/workspace-config.ts`) — `settings` is the `app_settings` whitelist (i18n defaults, timezone, …); `workspace-config` is per-tenant overrides for runtime knobs.
-- **Roles admin + collection rename** (`routes/roles.ts`, `services/collection-rename.ts`) — roles admin is the editor for the permission DSL; `collection-rename` is the only safe path to rename a collection (renames the physical table + updates permission rows in one transaction).
-- **Advisor** (`routes/advisor.ts`, `services/advisor.ts`) — security/performance/config rule checks surfaced in the admin UI with fix recommendations. See `docs/advisor.md`.
-- **Panels** (`routes/panels.ts`) — dashboard widget definitions.
-- **Metrics** (`routes/metrics.ts`) — request/error counters + time-series rollups for the admin dashboard.
-- **Realtime admin + DB admin** (`routes/realtime-admin.ts`, `routes/db-admin.ts`) — subscriber counts + test-publish, and schema introspection + diagnostics. Both admin-only.
-- **Backup** (`services/backup.ts`) — workspace export/restore primitives.
-
-### Hybrid schema ownership: dynamic collections via runtime DDL
-
-User collections live in physical tables. The `collections` metadata row's `physical_table` column is the **single source of truth** for the table name — runtime code (`routes/items.ts`, the realtime channels, the items query layer) always reads it from there and never recomputes. The naming convention `c_<tenantPrefix12>_<slug>` is only a **default** that the unified create endpoint applies when callers don't supply their own name.
-
-There are two create paths through one endpoint (`POST /api/collections`), distinguished by the `adopted` flag — naming is no longer the distinguishing axis, DDL is:
-
-- **Managed** (`adopted: false`, default) — workeros creates the physical table. `physicalTable` is optional; when omitted it falls back to `derivePhysicalTable(tenantId, slug)`. The table must not already exist (returns 409 with a hint pointing at `adopted: true`).
-- **Adopted** (`adopted: true`) — the table already exists; workeros only writes the metadata row. `physicalTable` is required; the route introspects via `services/adopt.ts::inspectTable`, validates that `pkColumn`/field names/alias columns line up with the source table, and the schema-applier short-circuits (no DDL ever runs against the user's table).
-
-The admin UI surfaces this as one "New collection" button with a small chooser → either the managed wizard (`collections-index.tsx::NewCollectionDialog`) or the adopt wizard (`adopt-wizard.tsx`). Both wizards POST to the same endpoint; the helper routes `GET /api/admin/adopt/tables` and `POST /api/admin/adopt/inspect` exist only to feed the adopt wizard's discovery step.
-
-Key files:
-- `packages/db/src/field-types.ts` — supported `FieldType` registry, identifier validation (`assertIdent`), reserved system column names, `derivePhysicalTable(tenantId, slug)` default-name helper.
-- `packages/db/src/schema-applier.ts` — `applyCollection`, `dropCollection`, `dropField`, plus `tableExists` / `introspectColumns` helpers. `applyCollection` is **additive only** by design: it never drops or alters existing columns; it also short-circuits when `def.adopted === true`. To remove a field, call `dropField` explicitly.
-- `apps/web/src/server/routes/collections.ts` — unified POST/PATCH/DELETE. DELETE on an adopted row archives (status='archived', physical table intact, `POST /:slug/restore` flips back); DELETE on a managed row hard-drops both the metadata and the physical table.
-- `apps/web/src/server/services/adopt.ts` — `listAdoptableTables`, `inspectTable`, `RESERVED_NAMES`. The adopt route's `/apply` endpoint is gone — the unified create endpoint owns that write.
-- `apps/web/src/server/routes/items.ts` — dynamic CRUD on the physical table using drizzle's `sql` template + `sql.identifier`. Per-dialect serialization for `json` (stringify on SQLite), `boolean` (0/1 on SQLite), `timestamp` (Unix ms on SQLite, `Date` on PG). Honors `pkColumn` / `hasCreatedAt` / `hasUpdatedAt` / `createdAtColumn` / `updatedAtColumn` / `ownerIdColumn` so adopted tables with non-conventional column names still work without DDL.
-
-When adding a new field type: extend `FieldType` union, add entries to `PG_TYPES` and `SQLITE_TYPES`, and add (de)serialize cases in `apps/web/src/server/routes/items.ts` if the wire format differs from the column format.
-
-### Auth
-
-`packages/auth` wraps `better-auth` with `drizzleAdapter`. `createAuth(db, dialect, config)` picks the right schema (`users`/`sessions`/`accounts`/`verifications`) per dialect — auth tables must stay aligned across both schemas. The whole better-auth router is mounted at `/api/auth/*` (`apps/web/src/server/routes/auth.ts` just delegates to `ctx.auth.handler`). On the admin side, use `@workeros/auth/client` (`createAuthClient` from `better-auth/react`) — never import the server `@workeros/auth` package from the admin app.
-
-- **Access / refresh tokens (workspace end-users)**: every app-plane sign-in issues a token *pair*. The `app_sessions` row is the long-lived, revocable **refresh token** (its opaque `app_<uuid…>` value); on top of it `apps/web/src/server/lib/jwt.ts` mints a short-lived (`ACCESS_TOKEN_TTL_SECONDS`, 15 min) **access token** — an HS256 JWT keyed off `AUTH_SECRET`, hand-rolled on Web Crypto (no dependency, works on all four runtimes), verified statelessly (no DB hit) in `middleware/session.ts`. Sign-in responses carry `{ accessToken, refreshToken, expiresIn, tokenType }` plus a legacy `token` field (=== `refreshToken`, kept so older opaque-bearer clients don't break). `POST /api/t/<slug>/auth/token/refresh` exchanges a refresh token (JSON body `refreshToken`/legacy `token`, or `Authorization: Bearer`) for a fresh access token. `middleware/session.ts` accepts either shape on `Authorization: Bearer` for app-plane callers — JWT first (fast path via `verifyAccessToken`), opaque `app_sessions` lookup as fallback. Trade-off: a JWT stays valid for its full TTL even after the refresh token is revoked — revocation (deleting the `app_sessions` row) takes effect within ≤15 min. The admin/control-plane better-auth instance (`packages/auth`) also has the `bearer` plugin always on, so native admin clients can authenticate with `Authorization: Bearer <session-token>` instead of a cookie.
-- **SAML 2.0 SSO** (workspace end-user pool, *not* the admin app): per-tenant IdP configs live in `saml_providers`; federated identity links live in `external_identities` (`plane = 'app' | 'platform'`). The adapter contract is in `packages/core/src/adapters/saml.ts`; the samlify-backed implementation in `apps/web/src/server/adapters/saml.samlify.ts` is selected through `apps/web/src/server/lib/auth-select.ts::buildSamlAdapter`. Service layer: `services/saml-providers.ts` (CRUD + cert encryption via `lib/crypto`, mirrors `email-config.ts`) and `services/sso-provisioning.ts::provisionAppUser` (replay-safe lookup → optional `linkByVerifiedEmail` → otherwise create; assigns the `authenticated` role + optional `defaultRoleId`; reconciles group-driven roles against the `external_identities.rolesFromGroups` snapshot). Routes mount BEFORE the better-auth catch-all in `routes/tenant-auth.ts`: `GET /api/t/<slug>/auth/saml/<provider>/login` → AuthnRequest + 302 to IdP, `POST .../acs` → verify (signature + audience + issuer + NotOnOrAfter), block replays in `app_verifications`, match `InResponseTo`, provision, issue an `app_sessions` row, 302 to a validated `relayState` with `#token=<bearer>&type=saml`, `GET .../metadata` → SP metadata XML, `ALL .../slo` → single-logout. RelayState is checked against `auth_config.redirectUrls` (open-redirect guard). Admin CRUD lives at `/api/admin/saml/providers` (`routes/saml-admin.ts`); the UI is in `apps/web/src/client/admin/parity/saml-provider-dialog.tsx`. The IdP cert PEM is stored as `enc:v1:…` ciphertext and only ever decrypted inside `resolveSamlProvider`. Runtime: samlify pulls `xml-crypto`, which relies on `node:crypto`; this works on Workers because `wrangler.toml` enables `nodejs_compat`. See `docs/sso.md` for the Okta + Azure recipes.
-- **LDAP / Active Directory** (workspace end-user pool, same `external_identities` link table — `provider_type = 'ldap'`, `provider_id = 'ldap'`, `subject = <user DN>`): per-tenant single-row config in `ldap_configs` (PK `tenant_id`; `_global` sentinel fallback, same shape as `email_config`). Adapter contract in `packages/core/src/adapters/ldap.ts`; the ldapts-backed impl in `apps/web/src/server/adapters/ldap.ldapts.ts` is selected through `lib/auth-select.ts::buildLdapAdapter`. **Workers gate**: LDAP needs raw TCP via `node:net`/`node:tls`, which Workers don't expose — `buildLdapAdapter` returns `undefined` on Cloudflare (`navigator.userAgent === "Cloudflare-Workers"`), and `wrangler.toml`/`vite.config.ts` alias `ldapts` to `apps/web/src/server/shims/ldapts-shim.ts` (same pattern as the nodemailer shim) so the bundle still builds. Service layer: `services/ldap-config.ts` (`loadLdapConfigRow`, `resolveLdapAdapter`, `sanitizeForResponse`); `bind_password` + optional `ca_pem` live in `secrets` as `enc:v1:…` ciphertext (AES-256-GCM via `lib/crypto`). Sign-in route `POST /api/t/<slug>/auth/ldap/sign-in` with `{username, password}`: applies a per-`(tenant, username, ip)` rate limit (`config.rateLimitPerMinute`, default 10/min), pre-gates email-shaped usernames against the optional `domainMatch` allow-list, service-binds, RFC-4515-escapes the username, searches, user-binds, then calls `provisionAppUser` with `providerType: "ldap"` and `linkByVerifiedEmail: false` and returns `{token, user}`. Admin CRUD at `/api/admin/ldap-config` (`routes/ldap-admin.ts`); the UI is the LDAP card inside `apps/web/src/client/admin/parity/auth-settings.tsx` via `parity/ldap-config-card.tsx`. The adapter handles AD's `memberOf;range=…` pagination automatically and never follows referrals. See `docs/sso.md` for the OpenLDAP + Active Directory recipes.
-
-### Language & time zone
-
-Every signed-in admin resolves an effective **locale** + **IANA time zone**, layered: `users.locale`/`users.timezone` (per-user override, both nullable) → `app_settings.i18nDefaultLocale`/`app_settings.timezone` (workspace default) → `en`/`UTC`. Per-user values live on the `users` table (precedent: `activeTenantId` etc. are also non-better-auth columns there) and are read/written through `routes/account.ts` (`GET`/`PATCH /api/account/preferences`) — a dedicated route, **not** better-auth's `updateUser`. Workspace defaults + the translatable-language list (`i18nLocales`) go through the existing `PATCH /api/admin/settings` whitelist; timezone validity is checked with `Intl` via `lib/locale.ts::isValidTimeZone`. On the client, `PreferencesProvider` (wraps the whole admin app) loads the resolved view once and `usePreferences()` hands every page `Intl`-backed `formatDate`/`formatDateTime`/`formatRelative` plus the shared `timezoneOptions()`/`languageOptions()` builders. The locale drives date/number formatting, the `/api/i18n` default, **and** the admin SPA's own chrome translation. See `docs/locale-timezone.md`.
-
-### Admin SPA translation (Lingui)
-
-The admin chrome (its own UI strings — nav, buttons, dialogs, toasts) is translated with **Lingui 6**, separate from the `i18n_strings` content-translation system. Strings are wrapped in `@lingui/react/macro` (`<Trans>`) / `@lingui/core/macro` (`t`, `msg`) macros; `@lingui/babel-plugin-lingui-macro` (in `@vitejs/plugin-react`'s Babel pass) transforms them at build time, `@lingui/vite-plugin` compiles `.po` catalogs. English source text lives inline in the components (the macro keeps it as the fallback); other locales ship as `.po` files under `apps/web/src/client/locales/<locale>/messages.po`, lazy-loaded per locale. `apps/web/src/client/admin/i18n.ts` owns the `i18n` instance + `activateAdminLocale` + `AdminLocaleSync` (which binds the active Lingui locale to `usePreferences().locale`). `<I18nProvider>` is mounted in `App.tsx`. **Lingui macros only transform in files containing JSX** — `@vitejs/plugin-react` skips JSX-less files, so keep macros out of plain `.ts` modules (module-scope label maps go in a `.tsx`, e.g. `admin/ui.tsx::navLabel`). Run `bun run --cwd apps/web i18n:extract` after changing UI strings. See `docs/admin-i18n.md`.
+`packages/db/src/schema-applier.ts::applyCollection` is **additive only**: it never drops or alters existing columns and short-circuits when `def.adopted === true`. Field removal goes through `dropField` so admins audit destructive moves. See `docs/adopting-tables.md` for the full lifecycle.
 
 ### Errors
 
-Throw `AppError(code, message, details?)` from `@workeros/core` in route handlers. The global handler (`apps/web/src/server/middleware/error.ts`) maps the code to the right HTTP status (`UNAUTHORIZED → 401`, `VALIDATION → 422`, etc.). Don't return `c.json({ error: ... }, 4xx)` ad-hoc — use `AppError` so the response shape stays uniform.
+Throw `AppError(code, message, details?)` from `@workeros/core` in route handlers. The global handler (`apps/web/src/server/middleware/error.ts`) maps the code to the right HTTP status (`UNAUTHORIZED → 401`, `VALIDATION → 422`, etc.). **Don't return `c.json({ error: ... }, 4xx)` ad-hoc** — use `AppError` so the response shape stays uniform.
 
-### Admin app
+### Permissions DSL (one-paragraph version)
 
-The admin SPA is co-located with the server in `apps/web/src/client/`, with `@/` aliased there. Dev runs Vite + miniflare in one process (`@cloudflare/vite-plugin`), so the SPA and API share `localhost:5173` — no proxy needed. Production: same Worker serves both via the Static Assets binding.
+Granular permissions live in `roles` + `user_roles` + `permissions`. Each `permission` row binds a role to a (collection, action) pair with optional `condition` (mini DSL) and `fields` allow-list. The DSL compiles to a Drizzle `SQL` fragment for REST/GraphQL filters and to an in-memory predicate for realtime filtering — same operators, same variables (`$user.id`, `$user.email`, `$user.roles`, `$tenant.id`, `$now`). When wiring a new resource, add a `requirePermission(collection, action)` middleware and apply `c.var.permission.whereSql` / `c.var.permission.fields`. Full reference: `docs/permissions.md`.
 
-### UI package (`@workeros/ui`)
+## UI package (`@workeros/ui`)
 
 Shared design system in `packages/ui`, built from the shadcn `radix-luma` preset. Single source of truth for tokens, components, and `globals.css`.
 
 - **Importing:** `import { Button } from "@workeros/ui/components/button"`, `import { cn } from "@workeros/ui/lib/utils"`, `import "@workeros/ui/globals.css"`. Subpath exports — no barrel.
 - **Adding components:** run `bun run --cwd packages/ui shadcn add <name>` (uses `packages/ui/components.json`, writes into `src/components/`). For app-local components use `bun run --cwd apps/web shadcn add <name>` — that one's `components.json` writes into `apps/web/src/client/components/` but still pulls `cn` from `@workeros/ui/lib/utils`.
-- **Tokens & theme:** `packages/ui/src/styles/globals.css` holds the OKLCH palette + Tailwind v4 `@theme` block + `.dark` overrides. `apps/web/src/client/components/theme-provider.tsx` toggles the `.dark` class (press `d` in dev to toggle). `globals.css` uses `@source "../../../../apps/**/*.{ts,tsx}"` and `"../../../../packages/**/*.{ts,tsx}"` so Tailwind picks up class usage from anywhere in the monorepo.
-- **Slots/primitives:** components use the `radix-ui` meta-package (`import { Slot } from "radix-ui"`), not the per-component `@radix-ui/react-*` packages. New components added via `shadcn add` will follow the same convention.
-- **Scrollable areas:** never put a raw `overflow-auto` / `overflow-y-auto` / `overflow-x-auto` on a scroll container — always use `<ScrollArea>` from `@workeros/ui/components/scroll-area` so the scrollbar styling stays consistent across the app. It renders both a vertical and a horizontal scrollbar (each only appears when that axis actually overflows). Conversion rules: height caps (`max-h-*`, `h-*`, `min-h-*`, responsive `max-[…]:max-h-*`) go on `viewportClassName`; fill/visual classes (`min-h-0 flex-1`, `w-full`, `border*`, `rounded-*`, `bg-*`) go on `className`; layout (`flex`, `grid`, `gap-*`), padding, and event handlers stay on an inner `<div>` inside the `ScrollArea`. For a dynamic pixel height use `viewportStyle`. For a dialog/sheet whose body scrolls, give `DialogContent` `flex flex-col overflow-hidden` and wrap only the body in `<ScrollArea className="min-h-0 flex-1">` so the header/footer stay pinned. This applies to all new UI — do not reintroduce native overflow scrolling.
+- **Tokens & theme:** `packages/ui/src/styles/globals.css` holds the OKLCH palette + Tailwind v4 `@theme` block + `.dark` overrides. `apps/web/src/client/components/theme-provider.tsx` toggles the `.dark` class (press `d` in dev to toggle).
+- **Slots/primitives:** components use the `radix-ui` meta-package (`import { Slot } from "radix-ui"`), not the per-component `@radix-ui/react-*` packages.
+- **Scrollable areas:** never put a raw `overflow-auto` / `overflow-y-auto` / `overflow-x-auto` on a scroll container — always use `<ScrollArea>` from `@workeros/ui/components/scroll-area` so the scrollbar styling stays consistent. Height caps go on `viewportClassName`; fill/visual classes (`min-h-0 flex-1`, `w-full`, `border*`, `rounded-*`, `bg-*`) go on `className`; layout (`flex`, `grid`, `gap-*`), padding, and event handlers stay on an inner `<div>` inside the `ScrollArea`. For a dialog/sheet whose body scrolls, give `DialogContent` `flex flex-col overflow-hidden` and wrap only the body in `<ScrollArea className="min-h-0 flex-1">` so the header/footer stay pinned.
 
 ## Conventions worth knowing
 
 - TypeScript is strict with `noUncheckedIndexedAccess`. Treat array/Record lookups as possibly `undefined`.
-- ESM only (`"type": "module"`); workspace packages are consumed by source path (e.g. `"main": "./src/index.ts"`) — no build step between packages, so editing a `packages/*` file is picked up immediately by both apps.
+- ESM only (`"type": "module"`); workspace packages are consumed by source path (e.g. `"main": "./src/index.ts"`) — no build step between packages.
 - Drizzle is on the `1.0.0-beta.22` line. APIs differ from the 0.x docs; pin all `drizzle-orm` / `drizzle-kit` versions together when upgrading.
 - `noUncheckedIndexedAccess` plus the dual-dialect union is why `routes/items.ts` casts to `any` in a few places — match that pattern rather than reaching for type assertions per-call.
+- Migrations are **hand-written SQL** under `packages/db/drizzle/{pg,sqlite}/`. `db:generate:*` only refreshes the drizzle snapshot. Both dialects must be edited in lockstep.
 
 ## Where to dig deeper
 
@@ -310,6 +165,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Docs site landing | `docs/index.md` |
 | Architecture overview | `docs/architecture.md`, `docs/DESIGN.md` |
 | Deployment (CF / Vercel / Netlify) | `docs/deployment.md` |
+| Service map (route + service inventory) | `docs/service-map.md` |
 | Permissions DSL | `docs/permissions.md` |
 | Query API (REST) | `docs/querying.md` |
 | GraphQL | `docs/graphql.md` |
@@ -318,6 +174,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Functions sandbox | `docs/sandbox.md` |
 | Advisor rules | `docs/advisor.md` |
 | SSO (SAML / LDAP) | `docs/sso.md` |
+| API keys, access tokens, email & OAuth | `docs/api-keys-and-email.md` |
 | Adopting existing tables | `docs/adopting-tables.md` |
 | Locale + timezone | `docs/locale-timezone.md` |
 | Admin SPA i18n (Lingui) | `docs/admin-i18n.md` |

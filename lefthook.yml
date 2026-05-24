@@ -35,3 +35,10 @@ pre-push:
       run: bun run typecheck
     - name: test
       run: bun test
+    # Per-target build verification. Catches edge-only regressions the
+    # in-process SQLite test suite can't see: a missing shim, a fresh
+    # node:net import, or a Bun-specific API leaking into the worker
+    # bundle. Runs vite build once + three platform builds in parallel
+    # (~6s total when caches are warm; cold first run ~15s).
+    - name: build:targets
+      run: bun run build:targets

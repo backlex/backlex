@@ -28,3 +28,27 @@ jobs:
 
       - name: Smoke tests
         run: bun run test
+
+  # Verifies the same source builds cleanly for all four deploy targets
+  # (Bun is covered by the typecheck above; this job exercises Cloudflare
+  # Workers, Vercel Build Output API, and Netlify Function bundling).
+  # Catches edge-only regressions the in-process SQLite test suite can't
+  # see — missing shims, raw-TCP imports leaking into the worker bundle,
+  # Bun-only APIs leaking into the Vercel/Netlify Node bundle.
+  build-targets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build all targets
+        run: bun run build:targets

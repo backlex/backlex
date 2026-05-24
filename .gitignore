@@ -109,6 +109,9 @@ typings/
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 
+# build:targets temp output (wrangler --outdir target)
+.tmp/
+
 # Next.js build output
 .next
 

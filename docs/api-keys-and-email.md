@@ -16,9 +16,10 @@ Every app-plane sign-in issues a token *pair*:
 - The `app_sessions` row is the long-lived, revocable **refresh
   token** (its opaque `app_<uuid…>` value).
 - On top of it, `apps/web/src/server/lib/jwt.ts` mints a short-lived
-  **access token** — TTL set by `ACCESS_TOKEN_TTL_SECONDS` (default
-  15 min). HS256 JWT keyed off `AUTH_SECRET`, hand-rolled on Web
-  Crypto (no dependency, works on all four runtimes), verified
+  **access token** — 15-minute TTL hardcoded as `ACCESS_TOKEN_TTL_SECONDS`
+  in that file (not env-configurable; edit the constant if you need a
+  different window). HS256 JWT keyed off `AUTH_SECRET`, hand-rolled on
+  Web Crypto (no dependency, works on all four runtimes), verified
   statelessly (no DB hit) in `middleware/session.ts`.
 
 Sign-in responses carry:

@@ -140,16 +140,16 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
 
   const dialect: "pg" | "sqlite" = override
     ? override.dialect
-    : env.D1 ? "sqlite" : pgUrl ? "pg" : "sqlite";
+    : env.D1 ? "sqlite" : env.LIBSQL_URL ? "sqlite" : pgUrl ? "pg" : "sqlite";
 
   // Edge runtimes that can't open node:net (Vercel Edge / Netlify Deno
   // Deploy) don't have a working Bun-SQLite path and have no D1 binding —
-  // they MUST run on Postgres. Fail fast with a clear message instead of
-  // crashing on `bun:sqlite` resolution.
-  if (!env.D1 && !pgUrl && isStatelessEdge()) {
+  // they MUST run on Postgres OR libSQL (HTTP-based, edge-safe). Fail fast
+  // with a clear message instead of crashing on `bun:sqlite` resolution.
+  if (!env.D1 && !env.LIBSQL_URL && !pgUrl && isStatelessEdge()) {
     throw new AppError(
       "UNAVAILABLE",
-      "Edge runtime requires DATABASE_URL (Postgres). Set DATABASE_URL and, on Vercel Edge, DATABASE_DRIVER=neon-http (Neon DB or a self-hosted wsproxy).",
+      "Edge runtime requires DATABASE_URL (Postgres) or LIBSQL_URL (Turso/libSQL). On Vercel Edge with a Postgres origin, also set DATABASE_DRIVER=neon-http.",
     );
   }
 
@@ -159,6 +159,13 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     db = override.db;
   } else if (env.D1) {
     db = createD1Client(env.D1);
+  } else if (env.LIBSQL_URL) {
+    // libSQL is fetch-based — works on every runtime including Vercel Edge
+    // and Netlify Edge, so the import is unconditional (no bun:sqlite-style
+    // dynamic gating needed). The module is lazy-loaded only to keep the
+    // top-level sqlite barrel free of @libsql/client at module init.
+    const { createLibsqlClient } = await import("@workeros/db/sqlite/libsql");
+    db = createLibsqlClient(env.LIBSQL_URL, env.LIBSQL_AUTH_TOKEN);
   } else if (pgUrl) {
     // Default driver: postgres-js. Force neon-http on Vercel Edge (no
     // node:net); allow explicit override on every runtime.

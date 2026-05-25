@@ -13,7 +13,8 @@
     "./sqlite": "./src/sqlite/index.ts",
     "./sqlite/schema": "./src/sqlite/schema.ts",
     "./sqlite/migrations-bundle": "./src/sqlite/migrations-bundle.ts",
-    "./sqlite/bun": "./src/sqlite/bun.ts"
+    "./sqlite/bun": "./src/sqlite/bun.ts",
+    "./sqlite/libsql": "./src/sqlite/libsql.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -22,10 +23,12 @@
     "manifest": "bun run scripts/build-manifest.ts",
     "migrate:pg": "bun run src/pg/migrate.ts",
     "migrate:sqlite": "bun run src/sqlite/migrate.ts",
+    "migrate:libsql": "bun run src/sqlite/migrate-libsql.ts",
     "migrate:d1": "bun run src/sqlite/migrate-d1.ts",
     "studio:pg": "drizzle-kit studio --config=drizzle.pg.config.ts"
   },
   "dependencies": {
+    "@libsql/client": "0.17.3",
     "@neondatabase/serverless": "1.1.0",
     "@workeros/core": "workspace:*",
     "drizzle-orm": "1.0.0-beta.22",

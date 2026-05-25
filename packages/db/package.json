@@ -9,8 +9,10 @@
     ".": "./src/index.ts",
     "./pg": "./src/pg/index.ts",
     "./pg/schema": "./src/pg/schema.ts",
+    "./pg/migrations-bundle": "./src/pg/migrations-bundle.ts",
     "./sqlite": "./src/sqlite/index.ts",
     "./sqlite/schema": "./src/sqlite/schema.ts",
+    "./sqlite/migrations-bundle": "./src/sqlite/migrations-bundle.ts",
     "./sqlite/bun": "./src/sqlite/bun.ts"
   },
   "scripts": {

@@ -141,6 +141,13 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
   let apiKeyTenantId: string | null = null;
   // A role-scoped key narrows the request to a single role (see api_keys.role_id).
   let apiKeyRoleId: string | null = null;
+  // The key's id + MCP guard fields. The MCP dispatcher reads these to
+  // filter `tools/list` and reject out-of-allowlist `tools/call`. For
+  // session-based requests (no API key) they stay null/false and the MCP
+  // surface enforces no extra restriction beyond permissions.
+  let apiKeyId: string | null = null;
+  let apiKeyMcpTools: string[] | null = null;
+  let apiKeyMcpReadOnly = false;
   // Workspace end-user sessions (`Authorization: Bearer <app-session-token>`)
   // similarly pin the request to the workspace that issued the session — the
   // app's frontend doesn't send a tenant header, it just uses its token.
@@ -171,6 +178,9 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
         email = await loadUserEmail(ctx, key.userId);
         apiKeyTenantId = key.tenantId ?? null;
         apiKeyRoleId = key.roleId ?? null;
+        apiKeyId = key.id;
+        apiKeyMcpTools = key.mcpTools ?? null;
+        apiKeyMcpReadOnly = Boolean(key.mcpReadOnly);
         // fire-and-forget last-used update
         void touchLastUsed(ctx, key.id);
       }
@@ -215,6 +225,9 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
     roles: [],
     apiKeyTenantId,
     apiKeyRoleId,
+    apiKeyId,
+    apiKeyMcpTools,
+    apiKeyMcpReadOnly,
     appSessionTenantId,
   });
   await next();

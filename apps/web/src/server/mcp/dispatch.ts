@@ -1,3 +1,4 @@
+import type { Context } from "hono";
 import {
   RPC_ERR,
   type JsonRpcRequest,
@@ -7,6 +8,7 @@ import {
   type ToolCtx,
 } from "./types";
 import { makeInternalFetch } from "./internal-fetch";
+import { checkToolCall, filterByAllowlist, guardsFromAuth } from "./guards";
 
 const PROTOCOL_VERSION = "2025-03-26";
 const SERVER_NAME = "workeros";
@@ -34,12 +36,18 @@ const toolDescriptor = (t: McpTool) => ({
 });
 
 /** Dispatch a single JSON-RPC message. Notifications (no `id`) return `null`
- *  so the HTTP transport can answer 202 Accepted with an empty body. */
+ *  so the HTTP transport can answer 202 Accepted with an empty body.
+ *
+ *  `honoCtx` is the Hono context for the original MCP request — used to read
+ *  the active key's MCP guards (allowlist, read-only) from `c.var.auth`.
+ *  Cookie / session callers carry no guards and the checks become no-ops. */
 export const dispatch = async (
   wiring: McpServerWiring,
   originRequest: Request,
+  honoCtx: Context<{ Variables: { auth?: { apiKeyMcpTools?: string[] | null; apiKeyMcpReadOnly?: boolean } } }>,
   body: JsonRpcRequest | { jsonrpc: "2.0"; method: string; params?: unknown },
 ): Promise<JsonRpcResponse | null> => {
+  const guards = guardsFromAuth(honoCtx.get("auth") ?? {});
   // Notification — no id, no response per JSON-RPC spec.
   const id = "id" in body ? body.id : undefined;
   const isNotification = id === undefined;
@@ -77,10 +85,22 @@ export const dispatch = async (
     case "ping":
       return success(id!, {});
 
-    case "tools/list":
+    case "tools/list": {
+      // Allowlist narrows what the agent SEES; the dispatcher additionally
+      // rejects out-of-list calls below, so a client that ignores the list
+      // and tries a hidden tool still gets a hard 403.
+      const allowedNames = new Set(
+        filterByAllowlist(
+          wiring.tools.map((t) => t.name),
+          guards,
+        ),
+      );
       return success(id!, {
-        tools: wiring.tools.map(toolDescriptor),
+        tools: wiring.tools
+          .filter((t) => allowedNames.has(t.name))
+          .map(toolDescriptor),
       });
+    }
 
     case "tools/call": {
       const params = (body.params ?? {}) as {
@@ -93,6 +113,16 @@ export const dispatch = async (
       const tool = findTool(wiring.tools, params.name);
       if (!tool) {
         return error(id ?? null, RPC_ERR.METHOD_NOT_FOUND, `unknown tool: ${params.name}`);
+      }
+      // Per-key guards run BEFORE the upstream permission DSL — a read-only
+      // key calling `collections.delete` should fail fast with a clear MCP
+      // error, not bounce around the REST layer first.
+      const guardCheck = checkToolCall(params.name, guards);
+      if (!guardCheck.ok) {
+        return success(id!, {
+          content: [{ type: "text", text: `${guardCheck.code}: ${guardCheck.message}` }],
+          isError: true,
+        });
       }
       const args =
         params.arguments && typeof params.arguments === "object"

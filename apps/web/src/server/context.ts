@@ -208,16 +208,29 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   // every new migration in the bundle and subsequent requests skip
   // the whole path.
   //
-  // Failures are downgraded to a warning + rethrown to the caller so
-  // the next request retries. We deliberately do NOT swallow — a
-  // botched migration that runs past this guard is worse than a few
-  // 500s while the operator fixes it.
+  // **Failures are swallowed with a warning, NOT rethrown.** This is
+  // a deliberate trade-off: an existing production database that's
+  // mostly current but where ensureMigrations chokes on one statement
+  // is recoverable by the operator running `bun run db:migrate:pg` or
+  // applying the ALTER manually — but only if the app is still
+  // serving requests. Killing every endpoint with 500 because of a
+  // single failed migration leaves the operator no way to investigate
+  // (admin UI itself is unreachable). A "missing column" issue surfaces
+  // anyway: the next query that uses the column 500s, but every other
+  // endpoint keeps working.
+  //
+  // The only scenario where swallowing hides a real problem is a
+  // brand-new empty DB where migrations couldn't run at all — but in
+  // that case every endpoint that hits the DB will 500 anyway and
+  // the operator sees the same warning in the deploy logs.
   if (!env.D1) {
     try {
       await ensureMigrations(db as Parameters<typeof ensureMigrations>[0], dialect);
     } catch (e) {
-      console.error("[auto-migrate] failed:", (e as Error).message);
-      throw e;
+      console.error(
+        "[auto-migrate] failed; continuing boot. Run `bun run db:migrate:pg` against the production DB to apply any missing migrations. Error:",
+        (e as Error).message,
+      );
     }
   }
 

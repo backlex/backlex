@@ -144,6 +144,7 @@ export const dispatch = async (
       const toolCtx: ToolCtx = {
         fetchInternal: makeInternalFetch(wiring.app, originRequest, wiring.env),
         mode: wiring.mode,
+        env: wiring.env,
       };
       try {
         const result = await tool.handler(args, toolCtx);
@@ -166,6 +167,7 @@ export const dispatch = async (
       const toolCtx: ToolCtx = {
         fetchInternal: makeInternalFetch(wiring.app, originRequest, wiring.env),
         mode: wiring.mode,
+        env: wiring.env,
       };
       try {
         return success(id!, await listResources(toolCtx));
@@ -187,6 +189,7 @@ export const dispatch = async (
       const toolCtx: ToolCtx = {
         fetchInternal: makeInternalFetch(wiring.app, originRequest, wiring.env),
         mode: wiring.mode,
+        env: wiring.env,
       };
       try {
         return success(id!, await readResource(toolCtx, params.uri));
@@ -211,6 +214,7 @@ export const dispatch = async (
       const toolCtx: ToolCtx = {
         fetchInternal: makeInternalFetch(wiring.app, originRequest, wiring.env),
         mode: wiring.mode,
+        env: wiring.env,
       };
       try {
         return success(id!, await getPrompt(toolCtx, params.name, args));

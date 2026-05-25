@@ -51,6 +51,9 @@ const WRITE_VERBS = new Set([
   "revert",
   "patch_settings",
   "sign_url",
+  // ai.* writes (ai.query is read-only; the other two are mutative or
+  // produce mutative artefacts).
+  "import_csv",
 ]);
 
 export interface KeyGuards {

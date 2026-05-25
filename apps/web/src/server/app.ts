@@ -96,6 +96,18 @@ export type AppBindings = {
        *  permission resolver evaluates against it alone. Null/absent = the
        *  key carries the owner's full role set. */
       apiKeyRoleId?: string | null;
+      /** The PAK row id. Surfaced so MCP dispatcher / audit logging can
+       *  attribute requests back to a specific key without re-querying. */
+      apiKeyId?: string | null;
+      /** Per-key MCP tool allowlist. `null` = unrestricted (all tools the
+       *  server exposes are callable). `[]` = zero tools (deny everything).
+       *  An array = only the listed tool names are callable. The MCP layer
+       *  enforces this; REST routes ignore it. */
+      apiKeyMcpTools?: string[] | null;
+      /** When true, the MCP layer rejects every write tool for this key
+       *  (insert / update / delete / grant / revoke / invoke / assign / etc.).
+       *  REST routes are unaffected. */
+      apiKeyMcpReadOnly?: boolean;
       /** Set by sessionMiddleware when the request authenticates with a
        *  workspace end-user bearer token (plane = "app"). The session row
        *  carries the issuing workspace; we pin the request to it so the

@@ -209,6 +209,31 @@ curl -X POST https://your-workeros.example.com/mcp \
 - `functions.invoke` stays admin-only in MVP because the underlying `/api/functions/{name}/invoke` endpoint is admin-only — the MCP layer doesn't loosen that.
 - Storage writes are tenant-prefixed at the physical-key layer; cross-tenant access isn't reachable from the tool surface.
 
+### Per-key MCP guards
+
+Two extra defense-in-depth layers live on `api_keys`, independent of the permissions DSL:
+
+| Field | Effect |
+|---|---|
+| `mcp_tools` (JSON array, default NULL) | When set, the dispatcher hides every tool not in the list from `tools/list` and 403s any out-of-list `tools/call`. NULL = unrestricted. |
+| `mcp_read_only` (bool, default false) | When true, every write tool — insert / update / delete / create / drop / upload / bulk_* / upsert / grant / revoke / assign / unassign / invoke / send / mark_read / test / invite / suspend / activate — returns `isError: true` before any upstream call. REST routes for the same identity are unaffected. |
+
+These run **before** the upstream permission DSL, so a read-only key gets a clear `tool "collections.delete" is a write operation; this API key is MCP read-only` message instead of bouncing around the REST layer. A key whose DSL allows `delete` can still be MCP-locked to read-only.
+
+Configure both from the admin UI (**API Keys → 🔌 button → Connect MCP**) or via the API:
+
+```bash
+curl -X PATCH https://your-workeros.example.com/api/api-keys/<id>/mcp-guards \
+  -H 'Authorization: Bearer pak_<admin-key>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "mcpReadOnly": true,
+    "mcpTools": ["schema.list_collections", "collections.list", "collections.read"]
+  }'
+```
+
+The "Connect MCP" modal also generates copyable install snippets for Claude Desktop, Cursor, and curl — pre-filled with the workspace's MCP URL and the key's plaintext secret (only when called right after creation; otherwise a `pak_<prefix>_<paste-secret-here>` placeholder).
+
 ## Limitations & roadmap
 
 - **No `resources/list` content.** The MCP `resources` API returns empty — schema discovery happens through tools instead. We may surface collections as resources in a later phase.

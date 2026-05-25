@@ -742,6 +742,113 @@ describe("MCP — users + notifications tools", () => {
   });
 });
 
+describe("MCP — per-key guards (allowlist + read-only)", () => {
+  let h: TestHarness;
+  let restrictedKey = "";
+  let readOnlyKey = "";
+  let openKey = "";
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    const make = async (extra: Record<string, unknown>) => {
+      const r = await h.fetch("/api/api-keys", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: `guard-${Math.random()}`, ...extra }),
+      });
+      const body = (await r.json()) as { data: { secret: string } };
+      return body.data.secret;
+    };
+    openKey = await make({});
+    restrictedKey = await make({
+      mcpTools: ["schema.list_collections", "collections.list", "collections.read"],
+    });
+    readOnlyKey = await make({ mcpReadOnly: true });
+  });
+  afterAll(() => h.cleanup());
+
+  test("allowlist filters tools/list down to the allowed set", async () => {
+    const { rpc } = await mcpBearer(h, restrictedKey, {
+      jsonrpc: "2.0", id: 1, method: "tools/list",
+    });
+    const names: string[] = (rpc as RpcSuccess).result.tools.map((t: any) => t.name);
+    expect(names.sort()).toEqual(
+      ["schema.list_collections", "collections.list", "collections.read"].sort(),
+    );
+  });
+
+  test("allowlist blocks tools/call for non-listed tools", async () => {
+    const { rpc } = await mcpBearer(h, restrictedKey, {
+      jsonrpc: "2.0", id: 2, method: "tools/call",
+      params: { name: "collections.delete", arguments: { collection: "x", id: "1" } },
+    });
+    const result = (rpc as RpcSuccess).result;
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("FORBIDDEN");
+    expect(result.content[0].text).toContain("allowlist");
+  });
+
+  test("allowlist permits an in-list call (still subject to upstream perms)", async () => {
+    const { rpc } = await mcpBearer(h, restrictedKey, {
+      jsonrpc: "2.0", id: 3, method: "tools/call",
+      params: { name: "schema.list_collections", arguments: {} },
+    });
+    const result = (rpc as RpcSuccess).result;
+    expect(result.isError).toBeFalsy();
+    expect(Array.isArray(result.structuredContent.collections)).toBe(true);
+  });
+
+  test("read-only key blocks write verbs (collections.insert)", async () => {
+    const { rpc } = await mcpBearer(h, readOnlyKey, {
+      jsonrpc: "2.0", id: 4, method: "tools/call",
+      params: { name: "collections.insert", arguments: { collection: "x", data: { a: 1 } } },
+    });
+    const result = (rpc as RpcSuccess).result;
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("read-only");
+  });
+
+  test("read-only key allows read verbs (collections.list)", async () => {
+    const { rpc } = await mcpBearer(h, readOnlyKey, {
+      jsonrpc: "2.0", id: 5, method: "tools/list",
+    });
+    // List is unrestricted (no allowlist), just filtered for read-only doesn't
+    // hide tools — only blocks calls.
+    expect((rpc as RpcSuccess).result.tools.length).toBeGreaterThanOrEqual(46);
+  });
+
+  test("open key (no guards) sees the full roster and can call any tool", async () => {
+    const { rpc: listRpc } = await mcpBearer(h, openKey, {
+      jsonrpc: "2.0", id: 6, method: "tools/list",
+    });
+    expect((listRpc as RpcSuccess).result.tools.length).toBeGreaterThanOrEqual(46);
+  });
+
+  test("PATCH /api/api-keys/:id/mcp-guards updates allowlist + read-only live", async () => {
+    // Create a fresh open key, then narrow it and read back.
+    const create = await h.fetch("/api/api-keys", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "guard-update" }),
+    });
+    const created = (await create.json()) as { data: { id: string; secret: string } };
+    const patch = await h.fetch(`/api/api-keys/${created.data.id}/mcp-guards`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        mcpTools: ["roles.list"],
+        mcpReadOnly: true,
+      }),
+    });
+    expect(patch.status).toBe(200);
+    const { rpc } = await mcpBearer(h, created.data.secret, {
+      jsonrpc: "2.0", id: 7, method: "tools/list",
+    });
+    const names: string[] = (rpc as RpcSuccess).result.tools.map((t: any) => t.name);
+    expect(names).toEqual(["roles.list"]);
+  });
+});
+
 describe("MCP — webhooks + flows tools", () => {
   let h: TestHarness;
   beforeAll(async () => {

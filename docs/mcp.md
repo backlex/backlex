@@ -28,21 +28,101 @@ persistent session.
 
 ## Tools
 
+### Schema
+
 | Tool | Description |
 |---|---|
 | `schema.list_collections` | Discovery — every collection visible to the active workspace, with field counts and adopted/owner-scoped flags. |
 | `schema.describe_collection` | Full field schema for one collection — types, relations, validation, defaults. |
+| `schema.create_collection` | Create a managed or adopted collection from a field list. |
+| `schema.update_collection` | Patch a collection's metadata or field list (additive only). |
+| `schema.drop_collection` | Delete managed collections (destructive) or archive adopted ones. |
+
+### Collections (data)
+
+| Tool | Description |
+|---|---|
 | `collections.list` | List items with Directus-shaped `filter`, `sort`, `fields`, `limit`, `offset`. |
 | `collections.read` | Read a single item by id. |
 | `collections.insert` | Create a new item (server-side validated against the collection schema). |
 | `collections.update` | PATCH a single item by id. |
 | `collections.delete` | Delete an item by id. |
+| `collections.bulk_insert` | Insert many rows in one call with bounded concurrency; per-row results returned. |
+| `collections.bulk_update` | Patch many rows by id in one call; per-row results returned. |
+
+### Storage
+
+| Tool | Description |
+|---|---|
 | `storage.list` | List files with prefix / folder / search filters. |
 | `storage.get` | Fetch a file's bytes — inline as text for small JSON/text, base64 resource for binaries. |
 | `storage.upload` | Upload a file — `text` for UTF-8, `base64` for binary. |
 | `storage.delete` | Delete a file by logical key. |
+| `storage.sign_url` | Issue a short-lived signed URL for sharing without exposing the bytes. |
+
+### Vector / search
+
+| Tool | Description |
+|---|---|
+| `vector.search` | Embed a text query, run ANN search, return matches with score + metadata. |
+| `vector.upsert` | Embed and upsert text records (id + text + metadata). |
+
+### GraphQL
+
+| Tool | Description |
+|---|---|
+| `graphql.execute` | Run any query or mutation against the auto-generated workspace schema. |
+
+### Permissions & roles
+
+| Tool | Description |
+|---|---|
+| `permissions.list_for_role` | Permission rows attached to a role (collection, action, condition, fields). |
+| `permissions.grant` | Bind a (collection, action) permission to a role with optional DSL condition + field allow-list. |
+| `permissions.revoke` | Delete a permission row by id. |
+| `roles.list` | List every role in the active workspace. |
+| `roles.create` | Create a new role. |
+| `roles.assign` | Assign a role to a user. |
+| `roles.unassign` | Remove a role from a user. |
+
+### API keys
+
+| Tool | Description |
+|---|---|
+| `apikeys.list` | List PAKs owned by the active user. |
+| `apikeys.create` | Create a PAK — the secret is returned once. |
+| `apikeys.revoke` | Revoke a PAK by id. |
+
+### Functions
+
+| Tool | Description |
+|---|---|
 | `functions.list` | List sandbox functions (admin-only — upstream gate enforced). |
 | `functions.invoke` | Invoke an HTTP-triggered function by name (admin-only). |
+
+### Webhooks & flows
+
+| Tool | Description |
+|---|---|
+| `webhooks.list` | List outgoing webhooks. |
+| `webhooks.create` | Register a new webhook with event patterns + signing secret. |
+| `webhooks.delete` | Delete a webhook by id. |
+| `webhooks.test` | Fire a synthetic test delivery against a webhook. |
+| `flows.list` | List visual workflows. |
+| `flows.get` | Fetch a single flow's full definition. |
+| `flows.invoke` | Run a flow synchronously with an input payload. |
+
+### Notifications & users
+
+| Tool | Description |
+|---|---|
+| `notifications.list` | List notifications addressed to the active user. |
+| `notifications.send` | Send a notification to one or more users. |
+| `notifications.mark_read` | Mark one notification (or all of them) as read. |
+| `users.list` | List control-plane users (admin-only). |
+| `users.invite` | Invite a user to the workspace with a chosen role. |
+| `users.suspend` | Suspend a user. |
+| `users.activate` | Reactivate a suspended user. |
 
 Every tool delegates to the same REST endpoint the admin UI uses, so:
 

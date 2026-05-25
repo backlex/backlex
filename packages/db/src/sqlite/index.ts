@@ -1,14 +1,17 @@
 import { drizzle as drizzleD1, type DrizzleD1Database } from "drizzle-orm/d1";
 import type { SQLiteBunDatabase } from "drizzle-orm/bun-sqlite";
+import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import * as schema from "./schema";
 
-/** Type-only re-export of the Bun client union. The runtime
- *  `createBunSqliteClient` factory lives in `@workeros/db/sqlite/bun` and
- *  is loaded via dynamic `await import()` so this top-level module stays
- *  edge-safe (no `bun:sqlite` import at module init). */
+/** Type-only re-export of the SQLite client union. The runtime factories
+ *  for Bun (`createBunSqliteClient`) and libSQL (`createLibsqlClient`)
+ *  live in `@workeros/db/sqlite/bun` and `@workeros/db/sqlite/libsql` and
+ *  are loaded via dynamic `await import()` so this top-level module stays
+ *  edge-safe (no `bun:sqlite` / no `@libsql/client` import at module init). */
 export type SqliteDb =
   | DrizzleD1Database<typeof schema>
-  | SQLiteBunDatabase<typeof schema>;
+  | SQLiteBunDatabase<typeof schema>
+  | LibSQLDatabase<typeof schema>;
 
 /**
  * `binding` should be a Cloudflare D1Database. We accept `unknown` here so

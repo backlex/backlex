@@ -302,6 +302,7 @@ export interface SidebarProps {
  */
 const NAV_LABELS: Record<string, MessageDescriptor> = {
   overview: msg`Overview`,
+  "ask-ai": msg`Ask AI`,
   collections: msg`Collections`,
   access: msg`Access`,
   database: msg`Database`,

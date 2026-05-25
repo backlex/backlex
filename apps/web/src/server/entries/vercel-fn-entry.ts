@@ -30,13 +30,24 @@ import app from "./vercel";
 export default {
   fetch: (request: Request) => {
     const url = new URL(request.url);
+    // `__path` carries the `/api/`-relative suffix — the historical capture
+    // shape from `^/api/(.*)$ -> /api/index?__path=$1`. `__rawpath` carries
+    // a full, non-`/api/`-prefixed pathname for the Hono routes that live
+    // outside `/api/*` (e.g. `/mcp`, `/health`). Only one of the two is
+    // ever set per request.
     const path = url.searchParams.get("__path");
+    const rawPath = url.searchParams.get("__rawpath");
     if (path !== null) {
       url.pathname = `/api/${path}`;
       url.searchParams.delete("__path");
       // Re-wrap with the corrected URL. Pass the original request as init
       // so method/headers/body/signal are preserved; the Web Standard
       // Request constructor accepts another Request as its second arg.
+      return app.fetch(new Request(url.toString(), request));
+    }
+    if (rawPath !== null) {
+      url.pathname = `/${rawPath}`;
+      url.searchParams.delete("__rawpath");
       return app.fetch(new Request(url.toString(), request));
     }
     return app.fetch(request);

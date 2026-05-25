@@ -59,6 +59,7 @@ export default defineConfig({
             { slug: "graphql" },
             { slug: "sandbox" },
             { slug: "sdk-and-cli" },
+            { slug: "mcp" },
             { slug: "admin-i18n" },
             { slug: "locale-timezone" },
           ],

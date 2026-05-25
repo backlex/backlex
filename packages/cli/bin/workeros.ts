@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { runMigrate } from "../src/migrate";
 import { runGenTypes } from "../src/gen-types";
+import { runMcp } from "../src/mcp";
 
 const HELP = `workeros — self-hostable backend platform CLI
 
@@ -13,6 +14,12 @@ Usage:
       Fetch /api/collections from the given URL and emit a TypeScript
       module describing every collection. With --out, writes to disk;
       otherwise prints to stdout. Use --key to authenticate via API key.
+
+  workeros mcp --url <mcp-url> --key <pak_...> [--tenant <tenant-id>]
+      Run an MCP (Model Context Protocol) server over stdio that proxies
+      to a remote workeros /mcp HTTP endpoint. Wire into Claude Desktop /
+      Cursor as a stdio command. URL defaults to http://localhost:8787/mcp;
+      key falls back to WORKEROS_API_KEY env var.
 
   workeros help
       Show this message.
@@ -43,6 +50,14 @@ const run = async () => {
       process.exit(1);
     }
     await runGenTypes(url, flag("--out"), flag("--key"));
+    return;
+  }
+  if (cmd === "mcp") {
+    await runMcp({
+      url: flag("--url"),
+      key: flag("--key"),
+      tenant: flag("--tenant"),
+    });
     return;
   }
   console.error(`unknown command: ${cmd}`);

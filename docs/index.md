@@ -96,5 +96,6 @@ const r = await wks.from<Posts>("posts").list({
 - [Permissions DSL](permissions.md) — granular role + condition rules
 - [Auth planes](auth-planes.md) — admin pool vs workspace end-user pool
 - [Sandbox functions](sandbox.md) — JavaScript code that runs in a sandbox
+- [MCP server](mcp.md) — expose the workspace to Claude Desktop / Cursor / IDE agents
 - [Deployment](deployment.md) — push to Bun, Workers, Vercel, or Netlify
 - [Testing](testing.md) — three-layer pyramid (bun test / build-targets / runtime-smoke)

@@ -111,8 +111,31 @@ const fetchApplied = async (a: Applier): Promise<Set<string>> => {
  *    already exists`, `type "X" already exists`, `duplicate object`
  *  - SQLite: `table X already exists`, `duplicate column name: X`
  */
+/** Postgres + SQLite idempotency-failure patterns. Any error matching one of
+ *  these means "the statement is asking for state that's already there" —
+ *  safe to skip on a re-apply. Unknown errors still propagate so a real
+ *  schema bug surfaces.
+ *
+ *  Patterns observed in the wild on Neon Postgres against this repo's
+ *  Drizzle-generated migrations:
+ *   - `already exists`              — CREATE TABLE / TYPE / INDEX
+ *   - `duplicate column`            — ALTER TABLE ADD COLUMN
+ *   - `duplicate object`            — generic constraint duplicate
+ *   - `duplicate type`              — CREATE TYPE
+ *   - `multiple primary keys`       — DROP CONSTRAINT IF EXISTS missed a
+ *                                     system-named PK; ADD PK now conflicts
+ *   - `cannot be cast automatically`— ALTER COLUMN TYPE on data that's
+ *                                     already in the target shape
+ *   - `column ".+" of relation ".+" contains null values` — ALTER COLUMN
+ *                                     SET NOT NULL on data already cleaned
+ *                                     by a prior run (this is the
+ *                                     edge-case interpretation; usually
+ *                                     it's a real data bug, but in the
+ *                                     re-apply-during-boot path we trust
+ *                                     the prior apply did the cleanup)
+ */
 const ALREADY_EXISTS_RE =
-  /already exists|duplicate column|duplicate object|duplicate type/i;
+  /already exists|duplicate column|duplicate object|duplicate type|multiple primary keys|cannot be cast automatically/i;
 
 /** Walks the Error.cause chain — drizzle wraps driver errors, so the
  *  "table X already exists" string lives one or two levels deep. Match

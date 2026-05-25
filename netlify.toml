@@ -18,6 +18,19 @@
   to = "/.netlify/functions/api/:splat"
   status = 200
 
+# Non-/api endpoints that still live inside the Hono app — same routing rule
+# as Cloudflare's `run_worker_first`. Without these the catch-all SPA
+# fallback below intercepts /mcp + /health and serves index.html.
+[[redirects]]
+  from = "/mcp"
+  to = "/.netlify/functions/api/mcp"
+  status = 200
+
+[[redirects]]
+  from = "/health"
+  to = "/.netlify/functions/api/health"
+  status = 200
+
 # Single-page-app fallback so client-side routes (/collections, /settings,
 # /functions, …) all serve admin's index.html.
 [[redirects]]

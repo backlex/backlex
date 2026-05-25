@@ -119,6 +119,15 @@ writeFileSync(
         // The capture is passed as `__path`; vercel-fn-entry.ts rebuilds
         // request.url before forwarding to Hono.
         { src: "^/api/(.*)$", dest: "/api/index?__path=$1" },
+        // Non-/api Hono paths (`/mcp`, `/health`) need to skip the SPA
+        // fallback too — without these the React router would catch
+        // `POST /mcp` and Vercel would 405 it because static assets only
+        // serve GET/HEAD. Same routing rule as Cloudflare's
+        // `run_worker_first` and Netlify's per-path redirect block.
+        // `__rawpath` (vs. `__path`) tells vercel-fn-entry to rebuild
+        // the URL without the `/api/` prefix.
+        { src: "^/mcp/?$", dest: "/api/index?__rawpath=mcp" },
+        { src: "^/health/?$", dest: "/api/index?__rawpath=health" },
         // Let static assets + the function resolve directly.
         { handle: "filesystem" },
         // SPA fallback — the React client-side router takes over.

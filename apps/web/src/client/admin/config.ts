@@ -79,6 +79,7 @@ export type AdapterId = "bun" | "workers" | "vercel";
 // URL-driven nav.
 export const NAV_ITEMS: NavItem[] = [
   { id: "overview", icon: "Activity" },
+  { id: "ask-ai", icon: "Sparkles" },
   { id: "collections", icon: "Database" },
   { id: "access", icon: "Shield" },
   { id: "database", icon: "Server" },

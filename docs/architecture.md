@@ -143,6 +143,29 @@ never clipped to the freshest 200 rows. (The former standalone
 "Activity log" page was merged into this; `/activity` redirects to
 `/logs`.)
 
+## Admin pages
+
+Every page under `apps/web/src/client/admin/pages/` is a lazy-imported
+chunk wired through `apps/web/src/client/admin/app.tsx`. The sidebar
+order lives in `config.ts::NAV_ITEMS`; the page-skeleton dispatcher in
+`page-skeletons.tsx` renders the per-page placeholder during the chunk
+load. Notable surfaces:
+
+- **Overview** (`overview`) — adapter dashboard + live metrics.
+- **Ask AI** (`ask-ai`) — natural-language MCP-tool dispatch; the same
+  surface Claude Desktop sees but driven from the admin's own session.
+  Splits `plan` (Claude → tool + args) and `run` (execute + audit) into
+  two endpoints under `/api/admin/ai/`. See [ask-ai.md](./ask-ai.md).
+- **Collections / Items / Storage / Database / Logs** — the workspace
+  data-management cluster.
+- **Flows / Functions / Webhooks / Realtime** — the automation cluster.
+- **Access / Users / App users / API keys** — identity + permissions.
+- **REST Explorer / GraphQL / OpenAPI** — the developer-tools group.
+
+Adding a new page = `pages/<id>.tsx` export, `NAV_ITEMS` entry,
+`NAV_LABELS` Lingui descriptor, lazy import + render branch in
+`app.tsx`, and a skeleton case in `page-skeletons.tsx`.
+
 ## Auth pipeline
 
 Per-request middleware in `apps/web/src/server/app.ts`:

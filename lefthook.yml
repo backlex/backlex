@@ -18,6 +18,15 @@ pre-commit:
     - name: typecheck
       glob: "*.{ts,tsx}"
       run: bun run typecheck
+    # Catches "added a migration but forgot to regenerate the bundle". The
+    # generator is idempotent, so if the staged tree already has the
+    # right bundles this is a no-op; otherwise the diff fails the hook.
+    # Migration bundles are inlined into every runtime bundle so the boot-
+    # time auto-migrate runner can apply them; an out-of-sync bundle means
+    # production Postgres deploys silently miss the latest migration.
+    - name: migration-bundles-in-sync
+      glob: "packages/db/drizzle/**/migration.sql"
+      run: bun scripts/gen-migration-bundles.ts && git diff --exit-code packages/db/src/pg/migrations-bundle.ts packages/db/src/sqlite/migrations-bundle.ts
 
 # Pre-push: full CI parity. Branch protection on GitHub isn't available on
 # free/private repos, so this hook is the only thing standing between a

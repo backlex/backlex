@@ -53,7 +53,7 @@ VALUES ('<user-id>', (SELECT id FROM roles WHERE name='admin'), strftime('%s','n
 
 Every working session runs on its own branch. Merging into `main` triggers two independent paths:
 
-- **Cloudflare Workers Builds (native git integration)** — the `workeros-api` Worker is connected to this repo from the CF dashboard. On every push to `main` it runs the build command (`bun run db:migrate:d1:remote && bun run build`) and then deploys with `bunx wrangler deploy`. No GitHub secrets needed; CF Builds is auto-authenticated.
+- **Cloudflare Workers Builds (native git integration)** — the `workeros-api` Worker is connected to this repo from the CF dashboard. On every push to `main` it runs the build command (`bun run db:migrate:d1:remote && bun run build`) and then deploys with `cd apps/web && bunx wrangler deploy`. No GitHub secrets needed; CF Builds is auto-authenticated.
 - **`.github/workflows/test.yml`** — runs lint + typecheck + `bun test` + `bun run build:targets` on every PR **and** every push to `main`. Acts as a redundant gate that catches regressions in the four-runtime build matrix (Bun / CF / Vercel / Netlify) which Workers Builds doesn't exercise on its own.
 
 The repo also ships native-git deploy configs for **Vercel** (`vercel.ts` + Build Output API) and **Netlify** (`netlify.toml` + `apps/web/netlify/functions/`). All three platforms (CF / Vercel / Netlify) use their own native git integration — no GitHub Actions deploy workflow exists for any of them. Runtime caveats live in `docs/deployment.md`.

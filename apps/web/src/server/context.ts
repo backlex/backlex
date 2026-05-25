@@ -227,9 +227,22 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     try {
       await ensureMigrations(db as Parameters<typeof ensureMigrations>[0], dialect);
     } catch (e) {
+      // Walk the Error.cause chain so the deepest driver/DB error surfaces.
+      // Drizzle wraps every failure with a useless "Failed query: ..."
+      // template — without this we'd only log the wrapper and waste log
+      // budget on a non-actionable line.
+      let cur: unknown = e;
+      let deepest = "";
+      for (let i = 0; cur && i < 5; i++) {
+        const msg = (cur as { message?: unknown }).message;
+        if (typeof msg === "string" && msg.length > 0) deepest = msg;
+        cur = (cur as { cause?: unknown }).cause;
+      }
       console.error(
         "[auto-migrate] failed; continuing boot. Run `bun run db:migrate:pg` against the production DB to apply any missing migrations. Error:",
         (e as Error).message,
+        "Cause:",
+        deepest || "(none)",
       );
     }
   }

@@ -74,6 +74,10 @@ export interface ToolCtx {
    *  `/api/admin/mcp`. Tools rarely need to branch on it (permissions handle
    *  the difference) but it's available for tool-level gating. */
   mode: McpMode;
+  /** Workspace env — exposed so AI-native tools (`ai.*`) can read provider
+   *  keys (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) without going through
+   *  another sub-fetch. Tools that don't need provider access ignore it. */
+  env: Env;
 }
 
 export type McpMode = "tenant" | "admin";

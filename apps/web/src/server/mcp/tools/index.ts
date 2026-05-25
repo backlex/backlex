@@ -25,6 +25,7 @@ import { revisionsTools } from "./revisions";
 import { commentsTools } from "./comments";
 import { embeddingTools } from "./embedding";
 import { settingsTools } from "./settings";
+import { aiTools } from "./ai";
 
 /** The full tool roster. Both the `/mcp` and `/api/admin/mcp` mounts expose
  *  the same set — the mount gate is what differs (any-authenticated vs.
@@ -60,4 +61,5 @@ export const allTools: McpTool[] = [
   ...commentsTools,
   ...embeddingTools,
   ...settingsTools,
+  ...aiTools,
 ];

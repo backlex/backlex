@@ -25,6 +25,19 @@ AUTH_SECRET = "dev-only-secret-not-for-prod-please-rotate"
 # or vector endpoints will reject with "No vector backend configured".
 # DATABASE_URL = "postgres://<workspace-id>:<api-key>@<workspace>.<region>.xata.sh:5432/<db>:<branch>?sslmode=require"
 
+# Turso / libSQL — selects the libSQL HTTP/WS transport. Works on every
+# runtime (Bun, Node, CF Workers, Vercel/Netlify Edge). Loses to D1 binding
+# but wins over DATABASE_URL. Apply migrations once with
+#   LIBSQL_URL=… LIBSQL_AUTH_TOKEN=… bun run --cwd packages/db migrate:libsql
+# LIBSQL_URL = "libsql://my-db-org.turso.io"
+# LIBSQL_AUTH_TOKEN = "eyJ..."
+
+# LiteFS (Fly.io) — needs zero env wiring. Mount the LiteFS volume, point
+# SQLITE_PATH at the mounted SQLite file, and the Bun SQLite driver picks
+# it up unchanged. Writes routed to the primary node automatically by the
+# FUSE layer; replicas serve reads.
+# SQLITE_PATH = "/litefs/workeros.sqlite"
+
 # Local-only seeded admin used by smoke tests / Claude debug runs.
 # Sign in or POST /api/auth/sign-up/email with these on a fresh DB; if
 # they are not the first user, manually insert into user_roles to grant

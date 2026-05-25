@@ -41,6 +41,16 @@ const WRITE_VERBS = new Set([
   "invite",
   "suspend",
   "activate",
+  // Tier C additions
+  "execute_sql",
+  "switch",
+  "set_roles",
+  "providers_create",
+  "providers_delete",
+  "post",
+  "revert",
+  "patch_settings",
+  "sign_url",
 ]);
 
 export interface KeyGuards {

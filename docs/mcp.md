@@ -124,6 +124,61 @@ persistent session.
 | `users.suspend` | Suspend a user. |
 | `users.activate` | Reactivate a suspended user. |
 
+### Database & activity
+
+| Tool | Description |
+|---|---|
+| `db.execute_sql` | Run raw SQL against the workspace database (admin-only; bypasses DSL — pair with per-key allowlist). |
+| `db.list_tables` | List every physical table (workeros + collections + adopted). |
+| `activity.search` | Search the audit log by action, collection, item, user, date range. |
+
+### Tenants & app-users
+
+| Tool | Description |
+|---|---|
+| `tenants.list` | Workspaces the active user is a member of. |
+| `tenants.switch` | Switch the active workspace (persisted on the user profile). |
+| `app_users.list` | List workspace end-users (`app_users` pool — distinct from control-plane users). |
+| `app_users.set_roles` | Replace an app-user's role assignments. |
+| `app_users.update` | Patch app-user metadata (name, status). |
+
+### SSO (SAML)
+
+| Tool | Description |
+|---|---|
+| `saml.providers_list` | List SAML IdPs configured for the workspace's end-user auth surface. |
+| `saml.providers_create` | Register a new SAML provider (inline cert or metadata URL/XML). |
+| `saml.providers_delete` | Remove a SAML provider. |
+
+### Sharing & folders
+
+| Tool | Description |
+|---|---|
+| `shared_links.list` | List public record-share links. |
+| `shared_links.create` | Mint a new share link (optional expiry + field allow-list). |
+| `shared_links.revoke` | Revoke a share link by id. |
+| `folders.list` | List storage folders. |
+| `folders.create` | Create a new storage folder. |
+| `folders.delete` | Delete a folder (files inside become root-level, not deleted). |
+
+### Revisions & comments
+
+| Tool | Description |
+|---|---|
+| `revisions.list` | List historical revisions of an item in a versioned collection. |
+| `revisions.revert` | Roll an item back to a previous revision. |
+| `comments.list` | List comments on a record (or recent comments workspace-wide). |
+| `comments.post` | Post a new comment on a record. |
+| `comments.delete` | Delete a comment by id. |
+
+### Embedding & settings
+
+| Tool | Description |
+|---|---|
+| `embedding.upsert` | Embed text records and upsert into the vector store (alias surface of `vector.upsert`). |
+| `settings.get` | Read workspace settings (defaults, branding, flags). |
+| `settings.update` | Patch workspace settings (admin-only). |
+
 Every tool delegates to the same REST endpoint the admin UI uses, so:
 
 - **Permissions DSL** filters reads, fields, and condition checks identically.

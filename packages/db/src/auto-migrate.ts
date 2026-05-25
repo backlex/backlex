@@ -102,35 +102,31 @@ const fetchApplied = async (a: Applier): Promise<Set<string>> => {
   return new Set(rows.map((r) => r.name));
 };
 
-/** Tests + locally-migrated environments already have every table at the
- *  current schema — they just don't carry `__workeros_migrations` entries.
- *  If we naively run every migration in the bundle on first boot we'd hit
- *  "relation already exists" errors. To stay safe: when the migrations
- *  table is empty AND a core workeros table (`users`) already exists,
- *  assume the database is already at HEAD and back-fill the ledger with
- *  every migration in the bundle without executing any of them.
+/** Per-statement error filter. Tolerates "this object is already there"
+ *  failures so a database that was created before `__workeros_migrations`
+ *  existed can still adopt the ledger without re-applying every CREATE
+ *  TABLE. Anything else propagates so the operator sees a real failure.
  *
- *  This is the "adopt the existing schema" path. A truly fresh database
- *  has no `users` table yet, so it falls through to the apply loop and
- *  runs every migration from scratch. Either way the ledger ends up
- *  matching the schema on disk. */
-const detectAlreadyMigrated = async (a: Applier): Promise<boolean> => {
-  try {
-    if (a.dialect === "pg") {
-      const rows = await selectRows<{ exists: boolean }>(
-        a,
-        sql`SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') AS exists`,
-      );
-      return Boolean(rows[0]?.exists);
-    }
-    const rows = await selectRows<{ name: string }>(
-      a,
-      sql`SELECT name FROM sqlite_master WHERE type='table' AND name='users'`,
-    );
-    return rows.length > 0;
-  } catch {
-    return false;
+ *  - Postgres: `relation "X" already exists`, `column "X" of relation "Y"
+ *    already exists`, `type "X" already exists`, `duplicate object`
+ *  - SQLite: `table X already exists`, `duplicate column name: X`
+ */
+const ALREADY_EXISTS_RE =
+  /already exists|duplicate column|duplicate object|duplicate type/i;
+
+/** Walks the Error.cause chain — drizzle wraps driver errors, so the
+ *  "table X already exists" string lives one or two levels deep. Match
+ *  against every message we can find before giving up. */
+const isAlreadyExistsError = (e: unknown): boolean => {
+  let cur: unknown = e;
+  for (let depth = 0; cur && depth < 5; depth++) {
+    const msg = (cur as { message?: unknown }).message;
+    if (typeof msg === "string" && ALREADY_EXISTS_RE.test(msg)) return true;
+    cur = (cur as { cause?: unknown }).cause;
   }
+  // Fall back to stringifying the whole error in case the driver
+  // didn't use Error.message.
+  return ALREADY_EXISTS_RE.test(String(e));
 };
 
 const apply = async (a: Applier): Promise<void> => {
@@ -138,23 +134,23 @@ const apply = async (a: Applier): Promise<void> => {
   const seen = await fetchApplied(a);
   const migrations = a.dialect === "pg" ? PG_MIGRATIONS : SQLITE_MIGRATIONS;
 
-  // Adopt-existing-schema bypass — see `detectAlreadyMigrated`. Only fires
-  // on the very first apply for this isolate (`seen.size === 0`); once
-  // entries land in the ledger we always take the diff-only fast path.
-  if (seen.size === 0 && (await detectAlreadyMigrated(a))) {
-    for (const m of migrations) {
-      await runStatement(
-        a,
-        sql`INSERT INTO __workeros_migrations (name) VALUES (${m.name})`,
-      );
-    }
-    return;
-  }
-
   for (const m of migrations) {
     if (seen.has(m.name)) continue;
     for (const stmt of splitStatements(m.sql)) {
-      await runStatement(a, sql.raw(stmt));
+      try {
+        await runStatement(a, sql.raw(stmt));
+      } catch (e) {
+        if (isAlreadyExistsError(e)) {
+          // Schema state matches what this migration would create — usually
+          // because the table/column was provisioned by an out-of-band
+          // process (drizzle-kit migrate in tests; an earlier manual
+          // `bun run db:migrate:pg` in production). Mark the migration as
+          // applied and move on; don't replay every other statement in
+          // the file.
+          continue;
+        }
+        throw e;
+      }
     }
     await runStatement(
       a,

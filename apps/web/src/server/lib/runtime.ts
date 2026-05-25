@@ -49,3 +49,10 @@ export const isEdgeRuntime = (): boolean =>
  *  Workers reuse isolates and have Durable Objects, so they're excluded. */
 export const isStatelessEdge = (): boolean =>
   isVercelEdge() || isNetlifyEdge();
+
+/** Xata Postgres endpoints host on `*.xata.sh`. Xata speaks the standard
+ *  Postgres wire protocol (works with postgres-js out of the box) but does
+ *  NOT ship the pgvector extension — vector workloads have to be routed
+ *  through Workers Vectorize or a separate provider. */
+export const isXataPgUrl = (url: string | undefined): boolean =>
+  !!url && /\.xata\.sh(?::\d+)?\//.test(url);

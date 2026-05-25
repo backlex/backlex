@@ -31,8 +31,21 @@ export interface Env {
    *  don't expose this endpoint. */
   CRON_SECRET?: string;
   /** SQLite file path for Bun self-host. Defaults to `./.data/workeros.sqlite`.
-   *  Override for tests (e.g. a temp file per run) or alternate disk layouts. */
+   *  Override for tests (e.g. a temp file per run) or alternate disk layouts.
+   *  Point this at `/litefs/workeros.sqlite` (or wherever LiteFS mounts) to
+   *  run on top of Fly LiteFS — workeros doesn't need any additional code
+   *  to talk to LiteFS; the FUSE layer handles replication transparently. */
   SQLITE_PATH?: string;
+  /** libSQL / Turso URL. Selects the libSQL transport client instead of
+   *  Bun SQLite / D1 / Postgres. Schemes:
+   *    `libsql://…` (Turso, default)  `wss://…` / `ws://…` (Hrana WS)
+   *    `https://…` / `http://…` (Hrana HTTP)  `file:…` (local file)
+   *  Loses to a D1 binding (CF Workers) but wins over `DATABASE_URL` so an
+   *  operator can flip a Postgres deploy to Turso by setting one env var. */
+  LIBSQL_URL?: string;
+  /** Bearer token for the libSQL endpoint. Required for any Turso URL;
+   *  optional for self-hosted sqld with auth disabled and for `file:` URLs. */
+  LIBSQL_AUTH_TOKEN?: string;
   // Cloudflare bindings — present only when running on Workers.
   D1?: D1Database;
   R2?: R2Bucket;

@@ -1,6 +1,30 @@
 APP_URL = "http://localhost:5173"
 AUTH_SECRET = "dev-only-secret-not-for-prod-please-rotate"
 
+# Database — pick ONE block. Without DATABASE_URL the runtime falls back to
+# bun:sqlite at ./.data/workeros.sqlite (or to the D1 binding on CF Workers).
+# Full provider matrix + caveats: docs/database-providers.md
+#
+# Self-hosted Postgres
+# DATABASE_URL = "postgres://user:pass@localhost:5432/workeros"
+#
+# Supabase — use the **transaction pooler** URL (port 6543). postgres-js
+# already runs with `prepare: false` so the pooler is happy. pgvector is
+# enabled per project (Dashboard → Database → Extensions → vector).
+# DATABASE_URL = "postgres://postgres.<ref>:<pwd>@aws-0-<region>.pooler.supabase.com:6543/postgres"
+#
+# Neon — works with the default postgres-js driver on Bun/CF Workers/Node.
+# On Vercel Edge set DATABASE_DRIVER=neon-http (no node:net there). pgvector
+# is available; enable it once with `CREATE EXTENSION vector;`.
+# DATABASE_URL = "postgres://<user>:<pwd>@ep-<id>-pooler.<region>.aws.neon.tech/<db>?sslmode=require"
+# DATABASE_DRIVER = "neon-http"   # Vercel Edge only
+#
+# Xata — standard PG wire (postgres-js works). NOTE: Xata does NOT ship the
+# pgvector extension. To use workeros' vector endpoints with Xata you must
+# also bind a Cloudflare Vectorize index (VECTORIZE_OPENAI / VECTORIZE_BGE_M3)
+# or vector endpoints will reject with "No vector backend configured".
+# DATABASE_URL = "postgres://<workspace-id>:<api-key>@<workspace>.<region>.xata.sh:5432/<db>:<branch>?sslmode=require"
+
 # Local-only seeded admin used by smoke tests / Claude debug runs.
 # Sign in or POST /api/auth/sign-up/email with these on a fresh DB; if
 # they are not the first user, manually insert into user_roles to grant

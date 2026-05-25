@@ -40,7 +40,7 @@ import {
 import { loadAppSettings } from "./services/settings";
 import { invalidateUserRoles } from "./services/permissions-cache";
 import { publishEvent } from "./services/events";
-import { isCloudflareWorkers, isStatelessEdge } from "./lib/runtime";
+import { isCloudflareWorkers, isStatelessEdge, isXataPgUrl } from "./lib/runtime";
 import { AppError } from "@workeros/core";
 import type { Env } from "./env";
 
@@ -411,7 +411,11 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
 
   // Vector storage: prefer Vectorize on Workers (one binding per model so
   // each index keeps its own dimension). On Postgres, pgvector handles the
-  // routing per-table. Otherwise (SQLite without Vectorize) fail loud.
+  // routing per-table — unless the target is Xata (no pgvector extension),
+  // in which case we fall through to noVectorAdapter so the vector endpoints
+  // fail with a clear "configure Vectorize" message instead of a cryptic
+  // "type vector does not exist" at first upsert. Otherwise (SQLite without
+  // Vectorize) fail loud.
   const vectorizeBindings: VectorizeIndexMap = {};
   if (env.VECTORIZE_OPENAI) vectorizeBindings["openai-3-small"] = env.VECTORIZE_OPENAI;
   if (env.VECTORIZE_OPENAI_LARGE) vectorizeBindings["openai-3-large"] = env.VECTORIZE_OPENAI_LARGE;
@@ -419,9 +423,10 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   if (env.VECTORIZE_SELF_HOST_BGE_M3) vectorizeBindings["self-host-bge-m3"] = env.VECTORIZE_SELF_HOST_BGE_M3;
   const hasAnyVectorize =
     Object.keys(vectorizeBindings).length > 0;
+  const pgHasPgvector = dialect === "pg" && !isXataPgUrl(pgUrl);
   const vector: VectorAdapter = hasAnyVectorize
     ? vectorizeAdapter(vectorizeBindings)
-    : dialect === "pg"
+    : pgHasPgvector
       ? pgvectorAdapter(db as PgDb)
       : noVectorAdapter();
 
@@ -474,7 +479,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
 const noVectorAdapter = (): VectorAdapter => {
   const fail = () => {
     throw new Error(
-      "No vector backend configured. Set DATABASE_URL (with pgvector) or bind VECTORIZE_OPENAI / VECTORIZE_BGE_M3.",
+      "No vector backend configured. Set DATABASE_URL to a Postgres with pgvector (self-host PG, Supabase, Neon) or bind VECTORIZE_OPENAI / VECTORIZE_BGE_M3 on Cloudflare Workers. Xata does not ship pgvector; pair it with Vectorize.",
     );
   };
   return { upsert: fail, query: fail, delete: fail };

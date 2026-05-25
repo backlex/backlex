@@ -383,7 +383,8 @@ mostly available — SAML, LDAP, SMTP, samlify all load (full
 |------------------------------|-----------|----------------------------------------------|
 | `APP_URL`                    | yes       | Admin UI origin (CORS + auth callbacks)      |
 | `AUTH_SECRET`                | yes       | 32-byte random; signs sessions               |
-| `DATABASE_URL`               | yes¹      | Postgres URL (¹ unless on Workers with D1)   |
+| `DATABASE_URL`               | yes¹      | Postgres URL (¹ unless on Workers with D1). Supabase, Neon, Xata, Vercel PG, self-host all supported — see `docs/database-providers.md` for the matrix |
+| `DATABASE_DRIVER`            | no        | `postgres-js` (default) or `neon-http` (required on Vercel Edge) |
 | `EMAIL_PROVIDER` + `EMAIL_FROM` | no     | Email transport: `console`/`resend`/`sendgrid`/`mailgun`/`ses`/`smtp` (auto-detected from creds if `EMAIL_PROVIDER` unset; `smtp` not on Workers) |
 | `RESEND_API_KEY` \| `SENDGRID_API_KEY` \| `MAILGUN_API_KEY`+`MAILGUN_DOMAIN` \| `SES_REGION`+`SES_ACCESS_KEY_ID`+`SES_SECRET_ACCESS_KEY` \| `SMTP_HOST`+`SMTP_PORT`+`SMTP_USER`+`SMTP_PASSWORD` | no | Credentials for the chosen email provider |
 | `OAUTH_{GOOGLE,GITHUB,APPLE}_CLIENT_{ID,SECRET}` | no | enable each provider when both set; Apple's `_CLIENT_ID` is the Service ID, `_CLIENT_SECRET` is the signed JWT |

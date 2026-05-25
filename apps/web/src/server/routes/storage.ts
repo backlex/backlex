@@ -445,14 +445,60 @@ export const storageRoutes = new OpenAPIHono<AppBindings>()
       return c.json({ data: uploaded }, 201);
     },
   )
-  // The PUT / GET / POST sign / DELETE / PATCH endpoints below carry catch-all
-  // keys (`/:key{.+}`) so logical paths like `photos/2024/spring/beach.jpg`
+  // The PUT / GET / DELETE / PATCH endpoints below carry catch-all keys
+  // (`/:key{.+}`) so logical paths like `photos/2024/spring/beach.jpg`
   // route correctly. `@hono/zod-openapi`'s `createRoute({ path })` converts
   // `/{name}` → `/:name` for Hono and cannot express a multi-segment param —
   // so we register these directly on the underlying Hono router and document
   // them via `apiRegistry` in the legacy sibling pattern (which we keep for
   // these handlers only). The OpenAPI surface still covers them through the
   // metadata loader.
+  //
+  // The signed-URL endpoint lives under a SENTINEL PREFIX
+  // (`POST /_sign/:key{.+}`) instead of the natural suffix form
+  // (`POST /:key{.+}/sign`). `@hono/zod-openapi`'s router silently falls
+  // back to a greedy matcher when a literal-suffix catch-all is registered
+  // alongside sibling `/:key{.+}` catch-alls — the suffix route then misses
+  // on 3+ segment keys (`a/b/c.txt/sign` → 404) even though plain Hono
+  // handles it fine. The prefix form has no such ambiguity. See
+  // `tests/storage-sign.test.ts` for the regression that locks this in.
+  .post("/_sign/:key{.+}", requirePermission(filesCollection, "read"), async (c) => {
+    const ctx = c.get("ctx");
+    const auth = c.get("auth");
+    const perm = c.get("permission");
+    const tenantId = requireTenantId(auth);
+    const logicalKey = c.req.param("key");
+    guardLogicalKey(logicalKey);
+    const body = (await c.req.json().catch(() => ({}))) as { ttlSeconds?: number };
+    const ttl = Math.max(60, Math.min(86400, body.ttlSeconds ?? 3600));
+
+    // Confirm the object exists *and* is visible to this caller (the
+    // permission middleware only proved they have `read`; the row-level
+    // condition is enforced here so a scoped role can't sign a sibling row).
+    const t = filesTable(ctx.dialect);
+    const conds: SQL[] = [
+      inArray(t.key, keyCandidates(tenantId, logicalKey)),
+      eq(t.tenantId, tenantId),
+    ];
+    if (perm.whereSql) conds.push(perm.whereSql);
+    const rows = (await (ctx.db as any)
+      .select({ key: t.key })
+      .from(t)
+      .where(and(...conds))
+      .limit(1)) as { key: string }[];
+    if (!rows[0]) throw new AppError("NOT_FOUND", "Object not found");
+    const matchedKey = rows[0].key;
+
+    const exp = Math.floor(Date.now() / 1000) + ttl;
+    const token = await signStorageUrl(
+      { k: matchedKey, t: tenantId, exp },
+      ctx.env.AUTH_SECRET,
+    );
+    return c.json({
+      url: `/api/storage/${encodeURI(logicalKey)}?token=${encodeURIComponent(token)}`,
+      expiresAt: new Date(exp * 1000).toISOString(),
+    });
+  })
   .put("/:key{.+}", requirePermission(filesCollection, "create"), async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");
@@ -562,50 +608,8 @@ export const storageRoutes = new OpenAPIHono<AppBindings>()
     guardLogicalKey(logicalKey);
     return serveObject(c, tenantId, logicalKey, /* skipPermissionFilter */ false);
   })
-  /**
-   * Issue a short-lived signed URL for an object the caller can already
-   * read. Useful for handing a private file off to an `<img>` tag or a
-   * download anchor without exposing a session cookie. The URL is a normal
-   * `GET /api/storage/:key?token=…`; the GET handler validates the token
-   * before falling through to the permission middleware.
-   */
-  .post("/:key{.+}/sign", requirePermission(filesCollection, "read"), async (c) => {
-    const ctx = c.get("ctx");
-    const auth = c.get("auth");
-    const perm = c.get("permission");
-    const tenantId = requireTenantId(auth);
-    const logicalKey = c.req.param("key");
-    guardLogicalKey(logicalKey);
-    const body = (await c.req.json().catch(() => ({}))) as { ttlSeconds?: number };
-    const ttl = Math.max(60, Math.min(86400, body.ttlSeconds ?? 3600));
-
-    // Confirm the object exists *and* is visible to this caller (the
-    // permission middleware only proved they have `read`; the row-level
-    // condition is enforced here so a scoped role can't sign a sibling row).
-    const t = filesTable(ctx.dialect);
-    const conds: SQL[] = [
-      inArray(t.key, keyCandidates(tenantId, logicalKey)),
-      eq(t.tenantId, tenantId),
-    ];
-    if (perm.whereSql) conds.push(perm.whereSql);
-    const rows = (await (ctx.db as any)
-      .select({ key: t.key })
-      .from(t)
-      .where(and(...conds))
-      .limit(1)) as { key: string }[];
-    if (!rows[0]) throw new AppError("NOT_FOUND", "Object not found");
-    const matchedKey = rows[0].key;
-
-    const exp = Math.floor(Date.now() / 1000) + ttl;
-    const token = await signStorageUrl(
-      { k: matchedKey, t: tenantId, exp },
-      ctx.env.AUTH_SECRET,
-    );
-    return c.json({
-      url: `/api/storage/${encodeURI(logicalKey)}?token=${encodeURIComponent(token)}`,
-      expiresAt: new Date(exp * 1000).toISOString(),
-    });
-  })
+  // The signed-URL handler (`POST /:key{.+}/sign`) is registered ABOVE
+  // the catch-all PUT for ordering reasons — see the comment block there.
   .delete("/:key{.+}", requirePermission(filesCollection, "delete"), async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");

@@ -600,13 +600,10 @@ describe("MCP — storage signed url", () => {
   });
   afterAll(() => h.cleanup());
 
-  test("upload + sign_url returns a usable token", async () => {
-    // Single-segment key. Pre-existing Hono routing limitation in
-    // `routes/storage.ts`: `POST /:key{.+}/sign` only matches when the
-    // logical key is one or two path segments — three-or-more segment
-    // keys (`a/b/c.txt/sign`) miss the sign handler and 404 at the
-    // router. The MCP tool itself is correct; raise that bug separately.
-    const key = `mcp-sign-${Date.now()}.txt`;
+  test("upload + sign_url works at 4-segment key depth", async () => {
+    // 4-segment key — the deepest of the OpenAPIHono router-quirk cases.
+    // See `tests/storage-sign.test.ts` for the root-cause regression.
+    const key = `mcp/signed/nested/test-${Date.now()}.txt`;
     await callTool(h, "storage.upload", { key, text: "hi" });
     const signed = await callTool(h, "storage.sign_url", { key, ttlSeconds: 300 });
     expect(typeof signed.structuredContent.url).toBe("string");

@@ -1318,10 +1318,12 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
   const Wrapper: any = embedded ? Fragment : "div";
   const wrapperProps: any = embedded ? {} : { className: "flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground" };
 
-  /** Hit POST /api/storage/<key>/sign and return the relative signed URL. */
+  /** Hit POST /api/storage/_sign/<key> and return the relative signed URL.
+   *  Prefix form (not `<key>/sign` suffix) — see the routing note in
+   *  `routes/storage.ts` for why. */
   const signOnce = async (ttlSeconds: number): Promise<string> => {
     const res = await api<{ url: string }>(
-      `/api/storage/${encodeURI(f.key)}/sign`,
+      `/api/storage/_sign/${encodeURI(f.key)}`,
       { method: "POST", body: JSON.stringify({ ttlSeconds }) },
     );
     return res.url;

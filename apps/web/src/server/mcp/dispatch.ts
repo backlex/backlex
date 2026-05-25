@@ -9,6 +9,8 @@ import {
 } from "./types";
 import { makeInternalFetch } from "./internal-fetch";
 import { checkToolCall, filterByAllowlist, guardsFromAuth } from "./guards";
+import { listResources, readResource } from "./resources";
+import { getPrompt, listPrompts } from "./prompts";
 
 const PROTOCOL_VERSION = "2025-03-26";
 const SERVER_NAME = "workeros";
@@ -70,10 +72,21 @@ export const dispatch = async (
         serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
         capabilities: {
           tools: { listChanged: false },
+          // Resources expose every collection as `workeros://collection/<slug>`
+          // so MCP clients with attach pickers (Claude Desktop) can browse
+          // and pull collection schema + sample rows into a chat. Subscribe
+          // isn't supported yet — would require resumable SSE.
+          resources: { listChanged: false, subscribe: false },
+          // Prompts ship starter templates: describe_collection,
+          // generate_queries, permission_rule.
+          prompts: { listChanged: false },
         },
         instructions:
-          "workeros MCP server — collections, schema, storage, and functions tools. " +
-          "Permissions are enforced by the caller's identity (API key or session).",
+          "workeros MCP server — schema discovery, collection CRUD, storage, " +
+          "vector / graphql / functions, role + permission management, plus " +
+          "workspace resources and prompt templates. Permissions are enforced " +
+          "by the caller's identity (API key or session); per-key allowlist + " +
+          "read-only guards may further narrow what the agent can do.",
       });
 
     case "notifications/initialized":
@@ -149,15 +162,63 @@ export const dispatch = async (
       }
     }
 
-    // We don't expose resources or prompts yet — return an empty list rather
-    // than method-not-found so well-behaved MCP clients (Claude Desktop,
-    // Cursor) don't surface noisy "unknown method" warnings on startup.
-    case "resources/list":
-      return success(id!, { resources: [] });
+    case "resources/list": {
+      const toolCtx: ToolCtx = {
+        fetchInternal: makeInternalFetch(wiring.app, originRequest, wiring.env),
+        mode: wiring.mode,
+      };
+      try {
+        return success(id!, await listResources(toolCtx));
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        return error(id ?? null, RPC_ERR.INTERNAL, message);
+      }
+    }
+
     case "resources/templates/list":
+      // No templates exposed — resources are enumerated directly via list.
       return success(id!, { resourceTemplates: [] });
+
+    case "resources/read": {
+      const params = (body.params ?? {}) as { uri?: unknown };
+      if (typeof params.uri !== "string") {
+        return error(id ?? null, RPC_ERR.INVALID_PARAMS, "params.uri must be a string");
+      }
+      const toolCtx: ToolCtx = {
+        fetchInternal: makeInternalFetch(wiring.app, originRequest, wiring.env),
+        mode: wiring.mode,
+      };
+      try {
+        return success(id!, await readResource(toolCtx, params.uri));
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        return error(id ?? null, RPC_ERR.INTERNAL, message);
+      }
+    }
+
     case "prompts/list":
-      return success(id!, { prompts: [] });
+      return success(id!, listPrompts());
+
+    case "prompts/get": {
+      const params = (body.params ?? {}) as { name?: unknown; arguments?: unknown };
+      if (typeof params.name !== "string") {
+        return error(id ?? null, RPC_ERR.INVALID_PARAMS, "params.name must be a string");
+      }
+      const args =
+        params.arguments && typeof params.arguments === "object"
+          ? (params.arguments as Record<string, unknown>)
+          : undefined;
+      const toolCtx: ToolCtx = {
+        fetchInternal: makeInternalFetch(wiring.app, originRequest, wiring.env),
+        mode: wiring.mode,
+      };
+      try {
+        return success(id!, await getPrompt(toolCtx, params.name, args));
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        return error(id ?? null, RPC_ERR.INTERNAL, message);
+      }
+    }
 
     default:
       if (isNotification) return null;

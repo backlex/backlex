@@ -41,6 +41,14 @@ export interface ApiKeyRow {
   expiresAt: Date | number | null;
   lastUsedAt: Date | number | null;
   revokedAt: Date | number | null;
+  /** MCP per-key tool allowlist. `null` = unrestricted (the key can call
+   *  any MCP tool the server exposes, subject to permissions). When set,
+   *  only the named tools are callable; the dispatcher filters `tools/list`
+   *  + 403s any out-of-list `tools/call`. See `mcp/dispatch.ts`. */
+  mcpTools: string[] | null;
+  /** When true, MCP refuses every write tool for this key regardless of
+   *  the permissions DSL. REST surface for the same identity is unaffected. */
+  mcpReadOnly: boolean | number;
 }
 
 /**
@@ -114,6 +122,8 @@ export const createApiKey = async (
     tenantId: string;
     roleId?: string | null;
     expiresAt?: Date | null;
+    mcpTools?: string[] | null;
+    mcpReadOnly?: boolean;
   },
 ): Promise<{ row: ApiKeyRow; secret: string }> => {
   const prefix = `${KEY_PREFIX}_${randomHex(PREFIX_LEN / 2)}`;
@@ -128,6 +138,8 @@ export const createApiKey = async (
       ? input.expiresAt
       : input.expiresAt.getTime()
     : null;
+  const mcpTools = input.mcpTools ?? null;
+  const mcpReadOnly = input.mcpReadOnly ?? false;
   await (ctx.db as any).insert(t).values({
     id,
     tenantId: input.tenantId,
@@ -137,6 +149,8 @@ export const createApiKey = async (
     userId: input.userId,
     roleId,
     expiresAt,
+    mcpTools,
+    mcpReadOnly,
   });
   return {
     row: {
@@ -150,9 +164,32 @@ export const createApiKey = async (
       expiresAt,
       lastUsedAt: null,
       revokedAt: null,
+      mcpTools,
+      mcpReadOnly,
     },
     secret: fullKey,
   };
+};
+
+/** Update the MCP guardrails on an existing key. Either field can be
+ *  individually nullable / omitted to leave the other untouched. Owner
+ *  scoping (the caller can only mutate keys they own) is enforced in the
+ *  route layer; this helper just runs the UPDATE. */
+export const updateApiKeyMcpGuards = async (
+  ctx: DbCtx,
+  tenantId: string,
+  id: string,
+  patch: { mcpTools?: string[] | null; mcpReadOnly?: boolean },
+): Promise<void> => {
+  const t = tableFor(ctx.dialect);
+  const set: Record<string, unknown> = {};
+  if (patch.mcpTools !== undefined) set.mcpTools = patch.mcpTools;
+  if (patch.mcpReadOnly !== undefined) set.mcpReadOnly = patch.mcpReadOnly;
+  if (Object.keys(set).length === 0) return;
+  await (ctx.db as any)
+    .update(t)
+    .set(set)
+    .where(and(eq(t.tenantId, tenantId), eq(t.id, id)));
 };
 
 export const findApiKey = async (

@@ -1,5 +1,6 @@
 import { createPgClient, type PgDb, type PgDriver } from "@workeros/db/pg";
 import { createD1Client, type SqliteDb } from "@workeros/db/sqlite";
+import { ensureMigrations } from "@workeros/db";
 import { createAuth, type Auth, type OAuthProviderConfig } from "@workeros/auth";
 import { SYSTEM_ROLES } from "@workeros/core";
 import type {
@@ -192,6 +193,33 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
       : db;
 
   const dbCtx = { db, dialect };
+
+  // Boot-time auto-migrate. CF D1 stays out of scope: `wrangler d1
+  // migrations apply` runs inside the Workers Build command so the
+  // schema is already current before the worker even boots. Bun
+  // self-host runs migrations via the CLI explicitly. Vercel +
+  // Netlify Postgres deploys have no such hook — without this they
+  // freeze at whatever the database held when first provisioned, and
+  // any new column drizzle expects (e.g. `mcp_tools`) makes
+  // `SELECT *` 500 on first request.
+  //
+  // The runner is idempotent + deduped per-isolate (WeakMap keyed on
+  // db handle), so the first request after a fresh deploy applies
+  // every new migration in the bundle and subsequent requests skip
+  // the whole path.
+  //
+  // Failures are downgraded to a warning + rethrown to the caller so
+  // the next request retries. We deliberately do NOT swallow — a
+  // botched migration that runs past this guard is worse than a few
+  // 500s while the operator fixes it.
+  if (!env.D1) {
+    try {
+      await ensureMigrations(db as Parameters<typeof ensureMigrations>[0], dialect);
+    } catch (e) {
+      console.error("[auto-migrate] failed:", (e as Error).message);
+      throw e;
+    }
+  }
 
   const social: {
     google?: OAuthProviderConfig;

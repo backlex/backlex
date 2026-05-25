@@ -603,6 +603,21 @@ export const apiKeys = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    /** MCP per-key tool allowlist. `NULL` = every tool the MCP server exposes
+     *  is available to this key (default for keys created before MCP existed
+     *  and for any key that omits the field on create). When set to an array
+     *  of tool names (e.g. `["collections.list","collections.read"]`), the
+     *  dispatcher filters `tools/list` to the intersection and 403s any
+     *  `tools/call` outside it. Defense-in-depth on top of the permissions
+     *  DSL: a key that has `delete` on a collection can still be denied the
+     *  `collections.delete` MCP tool. */
+    mcpTools: jsonb("mcp_tools").$type<string[] | null>(),
+    /** When true, MCP refuses every write tool — insert/update/delete/grant/
+     *  revoke/invoke/assign — for this key, regardless of the permissions
+     *  DSL or the allowlist. Designed for read-only AI agents pointed at a
+     *  production workspace. The underlying REST endpoints stay open to the
+     *  same identity; the lock is enforced only on the MCP surface. */
+    mcpReadOnly: boolean("mcp_read_only").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

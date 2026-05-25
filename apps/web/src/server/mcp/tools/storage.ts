@@ -178,4 +178,42 @@ export const deleteFile: McpTool = {
   },
 };
 
-export const storageTools: McpTool[] = [listFiles, getFile, uploadFile, deleteFile];
+export const signFile: McpTool = {
+  name: "storage.sign_url",
+  description:
+    "Issue a short-lived signed URL for a file the caller can already read. " +
+    "Hand the URL to an `<img>` / `<a>` / download client; no session needed. " +
+    "TTL is clamped server-side to [60s, 24h]; default 1h. Returns " +
+    "`{ url, expiresAt }`.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      key: { type: "string" },
+      ttlSeconds: { type: "number", description: "Seconds until expiry (60–86400)." },
+    },
+    required: ["key"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const key = requireKey(args);
+    const ttlSeconds = typeof args.ttlSeconds === "number" ? args.ttlSeconds : undefined;
+    const res = await ctx.fetchInternal(
+      `/api/storage/${key.split("/").map(encodeURIComponent).join("/")}/sign`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(ttlSeconds !== undefined ? { ttlSeconds } : {}),
+      },
+    );
+    const parsed = await readJson<unknown>(res);
+    return textResult(parsed);
+  },
+};
+
+export const storageTools: McpTool[] = [
+  listFiles,
+  getFile,
+  uploadFile,
+  deleteFile,
+  signFile,
+];

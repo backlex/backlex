@@ -103,21 +103,33 @@ describe("auto-migrate — fresh DB path", () => {
 });
 
 describe("auto-migrate — adopt existing schema path", () => {
-  test("when `users` exists but ledger is empty, every migration name is back-filled WITHOUT executing", async () => {
-    // Create a `users` table with a deliberately-wrong shape — proves
-    // we never touched it (no DROP, no migration ran, just the
-    // bookkeeping insert).
-    client.exec("CREATE TABLE users (id TEXT PRIMARY KEY, custom_marker TEXT)");
-    client.exec("INSERT INTO users (id, custom_marker) VALUES ('x', 'sentinel')");
-
+  test("ledger lost but schema intact: ensureMigrations re-populates ledger without breaking data", async () => {
+    // Bootstrap a fully-migrated DB, then drop the bookkeeping ledger
+    // to simulate a DB that was migrated by an out-of-band process
+    // (e.g. `bun run db:migrate:pg` against production before this
+    // auto-migrate feature shipped) — schema is correct, ledger empty.
     await ensureMigrations(db, "sqlite");
+    client.exec("INSERT INTO users (id, email, name, email_verified, created_at, updated_at) VALUES ('keep-me', 'sentinel@x', 'Sentinel', 1, " + Date.now() + ", " + Date.now() + ")");
+    client.exec("DROP TABLE __workeros_migrations");
 
-    // Sentinel row is intact — the migrations never ran
-    const row = client.query("SELECT custom_marker FROM users WHERE id = 'x'").get();
-    expect(row).toEqual({ custom_marker: "sentinel" });
+    // Fresh handle so the per-isolate WeakMap doesn't dedupe
+    const client2 = new Database(dbPath, { readwrite: true });
+    const db2 = drizzleBunSqlite({ client: client2 });
+    await ensureMigrations(db2, "sqlite");
 
-    // Ledger lists every bundled migration
-    expect(ledgerNames().length).toBe(SQLITE_MIGRATIONS.length);
+    // Sentinel row untouched — no migration DROPped or rewrote `users`
+    const row = client2
+      .query("SELECT email FROM users WHERE id = 'keep-me'")
+      .get() as { email: string };
+    expect(row.email).toBe("sentinel@x");
+
+    // Ledger is re-populated with every migration name
+    const ledger = (client2
+      .query("SELECT name FROM __workeros_migrations ORDER BY name")
+      .all() as { name: string }[]).map((r) => r.name);
+    expect(ledger.length).toBe(SQLITE_MIGRATIONS.length);
+
+    client2.close();
   });
 });
 

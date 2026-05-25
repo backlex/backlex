@@ -41,12 +41,14 @@ EMAIL_FROM = "onboarding@resend.dev"
 
 # Serve the Vite SPA build (./dist) as static assets from the same Worker.
 # SPA fallback returns index.html for unknown paths so React Router handles
-# routing client-side. /api/* + /health are forced through the Worker so
-# there's no chance of a static file shadowing the API.
+# routing client-side. /api/*, /health, and /mcp are forced through the
+# Worker so there's no chance of a static file shadowing the API. (The
+# MCP server lives at /mcp, not /api/mcp — without this override the
+# Static Assets binding would intercept POST /mcp with 405s.)
 [assets]
 directory = "./dist/client"
 not_found_handling = "single-page-application"
-run_worker_first = ["/api/*", "/health"]
+run_worker_first = ["/api/*", "/health", "/mcp"]
 # Override these in `.dev.vars` or via `wrangler secret put`:
 # AUTH_SECRET = "..."
 # DATABASE_URL = "postgres://..." # only if you want PG via Hyperdrive

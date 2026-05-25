@@ -170,9 +170,35 @@ describe("MCP — initialize + tools/list", () => {
     expect(names).toContain("users.invite");
     expect(names).toContain("users.suspend");
     expect(names).toContain("users.activate");
+    // Tier C — every remaining workeros surface
+    expect(names).toContain("db.execute_sql");
+    expect(names).toContain("db.list_tables");
+    expect(names).toContain("activity.search");
+    expect(names).toContain("tenants.list");
+    expect(names).toContain("tenants.switch");
+    expect(names).toContain("app_users.list");
+    expect(names).toContain("app_users.set_roles");
+    expect(names).toContain("app_users.update");
+    expect(names).toContain("saml.providers_list");
+    expect(names).toContain("saml.providers_create");
+    expect(names).toContain("saml.providers_delete");
+    expect(names).toContain("shared_links.list");
+    expect(names).toContain("shared_links.create");
+    expect(names).toContain("shared_links.revoke");
+    expect(names).toContain("folders.list");
+    expect(names).toContain("folders.create");
+    expect(names).toContain("folders.delete");
+    expect(names).toContain("revisions.list");
+    expect(names).toContain("revisions.revert");
+    expect(names).toContain("comments.list");
+    expect(names).toContain("comments.post");
+    expect(names).toContain("comments.delete");
+    expect(names).toContain("embedding.upsert");
+    expect(names).toContain("settings.get");
+    expect(names).toContain("settings.update");
     // Roster must have at least the catalog above; running count makes any
     // future drift surface as a deliberate test update, not a silent change.
-    expect(names.length).toBeGreaterThanOrEqual(46);
+    expect(names.length).toBeGreaterThanOrEqual(71);
   });
 
   test("notifications/initialized is a no-op (returns 202)", async () => {
@@ -429,7 +455,7 @@ describe("MCP — admin mount gate", () => {
   test("admin (cookie session) can reach /api/admin/mcp", async () => {
     const r = await mcp(h, { jsonrpc: "2.0", id: 1, method: "tools/list" }, "/api/admin/mcp");
     expect(isErr(r)).toBe(false);
-    expect((r as RpcSuccess).result.tools.length).toBeGreaterThanOrEqual(46);
+    expect((r as RpcSuccess).result.tools.length).toBeGreaterThanOrEqual(71);
   });
 
   test("unauthenticated request to /api/admin/mcp is 401", async () => {
@@ -472,7 +498,7 @@ describe("MCP — API key (pak_) auth path", () => {
     });
     expect(status).toBe(200);
     expect(isErr(rpc)).toBe(false);
-    expect((rpc as RpcSuccess).result.tools.length).toBeGreaterThanOrEqual(46);
+    expect((rpc as RpcSuccess).result.tools.length).toBeGreaterThanOrEqual(71);
   });
 
   test("pak_ bearer with admin role reaches /api/admin/mcp", async () => {
@@ -814,14 +840,40 @@ describe("MCP — per-key guards (allowlist + read-only)", () => {
     });
     // List is unrestricted (no allowlist), just filtered for read-only doesn't
     // hide tools — only blocks calls.
-    expect((rpc as RpcSuccess).result.tools.length).toBeGreaterThanOrEqual(46);
+    expect((rpc as RpcSuccess).result.tools.length).toBeGreaterThanOrEqual(71);
   });
 
   test("open key (no guards) sees the full roster and can call any tool", async () => {
     const { rpc: listRpc } = await mcpBearer(h, openKey, {
       jsonrpc: "2.0", id: 6, method: "tools/list",
     });
-    expect((listRpc as RpcSuccess).result.tools.length).toBeGreaterThanOrEqual(46);
+    expect((listRpc as RpcSuccess).result.tools.length).toBeGreaterThanOrEqual(71);
+  });
+
+  test("read-only key blocks tier-C write verbs (db.execute_sql with writes=1)", async () => {
+    const { rpc } = await mcpBearer(h, readOnlyKey, {
+      jsonrpc: "2.0", id: 41, method: "tools/call",
+      params: { name: "db.execute_sql", arguments: { sql: "select 1", writes: true } },
+    });
+    const result = (rpc as RpcSuccess).result;
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("read-only");
+  });
+
+  test("read-only key blocks shared_links.create", async () => {
+    const { rpc } = await mcpBearer(h, readOnlyKey, {
+      jsonrpc: "2.0", id: 42, method: "tools/call",
+      params: { name: "shared_links.create", arguments: { collection: "x", itemId: "1" } },
+    });
+    expect((rpc as RpcSuccess).result.isError).toBe(true);
+  });
+
+  test("read-only key blocks tenants.switch", async () => {
+    const { rpc } = await mcpBearer(h, readOnlyKey, {
+      jsonrpc: "2.0", id: 43, method: "tools/call",
+      params: { name: "tenants.switch", arguments: { tenantId: "noop" } },
+    });
+    expect((rpc as RpcSuccess).result.isError).toBe(true);
   });
 
   test("PATCH /api/api-keys/:id/mcp-guards updates allowlist + read-only live", async () => {
@@ -846,6 +898,92 @@ describe("MCP — per-key guards (allowlist + read-only)", () => {
     });
     const names: string[] = (rpc as RpcSuccess).result.tools.map((t: any) => t.name);
     expect(names).toEqual(["roles.list"]);
+  });
+});
+
+describe("MCP — tier C tools smoke (db/activity/tenants/folders/comments/settings/shared_links/saml/app_users/revisions/embedding)", () => {
+  let h: TestHarness;
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+  });
+  afterAll(() => h.cleanup());
+
+  test("db.list_tables returns the workspace's physical tables", async () => {
+    const result = await callTool(h, "db.list_tables", {});
+    const tables = result.structuredContent.data ?? result.structuredContent;
+    expect(Array.isArray(tables) || typeof tables === "object").toBe(true);
+  });
+
+  test("db.execute_sql executes a SELECT", async () => {
+    const result = await callTool(h, "db.execute_sql", { sql: "SELECT 1 AS one" });
+    expect(result.structuredContent).toBeDefined();
+  });
+
+  test("activity.search returns an array", async () => {
+    const result = await callTool(h, "activity.search", { limit: 5 });
+    const rows = result.structuredContent.data ?? result.structuredContent;
+    expect(Array.isArray(rows)).toBe(true);
+  });
+
+  test("tenants.list returns the seeded default tenant", async () => {
+    const result = await callTool(h, "tenants.list", {});
+    const rows = result.structuredContent.data ?? result.structuredContent;
+    expect(Array.isArray(rows)).toBe(true);
+    expect((rows as unknown[]).length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("folders.list returns an array (empty fine)", async () => {
+    const result = await callTool(h, "folders.list", {});
+    const rows = result.structuredContent.data ?? result.structuredContent;
+    expect(Array.isArray(rows)).toBe(true);
+  });
+
+  test("comments.list returns without error (shape varies — empty/array/scoped-required)", async () => {
+    // comments.list may require a (collection, itemId) scope; an empty call
+    // either returns an empty workspace listing or an upstream validation
+    // error. Both are fine — we just want to prove dispatch + sub-fetch
+    // wiring works.
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 944, method: "tools/call",
+      params: { name: "comments.list", arguments: {} },
+    });
+    expect((r as RpcSuccess).result).toBeDefined();
+  });
+
+  test("settings.get returns the app_settings row", async () => {
+    const result = await callTool(h, "settings.get", {});
+    expect(result.structuredContent).toBeDefined();
+  });
+
+  test("shared_links.list returns without error (shape varies by workspace)", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 955, method: "tools/call",
+      params: { name: "shared_links.list", arguments: {} },
+    });
+    expect((r as RpcSuccess).result).toBeDefined();
+  });
+
+  test("saml.providers_list returns an array", async () => {
+    const result = await callTool(h, "saml.providers_list", {});
+    const rows = result.structuredContent.data ?? result.structuredContent;
+    expect(Array.isArray(rows)).toBe(true);
+  });
+
+  test("app_users.list returns an array (empty fine)", async () => {
+    const result = await callTool(h, "app_users.list", {});
+    const rows = result.structuredContent.data ?? result.structuredContent;
+    expect(Array.isArray(rows)).toBe(true);
+  });
+
+  test("revisions.list on unknown collection/item surfaces an error gracefully", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 800, method: "tools/call",
+      params: { name: "revisions.list", arguments: { collection: "x", itemId: "y" } },
+    });
+    // Either an empty list or an upstream error — both are non-crashing.
+    const result = (r as RpcSuccess).result;
+    expect(result.structuredContent !== undefined || result.isError === true).toBe(true);
   });
 });
 

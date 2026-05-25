@@ -8,6 +8,18 @@
 [build.environment]
   BUN_VERSION = "1.3.14"
 
+# Runtime env injected into the Netlify Function (Node 22) for production
+# deploys. better-auth's `trustedOrigins` is constructed once per isolate
+# from APP_URL + EXTRA_TRUSTED_ORIGINS; without this list, sign-in from
+# the Netlify host hits 403 INVALID_ORIGIN because APP_URL points at the
+# CF Worker canonical origin (the same Neon DB is shared across deploys).
+# Add the matching Vercel host too so a single deploy works from either.
+# Secrets (DATABASE_URL, AUTH_SECRET, …) stay in the Netlify dashboard;
+# this block is only for non-sensitive routing config.
+[context.production.environment]
+  APP_URL = "https://workeros.netlify.app"
+  EXTRA_TRUSTED_ORIGINS = "https://workeros.vercel.app,https://workeros-api.kinyasfurkan.workers.dev"
+
 # API surface — Hono app served by a Node 22 serverless function.
 # Edge Functions were dropped because Netlify's Deno edge bundler can't
 # resolve this repo's npm/workspace dep tree (postgres-js, drizzle, samlify,

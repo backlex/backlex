@@ -291,10 +291,33 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   // still reach storage/vector/image once they're built.
   let fullCtx: Ctx | undefined;
 
+  // Better-auth rejects every request whose `Origin` header isn't in
+  // `trustedOrigins` with a 403 INVALID_ORIGIN. The same CORS allow-list
+  // that fronts the rest of the API (cors() middleware in app.ts) lives
+  // off `env.APP_URL` + `env.EXTRA_TRUSTED_ORIGINS` + the per-workspace
+  // `auth_config.redirectUrls`; we mirror APP_URL + EXTRA_TRUSTED_ORIGINS
+  // into better-auth so a multi-deploy setup (CF Worker + Vercel +
+  // Netlify pointing at the same DB) doesn't lock UI sign-in to the one
+  // canonical APP_URL.
+  //
+  // Workspace-level redirect URLs aren't merged here because better-auth
+  // reads `trustedOrigins` exactly once at construction; refreshing them
+  // would require rebuilding `auth` per-request. The cors() middleware
+  // already honours the workspace list at the HTTP edge, which covers
+  // OAuth / SAML / API key flows. The remaining gap — multi-host UI
+  // sign-in — is what this env var addresses.
+  const trustedOrigins = [env.APP_URL];
+  if (env.EXTRA_TRUSTED_ORIGINS) {
+    for (const o of env.EXTRA_TRUSTED_ORIGINS.split(",")) {
+      const trimmed = o.trim();
+      if (trimmed) trustedOrigins.push(trimmed);
+    }
+  }
+
   const auth = createAuth(db, dialect, {
     baseURL: env.APP_URL,
     secret: env.AUTH_SECRET,
-    trustedOrigins: [env.APP_URL],
+    trustedOrigins,
     socialProviders: Object.keys(social).length > 0 ? social : undefined,
     email,
     plugins: pluginList,

@@ -196,9 +196,13 @@ describe("MCP — initialize + tools/list", () => {
     expect(names).toContain("embedding.upsert");
     expect(names).toContain("settings.get");
     expect(names).toContain("settings.update");
+    // Tier D — AI-native
+    expect(names).toContain("ai.query");
+    expect(names).toContain("ai.suggest_schema");
+    expect(names).toContain("ai.import_csv");
     // Roster must have at least the catalog above; running count makes any
     // future drift surface as a deliberate test update, not a silent change.
-    expect(names.length).toBeGreaterThanOrEqual(71);
+    expect(names.length).toBeGreaterThanOrEqual(74);
   });
 
   test("notifications/initialized is a no-op (returns 202)", async () => {
@@ -455,7 +459,7 @@ describe("MCP — admin mount gate", () => {
   test("admin (cookie session) can reach /api/admin/mcp", async () => {
     const r = await mcp(h, { jsonrpc: "2.0", id: 1, method: "tools/list" }, "/api/admin/mcp");
     expect(isErr(r)).toBe(false);
-    expect((r as RpcSuccess).result.tools.length).toBeGreaterThanOrEqual(71);
+    expect((r as RpcSuccess).result.tools.length).toBeGreaterThanOrEqual(74);
   });
 
   test("unauthenticated request to /api/admin/mcp is 401", async () => {
@@ -498,7 +502,7 @@ describe("MCP — API key (pak_) auth path", () => {
     });
     expect(status).toBe(200);
     expect(isErr(rpc)).toBe(false);
-    expect((rpc as RpcSuccess).result.tools.length).toBeGreaterThanOrEqual(71);
+    expect((rpc as RpcSuccess).result.tools.length).toBeGreaterThanOrEqual(74);
   });
 
   test("pak_ bearer with admin role reaches /api/admin/mcp", async () => {
@@ -840,14 +844,14 @@ describe("MCP — per-key guards (allowlist + read-only)", () => {
     });
     // List is unrestricted (no allowlist), just filtered for read-only doesn't
     // hide tools — only blocks calls.
-    expect((rpc as RpcSuccess).result.tools.length).toBeGreaterThanOrEqual(71);
+    expect((rpc as RpcSuccess).result.tools.length).toBeGreaterThanOrEqual(74);
   });
 
   test("open key (no guards) sees the full roster and can call any tool", async () => {
     const { rpc: listRpc } = await mcpBearer(h, openKey, {
       jsonrpc: "2.0", id: 6, method: "tools/list",
     });
-    expect((listRpc as RpcSuccess).result.tools.length).toBeGreaterThanOrEqual(71);
+    expect((listRpc as RpcSuccess).result.tools.length).toBeGreaterThanOrEqual(74);
   });
 
   test("read-only key blocks tier-C write verbs (db.execute_sql with writes=1)", async () => {
@@ -898,6 +902,99 @@ describe("MCP — per-key guards (allowlist + read-only)", () => {
     });
     const names: string[] = (rpc as RpcSuccess).result.tools.map((t: any) => t.name);
     expect(names).toEqual(["roles.list"]);
+  });
+});
+
+describe("MCP — tier D AI-native tools (ai.query / ai.suggest_schema / ai.import_csv)", () => {
+  // Tests don't hit the real Anthropic API — they verify dispatch + arg
+  // validation + the UNAVAILABLE path when ANTHROPIC_API_KEY is unset (the
+  // default in the test harness). Live calls are exercised manually via
+  // `bun workeros mcp` against a configured deployment.
+  let h: TestHarness;
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+  });
+  afterAll(() => h.cleanup());
+
+  test("ai.query without ANTHROPIC_API_KEY surfaces UNAVAILABLE", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 700, method: "tools/call",
+      params: { name: "ai.query", arguments: { collection: "users", prompt: "any" } },
+    });
+    const result = (r as RpcSuccess).result;
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("ANTHROPIC_API_KEY");
+  });
+
+  test("ai.suggest_schema validates description is required", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 701, method: "tools/call",
+      params: { name: "ai.suggest_schema", arguments: {} },
+    });
+    const result = (r as RpcSuccess).result;
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/description|VALIDATION/i);
+  });
+
+  test("ai.import_csv validates csv is required", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 702, method: "tools/call",
+      params: { name: "ai.import_csv", arguments: {} },
+    });
+    const result = (r as RpcSuccess).result;
+    expect(result.isError).toBe(true);
+  });
+
+  test("ai.import_csv enforces 5 MB cap", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 703, method: "tools/call",
+      params: { name: "ai.import_csv", arguments: { csv: "x".repeat(5_000_001) } },
+    });
+    const result = (r as RpcSuccess).result;
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("5 MB");
+  });
+
+  test("ai.import_csv with collection set inserts rows from CSV (no Claude call required)", async () => {
+    const slug = `mcp_csv_${Date.now()}`;
+    const createRes = await h.fetch("/api/collections", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        slug,
+        fields: [
+          { name: "name", type: "text", required: true },
+          { name: "amount", type: "text" },
+        ],
+      }),
+    });
+    expect(createRes.status).toBe(201);
+    const csv = `name,amount\nAlpha,100\nBeta,200\nGamma,300\n`;
+    const r = await callTool(h, "ai.import_csv", { csv, collection: slug });
+    expect(r.structuredContent.mode).toBe("insert");
+    expect(r.structuredContent.total).toBe(3);
+    expect(r.structuredContent.succeeded).toBe(3);
+    expect(r.structuredContent.failed).toBe(0);
+  });
+
+  test("ai.import_csv quoted-CSV parser handles commas inside values", async () => {
+    const slug = `mcp_csv2_${Date.now()}`;
+    await h.fetch("/api/collections", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        slug,
+        fields: [
+          { name: "label", type: "text", required: true },
+          { name: "note", type: "longtext" },
+        ],
+      }),
+    });
+    const csv = `label,note\n"Hello, World","line one"\n"Quote ""inside""","x"\n`;
+    const r = await callTool(h, "ai.import_csv", { csv, collection: slug });
+    expect(r.structuredContent.total).toBe(2);
+    expect(r.structuredContent.succeeded).toBe(2);
   });
 });
 

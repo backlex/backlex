@@ -849,6 +849,178 @@ describe("MCP — per-key guards (allowlist + read-only)", () => {
   });
 });
 
+describe("MCP — resources (collections as workeros:// URIs)", () => {
+  let h: TestHarness;
+  const slug = `mcp_res_${Date.now()}`;
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    await h.fetch("/api/collections", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        slug,
+        fields: [
+          { name: "title", type: "text", required: true },
+          { name: "n", type: "integer" },
+        ],
+      }),
+    });
+    await h.fetch(`/api/items/${slug}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "first", n: 1 }),
+    });
+  });
+  afterAll(() => h.cleanup());
+
+  test("initialize advertises resources + prompts capabilities", async () => {
+    const r = await mcp(h, { jsonrpc: "2.0", id: 1, method: "initialize" });
+    const caps = (r as RpcSuccess).result.capabilities;
+    expect(caps.resources).toBeDefined();
+    expect(caps.resources.subscribe).toBe(false);
+    expect(caps.prompts).toBeDefined();
+  });
+
+  test("resources/list returns schema directory + the test collection", async () => {
+    const r = await mcp(h, { jsonrpc: "2.0", id: 2, method: "resources/list" });
+    const resources: Array<{ uri: string; name: string; mimeType: string }> =
+      (r as RpcSuccess).result.resources;
+    expect(resources.some((x) => x.uri === "workeros://schema")).toBe(true);
+    expect(resources.some((x) => x.uri === `workeros://collection/${slug}`)).toBe(true);
+    for (const res of resources) {
+      expect(res.mimeType).toBe("application/json");
+      expect(typeof res.name).toBe("string");
+    }
+  });
+
+  test("resources/read for the schema URI returns every collection's fields", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 3, method: "resources/read",
+      params: { uri: "workeros://schema" },
+    });
+    const contents = (r as RpcSuccess).result.contents;
+    expect(contents.length).toBe(1);
+    expect(contents[0].uri).toBe("workeros://schema");
+    const parsed = JSON.parse(contents[0].text) as { collections: Array<{ slug: string }> };
+    expect(parsed.collections.some((c) => c.slug === slug)).toBe(true);
+  });
+
+  test("resources/read for a collection returns schema + sample rows", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 4, method: "resources/read",
+      params: { uri: `workeros://collection/${slug}` },
+    });
+    const contents = (r as RpcSuccess).result.contents;
+    const parsed = JSON.parse(contents[0].text) as {
+      slug: string;
+      fields: Array<{ name: string }>;
+      sample: unknown;
+      sampleLimit: number;
+    };
+    expect(parsed.slug).toBe(slug);
+    expect(parsed.fields.length).toBe(2);
+    expect(Array.isArray(parsed.sample)).toBe(true);
+    expect((parsed.sample as unknown[]).length).toBeGreaterThanOrEqual(1);
+    expect(parsed.sampleLimit).toBe(5);
+  });
+
+  test("resources/read for an unknown URI surfaces an error", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 5, method: "resources/read",
+      params: { uri: "workeros://nonsense/x" },
+    });
+    expect((r as RpcError).error).toBeDefined();
+    expect((r as RpcError).error.message).toContain("unknown resource");
+  });
+
+  test("resources/read missing uri param returns INVALID_PARAMS", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 6, method: "resources/read",
+      params: {},
+    });
+    expect((r as RpcError).error.code).toBe(-32602);
+  });
+});
+
+describe("MCP — prompts (starter templates)", () => {
+  let h: TestHarness;
+  const slug = `mcp_pr_${Date.now()}`;
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    await h.fetch("/api/collections", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        slug,
+        fields: [
+          { name: "title", type: "text", required: true },
+          { name: "priority", type: "integer" },
+        ],
+      }),
+    });
+  });
+  afterAll(() => h.cleanup());
+
+  test("prompts/list returns the 3 starter templates", async () => {
+    const r = await mcp(h, { jsonrpc: "2.0", id: 1, method: "prompts/list" });
+    const names = (r as RpcSuccess).result.prompts.map((p: any) => p.name);
+    expect(names.sort()).toEqual([
+      "describe_collection",
+      "generate_queries",
+      "permission_rule",
+    ].sort());
+    for (const p of (r as RpcSuccess).result.prompts) {
+      expect(typeof p.description).toBe("string");
+      expect(Array.isArray(p.arguments)).toBe(true);
+    }
+  });
+
+  test("prompts/get describe_collection renders schema + sample into a user message", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 2, method: "prompts/get",
+      params: { name: "describe_collection", arguments: { collection: slug } },
+    });
+    const messages = (r as RpcSuccess).result.messages;
+    expect(messages.length).toBe(1);
+    expect(messages[0].role).toBe("user");
+    expect(messages[0].content.type).toBe("text");
+    const text = messages[0].content.text;
+    expect(text).toContain(slug);
+    expect(text).toContain("title");
+    expect(text).toContain("priority");
+  });
+
+  test("prompts/get generate_queries optionally interpolates intent", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 3, method: "prompts/get",
+      params: {
+        name: "generate_queries",
+        arguments: { collection: slug, intent: "high-priority items" },
+      },
+    });
+    const text = (r as RpcSuccess).result.messages[0].content.text;
+    expect(text).toContain("high-priority items");
+  });
+
+  test("prompts/get permission_rule requires both args", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 4, method: "prompts/get",
+      params: { name: "permission_rule", arguments: { collection: slug } },
+    });
+    expect((r as RpcError).error.message).toContain("intent");
+  });
+
+  test("prompts/get unknown name returns INTERNAL error with helpful message", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 5, method: "prompts/get",
+      params: { name: "no-such-prompt", arguments: {} },
+    });
+    expect((r as RpcError).error.message).toContain("unknown prompt");
+  });
+});
+
 describe("MCP — webhooks + flows tools", () => {
   let h: TestHarness;
   beforeAll(async () => {

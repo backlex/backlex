@@ -66,7 +66,8 @@ export const handleMcpRequest = async (
     const r = await dispatch(
       wiring,
       c.req.raw,
-      msg as Parameters<typeof dispatch>[2],
+      c,
+      msg as Parameters<typeof dispatch>[3],
     );
     if (r) responses.push(r);
   }

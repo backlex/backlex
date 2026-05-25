@@ -234,12 +234,36 @@ curl -X PATCH https://your-workeros.example.com/api/api-keys/<id>/mcp-guards \
 
 The "Connect MCP" modal also generates copyable install snippets for Claude Desktop, Cursor, and curl — pre-filled with the workspace's MCP URL and the key's plaintext secret (only when called right after creation; otherwise a `pak_<prefix>_<paste-secret-here>` placeholder).
 
+## Resources
+
+Beyond tools, workeros exposes **MCP resources** so attach-aware clients (Claude Desktop) can browse the workspace from their resource picker:
+
+| URI | Read returns |
+|---|---|
+| `workeros://schema` | Every collection's slug + field list (workspace-level directory). |
+| `workeros://collection/<slug>` | The collection's full field schema + the first 5 rows of data. |
+
+Resource reads sub-fetch the same REST surface tools use, so permissions DSL still filters what the agent sees. The per-key MCP allowlist also gates resources — an agent that can't call `collections.list` won't see the resource either.
+
+Subscriptions (`resources/subscribe`) aren't implemented — that requires a long-lived `GET /mcp` SSE stream which the stateless POST-only transport doesn't carry. Track collection changes through webhooks / flows for now.
+
+## Prompts
+
+Three starter templates ship at `prompts/list`:
+
+| Name | Arguments | Use case |
+|---|---|---|
+| `describe_collection` | `collection` | Walk through schema + 3 sample rows; produce a plain-language description of what the collection stores. |
+| `generate_queries` | `collection`, `intent?` | Propose 3-5 useful Directus-shaped `filter` queries with rationales. |
+| `permission_rule` | `collection`, `intent` | Translate "X role can do Y" into a permissions DSL `condition` + `fields` allow-list. |
+
+Each `prompts/get` renders a single user message with the collection context pre-injected, so the LLM arrives with the schema in-window without having to call a discovery tool first.
+
 ## Limitations & roadmap
 
-- **No `resources/list` content.** The MCP `resources` API returns empty — schema discovery happens through tools instead. We may surface collections as resources in a later phase.
-- **No resumable SSE.** Only `POST /mcp` is implemented; `GET /mcp` for resumable streams returns 405.
-- **No prompts.** `prompts/list` returns empty.
-- **Stateless transport.** There is no `Mcp-Session-Id` header; every request stands alone.
+- **No resumable SSE.** Only `POST /mcp` is implemented; `GET /mcp` returns 405. Subscriptions, sampling, and progress notifications wait on this.
+- **Stateless transport.** No `Mcp-Session-Id` header; every request stands alone.
+- **No OAuth flow.** Agents authenticate via a pre-provisioned PAK. The hosted-Claude case (where the user shouldn't have to paste a secret) is a separate epic.
 
 See `apps/web/src/server/mcp/` for the implementation and
 `apps/web/tests/mcp.test.ts` for executable contract examples.

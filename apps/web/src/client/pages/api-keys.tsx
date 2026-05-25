@@ -1,11 +1,18 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { KeyIcon, PlusIcon, Trash2Icon, TriangleAlertIcon } from "lucide-react";
+import {
+  KeyIcon,
+  PlusIcon,
+  PlugIcon,
+  Trash2Icon,
+  TriangleAlertIcon,
+} from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Card, CardContent, CardHeader, CardTitle } from "@workeros/ui/components/card";
 import { Button } from "@workeros/ui/components/button";
 import { Input } from "@workeros/ui/components/input";
 import { Label } from "@workeros/ui/components/label";
 import { Badge } from "@workeros/ui/components/badge";
+import { Checkbox } from "@workeros/ui/components/checkbox";
 import { Skeleton } from "@workeros/ui/components/skeleton";
 import {
   Select,
@@ -22,10 +29,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workeros/ui/components/dialog";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { ConfirmAction } from "@/components/confirm-action";
 import { DatePicker } from "@/components/date-picker";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
+import { McpKeyModal } from "@/components/mcp-key-modal";
 import { notifyError } from "@/lib/error";
 import { api } from "@/lib/api";
 
@@ -40,6 +49,8 @@ interface ApiKey {
   lastUsedAt: string | number | null;
   revokedAt: string | number | null;
   createdAt: string | number;
+  mcpTools: string[] | null;
+  mcpReadOnly: boolean;
 }
 
 interface BindableRole {
@@ -88,7 +99,14 @@ export const ApiKeys = () => {
   const [customExpiry, setCustomExpiry] = useState<string | null>(null);
   const [roleId, setRoleId] = useState<string>(NO_ROLE);
   const [secret, setSecret] = useState<string | null>(null);
+  const [mcpReadOnly, setMcpReadOnly] = useState(false);
   const [busy, setBusy] = useState(false);
+  /** The key currently being inspected in the "Connect MCP" modal. */
+  const [mcpKey, setMcpKey] = useState<ApiKey | null>(null);
+  /** Plaintext secret if the user just minted this key — passed to the MCP
+   *  modal so the install snippet has the real bearer, not a `pak_<prefix>_…`
+   *  placeholder. Cleared once the modal closes or the user navigates away. */
+  const [mcpKeySecret, setMcpKeySecret] = useState<string | null>(null);
 
   const refresh = () => {
     setLoading(true);
@@ -109,6 +127,7 @@ export const ApiKeys = () => {
     setExpiryPreset("never");
     setCustomExpiry(null);
     setRoleId(NO_ROLE);
+    setMcpReadOnly(false);
   };
 
   const submit = async (e: FormEvent) => {
@@ -120,11 +139,16 @@ export const ApiKeys = () => {
       const iso = expiresAtFromPreset(expiryPreset, customExpiry);
       if (iso) body.expiresAt = iso;
       if (roleId && roleId !== NO_ROLE) body.roleId = roleId;
+      if (mcpReadOnly) body.mcpReadOnly = true;
       const r = await api<{ data: ApiKey & { secret: string } }>(
         "/api/api-keys",
         { method: "POST", body: JSON.stringify(body) },
       );
       setSecret(r.data.secret);
+      // Surface the new key in the MCP modal too — the install snippet
+      // becomes immediately useful without re-entering the secret.
+      setMcpKey(r.data);
+      setMcpKeySecret(r.data.secret);
       resetForm();
       setShowForm(false);
       refresh();
@@ -273,6 +297,24 @@ export const ApiKeys = () => {
                 <Trans>Optional — the key stops working after this time.</Trans>
               </p>
             </div>
+            <div className="flex items-start gap-2 rounded-md border border-border/60 bg-muted/30 p-3">
+              <Checkbox
+                id="mcp-read-only"
+                checked={mcpReadOnly}
+                onCheckedChange={(v) => setMcpReadOnly(v === true)}
+                className="mt-0.5"
+              />
+              <div className="flex-1 space-y-1">
+                <Label htmlFor="mcp-read-only" className="font-medium">
+                  <Trans>MCP read-only mode</Trans>
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  <Trans>
+                    Block every write tool (insert / update / delete / invoke / …) when this key is used through the MCP server. REST authorization is unaffected. Allowlist can be configured per-key after creation.
+                  </Trans>
+                </p>
+              </div>
+            </div>
           </form>
           <DialogFooter>
             <Button
@@ -345,6 +387,16 @@ export const ApiKeys = () => {
                             <Trans>role: {k.roleName ?? k.roleId}</Trans>
                           </Badge>
                         )}
+                        {k.mcpReadOnly && (
+                          <Badge variant="outline">
+                            <Trans>MCP read-only</Trans>
+                          </Badge>
+                        )}
+                        {k.mcpTools && (
+                          <Badge variant="outline">
+                            <Trans>MCP: {k.mcpTools.length} tool(s)</Trans>
+                          </Badge>
+                        )}
                       </div>
                       <div className="font-mono text-xs text-muted-foreground">
                         {k.prefix}_…
@@ -361,17 +413,31 @@ export const ApiKeys = () => {
                           : t` · never used`}
                       </div>
                     </div>
-                    <ConfirmAction
-                      title={t`Revoke this API key?`}
-                      description={t`The key "${k.name}" will stop working immediately. This cannot be undone.`}
-                      actionLabel={t`Revoke`}
-                      destructive
-                      onConfirm={() => revoke(k.id)}
-                    >
-                      <Button variant="ghost" size="icon-sm" disabled={!!k.revokedAt}>
-                        <Trash2Icon />
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        title={t`Connect MCP`}
+                        disabled={!!k.revokedAt}
+                        onClick={() => {
+                          setMcpKey(k);
+                          setMcpKeySecret(null);
+                        }}
+                      >
+                        <PlugIcon />
                       </Button>
-                    </ConfirmAction>
+                      <ConfirmAction
+                        title={t`Revoke this API key?`}
+                        description={t`The key "${k.name}" will stop working immediately. This cannot be undone.`}
+                        actionLabel={t`Revoke`}
+                        destructive
+                        onConfirm={() => revoke(k.id)}
+                      >
+                        <Button variant="ghost" size="icon-sm" disabled={!!k.revokedAt}>
+                          <Trash2Icon />
+                        </Button>
+                      </ConfirmAction>
+                    </div>
                   </li>
                 );
               })}
@@ -379,6 +445,25 @@ export const ApiKeys = () => {
           )}
         </CardContent>
       </Card>
+
+      {mcpKey && (
+        <McpKeyModal
+          open={!!mcpKey}
+          onOpenChange={(open) => {
+            if (!open) {
+              setMcpKey(null);
+              setMcpKeySecret(null);
+            }
+          }}
+          keyId={mcpKey.id}
+          keyPrefix={mcpKey.prefix}
+          keyName={mcpKey.name}
+          initialSecret={mcpKeySecret}
+          initialAllowlist={mcpKey.mcpTools}
+          initialReadOnly={mcpKey.mcpReadOnly}
+          onSaved={refresh}
+        />
+      )}
     </div>
   );
 };

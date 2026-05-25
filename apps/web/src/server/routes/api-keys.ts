@@ -11,6 +11,7 @@ import {
   createApiKey,
   listApiKeys,
   revokeApiKey,
+  updateApiKeyMcpGuards,
 } from "../services/api-keys";
 
 const ApiKeyInput = z
@@ -35,6 +36,19 @@ const ApiKeyInput = z
       description: "ISO-8601 UTC. Must be in the future. Omit for non-expiring keys.",
       example: "2026-12-31T23:59:59Z",
     }),
+    mcpTools: z
+      .array(z.string().min(1).max(120))
+      .nullable()
+      .optional()
+      .openapi({
+        description:
+          "Per-key MCP tool allowlist. Omit/null = unrestricted (every tool the MCP server exposes is callable). Empty array = zero tools (deny everything). Otherwise: only the listed tool names are callable.",
+        example: ["collections.list", "collections.read", "schema.list_collections"],
+      }),
+    mcpReadOnly: z.boolean().optional().openapi({
+      description:
+        "When true, MCP refuses every write tool (insert / update / delete / grant / revoke / invoke / assign / …) for requests authenticated with this key. REST surface for the same identity is unaffected.",
+    }),
   })
   .openapi("ApiKeyInput");
 
@@ -51,8 +65,17 @@ const ApiKeyRow = z
     lastUsedAt: z.unknown().nullable(),
     revokedAt: z.unknown().nullable(),
     createdAt: z.unknown().nullable(),
+    mcpTools: z.array(z.string()).nullable(),
+    mcpReadOnly: z.boolean(),
   })
   .openapi("ApiKeyRow");
+
+const McpGuardsPatch = z
+  .object({
+    mcpTools: z.array(z.string().min(1).max(120)).nullable().optional(),
+    mcpReadOnly: z.boolean().optional(),
+  })
+  .openapi("McpGuardsPatch");
 
 const ApiKeyCreatedRow = ApiKeyRow.extend({
   secret: z.string().openapi({
@@ -97,6 +120,8 @@ const sanitize = (
     lastUsedAt: unknown;
     revokedAt: unknown;
     createdAt?: unknown;
+    mcpTools?: string[] | null;
+    mcpReadOnly?: boolean | number | null;
   },
   roleNames: Map<string, string>,
 ) => ({
@@ -111,6 +136,8 @@ const sanitize = (
   lastUsedAt: row.lastUsedAt,
   revokedAt: row.revokedAt,
   createdAt: row.createdAt,
+  mcpTools: row.mcpTools ?? null,
+  mcpReadOnly: Boolean(row.mcpReadOnly),
 });
 
 export const apiKeysRoutes = new OpenAPIHono<AppBindings>()
@@ -230,6 +257,8 @@ export const apiKeysRoutes = new OpenAPIHono<AppBindings>()
         tenantId,
         roleId: body.roleId ?? null,
         expiresAt,
+        mcpTools: body.mcpTools ?? null,
+        mcpReadOnly: body.mcpReadOnly ?? false,
       });
       const roleNames = new Map<string, string>();
       if (row.roleId) {
@@ -246,6 +275,45 @@ export const apiKeysRoutes = new OpenAPIHono<AppBindings>()
         },
         201,
       );
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "patch",
+      path: "/{id}/mcp-guards",
+      tags: ["api-keys"],
+      summary: "Update a key's MCP guards (allowlist + read-only)",
+      description:
+        "Mutate the tool allowlist and/or the read-only flag for an existing API key. Either field may be omitted to leave the other untouched. Affects only the MCP surface — REST authorization is unaffected.",
+      security: SECURITY,
+      middleware: [requireUser],
+      request: {
+        params: z.object({ id: z.string() }),
+        body: {
+          required: true,
+          content: { "application/json": { schema: McpGuardsPatch } },
+        },
+      },
+      responses: {
+        200: { description: "Updated", content: { "application/json": { schema: OkSchema } } },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const tenantId = requireTenant(c);
+      const { id } = c.req.valid("param");
+      const isAdmin = auth.roles.includes(SYSTEM_ROLES.admin);
+      // Owner-scoped — non-admins can only mutate their own keys, same as
+      // revoke. Admins can mutate any key in the workspace.
+      const visible = await listApiKeys(ctx, tenantId, isAdmin ? null : auth.userId);
+      if (!visible.some((k) => k.id === id)) {
+        throw new AppError("NOT_FOUND", "API key not found");
+      }
+      const body = c.req.valid("json");
+      await updateApiKeyMcpGuards(ctx, tenantId, id, body);
+      return c.json({ ok: true });
     },
   )
   .openapi(

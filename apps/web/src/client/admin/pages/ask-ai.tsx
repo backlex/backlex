@@ -1,0 +1,964 @@
+// Ask AI — admin page (Phase 1: Ask tab only).
+//
+// Ports the design's AskTab (/tmp/design-bundle/workeros/project/ai-mcp.jsx
+// lines 338-516) onto the canonical workeros UI primitives. The other three
+// tabs (Tools / Runs / Connect) are intentionally rendered as disabled tab
+// triggers so the shell exists without shipping placeholder controls.
+//
+// Two backend hops:
+//   POST /api/admin/ai/plan  →  {rationale, tool, args, model, usage}
+//   POST /api/admin/ai/run   →  executes one MCP tool + writes to `activity`
+//
+// Recent runs fetch /api/activity?action=mcp.&limit=10 — same wire we log
+// into from the /run handler.
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { api } from "@/lib/api";
+import { activityApi, type ApiActivity } from "../api";
+import { I } from "../icons";
+import { Badge, Button, PageHeader, Switch } from "../ui";
+import { Textarea } from "@workeros/ui/components/textarea";
+import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@workeros/ui/components/popover";
+import { ScrollArea } from "@workeros/ui/components/scroll-area";
+
+interface PlanResponse {
+  data: {
+    rationale: string;
+    tool: string;
+    args: Record<string, unknown>;
+    model: string;
+    usage?: unknown;
+  };
+}
+
+interface RunResponse {
+  ok: boolean;
+  tool: string;
+  result?: {
+    content?: Array<{ type: string; text?: string }>;
+    structuredContent?: unknown;
+    isError?: boolean;
+  };
+  rowCount?: number | null;
+  durationMs: number;
+  error?: string;
+}
+
+const MODELS = [
+  {
+    id: "claude-opus-4-5",
+    label: "claude-opus-4-5",
+    hint: "highest reasoning · slower · ~3x cost",
+  },
+  {
+    id: "claude-sonnet-4-5",
+    label: "claude-sonnet-4-5",
+    hint: "balanced — recommended for most queries",
+  },
+  {
+    id: "claude-haiku-4-5",
+    label: "claude-haiku-4-5",
+    hint: "fast · cheap · good for routine reads",
+    default: true,
+  },
+];
+
+const DEFAULT_MODEL = "claude-haiku-4-5";
+const DEFAULT_PROMPT =
+  "top customers by lifetime_value last month, limit 10";
+
+// Mirrors the planner's whitelist on the server. Auto-run only fires when
+// the proposed tool is one of these read-leaning surfaces.
+const AUTO_RUN_PATTERN =
+  /^(collections\.list|collections\.read|storage\.list|vector\.search|schema\.)/;
+const DESTRUCTIVE_PATTERN = /\b(delete|drop|revoke|suspend)\b/;
+const WRITE_PATTERN =
+  /\b(insert|update|delete|drop|create|upload|grant|revoke|invoke|suspend|activate|assign|unassign|send|test)\b/;
+
+const EXAMPLES = [
+  {
+    label: "Top customers last month",
+    prompt: "top customers by lifetime_value last month, limit 10",
+  },
+  {
+    label: "Published posts past week",
+    prompt:
+      "posts published in the past 7 days, status published, sorted by view_count desc",
+  },
+  {
+    label: "Comments needing moderation",
+    prompt:
+      "comments flagged for moderation older than 24h, include author email",
+  },
+  {
+    label: "Draft support_tickets schema",
+    prompt:
+      "design a support_tickets collection — subject, body, requester (relation to app_users), priority enum, status workflow, assigned_to",
+  },
+  {
+    label: "Orphan storage files",
+    prompt:
+      "storage files in /uploads/ larger than 1MB with no reference in posts.cover_image",
+  },
+];
+
+// Bumping these only matters when the catalog grows; the badge in the page
+// header surfaces the total so the docs page can stay accurate. Source of
+// truth: apps/web/src/server/mcp/tools/index.ts::allTools.length.
+const MCP_TOOL_COUNT = 75;
+
+/** Lightweight JSON syntax highlighter — ported verbatim from the design's
+ *  `JsonBlock` (ai-mcp.jsx:257). Avoids pulling a code-editor dependency
+ *  for pretty-printing static args. */
+function JsonBlock({ value }: { value: unknown }) {
+  const text = useMemo(() => JSON.stringify(value, null, 2), [value]);
+  const tokens = useMemo(() => {
+    const re =
+      /("[^"\\]*(?:\\.[^"\\]*)*")(\s*:)?|(-?\d+(?:\.\d+)?)|(\btrue\b|\bfalse\b|\bnull\b)|(\$NOW\([^)]*\))|([[\]{},])|(\s+)|(.)/g;
+    const out: React.ReactNode[] = [];
+    let m: RegExpExecArray | null;
+    let i = 0;
+    while ((m = re.exec(text)) !== null) {
+      if (m[1] && m[2]) {
+        out.push(
+          <span
+            key={i++}
+            className="text-[oklch(0.45_0.14_70)] dark:text-[oklch(0.86_0.17_95)]"
+          >
+            {m[1]}
+          </span>,
+        );
+        out.push(
+          <span key={i++} className="text-muted-foreground">
+            {m[2]}
+          </span>,
+        );
+      } else if (m[1]) {
+        out.push(
+          <span
+            key={i++}
+            className="text-[oklch(0.42_0.14_130)] dark:text-[oklch(0.82_0.13_130)]"
+          >
+            {m[1]}
+          </span>,
+        );
+      } else if (m[3] || m[4]) {
+        out.push(
+          <span
+            key={i++}
+            className="text-[oklch(0.45_0.13_240)] dark:text-[oklch(0.78_0.13_240)]"
+          >
+            {m[3] || m[4]}
+          </span>,
+        );
+      } else if (m[5]) {
+        out.push(
+          <span key={i++} className="italic text-muted-foreground">
+            {m[5]}
+          </span>,
+        );
+      } else if (m[6]) {
+        out.push(
+          <span key={i++} className="text-muted-foreground">
+            {m[6]}
+          </span>,
+        );
+      } else {
+        out.push(<span key={i++}>{m[7] || m[8]}</span>);
+      }
+    }
+    return out;
+  }, [text]);
+  return (
+    <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[12px] leading-[1.55]">
+      {tokens}
+    </pre>
+  );
+}
+
+function ModelPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex h-6 cursor-pointer items-center gap-1.5 rounded-full border-0 bg-transparent px-2 text-[11.5px] text-muted-foreground hover:bg-accent"
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+          <span className="font-mono">{value}</span>
+          <I.ChevronDown
+            size={10}
+            className={open ? "rotate-180 transition-transform" : "transition-transform"}
+          />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[260px] gap-0 p-1">
+        <div className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <Trans>Model</Trans>
+        </div>
+        {MODELS.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => {
+              onChange(m.id);
+              setOpen(false);
+            }}
+            className={`flex w-full cursor-pointer items-start gap-2.5 rounded-lg border-0 bg-transparent px-2.5 py-2 text-left hover:bg-accent ${value === m.id ? "bg-accent" : ""}`}
+          >
+            <span
+              className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${value === m.id ? "bg-primary" : "bg-border"}`}
+            />
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="flex items-center gap-1.5">
+                <span className="font-mono text-[12px] text-foreground">
+                  {m.label}
+                </span>
+                {m.default && (
+                  <Badge variant="secondary" mono>
+                    default
+                  </Badge>
+                )}
+              </span>
+              <span className="text-[10.5px] leading-snug text-muted-foreground">
+                {m.hint}
+              </span>
+            </span>
+            {value === m.id && (
+              <I.Check size={12} className="mt-1 shrink-0 text-primary" />
+            )}
+          </button>
+        ))}
+        <div className="mt-1 border-t border-border px-3 pt-2 pb-1 text-[10.5px] text-muted-foreground">
+          <Trans>
+            Configured via{" "}
+            <span className="font-mono text-foreground">ANTHROPIC_API_KEY</span>{" "}
+            on the workeros deployment.
+          </Trans>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function ToolKindBadge({
+  destructive,
+  write,
+}: {
+  destructive: boolean;
+  write: boolean;
+}) {
+  if (destructive) {
+    return (
+      <Badge variant="destructive" mono>
+        destruct
+      </Badge>
+    );
+  }
+  if (write) {
+    return (
+      <Badge variant="outline" mono className="border-amber-500/40 text-amber-700 dark:text-amber-300">
+        write
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" mono className="border-sky-500/40 text-sky-700 dark:text-sky-300">
+      read
+    </Badge>
+  );
+}
+
+function RunStatusIcon({ status }: { status: "ok" | "denied" | "blocked" }) {
+  if (status === "ok") return <I.CheckCircle size={12} className="text-primary" />;
+  if (status === "blocked") return <I.Lock size={12} className="text-muted-foreground" />;
+  return <I.XCircle size={12} className="text-destructive" />;
+}
+
+function relativeWhen(input: string | number): string {
+  const d = new Date(input);
+  const diff = Date.now() - d.getTime();
+  if (!Number.isFinite(diff)) return "";
+  if (diff < 60_000) return "just now";
+  const min = Math.floor(diff / 60_000);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}d ago`;
+  return d.toISOString().slice(0, 10);
+}
+
+function summariseArgs(args: unknown): string {
+  if (!args || typeof args !== "object") return "—";
+  const a = args as Record<string, unknown>;
+  if (typeof a.prompt === "string") return a.prompt.slice(0, 120);
+  if (typeof a.collection === "string") {
+    const filter = a.filter ? " · filter" : "";
+    const sort = typeof a.sort === "string" ? ` · ${a.sort}` : "";
+    return `${a.collection}${filter}${sort}`;
+  }
+  if (typeof a.description === "string") return a.description.slice(0, 120);
+  return JSON.stringify(a).slice(0, 120);
+}
+
+interface RecentRun {
+  id: string;
+  tool: string;
+  query: string;
+  when: string;
+  status: "ok" | "denied" | "blocked";
+  durationMs: number | null;
+  rows: number | null;
+}
+
+const STORAGE_AUTO_RUN = "workeros.askai.autoRun";
+const STORAGE_MODEL = "workeros.askai.model";
+
+const readBoolPref = (key: string, fallback: boolean): boolean => {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (raw == null) return fallback;
+    return raw === "1" || raw === "true";
+  } catch {
+    return fallback;
+  }
+};
+
+const readStringPref = (key: string, fallback: string): string => {
+  if (typeof window === "undefined") return fallback;
+  try {
+    return window.localStorage.getItem(key) ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const writePref = (key: string, value: string): void => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // localStorage unavailable — silent
+  }
+};
+
+export function AskAiPage({
+  pushToast,
+}: {
+  pushToast: (m: string, type?: "success" | "error") => void;
+}) {
+  const { t } = useLingui();
+  const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
+  const [phase, setPhase] = useState<
+    "idle" | "thinking" | "plan" | "running" | "done"
+  >("idle");
+  const [plan, setPlan] = useState<PlanResponse["data"] | null>(null);
+  const [planError, setPlanError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [argsDraft, setArgsDraft] = useState("");
+  const [argsError, setArgsError] = useState<string | null>(null);
+  const [autoRun, setAutoRun] = useState(() =>
+    readBoolPref(STORAGE_AUTO_RUN, true),
+  );
+  const [model, setModel] = useState(() =>
+    readStringPref(STORAGE_MODEL, DEFAULT_MODEL),
+  );
+  const [result, setResult] = useState<RunResponse | null>(null);
+  const [recent, setRecent] = useState<RecentRun[]>([]);
+  const taRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    writePref(STORAGE_AUTO_RUN, autoRun ? "1" : "0");
+  }, [autoRun]);
+  useEffect(() => {
+    writePref(STORAGE_MODEL, model);
+  }, [model]);
+
+  const mapRunRow = (row: ApiActivity): RecentRun => {
+    const action = row.action.startsWith("mcp.")
+      ? row.action.slice(4)
+      : row.action;
+    const payload = row.payload as { args?: unknown; tool?: unknown } | null;
+    const response = row.response as
+      | { ok?: boolean; error?: unknown; rowCount?: number }
+      | null;
+    const status: RecentRun["status"] = response?.ok
+      ? "ok"
+      : typeof response?.error === "string" && /read-only|allowlist/i.test(response.error)
+        ? "blocked"
+        : "denied";
+    return {
+      id: row.id,
+      tool: action,
+      query: summariseArgs(payload?.args),
+      when: relativeWhen(row.createdAt),
+      status,
+      durationMs: row.durationMs,
+      rows: typeof response?.rowCount === "number" ? response.rowCount : null,
+    };
+  };
+
+  const refreshRecent = useCallback(async () => {
+    try {
+      const r = await activityApi.list({ action: "mcp.", limit: 10 });
+      setRecent(r.data.map(mapRunRow));
+    } catch {
+      // Quietly leave the list as-is — the panel just stays empty.
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshRecent();
+  }, [refreshRecent]);
+
+  const isWrite = plan ? WRITE_PATTERN.test(plan.tool) : false;
+  const isDestructive = plan ? DESTRUCTIVE_PATTERN.test(plan.tool) : false;
+
+  const runPlan = useCallback(
+    async (p: PlanResponse["data"]) => {
+      setPhase("running");
+      try {
+        const res = await api<RunResponse>("/api/admin/ai/run", {
+          method: "POST",
+          body: JSON.stringify({ tool: p.tool, args: p.args }),
+        });
+        setResult(res);
+        setPhase("done");
+        if (res.ok) {
+          const count =
+            typeof res.rowCount === "number" ? res.rowCount : undefined;
+          pushToast(
+            count != null
+              ? t`Tool ok — ${count} rows`
+              : t`Tool ok`,
+          );
+        } else {
+          pushToast(res.error ?? t`Tool failed`, "error");
+        }
+        void refreshRecent();
+      } catch (e) {
+        setPhase("plan");
+        pushToast((e as Error).message, "error");
+      }
+    },
+    [pushToast, refreshRecent, t],
+  );
+
+  const submit = useCallback(async () => {
+    const value = prompt.trim();
+    if (!value) return;
+    setPhase("thinking");
+    setPlan(null);
+    setResult(null);
+    setEditing(false);
+    setArgsError(null);
+    setPlanError(null);
+    try {
+      const res = await api<PlanResponse>("/api/admin/ai/plan", {
+        method: "POST",
+        body: JSON.stringify({ prompt: value, model }),
+      });
+      setPlan(res.data);
+      setArgsDraft(JSON.stringify(res.data.args, null, 2));
+      setPhase("plan");
+      if (autoRun && AUTO_RUN_PATTERN.test(res.data.tool)) {
+        await runPlan(res.data);
+      }
+    } catch (e) {
+      setPhase("idle");
+      setPlanError((e as Error).message);
+      pushToast((e as Error).message, "error");
+    }
+  }, [autoRun, model, prompt, pushToast, runPlan]);
+
+  const applyArgs = () => {
+    if (!plan) return;
+    try {
+      const next = JSON.parse(argsDraft) as Record<string, unknown>;
+      setPlan({ ...plan, args: next });
+      setEditing(false);
+      setArgsError(null);
+      pushToast(t`Args updated`);
+    } catch (e) {
+      setArgsError((e as Error).message);
+    }
+  };
+
+  const copyArgs = () => {
+    if (!plan) return;
+    try {
+      navigator.clipboard.writeText(JSON.stringify(plan.args, null, 2));
+      pushToast(t`Args copied`);
+    } catch {
+      // no clipboard — silent
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        title={<Trans>Ask AI</Trans>}
+        badges={
+          <Badge variant="default" mono>
+            <Trans>MCP · {MCP_TOOL_COUNT} tools</Trans>
+          </Badge>
+        }
+        description={
+          <Trans>
+            Translate natural language into Directus-shaped queries, draft schemas,
+            and dispatch any MCP tool — scoped to your role and the per-key
+            allowlist. The same surface Claude Desktop sees.
+          </Trans>
+        }
+      />
+
+      <Tabs value="ask">
+        <TabsList>
+          <TabsTrigger value="ask">
+            <I.Sparkles size={13} />
+            <Trans>Ask</Trans>
+          </TabsTrigger>
+          <TabsTrigger value="tools" disabled title={t`Coming soon`}>
+            <Trans>Tools</Trans>
+          </TabsTrigger>
+          <TabsTrigger value="runs" disabled title={t`Coming soon`}>
+            <Trans>Runs</Trans>
+          </TabsTrigger>
+          <TabsTrigger value="connect" disabled title={t`Coming soon`}>
+            <Trans>Connect</Trans>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[1fr_320px]">
+        <div className="flex min-w-0 flex-col gap-5">
+          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+            <div className="flex items-center gap-2 px-5 pt-4 pb-2">
+              <I.Sparkles size={14} className="text-primary" />
+              <span className="text-[12px] font-medium">
+                <Trans>Ask in natural language</Trans>
+              </span>
+              <div className="ml-auto flex items-center gap-3 text-[11.5px] text-muted-foreground">
+                <ModelPicker value={model} onChange={setModel} />
+                <span className="hidden items-center gap-1.5 sm:inline-flex">
+                  <Trans>auto-run reads</Trans>
+                  <Switch checked={autoRun} onChange={setAutoRun} />
+                </span>
+              </div>
+            </div>
+            <div className="px-5 pb-3">
+              <Textarea
+                ref={taRef}
+                rows={3}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    void submit();
+                  }
+                }}
+                placeholder={t`e.g. posts published in the past 7 days, sorted by view_count desc`}
+                className="min-h-0 rounded-none border-0 bg-transparent p-0 text-[15px] placeholder:text-muted-foreground/70 focus-visible:ring-0"
+              />
+            </div>
+            <div className="flex items-center gap-2 border-t border-border bg-card px-5 py-3">
+              <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+                <kbd className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[10.5px] leading-none text-muted-foreground">
+                  ⌘
+                </kbd>
+                <kbd className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono text-[10.5px] leading-none text-muted-foreground">
+                  ↵
+                </kbd>
+                <span><Trans>to run</Trans></span>
+              </div>
+              <div className="ml-auto flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={I.X}
+                  onClick={() => {
+                    setPrompt("");
+                    setPhase("idle");
+                    setPlan(null);
+                    setResult(null);
+                    setPlanError(null);
+                  }}
+                >
+                  <Trans>Clear</Trans>
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={phase === "thinking" || phase === "running" ? I.Loader : I.Send}
+                  disabled={
+                    !prompt.trim() ||
+                    phase === "thinking" ||
+                    phase === "running"
+                  }
+                  onClick={() => {
+                    void submit();
+                  }}
+                >
+                  {phase === "thinking" ? (
+                    <Trans>Planning…</Trans>
+                  ) : phase === "running" ? (
+                    <Trans>Running…</Trans>
+                  ) : (
+                    <Trans>Run</Trans>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {phase === "idle" && !planError && (
+            <div className="flex flex-wrap gap-2">
+              <span className="mr-1 self-center text-[11.5px] uppercase tracking-wider text-muted-foreground">
+                <Trans>Try</Trans>
+              </span>
+              {EXAMPLES.map((e) => (
+                <Button
+                  key={e.label}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setPrompt(e.prompt);
+                    taRef.current?.focus();
+                  }}
+                >
+                  {e.label}
+                </Button>
+              ))}
+            </div>
+          )}
+
+          {planError && (
+            <div className="rounded-2xl border border-destructive/40 bg-destructive/5 px-5 py-4 text-[12.5px] text-destructive">
+              {planError}
+            </div>
+          )}
+
+          {phase === "thinking" && (
+            <div className="overflow-hidden rounded-2xl border border-border bg-card">
+              <div className="flex flex-col items-start gap-4 px-5 py-7">
+                <div className="flex items-center gap-2.5 text-[13px] font-medium">
+                  <I.Brain size={14} className="text-primary" />
+                  <span><Trans>Planning the tool call…</Trans></span>
+                </div>
+                <div className="font-mono text-[11px] text-muted-foreground">
+                  <Trans>asking {model}…</Trans>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {plan && phase !== "thinking" && phase !== "idle" && (
+            <div className="overflow-hidden rounded-2xl border border-border bg-card">
+              <div className="flex flex-wrap items-center gap-2 px-5 pt-4 pb-2">
+                <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/15 text-primary">
+                  <I.Brain size={13} />
+                </span>
+                <span className="text-[13px] font-semibold">
+                  <Trans>Plan</Trans>
+                </span>
+                <span className="font-mono text-[11.5px] text-muted-foreground">
+                  →
+                </span>
+                <Badge variant="outline" mono>
+                  {plan.tool}
+                </Badge>
+                <ToolKindBadge destructive={isDestructive} write={isWrite} />
+                <div className="ml-auto flex items-center gap-1">
+                  {!editing && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={I.Pencil}
+                      onClick={() => setEditing(true)}
+                      title={t`Edit args`}
+                    >
+                      <span className="sr-only"><Trans>Edit args</Trans></span>
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={I.Copy}
+                    onClick={copyArgs}
+                    title={t`Copy JSON`}
+                  >
+                    <span className="sr-only"><Trans>Copy JSON</Trans></span>
+                  </Button>
+                </div>
+              </div>
+              <div className="px-5 pt-2 pb-1 text-[12.5px] leading-relaxed text-muted-foreground">
+                {plan.rationale}
+              </div>
+              <div className="px-5 py-3">
+                <div className="rounded-xl border border-border bg-muted/40 p-4">
+                  {editing ? (
+                    <>
+                      <Textarea
+                        value={argsDraft}
+                        onChange={(e) => setArgsDraft(e.target.value)}
+                        rows={Math.min(20, argsDraft.split("\n").length + 1)}
+                        className="font-mono text-[12px]"
+                      />
+                      {argsError && (
+                        <div className="mt-2 font-mono text-[11.5px] text-destructive">
+                          {argsError}
+                        </div>
+                      )}
+                      <div className="mt-3 flex gap-2">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          icon={I.Check}
+                          onClick={applyArgs}
+                        >
+                          <Trans>Apply</Trans>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditing(false);
+                            setArgsDraft(JSON.stringify(plan.args, null, 2));
+                            setArgsError(null);
+                          }}
+                        >
+                          <Trans>Cancel</Trans>
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <JsonBlock value={plan.args} />
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 border-t border-border px-5 py-3">
+                <div className="flex flex-wrap items-center gap-3 text-[11.5px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5">
+                    <I.Eye size={12} />
+                    <Trans>Permissions DSL will filter rows</Trans>
+                  </span>
+                  {isWrite && (
+                    <span className="inline-flex items-center gap-1.5 text-[oklch(0.48_0.13_70)] dark:text-[oklch(0.82_0.14_70)]">
+                      <I.AlertTriangle size={12} />
+                      <Trans>Mutation — requires confirmation</Trans>
+                    </span>
+                  )}
+                </div>
+                <div className="ml-auto flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setPlan(null);
+                      setResult(null);
+                      setPhase("idle");
+                    }}
+                  >
+                    <Trans>Reject</Trans>
+                  </Button>
+                  <Button
+                    variant={isDestructive ? "destructive" : "primary"}
+                    size="sm"
+                    icon={
+                      phase === "running"
+                        ? I.Loader
+                        : isDestructive
+                          ? I.AlertTriangle
+                          : I.Play
+                    }
+                    disabled={phase === "running" || editing}
+                    onClick={() => {
+                      void runPlan(plan);
+                    }}
+                  >
+                    {phase === "running" ? (
+                      <Trans>Running…</Trans>
+                    ) : isDestructive ? (
+                      <Trans>Confirm & run</Trans>
+                    ) : isWrite ? (
+                      <Trans>Approve & run</Trans>
+                    ) : (
+                      <Trans>Run</Trans>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {result && (phase === "done" || phase === "running") && (
+            <ResultCard
+              tool={result.tool}
+              ok={result.ok}
+              rowCount={result.rowCount ?? null}
+              durationMs={result.durationMs}
+              result={result.result ?? null}
+              error={result.error ?? null}
+              pending={phase === "running"}
+            />
+          )}
+        </div>
+
+        {/* Recent runs side panel */}
+        <div className="overflow-hidden rounded-2xl border border-border bg-card xl:sticky xl:top-4">
+          <div className="flex items-center gap-2 px-5 pt-4 pb-3">
+            <I.History size={13} className="text-muted-foreground" />
+            <span className="text-[13px] font-semibold">
+              <Trans>Recent runs</Trans>
+            </span>
+            <Badge variant="secondary" mono>
+              {recent.length}
+            </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={I.Refresh}
+              className="ml-auto"
+              onClick={() => {
+                void refreshRecent();
+              }}
+              title={t`Refresh`}
+            >
+              <span className="sr-only"><Trans>Refresh</Trans></span>
+            </Button>
+          </div>
+          {recent.length === 0 ? (
+            <div className="border-t border-border px-5 py-8 text-center text-[12.5px] text-muted-foreground">
+              <Trans>No runs yet — your tool calls will show up here.</Trans>
+            </div>
+          ) : (
+            <ScrollArea className="border-t border-border" viewportClassName="max-h-[480px]">
+              <div>
+                {recent.map((r) => (
+                  <div
+                    key={r.id}
+                    className="flex flex-col gap-1.5 border-b border-border/60 px-4 py-3 last:border-b-0"
+                  >
+                    <div className="flex items-center gap-2 text-[12px]">
+                      <RunStatusIcon status={r.status} />
+                      <span className="flex-1 truncate font-mono text-[11px] text-muted-foreground">
+                        {r.tool}
+                      </span>
+                      <span className="font-mono text-[10.5px] text-muted-foreground">
+                        {r.when}
+                      </span>
+                    </div>
+                    <div className="truncate text-[12.5px] text-foreground/85">
+                      {r.query}
+                    </div>
+                    <div className="flex items-center gap-2 font-mono text-[10.5px] tabular-nums text-muted-foreground">
+                      {r.rows != null && r.rows > 0 && (
+                        <span>{r.rows} <Trans>rows</Trans></span>
+                      )}
+                      {r.durationMs != null && <span>{r.durationMs}ms</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ResultCard({
+  tool,
+  ok,
+  rowCount,
+  durationMs,
+  result,
+  error,
+  pending,
+}: {
+  tool: string;
+  ok: boolean;
+  rowCount: number | null;
+  durationMs: number;
+  result: {
+    content?: Array<{ type: string; text?: string }>;
+    structuredContent?: unknown;
+    isError?: boolean;
+  } | null;
+  error: string | null;
+  pending: boolean;
+}) {
+  const text = useMemo(() => {
+    if (!ok || !result) return null;
+    if (result.structuredContent !== undefined) {
+      return JSON.stringify(result.structuredContent, null, 2);
+    }
+    return (result.content ?? [])
+      .filter((c) => c.type === "text" && typeof c.text === "string")
+      .map((c) => c.text!)
+      .join("\n");
+  }, [ok, result]);
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="flex flex-wrap items-center gap-2 px-5 pt-4 pb-3">
+        <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/15 text-primary">
+          {ok ? <I.CheckCircle size={13} /> : <I.AlertTriangle size={13} />}
+        </span>
+        <span className="text-[13px] font-semibold">
+          {pending ? <Trans>Running…</Trans> : ok ? <Trans>Result</Trans> : <Trans>Error</Trans>}
+        </span>
+        <Badge variant="secondary" mono>
+          {tool}
+        </Badge>
+        <div className="ml-auto flex items-center gap-3 text-[11.5px] text-muted-foreground">
+          {rowCount != null && (
+            <span>
+              <span className="text-muted-foreground/80"><Trans>rows</Trans></span>{" "}
+              <span className="font-mono tabular-nums">{rowCount}</span>
+            </span>
+          )}
+          <span>
+            <span className="text-muted-foreground/80"><Trans>latency</Trans></span>{" "}
+            <span className="font-mono tabular-nums">{durationMs}ms</span>
+          </span>
+        </div>
+      </div>
+      <ScrollArea className="border-t border-border" viewportClassName="max-h-[480px]">
+        <div className="p-4">
+          {ok ? (
+            text ? (
+              <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[12px] leading-[1.55] text-foreground">
+                {text}
+              </pre>
+            ) : (
+              <div className="text-[12px] text-muted-foreground">
+                <Trans>(no body)</Trans>
+              </div>
+            )
+          ) : (
+            <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[12px] leading-[1.55] text-destructive">
+              {error ?? "Tool failed"}
+            </pre>
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}

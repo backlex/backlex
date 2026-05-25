@@ -197,8 +197,10 @@ export const signFile: McpTool = {
   handler: async (args, ctx) => {
     const key = requireKey(args);
     const ttlSeconds = typeof args.ttlSeconds === "number" ? args.ttlSeconds : undefined;
+    // Sentinel-prefix form (`_sign/<key>`), not suffix (`<key>/sign`) —
+    // see the routing note in `routes/storage.ts`.
     const res = await ctx.fetchInternal(
-      `/api/storage/${key.split("/").map(encodeURIComponent).join("/")}/sign`,
+      `/api/storage/_sign/${key.split("/").map(encodeURIComponent).join("/")}`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },

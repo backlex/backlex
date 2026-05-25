@@ -69,6 +69,7 @@ import { metricsRoutes } from "./routes/metrics";
 import { realtimeAdminRoutes } from "./routes/realtime-admin";
 import { advisorRoutes } from "./routes/advisor";
 import { openapiRoutes } from "./routes/openapi";
+import { tenantMcpRoutes, adminMcpRoutes } from "./routes/mcp";
 import type { Env } from "./env";
 
 export type AppBindings = {
@@ -265,6 +266,14 @@ export const createApp = (env: Env) => {
   app.route("/api/graphql", graphqlRoutes);
   app.route("/api", openapiRoutes);
   app.route("/api/_internal/sandbox-rpc", sandboxRpcRoutes);
+  // MCP (Model Context Protocol) — must mount after the routes its tools
+  // sub-fetch into, since the route factories capture the same `app`
+  // reference to issue in-process requests against the existing REST
+  // surface. Two mounts: `/mcp` is open to any authenticated identity
+  // (permissions are enforced by the per-tool sub-fetch); `/api/admin/mcp`
+  // additionally requires the system `admin` role.
+  app.route("/mcp", tenantMcpRoutes(app, env));
+  app.route("/api/admin/mcp", adminMcpRoutes(app, env));
 
   app.onError(errorHandler);
 

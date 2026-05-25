@@ -152,6 +152,22 @@ const isAlreadyExistsError = (e: unknown): boolean => {
   return ALREADY_EXISTS_RE.test(String(e));
 };
 
+/** Pull the deepest message in the Error.cause chain. Drizzle wraps the
+ *  underlying driver error one or two levels deep; the wrapper's `.message`
+ *  is a useless `Failed query: ...` template, and the actual Postgres error
+ *  text lives further in. Surface the leaf message in warning logs so an
+ *  operator can read what really failed without a debugger. */
+const deepestMessage = (e: unknown): string => {
+  let cur: unknown = e;
+  let deepest = "(no message)";
+  for (let depth = 0; cur && depth < 5; depth++) {
+    const msg = (cur as { message?: unknown }).message;
+    if (typeof msg === "string" && msg.length > 0) deepest = msg;
+    cur = (cur as { cause?: unknown }).cause;
+  }
+  return deepest;
+};
+
 const apply = async (a: Applier): Promise<void> => {
   await ensureTable(a);
   const seen = await fetchApplied(a);
@@ -159,26 +175,47 @@ const apply = async (a: Applier): Promise<void> => {
 
   for (const m of migrations) {
     if (seen.has(m.name)) continue;
-    for (const stmt of splitStatements(m.sql)) {
-      try {
-        await runStatement(a, sql.raw(stmt));
-      } catch (e) {
-        if (isAlreadyExistsError(e)) {
-          // Schema state matches what this migration would create — usually
-          // because the table/column was provisioned by an out-of-band
-          // process (drizzle-kit migrate in tests; an earlier manual
-          // `bun run db:migrate:pg` in production). Mark the migration as
-          // applied and move on; don't replay every other statement in
-          // the file.
-          continue;
+    // Per-migration try/catch: one stuck migration must not abort the rest
+    // of the bundle. Before this guard, a non-idempotent failure in
+    // migration N left N+1..N+k unapplied AND the ledger stale, forcing
+    // a manual recovery (we hit this on Neon-Postgres production with
+    // migration #13 of 37, where the auto-migrate ledger stuck at 12).
+    //
+    // Per-statement idempotency tolerance still runs INSIDE this block
+    // (every "already exists"-style error is skipped silently). Anything
+    // it doesn't recognise — typically a driver- or DB-specific error
+    // shape we haven't yet learned to classify — gets caught here, the
+    // migration is skipped with a warning, and the loop continues. The
+    // ledger row is NOT inserted so the next cold start retries this
+    // migration in isolation.
+    try {
+      for (const stmt of splitStatements(m.sql)) {
+        try {
+          await runStatement(a, sql.raw(stmt));
+        } catch (e) {
+          if (isAlreadyExistsError(e)) {
+            // Schema state matches what this migration would create —
+            // usually because the table/column was provisioned by an
+            // out-of-band process (drizzle-kit migrate in tests; an
+            // earlier manual `bun run db:migrate:pg` in production).
+            // Mark the statement as effectively applied and move on;
+            // don't replay every other statement in the file.
+            continue;
+          }
+          throw e;
         }
-        throw e;
       }
+      await runStatement(
+        a,
+        sql`INSERT INTO __workeros_migrations (name) VALUES (${m.name})`,
+      );
+    } catch (e) {
+      // Surface the deepest cause-chain message so the operator sees the
+      // actual driver/DB error, not just the drizzle wrapper template.
+      console.warn(
+        `[auto-migrate] migration "${m.name}" skipped: ${deepestMessage(e)}`,
+      );
     }
-    await runStatement(
-      a,
-      sql`INSERT INTO __workeros_migrations (name) VALUES (${m.name})`,
-    );
   }
 };
 

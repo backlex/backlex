@@ -467,12 +467,12 @@ msgid "{key} deleted."
 msgstr "{key} silindi."
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "{name} ok"
-msgstr "{name} başarılı"
+#~ msgid "{name} ok"
+#~ msgstr "{name} başarılı"
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "{name} ok — {n} rows"
-msgstr "{name} başarılı — {n} satır"
+#~ msgid "{name} ok — {n} rows"
+#~ msgstr "{name} başarılı — {n} satır"
 
 #: src/client/components/social-buttons.tsx
 msgid "{provider} sign-in"
@@ -7682,6 +7682,10 @@ msgstr "Kenar çubuğunu aç/kapat"
 #: src/client/components/auth-shell.tsx
 msgid "Toggle theme"
 msgstr "Temayı değiştir"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Toggle tools below to edit the allowlist."
+msgstr "İzin listesini düzenlemek için aşağıdaki araçları açıp kapatın."
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Tool"

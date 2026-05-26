@@ -211,46 +211,50 @@ function ModelPicker({
         <div className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           <Trans>Model</Trans>
         </div>
-        {grouped.map((g, gi) => (
-          <div key={g.provider} className={gi > 0 ? "mt-1 border-t border-border/60 pt-1" : ""}>
-            <div className="px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/80">
-              {g.provider}
-            </div>
-            {g.items.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => {
-                  onChange(m.id);
-                  setOpen(false);
-                }}
-                className={`flex w-full cursor-pointer items-start gap-2.5 rounded-lg border-0 bg-transparent px-2.5 py-2 text-left hover:bg-accent ${value === m.id ? "bg-accent" : ""}`}
-              >
-                <span
-                  className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${value === m.id ? "bg-primary" : "bg-border"}`}
-                />
-                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="flex items-center gap-1.5">
-                    <span className="font-mono text-[12px] text-foreground">
-                      {m.label}
+        <ScrollArea viewportClassName="max-h-[360px]">
+          <div>
+            {grouped.map((g, gi) => (
+              <div key={g.provider} className={gi > 0 ? "mt-1 border-t border-border/60 pt-1" : ""}>
+                <div className="px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                  {g.provider}
+                </div>
+                {g.items.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      onChange(m.id);
+                      setOpen(false);
+                    }}
+                    className={`flex w-full cursor-pointer items-start gap-2.5 rounded-lg border-0 bg-transparent px-2.5 py-2 text-left hover:bg-accent ${value === m.id ? "bg-accent" : ""}`}
+                  >
+                    <span
+                      className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${value === m.id ? "bg-primary" : "bg-border"}`}
+                    />
+                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="flex items-center gap-1.5">
+                        <span className="font-mono text-[12px] text-foreground">
+                          {m.label}
+                        </span>
+                        {m.default && (
+                          <Badge variant="secondary" mono>
+                            default
+                          </Badge>
+                        )}
+                      </span>
+                      <span className="text-[10.5px] leading-snug text-muted-foreground">
+                        {m.hint}
+                      </span>
                     </span>
-                    {m.default && (
-                      <Badge variant="secondary" mono>
-                        default
-                      </Badge>
+                    {value === m.id && (
+                      <I.Check size={12} className="mt-1 shrink-0 text-primary" />
                     )}
-                  </span>
-                  <span className="text-[10.5px] leading-snug text-muted-foreground">
-                    {m.hint}
-                  </span>
-                </span>
-                {value === m.id && (
-                  <I.Check size={12} className="mt-1 shrink-0 text-primary" />
-                )}
-              </button>
+                  </button>
+                ))}
+              </div>
             ))}
           </div>
-        ))}
+        </ScrollArea>
         <div className="mt-1 border-t border-border px-3 pt-2 pb-1 text-[10.5px] text-muted-foreground">
           <Trans>
             Configured via{" "}
@@ -1285,11 +1289,16 @@ function ToolsTab({
   const [tools, setTools] = useState<McpToolDescriptor[] | null>(null);
   const [toolsLoading, setToolsLoading] = useState(true);
   const [q, setQ] = useState("");
-  const [openGroups, setOpenGroups] = useState<Set<string>>(
-    () => new Set(["schema", "collections", "ai"]),
-  );
-  const [trying, setTrying] = useState<string | null>(null);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set<string>());
   const [modalOpen, setModalOpen] = useState(false);
+  // Optimistic shadow of the selected key's `mcpTools` field so per-tool
+  // switches feel instant. `undefined` means "use the server-side value";
+  // we only populate it once the user toggles something, and reset when
+  // the selection changes or the parent refreshes the key list.
+  const [pendingAllowlist, setPendingAllowlist] = useState<string[] | null | undefined>(
+    undefined,
+  );
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setToolsLoading(true);
@@ -1347,7 +1356,30 @@ function ToolsTab({
 
   const selectedKey = keys.find((k) => k.id === selectedKeyId) ?? null;
   const totalTools = tools?.length ?? 0;
-  const allowlistSize = selectedKey?.mcpTools?.length ?? null;
+  // Pending state takes precedence so the UI never flickers back to the
+  // server value between an optimistic toggle and the debounced PATCH.
+  const effectiveAllowlist: string[] | null =
+    pendingAllowlist !== undefined ? pendingAllowlist : selectedKey?.mcpTools ?? null;
+  const allowlistSize = effectiveAllowlist === null ? null : effectiveAllowlist.length;
+
+  // Drop optimistic state whenever the picker switches to a different key,
+  // otherwise the previous key's pending changes would bleed onto the next
+  // key's switches until the user toggles something.
+  useEffect(() => {
+    setPendingAllowlist(undefined);
+  }, [selectedKeyId]);
+
+  // Same idea after a successful refetch — the parent has the up-to-date
+  // server value and our optimistic shadow is no longer needed.
+  useEffect(() => {
+    setPendingAllowlist(undefined);
+  }, [selectedKey?.mcpTools]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   const patchGuard = async (patch: {
     mcpReadOnly?: boolean;
@@ -1366,27 +1398,47 @@ function ToolsTab({
     }
   };
 
-  const tryTool = async (name: string) => {
-    setTrying(name);
-    try {
-      const res = await api<{ ok: boolean; error?: string; rowCount?: number | null }>(
-        "/api/admin/ai/run",
-        {
-          method: "POST",
-          body: JSON.stringify({ tool: name, args: {} }),
-        },
-      );
-      if (res.ok) {
-        const n = res.rowCount;
-        pushToast(typeof n === "number" ? t`${name} ok — ${n} rows` : t`${name} ok`);
-      } else {
-        pushToast(res.error ?? t`Tool failed`, "error");
-      }
-    } catch (e) {
-      pushToast((e as Error).message, "error");
-    } finally {
-      setTrying(null);
+  // Per-row switch handler. Semantics:
+  //   - server `null`  → every switch shows ON (permissive). Flipping a
+  //     row OFF activates allowlist mode with every other tool included.
+  //   - server `[]`    → every switch shows OFF. Flipping ON adds X.
+  //   - server `[…]`   → membership; flip adds/removes the name.
+  // Local state updates immediately; the actual PATCH is debounced 200ms
+  // so a quick burst of toggles collapses into one network round-trip.
+  const toggleTool = (name: string, next: boolean) => {
+    if (!selectedKey) return;
+    if (totalTools === 0) return;
+    const allToolNames = tools?.map((t) => t.name) ?? [];
+    const current = effectiveAllowlist;
+    let nextAllowlist: string[];
+    if (current === null) {
+      if (next) return;
+      nextAllowlist = allToolNames.filter((n) => n !== name);
+    } else if (next) {
+      if (current.includes(name)) return;
+      nextAllowlist = [...current, name];
+    } else {
+      if (!current.includes(name)) return;
+      nextAllowlist = current.filter((n) => n !== name);
     }
+    setPendingAllowlist(nextAllowlist);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      void (async () => {
+        try {
+          await api(`/api/api-keys/${selectedKey.id}/mcp-guards`, {
+            method: "PATCH",
+            body: JSON.stringify({ mcpTools: nextAllowlist }),
+          });
+          void refreshKeys();
+        } catch (e) {
+          // Revert the optimistic edit and surface the error — the user
+          // sees the switch snap back so they know the change didn't land.
+          setPendingAllowlist(undefined);
+          pushToast((e as Error).message, "error");
+        }
+      })();
+    }, 200);
   };
 
   return (
@@ -1453,53 +1505,56 @@ function ToolsTab({
                     </button>
                     {open && (
                       <div className="border-t border-border/60 bg-muted/30">
-                        {g.tools.map((tool) => (
-                          <div
-                            key={tool.name}
-                            className="grid grid-cols-[1fr_auto] items-center gap-3 border-b border-border/40 px-5 py-3 last:border-b-0"
-                          >
-                            <div className="flex min-w-0 flex-col gap-0.5">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="font-mono text-[12.5px]">
-                                  {tool.name}
-                                </span>
-                                <ToolKindPill kind={tool.kind} />
-                                {tool.adminOnly && (
-                                  <Badge
-                                    variant="outline"
-                                    mono
-                                    className="border-amber-500/40 text-amber-700 dark:text-amber-300"
-                                  >
-                                    admin
-                                  </Badge>
-                                )}
-                                {tool.name.startsWith("ai.") && (
-                                  <Badge
-                                    variant="outline"
-                                    mono
-                                    className="border-sky-500/40 text-sky-700 dark:text-sky-300"
-                                  >
-                                    ai
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="m-0 truncate text-[11.5px] text-muted-foreground">
-                                {tool.description}
-                              </p>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              icon={trying === tool.name ? I.Loader : I.Play}
-                              disabled={trying !== null}
-                              onClick={() => {
-                                void tryTool(tool.name);
-                              }}
+                        {g.tools.map((tool) => {
+                          // Switch state: null effective allowlist ⇒ everything
+                          // ON (permissive); array ⇒ membership check.
+                          const enabled =
+                            effectiveAllowlist === null
+                              ? true
+                              : effectiveAllowlist.includes(tool.name);
+                          return (
+                            <div
+                              key={tool.name}
+                              className="grid grid-cols-[1fr_auto] items-center gap-3 border-b border-border/40 px-5 py-3 last:border-b-0"
                             >
-                              <Trans>Try</Trans>
-                            </Button>
-                          </div>
-                        ))}
+                              <div className="flex min-w-0 flex-col gap-0.5">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-mono text-[12.5px]">
+                                    {tool.name}
+                                  </span>
+                                  <ToolKindPill kind={tool.kind} />
+                                  {tool.adminOnly && (
+                                    <Badge
+                                      variant="outline"
+                                      mono
+                                      className="border-amber-500/40 text-amber-700 dark:text-amber-300"
+                                    >
+                                      admin
+                                    </Badge>
+                                  )}
+                                  {tool.name.startsWith("ai.") && (
+                                    <Badge
+                                      variant="outline"
+                                      mono
+                                      className="border-sky-500/40 text-sky-700 dark:text-sky-300"
+                                    >
+                                      ai
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="m-0 truncate text-[11.5px] text-muted-foreground">
+                                  {tool.description}
+                                </p>
+                              </div>
+                              <Switch
+                                checked={enabled}
+                                disabled={!selectedKey}
+                                aria-label={tool.name}
+                                onChange={(next) => toggleTool(tool.name, next)}
+                              />
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -1555,6 +1610,11 @@ function ToolsTab({
                       <Trans>{allowlistSize} of {totalTools} tools enabled.</Trans>
                     )}
                   </span>
+                  {selectedKey !== null && (
+                    <span className="mt-1 text-[11px] text-muted-foreground">
+                      <Trans>Toggle tools below to edit the allowlist.</Trans>
+                    </span>
+                  )}
                 </div>
                 <Button
                   variant="outline"

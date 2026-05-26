@@ -116,6 +116,10 @@ msgstr "(öğe)"
 msgid "(new template)"
 msgstr "(yeni şablon)"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "(no body)"
+msgstr "(boş)"
+
 #: src/client/admin/relational-pickers.tsx
 msgid "(no folder)"
 msgstr "(klasör yok)"
@@ -302,6 +306,12 @@ msgstr "{0} / {1}"
 #: src/client/admin/adopt-wizard.tsx
 msgid "{0} of {1} columns mapped"
 msgstr "{1} sütunun {0} tanesi eşlendi"
+
+#. placeholder {0}: allowlist.size
+#. placeholder {1}: tools?.length ?? 0
+#: src/client/components/mcp-key-modal.tsx
+msgid "{0} of {1} tools allowed. Uncheck all to remove the allowlist."
+msgstr "{1} araçtan {0} tanesi izinli. Tümünü kaldırmak için işaretleri kaldırın."
 
 #. placeholder {0}: selected.size
 #: src/client/admin/app.tsx
@@ -833,6 +843,10 @@ msgstr "Sıralama ekle"
 msgid "Add step"
 msgstr "Adım ekle"
 
+#: src/client/components/mcp-key-modal.tsx
+msgid "Add to <0>~/Library/Application Support/Claude/claude_desktop_config.json</0> (macOS) and restart Claude Desktop."
+msgstr "<0>~/Library/Application Support/Claude/claude_desktop_config.json</0> dosyasına ekle (macOS) ve Claude Desktop'ı yeniden başlat."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Add to false branch"
 msgstr "Yanlış dalına ekle"
@@ -972,6 +986,7 @@ msgid "All statuses"
 msgstr "Tüm durumlar"
 
 #: src/client/admin/condition-editor.tsx
+#: src/client/components/mcp-key-modal.tsx
 msgid "Allow all"
 msgstr "Tümüne izin ver"
 
@@ -1061,6 +1076,7 @@ msgid "Applied to users with no local override yet."
 msgstr "Henüz yerel geçersiz kılma ayarı yapmamış kullanıcılara uygulanır."
 
 #: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/pages/ask-ai.tsx
 msgid "Apply"
 msgstr "Uygula"
 
@@ -1071,6 +1087,10 @@ msgstr "Seçime uygula:"
 #: src/client/admin/adopt-wizard.tsx
 msgid "Applying…"
 msgstr "Uygulanıyor…"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Approve & run"
+msgstr "Onayla ve çalıştır"
 
 #: src/client/admin/item-views.tsx
 msgid "April"
@@ -1105,6 +1125,14 @@ msgstr "arşivlendi"
 msgid "Archived"
 msgstr "Arşivlendi"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Args copied"
+msgstr "Argümanlar kopyalandı"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Args updated"
+msgstr "Argümanlar güncellendi"
+
 #: src/client/admin/collection-settings.tsx
 msgid "asc"
 msgstr "artan"
@@ -1112,6 +1140,23 @@ msgstr "artan"
 #: src/client/admin/collection-settings.tsx
 msgid "Ascending"
 msgstr "Artan"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Ask"
+msgstr "Sor"
+
+#: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/ui.tsx
+msgid "Ask AI"
+msgstr "Yapay zekâya sor"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Ask in natural language"
+msgstr "Doğal dilde sor"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "asking {model}…"
+msgstr "{model} sorgulanıyor…"
 
 #: src/client/admin/storage.tsx
 msgid "Aspect-cropping active. Focal point picks which area is kept."
@@ -1190,6 +1235,10 @@ msgstr "Düzenlenene kadar başlıktan otomatik türetilir."
 #: src/client/admin/pages/settings.tsx
 msgid "Auto-detected from <0>env</0> bindings."
 msgstr "<0>env</0> bağlamalarından otomatik algılandı."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "auto-run reads"
+msgstr "okuma sorgularını otomatik çalıştır"
 
 #: src/client/admin/parity/translations.tsx
 msgid "Auto-translate"
@@ -1283,6 +1332,14 @@ msgstr "Bağlamalar yenilendi."
 msgid "Blank"
 msgstr "Boş"
 
+#: src/client/components/mcp-key-modal.tsx
+msgid "Block all"
+msgstr "Tümünü engelle"
+
+#: src/client/pages/api-keys.tsx
+msgid "Block every write tool (insert / update / delete / invoke / …) when this key is used through the MCP server. REST authorization is unaffected. Allowlist can be configured per-key after creation."
+msgstr "Bu anahtar MCP sunucusu üzerinden kullanıldığında her yazma aracını engeller (insert / update / delete / invoke / …). REST yetkilendirmesi etkilenmez. İzin listesi oluşturulduktan sonra anahtar bazında ayarlanabilir."
+
 #: src/client/admin/parity/app-users.tsx
 msgid "Blocks sign-in and drops all active sessions immediately."
 msgstr "Girişi engeller ve tüm etkin oturumları hemen sonlandırır."
@@ -1353,6 +1410,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/edit-field.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/items.tsx
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
@@ -1458,8 +1516,13 @@ msgstr "Bu örneği sahiplen"
 msgid "Claiming…"
 msgstr "Sahipleniliyor…"
 
+#: src/client/components/mcp-key-modal.tsx
+msgid "Claude Desktop"
+msgstr "Claude Desktop"
+
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/items.tsx
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 #: src/client/admin/relational-pickers.tsx
@@ -1531,6 +1594,7 @@ msgstr "kapat"
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/sheet.tsx
+#: src/client/components/mcp-key-modal.tsx
 #: src/client/pages/openapi-export.tsx
 msgid "Close"
 msgstr "Kapat"
@@ -1624,6 +1688,10 @@ msgstr "Sütun:"
 msgid "column: <0>{0}</0>"
 msgstr "sütun: <0>{0}</0>"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Coming soon"
+msgstr "Yakında"
+
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip."
 msgstr "Virgül veya boşlukla ayrılmış. Ayarlandığında, diğer alan adlarından gelen e-posta görünümlü kullanıcı adları LDAP sorgusundan önce reddedilir."
@@ -1699,11 +1767,19 @@ msgstr "Giriş yöntemlerini, MFA'yı ve oturum politikasını yapılandırın. 
 msgid "Configure this provider (add a Client ID) before enabling it"
 msgstr "Etkinleştirmeden önce bu sağlayıcıyı yapılandırın (Client ID ekleyin)"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Configured via <0>ANTHROPIC_API_KEY</0> on the workeros deployment."
+msgstr "Workeros dağıtımında <0>ANTHROPIC_API_KEY</0> üzerinden yapılandırılır."
+
 #: src/client/admin/relational-pickers.tsx
 #: src/client/admin/sheet.tsx
 #: src/client/components/confirm-action.tsx
 msgid "Confirm"
 msgstr "Onayla"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Confirm & run"
+msgstr "Onayla ve çalıştır"
 
 #: src/client/admin/account-page.tsx
 msgid "Confirm new password"
@@ -1712,6 +1788,18 @@ msgstr "Yeni parolayı onayla"
 #: src/client/pages/reset-password.tsx
 msgid "Confirm password"
 msgstr "Parolayı onayla"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Connect"
+msgstr "Bağlan"
+
+#: src/client/pages/api-keys.tsx
+msgid "Connect MCP"
+msgstr "MCP'yi bağla"
+
+#: src/client/components/mcp-key-modal.tsx
+msgid "Connect MCP — {keyName}"
+msgstr "MCP'yi bağla — {keyName}"
 
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/settings.tsx
@@ -1747,6 +1835,7 @@ msgid "copied"
 msgstr "kopyalandı"
 
 #: src/client/admin/item-collaboration.tsx
+#: src/client/components/mcp-key-modal.tsx
 msgid "Copied"
 msgstr "Kopyalandı"
 
@@ -1774,6 +1863,7 @@ msgstr "kopyala"
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
+#: src/client/components/mcp-key-modal.tsx
 #: src/client/pages/openapi-export.tsx
 msgid "Copy"
 msgstr "Kopyala"
@@ -1791,9 +1881,17 @@ msgstr "Düzeltmeyi kopyala"
 msgid "Copy id"
 msgstr "ID'yi kopyala"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Copy JSON"
+msgstr "JSON'u kopyala"
+
 #: src/client/admin/storage.tsx
 msgid "Copy URL"
 msgstr "URL'yi kopyala"
+
+#: src/client/components/mcp-key-modal.tsx
+msgid "Copying snippet"
+msgstr "Snippet kopyalanıyor"
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "corp.example.com, contractor.example.com"
@@ -1962,6 +2060,10 @@ msgstr "Oluşturuluyor…"
 msgid "Cron expression"
 msgstr "Cron ifadesi"
 
+#: src/client/components/mcp-key-modal.tsx
+msgid "curl"
+msgstr "curl"
+
 #: src/client/pages/openapi-export.tsx
 msgid "curl example"
 msgstr "curl örneği"
@@ -1983,6 +2085,10 @@ msgstr "Mevcut parola"
 #: src/client/admin/parity/revisions.tsx
 msgid "Current state"
 msgstr "Mevcut durum"
+
+#: src/client/components/mcp-key-modal.tsx
+msgid "Cursor"
+msgstr "Cursor"
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Custom CA PEM (optional)"
@@ -2417,6 +2523,10 @@ msgstr "Dinamik şema. Her koleksiyon çalışma zamanında fiziksel bir <0>c_<s
 msgid "e.g. 30s, 5m, 1h, 2d. ≤ 30s sleeps inline; longer waits persist to the scheduler."
 msgstr "örn. 30s, 5m, 1h, 2d. ≤ 30s satır içi bekler; daha uzun bekleme süresi zamanlayıcıya aktarılır."
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "e.g. posts published in the past 7 days, sorted by view_count desc"
+msgstr "örn: son 7 günde yayınlanmış postlar, view_count'a göre azalan"
+
 #: src/client/admin/collections-index.tsx
 msgid "Each collection is a physical table created at runtime. Drag fields, set permissions, or expose REST/GraphQL — all without writing migrations."
 msgstr "Her koleksiyon, çalışma zamanında oluşturulan fiziksel bir tablodur. Alanları sürükleyin, izinleri ayarlayın veya REST/GraphQL olarak gösterin — tüm bunlar migrasyon yazmadan."
@@ -2447,6 +2557,10 @@ msgstr "{0} düzenle"
 #: src/client/admin/edit-field.tsx
 msgid "Edit <0>{0}</0> <1>{1}</1>"
 msgstr "<0>{0}</0> <1>{1}</1> düzenle"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Edit args"
+msgstr "Argümanları düzenle"
 
 #: src/client/admin/permissions-matrix.tsx
 msgid "edit conditions below ↓"
@@ -2658,6 +2772,10 @@ msgstr "Ortam değişkenleri burada salt okunur"
 msgid "err"
 msgstr "hata"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Error"
+msgstr "Hata"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Error handling"
 msgstr "Hata işleme"
@@ -2696,6 +2814,10 @@ msgstr "Olay deseni"
 #: src/client/admin/pages/webhooks.tsx
 msgid "Events"
 msgstr "Olaylar"
+
+#: src/client/components/mcp-key-modal.tsx
+msgid "Every MCP tool is callable, subject to permissions. Toggle a tool below to switch to allowlist mode."
+msgstr "Her MCP aracı izinler dahilinde çağrılabilir. Aşağıdan bir aracı kapatarak izin listesi moduna geç."
 
 #: src/client/admin/parity/revisions.tsx
 msgid "Every write is versioned. Inspect, diff, or revert any prior state."
@@ -3646,6 +3768,10 @@ msgstr "Son görülme"
 msgid "Last write"
 msgstr "Son yazma"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "latency"
+msgstr "gecikme"
+
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "LDAP / Active Directory"
 msgstr "LDAP / Active Directory"
@@ -3774,6 +3900,14 @@ msgstr "Daha fazla yükle"
 #: src/client/pages/api-keys.tsx
 msgid "Loading API keys"
 msgstr "API anahtarları yükleniyor"
+
+#: src/client/components/mcp-key-modal.tsx
+msgid "Loading MCP tools"
+msgstr "MCP araçları yükleniyor"
+
+#: src/client/components/mcp-key-modal.tsx
+msgid "Loading tool catalog…"
+msgstr "Araç kataloğu yükleniyor…"
 
 #: src/client/admin/pages/logs.tsx
 msgid "Loading…"
@@ -3926,6 +4060,27 @@ msgstr "En fazla 80 karakter."
 msgid "May"
 msgstr "Mayıs"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "MCP · {MCP_TOOL_COUNT} tools"
+msgstr "MCP · {MCP_TOOL_COUNT} araç"
+
+#: src/client/components/mcp-key-modal.tsx
+msgid "MCP endpoint URL"
+msgstr "MCP endpoint URL'i"
+
+#: src/client/pages/api-keys.tsx
+msgid "MCP read-only"
+msgstr "MCP salt okunur"
+
+#: src/client/pages/api-keys.tsx
+msgid "MCP read-only mode"
+msgstr "MCP salt okunur modu"
+
+#. placeholder {0}: k.mcpTools.length
+#: src/client/pages/api-keys.tsx
+msgid "MCP: {0} tool(s)"
+msgstr "MCP: {0} araç"
+
 #: src/client/admin/members-panel.tsx
 msgid "Member"
 msgstr "Üye"
@@ -3983,6 +4138,10 @@ msgstr "Bu kaydı salt okunur olarak gösteren bir genel bağlantı oluşturun �
 #: src/client/admin/parity/translations.tsx
 msgid "Missing ({0})"
 msgstr "Eksik ({0})"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Model"
+msgstr "Model"
 
 #: src/client/admin/item-views.tsx
 msgid "Mon"
@@ -4060,6 +4219,10 @@ msgstr "http:// veya https:// ile başlamalıdır"
 #: src/client/admin/collection-settings.tsx
 msgid "Mustache-style template for row display in pickers and references."
 msgstr "Seçicilerde ve referanslarda satır görüntülemek için Mustache tarzı şablon."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Mutation — requires confirmation"
+msgstr "Mutasyon — onay gerektirir"
 
 #: src/client/pages/graphql.tsx
 msgid "Mutations"
@@ -4510,6 +4673,10 @@ msgstr "\"{q}\" ile eşleşen satır yok."
 #: src/client/admin/parity/insights.tsx
 msgid "No rows returned."
 msgstr "Satır döndürülmedi."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "No runs yet — your tool calls will show up here."
+msgstr "Henüz çalışma yok — araç çağrıların burada görünecek."
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "No SAML providers configured. Add one to enable IdP-based SSO for this workspace's end-users."
@@ -4998,6 +5165,10 @@ msgstr "İzinler"
 msgid "Permissions (per action)"
 msgstr "İzinler (eylem başına)"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Permissions DSL will filter rows"
+msgstr "İzin DSL'i satırları filtreleyecek"
+
 #: src/client/admin/permissions-matrix.tsx
 msgid "Permissions for {activeRole}"
 msgstr "{activeRole} için izinler"
@@ -5174,6 +5345,18 @@ msgstr "Koleksiyon olaylarını Slack'e, API'nize veya herhangi bir HTTPS uç no
 #: src/client/admin/pages/settings.tsx
 msgid "plain"
 msgstr "sade"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Plan"
+msgstr "Plan"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Planning the tool call…"
+msgstr "Araç çağrısı planlanıyor…"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Planning…"
+msgstr "Planlanıyor…"
 
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collection-settings.tsx
@@ -5433,6 +5616,10 @@ msgstr "Oku"
 msgid "read-only"
 msgstr "salt okunur"
 
+#: src/client/components/mcp-key-modal.tsx
+msgid "Read-only mode"
+msgstr "Salt okunur mod"
+
 #: src/client/admin/parity/insights.tsx
 msgid "read-only SELECT against the workspace database"
 msgstr "çalışma alanı veritabanına karşı salt okunur SELECT"
@@ -5471,6 +5658,10 @@ msgstr "Son teslimatlar"
 msgid "Recent errors"
 msgstr "Son hatalar"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Recent runs"
+msgstr "Son çalışmalar"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Recipient (userId)"
 msgstr "Alıcı (userId)"
@@ -5499,6 +5690,7 @@ msgstr "/api/openapi.json yeniden çek"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/realtime.tsx
 #: src/client/admin/pages/schema-graph.tsx
@@ -5522,6 +5714,10 @@ msgstr "Yenilendi."
 msgid "Refreshing…"
 msgstr "Yenileniyor…"
 
+#: src/client/components/mcp-key-modal.tsx
+msgid "Refuses every write tool through MCP for this key — agent can read everything its permissions allow but cannot mutate."
+msgstr "Bu anahtar üzerinden MCP'deki her yazma aracını reddeder — ajan izinlerinin tüm okumalarını yapabilir, ama mutasyon yapamaz."
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Register a custom OpenID Connect identity provider."
 msgstr "Özel bir OpenID Connect kimlik sağlayıcısı kaydet."
@@ -5533,6 +5729,10 @@ msgstr "Fiziksel bir tabloyu workeros koleksiyonu olarak kaydet. Tabloda hiç DD
 #: src/client/admin/collections-index.tsx
 msgid "Register a table that already exists in your database. No DDL is run on the table — workeros only writes its own metadata."
 msgstr "Veritabanınızda zaten var olan bir tabloyu kaydet. Tabloda hiç DDL çalıştırılmaz — workeros yalnızca kendi meta verilerini yazar."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Reject"
+msgstr "Reddet"
 
 #: src/client/admin/edit-field.tsx
 msgid "Reject inserts/updates that omit this column."
@@ -5773,6 +5973,7 @@ msgstr "{0} kaynağından geri yüklendi (kuru çalışma)."
 msgid "Restricts the authenticated role to its own rows. Pick where ownership lives — a side table, the conventional <0>owner_id</0> column, or an aliased column."
 msgstr "Kimliği doğrulanmış rolü yalnızca kendi satırlarıyla sınırlar. Sahipliğin nerede olduğunu seçin — yan tablo, alışılmış <0>owner_id</0> sütunu veya takma adlı bir sütun."
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Result"
 msgstr "Sonuç"
@@ -5941,6 +6142,7 @@ msgstr "satır sayısı (alan gerekmez)"
 msgid "Row id"
 msgstr "Satır ID"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/parity/database.tsx
 msgid "rows"
 msgstr "satırlar"
@@ -5971,6 +6173,7 @@ msgid "rules"
 msgstr "kurallar"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Run"
@@ -5994,6 +6197,7 @@ msgid "Run test"
 msgstr "Test çalıştır"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/admin/parity/insights.tsx
@@ -6004,6 +6208,10 @@ msgstr "Çalışıyor…"
 #: src/client/admin/pages/flows.tsx
 msgid "runs"
 msgstr "çalışmalar"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Runs"
+msgstr "Çalışmalar"
 
 #: src/client/admin/flow-builder.tsx
 msgid "runs daily at 09:00 UTC"
@@ -6049,6 +6257,10 @@ msgstr "Kum havuzlu JS. Manuel çağrı için HTTP, pub-sub tetikleyiciler için
 msgid "Sandboxed JS. Returns into <0>$last</0>."
 msgstr "Kum havuzlu JS. <0>$last</0> değişkenine döner."
 
+#: src/client/components/mcp-key-modal.tsx
+msgid "Sanity-check the endpoint before wiring it into an agent."
+msgstr "Endpoint'i bir ajana bağlamadan önce doğrula."
+
 #: src/client/admin/item-views.tsx
 msgid "Sat"
 msgstr "Cmt"
@@ -6092,6 +6304,10 @@ msgstr "Alanı kaydet"
 msgid "Save flow"
 msgstr "Akışı kaydet"
 
+#: src/client/components/mcp-key-modal.tsx
+msgid "Save guards"
+msgstr "Korumaları kaydet"
+
 #: src/client/admin/storage.tsx
 msgid "Save metadata"
 msgstr "Meta verileri kaydet"
@@ -6122,6 +6338,10 @@ msgstr "<0>saved_panels</0> tablosunda satır olarak kaydedildi. Koleksiyon pane
 msgid "Saved as snippet."
 msgstr "Kod parçacığı olarak kaydedildi."
 
+#: src/client/components/mcp-key-modal.tsx
+msgid "Saving MCP guards"
+msgstr "MCP korumaları kaydediliyor"
+
 #: src/client/admin/account-page.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/parity/app-users.tsx
@@ -6130,6 +6350,7 @@ msgstr "Kod parçacığı olarak kaydedildi."
 #: src/client/admin/parity/translations.tsx
 #: src/client/admin/sheet.tsx
 #: src/client/admin/storage.tsx
+#: src/client/components/mcp-key-modal.tsx
 #: src/client/pages/reset-password.tsx
 msgid "Saving…"
 msgstr "Kaydediliyor…"
@@ -6482,6 +6703,10 @@ msgstr "Passkey ayarlanıyor…"
 #: src/client/admin/ui.tsx
 msgid "Settings"
 msgstr "Ayarlar"
+
+#: src/client/components/mcp-key-modal.tsx
+msgid "Settings → MCP → Add new MCP server → paste the JSON."
+msgstr "Ayarlar → MCP → Yeni MCP sunucusu ekle → JSON'u yapıştır."
 
 #: src/client/admin/pages/settings.tsx
 msgid "Settings saved."
@@ -7203,6 +7428,10 @@ msgstr "Alıcı"
 msgid "to execute"
 msgstr "çalıştırmak için"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "to run"
+msgstr "çalıştırmak için"
+
 #: src/client/admin/storage.tsx
 msgid "Toggle"
 msgstr "Aç/kapat"
@@ -7215,6 +7444,26 @@ msgstr "Kenar çubuğunu aç/kapat"
 #: src/client/components/auth-shell.tsx
 msgid "Toggle theme"
 msgstr "Temayı değiştir"
+
+#: src/client/components/mcp-key-modal.tsx
+msgid "Tool allowlist"
+msgstr "Araç izin listesi"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Tool failed"
+msgstr "Araç başarısız"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Tool ok"
+msgstr "Araç tamam"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Tool ok — {count} rows"
+msgstr "Araç tamam — {count} satır"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Tools"
+msgstr "Araçlar"
 
 #: src/client/admin/pages/overview.tsx
 msgid "Top collections"
@@ -7239,6 +7488,10 @@ msgstr "Dönüştürüldü"
 #: src/client/admin/parity/translations.tsx
 msgid "Translate"
 msgstr "Çevir"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Translate natural language into Directus-shaped queries, draft schemas, and dispatch any MCP tool — scoped to your role and the per-key allowlist. The same surface Claude Desktop sees."
+msgstr "Doğal dili Directus formatındaki sorgulara dönüştür, şema taslakları çıkar ve istediğin MCP aracını çalıştır — rolüne ve anahtar bazlı izin listene göre sınırlı. Claude Desktop'ın gördüğü yüzeyle aynı."
 
 #: src/client/admin/parity/translations.tsx
 msgid "Translate UI strings using Claude. Requires <0>ANTHROPIC_API_KEY</0> on the server."
@@ -7278,6 +7531,10 @@ msgstr "Tetikleyici yalnızca satır bu filtreyle eşleştiğinde (değişiklikt
 #: src/client/admin/pages/flows.tsx
 msgid "Triggers fire on collection events, schedules, or webhooks. Each step runs in the sandbox."
 msgstr "Tetikleyiciler koleksiyon etkinliklerinde, zamanlamalarda veya webhook'larda tetiklenir. Her adım kum havuzunda çalışır."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Try"
+msgstr "Dene"
 
 #: src/client/admin/pages/logs.tsx
 msgid "Try a wider time range or clear the level filter."
@@ -7771,6 +8028,10 @@ msgstr "Kaydedildiğinde çalışacak."
 #: src/client/admin/parity/translations.tsx
 msgid "Will translate <0>{0}</0> key{1}{2}."
 msgstr "<0>{0}</0> anahtar{1}{2} çevrilecek."
+
+#: src/client/components/mcp-key-modal.tsx
+msgid "Wire this API key into a Model Context Protocol client (Claude Desktop, Cursor, or any MCP-aware tool). The snippet below is pre-filled with this workspace's MCP URL."
+msgstr "Bu API anahtarını bir Model Context Protocol istemcisine bağla (Claude Desktop, Cursor veya MCP destekli herhangi bir araç). Aşağıdaki snippet bu çalışma alanının MCP URL'iyle önceden doldurulmuştur."
 
 #: src/client/admin/items.tsx
 msgid "Words"

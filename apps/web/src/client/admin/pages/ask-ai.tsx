@@ -49,26 +49,13 @@ interface RunResponse {
   error?: string;
 }
 
-const MODELS = [
-  {
-    id: "claude-opus-4-5",
-    label: "claude-opus-4-5",
-    hint: "highest reasoning · slower · ~3x cost",
-  },
-  {
-    id: "claude-sonnet-4-5",
-    label: "claude-sonnet-4-5",
-    hint: "balanced — recommended for most queries",
-  },
-  {
-    id: "claude-haiku-4-5",
-    label: "claude-haiku-4-5",
-    hint: "fast · cheap · good for routine reads",
-    default: true,
-  },
-];
-
-const DEFAULT_MODEL = "claude-haiku-4-5";
+// Provider-prefixed model ids — these are the literal strings the AI
+// Gateway accepts. Workspaces still on the legacy direct-Anthropic key
+// also work because the server strips the `anthropic/` prefix when it
+// falls back to that path. New providers (OpenAI / Google) only light up
+// when the workspace ships `AI_GATEWAY_API_KEY` — otherwise the server
+// returns UNAVAILABLE and the toast surfaces it.
+const DEFAULT_MODEL = "anthropic/claude-haiku-4-5";
 const DEFAULT_PROMPT =
   "top customers by lifetime_value last month, limit 10";
 
@@ -154,14 +141,36 @@ function JsonBlock({ value }: { value: unknown }) {
   );
 }
 
+interface ModelOption {
+  id: string;
+  label: string;
+  hint: string;
+  default?: boolean;
+}
+
 function ModelPicker({
   value,
   onChange,
+  models,
 }: {
   value: string;
   onChange: (next: string) => void;
+  models: ModelOption[];
 }) {
   const [open, setOpen] = useState(false);
+  // Group adjacent ids that share a provider prefix so the dropdown shows
+  // an "anthropic / openai / google" header per cluster. Order in `models`
+  // dictates the visual order — we don't sort.
+  const grouped = useMemo(() => {
+    const out: Array<{ provider: string; items: ModelOption[] }> = [];
+    for (const m of models) {
+      const provider = m.id.includes("/") ? m.id.split("/")[0]! : "anthropic";
+      const last = out[out.length - 1];
+      if (last && last.provider === provider) last.items.push(m);
+      else out.push({ provider, items: [m] });
+    }
+    return out;
+  }, [models]);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -177,48 +186,56 @@ function ModelPicker({
           />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[260px] gap-0 p-1">
+      <PopoverContent align="end" className="w-[300px] gap-0 p-1">
         <div className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           <Trans>Model</Trans>
         </div>
-        {MODELS.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => {
-              onChange(m.id);
-              setOpen(false);
-            }}
-            className={`flex w-full cursor-pointer items-start gap-2.5 rounded-lg border-0 bg-transparent px-2.5 py-2 text-left hover:bg-accent ${value === m.id ? "bg-accent" : ""}`}
-          >
-            <span
-              className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${value === m.id ? "bg-primary" : "bg-border"}`}
-            />
-            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="flex items-center gap-1.5">
-                <span className="font-mono text-[12px] text-foreground">
-                  {m.label}
+        {grouped.map((g, gi) => (
+          <div key={g.provider} className={gi > 0 ? "mt-1 border-t border-border/60 pt-1" : ""}>
+            <div className="px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/80">
+              {g.provider}
+            </div>
+            {g.items.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => {
+                  onChange(m.id);
+                  setOpen(false);
+                }}
+                className={`flex w-full cursor-pointer items-start gap-2.5 rounded-lg border-0 bg-transparent px-2.5 py-2 text-left hover:bg-accent ${value === m.id ? "bg-accent" : ""}`}
+              >
+                <span
+                  className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${value === m.id ? "bg-primary" : "bg-border"}`}
+                />
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="flex items-center gap-1.5">
+                    <span className="font-mono text-[12px] text-foreground">
+                      {m.label}
+                    </span>
+                    {m.default && (
+                      <Badge variant="secondary" mono>
+                        default
+                      </Badge>
+                    )}
+                  </span>
+                  <span className="text-[10.5px] leading-snug text-muted-foreground">
+                    {m.hint}
+                  </span>
                 </span>
-                {m.default && (
-                  <Badge variant="secondary" mono>
-                    default
-                  </Badge>
+                {value === m.id && (
+                  <I.Check size={12} className="mt-1 shrink-0 text-primary" />
                 )}
-              </span>
-              <span className="text-[10.5px] leading-snug text-muted-foreground">
-                {m.hint}
-              </span>
-            </span>
-            {value === m.id && (
-              <I.Check size={12} className="mt-1 shrink-0 text-primary" />
-            )}
-          </button>
+              </button>
+            ))}
+          </div>
         ))}
         <div className="mt-1 border-t border-border px-3 pt-2 pb-1 text-[10.5px] text-muted-foreground">
           <Trans>
             Configured via{" "}
-            <span className="font-mono text-foreground">ANTHROPIC_API_KEY</span>{" "}
-            on the workeros deployment.
+            <span className="font-mono text-foreground">AI_GATEWAY_API_KEY</span>{" "}
+            on the workeros deployment (or legacy{" "}
+            <span className="font-mono text-foreground">ANTHROPIC_API_KEY</span>).
           </Trans>
         </div>
       </PopoverContent>
@@ -320,6 +337,16 @@ const readStringPref = (key: string, fallback: string): string => {
   }
 };
 
+/** Bring a persisted model id forward from the pre-gateway era. Older
+ *  installs stored bare Anthropic ids (`claude-haiku-4-5`); the gateway
+ *  expects `anthropic/claude-haiku-4-5`. Silently rewrite when we see a
+ *  prefix-less value so the dropdown highlights the right row on first
+ *  paint instead of falling back to DEFAULT_MODEL. */
+const readModelPref = (fallback: string): string => {
+  const raw = readStringPref(STORAGE_MODEL, fallback);
+  return raw.includes("/") ? raw : `anthropic/${raw}`;
+};
+
 const writePref = (key: string, value: string): void => {
   if (typeof window === "undefined") return;
   try {
@@ -336,6 +363,39 @@ export function AskAiPage({
 }) {
   const { t } = useLingui();
   // Defined inside the component so the `t` macro picks them up at extract time.
+  // Ids + labels are deliberately plain — model identifiers never localize;
+  // only the per-row description (`hint`) goes through `t``.
+  const MODELS = useMemo<ModelOption[]>(
+    () => [
+      {
+        id: "anthropic/claude-opus-4-7",
+        label: "claude-opus-4-7",
+        hint: t`highest reasoning · slower · ~3x cost`,
+      },
+      {
+        id: "anthropic/claude-sonnet-4-6",
+        label: "claude-sonnet-4-6",
+        hint: t`balanced — recommended for most queries`,
+        default: true,
+      },
+      {
+        id: "anthropic/claude-haiku-4-5",
+        label: "claude-haiku-4-5",
+        hint: t`fast · cheap · routine reads`,
+      },
+      {
+        id: "openai/gpt-5",
+        label: "gpt-5",
+        hint: t`OpenAI flagship; comparable to Opus`,
+      },
+      {
+        id: "google/gemini-2.5-pro",
+        label: "gemini-2.5-pro",
+        hint: t`long context · multimodal`,
+      },
+    ],
+    [t],
+  );
   // `prompt` strings stay English — the planner LLM consumes them, not the user.
   const EXAMPLES = useMemo(
     () => [
@@ -378,9 +438,7 @@ export function AskAiPage({
   const [autoRun, setAutoRun] = useState(() =>
     readBoolPref(STORAGE_AUTO_RUN, true),
   );
-  const [model, setModel] = useState(() =>
-    readStringPref(STORAGE_MODEL, DEFAULT_MODEL),
-  );
+  const [model, setModel] = useState(() => readModelPref(DEFAULT_MODEL));
   const [result, setResult] = useState<RunResponse | null>(null);
   const [recent, setRecent] = useState<RecentRun[]>([]);
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -557,7 +615,7 @@ export function AskAiPage({
                 <Trans>Ask in natural language</Trans>
               </span>
               <div className="ml-auto flex items-center gap-3 text-[11.5px] text-muted-foreground">
-                <ModelPicker value={model} onChange={setModel} />
+                <ModelPicker value={model} onChange={setModel} models={MODELS} />
                 <span className="hidden items-center gap-1.5 sm:inline-flex">
                   <Trans>auto-run reads</Trans>
                   <Switch checked={autoRun} onChange={setAutoRun} />

@@ -1284,6 +1284,10 @@ msgstr "Back up now"
 msgid "Backups"
 msgstr "Backups"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "balanced — recommended for most queries"
+msgstr "balanced — recommended for most queries"
+
 #: src/client/admin/parity/translations.tsx
 msgid "base"
 msgstr "base"
@@ -1772,8 +1776,12 @@ msgid "Configure this provider (add a Client ID) before enabling it"
 msgstr "Configure this provider (add a Client ID) before enabling it"
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "Configured via <0>ANTHROPIC_API_KEY</0> on the workeros deployment."
-msgstr "Configured via <0>ANTHROPIC_API_KEY</0> on the workeros deployment."
+msgid "Configured via <0>AI_GATEWAY_API_KEY</0> on the workeros deployment (or legacy <1>ANTHROPIC_API_KEY</1>)."
+msgstr "Configured via <0>AI_GATEWAY_API_KEY</0> on the workeros deployment (or legacy <1>ANTHROPIC_API_KEY</1>)."
+
+#: src/client/admin/pages/ask-ai.tsx
+#~ msgid "Configured via <0>ANTHROPIC_API_KEY</0> on the workeros deployment."
+#~ msgstr "Configured via <0>ANTHROPIC_API_KEY</0> on the workeros deployment."
 
 #: src/client/admin/relational-pickers.tsx
 #: src/client/admin/sheet.tsx
@@ -2931,6 +2939,10 @@ msgstr "failing"
 msgid "Failures (24h)"
 msgstr "Failures (24h)"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "fast · cheap · routine reads"
+msgstr "fast · cheap · routine reads"
+
 #: src/client/pages/sign-up.tsx
 msgid "Faster, phishing-resistant sign-in. Your device will prompt for biometric or PIN after the account is created. You can add or remove passkeys later in Settings."
 msgstr "Faster, phishing-resistant sign-in. Your device will prompt for biometric or PIN after the account is created. You can add or remove passkeys later in Settings."
@@ -3344,6 +3356,10 @@ msgstr "Hide password"
 #: src/client/pages/graphql.tsx
 msgid "Hide variables"
 msgstr "Hide variables"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "highest reasoning · slower · ~3x cost"
+msgstr "highest reasoning · slower · ~3x cost"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Hook"
@@ -3963,6 +3979,10 @@ msgstr "Logs"
 #: src/client/admin/pages/overview.tsx
 msgid "logs to stdout"
 msgstr "logs to stdout"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "long context · multimodal"
+msgstr "long context · multimodal"
 
 #: src/client/pages/api-keys.tsx
 msgid "Long-lived bearer tokens (`pak_…`) for CI, scripts, third-party integrations. A key impersonates its owner — optionally narrowed to a single role and/or given an expiry date."
@@ -4914,6 +4934,10 @@ msgstr "Open sign-up"
 #: src/client/admin/pages/settings.tsx
 msgid "Open-source · MIT licensed"
 msgstr "Open-source · MIT licensed"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "OpenAI flagship; comparable to Opus"
+msgstr "OpenAI flagship; comparable to Opus"
 
 #: src/client/admin/ui.tsx
 #: src/client/pages/openapi-export.tsx

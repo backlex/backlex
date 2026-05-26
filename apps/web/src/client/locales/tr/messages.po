@@ -438,6 +438,10 @@ msgstr "{activeRole} · {0} · {c}: {state}"
 msgid "{allowedReadCount} readable · {allowedWriteCount} writable"
 msgstr "{allowedReadCount} okunabilir · {allowedWriteCount} yazılabilir"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "{allowlistSize} of {totalTools} tools enabled."
+msgstr "{totalTools} aracın {allowlistSize} tanesi etkin."
+
 #: src/client/admin/pages/settings.tsx
 msgid "{c} is already in the list."
 msgstr "{c} zaten listede."
@@ -461,6 +465,14 @@ msgstr "{key} → {next}."
 #: src/client/admin/storage.tsx
 msgid "{key} deleted."
 msgstr "{key} silindi."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "{name} ok"
+msgstr "{name} başarılı"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "{name} ok — {n} rows"
+msgstr "{name} başarılı — {n} satır"
 
 #: src/client/components/social-buttons.tsx
 msgid "{provider} sign-in"
@@ -519,6 +531,10 @@ msgstr "<0>{{username}}</0> gönderilen kullanıcı adıyla değiştirilir (RFC-
 #: src/client/admin/adopt-wizard.tsx
 msgid "<0>{fieldsCount}</0> fields registered."
 msgstr "<0>{fieldsCount}</0> alan kaydedildi."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "<0>resources/subscribe</0> for live tail"
+msgstr "Canlı akış için <0>resources/subscribe</0>"
 
 #. placeholder {0}: testResult.ms
 #: src/client/admin/condition-editor.tsx
@@ -687,6 +703,10 @@ msgstr "etkin"
 msgid "Active"
 msgstr "Etkin"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Active API key"
+msgstr "Etkin API anahtarı"
+
 #: src/client/admin/pages/overview.tsx
 msgid "Active flows"
 msgstr "Etkin akışlar"
@@ -694,6 +714,10 @@ msgstr "Etkin akışlar"
 #: src/client/admin/pages/users.tsx
 msgid "Active in 24h"
 msgstr "Son 24 saatte etkin"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Active key guards"
+msgstr "Etkin anahtar koruyucuları"
 
 #: src/client/admin/parity/translations.tsx
 msgid "Active languages for this workspace. The default is returned by the public API when a requested locale has no string."
@@ -847,6 +871,10 @@ msgstr "Adım ekle"
 msgid "Add to <0>~/Library/Application Support/Claude/claude_desktop_config.json</0> (macOS) and restart Claude Desktop."
 msgstr "<0>~/Library/Application Support/Claude/claude_desktop_config.json</0> dosyasına ekle (macOS) ve Claude Desktop'ı yeniden başlat."
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Add to <0>~/Library/Application Support/Claude/claude_desktop_config.json</0> (macOS), restart Claude Desktop, then look under the plug icon."
+msgstr "macOS'ta <0>~/Library/Application Support/Claude/claude_desktop_config.json</0> dosyasına ekleyin, Claude Desktop'ı yeniden başlatın ve fiş simgesine bakın."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Add to false branch"
 msgstr "Yanlış dalına ekle"
@@ -939,6 +967,7 @@ msgstr "Başka bir sütundan takma ad"
 msgid "alice"
 msgstr "alice"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/ui.tsx
 msgid "All"
 msgstr "Tümü"
@@ -947,6 +976,10 @@ msgstr "Tümü"
 #: src/client/admin/parity/translations.tsx
 msgid "All ({0})"
 msgstr "Tümü ({0})"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "All {totalTools} tools allowed."
+msgstr "{totalTools} aracın tamamı izinli."
 
 #: src/client/admin/pages/advisor.tsx
 msgid "All clear in this category"
@@ -1041,6 +1074,10 @@ msgstr "Bu bağlantıya sahip herkes kaydı görüntüleyebilir — şimdi kopya
 #: src/client/admin/collections-index.tsx
 msgid "API docs"
 msgstr "API belgeleri"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "API key"
+msgstr "API anahtarı"
 
 #: src/client/admin/ui.tsx
 msgid "API keys"
@@ -1344,6 +1381,14 @@ msgstr "Tümünü engelle"
 msgid "Block every write tool (insert / update / delete / invoke / …) when this key is used through the MCP server. REST authorization is unaffected. Allowlist can be configured per-key after creation."
 msgstr "Bu anahtar MCP sunucusu üzerinden kullanıldığında her yazma aracını engeller (insert / update / delete / invoke / …). REST yetkilendirmesi etkilenmez. İzin listesi oluşturulduktan sonra anahtar bazında ayarlanabilir."
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "blocked"
+msgstr "engellendi"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Blocks every write tool at the dispatcher."
+msgstr "Yazma işlemi yapan her aracı yönlendiricide engeller."
+
 #: src/client/admin/parity/app-users.tsx
 msgid "Blocks sign-in and drops all active sessions immediately."
 msgstr "Girişi engeller ve tüm etkin oturumları hemen sonlandırır."
@@ -1520,6 +1565,7 @@ msgstr "Bu örneği sahiplen"
 msgid "Claiming…"
 msgstr "Sahipleniliyor…"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "Claude Desktop"
 msgstr "Claude Desktop"
@@ -1693,8 +1739,8 @@ msgid "column: <0>{0}</0>"
 msgstr "sütun: <0>{0}</0>"
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "Coming soon"
-msgstr "Yakında"
+#~ msgid "Coming soon"
+#~ msgstr "Yakında"
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip."
@@ -1805,6 +1851,10 @@ msgstr "Parolayı onayla"
 msgid "Connect"
 msgstr "Bağlantı"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Connect an MCP client"
+msgstr "Bir MCP istemcisi bağlayın"
+
 #: src/client/pages/api-keys.tsx
 msgid "Connect MCP"
 msgstr "MCP'yi bağla"
@@ -1873,6 +1923,7 @@ msgid "copy"
 msgstr "kopyala"
 
 #: src/client/admin/item-collaboration.tsx
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 #: src/client/components/mcp-key-modal.tsx
@@ -1921,6 +1972,10 @@ msgstr "Düzeltme kopyalanamadı."
 msgid "Could not copy link."
 msgstr "Bağlantı kopyalanamadı."
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Could not copy snippet — clipboard blocked."
+msgstr "Parça kopyalanamadı — pano engellendi."
+
 #: src/client/admin/item-collaboration.tsx
 msgid "Could not create share link."
 msgstr "Paylaşım bağlantısı oluşturulamadı."
@@ -1932,6 +1987,10 @@ msgstr "Yorum silinemedi."
 #: src/client/admin/pages/logs.tsx
 msgid "Could not export logs."
 msgstr "Günlükler dışa aktarılamadı."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Could not export runs."
+msgstr "Çalıştırmalar dışa aktarılamadı."
 
 #: src/client/admin/item-collaboration.tsx
 msgid "Could not post comment."
@@ -2072,6 +2131,7 @@ msgstr "Oluşturuluyor…"
 msgid "Cron expression"
 msgstr "Cron ifadesi"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "curl"
 msgstr "curl"
@@ -2098,6 +2158,7 @@ msgstr "Mevcut parola"
 msgid "Current state"
 msgstr "Mevcut durum"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "Cursor"
 msgstr "Cursor"
@@ -2125,6 +2186,10 @@ msgstr "Özel roller, authenticated rolünün üzerine eklenerek katmanlanır."
 #: src/client/admin/permissions-matrix.tsx
 msgid "custom rule"
 msgstr "özel kural"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Customize…"
+msgstr "Özelleştir…"
 
 #: src/client/admin/parity/database.tsx
 msgid "Daily 03:00 UTC"
@@ -2299,9 +2364,14 @@ msgstr "Teslimatlar"
 msgid "Deliveries pause immediately when off; queued events are dropped after 24h."
 msgstr "Devre dışı bırakıldığında teslimatlar hemen duraklar; kuyruktaki olaylar 24 saat sonra düşürülür."
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/permissions-matrix.tsx
 msgid "denied"
 msgstr "reddedildi"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Denied"
+msgstr "Reddedildi"
 
 #: src/client/admin/permissions-matrix.tsx
 msgid "denied for this role"
@@ -2372,6 +2442,10 @@ msgstr "Soluk"
 #: src/client/admin/parity/database.tsx
 msgid "Direct access to the underlying engine. Adapter: <0>{0}</0>. SQL editor runs through the same permission layer as the API."
 msgstr "Altta yatan motora doğrudan erişim. Adaptör: <0>{0}</0>. SQL editörü API ile aynı izin katmanından çalışır."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Direct Streamable HTTP — useful for CI agents and smoke tests."
+msgstr "Doğrudan Streamable HTTP — CI ajanları ve duman testleri için kullanışlı."
 
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
@@ -2734,6 +2808,10 @@ msgstr "Uç nokta"
 msgid "Endpoint URL"
 msgstr "Uç nokta URL'si"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Endpoints"
+msgstr "Uç noktalar"
+
 #: src/client/pages/sign-up.tsx
 msgid "Enrol a passkey now"
 msgstr "Şimdi bir geçiş anahtarı kaydedin"
@@ -2872,6 +2950,7 @@ msgstr "Son kullanma"
 msgid "Export"
 msgstr "Dışa aktar"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Export CSV"
 msgstr "CSV olarak dışa aktar"
@@ -2888,6 +2967,11 @@ msgstr "NDJSON olarak dışa aktar"
 #: src/client/admin/pages/logs.tsx
 msgid "Exported {0} rows as activity.csv."
 msgstr "{0} satır activity.csv olarak dışa aktarıldı."
+
+#. placeholder {0}: visible.length
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Exported {0} rows as mcp-runs.csv."
+msgstr "{0} satır mcp-runs.csv olarak dışa aktarıldı."
 
 #. placeholder {0}: filtered.length
 #: src/client/admin/pages/logs.tsx
@@ -3052,6 +3136,14 @@ msgstr "Tabloları ada göre filtrele…"
 #: src/client/admin/parity/database.tsx
 msgid "Filter tables…"
 msgstr "Tabloları filtrele…"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Filter tools"
+msgstr "Araçları filtrele"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Filter tools…"
+msgstr "Araçları filtrele…"
 
 #: src/client/admin/pages/functions.tsx
 msgid "fires on matching pub-sub channel events"
@@ -3300,6 +3392,10 @@ msgstr "Grupla"
 msgid "Groups"
 msgstr "Gruplar"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Guards updated"
+msgstr "Koruyucular güncellendi"
+
 #: src/client/admin/parity/database.tsx
 msgid "Hash"
 msgstr "Hash"
@@ -3368,6 +3464,10 @@ msgstr "en yüksek akıl yürütme · daha yavaş · ~3x maliyet"
 #: src/client/admin/pages/webhooks.tsx
 msgid "Hook"
 msgstr "Hook"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Hosted Claude"
+msgstr "Barındırılan Claude"
 
 #: src/client/admin/collection-settings.tsx
 msgid "how this collection shows up in nav and lists"
@@ -3800,6 +3900,10 @@ msgstr "Son yazma"
 msgid "latency"
 msgstr "gecikme"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Latency"
+msgstr "Gecikme"
+
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "LDAP / Active Directory"
 msgstr "LDAP / Active Directory"
@@ -3929,10 +4033,19 @@ msgstr "Daha fazla yükle"
 msgid "Loading API keys"
 msgstr "API anahtarları yükleniyor"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Loading keys…"
+msgstr "Anahtarlar yükleniyor…"
+
 #: src/client/components/mcp-key-modal.tsx
 msgid "Loading MCP tools"
 msgstr "MCP araçları yükleniyor"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Loading runs…"
+msgstr "Çalıştırmalar yükleniyor…"
+
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "Loading tool catalog…"
 msgstr "Araç kataloğu yükleniyor…"
@@ -4107,6 +4220,10 @@ msgstr "MCP salt-okunur"
 #: src/client/pages/api-keys.tsx
 msgid "MCP read-only mode"
 msgstr "MCP salt-okunur modu"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "MCP tool catalog"
+msgstr "MCP araç kataloğu"
 
 #. placeholder {0}: k.mcpTools.length
 #: src/client/pages/api-keys.tsx
@@ -4624,6 +4741,10 @@ msgstr "Henüz öğe yok"
 msgid "No JSON content defined."
 msgstr "JSON içeriği tanımlanmamış."
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "No live keys — create one on the <0>API Keys</0> page first."
+msgstr "Canlı anahtar yok — önce <0>API Anahtarları</0> sayfasından bir tane oluşturun."
+
 #: src/client/admin/pages/logs.tsx
 msgid "No log entries match"
 msgstr "Eşleşen günlük girdisi yok"
@@ -4707,6 +4828,10 @@ msgid "No rows returned."
 msgstr "Satır döndürülmedi."
 
 #: src/client/admin/pages/ask-ai.tsx
+msgid "No runs in this bucket yet."
+msgstr "Bu kümede henüz çalıştırma yok."
+
+#: src/client/admin/pages/ask-ai.tsx
 msgid "No runs yet — your tool calls will show up here."
 msgstr "Henüz çalışma yok — araç çağrıların burada görünecek."
 
@@ -4745,6 +4870,10 @@ msgstr "Henüz etiket yok."
 #: src/client/admin/parity/email-templates.tsx
 msgid "No templates yet — use \"New template\" to add one."
 msgstr "Henüz şablon yok — eklemek için \"Yeni şablon\"u kullanın."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "No tools match this filter."
+msgstr "Bu filtreyle eşleşen araç yok."
 
 #: src/client/admin/edit-field.tsx
 msgid "No two rows can hold the same value (case-sensitive)."
@@ -4816,6 +4945,7 @@ msgstr "Hiçbir şey seçilmedi"
 msgid "Nothing selected yet"
 msgstr "Henüz hiçbir şey seçilmedi"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Nothing to export — the current view is empty."
 msgstr "Dışa aktarılacak şey yok — mevcut görünüm boş."
@@ -4857,6 +4987,14 @@ msgstr "{0} ile kaydedilecek OAuth yönlendirme URI'si"
 msgid "OAuth required"
 msgstr "OAuth gerekli"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "OAuth scope mapping → workeros roles"
+msgstr "OAuth kapsam eşlemesi → workeros rolleri"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a separate epic."
+msgstr "Barındırılan Claude için OAuth akışı (anahtar yapıştırma adımı olmadan) ayrı bir epik olarak takip ediliyor."
+
 #: src/client/admin/item-views.tsx
 msgid "October"
 msgstr "Ekim"
@@ -4869,6 +5007,7 @@ msgstr "kapalı"
 msgid "Off keeps the provider configured but hidden from sign-in."
 msgstr "Kapalı, sağlayıcıyı yapılandırılmış tutar ancak girişte gizler."
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/pages/graphql.tsx
 msgid "ok"
 msgstr "tamam"
@@ -4959,6 +5098,10 @@ msgstr "OpenAPI spec yenilendi."
 #: src/client/pages/openapi-export.tsx
 msgid "Operations"
 msgstr "İşlemler"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Ops bots — admin role required."
+msgstr "Operasyon botları — yönetici rolü gerekli."
 
 #: src/client/admin/pages/overview.tsx
 msgid "optional"
@@ -5156,6 +5299,10 @@ msgstr "beklemede"
 msgid "Pending invites"
 msgstr "Bekleyen davetler"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "pending review"
+msgstr "inceleme bekliyor"
+
 #: src/client/admin/collections-index.tsx
 msgid "People"
 msgstr "Kişiler"
@@ -5254,6 +5401,14 @@ msgstr "Alan seçin…"
 #: src/client/admin/relational-pickers.tsx
 msgid "Pick a file"
 msgstr "Dosya seçin"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Pick a key"
+msgstr "Bir anahtar seçin"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Pick a key to manage its allowlist."
+msgstr "İzin listesini yönetmek için bir anahtar seçin."
 
 #: src/client/admin/pages/settings.tsx
 msgid "Pick a language…"
@@ -5604,6 +5759,7 @@ msgstr "Kalite"
 msgid "Queries"
 msgstr "Sorgular"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/pages/graphql.tsx
 msgid "Query"
 msgstr "Sorgu"
@@ -5668,6 +5824,7 @@ msgstr "Oku"
 msgid "read-only"
 msgstr "salt okunur"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "Read-only mode"
 msgstr "Salt-okunur mod"
@@ -6034,6 +6191,10 @@ msgstr "Sonuç"
 msgid "Result is piped into <0>$last</0> for the next step."
 msgstr "Sonuç bir sonraki adım için <0>$last</0> değişkenine aktarılır."
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Resumable SSE on <0>GET /mcp</0>"
+msgstr "<0>GET /mcp</0> üzerinde sürdürülebilir SSE"
+
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Resume"
@@ -6077,6 +6238,10 @@ msgstr "Geri alındı — yeni bir sürüm kaydedildi."
 #: src/client/admin/parity/revisions.tsx
 msgid "Reverting…"
 msgstr "Geri alınıyor…"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Review"
+msgstr "İnceleme"
 
 #. placeholder {0}: e.v
 #: src/client/admin/parity/revisions.tsx
@@ -6760,6 +6925,10 @@ msgstr "Ayarlar"
 msgid "Settings → MCP → Add new MCP server → paste the JSON."
 msgstr "Ayarlar → MCP → Yeni MCP sunucusu ekle → JSON'u yapıştır."
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Settings → MCP → Add. Same JSON shape Claude Desktop uses."
+msgstr "Ayarlar → MCP → Ekle. Claude Desktop ile aynı JSON şeklini kullanır."
+
 #: src/client/admin/pages/settings.tsx
 msgid "Settings saved."
 msgstr "Ayarlar kaydedildi."
@@ -7013,6 +7182,10 @@ msgstr "slug zorunludur"
 msgid "Slug: <0>{slugClean}</0>"
 msgstr "Slug: <0>{slugClean}</0>"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Snippet copied"
+msgstr "Parça kopyalandı"
+
 #: src/client/admin/parity/database.tsx
 #: src/client/pages/graphql.tsx
 msgid "Snippets"
@@ -7061,6 +7234,10 @@ msgstr "Hazırlık"
 #: src/client/admin/collections-index.tsx
 msgid "Start from"
 msgstr "Başlangıç noktası"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Stateless Streamable HTTP. No <0>GET /mcp</0> (resumable SSE) yet."
+msgstr "Durumsuz Streamable HTTP. Henüz <0>GET /mcp</0> (sürdürülebilir SSE) yok."
 
 #: src/client/admin/parity/insights.tsx
 msgid "static panels render their config object verbatim — set it from the API once the panel exists."
@@ -7152,6 +7329,7 @@ msgstr "Konu zorunludur."
 msgid "Subscribed. Waiting for events…"
 msgstr "Abone olundu. Etkinlikler bekleniyor…"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Success"
 msgstr "Başarılı"
@@ -7270,6 +7448,10 @@ msgstr "Şablon"
 #: src/client/admin/parity/email-templates.tsx
 msgid "Template saved."
 msgstr "Şablon kaydedildi."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Tenant agents. DSL-filtered."
+msgstr "Kiracı ajanları. DSL ile filtrelenmiş."
 
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collection-settings.tsx
@@ -7501,6 +7683,11 @@ msgstr "Kenar çubuğunu aç/kapat"
 msgid "Toggle theme"
 msgstr "Temayı değiştir"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Tool"
+msgstr "Araç"
+
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "Tool allowlist"
 msgstr "Araç izin listesi"
@@ -7516,6 +7703,10 @@ msgstr "Araç tamam"
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Tool ok — {count} rows"
 msgstr "Araç tamam — {count} satır"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "tools"
+msgstr "araç"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Tools"
@@ -8031,6 +8222,10 @@ msgstr "Bu dosya hakkında…"
 #: src/client/admin/role-editor.tsx
 msgid "What this role can do…"
 msgstr "Bu rolün yapabilecekleri…"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "When"
+msgstr "Ne zaman"
 
 #: src/client/admin/flow-builder.tsx
 msgid "When (filter DSL)"

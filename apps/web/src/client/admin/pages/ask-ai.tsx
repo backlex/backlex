@@ -1,11 +1,13 @@
-// Ask AI — admin page (Phase 1: Ask tab only).
+// Ask AI — admin page.
 //
-// Ports the design's AskTab (/tmp/design-bundle/workeros/project/ai-mcp.jsx
-// lines 338-516) onto the canonical workeros UI primitives. The other three
-// tabs (Tools / Runs / Connect) are intentionally rendered as disabled tab
-// triggers so the shell exists without shipping placeholder controls.
+// Ports the design's four-tab AI/MCP page (/tmp/design-bundle/workeros/project/ai-mcp.jsx)
+// onto the canonical workeros UI primitives:
+//   - Ask     — natural-language → MCP tool dispatcher (Phase 1)
+//   - Tools   — searchable catalog + per-key guard editor (Phase 2)
+//   - Runs    — filtered activity table with CSV export    (Phase 2)
+//   - Connect — Claude Desktop / Cursor / curl snippets    (Phase 2)
 //
-// Two backend hops:
+// Backend hops the Ask tab still drives:
 //   POST /api/admin/ai/plan  →  {rationale, tool, args, model, usage}
 //   POST /api/admin/ai/run   →  executes one MCP tool + writes to `activity`
 //
@@ -18,13 +20,32 @@ import { activityApi, type ApiActivity } from "../api";
 import { I } from "../icons";
 import { Badge, Button, PageHeader, Switch } from "../ui";
 import { Textarea } from "@workeros/ui/components/textarea";
-import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@workeros/ui/components/tabs";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@workeros/ui/components/popover";
 import { ScrollArea } from "@workeros/ui/components/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workeros/ui/components/select";
+import { McpKeyModal } from "@/components/mcp-key-modal";
+import {
+  claudeDesktopSnippet,
+  cursorSnippet,
+  curlSnippet,
+} from "@/lib/mcp-snippets";
+import { exportToCsv } from "@/lib/csv-export";
 
 interface PlanResponse {
   data: {
@@ -271,9 +292,10 @@ function ToolKindBadge({
   );
 }
 
-function RunStatusIcon({ status }: { status: "ok" | "denied" | "blocked" }) {
+function RunStatusIcon({ status }: { status: RunStatus }) {
   if (status === "ok") return <I.CheckCircle size={12} className="text-primary" />;
   if (status === "blocked") return <I.Lock size={12} className="text-muted-foreground" />;
+  if (status === "review") return <I.Brain size={12} className="text-amber-600 dark:text-amber-300" />;
   return <I.XCircle size={12} className="text-destructive" />;
 }
 
@@ -304,15 +326,82 @@ function summariseArgs(args: unknown): string {
   return JSON.stringify(a).slice(0, 120);
 }
 
-interface RecentRun {
+interface ApiKeyRow {
+  id: string;
+  prefix: string;
+  name: string;
+  expiresAt: string | number | null;
+  revokedAt: string | number | null;
+  mcpTools: string[] | null;
+  mcpReadOnly: boolean;
+}
+
+interface McpToolDescriptor {
+  name: string;
+  description: string;
+  kind: "read" | "write" | "destruct";
+  adminOnly?: boolean;
+}
+
+export type RunStatus = "ok" | "review" | "blocked" | "denied";
+
+/** Row shape consumed by the side panel on the Ask tab and the table on
+ *  the Runs tab. `query` is a one-line summary of the tool args (see
+ *  `summariseArgs`); `rows` is `null` when the activity row doesn't carry
+ *  a `rowCount`. */
+export interface RunRow {
   id: string;
   tool: string;
   query: string;
   when: string;
-  status: "ok" | "denied" | "blocked";
+  status: RunStatus;
   durationMs: number | null;
   rows: number | null;
+  /** Raw ISO timestamp from `activity.createdAt`. The CSV export uses this
+   *  unmodified instead of the relative `when` string so spreadsheets can
+   *  sort the column as a date. */
+  ts: string;
+  /** Short error string (or `null` when the run succeeded). Surfaces in
+   *  the Runs table next to the status icon. */
+  error: string | null;
 }
+
+/** Project a raw `activity` row into the shape the Ask AI tabs render.
+ *  Exported so the Runs tab (`RunsTab` below) can call it without going
+ *  through the AskAiPage scope. Status derivation:
+ *    - `ok` whenever `response.ok === true`
+ *    - `blocked` if the error string mentions an MCP guard
+ *      (`read-only` / `allowlist` / `mcp_read_only`)
+ *    - `denied` for everything else
+ *    - `review` is currently unreachable from server-recorded activity
+ *      (the planner doesn't write "pending" rows) — the union still
+ *      includes it so the Runs tab's filter chip can render a 0-count
+ *      `Review` bucket without a type cast.
+ */
+export const mapActivityToRun = (row: ApiActivity): RunRow => {
+  const action = row.action.startsWith("mcp.") ? row.action.slice(4) : row.action;
+  const payload = row.payload as { args?: unknown; tool?: unknown } | null;
+  const response = row.response as
+    | { ok?: boolean; error?: unknown; rowCount?: number }
+    | null;
+  const errStr = typeof response?.error === "string" ? response.error : null;
+  const status: RunStatus = response?.ok
+    ? "ok"
+    : errStr && /read-only|allowlist|mcp_read_only/i.test(errStr)
+      ? "blocked"
+      : "denied";
+  return {
+    id: row.id,
+    tool: action,
+    query: summariseArgs(payload?.args),
+    when: relativeWhen(row.createdAt),
+    status,
+    durationMs: row.durationMs,
+    rows: typeof response?.rowCount === "number" ? response.rowCount : null,
+    ts: row.createdAt,
+    error: errStr,
+  };
+};
 
 const STORAGE_AUTO_RUN = "workeros.askai.autoRun";
 const STORAGE_MODEL = "workeros.askai.model";
@@ -470,8 +559,38 @@ export function AskAiPage({
   );
   const [model, setModel] = useState(() => readModelPref(DEFAULT_MODEL));
   const [result, setResult] = useState<RunResponse | null>(null);
-  const [recent, setRecent] = useState<RecentRun[]>([]);
+  const [recent, setRecent] = useState<RunRow[]>([]);
+  const [tab, setTab] = useState<"ask" | "tools" | "runs" | "connect">("ask");
+  // pak_* keys are fetched once at the page level so Tools (right rail
+  // editor) and Connect (snippet picker) can share the selection — flipping
+  // tabs doesn't refetch or reset which key is active.
+  const [keys, setKeys] = useState<ApiKeyRow[]>([]);
+  const [keysLoading, setKeysLoading] = useState(true);
+  const [selectedKeyId, setSelectedKeyId] = useState<string | null>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+
+  const refreshKeys = useCallback(async () => {
+    try {
+      const res = await api<{ data: ApiKeyRow[] }>("/api/api-keys");
+      // Filter out revoked / expired keys — they can't authenticate MCP
+      // calls so showing them in the picker would be misleading. The list
+      // is already user-scoped server-side (non-admins only see their own;
+      // admins see every key in the workspace) so no further filtering.
+      const live = res.data.filter(
+        (k) => !k.revokedAt && (!k.expiresAt || new Date(k.expiresAt).getTime() > Date.now()),
+      );
+      setKeys(live);
+      setSelectedKeyId((prev) => prev ?? live[0]?.id ?? null);
+    } catch {
+      // Swallow — Tools/Connect right rails handle empty lists gracefully.
+    } finally {
+      setKeysLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshKeys();
+  }, [refreshKeys]);
 
   useEffect(() => {
     writePref(STORAGE_AUTO_RUN, autoRun ? "1" : "0");
@@ -480,34 +599,10 @@ export function AskAiPage({
     writePref(STORAGE_MODEL, model);
   }, [model]);
 
-  const mapRunRow = (row: ApiActivity): RecentRun => {
-    const action = row.action.startsWith("mcp.")
-      ? row.action.slice(4)
-      : row.action;
-    const payload = row.payload as { args?: unknown; tool?: unknown } | null;
-    const response = row.response as
-      | { ok?: boolean; error?: unknown; rowCount?: number }
-      | null;
-    const status: RecentRun["status"] = response?.ok
-      ? "ok"
-      : typeof response?.error === "string" && /read-only|allowlist/i.test(response.error)
-        ? "blocked"
-        : "denied";
-    return {
-      id: row.id,
-      tool: action,
-      query: summariseArgs(payload?.args),
-      when: relativeWhen(row.createdAt),
-      status,
-      durationMs: row.durationMs,
-      rows: typeof response?.rowCount === "number" ? response.rowCount : null,
-    };
-  };
-
   const refreshRecent = useCallback(async () => {
     try {
       const r = await activityApi.list({ action: "mcp.", limit: 10 });
-      setRecent(r.data.map(mapRunRow));
+      setRecent(r.data.map(mapActivityToRun));
     } catch {
       // Quietly leave the list as-is — the panel just stays empty.
     }
@@ -618,24 +713,49 @@ export function AskAiPage({
         }
       />
 
-      <Tabs value="ask">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
         <TabsList>
           <TabsTrigger value="ask">
             <I.Sparkles size={13} />
             <Trans>Ask</Trans>
           </TabsTrigger>
-          <TabsTrigger value="tools" disabled title={t`Coming soon`}>
+          <TabsTrigger value="tools">
+            <I.Layers size={13} />
             <Trans>Tools</Trans>
           </TabsTrigger>
-          <TabsTrigger value="runs" disabled title={t`Coming soon`}>
+          <TabsTrigger value="runs">
+            <I.History size={13} />
             <Trans>Runs</Trans>
           </TabsTrigger>
-          <TabsTrigger value="connect" disabled title={t`Coming soon`}>
+          <TabsTrigger value="connect">
+            <I.Plug size={13} />
             <Trans>Connect</Trans>
           </TabsTrigger>
         </TabsList>
       </Tabs>
 
+      {tab === "tools" && (
+        <ToolsTab
+          pushToast={pushToast}
+          keys={keys}
+          keysLoading={keysLoading}
+          selectedKeyId={selectedKeyId}
+          setSelectedKeyId={setSelectedKeyId}
+          refreshKeys={refreshKeys}
+        />
+      )}
+      {tab === "runs" && <RunsTab pushToast={pushToast} />}
+      {tab === "connect" && (
+        <ConnectTab
+          pushToast={pushToast}
+          keys={keys}
+          keysLoading={keysLoading}
+          selectedKeyId={selectedKeyId}
+          setSelectedKeyId={setSelectedKeyId}
+        />
+      )}
+
+      {tab === "ask" && (
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[1fr_320px]">
         <div className="flex min-w-0 flex-col gap-5">
           <div className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -971,6 +1091,7 @@ export function AskAiPage({
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
@@ -1051,6 +1172,861 @@ function ResultCard({
           )}
         </div>
       </ScrollArea>
+    </div>
+  );
+}
+
+// ─── Shared helpers (Tools + Connect right rails) ─────────────────────────
+
+/** Per-API-key picker shared by the Tools right rail and the Connect tab.
+ *  Renders a shadcn Select with the key's name + `pak_<prefix>` hint. The
+ *  list is filtered at the page level (revoked / expired keys removed).  */
+function KeyPicker({
+  keys,
+  keysLoading,
+  selectedKeyId,
+  setSelectedKeyId,
+}: {
+  keys: ApiKeyRow[];
+  keysLoading: boolean;
+  selectedKeyId: string | null;
+  setSelectedKeyId: (id: string) => void;
+}) {
+  const { t } = useLingui();
+  if (keysLoading) {
+    return (
+      <div className="text-[12px] text-muted-foreground">
+        <Trans>Loading keys…</Trans>
+      </div>
+    );
+  }
+  if (keys.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-border px-3 py-2 text-[12px] text-muted-foreground">
+        <Trans>
+          No live keys — create one on the{" "}
+          <a className="font-mono underline" href="/api-keys">
+            API Keys
+          </a>{" "}
+          page first.
+        </Trans>
+      </div>
+    );
+  }
+  return (
+    <Select value={selectedKeyId ?? undefined} onValueChange={setSelectedKeyId}>
+      <SelectTrigger className="w-full" aria-label={t`Active API key`}>
+        <SelectValue placeholder={t`Pick a key`} />
+      </SelectTrigger>
+      <SelectContent>
+        {keys.map((k) => (
+          <SelectItem key={k.id} value={k.id}>
+            <span className="flex items-center gap-2">
+              <span>{k.name}</span>
+              <span className="font-mono text-[11px] text-muted-foreground">
+                pak_{k.prefix}_…
+              </span>
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+// ─── Tools tab ────────────────────────────────────────────────────────────
+
+function ToolKindPill({ kind }: { kind: "read" | "write" | "destruct" }) {
+  if (kind === "destruct") {
+    return (
+      <Badge variant="destructive" mono>
+        destruct
+      </Badge>
+    );
+  }
+  if (kind === "write") {
+    return (
+      <Badge
+        variant="outline"
+        mono
+        className="border-amber-500/40 text-amber-700 dark:text-amber-300"
+      >
+        write
+      </Badge>
+    );
+  }
+  return (
+    <Badge
+      variant="outline"
+      mono
+      className="border-sky-500/40 text-sky-700 dark:text-sky-300"
+    >
+      read
+    </Badge>
+  );
+}
+
+function ToolsTab({
+  pushToast,
+  keys,
+  keysLoading,
+  selectedKeyId,
+  setSelectedKeyId,
+  refreshKeys,
+}: {
+  pushToast: (m: string, type?: "success" | "error") => void;
+  keys: ApiKeyRow[];
+  keysLoading: boolean;
+  selectedKeyId: string | null;
+  setSelectedKeyId: (id: string) => void;
+  refreshKeys: () => Promise<void>;
+}) {
+  const { t } = useLingui();
+  const [tools, setTools] = useState<McpToolDescriptor[] | null>(null);
+  const [toolsLoading, setToolsLoading] = useState(true);
+  const [q, setQ] = useState("");
+  const [openGroups, setOpenGroups] = useState<Set<string>>(
+    () => new Set(["schema", "collections", "ai"]),
+  );
+  const [trying, setTrying] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    setToolsLoading(true);
+    (async () => {
+      try {
+        const body = await api<{
+          result?: { tools: McpToolDescriptor[] };
+        }>("/api/admin/mcp", {
+          method: "POST",
+          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+        });
+        setTools(body.result?.tools ?? []);
+      } catch (e) {
+        pushToast((e as Error).message, "error");
+        setTools([]);
+      } finally {
+        setToolsLoading(false);
+      }
+    })();
+  }, [pushToast]);
+
+  // Group by namespace prefix (`collections.*`, `schema.*`, …). Tools
+  // without a dot (none today) fall into an "other" bucket.
+  const groups = useMemo(() => {
+    if (!tools) return [] as Array<{ id: string; tools: McpToolDescriptor[] }>;
+    const term = q.trim().toLowerCase();
+    const filtered = term
+      ? tools.filter(
+          (t) =>
+            t.name.toLowerCase().includes(term) ||
+            t.description.toLowerCase().includes(term),
+        )
+      : tools;
+    const byNs = new Map<string, McpToolDescriptor[]>();
+    for (const t of filtered) {
+      const dot = t.name.indexOf(".");
+      const ns = dot < 0 ? "other" : t.name.slice(0, dot);
+      const bucket = byNs.get(ns) ?? [];
+      bucket.push(t);
+      byNs.set(ns, bucket);
+    }
+    return [...byNs.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([id, tools]) => ({ id, tools }));
+  }, [tools, q]);
+
+  const toggleGroup = (id: string) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectedKey = keys.find((k) => k.id === selectedKeyId) ?? null;
+  const totalTools = tools?.length ?? 0;
+  const allowlistSize = selectedKey?.mcpTools?.length ?? null;
+
+  const patchGuard = async (patch: {
+    mcpReadOnly?: boolean;
+    mcpTools?: string[] | null;
+  }) => {
+    if (!selectedKey) return;
+    try {
+      await api(`/api/api-keys/${selectedKey.id}/mcp-guards`, {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      });
+      pushToast(t`Guards updated`);
+      void refreshKeys();
+    } catch (e) {
+      pushToast((e as Error).message, "error");
+    }
+  };
+
+  const tryTool = async (name: string) => {
+    setTrying(name);
+    try {
+      const res = await api<{ ok: boolean; error?: string; rowCount?: number | null }>(
+        "/api/admin/ai/run",
+        {
+          method: "POST",
+          body: JSON.stringify({ tool: name, args: {} }),
+        },
+      );
+      if (res.ok) {
+        const n = res.rowCount;
+        pushToast(typeof n === "number" ? t`${name} ok — ${n} rows` : t`${name} ok`);
+      } else {
+        pushToast(res.error ?? t`Tool failed`, "error");
+      }
+    } catch (e) {
+      pushToast((e as Error).message, "error");
+    } finally {
+      setTrying(null);
+    }
+  };
+
+  return (
+    <>
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[1fr_340px]">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="flex flex-wrap items-center gap-3 px-5 pt-4 pb-3">
+            <I.Layers size={14} />
+            <span className="text-[13px] font-semibold">
+              <Trans>MCP tool catalog</Trans>
+            </span>
+            <Badge variant="secondary" mono>
+              {totalTools} <Trans>tools</Trans>
+            </Badge>
+            <div className="relative ml-auto w-72">
+              <I.Search
+                size={13}
+                className="absolute top-1/2 left-3.5 -translate-y-1/2 text-muted-foreground"
+              />
+              <input
+                type="search"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={t`Filter tools…`}
+                aria-label={t`Filter tools`}
+                className="h-8 w-full rounded-full border border-border bg-card pr-3 pl-9 text-[12.5px] outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+              />
+            </div>
+          </div>
+          <div className="border-t border-border">
+            {toolsLoading ? (
+              <div className="px-5 py-8 text-center text-[12.5px] text-muted-foreground">
+                <Trans>Loading tool catalog…</Trans>
+              </div>
+            ) : groups.length === 0 ? (
+              <div className="px-5 py-8 text-center text-[12.5px] text-muted-foreground">
+                <Trans>No tools match this filter.</Trans>
+              </div>
+            ) : (
+              groups.map((g) => {
+                const open = openGroups.has(g.id);
+                return (
+                  <div key={g.id} className="border-b border-border/60 last:border-b-0">
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(g.id)}
+                      className="flex h-11 w-full cursor-pointer items-center gap-3 border-0 bg-transparent px-5 text-left hover:bg-accent/40"
+                    >
+                      <I.ChevronRight
+                        size={12}
+                        className={
+                          open
+                            ? "rotate-90 text-muted-foreground transition-transform"
+                            : "text-muted-foreground transition-transform"
+                        }
+                      />
+                      <I.Database size={13} className="text-muted-foreground" />
+                      <span className="text-[13px] font-medium uppercase tracking-wider">
+                        {g.id}
+                      </span>
+                      <Badge variant="secondary" mono>
+                        {g.tools.length}
+                      </Badge>
+                    </button>
+                    {open && (
+                      <div className="border-t border-border/60 bg-muted/30">
+                        {g.tools.map((tool) => (
+                          <div
+                            key={tool.name}
+                            className="grid grid-cols-[1fr_auto] items-center gap-3 border-b border-border/40 px-5 py-3 last:border-b-0"
+                          >
+                            <div className="flex min-w-0 flex-col gap-0.5">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-mono text-[12.5px]">
+                                  {tool.name}
+                                </span>
+                                <ToolKindPill kind={tool.kind} />
+                                {tool.adminOnly && (
+                                  <Badge
+                                    variant="outline"
+                                    mono
+                                    className="border-amber-500/40 text-amber-700 dark:text-amber-300"
+                                  >
+                                    admin
+                                  </Badge>
+                                )}
+                                {tool.name.startsWith("ai.") && (
+                                  <Badge
+                                    variant="outline"
+                                    mono
+                                    className="border-sky-500/40 text-sky-700 dark:text-sky-300"
+                                  >
+                                    ai
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="m-0 truncate text-[11.5px] text-muted-foreground">
+                                {tool.description}
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              icon={trying === tool.name ? I.Loader : I.Play}
+                              disabled={trying !== null}
+                              onClick={() => {
+                                void tryTool(tool.name);
+                              }}
+                            >
+                              <Trans>Try</Trans>
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-4 xl:sticky xl:top-4">
+          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+            <div className="flex items-center gap-2 px-5 pt-4 pb-3">
+              <I.Key size={13} />
+              <span className="text-[13px] font-semibold">
+                <Trans>Active key guards</Trans>
+              </span>
+            </div>
+            <div className="flex flex-col gap-3 px-5 pt-2 pb-4">
+              <KeyPicker
+                keys={keys}
+                keysLoading={keysLoading}
+                selectedKeyId={selectedKeyId}
+                setSelectedKeyId={setSelectedKeyId}
+              />
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col">
+                  <span className="text-[12.5px] font-medium">
+                    <Trans>Read-only mode</Trans>
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    <Trans>Blocks every write tool at the dispatcher.</Trans>
+                  </span>
+                </div>
+                <Switch
+                  checked={selectedKey?.mcpReadOnly === true}
+                  disabled={!selectedKey}
+                  onChange={(next) => {
+                    void patchGuard({ mcpReadOnly: next });
+                  }}
+                />
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col">
+                  <span className="text-[12.5px] font-medium">
+                    <Trans>Tool allowlist</Trans>
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {selectedKey === null ? (
+                      <Trans>Pick a key to manage its allowlist.</Trans>
+                    ) : allowlistSize === null ? (
+                      <Trans>All {totalTools} tools allowed.</Trans>
+                    ) : (
+                      <Trans>{allowlistSize} of {totalTools} tools enabled.</Trans>
+                    )}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!selectedKey}
+                  onClick={() => setModalOpen(true)}
+                >
+                  <Trans>Customize…</Trans>
+                </Button>
+              </div>
+            </div>
+            <div className="border-t border-border bg-muted/40 px-5 py-4">
+              <div className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">
+                PATCH
+              </div>
+              <pre className="m-0 font-mono text-[11.5px] leading-relaxed whitespace-pre-wrap text-muted-foreground">
+                {`curl -X PATCH $WORKEROS_URL/api/api-keys/<id>/mcp-guards \\
+  -H "Authorization: Bearer pak_<admin>" \\
+  -H "Content-Type: application/json" \\
+  -d '{"mcpReadOnly": ${selectedKey?.mcpReadOnly === true ? "true" : "false"}}'`}
+              </pre>
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+            <div className="flex items-center gap-2 px-5 pt-4 pb-3">
+              <I.Globe size={13} />
+              <span className="text-[13px] font-semibold">
+                <Trans>Endpoints</Trans>
+              </span>
+            </div>
+            <div className="flex flex-col gap-2.5 px-5 pb-4 text-[12px]">
+              <div className="flex items-start gap-3">
+                <Badge variant="outline" mono>
+                  POST
+                </Badge>
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="font-mono text-[12px]">/mcp</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    <Trans>Tenant agents. DSL-filtered.</Trans>
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Badge variant="outline" mono>
+                  POST
+                </Badge>
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="font-mono text-[12px]">/api/admin/mcp</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    <Trans>Ops bots — admin role required.</Trans>
+                  </span>
+                </div>
+              </div>
+              <div className="mt-1 border-t border-border pt-2 text-[11px] text-muted-foreground">
+                <Trans>
+                  Stateless Streamable HTTP. No{" "}
+                  <span className="font-mono">GET /mcp</span> (resumable SSE) yet.
+                </Trans>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {selectedKey && (
+        <McpKeyModal
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          keyId={selectedKey.id}
+          keyPrefix={selectedKey.prefix}
+          keyName={selectedKey.name}
+          initialSecret={null}
+          initialAllowlist={selectedKey.mcpTools}
+          initialReadOnly={selectedKey.mcpReadOnly}
+          onSaved={() => {
+            void refreshKeys();
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+// ─── Runs tab ─────────────────────────────────────────────────────────────
+
+type RunFilter = "all" | "ok" | "review" | "denied";
+
+function RunsTab({
+  pushToast,
+}: {
+  pushToast: (m: string, type?: "success" | "error") => void;
+}) {
+  const { t } = useLingui();
+  const [rows, setRows] = useState<RunRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<RunFilter>("all");
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await activityApi.list({ action: "mcp.", limit: 200 });
+      setRows(r.data.map(mapActivityToRun));
+    } catch (e) {
+      pushToast((e as Error).message, "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [pushToast]);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const counts = useMemo(
+    () => ({
+      all: rows.length,
+      ok: rows.filter((r) => r.status === "ok").length,
+      review: rows.filter((r) => r.status === "review").length,
+      denied: rows.filter((r) => r.status === "denied" || r.status === "blocked").length,
+    }),
+    [rows],
+  );
+
+  const visible = useMemo(() => {
+    if (filter === "all") return rows;
+    if (filter === "denied")
+      return rows.filter((r) => r.status === "denied" || r.status === "blocked");
+    return rows.filter((r) => r.status === filter);
+  }, [rows, filter]);
+
+  const exportCsv = () => {
+    if (visible.length === 0) {
+      pushToast(t`Nothing to export — the current view is empty.`, "error");
+      return;
+    }
+    try {
+      const out = visible.map((r) => ({
+        when: r.ts,
+        tool: r.tool,
+        query: r.query,
+        status: r.status,
+        rows: r.rows ?? "",
+        durationMs: r.durationMs ?? "",
+        error: r.error ?? "",
+      }));
+      exportToCsv(out, "mcp-runs.csv", [
+        "when",
+        "tool",
+        "query",
+        "status",
+        "rows",
+        "durationMs",
+        "error",
+      ]);
+      pushToast(t`Exported ${visible.length} rows as mcp-runs.csv.`);
+    } catch {
+      pushToast(t`Could not export runs.`, "error");
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <Tabs value={filter} onValueChange={(v) => setFilter(v as RunFilter)}>
+          <TabsList>
+            <TabsTrigger value="all">
+              <Trans>All</Trans>
+              <Badge variant="secondary" mono>
+                {counts.all}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="ok">
+              <Trans>Success</Trans>
+              <Badge variant="secondary" mono>
+                {counts.ok}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="review">
+              <Trans>Review</Trans>
+              <Badge variant="secondary" mono>
+                {counts.review}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="denied">
+              <Trans>Denied</Trans>
+              <Badge variant="secondary" mono>
+                {counts.denied}
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={I.Refresh}
+            onClick={() => {
+              void refresh();
+            }}
+            title={t`Refresh`}
+          >
+            <span className="sr-only">
+              <Trans>Refresh</Trans>
+            </span>
+          </Button>
+          <Button variant="outline" size="sm" icon={I.Download} onClick={exportCsv}>
+            <Trans>Export CSV</Trans>
+          </Button>
+        </div>
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        {loading ? (
+          <div className="px-5 py-8 text-center text-[12.5px] text-muted-foreground">
+            <Trans>Loading runs…</Trans>
+          </div>
+        ) : visible.length === 0 ? (
+          <div className="px-5 py-8 text-center text-[12.5px] text-muted-foreground">
+            <Trans>No runs in this bucket yet.</Trans>
+          </div>
+        ) : (
+          <ScrollArea viewportClassName="max-h-[640px]">
+            <table className="w-full border-collapse text-[13px]">
+              <thead>
+                <tr className="border-b border-border">
+                  {[
+                    t`When`,
+                    t`Tool`,
+                    t`Query`,
+                    t`Result`,
+                    t`Latency`,
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="h-9 px-4 text-left text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((r) => (
+                  <tr
+                    key={r.id}
+                    className="border-b border-border/60 last:border-b-0 hover:bg-accent/40"
+                  >
+                    <td className="h-12 px-4 align-middle font-mono text-[11.5px] text-muted-foreground">
+                      {r.when}
+                    </td>
+                    <td className="px-4 align-middle">
+                      <span className="font-mono text-[12px]">{r.tool}</span>
+                    </td>
+                    <td
+                      className="max-w-md truncate px-4 align-middle text-foreground/85"
+                      title={r.query}
+                    >
+                      {r.query}
+                    </td>
+                    <td className="px-4 align-middle">
+                      <span className="inline-flex items-center gap-1.5 text-[12px]">
+                        <RunStatusIcon status={r.status} />
+                        {r.status === "ok" && r.rows != null ? (
+                          <span className="font-mono tabular-nums">
+                            {r.rows} <Trans>rows</Trans>
+                          </span>
+                        ) : r.status === "ok" ? (
+                          <Trans>ok</Trans>
+                        ) : r.status === "blocked" ? (
+                          <span className="text-muted-foreground">
+                            <Trans>blocked</Trans>
+                            {r.error ? (
+                              <>
+                                {" · "}
+                                <span className="font-mono">{r.error}</span>
+                              </>
+                            ) : null}
+                          </span>
+                        ) : r.status === "review" ? (
+                          <Trans>pending review</Trans>
+                        ) : (
+                          <span className="text-destructive">
+                            {r.error ?? <Trans>denied</Trans>}
+                          </span>
+                        )}
+                      </span>
+                    </td>
+                    <td className="px-4 align-middle font-mono tabular-nums text-muted-foreground">
+                      {r.durationMs != null ? `${r.durationMs}ms` : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </ScrollArea>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Connect tab ──────────────────────────────────────────────────────────
+
+type ConnectClient = "claude-desktop" | "cursor" | "curl";
+
+function ConnectTab({
+  pushToast,
+  keys,
+  keysLoading,
+  selectedKeyId,
+  setSelectedKeyId,
+}: {
+  pushToast: (m: string, type?: "success" | "error") => void;
+  keys: ApiKeyRow[];
+  keysLoading: boolean;
+  selectedKeyId: string | null;
+  setSelectedKeyId: (id: string) => void;
+}) {
+  const { t } = useLingui();
+  const [client, setClient] = useState<ConnectClient>("claude-desktop");
+
+  const mcpUrl = useMemo(() => {
+    if (typeof window === "undefined") return "https://your-workeros.example.com/mcp";
+    return `${window.location.origin}/mcp`;
+  }, []);
+
+  const selectedKey = keys.find((k) => k.id === selectedKeyId) ?? null;
+
+  // The plaintext secret is unrecoverable after key creation; the snippet
+  // bakes in `pak_<prefix>_••••••••` so an admin pasting the config still
+  // has a clear "replace this" placeholder.
+  const secretForSnippet = selectedKey
+    ? `pak_${selectedKey.prefix}_••••••••`
+    : "pak_<prefix>_<paste-secret-here>";
+
+  const snippet = useMemo(() => {
+    if (client === "claude-desktop") return claudeDesktopSnippet(mcpUrl, secretForSnippet);
+    if (client === "cursor") return cursorSnippet(mcpUrl, secretForSnippet);
+    return curlSnippet(mcpUrl, secretForSnippet);
+  }, [client, mcpUrl, secretForSnippet]);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(snippet);
+      pushToast(t`Snippet copied`);
+    } catch {
+      pushToast(t`Could not copy snippet — clipboard blocked.`, "error");
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_340px]">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="flex flex-wrap items-center gap-2 px-5 pt-4 pb-3">
+          <I.Plug size={13} />
+          <span className="text-[13px] font-semibold">
+            <Trans>Connect an MCP client</Trans>
+          </span>
+          <div className="ml-auto">
+            <Tabs
+              value={client}
+              onValueChange={(v) => setClient(v as ConnectClient)}
+            >
+              <TabsList>
+                <TabsTrigger value="claude-desktop">
+                  <Trans>Claude Desktop</Trans>
+                </TabsTrigger>
+                <TabsTrigger value="cursor">
+                  <Trans>Cursor</Trans>
+                </TabsTrigger>
+                <TabsTrigger value="curl">
+                  <Trans>curl</Trans>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+        </div>
+        <div className="border-t border-border bg-muted/30 px-5 py-3">
+          <span className="mr-2 text-[11px] uppercase tracking-wider text-muted-foreground">
+            <Trans>API key</Trans>
+          </span>
+          <div className="mt-1 max-w-md">
+            <KeyPicker
+              keys={keys}
+              keysLoading={keysLoading}
+              selectedKeyId={selectedKeyId}
+              setSelectedKeyId={setSelectedKeyId}
+            />
+          </div>
+        </div>
+        <div className="relative border-t border-border bg-[oklch(0.18_0.01_130)] text-[oklch(0.95_0.02_130)]">
+          <button
+            type="button"
+            onClick={() => {
+              void copy();
+            }}
+            className="absolute top-3 right-3 inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border-0 bg-white/10 px-3 text-[11.5px] font-medium text-[oklch(0.95_0.02_130)] hover:bg-white/20"
+          >
+            <I.Copy size={12} />
+            <Trans>Copy</Trans>
+          </button>
+          <ScrollArea viewportClassName="max-h-[420px]">
+            <pre className="m-0 px-5 py-5 font-mono text-[12px] leading-[1.6] whitespace-pre">
+              {snippet}
+            </pre>
+          </ScrollArea>
+        </div>
+        <div className="flex items-center gap-2 border-t border-border px-5 py-3">
+          <span className="text-[11.5px] text-muted-foreground">
+            {client === "claude-desktop" && (
+              <Trans>
+                Add to{" "}
+                <span className="font-mono">
+                  ~/Library/Application Support/Claude/claude_desktop_config.json
+                </span>{" "}
+                (macOS), restart Claude Desktop, then look under the plug icon.
+              </Trans>
+            )}
+            {client === "cursor" && (
+              <Trans>
+                Settings → MCP → Add. Same JSON shape Claude Desktop uses.
+              </Trans>
+            )}
+            {client === "curl" && (
+              <Trans>
+                Direct Streamable HTTP — useful for CI agents and smoke tests.
+              </Trans>
+            )}
+          </span>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="flex items-center gap-2 px-5 pt-4 pb-3">
+          <I.Sparkles size={13} className="text-primary" />
+          <span className="text-[13px] font-semibold">
+            <Trans>Hosted Claude</Trans>
+          </span>
+          <Badge
+            variant="outline"
+            mono
+            className="ml-1 border-amber-500/40 text-amber-700 dark:text-amber-300"
+          >
+            roadmap
+          </Badge>
+        </div>
+        <div className="px-5 pb-4 text-[12.5px] text-muted-foreground">
+          <Trans>
+            OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a
+            separate epic.
+          </Trans>
+          <ul className="m-0 mt-2 list-disc space-y-1 pl-4 text-[12px]">
+            <li>
+              <Trans>
+                Resumable SSE on{" "}
+                <span className="font-mono text-foreground">GET /mcp</span>
+              </Trans>
+            </li>
+            <li>
+              <Trans>
+                <span className="font-mono text-foreground">
+                  resources/subscribe
+                </span>{" "}
+                for live tail
+              </Trans>
+            </li>
+            <li>
+              <Trans>OAuth scope mapping → workeros roles</Trans>
+            </li>
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }

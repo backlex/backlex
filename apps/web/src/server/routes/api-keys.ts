@@ -257,7 +257,10 @@ export const apiKeysRoutes = new OpenAPIHono<AppBindings>()
         tenantId,
         roleId: body.roleId ?? null,
         expiresAt,
-        mcpTools: body.mcpTools ?? null,
+        // Forward `null` (explicit permissive) and arrays as given; if the
+        // caller omitted the field, leave it undefined so `createApiKey`'s
+        // default-deny (`[]`) takes effect.
+        mcpTools: body.mcpTools,
         mcpReadOnly: body.mcpReadOnly ?? false,
       });
       const roleNames = new Map<string, string>();

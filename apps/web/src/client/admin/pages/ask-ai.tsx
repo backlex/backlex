@@ -1224,7 +1224,7 @@ function KeyPicker({
             <span className="flex items-center gap-2">
               <span>{k.name}</span>
               <span className="font-mono text-[11px] text-muted-foreground">
-                pak_{k.prefix}_…
+                {k.prefix}_…
               </span>
             </span>
           </SelectItem>
@@ -1884,10 +1884,10 @@ function ConnectTab({
   const selectedKey = keys.find((k) => k.id === selectedKeyId) ?? null;
 
   // The plaintext secret is unrecoverable after key creation; the snippet
-  // bakes in `pak_<prefix>_••••••••` so an admin pasting the config still
-  // has a clear "replace this" placeholder.
+  // bakes in `<prefix>_••••••••` so an admin pasting the config still has
+  // a clear "replace this" placeholder. `prefix` already starts with `pak_`.
   const secretForSnippet = selectedKey
-    ? `pak_${selectedKey.prefix}_••••••••`
+    ? `${selectedKey.prefix}_••••••••`
     : "pak_<prefix>_<paste-secret-here>";
 
   const snippet = useMemo(() => {

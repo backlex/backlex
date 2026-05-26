@@ -1156,7 +1156,7 @@ msgstr "Doğal dilde sor"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "asking {model}…"
-msgstr "{model} sorgulanıyor…"
+msgstr "{model} düşünüyor…"
 
 #: src/client/admin/storage.tsx
 msgid "Aspect-cropping active. Focal point picks which area is kept."
@@ -1238,7 +1238,7 @@ msgstr "<0>env</0> bağlamalarından otomatik algılandı."
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "auto-run reads"
-msgstr "okuma sorgularını otomatik çalıştır"
+msgstr "okumaları otomatik çalıştır"
 
 #: src/client/admin/parity/translations.tsx
 msgid "Auto-translate"
@@ -1783,7 +1783,7 @@ msgstr "Onayla"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Confirm & run"
-msgstr "Onayla ve çalıştır"
+msgstr "Doğrulayıp çalıştır"
 
 #: src/client/admin/account-page.tsx
 msgid "Confirm new password"
@@ -1795,7 +1795,7 @@ msgstr "Parolayı onayla"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Connect"
-msgstr "Bağlan"
+msgstr "Bağlantı"
 
 #: src/client/pages/api-keys.tsx
 msgid "Connect MCP"
@@ -4074,15 +4074,15 @@ msgstr "MCP · {MCP_TOOL_COUNT} araç"
 
 #: src/client/components/mcp-key-modal.tsx
 msgid "MCP endpoint URL"
-msgstr "MCP endpoint URL'i"
+msgstr "MCP uç nokta URL'i"
 
 #: src/client/pages/api-keys.tsx
 msgid "MCP read-only"
-msgstr "MCP salt okunur"
+msgstr "MCP salt-okunur"
 
 #: src/client/pages/api-keys.tsx
 msgid "MCP read-only mode"
-msgstr "MCP salt okunur modu"
+msgstr "MCP salt-okunur modu"
 
 #. placeholder {0}: k.mcpTools.length
 #: src/client/pages/api-keys.tsx
@@ -5634,7 +5634,7 @@ msgstr "salt okunur"
 
 #: src/client/components/mcp-key-modal.tsx
 msgid "Read-only mode"
-msgstr "Salt okunur mod"
+msgstr "Salt-okunur mod"
 
 #: src/client/admin/parity/insights.tsx
 msgid "read-only SELECT against the workspace database"

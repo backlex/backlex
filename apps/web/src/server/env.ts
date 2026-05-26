@@ -79,9 +79,19 @@ export interface Env {
   AI?: Ai;
   // Optional AI provider keys.
   OPENAI_API_KEY?: string;
-  /** Anthropic API key — powers the "Auto-translate missing" action in the
-   *  Translations admin page. When unset, the endpoint returns 503 with a
-   *  hint to set this. */
+  /** Vercel AI Gateway API key — preferred multi-provider credential.
+   *  When set, every `ai.*` MCP tool, the Ask AI planner, and any future
+   *  AI-SDK caller routes through https://ai-gateway.vercel.sh and accepts
+   *  provider-prefixed model ids (`anthropic/claude-haiku-4-5`,
+   *  `openai/gpt-5`, `google/gemini-2.5-pro`, …). One key reaches every
+   *  upstream. See docs/ask-ai.md. */
+  AI_GATEWAY_API_KEY?: string;
+  /** Legacy direct-Anthropic API key. Kept as a fallback so workspaces
+   *  already configured with `ANTHROPIC_API_KEY` keep working without
+   *  reissuing credentials. New deployments should prefer
+   *  `AI_GATEWAY_API_KEY`. Also still powers the "Auto-translate missing"
+   *  action in the Translations admin page, which hard-codes the
+   *  Anthropic client. */
   ANTHROPIC_API_KEY?: string;
   /** Base URL of a self-hosted, OpenAI-compatible embeddings container
    *  (e.g. HuggingFace TEI, Ollama, vLLM, LiteLLM). The adapter posts to

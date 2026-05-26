@@ -18,7 +18,7 @@ permission check, allowlist, and audit row works identically.
 
 | Step | Endpoint | Behaviour |
 |---|---|---|
-| 1. Plan | `POST /api/admin/ai/plan` | Claude (default `claude-haiku-4-5`) is given the prompt + a short whitelist of read-leaning tools and asked for `{rationale, tool, args}` as fenced JSON. The route validates and returns it — nothing is executed. |
+| 1. Plan | `POST /api/admin/ai/plan` | The configured model (default `anthropic/claude-haiku-4-5`) is given the prompt + a short whitelist of read-leaning tools and asked for `{rationale, tool, args}` as fenced JSON. The route validates and returns it — nothing is executed. |
 | 2. Run  | `POST /api/admin/ai/run`  | The named tool is dispatched against the **in-process** Hono app — same path Claude Desktop's MCP call would take. One row lands in `activity` (success and failure) so the Recent Runs panel and the existing logs page both see it. |
 
 Splitting `plan` from `run` is deliberate. The MCP `ai.query` tool plans
@@ -31,9 +31,20 @@ click — except when "auto-run reads" is on and the proposed tool matches
 
 ## Requirements
 
-- `ANTHROPIC_API_KEY` set on the workeros deployment. Without it, `/plan`
-  returns `503 UNAVAILABLE` with a clear message — the same pattern every
-  `ai.*` MCP tool uses (see `apps/web/src/server/mcp/ai-client.ts`).
+- An AI provider credential on the workeros deployment. workeros routes
+  through [Vercel AI Gateway](https://ai-gateway.vercel.sh) by default —
+  set `AI_GATEWAY_API_KEY` and one key reaches Anthropic, OpenAI, Google,
+  and every other gateway-supported provider. The UI ships provider-
+  prefixed model ids (`anthropic/claude-haiku-4-5`, `openai/gpt-5`,
+  `google/gemini-2.5-pro`).
+- **Legacy fallback:** when `AI_GATEWAY_API_KEY` is unset but
+  `ANTHROPIC_API_KEY` is set, the client falls back to the direct
+  Anthropic provider (Claude only). The page silently strips the
+  `anthropic/` prefix from any selected model. Workspaces that already
+  ship `ANTHROPIC_API_KEY` keep working with no change.
+- Without **either** key, `/plan` returns `503 UNAVAILABLE` with a clear
+  message — the same pattern every `ai.*` MCP tool uses (see
+  `apps/web/src/server/mcp/ai-client.ts`).
 - The signed-in user must hold the system `admin` role. Non-admins get a
   hard `403 FORBIDDEN` on both endpoints.
 
@@ -58,11 +69,13 @@ new dispatcher hook with its own table — not retrofitting `activity`.
 
 ## Model picker + preferences
 
-The model dropdown defaults to `claude-haiku-4-5` and persists the
-choice to `localStorage` under `workeros.askai.model`. The "auto-run
-reads" toggle persists to `workeros.askai.autoRun` (`"1"` / `"0"`).
-Neither is workspace-scoped — they are per-browser, which is what an
-operator expects from a power-user surface.
+The model dropdown defaults to `anthropic/claude-haiku-4-5` and persists
+the choice to `localStorage` under `workeros.askai.model`. Pre-gateway
+values stored as bare ids (`claude-haiku-4-5`) are silently rewritten on
+read so the dropdown highlights the right row on first paint. The
+"auto-run reads" toggle persists to `workeros.askai.autoRun` (`"1"` /
+`"0"`). Neither is workspace-scoped — they are per-browser, which is
+what an operator expects from a power-user surface.
 
 ## Where to look in code
 

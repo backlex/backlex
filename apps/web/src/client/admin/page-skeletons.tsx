@@ -157,6 +157,56 @@ function ListCardSkeleton({ rows = 6, header = true }: { rows?: number; header?:
  * Per-page skeletons
  * ────────────────────────────────────────────────────────────────────── */
 
+/** Ask AI — tab strip, tall prompt + plan card, recent-runs rail. */
+function AskAiSkeletonImpl() {
+  return (
+    <div className="flex flex-col gap-5">
+      <HeaderSkeleton actions={0} />
+      <TabStripSkeleton tabs={4} />
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[1fr_320px]">
+        <div className="flex min-w-0 flex-col gap-5">
+          {/* Prompt card */}
+          <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
+            <div className="flex items-center gap-2">
+              <Skeleton className="size-4 rounded" />
+              <Skeleton className="h-3.5 w-44" />
+              <div className="flex-1" />
+              <Skeleton className="h-5 w-32 rounded-full" />
+            </div>
+            <Skeleton className="h-20 w-full" />
+            <div className="flex items-center gap-2 pt-2">
+              <Skeleton className="h-4 w-32" />
+              <div className="flex-1" />
+              <Skeleton className="h-8 w-20 rounded-full" />
+              <Skeleton className="h-8 w-20 rounded-full" />
+            </div>
+          </div>
+          {/* Plan card */}
+          <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
+            <div className="flex items-center gap-2">
+              <Skeleton className="size-6 rounded-full" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-5 w-32 rounded-full" />
+            </div>
+            <Skeleton className="h-3.5 w-3/4" />
+            <Skeleton className="h-32 w-full rounded-xl" />
+          </div>
+        </div>
+        {/* Recent runs rail */}
+        <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4">
+          <Skeleton className="h-4 w-28" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-1.5 border-b border-border/60 py-2 last:border-b-0">
+              <Skeleton className="h-3 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Overview — metric cards, quick actions, stat cards, then a 2-column split. */
 function OverviewSkeletonImpl() {
   return (
@@ -689,6 +739,7 @@ function GenericSkeletonImpl() {
  * ────────────────────────────────────────────────────────────────────── */
 
 export const OverviewSkeleton = withSkeletonDelay(OverviewSkeletonImpl);
+export const AskAiSkeleton = withSkeletonDelay(AskAiSkeletonImpl);
 export const LogsSkeleton = withSkeletonDelay(LogsSkeletonImpl);
 export const DatabaseSkeleton = withSkeletonDelay(DatabaseSkeletonImpl);
 export const FlowsSkeleton = withSkeletonDelay(FlowsSkeletonImpl);
@@ -733,6 +784,8 @@ export function PageSkeleton({ nav }: { nav: string }) {
   switch (nav) {
     case "overview":
       return <OverviewSkeleton />;
+    case "ask-ai":
+      return <AskAiSkeleton />;
     case "collections":
       return <CollectionsSkeleton />;
     case "access":

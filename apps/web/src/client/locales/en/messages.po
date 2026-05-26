@@ -1716,6 +1716,10 @@ msgstr "Comment posted."
 msgid "comments"
 msgstr "comments"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Comments needing moderation"
+msgstr "Comments needing moderation"
+
 #: src/client/admin/role-editor.tsx
 msgid "Compiled rule"
 msgstr "Compiled rule"
@@ -2460,6 +2464,10 @@ msgstr "draft"
 #: src/client/admin/item-views.tsx
 msgid "Draft"
 msgstr "Draft"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Draft support_tickets schema"
+msgstr "Draft support_tickets schema"
 
 #: src/client/admin/storage.tsx
 msgid "drafts"
@@ -4945,6 +4953,10 @@ msgstr "or with email"
 msgid "Original"
 msgstr "Original"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Orphan storage files"
+msgstr "Orphan storage files"
+
 #: src/client/admin/parity/translations.tsx
 msgid "Other locales stay empty until filled in the matrix."
 msgstr "Other locales stay empty until filled in the matrix."
@@ -5543,6 +5555,10 @@ msgstr "Published"
 #: src/client/admin/role-editor.tsx
 msgid "published only"
 msgstr "published only"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Published posts past week"
+msgstr "Published posts past week"
 
 #: src/client/admin/storage.tsx
 msgid "Quality"
@@ -7460,6 +7476,10 @@ msgstr "Tools"
 #: src/client/admin/pages/overview.tsx
 msgid "Top collections"
 msgstr "Top collections"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Top customers last month"
+msgstr "Top customers last month"
 
 #: src/client/admin/pages/users.tsx
 msgid "Total users"

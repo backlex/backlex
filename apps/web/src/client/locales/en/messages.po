@@ -438,6 +438,10 @@ msgstr "{activeRole} · {0} · {c}: {state}"
 msgid "{allowedReadCount} readable · {allowedWriteCount} writable"
 msgstr "{allowedReadCount} readable · {allowedWriteCount} writable"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "{allowlistSize} of {totalTools} tools enabled."
+msgstr "{allowlistSize} of {totalTools} tools enabled."
+
 #: src/client/admin/pages/settings.tsx
 msgid "{c} is already in the list."
 msgstr "{c} is already in the list."
@@ -461,6 +465,14 @@ msgstr "{key} → {next}."
 #: src/client/admin/storage.tsx
 msgid "{key} deleted."
 msgstr "{key} deleted."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "{name} ok"
+msgstr "{name} ok"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "{name} ok — {n} rows"
+msgstr "{name} ok — {n} rows"
 
 #: src/client/components/social-buttons.tsx
 msgid "{provider} sign-in"
@@ -519,6 +531,10 @@ msgstr "<0>{{username}}</0> is replaced with the submitted username (RFC-4515 es
 #: src/client/admin/adopt-wizard.tsx
 msgid "<0>{fieldsCount}</0> fields registered."
 msgstr "<0>{fieldsCount}</0> fields registered."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "<0>resources/subscribe</0> for live tail"
+msgstr "<0>resources/subscribe</0> for live tail"
 
 #. placeholder {0}: testResult.ms
 #: src/client/admin/condition-editor.tsx
@@ -687,6 +703,10 @@ msgstr "active"
 msgid "Active"
 msgstr "Active"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Active API key"
+msgstr "Active API key"
+
 #: src/client/admin/pages/overview.tsx
 msgid "Active flows"
 msgstr "Active flows"
@@ -694,6 +714,10 @@ msgstr "Active flows"
 #: src/client/admin/pages/users.tsx
 msgid "Active in 24h"
 msgstr "Active in 24h"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Active key guards"
+msgstr "Active key guards"
 
 #: src/client/admin/parity/translations.tsx
 msgid "Active languages for this workspace. The default is returned by the public API when a requested locale has no string."
@@ -847,6 +871,10 @@ msgstr "Add step"
 msgid "Add to <0>~/Library/Application Support/Claude/claude_desktop_config.json</0> (macOS) and restart Claude Desktop."
 msgstr "Add to <0>~/Library/Application Support/Claude/claude_desktop_config.json</0> (macOS) and restart Claude Desktop."
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Add to <0>~/Library/Application Support/Claude/claude_desktop_config.json</0> (macOS), restart Claude Desktop, then look under the plug icon."
+msgstr "Add to <0>~/Library/Application Support/Claude/claude_desktop_config.json</0> (macOS), restart Claude Desktop, then look under the plug icon."
+
 #: src/client/admin/flow-builder.tsx
 msgid "Add to false branch"
 msgstr "Add to false branch"
@@ -939,6 +967,7 @@ msgstr "Alias from another column"
 msgid "alice"
 msgstr "alice"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/ui.tsx
 msgid "All"
 msgstr "All"
@@ -947,6 +976,10 @@ msgstr "All"
 #: src/client/admin/parity/translations.tsx
 msgid "All ({0})"
 msgstr "All ({0})"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "All {totalTools} tools allowed."
+msgstr "All {totalTools} tools allowed."
 
 #: src/client/admin/pages/advisor.tsx
 msgid "All clear in this category"
@@ -1041,6 +1074,10 @@ msgstr "Anyone with this link can view the record — copy it now, the token is 
 #: src/client/admin/collections-index.tsx
 msgid "API docs"
 msgstr "API docs"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "API key"
+msgstr "API key"
 
 #: src/client/admin/ui.tsx
 msgid "API keys"
@@ -1344,6 +1381,14 @@ msgstr "Block all"
 msgid "Block every write tool (insert / update / delete / invoke / …) when this key is used through the MCP server. REST authorization is unaffected. Allowlist can be configured per-key after creation."
 msgstr "Block every write tool (insert / update / delete / invoke / …) when this key is used through the MCP server. REST authorization is unaffected. Allowlist can be configured per-key after creation."
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "blocked"
+msgstr "blocked"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Blocks every write tool at the dispatcher."
+msgstr "Blocks every write tool at the dispatcher."
+
 #: src/client/admin/parity/app-users.tsx
 msgid "Blocks sign-in and drops all active sessions immediately."
 msgstr "Blocks sign-in and drops all active sessions immediately."
@@ -1520,6 +1565,7 @@ msgstr "Claim this instance"
 msgid "Claiming…"
 msgstr "Claiming…"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "Claude Desktop"
 msgstr "Claude Desktop"
@@ -1693,8 +1739,8 @@ msgid "column: <0>{0}</0>"
 msgstr "column: <0>{0}</0>"
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "Coming soon"
-msgstr "Coming soon"
+#~ msgid "Coming soon"
+#~ msgstr "Coming soon"
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Comma- or space-separated. When set, email-looking usernames from other domains are rejected before the LDAP roundtrip."
@@ -1805,6 +1851,10 @@ msgstr "Confirm password"
 msgid "Connect"
 msgstr "Connect"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Connect an MCP client"
+msgstr "Connect an MCP client"
+
 #: src/client/pages/api-keys.tsx
 msgid "Connect MCP"
 msgstr "Connect MCP"
@@ -1873,6 +1923,7 @@ msgid "copy"
 msgstr "copy"
 
 #: src/client/admin/item-collaboration.tsx
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 #: src/client/components/mcp-key-modal.tsx
@@ -1921,6 +1972,10 @@ msgstr "Could not copy fix."
 msgid "Could not copy link."
 msgstr "Could not copy link."
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Could not copy snippet — clipboard blocked."
+msgstr "Could not copy snippet — clipboard blocked."
+
 #: src/client/admin/item-collaboration.tsx
 msgid "Could not create share link."
 msgstr "Could not create share link."
@@ -1932,6 +1987,10 @@ msgstr "Could not delete comment."
 #: src/client/admin/pages/logs.tsx
 msgid "Could not export logs."
 msgstr "Could not export logs."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Could not export runs."
+msgstr "Could not export runs."
 
 #: src/client/admin/item-collaboration.tsx
 msgid "Could not post comment."
@@ -2072,6 +2131,7 @@ msgstr "Creating…"
 msgid "Cron expression"
 msgstr "Cron expression"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "curl"
 msgstr "curl"
@@ -2098,6 +2158,7 @@ msgstr "Current password"
 msgid "Current state"
 msgstr "Current state"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "Cursor"
 msgstr "Cursor"
@@ -2125,6 +2186,10 @@ msgstr "Custom roles layer additively on top of authenticated."
 #: src/client/admin/permissions-matrix.tsx
 msgid "custom rule"
 msgstr "custom rule"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Customize…"
+msgstr "Customize…"
 
 #: src/client/admin/parity/database.tsx
 msgid "Daily 03:00 UTC"
@@ -2299,9 +2364,14 @@ msgstr "Deliveries"
 msgid "Deliveries pause immediately when off; queued events are dropped after 24h."
 msgstr "Deliveries pause immediately when off; queued events are dropped after 24h."
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/permissions-matrix.tsx
 msgid "denied"
 msgstr "denied"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Denied"
+msgstr "Denied"
 
 #: src/client/admin/permissions-matrix.tsx
 msgid "denied for this role"
@@ -2372,6 +2442,10 @@ msgstr "Dim"
 #: src/client/admin/parity/database.tsx
 msgid "Direct access to the underlying engine. Adapter: <0>{0}</0>. SQL editor runs through the same permission layer as the API."
 msgstr "Direct access to the underlying engine. Adapter: <0>{0}</0>. SQL editor runs through the same permission layer as the API."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Direct Streamable HTTP — useful for CI agents and smoke tests."
+msgstr "Direct Streamable HTTP — useful for CI agents and smoke tests."
 
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
@@ -2734,6 +2808,10 @@ msgstr "Endpoint"
 msgid "Endpoint URL"
 msgstr "Endpoint URL"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Endpoints"
+msgstr "Endpoints"
+
 #: src/client/pages/sign-up.tsx
 msgid "Enrol a passkey now"
 msgstr "Enrol a passkey now"
@@ -2872,6 +2950,7 @@ msgstr "Expires"
 msgid "Export"
 msgstr "Export"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Export CSV"
 msgstr "Export CSV"
@@ -2888,6 +2967,11 @@ msgstr "Export NDJSON"
 #: src/client/admin/pages/logs.tsx
 msgid "Exported {0} rows as activity.csv."
 msgstr "Exported {0} rows as activity.csv."
+
+#. placeholder {0}: visible.length
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Exported {0} rows as mcp-runs.csv."
+msgstr "Exported {0} rows as mcp-runs.csv."
 
 #. placeholder {0}: filtered.length
 #: src/client/admin/pages/logs.tsx
@@ -3052,6 +3136,14 @@ msgstr "Filter tables by name…"
 #: src/client/admin/parity/database.tsx
 msgid "Filter tables…"
 msgstr "Filter tables…"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Filter tools"
+msgstr "Filter tools"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Filter tools…"
+msgstr "Filter tools…"
 
 #: src/client/admin/pages/functions.tsx
 msgid "fires on matching pub-sub channel events"
@@ -3300,6 +3392,10 @@ msgstr "Group by"
 msgid "Groups"
 msgstr "Groups"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Guards updated"
+msgstr "Guards updated"
+
 #: src/client/admin/parity/database.tsx
 msgid "Hash"
 msgstr "Hash"
@@ -3368,6 +3464,10 @@ msgstr "highest reasoning · slower · ~3x cost"
 #: src/client/admin/pages/webhooks.tsx
 msgid "Hook"
 msgstr "Hook"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Hosted Claude"
+msgstr "Hosted Claude"
 
 #: src/client/admin/collection-settings.tsx
 msgid "how this collection shows up in nav and lists"
@@ -3800,6 +3900,10 @@ msgstr "Last write"
 msgid "latency"
 msgstr "latency"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Latency"
+msgstr "Latency"
+
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "LDAP / Active Directory"
 msgstr "LDAP / Active Directory"
@@ -3929,10 +4033,19 @@ msgstr "Load more"
 msgid "Loading API keys"
 msgstr "Loading API keys"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Loading keys…"
+msgstr "Loading keys…"
+
 #: src/client/components/mcp-key-modal.tsx
 msgid "Loading MCP tools"
 msgstr "Loading MCP tools"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Loading runs…"
+msgstr "Loading runs…"
+
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "Loading tool catalog…"
 msgstr "Loading tool catalog…"
@@ -4107,6 +4220,10 @@ msgstr "MCP read-only"
 #: src/client/pages/api-keys.tsx
 msgid "MCP read-only mode"
 msgstr "MCP read-only mode"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "MCP tool catalog"
+msgstr "MCP tool catalog"
 
 #. placeholder {0}: k.mcpTools.length
 #: src/client/pages/api-keys.tsx
@@ -4624,6 +4741,10 @@ msgstr "No items yet"
 msgid "No JSON content defined."
 msgstr "No JSON content defined."
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "No live keys — create one on the <0>API Keys</0> page first."
+msgstr "No live keys — create one on the <0>API Keys</0> page first."
+
 #: src/client/admin/pages/logs.tsx
 msgid "No log entries match"
 msgstr "No log entries match"
@@ -4707,6 +4828,10 @@ msgid "No rows returned."
 msgstr "No rows returned."
 
 #: src/client/admin/pages/ask-ai.tsx
+msgid "No runs in this bucket yet."
+msgstr "No runs in this bucket yet."
+
+#: src/client/admin/pages/ask-ai.tsx
 msgid "No runs yet — your tool calls will show up here."
 msgstr "No runs yet — your tool calls will show up here."
 
@@ -4745,6 +4870,10 @@ msgstr "No tags yet."
 #: src/client/admin/parity/email-templates.tsx
 msgid "No templates yet — use \"New template\" to add one."
 msgstr "No templates yet — use \"New template\" to add one."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "No tools match this filter."
+msgstr "No tools match this filter."
 
 #: src/client/admin/edit-field.tsx
 msgid "No two rows can hold the same value (case-sensitive)."
@@ -4816,6 +4945,7 @@ msgstr "Nothing selected"
 msgid "Nothing selected yet"
 msgstr "Nothing selected yet"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Nothing to export — the current view is empty."
 msgstr "Nothing to export — the current view is empty."
@@ -4857,6 +4987,14 @@ msgstr "OAuth redirect URI to register with {0}"
 msgid "OAuth required"
 msgstr "OAuth required"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "OAuth scope mapping → workeros roles"
+msgstr "OAuth scope mapping → workeros roles"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a separate epic."
+msgstr "OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a separate epic."
+
 #: src/client/admin/item-views.tsx
 msgid "October"
 msgstr "October"
@@ -4869,6 +5007,7 @@ msgstr "off"
 msgid "Off keeps the provider configured but hidden from sign-in."
 msgstr "Off keeps the provider configured but hidden from sign-in."
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/pages/graphql.tsx
 msgid "ok"
 msgstr "ok"
@@ -4955,6 +5094,10 @@ msgstr "OpenAPI spec refreshed."
 #: src/client/pages/openapi-export.tsx
 msgid "Operations"
 msgstr "Operations"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Ops bots — admin role required."
+msgstr "Ops bots — admin role required."
 
 #: src/client/admin/pages/overview.tsx
 msgid "optional"
@@ -5148,6 +5291,10 @@ msgstr "pending"
 msgid "Pending invites"
 msgstr "Pending invites"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "pending review"
+msgstr "pending review"
+
 #: src/client/admin/collections-index.tsx
 msgid "People"
 msgstr "People"
@@ -5246,6 +5393,14 @@ msgstr "Pick a field…"
 #: src/client/admin/relational-pickers.tsx
 msgid "Pick a file"
 msgstr "Pick a file"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Pick a key"
+msgstr "Pick a key"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Pick a key to manage its allowlist."
+msgstr "Pick a key to manage its allowlist."
 
 #: src/client/admin/pages/settings.tsx
 msgid "Pick a language…"
@@ -5596,6 +5751,7 @@ msgstr "Quality"
 msgid "Queries"
 msgstr "Queries"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/pages/graphql.tsx
 msgid "Query"
 msgstr "Query"
@@ -5660,6 +5816,7 @@ msgstr "Read"
 msgid "read-only"
 msgstr "read-only"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "Read-only mode"
 msgstr "Read-only mode"
@@ -6026,6 +6183,10 @@ msgstr "Result"
 msgid "Result is piped into <0>$last</0> for the next step."
 msgstr "Result is piped into <0>$last</0> for the next step."
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Resumable SSE on <0>GET /mcp</0>"
+msgstr "Resumable SSE on <0>GET /mcp</0>"
+
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Resume"
@@ -6069,6 +6230,10 @@ msgstr "Reverted — a new revision was recorded."
 #: src/client/admin/parity/revisions.tsx
 msgid "Reverting…"
 msgstr "Reverting…"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Review"
+msgstr "Review"
 
 #. placeholder {0}: e.v
 #: src/client/admin/parity/revisions.tsx
@@ -6752,6 +6917,10 @@ msgstr "Settings"
 msgid "Settings → MCP → Add new MCP server → paste the JSON."
 msgstr "Settings → MCP → Add new MCP server → paste the JSON."
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Settings → MCP → Add. Same JSON shape Claude Desktop uses."
+msgstr "Settings → MCP → Add. Same JSON shape Claude Desktop uses."
+
 #: src/client/admin/pages/settings.tsx
 msgid "Settings saved."
 msgstr "Settings saved."
@@ -7005,6 +7174,10 @@ msgstr "slug is required"
 msgid "Slug: <0>{slugClean}</0>"
 msgstr "Slug: <0>{slugClean}</0>"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Snippet copied"
+msgstr "Snippet copied"
+
 #: src/client/admin/parity/database.tsx
 #: src/client/pages/graphql.tsx
 msgid "Snippets"
@@ -7053,6 +7226,10 @@ msgstr "Staging"
 #: src/client/admin/collections-index.tsx
 msgid "Start from"
 msgstr "Start from"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Stateless Streamable HTTP. No <0>GET /mcp</0> (resumable SSE) yet."
+msgstr "Stateless Streamable HTTP. No <0>GET /mcp</0> (resumable SSE) yet."
 
 #: src/client/admin/parity/insights.tsx
 msgid "static panels render their config object verbatim — set it from the API once the panel exists."
@@ -7144,6 +7321,7 @@ msgstr "Subject is required."
 msgid "Subscribed. Waiting for events…"
 msgstr "Subscribed. Waiting for events…"
 
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Success"
 msgstr "Success"
@@ -7262,6 +7440,10 @@ msgstr "Template"
 #: src/client/admin/parity/email-templates.tsx
 msgid "Template saved."
 msgstr "Template saved."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Tenant agents. DSL-filtered."
+msgstr "Tenant agents. DSL-filtered."
 
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collection-settings.tsx
@@ -7493,6 +7675,11 @@ msgstr "Toggle sidebar"
 msgid "Toggle theme"
 msgstr "Toggle theme"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Tool"
+msgstr "Tool"
+
+#: src/client/admin/pages/ask-ai.tsx
 #: src/client/components/mcp-key-modal.tsx
 msgid "Tool allowlist"
 msgstr "Tool allowlist"
@@ -7508,6 +7695,10 @@ msgstr "Tool ok"
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Tool ok — {count} rows"
 msgstr "Tool ok — {count} rows"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "tools"
+msgstr "tools"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Tools"
@@ -8023,6 +8214,10 @@ msgstr "What this file is about…"
 #: src/client/admin/role-editor.tsx
 msgid "What this role can do…"
 msgstr "What this role can do…"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "When"
+msgstr "When"
 
 #: src/client/admin/flow-builder.tsx
 msgid "When (filter DSL)"

@@ -211,46 +211,50 @@ function ModelPicker({
         <div className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           <Trans>Model</Trans>
         </div>
-        {grouped.map((g, gi) => (
-          <div key={g.provider} className={gi > 0 ? "mt-1 border-t border-border/60 pt-1" : ""}>
-            <div className="px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/80">
-              {g.provider}
-            </div>
-            {g.items.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => {
-                  onChange(m.id);
-                  setOpen(false);
-                }}
-                className={`flex w-full cursor-pointer items-start gap-2.5 rounded-lg border-0 bg-transparent px-2.5 py-2 text-left hover:bg-accent ${value === m.id ? "bg-accent" : ""}`}
-              >
-                <span
-                  className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${value === m.id ? "bg-primary" : "bg-border"}`}
-                />
-                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="flex items-center gap-1.5">
-                    <span className="font-mono text-[12px] text-foreground">
-                      {m.label}
+        <ScrollArea viewportClassName="max-h-[360px]">
+          <div>
+            {grouped.map((g, gi) => (
+              <div key={g.provider} className={gi > 0 ? "mt-1 border-t border-border/60 pt-1" : ""}>
+                <div className="px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/80">
+                  {g.provider}
+                </div>
+                {g.items.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      onChange(m.id);
+                      setOpen(false);
+                    }}
+                    className={`flex w-full cursor-pointer items-start gap-2.5 rounded-lg border-0 bg-transparent px-2.5 py-2 text-left hover:bg-accent ${value === m.id ? "bg-accent" : ""}`}
+                  >
+                    <span
+                      className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${value === m.id ? "bg-primary" : "bg-border"}`}
+                    />
+                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="flex items-center gap-1.5">
+                        <span className="font-mono text-[12px] text-foreground">
+                          {m.label}
+                        </span>
+                        {m.default && (
+                          <Badge variant="secondary" mono>
+                            default
+                          </Badge>
+                        )}
+                      </span>
+                      <span className="text-[10.5px] leading-snug text-muted-foreground">
+                        {m.hint}
+                      </span>
                     </span>
-                    {m.default && (
-                      <Badge variant="secondary" mono>
-                        default
-                      </Badge>
+                    {value === m.id && (
+                      <I.Check size={12} className="mt-1 shrink-0 text-primary" />
                     )}
-                  </span>
-                  <span className="text-[10.5px] leading-snug text-muted-foreground">
-                    {m.hint}
-                  </span>
-                </span>
-                {value === m.id && (
-                  <I.Check size={12} className="mt-1 shrink-0 text-primary" />
-                )}
-              </button>
+                  </button>
+                ))}
+              </div>
             ))}
           </div>
-        ))}
+        </ScrollArea>
         <div className="mt-1 border-t border-border px-3 pt-2 pb-1 text-[10.5px] text-muted-foreground">
           <Trans>
             Configured via{" "}

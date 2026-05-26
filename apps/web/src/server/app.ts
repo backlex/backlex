@@ -70,6 +70,7 @@ import { realtimeAdminRoutes } from "./routes/realtime-admin";
 import { advisorRoutes } from "./routes/advisor";
 import { openapiRoutes } from "./routes/openapi";
 import { tenantMcpRoutes, adminMcpRoutes } from "./routes/mcp";
+import { aiAskRoutes } from "./routes/ai-ask";
 import type { Env } from "./env";
 
 export type AppBindings = {
@@ -286,6 +287,11 @@ export const createApp = (env: Env) => {
   // additionally requires the system `admin` role.
   app.route("/mcp", tenantMcpRoutes(app, env));
   app.route("/api/admin/mcp", adminMcpRoutes(app, env));
+  // Admin "Ask AI" page — splits the design's `planForPrompt` mock into
+  // /plan (Claude → tool + args) and /run (executes one MCP tool, logs to
+  // the activity table). Mounted after MCP because /run reuses the same
+  // tool roster via in-process sub-fetches against this same Hono app.
+  app.route("/api/admin/ai", aiAskRoutes(app, env));
 
   app.onError(errorHandler);
 

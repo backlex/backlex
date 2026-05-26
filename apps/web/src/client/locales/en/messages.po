@@ -2943,6 +2943,10 @@ msgstr "Failures (24h)"
 msgid "fast · cheap · routine reads"
 msgstr "fast · cheap · routine reads"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "fast · very cheap · routine reads"
+msgstr "fast · very cheap · routine reads"
+
 #: src/client/pages/sign-up.tsx
 msgid "Faster, phishing-resistant sign-in. Your device will prompt for biometric or PIN after the account is created. You can add or remove passkeys later in Settings."
 msgstr "Faster, phishing-resistant sign-in. Your device will prompt for biometric or PIN after the account is created. You can add or remove passkeys later in Settings."
@@ -5606,6 +5610,14 @@ msgstr "Query ok · {0} row(s) · {1}ms"
 msgid "Query returned no rows."
 msgstr "Query returned no rows."
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Qwen flagship · 1M context · strong multilingual"
+msgstr "Qwen flagship · 1M context · strong multilingual"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Qwen mid-tier · balanced pricing"
+msgstr "Qwen mid-tier · balanced pricing"
+
 #: src/client/pages/sign-up.tsx
 msgid "Rana"
 msgstr "Rana"
@@ -7111,6 +7123,10 @@ msgstr "Stores the target row's <0>id</0>."
 msgid "Stream"
 msgstr "Stream"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "strong reasoning · 1M context · low cost"
+msgstr "strong reasoning · 1M context · low cost"
+
 #: src/client/admin/pages/realtime.tsx
 msgid "sub"
 msgstr "sub"
@@ -8176,6 +8192,14 @@ msgstr "Writes 24h"
 #: src/client/admin/parity/database.tsx
 msgid "Writes blocked. Toggle \"read-only\" off to run mutations."
 msgstr "Writes blocked. Toggle \"read-only\" off to run mutations."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "xAI · optimized for code agents · cheap"
+msgstr "xAI · optimized for code agents · cheap"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "xAI flagship · 1M context"
+msgstr "xAI flagship · 1M context"
 
 #: src/client/admin/parity/app-users.tsx
 msgid "yes"

@@ -20,15 +20,19 @@ import type { McpTool, ToolResult, ToolCtx } from "../types";
 import { callClaude, extractJson } from "../ai-client";
 import { readJson } from "../internal-fetch";
 
-/** Fail fast when the workspace has no Anthropic credential — every `ai.*`
- *  tool checks this BEFORE any other sub-fetch so missing-key errors don't
- *  hide behind upstream 404s (`ai.query` on a non-existent collection used
- *  to report "Collection not found" before this guard was added). */
-const requireAnthropicKey = (ctx: ToolCtx): void => {
-  if (!ctx.env.ANTHROPIC_API_KEY || !ctx.env.ANTHROPIC_API_KEY.trim()) {
+/** Fail fast when the workspace has no AI credential — every `ai.*` tool
+ *  checks this BEFORE any other sub-fetch so missing-key errors don't hide
+ *  behind upstream 404s (`ai.query` on a non-existent collection used to
+ *  report "Collection not found" before this guard was added). Either the
+ *  preferred `AI_GATEWAY_API_KEY` or the legacy `ANTHROPIC_API_KEY`
+ *  satisfies the check — `callClaude` picks the provider per-call. */
+const requireAiKey = (ctx: ToolCtx): void => {
+  const gw = ctx.env.AI_GATEWAY_API_KEY?.trim();
+  const anth = ctx.env.ANTHROPIC_API_KEY?.trim();
+  if (!gw && !anth) {
     throw new AppError(
       "UNAVAILABLE",
-      "ANTHROPIC_API_KEY is not configured for this workspace. AI-native tools require it — set the env var on the workeros deployment.",
+      "No AI provider configured for this workspace — set AI_GATEWAY_API_KEY (recommended, multi-provider) or the legacy ANTHROPIC_API_KEY on the workeros deployment.",
     );
   }
 };
@@ -92,7 +96,7 @@ export const aiQuery: McpTool = {
     if (!collection || !prompt) {
       throw new Error("VALIDATION: collection and prompt are required");
     }
-    requireAnthropicKey(ctx);
+    requireAiKey(ctx);
     const hardLimit = typeof args.limit === "number" ? Math.min(200, args.limit) : 200;
 
     const meta = await loadCollectionMeta(ctx, collection);
@@ -175,7 +179,7 @@ export const aiSuggestSchema: McpTool = {
   handler: async (args, ctx) => {
     const description = String(args.description ?? "");
     if (!description) throw new Error("VALIDATION: description is required");
-    requireAnthropicKey(ctx);
+    requireAiKey(ctx);
     const slugHint = typeof args.slug === "string" ? args.slug : null;
 
     const system =
@@ -350,12 +354,12 @@ export const aiImportCsv: McpTool = {
       });
     }
 
-    // Inference path requires Claude. Check the key first so the user gets
-    // a clear "set ANTHROPIC_API_KEY" error rather than a downstream auth
-    // failure from the upstream API. The insert path above does NOT need
-    // Claude, so it has no such requirement — callers can bulk-insert
-    // pre-parsed CSV into an existing collection without a model present.
-    requireAnthropicKey(ctx);
+    // Inference path requires an AI provider. Check the key first so the
+    // user gets a clear "set AI_GATEWAY_API_KEY / ANTHROPIC_API_KEY" error
+    // rather than a downstream auth failure. The insert path above does
+    // NOT need any model, so it has no such requirement — callers can
+    // bulk-insert pre-parsed CSV into an existing collection without one.
+    requireAiKey(ctx);
     // Inference path — ask Claude to propose a schema based on headers + a
     // sample. Return the schema; agent applies via schema.create_collection.
     const sampleRows = rows.slice(0, sampleSize).map((cells) => {

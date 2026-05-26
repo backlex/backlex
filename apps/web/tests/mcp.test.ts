@@ -906,10 +906,11 @@ describe("MCP — per-key guards (allowlist + read-only)", () => {
 });
 
 describe("MCP — tier D AI-native tools (ai.query / ai.suggest_schema / ai.import_csv)", () => {
-  // Tests don't hit the real Anthropic API — they verify dispatch + arg
-  // validation + the UNAVAILABLE path when ANTHROPIC_API_KEY is unset (the
-  // default in the test harness). Live calls are exercised manually via
-  // `bun workeros mcp` against a configured deployment.
+  // Tests don't hit a real provider — they verify dispatch + arg
+  // validation + the UNAVAILABLE path when no AI credential is set (neither
+  // AI_GATEWAY_API_KEY nor ANTHROPIC_API_KEY — the default in the test
+  // harness). Live calls are exercised manually via `bun workeros mcp`
+  // against a configured deployment.
   let h: TestHarness;
   beforeAll(async () => {
     h = makeHarness();
@@ -917,13 +918,14 @@ describe("MCP — tier D AI-native tools (ai.query / ai.suggest_schema / ai.impo
   });
   afterAll(() => h.cleanup());
 
-  test("ai.query without ANTHROPIC_API_KEY surfaces UNAVAILABLE", async () => {
+  test("ai.query without any AI credential surfaces UNAVAILABLE", async () => {
     const r = await mcp(h, {
       jsonrpc: "2.0", id: 700, method: "tools/call",
       params: { name: "ai.query", arguments: { collection: "users", prompt: "any" } },
     });
     const result = (r as RpcSuccess).result;
     expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("AI_GATEWAY_API_KEY");
     expect(result.content[0].text).toContain("ANTHROPIC_API_KEY");
   });
 

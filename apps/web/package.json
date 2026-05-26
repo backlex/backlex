@@ -14,6 +14,8 @@
     "test": "bun test tests/"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "3.0.79",
+    "@ai-sdk/gateway": "3.0.120",
     "@asteasolutions/zod-to-openapi": "^8.5.0",
     "@cf-wasm/quickjs": "^0.2.5",
     "@codemirror/lang-json": "^6.0.2",
@@ -33,6 +35,7 @@
     "@workeros/db": "workspace:*",
     "@workeros/ui": "workspace:*",
     "@xyflow/react": "^12.10.2",
+    "ai": "6.0.191",
     "aws4fetch": "^1.0.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

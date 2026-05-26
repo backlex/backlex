@@ -1,11 +1,11 @@
 /**
- * Admin Ask AI routes — `/api/admin/ai/plan` (Claude → tool plan) and
+ * Admin Ask AI routes — `/api/admin/ai/plan` (model → tool plan) and
  * `/api/admin/ai/run` (executes one MCP tool, logs to `activity`).
  *
- * The harness never has ANTHROPIC_API_KEY set, so /plan is exercised only
- * on the UNAVAILABLE branch. /run is exercised end-to-end (executes a
- * real tool against the in-process app) and the activity-row write is
- * asserted via a direct SELECT.
+ * The harness never has AI_GATEWAY_API_KEY or ANTHROPIC_API_KEY set, so
+ * /plan is exercised only on the UNAVAILABLE branch. /run is exercised
+ * end-to-end (executes a real tool against the in-process app) and the
+ * activity-row write is asserted via a direct SELECT.
  */
 import { describe, expect, test, beforeAll, afterAll } from "bun:test";
 import { Database } from "bun:sqlite";
@@ -43,7 +43,11 @@ describe("Ask AI — /api/admin/ai/plan", () => {
   });
   afterAll(() => h.cleanup());
 
-  test("missing ANTHROPIC_API_KEY → 503 with code: UNAVAILABLE", async () => {
+  test("missing AI_GATEWAY_API_KEY AND ANTHROPIC_API_KEY → 503 with code: UNAVAILABLE", async () => {
+    // Harness fixture has neither key, so the planner must surface
+    // UNAVAILABLE before reaching any upstream.
+    expect(h.env.AI_GATEWAY_API_KEY).toBeUndefined();
+    expect(h.env.ANTHROPIC_API_KEY).toBeUndefined();
     const res = await post(h, "/api/admin/ai/plan", {
       prompt: "top 5 collections by row count",
     });

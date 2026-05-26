@@ -393,6 +393,36 @@ export function AskAiPage({
         label: "gemini-2.5-pro",
         hint: t`long context · multimodal`,
       },
+      {
+        id: "xai/grok-4.3",
+        label: "grok-4.3",
+        hint: t`xAI flagship · 1M context`,
+      },
+      {
+        id: "xai/grok-build-0.1",
+        label: "grok-build-0.1",
+        hint: t`xAI · optimized for code agents · cheap`,
+      },
+      {
+        id: "deepseek/deepseek-v4-pro",
+        label: "deepseek-v4-pro",
+        hint: t`strong reasoning · 1M context · low cost`,
+      },
+      {
+        id: "deepseek/deepseek-v4-flash",
+        label: "deepseek-v4-flash",
+        hint: t`fast · very cheap · routine reads`,
+      },
+      {
+        id: "alibaba/qwen3.7-max",
+        label: "qwen3.7-max",
+        hint: t`Qwen flagship · 1M context · strong multilingual`,
+      },
+      {
+        id: "alibaba/qwen3.6-plus",
+        label: "qwen3.6-plus",
+        hint: t`Qwen mid-tier · balanced pricing`,
+      },
     ],
     [t],
   );

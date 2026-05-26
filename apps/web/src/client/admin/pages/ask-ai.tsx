@@ -91,7 +91,7 @@ const WRITE_PATTERN =
 // Bumping these only matters when the catalog grows; the badge in the page
 // header surfaces the total so the docs page can stay accurate. Source of
 // truth: apps/web/src/server/mcp/tools/index.ts::allTools.length.
-const MCP_TOOL_COUNT = 75;
+const MCP_TOOL_COUNT = 74;
 
 /** Lightweight JSON syntax highlighter — ported verbatim from the design's
  *  `JsonBlock` (ai-mcp.jsx:257). Avoids pulling a code-editor dependency
@@ -717,26 +717,28 @@ export function AskAiPage({
         }
       />
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-        <TabsList>
-          <TabsTrigger value="ask">
-            <I.Sparkles size={13} />
-            <Trans>Ask</Trans>
-          </TabsTrigger>
-          <TabsTrigger value="tools">
-            <I.Layers size={13} />
-            <Trans>Tools</Trans>
-          </TabsTrigger>
-          <TabsTrigger value="runs">
-            <I.History size={13} />
-            <Trans>Runs</Trans>
-          </TabsTrigger>
-          <TabsTrigger value="connect">
-            <I.Plug size={13} />
-            <Trans>Connect</Trans>
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="-mx-1 overflow-x-auto px-1">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+          <TabsList className="whitespace-nowrap">
+            <TabsTrigger value="ask">
+              <I.Sparkles size={13} />
+              <Trans>Ask</Trans>
+            </TabsTrigger>
+            <TabsTrigger value="tools">
+              <I.Layers size={13} />
+              <Trans>Tools</Trans>
+            </TabsTrigger>
+            <TabsTrigger value="runs">
+              <I.History size={13} />
+              <Trans>Runs</Trans>
+            </TabsTrigger>
+            <TabsTrigger value="connect">
+              <I.Plug size={13} />
+              <Trans>Connect</Trans>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
 
       {tab === "tools" && (
         <ToolsTab
@@ -1778,36 +1780,38 @@ function RunsTab({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <Tabs value={filter} onValueChange={(v) => setFilter(v as RunFilter)}>
-          <TabsList>
-            <TabsTrigger value="all">
-              <Trans>All</Trans>
-              <Badge variant="secondary" mono>
-                {counts.all}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="ok">
-              <Trans>Success</Trans>
-              <Badge variant="secondary" mono>
-                {counts.ok}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="review">
-              <Trans>Review</Trans>
-              <Badge variant="secondary" mono>
-                {counts.review}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="denied">
-              <Trans>Denied</Trans>
-              <Badge variant="secondary" mono>
-                {counts.denied}
-              </Badge>
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <div className="ml-auto flex items-center gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="-mx-1 overflow-x-auto px-1">
+          <Tabs value={filter} onValueChange={(v) => setFilter(v as RunFilter)}>
+            <TabsList className="whitespace-nowrap">
+              <TabsTrigger value="all">
+                <Trans>All</Trans>
+                <Badge variant="secondary" mono>
+                  {counts.all}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="ok">
+                <Trans>Success</Trans>
+                <Badge variant="secondary" mono>
+                  {counts.ok}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="review">
+                <Trans>Review</Trans>
+                <Badge variant="secondary" mono>
+                  {counts.review}
+                </Badge>
+              </TabsTrigger>
+              <TabsTrigger value="denied">
+                <Trans>Denied</Trans>
+                <Badge variant="secondary" mono>
+                  {counts.denied}
+                </Badge>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+        <div className="flex items-center gap-2 sm:ml-auto">
           <Button
             variant="ghost"
             size="sm"
@@ -1837,78 +1841,80 @@ function RunsTab({
           </div>
         ) : (
           <ScrollArea viewportClassName="max-h-[640px]">
-            <table className="w-full border-collapse text-[13px]">
-              <thead>
-                <tr className="border-b border-border">
-                  {[
-                    t`When`,
-                    t`Tool`,
-                    t`Query`,
-                    t`Result`,
-                    t`Latency`,
-                  ].map((h) => (
-                    <th
-                      key={h}
-                      className="h-9 px-4 text-left text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground"
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((r) => (
-                  <tr
-                    key={r.id}
-                    className="border-b border-border/60 last:border-b-0 hover:bg-accent/40"
-                  >
-                    <td className="h-12 px-4 align-middle font-mono text-[11.5px] text-muted-foreground">
-                      {r.when}
-                    </td>
-                    <td className="px-4 align-middle">
-                      <span className="font-mono text-[12px]">{r.tool}</span>
-                    </td>
-                    <td
-                      className="max-w-md truncate px-4 align-middle text-foreground/85"
-                      title={r.query}
-                    >
-                      {r.query}
-                    </td>
-                    <td className="px-4 align-middle">
-                      <span className="inline-flex items-center gap-1.5 text-[12px]">
-                        <RunStatusIcon status={r.status} />
-                        {r.status === "ok" && r.rows != null ? (
-                          <span className="font-mono tabular-nums">
-                            {r.rows} <Trans>rows</Trans>
-                          </span>
-                        ) : r.status === "ok" ? (
-                          <Trans>ok</Trans>
-                        ) : r.status === "blocked" ? (
-                          <span className="text-muted-foreground">
-                            <Trans>blocked</Trans>
-                            {r.error ? (
-                              <>
-                                {" · "}
-                                <span className="font-mono">{r.error}</span>
-                              </>
-                            ) : null}
-                          </span>
-                        ) : r.status === "review" ? (
-                          <Trans>pending review</Trans>
-                        ) : (
-                          <span className="text-destructive">
-                            {r.error ?? <Trans>denied</Trans>}
-                          </span>
-                        )}
-                      </span>
-                    </td>
-                    <td className="px-4 align-middle font-mono tabular-nums text-muted-foreground">
-                      {r.durationMs != null ? `${r.durationMs}ms` : "—"}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[680px] border-collapse text-[13px]">
+                <thead>
+                  <tr className="border-b border-border">
+                    {[
+                      t`When`,
+                      t`Tool`,
+                      t`Query`,
+                      t`Result`,
+                      t`Latency`,
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        className="h-9 px-3 text-left text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground md:px-4"
+                      >
+                        {h}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {visible.map((r) => (
+                    <tr
+                      key={r.id}
+                      className="border-b border-border/60 last:border-b-0 hover:bg-accent/40"
+                    >
+                      <td className="h-12 px-3 align-middle font-mono text-[11.5px] text-muted-foreground md:px-4">
+                        {r.when}
+                      </td>
+                      <td className="px-3 align-middle md:px-4">
+                        <span className="font-mono text-[12px]">{r.tool}</span>
+                      </td>
+                      <td
+                        className="max-w-md truncate px-3 align-middle text-foreground/85 md:px-4"
+                        title={r.query}
+                      >
+                        {r.query}
+                      </td>
+                      <td className="px-3 align-middle md:px-4">
+                        <span className="inline-flex items-center gap-1.5 text-[12px]">
+                          <RunStatusIcon status={r.status} />
+                          {r.status === "ok" && r.rows != null ? (
+                            <span className="font-mono tabular-nums">
+                              {r.rows} <Trans>rows</Trans>
+                            </span>
+                          ) : r.status === "ok" ? (
+                            <Trans>ok</Trans>
+                          ) : r.status === "blocked" ? (
+                            <span className="text-muted-foreground">
+                              <Trans>blocked</Trans>
+                              {r.error ? (
+                                <>
+                                  {" · "}
+                                  <span className="font-mono">{r.error}</span>
+                                </>
+                              ) : null}
+                            </span>
+                          ) : r.status === "review" ? (
+                            <Trans>pending review</Trans>
+                          ) : (
+                            <span className="text-destructive">
+                              {r.error ?? <Trans>denied</Trans>}
+                            </span>
+                          )}
+                        </span>
+                      </td>
+                      <td className="px-3 align-middle font-mono tabular-nums text-muted-foreground md:px-4">
+                        {r.durationMs != null ? `${r.durationMs}ms` : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </ScrollArea>
         )}
       </div>

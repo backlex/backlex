@@ -205,6 +205,32 @@ describe("MCP — initialize + tools/list", () => {
     expect(names.length).toBeGreaterThanOrEqual(74);
   });
 
+  test("tools/list surfaces kind + adminOnly hints", async () => {
+    // The Ask-AI Tools tab renders kind/adminOnly as badges — make sure
+    // both fields ride through `tools/list` for every tool, every kind is
+    // represented somewhere in the catalog, and the functions.* pair is
+    // flagged adminOnly so the badge shows up.
+    const r = await mcp(h, { jsonrpc: "2.0", id: 33, method: "tools/list" });
+    expect(isErr(r)).toBe(false);
+    const tools = (r as RpcSuccess).result.tools as Array<{
+      name: string;
+      kind?: string;
+      adminOnly?: boolean;
+    }>;
+    for (const t of tools) {
+      expect(t.kind).toMatch(/^(read|write|destruct)$/);
+    }
+    const kinds = new Set(tools.map((t) => t.kind));
+    expect(kinds.has("read")).toBe(true);
+    expect(kinds.has("write")).toBe(true);
+    expect(kinds.has("destruct")).toBe(true);
+    const byName = new Map(tools.map((t) => [t.name, t]));
+    expect(byName.get("functions.list")?.adminOnly).toBe(true);
+    expect(byName.get("functions.invoke")?.adminOnly).toBe(true);
+    expect(byName.get("schema.list_collections")?.kind).toBe("read");
+    expect(byName.get("collections.delete")?.kind).toBe("destruct");
+  });
+
   test("notifications/initialized is a no-op (returns 202)", async () => {
     const res = await h.fetch("/mcp", {
       method: "POST",

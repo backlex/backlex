@@ -1156,7 +1156,7 @@ msgstr "Doğal dilde sor"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "asking {model}…"
-msgstr "{model} sorgulanıyor…"
+msgstr "{model} düşünüyor…"
 
 #: src/client/admin/storage.tsx
 msgid "Aspect-cropping active. Focal point picks which area is kept."
@@ -1238,7 +1238,7 @@ msgstr "<0>env</0> bağlamalarından otomatik algılandı."
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "auto-run reads"
-msgstr "okuma sorgularını otomatik çalıştır"
+msgstr "okumaları otomatik çalıştır"
 
 #: src/client/admin/parity/translations.tsx
 msgid "Auto-translate"
@@ -1716,6 +1716,10 @@ msgstr "Yorum gönderildi."
 msgid "comments"
 msgstr "yorumlar"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Comments needing moderation"
+msgstr "Moderasyon bekleyen yorumlar"
+
 #: src/client/admin/role-editor.tsx
 msgid "Compiled rule"
 msgstr "Derlenmiş kural"
@@ -1779,7 +1783,7 @@ msgstr "Onayla"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Confirm & run"
-msgstr "Onayla ve çalıştır"
+msgstr "Doğrulayıp çalıştır"
 
 #: src/client/admin/account-page.tsx
 msgid "Confirm new password"
@@ -1791,7 +1795,7 @@ msgstr "Parolayı onayla"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Connect"
-msgstr "Bağlan"
+msgstr "Bağlantı"
 
 #: src/client/pages/api-keys.tsx
 msgid "Connect MCP"
@@ -2460,6 +2464,10 @@ msgstr "taslak"
 #: src/client/admin/item-views.tsx
 msgid "Draft"
 msgstr "Taslak"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Draft support_tickets schema"
+msgstr "support_tickets şeması taslağı"
 
 #: src/client/admin/storage.tsx
 msgid "drafts"
@@ -4066,15 +4074,15 @@ msgstr "MCP · {MCP_TOOL_COUNT} araç"
 
 #: src/client/components/mcp-key-modal.tsx
 msgid "MCP endpoint URL"
-msgstr "MCP endpoint URL'i"
+msgstr "MCP uç nokta URL'i"
 
 #: src/client/pages/api-keys.tsx
 msgid "MCP read-only"
-msgstr "MCP salt okunur"
+msgstr "MCP salt-okunur"
 
 #: src/client/pages/api-keys.tsx
 msgid "MCP read-only mode"
-msgstr "MCP salt okunur modu"
+msgstr "MCP salt-okunur modu"
 
 #. placeholder {0}: k.mcpTools.length
 #: src/client/pages/api-keys.tsx
@@ -4949,6 +4957,10 @@ msgstr "veya e-postayla"
 msgid "Original"
 msgstr "Orijinal"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Orphan storage files"
+msgstr "Sahipsiz depolama dosyaları"
+
 #: src/client/admin/parity/translations.tsx
 msgid "Other locales stay empty until filled in the matrix."
 msgstr "Diğer yerel ayarlar matriste doldurulana kadar boş kalır."
@@ -5552,6 +5564,10 @@ msgstr "Yayınlandı"
 msgid "published only"
 msgstr "yalnızca yayınlananlar"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Published posts past week"
+msgstr "Son haftada yayınlanmış postlar"
+
 #: src/client/admin/storage.tsx
 msgid "Quality"
 msgstr "Kalite"
@@ -5618,7 +5634,7 @@ msgstr "salt okunur"
 
 #: src/client/components/mcp-key-modal.tsx
 msgid "Read-only mode"
-msgstr "Salt okunur mod"
+msgstr "Salt-okunur mod"
 
 #: src/client/admin/parity/insights.tsx
 msgid "read-only SELECT against the workspace database"
@@ -7468,6 +7484,10 @@ msgstr "Araçlar"
 #: src/client/admin/pages/overview.tsx
 msgid "Top collections"
 msgstr "En çok kullanılan koleksiyonlar"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Top customers last month"
+msgstr "Geçen ay en iyi müşteriler"
 
 #: src/client/admin/pages/users.tsx
 msgid "Total users"

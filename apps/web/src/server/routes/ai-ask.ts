@@ -35,7 +35,10 @@ const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
   await next();
 };
 
-const DEFAULT_PLAN_MODEL = "claude-haiku-4-5";
+// Gateway-prefixed default. `callClaude` auto-strips the prefix when the
+// workspace is on the legacy `ANTHROPIC_API_KEY` fallback, so this value
+// works for both providers.
+const DEFAULT_PLAN_MODEL = "anthropic/claude-haiku-4-5";
 
 /** Read-leaning tools the planner is allowed to propose. Anything outside
  *  this list still works from the admin's hand-edit path, but the model

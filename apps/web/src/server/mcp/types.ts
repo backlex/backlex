@@ -75,8 +75,9 @@ export interface ToolCtx {
    *  the difference) but it's available for tool-level gating. */
   mode: McpMode;
   /** Workspace env — exposed so AI-native tools (`ai.*`) can read provider
-   *  keys (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`) without going through
-   *  another sub-fetch. Tools that don't need provider access ignore it. */
+   *  keys (`AI_GATEWAY_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`)
+   *  without going through another sub-fetch. Tools that don't need
+   *  provider access ignore it. */
   env: Env;
 }
 

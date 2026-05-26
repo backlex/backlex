@@ -16,6 +16,17 @@ permission check, allowlist, and audit row works identically.
 
 ## What it does
 
+The page ships four tabs over the same backing data:
+
+| Tab | Source | Role |
+|---|---|---|
+| **Ask** | `POST /api/admin/ai/plan` + `POST /api/admin/ai/run` | The natural-language planner — see the table below. |
+| **Tools** | `POST /api/admin/mcp` (`tools/list`) + `PATCH /api/api-keys/<id>/mcp-guards` | The catalog of every MCP tool the workspace exposes, with a Try button per row and a per-key guards editor in the right rail. |
+| **Runs** | `GET /api/activity?action=mcp.&limit=200` | A filterable table of every MCP run (Ask AI or external) with CSV export. |
+| **Connect** | (no backend) | Renders Claude Desktop / Cursor / curl install snippets for the selected API key. |
+
+The Ask tab itself is a two-hop flow:
+
 | Step | Endpoint | Behaviour |
 |---|---|---|
 | 1. Plan | `POST /api/admin/ai/plan` | The configured model (default `anthropic/claude-haiku-4-5`) is given the prompt + a short whitelist of read-leaning tools and asked for `{rationale, tool, args}` as fenced JSON. The route validates and returns it — nothing is executed. |
@@ -28,6 +39,60 @@ page renders the proposed JSON, lets the operator edit it (the JSON-args
 panel doubles as the source of truth), and only POSTs `/run` after a
 click — except when "auto-run reads" is on and the proposed tool matches
 `/^(collections\.list|collections\.read|storage\.list|vector\.search|schema\.)/`.
+
+### Tools tab
+
+`POST /api/admin/mcp` with `{ method: "tools/list" }` returns every tool
+the dispatcher exposes plus the `kind` (`read` / `write` / `destruct`)
+and `adminOnly` hints introduced in this phase (see
+[MCP](./mcp.md#tool-kind-metadata)). Rows are grouped by namespace
+prefix (`collections.*`, `schema.*`, …) and filtered by a single search
+input that matches against name + description. The **Try** button per
+row POSTs `/api/admin/ai/run` with `{ tool, args: {} }` so callers can
+sanity-check a tool with empty arguments without leaving the page; the
+result lands in `activity` and shows up under **Runs**.
+
+The right rail is a per-key guards editor. The top dropdown lists the
+signed-in user's live `pak_*` keys (revoked / expired filtered
+client-side). Flipping **Read-only mode** PATCHes
+`/api/api-keys/<id>/mcp-guards` immediately; the **Customize…** button
+opens the existing per-tool checkbox modal
+([`McpKeyModal`](../apps/web/src/client/components/mcp-key-modal.tsx))
+pre-filled with the selected key's allowlist instead of re-implementing
+the grid here.
+
+### Runs tab
+
+Loads up to 200 rows from `GET /api/activity?action=mcp.&limit=200`
+(filtered server-side so we don't paginate through unrelated audit
+rows) and maps each through `mapActivityToRun` — the same helper the
+Recent Runs side panel on the Ask tab uses. Status derivation:
+
+- `ok` whenever `response.ok === true`
+- `blocked` when the error string contains `read-only` / `allowlist` /
+  `mcp_read_only` (a per-key MCP guard rejected the call)
+- `denied` for any other failure
+
+The header filter chips (All / Success / Review / Denied) gate the
+visible rows with live counts. **Export CSV** uses the
+`client/lib/csv-export.ts` helper introduced in this phase and writes a
+`mcp-runs.csv` with `when, tool, query, status, rows, durationMs,
+error` columns. There is **no tokens column in v1** — `activity.response`
+doesn't carry token usage today; a future PR will write `response.usage`
+from `/api/admin/ai/run` and add the column.
+
+### Connect tab
+
+Builds a Claude Desktop / Cursor / curl install snippet for the
+selected `pak_*` key using the pure builders in
+`client/lib/mcp-snippets.ts` (shared with the per-key modal). The MCP
+URL defaults to `${window.location.origin}/mcp`. The plaintext secret
+is unrecoverable after key creation, so the snippet renders the secret
+as `pak_<prefix>_••••••••` for every existing key — admins paste the
+config, then replace the masked secret with the one they captured at
+creation time. The **Copy** button writes the snippet to the clipboard
+and toasts; the right-rail card surfaces the OAuth-flow roadmap (no
+backend behind that).
 
 ## Requirements
 

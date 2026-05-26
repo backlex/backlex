@@ -31,16 +31,30 @@ const success = (id: JsonRpcRequest["id"], result: unknown): JsonRpcResponse => 
 const findTool = (tools: McpTool[], name: string): McpTool | undefined =>
   tools.find((t) => t.name === name);
 
-/** Tool-kind heuristic from the name suffix. Used when a tool doesn't
- *  override `kind` directly. The suffix rules mirror the verbs the planner
- *  prompt uses (apps/web/src/server/routes/ai.ts) so the UI badges line up
- *  with the auto-run / require-confirmation logic. Tools that genuinely
- *  mutate state but don't match the write/destruct suffixes (`*.import`,
- *  `*.invoke`, `*.test`) end up as `write` by default, which matches the
- *  Ask-AI auto-run gate. */
+/** Tool-kind heuristic from the verb token after the last dot. The
+ *  matching is on the leading verb token so both `schema.list` and
+ *  `schema.list_collections` resolve to `read`. Used when a tool doesn't
+ *  override `kind` directly — the verb set mirrors what the planner in
+ *  `apps/web/src/server/routes/ai.ts` recognises so the UI badges line
+ *  up with the auto-run / require-confirmation logic. Tools that mutate
+ *  state but don't match the read/destruct verbs (`*.invoke`, `*.upload`,
+ *  `*.grant`, `*.test`, …) fall through to `write`. */
 const kindFromName = (name: string): "read" | "write" | "destruct" => {
-  if (/\.(delete|drop|revoke|suspend)$/.test(name)) return "destruct";
-  if (/\.(list|read|search|get|describe)$/.test(name)) return "read";
+  const dot = name.lastIndexOf(".");
+  const tail = dot < 0 ? name : name.slice(dot + 1);
+  const verb = tail.split("_")[0] ?? tail;
+  if (verb === "delete" || verb === "drop" || verb === "revoke" || verb === "suspend") {
+    return "destruct";
+  }
+  if (
+    verb === "list" ||
+    verb === "read" ||
+    verb === "search" ||
+    verb === "get" ||
+    verb === "describe"
+  ) {
+    return "read";
+  }
   return "write";
 };
 

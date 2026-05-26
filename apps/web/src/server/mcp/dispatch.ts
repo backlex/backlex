@@ -31,10 +31,41 @@ const success = (id: JsonRpcRequest["id"], result: unknown): JsonRpcResponse => 
 const findTool = (tools: McpTool[], name: string): McpTool | undefined =>
   tools.find((t) => t.name === name);
 
+/** Tool-kind heuristic from the verb token after the last dot. The
+ *  matching is on the leading verb token so both `schema.list` and
+ *  `schema.list_collections` resolve to `read`. Used when a tool doesn't
+ *  override `kind` directly — the verb set mirrors what the planner in
+ *  `apps/web/src/server/routes/ai.ts` recognises so the UI badges line
+ *  up with the auto-run / require-confirmation logic. Tools that mutate
+ *  state but don't match the read/destruct verbs (`*.invoke`, `*.upload`,
+ *  `*.grant`, `*.test`, …) fall through to `write`. */
+const kindFromName = (name: string): "read" | "write" | "destruct" => {
+  const dot = name.lastIndexOf(".");
+  const tail = dot < 0 ? name : name.slice(dot + 1);
+  const verb = tail.split("_")[0] ?? tail;
+  if (verb === "delete" || verb === "drop" || verb === "revoke" || verb === "suspend") {
+    return "destruct";
+  }
+  if (
+    verb === "list" ||
+    verb === "read" ||
+    verb === "search" ||
+    verb === "get" ||
+    verb === "describe"
+  ) {
+    return "read";
+  }
+  return "write";
+};
+
 const toolDescriptor = (t: McpTool) => ({
   name: t.name,
   description: t.description,
   inputSchema: t.inputSchema,
+  // Surface UI hints alongside the standard MCP descriptor fields. Clients
+  // that don't know about `kind` / `adminOnly` ignore them per JSON-RPC.
+  kind: t.kind ?? kindFromName(t.name),
+  ...(t.adminOnly ? { adminOnly: true as const } : {}),
 });
 
 /** Dispatch a single JSON-RPC message. Notifications (no `id`) return `null`

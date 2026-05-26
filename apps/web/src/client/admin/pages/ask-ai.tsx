@@ -80,33 +80,6 @@ const DESTRUCTIVE_PATTERN = /\b(delete|drop|revoke|suspend)\b/;
 const WRITE_PATTERN =
   /\b(insert|update|delete|drop|create|upload|grant|revoke|invoke|suspend|activate|assign|unassign|send|test)\b/;
 
-const EXAMPLES = [
-  {
-    label: "Top customers last month",
-    prompt: "top customers by lifetime_value last month, limit 10",
-  },
-  {
-    label: "Published posts past week",
-    prompt:
-      "posts published in the past 7 days, status published, sorted by view_count desc",
-  },
-  {
-    label: "Comments needing moderation",
-    prompt:
-      "comments flagged for moderation older than 24h, include author email",
-  },
-  {
-    label: "Draft support_tickets schema",
-    prompt:
-      "design a support_tickets collection — subject, body, requester (relation to app_users), priority enum, status workflow, assigned_to",
-  },
-  {
-    label: "Orphan storage files",
-    prompt:
-      "storage files in /uploads/ larger than 1MB with no reference in posts.cover_image",
-  },
-];
-
 // Bumping these only matters when the catalog grows; the badge in the page
 // header surfaces the total so the docs page can stay accurate. Source of
 // truth: apps/web/src/server/mcp/tools/index.ts::allTools.length.
@@ -362,6 +335,37 @@ export function AskAiPage({
   pushToast: (m: string, type?: "success" | "error") => void;
 }) {
   const { t } = useLingui();
+  // Defined inside the component so the `t` macro picks them up at extract time.
+  // `prompt` strings stay English — the planner LLM consumes them, not the user.
+  const EXAMPLES = useMemo(
+    () => [
+      {
+        label: t`Top customers last month`,
+        prompt: "top customers by lifetime_value last month, limit 10",
+      },
+      {
+        label: t`Published posts past week`,
+        prompt:
+          "posts published in the past 7 days, status published, sorted by view_count desc",
+      },
+      {
+        label: t`Comments needing moderation`,
+        prompt:
+          "comments flagged for moderation older than 24h, include author email",
+      },
+      {
+        label: t`Draft support_tickets schema`,
+        prompt:
+          "design a support_tickets collection — subject, body, requester (relation to app_users), priority enum, status workflow, assigned_to",
+      },
+      {
+        label: t`Orphan storage files`,
+        prompt:
+          "storage files in /uploads/ larger than 1MB with no reference in posts.cover_image",
+      },
+    ],
+    [t],
+  );
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
   const [phase, setPhase] = useState<
     "idle" | "thinking" | "plan" | "running" | "done"

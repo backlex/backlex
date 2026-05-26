@@ -31,10 +31,27 @@ const success = (id: JsonRpcRequest["id"], result: unknown): JsonRpcResponse => 
 const findTool = (tools: McpTool[], name: string): McpTool | undefined =>
   tools.find((t) => t.name === name);
 
+/** Tool-kind heuristic from the name suffix. Used when a tool doesn't
+ *  override `kind` directly. The suffix rules mirror the verbs the planner
+ *  prompt uses (apps/web/src/server/routes/ai.ts) so the UI badges line up
+ *  with the auto-run / require-confirmation logic. Tools that genuinely
+ *  mutate state but don't match the write/destruct suffixes (`*.import`,
+ *  `*.invoke`, `*.test`) end up as `write` by default, which matches the
+ *  Ask-AI auto-run gate. */
+const kindFromName = (name: string): "read" | "write" | "destruct" => {
+  if (/\.(delete|drop|revoke|suspend)$/.test(name)) return "destruct";
+  if (/\.(list|read|search|get|describe)$/.test(name)) return "read";
+  return "write";
+};
+
 const toolDescriptor = (t: McpTool) => ({
   name: t.name,
   description: t.description,
   inputSchema: t.inputSchema,
+  // Surface UI hints alongside the standard MCP descriptor fields. Clients
+  // that don't know about `kind` / `adminOnly` ignore them per JSON-RPC.
+  kind: t.kind ?? kindFromName(t.name),
+  ...(t.adminOnly ? { adminOnly: true as const } : {}),
 });
 
 /** Dispatch a single JSON-RPC message. Notifications (no `id`) return `null`

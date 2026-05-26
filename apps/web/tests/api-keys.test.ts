@@ -112,6 +112,43 @@ describe("api-keys: omitted name gets a default", () => {
   });
 });
 
+describe("api-keys: mcpTools defaults to [] (default-deny)", () => {
+  let h: TestHarness;
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+  });
+
+  afterAll(() => {
+    h.cleanup();
+  });
+
+  /**
+   * A POST that omits `mcpTools` must return an empty allowlist — the safe
+   * default ensures a freshly minted key can't call any MCP tool until the
+   * owner explicitly opts in. Callers who want the legacy permissive shape
+   * have to send `mcpTools: null` on purpose.
+   */
+  test("POST without mcpTools yields mcpTools === [] in the response", async () => {
+    const { status, key } = await createKey(h, { name: `default-deny-${Date.now()}` });
+    expect(status).toBe(201);
+    const row = key as unknown as { mcpTools: string[] | null };
+    expect(Array.isArray(row.mcpTools)).toBe(true);
+    expect(row.mcpTools).toEqual([]);
+  });
+
+  test("POST with explicit mcpTools: null still mints a permissive key", async () => {
+    const { status, key } = await createKey(h, {
+      name: `permissive-${Date.now()}`,
+      mcpTools: null,
+    });
+    expect(status).toBe(201);
+    const row = key as unknown as { mcpTools: string[] | null };
+    expect(row.mcpTools).toBeNull();
+  });
+});
+
 describe("api-keys: malformed Bearer is rejected", () => {
   let h: TestHarness;
 

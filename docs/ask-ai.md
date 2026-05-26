@@ -46,20 +46,31 @@ click — except when "auto-run reads" is on and the proposed tool matches
 the dispatcher exposes plus the `kind` (`read` / `write` / `destruct`)
 and `adminOnly` hints introduced in this phase (see
 [MCP](./mcp.md#tool-kind-metadata)). Rows are grouped by namespace
-prefix (`collections.*`, `schema.*`, …) and filtered by a single search
-input that matches against name + description. The **Try** button per
-row POSTs `/api/admin/ai/run` with `{ tool, args: {} }` so callers can
-sanity-check a tool with empty arguments without leaving the page; the
-result lands in `activity` and shows up under **Runs**.
+prefix (`collections.*`, `schema.*`, …), all collapsed on first load,
+and filtered by a single search input that matches against name +
+description. Each row carries a per-tool switch wired to the selected
+key's allowlist — flipping it adds or removes the tool name from
+`mcpTools` and PATCHes `/api/api-keys/<id>/mcp-guards` (debounced
+200ms so a rapid burst of toggles collapses into one round-trip). When
+the selected key's `mcpTools` is `null` (permissive) every switch
+shows ON; flipping one OFF activates allowlist mode with every other
+tool included.
 
 The right rail is a per-key guards editor. The top dropdown lists the
 signed-in user's live `pak_*` keys (revoked / expired filtered
 client-side). Flipping **Read-only mode** PATCHes
-`/api/api-keys/<id>/mcp-guards` immediately; the **Customize…** button
-opens the existing per-tool checkbox modal
-([`McpKeyModal`](../apps/web/src/client/components/mcp-key-modal.tsx))
-pre-filled with the selected key's allowlist instead of re-implementing
-the grid here.
+`/api/api-keys/<id>/mcp-guards` immediately. The **Customize…**
+button stays as an escape hatch — it opens
+[`McpKeyModal`](../apps/web/src/client/components/mcp-key-modal.tsx)
+pre-filled with the selected key's allowlist for bulk edits — but the
+per-row switches in the catalog list are now the primary surface and
+should cover most flows.
+
+> Newly created keys default to `mcpTools = []` (default-deny) so a
+> freshly minted `pak_*` can't call any MCP tool until the owner opts
+> in via the per-row switches or by sending an explicit `mcpTools:
+> null` on the create call. Existing keys stored with `null` stay
+> permissive — there's no migration.
 
 ### Runs tab
 

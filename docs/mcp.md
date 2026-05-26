@@ -302,7 +302,7 @@ Two extra defense-in-depth layers live on `api_keys`, independent of the permiss
 
 | Field | Effect |
 |---|---|
-| `mcp_tools` (JSON array, default NULL) | When set, the dispatcher hides every tool not in the list from `tools/list` and 403s any out-of-list `tools/call`. NULL = unrestricted. |
+| `mcp_tools` (JSON array, default `[]` on new keys; legacy NULL stays permissive) | When set, the dispatcher hides every tool not in the list from `tools/list` and 403s any out-of-list `tools/call`. NULL = unrestricted. The create endpoint now defaults the column to `[]` so a fresh `pak_*` can't call any tool until the owner opts in — POST a key with explicit `"mcpTools": null` (or PATCH it later) to recover the old permissive shape. |
 | `mcp_read_only` (bool, default false) | When true, every write tool — insert / update / delete / create / drop / upload / bulk_* / upsert / grant / revoke / assign / unassign / invoke / send / mark_read / test / invite / suspend / activate — returns `isError: true` before any upstream call. REST routes for the same identity are unaffected. |
 
 These run **before** the upstream permission DSL, so a read-only key gets a clear `tool "collections.delete" is a write operation; this API key is MCP read-only` message instead of bouncing around the REST layer. A key whose DSL allows `delete` can still be MCP-locked to read-only.

@@ -138,7 +138,12 @@ export const createApiKey = async (
       ? input.expiresAt
       : input.expiresAt.getTime()
     : null;
-  const mcpTools = input.mcpTools ?? null;
+  // Default-deny: new keys ship with an empty allowlist so a freshly issued
+  // pak_* can't call any MCP tool until the owner explicitly opts in. A
+  // caller can still pass `mcpTools: null` to mint a permissive key on
+  // purpose (so we discriminate `undefined` vs `null` here rather than `??`).
+  // Existing pre-default keys with stored NULL keep their permissive shape.
+  const mcpTools = input.mcpTools === undefined ? [] : input.mcpTools;
   const mcpReadOnly = input.mcpReadOnly ?? false;
   await (ctx.db as any).insert(t).values({
     id,

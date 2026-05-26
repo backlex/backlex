@@ -21,6 +21,7 @@ export const listFunctions: McpTool = {
     "List sandbox functions available in the active workspace (admin-only). " +
     "Each entry shows name, trigger, and active state. Use this to discover " +
     "what's invokable before calling `functions.invoke`.",
+  adminOnly: true,
   inputSchema: {
     type: "object",
     properties: {},
@@ -46,6 +47,12 @@ export const invokeFunction: McpTool = {
     "Invoke an HTTP-triggered sandbox function by name (admin-only). The " +
     "`input` object is passed as the function's payload. Returns " +
     "`{ ok, result?, error?, logs, durationMs }`.",
+  adminOnly: true,
+  // The `invoke` suffix doesn't fall into the read or destruct buckets so
+  // the dispatcher's heuristic would already pick `write` — surface that
+  // explicitly so the catalog UI doesn't depend on the heuristic for the
+  // tools we know mutate state.
+  kind: "write",
   inputSchema: {
     type: "object",
     properties: {

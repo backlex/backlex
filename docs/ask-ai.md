@@ -67,6 +67,40 @@ with `?action=mcp.&limit=10`.
 If a future Phase 2 needs runs from API keys too, the right move is a
 new dispatcher hook with its own table — not retrofitting `activity`.
 
+## Supported models
+
+The dropdown ships **11 models across 6 providers**, all routed through
+Vercel AI Gateway when `AI_GATEWAY_API_KEY` is set. Defaults are biased
+toward Anthropic because the JSON-constrained `/plan` system prompt is
+most reliable on Claude; other providers are exposed for users who
+prefer them or want to swap on cost / context / latency.
+
+| Provider | Model id | Notes |
+|---|---|---|
+| Anthropic | `anthropic/claude-opus-4-7` | Highest reasoning, slower, ~3× cost |
+| Anthropic | `anthropic/claude-sonnet-4-6` | Balanced — recommended for most queries |
+| Anthropic | `anthropic/claude-haiku-4-5` | Fast, cheap, routine reads — **default** |
+| OpenAI    | `openai/gpt-5`               | OpenAI flagship; comparable to Opus |
+| Google    | `google/gemini-2.5-pro`      | Long context, multimodal |
+| xAI       | `xai/grok-4.3`               | xAI flagship, 1M context |
+| xAI       | `xai/grok-build-0.1`         | Optimized for code agents, cheap |
+| DeepSeek  | `deepseek/deepseek-v4-pro`   | Strong reasoning, 1M context, low cost |
+| DeepSeek  | `deepseek/deepseek-v4-flash` | Fast, very cheap, routine reads |
+| Alibaba   | `alibaba/qwen3.7-max`        | Qwen flagship, 1M context, strong multilingual |
+| Alibaba   | `alibaba/qwen3.6-plus`       | Qwen mid-tier, balanced pricing |
+
+Adding more from the [Vercel AI Gateway
+catalog](https://vercel.com/ai-gateway/models) is a one-line edit to the
+`MODELS` array in `apps/web/src/client/admin/pages/ask-ai.tsx` — the
+picker groups by the `provider/` prefix automatically, so no UI code
+change is needed. **Meta/Llama is not in the gateway catalog as of this
+writing** and is not exposed in the picker.
+
+Legacy `ANTHROPIC_API_KEY` mode silently strips the `anthropic/` prefix
+and only the three Anthropic rows above work; selecting an OpenAI /
+Google / xAI / DeepSeek / Alibaba model returns `503 UNAVAILABLE` until
+`AI_GATEWAY_API_KEY` is set.
+
 ## Model picker + preferences
 
 The model dropdown defaults to `anthropic/claude-haiku-4-5` and persists

@@ -509,10 +509,12 @@ describe("MCP — API key (pak_) auth path", () => {
   beforeAll(async () => {
     h = makeHarness();
     await seedAdmin(h);
+    // `mcpTools: null` opts into the legacy permissive shape — the
+    // default-deny on create would otherwise yield zero callable tools.
     const create = await h.fetch("/api/api-keys", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: `mcp-test-${Date.now()}` }),
+      body: JSON.stringify({ name: `mcp-test-${Date.now()}`, mcpTools: null }),
     });
     expect(create.status).toBe(201);
     const body = (await create.json()) as { data: { secret: string } };
@@ -815,11 +817,14 @@ describe("MCP — per-key guards (allowlist + read-only)", () => {
       const body = (await r.json()) as { data: { secret: string } };
       return body.data.secret;
     };
-    openKey = await make({});
+    // `mcpTools: null` keeps the historic "open" semantics these tests
+    // exercise; the create-time default-deny would otherwise return [] and
+    // hide every tool from `tools/list`.
+    openKey = await make({ mcpTools: null });
     restrictedKey = await make({
       mcpTools: ["schema.list_collections", "collections.list", "collections.read"],
     });
-    readOnlyKey = await make({ mcpReadOnly: true });
+    readOnlyKey = await make({ mcpReadOnly: true, mcpTools: null });
   });
   afterAll(() => h.cleanup());
 

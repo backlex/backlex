@@ -184,3 +184,4 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Locale + timezone | `docs/locale-timezone.md` |
 | Admin SPA i18n (Lingui) | `docs/admin-i18n.md` |
 | CLI + SDK | `docs/sdk-and-cli.md` |
+| Ask AI page | `docs/ask-ai.md` |

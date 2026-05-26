@@ -66,6 +66,7 @@ import { PermissionsMatrix } from "./permissions-matrix";
 // stays small. The shared `<Suspense>` boundary inside the page switch below
 // renders the fallback while the page chunk streams in.
 const OverviewPage = lazy(() => import("./pages/overview").then((m) => ({ default: m.OverviewPage })));
+const AskAiPage = lazy(() => import("./pages/ask-ai").then((m) => ({ default: m.AskAiPage })));
 const FlowsPage = lazy(() => import("./pages/flows").then((m) => ({ default: m.FlowsPage })));
 const FunctionsPage = lazy(() => import("./pages/functions").then((m) => ({ default: m.FunctionsPage })));
 const WebhooksPage = lazy(() => import("./pages/webhooks").then((m) => ({ default: m.WebhooksPage })));
@@ -692,6 +693,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
           <div className="page">
             <Suspense fallback={<PageSkeleton nav={activeNav} />}>
             {activeNav === "overview" && <OverviewPage adapter={tweaks.adapter} pushToast={pushToast} setActiveNav={setActiveNav} />}
+            {activeNav === "ask-ai" && <AskAiPage pushToast={pushToast} />}
             {activeNav === "database" && <DatabasePage pushToast={pushToast} adapter={tweaks.adapter} />}
             {activeNav === "storage" && <StoragePage pushToast={pushToast} />}
             {activeNav === "flows" && <FlowsPage pushToast={pushToast} activeFlow={activeFlow} setActiveFlow={setActiveFlow} />}

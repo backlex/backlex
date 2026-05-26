@@ -6161,7 +6161,7 @@ msgstr "Satır ID"
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/parity/database.tsx
 msgid "rows"
-msgstr "satırlar"
+msgstr "satır"
 
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/overview.tsx

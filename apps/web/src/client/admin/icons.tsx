@@ -112,6 +112,8 @@ export const I = {
   Plug: (p: IconProps) => <Icon {...p}><path d="M12 22v-5M9 8V2M15 8V2M18 8v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z" /></Icon>,
   XCircle: (p: IconProps) => <Icon {...p}><circle cx="12" cy="12" r="10" /><path d="m15 9-6 6M9 9l6 6" /></Icon>,
   ArrowRight: (p: IconProps) => <Icon {...p}><path d="M5 12h14M12 5l7 7-7 7" /></Icon>,
+  Layers: (p: IconProps) => <Icon {...p}><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></Icon>,
+  Key: (p: IconProps) => <Icon {...p}><path d="M15 2a5 5 0 0 0-5 5c0 .593.103 1.16.29 1.685L2 17v3h3l8.314-8.314A5 5 0 1 0 15 2zm0 4a1 1 0 1 1 0-2 1 1 0 0 1 0 2z" /></Icon>,
 };
 
 export type IconKey = keyof typeof I;

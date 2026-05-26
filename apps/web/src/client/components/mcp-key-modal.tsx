@@ -27,6 +27,11 @@ import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
 import { notifyError } from "@/lib/error";
 import { api } from "@/lib/api";
+import {
+  claudeDesktopSnippet,
+  cursorSnippet,
+  curlSnippet,
+} from "@/lib/mcp-snippets";
 
 interface Props {
   open: boolean;
@@ -55,35 +60,6 @@ interface ToolsListResponse {
 }
 
 const MCP_URL_PLACEHOLDER = "https://your-workeros.example.com/mcp";
-
-const claudeDesktopSnippet = (url: string, secret: string): string =>
-  JSON.stringify(
-    {
-      mcpServers: {
-        workeros: {
-          command: "bun",
-          args: [
-            "/abs/path/to/workeros/packages/cli/bin/workeros.ts",
-            "mcp",
-            "--url",
-            url,
-            "--key",
-            secret,
-          ],
-        },
-      },
-    },
-    null,
-    2,
-  );
-
-const cursorSnippet = claudeDesktopSnippet;
-
-const curlSnippet = (url: string, secret: string): string =>
-  `curl -X POST ${url} \\
-  -H 'Authorization: Bearer ${secret}' \\
-  -H 'Content-Type: application/json' \\
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`;
 
 export const McpKeyModal = ({
   open,

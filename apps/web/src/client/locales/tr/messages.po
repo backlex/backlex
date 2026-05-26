@@ -2943,6 +2943,10 @@ msgstr "Başarısızlıklar (24s)"
 msgid "fast · cheap · routine reads"
 msgstr "hızlı · ucuz · rutin okumalar"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "fast · very cheap · routine reads"
+msgstr "hızlı · çok ucuz · rutin okumalar"
+
 #: src/client/pages/sign-up.tsx
 msgid "Faster, phishing-resistant sign-in. Your device will prompt for biometric or PIN after the account is created. You can add or remove passkeys later in Settings."
 msgstr "Daha hızlı, kimlik avına karşı dirençli giriş. Hesap oluşturulduktan sonra cihazınız biyometrik veya PIN isteyecektir. Geçiş anahtarlarını daha sonra Ayarlar'dan ekleyip kaldırabilirsiniz."
@@ -5614,6 +5618,14 @@ msgstr "Sorgu tamam · {0} satır · {1}ms"
 msgid "Query returned no rows."
 msgstr "Sorgu hiç satır döndürmedi."
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Qwen flagship · 1M context · strong multilingual"
+msgstr "Qwen amiral · 1M bağlam · çok dilli güçlü"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Qwen mid-tier · balanced pricing"
+msgstr "Qwen orta seviye · dengeli fiyat"
+
 #: src/client/pages/sign-up.tsx
 msgid "Rana"
 msgstr "Rana"
@@ -7119,6 +7131,10 @@ msgstr "Hedef satırın <0>id</0>'sini saklar."
 msgid "Stream"
 msgstr "Akış"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "strong reasoning · 1M context · low cost"
+msgstr "güçlü akıl yürütme · 1M bağlam · uygun fiyat"
+
 #: src/client/admin/pages/realtime.tsx
 msgid "sub"
 msgstr "abone"
@@ -8188,6 +8204,14 @@ msgstr "Yazma işlemleri 24s"
 #: src/client/admin/parity/database.tsx
 msgid "Writes blocked. Toggle \"read-only\" off to run mutations."
 msgstr "Yazma işlemleri engellendi. Değişiklik yapmak için \"salt okunur\" seçeneğini kapatın."
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "xAI · optimized for code agents · cheap"
+msgstr "xAI · kod ajanları için optimize · ucuz"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "xAI flagship · 1M context"
+msgstr "xAI amiral modeli · 1M bağlam"
 
 #: src/client/admin/parity/app-users.tsx
 msgid "yes"

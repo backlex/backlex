@@ -467,12 +467,12 @@ msgid "{key} deleted."
 msgstr "{key} deleted."
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "{name} ok"
-msgstr "{name} ok"
+#~ msgid "{name} ok"
+#~ msgstr "{name} ok"
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "{name} ok — {n} rows"
-msgstr "{name} ok — {n} rows"
+#~ msgid "{name} ok — {n} rows"
+#~ msgstr "{name} ok — {n} rows"
 
 #: src/client/components/social-buttons.tsx
 msgid "{provider} sign-in"
@@ -7674,6 +7674,10 @@ msgstr "Toggle sidebar"
 #: src/client/components/auth-shell.tsx
 msgid "Toggle theme"
 msgstr "Toggle theme"
+
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Toggle tools below to edit the allowlist."
+msgstr "Toggle tools below to edit the allowlist."
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Tool"

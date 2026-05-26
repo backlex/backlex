@@ -28,6 +28,26 @@ persistent session.
 
 ## Tools
 
+### Tool kind metadata
+
+`tools/list` decorates every tool descriptor with two optional fields the
+[Ask AI Tools tab](./ask-ai.md#tools-tab) uses for at-a-glance badges:
+
+- `kind` — `"read"` / `"write"` / `"destruct"`. When a tool definition
+  doesn't set it explicitly, the dispatcher derives the value from the
+  verb token after the last dot in the name (`.list_*` / `.read*` /
+  `.search*` / `.get*` / `.describe*` → `read`; `.delete*` / `.drop*` /
+  `.revoke*` / `.suspend*` → `destruct`; everything else → `write`).
+  Override `kind` directly on the `McpTool` object only when the
+  heuristic would misclassify.
+- `adminOnly` — `true` for tools that are only reachable through
+  `/api/admin/mcp` (today: `functions.list`, `functions.invoke`). Pure
+  metadata; the actual gating lives in the route's `requireAdmin`
+  middleware, not in the dispatcher.
+
+Clients that don't know about the extra fields ignore them — both are
+additive to the standard MCP descriptor.
+
 ### Schema
 
 | Tool | Description |

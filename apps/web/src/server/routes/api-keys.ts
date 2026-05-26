@@ -42,7 +42,7 @@ const ApiKeyInput = z
       .optional()
       .openapi({
         description:
-          "Per-key MCP tool allowlist. Omit/null = unrestricted (every tool the MCP server exposes is callable). Empty array = zero tools (deny everything). Otherwise: only the listed tool names are callable.",
+          "Per-key MCP tool allowlist. Omit = default-deny (empty array; the key can't call any MCP tool until the owner opts in). Explicit null = permissive (every tool the server exposes is callable, subject to permissions). Otherwise: only the listed tool names are callable.",
         example: ["collections.list", "collections.read", "schema.list_collections"],
       }),
     mcpReadOnly: z.boolean().optional().openapi({

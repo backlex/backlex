@@ -63,6 +63,18 @@ export interface McpTool {
     additionalProperties?: boolean;
   };
   handler: (args: Record<string, unknown>, ctx: ToolCtx) => Promise<ToolResult>;
+  /** Optional UI hint for the Ask-AI Tools tab. `tools/list` surfaces this
+   *  field — admins use it to colour-code read vs write vs destructive tools
+   *  at a glance. When omitted the dispatcher derives a value from the tool
+   *  name suffix (see `kindFromName` in `dispatch.ts`). Only override when
+   *  the heuristic would misclassify (e.g. an `*.invoke` tool that mutates
+   *  state but doesn't look like it from the name). */
+  kind?: "read" | "write" | "destruct";
+  /** Tools that are only reachable through the admin mount (`/api/admin/mcp`)
+   *  set this so the Ask-AI catalog can mark them with an `admin` badge.
+   *  Pure metadata — the actual gating is enforced by `requireAdmin`
+   *  middleware on the route, not by this flag. */
+  adminOnly?: boolean;
 }
 
 export interface ToolCtx {

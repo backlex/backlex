@@ -39,6 +39,7 @@ import { useActivity } from "../queries";
 import { LogsSkeleton } from "../page-skeletons";
 import { authorById } from "../items";
 import type { ApiActivity } from "../api";
+import { exportToCsv } from "@/lib/csv-export";
 
 type LogLevel = "info" | "warn" | "error";
 type LevelFilter = LogLevel | "any";
@@ -941,30 +942,16 @@ function TableView({
       pushToast(t`Nothing to export — the current view is empty.`, "error");
       return;
     }
-    const header = "time,actor,action,resource,diff,ip";
-    const csvQuote = (s: string) => `"${String(s).replace(/"/g, '""')}"`;
-    const body = visible
-      .map((r) =>
-        [
-          fmtTableTime(r.ts),
-          r.user,
-          r.action,
-          `${r.collection ?? "—"}${r.itemId ? `/${r.itemId}` : ""}`,
-          diffSummary(r.payload),
-          r.ip ?? "—",
-        ]
-          .map(csvQuote)
-          .join(","),
-      )
-      .join("\n");
     try {
-      const blob = new Blob([`${header}\n${body}`], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "activity.csv";
-      a.click();
-      URL.revokeObjectURL(url);
+      const rows = visible.map((r) => ({
+        time: fmtTableTime(r.ts),
+        actor: r.user,
+        action: r.action,
+        resource: `${r.collection ?? "—"}${r.itemId ? `/${r.itemId}` : ""}`,
+        diff: diffSummary(r.payload),
+        ip: r.ip ?? "—",
+      }));
+      exportToCsv(rows, "activity.csv", ["time", "actor", "action", "resource", "diff", "ip"]);
       pushToast(t`Exported ${visible.length} rows as activity.csv.`);
     } catch {
       pushToast(t`Could not export logs.`, "error");

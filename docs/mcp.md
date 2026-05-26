@@ -181,15 +181,15 @@ persistent session.
 
 ### AI-native
 
-Three tools delegate to Claude (via `ANTHROPIC_API_KEY`) and wire the structured reply back into workeros sub-fetches:
+Three tools delegate to an LLM (via the Vercel AI Gateway when `AI_GATEWAY_API_KEY` is set, else the direct Anthropic provider via `ANTHROPIC_API_KEY`) and wire the structured reply back into workeros sub-fetches:
 
 | Tool | Description |
 |---|---|
 | `ai.query` | Translate a natural-language question (`top customers last month`) into a Directus `filter` + `sort` + `limit`, then run it. Returns the query the model picked alongside the rows. |
 | `ai.suggest_schema` | Draft a collection schema from a prose description. Returns a `fields` array suitable for `schema.create_collection` plus a per-field rationale. Does NOT auto-apply. |
-| `ai.import_csv` | Inline CSV → schema inference (default) or bulk-insert into an existing collection (when `collection` is set). 10k row / 5MB cap. The insert path doesn't need Claude — only inference does. |
+| `ai.import_csv` | Inline CSV → schema inference (default) or bulk-insert into an existing collection (when `collection` is set). 10k row / 5MB cap. The insert path doesn't need a model — only inference does. |
 
-All three fail fast with `UNAVAILABLE` when `ANTHROPIC_API_KEY` is unset. Token usage is surfaced in `structuredContent.usage` so callers can budget. None of them auto-apply destructive changes — every mutation is a follow-up tool call the agent must make explicitly.
+All three fail fast with `UNAVAILABLE` when neither `AI_GATEWAY_API_KEY` nor `ANTHROPIC_API_KEY` is set. Token usage is surfaced in `structuredContent.usage` so callers can budget. None of them auto-apply destructive changes — every mutation is a follow-up tool call the agent must make explicitly.
 
 Every tool delegates to the same REST endpoint the admin UI uses, so:
 

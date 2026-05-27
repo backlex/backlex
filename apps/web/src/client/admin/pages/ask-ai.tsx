@@ -31,6 +31,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@workeros/ui/components/popover";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@workeros/ui/components/drawer";
 import { ScrollArea } from "@workeros/ui/components/scroll-area";
 import {
   Select,
@@ -169,6 +176,73 @@ interface ModelOption {
   default?: boolean;
 }
 
+function useIsMobile(breakpoint = 640) {
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia(`(max-width: ${breakpoint - 1}px)`).matches;
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const on = () => setIsMobile(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, [breakpoint]);
+  return isMobile;
+}
+
+function ModelPickerList({
+  value,
+  onSelect,
+  grouped,
+}: {
+  value: string;
+  onSelect: (id: string) => void;
+  grouped: Array<{ provider: string; items: ModelOption[] }>;
+}) {
+  return (
+    <div>
+      {grouped.map((g, gi) => (
+        <div key={g.provider} className={gi > 0 ? "mt-1 border-t border-border/60 pt-1" : ""}>
+          <div className="px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/80">
+            {g.provider}
+          </div>
+          {g.items.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => onSelect(m.id)}
+              className={`flex w-full cursor-pointer items-start gap-2.5 rounded-lg border-0 bg-transparent px-2.5 py-2 text-left hover:bg-accent ${value === m.id ? "bg-accent" : ""}`}
+            >
+              <span
+                className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${value === m.id ? "bg-primary" : "bg-border"}`}
+              />
+              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="flex items-center gap-1.5">
+                  <span className="font-mono text-[12px] text-foreground">
+                    {m.label}
+                  </span>
+                  {m.default && (
+                    <Badge variant="secondary" mono>
+                      default
+                    </Badge>
+                  )}
+                </span>
+                <span className="text-[10.5px] leading-snug text-muted-foreground">
+                  {m.hint}
+                </span>
+              </span>
+              {value === m.id && (
+                <I.Check size={12} className="mt-1 shrink-0 text-primary" />
+              )}
+            </button>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ModelPicker({
   value,
   onChange,
@@ -179,6 +253,7 @@ function ModelPicker({
   models: ModelOption[];
 }) {
   const [open, setOpen] = useState(false);
+  const isMobile = useIsMobile();
   // Group adjacent ids that share a provider prefix so the dropdown shows
   // an "anthropic / openai / google" header per cluster. Order in `models`
   // dictates the visual order — we don't sort.
@@ -192,68 +267,63 @@ function ModelPicker({
     }
     return out;
   }, [models]);
+  const shortLabel = value.includes("/") ? value.split("/").slice(1).join("/") : value;
+  const handleSelect = (id: string) => {
+    onChange(id);
+    setOpen(false);
+  };
+  const trigger = (
+    <button
+      type="button"
+      title={value}
+      className="inline-flex h-6 cursor-pointer items-center gap-1.5 rounded-full border-0 bg-transparent px-2 text-[11.5px] text-muted-foreground hover:bg-accent"
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+      <span className="truncate whitespace-nowrap font-mono max-w-[140px] sm:max-w-none">
+        {shortLabel}
+      </span>
+      <I.ChevronDown
+        size={10}
+        className={open ? "rotate-180 transition-transform" : "transition-transform"}
+      />
+    </button>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={setOpen}>
+        <DrawerTrigger asChild>{trigger}</DrawerTrigger>
+        <DrawerContent className="max-h-[80vh]">
+          <DrawerHeader className="text-left">
+            <DrawerTitle>
+              <Trans>Model</Trans>
+            </DrawerTitle>
+          </DrawerHeader>
+          <ScrollArea viewportClassName="max-h-[55vh]">
+            <ModelPickerList value={value} onSelect={handleSelect} grouped={grouped} />
+          </ScrollArea>
+          <div className="border-t border-border px-4 py-3 text-[11px] text-muted-foreground">
+            <Trans>
+              Configured via{" "}
+              <span className="font-mono text-foreground">AI_GATEWAY_API_KEY</span>{" "}
+              on the workeros deployment (or legacy{" "}
+              <span className="font-mono text-foreground">ANTHROPIC_API_KEY</span>).
+            </Trans>
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="inline-flex h-6 cursor-pointer items-center gap-1.5 rounded-full border-0 bg-transparent px-2 text-[11.5px] text-muted-foreground hover:bg-accent"
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-          <span className="font-mono">{value}</span>
-          <I.ChevronDown
-            size={10}
-            className={open ? "rotate-180 transition-transform" : "transition-transform"}
-          />
-        </button>
-      </PopoverTrigger>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       <PopoverContent align="end" className="w-[300px] gap-0 p-1">
         <div className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           <Trans>Model</Trans>
         </div>
         <ScrollArea viewportClassName="max-h-[360px]">
-          <div>
-            {grouped.map((g, gi) => (
-              <div key={g.provider} className={gi > 0 ? "mt-1 border-t border-border/60 pt-1" : ""}>
-                <div className="px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground/80">
-                  {g.provider}
-                </div>
-                {g.items.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => {
-                      onChange(m.id);
-                      setOpen(false);
-                    }}
-                    className={`flex w-full cursor-pointer items-start gap-2.5 rounded-lg border-0 bg-transparent px-2.5 py-2 text-left hover:bg-accent ${value === m.id ? "bg-accent" : ""}`}
-                  >
-                    <span
-                      className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${value === m.id ? "bg-primary" : "bg-border"}`}
-                    />
-                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="flex items-center gap-1.5">
-                        <span className="font-mono text-[12px] text-foreground">
-                          {m.label}
-                        </span>
-                        {m.default && (
-                          <Badge variant="secondary" mono>
-                            default
-                          </Badge>
-                        )}
-                      </span>
-                      <span className="text-[10.5px] leading-snug text-muted-foreground">
-                        {m.hint}
-                      </span>
-                    </span>
-                    {value === m.id && (
-                      <I.Check size={12} className="mt-1 shrink-0 text-primary" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </div>
+          <ModelPickerList value={value} onSelect={handleSelect} grouped={grouped} />
         </ScrollArea>
         <div className="mt-1 border-t border-border px-3 pt-2 pb-1 text-[10.5px] text-muted-foreground">
           <Trans>

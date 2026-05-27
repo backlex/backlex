@@ -91,7 +91,7 @@ const WRITE_PATTERN =
 // Bumping these only matters when the catalog grows; the badge in the page
 // header surfaces the total so the docs page can stay accurate. Source of
 // truth: apps/web/src/server/mcp/tools/index.ts::allTools.length.
-const MCP_TOOL_COUNT = 75;
+const MCP_TOOL_COUNT = 74;
 
 /** Lightweight JSON syntax highlighter — ported verbatim from the design's
  *  `JsonBlock` (ai-mcp.jsx:257). Avoids pulling a code-editor dependency

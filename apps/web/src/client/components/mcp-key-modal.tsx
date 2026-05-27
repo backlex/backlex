@@ -385,8 +385,8 @@ const SnippetBlock = ({
   copied: boolean;
   onCopy: () => void;
 }) => (
-  <div className="relative">
-    <pre className="overflow-x-auto rounded-md border border-border bg-muted/50 p-3 font-mono text-xs">
+  <div className="relative min-w-0">
+    <pre className="min-w-0 overflow-x-auto rounded-md border border-border bg-muted/50 p-3 font-mono text-xs">
       {snippet}
     </pre>
     <Button

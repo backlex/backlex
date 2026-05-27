@@ -187,6 +187,11 @@ read so the dropdown highlights the right row on first paint. The
 `"0"`). Neither is workspace-scoped — they are per-browser, which is
 what an operator expects from a power-user surface.
 
+On viewports below 640px the picker renders as a bottom-sheet drawer
+instead of an anchored popover, so the model list never overflows the
+viewport and is reachable from one-handed thumb scrolls. Above 640px the
+existing popover behaviour is unchanged.
+
 ## Where to look in code
 
 | File | Role |

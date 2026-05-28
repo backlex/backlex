@@ -1,0 +1,1202 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="workeros docs" bodyClass="docs-page" showChrome={false} showBeams={false}>
+
+<div class="app">
+  <nav class="top">
+    <div class="row">
+      <a class="brand" href="/">
+        <span class="brand-mark">w</span>
+        <span>workeros</span>
+        <span class="docs-tag mono">docs</span>
+      </a>
+      <span class="crumb"><span class="sep">/</span><span class="here" id="crumb-title">Getting started</span></span>
+      <div class="search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input placeholder="Search docs…" id="search-input" />
+        <span class="kbd">⌘K</span>
+      </div>
+      <div class="actions">
+        <a class="btn" href="/">Home</a>
+        <button class="btn" id="theme-toggle" title="Toggle theme" aria-label="Toggle theme" style="padding: 6px 10px;">
+          <svg class="ic-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          <svg class="ic-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+        </button>
+        <a class="btn btn-primary" href="#">Admin demo</a>
+      </div>
+    </div>
+  </nav>
+
+  <aside class="side">
+    <div class="group">
+      <div class="group-label"><span class="gl-dot"></span>Start here</div>
+      <a href="#getting-started" class="nav-link">Getting started</a>
+      <a href="#architecture" class="nav-link">Architecture</a>
+      <a href="#deployment" class="nav-link">Deployment</a>
+    </div>
+    <div class="group">
+      <div class="group-label"><span class="gl-dot"></span>Data</div>
+      <a href="#collections" class="nav-link">Collections</a>
+      <a href="#adopting-tables" class="nav-link">Adopting tables</a>
+      <a href="#querying" class="nav-link">Querying items</a>
+      <a href="#graphql" class="nav-link">GraphQL</a>
+    </div>
+    <div class="group">
+      <div class="group-label"><span class="gl-dot"></span>Access</div>
+      <a href="#permissions" class="nav-link">Permissions DSL</a>
+      <a href="#auth-planes" class="nav-link">Auth planes</a>
+      <a href="#sso" class="nav-link">SSO & LDAP</a>
+    </div>
+    <div class="group">
+      <div class="group-label"><span class="gl-dot"></span>Runtime</div>
+      <a href="#realtime" class="nav-link">Realtime</a>
+      <a href="#storage" class="nav-link">Storage</a>
+      <a href="#sandbox" class="nav-link">Functions / sandbox</a>
+    </div>
+    <div class="group">
+      <div class="group-label"><span class="gl-dot"></span>Tooling</div>
+      <a href="#sdk-and-cli" class="nav-link">SDK &amp; CLI</a>
+      <a href="#mcp" class="nav-link">MCP server</a>
+      <a href="#advisor" class="nav-link">Advisor</a>
+    </div>
+  </aside>
+
+  <main>
+    <!-- ───────────── Getting started ───────────── -->
+    <article id="article-getting-started">
+      <div class="frontmatter">
+        <span class="eyebrow"><span class="dot"></span>Start here</span>
+        <h1>Getting started</h1>
+        <p class="desc">Five minutes from clone to your first item.</p>
+      </div>
+
+      <h2 id="prerequisites">Prerequisites</h2>
+      <ul>
+        <li>Bun ≥ 1.1 — <code>curl -fsSL https://bun.sh/install | bash</code></li>
+        <li>Optional: Postgres 14+ for production. Dev defaults to Bun's built-in SQLite.</li>
+      </ul>
+
+      <h2 id="install">Install + run</h2>
+      <div class="codeblock"><div class="head"><span class="dot"></span>terminal</div><pre><span class="c-prompt">$ </span><span class="c-fn">git clone</span> github.com/your/workeros &amp;&amp; <span class="c-kw">cd</span> workeros
+<span class="c-prompt">$ </span><span class="c-fn">bun install</span>
+<span class="c-prompt">$ </span><span class="c-fn">cp</span> apps/web/.dev.vars.example apps/web/.dev.vars
+
+<span class="c-comment"># Apply migrations to local SQLite</span>
+<span class="c-prompt">$ </span><span class="c-fn">bun run</span> db:migrate:sqlite
+
+<span class="c-comment"># Vite + Cloudflare miniflare in one process on :5173</span>
+<span class="c-comment"># (admin SPA + Worker bundled — no separate API port, no proxy)</span>
+<span class="c-prompt">$ </span><span class="c-fn">bun run</span> dev</pre></div>
+
+      <p>Open <code>http://localhost:5173/sign-up</code> and create the first user — they auto-receive the <code>admin</code> role. Subsequent sign-ups get <code>authenticated</code>.</p>
+
+      <h2 id="first-collection">Your first collection</h2>
+      <p>In the admin, go to <strong>Collections → New</strong> and define:</p>
+      <div class="codeblock"><div class="head"><span class="dot"></span>collection definition</div><pre><span class="c-key">slug</span>: posts
+<span class="c-key">fields</span>:
+  - <span class="c-key">title</span> (text, required)
+  - <span class="c-key">body</span> (longtext)
+  - <span class="c-key">published</span> (boolean)
+  - <span class="c-key">views</span> (integer)
+<span class="c-key">ownerScoped</span>: <span class="c-num">true</span></pre></div>
+      <p>Click <strong>Create</strong>. The API runs <code>CREATE TABLE c_posts (...)</code> against the live database — no redeploy.</p>
+
+      <h2 id="first-items">Your first items</h2>
+      <p>Click on <code>posts</code> in the list, then <strong>+ New item</strong>. Type-aware inputs render based on field type (textarea for longtext, checkbox for boolean, number input for views). Save.</p>
+      <p>The owner-scoped flag auto-seeds permissions for the <code>authenticated</code> role: each user only reads/writes their own items. Admin sees all.</p>
+
+      <h2 id="query">Query</h2>
+      <div class="codeblock"><div class="head"><span class="dot"></span>http</div><pre><span class="c-comment"># REST</span>
+<span class="c-prompt">$ </span><span class="c-fn">curl</span> http://localhost:5173/api/items/posts?limit=10 \
+       --cookie <span class="c-str">"$(cat /tmp/cookie.txt)"</span>
+
+<span class="c-comment"># REST with filter (DSL — same as permissions)</span>
+<span class="c-prompt">$ </span><span class="c-fn">curl</span> <span class="c-str">"http://localhost:5173/api/items/posts?filter=$(echo '&#123;\"published\":&#123;\"_eq\":true&#125;,\"views\":&#123;\"_gt\":10&#125;&#125;' | jq -sRr @uri)&amp;sort=-views"</span>
+
+<span class="c-comment"># GraphQL</span>
+<span class="c-prompt">$ </span><span class="c-fn">curl</span> -X POST http://localhost:5173/api/graphql \
+       -H <span class="c-str">"content-type: application/json"</span> \
+       -d <span class="c-str">'&#123;"query":"&#123; posts(sort:\"-views\", limit:5) &#123; id title views &#125; &#125;"&#125;'</span></pre></div>
+
+      <h2 id="generate-types">Generate types for your client</h2>
+      <div class="codeblock"><div class="head"><span class="dot"></span>terminal</div><pre><span class="c-prompt">$ </span><span class="c-fn">bun run</span> workeros gen-types http://localhost:5173 --out src/types.ts</pre></div>
+      <p>The CLI fetches <code>/api/collections</code> and emits one TypeScript interface per collection plus a <code>Collections</code> registry. Use with <code>@workeros/client</code>:</p>
+      <div class="codeblock"><div class="head"><span class="dot"></span>typescript</div><pre><span class="c-kw">import</span> &#123; createClient &#125; <span class="c-kw">from</span> <span class="c-str">"@workeros/client"</span>;
+<span class="c-kw">import</span> <span class="c-kw">type</span> &#123; Posts &#125; <span class="c-kw">from</span> <span class="c-str">"./types"</span>;
+
+<span class="c-kw">const</span> wks = <span class="c-fn">createClient</span>(&#123; url: <span class="c-str">"http://localhost:5173"</span> &#125;);
+<span class="c-kw">const</span> r = <span class="c-kw">await</span> wks.<span class="c-fn">from</span>&lt;Posts&gt;(<span class="c-str">"posts"</span>).<span class="c-fn">list</span>(&#123;
+  filter: &#123; published: &#123; _eq: <span class="c-num">true</span> &#125; &#125;,
+  sort: <span class="c-str">"-views"</span>,
+  limit: <span class="c-num">10</span>,
+&#125;);</pre></div>
+
+      <h2 id="what-next">What next</h2>
+      <ul>
+        <li><a class="in-text" href="#permissions">Permissions DSL</a> — granular role + condition rules</li>
+        <li><a class="in-text" href="#auth-planes">Auth planes</a> — admin pool vs workspace end-user pool</li>
+        <li><a class="in-text" href="#sandbox">Sandbox functions</a> — JavaScript code that runs in a sandbox</li>
+        <li><a class="in-text" href="#mcp">MCP server</a> — expose the workspace to Claude Desktop / Cursor / IDE agents</li>
+        <li><a class="in-text" href="#deployment">Deployment</a> — push to Bun, Workers, Vercel, or Netlify</li>
+      </ul>
+
+      <div class="doc-footer">
+        <span></span>
+        <a class="next" href="#architecture"><span class="dir">Next →</span><span class="title">Architecture</span></a>
+      </div>
+    </article>
+
+    <!-- ───────────── Architecture ───────────── -->
+    <article id="article-architecture">
+      <div class="frontmatter">
+        <span class="eyebrow"><span class="dot"></span>Start here</span>
+        <h1>Architecture</h1>
+        <p class="desc">The big picture of workeros in one page — repo shape, runtimes, and adapter layers.</p>
+      </div>
+
+      <h2 id="repo-shape">Repo shape</h2>
+      <div class="codeblock"><div class="head"><span class="dot"></span>tree</div><pre>workeros/
+├─ apps/
+│  └─ web/                 One workspace — Hono API + Vite + React admin SPA
+│                          (server/ + client/ + entries/&#123;bun,worker,vercel,netlify&#125;.ts)
+└─ packages/
+   ├─ core/                Types only (DSL, errors, adapter interfaces)
+   ├─ db/                  Drizzle schemas (pg + sqlite) + dynamic-DDL applier + DSL compiler
+   ├─ auth/                better-auth wrapper + plugin selection
+   ├─ ui/                  shadcn radix-luma component library
+   ├─ client/              @workeros/client typed SDK
+   └─ cli/                 workeros CLI</pre></div>
+
+      <h2 id="adapter-pattern">Adapter pattern</h2>
+      <p>Every cross-runtime concern hides behind a TypeScript interface in <code>@workeros/core/adapters</code>. <code>buildContext</code> picks the right implementation based on bindings/env.</p>
+      <table class="doc-table">
+        <thead><tr><th>Interface</th><th>Bun</th><th>Cloudflare Workers</th><th>Vercel / Netlify (Node 22)</th></tr></thead>
+        <tbody>
+          <tr><td><code>StorageAdapter</code></td><td>fsStorage / bunS3Storage</td><td>r2Storage / s3FetchStorage</td><td>s3FetchStorage (S3 env vars required)</td></tr>
+          <tr><td><code>VectorAdapter</code></td><td>pgvectorAdapter</td><td>vectorizeAdapter</td><td>pgvectorAdapter</td></tr>
+          <tr><td>Realtime</td><td>in-proc + SSE</td><td>DO (Hibernation API) → SSE bridge</td><td>SSE loads but impractical</td></tr>
+          <tr><td><code>EmailAdapter</code></td><td>console/resend/sendgrid/mailgun/ses/smtp</td><td>same minus smtp (no raw TCP)</td><td>console/resend/sendgrid/mailgun/ses/smtp</td></tr>
+          <tr><td><code>ImageAdapter</code></td><td>bunImage</td><td>cfImage</td><td>passthroughImage</td></tr>
+          <tr><td><code>SamlAdapter</code></td><td>samlify</td><td>samlify (via nodejs_compat)</td><td>samlify (Node 22 native crypto)</td></tr>
+          <tr><td><code>LdapAdapter</code></td><td>ldapts</td><td>— (no raw TCP)</td><td>ldapts</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="hybrid-schema">Hybrid schema ownership</h2>
+      <p>System tables (<code>users</code>, <code>sessions</code>, <code>roles</code>, <code>permissions</code>, <code>files</code>, <code>activity</code>, <code>revisions</code>, <code>webhooks</code>, <code>flows</code>, <code>functions</code>, plus auth / SSO tables) live in <code>packages/db/src/&#123;pg,sqlite&#125;/schema.ts</code> — Drizzle owns them, and they migrate via hand-written SQL under <code>packages/db/drizzle/&#123;pg,sqlite&#125;/</code>.</p>
+      <p>User collections live in <strong>physical tables</strong> whose name is whatever the collection metadata row's <code>physical_table</code> column says — the default is <code>c_&lt;tenantPrefix12&gt;_&lt;slug&gt;</code>, but adopted collections can wrap any existing table name. <code>POST /api/collections</code> is the single create endpoint and runs DDL only on managed collections (<code>adopted: false</code>); <code>adopted: true</code> writes the metadata row alone.</p>
+      <div class="callout"><span class="label">Important</span><br><code>applyCollection</code> is <strong>additive only</strong> — it never drops or alters existing columns and short-circuits on adopted collections. Field removal goes through the explicit <code>dropField</code> function so admins can audit destructive moves.</div>
+
+      <h2 id="permission-dsl-paths">Permission DSL — three execution paths</h2>
+      <table class="doc-table">
+        <thead><tr><th>Path</th><th>Compiler</th><th>Output</th></tr></thead>
+        <tbody>
+          <tr><td>REST + GraphQL filter</td><td><code>compileCondition</code></td><td>Drizzle SQL fragment, parameterized</td></tr>
+          <tr><td>Realtime per-event filter</td><td><code>matchesCondition</code></td><td>boolean (in-memory)</td></tr>
+          <tr><td>Sandbox <code>ctx.db.list/one</code></td><td><code>compileCondition</code> (via host bridge)</td><td>SQL fragment</td></tr>
+        </tbody>
+      </table>
+      <p>Same operators, same variables (<code>$user.id</code> etc.), same logical combinators. A filter that works in one place works in the others.</p>
+
+      <h2 id="event-flow">Event flow</h2>
+      <p>CRUD routes call <code>publishEvent(env, channel, payload, serverCtx)</code>:</p>
+      <div class="codeblock"><div class="head"><span class="dot"></span>flow</div><pre>┌─ items.ts route ─┐
+│  POST /api/items │
+│        │         │
+│        ▼         │
+│ publishEvent ────┼───► realtime (SSE / DO)       ◄── connected subscribers
+│        │         │
+│        ├───────► dispatchWebhooks ──► HMAC-signed POST to webhook.url
+│        │
+│        ├───────► runFlows ──────► op chain (log/webhook/email/condition)
+│        │
+│        └───────► runEventFunctions ──► matching trigger functions
+└──────────────────┘                     in the sandbox provider</pre></div>
+      <p>All four downstream consumers see the same event payload. Webhooks, flows, and functions are fire-and-forget — they don't block the API response.</p>
+
+      <h2 id="why-these-tradeoffs">Why these tradeoffs</h2>
+      <ul>
+        <li><strong>Hybrid schema</strong> instead of all-Drizzle: matches the Directus mental model where the user's data shape evolves at runtime, but keeps system tables under static migration control.</li>
+        <li><strong>Own permission DSL</strong> instead of CASL: needed something the SQL compiler could read; CASL is row-evaluation-only and didn't fit.</li>
+        <li><strong>Three sandbox providers</strong> instead of one: free-tier Workers users shouldn't lose function execution; paid users shouldn't be stuck on WASM-slow QuickJS.</li>
+        <li><strong>Passkey-first</strong>: phishing-resistant, hardware-backed, better UX than TOTP. TOTP plugin still available for compliance use.</li>
+      </ul>
+
+      <div class="doc-footer">
+        <a href="#getting-started"><span class="dir">← Previous</span><span class="title">Getting started</span></a>
+        <a class="next" href="#deployment"><span class="dir">Next →</span><span class="title">Deployment</span></a>
+      </div>
+    </article>
+
+    <!-- ───────────── Deployment ───────────── -->
+    <article id="article-deployment">
+      <div class="frontmatter">
+        <span class="eyebrow"><span class="dot"></span>Start here</span>
+        <h1>Deployment</h1>
+        <p class="desc">Ship the same source to Bun, Cloudflare Workers, Vercel, or Netlify.</p>
+      </div>
+
+      <h2 id="targets">Targets at a glance</h2>
+      <table class="doc-table">
+        <thead><tr><th></th><th>Bun (self-host)</th><th>Cloudflare Workers</th><th>Vercel Functions</th><th>Netlify Functions</th></tr></thead>
+        <tbody>
+          <tr><td>Database</td><td>SQLite or PG</td><td>D1 or Hyperdrive→PG</td><td>PG (neon-http recommended)</td><td>PG (neon-http recommended)</td></tr>
+          <tr><td>Storage</td><td>local fs / S3 / Bun.S3Client</td><td>R2 (S3 fallback)</td><td>S3 (required)</td><td>S3 (required)</td></tr>
+          <tr><td>Realtime</td><td>in-proc + SSE</td><td>Durable Objects + WS</td><td>loads but impractical</td><td>loads but impractical</td></tr>
+          <tr><td>SAML</td><td>yes</td><td>yes (nodejs_compat)</td><td>yes</td><td>yes</td></tr>
+          <tr><td>LDAP / SMTP</td><td>yes</td><td>503 (no raw TCP)</td><td>yes (Node 22)</td><td>yes (Node 22)</td></tr>
+          <tr><td>Sandbox</td><td>Bun worker</td><td>QuickJS / remote HTTP</td><td>QuickJS / remote HTTP</td><td>QuickJS / remote HTTP</td></tr>
+          <tr><td>Cost</td><td>VPS</td><td>$0–5/mo</td><td>$0–20/mo</td><td>$0–19/mo</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="bun">Bun (self-host)</h2>
+      <div class="codeblock"><div class="head"><span class="dot"></span>terminal</div><pre><span class="c-prompt">$ </span><span class="c-key">APP_URL</span>=https://your.app \
+  <span class="c-key">DATABASE_URL</span>=postgres://user:pass@host:5432/workeros \
+  <span class="c-key">AUTH_SECRET</span>=$(openssl rand -hex 32) \
+  bun run --cwd apps/web dev:bun</pre></div>
+      <p>For a managed process: systemd unit, Docker, or pm2. The Bun scheduler boots inside <code>apps/web/src/server/entries/bun.ts</code>; cron functions tick every 30 seconds.</p>
+
+      <h2 id="workers">Cloudflare Workers</h2>
+      <p><code>apps/web/wrangler.toml</code> covers the bindings. First-time setup:</p>
+      <div class="codeblock"><div class="head"><span class="dot"></span>terminal</div><pre><span class="c-prompt">$ </span><span class="c-kw">cd</span> apps/web
+
+<span class="c-prompt">$ </span><span class="c-fn">wrangler</span> d1 create workeros           <span class="c-comment"># paste id into wrangler.toml</span>
+<span class="c-prompt">$ </span><span class="c-fn">wrangler</span> r2 bucket create workeros-files
+<span class="c-prompt">$ </span><span class="c-fn">wrangler</span> vectorize create workeros-embeddings --dimensions=1536 --metric=cosine
+
+<span class="c-prompt">$ </span><span class="c-fn">wrangler</span> secret put AUTH_SECRET
+<span class="c-prompt">$ </span><span class="c-fn">wrangler</span> secret put RESEND_API_KEY          <span class="c-comment"># or SENDGRID_API_KEY / etc.</span>
+
+<span class="c-prompt">$ </span><span class="c-fn">wrangler</span> d1 migrations apply workeros --remote
+<span class="c-prompt">$ </span><span class="c-fn">wrangler</span> deploy</pre></div>
+      <div class="callout info"><span class="label">Recommended</span><br>Connect the GitHub repo from the Cloudflare dashboard and let every push to <code>main</code> auto-deploy. No GitHub Actions workflow is needed.</div>
+
+      <h2 id="vercel">Vercel</h2>
+      <p><code>vercel.json</code> at the repo root deploys both admin (static) and API (edge).</p>
+      <div class="codeblock"><div class="head"><span class="dot"></span>terminal</div><pre><span class="c-prompt">$ </span><span class="c-fn">vercel</span> link
+<span class="c-prompt">$ </span><span class="c-fn">vercel</span> env add DATABASE_URL    <span class="c-comment"># Postgres URL (Neon recommended for edge)</span>
+<span class="c-prompt">$ </span><span class="c-fn">vercel</span> env add AUTH_SECRET
+<span class="c-prompt">$ </span><span class="c-fn">vercel</span> deploy --prod</pre></div>
+      <p>Cron triggers (<code>* * * * *</code> in <code>vercel.json</code>) hit <code>/api/_cron/tick</code> and call the same <code>cronTick</code> the Bun scheduler uses.</p>
+
+      <h2 id="netlify">Netlify</h2>
+      <p><code>netlify.toml</code> at the repo root mirrors the Vercel layout — admin SPA + edge function for <code>/api/*</code> + scheduled function for cron.</p>
+      <div class="codeblock"><div class="head"><span class="dot"></span>terminal</div><pre><span class="c-prompt">$ </span><span class="c-fn">netlify</span> init
+<span class="c-prompt">$ </span><span class="c-fn">netlify</span> env:set DATABASE_URL postgres://...
+<span class="c-prompt">$ </span><span class="c-fn">netlify</span> env:set AUTH_SECRET $(openssl rand -hex 32)
+<span class="c-prompt">$ </span><span class="c-fn">netlify</span> deploy --prod</pre></div>
+
+      <div class="doc-footer">
+        <a href="#architecture"><span class="dir">← Previous</span><span class="title">Architecture</span></a>
+        <a class="next" href="#collections"><span class="dir">Next →</span><span class="title">Collections</span></a>
+      </div>
+    </article>
+
+    <!-- ───────────── Collections ───────────── -->
+    <article id="article-collections">
+      <div class="frontmatter">
+        <span class="eyebrow"><span class="dot"></span>Data</span>
+        <h1>Collections</h1>
+        <p class="desc">Dynamic schema. Each collection becomes a physical c_&lt;slug&gt; table at runtime — drop or alter via the admin UI without writing migrations.</p>
+      </div>
+
+      <h2 id="what-is-a-collection">What's a collection</h2>
+      <p>A collection is a metadata row plus a physical table. The metadata row lives in the <code>collections</code> system table and stores the slug, owner-scope flag, default sort, display template, and the registered field list. The physical table — typically <code>c_&lt;tenantPrefix12&gt;_&lt;slug&gt;</code> — holds the actual data.</p>
+      <p><code>POST /api/collections</code> is the single create endpoint. It runs DDL on managed collections (<code>adopted: false</code>) and writes the metadata row alone on adopted ones.</p>
+
+      <h2 id="create">Creating a collection</h2>
+      <div class="codeblock"><div class="head"><span class="dot"></span>http</div><pre>POST /api/collections
+&#123;
+  <span class="c-str">"slug"</span>: <span class="c-str">"posts"</span>,
+  <span class="c-str">"ownerScoped"</span>: <span class="c-num">true</span>,
+  <span class="c-str">"singular"</span>: <span class="c-str">"Post"</span>,
+  <span class="c-str">"plural"</span>: <span class="c-str">"Posts"</span>,
+  <span class="c-str">"displayTemplate"</span>: <span class="c-str">"&#123;&#123; title &#125;&#125;"</span>,
+  <span class="c-str">"fields"</span>: [
+    &#123; <span class="c-str">"name"</span>: <span class="c-str">"title"</span>,     <span class="c-str">"type"</span>: <span class="c-str">"text"</span>,     <span class="c-str">"nullable"</span>: <span class="c-num">false</span> &#125;,
+    &#123; <span class="c-str">"name"</span>: <span class="c-str">"body"</span>,      <span class="c-str">"type"</span>: <span class="c-str">"longtext"</span> &#125;,
+    &#123; <span class="c-str">"name"</span>: <span class="c-str">"published"</span>, <span class="c-str">"type"</span>: <span class="c-str">"boolean"</span>, <span class="c-str">"default"</span>: <span class="c-num">false</span> &#125;,
+    &#123; <span class="c-str">"name"</span>: <span class="c-str">"views"</span>,     <span class="c-str">"type"</span>: <span class="c-str">"integer"</span> &#125;
+  ]
+&#125;</pre></div>
+      <p>The API runs <code>CREATE TABLE c_posts (...)</code>, registers each field, and returns the freshly-stored metadata row. From this point on:</p>
+      <ul>
+        <li>The REST endpoint <code>/api/items/posts</code> is live.</li>
+        <li>The GraphQL schema includes <code>posts</code> + a matching <code>create / update / delete</code> mutation.</li>
+        <li>The realtime channel <code>items:posts</code> accepts subscribers.</li>
+        <li>Webhooks / flows / functions can register on <code>items.posts.created</code> etc.</li>
+      </ul>
+
+      <h2 id="adding-fields">Adding fields</h2>
+      <p>Each call appends one column via <code>ALTER TABLE c_posts ADD COLUMN ...</code>. The applier is <strong>additive only</strong> — it never drops or modifies existing columns. Field removal is a separate explicit operation (<code>dropField</code>).</p>
+      <div class="codeblock"><div class="head"><span class="dot"></span>http</div><pre>PATCH /api/collections/posts
+&#123;
+  <span class="c-str">"fields"</span>: [
+    <span class="c-comment">/* existing fields preserved here */</span>
+    &#123; <span class="c-str">"name"</span>: <span class="c-str">"reading_time_minutes"</span>, <span class="c-str">"type"</span>: <span class="c-str">"integer"</span>, <span class="c-str">"default"</span>: <span class="c-num">0</span> &#125;
+  ]
+&#125;</pre></div>
+
+      <h2 id="field-types">Field types</h2>
+      <table class="doc-table">
+        <thead><tr><th>FieldType</th><th>SQL (PG)</th><th>SQL (SQLite)</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><code>text</code></td><td><code>text</code></td><td><code>text</code></td><td>Default for short strings</td></tr>
+          <tr><td><code>longtext</code></td><td><code>text</code></td><td><code>text</code></td><td>Renders textarea in admin</td></tr>
+          <tr><td><code>integer</code></td><td><code>integer</code></td><td><code>integer</code></td><td></td></tr>
+          <tr><td><code>number</code></td><td><code>double precision</code></td><td><code>real</code></td><td>Floating-point</td></tr>
+          <tr><td><code>boolean</code></td><td><code>boolean</code></td><td><code>integer (0/1)</code></td><td></td></tr>
+          <tr><td><code>json</code></td><td><code>jsonb</code></td><td><code>text</code></td><td>Stored as JSON string on SQLite</td></tr>
+          <tr><td><code>timestamp</code></td><td><code>timestamptz</code></td><td><code>text (iso-8601)</code></td><td></td></tr>
+          <tr><td><code>uuid</code></td><td><code>uuid</code></td><td><code>text</code></td><td></td></tr>
+          <tr><td><code>relation</code></td><td><code>uuid</code></td><td><code>text</code></td><td>Stores the target row's <code>id</code></td></tr>
+          <tr><td><code>file</code></td><td><code>text</code></td><td><code>text</code></td><td>Stores the file's <code>key</code></td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="system-columns">System columns</h2>
+      <p>Every <code>c_&lt;slug&gt;</code> table automatically gets:</p>
+      <ul>
+        <li><code>id</code> — UUIDv7 primary key (ULID-shaped on SQLite)</li>
+        <li><code>created_at</code>, <code>updated_at</code> — server-stamped timestamps</li>
+        <li><code>owner_id</code> — set on create if the collection is <code>ownerScoped</code></li>
+        <li><code>tenant_id</code> — multi-tenant isolation column</li>
+      </ul>
+      <p>These names are reserved — user-defined fields cannot reuse them.</p>
+
+      <div class="doc-footer">
+        <a href="#deployment"><span class="dir">← Previous</span><span class="title">Deployment</span></a>
+        <a class="next" href="#adopting-tables"><span class="dir">Next →</span><span class="title">Adopting tables</span></a>
+      </div>
+    </article>
+
+    <!-- ───────────── Adopting tables ───────────── -->
+    <article id="article-adopting-tables">
+      <div class="frontmatter">
+        <span class="eyebrow"><span class="dot"></span>Data</span>
+        <h1>Adopting existing tables</h1>
+        <p class="desc">Point a collection at a table you already own — no DDL, no migrations.</p>
+      </div>
+
+      <p>workeros normally creates a fresh physical table (<code>c_&lt;slug&gt;</code>) for every collection. <strong>Adoption</strong> is the opposite path: you point a collection at a table you already have and workeros wraps it with permissions, the items API, realtime, and the admin UI — without writing a single DDL statement against your data.</p>
+
+      <h2 id="when-to-adopt">When to adopt vs create</h2>
+      <p>Adopt when another app already writes to the table, when you want your own migration tooling to stay the only thing that touches DDL, or when you want workeros on top of legacy data without backfilling. Use a normal <strong>managed</strong> collection when the table doesn't exist yet or when admin-UI field add/remove should alter the physical table.</p>
+
+      <h2 id="limits">Limits and prerequisites</h2>
+      <p><strong>Primary key.</strong> Single-column only: <code>uuid</code>, <code>text</code> / <code>varchar</code>, <code>integer</code>, or <code>bigint</code>. Composite PKs, views, and partitioned tables are rejected at inspect.</p>
+      <p><strong>Supported column types.</strong></p>
+      <table class="doc-table">
+        <thead><tr><th>Source (PG / SQLite)</th><th>workeros FieldType</th></tr></thead>
+        <tbody>
+          <tr><td><code>varchar(n)</code> / <code>text</code> (n ≤ 255)</td><td><code>text</code></td></tr>
+          <tr><td><code>varchar(n)</code> / <code>text</code> (n &gt; 255)</td><td><code>longtext</code></td></tr>
+          <tr><td><code>integer</code> / <code>bigint</code> / <code>smallint</code></td><td><code>integer</code></td></tr>
+          <tr><td><code>numeric</code> / <code>real</code> / <code>double</code></td><td><code>number</code></td></tr>
+          <tr><td><code>boolean</code></td><td><code>boolean</code></td></tr>
+          <tr><td><code>json</code> / <code>jsonb</code></td><td><code>json</code></td></tr>
+          <tr><td><code>timestamp</code> / <code>timestamptz</code></td><td><code>timestamp</code></td></tr>
+          <tr><td><code>uuid</code></td><td><code>uuid</code></td></tr>
+        </tbody>
+      </table>
+      <p>Arrays, enum types, geometry/PostGIS, and custom domains aren't mapped — inspect flags them, the wizard hides them, and they don't surface in the items API. The table itself can still be adopted.</p>
+      <p><strong>Reserved column names.</strong> <code>id</code>, <code>tenant_id</code>, <code>created_at</code>, <code>updated_at</code>, <code>owner_id</code>. If your table uses one of these the column has to match its workeros role (e.g. <code>id</code> must be the PK). Conflicts surface as warnings on inspect.</p>
+
+      <h2 id="wizard">The 3-step wizard</h2>
+      <p>The admin lives at <strong>Collections → Adopt existing</strong>. Each step maps to one admin endpoint, so the flow scripts cleanly too.</p>
+      <h3 id="step-1">1. Pick a table</h3>
+      <div class="codeblock"><div class="head"><span class="dot"></span>http</div><pre>GET /api/admin/adopt/tables
+
+→ &#123;
+  <span class="c-str">"data"</span>: [
+    &#123; <span class="c-str">"name"</span>: <span class="c-str">"legacy_articles"</span>, <span class="c-str">"columns"</span>: <span class="c-num">14</span>, <span class="c-str">"rowCount"</span>: <span class="c-num">4280</span> &#125;,
+    &#123; <span class="c-str">"name"</span>: <span class="c-str">"newsletter_subs"</span>, <span class="c-str">"columns"</span>: <span class="c-num">6</span>,  <span class="c-str">"rowCount"</span>: <span class="c-num">12482</span> &#125;,
+    &#123; <span class="c-str">"name"</span>: <span class="c-str">"sessions"</span>,        <span class="c-str">"columns"</span>: <span class="c-num">6</span>,  <span class="c-str">"disabled"</span>: <span class="c-str">"reserved by workeros (auth)"</span> &#125;
+  ]
+&#125;</pre></div>
+
+      <h3 id="step-2">2. Inspect &amp; map columns</h3>
+      <div class="codeblock"><div class="head"><span class="dot"></span>http</div><pre>POST /api/admin/adopt/inspect
+&#123; <span class="c-str">"table"</span>: <span class="c-str">"legacy_articles"</span> &#125;
+
+→ &#123;
+  <span class="c-str">"data"</span>: &#123;
+    <span class="c-str">"pk"</span>: &#123; <span class="c-str">"column"</span>: <span class="c-str">"id"</span>, <span class="c-str">"dbType"</span>: <span class="c-str">"uuid"</span>, <span class="c-str">"supported"</span>: <span class="c-num">true</span> &#125;,
+    <span class="c-str">"columns"</span>: [
+      &#123; <span class="c-str">"name"</span>: <span class="c-str">"title"</span>, <span class="c-str">"dbType"</span>: <span class="c-str">"text"</span>, <span class="c-str">"suggested"</span>: <span class="c-str">"text"</span> &#125;,
+      <span class="c-comment">/* … */</span>
+    ],
+    <span class="c-str">"fks"</span>: [
+      &#123; <span class="c-str">"column"</span>: <span class="c-str">"author_id"</span>, <span class="c-str">"referencesTable"</span>: <span class="c-str">"wp_users"</span>, <span class="c-str">"referencesColumn"</span>: <span class="c-str">"id"</span> &#125;
+    ]
+  &#125;
+&#125;</pre></div>
+
+      <h3 id="step-3">3. Confirm metadata + adopt</h3>
+      <div class="codeblock"><div class="head"><span class="dot"></span>http</div><pre>POST /api/collections
+&#123;
+  <span class="c-str">"slug"</span>: <span class="c-str">"articles"</span>,
+  <span class="c-str">"adopted"</span>: <span class="c-num">true</span>,
+  <span class="c-str">"physicalTable"</span>: <span class="c-str">"legacy_articles"</span>,
+  <span class="c-str">"pkColumn"</span>: <span class="c-str">"id"</span>,
+  <span class="c-str">"ownerScoped"</span>: <span class="c-num">false</span>,
+  <span class="c-str">"fields"</span>: [ <span class="c-comment">/* user-mapped */</span> ]
+&#125;</pre></div>
+      <div class="callout warning"><span class="label">No DDL</span><br><code>applyCollection</code> short-circuits on <code>adopted: true</code> — workeros never runs <code>CREATE TABLE</code> or <code>ALTER TABLE</code> against your data. Field changes via the admin <strong>do not</strong> persist on adopted collections.</div>
+
+      <div class="doc-footer">
+        <a href="#collections"><span class="dir">← Previous</span><span class="title">Collections</span></a>
+        <a class="next" href="#querying"><span class="dir">Next →</span><span class="title">Querying items</span></a>
+      </div>
+    </article>
+
+    <!-- ───────────── Querying ───────────── -->
+    <article id="article-querying">
+      <div class="frontmatter">
+        <span class="eyebrow"><span class="dot"></span>Data</span>
+        <h1>Querying items</h1>
+        <p class="desc">One Directus-shaped URL for filter, search, sort, projection, pagination, and counts.</p>
+      </div>
+
+      <p><code>GET /api/items/&lt;slug&gt;</code> is workeros' Directus-shaped REST query endpoint: one URL covers filter, full-text search, sort, projection, pagination, count metadata, and locale projection. Parsing lives in <code>apps/web/src/server/lib/query.ts::parseQuery</code>; the same compile path backs the GraphQL resolver.</p>
+
+      <h2 id="shape">The shape</h2>
+      <table class="doc-table">
+        <thead><tr><th>Param</th><th>Type</th><th>Default</th><th>Does</th></tr></thead>
+        <tbody>
+          <tr><td><code>filter</code></td><td>JSON-encoded DSL condition</td><td><code>null</code></td><td>Row predicate; AND'd with the role's permission whereSql</td></tr>
+          <tr><td><code>q</code></td><td>string</td><td>—</td><td>Free-text <code>_contains</code> across every readable text/longtext field</td></tr>
+          <tr><td><code>sort</code></td><td>comma-separated field list</td><td><code>default_sort</code> or <code>-created_at</code></td><td><code>-</code> prefix = DESC; multi-column</td></tr>
+          <tr><td><code>fields</code></td><td>comma-separated field list</td><td>all readable</td><td>SQL-level projection; system columns always re-added</td></tr>
+          <tr><td><code>expand</code></td><td>comma-separated relation fields</td><td>—</td><td>Inline-expand each named relation</td></tr>
+          <tr><td><code>limit</code></td><td>integer 1–200</td><td>50</td><td>Page size</td></tr>
+          <tr><td><code>offset</code></td><td>integer ≥ 0</td><td>0</td><td>Page offset</td></tr>
+          <tr><td><code>meta</code></td><td><code>filter_count</code>, <code>total_count</code>, <code>*</code></td><td>—</td><td>Adds extra <code>SELECT COUNT(*)</code> to <code>response.meta</code></td></tr>
+          <tr><td><code>locale</code></td><td>string or <code>*</code></td><td><code>null</code></td><td>Projects <code>i18n_text</code> fields to one locale</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="filters">Filters</h2>
+      <p><code>filter=&lt;JSON&gt;</code> takes the same mini-DSL as a role's <code>permission.condition</code>. The compiler emits Drizzle SQL fragments (parameterized) and never string-concatenates user input.</p>
+      <h3 id="operators">Operators</h3>
+      <table class="doc-table">
+        <thead><tr><th>Op</th><th>Means</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr><td><code>_eq</code></td><td>equal</td><td><code>&#123; "status": &#123; "_eq": "published" &#125; &#125;</code></td></tr>
+          <tr><td><code>_neq</code></td><td>not equal</td><td></td></tr>
+          <tr><td><code>_in</code></td><td>in array</td><td><code>&#123; "status": &#123; "_in": ["a", "b"] &#125; &#125;</code></td></tr>
+          <tr><td><code>_nin</code></td><td>not in array</td><td></td></tr>
+          <tr><td><code>_gt</code> / <code>_gte</code> / <code>_lt</code> / <code>_lte</code></td><td>numeric / lexical</td><td><code>&#123; "views": &#123; "_gt": 100 &#125; &#125;</code></td></tr>
+          <tr><td><code>_null</code></td><td>is / is-not null</td><td><code>&#123; "deleted_at": &#123; "_null": true &#125; &#125;</code></td></tr>
+          <tr><td><code>_contains</code></td><td>LIKE %x%</td><td><code>&#123; "title": &#123; "_contains": "foo" &#125; &#125;</code></td></tr>
+          <tr><td><code>_starts_with</code> / <code>_ends_with</code></td><td>LIKE x% / %x</td><td></td></tr>
+        </tbody>
+      </table>
+      <h3 id="combinators">Logical combinators</h3>
+      <p>Top-level keys are an implicit <code>$and</code>. <code>$and</code>, <code>$or</code>, and <code>$not</code> nest freely.</p>
+      <div class="codeblock"><div class="head"><span class="dot"></span>json</div><pre>&#123;
+  <span class="c-str">"$or"</span>: [
+    &#123; <span class="c-str">"owner_id"</span>: &#123; <span class="c-str">"_eq"</span>: <span class="c-str">"$user.id"</span> &#125; &#125;,
+    &#123; <span class="c-str">"published"</span>: &#123; <span class="c-str">"_eq"</span>: <span class="c-num">true</span> &#125; &#125;
+  ]
+&#125;</pre></div>
+
+      <h2 id="expand">Expanding relations</h2>
+      <div class="codeblock"><div class="head"><span class="dot"></span>http</div><pre>GET /api/items/posts?expand=author,category&amp;limit=5
+
+→ &#123;
+  <span class="c-str">"data"</span>: [&#123;
+    <span class="c-str">"id"</span>: <span class="c-str">"01HZ…"</span>,
+    <span class="c-str">"title"</span>: <span class="c-str">"…"</span>,
+    <span class="c-str">"author"</span>: &#123; <span class="c-str">"id"</span>: <span class="c-str">"u_01"</span>, <span class="c-str">"name"</span>: <span class="c-str">"Rana"</span> &#125;,
+    <span class="c-str">"category"</span>: &#123; <span class="c-str">"id"</span>: <span class="c-str">"c_01"</span>, <span class="c-str">"slug"</span>: <span class="c-str">"engineering"</span> &#125;
+  &#125;]
+&#125;</pre></div>
+      <p>Each named relation is replaced inline with the target row, permission-filtered. The cost is one extra <code>SELECT ... WHERE id IN (...)</code> per relation, not N+1.</p>
+
+      <h2 id="meta">Counts</h2>
+      <div class="codeblock"><div class="head"><span class="dot"></span>http</div><pre>GET /api/items/posts?meta=filter_count,total_count
+
+→ &#123;
+  <span class="c-str">"data"</span>: [ <span class="c-comment">/* page */</span> ],
+  <span class="c-str">"meta"</span>: &#123;
+    <span class="c-str">"filter_count"</span>: <span class="c-num">42</span>,    <span class="c-comment">// rows matching the filter + permission</span>
+    <span class="c-str">"total_count"</span>:  <span class="c-num">1248</span>   <span class="c-comment">// rows the user can read at all</span>
+  &#125;
+&#125;</pre></div>
+
+      <div class="doc-footer">
+        <a href="#adopting-tables"><span class="dir">← Previous</span><span class="title">Adopting tables</span></a>
+        <a class="next" href="#graphql"><span class="dir">Next →</span><span class="title">GraphQL</span></a>
+      </div>
+    </article>
+
+    <!-- ───────────── GraphQL ───────────── -->
+    <article id="article-graphql">
+      <div class="frontmatter">
+        <span class="eyebrow"><span class="dot"></span>Data</span>
+        <h1>GraphQL</h1>
+        <p class="desc">Auto-generated schema from your collections, with queries, mutations, and the same permission DSL.</p>
+      </div>
+
+      <p>GraphQL is exposed at <code>/api/graphql</code>. The schema is built at boot from <code>/api/collections</code> + the system tables — there's no SDL file to maintain. Every managed and adopted collection becomes a queryable type with matching <code>create / update / delete</code> mutations, permission-checked on every resolver.</p>
+
+      <h2 id="query">Queries</h2>
+      <div class="codeblock"><div class="head"><span class="dot"></span>graphql</div><pre><span class="c-kw">query</span> LatestPosts &#123;
+  posts(sort: <span class="c-str">"-views"</span>, limit: <span class="c-num">5</span>, filter: &#123; published: &#123; _eq: <span class="c-num">true</span> &#125; &#125;) &#123;
+    id
+    title
+    views
+    author &#123;
+      id
+      name
+    &#125;
+  &#125;
+&#125;</pre></div>
+      <p>The <code>filter</code>, <code>sort</code>, <code>limit</code>, and <code>offset</code> arguments accept the same shapes the REST endpoint does. Relations are resolved by nested selection (no <code>?expand</code> needed).</p>
+
+      <h2 id="mutations">Mutations</h2>
+      <div class="codeblock"><div class="head"><span class="dot"></span>graphql</div><pre><span class="c-kw">mutation</span> Publish($id: ID!) &#123;
+  update_posts(id: $id, data: &#123; published: <span class="c-num">true</span>, published_at: <span class="c-str">"now"</span> &#125;) &#123;
+    id
+    published
+    published_at
+  &#125;
+&#125;
+
+<span class="c-kw">mutation</span> &#123;
+  create_posts(data: &#123; title: <span class="c-str">"hi"</span>, body: <span class="c-str">"…"</span> &#125;) &#123; id &#125;
+&#125;
+
+<span class="c-kw">mutation</span> &#123;
+  delete_posts(id: <span class="c-str">"01HZ…"</span>) &#123; ok &#125;
+&#125;</pre></div>
+
+      <h2 id="introspection">Introspection</h2>
+      <p>Introspection is enabled in dev and disabled in prod unless <code>GRAPHQL_INTROSPECTION=1</code> is set. The auto-generated SDL is also downloadable from <code>/api/graphql/sdl</code> for tooling.</p>
+
+      <div class="doc-footer">
+        <a href="#querying"><span class="dir">← Previous</span><span class="title">Querying items</span></a>
+        <a class="next" href="#permissions"><span class="dir">Next →</span><span class="title">Permissions DSL</span></a>
+      </div>
+    </article>
+
+    <!-- ───────────── Permissions ───────────── -->
+    <article id="article-permissions">
+      <div class="frontmatter">
+        <span class="eyebrow"><span class="dot"></span>Access</span>
+        <h1>Permissions DSL</h1>
+        <p class="desc">JSON permission language shared by REST, GraphQL, realtime filters, and DB persistence.</p>
+      </div>
+
+      <p>workeros has its own JSON permission language. The same DSL is used for:</p>
+      <ul>
+        <li>Role permission <code>condition</code> field (DB persistence)</li>
+        <li>REST <code>?filter=...</code> query string</li>
+        <li>GraphQL filter argument</li>
+      </ul>
+      <p>Compiler emits Drizzle SQL fragments (parameterized) for the SQL path, and an in-process matcher (<code>matchesCondition</code>) for realtime / sandbox.</p>
+
+      <h2 id="operators">Operators</h2>
+      <p>The full set of comparison operators (<code>_eq</code>, <code>_neq</code>, <code>_in</code>, <code>_nin</code>, <code>_gt</code>, <code>_lt</code>, <code>_null</code>, <code>_contains</code>, <code>_starts_with</code>, <code>_ends_with</code>) is documented in the <a class="in-text" href="#querying">Querying items</a> page.</p>
+
+      <h2 id="variables">Variables</h2>
+      <p>Resolved against the request's auth subject:</p>
+      <ul>
+        <li><code>$user.id</code> — current user's id (null when anonymous)</li>
+        <li><code>$user.email</code></li>
+        <li><code>$user.roles</code> — array of role names</li>
+        <li><code>$tenant.id</code> (aka <code>$user.tenant_id</code>) — active workspace id</li>
+        <li><code>$now</code> — <code>Date.now()</code></li>
+      </ul>
+      <div class="callout"><code>$user.id</code> resolving to null short-circuits comparison ops to false, so anonymous users never accidentally match <code>&#123; owner_id: &#123; _eq: "$user.id" &#125; &#125;</code>.</div>
+
+      <h2 id="rows">Permission rows</h2>
+      <p>Each row in <code>permissions</code> binds a role to a <code>(collection, action)</code> pair:</p>
+      <div class="codeblock"><div class="head"><span class="dot"></span>json</div><pre>&#123;
+  <span class="c-str">"role_id"</span>: <span class="c-str">"&lt;authenticated-role-uuid&gt;"</span>,
+  <span class="c-str">"collection"</span>: <span class="c-str">"posts"</span>,
+  <span class="c-str">"action"</span>: <span class="c-str">"read"</span>,
+  <span class="c-str">"condition"</span>: &#123; <span class="c-str">"$or"</span>: [
+    &#123; <span class="c-str">"published"</span>: &#123; <span class="c-str">"_eq"</span>: <span class="c-num">true</span> &#125; &#125;,
+    &#123; <span class="c-str">"owner_id"</span>:  &#123; <span class="c-str">"_eq"</span>: <span class="c-str">"$user.id"</span> &#125; &#125;
+  ] &#125;,
+  <span class="c-str">"fields"</span>: [<span class="c-str">"title"</span>, <span class="c-str">"body"</span>, <span class="c-str">"published"</span>, <span class="c-str">"views"</span>]
+&#125;</pre></div>
+      <ul>
+        <li><code>collection: "*"</code> matches every collection.</li>
+        <li><code>action</code>: one of <code>read | create | update | delete</code>.</li>
+        <li><code>condition: null</code> → no row-level filter (full access).</li>
+        <li><code>fields: null</code> → all fields readable/writable. Otherwise allow-list.</li>
+      </ul>
+
+      <h2 id="resolution">Resolution flow</h2>
+      <ol>
+        <li><code>loadRolesForUser</code> — fetch the user's roles. Anonymous = <code>public</code>; any signed-in user gets <code>authenticated</code> implicitly.</li>
+        <li>If any role has <code>admin: true</code> → bypass all checks.</li>
+        <li>Else find permission rows matching <code>(role IN roles) AND action AND collection IN (slug, '*')</code>.</li>
+        <li>None found → 403.</li>
+        <li>OR-combine the conditions across matching rows (most permissive wins). <code>null</code> condition on any matching row = unrestricted.</li>
+        <li>Field allow-list = union of <code>fields</code> across matching rows.</li>
+      </ol>
+      <p>The compiled <code>whereSql</code> is AND'd with any user-supplied <code>filter</code> from the request, so users can never widen their access via filter.</p>
+
+      <h2 id="owner-scoped">ownerScoped: true shortcut</h2>
+      <p>When a collection is created with <code>ownerScoped: true</code>, the API auto-seeds four permissions for the <code>authenticated</code> role:</p>
+      <table class="doc-table">
+        <thead><tr><th>Action</th><th>Condition</th></tr></thead>
+        <tbody>
+          <tr><td>read</td><td><code>&#123; owner_id: &#123; _eq: "$user.id" &#125; &#125;</code></td></tr>
+          <tr><td>create</td><td>(none — ownership set by route)</td></tr>
+          <tr><td>update</td><td><code>&#123; owner_id: &#123; _eq: "$user.id" &#125; &#125;</code></td></tr>
+          <tr><td>delete</td><td><code>&#123; owner_id: &#123; _eq: "$user.id" &#125; &#125;</code></td></tr>
+        </tbody>
+      </table>
+      <p>These are real permission rows — admin can edit them in <code>/settings</code> afterward.</p>
+
+      <h2 id="system-roles">System roles</h2>
+      <table class="doc-table">
+        <thead><tr><th>Role</th><th>Bypass</th><th>Auto-assigned</th></tr></thead>
+        <tbody>
+          <tr><td><code>admin</code></td><td>yes</td><td>First user to sign up</td></tr>
+          <tr><td><code>authenticated</code></td><td>no</td><td>Implicit on every signed-in request</td></tr>
+          <tr><td><code>public</code></td><td>no</td><td>Anonymous requests</td></tr>
+        </tbody>
+      </table>
+      <p>System roles cannot be deleted from the admin UI.</p>
+
+      <div class="doc-footer">
+        <a href="#graphql"><span class="dir">← Previous</span><span class="title">GraphQL</span></a>
+        <a class="next" href="#auth-planes"><span class="dir">Next →</span><span class="title">Auth planes</span></a>
+      </div>
+    </article>
+
+    <!-- ───────────── Auth planes ───────────── -->
+    <article id="article-auth-planes">
+      <div class="frontmatter">
+        <span class="eyebrow"><span class="dot"></span>Access</span>
+        <h1>Auth planes &amp; workspace end-users</h1>
+        <p class="desc">The control-plane vs app-plane split — admins running the dashboard, and the end-users of whatever product is built on top of a workspace.</p>
+      </div>
+
+      <p>workeros is built for <strong>two distinct audiences inside the same instance</strong>:</p>
+      <ul>
+        <li>The team running the dashboard — operators, developers, internal admins. They sign into <code>app.your-workeros.com</code>, configure collections, write permissions, invite teammates.</li>
+        <li>The end-users of whatever product is being <em>built on top of</em> a workspace — the customers of a SaaS, the readers of a CMS, the members of a community. They never see the dashboard. They only talk to the workspace's own auth surface and its data API.</li>
+      </ul>
+
+      <h2 id="two-plane-model">The two-plane model</h2>
+      <p><code>auth.plane</code> (set on <code>c.var.auth</code> by <code>session.ts</code> middleware) tags every authenticated request with one of two values:</p>
+      <table class="doc-table">
+        <thead><tr><th>Plane</th><th>Who</th><th>Tables</th><th>Auth surface</th><th>Cookie / token</th></tr></thead>
+        <tbody>
+          <tr><td><code>"platform"</code></td><td>Admins running the dashboard</td><td><code>users</code>, <code>sessions</code>, <code>accounts</code>, <code>verifications</code>, <code>passkeys</code></td><td><code>/api/auth/*</code> (better-auth)</td><td><code>better-auth.*</code> cookies + PAKs (<code>pak_…</code>)</td></tr>
+          <tr><td><code>"app"</code></td><td>Workspace customers</td><td><code>app_users</code>, <code>app_sessions</code>, <code>app_accounts</code>, <code>app_verifications</code>, <code>external_identities</code></td><td><code>/api/t/&lt;slug&gt;/auth/*</code> (per-workspace better-auth)</td><td><code>Authorization: Bearer &lt;token&gt;</code></td></tr>
+        </tbody>
+      </table>
+
+      <p>Both planes share the same <code>tenants</code> table and the same role / permission machinery. The plane tag flows from <code>sessionMiddleware</code> into <code>tenantMiddleware</code> into <code>requirePermission</code>. Every downstream check can branch on it without re-asking "which kind of user is this".</p>
+      <div class="callout info"><span class="label">Isolation</span><br><code>tenant.ts:204</code> pins an app-plane request to the workspace stamped on its session row and <em>ignores</em> any <code>X-Workeros-Tenant</code> header — a customer's frontend can never accidentally walk into another tenant's data even if it sends one.</div>
+
+      <h2 id="sign-in-flows">Sign-in flows</h2>
+      <p><strong>Platform users</strong> sign in at <code>/sign-in</code>. The default surface is email + password; the workspace can enable OAuth (Google / GitHub / Apple), magic link, OTP, passkey, SAML 2.0 SSO, or LDAP. First user to sign up auto-gets the <code>admin</code> role.</p>
+      <p><strong>App users</strong> sign in at <code>/t/&lt;slug&gt;/sign-in</code>. Each workspace runs its own better-auth instance with its own provider list, its own <code>app_users</code> table, and its own access + refresh tokens. The workspace owner picks which providers to expose.</p>
+
+      <div class="doc-footer">
+        <a href="#permissions"><span class="dir">← Previous</span><span class="title">Permissions DSL</span></a>
+        <a class="next" href="#sso"><span class="dir">Next →</span><span class="title">SSO &amp; LDAP</span></a>
+      </div>
+    </article>
+
+    <!-- ───────────── SSO ───────────── -->
+    <article id="article-sso">
+      <div class="frontmatter">
+        <span class="eyebrow"><span class="dot"></span>Access</span>
+        <h1>SSO &amp; LDAP</h1>
+        <p class="desc">Per-tenant SAML 2.0 and LDAP / Active Directory sign-in, configured from the admin.</p>
+      </div>
+
+      <h2 id="saml">SAML 2.0</h2>
+      <p>SAML providers are configured per-workspace. The SP metadata is served from <code>/api/t/&lt;slug&gt;/auth/saml/&lt;provider&gt;/metadata</code> and the ACS endpoint at <code>/api/t/&lt;slug&gt;/auth/saml/&lt;provider&gt;/acs</code>.</p>
+      <p>The adapter (<code>samlify</code>) works on every runtime — Workers via <code>nodejs_compat</code>, Vercel / Netlify via Node 22's native crypto.</p>
+      <div class="codeblock"><div class="head"><span class="dot"></span>http</div><pre>POST /api/admin/saml/providers
+&#123;
+  <span class="c-str">"name"</span>: <span class="c-str">"okta"</span>,
+  <span class="c-str">"entityId"</span>: <span class="c-str">"https://your-okta.example.com/app/abc"</span>,
+  <span class="c-str">"ssoUrl"</span>:   <span class="c-str">"https://your-okta.example.com/app/abc/sso/saml"</span>,
+  <span class="c-str">"x509Cert"</span>: <span class="c-str">"MIIDp…"</span>,
+  <span class="c-str">"attributeMapping"</span>: &#123;
+    <span class="c-str">"email"</span>: <span class="c-str">"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"</span>,
+    <span class="c-str">"name"</span>:  <span class="c-str">"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"</span>
+  &#125;
+&#125;</pre></div>
+
+      <h2 id="ldap">LDAP / Active Directory</h2>
+      <p>Per-tenant LDAP config under <code>/api/admin/ldap-config</code>. The <code>ldapts</code> adapter is used on Bun, Vercel, and Netlify; Cloudflare Workers fall through to a throwing shim (no raw TCP) — use SAML there.</p>
+      <p>Secrets are write-only: PATCH sets the bind password, GET returns the rest of the config without it. The workspace's <code>/api/t/&lt;slug&gt;/auth/ldap/sign-in</code> endpoint accepts <code>&#123; username, password &#125;</code> and returns the same access + refresh token pair as any other app-plane sign-in.</p>
+
+      <div class="doc-footer">
+        <a href="#auth-planes"><span class="dir">← Previous</span><span class="title">Auth planes</span></a>
+        <a class="next" href="#realtime"><span class="dir">Next →</span><span class="title">Realtime</span></a>
+      </div>
+    </article>
+
+    <!-- ───────────── Realtime ───────────── -->
+    <article id="article-realtime">
+      <div class="frontmatter">
+        <span class="eyebrow"><span class="dot"></span>Runtime</span>
+        <h1>Realtime</h1>
+        <p class="desc">Permission-aware change feed over SSE, with a Durable Object bridge on Workers.</p>
+      </div>
+
+      <p>Permission-aware change feed over Server-Sent Events. <strong>The client transport is always SSE (EventSource)</strong> — on Cloudflare Workers the route bridges an internal Durable Object WebSocket into an SSE response, so admin / SDK code never speaks raw WebSocket.</p>
+
+      <h2 id="channels">Channels</h2>
+      <table class="doc-table">
+        <thead><tr><th>Channel</th><th>Auth</th><th>Filtered</th><th>What lands on it</th></tr></thead>
+        <tbody>
+          <tr><td><code>items:&lt;slug&gt;</code></td><td>session/key</td><td>yes</td><td>created/updated/deleted for the collection</td></tr>
+          <tr><td><code>collections</code></td><td>admin only</td><td>yes</td><td>Schema events</td></tr>
+          <tr><td><code>presence:&lt;name&gt;</code></td><td>signed-in</td><td>no</td><td>Roster of currently connected members</td></tr>
+          <tr><td>anything else</td><td>none</td><td>no</td><td>Free-form pub/sub</td></tr>
+        </tbody>
+      </table>
+      <p>System channels (<code>items:*</code>, <code>collections</code>, <code>presence:*</code>) reject external publish — events come from the API itself when CRUD routes fire (or, for presence, on join/leave).</p>
+
+      <h2 id="subscribing">Subscribing</h2>
+      <div class="codeblock"><div class="head"><span class="dot"></span>typescript</div><pre><span class="c-kw">const</span> es = <span class="c-kw">new</span> <span class="c-fn">EventSource</span>(<span class="c-str">"/api/realtime/items:posts/subscribe"</span>, &#123;
+  withCredentials: <span class="c-num">true</span>,
+&#125;);
+
+es.<span class="c-fn">addEventListener</span>(<span class="c-str">"message"</span>, (ev) =&gt; &#123;
+  <span class="c-kw">const</span> e = <span class="c-fn">JSON.parse</span>(ev.data); <span class="c-comment">// &#123; event, data &#125;</span>
+  <span class="c-kw">switch</span> (e.event) &#123;
+    <span class="c-kw">case</span> <span class="c-str">"created"</span>: appendToList(e.data); <span class="c-kw">break</span>;
+    <span class="c-kw">case</span> <span class="c-str">"updated"</span>: updateInPlace(e.data); <span class="c-kw">break</span>;
+    <span class="c-kw">case</span> <span class="c-str">"deleted"</span>: removeById(e.data.id); <span class="c-kw">break</span>;
+  &#125;
+&#125;);</pre></div>
+
+      <h2 id="filtering">How filtering works</h2>
+      <p>When a subscriber connects, the API resolves their <code>read</code> permission for the target collection. Three pieces are stored with the connection:</p>
+      <ol>
+        <li><code>authSubject</code> — <code>&#123; userId, email, roles &#125;</code></li>
+        <li><code>fieldAllowlist</code> — projected onto each event before delivery</li>
+        <li>compiled in-memory matcher (<code>matchesCondition</code>) for the role's <code>read</code> condition</li>
+      </ol>
+      <p>For every <code>publishEvent</code>, the matcher is run against the row. If it returns false, the subscriber never sees the event. If it returns true, the row is projected to the field allow-list before being serialized.</p>
+
+      <h2 id="hosting">Hosting</h2>
+      <p><strong>Bun:</strong> in-process subscriber map. Fan-out is synchronous, no extra service. Multi-instance Bun deploys lose cross-instance fan-out — accept that or move to Workers.</p>
+      <p><strong>Workers:</strong> a per-channel Durable Object holds the subscriber WebSockets. The HTTP route opens an internal WebSocket to the DO and pipes messages out as SSE — clients see one transport regardless.</p>
+      <p><strong>Vercel / Netlify:</strong> SSE loads but is impractical — Lambda is stateless and function execution caps the stream. Use Workers for production realtime.</p>
+
+      <div class="doc-footer">
+        <a href="#sso"><span class="dir">← Previous</span><span class="title">SSO &amp; LDAP</span></a>
+        <a class="next" href="#storage"><span class="dir">Next →</span><span class="title">Storage</span></a>
+      </div>
+    </article>
+
+    <!-- ───────────── Storage ───────────── -->
+    <article id="article-storage">
+      <div class="frontmatter">
+        <span class="eyebrow"><span class="dot"></span>Runtime</span>
+        <h1>Storage</h1>
+        <p class="desc">Per-tenant object storage with ACLs, image transforms, and signed URLs on fs, R2, or S3.</p>
+      </div>
+
+      <p>Object storage with per-tenant isolation, public/private ACL, on-the-fly image transforms, and short-lived signed URLs. Runs on local fs (Bun dev), Cloudflare R2 (Workers), or any S3-compatible bucket (AWS, R2, B2, MinIO, DigitalOcean Spaces, Wasabi).</p>
+
+      <h2 id="adapter-selection">Adapter selection</h2>
+      <table class="doc-table">
+        <thead><tr><th>Condition</th><th>Adapter</th></tr></thead>
+        <tbody>
+          <tr><td><code>env.R2</code> binding present</td><td><code>r2Storage</code> (Workers)</td></tr>
+          <tr><td><code>env.S3_BUCKET</code> set on Bun</td><td><code>bunS3Storage</code> (Bun.S3Client)</td></tr>
+          <tr><td><code>env.S3_BUCKET</code> set elsewhere</td><td><code>s3FetchStorage</code> (aws4fetch)</td></tr>
+          <tr><td>otherwise</td><td><code>fsStorage("./.data/files")</code> (dev)</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="tenant-prefix">Tenant prefix</h2>
+      <p>Every physical key on disk / in the bucket is prefixed with <code>tenants/&lt;tenant-id&gt;/</code>. The API hides this — clients use logical keys (<code>uploads/photo.jpg</code>), and the route adds/strips the prefix. Two tenants can reuse the same logical key without colliding either in the bucket or in <code>files.key</code>.</p>
+      <p>Logical keys starting with <code>tenants/</code> are rejected with <code>VALIDATION</code> so clients can't sneak into another workspace.</p>
+
+      <h2 id="endpoints">Endpoints</h2>
+      <table class="doc-table">
+        <thead><tr><th>Method</th><th>Path</th><th>Permission</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>GET</td><td><code>/api/storage</code></td><td><code>system_files.read</code></td><td>List files (filterable by <code>?prefix=</code>)</td></tr>
+          <tr><td>PUT</td><td><code>/api/storage/:key</code></td><td><code>system_files.create</code></td><td>Stream body to storage; row upserted</td></tr>
+          <tr><td>GET</td><td><code>/api/storage/:key</code></td><td><code>system_files.read</code> or <code>?token=</code></td><td>Stream object — with image transform params</td></tr>
+          <tr><td>PATCH</td><td><code>/api/storage/:key</code></td><td><code>system_files.update</code></td><td>Body: <code>&#123; acl?, folderId? &#125;</code></td></tr>
+          <tr><td>DELETE</td><td><code>/api/storage/:key</code></td><td><code>system_files.delete</code></td><td>Removes object + row</td></tr>
+          <tr><td>POST</td><td><code>/api/storage/:key/sign</code></td><td><code>system_files.read</code></td><td>Returns <code>&#123; url, expiresAt &#125;</code></td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="image-transform">Image transforms</h2>
+      <table class="doc-table">
+        <thead><tr><th>Param</th><th>Range / values</th></tr></thead>
+        <tbody>
+          <tr><td><code>width</code></td><td>1–4096 (integer)</td></tr>
+          <tr><td><code>height</code></td><td>1–4096 (integer)</td></tr>
+          <tr><td><code>quality</code></td><td>1–100 (ignored for lossless)</td></tr>
+          <tr><td><code>format</code></td><td><code>webp | jpeg | png | avif</code></td></tr>
+          <tr><td><code>fit</code></td><td><code>cover | contain</code></td></tr>
+          <tr><td><code>focal</code></td><td><code>"x,y"</code> with x/y in 0–100 (percent)</td></tr>
+        </tbody>
+      </table>
+      <p>Invalid params throw <code>VALIDATION</code> (HTTP 422) — silently dropping bad input would let UI bugs ship without notice.</p>
+
+      <div class="doc-footer">
+        <a href="#realtime"><span class="dir">← Previous</span><span class="title">Realtime</span></a>
+        <a class="next" href="#sandbox"><span class="dir">Next →</span><span class="title">Functions / sandbox</span></a>
+      </div>
+    </article>
+
+    <!-- ───────────── Sandbox ───────────── -->
+    <article id="article-sandbox">
+      <div class="frontmatter">
+        <span class="eyebrow"><span class="dot"></span>Runtime</span>
+        <h1>Functions / sandbox</h1>
+        <p class="desc">User-uploaded JavaScript that runs server-side in an isolated sandbox.</p>
+      </div>
+
+      <h2 id="providers">Three providers</h2>
+      <p>A selector in <code>apps/web/src/server/services/sandbox/index.ts</code> picks one based on the runtime + bindings:</p>
+      <table class="doc-table">
+        <thead><tr><th>Priority</th><th>Provider</th><th>Runtime</th><th>Async ctx.*</th><th>Isolation</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>remote-http</td><td>any (FUNCTIONS_EXEC_URL set)</td><td>yes (HTTP RPC)</td><td>separate process / host</td></tr>
+          <tr><td>2</td><td>bun-worker</td><td>Bun</td><td>yes (postMessage RPC)</td><td>Worker thread (soft)</td></tr>
+          <tr><td>3</td><td>quickjs</td><td>anywhere (fallback)</td><td>no</td><td>WASM (true)</td></tr>
+        </tbody>
+      </table>
+      <p>quickjs stays as the cross-runtime safety net — Workers / Vercel / Netlify users still get sandbox execution (sync only) without standing up a separate executor service.</p>
+
+      <h2 id="triggers">Triggers</h2>
+      <table class="doc-table">
+        <thead><tr><th>Trigger</th><th>Pattern</th><th>Fires on</th></tr></thead>
+        <tbody>
+          <tr><td><code>http</code></td><td>(none)</td><td><code>POST /api/functions/:name/invoke</code> (admin only)</td></tr>
+          <tr><td><code>event</code></td><td><code>items:posts:*</code></td><td>Any <code>publishEvent</code> whose channel/event matches</td></tr>
+          <tr><td><code>cron</code></td><td><code>*/5 * * * *</code></td><td>Bun scheduler / Workers triggers / Vercel cron</td></tr>
+        </tbody>
+      </table>
+      <p>Pattern matching: <code>*</code> is a wildcard segment. <code>items:posts:*</code> matches <code>items:posts:created</code>, <code>items:posts:updated</code>, etc.</p>
+
+      <h2 id="ctx">The ctx surface</h2>
+      <div class="codeblock"><div class="head"><span class="dot"></span>typescript</div><pre>ctx.data       <span class="c-comment">// input payload (request body for http; &#123; event, data &#125; for event)</span>
+ctx.user       <span class="c-comment">// &#123; id, email, roles[] &#125; — null/anon for cron</span>
+<span class="c-fn">console.log</span>    <span class="c-comment">// captured into the result's logs[]</span>
+
+<span class="c-comment">// Async (bun-worker / remote-http only):</span>
+<span class="c-kw">await</span> ctx.<span class="c-fn">fetch</span>(url, init?)        <span class="c-comment">// RPC; allow-list via FUNCTIONS_FETCH_ALLOW</span>
+<span class="c-kw">await</span> ctx.db.<span class="c-fn">list</span>(slug, query?)    <span class="c-comment">// permission-checked read</span>
+<span class="c-kw">await</span> ctx.db.<span class="c-fn">one</span>(slug, id)         <span class="c-comment">// single by id, permission-checked</span>
+<span class="c-kw">await</span> ctx.email.<span class="c-fn">send</span>(&#123; to, subject, text, html? &#125;)</pre></div>
+      <p>The sandbox returns whatever the user code returns; arrays / objects / primitives are JSON-serialised. Errors are caught and returned as <code>&#123; ok: false, error &#125;</code>.</p>
+
+      <h2 id="host-bridge">Host bridge</h2>
+      <p>The host bridge (<code>apps/web/src/server/services/sandbox/host-bridge.ts</code>) is the single dispatcher for <code>ctx.fetch / ctx.db / ctx.email</code>. bun-worker calls it in-process; remote-http calls it over HTTP at <code>/api/_internal/sandbox-rpc</code> with a Bearer token. Both paths funnel through the same permission pipeline.</p>
+
+      <div class="doc-footer">
+        <a href="#storage"><span class="dir">← Previous</span><span class="title">Storage</span></a>
+        <a class="next" href="#sdk-and-cli"><span class="dir">Next →</span><span class="title">SDK &amp; CLI</span></a>
+      </div>
+    </article>
+
+    <!-- ───────────── SDK + CLI ───────────── -->
+    <article id="article-sdk-and-cli">
+      <div class="frontmatter">
+        <span class="eyebrow"><span class="dot"></span>Tooling</span>
+        <h1>SDK &amp; CLI</h1>
+        <p class="desc">The @workeros/client typed fetch wrapper and the workeros CLI for project scaffolding.</p>
+      </div>
+
+      <h2 id="client">@workeros/client</h2>
+      <p>Typed fetch wrapper, browser + Node.</p>
+      <div class="codeblock"><div class="head"><span class="dot"></span>typescript</div><pre><span class="c-kw">import</span> &#123; createClient &#125; <span class="c-kw">from</span> <span class="c-str">"@workeros/client"</span>;
+
+<span class="c-kw">const</span> wks = <span class="c-fn">createClient</span>(&#123;
+  url: <span class="c-str">"https://api.your.app"</span>,
+  <span class="c-comment">// For server-to-server / CI; browser apps use the cookie session:</span>
+  apiKey: process.env.WORKEROS_API_KEY,
+&#125;);
+
+<span class="c-comment">// CRUD</span>
+<span class="c-kw">const</span> list = <span class="c-kw">await</span> wks.<span class="c-fn">from</span>&lt;Posts&gt;(<span class="c-str">"posts"</span>).<span class="c-fn">list</span>(&#123;
+  filter: &#123; published: &#123; _eq: <span class="c-num">true</span> &#125; &#125;,
+  sort:   [<span class="c-str">"-views"</span>, <span class="c-str">"title"</span>],
+  fields: [<span class="c-str">"id"</span>, <span class="c-str">"title"</span>, <span class="c-str">"views"</span>],
+  limit:  <span class="c-num">25</span>,
+  meta:   <span class="c-str">"filter_count"</span>,
+&#125;);
+
+<span class="c-kw">const</span> one     = <span class="c-kw">await</span> wks.<span class="c-fn">from</span>&lt;Posts&gt;(<span class="c-str">"posts"</span>).<span class="c-fn">one</span>(<span class="c-str">"uuid"</span>);
+<span class="c-kw">const</span> created = <span class="c-kw">await</span> wks.<span class="c-fn">from</span>&lt;Posts&gt;(<span class="c-str">"posts"</span>).<span class="c-fn">create</span>(&#123; title: <span class="c-str">"hi"</span> &#125;);
+<span class="c-kw">await</span> wks.<span class="c-fn">from</span>&lt;Posts&gt;(<span class="c-str">"posts"</span>).<span class="c-fn">update</span>(<span class="c-str">"uuid"</span>, &#123; views: <span class="c-num">42</span> &#125;);
+<span class="c-kw">await</span> wks.<span class="c-fn">from</span>&lt;Posts&gt;(<span class="c-str">"posts"</span>).<span class="c-fn">delete</span>(<span class="c-str">"uuid"</span>);
+
+<span class="c-comment">// Realtime (SSE)</span>
+<span class="c-kw">const</span> off = wks.<span class="c-fn">subscribe</span>&lt;Posts&gt;(<span class="c-str">"items:posts"</span>, (e) =&gt; &#123;
+  <span class="c-fn">console.log</span>(e.event, e.data);
+&#125;);
+
+<span class="c-comment">// Storage</span>
+<span class="c-kw">await</span> wks.storage.<span class="c-fn">put</span>(<span class="c-str">"avatars/me.png"</span>, file, <span class="c-str">"image/png"</span>);</pre></div>
+
+      <h2 id="cli">workeros CLI</h2>
+      <table class="doc-table">
+        <thead><tr><th>Command</th><th>Does</th></tr></thead>
+        <tbody>
+          <tr><td><code>workeros migrate</code></td><td>Apply pending hand-written SQL migrations (pg + sqlite)</td></tr>
+          <tr><td><code>workeros gen-types &lt;url&gt;</code></td><td>Fetch <code>/api/collections</code> and emit one TS interface per collection</td></tr>
+          <tr><td><code>workeros adopt &lt;slug&gt; &lt;table&gt;</code></td><td>Run the 3-step adopt wizard from the terminal</td></tr>
+          <tr><td><code>workeros seed</code></td><td>Run <code>./scripts/seed.ts</code> if present</td></tr>
+        </tbody>
+      </table>
+
+      <h3 id="gen-types">gen-types output</h3>
+      <div class="codeblock"><div class="head"><span class="dot"></span>typescript</div><pre><span class="c-comment">// src/types.ts — generated</span>
+<span class="c-kw">export interface</span> Posts &#123;
+  id: <span class="c-tag">string</span>;
+  title: <span class="c-tag">string</span>;
+  body: <span class="c-tag">string</span> | <span class="c-tag">null</span>;
+  published: <span class="c-tag">boolean</span>;
+  views: <span class="c-tag">number</span>;
+  created_at: <span class="c-tag">string</span>;
+  updated_at: <span class="c-tag">string</span>;
+&#125;
+
+<span class="c-kw">export interface</span> Collections &#123;
+  posts: Posts;
+  authors: Authors;
+  <span class="c-comment">/* … */</span>
+&#125;</pre></div>
+
+      <div class="doc-footer">
+        <a href="#sandbox"><span class="dir">← Previous</span><span class="title">Functions / sandbox</span></a>
+        <a class="next" href="#mcp"><span class="dir">Next →</span><span class="title">MCP server</span></a>
+      </div>
+    </article>
+
+    <!-- ───────────── MCP ───────────── -->
+    <article id="article-mcp">
+      <div class="frontmatter">
+        <span class="eyebrow"><span class="dot"></span>Tooling</span>
+        <h1>MCP server</h1>
+        <p class="desc">Expose the workspace to Claude Desktop, Cursor, and other IDE agents via the Model Context Protocol.</p>
+      </div>
+
+      <p>workeros ships a built-in MCP server at <code>/api/mcp</code>. It exposes your collections, items, storage, and roles as tools — meaning Claude Desktop, Cursor, Continue, and any other MCP client can read and write data through the same permission pipeline as your app.</p>
+
+      <h2 id="connecting">Connecting from Claude Desktop</h2>
+      <p>Generate an API key from the admin (<strong>Settings → API keys</strong>, prefix <code>pak_</code>), then add to your Claude Desktop config:</p>
+      <div class="codeblock"><div class="head"><span class="dot"></span>json</div><pre>&#123;
+  <span class="c-str">"mcpServers"</span>: &#123;
+    <span class="c-str">"workeros"</span>: &#123;
+      <span class="c-str">"command"</span>: <span class="c-str">"npx"</span>,
+      <span class="c-str">"args"</span>: [<span class="c-str">"-y"</span>, <span class="c-str">"@workeros/mcp-bridge"</span>],
+      <span class="c-str">"env"</span>: &#123;
+        <span class="c-str">"WORKEROS_URL"</span>:    <span class="c-str">"https://your-instance.workeros.app"</span>,
+        <span class="c-str">"WORKEROS_API_KEY"</span>: <span class="c-str">"pak_..."</span>
+      &#125;
+    &#125;
+  &#125;
+&#125;</pre></div>
+
+      <h2 id="tools">Tools exposed</h2>
+      <table class="doc-table">
+        <thead><tr><th>Tool</th><th>Does</th></tr></thead>
+        <tbody>
+          <tr><td><code>list_collections</code></td><td>Return the schema of every collection the API key can read</td></tr>
+          <tr><td><code>read_items</code></td><td>Query a collection with the full filter / sort / pagination shape</td></tr>
+          <tr><td><code>create_item</code> / <code>update_item</code> / <code>delete_item</code></td><td>Mutate items (permission-checked per call)</td></tr>
+          <tr><td><code>read_file</code> / <code>upload_file</code></td><td>Read / write objects in storage</td></tr>
+          <tr><td><code>describe_role</code></td><td>Pretty-print a role's permission rows + condition DSL</td></tr>
+        </tbody>
+      </table>
+      <div class="callout warning"><span class="label">Permissions</span><br>MCP traffic runs through <code>requirePermission</code> like any other call. Give the API key a narrow role if you don't want the IDE agent to be able to drop a table.</div>
+
+      <div class="doc-footer">
+        <a href="#sdk-and-cli"><span class="dir">← Previous</span><span class="title">SDK &amp; CLI</span></a>
+        <a class="next" href="#advisor"><span class="dir">Next →</span><span class="title">Advisor</span></a>
+      </div>
+    </article>
+
+    <!-- ───────────── Advisor ───────────── -->
+    <article id="article-advisor">
+      <div class="frontmatter">
+        <span class="eyebrow"><span class="dot"></span>Tooling</span>
+        <h1>Advisor</h1>
+        <p class="desc">Automated lint over schema, permissions, and configuration. Like ESLint, for your workspace.</p>
+      </div>
+
+      <p>Advisor runs a set of static checks against your live workspace and surfaces findings in the admin (and via <code>GET /api/admin/advisor</code>). It is read-only — fixes are always proposed, never applied.</p>
+
+      <h2 id="categories">Categories</h2>
+      <ul>
+        <li><strong>Security</strong> — over-broad permissions, public-write collections, leaked secrets in flow definitions.</li>
+        <li><strong>Performance</strong> — missing indexes on frequently-filtered columns, sequential scans on large tables, JSON fields used in <code>filter</code>.</li>
+        <li><strong>Data integrity</strong> — nullable foreign keys without <code>ON DELETE</code> rules, columns with mismatched types between collection metadata and physical table.</li>
+        <li><strong>Hygiene</strong> — collections without any rows in 90 days, webhooks with consistently failing deliveries, API keys not used in 60+ days.</li>
+      </ul>
+
+      <h2 id="score">Score</h2>
+      <p>The endpoint returns a numeric score in <code>0–100</code> alongside the finding list. Score weights are configurable in <code>apps/web/src/server/services/advisor.ts</code> — the default weighting puts security findings at 3× the impact of hygiene ones.</p>
+
+      <div class="doc-footer">
+        <a href="#mcp"><span class="dir">← Previous</span><span class="title">MCP server</span></a>
+        <span></span>
+      </div>
+    </article>
+
+  </main>
+
+  <aside class="toc" id="toc">
+    <div class="label">On this page</div>
+    <div id="toc-list"></div>
+  </aside>
+</div>
+
+<script is:inline>
+  // Routing: which article is open is the URL hash. Defaults to getting-started.
+  const ARTICLES = [
+    "getting-started", "architecture", "deployment",
+    "collections", "adopting-tables", "querying", "graphql",
+    "permissions", "auth-planes", "sso",
+    "realtime", "storage", "sandbox",
+    "sdk-and-cli", "mcp", "advisor",
+  ];
+  const TITLES = {
+    "getting-started": "Getting started",
+    "architecture": "Architecture",
+    "deployment": "Deployment",
+    "collections": "Collections",
+    "adopting-tables": "Adopting tables",
+    "querying": "Querying items",
+    "graphql": "GraphQL",
+    "permissions": "Permissions DSL",
+    "auth-planes": "Auth planes",
+    "sso": "SSO & LDAP",
+    "realtime": "Realtime",
+    "storage": "Storage",
+    "sandbox": "Functions / sandbox",
+    "sdk-and-cli": "SDK & CLI",
+    "mcp": "MCP server",
+    "advisor": "Advisor",
+  };
+
+  function showArticle(id) {
+    if (!ARTICLES.includes(id)) id = "getting-started";
+    document.querySelectorAll("article").forEach((a) => {
+      a.classList.toggle("on", a.id === "article-" + id);
+    });
+    document.querySelectorAll("aside.side a.nav-link").forEach((a) => {
+      a.classList.toggle("on", a.getAttribute("href") === "#" + id);
+    });
+    const crumb = document.getElementById("crumb-title");
+    if (crumb) crumb.textContent = TITLES[id] || id;
+    document.title = (TITLES[id] || id) + " — workeros docs";
+    buildToc(id);
+    window.scrollTo(0, 0);
+  }
+
+  function buildToc(id) {
+    const article = document.getElementById("article-" + id);
+    const list = document.getElementById("toc-list");
+    if (!list) return;
+    if (!article) { list.innerHTML = ""; return; }
+    const headings = [...article.querySelectorAll("h2[id], h3[id]")];
+    list.innerHTML = headings.map((h) => {
+      const lvl = h.tagName.toLowerCase();
+      return '<a href="#' + id + '/' + h.id + '" data-target="' + h.id + '" class="' + lvl + '">' + h.textContent + "</a>";
+    }).join("");
+  }
+
+  function parseHash() {
+    const raw = (location.hash || "").replace(/^#/, "");
+    const [page, anchor] = raw.split("/");
+    return { page: page || "getting-started", anchor: anchor || "" };
+  }
+
+  function applyHash() {
+    const { page, anchor } = parseHash();
+    showArticle(page);
+    if (anchor) {
+      const el = document.getElementById(anchor);
+      if (el) setTimeout(() => el.scrollIntoView({ behavior: "auto", block: "start" }), 50);
+    }
+  }
+
+  window.addEventListener("hashchange", applyHash);
+
+  document.querySelectorAll("aside.side a.nav-link").forEach((a) => {
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      const id = a.getAttribute("href").slice(1);
+      location.hash = id;
+    });
+  });
+
+  document.querySelectorAll("a.in-text[href^='#']").forEach((a) => {
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      const id = a.getAttribute("href").slice(1);
+      if (ARTICLES.includes(id)) {
+        location.hash = id;
+      } else {
+        const el = document.getElementById(id);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  });
+
+  const tocList = document.getElementById("toc-list");
+  if (tocList) {
+    tocList.addEventListener("click", (e) => {
+      const a = e.target.closest("a");
+      if (!a) return;
+      e.preventDefault();
+      const target = a.dataset.target;
+      const el = document.getElementById(target);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      document.querySelectorAll("#toc-list a").forEach((x) => x.classList.toggle("on", x === a));
+    });
+  }
+
+  document.querySelectorAll(".doc-footer a").forEach((a) => {
+    a.addEventListener("click", (e) => {
+      const href = a.getAttribute("href") || "";
+      if (!href.startsWith("#")) return;
+      e.preventDefault();
+      location.hash = href.slice(1);
+    });
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      const s = document.getElementById("search-input");
+      if (s) s.focus();
+    }
+  });
+
+  const searchInput = document.getElementById("search-input");
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      document.querySelectorAll("aside.side a.nav-link").forEach((a) => {
+        const match = !q || a.textContent.toLowerCase().includes(q);
+        a.style.display = match ? "" : "none";
+      });
+    });
+  }
+
+  applyHash();
+</script>
+</Base>

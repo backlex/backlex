@@ -1,0 +1,1130 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="workeros — an edge-native backend platform">
+
+<!-- ─────────────────── Hero ─────────────────── -->
+<section class="relative z-[1] pt-24 pb-16 border-b border-border overflow-hidden"
+  style="background: radial-gradient(60% 80% at 50% 0%, var(--color-tint), transparent 70%);">
+  <div class="grid-mask"></div>
+  <div class="relative max-w-[1240px] mx-auto px-8 max-md:px-5 flex flex-col items-center text-center gap-6">
+
+    <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap border border-border rounded-full px-3 py-1.5 bg-muted">
+      <span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
+      v0.7 · AI-native · MIT · Bun · Workers · Vercel · Netlify
+    </span>
+
+    <h1 class="font-semibold -tracking-[0.04em] leading-[1.02] text-[clamp(40px,6vw,72px)] max-w-[18ch]">
+      The backend you'd <span class="text-primary dark:text-[oklch(0.82_0.22_131)]">build yourself</span>,<br/>running at the edge.
+    </h1>
+
+    <p class="text-[19px] text-muted-foreground max-w-[60ch] leading-snug">
+      Dynamic schema, permissions DSL, REST + GraphQL, realtime, edge functions, vector search, and a built-in <strong class="text-foreground font-semibold">MCP server for AI agents</strong> — one codebase that runs on <strong class="text-foreground font-semibold">Bun, Workers, Vercel, and Netlify</strong>. Self-host or use the managed Cloud.
+    </p>
+
+    <div class="flex gap-2.5 flex-wrap justify-center mt-2">
+      <a href="/docs" class="inline-flex items-center gap-2 h-11 px-5 rounded-4xl bg-primary text-primary-foreground text-[14.5px] font-medium no-underline shadow-[0_1px_0_color-mix(in_oklch,var(--color-primary)_40%,oklch(0.3_0.1_131))] hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap">Read the docs →</a>
+      <a href="/cloud-admin" class="inline-flex items-center gap-2 h-11 px-5 rounded-4xl border border-border bg-background text-foreground text-[14.5px] font-medium no-underline hover:bg-muted transition-colors whitespace-nowrap">Start free on Cloud →</a>
+      <a href="#features" class="inline-flex items-center gap-2 h-11 px-5 rounded-4xl text-muted-foreground hover:text-foreground hover:bg-muted text-[14.5px] font-medium no-underline transition-colors whitespace-nowrap">See what's in it</a>
+    </div>
+
+    <div class="mt-6 grid grid-cols-4 max-md:grid-cols-2 gap-7 border-t border-b border-border py-5 max-w-[760px] w-full">
+      <div class="flex flex-col items-center gap-0.5"><span class="font-mono text-lg font-medium">330+</span><span class="text-[11px] uppercase tracking-wider text-muted-foreground">edge cities</span></div>
+      <div class="flex flex-col items-center gap-0.5"><span class="font-mono text-lg font-medium">~50ms</span><span class="text-[11px] uppercase tracking-wider text-muted-foreground">p95 anywhere</span></div>
+      <div class="flex flex-col items-center gap-0.5"><span class="font-mono text-lg font-medium">4</span><span class="text-[11px] uppercase tracking-wider text-muted-foreground">deploy targets</span></div>
+      <div class="flex flex-col items-center gap-0.5"><span class="font-mono text-lg font-medium">MIT</span><span class="text-[11px] uppercase tracking-wider text-muted-foreground">license</span></div>
+    </div>
+
+    <!-- Admin preview window -->
+    <div class="mt-14 relative border border-border rounded-4xl bg-card overflow-hidden max-w-[1100px] w-full mx-auto shadow-[0_32px_64px_-16px_oklch(0_0_0/0.12),0_12px_24px_-6px_oklch(0_0_0/0.08)]" aria-hidden="true">
+      <div class="flex items-center gap-2 px-4 py-3 bg-muted border-b border-border">
+        <span class="w-[11px] h-[11px] rounded-full" style="background: oklch(0.7 0.18 28);"></span>
+        <span class="w-[11px] h-[11px] rounded-full" style="background: oklch(0.8 0.16 80);"></span>
+        <span class="w-[11px] h-[11px] rounded-full" style="background: oklch(0.74 0.18 145);"></span>
+        <span class="flex-1 max-w-[380px] mx-auto px-3 py-[5px] bg-card border border-border rounded-xl font-mono text-[11.5px] text-muted-foreground text-center">workeros.your-app.dev/collections/posts</span>
+      </div>
+      <div class="grid grid-cols-[220px_1fr] min-h-[440px] max-[880px]:grid-cols-1">
+        <div class="bg-[oklch(0.985_0_0)] dark:bg-[oklch(0.18_0.006_286)] border-r border-border p-4 flex flex-col gap-0.5 max-[880px]:hidden">
+          <div class="text-[10.5px] uppercase tracking-[0.1em] text-muted-foreground px-2 pt-2.5 pb-1">Workspace</div>
+          <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] text-muted-foreground"><span class="w-3.5 h-3.5 bg-border rounded-sm"></span>Overview</div>
+          <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] bg-muted text-foreground font-medium"><span class="w-3.5 h-3.5 bg-primary rounded-sm"></span>Collections</div>
+          <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] text-muted-foreground"><span class="w-3.5 h-3.5 bg-border rounded-sm"></span>Storage</div>
+          <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] text-muted-foreground"><span class="w-3.5 h-3.5 bg-border rounded-sm"></span>Realtime</div>
+          <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] text-muted-foreground"><span class="w-3.5 h-3.5 bg-border rounded-sm"></span>Functions</div>
+          <div class="text-[10.5px] uppercase tracking-[0.1em] text-muted-foreground px-2 pt-2.5 pb-1">Developers</div>
+          <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] text-muted-foreground"><span class="w-3.5 h-3.5 bg-border rounded-sm"></span>REST Explorer</div>
+          <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] text-muted-foreground"><span class="w-3.5 h-3.5 bg-border rounded-sm"></span>GraphQL</div>
+          <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] text-muted-foreground"><span class="w-3.5 h-3.5 bg-border rounded-sm"></span>Webhooks</div>
+        </div>
+        <div class="p-6 flex flex-col gap-3.5 text-left">
+          <div class="flex items-center gap-3">
+            <span class="font-mono text-muted-foreground text-[13px]">c_</span>
+            <span class="text-[17px] font-semibold -tracking-[0.01em]">posts</span>
+            <span class="text-[10.5px] font-mono px-2 py-0.5 rounded-full border whitespace-nowrap" style="background: color-mix(in oklch, var(--color-primary) 22%, var(--color-card)); border-color: color-mix(in oklch, var(--color-primary) 55%, var(--color-border));">owner-scoped</span>
+            <span class="text-[10.5px] font-mono px-2 py-0.5 rounded-full border whitespace-nowrap border-border bg-background text-muted-foreground">sqlite</span>
+          </div>
+          <div class="border border-border rounded-xl overflow-hidden">
+            <div class="grid grid-cols-[32px_2fr_90px_90px_80px] max-[880px]:grid-cols-[24px_1fr_70px_70px] items-center gap-3 px-3.5 py-2 border-b border-border bg-muted text-muted-foreground text-[10.5px] uppercase tracking-wider">
+              <span></span><span>Title</span><span>Status</span><span>Views</span><span class="max-[880px]:hidden">Updated</span>
+            </div>
+            <div class="grid grid-cols-[32px_2fr_90px_90px_80px] max-[880px]:grid-cols-[24px_1fr_70px_70px] items-center gap-3 px-3.5 py-2 border-b border-border text-[12.5px]">
+              <span class="font-mono text-muted-foreground text-[11px]">01HZ</span>
+              <span>Drizzle 1.0 in production</span>
+              <span class="inline-flex items-center gap-1.5 font-mono text-[11px]"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>published</span>
+              <span class="font-mono">1,284</span>
+              <span class="font-mono text-muted-foreground max-[880px]:hidden">2m ago</span>
+            </div>
+            <div class="grid grid-cols-[32px_2fr_90px_90px_80px] max-[880px]:grid-cols-[24px_1fr_70px_70px] items-center gap-3 px-3.5 py-2 border-b border-border text-[12.5px]">
+              <span class="font-mono text-muted-foreground text-[11px]">01HZ</span>
+              <span>pgvector → Vectorize migration playbook</span>
+              <span class="inline-flex items-center gap-1.5 font-mono text-[11px]"><span class="w-1.5 h-1.5 rounded-full" style="background: oklch(0.78 0.16 80);"></span>in review</span>
+              <span class="font-mono">412</span>
+              <span class="font-mono text-muted-foreground max-[880px]:hidden">5m ago</span>
+            </div>
+            <div class="grid grid-cols-[32px_2fr_90px_90px_80px] max-[880px]:grid-cols-[24px_1fr_70px_70px] items-center gap-3 px-3.5 py-2 border-b border-border text-[12.5px]">
+              <span class="font-mono text-muted-foreground text-[11px]">01HZ</span>
+              <span>Realtime channels: WebSockets vs SSE</span>
+              <span class="inline-flex items-center gap-1.5 font-mono text-[11px]"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>published</span>
+              <span class="font-mono">893</span>
+              <span class="font-mono text-muted-foreground max-[880px]:hidden">38m ago</span>
+            </div>
+            <div class="grid grid-cols-[32px_2fr_90px_90px_80px] max-[880px]:grid-cols-[24px_1fr_70px_70px] items-center gap-3 px-3.5 py-2 border-b border-border text-[12.5px]">
+              <span class="font-mono text-muted-foreground text-[11px]">01HZ</span>
+              <span>Edge functions are now GA</span>
+              <span class="inline-flex items-center gap-1.5 font-mono text-[11px]"><span class="w-1.5 h-1.5 rounded-full" style="background: oklch(0.7 0.02 280);"></span>draft</span>
+              <span class="font-mono">0</span>
+              <span class="font-mono text-muted-foreground max-[880px]:hidden">2h ago</span>
+            </div>
+            <div class="grid grid-cols-[32px_2fr_90px_90px_80px] max-[880px]:grid-cols-[24px_1fr_70px_70px] items-center gap-3 px-3.5 py-2 text-[12.5px]">
+              <span class="font-mono text-muted-foreground text-[11px]">01HZ</span>
+              <span>A simpler permissions DSL</span>
+              <span class="inline-flex items-center gap-1.5 font-mono text-[11px]"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>published</span>
+              <span class="font-mono">2,041</span>
+              <span class="font-mono text-muted-foreground max-[880px]:hidden">1d ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────── Features ─────────────────── -->
+<section id="features" class="relative z-[1] py-24 border-b border-border">
+  <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
+    <div class="flex flex-col gap-4 max-w-[720px] mb-12">
+      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>capabilities</span>
+      <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">Everything a backend ships with, none of the lock-in.</h2>
+      <p class="text-[17px] text-muted-foreground max-w-[60ch]">No black box. The collection editor in the admin runs the same DDL your migrations would have. The permission DSL the admin writes is the same string your client sends as <code class="font-mono">?filter</code>.</p>
+    </div>
+    <div class="grid grid-cols-3 max-[920px]:grid-cols-2 max-[600px]:grid-cols-1 gap-px bg-border border border-border rounded-3xl overflow-hidden">
+      <!-- 9 feature cards -->
+      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[200px]">
+        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg></div>
+        <h3 class="text-base font-semibold">Dynamic schema</h3>
+        <p class="text-[13.5px] text-muted-foreground leading-snug">Define collections in the admin, each one becomes a physical <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">c_&lt;slug&gt;</code> table. <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">CREATE TABLE</code> runs against your live DB, no redeploy.</p>
+        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">drizzle · pg + sqlite/d1</span>
+      </div>
+      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[200px]">
+        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg></div>
+        <h3 class="text-base font-semibold">Permissions DSL</h3>
+        <p class="text-[13.5px] text-muted-foreground leading-snug">JSON predicates that compile to Drizzle SQL fragments AND match in-process for realtime. Same syntax in roles, REST <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">?filter</code>, and GraphQL.</p>
+        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">$user.id · _eq · _in · $or</span>
+      </div>
+      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[200px]">
+        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+        <h3 class="text-base font-semibold">REST + GraphQL</h3>
+        <p class="text-[13.5px] text-muted-foreground leading-snug">Every collection auto-exposes <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">/api/items/:slug</code> with filter/sort/expand/projection. GraphQL schema synthesised from the same metadata.</p>
+        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">openapi 3.1 · graphql-yoga</span>
+      </div>
+      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[200px]">
+        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+        <h3 class="text-base font-semibold">Realtime</h3>
+        <p class="text-[13.5px] text-muted-foreground leading-snug">SSE in Bun, Durable Object + WebSocket on Workers. Per-event permission filter means subscribers see only what their role can read.</p>
+        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">sse · durable objects</span>
+      </div>
+      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[200px]">
+        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6h6"/><path d="M5 12h7"/></svg></div>
+        <h3 class="text-base font-semibold">Edge functions</h3>
+        <p class="text-[13.5px] text-muted-foreground leading-snug">JavaScript sandbox with a host bridge for <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">ctx.db / fetch / email</code>. Bun worker thread, QuickJS-WASM, or remote HTTP — auto-selected per runtime.</p>
+        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">quickjs · bun worker · http</span>
+      </div>
+      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[200px]">
+        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7l-2-2Z"/></svg></div>
+        <h3 class="text-base font-semibold">Storage + image transforms</h3>
+        <p class="text-[13.5px] text-muted-foreground leading-snug">Local FS in dev, R2 / S3 on edge. Image resize via <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">Bun.Image</code>, CF Image Resizing, or passthrough — same URL shape.</p>
+        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">r2 · s3 · fs</span>
+      </div>
+      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[200px]">
+        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"/><path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06"/></svg></div>
+        <h3 class="text-base font-semibold">Webhooks &amp; Flows</h3>
+        <p class="text-[13.5px] text-muted-foreground leading-snug">HMAC-signed outbound webhooks per event, plus a visual flow builder for branching multi-step automations. Fire-and-forget — never blocks API responses.</p>
+        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">items.* · auth.* · cron</span>
+      </div>
+      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[200px]">
+        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <h3 class="text-base font-semibold">Auth that's not yours to maintain</h3>
+        <p class="text-[13.5px] text-muted-foreground leading-snug">better-auth wrapper: email, OAuth (Google/GitHub/Apple), magic link, OTP, passkey, SAML 2.0 SSO, LDAP / AD. First user gets <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">admin</code>.</p>
+        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">better-auth · passkey-first</span>
+      </div>
+      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[200px]">
+        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9-6-18-3 9H2"/></svg></div>
+        <h3 class="text-base font-semibold">Activity + revisions</h3>
+        <p class="text-[13.5px] text-muted-foreground leading-snug">One <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">activity</code> table, dot-namespaced actions (<code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">item.update</code>, <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">auth.login</code>). Every CRUD writes a row to <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">revisions</code> — point-in-time restore included.</p>
+        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">audit log · point-in-time</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────── Deploy ─────────────────── -->
+<section id="deploy" class="relative z-[1] py-24 border-b border-border">
+  <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
+    <div class="flex flex-col gap-4 max-w-[720px] mb-12">
+      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>deploy</span>
+      <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">One codebase, four runtimes.<br/>Pick the constraints you need.</h2>
+      <p class="text-[17px] text-muted-foreground max-w-[60ch]">The same <code class="font-mono">apps/web</code> source compiles to Bun, Cloudflare Workers, Vercel Functions, and Netlify Functions. <code class="font-mono">context.ts::buildContext</code> picks the right adapter at boot.</p>
+    </div>
+    <div class="grid grid-cols-4 max-[920px]:grid-cols-2 max-[480px]:grid-cols-1 gap-3.5">
+      <div class="border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
+        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">B</span><h3 class="text-[17px] font-semibold">Bun</h3></div>
+        <p class="text-muted-foreground text-[13.5px]">Self-host on a VPS, Docker, or your laptop. Single long-running process.</p>
+        <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">sqlite / pg</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">fs / s3</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">in-proc + sse</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">worker thread</dd>
+        </dl>
+      </div>
+      <div class="border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
+        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">W</span><h3 class="text-[17px] font-semibold">Workers</h3></div>
+        <p class="text-muted-foreground text-[13.5px]">Cloudflare edge. Free tier covers most of it. DO-backed realtime.</p>
+        <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">d1 / pg</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">r2 / s3</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">durable object + ws</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">quickjs / remote http</dd>
+        </dl>
+      </div>
+      <div class="border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
+        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">V</span><h3 class="text-[17px] font-semibold">Vercel</h3></div>
+        <p class="text-muted-foreground text-[13.5px]">Functions on Node 22. Neon HTTP for DB. Built via Build Output API.</p>
+        <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">pg (neon http)</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">s3 (required)</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">sse (capped)</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">quickjs</dd>
+        </dl>
+      </div>
+      <div class="border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
+        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">N</span><h3 class="text-[17px] font-semibold">Netlify</h3></div>
+        <p class="text-muted-foreground text-[13.5px]">Functions on Node 22. Scheduled functions tick cron. Same Neon HTTP.</p>
+        <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">pg (neon http)</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">s3 (required)</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">sse (capped)</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">quickjs</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────── Global edge ─────────────────── -->
+<section id="global" class="relative z-[1] py-24 border-b border-border"
+  style="background: radial-gradient(50% 60% at 50% 50%, color-mix(in oklch, var(--color-primary) 8%, transparent), transparent 70%);">
+  <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
+    <div class="flex flex-col gap-4 max-w-[720px] mb-2">
+      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>global edge</span>
+      <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">Your backend, where your users are.</h2>
+      <p class="text-[17px] text-muted-foreground max-w-[64ch]">Deploy to Cloudflare Workers and your API runs in <strong class="text-foreground font-semibold">330+ cities</strong> on six continents. The request never crosses an ocean to find its origin — D1 reads, Durable Object subscribers, and R2 object fetches happen at the city closest to the user.</p>
+    </div>
+
+    <div class="grid grid-cols-2 max-[1020px]:grid-cols-1 gap-14 items-center mt-8">
+      <div class="globe-shell relative max-w-[480px] w-full mx-auto rounded-full overflow-hidden" style="background: radial-gradient(circle at 30% 30%, color-mix(in oklch, var(--color-primary) 16%, transparent), transparent 60%), radial-gradient(circle at 75% 70%, color-mix(in oklch, var(--color-primary) 10%, transparent), transparent 55%);" aria-hidden="true">
+        <div class="pop-pin" style="top: 28%; left: 22%;" data-delay="0"></div>
+        <div class="pop-pin" style="top: 22%; left: 38%;" data-delay="1"></div>
+        <div class="pop-pin" style="top: 18%; left: 50%;" data-delay="2"></div>
+        <div class="pop-pin" style="top: 23%; left: 58%;" data-delay="3"></div>
+        <div class="pop-pin" style="top: 36%; left: 56%;" data-delay="0"></div>
+        <div class="pop-pin" style="top: 44%; left: 74%;" data-delay="2"></div>
+        <div class="pop-pin" style="top: 38%; left: 80%;" data-delay="1"></div>
+        <div class="pop-pin" style="top: 64%; left: 70%;" data-delay="3"></div>
+        <div class="pop-pin" style="top: 62%; left: 32%;" data-delay="2"></div>
+        <div class="pop-pin" style="top: 56%; left: 50%;" data-delay="0"></div>
+      </div>
+
+      <div>
+        <div class="grid grid-cols-2 gap-2.5">
+          <div class="region-card grid grid-cols-[14px_1fr_auto] gap-2.5 items-center p-3 border border-border rounded-xl backdrop-blur-sm" style="background: color-mix(in oklch, var(--color-card) 80%, transparent);">
+            <span class="led"></span>
+            <div class="text-[13px] font-medium leading-tight">San Jose<span class="block text-[10.5px] text-muted-foreground font-mono font-normal mt-0.5">SJC · us-west</span></div>
+            <span class="font-mono text-[11.5px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap" style="background: color-mix(in oklch, var(--color-primary) 14%, transparent);">12 ms</span>
+          </div>
+          <div class="region-card grid grid-cols-[14px_1fr_auto] gap-2.5 items-center p-3 border border-border rounded-xl backdrop-blur-sm" style="background: color-mix(in oklch, var(--color-card) 80%, transparent);">
+            <span class="led"></span>
+            <div class="text-[13px] font-medium leading-tight">Ashburn<span class="block text-[10.5px] text-muted-foreground font-mono font-normal mt-0.5">IAD · us-east</span></div>
+            <span class="font-mono text-[11.5px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap" style="background: color-mix(in oklch, var(--color-primary) 14%, transparent);">9 ms</span>
+          </div>
+          <div class="region-card grid grid-cols-[14px_1fr_auto] gap-2.5 items-center p-3 border border-border rounded-xl backdrop-blur-sm" style="background: color-mix(in oklch, var(--color-card) 80%, transparent);">
+            <span class="led"></span>
+            <div class="text-[13px] font-medium leading-tight">London<span class="block text-[10.5px] text-muted-foreground font-mono font-normal mt-0.5">LHR · eu-west</span></div>
+            <span class="font-mono text-[11.5px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap" style="background: color-mix(in oklch, var(--color-primary) 14%, transparent);">8 ms</span>
+          </div>
+          <div class="region-card grid grid-cols-[14px_1fr_auto] gap-2.5 items-center p-3 border border-border rounded-xl backdrop-blur-sm" style="background: color-mix(in oklch, var(--color-card) 80%, transparent);">
+            <span class="led"></span>
+            <div class="text-[13px] font-medium leading-tight">Frankfurt<span class="block text-[10.5px] text-muted-foreground font-mono font-normal mt-0.5">FRA · eu-central</span></div>
+            <span class="font-mono text-[11.5px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap" style="background: color-mix(in oklch, var(--color-primary) 14%, transparent);">7 ms</span>
+          </div>
+          <div class="region-card grid grid-cols-[14px_1fr_auto] gap-2.5 items-center p-3 border border-border rounded-xl backdrop-blur-sm" style="background: color-mix(in oklch, var(--color-card) 80%, transparent);">
+            <span class="led"></span>
+            <div class="text-[13px] font-medium leading-tight">Istanbul<span class="block text-[10.5px] text-muted-foreground font-mono font-normal mt-0.5">IST · me-east</span></div>
+            <span class="font-mono text-[11.5px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap" style="background: color-mix(in oklch, var(--color-primary) 14%, transparent);">11 ms</span>
+          </div>
+          <div class="region-card grid grid-cols-[14px_1fr_auto] gap-2.5 items-center p-3 border border-border rounded-xl backdrop-blur-sm" style="background: color-mix(in oklch, var(--color-card) 80%, transparent);">
+            <span class="led"></span>
+            <div class="text-[13px] font-medium leading-tight">Singapore<span class="block text-[10.5px] text-muted-foreground font-mono font-normal mt-0.5">SIN · ap-southeast</span></div>
+            <span class="font-mono text-[11.5px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap" style="background: color-mix(in oklch, var(--color-primary) 14%, transparent);">14 ms</span>
+          </div>
+          <div class="region-card grid grid-cols-[14px_1fr_auto] gap-2.5 items-center p-3 border border-border rounded-xl backdrop-blur-sm" style="background: color-mix(in oklch, var(--color-card) 80%, transparent);">
+            <span class="led"></span>
+            <div class="text-[13px] font-medium leading-tight">Tokyo<span class="block text-[10.5px] text-muted-foreground font-mono font-normal mt-0.5">NRT · ap-northeast</span></div>
+            <span class="font-mono text-[11.5px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap" style="background: color-mix(in oklch, var(--color-primary) 14%, transparent);">10 ms</span>
+          </div>
+          <div class="region-card grid grid-cols-[14px_1fr_auto] gap-2.5 items-center p-3 border border-border rounded-xl backdrop-blur-sm" style="background: color-mix(in oklch, var(--color-card) 80%, transparent);">
+            <span class="led"></span>
+            <div class="text-[13px] font-medium leading-tight">Sydney<span class="block text-[10.5px] text-muted-foreground font-mono font-normal mt-0.5">SYD · ap-east</span></div>
+            <span class="font-mono text-[11.5px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap" style="background: color-mix(in oklch, var(--color-primary) 14%, transparent);">16 ms</span>
+          </div>
+          <div class="region-card grid grid-cols-[14px_1fr_auto] gap-2.5 items-center p-3 border border-border rounded-xl backdrop-blur-sm" style="background: color-mix(in oklch, var(--color-card) 80%, transparent);">
+            <span class="led"></span>
+            <div class="text-[13px] font-medium leading-tight">São Paulo<span class="block text-[10.5px] text-muted-foreground font-mono font-normal mt-0.5">GRU · sa-east</span></div>
+            <span class="font-mono text-[11.5px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap" style="background: color-mix(in oklch, var(--color-primary) 14%, transparent);">15 ms</span>
+          </div>
+          <div class="region-card grid grid-cols-[14px_1fr_auto] gap-2.5 items-center p-3 border border-border rounded-xl backdrop-blur-sm" style="background: color-mix(in oklch, var(--color-card) 80%, transparent);">
+            <span class="led"></span>
+            <div class="text-[13px] font-medium leading-tight">Johannesburg<span class="block text-[10.5px] text-muted-foreground font-mono font-normal mt-0.5">JNB · af-south</span></div>
+            <span class="font-mono text-[11.5px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap" style="background: color-mix(in oklch, var(--color-primary) 14%, transparent);">19 ms</span>
+          </div>
+        </div>
+        <div class="region-card mt-3.5 font-mono text-[11.5px] text-muted-foreground flex items-center gap-2 border-0 bg-transparent">
+          <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+          live anycast routing · 330+ cities · same admin, same API at every PoP
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 max-md:grid-cols-1 gap-3.5 mt-14">
+      <div class="border border-border rounded-3xl p-5 bg-card">
+        <div class="flex items-center gap-2.5 mb-2"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">D1</span><h3 class="text-[15px] font-semibold">D1 reads stay local</h3></div>
+        <p class="text-muted-foreground text-[13px] leading-snug">SQLite-shaped reads run at the colo that holds the replica. Writes ship to the primary asynchronously; reads never cross-region.</p>
+      </div>
+      <div class="border border-border rounded-3xl p-5 bg-card">
+        <div class="flex items-center gap-2.5 mb-2"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">DO</span><h3 class="text-[15px] font-semibold">Realtime via Durable Objects</h3></div>
+        <p class="text-muted-foreground text-[13px] leading-snug">Each <code class="font-mono text-xs">items:&lt;slug&gt;</code> channel pins to a DO. Subscribers connect to the closest DO via WebSocket; SSE bridges to clients.</p>
+      </div>
+      <div class="border border-border rounded-3xl p-5 bg-card">
+        <div class="flex items-center gap-2.5 mb-2"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">R2</span><h3 class="text-[15px] font-semibold">R2 storage at the edge</h3></div>
+        <p class="text-muted-foreground text-[13px] leading-snug">Object reads served from R2 with zero egress. Image transforms run via Cloudflare Images at the PoP; payload never travels twice.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────── Cloud (managed) ─────────────────── -->
+<section id="cloud" class="relative z-[1] py-24 border-b border-border bg-muted/40">
+  <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
+    <div class="flex flex-col gap-4 max-w-[760px] mb-12">
+      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>cloud · managed</span>
+      <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">Don't want to run it yourself? <span class="text-primary dark:text-[oklch(0.82_0.22_131)]">workeros Cloud</span> hosts it for you.</h2>
+      <p class="text-[17px] text-muted-foreground max-w-[64ch]">Same MIT codebase, same admin, same API — running on Cloudflare's Workers + D1 + R2. <strong class="text-foreground font-semibold">30 seconds from signup to first deploy</strong>, 50ms first request, 330+ edge cities. One-click export if you ever want to bring it back home.</p>
+      <div class="flex gap-2.5 flex-wrap mt-1">
+        <a href="#" class="inline-flex items-center gap-2 h-10 px-4 rounded-3xl bg-primary text-primary-foreground text-[13.5px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap">Start free — no card →</a>
+        <a href="/pricing" class="inline-flex items-center gap-2 h-10 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13.5px] font-medium no-underline transition-colors whitespace-nowrap">See pricing</a>
+        <span class="inline-flex items-center gap-2 h-10 px-3 text-[12.5px] text-muted-foreground"><span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>private beta · 100K requests / mo on free</span>
+      </div>
+    </div>
+
+    <!-- What Cloud adds (managed-only features) -->
+    <div class="grid grid-cols-3 max-[920px]:grid-cols-2 max-[600px]:grid-cols-1 gap-px bg-border border border-border rounded-3xl overflow-hidden">
+      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[180px]">
+        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0Z"/><path d="M12 3v18M3 12h18"/></svg></div>
+        <h3 class="text-base font-semibold">Multi-region routing</h3>
+        <p class="text-[13.5px] text-muted-foreground leading-snug">3 regions by default (IAD, FRA, IST). Up to 11 on Scale. Optional region pinning for data residency.</p>
+        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">anycast · region pin</span>
+      </div>
+      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[180px]">
+        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h7"/><path d="M3 10h18"/><circle cx="18" cy="18" r="3"/><path d="M18 14v1M18 21v1M21 18h1M14 18h1"/></svg></div>
+        <h3 class="text-base font-semibold">Auto backup + PITR</h3>
+        <p class="text-[13.5px] text-muted-foreground leading-snug">Daily D1 snapshots, 7-day rollback (Pro), 30 days (Scale). One-click restore from the admin.</p>
+        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">d1 snapshot · r2 versioning</span>
+      </div>
+      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[180px]">
+        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+        <h3 class="text-base font-semibold">Custom domain + edge SSL</h3>
+        <p class="text-[13.5px] text-muted-foreground leading-snug">Bring your own domain. Certificates rotate on Cloudflare. No add-on fee, no config.</p>
+        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">api.acme.app · cname</span>
+      </div>
+      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[180px]">
+        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="12" r="3"/><path d="M6 9v6M6 18a9 9 0 0 0 9-9"/></svg></div>
+        <h3 class="text-base font-semibold">Preview branches</h3>
+        <p class="text-[13.5px] text-muted-foreground leading-snug">Git push → ephemeral environment. Same admin, isolated DB and storage. Auto-cleanup on PR close.</p>
+        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">preview-247.workeros.dev</span>
+      </div>
+      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[180px]">
+        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 5-5"/></svg></div>
+        <h3 class="text-base font-semibold">Usage panel + alerts</h3>
+        <p class="text-[13.5px] text-muted-foreground leading-snug">Requests, CPU, D1 r/w, R2, bandwidth — live in dashboard. Email at 80% and 100%, no surprise bills.</p>
+        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">slack · email · webhooks</span>
+      </div>
+      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[180px]">
+        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></div>
+        <h3 class="text-base font-semibold">Your exit is preserved</h3>
+        <p class="text-[13.5px] text-muted-foreground leading-snug">One-click full export — schema + data + storage. Same MIT workeros, so your own server runs it in minutes.</p>
+        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">sql + r2 archive · 1-click</span>
+      </div>
+    </div>
+
+    <!-- Self-host vs Cloud — side-by-side -->
+    <div class="grid grid-cols-2 max-[820px]:grid-cols-1 gap-3.5 mt-10">
+      <div class="border border-border rounded-3xl bg-card p-7 flex flex-col gap-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] mb-2">option a</div>
+            <h3 class="text-[22px] font-semibold -tracking-[0.02em]">Self-host</h3>
+            <p class="text-[13px] text-muted-foreground">MIT, on GitHub. Your server, your credentials.</p>
+          </div>
+          <span class="font-mono text-[13px] font-semibold whitespace-nowrap">€0 / forever</span>
+        </div>
+        <div class="grid grid-cols-[20px_1fr] gap-x-2.5 gap-y-2 text-[13px]">
+          <span class="text-primary mt-1">✓</span><div><strong>Full control</strong> — <span class="text-muted-foreground">DB credentials, secrets, infra all yours</span></div>
+          <span class="text-primary mt-1">✓</span><div><strong>4 deploy targets</strong> — <span class="text-muted-foreground">Bun, Workers, Vercel, Netlify</span></div>
+          <span class="text-primary mt-1">✓</span><div><strong>Unlimited scale</strong> — <span class="text-muted-foreground">start on Cloudflare's own free tier</span></div>
+          <span class="text-muted-foreground mt-1">−</span><div class="text-muted-foreground">You set it up — wrangler, DB, secret rotation, monitoring</div>
+          <span class="text-muted-foreground mt-1">−</span><div class="text-muted-foreground">You configure backups</div>
+          <span class="text-muted-foreground mt-1">−</span><div class="text-muted-foreground">Migrations and upgrades are on you</div>
+        </div>
+        <div class="mt-auto pt-4 border-t border-border flex items-center gap-2">
+          <a href="https://github.com" target="_blank" rel="noopener" class="inline-flex items-center gap-2 h-9 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13px] font-medium no-underline transition-colors whitespace-nowrap">Go to GitHub →</a>
+          <a href="/docs#deployment" class="text-[12.5px] text-muted-foreground hover:text-foreground no-underline">Deploy guide</a>
+        </div>
+      </div>
+
+      <div class="border-2 rounded-3xl p-7 flex flex-col gap-4" style="border-color: color-mix(in oklch, var(--color-primary) 55%, var(--color-border)); background: color-mix(in oklch, var(--color-primary) 5%, var(--color-card));">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="font-mono text-[11px] uppercase tracking-[0.12em] mb-2" style="color: color-mix(in oklch, var(--color-primary) 60%, var(--color-foreground));">option b · cloud</div>
+            <h3 class="text-[22px] font-semibold -tracking-[0.02em]">Cloud (managed)</h3>
+            <p class="text-[13px] text-muted-foreground">Same workeros, we run it. On Cloudflare.</p>
+          </div>
+          <span class="font-mono text-[13px] font-semibold whitespace-nowrap">from €0</span>
+        </div>
+        <div class="grid grid-cols-[20px_1fr] gap-x-2.5 gap-y-2 text-[13px]">
+          <span class="text-primary mt-1">✓</span><div><strong>Live in 30s</strong> — <span class="text-muted-foreground">sign up, project, deploy</span></div>
+          <span class="text-primary mt-1">✓</span><div><strong>Multi-region default</strong> — <span class="text-muted-foreground">3 regions, more on Scale</span></div>
+          <span class="text-primary mt-1">✓</span><div><strong>Backup + PITR</strong> — <span class="text-muted-foreground">daily snapshots, 7-day rollback</span></div>
+          <span class="text-primary mt-1">✓</span><div><strong>Usage panel + alerts</strong> — <span class="text-muted-foreground">email before overage</span></div>
+          <span class="text-primary mt-1">✓</span><div><strong>One-click export</strong> — <span class="text-muted-foreground">switch to self-host any time</span></div>
+          <span class="text-muted-foreground mt-1">−</span><div class="text-muted-foreground">You depend on Cloudflare's capacity (limits clearly stated)</div>
+        </div>
+        <div class="mt-auto pt-4 border-t border-border flex items-center gap-2">
+          <a href="#" class="inline-flex items-center gap-2 h-9 px-4 rounded-3xl bg-primary text-primary-foreground text-[13px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap">Start free →</a>
+          <a href="/pricing" class="text-[12.5px] text-foreground hover:text-primary no-underline">Pricing</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transparent limits table -->
+    <div class="mt-10 border border-border rounded-3xl bg-card overflow-hidden">
+      <div class="px-7 py-5 border-b border-border flex items-center gap-3 flex-wrap">
+        <div>
+          <h3 class="text-[17px] font-semibold -tracking-[0.018em]">Transparent limits</h3>
+          <p class="text-[12.5px] text-muted-foreground">Numbers from Cloudflare's vendor docs — same numbers you see here. No marketing copy.</p>
+        </div>
+        <span class="cf-pill ml-auto"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>cloudflare native</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-[13px] border-collapse">
+          <thead>
+            <tr class="bg-muted">
+              <th class="px-6 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border">Resource</th>
+              <th class="px-6 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border">Free</th>
+              <th class="px-6 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border">Pro</th>
+              <th class="px-6 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border">Scale</th>
+              <th class="px-6 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border">Powered by</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="px-6 py-2.5 border-b border-border font-medium">Monthly requests</td><td class="px-6 py-2.5 border-b border-border font-mono">100K</td><td class="px-6 py-2.5 border-b border-border font-mono">10M</td><td class="px-6 py-2.5 border-b border-border font-mono">100M</td><td class="px-6 py-2.5 border-b border-border font-mono text-muted-foreground">CF Workers</td></tr>
+            <tr><td class="px-6 py-2.5 border-b border-border font-medium">CPU / request</td><td class="px-6 py-2.5 border-b border-border font-mono">10ms</td><td class="px-6 py-2.5 border-b border-border font-mono">30s</td><td class="px-6 py-2.5 border-b border-border font-mono">5min</td><td class="px-6 py-2.5 border-b border-border font-mono text-muted-foreground">CF Workers</td></tr>
+            <tr><td class="px-6 py-2.5 border-b border-border font-medium">DB size (D1)</td><td class="px-6 py-2.5 border-b border-border font-mono">500 MB</td><td class="px-6 py-2.5 border-b border-border font-mono">5 GB</td><td class="px-6 py-2.5 border-b border-border font-mono">50 GB</td><td class="px-6 py-2.5 border-b border-border font-mono text-muted-foreground">CF D1</td></tr>
+            <tr><td class="px-6 py-2.5 border-b border-border font-medium">Storage (R2)</td><td class="px-6 py-2.5 border-b border-border font-mono">1 GB</td><td class="px-6 py-2.5 border-b border-border font-mono">25 GB</td><td class="px-6 py-2.5 border-b border-border font-mono">500 GB</td><td class="px-6 py-2.5 border-b border-border font-mono text-muted-foreground">CF R2</td></tr>
+            <tr><td class="px-6 py-2.5 border-b border-border font-medium">Egress</td><td class="px-6 py-2.5 border-b border-border font-mono">∞</td><td class="px-6 py-2.5 border-b border-border font-mono">∞</td><td class="px-6 py-2.5 border-b border-border font-mono">∞</td><td class="px-6 py-2.5 border-b border-border text-primary font-mono">R2 zero egress</td></tr>
+            <tr><td class="px-6 py-2.5 border-b border-border font-medium">Realtime conn.</td><td class="px-6 py-2.5 border-b border-border font-mono">50</td><td class="px-6 py-2.5 border-b border-border font-mono">5K</td><td class="px-6 py-2.5 border-b border-border font-mono">50K</td><td class="px-6 py-2.5 border-b border-border font-mono text-muted-foreground">CF DO</td></tr>
+            <tr><td class="px-6 py-2.5 font-medium">Postgres option</td><td class="px-6 py-2.5 font-mono">—</td><td class="px-6 py-2.5 font-mono">—</td><td class="px-6 py-2.5 text-primary font-mono">Neon add-on</td><td class="px-6 py-2.5 font-mono text-muted-foreground">Neon</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="px-7 py-4 border-t border-border bg-muted/40 text-[12px] text-muted-foreground">Changes in Cloudflare's plans flow through to ours. We email 30 days ahead of any tightening.</div>
+    </div>
+
+    <!-- Enterprise inline CTA (replaces top-nav Enterprise link) -->
+    <div class="mt-10 border border-border rounded-3xl bg-card overflow-hidden">
+      <div class="grid grid-cols-[1.4fr_1fr] max-[860px]:grid-cols-1">
+        <div class="p-8 max-md:p-6 flex flex-col gap-3 border-r border-border max-[860px]:border-r-0 max-[860px]:border-b">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>enterprise</span>
+          </div>
+          <h3 class="text-[clamp(22px,2.4vw,28px)] font-semibold -tracking-[0.022em] leading-[1.15] max-w-[24ch]">A backend that passes vendor review.</h3>
+          <p class="text-[14px] text-muted-foreground max-w-[52ch] leading-snug">SAML SSO, SCIM provisioning, SOC 2 (in progress), DPA + MSA, dedicated single-tenant cluster with region pinning. Annual invoicing for finance, redlines for legal.</p>
+          <div class="mt-3 flex gap-2 flex-wrap">
+            <a href="/enterprise" class="inline-flex items-center gap-2 h-10 px-4 rounded-3xl bg-primary text-primary-foreground text-[13.5px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap">Enterprise details →</a>
+            <a href="/enterprise#contact" class="inline-flex items-center gap-2 h-10 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13.5px] font-medium no-underline transition-colors whitespace-nowrap">Book a call</a>
+          </div>
+        </div>
+        <div class="p-6 grid grid-cols-2 gap-2.5 bg-muted/40">
+          <div class="border border-border rounded-2xl bg-card p-4">
+            <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1">SSO</div>
+            <div class="text-[13px] font-medium">SAML 2.0 · SCIM</div>
+            <div class="text-[11.5px] text-muted-foreground mt-1">Okta, Azure AD, Google, JumpCloud</div>
+          </div>
+          <div class="border border-border rounded-2xl bg-card p-4">
+            <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1">Compliance</div>
+            <div class="text-[13px] font-medium">SOC 2 · GDPR</div>
+            <div class="text-[11.5px] text-muted-foreground mt-1">DPA + MSA templates</div>
+          </div>
+          <div class="border border-border rounded-2xl bg-card p-4">
+            <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1">SLA</div>
+            <div class="text-[13px] font-medium">99.99% uptime</div>
+            <div class="text-[11.5px] text-muted-foreground mt-1">4-hour first response, 24/7</div>
+          </div>
+          <div class="border border-border rounded-2xl bg-card p-4">
+            <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1">Isolation</div>
+            <div class="text-[13px] font-medium">Dedicated cluster</div>
+            <div class="text-[11.5px] text-muted-foreground mt-1">Single-tenant, region-pinned</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────── Quickstart ─────────────────── -->
+<section id="start" class="relative z-[1] py-24 border-b border-border">
+  <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
+    <div class="flex flex-col gap-4 max-w-[720px] mb-12">
+      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>quickstart</span>
+      <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">Five minutes from clone to your first item.</h2>
+    </div>
+    <div class="grid grid-cols-2 max-[860px]:grid-cols-1 gap-12 items-start">
+      <div class="code-block border border-border rounded-2xl bg-[oklch(0.985_0_0)] dark:bg-[oklch(0.18_0.006_286)] overflow-hidden font-mono">
+        <div class="flex gap-0 bg-muted border-b border-border px-3">
+          <button class="tab px-3.5 py-2.5 text-[11.5px] font-mono text-muted-foreground border-b-2 border-transparent -mb-px on:!text-foreground on:!border-primary cursor-pointer transition-colors data-on:text-foreground data-on:border-primary" data-pane="shell">terminal</button>
+          <button class="tab px-3.5 py-2.5 text-[11.5px] font-mono text-muted-foreground border-b-2 border-transparent -mb-px cursor-pointer transition-colors" data-pane="curl">curl</button>
+          <button class="tab px-3.5 py-2.5 text-[11.5px] font-mono text-muted-foreground border-b-2 border-transparent -mb-px cursor-pointer transition-colors" data-pane="sdk">sdk</button>
+        </div>
+        <pre id="pane-shell" class="m-0 p-5 text-[12.5px] leading-relaxed overflow-x-auto"><span class="c-comment"># clone, install, run — one terminal</span>
+<span class="c-prompt">$ </span><span class="c-fn">git clone</span> github.com/your/workeros &amp;&amp; <span class="c-kw">cd</span> workeros
+<span class="c-prompt">$ </span><span class="c-fn">bun install</span>
+<span class="c-prompt">$ </span><span class="c-fn">cp</span> apps/web/.dev.vars.example apps/web/.dev.vars
+
+<span class="c-comment"># migrate local sqlite, then start vite + miniflare</span>
+<span class="c-prompt">$ </span><span class="c-fn">bun run</span> db:migrate:sqlite
+<span class="c-prompt">$ </span><span class="c-fn">bun run</span> dev
+
+  <span class="c-comment">▸</span> ready in <span class="c-num">2.3s</span> on <span class="c-str">http://localhost:5173</span>
+  <span class="c-comment">▸</span> sign up the first user at /sign-up
+  <span class="c-comment">▸</span> first user auto-gets the <span class="c-key">admin</span> role</pre>
+        <pre id="pane-curl" hidden class="m-0 p-5 text-[12.5px] leading-relaxed overflow-x-auto"><span class="c-comment"># list items from the auto-generated REST endpoint</span>
+<span class="c-prompt">$ </span><span class="c-fn">curl</span> <span class="c-str">'http://localhost:5173/api/items/posts?limit=10'</span> \
+       --cookie <span class="c-str">"$(cat /tmp/cookie.txt)"</span>
+
+<span class="c-comment"># filter via the permissions DSL</span>
+<span class="c-prompt">$ </span><span class="c-fn">curl</span> <span class="c-str">"http://localhost:5173/api/items/posts?filter=$(echo \
+       '<span class="c-key">&#123;</span><span class="c-str">"status"</span>:<span class="c-key">&#123;</span><span class="c-str">"_eq"</span>:<span class="c-str">"published"</span><span class="c-key">&#125;</span>,<span class="c-str">"views"</span>:<span class="c-key">&#123;</span><span class="c-str">"_gt"</span>:<span class="c-num">100</span><span class="c-key">&#125;&#125;</span>' | jq -sRr @uri)&amp;sort=-views"</span>
+
+<span class="c-comment"># or graphql</span>
+<span class="c-prompt">$ </span><span class="c-fn">curl</span> -X <span class="c-key">POST</span> http://localhost:5173/api/graphql \
+       -H <span class="c-str">'content-type: application/json'</span> \
+       -d <span class="c-str">'&#123;"query":"&#123; posts(sort:\"-views\", limit:5) &#123; id title views &#125; &#125;"&#125;'</span></pre>
+        <pre id="pane-sdk" hidden class="m-0 p-5 text-[12.5px] leading-relaxed overflow-x-auto"><span class="c-comment">// 1. generate types from your running instance</span>
+<span class="c-prompt">$ </span><span class="c-fn">bun</span> workeros gen-types http://localhost:5173 --out src/types.ts
+
+<span class="c-comment">// 2. use the SDK — fully typed</span>
+<span class="c-kw">import</span> &#123; createClient &#125; <span class="c-kw">from</span> <span class="c-str">"@workeros/client"</span>;
+<span class="c-kw">import</span> <span class="c-kw">type</span> &#123; Posts &#125; <span class="c-kw">from</span> <span class="c-str">"./types"</span>;
+
+<span class="c-kw">const</span> <span class="c-fn">wks</span> = <span class="c-fn">createClient</span>(&#123; url: <span class="c-str">"http://localhost:5173"</span> &#125;);
+
+<span class="c-kw">const</span> r = <span class="c-kw">await</span> wks.<span class="c-fn">from</span>&lt;Posts&gt;(<span class="c-str">"posts"</span>).<span class="c-fn">list</span>(&#123;
+  filter: &#123; status: &#123; _eq: <span class="c-str">"published"</span> &#125; &#125;,
+  sort: <span class="c-str">"-views"</span>,
+  limit: <span class="c-num">10</span>,
+&#125;);
+
+r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string — inferred from your schema</span></pre>
+      </div>
+      <div class="flex flex-col gap-6">
+        <h3 class="text-2xl font-semibold -tracking-[0.022em] max-w-[22ch]">Sign up the first user. They get <code class="font-mono text-primary dark:text-[oklch(0.82_0.22_131)]">admin</code>.</h3>
+        <p class="text-muted-foreground text-[14.5px] leading-relaxed max-w-[48ch]">
+          better-auth's <code class="font-mono">databaseHooks.user.create.after</code> counts users; if it's 1, the role is <code class="font-mono">admin</code>, else <code class="font-mono">authenticated</code>. No bootstrap script, no env var, no command-line invitation flow to manage.
+        </p>
+        <p class="text-muted-foreground text-[14.5px] leading-relaxed max-w-[48ch]">
+          From there, define a collection in the admin and the API endpoint exists immediately — no redeploy, no codegen step, no schema versioning gymnastics. Drop a column, the column is gone. Rename a collection, the API path moves with it.
+        </p>
+        <div class="flex gap-2 flex-wrap">
+          <a class="inline-flex items-center gap-2 px-4 h-9 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13px] font-medium no-underline transition-colors whitespace-nowrap" href="/docs#getting-started">Full getting-started →</a>
+          <a class="inline-flex items-center gap-2 px-4 h-9 rounded-3xl text-foreground hover:bg-muted text-[13px] font-medium no-underline transition-colors whitespace-nowrap" href="/docs#permissions">Permissions DSL</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────── AI · MCP ─────────────────── -->
+<section id="ai" class="relative z-[1] py-24 border-b border-border"
+  style="background: radial-gradient(60% 70% at 50% 0%, color-mix(in oklch, var(--color-primary) 10%, transparent), transparent 70%);">
+  <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
+    <div class="flex flex-col gap-4 max-w-[760px] mb-12">
+      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>ai-native · mcp</span>
+      <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">Ask your data anything.<br/>Agents speak the same API.</h2>
+      <p class="text-[17px] text-muted-foreground max-w-[64ch]">
+        Natural-language prompts compile into the <strong class="text-foreground font-semibold">same Directus-shaped filter</strong> your client sends — every plan is reviewable, every tool call runs through your permissions DSL. A streamable MCP server ships in the box, so Claude, Cursor, or any agent can read &amp; write through the same guards.
+      </p>
+    </div>
+
+    <!-- Ask demo + sidebar -->
+    <div class="grid grid-cols-[1fr_320px] max-[1020px]:grid-cols-1 gap-6 items-start">
+
+      <!-- Left column: prompt → plan → result -->
+      <div class="flex flex-col gap-5 min-w-0">
+
+        <!-- Prompt card -->
+        <div class="border border-border rounded-3xl bg-card overflow-hidden">
+          <div class="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+            <span class="text-[12px] font-medium">Ask in natural language</span>
+            <div class="ml-auto flex items-center gap-3 text-[11.5px] text-muted-foreground">
+              <span class="inline-flex items-center gap-1.5 h-6 px-2 rounded-full">
+                <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                <span class="font-mono">claude-haiku-4-5</span>
+              </span>
+              <span class="hidden sm:inline-flex items-center gap-1.5">auto-run reads
+                <span class="relative h-5 w-9 rounded-full bg-primary inline-block"><span class="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow translate-x-4"></span></span>
+              </span>
+            </div>
+          </div>
+          <div class="px-5 py-3">
+            <div class="text-[15px] text-foreground leading-snug">top customers by lifetime_value last month, limit 10</div>
+          </div>
+          <div class="px-5 py-3 border-t border-border bg-card flex items-center gap-2 flex-wrap">
+            <div class="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+              <kbd class="font-mono text-[10.5px] px-1.5 py-0.5 rounded-md bg-muted border border-border text-muted-foreground leading-none">⌘</kbd>
+              <kbd class="font-mono text-[10.5px] px-1.5 py-0.5 rounded-md bg-muted border border-border text-muted-foreground leading-none">↵</kbd>
+              <span>to run</span>
+              <span class="mx-2 text-border">·</span>
+              <span>scoped to <span class="font-mono text-foreground">pak_8f2a…</span></span>
+            </div>
+            <div class="ml-auto flex gap-2">
+              <span class="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-muted-foreground text-[12.5px]">Clear</span>
+              <span class="inline-flex items-center gap-1.5 h-8 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-medium">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                Run
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Plan card -->
+        <div class="border border-border rounded-3xl bg-card overflow-hidden">
+          <div class="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
+            <span class="h-6 w-6 rounded-full grid place-items-center text-primary" style="background: color-mix(in oklch, var(--color-primary) 15%, transparent);">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/></svg>
+            </span>
+            <span class="text-[13px] font-semibold">Plan</span>
+            <span class="font-mono text-[11.5px] text-muted-foreground">→</span>
+            <span class="font-mono text-[10.5px] px-2 py-0.5 rounded-full border border-border text-foreground">collections.list</span>
+            <span class="font-mono text-[10.5px] px-2 py-0.5 rounded-full border" style="background: color-mix(in oklch, oklch(0.6 0.13 240) 12%, transparent); border-color: color-mix(in oklch, oklch(0.6 0.13 240) 30%, transparent); color: oklch(0.45 0.12 240);">read</span>
+          </div>
+          <div class="px-5 pt-2 pb-1 text-[12.5px] text-muted-foreground leading-relaxed">
+            Interpreted as a list query against <code class="font-mono text-foreground">app_users</code> with revenue sort. No write semantics detected — read-only plan.
+          </div>
+          <div class="px-5 py-3">
+            <div class="rounded-xl border border-border bg-muted/40 p-4">
+<pre class="font-mono text-[12px] leading-[1.55] m-0 whitespace-pre-wrap break-words"><span class="text-muted-foreground">&#123;</span>
+  <span style="color: oklch(0.45 0.14 70);">"collection"</span><span class="text-muted-foreground">:</span> <span style="color: oklch(0.42 0.14 130);">"app_users"</span><span class="text-muted-foreground">,</span>
+  <span style="color: oklch(0.45 0.14 70);">"filter"</span><span class="text-muted-foreground">:</span> <span class="text-muted-foreground">&#123;</span> <span style="color: oklch(0.45 0.14 70);">"last_order_at"</span><span class="text-muted-foreground">:</span> <span class="text-muted-foreground">&#123;</span> <span style="color: oklch(0.45 0.14 70);">"_gte"</span><span class="text-muted-foreground">:</span> <span class="italic text-muted-foreground">$NOW(-30 days)</span> <span class="text-muted-foreground">&#125;</span> <span class="text-muted-foreground">&#125;,</span>
+  <span style="color: oklch(0.45 0.14 70);">"sort"</span><span class="text-muted-foreground">:</span> <span class="text-muted-foreground">[</span><span style="color: oklch(0.42 0.14 130);">"-lifetime_value"</span><span class="text-muted-foreground">],</span>
+  <span style="color: oklch(0.45 0.14 70);">"limit"</span><span class="text-muted-foreground">:</span> <span style="color: oklch(0.45 0.13 240);">10</span><span class="text-muted-foreground">,</span>
+  <span style="color: oklch(0.45 0.14 70);">"fields"</span><span class="text-muted-foreground">:</span> <span class="text-muted-foreground">[</span><span style="color: oklch(0.42 0.14 130);">"id"</span><span class="text-muted-foreground">,</span> <span style="color: oklch(0.42 0.14 130);">"name"</span><span class="text-muted-foreground">,</span> <span style="color: oklch(0.42 0.14 130);">"email"</span><span class="text-muted-foreground">,</span> <span style="color: oklch(0.42 0.14 130);">"lifetime_value"</span><span class="text-muted-foreground">,</span> <span style="color: oklch(0.42 0.14 130);">"last_order_at"</span><span class="text-muted-foreground">]</span>
+<span class="text-muted-foreground">&#125;</span></pre>
+            </div>
+          </div>
+          <div class="px-5 py-3 border-t border-border flex items-center gap-3 flex-wrap">
+            <div class="flex items-center gap-3 text-[11.5px] text-muted-foreground">
+              <span class="inline-flex items-center gap-1.5">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                Permissions DSL will filter rows
+              </span>
+            </div>
+            <div class="ml-auto flex gap-2">
+              <span class="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-muted-foreground text-[12.5px]">Reject</span>
+              <span class="inline-flex items-center gap-1.5 h-8 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-medium">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                Run
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Result card -->
+        <div class="border border-border rounded-3xl bg-card overflow-hidden">
+          <div class="px-5 pt-4 pb-3 flex items-center gap-2 flex-wrap">
+            <span class="h-6 w-6 rounded-full grid place-items-center text-primary" style="background: color-mix(in oklch, var(--color-primary) 15%, transparent);">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </span>
+            <span class="text-[13px] font-semibold">Result</span>
+            <span class="font-mono text-[10.5px] px-2 py-0.5 rounded-full bg-muted border border-transparent text-muted-foreground">collections.list</span>
+            <div class="ml-auto flex items-center gap-3 text-[11.5px] text-muted-foreground">
+              <span><span class="text-muted-foreground/80">tokens</span> <span class="font-mono tabular-nums">380</span></span>
+              <span><span class="text-muted-foreground/80">latency</span> <span class="font-mono tabular-nums">28ms</span></span>
+              <span><span class="text-muted-foreground/80">rows</span> <span class="font-mono tabular-nums">10</span></span>
+            </div>
+          </div>
+          <div class="overflow-auto border-t border-border">
+            <table class="w-full text-[13px] border-collapse">
+              <thead class="bg-card">
+                <tr>
+                  <th class="text-left font-semibold text-[10.5px] uppercase tracking-wider text-muted-foreground px-4 h-9 border-b border-border">name</th>
+                  <th class="text-left font-semibold text-[10.5px] uppercase tracking-wider text-muted-foreground px-4 h-9 border-b border-border">email</th>
+                  <th class="text-left font-semibold text-[10.5px] uppercase tracking-wider text-muted-foreground px-4 h-9 border-b border-border">lifetime_value</th>
+                  <th class="text-left font-semibold text-[10.5px] uppercase tracking-wider text-muted-foreground px-4 h-9 border-b border-border max-[680px]:hidden">last_order_at</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="border-b border-border/60">
+                  <td class="px-4 h-10 font-medium">Lena Voss</td>
+                  <td class="px-4 h-10 font-mono text-[12px] text-muted-foreground">lena@hexagon.studio</td>
+                  <td class="px-4 h-10 font-mono tabular-nums">$28,142</td>
+                  <td class="px-4 h-10 font-mono tabular-nums text-muted-foreground max-[680px]:hidden">2026-05-22</td>
+                </tr>
+                <tr class="border-b border-border/60">
+                  <td class="px-4 h-10 font-medium">Theo Ranganathan</td>
+                  <td class="px-4 h-10 font-mono text-[12px] text-muted-foreground">theo@frostgate.io</td>
+                  <td class="px-4 h-10 font-mono tabular-nums">$22,005</td>
+                  <td class="px-4 h-10 font-mono tabular-nums text-muted-foreground max-[680px]:hidden">2026-05-19</td>
+                </tr>
+                <tr class="border-b border-border/60">
+                  <td class="px-4 h-10 font-medium">Yuki Okafor</td>
+                  <td class="px-4 h-10 font-mono text-[12px] text-muted-foreground">yuki@altair-labs.com</td>
+                  <td class="px-4 h-10 font-mono tabular-nums">$18,830</td>
+                  <td class="px-4 h-10 font-mono tabular-nums text-muted-foreground max-[680px]:hidden">2026-05-23</td>
+                </tr>
+                <tr class="border-b border-border/60">
+                  <td class="px-4 h-10 font-medium">Mira Halvorsen</td>
+                  <td class="px-4 h-10 font-mono text-[12px] text-muted-foreground">mira@palebrook.co</td>
+                  <td class="px-4 h-10 font-mono tabular-nums">$17,210</td>
+                  <td class="px-4 h-10 font-mono tabular-nums text-muted-foreground max-[680px]:hidden">2026-05-21</td>
+                </tr>
+                <tr>
+                  <td class="px-4 h-10 font-medium">Salim Tessari</td>
+                  <td class="px-4 h-10 font-mono text-[12px] text-muted-foreground">salim@northbore.org</td>
+                  <td class="px-4 h-10 font-mono tabular-nums">$14,902</td>
+                  <td class="px-4 h-10 font-mono tabular-nums text-muted-foreground max-[680px]:hidden">2026-05-18</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="px-5 py-3 border-t border-border flex items-center gap-2 flex-wrap">
+            <div class="flex items-center gap-2 text-[11.5px] text-muted-foreground">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              Permissions DSL applied · 0 fields redacted
+            </div>
+            <div class="ml-auto flex gap-2 text-[11.5px] text-muted-foreground">
+              <span class="font-mono">+5 more rows</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right column: recent runs -->
+      <div class="border border-border rounded-3xl bg-card overflow-hidden">
+        <div class="px-5 pt-4 pb-3 flex items-center gap-2">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+          <span class="text-[13px] font-semibold">Recent runs</span>
+          <span class="font-mono text-[10.5px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">9</span>
+        </div>
+        <div class="border-t border-border">
+          <div class="px-4 py-3 border-b border-border/60 flex flex-col gap-1.5">
+            <div class="flex items-center gap-2 text-[12px]">
+              <span class="w-3 h-3 rounded-full grid place-items-center text-primary">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              </span>
+              <span class="font-mono text-[11px] text-muted-foreground truncate flex-1">ai.query → collections.list</span>
+              <span class="font-mono text-[10.5px] text-muted-foreground">2m</span>
+            </div>
+            <div class="text-[12.5px] truncate">top customers last month</div>
+            <div class="text-[10.5px] text-muted-foreground font-mono tabular-nums">10 rows · 412ms · 380 tok</div>
+          </div>
+          <div class="px-4 py-3 border-b border-border/60 flex flex-col gap-1.5">
+            <div class="flex items-center gap-2 text-[12px]">
+              <span class="w-3 h-3 text-primary">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              </span>
+              <span class="font-mono text-[11px] text-muted-foreground truncate flex-1">collections.bulk_update</span>
+              <span class="font-mono text-[10.5px] text-muted-foreground">6m</span>
+            </div>
+            <div class="text-[12.5px] truncate">set status=archived for 47 posts</div>
+            <div class="text-[10.5px] text-muted-foreground font-mono tabular-nums">47 rows · 1184ms</div>
+          </div>
+          <div class="px-4 py-3 border-b border-border/60 flex flex-col gap-1.5">
+            <div class="flex items-center gap-2 text-[12px]">
+              <span class="w-3 h-3" style="color: oklch(0.55 0.14 80);">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/></svg>
+              </span>
+              <span class="font-mono text-[11px] text-muted-foreground truncate flex-1">ai.suggest_schema</span>
+              <span class="font-mono text-[10.5px] text-muted-foreground">14m</span>
+            </div>
+            <div class="text-[12.5px] truncate">design a support_tickets collection</div>
+            <div class="text-[10.5px] text-muted-foreground font-mono tabular-nums">8 fields · pending review</div>
+          </div>
+          <div class="px-4 py-3 border-b border-border/60 flex flex-col gap-1.5">
+            <div class="flex items-center gap-2 text-[12px]">
+              <span class="w-3 h-3 text-muted-foreground">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </span>
+              <span class="font-mono text-[11px] text-muted-foreground truncate flex-1">schema.create_collection</span>
+              <span class="font-mono text-[10.5px] text-muted-foreground">2h</span>
+            </div>
+            <div class="text-[12.5px] truncate">design a faq collection</div>
+            <div class="text-[10.5px] text-muted-foreground font-mono tabular-nums">blocked · mcp_read_only=true</div>
+          </div>
+          <div class="px-4 py-3 flex flex-col gap-1.5">
+            <div class="flex items-center gap-2 text-[12px]">
+              <span class="w-3 h-3 text-primary">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              </span>
+              <span class="font-mono text-[11px] text-muted-foreground truncate flex-1">ai.import_csv</span>
+              <span class="font-mono text-[10.5px] text-muted-foreground">1d</span>
+            </div>
+            <div class="text-[12.5px] truncate">customers.csv → app_users.create</div>
+            <div class="text-[10.5px] text-muted-foreground font-mono tabular-nums">1,284 rows · 8.4s</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Three-column: tools / guards / connect -->
+    <div class="grid grid-cols-3 max-[1020px]:grid-cols-1 gap-3.5 mt-14">
+
+      <!-- MCP tool catalog -->
+      <div class="border border-border rounded-3xl bg-card overflow-hidden flex flex-col">
+        <div class="px-5 pt-5 pb-3 flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+          <h3 class="text-[15px] font-semibold">MCP tool catalog</h3>
+          <span class="ml-auto font-mono text-[10.5px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">32 tools</span>
+        </div>
+        <p class="px-5 text-[12.5px] text-muted-foreground leading-snug">Every admin capability is also an MCP tool — grouped, type-validated, and DSL-filtered before it runs.</p>
+        <div class="px-5 py-4 mt-1 grid grid-cols-2 gap-y-1.5 gap-x-3 text-[12px] border-t border-border/60 mt-4">
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>schema <span class="font-mono text-muted-foreground ml-auto">5</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>collections <span class="font-mono text-muted-foreground ml-auto">7</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>storage <span class="font-mono text-muted-foreground ml-auto">5</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>vector <span class="font-mono text-muted-foreground ml-auto">2</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>graphql <span class="font-mono text-muted-foreground ml-auto">1</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>permissions <span class="font-mono text-muted-foreground ml-auto">7</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>api keys <span class="font-mono text-muted-foreground ml-auto">3</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>flows <span class="font-mono text-muted-foreground ml-auto">7</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>functions <span class="font-mono text-muted-foreground ml-auto">2</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full" style="background: oklch(0.7 0.18 130);"></span>ai-native <span class="font-mono text-muted-foreground ml-auto">3</span></div>
+        </div>
+        <div class="px-5 py-3 mt-auto border-t border-border bg-muted/40 flex items-center gap-2 text-[11px] text-muted-foreground font-mono flex-wrap">
+          <span class="px-2 py-0.5 rounded-full border border-border bg-card" style="color: oklch(0.45 0.12 240);">read</span>
+          <span class="px-2 py-0.5 rounded-full border border-border bg-card" style="color: oklch(0.48 0.13 70);">write</span>
+          <span class="px-2 py-0.5 rounded-full border border-border bg-card" style="color: oklch(0.45 0.18 22);">destruct</span>
+          <span class="px-2 py-0.5 rounded-full border border-border bg-card" style="color: oklch(0.48 0.13 70);">admin</span>
+        </div>
+      </div>
+
+      <!-- Per-key guards -->
+      <div class="border border-border rounded-3xl bg-card overflow-hidden flex flex-col">
+        <div class="px-5 pt-5 pb-3 flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+          <h3 class="text-[15px] font-semibold">Per-key guards</h3>
+          <span class="ml-auto font-mono text-[10.5px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">pak_8f2a…</span>
+        </div>
+        <p class="px-5 text-[12.5px] text-muted-foreground leading-snug">Bind an allowlist of tools and a read-only flag to any personal access key. Agents inherit the guards of the key they authenticated with.</p>
+        <div class="px-5 pt-4 pb-3 mt-1 flex flex-col gap-2.5 border-t border-border/60 mt-4">
+          <div class="flex items-center justify-between">
+            <div class="flex flex-col">
+              <span class="text-[12.5px] font-medium">Read-only</span>
+              <span class="text-[11px] text-muted-foreground">Blocks every write tool at the dispatcher.</span>
+            </div>
+            <span class="relative h-5 w-9 rounded-full inline-block" style="background: var(--color-input);"><span class="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow"></span></span>
+          </div>
+          <div class="flex items-center justify-between">
+            <div class="flex flex-col">
+              <span class="text-[12.5px] font-medium">Tool allowlist</span>
+              <span class="text-[11px] text-muted-foreground">Hide everything not switched on.</span>
+            </div>
+            <span class="font-mono text-[10.5px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">24 tools</span>
+          </div>
+        </div>
+        <div class="px-5 py-4 mt-auto border-t border-border bg-muted/40">
+<pre class="font-mono text-[11px] leading-relaxed m-0 whitespace-pre-wrap"><span class="c-comment"># patch the active key's guards</span>
+<span class="c-prompt">$ </span><span class="c-fn">curl</span> -X PATCH <span class="c-str">$URL/api-keys/$id/mcp-guards</span> \
+   -d <span class="c-str">'&#123;"mcpReadOnly":true,</span>
+       <span class="c-str">"mcpTools":["ai.query",</span>
+                  <span class="c-str">"collections.list",…]&#125;'</span></pre>
+        </div>
+      </div>
+
+      <!-- Connect a client -->
+      <div class="border border-border rounded-3xl bg-card overflow-hidden flex flex-col">
+        <div class="px-5 pt-5 pb-3 flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 4 4-4 4"/><path d="M2 8h14"/><path d="m12 22-4-4 4-4"/><path d="M22 16H8"/></svg>
+          <h3 class="text-[15px] font-semibold">Connect a client</h3>
+          <span class="ml-auto font-mono text-[10.5px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">streamable http</span>
+        </div>
+        <p class="px-5 text-[12.5px] text-muted-foreground leading-snug">Stateless <code class="font-mono text-foreground">POST /mcp</code> for tenant agents, <code class="font-mono text-foreground">/api/admin/mcp</code> for ops bots. JSON-RPC over HTTP — no SSE, no socket churn.</p>
+        <div class="px-5 pt-4 pb-3 border-t border-border/60 mt-4">
+          <div class="text-[10.5px] uppercase tracking-wider text-muted-foreground mb-2">claude desktop · cursor</div>
+<pre class="font-mono text-[11px] leading-relaxed m-0 whitespace-pre-wrap"><span class="text-muted-foreground">&#123;</span>
+  <span class="c-key">"mcpServers"</span><span class="text-muted-foreground">:</span> <span class="text-muted-foreground">&#123;</span>
+    <span class="c-key">"workeros"</span><span class="text-muted-foreground">:</span> <span class="text-muted-foreground">&#123;</span>
+      <span class="c-key">"command"</span><span class="text-muted-foreground">:</span> <span class="c-str">"bun"</span><span class="text-muted-foreground">,</span>
+      <span class="c-key">"args"</span><span class="text-muted-foreground">:</span> <span class="text-muted-foreground">[</span>
+        <span class="c-str">"workeros"</span><span class="text-muted-foreground">,</span> <span class="c-str">"mcp"</span><span class="text-muted-foreground">,</span>
+        <span class="c-str">"--url"</span><span class="text-muted-foreground">,</span> <span class="c-str">"$URL/mcp"</span><span class="text-muted-foreground">,</span>
+        <span class="c-str">"--key"</span><span class="text-muted-foreground">,</span> <span class="c-str">"pak_…"</span>
+      <span class="text-muted-foreground">]</span>
+    <span class="text-muted-foreground">&#125;</span>
+  <span class="text-muted-foreground">&#125;</span>
+<span class="text-muted-foreground">&#125;</span></pre>
+        </div>
+        <div class="px-5 py-3 mt-auto border-t border-border flex items-center gap-2 text-[11.5px] text-muted-foreground">
+          <a href="/docs#mcp" class="font-mono text-foreground hover:text-primary no-underline">docs/mcp →</a>
+          <span class="ml-auto">claude · cursor · curl</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom CTA strip -->
+    <div class="mt-10 flex items-center gap-3 flex-wrap">
+      <a href="/cloud-admin#ai" class="inline-flex items-center gap-2 h-10 px-4 rounded-3xl bg-primary text-primary-foreground text-[13.5px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap">
+        Try Ask AI on Cloud
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </a>
+      <a href="/docs#mcp" class="inline-flex items-center gap-2 h-10 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13.5px] font-medium no-underline transition-colors whitespace-nowrap">MCP spec</a>
+      <span class="text-[12px] text-muted-foreground ml-1">
+        Built on <code class="font-mono text-foreground">@modelcontextprotocol/sdk</code> · model picker per workspace · falls back to <code class="font-mono text-foreground">ANTHROPIC_API_KEY</code>
+      </span>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────── Stack ─────────────────── -->
+<section id="stack" class="relative z-[1] py-24 border-b border-border">
+  <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
+    <div class="flex flex-col gap-4 max-w-[720px] mb-12">
+      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>stack</span>
+      <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">The boring choices, made for you.</h2>
+      <p class="text-[17px] text-muted-foreground max-w-[60ch]">Every cross-runtime concern hides behind an interface in <code class="font-mono">@workeros/core/adapters</code>. Pick the runtime, the adapters fall into place.</p>
+    </div>
+    <div class="border border-border rounded-3xl bg-card overflow-hidden">
+      <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 border-b border-border items-center">
+        <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">api</div>
+        <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-2 bg-muted border border-border rounded-full font-mono text-[11.5px]">Hono</span> on Bun + Workers + Vercel + Netlify edge. Same routes, same middleware, same response shapes everywhere.</div>
+      </div>
+      <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 border-b border-border items-center">
+        <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">orm</div>
+        <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-2 bg-muted border border-border rounded-full font-mono text-[11.5px]">Drizzle v1</span> for both <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">Postgres</span> and <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-2 bg-muted border border-border rounded-full font-mono text-[11.5px]">SQLite / D1</span>. Hand-written migrations, lockstepped between dialects.</div>
+      </div>
+      <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 border-b border-border items-center">
+        <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">auth</div>
+        <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-2 bg-muted border border-border rounded-full font-mono text-[11.5px]">better-auth</span> — email, OAuth, magic link, OTP, <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">passkey</span>, <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">SAML 2.0</span>, <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">LDAP / AD</span>.</div>
+      </div>
+      <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 border-b border-border items-center">
+        <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">storage</div>
+        <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">fs</span> (Bun dev) · <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">R2</span> · <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">S3</span> via aws4fetch on anything that runs JS. Image transforms via Bun.Image / CF Image Resizing.</div>
+      </div>
+      <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 border-b border-border items-center">
+        <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">vectors</div>
+        <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">pgvector</span> on Postgres · <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">Cloudflare Vectorize</span> on Workers. Same write/query interface.</div>
+      </div>
+      <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 border-b border-border items-center">
+        <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">realtime</div>
+        <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">SSE</span> in Bun · <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">Durable Objects + WS</span> on Workers. Permission filter runs per event.</div>
+      </div>
+      <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 border-b border-border items-center">
+        <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">sandbox</div>
+        <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">Bun worker thread</span> · <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">QuickJS-WASM</span> · <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">remote HTTP</span> executor — auto-selected by priority.</div>
+      </div>
+      <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 border-b border-border items-center">
+        <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">admin</div>
+        <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">Vite</span> + <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">React 18</span> + <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">shadcn/ui</span> + <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">Tailwind v4</span>. Lazy-loaded per route. Lingui-translated.</div>
+      </div>
+      <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 items-center">
+        <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">sdk + cli</div>
+        <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">@workeros/client</span> with generated types per collection. <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">workeros</span> CLI for migrations + type generation.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────── Compare ─────────────────── -->
+<section id="compare" class="relative z-[1] py-24 border-b border-border">
+  <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
+    <div class="flex flex-col gap-4 max-w-[720px] mb-12">
+      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>why workeros</span>
+      <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">The trade-offs, in one table.</h2>
+      <p class="text-[17px] text-muted-foreground max-w-[60ch]">Other tools do parts of this. workeros's design choice is to keep every part under one source tree, behind one API, deployable to four runtimes — without forking.</p>
+    </div>
+    <div class="border border-border rounded-3xl bg-card overflow-hidden">
+      <table class="w-full border-collapse text-[13.5px]">
+        <thead>
+          <tr>
+            <th class="px-5 py-3.5 text-left font-medium text-xs uppercase tracking-wider text-muted-foreground bg-muted border-b border-border">Capability</th>
+            <th class="px-5 py-3.5 text-left font-medium text-xs uppercase tracking-wider text-muted-foreground bg-muted border-b border-border">workeros</th>
+            <th class="px-5 py-3.5 text-left font-medium text-xs uppercase tracking-wider text-muted-foreground bg-muted border-b border-border">Supabase</th>
+            <th class="px-5 py-3.5 text-left font-medium text-xs uppercase tracking-wider text-muted-foreground bg-muted border-b border-border">Directus</th>
+            <th class="px-5 py-3.5 text-left font-medium text-xs uppercase tracking-wider text-muted-foreground bg-muted border-b border-border">Roll-your-own</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="px-5 py-3 border-b border-border font-medium">Self-host, MIT licensed</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">partial</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-3 border-b border-border font-medium">Runs on Cloudflare Workers</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">if you build it</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-3 border-b border-border font-medium">Dynamic schema (runtime DDL)</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">migrations only</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">depends</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-3 border-b border-border font-medium">Adopt existing tables without DDL</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">limited</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">depends</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-3 border-b border-border font-medium">Permissions DSL that compiles to SQL</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">RLS</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">build it</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-3 border-b border-border font-medium">Per-event realtime permission filter</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">RLS-based</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">build it</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-3 border-b border-border font-medium">Edge functions sandbox + host bridge</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">build it</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-3 border-b border-border font-medium">Visual flow builder</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-3 border-b border-border font-medium">SAML 2.0 + LDAP / AD</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">enterprise</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">enterprise</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">build it</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-3 font-medium">Vendor-managed cloud option</td>
+            <td class="px-5 py-3 text-muted-foreground">self-host only</td>
+            <td class="px-5 py-3 text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 text-muted-foreground">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-muted-foreground text-[12.5px] mt-3.5">No vendor-managed cloud is on purpose — every team we've talked to wanted to own the DB credentials themselves. If you'd like one, fork and run it.</p>
+  </div>
+</section>
+
+<!-- ─────────────────── Philosophy ─────────────────── -->
+<section class="relative z-[1] py-24 border-b border-border bg-muted">
+  <div class="max-w-[1240px] mx-auto px-8 max-md:px-5 grid grid-cols-2 max-[860px]:grid-cols-1 gap-12 items-center">
+    <div>
+      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>philosophy</span>
+      <blockquote class="border-l-[3px] border-primary pl-5 py-2 mt-6 text-lg leading-relaxed font-medium max-w-[56ch] m-0">
+        Everything an operator needs lives behind one URL. The schema editor writes the same DDL your migrations would have. The permission DSL the admin writes is the same string your client sends as a query parameter. There is no second layer to learn.
+        <span class="block mt-2.5 text-[13px] text-muted-foreground font-normal">— from <code class="font-mono">docs/DESIGN.md</code></span>
+      </blockquote>
+    </div>
+    <div>
+      <h3 class="text-[22px] font-semibold mb-3.5">Why these tradeoffs?</h3>
+      <ul class="pl-5 m-0 leading-relaxed text-muted-foreground text-[14.5px] space-y-2">
+        <li><strong class="text-foreground">Hybrid schema</strong> instead of all-Drizzle — matches the Directus mental model where the user's data shape evolves at runtime, but keeps system tables under static migration control.</li>
+        <li><strong class="text-foreground">Own permission DSL</strong> instead of CASL — needed something the SQL compiler could read; CASL is row-evaluation-only.</li>
+        <li><strong class="text-foreground">Three sandbox providers</strong> instead of one — free-tier Workers users shouldn't lose function execution; paid users shouldn't be stuck on WASM-slow QuickJS.</li>
+        <li><strong class="text-foreground">Passkey-first auth</strong> — phishing-resistant, hardware-backed, better UX than TOTP.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────── CTA band ─────────────────── -->
+<section class="relative z-[1] py-20 border-b border-border" style="background: radial-gradient(80% 100% at 50% 0%, var(--color-tint), transparent 70%);">
+  <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
+    <div class="border border-border rounded-4xl bg-card p-14 max-md:p-7 flex max-md:flex-col items-center max-md:items-start gap-8 justify-between shadow-[0_12px_24px_-8px_oklch(0_0_0/0.06)]">
+      <div>
+        <h2 class="text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.018em] leading-tight max-w-[22ch]">The backend ships with the docs. Start there.</h2>
+        <p class="text-muted-foreground mt-3 text-[15px]">Five-minute getting-started, the permission DSL spec, four deploy walkthroughs, and a sandbox guide. All in one place.</p>
+      </div>
+      <div class="flex gap-2.5 flex-shrink-0 flex-wrap">
+        <a class="inline-flex items-center gap-2 h-11 px-5 rounded-4xl bg-primary text-primary-foreground text-[14.5px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap" href="/docs">Open the docs →</a>
+        <a class="inline-flex items-center gap-2 h-11 px-5 rounded-4xl border border-border bg-background text-foreground text-[14.5px] font-medium no-underline hover:bg-muted transition-colors whitespace-nowrap" href="/cloud-admin">Start free on Cloud</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────── Footer ─────────────────── -->
+<script is:inline>
+  // Quickstart tab switcher
+  document.querySelectorAll(".code-block").forEach((block) => {
+    const tabs = [...block.querySelectorAll(".tab")];
+    const panes = [...block.querySelectorAll("pre")];
+    function activate(pane) {
+      tabs.forEach((t) => {
+        const on = t.dataset.pane === pane;
+        t.classList.toggle("text-foreground", on);
+        t.classList.toggle("!border-primary", on);
+        t.classList.toggle("text-muted-foreground", !on);
+      });
+      panes.forEach((p) => {
+        p.hidden = p.id !== "pane-" + pane;
+      });
+    }
+    tabs.forEach((t) => t.addEventListener("click", () => activate(t.dataset.pane)));
+    activate("shell");
+  });
+</script>
+</Base>

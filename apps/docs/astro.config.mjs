@@ -9,6 +9,30 @@ export default defineConfig({
       description: "Self-hostable Supabase/Directus alternative — admin, API, runtime.",
       favicon: "/favicon.svg",
       customCss: ["./src/styles/custom.css"],
+      components: {
+        PageTitle: "./src/components/PageTitle.astro",
+      },
+      head: [
+        {
+          tag: "link",
+          attrs: { rel: "preconnect", href: "https://fonts.googleapis.com" },
+        },
+        {
+          tag: "link",
+          attrs: {
+            rel: "preconnect",
+            href: "https://fonts.gstatic.com",
+            crossorigin: true,
+          },
+        },
+        {
+          tag: "link",
+          attrs: {
+            rel: "stylesheet",
+            href: "https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap",
+          },
+        },
+      ],
       social: [
         {
           icon: "github",

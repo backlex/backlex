@@ -1,344 +1,165 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { KeyRoundIcon, MailCheckIcon, ShieldIcon } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { MoonIcon, SunIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Input } from "@workeros/ui/components/input";
-import { Label } from "@workeros/ui/components/label";
-import { Checkbox } from "@workeros/ui/components/checkbox";
+import { Button } from "@workeros/ui/components/button";
 import {
-  AuthCallout,
-  AuthCard,
-  AuthCardHeader,
-  AuthDivider,
-  AuthFootLink,
-  AuthShell,
-  AuthSubmit,
-} from "@/components/auth-shell";
+  SignUpPage as BaseSignUpPage,
+  type AuthBranding,
+  type AuthShellCopy,
+  type SignUpCopy,
+} from "@workeros/auth-ui";
 import { SocialButtons, useHasSocialProviders } from "@/components/social-buttons";
+import { useTheme } from "@/components/theme-provider";
 import { notifyError } from "@/lib/error";
 import { auth, invalidateAuthSurface, useAuthSurface } from "@/lib/auth";
-import { cn } from "@workeros/ui/lib/utils";
+import { useWorkspaceBranding } from "@/lib/branding";
+import { version as appVersion } from "../../../package.json";
 
-const computeStrength = (pw: string): number => {
-  let s = 0;
-  if (pw.length >= 8) s++;
-  if (/[A-Z]/.test(pw)) s++;
-  if (/[0-9]/.test(pw)) s++;
-  if (/[^A-Za-z0-9]/.test(pw)) s++;
-  return s;
-};
-
-const passkeysSupported = (): boolean =>
-  typeof window !== "undefined" &&
-  typeof window.PublicKeyCredential !== "undefined";
-
-interface PasskeyClient {
-  passkey?: {
-    addPasskey?: (opts: {
-      name: string;
-      authenticatorAttachment?: "platform" | "cross-platform";
-    }) => Promise<{ error?: { message?: string } }>;
-  };
-}
-
+/**
+ * Thin wrapper that wires the OSS admin's Lingui copy, React Router, the
+ * workspace branding/surface stores, and the social-button slot into the
+ * generic `<SignUpPage>` from `@workeros/auth-ui`.
+ */
 export const SignUp = () => {
   const { t } = useLingui();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [agreed, setAgreed] = useState(false);
-  // Computed once on mount — `passkeysSupported()` is environment-stable.
-  const [supportsPasskey] = useState(() => passkeysSupported());
-  const [enrollPasskey, setEnrollPasskey] = useState(supportsPasskey);
-  const [busy, setBusy] = useState(false);
-  const [stage, setStage] = useState<
-    "form" | "creating" | "enrolling" | "verify"
-  >("form");
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const { surface } = useAuthSurface();
+  const wsBranding = useWorkspaceBranding();
   const hasSocials = useHasSocialProviders();
+  const { theme, setTheme } = useTheme();
+  const dark = theme === "dark";
 
-  // The server is the source of truth — `?claim=1` only matters when the
-  // instance still has zero users. Anyone landing on the link after an
-  // admin exists gets the normal sign-up copy.
-  const isFirst = surface?.firstUserMode === true && params.get("claim") === "1";
-  const openSignup = surface ? surface.policy.openSignup !== false : true;
-  const requireVerify = surface
-    ? surface.policy.requireEmailVerification !== false
-    : false;
-  // Block the form when sign-up is closed AND we're not bootstrapping the
-  // first admin. While the surface is still loading, render normally so the
-  // form doesn't flash an error before we know the policy.
-  const blocked = surface != null && !openSignup && !isFirst;
+  const isFirstParam = params.get("claim") === "1";
+  const isFirst = surface?.firstUserMode === true && isFirstParam;
 
-  useEffect(() => {
-    let cancelled = false;
-    auth
-      .getSession()
-      .then((res) => {
-        if (cancelled) return;
-        const session = (res as { data?: { session?: unknown } })?.data?.session;
-        if (session) navigate("/", { replace: true });
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [navigate]);
-
-  const strength = useMemo(() => computeStrength(password), [password]);
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!email || !password || !agreed) return;
-    setBusy(true);
-    setStage("creating");
-
-    const res = await auth.signUp.email({ email, password, name });
-    if (res.error) {
-      setBusy(false);
-      setStage("form");
-      notifyError(res.error.message ?? t`Sign-up failed`);
-      return;
-    }
-
-    // Invalidate the cached surface so the next render picks up
-    // `firstUserMode = false` (the page just consumed the claim).
-    invalidateAuthSurface();
-
-    // Optional passkey enrolment in the same flow. signUp.email sets the
-    // session cookie, so addPasskey runs as the freshly-created user.
-    if (enrollPasskey && supportsPasskey) {
-      setStage("enrolling");
-      try {
-        const c = auth as unknown as PasskeyClient;
-        const fn = c.passkey?.addPasskey;
-        if (fn) {
-          const pk = await fn({
-            name: name || email.split("@")[0] || "primary",
-            authenticatorAttachment: "platform",
-          });
-          if (pk?.error) {
-            // Account is created; surface but don't block redirect.
-            notifyError(
-              `Account created but passkey enrolment failed: ${
-                pk.error.message ?? "unknown"
-              }. Add one in Settings → Passkeys.`,
-            );
-          }
-        }
-      } catch (err) {
-        notifyError(
-          `Account created. Passkey enrolment skipped: ${
-            (err as Error).message ?? "cancelled"
-          }`,
-        );
-      }
-    }
-
-    // When email verification is required AND we're not the first user
-    // (the first user is auto-admin and skips verification), park them on
-    // a "check your inbox" panel instead of redirecting into a 401 loop.
-    if (requireVerify && !isFirst) {
-      setStage("verify");
-      setBusy(false);
-      return;
-    }
-
-    window.location.href = "/";
+  const branding: AuthBranding = {
+    name: wsBranding?.workspaceName?.trim() || "workeros",
+    logoUrl: wsBranding?.logoUrl ?? null,
   };
 
-  if (blocked) {
-    return (
-      <AuthShell mode="sign-up">
-        <AuthCard>
-          <AuthCardHeader
-            title={<Trans>Sign-up is disabled</Trans>}
-            description={<Trans>An admin has turned off public sign-up for this instance. Ask for an invite, or sign in if you already have an account.</Trans>}
-          />
-          <AuthCallout icon={<ShieldIcon size={16} />}>
-            <strong><Trans>Closed instance.</Trans></strong> <Trans>Set{" "}
-            <span className="font-mono">openSignup</span> to <em>true</em> in
-            admin → Auth Settings to re-open.</Trans>
-          </AuthCallout>
-          <AuthFootLink to="/sign-in" prefix={t`Have an account?`} label={t`Sign in`} />
-        </AuthCard>
-      </AuthShell>
-    );
-  }
+  const shellCopy: AuthShellCopy = {
+    headline: isFirst ? (
+      <Trans>You're the <em>first</em>. Claim this instance.</Trans>
+    ) : (
+      <Trans>Create your <em>workeros</em> account.</Trans>
+    ),
+    lede: isFirst ? (
+      <Trans>Detected an empty users table. The first account on a fresh instance is provisioned as admin automatically.</Trans>
+    ) : (
+      <Trans>Email is the only required field. Roles assigned post-signup — first user gets admin.</Trans>
+    ),
+    signInLabel: t`Sign in`,
+    signUpLabel: t`Sign up`,
+    magicLinkLabel: t`Magic link`,
+    claimInstanceLabel: t`Claim instance`,
+    toggleTheme: t`Toggle theme`,
+  };
 
-  if (stage === "verify") {
-    return (
-      <AuthShell mode="sign-up">
-        <AuthCard>
-          <AuthCardHeader
-            title={<Trans>Check your inbox</Trans>}
-            description={<Trans>We sent a verification link to {email}. Click it to finish creating your account.</Trans>}
-          />
-          <AuthCallout icon={<MailCheckIcon size={16} />}>
-            <strong><Trans>Verification required.</Trans></strong> <Trans>Until you confirm your
-            email, sign-in won't work. Didn't get it? Check spam, or wait a
-            minute and try sign-in — we'll re-send on demand.</Trans>
-          </AuthCallout>
-          <AuthFootLink to="/sign-in" prefix={t`Already verified?`} label={t`Sign in`} />
-        </AuthCard>
-      </AuthShell>
-    );
-  }
+  const copy: SignUpCopy = {
+    // Blocked state
+    blockedTitle: <Trans>Sign-up is disabled</Trans>,
+    blockedDescription: (
+      <Trans>An admin has turned off public sign-up for this instance. Ask for an invite, or sign in if you already have an account.</Trans>
+    ),
+    blockedCallout: (
+      <>
+        <strong><Trans>Closed instance.</Trans></strong>{" "}
+        <Trans>Set <span className="font-mono">openSignup</span> to <em>true</em> in admin → Auth Settings to re-open.</Trans>
+      </>
+    ),
+    blockedFootPrefix: t`Have an account?`,
+    blockedFootLabel: t`Sign in`,
+
+    // Verify state
+    verifyTitle: <Trans>Check your inbox</Trans>,
+    verifyDescription: (email: string) => (
+      <Trans>We sent a verification link to {email}. Click it to finish creating your account.</Trans>
+    ),
+    verifyCallout: (
+      <>
+        <strong><Trans>Verification required.</Trans></strong>{" "}
+        <Trans>Until you confirm your email, sign-in won't work. Didn't get it? Check spam, or wait a minute and try sign-in — we'll re-send on demand.</Trans>
+      </>
+    ),
+    verifyFootPrefix: t`Already verified?`,
+    verifyFootLabel: t`Sign in`,
+
+    // Form state
+    titleNormal: <Trans>Create an account</Trans>,
+    titleClaim: <Trans>Create your admin account</Trans>,
+    descriptionNormal: <Trans>You'll get the authenticated role by default.</Trans>,
+    descriptionClaim: <Trans>This is the first user on this instance.</Trans>,
+    firstUserCallout: (
+      <>
+        <strong><Trans>First-user policy.</Trans></strong>{" "}
+        <Trans>The first account on a fresh instance is provisioned as <span className="font-mono">admin</span> automatically. You can demote yourself later.</Trans>
+      </>
+    ),
+    orWithEmail: <Trans>or with email</Trans>,
+    displayNameLabel: (
+      <Trans>Display name <span className="text-muted-foreground font-normal">(optional)</span></Trans>
+    ),
+    displayNamePlaceholder: t`Rana`,
+    emailLabel: <Trans>Email</Trans>,
+    emailPlaceholder: t`you@example.com`,
+    passwordLabel: <Trans>Password</Trans>,
+    passwordPlaceholder: t`At least 8 characters`,
+    passwordHashNote: (
+      <Trans>Hashed with argon2id · stored in <span className="font-mono">users.password_hash</span>.</Trans>
+    ),
+    passkeyEnrol: <Trans>Enrol a passkey now</Trans>,
+    passkeyRecommended: <Trans>recommended</Trans>,
+    passkeyDescription: (
+      <Trans>Faster, phishing-resistant sign-in. Your device will prompt for biometric or PIN after the account is created. You can add or remove passkeys later in Settings.</Trans>
+    ),
+    termsAgreement: (
+      <Trans>I agree to the <span className="font-medium text-foreground">Terms</span> and <span className="font-medium text-foreground">Privacy</span>.</Trans>
+    ),
+    submitNormal: <Trans>Create account</Trans>,
+    submitClaim: <Trans>Claim this instance</Trans>,
+    submitCreatingNormal: <Trans>Creating account…</Trans>,
+    submitCreatingClaim: <Trans>Claiming…</Trans>,
+    submitEnrollingPasskey: <Trans>Setting up passkey…</Trans>,
+    footPrefix: t`Already have an account?`,
+    footLabel: t`Sign in`,
+    signUpFailed: t`Sign-up failed`,
+  };
+
+  const themeToggle = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      onClick={() => setTheme(dark ? "light" : "dark")}
+      aria-label={shellCopy.toggleTheme}
+      title={shellCopy.toggleTheme}
+      className="text-muted-foreground"
+    >
+      {dark ? <SunIcon size={14} /> : <MoonIcon size={14} />}
+    </Button>
+  );
 
   return (
-    <AuthShell mode={isFirst ? "claim" : "sign-up"}>
-      <AuthCard>
-        <AuthCardHeader
-          title={isFirst ? <Trans>Create your admin account</Trans> : <Trans>Create an account</Trans>}
-          description={
-            isFirst
-              ? <Trans>This is the first user on this instance.</Trans>
-              : <Trans>You'll get the authenticated role by default.</Trans>
-          }
-        />
-
-        {isFirst && (
-          <AuthCallout icon={<ShieldIcon size={16} />}>
-            <strong><Trans>First-user policy.</Trans></strong> <Trans>The first account on a fresh
-            instance is provisioned as{" "}
-            <span className="font-mono">admin</span> automatically. You can
-            demote yourself later.</Trans>
-          </AuthCallout>
-        )}
-
-        <SocialButtons />
-
-        {hasSocials && <AuthDivider><Trans>or with email</Trans></AuthDivider>}
-
-        <form className="space-y-4" onSubmit={submit}>
-          <div className="space-y-1.5">
-            <Label htmlFor="name" className="flex items-center gap-1">
-              <Trans>Display name{" "}
-              <span className="text-muted-foreground font-normal">(optional)</span></Trans>
-            </Label>
-            <Input
-              id="name"
-              autoComplete="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t`Rana`}
-              className="h-10"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="email"><Trans>Email</Trans></Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={t`you@example.com`}
-              className="h-10"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="password"><Trans>Password</Trans></Label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={t`At least 8 characters`}
-              className="h-10"
-            />
-            {password && (
-              <div className="mt-1 flex gap-1">
-                {[1, 2, 3, 4].map((i) => {
-                  const filled = i <= strength;
-                  const weak = strength <= 2;
-                  return (
-                    <div
-                      key={i}
-                      className={cn(
-                        "h-[3px] flex-1 rounded",
-                        !filled && "bg-muted",
-                        filled && weak && "bg-amber-500",
-                        filled && !weak && "bg-primary",
-                      )}
-                    />
-                  );
-                })}
-              </div>
-            )}
-            <p className="text-[11.5px] text-muted-foreground">
-              <Trans>Hashed with argon2id · stored in{" "}
-              <span className="font-mono">users.password_hash</span>.</Trans>
-            </p>
-          </div>
-
-          {supportsPasskey && (
-            <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-primary/30 bg-primary/8 px-3 py-2.5 text-[12.5px]">
-              <Checkbox
-                checked={enrollPasskey}
-                onCheckedChange={(v) => setEnrollPasskey(!!v)}
-                className="mt-0.5"
-              />
-              <span className="flex-1">
-                <span className="flex items-center gap-1.5 font-medium text-foreground">
-                  <KeyRoundIcon className="size-3.5 text-primary" />
-                  <Trans>Enrol a passkey now</Trans>
-                  <span className="rounded-md border border-primary/30 bg-card px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wide text-primary">
-                    <Trans>recommended</Trans>
-                  </span>
-                </span>
-                <span className="mt-0.5 block text-[11.5px] text-muted-foreground">
-                  <Trans>Faster, phishing-resistant sign-in. Your device will prompt
-                  for biometric or PIN after the account is created. You can
-                  add or remove passkeys later in Settings.</Trans>
-                </span>
-              </span>
-            </label>
-          )}
-
-          <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-muted-foreground">
-            <Checkbox
-              checked={agreed}
-              onCheckedChange={(v) => setAgreed(!!v)}
-              className="mt-0.5"
-            />
-            <span>
-              <Trans>I agree to the{" "}
-              <span className="font-medium text-foreground">Terms</span> and{" "}
-              <span className="font-medium text-foreground">Privacy</span>.</Trans>
-            </span>
-          </label>
-
-          <AuthSubmit
-            type="submit"
-            disabled={!email || !password || !agreed || busy}
-          >
-            {stage === "enrolling"
-              ? <Trans>Setting up passkey…</Trans>
-              : stage === "creating"
-                ? isFirst
-                  ? <Trans>Claiming…</Trans>
-                  : <Trans>Creating account…</Trans>
-                : isFirst
-                  ? <Trans>Claim this instance</Trans>
-                  : <Trans>Create account</Trans>}
-          </AuthSubmit>
-        </form>
-
-        <AuthFootLink
-          to="/sign-in"
-          prefix={t`Already have an account?`}
-          label={t`Sign in`}
-        />
-      </AuthCard>
-    </AuthShell>
+    <BaseSignUpPage
+      authClient={auth}
+      navigate={(to, opts) => navigate(to, opts)}
+      searchParam={(k) => params.get(k)}
+      Link={({ to, className, children }) => (
+        <Link to={to} className={className}>
+          {children}
+        </Link>
+      )}
+      notify={(msg) => notifyError(msg)}
+      copy={copy}
+      shellCopy={shellCopy}
+      branding={branding}
+      surface={surface ?? null}
+      appVersion={appVersion}
+      themeToggle={themeToggle}
+      socialButtons={<SocialButtons />}
+      hasSocials={hasSocials}
+      onInvalidateSurface={invalidateAuthSurface}
+    />
   );
 };

@@ -1,8 +1,32 @@
 {
   "name": "@workeros/ui",
-  "version": "0.0.1",
-  "private": true,
+  "version": "0.1.0",
+  "description": "workeros design system — shadcn-based React component library on Tailwind v4 (radix-luma preset, Geist, oklch palette).",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/furkankinyas/workeros.git",
+    "directory": "packages/ui"
+  },
+  "homepage": "https://github.com/furkankinyas/workeros/tree/main/packages/ui",
+  "bugs": "https://github.com/furkankinyas/workeros/issues",
+  "keywords": [
+    "workeros",
+    "shadcn",
+    "tailwind",
+    "radix",
+    "design-system",
+    "react"
+  ],
   "type": "module",
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "shadcn": "bunx --bun shadcn@latest"

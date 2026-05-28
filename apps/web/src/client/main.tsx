@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@workeros/ui/components/tooltip";
 import "@workeros/ui/globals.css";
+import "@workeros/auth-ui/auth-shell.css";
 import { App } from "./App";
 import { bootAdminLocale } from "@/admin/i18n";
 import { ThemeProvider } from "@/components/theme-provider";

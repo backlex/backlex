@@ -1,0 +1,37 @@
+---
+import type { StarlightRouteData } from "@astrojs/starlight/route-data";
+
+type SidebarEntry = StarlightRouteData["sidebar"][number];
+
+const { entry, sidebar } = Astro.locals.starlightRoute;
+const title = entry.data.title;
+const description = entry.data.description;
+
+function findActiveGroupLabel(
+  entries: SidebarEntry[],
+  parentLabel: string | undefined = undefined,
+): string | undefined {
+  for (const item of entries) {
+    if (item.type === "link") {
+      if (item.isCurrent) return parentLabel;
+    } else {
+      const found = findActiveGroupLabel(item.entries, item.label);
+      if (found !== undefined) return found;
+    }
+  }
+  return undefined;
+}
+
+const groupLabel = findActiveGroupLabel(sidebar);
+---
+
+<div class="frontmatter">
+  {groupLabel && (
+    <div class="page-eyebrow">
+      <span class="dot" aria-hidden="true"></span>
+      <span>{groupLabel}</span>
+    </div>
+  )}
+  <h1 id="_top" class="page-title">{title}</h1>
+  {description && <p class="page-description">{description}</p>}
+</div>

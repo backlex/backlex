@@ -1,0 +1,131 @@
+name: Publish worker template
+
+# Builds `apps/web` for the Cloudflare runtime and uploads the bundle as a
+# downloadable "worker template" tarball that the (private) workeros-cloud
+# provisioner consumes when spinning up a fresh customer instance — D1 +
+# R2 + Worker — without re-cloning this repo.
+#
+# Trigger:
+#   - push a tag of the form `worker-v<semver>` (e.g. `worker-v0.1.0`)
+#       → strict lint + typecheck + tests + build, then attach the
+#         tarball to a GitHub Release named after the tag.
+#   - workflow_dispatch (with optional `version` input)
+#       → same strict gates, but the tarball is uploaded as a
+#         workflow artifact (`worker-template-dryrun`) instead of a
+#         Release asset. Use this to validate that the bundle assembles
+#         cleanly before cutting an intentional `worker-v*` tag.
+#
+# Secrets: none beyond GITHUB_TOKEN (auto-injected). The workflow does
+# NOT deploy to Cloudflare — it only builds + packages + uploads.
+
+on:
+  push:
+    tags:
+      - "worker-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version for the dry-run tarball (e.g. 0.1.0-dryrun). Required on workflow_dispatch."
+        required: true
+        type: string
+        default: "0.0.0-dryrun"
+
+permissions:
+  contents: write   # needed to create / upload to a GitHub Release on tag pushes
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      # Strict release gates — mirror .github/workflows/test.yml so a
+      # tarball never ships from a tree that wouldn't pass the normal
+      # PR-time gate. (build:targets is not re-run here: the assemble
+      # step below already runs `bun run build` for the CF target.)
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Smoke tests
+        run: bun run test
+
+      # Derive the human version from either the tag (`worker-v0.1.0` →
+      # `0.1.0`) or the workflow_dispatch input. Exported as VERSION for
+      # later steps via $GITHUB_ENV.
+      - name: Resolve version
+        id: ver
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            tag="${GITHUB_REF##refs/tags/}"
+            version="${tag#worker-v}"
+          else
+            version="${{ inputs.version }}"
+          fi
+          if [[ -z "${version}" ]]; then
+            echo "::error::Could not resolve a version."
+            exit 1
+          fi
+          if ! [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Version '${version}' is not semver-ish."
+            exit 1
+          fi
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+          echo "TARBALL=workeros-app-worker-v${version}.tar.gz" >> "$GITHUB_ENV"
+          echo "Resolved version=${version}"
+
+      # Build the SPA + worker bundle, stage the worker template tree,
+      # and produce the gzipped tarball under ./dist-worker-template/.
+      - name: Assemble worker template
+        run: bun run scripts/build-worker-template.ts --version "${VERSION}"
+
+      - name: Show tarball metadata
+        run: |
+          set -euo pipefail
+          ls -la "dist-worker-template/${TARBALL}"
+          sha256sum "dist-worker-template/${TARBALL}"
+          echo "--- top-level entries ---"
+          tar -tzf "dist-worker-template/${TARBALL}" \
+            | awk -F/ '{print $1"/"$2}' | sort -u | head -20
+
+      # Tag pushes → real Release. workflow_dispatch → upload-artifact
+      # only (no Release pollution from dry runs).
+      - name: Upload to GitHub Release (tag pushes)
+        if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/worker-v') }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF##refs/tags/}"
+          # Create the release if it doesn't exist yet, then attach the
+          # tarball. `--clobber` lets us re-run after a transient failure
+          # without manually deleting prior assets.
+          if ! gh release view "${tag}" >/dev/null 2>&1; then
+            gh release create "${tag}" \
+              --title "Worker template ${tag}" \
+              --notes "Pre-built apps/web Cloudflare Worker bundle (v${VERSION}). See \`docs/deployment.md#worker-template-artifact\` for what's inside and how downstream consumers (workeros-cloud) use it."
+          fi
+          gh release upload "${tag}" "dist-worker-template/${TARBALL}" --clobber
+
+      - name: Upload dry-run artifact (workflow_dispatch only)
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: worker-template-dryrun
+          path: dist-worker-template/workeros-app-worker-v*.tar.gz
+          if-no-files-found: error
+          retention-days: 14

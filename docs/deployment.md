@@ -106,6 +106,67 @@ wrangler deploy
 The selector falls back to QuickJS when `FUNCTIONS_EXEC_URL` is unset, so
 Workers users still get a sandbox — sync only.
 
+### Worker template artifact
+
+`.github/workflows/publish-worker-template.yml` packages the same
+`apps/web` CF build that ships to `workeros-api.kinyasfurkan.workers.dev`
+into a downloadable tarball, so a downstream provisioner (the private
+`workeros-cloud` repo) can fetch a pre-built bundle and `wrangler deploy`
+it into a fresh customer account — D1 + R2 + Worker in one shot — without
+re-cloning + re-building this repo.
+
+**Triggers**
+
+- Push a tag of the form `worker-v<semver>` (e.g. `worker-v0.1.0`) →
+  strict lint + typecheck + `bun test` + build, then the tarball is
+  attached to a GitHub Release named after the tag. Downstream consumers
+  pin to a specific tag.
+- `workflow_dispatch` (with required `version` input) → same gates, but
+  the tarball is uploaded as a workflow artifact
+  (`worker-template-dryrun`, 14-day retention) instead of a Release
+  asset. Use this to confirm the bundle assembles before cutting an
+  intentional `worker-v*` tag.
+
+**Tarball contents** (`workeros-app-worker-v<X.Y.Z>.tar.gz`):
+
+```
+workeros-app-worker-v<X.Y.Z>/
+├── worker/
+│   ├── index.js                       # bundled Hono worker entry (ES module)
+│   └── assets/**                      # vendor chunks + per-migration SQL chunks
+├── client/                            # SPA static assets (apps/web/dist/client/**)
+├── migrations/
+│   ├── sqlite/*.sql                   # one file per packages/db/drizzle/sqlite/* migration
+│   └── manifest.json                  # ordered list + sha256 + bytes per migration
+├── wrangler.template.toml             # bindings declaration with placeholders
+└── meta.json                          # version, gitSha, builtAt, bun/node versions
+```
+
+`wrangler.template.toml` carries four placeholders the provisioner
+substitutes per customer before `wrangler deploy`:
+
+- `__D1_DATABASE_ID__` — `id` of the newly-created D1 database.
+- `__R2_BUCKET_NAME__` — name of the newly-created R2 bucket.
+- `__APP_URL__` — customer-facing Worker URL.
+- `__R2_PUBLIC_BASE__` — `pub-*.r2.dev` origin (or custom domain).
+
+`AUTH_SECRET`, `OPENAI_API_KEY`, `RESEND_API_KEY`, etc. stay as Worker
+secrets (`wrangler secret put …`) — they are never inlined in the
+template. The `.dev.vars*` files and any maintainer-account IDs from
+`apps/web/wrangler.toml` are stripped during assembly; the workflow
+also never reads any GitHub secret beyond the auto-injected
+`GITHUB_TOKEN` (so a fork can run it safely).
+
+**Local dry-run**
+
+```bash
+bun run scripts/build-worker-template.ts --version 0.1.0
+# → ./dist-worker-template/workeros-app-worker-v0.1.0.tar.gz
+
+# Skip the SPA build if you've just run `bun run build` yourself:
+bun run scripts/build-worker-template.ts --version 0.1.0 --no-build
+```
+
 ## Vercel
 
 `vercel.ts` at the repo root configures the install/build commands;

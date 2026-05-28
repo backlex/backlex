@@ -1,0 +1,64 @@
+name: Publish @workeros/auth-ui
+
+# Manual workflow to publish packages/auth-ui to npm.
+# Trigger:
+#   - push a tag of the form `auth-ui-v<semver>` (e.g. `auth-ui-v0.1.0`)
+#   - or run manually from the Actions tab with a version override
+#
+# Required repo secret:
+#   - NPM_TOKEN   (npm automation token with publish access for @workeros)
+#
+# This workflow runs typecheck + a dry-run pack, then `npm publish` with
+# provenance. The package is source-consumed (no build step) so the
+# tarball ships `src/` directly.
+
+on:
+  push:
+    tags:
+      - "auth-ui-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Optional version override (e.g. 0.1.1). Leave blank to publish the version in packages/auth-ui/package.json."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write   # required for npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Typecheck @workeros/auth-ui
+        run: bun run --cwd packages/auth-ui typecheck
+
+      - name: Apply manual version override
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.version != '' }}
+        working-directory: packages/auth-ui
+        run: npm version --no-git-tag-version "${{ inputs.version }}"
+
+      - name: Dry-run pack (logs tarball contents)
+        working-directory: packages/auth-ui
+        run: npm pack --dry-run
+
+      - name: Publish to npm
+        working-directory: packages/auth-ui
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance

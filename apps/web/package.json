@@ -31,6 +31,7 @@
     "@tanstack/react-query": "5.100.11",
     "@uiw/react-codemirror": "^4.25.9",
     "@workeros/auth": "workspace:*",
+    "@workeros/auth-ui": "workspace:*",
     "@workeros/core": "workspace:*",
     "@workeros/db": "workspace:*",
     "@workeros/ui": "workspace:*",

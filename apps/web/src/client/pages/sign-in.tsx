@@ -1,204 +1,111 @@
-import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import {
-  EyeIcon,
-  EyeOffIcon,
-  InfoIcon,
-  KeyRoundIcon,
-  MailIcon,
-} from "lucide-react";
+import { MoonIcon, SunIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@workeros/ui/components/button";
-import { Input } from "@workeros/ui/components/input";
-import { Label } from "@workeros/ui/components/label";
 import {
-  AuthCard,
-  AuthCardHeader,
-  AuthDivider,
-  AuthError,
-  AuthFootLink,
-  AuthOutline,
-  AuthShell,
-  AuthSubmit,
-} from "@/components/auth-shell";
+  SignInPage as BaseSignInPage,
+  type AuthBranding,
+  type AuthShellCopy,
+  type SignInCopy,
+} from "@workeros/auth-ui";
 import { SocialButtons } from "@/components/social-buttons";
+import { useTheme } from "@/components/theme-provider";
 import { notifyError } from "@/lib/error";
-import { auth } from "@/lib/auth";
+import { auth, useAuthSurface } from "@/lib/auth";
+import { useWorkspaceBranding } from "@/lib/branding";
+import { version as appVersion } from "../../../package.json";
 
-const passkeysSupported = (): boolean =>
-  typeof window !== "undefined" &&
-  typeof window.PublicKeyCredential !== "undefined";
-
+/**
+ * Thin wrapper that wires the OSS admin's Lingui copy, React Router, the
+ * workspace branding/surface stores, and the social-button slot into the
+ * generic `<SignInPage>` from `@workeros/auth-ui`.
+ */
 export const SignIn = () => {
   const { t } = useLingui();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [show, setShow] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"email" | "passkey" | null>(null);
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const next = params.get("next") || "/";
+  const { surface } = useAuthSurface();
+  const wsBranding = useWorkspaceBranding();
+  const { theme, setTheme } = useTheme();
+  const dark = theme === "dark";
 
-  // Already signed in? Skip the form entirely.
-  useEffect(() => {
-    let cancelled = false;
-    auth
-      .getSession()
-      .then((res) => {
-        if (cancelled) return;
-        const session = (res as { data?: { session?: unknown } })?.data?.session;
-        if (session) navigate(next, { replace: true });
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [navigate, next]);
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) {
-      setError(t`Enter your email and password.`);
-      return;
-    }
-    setError(null);
-    setBusy("email");
-    const res = await auth.signIn.email({ email, password });
-    if (res.error) {
-      setError(res.error.message ?? t`Sign-in failed`);
-      setBusy(null);
-      return;
-    }
-    window.location.href = next;
+  const branding: AuthBranding = {
+    name: wsBranding?.workspaceName?.trim() || "workeros",
+    logoUrl: wsBranding?.logoUrl ?? null,
+    signInHeadline: surface?.branding?.signInHeadline ?? null,
+    signInTagline: surface?.branding?.signInTagline ?? null,
   };
 
-  const passkey = async () => {
-    setError(null);
-    setBusy("passkey");
-    try {
-      const c = auth as unknown as {
-        signIn: {
-          passkey?: (opts?: { autoFill?: boolean }) => Promise<{
-            error?: { message?: string };
-          }>;
-        };
-      };
-      if (!c.signIn.passkey) {
-        setError(t`Passkey plugin not enabled`);
-        setBusy(null);
-        return;
-      }
-      const res = await c.signIn.passkey({ autoFill: false });
-      if (res?.error) {
-        setError(res.error.message ?? t`Passkey sign-in failed`);
-        setBusy(null);
-        return;
-      }
-      window.location.href = next;
-    } catch (e) {
-      notifyError(e);
-      setBusy(null);
-    }
+  const shellCopy: AuthShellCopy = {
+    headline: <Trans>Sign in to <em>workeros</em>.</Trans>,
+    lede: (
+      <Trans>Welcome back. Pick up where you left off — content, data, and APIs all in one place.</Trans>
+    ),
+    signInLabel: t`Sign in`,
+    signUpLabel: t`Sign up`,
+    magicLinkLabel: t`Magic link`,
+    claimInstanceLabel: t`Claim instance`,
+    toggleTheme: t`Toggle theme`,
   };
+
+  const copy: SignInCopy = {
+    title: <Trans>Welcome back</Trans>,
+    description: (
+      <Trans>Sign in with your email and password, or use a provider.</Trans>
+    ),
+    orWithEmail: <Trans>or with email</Trans>,
+    missingFields: t`Enter your email and password.`,
+    signInFailed: t`Sign-in failed`,
+    emailLabel: <Trans>Email</Trans>,
+    emailPlaceholder: t`you@example.com`,
+    passwordLabel: <Trans>Password</Trans>,
+    showPassword: t`Show password`,
+    hidePassword: t`Hide password`,
+    forgot: <Trans>Forgot?</Trans>,
+    submit: <Trans>Sign in</Trans>,
+    submitBusy: <Trans>Signing in…</Trans>,
+    magicLinkCta: <Trans>Send a magic link instead</Trans>,
+    passkeyCta: <Trans>Sign in with passkey</Trans>,
+    passkeyBusy: <Trans>Signing in…</Trans>,
+    passkeyNotEnabled: t`Passkey plugin not enabled`,
+    passkeyFailed: t`Passkey sign-in failed`,
+    footPrefix: t`Don't have an account?`,
+    footLabel: t`Sign up`,
+  };
+
+  const themeToggle = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      onClick={() => setTheme(dark ? "light" : "dark")}
+      aria-label={shellCopy.toggleTheme}
+      title={shellCopy.toggleTheme}
+      className="text-muted-foreground"
+    >
+      {dark ? <SunIcon size={14} /> : <MoonIcon size={14} />}
+    </Button>
+  );
 
   return (
-    <AuthShell mode="sign-in">
-      <AuthCard>
-        <AuthCardHeader
-          title={<Trans>Welcome back</Trans>}
-          description={<Trans>Sign in with your email and password, or use a provider.</Trans>}
-        />
-
-        <SocialButtons callbackURL={next} />
-
-        <AuthDivider><Trans>or with email</Trans></AuthDivider>
-
-        {error && (
-          <AuthError>
-            <InfoIcon size={14} className="shrink-0" />
-            <span>{error}</span>
-          </AuthError>
-        )}
-
-        <form className="space-y-4" onSubmit={submit}>
-          <div className="space-y-1.5">
-            <Label htmlFor="email"><Trans>Email</Trans></Label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              autoFocus
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={t`you@example.com`}
-              className="h-10"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-baseline justify-between">
-              <Label htmlFor="password"><Trans>Password</Trans></Label>
-              <Link
-                to="/forgot"
-                className="text-[11.5px] text-muted-foreground hover:text-foreground hover:underline"
-              >
-                <Trans>Forgot?</Trans>
-              </Link>
-            </div>
-            <div className="relative">
-              <Input
-                id="password"
-                type={show ? "text" : "password"}
-                autoComplete="current-password webauthn"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="h-10 pr-10"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setShow((s) => !s)}
-                aria-label={show ? t`Hide password` : t`Show password`}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-              >
-                {show ? <EyeOffIcon size={14} /> : <EyeIcon size={14} />}
-              </Button>
-            </div>
-          </div>
-
-          <AuthSubmit type="submit" disabled={busy !== null}>
-            {busy === "email" ? <Trans>Signing in…</Trans> : <Trans>Sign in</Trans>}
-          </AuthSubmit>
-
-          <AuthOutline asChild>
-            <Link to="/magic-link">
-              <MailIcon /> <Trans>Send a magic link instead</Trans>
-            </Link>
-          </AuthOutline>
-
-          {passkeysSupported() && (
-            <AuthOutline
-              type="button"
-              onClick={passkey}
-              disabled={busy !== null}
-            >
-              <KeyRoundIcon />
-              {busy === "passkey" ? <Trans>Signing in…</Trans> : <Trans>Sign in with passkey</Trans>}
-            </AuthOutline>
-          )}
-        </form>
-
-        <AuthFootLink
-          to="/sign-up"
-          prefix={t`Don't have an account?`}
-          label={t`Sign up`}
-        />
-      </AuthCard>
-    </AuthShell>
+    <BaseSignInPage
+      authClient={auth}
+      navigate={(to, opts) => navigate(to, opts)}
+      searchParam={(k) => params.get(k)}
+      Link={({ to, className, children }) => (
+        <Link to={to} className={className}>
+          {children}
+        </Link>
+      )}
+      notify={(msg) => notifyError(msg)}
+      copy={copy}
+      shellCopy={shellCopy}
+      branding={branding}
+      surface={surface ?? null}
+      appVersion={appVersion}
+      themeToggle={themeToggle}
+      socialButtons={<SocialButtons callbackURL={next} />}
+    />
   );
 };

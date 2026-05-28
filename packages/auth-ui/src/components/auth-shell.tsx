@@ -1,123 +1,78 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
-import { MoonIcon, SunIcon } from "lucide-react";
-import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@workeros/ui/components/button";
-import { version as appVersion } from "../../../package.json";
-import { useTheme } from "@/components/theme-provider";
-import { useAuthSurface } from "@/lib/auth";
-import "./auth-shell.css";
-import { useWorkspaceBranding } from "@/lib/branding";
+import type {
+  AuthBranding,
+  AuthMode,
+  AuthShellCopy,
+  AuthSurfaceFlags,
+  LinkComponent,
+} from "../types";
 
-export type AuthMode = "sign-in" | "sign-up" | "magic" | "forgot" | "claim";
-
-interface AuthShellProps {
+/**
+ * Two-column auth shell: brand panel on the left (gradient + animated beams,
+ * brand lockup, headline + lede), form column on the right (theme toggle +
+ * children + footer links).
+ *
+ * Lingui- and router-free: the consumer passes a `Link` component and a
+ * `copy` object with the per-mode headline + lede already resolved.
+ *
+ * The CSS for the animated beams lives in `@workeros/auth-ui/auth-shell.css`;
+ * make sure to import it once at app bootstrap.
+ */
+export interface AuthShellProps {
   mode: AuthMode;
+  branding: AuthBranding;
+  copy: AuthShellCopy;
+  /** Surface flags from `/api/auth/providers` — drives "claim instance" link. */
+  surface?: AuthSurfaceFlags | null;
+  /** App version printed in the bottom-left of the brand panel. Optional. */
+  appVersion?: string;
+  /** Router-agnostic Link component (e.g. React Router's `<Link to=…>`). */
+  Link: LinkComponent;
+  /** Optional theme toggle slot (icon button). When omitted, no toggle renders. */
+  themeToggle?: ReactNode;
   children: ReactNode;
 }
 
-interface ModeCopy {
-  headline: ReactNode;
-  lede: ReactNode;
+interface FooterLink {
+  mode: AuthMode;
+  to: string;
+  label: string;
 }
 
-const MODE_LINKS: Array<{ mode: AuthMode; to: string; labelKey: string }> = [
-  { mode: "sign-in", to: "/sign-in", labelKey: "Sign in" },
-  { mode: "sign-up", to: "/sign-up", labelKey: "Sign up" },
-  { mode: "magic", to: "/magic-link", labelKey: "Magic link" },
-  { mode: "claim", to: "/sign-up?claim=1", labelKey: "Claim instance" },
-];
+export const AuthShell = ({
+  mode,
+  branding,
+  copy,
+  surface,
+  appVersion,
+  Link,
+  themeToggle,
+  children,
+}: AuthShellProps) => {
+  const brandName = branding.name?.trim() || "workeros";
+  const brandLogo = branding.logoUrl ?? null;
 
-export const AuthShell = ({ mode, children }: AuthShellProps) => {
-  const { t } = useLingui();
-  const { theme, setTheme } = useTheme();
-  const dark = theme === "dark";
-  const { surface } = useAuthSurface();
-  const wsBranding = useWorkspaceBranding();
-  // Brand lockup: uploaded logo + admin-set workspace name when configured,
-  // else the bundled "w" mark and "workeros" wordmark.
-  const brandName = wsBranding?.workspaceName?.trim() || "workeros";
-  const brandLogo = wsBranding?.logoUrl ?? null;
-
-  const COPY: Record<AuthMode, ModeCopy> = {
-    "sign-in": {
-      headline: (
-        <>
-          <Trans>Sign in to <em>workeros</em>.</Trans>
-        </>
-      ),
-      lede: (
-        <Trans>Welcome back. Pick up where you left off — content, data, and APIs all in one place.</Trans>
-      ),
-    },
-    "sign-up": {
-      headline: (
-        <>
-          <Trans>Create your <em>workeros</em> account.</Trans>
-        </>
-      ),
-      lede: (
-        <Trans>Email is the only required field. Roles assigned post-signup — first user gets admin.</Trans>
-      ),
-    },
-    magic: {
-      headline: (
-        <>
-          <Trans>One-time link, no <em>password</em>.</Trans>
-        </>
-      ),
-      lede: (
-        <Trans>A signed link will arrive in your inbox. Single-use, expires in 15 minutes.</Trans>
-      ),
-    },
-    forgot: {
-      headline: (
-        <>
-          <Trans>Reset your <em>password</em>.</Trans>
-        </>
-      ),
-      lede: (
-        <Trans>We'll email a reset link. Until you click it, your existing password still works.</Trans>
-      ),
-    },
-    claim: {
-      headline: (
-        <>
-          <Trans>You're the <em>first</em>. Claim this instance.</Trans>
-        </>
-      ),
-      lede: (
-        <Trans>Detected an empty users table. The first account on a fresh instance is provisioned as admin automatically.</Trans>
-      ),
-    },
-  };
-
-  const copy = COPY[mode];
-  // Admins can override the sign-in screen's headline/tagline from
-  // Settings → Appearance; a blank value falls back to the default copy.
-  const branding = surface?.branding;
+  // Sign-in screen can have its headline/tagline overridden by admin branding.
   const headline: ReactNode =
-    mode === "sign-in" && branding?.signInHeadline?.trim()
+    mode === "sign-in" && branding.signInHeadline?.trim()
       ? branding.signInHeadline
       : copy.headline;
   const lede: ReactNode =
-    mode === "sign-in" && branding?.signInTagline?.trim()
+    mode === "sign-in" && branding.signInTagline?.trim()
       ? branding.signInTagline
       : copy.lede;
 
-  // The "Claim instance" link only exists when the server confirms the
-  // instance has zero users. Once an admin exists it disappears everywhere
-  // — the sign-up page itself also stops honouring `?claim=1`.
-  const visibleLinks = MODE_LINKS.filter(
+  // The "Claim instance" link only exists when the server confirms zero users.
+  const allLinks: FooterLink[] = [
+    { mode: "sign-in", to: "/sign-in", label: copy.signInLabel },
+    { mode: "sign-up", to: "/sign-up", label: copy.signUpLabel },
+    { mode: "magic", to: "/magic-link", label: copy.magicLinkLabel },
+    { mode: "claim", to: "/sign-up?claim=1", label: copy.claimInstanceLabel },
+  ];
+  const visibleLinks = allLinks.filter(
     (l) => l.mode !== "claim" || surface?.firstUserMode === true,
   );
-
-  const linkLabels: Record<string, string> = {
-    "Sign in": t`Sign in`,
-    "Sign up": t`Sign up`,
-    "Magic link": t`Magic link`,
-    "Claim instance": t`Claim instance`,
-  };
 
   return (
     <div className="grid min-h-svh w-full grid-cols-1 bg-background text-foreground md:grid-cols-2">
@@ -145,25 +100,19 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
           {lede}
         </p>
 
-        <div className="mt-auto flex gap-4 pt-6 font-mono text-xs text-muted-foreground">
-          <span>v{appVersion}</span>
-        </div>
+        {appVersion && (
+          <div className="mt-auto flex gap-4 pt-6 font-mono text-xs text-muted-foreground">
+            <span>v{appVersion}</span>
+          </div>
+        )}
       </div>
 
       {/* Right: form panel */}
       <div className="relative flex items-center justify-center p-6 md:p-10">
         <div className="relative w-full max-w-[380px]">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setTheme(dark ? "light" : "dark")}
-            aria-label={t`Toggle theme`}
-            title={t`Toggle theme`}
-            className="absolute -top-7 right-0 text-muted-foreground"
-          >
-            {dark ? <SunIcon size={14} /> : <MoonIcon size={14} />}
-          </Button>
+          {themeToggle && (
+            <div className="absolute -top-7 right-0">{themeToggle}</div>
+          )}
           <div className="mb-8 md:hidden">
             <BrandLockup brandLogo={brandLogo} brandName={brandName} />
           </div>
@@ -179,7 +128,7 @@ export const AuthShell = ({ mode, children }: AuthShellProps) => {
                     : "hover:text-foreground"
                 }
               >
-                {linkLabels[link.labelKey] ?? link.labelKey}
+                {link.label}
               </Link>
             ))}
           </div>
@@ -272,11 +221,7 @@ export const AuthCallout = ({
   </div>
 );
 
-interface AuthErrorProps {
-  children: ReactNode;
-}
-
-export const AuthError = ({ children }: AuthErrorProps) => (
+export const AuthError = ({ children }: { children: ReactNode }) => (
   <div className="flex items-center gap-2 rounded-2xl border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-xs text-destructive">
     {children}
   </div>
@@ -287,10 +232,12 @@ export const AuthFootLink = ({
   to,
   prefix,
   label,
+  Link,
 }: {
   to: string;
   prefix: string;
   label: string;
+  Link: LinkComponent;
 }) => (
   <p className="text-center text-[12.5px] text-muted-foreground">
     {prefix}{" "}
@@ -308,11 +255,7 @@ export const AuthSubmit = ({
   children,
   ...rest
 }: React.ComponentProps<typeof Button>) => (
-  <Button
-    {...rest}
-    className="h-10 w-full justify-center"
-    size="lg"
-  >
+  <Button {...rest} className="h-10 w-full justify-center" size="lg">
     {children}
   </Button>
 );

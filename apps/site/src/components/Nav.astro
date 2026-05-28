@@ -1,0 +1,29 @@
+---
+import ThemeToggle from "./ThemeToggle.astro";
+---
+<nav class="sticky top-0 z-50 backdrop-blur-md bg-background/85 border-b border-border">
+  <div class="max-w-[1240px] mx-auto px-8 max-md:px-5 h-[60px] flex items-center gap-7">
+    <a href="/" class="inline-flex items-center gap-2.5 font-semibold text-[15px] -tracking-[0.01em] text-foreground no-underline">
+      <span class="w-7 h-7 bg-primary text-primary-foreground rounded-md grid place-items-center font-bold text-base leading-none">w</span>
+      <span>workeros</span>
+    </a>
+    <div class="flex gap-1 flex-1 ml-3 max-md:hidden">
+      <a href="/#features" class="text-muted-foreground hover:text-foreground hover:bg-muted text-[13.5px] px-3 py-1.5 rounded-3xl no-underline transition-colors whitespace-nowrap">Features</a>
+      <a href="/#deploy" class="text-muted-foreground hover:text-foreground hover:bg-muted text-[13.5px] px-3 py-1.5 rounded-3xl no-underline transition-colors whitespace-nowrap">Deploy</a>
+      <a href="/#cloud" class="text-muted-foreground hover:text-foreground hover:bg-muted text-[13.5px] px-3 py-1.5 rounded-3xl no-underline transition-colors whitespace-nowrap">Cloud</a>
+      <a href="/#ai" class="text-muted-foreground hover:text-foreground hover:bg-muted text-[13.5px] px-3 py-1.5 rounded-3xl no-underline transition-colors whitespace-nowrap">AI · MCP</a>
+      <a href="/#stack" class="text-muted-foreground hover:text-foreground hover:bg-muted text-[13.5px] px-3 py-1.5 rounded-3xl no-underline transition-colors whitespace-nowrap">Stack</a>
+      <a href="/#compare" class="text-muted-foreground hover:text-foreground hover:bg-muted text-[13.5px] px-3 py-1.5 rounded-3xl no-underline transition-colors whitespace-nowrap">Why workeros</a>
+      <a href="/pricing" class="text-muted-foreground hover:text-foreground hover:bg-muted text-[13.5px] px-3 py-1.5 rounded-3xl no-underline transition-colors whitespace-nowrap">Pricing</a>
+      <a href="/docs" class="text-muted-foreground hover:text-foreground hover:bg-muted text-[13.5px] px-3 py-1.5 rounded-3xl no-underline transition-colors whitespace-nowrap">Docs</a>
+    </div>
+    <div class="flex items-center gap-2">
+      <a class="hidden sm:inline-flex items-center text-[13px] text-foreground hover:bg-muted px-4 h-9 rounded-3xl no-underline transition-colors whitespace-nowrap" href="/cloud-admin">Open Cloud →</a>
+      <ThemeToggle />
+      <a class="inline-flex items-center gap-2 px-3.5 h-9 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13px] font-medium no-underline transition-colors" href="https://github.com" target="_blank" rel="noopener">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8.1 3.2.8.8 1.3 1.9 1.3 3.1 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg>
+        GitHub
+      </a>
+    </div>
+  </div>
+</nav>

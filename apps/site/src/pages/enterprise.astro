@@ -10,18 +10,18 @@ import Base from "../layouts/Base.astro";
     <div>
       <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap border border-border rounded-full px-3 py-1.5 bg-muted">
         <span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
-        <span data-tr="enterprise · single-tenant" data-en="enterprise · single-tenant">enterprise · single-tenant</span>
+        <span>enterprise · single-tenant</span>
       </span>
-      <h1 class="font-semibold -tracking-[0.038em] leading-[1.05] text-[clamp(36px,5vw,58px)] mt-5" data-tr="Vendor review'ı geçecek <span class='text-primary dark:text-[oklch(0.82_0.22_131)]'>bir backend</span>." data-en="A <span class='text-primary dark:text-[oklch(0.82_0.22_131)]'>backend</span> that passes vendor review.">Vendor review'ı geçecek <span class="text-primary dark:text-[oklch(0.82_0.22_131)]">bir backend</span>.</h1>
-      <p class="text-[17px] text-muted-foreground mt-5 leading-snug max-w-[52ch]" data-tr="SAML SSO, SCIM, SOC 2, dedicated cluster, KVKK için TR-pin. Mühendislik ekibin için workeros'un esnekliği, hukuk ve güvenlik için kurumsal sözleşme zırhı." data-en="SAML SSO, SCIM, SOC 2, dedicated cluster, TR-pin for KVKK. workeros's flexibility for engineering, contractual armor for legal and security.">SAML SSO, SCIM, SOC 2, dedicated cluster, KVKK için TR-pin. Mühendislik ekibin için workeros'un esnekliği, hukuk ve güvenlik için kurumsal sözleşme zırhı.</p>
+      <h1 class="font-semibold -tracking-[0.038em] leading-[1.05] text-[clamp(36px,5vw,58px)] mt-5">A <span class='text-primary dark:text-[oklch(0.82_0.22_131)]'>backend</span> that passes vendor review.</h1>
+      <p class="text-[17px] text-muted-foreground mt-5 leading-snug max-w-[52ch]">SAML SSO, SCIM, SOC 2, dedicated cluster, TR-pin for KVKK. workeros's flexibility for engineering, contractual armor for legal and security.</p>
       <div class="flex gap-2.5 mt-6 flex-wrap">
-        <a href="#contact" class="inline-flex items-center gap-2 h-11 px-5 rounded-4xl bg-primary text-primary-foreground text-[14.5px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap" data-tr="Görüşme planla →" data-en="Book a call →">Görüşme planla →</a>
-        <a href="#trust" class="inline-flex items-center gap-2 h-11 px-5 rounded-4xl border border-border bg-background hover:bg-muted text-foreground text-[14.5px] font-medium no-underline transition-colors whitespace-nowrap" data-tr="Güvenlik & uyum" data-en="Security & compliance">Güvenlik & uyum</a>
+        <a href="#contact" class="inline-flex items-center gap-2 h-11 px-5 rounded-4xl bg-primary text-primary-foreground text-[14.5px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap">Book a call →</a>
+        <a href="#trust" class="inline-flex items-center gap-2 h-11 px-5 rounded-4xl border border-border bg-background hover:bg-muted text-foreground text-[14.5px] font-medium no-underline transition-colors whitespace-nowrap">Security & compliance</a>
       </div>
       <div class="mt-7 flex items-center gap-5 flex-wrap text-[11.5px] text-muted-foreground">
         <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>SAML 2.0</span>
         <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>SCIM 2.0</span>
-        <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>SOC 2 <span class="text-muted-foreground/70">(<span data-tr="sürmekte" data-en="in progress">sürmekte</span>)</span></span>
+        <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>SOC 2 <span class="text-muted-foreground/70">(<span>in progress</span>)</span></span>
         <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>GDPR · KVKK</span>
         <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>99.99% SLA</span>
       </div>
@@ -30,26 +30,26 @@ import Base from "../layouts/Base.astro";
     <!-- Vendor checklist preview -->
     <div class="relative border border-border rounded-3xl bg-card overflow-hidden shadow-[0_24px_48px_-16px_oklch(0_0_0/0.1)]">
       <div class="px-5 py-3 border-b border-border bg-muted flex items-center gap-2">
-        <span class="font-mono text-[11px] text-muted-foreground uppercase tracking-wider" data-tr="satıcı değerlendirme — workeros" data-en="vendor review — workeros">satıcı değerlendirme — workeros</span>
+        <span class="font-mono text-[11px] text-muted-foreground uppercase tracking-wider">vendor review — workeros</span>
         <span class="ml-auto cf-pill"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>12 / 12</span>
       </div>
       <div class="divide-y divide-border text-[13px]">
-        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1" data-tr="SSO (SAML 2.0) — Okta, AAD, Google" data-en="SSO (SAML 2.0) — Okta, AAD, Google">SSO (SAML 2.0) — Okta, AAD, Google</span><span class="font-mono text-[11px] text-muted-foreground">P0</span></div>
-        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1" data-tr="SCIM provisioning ve deprovisioning" data-en="SCIM provisioning and deprovisioning">SCIM provisioning ve deprovisioning</span><span class="font-mono text-[11px] text-muted-foreground">P0</span></div>
-        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1" data-tr="Şifrelenmiş veri (transit + rest)" data-en="Encryption (in-transit + at-rest)">Şifrelenmiş veri (transit + rest)</span><span class="font-mono text-[11px] text-muted-foreground">P0</span></div>
-        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1" data-tr="Audit log + IP allowlist" data-en="Audit log + IP allowlist">Audit log + IP allowlist</span><span class="font-mono text-[11px] text-muted-foreground">P0</span></div>
-        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1" data-tr="DPA (KVKK / GDPR uyumlu)" data-en="DPA (KVKK / GDPR compliant)">DPA (KVKK / GDPR uyumlu)</span><span class="font-mono text-[11px] text-muted-foreground">P0</span></div>
-        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1" data-tr="MSA — redline destekli" data-en="MSA — supports redlines">MSA — redline destekli</span><span class="font-mono text-[11px] text-muted-foreground">P1</span></div>
-        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1" data-tr="Veri yerelliği — TR region pin" data-en="Data residency — TR region pin">Veri yerelliği — TR region pin</span><span class="font-mono text-[11px] text-muted-foreground">P1</span></div>
-        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1" data-tr="Pen-test raporu (yıllık)" data-en="Pen-test report (annual)">Pen-test raporu (yıllık)</span><span class="font-mono text-[11px] text-muted-foreground">P1</span></div>
-        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1" data-tr="Backup + DR plan" data-en="Backup + DR plan">Backup + DR plan</span><span class="font-mono text-[11px] text-muted-foreground">P1</span></div>
-        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1" data-tr="Vendor security questionnaire (CAIQ)" data-en="Vendor security questionnaire (CAIQ)">Vendor security questionnaire (CAIQ)</span><span class="font-mono text-[11px] text-muted-foreground">P2</span></div>
-        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1" data-tr="Cyber insurance kapsamı" data-en="Cyber insurance coverage">Cyber insurance kapsamı</span><span class="font-mono text-[11px] text-muted-foreground">P2</span></div>
-        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1" data-tr="Vendor risk profili (low)" data-en="Vendor risk profile (low)">Vendor risk profili (low)</span><span class="font-mono text-[11px] text-muted-foreground">P2</span></div>
+        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1">SSO (SAML 2.0) — Okta, AAD, Google</span><span class="font-mono text-[11px] text-muted-foreground">P0</span></div>
+        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1">SCIM provisioning and deprovisioning</span><span class="font-mono text-[11px] text-muted-foreground">P0</span></div>
+        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1">Encryption (in-transit + at-rest)</span><span class="font-mono text-[11px] text-muted-foreground">P0</span></div>
+        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1">Audit log + IP allowlist</span><span class="font-mono text-[11px] text-muted-foreground">P0</span></div>
+        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1">DPA (KVKK / GDPR compliant)</span><span class="font-mono text-[11px] text-muted-foreground">P0</span></div>
+        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1">MSA — supports redlines</span><span class="font-mono text-[11px] text-muted-foreground">P1</span></div>
+        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1">Data residency — TR region pin</span><span class="font-mono text-[11px] text-muted-foreground">P1</span></div>
+        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1">Pen-test report (annual)</span><span class="font-mono text-[11px] text-muted-foreground">P1</span></div>
+        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1">Backup + DR plan</span><span class="font-mono text-[11px] text-muted-foreground">P1</span></div>
+        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1">Vendor security questionnaire (CAIQ)</span><span class="font-mono text-[11px] text-muted-foreground">P2</span></div>
+        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1">Cyber insurance coverage</span><span class="font-mono text-[11px] text-muted-foreground">P2</span></div>
+        <div class="px-5 py-2.5 flex items-center gap-3"><span class="text-primary">✓</span><span class="flex-1">Vendor risk profile (low)</span><span class="font-mono text-[11px] text-muted-foreground">P2</span></div>
       </div>
       <div class="px-5 py-3 border-t border-border bg-muted/60 flex items-center gap-2 text-[11.5px] text-muted-foreground">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        <span data-tr="ortalama vendor review süresi — 11 iş günü" data-en="average vendor review — 11 business days">ortalama vendor review süresi — 11 iş günü</span>
+        <span>average vendor review — 11 business days</span>
         <span class="ml-auto font-mono">2026 Q1</span>
       </div>
     </div>
@@ -60,8 +60,8 @@ import Base from "../layouts/Base.astro";
 <section id="trust" class="py-20 border-b border-border">
   <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
     <div class="flex flex-col gap-4 max-w-[720px] mb-12">
-      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span><span data-tr="kurumsal sütunlar" data-en="enterprise pillars">kurumsal sütunlar</span></span>
-      <h2 class="text-[clamp(28px,3.4vw,38px)] font-semibold -tracking-[0.026em] leading-[1.12]" data-tr="Kimlik, uyumluluk, izolasyon. Her birine ayrı bir cevap." data-en="Identity, compliance, isolation. A clear answer for each.">Kimlik, uyumluluk, izolasyon. Her birine ayrı bir cevap.</h2>
+      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span><span>enterprise pillars</span></span>
+      <h2 class="text-[clamp(28px,3.4vw,38px)] font-semibold -tracking-[0.026em] leading-[1.12]">Identity, compliance, isolation. A clear answer for each.</h2>
     </div>
 
     <div class="grid grid-cols-3 max-[920px]:grid-cols-1 gap-3.5">
@@ -70,15 +70,15 @@ import Base from "../layouts/Base.astro";
       <div class="border border-border rounded-3xl bg-card p-7 flex flex-col gap-4">
         <div class="flex items-center gap-3">
           <span class="w-10 h-10 rounded-2xl bg-muted grid place-items-center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
-          <h3 class="text-[19px] font-semibold -tracking-[0.018em]" data-tr="Kimlik" data-en="Identity">Kimlik</h3>
+          <h3 class="text-[19px] font-semibold -tracking-[0.018em]">Identity</h3>
         </div>
-        <p class="text-[13.5px] text-muted-foreground leading-snug" data-tr="Tek bir SSO sağlayıcısına bağlanır, takım üyeleri buradan gelir, gitmez. SCIM ile IDP'den deprovision olduğunda erişim aynı dakika kapanır." data-en="Connects to a single SSO provider; team members come from there. SCIM revokes access the moment IDP deprovisions.">Tek bir SSO sağlayıcısına bağlanır, takım üyeleri buradan gelir, gitmez. SCIM ile IDP'den deprovision olduğunda erişim aynı dakika kapanır.</p>
+        <p class="text-[13.5px] text-muted-foreground leading-snug">Connects to a single SSO provider; team members come from there. SCIM revokes access the moment IDP deprovisions.</p>
         <ul class="text-[12.5px] text-muted-foreground space-y-1.5 list-none p-0 mt-1">
           <li class="flex gap-2"><span class="text-primary">✓</span>SAML 2.0 — Okta · Azure AD · Google · JumpCloud · OneLogin</li>
           <li class="flex gap-2"><span class="text-primary">✓</span>SCIM 2.0 user + group provisioning</li>
-          <li class="flex gap-2"><span class="text-primary">✓</span><span data-tr="Just-in-time provisioning, IDP attribute mapping" data-en="JIT provisioning, IDP attribute mapping">Just-in-time provisioning, IDP attribute mapping</span></li>
-          <li class="flex gap-2"><span class="text-primary">✓</span><span data-tr="Multi-IDP — yan kuruluşlar için ayrı sağlayıcı" data-en="Multi-IDP — separate provider per subsidiary">Multi-IDP — yan kuruluşlar için ayrı sağlayıcı</span></li>
-          <li class="flex gap-2"><span class="text-primary">✓</span><span data-tr="Workspace düzeyinde RBAC" data-en="Workspace-level RBAC">Workspace düzeyinde RBAC</span></li>
+          <li class="flex gap-2"><span class="text-primary">✓</span><span>JIT provisioning, IDP attribute mapping</span></li>
+          <li class="flex gap-2"><span class="text-primary">✓</span><span>Multi-IDP — separate provider per subsidiary</span></li>
+          <li class="flex gap-2"><span class="text-primary">✓</span><span>Workspace-level RBAC</span></li>
         </ul>
       </div>
 
@@ -86,16 +86,16 @@ import Base from "../layouts/Base.astro";
       <div class="border border-border rounded-3xl bg-card p-7 flex flex-col gap-4">
         <div class="flex items-center gap-3">
           <span class="w-10 h-10 rounded-2xl bg-muted grid place-items-center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span>
-          <h3 class="text-[19px] font-semibold -tracking-[0.018em]" data-tr="Uyumluluk" data-en="Compliance">Uyumluluk</h3>
+          <h3 class="text-[19px] font-semibold -tracking-[0.018em]">Compliance</h3>
         </div>
-        <p class="text-[13.5px] text-muted-foreground leading-snug" data-tr="Vendor questionnaire'in ne sorduğunu biliyoruz — cevaplar bir paket halinde, redline alabileceğin sözleşmelerle birlikte. NDA imzaladığımız anda CAIQ ve pen-test raporu Drive'da." data-en="We know the vendor questionnaire — answers come in a package with redline-able contracts. CAIQ and pen-test report shared on NDA.">Vendor questionnaire'in ne sorduğunu biliyoruz — cevaplar bir paket halinde, redline alabileceğin sözleşmelerle birlikte. NDA imzaladığımız anda CAIQ ve pen-test raporu Drive'da.</p>
+        <p class="text-[13.5px] text-muted-foreground leading-snug">We know the vendor questionnaire — answers come in a package with redline-able contracts. CAIQ and pen-test report shared on NDA.</p>
         <ul class="text-[12.5px] text-muted-foreground space-y-1.5 list-none p-0 mt-1">
-          <li class="flex gap-2"><span class="text-primary">✓</span>SOC 2 Type II <span class="text-muted-foreground" data-tr="(sürmekte, 2026 Q3)" data-en="(in progress, 2026 Q3)">(sürmekte, 2026 Q3)</span></li>
-          <li class="flex gap-2"><span class="text-primary">✓</span>GDPR — EU temsilcisi atanmış</li>
-          <li class="flex gap-2"><span class="text-primary">✓</span>KVKK — TR mukim, e-fatura, KVK Kurulu kaydı</li>
-          <li class="flex gap-2"><span class="text-primary">✓</span>DPA + SCC <span data-tr="hazır taslak" data-en="ready template">hazır taslak</span></li>
-          <li class="flex gap-2"><span class="text-primary">✓</span><span data-tr="MSA redline destekli — 5 iş günü" data-en="MSA supports redlines — 5 business days">MSA redline destekli — 5 iş günü</span></li>
-          <li class="flex gap-2"><span class="text-primary">✓</span><span data-tr="Yıllık 3. parti pen-test" data-en="Annual 3rd-party pen-test">Yıllık 3. parti pen-test</span></li>
+          <li class="flex gap-2"><span class="text-primary">✓</span>SOC 2 Type II <span class="text-muted-foreground">(in progress, 2026 Q3)</span></li>
+          <li class="flex gap-2"><span class="text-primary">✓</span>GDPR — EU representative appointed</li>
+          <li class="flex gap-2"><span class="text-primary">✓</span>KVKK — TR resident entity, e-invoice, KVK Authority registered</li>
+          <li class="flex gap-2"><span class="text-primary">✓</span>DPA + SCC <span>ready template</span></li>
+          <li class="flex gap-2"><span class="text-primary">✓</span><span>MSA supports redlines — 5 business days</span></li>
+          <li class="flex gap-2"><span class="text-primary">✓</span><span>Annual 3rd-party pen-test</span></li>
         </ul>
       </div>
 
@@ -103,15 +103,15 @@ import Base from "../layouts/Base.astro";
       <div class="border border-border rounded-3xl bg-card p-7 flex flex-col gap-4">
         <div class="flex items-center gap-3">
           <span class="w-10 h-10 rounded-2xl bg-muted grid place-items-center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/></svg></span>
-          <h3 class="text-[19px] font-semibold -tracking-[0.018em]" data-tr="İzolasyon" data-en="Isolation">İzolasyon</h3>
+          <h3 class="text-[19px] font-semibold -tracking-[0.018em]">Isolation</h3>
         </div>
-        <p class="text-[13.5px] text-muted-foreground leading-snug" data-tr="Single-tenant cluster — sadece senin için bir Cloudflare hesabı + D1 + R2. KVKK'ya uyman gerekiyorsa primary'yi Istanbul'a pinleriz; backup'lar da TR'de durur." data-en="Single-tenant cluster — your own Cloudflare account + D1 + R2. KVKK? We pin primary to Istanbul; backups stay in TR.">Single-tenant cluster — sadece senin için bir Cloudflare hesabı + D1 + R2. KVKK'ya uyman gerekiyorsa primary'yi Istanbul'a pinleriz; backup'lar da TR'de durur.</p>
+        <p class="text-[13.5px] text-muted-foreground leading-snug">Single-tenant cluster — your own Cloudflare account + D1 + R2. KVKK? We pin primary to Istanbul; backups stay in TR.</p>
         <ul class="text-[12.5px] text-muted-foreground space-y-1.5 list-none p-0 mt-1">
-          <li class="flex gap-2"><span class="text-primary">✓</span><span data-tr="Dedicated CF hesap + workeros instance" data-en="Dedicated CF account + workeros instance">Dedicated CF hesap + workeros instance</span></li>
-          <li class="flex gap-2"><span class="text-primary">✓</span><span data-tr="Region pin (IST, FRA, IAD, SYD, GRU)" data-en="Region pin (IST, FRA, IAD, SYD, GRU)">Region pin (IST, FRA, IAD, SYD, GRU)</span></li>
-          <li class="flex gap-2"><span class="text-primary">✓</span><span data-tr="Müşteri-yönetimli encryption key (BYOK)" data-en="Customer-managed encryption key (BYOK)">Müşteri-yönetimli encryption key (BYOK)</span></li>
-          <li class="flex gap-2"><span class="text-primary">✓</span><span data-tr="VPC-style erişim — IP allowlist + mTLS" data-en="VPC-style access — IP allowlist + mTLS">VPC-style erişim — IP allowlist + mTLS</span></li>
-          <li class="flex gap-2"><span class="text-primary">✓</span><span data-tr="Bring-your-own-domain — kendi sertifikan" data-en="Bring-your-own-domain — your own cert">Bring-your-own-domain — kendi sertifikan</span></li>
+          <li class="flex gap-2"><span class="text-primary">✓</span><span>Dedicated CF account + workeros instance</span></li>
+          <li class="flex gap-2"><span class="text-primary">✓</span><span>Region pin (IST, FRA, IAD, SYD, GRU)</span></li>
+          <li class="flex gap-2"><span class="text-primary">✓</span><span>Customer-managed encryption key (BYOK)</span></li>
+          <li class="flex gap-2"><span class="text-primary">✓</span><span>VPC-style access — IP allowlist + mTLS</span></li>
+          <li class="flex gap-2"><span class="text-primary">✓</span><span>Bring-your-own-domain — your own cert</span></li>
         </ul>
       </div>
     </div>
@@ -123,28 +123,28 @@ import Base from "../layouts/Base.astro";
   <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
     <div class="grid grid-cols-2 max-[820px]:grid-cols-1 gap-12 items-start">
       <div>
-        <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>SLA · <span data-tr="kredi politikası" data-en="credit policy">kredi politikası</span></span>
-        <h2 class="text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.022em] leading-[1.15] mt-4 max-w-[20ch]" data-tr="Söz değil, sayı. Aşıldığında kredi." data-en="Numbers, not promises. Credits when missed.">Söz değil, sayı. Aşıldığında kredi.</h2>
-        <p class="text-[15px] text-muted-foreground mt-3 max-w-[44ch]" data-tr="99.99% uptime garantisi. Hedef altında geçen her dakika için faturadan otomatik kredi düşülür — talep etmene gerek yok." data-en="99.99% uptime target. Every minute below earns automatic credit — no claim form needed.">99.99% uptime garantisi. Hedef altında geçen her dakika için faturadan otomatik kredi düşülür — talep etmene gerek yok.</p>
-        <a href="#contact" class="inline-flex items-center gap-2 h-10 px-4 mt-5 rounded-3xl bg-primary text-primary-foreground text-[13.5px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap" data-tr="SLA örneği iste →" data-en="Request sample SLA →">SLA örneği iste →</a>
+        <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>SLA · <span>credit policy</span></span>
+        <h2 class="text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.022em] leading-[1.15] mt-4 max-w-[20ch]">Numbers, not promises. Credits when missed.</h2>
+        <p class="text-[15px] text-muted-foreground mt-3 max-w-[44ch]">99.99% uptime target. Every minute below earns automatic credit — no claim form needed.</p>
+        <a href="#contact" class="inline-flex items-center gap-2 h-10 px-4 mt-5 rounded-3xl bg-primary text-primary-foreground text-[13.5px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap">Request sample SLA →</a>
       </div>
       <div class="border border-border rounded-3xl bg-card overflow-hidden">
         <table class="w-full border-collapse text-[13.5px]">
           <thead>
             <tr class="bg-muted">
-              <th class="px-5 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border" data-tr="Uptime ölçümü" data-en="Uptime measured">Uptime ölçümü</th>
-              <th class="px-5 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border" data-tr="Kredi" data-en="Credit">Kredi</th>
-              <th class="px-5 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border" data-tr="Aylık fatura indirimi" data-en="Monthly bill discount">Aylık fatura indirimi</th>
+              <th class="px-5 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border">Uptime measured</th>
+              <th class="px-5 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border">Credit</th>
+              <th class="px-5 py-3 text-left font-medium text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border">Monthly bill discount</th>
             </tr>
           </thead>
           <tbody>
-            <tr><td class="px-5 py-3 border-b border-border font-medium">≥ 99.99%</td><td class="px-5 py-3 border-b border-border text-muted-foreground" data-tr="hedefte" data-en="on target">hedefte</td><td class="px-5 py-3 border-b border-border font-mono">—</td></tr>
-            <tr><td class="px-5 py-3 border-b border-border font-medium">99.95% – 99.99%</td><td class="px-5 py-3 border-b border-border" data-tr="10% kredi" data-en="10% credit">10% kredi</td><td class="px-5 py-3 border-b border-border font-mono">-10%</td></tr>
-            <tr><td class="px-5 py-3 border-b border-border font-medium">99.90% – 99.95%</td><td class="px-5 py-3 border-b border-border" data-tr="25% kredi" data-en="25% credit">25% kredi</td><td class="px-5 py-3 border-b border-border font-mono">-25%</td></tr>
-            <tr><td class="px-5 py-3 font-medium">&lt; 99.90%</td><td class="px-5 py-3" data-tr="50% kredi" data-en="50% credit">50% kredi</td><td class="px-5 py-3 font-mono">-50%</td></tr>
+            <tr><td class="px-5 py-3 border-b border-border font-medium">≥ 99.99%</td><td class="px-5 py-3 border-b border-border text-muted-foreground">on target</td><td class="px-5 py-3 border-b border-border font-mono">—</td></tr>
+            <tr><td class="px-5 py-3 border-b border-border font-medium">99.95% – 99.99%</td><td class="px-5 py-3 border-b border-border">10% credit</td><td class="px-5 py-3 border-b border-border font-mono">-10%</td></tr>
+            <tr><td class="px-5 py-3 border-b border-border font-medium">99.90% – 99.95%</td><td class="px-5 py-3 border-b border-border">25% credit</td><td class="px-5 py-3 border-b border-border font-mono">-25%</td></tr>
+            <tr><td class="px-5 py-3 font-medium">&lt; 99.90%</td><td class="px-5 py-3">50% credit</td><td class="px-5 py-3 font-mono">-50%</td></tr>
           </tbody>
         </table>
-        <div class="px-5 py-3 border-t border-border bg-muted/60 text-[11.5px] text-muted-foreground" data-tr="ölçüm: 1 dakikalık external uptime probe · ay sonunda otomatik mahsup" data-en="measured by 1-minute external uptime probes · auto-applied end of month">ölçüm: 1 dakikalık external uptime probe · ay sonunda otomatik mahsup</div>
+        <div class="px-5 py-3 border-t border-border bg-muted/60 text-[11.5px] text-muted-foreground">measured by 1-minute external uptime probes · auto-applied end of month</div>
       </div>
     </div>
   </div>
@@ -154,41 +154,41 @@ import Base from "../layouts/Base.astro";
 <section class="py-20 border-b border-border">
   <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
     <div class="flex flex-col gap-4 max-w-[720px] mb-12">
-      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span><span data-tr="süreç" data-en="process">süreç</span></span>
-      <h2 class="text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.022em] leading-[1.15]" data-tr="İlk görüşmeden production'a — 14 gün." data-en="From first call to production — 14 days.">İlk görüşmeden production'a — 14 gün.</h2>
+      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span><span>process</span></span>
+      <h2 class="text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.022em] leading-[1.15]">From first call to production — 14 days.</h2>
     </div>
     <div class="grid grid-cols-4 max-[920px]:grid-cols-2 max-[560px]:grid-cols-1 gap-3.5">
       <div class="border border-border rounded-3xl bg-card p-6 flex flex-col gap-2.5">
         <div class="flex items-center gap-2.5">
           <span class="w-7 h-7 rounded-full bg-primary text-primary-foreground grid place-items-center font-mono text-[12px] font-semibold">01</span>
-          <span class="font-mono text-[11px] text-muted-foreground uppercase tracking-wider" data-tr="gün 0 — 1" data-en="day 0 – 1">gün 0 — 1</span>
+          <span class="font-mono text-[11px] text-muted-foreground uppercase tracking-wider">day 0 – 1</span>
         </div>
-        <h3 class="text-[15.5px] font-semibold -tracking-[0.015em]" data-tr="Discovery call" data-en="Discovery call">Discovery call</h3>
-        <p class="text-[12.5px] text-muted-foreground leading-snug" data-tr="30dk Zoom: kullanım senaryosu, request hacmi, veri yerelliği, uyum gereksinimleri. Önceki vendor'dan göç olup olmayacağını anlıyoruz." data-en="30-min Zoom: use case, traffic volume, residency, compliance. We check whether you're migrating from another vendor.">30dk Zoom: kullanım senaryosu, request hacmi, veri yerelliği, uyum gereksinimleri. Önceki vendor'dan göç olup olmayacağını anlıyoruz.</p>
+        <h3 class="text-[15.5px] font-semibold -tracking-[0.015em]">Discovery call</h3>
+        <p class="text-[12.5px] text-muted-foreground leading-snug">30-min Zoom: use case, traffic volume, residency, compliance. We check whether you're migrating from another vendor.</p>
       </div>
       <div class="border border-border rounded-3xl bg-card p-6 flex flex-col gap-2.5">
         <div class="flex items-center gap-2.5">
           <span class="w-7 h-7 rounded-full bg-muted text-foreground grid place-items-center font-mono text-[12px] font-semibold">02</span>
-          <span class="font-mono text-[11px] text-muted-foreground uppercase tracking-wider" data-tr="gün 1 — 5" data-en="day 1 – 5">gün 1 — 5</span>
+          <span class="font-mono text-[11px] text-muted-foreground uppercase tracking-wider">day 1 – 5</span>
         </div>
-        <h3 class="text-[15.5px] font-semibold -tracking-[0.015em]" data-tr="Security paketi" data-en="Security packet">Security paketi</h3>
-        <p class="text-[12.5px] text-muted-foreground leading-snug" data-tr="NDA → CAIQ, son pen-test özeti, mimari diyagram, DPA + MSA taslakları. Hukuk redline alır, biz cevaplarız." data-en="NDA → CAIQ, latest pen-test summary, architecture diagram, DPA + MSA templates. Legal redlines, we respond.">NDA → CAIQ, son pen-test özeti, mimari diyagram, DPA + MSA taslakları. Hukuk redline alır, biz cevaplarız.</p>
+        <h3 class="text-[15.5px] font-semibold -tracking-[0.015em]">Security packet</h3>
+        <p class="text-[12.5px] text-muted-foreground leading-snug">NDA → CAIQ, latest pen-test summary, architecture diagram, DPA + MSA templates. Legal redlines, we respond.</p>
       </div>
       <div class="border border-border rounded-3xl bg-card p-6 flex flex-col gap-2.5">
         <div class="flex items-center gap-2.5">
           <span class="w-7 h-7 rounded-full bg-muted text-foreground grid place-items-center font-mono text-[12px] font-semibold">03</span>
-          <span class="font-mono text-[11px] text-muted-foreground uppercase tracking-wider" data-tr="gün 5 — 10" data-en="day 5 – 10">gün 5 — 10</span>
+          <span class="font-mono text-[11px] text-muted-foreground uppercase tracking-wider">day 5 – 10</span>
         </div>
-        <h3 class="text-[15.5px] font-semibold -tracking-[0.015em]" data-tr="Pilot ortam" data-en="Pilot environment">Pilot ortam</h3>
-        <p class="text-[12.5px] text-muted-foreground leading-snug" data-tr="Dedicated cluster ayağa kalkar; SSO bağlantısı, IP allowlist, region pin, custom domain. 7 gün ücretsiz pilot." data-en="Dedicated cluster spins up; SSO, IP allowlist, region pin, custom domain. 7-day free pilot.">Dedicated cluster ayağa kalkar; SSO bağlantısı, IP allowlist, region pin, custom domain. 7 gün ücretsiz pilot.</p>
+        <h3 class="text-[15.5px] font-semibold -tracking-[0.015em]">Pilot environment</h3>
+        <p class="text-[12.5px] text-muted-foreground leading-snug">Dedicated cluster spins up; SSO, IP allowlist, region pin, custom domain. 7-day free pilot.</p>
       </div>
       <div class="border border-border rounded-3xl bg-card p-6 flex flex-col gap-2.5">
         <div class="flex items-center gap-2.5">
           <span class="w-7 h-7 rounded-full bg-muted text-foreground grid place-items-center font-mono text-[12px] font-semibold">04</span>
-          <span class="font-mono text-[11px] text-muted-foreground uppercase tracking-wider" data-tr="gün 10 — 14" data-en="day 10 – 14">gün 10 — 14</span>
+          <span class="font-mono text-[11px] text-muted-foreground uppercase tracking-wider">day 10 – 14</span>
         </div>
-        <h3 class="text-[15.5px] font-semibold -tracking-[0.015em]" data-tr="Production + go-live" data-en="Production + go-live">Production + go-live</h3>
-        <p class="text-[12.5px] text-muted-foreground leading-snug" data-tr="Sözleşmeler imzalanır, Slack Connect kanalı açılır, runbook teslim. İlk ay solution engineer eşliğinde." data-en="Contracts signed, Slack Connect channel opens, runbook delivered. Solution engineer pairs for the first month.">Sözleşmeler imzalanır, Slack Connect kanalı açılır, runbook teslim. İlk ay solution engineer eşliğinde.</p>
+        <h3 class="text-[15.5px] font-semibold -tracking-[0.015em]">Production + go-live</h3>
+        <p class="text-[12.5px] text-muted-foreground leading-snug">Contracts signed, Slack Connect channel opens, runbook delivered. Solution engineer pairs for the first month.</p>
       </div>
     </div>
   </div>
@@ -198,41 +198,41 @@ import Base from "../layouts/Base.astro";
 <section class="py-20 border-b border-border bg-muted/40">
   <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
     <div class="flex flex-col gap-4 max-w-[720px] mb-10">
-      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span><span data-tr="mimari" data-en="architecture">mimari</span></span>
-      <h2 class="text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.022em] leading-[1.15]" data-tr="Tenant başına ayrılmış katmanlar." data-en="Per-tenant isolated layers.">Tenant başına ayrılmış katmanlar.</h2>
-      <p class="text-[15px] text-muted-foreground max-w-[60ch]" data-tr="Single-tenant cluster, kendi CF hesabı + kendi D1 instance'ı + kendi R2 bucket'ı. Diğer müşterilerle paylaşılan tek şey workeros'un kontrol düzlemi — orada da sadece okuma yetkisi." data-en="Single-tenant cluster — own CF account, own D1, own R2. The only shared layer is workeros's control plane (read-only).">Single-tenant cluster, kendi CF hesabı + kendi D1 instance'ı + kendi R2 bucket'ı. Diğer müşterilerle paylaşılan tek şey workeros'un kontrol düzlemi — orada da sadece okuma yetkisi.</p>
+      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span><span>architecture</span></span>
+      <h2 class="text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.022em] leading-[1.15]">Per-tenant isolated layers.</h2>
+      <p class="text-[15px] text-muted-foreground max-w-[60ch]">Single-tenant cluster — own CF account, own D1, own R2. The only shared layer is workeros's control plane (read-only).</p>
     </div>
 
     <div class="border border-border rounded-3xl bg-card p-6 grid grid-cols-3 max-[820px]:grid-cols-1 gap-3.5">
       <!-- Customer plane -->
       <div class="rounded-2xl p-5 border-2" style="border-color: color-mix(in oklch, var(--color-primary) 55%, var(--color-border)); background: color-mix(in oklch, var(--color-primary) 5%, var(--color-card));">
-        <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] mb-3" style="color: color-mix(in oklch, var(--color-primary) 60%, var(--color-foreground));" data-tr="tenant düzlemi · sadece sen" data-en="tenant plane · only you">tenant düzlemi · sadece sen</div>
+        <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] mb-3" style="color: color-mix(in oklch, var(--color-primary) 60%, var(--color-foreground));">tenant plane · only you</div>
         <div class="flex flex-col gap-2">
           <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px]"><span class="w-6 h-6 rounded bg-muted grid place-items-center font-mono text-[10.5px] font-semibold">W</span>Workers <span class="ml-auto font-mono text-[10.5px] text-muted-foreground">runtime</span></div>
-          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px]"><span class="w-6 h-6 rounded bg-muted grid place-items-center font-mono text-[10.5px] font-semibold">D1</span>D1 <span class="ml-auto font-mono text-[10.5px] text-muted-foreground" data-tr="pinned IST" data-en="pinned IST">pinned IST</span></div>
+          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px]"><span class="w-6 h-6 rounded bg-muted grid place-items-center font-mono text-[10.5px] font-semibold">D1</span>D1 <span class="ml-auto font-mono text-[10.5px] text-muted-foreground">pinned IST</span></div>
           <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px]"><span class="w-6 h-6 rounded bg-muted grid place-items-center font-mono text-[10.5px] font-semibold">R2</span>R2 bucket <span class="ml-auto font-mono text-[10.5px] text-muted-foreground">BYOK</span></div>
           <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px]"><span class="w-6 h-6 rounded bg-muted grid place-items-center font-mono text-[10.5px] font-semibold">DO</span>Durable Objects <span class="ml-auto font-mono text-[10.5px] text-muted-foreground">realtime</span></div>
-          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px]"><span class="w-6 h-6 rounded bg-muted grid place-items-center font-mono text-[10.5px] font-semibold">N</span>Neon Postgres <span class="ml-auto font-mono text-[10.5px] text-muted-foreground" data-tr="opsiyonel" data-en="optional">opsiyonel</span></div>
+          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px]"><span class="w-6 h-6 rounded bg-muted grid place-items-center font-mono text-[10.5px] font-semibold">N</span>Neon Postgres <span class="ml-auto font-mono text-[10.5px] text-muted-foreground">optional</span></div>
         </div>
       </div>
       <!-- Identity plane -->
       <div class="rounded-2xl p-5 border border-border bg-muted/30">
-        <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-3" data-tr="kimlik düzlemi · senin idp'in" data-en="identity plane · your IDP">kimlik düzlemi · senin idp'in</div>
+        <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-3">identity plane · your IDP</div>
         <div class="flex flex-col gap-2">
           <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px]"><span class="w-6 h-6 rounded bg-muted grid place-items-center text-[10.5px] font-semibold">O</span>Okta · AAD · Google</div>
-          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px] text-muted-foreground"><span class="font-mono">SAML 2.0</span> <span class="ml-auto" data-tr="kullanıcı doğrulama" data-en="user auth">kullanıcı doğrulama</span></div>
-          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px] text-muted-foreground"><span class="font-mono">SCIM 2.0</span> <span class="ml-auto" data-tr="provisioning" data-en="provisioning">provisioning</span></div>
-          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px] text-muted-foreground"><span class="font-mono">mTLS</span> <span class="ml-auto" data-tr="API → workeros" data-en="API → workeros">API → workeros</span></div>
+          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px] text-muted-foreground"><span class="font-mono">SAML 2.0</span> <span class="ml-auto">user auth</span></div>
+          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px] text-muted-foreground"><span class="font-mono">SCIM 2.0</span> <span class="ml-auto">provisioning</span></div>
+          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px] text-muted-foreground"><span class="font-mono">mTLS</span> <span class="ml-auto">API → workeros</span></div>
         </div>
       </div>
       <!-- Control plane -->
       <div class="rounded-2xl p-5 border border-border bg-muted/30">
-        <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-3" data-tr="kontrol düzlemi · paylaşılan, read-only" data-en="control plane · shared, read-only">kontrol düzlemi · paylaşılan, read-only</div>
+        <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-3">control plane · shared, read-only</div>
         <div class="flex flex-col gap-2">
-          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px]"><span class="w-6 h-6 rounded bg-muted grid place-items-center text-[10.5px] font-semibold">⚙</span><span data-tr="Provisioning + faturalama" data-en="Provisioning + billing">Provisioning + faturalama</span></div>
-          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px]"><span class="w-6 h-6 rounded bg-muted grid place-items-center text-[10.5px] font-semibold">📊</span><span data-tr="Uptime monitoring" data-en="Uptime monitoring">Uptime monitoring</span></div>
-          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px]"><span class="w-6 h-6 rounded bg-muted grid place-items-center text-[10.5px] font-semibold">🔄</span><span data-tr="Migration jobs" data-en="Migration jobs">Migration jobs</span></div>
-          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px] text-muted-foreground"><span class="font-mono text-[10.5px]" data-tr="müşteri verisine erişim yok" data-en="no access to your data">müşteri verisine erişim yok</span></div>
+          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px]"><span class="w-6 h-6 rounded bg-muted grid place-items-center text-[10.5px] font-semibold">⚙</span><span>Provisioning + billing</span></div>
+          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px]"><span class="w-6 h-6 rounded bg-muted grid place-items-center text-[10.5px] font-semibold">📊</span><span>Uptime monitoring</span></div>
+          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px]"><span class="w-6 h-6 rounded bg-muted grid place-items-center text-[10.5px] font-semibold">🔄</span><span>Migration jobs</span></div>
+          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px] text-muted-foreground"><span class="font-mono text-[10.5px]">no access to your data</span></div>
         </div>
       </div>
     </div>
@@ -245,55 +245,55 @@ import Base from "../layouts/Base.astro";
     <div class="grid grid-cols-[1.1fr_1fr] max-[920px]:grid-cols-1 gap-12 items-start">
 
       <div>
-        <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span><span data-tr="iletişim" data-en="contact">iletişim</span></span>
-        <h2 class="text-[clamp(28px,3.4vw,38px)] font-semibold -tracking-[0.026em] leading-[1.12] mt-4 max-w-[20ch]" data-tr="Önce konuşalım, sonra teknik konuşalım." data-en="Let's talk first — then we'll talk tech.">Önce konuşalım, sonra teknik konuşalım.</h2>
-        <p class="text-[15px] text-muted-foreground mt-3 max-w-[44ch]" data-tr="Solution engineer eşliğinde 30 dakika. Demo, mimari yorumu, fiyat tahmini ve security paketinin ne içerdiğini birlikte gözden geçiriyoruz." data-en="30 minutes with a solution engineer. Demo, architecture review, price estimate, and a walkthrough of the security packet.">Solution engineer eşliğinde 30 dakika. Demo, mimari yorumu, fiyat tahmini ve security paketinin ne içerdiğini birlikte gözden geçiriyoruz.</p>
+        <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span><span>contact</span></span>
+        <h2 class="text-[clamp(28px,3.4vw,38px)] font-semibold -tracking-[0.026em] leading-[1.12] mt-4 max-w-[20ch]">Let's talk first — then we'll talk tech.</h2>
+        <p class="text-[15px] text-muted-foreground mt-3 max-w-[44ch]">30 minutes with a solution engineer. Demo, architecture review, price estimate, and a walkthrough of the security packet.</p>
 
         <div class="mt-8 grid grid-cols-2 max-[480px]:grid-cols-1 gap-3">
           <div class="border border-border rounded-2xl bg-card p-4">
-            <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1" data-tr="satış" data-en="sales">satış</div>
+            <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1">sales</div>
             <a href="mailto:sales@workeros.dev" class="text-[13px] font-medium text-foreground hover:text-primary no-underline">sales@workeros.dev</a>
           </div>
           <div class="border border-border rounded-2xl bg-card p-4">
-            <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1" data-tr="güvenlik" data-en="security">güvenlik</div>
+            <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1">security</div>
             <a href="mailto:security@workeros.dev" class="text-[13px] font-medium text-foreground hover:text-primary no-underline">security@workeros.dev</a>
           </div>
           <div class="border border-border rounded-2xl bg-card p-4">
-            <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1" data-tr="hukuk" data-en="legal">hukuk</div>
+            <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1">legal</div>
             <a href="mailto:legal@workeros.dev" class="text-[13px] font-medium text-foreground hover:text-primary no-underline">legal@workeros.dev</a>
           </div>
           <div class="border border-border rounded-2xl bg-card p-4">
-            <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1" data-tr="ofis" data-en="office">ofis</div>
+            <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1">office</div>
             <div class="text-[13px] font-medium text-foreground">İstanbul · Türkiye</div>
             <div class="text-[11.5px] text-muted-foreground mt-0.5">Mecidiyeköy</div>
           </div>
         </div>
 
         <div class="mt-8 flex items-center gap-2 flex-wrap text-[12px] text-muted-foreground">
-          <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span><span data-tr="ortalama yanıt — 4 saat" data-en="avg response — 4 hours">ortalama yanıt — 4 saat</span></span>
+          <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span><span>avg response — 4 hours</span></span>
           <span class="text-border">·</span>
-          <span data-tr="Çalışma saatleri: 09:00 – 19:00 TRT" data-en="Office hours: 09:00 – 19:00 TRT">Çalışma saatleri: 09:00 – 19:00 TRT</span>
+          <span>Office hours: 09:00 – 19:00 TRT</span>
         </div>
       </div>
 
       <form class="border border-border rounded-3xl bg-card p-7 flex flex-col gap-4" onsubmit="event.preventDefault(); document.getElementById('form-result').hidden=false; this.querySelector('button[type=submit]').disabled=true;">
         <div class="grid grid-cols-2 max-[480px]:grid-cols-1 gap-3">
           <div>
-            <label class="fl" for="f-name" data-tr="Ad Soyad" data-en="Full name">Ad Soyad</label>
+            <label class="fl" for="f-name">Full name</label>
             <input class="f" id="f-name" required placeholder="Ali Yılmaz" />
           </div>
           <div>
-            <label class="fl" for="f-email" data-tr="İş e-postası" data-en="Work email">İş e-postası</label>
+            <label class="fl" for="f-email">Work email</label>
             <input class="f" id="f-email" type="email" required placeholder="ali@acme.com" />
           </div>
         </div>
         <div class="grid grid-cols-2 max-[480px]:grid-cols-1 gap-3">
           <div>
-            <label class="fl" for="f-company" data-tr="Şirket" data-en="Company">Şirket</label>
+            <label class="fl" for="f-company">Company</label>
             <input class="f" id="f-company" required placeholder="Acme A.Ş." />
           </div>
           <div>
-            <label class="fl" for="f-size" data-tr="Şirket büyüklüğü" data-en="Company size">Şirket büyüklüğü</label>
+            <label class="fl" for="f-size">Company size</label>
             <select class="f" id="f-size">
               <option>1 – 10</option>
               <option>11 – 50</option>
@@ -304,20 +304,20 @@ import Base from "../layouts/Base.astro";
           </div>
         </div>
         <div>
-          <label class="fl" data-tr="Hangi konularda destek arıyorsun?" data-en="What are you looking for?">Hangi konularda destek arıyorsun?</label>
+          <label class="fl">What are you looking for?</label>
           <div class="grid grid-cols-2 max-[480px]:grid-cols-1 gap-2 mt-1.5 text-[13px]">
             <label class="inline-flex items-center gap-2 cursor-pointer"><input type="checkbox" class="accent-primary" checked />SSO / SCIM</label>
             <label class="inline-flex items-center gap-2 cursor-pointer"><input type="checkbox" class="accent-primary" />SOC 2 / vendor review</label>
             <label class="inline-flex items-center gap-2 cursor-pointer"><input type="checkbox" class="accent-primary" />Dedicated cluster</label>
-            <label class="inline-flex items-center gap-2 cursor-pointer"><input type="checkbox" class="accent-primary" /><span data-tr="KVKK / veri yerelliği" data-en="KVKK / data residency">KVKK / veri yerelliği</span></label>
+            <label class="inline-flex items-center gap-2 cursor-pointer"><input type="checkbox" class="accent-primary" /><span>KVKK / data residency</span></label>
             <label class="inline-flex items-center gap-2 cursor-pointer"><input type="checkbox" class="accent-primary" />Neon Postgres</label>
-            <label class="inline-flex items-center gap-2 cursor-pointer"><input type="checkbox" class="accent-primary" /><span data-tr="Migration desteği" data-en="Migration support">Migration desteği</span></label>
+            <label class="inline-flex items-center gap-2 cursor-pointer"><input type="checkbox" class="accent-primary" /><span>Migration support</span></label>
           </div>
         </div>
         <div>
-          <label class="fl" for="f-volume" data-tr="Tahmini aylık request hacmi" data-en="Estimated monthly requests">Tahmini aylık request hacmi <span class="opt" data-tr="(opsiyonel)" data-en="(optional)">(opsiyonel)</span></label>
+          <label class="fl" for="f-volume">Estimated monthly requests</label>
           <select class="f" id="f-volume">
-            <option data-tr="Henüz emin değilim" data-en="Not sure yet">Henüz emin değilim</option>
+            <option>Not sure yet</option>
             <option>&lt; 10M</option>
             <option>10M – 100M</option>
             <option>100M – 1B</option>
@@ -325,12 +325,12 @@ import Base from "../layouts/Base.astro";
           </select>
         </div>
         <div>
-          <label class="fl" for="f-msg" data-tr="Birkaç cümle ile durum" data-en="A few sentences on context">Birkaç cümle ile durum <span class="opt" data-tr="(opsiyonel)" data-en="(optional)">(opsiyonel)</span></label>
-          <textarea class="f" id="f-msg" placeholder="Hangi vendor'dan göç ediyoruz / hangi compliance bizi kısıtlıyor / hangi tarihte canlıya çıkmak istiyoruz..."></textarea>
+          <label class="fl" for="f-msg">A few sentences on context</label>
+          <textarea class="f" id="f-msg" placeholder="Which vendor we're migrating from / which compliance constraints we have / when we plan to go live..."></textarea>
         </div>
-        <button type="submit" class="mt-2 inline-flex items-center justify-center gap-2 h-11 px-5 rounded-4xl bg-primary text-primary-foreground text-[14px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap" data-tr="Görüşme planla →" data-en="Book a call →">Görüşme planla →</button>
-        <div id="form-result" hidden class="text-[12.5px] text-center border border-border rounded-xl bg-muted px-4 py-3" data-tr="Teşekkürler. 4 saat içinde mail atacağız." data-en="Thanks. We'll email back within 4 hours.">Teşekkürler. 4 saat içinde mail atacağız.</div>
-        <p class="text-[11.5px] text-muted-foreground text-center" data-tr="Form gönderildiğinde KVKK Aydınlatma Metni'ni kabul etmiş olursun." data-en="Submitting accepts our Privacy Notice.">Form gönderildiğinde KVKK Aydınlatma Metni'ni kabul etmiş olursun.</p>
+        <button type="submit" class="mt-2 inline-flex items-center justify-center gap-2 h-11 px-5 rounded-4xl bg-primary text-primary-foreground text-[14px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap">Book a call →</button>
+        <div id="form-result" hidden class="text-[12.5px] text-center border border-border rounded-xl bg-muted px-4 py-3">Thanks. We'll email back within 4 hours.</div>
+        <p class="text-[11.5px] text-muted-foreground text-center">Submitting accepts our Privacy Notice.</p>
       </form>
     </div>
   </div>

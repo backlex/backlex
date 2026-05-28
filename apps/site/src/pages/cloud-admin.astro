@@ -1,0 +1,2308 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="workeros Cloud — admin" bodyClass="admin-page" showChrome={false} showBeams={false}>
+
+<div class="app-shell">
+
+  <!-- ─────── Topbar ─────── -->
+  <header class="border-b border-border bg-background flex items-center gap-3 px-4 sticky top-0 z-30" data-screen-label="Topbar">
+    <a href="/" class="inline-flex items-center gap-2 font-semibold text-[14px] -tracking-[0.01em] text-foreground no-underline">
+      <span class="w-6 h-6 bg-primary text-primary-foreground rounded-md grid place-items-center font-bold text-[13px] leading-none">w</span>
+      <span>workeros</span>
+      <span class="font-mono text-[9.5px] uppercase tracking-[0.14em] text-muted-foreground border border-border rounded-full px-1.5 py-0.5">cloud</span>
+    </a>
+
+    <span class="text-border">/</span>
+
+    <!-- workspace switcher -->
+    <button class="ws-switch inline-flex items-center gap-2 h-8 px-2.5 rounded-md hover:bg-muted text-[13px] font-medium">
+      <span class="w-5 h-5 rounded grid place-items-center text-[11px] font-bold text-primary-foreground" style="background: oklch(0.6 0.15 30);">A</span>
+      <span>Acme A.Ş.</span>
+      <span class="badge badge-primary text-[10px]">Pro</span>
+      <span class="badge badge-muted text-[10px] inline-flex items-center gap-1" title="EU + Türkiye data residency (KVKK + GDPR)">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        EU
+      </span>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-muted-foreground"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+
+    <!-- search -->
+    <div class="relative flex-1 max-w-[400px] ml-3 max-md:hidden">
+      <input class="f" placeholder="search projects, members, logs..." style="padding-left: 32px; height: 32px; border-radius: 8px;" />
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <span class="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-muted-foreground border border-border rounded px-1 py-0.5">⌘K</span>
+    </div>
+
+    <div class="flex-1 max-md:hidden"></div>
+
+    <!-- right side -->
+    <a href="#" class="btn btn-ghost btn-sm max-md:hidden" title="Switch to in-project admin">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      <span class="hidden lg:inline">Collections admin</span>
+    </a>
+    <a class="btn btn-ghost btn-sm max-md:hidden cursor-pointer" data-link="onboarding" title="View getting-started flow">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      <span class="hidden lg:inline">Onboarding</span>
+    </a>
+    <a href="/docs" class="btn btn-ghost btn-sm max-md:hidden">Docs</a>
+    <button id="theme-toggle" title="Theme" class="w-8 h-8 grid place-items-center rounded-md hover:bg-muted text-foreground transition-colors">
+      <svg class="ic-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg class="ic-moon hidden" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+    </button>
+    <button class="w-8 h-8 grid place-items-center rounded-md hover:bg-muted text-foreground transition-colors relative">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary"></span>
+    </button>
+    <button class="inline-flex items-center gap-2 h-8 px-1.5 pr-2 rounded-md hover:bg-muted text-[12.5px] font-medium">
+      <span class="w-6 h-6 rounded-full grid place-items-center text-[11px] font-medium text-primary-foreground" style="background: oklch(0.55 0.13 240);">SK</span>
+      <span class="max-lg:hidden">Saadet K.</span>
+    </button>
+  </header>
+
+  <!-- ─────── Main grid ─────── -->
+  <div class="app-grid">
+    <!-- ─────── Sidebar ─────── -->
+    <aside class="sidebar border-r border-border bg-card overflow-y-auto py-3 px-2.5 flex flex-col" data-screen-label="Sidebar">
+      <div class="text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground px-2 mb-1.5">Workspace</div>
+      <nav class="flex flex-col gap-px">
+        <a data-link="ws-overview" class="nav-item">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Overview
+        </a>
+        <a data-link="ws-team" class="nav-item">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Team
+          <span class="ml-auto badge badge-muted text-[10px]">12</span>
+        </a>
+        <a data-link="ws-billing" class="nav-item">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          Billing
+        </a>
+        <a data-link="ws-audit" class="nav-item">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Audit log
+        </a>
+        <a data-link="ws-keys" class="nav-item">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+          Deploy keys
+          <span class="ml-auto badge badge-muted text-[10px]">5</span>
+        </a>
+        <a data-link="ws-integrations" class="nav-item">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 4 4-4 4"/><path d="M2 8h14"/><path d="m12 22-4-4 4-4"/><path d="M22 16H8"/></svg>
+          Integrations
+        </a>
+        <a data-link="ws-settings" class="nav-item">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.07A1.65 1.65 0 0 0 9 3.09V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.07c.39.16.71.43.94.78l.07.12c.16.39.12.85-.12 1.18Z"/></svg>
+          Settings
+        </a>
+      </nav>
+
+      <div class="nav-section text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground px-2 mb-1.5 mt-5">Projects</div>
+
+      <div class="flex flex-col gap-1">
+        <!-- acme-prod (active) -->
+        <div class="rounded-md bg-muted/40 px-1 pt-1 pb-1.5">
+          <div class="flex items-center gap-2 px-1.5 py-1">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="text-muted-foreground"><polyline points="6 9 12 15 18 9"/></svg>
+            <span class="text-[12.5px] font-semibold flex-1 truncate">acme-prod</span>
+            <span class="badge badge-primary text-[9.5px]">live</span>
+          </div>
+          <div class="flex flex-col gap-px ml-2 pl-2.5 border-l border-border">
+            <a data-link="proj-overview" class="nav-item"><span class="led"></span>Overview</a>
+            <a data-link="proj-usage" class="nav-item"><span class="led"></span>Usage <span class="ml-auto font-mono text-[10px] text-muted-foreground">62%</span></a>
+            <a data-link="proj-regions" class="nav-item"><span class="led"></span>Regions <span class="ml-auto font-mono text-[10px] text-muted-foreground">3</span></a>
+            <a data-link="proj-backups" class="nav-item"><span class="led"></span>Backups</a>
+            <a data-link="proj-domains" class="nav-item"><span class="led"></span>Domains</a>
+            <a data-link="proj-branches" class="nav-item"><span class="led"></span>Branches <span class="ml-auto font-mono text-[10px] text-muted-foreground">4</span></a>
+            <a data-link="proj-settings" class="nav-item"><span class="led"></span>Settings</a>
+            <a href="#" class="nav-item mt-1" style="color: var(--color-primary);" title="Schema, data, auth, functions — go to admin panel">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              <span class="font-medium">Admin panel</span>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="ml-auto"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
+            </a>
+          </div>
+        </div>
+        <!-- inactive projects -->
+        <a class="nav-item">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="text-muted-foreground"><polyline points="9 18 15 12 9 6"/></svg>
+          <span class="truncate">marketing-site</span>
+          <span class="badge badge-muted text-[9.5px] ml-auto">live</span>
+        </a>
+        <a class="nav-item">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="text-muted-foreground"><polyline points="9 18 15 12 9 6"/></svg>
+          <span class="truncate">staging-api</span>
+          <span class="badge badge-amber text-[9.5px] ml-auto">paused</span>
+        </a>
+        <button class="nav-item text-muted-foreground hover:text-foreground" onclick="openDialog('new-project')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New project
+        </button>
+      </div>
+
+      <!-- footer pinned -->
+      <div class="mt-auto pt-3 border-t border-border">
+        <div class="px-2 py-1.5 text-[10.5px] text-muted-foreground leading-snug">
+          <div class="flex items-center gap-1.5 mb-1"><span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span><span class="font-mono">all systems normal</span></div>
+          <div>status.workeros.cloud →</div>
+        </div>
+        <button class="nav-item">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Help & docs
+        </button>
+      </div>
+    </aside>
+
+    <!-- ─────── Main content ─────── -->
+    <main class="overflow-y-auto">
+
+      <!-- ─────── Workspace · Overview ─────── -->
+      <section data-screen="ws-overview" class="is-on" data-screen-label="Workspace · Overview">
+        <div class="px-8 max-md:px-5 py-8 max-w-[1400px]">
+          <div class="crumbs mb-3"><a>Acme A.Ş.</a><span class="sep">/</span><span class="text-foreground">Overview</span></div>
+          <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
+            <div>
+              <h1 class="text-[26px] font-semibold -tracking-[0.022em] leading-tight">Welcome back, Saadet 👋</h1>
+              <p class="text-[13.5px] text-muted-foreground mt-1">3 projects · 8.4M requests in the last 30 days · €38 next invoice</p>
+            </div>
+            <div class="flex gap-2">
+              <button class="btn btn-outline">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export
+              </button>
+              <button class="btn btn-primary" onclick="openDialog('new-project')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                New project
+              </button>
+            </div>
+          </div>
+
+          <!-- Stat row -->
+          <div class="grid grid-cols-4 max-[920px]:grid-cols-2 max-[480px]:grid-cols-1 gap-3 mb-6">
+            <div class="card p-4">
+              <div class="text-[11px] uppercase tracking-wider text-muted-foreground">Total requests · 30d</div>
+              <div class="text-[22px] font-semibold mt-1 font-mono tabular-nums">8,420,124</div>
+              <div class="text-[11px] text-primary mt-0.5">+12% vs last month</div>
+              <svg class="spark mt-2 w-full h-8" viewBox="0 0 100 32" preserveAspectRatio="none">
+                <path class="area" d="M0,24 L8,20 L16,22 L24,15 L32,18 L40,12 L48,14 L56,8 L64,10 L72,6 L80,9 L88,4 L96,7 L100,5 L100,32 L0,32 Z"/>
+                <path d="M0,24 L8,20 L16,22 L24,15 L32,18 L40,12 L48,14 L56,8 L64,10 L72,6 L80,9 L88,4 L96,7 L100,5"/>
+              </svg>
+            </div>
+            <div class="card p-4">
+              <div class="text-[11px] uppercase tracking-wider text-muted-foreground">p95 latency</div>
+              <div class="text-[22px] font-semibold mt-1 font-mono tabular-nums">52ms</div>
+              <div class="text-[11px] text-muted-foreground mt-0.5">EU avg, 3 region</div>
+              <div class="mt-2 flex gap-3 text-[10.5px] font-mono text-muted-foreground">
+                <span><span class="text-foreground">IST</span> 47ms</span>
+                <span><span class="text-foreground">FRA</span> 58ms</span>
+                <span><span class="text-foreground">AMS</span> 62ms</span>
+              </div>
+            </div>
+            <div class="card p-4">
+              <div class="text-[11px] uppercase tracking-wider text-muted-foreground">Error rate</div>
+              <div class="text-[22px] font-semibold mt-1 font-mono tabular-nums">0.08%</div>
+              <div class="text-[11px] text-muted-foreground mt-0.5">6,720 / 8.4M</div>
+              <div class="mt-2 bar-row" style="height: 32px;">
+                <div class="bar" style="--v: 30%"></div>
+                <div class="bar" style="--v: 45%"></div>
+                <div class="bar" style="--v: 22%"></div>
+                <div class="bar" style="--v: 38%"></div>
+                <div class="bar" style="--v: 18%"></div>
+                <div class="bar" style="--v: 28%"></div>
+                <div class="bar" style="--v: 15%"></div>
+              </div>
+            </div>
+            <div class="card p-4">
+              <div class="text-[11px] uppercase tracking-wider text-muted-foreground">Next invoice</div>
+              <div class="text-[22px] font-semibold mt-1 font-mono tabular-nums">€38.00</div>
+              <div class="text-[11px] text-muted-foreground mt-0.5">May 29 · ex. VAT</div>
+              <a data-link="ws-billing" class="btn btn-outline btn-sm mt-2 cursor-pointer">Details</a>
+            </div>
+          </div>
+
+          <!-- Projects grid -->
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-[15.5px] font-semibold -tracking-[0.015em]">Projects</h2>
+            <div class="seg">
+              <button class="is-on">Grid</button>
+              <button>List</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 max-[920px]:grid-cols-2 max-[560px]:grid-cols-1 gap-3 mb-8">
+            <!-- acme-prod -->
+            <a data-link="proj-overview" class="card p-5 cursor-pointer hover:border-foreground/20 transition-colors no-underline text-foreground flex flex-col gap-3">
+              <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-md grid place-items-center text-[12px] font-bold text-primary-foreground" style="background: oklch(0.6 0.15 30);">A</span>
+                <div class="flex-1">
+                  <div class="text-[14px] font-semibold">acme-prod</div>
+                  <div class="text-[11px] font-mono text-muted-foreground">acme.workeros.cloud</div>
+                </div>
+                <span class="badge badge-primary">live</span>
+              </div>
+              <div class="grid grid-cols-3 gap-2 mt-1">
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">req/30d</div><div class="font-mono text-[13px] font-medium">6.2M</div></div>
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">D1</div><div class="font-mono text-[13px] font-medium">3.2GB</div></div>
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">R2</div><div class="font-mono text-[13px] font-medium">18GB</div></div>
+              </div>
+              <div class="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground border-t border-border pt-3">
+                <span class="font-mono">IST + FRA + AMS · EU</span>
+                <span class="ml-auto font-mono">last deploy 2h ago</span>
+              </div>
+            </a>
+            <!-- marketing-site -->
+            <a class="card p-5 cursor-pointer hover:border-foreground/20 transition-colors no-underline text-foreground flex flex-col gap-3">
+              <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-md grid place-items-center text-[12px] font-bold text-primary-foreground" style="background: oklch(0.55 0.16 280);">M</span>
+                <div class="flex-1">
+                  <div class="text-[14px] font-semibold">marketing-site</div>
+                  <div class="text-[11px] font-mono text-muted-foreground">acme.com</div>
+                </div>
+                <span class="badge badge-primary">live</span>
+              </div>
+              <div class="grid grid-cols-3 gap-2 mt-1">
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">req/30d</div><div class="font-mono text-[13px] font-medium">2.1M</div></div>
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">D1</div><div class="font-mono text-[13px] font-medium">120MB</div></div>
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">R2</div><div class="font-mono text-[13px] font-medium">4GB</div></div>
+              </div>
+              <div class="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground border-t border-border pt-3">
+                <span class="font-mono">IST</span>
+                <span class="ml-auto font-mono">last deploy 1d ago</span>
+              </div>
+            </a>
+            <!-- staging-api -->
+            <a class="card p-5 cursor-pointer hover:border-foreground/20 transition-colors no-underline text-foreground flex flex-col gap-3 opacity-70">
+              <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-md grid place-items-center text-[12px] font-bold text-primary-foreground" style="background: oklch(0.5 0.05 240);">S</span>
+                <div class="flex-1">
+                  <div class="text-[14px] font-semibold">staging-api</div>
+                  <div class="text-[11px] font-mono text-muted-foreground">staging.workeros.cloud</div>
+                </div>
+                <span class="badge badge-amber">paused</span>
+              </div>
+              <div class="grid grid-cols-3 gap-2 mt-1">
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">req/30d</div><div class="font-mono text-[13px] font-medium">120K</div></div>
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">D1</div><div class="font-mono text-[13px] font-medium">50MB</div></div>
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">R2</div><div class="font-mono text-[13px] font-medium">200MB</div></div>
+              </div>
+              <div class="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground border-t border-border pt-3">
+                <span class="font-mono">FRA</span>
+                <span class="ml-auto font-mono">paused 7 days ago</span>
+              </div>
+            </a>
+            <!-- new project tile -->
+            <button class="card border-dashed p-5 cursor-pointer hover:border-foreground/30 transition-colors flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground min-h-[180px]" onclick="openDialog('new-project')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span class="text-[13px] font-medium">New project</span>
+              <span class="text-[11px]">deploys in 30 seconds</span>
+            </button>
+          </div>
+
+          <!-- Activity feed -->
+          <div class="grid grid-cols-3 max-[920px]:grid-cols-1 gap-4">
+            <div class="col-span-2 card">
+              <div class="card-header">
+                <h3 class="text-[14px] font-semibold">Recent activity</h3>
+                <a class="ml-auto text-[12px] text-muted-foreground hover:text-foreground no-underline cursor-pointer" data-link="ws-audit">All logs →</a>
+              </div>
+              <div class="divide-y divide-border">
+                <div class="px-5 py-3 flex items-start gap-3">
+                  <span class="w-6 h-6 rounded-md grid place-items-center mt-0.5" style="background: color-mix(in oklch, var(--color-primary) 18%, transparent);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" class="text-primary"><polyline points="20 6 9 17 4 12"/></svg></span>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-[12.5px]"><strong>acme-prod</strong> · deploy succeeded <span class="font-mono text-[11px] text-muted-foreground">v0.7.2 → live</span></div>
+                    <div class="text-[10.5px] text-muted-foreground font-mono">Saadet K. · 2 hours ago · IST + FRA + AMS</div>
+                  </div>
+                </div>
+                <div class="px-5 py-3 flex items-start gap-3">
+                  <span class="w-6 h-6 rounded-md grid place-items-center mt-0.5 bg-muted"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="text-muted-foreground"><circle cx="12" cy="12" r="3"/></svg></span>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-[12.5px]">acme-prod · backup snapshot created <span class="font-mono text-[11px] text-muted-foreground">snap_01HXZ4</span></div>
+                    <div class="text-[10.5px] text-muted-foreground font-mono">system · 4 hours ago · 3.2GB D1</div>
+                  </div>
+                </div>
+                <div class="px-5 py-3 flex items-start gap-3">
+                  <span class="w-6 h-6 rounded-md grid place-items-center mt-0.5" style="background: color-mix(in oklch, oklch(0.75 0.16 70) 18%, transparent);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: oklch(0.5 0.16 70);"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg></span>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-[12.5px]"><strong>acme-prod</strong> · request quota at 80% — on Pro tier</div>
+                    <div class="text-[10.5px] text-muted-foreground font-mono">system · yesterday · upgrade suggestion emailed</div>
+                  </div>
+                </div>
+                <div class="px-5 py-3 flex items-start gap-3">
+                  <span class="w-6 h-6 rounded-md grid place-items-center mt-0.5 bg-muted"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-[12.5px]">Mert A. joined the team <span class="font-mono text-[11px] text-muted-foreground">role: developer</span></div>
+                    <div class="text-[10.5px] text-muted-foreground font-mono">SCIM via Okta · 2 days ago</div>
+                  </div>
+                </div>
+                <div class="px-5 py-3 flex items-start gap-3">
+                  <span class="w-6 h-6 rounded-md grid place-items-center mt-0.5 bg-muted"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><circle cx="12" cy="12" r="10"/></svg></span>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-[12.5px]">marketing-site · custom domain verified <span class="font-mono text-[11px] text-muted-foreground">acme.com</span></div>
+                    <div class="text-[10.5px] text-muted-foreground font-mono">DNS CNAME · 3 days ago</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick actions -->
+            <div class="flex flex-col gap-3">
+              <div class="card p-4 flex flex-col gap-2">
+                <h3 class="text-[13px] font-semibold">Quick actions</h3>
+                <a data-link="proj-domains" class="text-[12.5px] hover:text-primary no-underline cursor-pointer flex items-center gap-2"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-muted-foreground"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>Attach custom domain</a>
+                <a data-link="proj-regions" class="text-[12.5px] hover:text-primary no-underline cursor-pointer flex items-center gap-2"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-muted-foreground"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>Add region</a>
+                <a data-link="ws-team" class="text-[12.5px] hover:text-primary no-underline cursor-pointer flex items-center gap-2"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-muted-foreground"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>Invite a teammate</a>
+                <a class="text-[12.5px] hover:text-primary no-underline cursor-pointer flex items-center gap-2"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-muted-foreground"><polygon points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Create API key</a>
+                <a data-link="proj-backups" class="text-[12.5px] hover:text-primary no-underline cursor-pointer flex items-center gap-2"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-muted-foreground"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>Restore from backup</a>
+              </div>
+              <div class="card p-4">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                  <h3 class="text-[13px] font-semibold">System status</h3>
+                  <a class="ml-auto text-[11px] text-muted-foreground hover:text-foreground no-underline">status →</a>
+                </div>
+                <div class="text-[12px] text-muted-foreground">All regions normal · 99.99% over the last 30 days</div>
+                <div class="mt-3 flex gap-0.5">
+                  <!-- 30 day uptime bars -->
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70" title="30d"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm" style="background: oklch(0.78 0.16 70);" title="partial incident"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                  <span class="flex-1 h-5 rounded-sm bg-primary/70"></span>
+                </div>
+                <div class="mt-1.5 flex justify-between text-[10px] font-mono text-muted-foreground">
+                  <span>-30d</span><span>today</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────── Workspace · Team ─────── -->
+      <section data-screen="ws-team" data-screen-label="Workspace · Team">
+        <div class="px-8 max-md:px-5 py-8 max-w-[1400px]">
+          <div class="crumbs mb-3"><a>Acme A.Ş.</a><span class="sep">/</span><span class="text-foreground">Team</span></div>
+          <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
+            <div>
+              <h1 class="text-[22px] font-semibold -tracking-[0.02em] leading-tight">Team</h1>
+              <p class="text-[13px] text-muted-foreground mt-1">12 members · Okta SCIM connected · 2 new in the last 30 days</p>
+            </div>
+            <div class="flex gap-2">
+              <button class="btn btn-outline">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 12l-4-4-4 4M12 16V8"/></svg>
+                SCIM sync
+              </button>
+              <button class="btn btn-primary" onclick="openDialog('invite')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                Send invite
+              </button>
+            </div>
+          </div>
+
+          <div class="card mb-6">
+            <div class="card-header">
+              <input class="f flex-1 max-w-[280px]" placeholder="search members..." style="height: 30px; font-size: 12px;" />
+              <div class="seg ml-auto">
+                <button class="is-on">All <span class="font-mono text-muted-foreground ml-1">12</span></button>
+                <button>Admin <span class="font-mono text-muted-foreground ml-1">2</span></button>
+                <button>Dev <span class="font-mono text-muted-foreground ml-1">7</span></button>
+                <button>Viewer <span class="font-mono text-muted-foreground ml-1">3</span></button>
+              </div>
+            </div>
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>Member</th>
+                  <th>Role</th>
+                  <th>Projects</th>
+                  <th>Last active</th>
+                  <th>SSO</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-full grid place-items-center text-[10.5px] font-medium text-primary-foreground" style="background: oklch(0.55 0.13 240);">SK</span><div><div class="font-medium text-foreground">Saadet K.</div><div class="font-mono text-[10.5px] text-muted-foreground">saadet@acme.com</div></div></div></td>
+                  <td><span class="badge badge-primary">owner</span></td>
+                  <td class="font-mono text-[11.5px] text-muted-foreground">all</td>
+                  <td class="font-mono text-[11.5px] text-muted-foreground">now</td>
+                  <td><span class="text-[11px] font-mono text-muted-foreground">Okta</span></td>
+                  <td><button class="btn btn-ghost btn-sm">⋯</button></td>
+                </tr>
+                <tr>
+                  <td><div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-full grid place-items-center text-[10.5px] font-medium text-primary-foreground" style="background: oklch(0.55 0.16 30);">CT</span><div><div class="font-medium text-foreground">Cem T.</div><div class="font-mono text-[10.5px] text-muted-foreground">cem@acme.com</div></div></div></td>
+                  <td><span class="badge badge-primary">admin</span></td>
+                  <td class="font-mono text-[11.5px] text-muted-foreground">all</td>
+                  <td class="font-mono text-[11.5px] text-muted-foreground">3m</td>
+                  <td><span class="text-[11px] font-mono text-muted-foreground">Okta</span></td>
+                  <td><button class="btn btn-ghost btn-sm">⋯</button></td>
+                </tr>
+                <tr>
+                  <td><div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-full grid place-items-center text-[10.5px] font-medium text-primary-foreground" style="background: oklch(0.55 0.16 160);">MA</span><div><div class="font-medium text-foreground">Mert A.</div><div class="font-mono text-[10.5px] text-muted-foreground">mert@acme.com</div></div></div></td>
+                  <td><span class="badge badge-muted">developer</span></td>
+                  <td class="font-mono text-[11.5px] text-muted-foreground">acme-prod, marketing-site</td>
+                  <td class="font-mono text-[11.5px] text-muted-foreground">28m</td>
+                  <td><span class="text-[11px] font-mono text-muted-foreground">Okta</span></td>
+                  <td><button class="btn btn-ghost btn-sm">⋯</button></td>
+                </tr>
+                <tr>
+                  <td><div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-full grid place-items-center text-[10.5px] font-medium text-primary-foreground" style="background: oklch(0.55 0.16 280);">EY</span><div><div class="font-medium text-foreground">Elif Y.</div><div class="font-mono text-[10.5px] text-muted-foreground">elif@acme.com</div></div></div></td>
+                  <td><span class="badge badge-muted">developer</span></td>
+                  <td class="font-mono text-[11.5px] text-muted-foreground">acme-prod</td>
+                  <td class="font-mono text-[11.5px] text-muted-foreground">1h</td>
+                  <td><span class="text-[11px] font-mono text-muted-foreground">Okta</span></td>
+                  <td><button class="btn btn-ghost btn-sm">⋯</button></td>
+                </tr>
+                <tr>
+                  <td><div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-full grid place-items-center text-[10.5px] font-medium text-primary-foreground" style="background: oklch(0.55 0.16 80);">BS</span><div><div class="font-medium text-foreground">Bora S.</div><div class="font-mono text-[10.5px] text-muted-foreground">bora@acme.com</div></div></div></td>
+                  <td><span class="badge badge-muted">viewer</span></td>
+                  <td class="font-mono text-[11.5px] text-muted-foreground">marketing-site</td>
+                  <td class="font-mono text-[11.5px] text-muted-foreground">2d</td>
+                  <td><span class="text-[11px] font-mono text-muted-foreground">Okta</span></td>
+                  <td><button class="btn btn-ghost btn-sm">⋯</button></td>
+                </tr>
+                <tr>
+                  <td><div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-full grid place-items-center text-[10.5px] font-medium text-muted-foreground bg-muted">+8</span><div><div class="font-medium text-muted-foreground">8 more members</div><div class="font-mono text-[10.5px] text-muted-foreground">clear filter</div></div></div></td>
+                  <td colspan="5"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="grid grid-cols-2 max-[820px]:grid-cols-1 gap-3">
+            <div class="card p-5">
+              <div class="flex items-center gap-2.5 mb-2">
+                <span class="w-8 h-8 rounded-md bg-muted grid place-items-center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+                <div class="flex-1"><h3 class="text-[14px] font-semibold">SSO · SAML 2.0</h3><div class="text-[11.5px] text-muted-foreground font-mono">Okta · acme.okta.com</div></div>
+                <span class="badge badge-primary">connected</span>
+              </div>
+              <p class="text-[12px] text-muted-foreground leading-snug">SCIM provisioning active. Members deprovisioned in Okta are closed within 60 seconds.</p>
+              <div class="mt-3 flex gap-2">
+                <button class="btn btn-outline btn-sm">Test login</button>
+                <button class="btn btn-ghost btn-sm">Edit</button>
+              </div>
+            </div>
+            <div class="card p-5">
+              <div class="flex items-center gap-2.5 mb-2">
+                <span class="w-8 h-8 rounded-md bg-muted grid place-items-center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/></svg></span>
+                <div class="flex-1"><h3 class="text-[14px] font-semibold">Roles</h3><div class="text-[11.5px] text-muted-foreground">Owner · Admin · Developer · Viewer</div></div>
+              </div>
+              <p class="text-[12px] text-muted-foreground leading-snug">Workspace-level role; project-level override available. Custom roles on Enterprise plan.</p>
+              <div class="mt-3 flex gap-2">
+                <button class="btn btn-outline btn-sm">Role matrix</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────── Workspace · Billing ─────── -->
+      <section data-screen="ws-billing" data-screen-label="Workspace · Billing">
+        <div class="px-8 max-md:px-5 py-8 max-w-[1400px]">
+          <div class="crumbs mb-3"><a>Acme A.Ş.</a><span class="sep">/</span><span class="text-foreground">Billing</span></div>
+          <h1 class="text-[22px] font-semibold -tracking-[0.02em] leading-tight mb-1">Billing</h1>
+          <p class="text-[13px] text-muted-foreground mb-6">Pro tier · €19/project · next renewal June 1, 2026</p>
+
+          <div class="grid grid-cols-3 max-[920px]:grid-cols-1 gap-3 mb-6">
+            <div class="card p-5 col-span-2 max-[920px]:col-span-1">
+              <div class="flex items-start gap-3 mb-3 flex-wrap">
+                <div>
+                  <div class="text-[11px] uppercase tracking-wider text-muted-foreground">Current plan</div>
+                  <div class="text-[22px] font-semibold -tracking-[0.018em]">Pro</div>
+                  <div class="text-[12.5px] text-muted-foreground">10M req · 5GB D1 · 25GB R2 / project</div>
+                </div>
+                <div class="ml-auto flex gap-2">
+                  <button class="btn btn-outline">Change plan</button>
+                  <button class="btn btn-primary" onclick="openDialog('upgrade')">Upgrade to Scale →</button>
+                </div>
+              </div>
+              <div class="grid grid-cols-3 gap-2 pt-4 border-t border-border">
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider text-muted-foreground">Requests this month</div>
+                  <div class="font-mono text-[15px] font-medium tabular-nums">6,240,890 <span class="text-muted-foreground text-[12px]">/ 10M</span></div>
+                  <div class="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden"><div class="h-full bg-primary" style="width: 62%"></div></div>
+                </div>
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider text-muted-foreground">D1</div>
+                  <div class="font-mono text-[15px] font-medium tabular-nums">3.2 GB <span class="text-muted-foreground text-[12px]">/ 5GB</span></div>
+                  <div class="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden"><div class="h-full bg-primary" style="width: 64%"></div></div>
+                </div>
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider text-muted-foreground">R2</div>
+                  <div class="font-mono text-[15px] font-medium tabular-nums">22.4 GB <span class="text-muted-foreground text-[12px]">/ 25GB</span></div>
+                  <div class="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden"><div class="h-full" style="width: 89%; background: oklch(0.78 0.16 70);"></div></div>
+                </div>
+              </div>
+              <div class="mt-4 flex items-center gap-2 p-3 rounded-md border border-border" style="background: color-mix(in oklch, oklch(0.78 0.16 70) 8%, transparent);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: oklch(0.5 0.16 70);"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                <div class="text-[12.5px] flex-1">R2 is at 89% capacity. Overages are auto-billed at €0.30/GB/month.</div>
+                <button class="btn btn-outline btn-sm">Buy add-on</button>
+              </div>
+            </div>
+
+            <!-- Next invoice -->
+            <div class="card p-5">
+              <div class="text-[11px] uppercase tracking-wider text-muted-foreground">Next invoice</div>
+              <div class="text-[26px] font-semibold -tracking-[0.02em] mt-1">€38.00</div>
+              <div class="text-[12px] text-muted-foreground">May 29 · 5 days left</div>
+              <div class="mt-4 pt-4 border-t border-border space-y-1.5 text-[12.5px]">
+                <div class="flex justify-between"><span class="text-muted-foreground">Pro × 2 projects</span><span class="font-mono">€38.00</span></div>
+                <div class="flex justify-between text-muted-foreground"><span>Free × 1</span><span class="font-mono">€0.00</span></div>
+                <div class="flex justify-between text-muted-foreground"><span>R2 add-on</span><span class="font-mono">€0.00</span></div>
+                <div class="flex justify-between border-t border-border pt-1.5 mt-1.5 font-medium"><span>Subtotal</span><span class="font-mono">€38.00</span></div>
+                <div class="flex justify-between text-muted-foreground text-[11px]"><span>+ VAT (20%)</span><span class="font-mono">€7.60</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Usage chart -->
+          <div class="card mb-6">
+            <div class="card-header">
+              <h3 class="text-[14px] font-semibold">Usage chart · last 30 days</h3>
+              <div class="seg ml-auto">
+                <button class="is-on">Requests</button>
+                <button>D1</button>
+                <button>R2</button>
+                <button>Bandwidth</button>
+              </div>
+            </div>
+            <div class="px-5 py-6">
+              <div class="bar-row" style="height: 140px;">
+                <div class="bar" style="--v: 35%"></div>
+                <div class="bar" style="--v: 42%"></div>
+                <div class="bar" style="--v: 38%"></div>
+                <div class="bar" style="--v: 52%"></div>
+                <div class="bar" style="--v: 48%"></div>
+                <div class="bar" style="--v: 65%"></div>
+                <div class="bar" style="--v: 58%"></div>
+                <div class="bar" style="--v: 60%"></div>
+                <div class="bar" style="--v: 72%"></div>
+                <div class="bar" style="--v: 68%"></div>
+                <div class="bar" style="--v: 55%"></div>
+                <div class="bar" style="--v: 62%"></div>
+                <div class="bar" style="--v: 70%"></div>
+                <div class="bar" style="--v: 78%"></div>
+                <div class="bar" style="--v: 82%"></div>
+                <div class="bar" style="--v: 75%"></div>
+                <div class="bar" style="--v: 88%"></div>
+                <div class="bar" style="--v: 92%"></div>
+                <div class="bar" style="--v: 85%"></div>
+                <div class="bar" style="--v: 78%"></div>
+                <div class="bar" style="--v: 90%"></div>
+                <div class="bar" style="--v: 88%"></div>
+                <div class="bar" style="--v: 95%"></div>
+                <div class="bar" style="--v: 82%"></div>
+                <div class="bar" style="--v: 76%"></div>
+                <div class="bar" style="--v: 80%"></div>
+                <div class="bar" style="--v: 86%"></div>
+                <div class="bar" style="--v: 78%"></div>
+                <div class="bar" style="--v: 72%"></div>
+                <div class="bar" style="--v: 70%"></div>
+              </div>
+              <div class="mt-3 flex justify-between text-[10px] font-mono text-muted-foreground"><span>1 May</span><span>15 May</span><span>30 May</span></div>
+            </div>
+          </div>
+
+          <!-- Payment + invoices -->
+          <div class="grid grid-cols-2 max-[820px]:grid-cols-1 gap-3">
+            <div class="card">
+              <div class="card-header"><h3 class="text-[14px] font-semibold">Payment method</h3></div>
+              <div class="card-body">
+                <div class="flex items-center gap-3 p-3 border border-border rounded-md mb-3">
+                  <div class="w-10 h-7 rounded grid place-items-center text-[10px] font-bold text-white" style="background: oklch(0.4 0.1 240);">VISA</div>
+                  <div class="flex-1">
+                    <div class="text-[12.5px] font-medium">•••• 4242</div>
+                    <div class="text-[11px] text-muted-foreground">Expires 09/27 · Saadet K.</div>
+                  </div>
+                  <button class="btn btn-ghost btn-sm">Change</button>
+                </div>
+                <button class="btn btn-outline btn-sm">+ Add new card</button>
+                <div class="mt-4 pt-4 border-t border-border text-[12px] text-muted-foreground space-y-1">
+                  <div class="flex justify-between"><span>Billing address</span><span class="text-foreground">Acme A.Ş. · İstanbul</span></div>
+                  <div class="flex justify-between"><span>Tax number</span><span class="font-mono text-foreground">1234567890</span></div>
+                  <div class="flex justify-between"><span>E-invoice</span><span class="text-foreground">active</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header"><h3 class="text-[14px] font-semibold">Past invoices</h3><button class="btn btn-ghost btn-sm ml-auto">Download all</button></div>
+              <table class="tbl">
+                <tbody>
+                  <tr><td class="font-mono">INV-2026-005</td><td>1 May 2026</td><td class="font-mono">€38.00</td><td><span class="badge badge-primary">paid</span></td><td><button class="btn btn-ghost btn-sm">PDF</button></td></tr>
+                  <tr><td class="font-mono">INV-2026-004</td><td>1 Apr 2026</td><td class="font-mono">€38.00</td><td><span class="badge badge-primary">paid</span></td><td><button class="btn btn-ghost btn-sm">PDF</button></td></tr>
+                  <tr><td class="font-mono">INV-2026-003</td><td>1 Mar 2026</td><td class="font-mono">€19.00</td><td><span class="badge badge-primary">paid</span></td><td><button class="btn btn-ghost btn-sm">PDF</button></td></tr>
+                  <tr><td class="font-mono">INV-2026-002</td><td>1 Feb 2026</td><td class="font-mono">€19.00</td><td><span class="badge badge-primary">paid</span></td><td><button class="btn btn-ghost btn-sm">PDF</button></td></tr>
+                  <tr><td class="font-mono">INV-2026-001</td><td>1 Jan 2026</td><td class="font-mono">€19.00</td><td><span class="badge badge-primary">paid</span></td><td><button class="btn btn-ghost btn-sm">PDF</button></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────── Workspace · Audit ─────── -->
+      <section data-screen="ws-audit" data-screen-label="Workspace · Audit log">
+        <div class="px-8 max-md:px-5 py-8 max-w-[1400px]">
+          <div class="crumbs mb-3"><a>Acme A.Ş.</a><span class="sep">/</span><span class="text-foreground">Audit log</span></div>
+          <h1 class="text-[22px] font-semibold -tracking-[0.02em] leading-tight mb-1">Audit log</h1>
+          <p class="text-[13px] text-muted-foreground mb-6">Immutable · showing last 30 days · Pro tier 30d · Scale 90d · Enterprise unlimited</p>
+
+          <div class="card mb-3">
+            <div class="card-header flex-wrap gap-2">
+              <input class="f flex-1 max-w-[280px]" placeholder="search actor, action..." style="height: 30px; font-size: 12px;" />
+              <select class="f" style="width: auto; height: 30px; font-size: 12px;">
+                <option>All projects</option>
+                <option>acme-prod</option>
+                <option>marketing-site</option>
+              </select>
+              <select class="f" style="width: auto; height: 30px; font-size: 12px;">
+                <option>All actions</option>
+                <option>auth.*</option>
+                <option>schema.*</option>
+                <option>billing.*</option>
+              </select>
+              <button class="btn btn-outline btn-sm ml-auto">Download CSV</button>
+            </div>
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Actor</th>
+                  <th>Action</th>
+                  <th>Target</th>
+                  <th>IP</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td class="font-mono text-[11px] text-muted-foreground">14:23 · 25 May</td><td>Saadet K.</td><td><span class="badge badge-muted">deploy.start</span></td><td class="font-mono text-[11.5px]">acme-prod</td><td class="font-mono text-[11px] text-muted-foreground">85.34.x.x</td></tr>
+                <tr><td class="font-mono text-[11px] text-muted-foreground">14:23 · 25 May</td><td>system</td><td><span class="badge badge-muted">deploy.success</span></td><td class="font-mono text-[11.5px]">acme-prod · v0.7.2</td><td class="font-mono text-[11px] text-muted-foreground">—</td></tr>
+                <tr><td class="font-mono text-[11px] text-muted-foreground">12:08 · 25 May</td><td>system</td><td><span class="badge badge-muted">backup.create</span></td><td class="font-mono text-[11.5px]">acme-prod · snap_01HXZ4</td><td class="font-mono text-[11px] text-muted-foreground">—</td></tr>
+                <tr><td class="font-mono text-[11px] text-muted-foreground">11:42 · 25 May</td><td>Mert A.</td><td><span class="badge badge-muted">api_key.create</span></td><td class="font-mono text-[11.5px]">pak_8f2a…</td><td class="font-mono text-[11px] text-muted-foreground">85.34.x.x</td></tr>
+                <tr><td class="font-mono text-[11px] text-muted-foreground">10:15 · 25 May</td><td>Saadet K.</td><td><span class="badge badge-amber">billing.plan_change</span></td><td class="font-mono text-[11.5px]">Pro → Pro (2 projects)</td><td class="font-mono text-[11px] text-muted-foreground">85.34.x.x</td></tr>
+                <tr><td class="font-mono text-[11px] text-muted-foreground">09:54 · 24 May</td><td>SCIM</td><td><span class="badge badge-muted">user.create</span></td><td class="font-mono text-[11.5px]">mert@acme.com</td><td class="font-mono text-[11px] text-muted-foreground">—</td></tr>
+                <tr><td class="font-mono text-[11px] text-muted-foreground">16:22 · 23 May</td><td>Saadet K.</td><td><span class="badge badge-muted">domain.attach</span></td><td class="font-mono text-[11.5px]">acme.com → marketing-site</td><td class="font-mono text-[11px] text-muted-foreground">85.34.x.x</td></tr>
+                <tr><td class="font-mono text-[11px] text-muted-foreground">11:08 · 23 May</td><td>Cem T.</td><td><span class="badge badge-muted">region.add</span></td><td class="font-mono text-[11.5px]">acme-prod · IAD</td><td class="font-mono text-[11px] text-muted-foreground">194.169.x.x</td></tr>
+                <tr><td class="font-mono text-[11px] text-muted-foreground">10:00 · 22 May</td><td>system</td><td><span class="badge badge-red">auth.failed</span></td><td class="font-mono text-[11.5px]">unknown@—</td><td class="font-mono text-[11px] text-muted-foreground">198.51.x.x</td></tr>
+                <tr><td class="font-mono text-[11px] text-muted-foreground">09:34 · 22 May</td><td>Saadet K.</td><td><span class="badge badge-muted">settings.update</span></td><td class="font-mono text-[11.5px]">ip_allowlist</td><td class="font-mono text-[11px] text-muted-foreground">85.34.x.x</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="text-[11px] text-muted-foreground text-center">Showing 14 / 426 events · page 1</div>
+        </div>
+      </section>
+
+      <!-- ─────── Workspace · Settings ─────── -->
+      <section data-screen="ws-settings" data-screen-label="Workspace · Settings">
+        <div class="px-8 max-md:px-5 py-8 max-w-[900px]">
+          <div class="crumbs mb-3"><a>Acme A.Ş.</a><span class="sep">/</span><span class="text-foreground">Settings</span></div>
+          <h1 class="text-[22px] font-semibold -tracking-[0.02em] leading-tight mb-6">Workspace settings</h1>
+
+          <div class="space-y-3">
+            <div class="card p-5">
+              <div class="flex items-start gap-4 max-md:flex-col">
+                <div class="w-48 shrink-0">
+                  <h3 class="text-[13.5px] font-semibold">Workspace name</h3>
+                  <p class="text-[11.5px] text-muted-foreground mt-1">Shown on invoices and the admin title bar.</p>
+                </div>
+                <div class="flex-1 w-full">
+                  <input class="f" value="Acme A.Ş." />
+                  <div class="mt-1 text-[11px] text-muted-foreground font-mono">acme.workeros.cloud</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-5">
+              <div class="flex items-start gap-4 max-md:flex-col">
+                <div class="w-48 shrink-0">
+                  <h3 class="text-[13.5px] font-semibold flex items-center gap-1.5">
+                    Data residency
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  </h3>
+                  <p class="text-[11.5px] text-muted-foreground mt-1">Set when the workspace is created. Cannot be changed later.</p>
+                </div>
+                <div class="flex-1 w-full">
+                  <div class="rounded-md border border-border bg-muted/30 p-3">
+                    <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <div class="text-[13px] font-medium whitespace-nowrap">EU / Türkiye</div>
+                      <span class="badge badge-primary">KVKK + GDPR</span>
+                      <span class="badge badge-muted ml-auto font-mono">locked</span>
+                    </div>
+                    <div class="text-[11.5px] text-muted-foreground leading-snug">All project databases, storage, backups, and audit logs stay within <strong class="text-foreground font-mono">IST · FRA · AMS · DUB</strong>. US/APAC regions are unavailable.</div>
+                    <div class="mt-2.5 pt-2.5 border-t border-border flex items-center gap-3 text-[11px] font-mono text-muted-foreground">
+                      <span>Locked on: <span class="text-foreground">14 Mar 2026</span></span>
+                      <span class="text-border">·</span>
+                      <span>SCC: <span class="text-foreground">type-2 (intra-EU)</span></span>
+                      <span class="text-border">·</span>
+                      <span>DPA: <span class="text-foreground">signed</span></span>
+                    </div>
+                  </div>
+                  <div class="mt-2 flex items-center gap-3 text-[11.5px] text-muted-foreground">
+                    <a class="hover:text-primary cursor-pointer no-underline">Download residency report (PDF)</a>
+                    <span class="text-border">·</span>
+                    <a class="hover:text-primary cursor-pointer no-underline">Create a new Global workspace →</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-5">
+              <div class="flex items-start gap-4 max-md:flex-col">
+                <div class="w-48 shrink-0">
+                  <h3 class="text-[13.5px] font-semibold">Default region</h3>
+                  <p class="text-[11.5px] text-muted-foreground mt-1">New projects launch in this region.</p>
+                </div>
+                <div class="flex-1 w-full">
+                  <select class="f">
+                    <option>IST · Istanbul (TR)</option>
+                    <option>FRA · Frankfurt (EU)</option>
+                    <option>AMS · Amsterdam (EU)</option>
+                    <option>DUB · Dublin (EU)</option>
+                  </select>
+                  <div class="mt-1 text-[11px] text-muted-foreground">Only regions compliant with EU residency are listed.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-5">
+              <div class="flex items-start gap-4 max-md:flex-col">
+                <div class="w-48 shrink-0">
+                  <h3 class="text-[13.5px] font-semibold">IP allowlist</h3>
+                  <p class="text-[11.5px] text-muted-foreground mt-1">Admin panel access restricted to these IPs.</p>
+                </div>
+                <div class="flex-1 w-full">
+                  <textarea class="f" rows="3">85.34.0.0/16
+194.169.0.0/16</textarea>
+                  <div class="mt-1 text-[11px] text-muted-foreground">CIDR notation · one rule per line</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-5">
+              <div class="flex items-start gap-4 max-md:flex-col">
+                <div class="w-48 shrink-0">
+                  <h3 class="text-[13.5px] font-semibold">Webhook notification</h3>
+                  <p class="text-[11.5px] text-muted-foreground mt-1">HMAC-signed POST on important events.</p>
+                </div>
+                <div class="flex-1 w-full">
+                  <input class="f" value="https://hooks.slack.com/T0123/B0456" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Danger zone -->
+            <div class="card p-5" style="border-color: color-mix(in oklch, oklch(0.65 0.2 22) 35%, var(--color-border));">
+              <h3 class="text-[13.5px] font-semibold mb-3" style="color: oklch(0.45 0.18 22);">Danger zone</h3>
+              <div class="flex items-center gap-4 py-3 border-t border-border">
+                <div class="flex-1">
+                  <div class="text-[13px] font-medium">Export workspace</div>
+                  <div class="text-[11.5px] text-muted-foreground">Schema + data + storage from every project in a single archive.</div>
+                </div>
+                <button class="btn btn-outline btn-sm">Start export</button>
+              </div>
+              <div class="flex items-center gap-4 py-3 border-t border-border">
+                <div class="flex-1">
+                  <div class="text-[13px] font-medium">Delete workspace</div>
+                  <div class="text-[11.5px] text-muted-foreground">Cannot be undone. All projects, members, and invoices are archived.</div>
+                </div>
+                <button class="btn btn-sm" style="background: oklch(0.65 0.2 22); color: white;">Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────── Project · Overview ─────── -->
+      <section data-screen="proj-overview" data-screen-label="Project · Overview">
+        <div class="px-8 max-md:px-5 py-8 max-w-[1400px]">
+          <div class="crumbs mb-3"><a>Acme A.Ş.</a><span class="sep">/</span><a data-link="ws-overview" class="cursor-pointer">Projects</a><span class="sep">/</span><span class="text-foreground">acme-prod</span></div>
+          <div class="flex items-start gap-4 flex-wrap mb-6">
+            <span class="w-12 h-12 rounded-lg grid place-items-center text-[18px] font-bold text-primary-foreground" style="background: oklch(0.6 0.15 30);">A</span>
+            <div class="flex-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <h1 class="text-[22px] font-semibold -tracking-[0.02em] leading-tight">acme-prod</h1>
+                <span class="badge badge-primary">live</span>
+                <span class="badge badge-muted">production</span>
+              </div>
+              <div class="font-mono text-[12px] text-muted-foreground mt-1">acme.workeros.cloud · D1 · IST + FRA + AMS · <span class="text-foreground">EU residency</span></div>
+            </div>
+            <div class="flex gap-2">
+              <button class="btn btn-outline">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6"/><path d="M21 12h-6m-6 0H3"/></svg>
+                Deploy
+              </button>
+              <a href="#" class="btn btn-primary" title="Schema, data, auth, functions, storage — everything inside the project">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18"/><path d="M3 6h18"/><path d="M3 18h12"/></svg>
+                Open admin panel
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 1px;"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
+              </a>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-4 max-[920px]:grid-cols-2 max-[480px]:grid-cols-1 gap-3 mb-6">
+            <div class="card p-4">
+              <div class="text-[11px] uppercase tracking-wider text-muted-foreground">Status</div>
+              <div class="text-[15px] font-medium mt-1 flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>Healthy</div>
+              <div class="text-[11px] text-muted-foreground mt-0.5 font-mono">3/3 region OK</div>
+            </div>
+            <div class="card p-4">
+              <div class="text-[11px] uppercase tracking-wider text-muted-foreground">RPS · last 5m</div>
+              <div class="text-[18px] font-semibold mt-1 font-mono tabular-nums">142</div>
+              <svg class="spark mt-1 w-full h-6" viewBox="0 0 100 24" preserveAspectRatio="none">
+                <path d="M0,16 L10,14 L20,18 L30,12 L40,15 L50,8 L60,12 L70,6 L80,9 L90,4 L100,7"/>
+              </svg>
+            </div>
+            <div class="card p-4">
+              <div class="text-[11px] uppercase tracking-wider text-muted-foreground">p95 latency</div>
+              <div class="text-[18px] font-semibold mt-1 font-mono tabular-nums">47ms</div>
+              <div class="text-[11px] text-primary mt-0.5">▼ 4ms vs yesterday</div>
+            </div>
+            <div class="card p-4">
+              <div class="text-[11px] uppercase tracking-wider text-muted-foreground">Error rate</div>
+              <div class="text-[18px] font-semibold mt-1 font-mono tabular-nums">0.04%</div>
+              <div class="text-[11px] text-muted-foreground mt-0.5">68 / 142K req</div>
+            </div>
+          </div>
+
+          <!-- Cloud vs Admin scope explainer -->
+          <div class="card mb-6 overflow-hidden" style="background: linear-gradient(to right, var(--color-card) 0%, color-mix(in oklch, var(--color-primary) 5%, var(--color-card)) 100%);">
+            <div class="grid grid-cols-[1.4fr_1fr] max-[760px]:grid-cols-1">
+              <div class="p-5 border-r border-border max-[760px]:border-r-0 max-[760px]:border-b">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="w-5 h-5 rounded grid place-items-center bg-muted text-foreground"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19a4.5 4.5 0 1 0 0-9c-.4 0-.8 0-1.1.1A6 6 0 0 0 4.6 12.5 4 4 0 0 0 6.5 20"/></svg></span>
+                  <h3 class="text-[13.5px] font-semibold">Cloud panel</h3>
+                  <span class="badge badge-muted">infra + billing</span>
+                </div>
+                <p class="text-[12px] text-muted-foreground leading-snug mb-3">Manages the layer the project runs on. <em>Doesn't touch</em> data, schema, or users.</p>
+                <ul class="grid grid-cols-2 gap-x-3 gap-y-1 text-[12px]">
+                  <li class="flex items-center gap-1.5 text-muted-foreground"><span class="w-1 h-1 rounded-full bg-muted-foreground/50"></span>Regions, backups, domains</li>
+                  <li class="flex items-center gap-1.5 text-muted-foreground"><span class="w-1 h-1 rounded-full bg-muted-foreground/50"></span>Branches (prod / staging)</li>
+                  <li class="flex items-center gap-1.5 text-muted-foreground"><span class="w-1 h-1 rounded-full bg-muted-foreground/50"></span>Workspace, team, membership</li>
+                  <li class="flex items-center gap-1.5 text-muted-foreground"><span class="w-1 h-1 rounded-full bg-muted-foreground/50"></span>Plan, billing, audit</li>
+                  <li class="flex items-center gap-1.5 text-muted-foreground"><span class="w-1 h-1 rounded-full bg-muted-foreground/50"></span>Deploy keys, integrations</li>
+                  <li class="flex items-center gap-1.5 text-muted-foreground"><span class="w-1 h-1 rounded-full bg-muted-foreground/50"></span>Data residency (EU/Global)</li>
+                </ul>
+              </div>
+              <div class="p-5 relative">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="w-5 h-5 rounded grid place-items-center text-primary-foreground" style="background: oklch(0.6 0.15 30);">A</span>
+                  <h3 class="text-[13.5px] font-semibold">Admin panel</h3>
+                  <span class="badge badge-primary">project content</span>
+                </div>
+                <p class="text-[12px] text-muted-foreground leading-snug mb-3"><strong class="text-foreground">acme-prod</strong>'s own management UI. Schema, data, auth, functions — all in there.</p>
+                <ul class="grid grid-cols-2 gap-x-3 gap-y-1 text-[12px] mb-3.5">
+                  <li class="flex items-center gap-1.5"><span class="w-1 h-1 rounded-full bg-primary"></span>Collections + items</li>
+                  <li class="flex items-center gap-1.5"><span class="w-1 h-1 rounded-full bg-primary"></span>Schema, relations</li>
+                  <li class="flex items-center gap-1.5"><span class="w-1 h-1 rounded-full bg-primary"></span>App users + auth</li>
+                  <li class="flex items-center gap-1.5"><span class="w-1 h-1 rounded-full bg-primary"></span>Storage, files</li>
+                  <li class="flex items-center gap-1.5"><span class="w-1 h-1 rounded-full bg-primary"></span>Functions, flows, hooks</li>
+                  <li class="flex items-center gap-1.5"><span class="w-1 h-1 rounded-full bg-primary"></span>Logs, realtime, API explorer</li>
+                </ul>
+                <a href="#" class="btn btn-primary btn-sm">
+                  Open acme-prod admin
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-[2fr_1fr] max-[920px]:grid-cols-1 gap-3">
+            <div class="card">
+              <div class="card-header"><h3 class="text-[14px] font-semibold">Recent deploys</h3><a class="ml-auto text-[12px] text-muted-foreground hover:text-foreground no-underline cursor-pointer">All →</a></div>
+              <table class="tbl">
+                <tbody>
+                  <tr><td class="font-mono text-[11px]">v0.7.2</td><td><strong>main</strong> · "permissions DSL fix"</td><td>Saadet K.</td><td class="font-mono text-[11px] text-muted-foreground">2h</td><td><span class="badge badge-primary">live</span></td></tr>
+                  <tr><td class="font-mono text-[11px]">v0.7.1</td><td><strong>main</strong> · "neon driver bump"</td><td>Cem T.</td><td class="font-mono text-[11px] text-muted-foreground">1d</td><td><span class="badge badge-muted">superseded</span></td></tr>
+                  <tr><td class="font-mono text-[11px]">v0.7.0</td><td><strong>main</strong> · "v0.7 release"</td><td>Saadet K.</td><td class="font-mono text-[11px] text-muted-foreground">5d</td><td><span class="badge badge-muted">superseded</span></td></tr>
+                  <tr><td class="font-mono text-[11px]">v0.6.9</td><td><strong>preview-247</strong> · "experiment: webhook retry"</td><td>Mert A.</td><td class="font-mono text-[11px] text-muted-foreground">6d</td><td><span class="badge badge-amber">preview</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><h3 class="text-[14px] font-semibold">Recent errors</h3><span class="badge badge-muted ml-auto">8 / 30d</span></div>
+              <div class="divide-y divide-border">
+                <div class="px-5 py-3">
+                  <div class="text-[12.5px] font-mono">TypeError: Cannot read 'id' of undefined</div>
+                  <div class="text-[11px] text-muted-foreground mt-0.5">apps/web/items.ts:124 · 3 events · last 28m</div>
+                </div>
+                <div class="px-5 py-3">
+                  <div class="text-[12.5px] font-mono">Timeout: D1 write &gt; 30s</div>
+                  <div class="text-[11px] text-muted-foreground mt-0.5">flows/order-process.ts · 2 events · 4 hours ago</div>
+                </div>
+                <div class="px-5 py-3">
+                  <div class="text-[12.5px] font-mono">SCIM: user not found in IDP</div>
+                  <div class="text-[11px] text-muted-foreground mt-0.5">auth/scim.ts · 1 event · 2 days ago</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────── Project · Usage ─────── -->
+      <section data-screen="proj-usage" data-screen-label="Project · Usage">
+        <div class="px-8 max-md:px-5 py-8 max-w-[1400px]">
+          <div class="crumbs mb-3"><a>Acme A.Ş.</a><span class="sep">/</span><span class="text-foreground">acme-prod</span><span class="sep">/</span><span class="text-foreground">Usage</span></div>
+          <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
+            <div>
+              <h1 class="text-[22px] font-semibold -tracking-[0.02em] leading-tight">Usage</h1>
+              <p class="text-[13px] text-muted-foreground mt-1">Pro tier · resets June 1 · transparent limits</p>
+            </div>
+            <div class="seg">
+              <button>24h</button>
+              <button>7d</button>
+              <button class="is-on">30d</button>
+              <button>90d</button>
+            </div>
+          </div>
+
+          <!-- Limit cards -->
+          <div class="grid grid-cols-4 max-[920px]:grid-cols-2 max-[480px]:grid-cols-1 gap-3 mb-6">
+            <div class="card p-4">
+              <div class="flex items-center justify-between mb-2"><span class="text-[11px] uppercase tracking-wider text-muted-foreground">Requests</span><span class="font-mono text-[10.5px] text-muted-foreground">62%</span></div>
+              <div class="text-[20px] font-semibold font-mono tabular-nums">6.24M <span class="text-[12px] text-muted-foreground font-normal">/ 10M</span></div>
+              <div class="mt-2 h-1.5 bg-muted rounded-full overflow-hidden"><div class="h-full bg-primary" style="width: 62%"></div></div>
+              <div class="mt-2 text-[10.5px] text-muted-foreground font-mono">CF Workers · auto-scale</div>
+            </div>
+            <div class="card p-4">
+              <div class="flex items-center justify-between mb-2"><span class="text-[11px] uppercase tracking-wider text-muted-foreground">D1 storage</span><span class="font-mono text-[10.5px] text-muted-foreground">64%</span></div>
+              <div class="text-[20px] font-semibold font-mono tabular-nums">3.2 <span class="text-[12px] text-muted-foreground font-normal">/ 5 GB</span></div>
+              <div class="mt-2 h-1.5 bg-muted rounded-full overflow-hidden"><div class="h-full bg-primary" style="width: 64%"></div></div>
+              <div class="mt-2 text-[10.5px] text-muted-foreground font-mono">CF D1 · pinned IST</div>
+            </div>
+            <div class="card p-4">
+              <div class="flex items-center justify-between mb-2"><span class="text-[11px] uppercase tracking-wider text-muted-foreground">R2 storage</span><span class="font-mono text-[10.5px]" style="color: oklch(0.55 0.16 70);">89%</span></div>
+              <div class="text-[20px] font-semibold font-mono tabular-nums">22.4 <span class="text-[12px] text-muted-foreground font-normal">/ 25 GB</span></div>
+              <div class="mt-2 h-1.5 bg-muted rounded-full overflow-hidden"><div class="h-full" style="width: 89%; background: oklch(0.78 0.16 70);"></div></div>
+              <div class="mt-2 text-[10.5px] text-muted-foreground font-mono">CF R2 · zero egress</div>
+            </div>
+            <div class="card p-4">
+              <div class="flex items-center justify-between mb-2"><span class="text-[11px] uppercase tracking-wider text-muted-foreground">Realtime conn.</span><span class="font-mono text-[10.5px] text-muted-foreground">14%</span></div>
+              <div class="text-[20px] font-semibold font-mono tabular-nums">720 <span class="text-[12px] text-muted-foreground font-normal">/ 5K</span></div>
+              <div class="mt-2 h-1.5 bg-muted rounded-full overflow-hidden"><div class="h-full bg-primary" style="width: 14%"></div></div>
+              <div class="mt-2 text-[10.5px] text-muted-foreground font-mono">CF DO · websockets</div>
+            </div>
+          </div>
+
+          <!-- Big chart -->
+          <div class="card mb-6">
+            <div class="card-header">
+              <h3 class="text-[14px] font-semibold">Request volume</h3>
+              <div class="seg ml-auto">
+                <button class="is-on">All</button>
+                <button>2xx</button>
+                <button>4xx</button>
+                <button>5xx</button>
+              </div>
+            </div>
+            <div class="px-5 py-6">
+              <div class="bar-row" style="height: 180px;">
+                <div class="bar" style="--v: 30%"></div><div class="bar" style="--v: 38%"></div><div class="bar" style="--v: 42%"></div><div class="bar" style="--v: 48%"></div><div class="bar" style="--v: 55%"></div><div class="bar" style="--v: 50%"></div><div class="bar" style="--v: 62%"></div><div class="bar" style="--v: 70%"></div><div class="bar" style="--v: 68%"></div><div class="bar" style="--v: 75%"></div><div class="bar" style="--v: 72%"></div><div class="bar" style="--v: 80%"></div><div class="bar" style="--v: 82%"></div><div class="bar" style="--v: 78%"></div><div class="bar" style="--v: 88%"></div><div class="bar" style="--v: 92%"></div><div class="bar" style="--v: 85%"></div><div class="bar" style="--v: 90%"></div><div class="bar" style="--v: 78%"></div><div class="bar" style="--v: 82%"></div><div class="bar" style="--v: 88%"></div><div class="bar" style="--v: 92%"></div><div class="bar" style="--v: 96%"></div><div class="bar" style="--v: 85%"></div><div class="bar" style="--v: 78%"></div><div class="bar" style="--v: 80%"></div><div class="bar" style="--v: 86%"></div><div class="bar" style="--v: 88%"></div><div class="bar" style="--v: 82%"></div><div class="bar" style="--v: 75%"></div>
+              </div>
+              <div class="mt-3 flex justify-between text-[10px] font-mono text-muted-foreground"><span>1 May</span><span>15 May</span><span>30 May</span></div>
+            </div>
+          </div>
+
+          <!-- Alarms -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="text-[14px] font-semibold">Alarms</h3>
+              <button class="btn btn-ghost btn-sm ml-auto">+ New alarm</button>
+            </div>
+            <table class="tbl">
+              <tbody>
+                <tr>
+                  <td><div class="font-medium">Request quota at 80%</div><div class="text-[11px] text-muted-foreground">→ Saadet, Cem · Slack #workeros-alerts</div></td>
+                  <td><span class="badge badge-amber">triggered</span></td>
+                  <td class="font-mono text-[11px] text-muted-foreground">yesterday 18:22</td>
+                  <td class="text-right"><button class="btn btn-ghost btn-sm">Edit</button></td>
+                </tr>
+                <tr>
+                  <td><div class="font-medium">R2 storage at 80%</div><div class="text-[11px] text-muted-foreground">→ Saadet · email</div></td>
+                  <td><span class="badge badge-amber">triggered</span></td>
+                  <td class="font-mono text-[11px] text-muted-foreground">3 days ago</td>
+                  <td class="text-right"><button class="btn btn-ghost btn-sm">Edit</button></td>
+                </tr>
+                <tr>
+                  <td><div class="font-medium">Error rate &gt; 1%</div><div class="text-[11px] text-muted-foreground">→ Slack #workeros-alerts</div></td>
+                  <td><span class="badge badge-primary">normal</span></td>
+                  <td class="font-mono text-[11px] text-muted-foreground">—</td>
+                  <td class="text-right"><button class="btn btn-ghost btn-sm">Edit</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────── Project · Regions ─────── -->
+      <section data-screen="proj-regions" data-screen-label="Project · Regions">
+        <div class="px-8 max-md:px-5 py-8 max-w-[1400px]">
+          <div class="crumbs mb-3"><a>Acme A.Ş.</a><span class="sep">/</span><span class="text-foreground">acme-prod</span><span class="sep">/</span><span class="text-foreground">Regions</span></div>
+          <h1 class="text-[22px] font-semibold -tracking-[0.02em] leading-tight mb-1">Regions</h1>
+          <p class="text-[13px] text-muted-foreground mb-6">3 regions active · max 3 on Pro tier · up to 11 on Scale. Non-EU regions locked due to <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted font-mono text-[10.5px] text-foreground ml-1"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>EU residency</span>.</p>
+
+          <div class="grid grid-cols-[1.4fr_1fr] max-[1020px]:grid-cols-1 gap-4">
+            <!-- Map -->
+            <div class="card map-wrap relative" style="aspect-ratio: 16/10; min-height: 340px;">
+              <svg class="map-svg absolute inset-0" viewBox="0 0 1000 500" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+                <!-- Schematic continents — rough polygons; placeholder -->
+                <path d="M 120 130 Q 200 90 280 110 Q 340 130 320 200 Q 290 280 240 320 Q 180 340 140 320 Q 90 280 90 210 Q 90 160 120 130 Z" />
+                <path d="M 350 180 Q 420 160 480 175 Q 530 185 540 230 Q 535 270 500 280 Q 460 290 430 280 Q 370 270 340 230 Q 330 200 350 180 Z" />
+                <path d="M 520 110 Q 580 95 660 100 Q 740 105 800 130 Q 870 160 880 220 Q 850 280 760 290 Q 680 295 620 280 Q 560 260 530 220 Q 510 170 520 110 Z" />
+                <path d="M 270 320 Q 330 310 350 350 Q 360 410 320 440 Q 270 460 240 430 Q 220 380 240 350 Q 250 330 270 320 Z" />
+                <path d="M 600 320 Q 660 310 700 330 Q 730 360 720 410 Q 700 440 660 440 Q 620 430 600 400 Q 590 360 600 320 Z" />
+                <path d="M 820 340 Q 870 330 900 360 Q 910 400 890 420 Q 860 430 830 410 Q 810 380 820 340 Z" />
+              </svg>
+              <!-- Pins -->
+              <button class="map-pin" aria-pressed="true" style="top: 30%; left: 56%;" data-region="IST" title="Istanbul"><span class="pin-label">IST</span></button>
+              <button class="map-pin" aria-pressed="true" style="top: 28%; left: 50%;" data-region="FRA" title="Frankfurt"><span class="pin-label">FRA</span></button>
+              <button class="map-pin" aria-pressed="true" style="top: 26%; left: 47%;" data-region="AMS" title="Amsterdam"><span class="pin-label">AMS</span></button>
+              <button class="map-pin" aria-pressed="false" style="top: 25%; left: 43%;" data-region="DUB" title="Dublin"><span class="pin-label">DUB</span></button>
+              <button class="map-pin is-locked" aria-pressed="false" disabled style="top: 35%; left: 26%;" data-region="IAD" title="Ashburn · unavailable under EU residency"><span class="pin-label">IAD · 🔒</span></button>
+              <button class="map-pin is-locked" aria-pressed="false" disabled style="top: 55%; left: 75%;" data-region="SIN" title="Singapore · unavailable under EU residency"><span class="pin-label">SIN · 🔒</span></button>
+              <button class="map-pin is-locked" aria-pressed="false" disabled style="top: 48%; left: 85%;" data-region="NRT" title="Tokyo · unavailable under EU residency"><span class="pin-label">NRT · 🔒</span></button>
+              <button class="map-pin is-locked" aria-pressed="false" disabled style="top: 80%; left: 88%;" data-region="SYD" title="Sydney · unavailable under EU residency"><span class="pin-label">SYD · 🔒</span></button>
+              <button class="map-pin is-locked" aria-pressed="false" disabled style="top: 80%; left: 32%;" data-region="GRU" title="São Paulo · unavailable under EU residency"><span class="pin-label">GRU · 🔒</span></button>
+              <button class="map-pin is-locked" aria-pressed="false" disabled style="top: 70%; left: 53%;" data-region="JNB" title="Johannesburg · unavailable under EU residency"><span class="pin-label">JNB · 🔒</span></button>
+            </div>
+
+            <!-- Region list -->
+            <div class="flex flex-col gap-3">
+              <div class="card p-4">
+                <div class="flex items-center gap-2 mb-3">
+                  <h3 class="text-[14px] font-semibold">Active regions</h3>
+                  <span class="badge badge-primary ml-auto"><span id="regions-active-count">3</span> / 3</span>
+                </div>
+                <div id="active-regions" class="flex flex-col gap-1.5"></div>
+                <div class="mt-3 pt-3 border-t border-border flex items-center gap-2 text-[11.5px] text-muted-foreground">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                  <span>D1 primary in <strong class="text-foreground font-medium">IST</strong> · replicas in the other 2 regions</span>
+                </div>
+              </div>
+
+              <div class="card p-4">
+                <div class="flex items-center gap-2 mb-2">
+                  <h3 class="text-[14px] font-semibold">Pin option</h3>
+                  <span class="badge badge-amber ml-auto">Scale+</span>
+                </div>
+                <p class="text-[12px] text-muted-foreground leading-snug">If you need data locality, pin the primary to a single region. For KVKK we recommend <strong class="text-foreground">IST</strong>; backups stay in TR too.</p>
+                <select class="f mt-3" disabled>
+                  <option>No pin (auto)</option>
+                </select>
+                <a data-link="ws-billing" class="btn btn-outline btn-sm mt-3 cursor-pointer">Upgrade to Scale →</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Latency table -->
+          <div class="card mt-4">
+            <div class="card-header"><h3 class="text-[14px] font-semibold">p95 latency · last 24h</h3></div>
+            <table class="tbl">
+              <thead><tr><th>Region</th><th>p50</th><th>p95</th><th>p99</th><th>Requests</th><th>Trend</th></tr></thead>
+              <tbody>
+                <tr><td><div class="font-medium">IST · Istanbul</div><div class="text-[11px] text-muted-foreground font-mono">primary</div></td><td class="font-mono">22ms</td><td class="font-mono">47ms</td><td class="font-mono">96ms</td><td class="font-mono">4.1M</td><td><svg class="spark w-20 h-6" viewBox="0 0 100 24" preserveAspectRatio="none"><path d="M0,12 L20,14 L40,11 L60,13 L80,10 L100,12"/></svg></td></tr>
+                <tr><td><div class="font-medium">FRA · Frankfurt</div><div class="text-[11px] text-muted-foreground font-mono">replica</div></td><td class="font-mono">28ms</td><td class="font-mono">58ms</td><td class="font-mono">112ms</td><td class="font-mono">1.4M</td><td><svg class="spark w-20 h-6" viewBox="0 0 100 24" preserveAspectRatio="none"><path d="M0,14 L20,12 L40,15 L60,11 L80,13 L100,10"/></svg></td></tr>
+                <tr><td><div class="font-medium">AMS · Amsterdam</div><div class="text-[11px] text-muted-foreground font-mono">replica</div></td><td class="font-mono">29ms</td><td class="font-mono">62ms</td><td class="font-mono">105ms</td><td class="font-mono">0.7M</td><td><svg class="spark w-20 h-6" viewBox="0 0 100 24" preserveAspectRatio="none"><path d="M0,11 L20,13 L40,12 L60,14 L80,11 L100,12"/></svg></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────── Project · Backups ─────── -->
+      <section data-screen="proj-backups" data-screen-label="Project · Backups">
+        <div class="px-8 max-md:px-5 py-8 max-w-[1400px]">
+          <div class="crumbs mb-3"><a>Acme A.Ş.</a><span class="sep">/</span><span class="text-foreground">acme-prod</span><span class="sep">/</span><span class="text-foreground">Backups</span></div>
+          <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
+            <div>
+              <h1 class="text-[22px] font-semibold -tracking-[0.02em] leading-tight">Backup & restore</h1>
+              <p class="text-[13px] text-muted-foreground mt-1">Daily snapshot · 7-day PITR window · Pro tier</p>
+            </div>
+            <button class="btn btn-outline"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Take manual snapshot</button>
+          </div>
+
+          <!-- PITR -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <h3 class="text-[14px] font-semibold">Point-in-time restore</h3>
+              <span class="badge badge-muted ml-auto" id="pitr-window">7-day window</span>
+            </div>
+            <div class="px-5 py-6">
+              <div class="flex items-baseline gap-3 mb-4">
+                <div class="text-[13px] text-muted-foreground">Restore point:</div>
+                <div class="font-mono text-[18px] font-semibold tabular-nums" id="pitr-time">23 May 2026 · 14:22 TRT</div>
+                <div class="ml-auto text-[11.5px] text-muted-foreground font-mono" id="pitr-delta">2 days, 4 hours ago</div>
+              </div>
+              <input type="range" min="0" max="100" value="72" class="pitr" id="pitr-slider" />
+              <div class="mt-2 flex justify-between text-[10.5px] font-mono text-muted-foreground"><span>7 days ago</span><span>4 days</span><span>2 days</span><span>now</span></div>
+
+              <div class="mt-5 p-4 border border-border rounded-md bg-muted/30">
+                <div class="text-[12px] mb-2">Preview — at this point:</div>
+                <div class="grid grid-cols-3 gap-3 text-[12.5px]">
+                  <div><div class="text-[10.5px] uppercase tracking-wider text-muted-foreground">D1</div><div class="font-mono">3.0 GB</div></div>
+                  <div><div class="text-[10.5px] uppercase tracking-wider text-muted-foreground">R2</div><div class="font-mono">21.8 GB</div></div>
+                  <div><div class="text-[10.5px] uppercase tracking-wider text-muted-foreground">Schema rev</div><div class="font-mono">v0.7.0</div></div>
+                </div>
+              </div>
+
+              <div class="mt-5 flex items-center gap-2 flex-wrap">
+                <div class="seg">
+                  <button class="is-on">Restore to new branch</button>
+                  <button>Restore to production (dangerous)</button>
+                </div>
+                <button class="btn btn-primary ml-auto">Start restore →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Snapshot list -->
+          <div class="card">
+            <div class="card-header"><h3 class="text-[14px] font-semibold">Snapshots</h3><span class="badge badge-muted ml-auto">last 30d · 30 snapshots</span></div>
+            <table class="tbl">
+              <thead><tr><th>ID</th><th>Type</th><th>Time</th><th>D1</th><th>R2</th><th>Schema</th><th></th></tr></thead>
+              <tbody>
+                <tr><td class="font-mono text-[11px]">snap_01HXZ4</td><td><span class="badge badge-muted">auto</span></td><td>25 May · 12:08</td><td class="font-mono">3.2GB</td><td class="font-mono">22.4GB</td><td class="font-mono text-[11px]">v0.7.2</td><td class="text-right"><button class="btn btn-ghost btn-sm">Restore</button><button class="btn btn-ghost btn-sm">Download</button></td></tr>
+                <tr><td class="font-mono text-[11px]">snap_01HXY3</td><td><span class="badge badge-muted">auto</span></td><td>24 May · 12:08</td><td class="font-mono">3.1GB</td><td class="font-mono">22.0GB</td><td class="font-mono text-[11px]">v0.7.1</td><td class="text-right"><button class="btn btn-ghost btn-sm">Restore</button><button class="btn btn-ghost btn-sm">Download</button></td></tr>
+                <tr><td class="font-mono text-[11px]">snap_01HXX2</td><td><span class="badge badge-primary">manual</span></td><td>23 May · 16:14</td><td class="font-mono">3.0GB</td><td class="font-mono">21.8GB</td><td class="font-mono text-[11px]">v0.7.0</td><td class="text-right"><button class="btn btn-ghost btn-sm">Restore</button><button class="btn btn-ghost btn-sm">Download</button></td></tr>
+                <tr><td class="font-mono text-[11px]">snap_01HXW1</td><td><span class="badge badge-muted">auto</span></td><td>23 May · 12:08</td><td class="font-mono">3.0GB</td><td class="font-mono">21.6GB</td><td class="font-mono text-[11px]">v0.7.0</td><td class="text-right"><button class="btn btn-ghost btn-sm">Restore</button><button class="btn btn-ghost btn-sm">Download</button></td></tr>
+                <tr><td class="font-mono text-[11px]">snap_01HXV0</td><td><span class="badge badge-muted">auto</span></td><td>22 May · 12:08</td><td class="font-mono">2.9GB</td><td class="font-mono">21.2GB</td><td class="font-mono text-[11px]">v0.7.0</td><td class="text-right"><button class="btn btn-ghost btn-sm">Restore</button><button class="btn btn-ghost btn-sm">Download</button></td></tr>
+                <tr><td colspan="7" class="text-center text-muted-foreground py-3 text-[11.5px]">25 more snapshots …</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────── Project · Domains ─────── -->
+      <section data-screen="proj-domains" data-screen-label="Project · Domains">
+        <div class="px-8 max-md:px-5 py-8 max-w-[1400px]">
+          <div class="crumbs mb-3"><a>Acme A.Ş.</a><span class="sep">/</span><span class="text-foreground">acme-prod</span><span class="sep">/</span><span class="text-foreground">Domains</span></div>
+          <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
+            <div>
+              <h1 class="text-[22px] font-semibold -tracking-[0.02em] leading-tight">Domains</h1>
+              <p class="text-[13px] text-muted-foreground mt-1">Attach a custom domain — CF rotates the certificate automatically.</p>
+            </div>
+            <button class="btn btn-primary">+ Add domain</button>
+          </div>
+
+          <!-- Connected -->
+          <div class="card mb-3">
+            <div class="card-header"><h3 class="text-[14px] font-semibold">Connected domains</h3></div>
+            <table class="tbl">
+              <thead><tr><th>Domain</th><th>SSL</th><th>DNS</th><th>Added</th><th></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><div class="font-medium font-mono">api.acme.com</div><div class="text-[11px] text-muted-foreground">primary</div></td>
+                  <td><span class="badge badge-primary"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>active</span><div class="text-[10.5px] text-muted-foreground font-mono mt-0.5">CF auto-renew · 86 days</div></td>
+                  <td class="font-mono text-[11px] text-muted-foreground">CNAME → acme-prod.workeros.cloud</td>
+                  <td class="font-mono text-[11px] text-muted-foreground">3 days ago</td>
+                  <td class="text-right"><button class="btn btn-ghost btn-sm">⋯</button></td>
+                </tr>
+                <tr>
+                  <td><div class="font-medium font-mono">acme-prod.workeros.cloud</div><div class="text-[11px] text-muted-foreground">default</div></td>
+                  <td><span class="badge badge-primary"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>active</span></td>
+                  <td class="font-mono text-[11px] text-muted-foreground">automatic</td>
+                  <td class="font-mono text-[11px] text-muted-foreground">8 months ago</td>
+                  <td class="text-right"><button class="btn btn-ghost btn-sm">⋯</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- DNS verify card (pending) -->
+          <div class="card" style="border-color: color-mix(in oklch, oklch(0.75 0.16 70) 35%, var(--color-border));">
+            <div class="card-header" style="background: color-mix(in oklch, oklch(0.75 0.16 70) 10%, transparent);">
+              <span class="w-2 h-2 rounded-full" style="background: oklch(0.75 0.16 70);"></span>
+              <h3 class="text-[14px] font-semibold">v2.acme.com</h3>
+              <span class="badge badge-amber ml-auto">awaiting DNS</span>
+            </div>
+            <div class="card-body">
+              <p class="text-[12.5px] text-muted-foreground mb-3">Add the following record at your DNS provider. The SSL certificate is provisioned automatically ~2m after DNS validates.</p>
+              <div class="rounded-md border border-border bg-muted/30 overflow-hidden">
+                <table class="tbl">
+                  <thead><tr><th>Type</th><th>Host</th><th>Value</th><th>TTL</th></tr></thead>
+                  <tbody>
+                    <tr><td class="font-mono">CNAME</td><td class="font-mono">v2</td><td class="font-mono">acme-prod.workeros.cloud</td><td class="font-mono text-muted-foreground">300</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="mt-3 flex items-center gap-2">
+                <button class="btn btn-outline btn-sm">Re-check DNS</button>
+                <span class="text-[11.5px] text-muted-foreground">Last check: 14:32 — record not found</span>
+                <button class="btn btn-ghost btn-sm ml-auto">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────── Project · Branches ─────── -->
+      <section data-screen="proj-branches" data-screen-label="Project · Branches">
+        <div class="px-8 max-md:px-5 py-8 max-w-[1400px]">
+          <div class="crumbs mb-3"><a>Acme A.Ş.</a><span class="sep">/</span><span class="text-foreground">acme-prod</span><span class="sep">/</span><span class="text-foreground">Branches</span></div>
+          <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
+            <div>
+              <h1 class="text-[22px] font-semibold -tracking-[0.02em] leading-tight">Preview branches</h1>
+              <p class="text-[13px] text-muted-foreground mt-1">Git push → ephemeral environment. Same admin, isolated DB, auto-cleanup when the PR closes.</p>
+            </div>
+            <button class="btn btn-outline">GitHub connected · acme/api</button>
+          </div>
+
+          <div class="grid grid-cols-2 max-[820px]:grid-cols-1 gap-3">
+            <div class="card p-5">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                <h3 class="text-[14px] font-semibold font-mono">main</h3>
+                <span class="badge badge-primary ml-auto">production</span>
+              </div>
+              <div class="font-mono text-[11.5px] text-muted-foreground mb-2">acme-prod.workeros.cloud</div>
+              <div class="grid grid-cols-3 gap-2 text-[12px]">
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">last commit</div><div class="font-mono text-[11px]">a2f8e1c</div></div>
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">D1</div><div class="font-mono">3.2GB</div></div>
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">deploy</div><div class="font-mono">2h</div></div>
+              </div>
+            </div>
+
+            <div class="card p-5">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="w-1.5 h-1.5 rounded-full" style="background: oklch(0.75 0.16 70);"></span>
+                <h3 class="text-[14px] font-semibold font-mono">preview-247</h3>
+                <span class="badge badge-amber ml-auto">PR #247</span>
+              </div>
+              <div class="font-mono text-[11.5px] text-muted-foreground mb-2">pr-247.preview.workeros.cloud</div>
+              <div class="grid grid-cols-3 gap-2 text-[12px]">
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">last commit</div><div class="font-mono text-[11px]">8e2c4b1</div></div>
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">D1</div><div class="font-mono">120MB</div></div>
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">deploy</div><div class="font-mono">28m</div></div>
+              </div>
+              <div class="text-[11.5px] text-muted-foreground mt-3 border-t border-border pt-3">"webhook retry policy" · Mert A.</div>
+            </div>
+
+            <div class="card p-5">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="w-1.5 h-1.5 rounded-full" style="background: oklch(0.75 0.16 70);"></span>
+                <h3 class="text-[14px] font-semibold font-mono">preview-251</h3>
+                <span class="badge badge-amber ml-auto">PR #251</span>
+              </div>
+              <div class="font-mono text-[11.5px] text-muted-foreground mb-2">pr-251.preview.workeros.cloud</div>
+              <div class="grid grid-cols-3 gap-2 text-[12px]">
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">last commit</div><div class="font-mono text-[11px]">3a17fe9</div></div>
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">D1</div><div class="font-mono">95MB</div></div>
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">deploy</div><div class="font-mono">1h</div></div>
+              </div>
+              <div class="text-[11.5px] text-muted-foreground mt-3 border-t border-border pt-3">"new collection: invoices" · Elif Y.</div>
+            </div>
+
+            <div class="card p-5">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-muted-foreground/40"></span>
+                <h3 class="text-[14px] font-semibold font-mono">preview-244</h3>
+                <span class="badge badge-muted ml-auto">stale</span>
+              </div>
+              <div class="font-mono text-[11.5px] text-muted-foreground mb-2">pr-244.preview.workeros.cloud</div>
+              <div class="grid grid-cols-3 gap-2 text-[12px] opacity-60">
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">last commit</div><div class="font-mono text-[11px]">f1c8b2d</div></div>
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">D1</div><div class="font-mono">40MB</div></div>
+                <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">deploy</div><div class="font-mono">5d</div></div>
+              </div>
+              <div class="text-[11.5px] text-muted-foreground mt-3 border-t border-border pt-3 flex items-center gap-2">PR closed, will be cleaned up within 24h<button class="btn btn-ghost btn-sm ml-auto">Delete now</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────── Workspace · API keys ─────── -->
+      <section data-screen="ws-keys" data-screen-label="Workspace · API keys">
+        <div class="px-8 max-md:px-5 py-8 max-w-[1400px]">
+          <div class="crumbs mb-3"><a>Acme A.Ş.</a><span class="sep">/</span><span class="text-foreground">API keys</span></div>
+          <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
+            <div>
+              <h1 class="text-[22px] font-semibold -tracking-[0.02em] leading-tight">Management keys</h1>
+              <p class="text-[13px] text-muted-foreground mt-1">Workspace-scoped tokens for CLI, CI/CD, and MCP — deploy, create projects, read invoices. <span class="text-foreground">App SDK / public anon keys live in the admin panel.</span></p>
+            </div>
+            <button class="btn btn-primary" onclick="openDialog('new-key')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              New key
+            </button>
+          </div>
+
+          <div class="grid grid-cols-4 max-[920px]:grid-cols-2 max-[480px]:grid-cols-1 gap-3 mb-6">
+            <div class="card p-4">
+              <div class="text-[11px] uppercase tracking-wider text-muted-foreground">Active keys</div>
+              <div class="text-[20px] font-semibold mt-1 font-mono">5</div>
+            </div>
+            <div class="card p-4">
+              <div class="text-[11px] uppercase tracking-wider text-muted-foreground">Usage this week</div>
+              <div class="text-[20px] font-semibold mt-1 font-mono tabular-nums">42K req</div>
+            </div>
+            <div class="card p-4">
+              <div class="text-[11px] uppercase tracking-wider text-muted-foreground">Read-only</div>
+              <div class="text-[20px] font-semibold mt-1 font-mono">2</div>
+            </div>
+            <div class="card p-4">
+              <div class="text-[11px] uppercase tracking-wider text-muted-foreground">Expiring soon</div>
+              <div class="text-[20px] font-semibold mt-1 font-mono" style="color: oklch(0.5 0.16 70);">1</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="text-[14px] font-semibold">All keys</h3>
+              <div class="seg ml-auto">
+                <button class="is-on">All</button>
+                <button>Personal</button>
+                <button>Service</button>
+                <button>MCP</button>
+              </div>
+            </div>
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Token</th>
+                  <th>Owner</th>
+                  <th>Scope</th>
+                  <th>Last used</th>
+                  <th>Expiry</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="font-medium">cli-laptop</div><div class="text-[10.5px] text-muted-foreground">CLI local machine</div></td>
+                  <td class="font-mono text-[11.5px]">pak_8f2a••••<span class="text-muted-foreground">e419</span></td>
+                  <td><div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded-full text-[8px] font-medium grid place-items-center text-primary-foreground" style="background: oklch(0.55 0.13 240);">SK</span><span class="text-[12px]">Saadet K.</span></div></td>
+                  <td><span class="badge badge-muted">full</span></td>
+                  <td class="font-mono text-[11px] text-muted-foreground">3dk</td>
+                  <td class="font-mono text-[11px] text-muted-foreground">∞</td>
+                  <td class="text-right"><button class="btn btn-ghost btn-sm">Edit</button></td>
+                </tr>
+                <tr>
+                  <td><div class="font-medium">ci-deploy</div><div class="text-[10.5px] text-muted-foreground">GitHub Actions runner</div></td>
+                  <td class="font-mono text-[11.5px]">pak_2d3c••••<span class="text-muted-foreground">7a82</span></td>
+                  <td><div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded-full grid place-items-center text-muted-foreground bg-muted">⚙</span><span class="text-[12px]">service</span></div></td>
+                  <td><span class="badge badge-muted">deploy</span></td>
+                  <td class="font-mono text-[11px] text-muted-foreground">2h</td>
+                  <td class="font-mono text-[11px] text-muted-foreground">12 mo</td>
+                  <td class="text-right"><button class="btn btn-ghost btn-sm">Edit</button></td>
+                </tr>
+                <tr>
+                  <td><div class="font-medium">mcp-claude</div><div class="text-[10.5px] text-muted-foreground">Claude Desktop · MCP</div></td>
+                  <td class="font-mono text-[11.5px]">pak_4e7b••••<span class="text-muted-foreground">c031</span></td>
+                  <td><div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded-full text-[8px] font-medium grid place-items-center text-primary-foreground" style="background: oklch(0.55 0.13 240);">SK</span><span class="text-[12px]">Saadet K.</span></div></td>
+                  <td><span class="badge badge-primary">read-only</span> <span class="badge badge-muted">24 tools</span></td>
+                  <td class="font-mono text-[11px] text-muted-foreground">28m</td>
+                  <td class="font-mono text-[11px] text-muted-foreground">90 days</td>
+                  <td class="text-right"><button class="btn btn-ghost btn-sm">Edit</button></td>
+                </tr>
+                <tr>
+                  <td><div class="font-medium">analytics-worker</div><div class="text-[10.5px] text-muted-foreground">Cron job · data sync</div></td>
+                  <td class="font-mono text-[11.5px]">pak_9a1f••••<span class="text-muted-foreground">b248</span></td>
+                  <td><div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded-full grid place-items-center text-muted-foreground bg-muted">⚙</span><span class="text-[12px]">service</span></div></td>
+                  <td><span class="badge badge-primary">read-only</span></td>
+                  <td class="font-mono text-[11px] text-muted-foreground">6h</td>
+                  <td class="font-mono text-[11px]" style="color: oklch(0.55 0.16 70);">8 days</td>
+                  <td class="text-right"><button class="btn btn-ghost btn-sm">Edit</button></td>
+                </tr>
+                <tr>
+                  <td><div class="font-medium">cursor-mcp</div><div class="text-[10.5px] text-muted-foreground">Cursor · MCP</div></td>
+                  <td class="font-mono text-[11.5px]">pak_3b8e••••<span class="text-muted-foreground">f521</span></td>
+                  <td><div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded-full text-[8px] font-medium grid place-items-center text-primary-foreground" style="background: oklch(0.55 0.16 160);">MA</span><span class="text-[12px]">Mert A.</span></div></td>
+                  <td><span class="badge badge-muted">12 tools</span></td>
+                  <td class="font-mono text-[11px] text-muted-foreground">2d</td>
+                  <td class="font-mono text-[11px] text-muted-foreground">∞</td>
+                  <td class="text-right"><button class="btn btn-ghost btn-sm">Edit</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card mt-3 p-5">
+            <div class="flex items-start gap-3">
+              <span class="w-9 h-9 rounded-md bg-muted grid place-items-center shrink-0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/></svg></span>
+              <div class="flex-1">
+                <h3 class="text-[13.5px] font-semibold mb-1">Per-key MCP guards</h3>
+                <p class="text-[12px] text-muted-foreground leading-snug">Each key is bound to an allowlist of tools and a read-only flag. The agent (Claude, Cursor) runs with the permissions of whichever key it connected with.</p>
+              </div>
+              <a href="/docs#mcp" class="btn btn-outline btn-sm">Docs →</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────── Workspace · Integrations ─────── -->
+      <section data-screen="ws-integrations" data-screen-label="Workspace · Integrations">
+        <div class="px-8 max-md:px-5 py-8 max-w-[1400px]">
+          <div class="crumbs mb-3"><a>Acme A.Ş.</a><span class="sep">/</span><span class="text-foreground">Integrations</span></div>
+          <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
+            <div>
+              <h1 class="text-[22px] font-semibold -tracking-[0.02em] leading-tight">Integrations</h1>
+              <p class="text-[13px] text-muted-foreground mt-1">Connect workeros to the other services you use — notifications, deploys, monitoring.</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 max-[920px]:grid-cols-2 max-[560px]:grid-cols-1 gap-3 mb-6">
+            <!-- Slack -->
+            <div class="card p-5 flex flex-col gap-3">
+              <div class="flex items-start gap-3">
+                <span class="w-10 h-10 rounded-md grid place-items-center font-bold text-white text-[14px]" style="background: oklch(0.55 0.16 320);">#</span>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2"><h3 class="text-[14px] font-semibold">Slack</h3><span class="badge badge-primary">connected</span></div>
+                  <div class="text-[11.5px] text-muted-foreground">acme.slack.com · #workeros-alerts</div>
+                </div>
+              </div>
+              <p class="text-[12px] text-muted-foreground leading-snug">Deploy success, error rate, quota alerts, and team notifications.</p>
+              <div class="flex gap-2 mt-auto">
+                <button class="btn btn-outline btn-sm">Channel settings</button>
+                <button class="btn btn-ghost btn-sm">Disconnect</button>
+              </div>
+            </div>
+
+            <!-- GitHub -->
+            <div class="card p-5 flex flex-col gap-3">
+              <div class="flex items-start gap-3">
+                <span class="w-10 h-10 rounded-md grid place-items-center font-bold text-white" style="background: oklch(0.22 0.005 286);">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8.1 3.2.8.8 1.3 1.9 1.3 3.1 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg>
+                </span>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2"><h3 class="text-[14px] font-semibold">GitHub</h3><span class="badge badge-primary">connected</span></div>
+                  <div class="text-[11.5px] text-muted-foreground font-mono truncate">acme/api · acme/marketing</div>
+                </div>
+              </div>
+              <p class="text-[12px] text-muted-foreground leading-snug">Auto-deploy on push, preview branch per PR, status checks.</p>
+              <div class="flex gap-2 mt-auto">
+                <button class="btn btn-outline btn-sm">Repos</button>
+                <button class="btn btn-ghost btn-sm">Reconnect</button>
+              </div>
+            </div>
+
+            <!-- Webhooks -->
+            <div class="card p-5 flex flex-col gap-3">
+              <div class="flex items-start gap-3">
+                <span class="w-10 h-10 rounded-md bg-muted grid place-items-center">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"/><path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06"/></svg>
+                </span>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2"><h3 class="text-[14px] font-semibold">Webhooks</h3><span class="badge badge-muted">3 endpoint</span></div>
+                  <div class="text-[11.5px] text-muted-foreground font-mono truncate">items.*, auth.*, billing.*</div>
+                </div>
+              </div>
+              <p class="text-[12px] text-muted-foreground leading-snug">HMAC-signed outbound POST. Attach a separate endpoint per event.</p>
+              <div class="flex gap-2 mt-auto">
+                <button class="btn btn-outline btn-sm">Endpoints</button>
+                <button class="btn btn-ghost btn-sm">+ New</button>
+              </div>
+            </div>
+
+            <!-- Sentry -->
+            <div class="card p-5 flex flex-col gap-3">
+              <div class="flex items-start gap-3">
+                <span class="w-10 h-10 rounded-md grid place-items-center text-white font-bold text-[12px]" style="background: oklch(0.45 0.18 320);">S</span>
+                <div class="flex-1"><h3 class="text-[14px] font-semibold">Sentry</h3><div class="text-[11.5px] text-muted-foreground">Error tracking + performance</div></div>
+              </div>
+              <p class="text-[12px] text-muted-foreground leading-snug">Forward edge function errors to Sentry automatically.</p>
+              <button class="btn btn-outline btn-sm mt-auto">Connect</button>
+            </div>
+
+            <!-- Datadog -->
+            <div class="card p-5 flex flex-col gap-3">
+              <div class="flex items-start gap-3">
+                <span class="w-10 h-10 rounded-md grid place-items-center text-white font-bold text-[12px]" style="background: oklch(0.5 0.13 280);">DD</span>
+                <div class="flex-1"><h3 class="text-[14px] font-semibold">Datadog</h3><div class="text-[11.5px] text-muted-foreground">Metrics + log forwarding</div></div>
+              </div>
+              <p class="text-[12px] text-muted-foreground leading-snug">Ship all request metrics to the Datadog API.</p>
+              <button class="btn btn-outline btn-sm mt-auto">Connect</button>
+            </div>
+
+            <!-- Linear -->
+            <div class="card p-5 flex flex-col gap-3">
+              <div class="flex items-start gap-3">
+                <span class="w-10 h-10 rounded-md grid place-items-center text-white font-bold text-[12px]" style="background: oklch(0.45 0.13 280);">L</span>
+                <div class="flex-1"><h3 class="text-[14px] font-semibold">Linear</h3><div class="text-[11.5px] text-muted-foreground">Issue creation</div></div>
+              </div>
+              <p class="text-[12px] text-muted-foreground leading-snug">Open production errors as Linear issues automatically.</p>
+              <button class="btn btn-outline btn-sm mt-auto">Connect</button>
+            </div>
+          </div>
+
+          <!-- Webhook endpoints detail -->
+          <div class="card">
+            <div class="card-header"><h3 class="text-[14px] font-semibold">Webhook endpoints</h3><button class="btn btn-outline btn-sm ml-auto">+ Endpoint</button></div>
+            <table class="tbl">
+              <thead><tr><th>Endpoint</th><th>Events</th><th>Last fired</th><th>Success rate</th><th>Status</th><th></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td class="font-mono text-[11.5px]">https://hooks.zapier.com/...8f2a</td>
+                  <td><span class="badge badge-muted">items.*</span></td>
+                  <td class="font-mono text-[11px] text-muted-foreground">3dk</td>
+                  <td class="font-mono">99.8%</td>
+                  <td><span class="badge badge-primary">active</span></td>
+                  <td class="text-right"><button class="btn btn-ghost btn-sm">⋯</button></td>
+                </tr>
+                <tr>
+                  <td class="font-mono text-[11.5px]">https://api.acme.com/wh/auth</td>
+                  <td><span class="badge badge-muted">auth.*</span></td>
+                  <td class="font-mono text-[11px] text-muted-foreground">28m</td>
+                  <td class="font-mono">100%</td>
+                  <td><span class="badge badge-primary">active</span></td>
+                  <td class="text-right"><button class="btn btn-ghost btn-sm">⋯</button></td>
+                </tr>
+                <tr>
+                  <td class="font-mono text-[11.5px]">https://billing.acme.com/wh</td>
+                  <td><span class="badge badge-muted">billing.*</span></td>
+                  <td class="font-mono text-[11px] text-muted-foreground">2d</td>
+                  <td class="font-mono" style="color: oklch(0.55 0.16 70);">94.2%</td>
+                  <td><span class="badge badge-amber">degraded</span></td>
+                  <td class="text-right"><button class="btn btn-ghost btn-sm">⋯</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────── Project · Settings ─────── -->
+      <section data-screen="proj-settings" data-screen-label="Project · Settings">
+        <div class="px-8 max-md:px-5 py-8 max-w-[900px]">
+          <div class="crumbs mb-3"><a>Acme A.Ş.</a><span class="sep">/</span><span class="text-foreground">acme-prod</span><span class="sep">/</span><span class="text-foreground">Settings</span></div>
+          <h1 class="text-[22px] font-semibold -tracking-[0.02em] leading-tight">Project settings</h1>
+          <p class="text-[13px] text-muted-foreground mt-1 mb-6">Cloud layer — identity, deployment, lifecycle. <span class="text-muted-foreground">Schema, data, and auth settings live in the admin panel.</span></p>
+
+          <div class="space-y-3">
+            <div class="card p-5">
+              <div class="flex items-start gap-4 max-md:flex-col">
+                <div class="w-48 shrink-0">
+                  <h3 class="text-[13.5px] font-semibold">Project name</h3>
+                  <p class="text-[11.5px] text-muted-foreground mt-1">Affects the subdomain and URL.</p>
+                </div>
+                <div class="flex-1 w-full">
+                  <input class="f" value="acme-prod" />
+                  <div class="mt-1 text-[11px] text-muted-foreground font-mono">acme-prod.workeros.cloud</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-5">
+              <div class="flex items-start gap-4 max-md:flex-col">
+                <div class="w-48 shrink-0">
+                  <h3 class="text-[13.5px] font-semibold">Environment</h3>
+                  <p class="text-[11.5px] text-muted-foreground mt-1">Production traffic routes to this project.</p>
+                </div>
+                <div class="flex-1 w-full">
+                  <div class="grid grid-cols-3 gap-2">
+                    <label class="ob-radio is-on"><input type="radio" name="env" checked /><div><div class="text-[12.5px] font-medium">production</div><div class="text-[11px] text-muted-foreground">live traffic</div></div></label>
+                    <label class="ob-radio"><input type="radio" name="env" /><div><div class="text-[12.5px] font-medium">staging</div><div class="text-[11px] text-muted-foreground">manual testing</div></div></label>
+                    <label class="ob-radio"><input type="radio" name="env" /><div><div class="text-[12.5px] font-medium">development</div><div class="text-[11px] text-muted-foreground">CI / dev</div></div></label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Things managed in admin panel -->
+            <div class="card p-5" style="background: color-mix(in oklch, var(--color-muted) 40%, var(--color-card));">
+              <div class="flex items-start gap-3">
+                <div class="w-7 h-7 rounded-md grid place-items-center shrink-0 mt-0.5" style="background: var(--color-card); border: 1px solid var(--color-border);">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </div>
+                <div class="flex-1">
+                  <h3 class="text-[13.5px] font-semibold">These settings live in the admin panel</h3>
+                  <p class="text-[11.5px] text-muted-foreground mt-0.5 leading-snug mb-3">The following settings belong to the project itself — managed from its admin panel rather than from this cloud panel.</p>
+                  <div class="grid grid-cols-2 max-md:grid-cols-1 gap-1.5">
+                    <a href="#" class="flex items-center gap-2 p-2 rounded-md bg-card border border-border hover:border-foreground/20 no-underline transition-colors cursor-pointer">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                      <div class="flex-1 min-w-0">
+                        <div class="text-[12.5px] font-medium">Environment variables</div>
+                        <div class="text-[10.5px] text-muted-foreground font-mono truncate">STRIPE_*, RESEND_*, SMTP_*</div>
+                      </div>
+                      <span class="font-mono text-[10px] text-muted-foreground">→</span>
+                    </a>
+                    <a href="#" class="flex items-center gap-2 p-2 rounded-md bg-card border border-border hover:border-foreground/20 no-underline transition-colors cursor-pointer">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      <div class="flex-1 min-w-0">
+                        <div class="text-[12.5px] font-medium">IP allowlist (API access)</div>
+                        <div class="text-[10.5px] text-muted-foreground font-mono truncate">CIDR rules go here</div>
+                      </div>
+                      <span class="font-mono text-[10px] text-muted-foreground">→</span>
+                    </a>
+                    <a href="#" class="flex items-center gap-2 p-2 rounded-md bg-card border border-border hover:border-foreground/20 no-underline transition-colors cursor-pointer">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                      <div class="flex-1 min-w-0">
+                        <div class="text-[12.5px] font-medium">Auth, users, roles</div>
+                        <div class="text-[10.5px] text-muted-foreground font-mono truncate">app-users, roles, providers</div>
+                      </div>
+                      <span class="font-mono text-[10px] text-muted-foreground">→</span>
+                    </a>
+                    <a href="#" class="flex items-center gap-2 p-2 rounded-md bg-card border border-border hover:border-foreground/20 no-underline transition-colors cursor-pointer">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+                      <div class="flex-1 min-w-0">
+                        <div class="text-[12.5px] font-medium">SDK / public API keys</div>
+                        <div class="text-[10.5px] text-muted-foreground font-mono truncate">anon, service_role keys</div>
+                      </div>
+                      <span class="font-mono text-[10px] text-muted-foreground">→</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Danger zone -->
+            <div class="card p-5" style="border-color: color-mix(in oklch, oklch(0.65 0.2 22) 35%, var(--color-border));">
+              <h3 class="text-[13.5px] font-semibold mb-3" style="color: oklch(0.45 0.18 22);">Danger zone</h3>
+              <div class="flex items-center gap-4 py-3 border-t border-border">
+                <div class="flex-1">
+                  <div class="text-[13px] font-medium">Pause project</div>
+                  <div class="text-[11.5px] text-muted-foreground">Traffic stops, billing stops, data is preserved. You can resume anytime.</div>
+                </div>
+                <button class="btn btn-outline btn-sm">Pause</button>
+              </div>
+              <div class="flex items-center gap-4 py-3 border-t border-border">
+                <div class="flex-1">
+                  <div class="text-[13px] font-medium">Export project</div>
+                  <div class="text-[11.5px] text-muted-foreground">Schema + data + storage in a single archive — move to self-host.</div>
+                </div>
+                <button class="btn btn-outline btn-sm">Start export</button>
+              </div>
+              <div class="flex items-center gap-4 py-3 border-t border-border">
+                <div class="flex-1">
+                  <div class="text-[13px] font-medium">Delete project</div>
+                  <div class="text-[11.5px] text-muted-foreground">Permanently deleted after a 7-day soft-delete window. Recoverable until then.</div>
+                </div>
+                <button class="btn btn-sm" style="background: oklch(0.65 0.2 22); color: white;">Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────── Onboarding (fullscreen) ─────── -->
+      <section data-screen="onboarding" data-screen-label="Onboarding">
+        <div class="min-h-[calc(100vh-60px)] flex flex-col" style="background: radial-gradient(60% 60% at 50% 0%, var(--color-tint), transparent 70%);">
+
+          <!-- onboarding topbar -->
+          <div class="h-14 border-b border-border px-6 flex items-center gap-3 bg-background/85 backdrop-blur-md">
+            <a href="/" class="inline-flex items-center gap-2 font-semibold text-[14px] -tracking-[0.01em] text-foreground no-underline">
+              <span class="w-6 h-6 bg-primary text-primary-foreground rounded-md grid place-items-center font-bold text-[13px] leading-none">w</span>
+              <span>workeros</span>
+              <span class="font-mono text-[9.5px] uppercase tracking-[0.14em] text-muted-foreground border border-border rounded-full px-1.5 py-0.5">cloud</span>
+            </a>
+            <span class="text-border">/</span>
+            <span class="text-[12.5px] text-muted-foreground">Getting started</span>
+            <button class="btn btn-ghost btn-sm ml-auto" data-link="ws-overview">Skip →</button>
+          </div>
+
+          <!-- step indicator -->
+          <div class="px-6 pt-6 pb-2">
+            <div class="max-w-[640px] mx-auto flex items-center gap-2">
+              <div class="ob-step is-active flex items-center gap-2 flex-1" data-step="1">
+                <span class="ob-step-pill">1</span>
+                <span class="text-[11.5px] font-medium text-foreground whitespace-nowrap">Account</span>
+                <span class="ob-line"></span>
+              </div>
+              <div class="ob-step flex items-center gap-2 flex-1" data-step="2">
+                <span class="ob-step-pill">2</span>
+                <span class="text-[11.5px] font-medium text-muted-foreground whitespace-nowrap">Workspace</span>
+                <span class="ob-line"></span>
+              </div>
+              <div class="ob-step flex items-center gap-2 flex-1" data-step="3">
+                <span class="ob-step-pill">3</span>
+                <span class="text-[11.5px] font-medium text-muted-foreground whitespace-nowrap">Project</span>
+                <span class="ob-line"></span>
+              </div>
+              <div class="ob-step flex items-center gap-2" data-step="4">
+                <span class="ob-step-pill">4</span>
+                <span class="text-[11.5px] font-medium text-muted-foreground whitespace-nowrap">Deploy</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- step body -->
+          <div class="flex-1 px-6 py-8">
+            <div class="max-w-[640px] mx-auto">
+
+              <!-- Step 1: Account -->
+              <div class="ob-panel" data-step="1">
+                <h1 class="text-[28px] font-semibold -tracking-[0.025em] leading-[1.1] mb-2">Create account</h1>
+                <p class="text-[14px] text-muted-foreground mb-7 max-w-[48ch]">No credit card, no charge. Free tier ships 100K requests/month — grow when you outgrow it.</p>
+
+                <div class="card p-6 flex flex-col gap-3">
+                  <button class="btn btn-outline btn-lg w-full justify-center">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8.1 3.2.8.8 1.3 1.9 1.3 3.1 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg>
+                    Continue with GitHub
+                  </button>
+                  <button class="btn btn-outline btn-lg w-full justify-center">
+                    <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A10.99 10.99 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18A10.99 10.99 0 0 0 1 12c0 1.77.42 3.45 1.18 4.94l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/></svg>
+                    Continue with Google
+                  </button>
+                  <div class="flex items-center gap-3 my-2">
+                    <span class="flex-1 h-px bg-border"></span>
+                    <span class="text-[11px] text-muted-foreground uppercase tracking-wider">or</span>
+                    <span class="flex-1 h-px bg-border"></span>
+                  </div>
+                  <div>
+                    <label class="fl">Work email</label>
+                    <input class="f" placeholder="saadet@acme.com" style="height: 38px; font-size: 13px;" />
+                  </div>
+                  <button class="btn btn-primary btn-lg w-full justify-center" onclick="goStep(2)">Continue with email →</button>
+                </div>
+
+                <p class="text-[11.5px] text-muted-foreground mt-4 text-center max-w-[44ch] mx-auto">By continuing you agree to the <a href="#" class="text-foreground hover:text-primary no-underline">Terms of Service</a> and <a href="#" class="text-foreground hover:text-primary no-underline">KVKK Disclosure</a>.</p>
+              </div>
+
+              <!-- Step 2: Workspace -->
+              <div class="ob-panel" data-step="2" hidden>
+                <h1 class="text-[28px] font-semibold -tracking-[0.025em] leading-[1.1] mb-2">Create workspace</h1>
+                <p class="text-[14px] text-muted-foreground mb-7 max-w-[48ch]">A workspace is the root of your projects, team, and billing. You can rename it later.</p>
+
+                <div class="card p-6 flex flex-col gap-5">
+                  <div>
+                    <label class="fl">Workspace name</label>
+                    <input class="f" value="Acme A.Ş." style="height: 38px; font-size: 13px;" />
+                    <div class="mt-1.5 text-[11.5px] text-muted-foreground font-mono">→ acme.workeros.cloud</div>
+                  </div>
+
+                  <div>
+                    <label class="fl">What is this workspace for?</label>
+                    <div class="grid grid-cols-3 max-md:grid-cols-1 gap-2">
+                      <label class="ob-radio is-on"><input type="radio" name="ws-use" checked /><div><div class="text-[12.5px] font-medium">Work / company</div><div class="text-[11px] text-muted-foreground">Production, team</div></div></label>
+                      <label class="ob-radio"><input type="radio" name="ws-use" /><div><div class="text-[12.5px] font-medium">Hobby</div><div class="text-[11px] text-muted-foreground">Personal project</div></div></label>
+                      <label class="ob-radio"><input type="radio" name="ws-use" /><div><div class="text-[12.5px] font-medium">Agency</div><div class="text-[11px] text-muted-foreground">Client projects</div></div></label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="fl">Team size</label>
+                    <select class="f" style="height: 38px; font-size: 13px;">
+                      <option>Just me</option>
+                      <option selected>2 – 10 people</option>
+                      <option>11 – 50 people</option>
+                      <option>50+ people</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label class="fl">Data residency <span class="font-mono text-[10px] text-muted-foreground normal-case tracking-normal ml-1">· cannot be changed later</span></label>
+                    <div class="grid grid-cols-2 max-md:grid-cols-1 gap-2">
+                      <label class="ob-radio is-on">
+                        <input type="radio" name="ws-residency" checked />
+                        <div>
+                          <div class="flex items-center gap-1.5 flex-wrap">
+                            <div class="text-[12.5px] font-medium whitespace-nowrap">EU / Türkiye</div>
+                            <span class="badge badge-primary text-[9.5px]">KVKK + GDPR</span>
+                          </div>
+                          <div class="text-[11px] text-muted-foreground mt-0.5">Data, audit logs, and backups stay within IST · FRA · AMS · DUB.</div>
+                        </div>
+                      </label>
+                      <label class="ob-radio">
+                        <input type="radio" name="ws-residency" />
+                        <div>
+                          <div class="flex items-center gap-1.5 flex-wrap">
+                            <div class="text-[12.5px] font-medium whitespace-nowrap">Global (Non-EU)</div>
+                            <span class="badge badge-muted text-[9.5px]">11 region</span>
+                          </div>
+                          <div class="text-[11px] text-muted-foreground mt-0.5">All regions including US, APAC, LATAM. Don't pick this for KVKK-bound data.</div>
+                        </div>
+                      </label>
+                    </div>
+                    <div class="mt-2 flex items-start gap-2 text-[11px] text-muted-foreground leading-snug">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                      <span>Residency is locked once the workspace is created. Changing it requires a new workspace and migration.</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-6 flex justify-between">
+                  <button class="btn btn-ghost btn-lg" onclick="goStep(1)">← Back</button>
+                  <button class="btn btn-primary btn-lg" onclick="goStep(3)">Continue →</button>
+                </div>
+              </div>
+
+              <!-- Step 3: Project -->
+              <div class="ob-panel" data-step="3" hidden>
+                <h1 class="text-[28px] font-semibold -tracking-[0.025em] leading-[1.1] mb-2">Create your first project</h1>
+                <p class="text-[14px] text-muted-foreground mb-7 max-w-[48ch]">Every project has its own DB, storage, and URL. You can add more later.</p>
+
+                <div class="card p-6 flex flex-col gap-5">
+                  <div>
+                    <label class="fl">Project name</label>
+                    <input class="f" value="acme-prod" style="height: 38px; font-size: 13px;" />
+                    <div class="mt-1.5 text-[11.5px] text-muted-foreground font-mono">→ acme-prod.workeros.cloud</div>
+                  </div>
+
+                  <div>
+                    <label class="fl">Region <span class="font-mono text-[10px] text-muted-foreground normal-case tracking-normal ml-1">· EU residency · 3 regions</span></label>
+                    <div class="grid grid-cols-2 max-md:grid-cols-1 gap-2">
+                      <label class="ob-radio is-on"><input type="radio" name="ob-region" checked /><div><div class="text-[12.5px] font-medium">IST · Istanbul (TR)</div><div class="text-[11px] text-muted-foreground">KVKK-compliant, fastest for TR users</div></div></label>
+                      <label class="ob-radio"><input type="radio" name="ob-region" /><div><div class="text-[12.5px] font-medium">FRA · Frankfurt</div><div class="text-[11px] text-muted-foreground">Pan-EU, main GDPR hub</div></div></label>
+                      <label class="ob-radio"><input type="radio" name="ob-region" /><div><div class="text-[12.5px] font-medium">AMS · Amsterdam</div><div class="text-[11px] text-muted-foreground">Western/Northern EU</div></div></label>
+                      <label class="ob-radio"><input type="radio" name="ob-region" /><div><div class="text-[12.5px] font-medium">Auto</div><div class="text-[11px] text-muted-foreground">Closest PoP within the EU</div></div></label>
+                    </div>
+                    <div class="mt-2 text-[11px] text-muted-foreground">Non-EU regions (IAD, SIN, NRT, SYD…) are hidden in this workspace. Global residency requires a separate workspace.</div>
+                  </div>
+
+                  <div>
+                    <label class="fl">Database</label>
+                    <div class="grid grid-cols-2 max-md:grid-cols-1 gap-2">
+                      <label class="ob-radio is-on"><input type="radio" name="ob-db" checked /><div><div class="text-[12.5px] font-medium">D1 (SQLite at the edge)</div><div class="text-[11px] text-muted-foreground">Quick start, up to 5GB included</div></div></label>
+                      <label class="ob-radio"><input type="radio" name="ob-db" /><div><div class="text-[12.5px] font-medium">Neon Postgres</div><div class="text-[11px] text-muted-foreground">Scale add-on · €29/month</div></div></label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="fl">Template</label>
+                    <div class="grid grid-cols-4 max-md:grid-cols-2 gap-2">
+                      <label class="ob-radio is-on flex-col items-center text-center !p-3"><input type="radio" name="ob-tpl" checked class="sr-only" /><div class="text-[12px] font-medium">Empty</div><div class="text-[10px] text-muted-foreground">From scratch</div></label>
+                      <label class="ob-radio flex-col items-center text-center !p-3"><input type="radio" name="ob-tpl" class="sr-only" /><div class="text-[12px] font-medium">Blog/CMS</div><div class="text-[10px] text-muted-foreground">posts + media</div></label>
+                      <label class="ob-radio flex-col items-center text-center !p-3"><input type="radio" name="ob-tpl" class="sr-only" /><div class="text-[12px] font-medium">e-Commerce</div><div class="text-[10px] text-muted-foreground">products + orders</div></label>
+                      <label class="ob-radio flex-col items-center text-center !p-3"><input type="radio" name="ob-tpl" class="sr-only" /><div class="text-[12px] font-medium">SaaS</div><div class="text-[10px] text-muted-foreground">users + plans</div></label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-6 flex justify-between">
+                  <button class="btn btn-ghost btn-lg" onclick="goStep(2)">← Back</button>
+                  <button class="btn btn-primary btn-lg" onclick="goStep(4)">Create project →</button>
+                </div>
+              </div>
+
+              <!-- Step 4: Deploy summary -->
+              <div class="ob-panel" data-step="4" hidden>
+                <div class="flex items-center gap-3 mb-3">
+                  <span class="w-9 h-9 rounded-full grid place-items-center" style="background: color-mix(in oklch, var(--color-primary) 22%, transparent);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><polyline points="20 6 9 17 4 12"/></svg>
+                  </span>
+                  <h1 class="text-[28px] font-semibold -tracking-[0.025em] leading-[1.1]">Ready.</h1>
+                </div>
+                <p class="text-[14px] text-muted-foreground mb-7 max-w-[48ch]"><strong class="text-foreground font-semibold">acme-prod</strong> came up in 28 seconds. Live in IST + FRA + AMS, EU residency.</p>
+
+                <div class="card p-5 mb-3">
+                  <div class="flex items-center gap-3 mb-3">
+                    <span class="w-10 h-10 rounded-md grid place-items-center text-[14px] font-bold text-primary-foreground" style="background: oklch(0.6 0.15 30);">A</span>
+                    <div class="flex-1">
+                      <div class="text-[15px] font-semibold">acme-prod</div>
+                      <div class="font-mono text-[11.5px] text-muted-foreground">acme-prod.workeros.cloud</div>
+                    </div>
+                    <span class="badge badge-primary">live</span>
+                  </div>
+                  <div class="grid grid-cols-4 max-[480px]:grid-cols-2 gap-3 mt-3 pt-3 border-t border-border">
+                    <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">Region</div><div class="font-mono text-[12px] font-medium">IST</div></div>
+                    <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">DB</div><div class="font-mono text-[12px] font-medium">D1</div></div>
+                    <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">Plan</div><div class="font-mono text-[12px] font-medium">Free</div></div>
+                    <div><div class="text-[10px] uppercase tracking-wider text-muted-foreground">Build</div><div class="font-mono text-[12px] font-medium">28s</div></div>
+                  </div>
+                </div>
+
+                <div class="card p-5 mb-3">
+                  <h3 class="text-[13.5px] font-semibold mb-3">Make your first request</h3>
+                  <div class="seg mb-3">
+                    <button class="is-on">curl</button>
+                    <button>SDK (TS)</button>
+                    <button>Python</button>
+                  </div>
+                  <pre class="code m-0 whitespace-pre-wrap"><span class="c-comment"># Install the SDK</span>
+<span class="c-prompt">$ </span>bun add @workeros/client
+
+<span class="c-comment"># First request</span>
+<span class="c-prompt">$ </span>curl <span class="c-str">'https://acme-prod.workeros.cloud/api/items/posts?limit=10'</span> \
+       -H <span class="c-str">'authorization: Bearer pak_8f2a...'</span></pre>
+                </div>
+
+                <!-- Checklist -->
+                <div class="card p-5">
+                  <h3 class="text-[13.5px] font-semibold mb-3">Next steps</h3>
+                  <div class="space-y-2">
+                    <div class="flex items-center gap-3 p-2.5 rounded-md hover:bg-muted/40 cursor-pointer" data-link="ws-team">
+                      <span class="w-5 h-5 rounded-full border border-border grid place-items-center text-muted-foreground"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+                      <div class="flex-1"><div class="text-[12.5px] font-medium">Invite your teammates</div><div class="text-[11px] text-muted-foreground">10 members on Pro, 50 on Scale</div></div>
+                      <span class="text-muted-foreground">→</span>
+                    </div>
+                    <div class="flex items-center gap-3 p-2.5 rounded-md hover:bg-muted/40 cursor-pointer" data-link="proj-domains">
+                      <span class="w-5 h-5 rounded-full border border-border grid place-items-center text-muted-foreground"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+                      <div class="flex-1"><div class="text-[12.5px] font-medium">Attach a custom domain</div><div class="text-[11px] text-muted-foreground">api.acme.com → acme-prod</div></div>
+                      <span class="text-muted-foreground">→</span>
+                    </div>
+                    <div class="flex items-center gap-3 p-2.5 rounded-md hover:bg-muted/40 cursor-pointer" data-link="ws-keys">
+                      <span class="w-5 h-5 rounded-full border border-border grid place-items-center text-muted-foreground"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+                      <div class="flex-1"><div class="text-[12.5px] font-medium">Create your first API key</div><div class="text-[11px] text-muted-foreground">For CLI, SDK, and MCP clients</div></div>
+                      <span class="text-muted-foreground">→</span>
+                    </div>
+                    <div class="flex items-center gap-3 p-2.5 rounded-md hover:bg-muted/40 cursor-pointer" data-link="ws-integrations">
+                      <span class="w-5 h-5 rounded-full border border-border grid place-items-center text-muted-foreground"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+                      <div class="flex-1"><div class="text-[12.5px] font-medium">Connect Slack & GitHub</div><div class="text-[11px] text-muted-foreground">Deploy notifications + auto-deploy</div></div>
+                      <span class="text-muted-foreground">→</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-6 flex items-center gap-2 flex-wrap">
+                  <button class="btn btn-primary btn-lg" data-link="proj-overview">Go to dashboard →</button>
+                  <a href="/docs" class="btn btn-outline btn-lg">Open docs</a>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- ─────── Dialogs ─────── -->
+<div class="dialog-overlay" hidden id="dlg-new-project">
+  <div class="dialog-panel">
+    <div class="px-5 py-4 border-b border-border flex items-center gap-3">
+      <h3 class="text-[15px] font-semibold">New project</h3>
+      <button class="btn btn-ghost btn-sm ml-auto" onclick="closeDialog('new-project')">✕</button>
+    </div>
+    <div class="px-5 py-4 flex flex-col gap-4">
+      <div>
+        <label class="fl">Project name</label>
+        <input class="f" placeholder="acme-prod" />
+        <div class="text-[10.5px] text-muted-foreground mt-1 font-mono">→ acme-prod.workeros.cloud</div>
+      </div>
+      <div>
+        <label class="fl">Region</label>
+        <select class="f">
+          <option>IST · Istanbul (TR) — recommended</option>
+          <option>FRA · Frankfurt</option>
+          <option>AMS · Amsterdam</option>
+          <option>DUB · Dublin</option>
+        </select>
+      </div>
+      <div>
+        <label class="fl">Database</label>
+        <div class="grid grid-cols-2 gap-2">
+          <label class="border border-border rounded-md p-3 cursor-pointer hover:bg-muted/40 flex items-start gap-2"><input type="radio" name="db" checked class="mt-1 accent-primary" /><div><div class="text-[12.5px] font-medium">D1 (SQLite)</div><div class="text-[11px] text-muted-foreground">Edge-replicated · 5GB on Pro</div></div></label>
+          <label class="border border-border rounded-md p-3 cursor-pointer hover:bg-muted/40 flex items-start gap-2"><input type="radio" name="db" class="mt-1 accent-primary" /><div><div class="text-[12.5px] font-medium">Neon Postgres</div><div class="text-[11px] text-muted-foreground">Scale add-on · €29/month</div></div></label>
+        </div>
+      </div>
+      <div>
+        <label class="fl">Starter</label>
+        <div class="grid grid-cols-3 gap-2">
+          <label class="border border-border rounded-md p-2.5 text-center cursor-pointer hover:bg-muted/40"><input type="radio" name="start" class="sr-only" checked /><div class="text-[12px] font-medium">Empty</div></label>
+          <label class="border border-border rounded-md p-2.5 text-center cursor-pointer hover:bg-muted/40"><input type="radio" name="start" class="sr-only" /><div class="text-[12px] font-medium">CMS template</div></label>
+          <label class="border border-border rounded-md p-2.5 text-center cursor-pointer hover:bg-muted/40"><input type="radio" name="start" class="sr-only" /><div class="text-[12px] font-medium">e-Commerce</div></label>
+        </div>
+      </div>
+    </div>
+    <div class="px-5 py-3 border-t border-border bg-muted/40 flex items-center gap-2">
+      <span class="text-[11.5px] text-muted-foreground">Live in ~30 seconds.</span>
+      <button class="btn btn-ghost btn-sm ml-auto" onclick="closeDialog('new-project')">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="closeDialog('new-project')">Create</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-overlay" hidden id="dlg-invite">
+  <div class="dialog-panel">
+    <div class="px-5 py-4 border-b border-border flex items-center gap-3">
+      <h3 class="text-[15px] font-semibold">Invite to team</h3>
+      <button class="btn btn-ghost btn-sm ml-auto" onclick="closeDialog('invite')">✕</button>
+    </div>
+    <div class="px-5 py-4 flex flex-col gap-4">
+      <div>
+        <label class="fl">Email(s)</label>
+        <textarea class="f" rows="3" placeholder="ali@acme.com&#10;ayse@acme.com">mert@acme.com</textarea>
+        <div class="text-[10.5px] text-muted-foreground mt-1">One email per line. Bulk invites supported.</div>
+      </div>
+      <div>
+        <label class="fl">Role</label>
+        <select class="f">
+          <option>Developer</option>
+          <option>Admin</option>
+          <option>Viewer</option>
+        </select>
+      </div>
+      <div>
+        <label class="fl">Access</label>
+        <div class="space-y-1.5 text-[12px]">
+          <label class="flex items-center gap-2"><input type="checkbox" class="accent-primary" checked />acme-prod</label>
+          <label class="flex items-center gap-2"><input type="checkbox" class="accent-primary" />marketing-site</label>
+          <label class="flex items-center gap-2"><input type="checkbox" class="accent-primary" />staging-api</label>
+        </div>
+      </div>
+    </div>
+    <div class="px-5 py-3 border-t border-border bg-muted/40 flex items-center gap-2">
+      <span class="text-[11.5px] text-muted-foreground">Okta SCIM is active — do you still need manual invites?</span>
+      <button class="btn btn-ghost btn-sm ml-auto" onclick="closeDialog('invite')">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="closeDialog('invite')">Send invite</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-overlay" hidden id="dlg-upgrade">
+  <div class="dialog-panel" style="max-width: 720px;">
+    <div class="px-5 py-4 border-b border-border flex items-center gap-3">
+      <h3 class="text-[15px] font-semibold">Plan upgrade</h3>
+      <button class="btn btn-ghost btn-sm ml-auto" onclick="closeDialog('upgrade')">✕</button>
+    </div>
+    <div class="px-5 py-5 grid grid-cols-3 max-md:grid-cols-1 gap-3">
+      <div class="card p-4 border-2 opacity-60">
+        <div class="font-mono text-[10.5px] uppercase tracking-wider text-muted-foreground mb-1">Current</div>
+        <div class="text-[18px] font-semibold">Pro</div>
+        <div class="text-[12px] text-muted-foreground">€19 / project / month</div>
+        <ul class="text-[11.5px] text-muted-foreground mt-3 space-y-1 list-none p-0">
+          <li>10M requests · 5GB D1</li>
+          <li>3 regions · 7d PITR</li>
+          <li>Slack support</li>
+        </ul>
+      </div>
+      <div class="card p-4 border-2" style="border-color: color-mix(in oklch, var(--color-primary) 55%, var(--color-border)); background: color-mix(in oklch, var(--color-primary) 5%, var(--color-card));">
+        <div class="font-mono text-[10.5px] uppercase tracking-wider mb-1" style="color: color-mix(in oklch, var(--color-primary) 60%, var(--color-foreground));">Recommended</div>
+        <div class="text-[18px] font-semibold">Scale</div>
+        <div class="text-[12px] text-muted-foreground">€99 / project / month</div>
+        <ul class="text-[11.5px] text-muted-foreground mt-3 space-y-1 list-none p-0">
+          <li>100M requests · 50GB D1</li>
+          <li>11 regions · 30d PITR</li>
+          <li>SAML SSO · 99.9% SLA</li>
+          <li>Neon Postgres add-on</li>
+        </ul>
+        <button class="btn btn-primary btn-sm mt-3 w-full">Switch to Scale →</button>
+      </div>
+      <div class="card p-4">
+        <div class="font-mono text-[10.5px] uppercase tracking-wider text-muted-foreground mb-1">More</div>
+        <div class="text-[18px] font-semibold">Enterprise</div>
+        <div class="text-[12px] text-muted-foreground">Let's talk</div>
+        <ul class="text-[11.5px] text-muted-foreground mt-3 space-y-1 list-none p-0">
+          <li>Unlimited + dedicated</li>
+          <li>SCIM · SOC 2 · KVKK</li>
+          <li>99.99% SLA · 4h response</li>
+        </ul>
+        <a href="/enterprise" class="btn btn-outline btn-sm mt-3 w-full">Book a call</a>
+      </div>
+    </div>
+    <div class="px-5 py-3 border-t border-border bg-muted/40 text-[11.5px] text-muted-foreground">
+      Plan changes are prorated — only charged for the remaining days. Current usage is preserved.
+    </div>
+  </div>
+</div>
+
+<div class="dialog-overlay" hidden id="dlg-new-key">
+  <div class="dialog-panel">
+    <div class="px-5 py-4 border-b border-border flex items-center gap-3">
+      <h3 class="text-[15px] font-semibold">New API key</h3>
+      <button class="btn btn-ghost btn-sm ml-auto" onclick="closeDialog('new-key')">✕</button>
+    </div>
+    <div class="px-5 py-4 flex flex-col gap-4">
+      <div>
+        <label class="fl">Name</label>
+        <input class="f" placeholder="cli-laptop" />
+        <div class="text-[10.5px] text-muted-foreground mt-1">Helps you remember where it's used.</div>
+      </div>
+      <div>
+        <label class="fl">Type</label>
+        <div class="grid grid-cols-3 gap-2">
+          <label class="ob-radio is-on"><input type="radio" name="kt" checked /><div><div class="text-[12px] font-medium">Personal</div><div class="text-[10.5px] text-muted-foreground">Your own identity</div></div></label>
+          <label class="ob-radio"><input type="radio" name="kt" /><div><div class="text-[12px] font-medium">Service</div><div class="text-[10.5px] text-muted-foreground">CI/CD, cron</div></div></label>
+          <label class="ob-radio"><input type="radio" name="kt" /><div><div class="text-[12px] font-medium">MCP</div><div class="text-[10.5px] text-muted-foreground">Agent, Claude</div></div></label>
+        </div>
+      </div>
+      <div>
+        <label class="fl">Permissions</label>
+        <div class="space-y-1.5 text-[12px]">
+          <label class="flex items-center gap-2"><input type="checkbox" class="accent-primary" checked />Read-only — read access only</label>
+          <label class="flex items-center gap-2"><input type="checkbox" class="accent-primary" />Tool allowlist — only selected MCP tools</label>
+          <label class="flex items-center gap-2"><input type="checkbox" class="accent-primary" />IP allowlist — only from defined IPs</label>
+        </div>
+      </div>
+      <div>
+        <label class="fl">Expiry</label>
+        <select class="f">
+          <option>30 days</option>
+          <option selected>90 days</option>
+          <option>1 year</option>
+          <option>Never</option>
+        </select>
+      </div>
+    </div>
+    <div class="px-5 py-3 border-t border-border bg-muted/40 flex items-center gap-2">
+      <span class="text-[11.5px] text-muted-foreground">The token is shown only once.</span>
+      <button class="btn btn-ghost btn-sm ml-auto" onclick="closeDialog('new-key')">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="closeDialog('new-key')">Create</button>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  // Routing across data-screen sections
+  function show(screen) {
+    document.querySelectorAll("section[data-screen]").forEach((s) =>
+      s.classList.toggle("is-on", s.dataset.screen === screen),
+    );
+    document.querySelectorAll("[data-link]").forEach((a) =>
+      a.classList.toggle("is-active", a.dataset.link === screen),
+    );
+    document.body.classList.toggle("is-onboarding", screen === "onboarding");
+    const main = document.querySelector("main");
+    if (main) main.scrollTo({ top: 0 });
+    window.scrollTo({ top: 0 });
+    if (location.hash !== "#" + screen) history.replaceState(null, "", "#" + screen);
+  }
+  document.querySelectorAll("[data-link]").forEach((a) => {
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      show(a.dataset.link);
+    });
+  });
+  const initScreen = location.hash.slice(1) || "ws-overview";
+  if (document.querySelector('section[data-screen="' + initScreen + '"]')) show(initScreen);
+  else show("ws-overview");
+
+  // Dialogs
+  window.openDialog = function (id) {
+    const el = document.getElementById("dlg-" + id);
+    if (el) el.hidden = false;
+  };
+  window.closeDialog = function (id) {
+    const el = document.getElementById("dlg-" + id);
+    if (el) el.hidden = true;
+  };
+  document.querySelectorAll(".dialog-overlay").forEach((o) =>
+    o.addEventListener("click", (e) => {
+      if (e.target === o) o.hidden = true;
+    }),
+  );
+
+  // Region pins
+  (function () {
+    const list = document.getElementById("active-regions");
+    const REGIONS = {
+      IST: { name: "Istanbul", latency: "47ms", role: "primary" },
+      FRA: { name: "Frankfurt", latency: "58ms", role: "replica" },
+      AMS: { name: "Amsterdam", latency: "62ms", role: "replica" },
+      DUB: { name: "Dublin", latency: "—", role: "replica" },
+      IAD: { name: "Ashburn", latency: "—", role: "locked" },
+      SIN: { name: "Singapore", latency: "—", role: "locked" },
+      NRT: { name: "Tokyo", latency: "—", role: "locked" },
+      SYD: { name: "Sydney", latency: "—", role: "locked" },
+      GRU: { name: "São Paulo", latency: "—", role: "locked" },
+      JNB: { name: "Johannesburg", latency: "—", role: "locked" },
+    };
+    function render() {
+      if (!list) return;
+      const pinned = [...document.querySelectorAll('.map-pin[aria-pressed="true"]')];
+      list.innerHTML = pinned
+        .map((p) => {
+          const code = p.dataset.region;
+          const r = REGIONS[code];
+          if (!r) return "";
+          return (
+            '<div class="flex items-center gap-2 p-2 rounded-md hover:bg-muted/40">' +
+            '<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>' +
+            '<div class="flex-1"><div class="text-[12.5px] font-medium">' +
+            code +
+            " · " +
+            r.name +
+            '</div><div class="text-[10.5px] font-mono text-muted-foreground">' +
+            r.role +
+            "</div></div>" +
+            '<span class="font-mono text-[11px] text-muted-foreground">' +
+            r.latency +
+            "</span></div>"
+          );
+        })
+        .join("");
+      const cnt = document.getElementById("regions-active-count");
+      if (cnt) cnt.textContent = pinned.length;
+    }
+    document.querySelectorAll(".map-pin").forEach((pin) => {
+      pin.addEventListener("click", () => {
+        const pinnedNow = [...document.querySelectorAll('.map-pin[aria-pressed="true"]')];
+        const isOn = pin.getAttribute("aria-pressed") === "true";
+        if (!isOn && pinnedNow.length >= 3) {
+          alert("Pro tier supports up to 3 regions. Upgrade to Scale.");
+          return;
+        }
+        pin.setAttribute("aria-pressed", isOn ? "false" : "true");
+        render();
+      });
+    });
+    render();
+  })();
+
+  // Onboarding step navigation
+  window.goStep = function (n) {
+    document.querySelectorAll(".ob-panel").forEach((p) => {
+      p.hidden = String(p.dataset.step) !== String(n);
+    });
+    document.querySelectorAll(".ob-step").forEach((s) => {
+      const step = parseInt(s.dataset.step, 10);
+      s.classList.toggle("is-active", step === n);
+      s.classList.toggle("is-done", step < n);
+      const label = s.querySelector("span:nth-child(2)");
+      if (label) {
+        label.classList.toggle("text-foreground", step <= n);
+        label.classList.toggle("text-muted-foreground", step > n);
+      }
+    });
+    const sec = document.querySelector('section[data-screen="onboarding"]');
+    if (sec) sec.scrollTo({ top: 0 });
+    window.scrollTo({ top: 0 });
+  };
+
+  document.querySelectorAll(".ob-radio").forEach((r) => {
+    r.addEventListener("click", () => {
+      const input = r.querySelector("input");
+      if (!input) return;
+      const group = input.name;
+      if (group) {
+        document.querySelectorAll('.ob-radio input[name="' + group + '"]').forEach((i) => {
+          const wrap = i.closest(".ob-radio");
+          if (wrap) wrap.classList.toggle("is-on", i === input);
+        });
+      }
+    });
+  });
+
+  // PITR slider
+  (function () {
+    const slider = document.getElementById("pitr-slider");
+    if (!slider) return;
+    const timeEl = document.getElementById("pitr-time");
+    const deltaEl = document.getElementById("pitr-delta");
+    function update() {
+      const v = parseInt(slider.value, 10);
+      const minutesBack = Math.round(((100 - v) * (7 * 24 * 60)) / 100);
+      const now = new Date("2026-05-25T14:32:00+03:00");
+      const t = new Date(now.getTime() - minutesBack * 60 * 1000);
+      const d = String(t.getDate()).padStart(2, "0");
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const month = monthNames[t.getMonth()];
+      const h = String(t.getHours()).padStart(2, "0");
+      const m = String(t.getMinutes()).padStart(2, "0");
+      if (timeEl) timeEl.textContent = d + " " + month + " " + t.getFullYear() + " · " + h + ":" + m + " TRT";
+      const days = Math.floor(minutesBack / (24 * 60));
+      const hours = Math.floor((minutesBack - days * 24 * 60) / 60);
+      if (deltaEl) deltaEl.textContent = days > 0 ? days + " days, " + hours + " hours ago" : hours + " hours ago";
+    }
+    slider.addEventListener("input", update);
+    update();
+  })();
+</script>
+</Base>

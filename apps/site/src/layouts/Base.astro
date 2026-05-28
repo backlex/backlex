@@ -1,0 +1,75 @@
+---
+import "../styles/global.css";
+import Nav from "../components/Nav.astro";
+import Footer from "../components/Footer.astro";
+import BeamsBackground from "../components/BeamsBackground.astro";
+
+interface Props {
+  title: string;
+  description?: string;
+  bodyClass?: string;
+  showChrome?: boolean;
+  showBeams?: boolean;
+}
+
+const {
+  title,
+  description = "Dynamic schema, permissions DSL, REST + GraphQL, realtime, edge functions, vector search, and a built-in MCP server for AI agents — one codebase that runs on Bun, Cloudflare Workers, Vercel, and Netlify. Self-host or use the managed Cloud.",
+  bodyClass = "",
+  showChrome = true,
+  showBeams = true,
+} = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script is:inline>
+      // Apply theme before paint to avoid a flash.
+      try {
+        var t =
+          localStorage.getItem("workeros.theme") ||
+          (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        if (t === "dark") document.documentElement.classList.add("dark");
+      } catch (_) {}
+    </script>
+  </head>
+  <body class={`bg-background text-foreground font-sans antialiased leading-relaxed ${bodyClass}`}>
+    {showBeams && <BeamsBackground />}
+    {showChrome && <Nav />}
+    <slot />
+    {showChrome && <Footer />}
+    <script is:inline>
+      (function () {
+        var root = document.documentElement;
+        var btn = document.getElementById("theme-toggle");
+        if (!btn) return;
+        var sun = btn.querySelector(".ic-sun");
+        var moon = btn.querySelector(".ic-moon");
+        function applyTheme(t) {
+          root.classList.toggle("dark", t === "dark");
+          if (sun) sun.classList.toggle("hidden", t === "dark");
+          if (moon) moon.classList.toggle("hidden", t !== "dark");
+        }
+        applyTheme(root.classList.contains("dark") ? "dark" : "light");
+        btn.addEventListener("click", function () {
+          var next = root.classList.contains("dark") ? "light" : "dark";
+          try {
+            localStorage.setItem("workeros.theme", next);
+          } catch (_) {}
+          applyTheme(next);
+        });
+      })();
+    </script>
+  </body>
+</html>

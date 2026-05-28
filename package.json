@@ -22,6 +22,8 @@
     "db:migrate:d1:remote": "bun run --cwd packages/db migrate:d1 -- --remote",
     "db:studio": "bun run --cwd packages/db studio",
     "deploy": "bun run --cwd apps/web deploy",
+    "dev:site": "bun run --cwd apps/site dev",
+    "build:site": "bun run --cwd apps/site build",
     "build:targets": "bun scripts/build-targets.ts",
     "test": "bun run --cwd apps/web test",
     "lint": "biome lint apps packages",

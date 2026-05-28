@@ -1,0 +1,23 @@
+{
+  "name": "@workeros/site",
+  "type": "module",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Public marketing site for workeros — standalone Astro + Tailwind v4.",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro check && astro build",
+    "typecheck": "astro check",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/check": "0.9.9",
+    "@tailwindcss/vite": "4.3.0",
+    "astro": "6.3.8",
+    "tailwindcss": "4.3.0",
+    "typescript": "5.9.3",
+    "vite": "^7.3.3"
+  }
+}

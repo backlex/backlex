@@ -8,6 +8,7 @@
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro check && astro build",
+    "typecheck": "astro check",
     "preview": "astro preview",
     "astro": "astro"
   },

@@ -112,6 +112,9 @@ typings/
 # build:targets temp output (wrangler --outdir target)
 .tmp/
 
+# scripts/build-worker-template.ts staging + tarball output
+dist-worker-template/
+
 # Next.js build output
 .next
 

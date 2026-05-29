@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { sql } from "drizzle-orm";
-import { AppError, SYSTEM_ROLES } from "@workeros/core";
+import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { MiddlewareHandler } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";

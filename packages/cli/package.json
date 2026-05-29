@@ -1,5 +1,5 @@
 {
-  "name": "@workeros/cli",
+  "name": "@backlex/cli",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@workeros/db": "workspace:*",
+    "@backlex/db": "workspace:*",
     "drizzle-orm": "1.0.0-beta.22"
   },
   "devDependencies": {

@@ -5,7 +5,7 @@ import { I } from "../icons";
 import { ADAPTER_PROFILES, type AdapterId } from "../config";
 import { Badge, Button, PageHeader } from "../ui";
 import { Select } from "../select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";

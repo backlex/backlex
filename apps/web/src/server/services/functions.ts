@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
-import type { AuthSubject } from "@workeros/core";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
+import type { AuthSubject } from "@backlex/core";
 import {
   runFunction,
   type SandboxBindings,

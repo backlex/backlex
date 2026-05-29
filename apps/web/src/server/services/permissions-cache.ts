@@ -1,4 +1,4 @@
-import type { Condition } from "@workeros/core";
+import type { Condition } from "@backlex/core";
 
 /**
  * Per-isolate caches in front of {@link resolvePermission} so a hot path —

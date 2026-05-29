@@ -1,5 +1,5 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { EMBEDDING_MODEL_NAMES, type EmbeddingModel } from "@workeros/core";
+import { EMBEDDING_MODEL_NAMES, type EmbeddingModel } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";

@@ -1,5 +1,5 @@
 {
-  "name": "@workeros/db",
+  "name": "@backlex/db",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -30,7 +30,7 @@
   "dependencies": {
     "@libsql/client": "0.17.3",
     "@neondatabase/serverless": "1.1.0",
-    "@workeros/core": "workspace:*",
+    "@backlex/core": "workspace:*",
     "drizzle-orm": "1.0.0-beta.22",
     "postgres": "^3.4.5"
   },

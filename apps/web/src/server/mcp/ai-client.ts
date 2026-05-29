@@ -15,7 +15,7 @@
 import { generateText } from "ai";
 import { createGateway } from "@ai-sdk/gateway";
 import { createAnthropic } from "@ai-sdk/anthropic";
-import { AppError } from "@workeros/core";
+import { AppError } from "@backlex/core";
 import type { Env } from "../env";
 
 const DEFAULT_GATEWAY_MODEL = "anthropic/claude-haiku-4-5";

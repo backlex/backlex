@@ -1,6 +1,6 @@
 import { sql, type SQL } from "drizzle-orm";
-import { AppError } from "@workeros/core";
-import type { AuthSubject } from "@workeros/core";
+import { AppError } from "@backlex/core";
+import type { AuthSubject } from "@backlex/core";
 import type { Ctx } from "../../context";
 import { resolvePermission } from "../permissions";
 import { loadCollection, type CollectionRow } from "./collection-loader";

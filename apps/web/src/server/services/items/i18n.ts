@@ -1,5 +1,5 @@
-import { AppError } from "@workeros/core";
-import type { FieldDef } from "@workeros/db";
+import { AppError } from "@backlex/core";
+import type { FieldDef } from "@backlex/db";
 
 /**
  * Project i18n_text fields down to a single locale's string for response.

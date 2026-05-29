@@ -1,4 +1,4 @@
-import type { FieldDef, FieldType } from "@workeros/db";
+import type { FieldDef, FieldType } from "@backlex/db";
 
 export const serialize = (
   value: unknown,

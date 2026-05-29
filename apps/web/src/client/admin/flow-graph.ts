@@ -1,4 +1,4 @@
-import type { Operation } from "@workeros/core";
+import type { Operation } from "@backlex/core";
 import { parseFilter, FilterParseError } from "./filter-dsl";
 
 /**

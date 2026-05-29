@@ -2,7 +2,7 @@ import { mkdir, readdir, stat, unlink, writeFile } from "node:fs/promises";
 import { createReadStream, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { Readable } from "node:stream";
-import type { StorageAdapter, StoredObject } from "@workeros/core/adapters";
+import type { StorageAdapter, StoredObject } from "@backlex/core/adapters";
 
 export const fsStorage = (root: string): StorageAdapter => {
   const path = (key: string) => join(root, key);

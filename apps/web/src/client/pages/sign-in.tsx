@@ -1,13 +1,13 @@
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Button } from "@workeros/ui/components/button";
+import { Button } from "@backlex/ui/components/button";
 import {
   SignInPage as BaseSignInPage,
   type AuthBranding,
   type AuthShellCopy,
   type SignInCopy,
-} from "@workeros/auth-ui";
+} from "@backlex/auth-ui";
 import { SocialButtons } from "@/components/social-buttons";
 import { useTheme } from "@/components/theme-provider";
 import { notifyError } from "@/lib/error";
@@ -18,7 +18,7 @@ import { version as appVersion } from "../../../package.json";
 /**
  * Thin wrapper that wires the OSS admin's Lingui copy, React Router, the
  * workspace branding/surface stores, and the social-button slot into the
- * generic `<SignInPage>` from `@workeros/auth-ui`.
+ * generic `<SignInPage>` from `@backlex/auth-ui`.
  */
 export const SignIn = () => {
   const { t } = useLingui();

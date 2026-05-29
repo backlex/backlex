@@ -1,16 +1,16 @@
 ---
 title: SDK & CLI
-description: The @workeros/client typed fetch wrapper and the workeros CLI for project scaffolding.
+description: The @backlex/client typed fetch wrapper and the workeros CLI for project scaffolding.
 ---
 
 Two packages ship for client-side and developer-side use.
 
-## `@workeros/client`
+## `@backlex/client`
 
 Typed fetch wrapper, browser + Node.
 
 ```ts
-import { createClient } from "@workeros/client";
+import { createClient } from "@backlex/client";
 
 const wks = createClient({
   url: "https://api.your.app",
@@ -69,7 +69,7 @@ await wks.storage.delete("avatars/me.png");
 Failed requests throw `WorkerosError`:
 
 ```ts
-import { WorkerosError } from "@workeros/client";
+import { WorkerosError } from "@backlex/client";
 try {
   await wks.from("posts").create({});
 } catch (e) {
@@ -115,7 +115,7 @@ export interface Collections {
 
 ## `workeros` CLI
 
-Run from any project that has `@workeros/cli` (root has it as
+Run from any project that has `@backlex/cli` (root has it as
 `bun run workeros ...`).
 
 ```
@@ -156,7 +156,7 @@ Re-run after schema changes. The output is deterministic — safe to commit.
 
 ## Adding the SDK to a separate repo
 
-The SDK is published as `@workeros/client` (workspace today; NPM package
+The SDK is published as `@backlex/client` (workspace today; NPM package
 in a follow-up). To use locally:
 
 ```bash
@@ -166,8 +166,8 @@ bun add file:../workeros/packages/client
 Or, once published:
 
 ```bash
-bun add @workeros/client
+bun add @backlex/client
 ```
 
-The SDK has zero dependencies beyond `@workeros/core` (types only) and
+The SDK has zero dependencies beyond `@backlex/core` (types only) and
 the runtime's `fetch` / `EventSource`.

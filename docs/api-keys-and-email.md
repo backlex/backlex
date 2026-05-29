@@ -83,7 +83,7 @@ A key may set `role_id`. When present:
 admins get every workspace role; everyone else gets only roles they
 hold. `auth.apiKeyRoleId` carries the scope through the middleware
 chain (set in `app.ts` `AppBindings` and `AuthSubject` in
-`@workeros/core`).
+`@backlex/core`).
 
 ## Email transports
 

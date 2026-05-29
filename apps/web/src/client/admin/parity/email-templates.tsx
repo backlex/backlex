@@ -1,8 +1,8 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Input } from "@workeros/ui/components/input";
-import { Textarea } from "@workeros/ui/components/textarea";
+import { Input } from "@backlex/ui/components/input";
+import { Textarea } from "@backlex/ui/components/textarea";
 import { I } from "../icons";
 import { Button, PageHeader } from "../ui";
 import { emailTemplatesApi, type ApiEmailTemplate } from "../api";

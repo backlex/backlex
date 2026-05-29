@@ -4,22 +4,22 @@
 // stream the full doc to disk as JSON or YAML.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Button } from "@workeros/ui/components/button";
-import { Badge } from "@workeros/ui/components/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@workeros/ui/components/card";
-import { Separator } from "@workeros/ui/components/separator";
-import { Skeleton } from "@workeros/ui/components/skeleton";
+import { Button } from "@backlex/ui/components/button";
+import { Badge } from "@backlex/ui/components/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@backlex/ui/components/card";
+import { Separator } from "@backlex/ui/components/separator";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
-import { toast } from "@workeros/ui/components/sonner";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@workeros/ui/components/collapsible";
-import { cn } from "@workeros/ui/lib/utils";
+} from "@backlex/ui/components/dialog";
+import { toast } from "@backlex/ui/components/sonner";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@backlex/ui/components/collapsible";
+import { cn } from "@backlex/ui/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { I } from "@/admin/icons";
 import { api } from "@/lib/api";

@@ -19,33 +19,33 @@ import { api } from "@/lib/api";
 import { activityApi, type ApiActivity } from "../api";
 import { I } from "../icons";
 import { Badge, Button, PageHeader, Switch } from "../ui";
-import { Textarea } from "@workeros/ui/components/textarea";
+import { Textarea } from "@backlex/ui/components/textarea";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@workeros/ui/components/tabs";
+} from "@backlex/ui/components/tabs";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@workeros/ui/components/popover";
+} from "@backlex/ui/components/popover";
 import {
   Drawer,
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
-} from "@workeros/ui/components/drawer";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+} from "@backlex/ui/components/drawer";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@workeros/ui/components/select";
+} from "@backlex/ui/components/select";
 import { McpKeyModal } from "@/components/mcp-key-modal";
 import {
   claudeDesktopSnippet,

@@ -161,10 +161,10 @@ nav entry instead — flat is faster to scan.
 
 ## 4. Component patterns
 
-### Toasts (`@workeros/ui/components/sonner`)
+### Toasts (`@backlex/ui/components/sonner`)
 
 ```tsx
-import { toast } from "@workeros/ui/components/sonner";
+import { toast } from "@backlex/ui/components/sonner";
 import { notifyError } from "@/lib/error";
 
 toast.success("Item saved");

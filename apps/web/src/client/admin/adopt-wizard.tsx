@@ -13,9 +13,9 @@
 // introspected `physicalTable`/`pkColumn`/alias columns.
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Input } from "@workeros/ui/components/input";
-import { Textarea } from "@workeros/ui/components/textarea";
-import { Skeleton } from "@workeros/ui/components/skeleton";
+import { Input } from "@backlex/ui/components/input";
+import { Textarea } from "@backlex/ui/components/textarea";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import { I } from "./icons";
 import { Select } from "./select";
 import { Badge, Button, IconButton, Switch } from "./ui";

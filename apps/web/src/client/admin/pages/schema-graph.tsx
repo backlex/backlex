@@ -8,8 +8,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { Badge, Button, IconButton, PageHeader } from "../ui";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { collectionsApi, type ApiCollection } from "../api";
 import { SchemaGraphSkeleton } from "../page-skeletons";
 

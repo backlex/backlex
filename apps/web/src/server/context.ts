@@ -1,15 +1,15 @@
-import { createPgClient, type PgDb, type PgDriver } from "@workeros/db/pg";
-import { createD1Client, type SqliteDb } from "@workeros/db/sqlite";
-import { ensureMigrations } from "@workeros/db";
-import { createAuth, type Auth, type OAuthProviderConfig } from "@workeros/auth";
-import { SYSTEM_ROLES } from "@workeros/core";
+import { createPgClient, type PgDb, type PgDriver } from "@backlex/db/pg";
+import { createD1Client, type SqliteDb } from "@backlex/db/sqlite";
+import { ensureMigrations } from "@backlex/db";
+import { createAuth, type Auth, type OAuthProviderConfig } from "@backlex/auth";
+import { SYSTEM_ROLES } from "@backlex/core";
 import type {
   EmailAdapter,
   EmbeddingAdapter,
   ImageAdapter,
   StorageAdapter,
   VectorAdapter,
-} from "@workeros/core/adapters";
+} from "@backlex/core/adapters";
 import { fsStorage } from "./adapters/storage.fs";
 import { r2Storage } from "./adapters/storage.r2";
 import { bunS3Storage } from "./adapters/storage.s3.bun";
@@ -41,7 +41,7 @@ import { loadAppSettings } from "./services/settings";
 import { invalidateUserRoles } from "./services/permissions-cache";
 import { publishEvent } from "./services/events";
 import { isCloudflareWorkers, isStatelessEdge, isXataPgUrl } from "./lib/runtime";
-import { AppError } from "@workeros/core";
+import { AppError } from "@backlex/core";
 import type { Env } from "./env";
 
 export interface Ctx {
@@ -164,7 +164,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     // and Netlify Edge, so the import is unconditional (no bun:sqlite-style
     // dynamic gating needed). The module is lazy-loaded only to keep the
     // top-level sqlite barrel free of @libsql/client at module init.
-    const { createLibsqlClient } = await import("@workeros/db/sqlite/libsql");
+    const { createLibsqlClient } = await import("@backlex/db/sqlite/libsql");
     db = createLibsqlClient(env.LIBSQL_URL, env.LIBSQL_AUTH_TOKEN);
   } else if (pgUrl) {
     // Default driver: postgres-js. Force neon-http on Vercel Edge (no
@@ -182,7 +182,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   } else {
     // SQLite + no D1 → Bun self-host. Dynamically import so the top-level
     // sqlite module stays edge-safe (no `bun:sqlite` at module init).
-    const { createBunSqliteClient } = await import("@workeros/db/sqlite/bun");
+    const { createBunSqliteClient } = await import("@backlex/db/sqlite/bun");
     db = createBunSqliteClient(env.SQLITE_PATH);
   }
 

@@ -21,7 +21,7 @@
  * touching the real ldapts package.
  */
 import { Client as RealLdapClient } from "ldapts";
-import type { LdapAdapter, LdapAttributes } from "@workeros/core/adapters";
+import type { LdapAdapter, LdapAttributes } from "@backlex/core/adapters";
 
 /**
  * Configuration handed to {@link ldaptsLdapAdapter}. The service decrypts the

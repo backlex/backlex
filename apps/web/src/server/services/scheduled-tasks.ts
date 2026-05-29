@@ -1,7 +1,7 @@
 import { sql, and, eq, isNull, lte } from "drizzle-orm";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
-import type { AuthSubject, Operation } from "@workeros/core";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
+import type { AuthSubject, Operation } from "@backlex/core";
 import type { Ctx } from "../context";
 
 const tableFor = (dialect: "pg" | "sqlite") =>

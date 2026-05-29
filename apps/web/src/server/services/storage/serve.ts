@@ -1,5 +1,5 @@
 import { and, eq, inArray, type SQL } from "drizzle-orm";
-import { AppError } from "@workeros/core";
+import { AppError } from "@backlex/core";
 import type { AppBindings } from "../../app";
 import { cfImageFromUrl, type CfImageTransform } from "../../adapters/image.cf";
 import { filesTable } from "./folders";

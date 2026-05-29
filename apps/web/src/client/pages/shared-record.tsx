@@ -13,10 +13,10 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@workeros/ui/components/card";
-import { Badge } from "@workeros/ui/components/badge";
-import { Skeleton } from "@workeros/ui/components/skeleton";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+} from "@backlex/ui/components/card";
+import { Badge } from "@backlex/ui/components/badge";
+import { Skeleton } from "@backlex/ui/components/skeleton";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { sharedPublicApi } from "@/admin/api";
 
 type Translator = (strings: TemplateStringsArray, ...values: unknown[]) => string;

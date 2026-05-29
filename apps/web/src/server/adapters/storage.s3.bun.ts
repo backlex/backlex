@@ -1,4 +1,4 @@
-import type { StorageAdapter, StoredObject } from "@workeros/core/adapters";
+import type { StorageAdapter, StoredObject } from "@backlex/core/adapters";
 
 export interface BunS3Config {
   bucket: string;

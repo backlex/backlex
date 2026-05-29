@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { CalendarIcon, XIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Button } from "@workeros/ui/components/button";
-import { Calendar } from "@workeros/ui/components/calendar";
-import { Input } from "@workeros/ui/components/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@workeros/ui/components/popover";
-import { Label } from "@workeros/ui/components/label";
+import { Button } from "@backlex/ui/components/button";
+import { Calendar } from "@backlex/ui/components/calendar";
+import { Input } from "@backlex/ui/components/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@backlex/ui/components/popover";
+import { Label } from "@backlex/ui/components/label";
 
 interface DatePickerProps {
   value: string | number | null | undefined;

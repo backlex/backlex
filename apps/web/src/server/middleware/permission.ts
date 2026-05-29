@@ -1,6 +1,6 @@
 import type { Context, MiddlewareHandler } from "hono";
-import type { Action } from "@workeros/core";
-import { AppError } from "@workeros/core";
+import type { Action } from "@backlex/core";
+import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
 import {
   resolvePermission,

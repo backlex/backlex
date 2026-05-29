@@ -5,9 +5,9 @@ import { I } from "../icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
 import { api } from "@/lib/api";
-import { Input } from "@workeros/ui/components/input";
-import { Textarea } from "@workeros/ui/components/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
+import { Input } from "@backlex/ui/components/input";
+import { Textarea } from "@backlex/ui/components/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import {
   Dialog,
   DialogContent,
@@ -15,15 +15,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
+} from "@backlex/ui/components/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@workeros/ui/components/dropdown-menu";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+} from "@backlex/ui/components/dropdown-menu";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { fetchSafely } from "./_shared";
 import { WebhooksSkeleton } from "../page-skeletons";
 
@@ -347,7 +347,7 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Endpoint URL</Trans> <span className="text-destructive">*</span></label>
             <div className="flex gap-2">
               <Select size="sm" value={draft.method} onChange={(v) => update("method", v)} className="h-9 w-[100px]" options={["POST", "PUT", "PATCH"]} />
-              <Input className="font-mono flex-1 text-[12.5px]" aria-invalid={!!errors.url} value={draft.url} onChange={(e) => update("url", e.target.value)} placeholder="https://api.example.com/webhooks/workeros" />
+              <Input className="font-mono flex-1 text-[12.5px]" aria-invalid={!!errors.url} value={draft.url} onChange={(e) => update("url", e.target.value)} placeholder="https://api.example.com/webhooks/backlex" />
             </div>
             {errors.url ? <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{errors.url}</div> : <span className="text-[11.5px] text-muted-foreground"><Trans>Must accept the chosen HTTP method and respond with 2xx within 10s.</Trans></span>}
           </div>
@@ -378,13 +378,13 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
               <Button variant="outline" size="sm" icon={revealSecret ? I.X : I.Eye} onClick={() => setRevealSecret(!revealSecret)}>{revealSecret ? <Trans>Hide</Trans> : <Trans>Show</Trans>}</Button>
               <Button variant="outline" size="sm" icon={I.Refresh} onClick={() => { update("secret", "whsec_" + Math.random().toString(16).slice(2, 14)); pushToast(t`Secret rotated.`); }}><Trans>Rotate</Trans></Button>
             </div>
-            <span className="text-[11.5px] text-muted-foreground"><Trans>Sent as <span className="font-mono">X-Workeros-Signature: sha256=…</span>. Verify on the receiver.</Trans></span>
+            <span className="text-[11.5px] text-muted-foreground"><Trans>Sent as <span className="font-mono">X-Backlex-Signature: sha256=…</span>. Verify on the receiver.</Trans></span>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Custom headers</Trans></label>
-            <Textarea className="font-mono min-h-[70px] text-xs" value={draft.headers} onChange={(e) => update("headers", e.target.value)} placeholder={"Authorization: Bearer …\nX-Tenant: workeros"} />
-            <span className="text-[11.5px] text-muted-foreground"><Trans>One per line. <span className="font-mono">Content-Type</span> and <span className="font-mono">X-Workeros-*</span> are reserved.</Trans></span>
+            <Textarea className="font-mono min-h-[70px] text-xs" value={draft.headers} onChange={(e) => update("headers", e.target.value)} placeholder={"Authorization: Bearer …\nX-Tenant: backlex"} />
+            <span className="text-[11.5px] text-muted-foreground"><Trans>One per line. <span className="font-mono">Content-Type</span> and <span className="font-mono">X-Backlex-*</span> are reserved.</Trans></span>
           </div>
 
           <div className="flex items-center justify-between gap-3">

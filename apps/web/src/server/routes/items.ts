@@ -1,13 +1,13 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { sql, type SQL } from "drizzle-orm";
-import { AppError } from "@workeros/core";
+import { AppError } from "@backlex/core";
 import {
   compileCondition,
   combineConditions,
   type FieldDef,
   type ColRefResolver,
   type LeafCompiler,
-} from "@workeros/db";
+} from "@backlex/db";
 import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
 import { parseQuery, resolveProjection } from "../lib/query";

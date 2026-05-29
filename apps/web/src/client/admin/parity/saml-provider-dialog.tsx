@@ -15,12 +15,12 @@
  * Lives in /parity/ so it can read the shared `card`/`field` CSS classes
  * the rest of the admin page uses. shadcn-only rule: every interactive
  * element here is a `Button` / `Switch` / `Select` / `Badge` from
- * `@/admin/ui` (the local re-export of @workeros/ui).
+ * `@/admin/ui` (the local re-export of @backlex/ui).
  */
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Input } from "@workeros/ui/components/input";
-import { Textarea } from "@workeros/ui/components/textarea";
+import { Input } from "@backlex/ui/components/input";
+import { Textarea } from "@backlex/ui/components/textarea";
 import { I } from "../icons";
 import { Badge, Button, Switch } from "../ui";
 import { Select } from "../select";
@@ -30,7 +30,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
+} from "@backlex/ui/components/dialog";
 import {
   samlAdminApi,
   type ApiSamlProvider,

@@ -38,8 +38,8 @@ const buildKeypair = (): Keypair => {
   cert.serialNumber = "01";
   cert.validity.notBefore = new Date();
   cert.validity.notAfter = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
-  cert.setSubject([{ name: "commonName", value: "workeros-saml-test" }]);
-  cert.setIssuer([{ name: "commonName", value: "workeros-saml-test" }]);
+  cert.setSubject([{ name: "commonName", value: "backlex-saml-test" }]);
+  cert.setIssuer([{ name: "commonName", value: "backlex-saml-test" }]);
   cert.sign(fwdPrivate, forge.md.sha256.create());
   const certPem = pki.certificateToPem(cert);
   const certBody = certPem.replace(/-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\s+/g, "");

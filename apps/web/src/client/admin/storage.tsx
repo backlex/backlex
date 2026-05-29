@@ -4,9 +4,9 @@ import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } fr
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "./icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
-import { Input } from "@workeros/ui/components/input";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
-import { Textarea } from "@workeros/ui/components/textarea";
+import { Input } from "@backlex/ui/components/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@backlex/ui/components/input-group";
+import { Textarea } from "@backlex/ui/components/textarea";
 import {
   Command,
   CommandEmpty,
@@ -14,9 +14,9 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@workeros/ui/components/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@workeros/ui/components/popover";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+} from "@backlex/ui/components/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@backlex/ui/components/popover";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -24,14 +24,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
-import { Button as ShadButton } from "@workeros/ui/components/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
+} from "@backlex/ui/components/dialog";
+import { Button as ShadButton } from "@backlex/ui/components/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import { CheckIcon, ChevronsUpDownIcon, LinkIcon } from "lucide-react";
-import { cn } from "@workeros/ui/lib/utils";
+import { cn } from "@backlex/ui/lib/utils";
 import { api } from "@/lib/api";
 import { useUrlState } from "@/lib/use-url-state";
-import { Skeleton } from "@workeros/ui/components/skeleton";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import { SkeletonCard } from "./loading";
 
 const ADMIN_TABLE_CLS =

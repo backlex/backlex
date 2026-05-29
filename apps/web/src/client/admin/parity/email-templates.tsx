@@ -1,8 +1,8 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Input } from "@workeros/ui/components/input";
-import { Textarea } from "@workeros/ui/components/textarea";
+import { Input } from "@backlex/ui/components/input";
+import { Textarea } from "@backlex/ui/components/textarea";
 import { I } from "../icons";
 import { Button, PageHeader } from "../ui";
 import { emailTemplatesApi, type ApiEmailTemplate } from "../api";
@@ -132,11 +132,11 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
     }
   };
   const preview = body
-    .replace(/{{\s*user\.email\s*}}/g, "rana@workeros.dev")
-    .replace(/{{\s*confirm_url\s*}}/g, "https://workeros.dev/auth/verify?token=…")
-    .replace(/{{\s*reset_url\s*}}/g, "https://workeros.dev/auth/reset?token=…")
-    .replace(/{{\s*magic_url\s*}}/g, "https://workeros.dev/auth/magic?token=…")
-    .replace(/{{\s*site\.name\s*}}/g, "workeros");
+    .replace(/{{\s*user\.email\s*}}/g, "rana@backlex.dev")
+    .replace(/{{\s*confirm_url\s*}}/g, "https://backlex.dev/auth/verify?token=…")
+    .replace(/{{\s*reset_url\s*}}/g, "https://backlex.dev/auth/reset?token=…")
+    .replace(/{{\s*magic_url\s*}}/g, "https://backlex.dev/auth/magic?token=…")
+    .replace(/{{\s*site\.name\s*}}/g, "backlex");
 
   // First whole-page fetch — email templates haven't landed yet.
   if (!loaded) return <EmailTemplatesSkeleton />;

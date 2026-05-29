@@ -10,7 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@workeros/ui/components/alert-dialog";
+} from "@backlex/ui/components/alert-dialog";
 
 interface ConfirmActionProps {
   title: string;

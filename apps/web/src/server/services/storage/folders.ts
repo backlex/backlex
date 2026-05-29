@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
 
 export const filesTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.files : sqlite.schema.files;

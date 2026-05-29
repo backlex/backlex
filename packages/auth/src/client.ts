@@ -8,10 +8,10 @@ import { passkeyClient } from "@better-auth/passkey/client";
  * if the server doesn't have the plugin, the calls return a clear error
  * which the UI surfaces via toast.
  */
-export const createWorkerosAuthClient = (baseURL: string) =>
+export const createBacklexAuthClient = (baseURL: string) =>
   createAuthClient({
     baseURL,
     plugins: [passkeyClient(), magicLinkClient()],
   });
 
-export type WorkerosAuthClient = ReturnType<typeof createWorkerosAuthClient>;
+export type BacklexAuthClient = ReturnType<typeof createBacklexAuthClient>;

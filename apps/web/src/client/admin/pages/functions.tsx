@@ -6,8 +6,8 @@ import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
 import { ConfirmDialog } from "../sheet";
 import { api } from "@/lib/api";
-import { Input } from "@workeros/ui/components/input";
-import { Textarea } from "@workeros/ui/components/textarea";
+import { Input } from "@backlex/ui/components/input";
+import { Textarea } from "@backlex/ui/components/textarea";
 import {
   Dialog,
   DialogContent,
@@ -15,8 +15,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+} from "@backlex/ui/components/dialog";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { fetchSafely } from "./_shared";
 import { FunctionsSkeleton } from "../page-skeletons";
 

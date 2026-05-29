@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
-import type { FieldDef, FieldType } from "@workeros/db";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
+import type { FieldDef, FieldType } from "@backlex/db";
 import type { Ctx } from "../context";
 
 type Schema = Record<string, unknown>;

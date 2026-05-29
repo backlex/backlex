@@ -17,15 +17,15 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "../icons";
 import { Badge, Button, IconButton, JsonBlock, PageHeader } from "../ui";
-import { Input } from "@workeros/ui/components/input";
-import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+import { Input } from "@backlex/ui/components/input";
+import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
+} from "@backlex/ui/components/dialog";
 import {
   Table,
   TableBody,
@@ -33,8 +33,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@workeros/ui/components/table";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+} from "@backlex/ui/components/table";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { useActivity } from "../queries";
 import { LogsSkeleton } from "../page-skeletons";
 import { authorById } from "../items";

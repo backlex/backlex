@@ -1,9 +1,9 @@
 // @ts-nocheck
 import { useEffect, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Input } from "@workeros/ui/components/input";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
-import { Textarea } from "@workeros/ui/components/textarea";
+import { Input } from "@backlex/ui/components/input";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Textarea } from "@backlex/ui/components/textarea";
 import { I } from "../icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
@@ -14,7 +14,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
+} from "@backlex/ui/components/dialog";
 import {
   authAdminApi,
   tenantsApi,
@@ -26,7 +26,7 @@ import {
   type ApiTenant,
 } from "../api";
 import { ConfirmDialog } from "../sheet";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import { apiOrigin, copyText, fmtRelative } from "./_shared";
 import { SamlProviderDialog } from "./saml-provider-dialog";
 import { LdapConfigCard } from "./ldap-config-card";
@@ -487,7 +487,7 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
           </div>
         );
         const sdkCode =
-`import { createClient } from "@workeros/client";
+`import { createClient } from "@backlex/client";
 
 const wk = createClient({
   url: "${base}",

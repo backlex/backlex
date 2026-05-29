@@ -92,6 +92,6 @@ migrated or index introspection fails for a dialect.
   five unscoped keys are five warnings, not one.
 - Within each tab, findings/groups are ordered `error → warn → info`.
 - **Dismiss is localStorage-only.** Dismissed finding ids are stored under
-  `workeros.advisor.dismissed` in the browser; there is no server-side
+  `backlex.advisor.dismissed` in the browser; there is no server-side
   dismiss state and no DB table. Dismissing hides a finding locally and does
   not change the score.

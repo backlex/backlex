@@ -1,9 +1,9 @@
 import { and, eq, isNull } from "drizzle-orm";
-import type { PgDb } from "@workeros/db/pg";
-import type { SqliteDb } from "@workeros/db/sqlite";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
-import { SYSTEM_ROLES, type Action, type Condition } from "@workeros/core";
+import type { PgDb } from "@backlex/db/pg";
+import type { SqliteDb } from "@backlex/db/sqlite";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
+import { SYSTEM_ROLES, type Action, type Condition } from "@backlex/core";
 
 export interface DbCtx {
   db: PgDb | SqliteDb;

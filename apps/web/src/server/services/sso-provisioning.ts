@@ -31,13 +31,13 @@
  *     assignments aren't touched.
  */
 import { and, eq } from "drizzle-orm";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
-import type { PgDb } from "@workeros/db/pg";
-import type { SqliteDb } from "@workeros/db/sqlite";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
+import type { PgDb } from "@backlex/db/pg";
+import type { SqliteDb } from "@backlex/db/sqlite";
 import { assignAppUserRoleByName, ensureSystemRoles } from "./seed";
 import { invalidateUserRoles } from "./permissions-cache";
-import { SYSTEM_ROLES } from "@workeros/core";
+import { SYSTEM_ROLES } from "@backlex/core";
 
 type DbCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite" };
 

@@ -4,7 +4,7 @@ import { Database } from "bun:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-const DEFAULT_DB = "./.data/workeros.sqlite";
+const DEFAULT_DB = "./.data/backlex.sqlite";
 
 const findMigrationsFolder = (): string => {
   // Resolve relative to this file:

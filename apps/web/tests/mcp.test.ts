@@ -114,7 +114,7 @@ describe("MCP — initialize + tools/list", () => {
     expect(isErr(r)).toBe(false);
     const result = (r as RpcSuccess).result;
     expect(result.protocolVersion).toBe("2025-03-26");
-    expect(result.serverInfo.name).toBe("workeros");
+    expect(result.serverInfo.name).toBe("backlex");
     expect(result.capabilities.tools).toBeDefined();
   });
 
@@ -136,7 +136,7 @@ describe("MCP — initialize + tools/list", () => {
     expect(names).toContain("storage.delete");
     expect(names).toContain("functions.list");
     expect(names).toContain("functions.invoke");
-    // Catalog expansion — every workeros surface.
+    // Catalog expansion — every backlex surface.
     expect(names).toContain("schema.create_collection");
     expect(names).toContain("schema.update_collection");
     expect(names).toContain("schema.drop_collection");
@@ -170,7 +170,7 @@ describe("MCP — initialize + tools/list", () => {
     expect(names).toContain("users.invite");
     expect(names).toContain("users.suspend");
     expect(names).toContain("users.activate");
-    // Tier C — every remaining workeros surface
+    // Tier C — every remaining backlex surface
     expect(names).toContain("db.execute_sql");
     expect(names).toContain("db.list_tables");
     expect(names).toContain("activity.search");
@@ -940,7 +940,7 @@ describe("MCP — tier D AI-native tools (ai.query / ai.suggest_schema / ai.impo
   // Tests don't hit a real provider — they verify dispatch + arg
   // validation + the UNAVAILABLE path when no AI credential is set (neither
   // AI_GATEWAY_API_KEY nor ANTHROPIC_API_KEY — the default in the test
-  // harness). Live calls are exercised manually via `bun workeros mcp`
+  // harness). Live calls are exercised manually via `bun backlex mcp`
   // against a configured deployment.
   let h: TestHarness;
   beforeAll(async () => {
@@ -1117,7 +1117,7 @@ describe("MCP — tier C tools smoke (db/activity/tenants/folders/comments/setti
   });
 });
 
-describe("MCP — resources (collections as workeros:// URIs)", () => {
+describe("MCP — resources (collections as backlex:// URIs)", () => {
   let h: TestHarness;
   const slug = `mcp_res_${Date.now()}`;
   beforeAll(async () => {
@@ -1154,8 +1154,8 @@ describe("MCP — resources (collections as workeros:// URIs)", () => {
     const r = await mcp(h, { jsonrpc: "2.0", id: 2, method: "resources/list" });
     const resources: Array<{ uri: string; name: string; mimeType: string }> =
       (r as RpcSuccess).result.resources;
-    expect(resources.some((x) => x.uri === "workeros://schema")).toBe(true);
-    expect(resources.some((x) => x.uri === `workeros://collection/${slug}`)).toBe(true);
+    expect(resources.some((x) => x.uri === "backlex://schema")).toBe(true);
+    expect(resources.some((x) => x.uri === `backlex://collection/${slug}`)).toBe(true);
     for (const res of resources) {
       expect(res.mimeType).toBe("application/json");
       expect(typeof res.name).toBe("string");
@@ -1165,11 +1165,11 @@ describe("MCP — resources (collections as workeros:// URIs)", () => {
   test("resources/read for the schema URI returns every collection's fields", async () => {
     const r = await mcp(h, {
       jsonrpc: "2.0", id: 3, method: "resources/read",
-      params: { uri: "workeros://schema" },
+      params: { uri: "backlex://schema" },
     });
     const contents = (r as RpcSuccess).result.contents;
     expect(contents.length).toBe(1);
-    expect(contents[0].uri).toBe("workeros://schema");
+    expect(contents[0].uri).toBe("backlex://schema");
     const parsed = JSON.parse(contents[0].text) as { collections: Array<{ slug: string }> };
     expect(parsed.collections.some((c) => c.slug === slug)).toBe(true);
   });
@@ -1177,7 +1177,7 @@ describe("MCP — resources (collections as workeros:// URIs)", () => {
   test("resources/read for a collection returns schema + sample rows", async () => {
     const r = await mcp(h, {
       jsonrpc: "2.0", id: 4, method: "resources/read",
-      params: { uri: `workeros://collection/${slug}` },
+      params: { uri: `backlex://collection/${slug}` },
     });
     const contents = (r as RpcSuccess).result.contents;
     const parsed = JSON.parse(contents[0].text) as {
@@ -1196,7 +1196,7 @@ describe("MCP — resources (collections as workeros:// URIs)", () => {
   test("resources/read for an unknown URI surfaces an error", async () => {
     const r = await mcp(h, {
       jsonrpc: "2.0", id: 5, method: "resources/read",
-      params: { uri: "workeros://nonsense/x" },
+      params: { uri: "backlex://nonsense/x" },
     });
     expect((r as RpcError).error).toBeDefined();
     expect((r as RpcError).error.message).toContain("unknown resource");

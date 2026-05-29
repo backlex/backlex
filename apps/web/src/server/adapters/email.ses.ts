@@ -1,5 +1,5 @@
 import { AwsClient } from "aws4fetch";
-import type { EmailAdapter } from "@workeros/core";
+import type { EmailAdapter } from "@backlex/core";
 
 /**
  * Amazon SES v2 send-email API (`POST /v2/email/outbound-emails`). Requests

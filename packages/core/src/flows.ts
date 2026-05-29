@@ -74,7 +74,7 @@ export type Operation =
       onSuccess?: Operation[];
       onError?: Operation[];
     }
-  /** Invoke a saved workeros function by name, tenant-scoped. The
+  /** Invoke a saved backlex function by name, tenant-scoped. The
    *  function's stored `code` is run in the same sandbox as `run-script`
    *  but the body lives in the `functions` table so it's reusable across
    *  flows and the HTTP `/api/functions/:name/invoke` endpoint. */

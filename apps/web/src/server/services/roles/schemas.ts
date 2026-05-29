@@ -1,5 +1,5 @@
 import { z } from "@hono/zod-openapi";
-import { SYSTEM_ROLES } from "@workeros/core";
+import { SYSTEM_ROLES } from "@backlex/core";
 
 export const SYSTEM_ROLE_NAMES = new Set<string>([
   SYSTEM_ROLES.admin,

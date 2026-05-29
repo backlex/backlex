@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { eq, and, desc, inArray } from "drizzle-orm";
-import { AppError } from "@workeros/core";
+import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
@@ -573,7 +573,7 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
       const sent = await transport
         .send({
           to: body.email,
-          subject: "You've been invited to workeros",
+          subject: "You've been invited to backlex",
           text: `Open ${ctx.env.APP_URL}/sign-up?invite=${encodeURIComponent(body.email)} to accept.`,
         })
         .then(() => true)

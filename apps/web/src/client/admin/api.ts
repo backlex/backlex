@@ -678,7 +678,7 @@ export const dbAdminApi = {
       `/api/admin/db/sql/run${opts?.writes ? "?writes=1" : ""}`,
       {
         method: "POST",
-        headers: opts?.writes ? { "x-workeros-confirm": "yes" } : undefined,
+        headers: opts?.writes ? { "x-backlex-confirm": "yes" } : undefined,
         body: JSON.stringify({ sql }),
       },
     ),

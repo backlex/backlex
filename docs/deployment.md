@@ -3,7 +3,7 @@ title: Deployment
 description: Ship the same source to Bun, Cloudflare Workers, Vercel, or Netlify (all Node serverless except Bun and Workers).
 ---
 
-workeros runs on four targets from the same source. Pick one based on the
+backlex runs on four targets from the same source. Pick one based on the
 constraints you need.
 
 |                    | Bun (self-host)   | Cloudflare Workers   | Vercel Functions (Node 22, Build Output API) | Netlify Functions (Node 22) |
@@ -22,7 +22,7 @@ constraints you need.
 
 ```bash
 APP_URL=https://your.app \
-DATABASE_URL=postgres://user:pass@host:5432/workeros \
+DATABASE_URL=postgres://user:pass@host:5432/backlex \
 AUTH_SECRET=$(openssl rand -hex 32) \
 bun run --cwd apps/web dev:bun
 ```
@@ -38,9 +38,9 @@ every 30 seconds.
 ```bash
 cd apps/web
 
-wrangler d1 create workeros          # paste id into wrangler.toml
-wrangler r2 bucket create workeros-files
-wrangler vectorize create workeros-embeddings --dimensions=1536 --metric=cosine
+wrangler d1 create backlex          # paste id into wrangler.toml
+wrangler r2 bucket create backlex-files
+wrangler vectorize create backlex-embeddings --dimensions=1536 --metric=cosine
 
 wrangler secret put AUTH_SECRET
 wrangler secret put RESEND_API_KEY        # optional — email provider key
@@ -50,7 +50,7 @@ wrangler secret put OAUTH_GOOGLE_CLIENT_ID  # optional
 # EMAIL_FROM (and EMAIL_PROVIDER) aren't secrets — put them in wrangler.toml [vars].
 # smtp is not available on Workers; use an HTTP provider here.
 
-wrangler d1 migrations apply workeros --remote
+wrangler d1 migrations apply backlex --remote
 wrangler deploy
 ```
 
@@ -60,7 +60,7 @@ Connect the GitHub repo from the Cloudflare dashboard and let every push to
 `main` auto-deploy. No GitHub Actions workflow is needed.
 
 1. **dash.cloudflare.com → Workers & Pages → workeros-api → Settings → Builds**
-   → **Connect** → pick the workeros repo.
+   → **Connect** → pick the backlex repo.
 2. **Production branch:** `main`.
 3. **Build command:** `bun run db:migrate:d1:remote && bun run build`
    (the migration runs first so deploy never fronts a schema mismatch; the
@@ -70,7 +70,7 @@ Connect the GitHub repo from the Cloudflare dashboard and let every push to
    to run from repo root with `"application detection logic has been
    run in the root of a workspace"`. `apps/web/` is where
    `wrangler.toml` lives and where the Vite build emits
-   `dist/workeros_api/` + `dist/client/`.
+   `dist/backlex_api/` + `dist/client/`.
 5. **Root directory:** leave at repo root (`/`).
 6. **Build environment variables** — the build container needs the same
    `wrangler.toml` bindings as production. Secrets stay on the Worker
@@ -111,7 +111,7 @@ Workers users still get a sandbox — sync only.
 `.github/workflows/publish-worker-template.yml` packages the same
 `apps/web` CF build that ships to `workeros-api.kinyasfurkan.workers.dev`
 into a downloadable tarball, so a downstream provisioner (the private
-`workeros-cloud` repo) can fetch a pre-built bundle and `wrangler deploy`
+`backlex-cloud` repo) can fetch a pre-built bundle and `wrangler deploy`
 it into a fresh customer account — D1 + R2 + Worker in one shot — without
 re-cloning + re-building this repo.
 
@@ -127,10 +127,10 @@ re-cloning + re-building this repo.
   asset. Use this to confirm the bundle assembles before cutting an
   intentional `worker-v*` tag.
 
-**Tarball contents** (`workeros-app-worker-v<X.Y.Z>.tar.gz`):
+**Tarball contents** (`backlex-app-worker-v<X.Y.Z>.tar.gz`):
 
 ```
-workeros-app-worker-v<X.Y.Z>/
+backlex-app-worker-v<X.Y.Z>/
 ├── worker/
 │   ├── index.js                       # bundled Hono worker entry (ES module)
 │   └── assets/**                      # vendor chunks + per-migration SQL chunks
@@ -161,7 +161,7 @@ also never reads any GitHub secret beyond the auto-injected
 
 ```bash
 bun run scripts/build-worker-template.ts --version 0.1.0
-# → ./dist-worker-template/workeros-app-worker-v0.1.0.tar.gz
+# → ./dist-worker-template/backlex-app-worker-v0.1.0.tar.gz
 
 # Skip the SPA build if you've just run `bun run build` yourself:
 bun run scripts/build-worker-template.ts --version 0.1.0 --no-build
@@ -236,7 +236,7 @@ original `/api/auth/get-session` etc. instead of the literal
 Connect the GitHub repo from the Vercel dashboard and let every push to
 `main` auto-deploy. No GitHub Actions workflow is needed.
 
-1. **vercel.com → Add New → Project** → pick the workeros repo.
+1. **vercel.com → Add New → Project** → pick the backlex repo.
 2. **Framework Preset:** `Other`. `vercel.ts` overrides install/build,
    and the Build Output API takes over from there — the preset only
    affects defaults that get overridden anyway.
@@ -289,7 +289,7 @@ S3, Cloudflare R2, Backblaze B2, MinIO, DigitalOcean Spaces, Wasabi —
 anything that speaks the S3 API.
 
 ```bash
-S3_BUCKET=workeros
+S3_BUCKET=backlex
 S3_REGION=auto                                    # `auto` for R2; AWS region for S3
 S3_ENDPOINT=https://<account>.r2.cloudflarestorage.com   # blank for AWS S3
 S3_ACCESS_KEY_ID=…
@@ -333,8 +333,8 @@ Resizing when:
 Enable the r2.dev origin once per bucket:
 
 ```bash
-bunx wrangler r2 bucket dev-url enable workeros-files
-bunx wrangler r2 bucket dev-url get workeros-files
+bunx wrangler r2 bucket dev-url enable backlex-files
+bunx wrangler r2 bucket dev-url get backlex-files
 # → Public URL: https://pub-<hash>.r2.dev
 ```
 
@@ -386,7 +386,7 @@ build runs it fresh every deploy.
 ### Git integration (recommended)
 
 1. **app.netlify.com → Add new site → Import an existing project** → pick
-   the workeros repo.
+   the backlex repo.
 2. **Base directory:** leave empty (repo root). The `netlify.toml` already
    sets `base = ""`.
 3. **Build command, Publish directory:** leave empty too — `netlify.toml`
@@ -411,12 +411,12 @@ build runs it fresh every deploy.
 ### CLI alternative
 
 The Netlify CLI's monorepo prompt asks which workspace you're targeting;
-pass `--filter @workeros/web` to keep it non-interactive:
+pass `--filter @backlex/web` to keep it non-interactive:
 
 ```bash
-netlify env:set DATABASE_URL postgres://... --filter @workeros/web
-netlify env:set AUTH_SECRET $(openssl rand -hex 32) --filter @workeros/web
-netlify deploy --build --prod --filter @workeros/web
+netlify env:set DATABASE_URL postgres://... --filter @backlex/web
+netlify env:set AUTH_SECRET $(openssl rand -hex 32) --filter @backlex/web
+netlify deploy --build --prod --filter @backlex/web
 ```
 
 For a brand-new site, `netlify api createSiteInTeam` plus a manual

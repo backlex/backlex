@@ -3,9 +3,11 @@ import starlight from "@astrojs/starlight";
 
 // https://astro.build/config
 export default defineConfig({
+  site: "https://backlex.com",
+  base: "/docs",
   integrations: [
     starlight({
-      title: "Workeros",
+      title: "Backlex",
       description: "Self-hostable Supabase/Directus alternative — admin, API, runtime.",
       favicon: "/favicon.svg",
       customCss: ["./src/styles/custom.css"],
@@ -37,11 +39,11 @@ export default defineConfig({
         {
           icon: "github",
           label: "GitHub",
-          href: "https://github.com/workeros/workeros",
+          href: "https://github.com/backlex/backlex",
         },
       ],
       editLink: {
-        baseUrl: "https://github.com/workeros/workeros/edit/main/",
+        baseUrl: "https://github.com/backlex/backlex/edit/main/",
       },
       sidebar: [
         {

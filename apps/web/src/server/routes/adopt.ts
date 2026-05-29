@@ -12,9 +12,9 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { and, eq, inArray } from "drizzle-orm";
-import { AppError, SYSTEM_ROLES } from "@workeros/core";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
+import { AppError, SYSTEM_ROLES } from "@backlex/core";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { inspectTable, listAdoptableTables } from "../services/adopt";
@@ -38,7 +38,7 @@ export const adoptRoutes = new Hono<AppBindings>()
   })
   /**
    * List every physical table in the active database that is eligible for
-   * adoption — i.e. not a managed `c_*` collection, not a workeros system
+   * adoption — i.e. not a managed `c_*` collection, not a backlex system
    * table, and not already adopted by this workspace.
    */
   .get("/tables", async (c) => {
@@ -65,7 +65,7 @@ export const adoptRoutes = new Hono<AppBindings>()
   })
   /**
    * Introspect a single physical table. Returns column shape + PK info +
-   * which workeros system columns happen to already exist on the table
+   * which backlex system columns happen to already exist on the table
    * (we don't add or rename — admins read the inspection result, then
    * pass back the matching flags to `POST /api/collections`).
    */

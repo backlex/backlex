@@ -19,6 +19,24 @@ const logServerError = (
   message: string,
 ): void => {
   if (status < 500) return;
+  let path: string;
+  try {
+    path = new URL(c.req.url).pathname;
+  } catch {
+    path = c.req.path;
+  }
+  // Opt-in cloud report — only needs `c.env`, so it fires independently of the
+  // tenant DB context below. This captures admin / infra 5xx that error out
+  // before (or without) a `ctx` ever being attached.
+  const rep = reportToCloud(c.env as Env, {
+    kind: "error",
+    message: message.slice(0, 500),
+    route: `${c.req.method} ${path}`.slice(0, 200),
+    status,
+  });
+  if (rep) keepAlive(c, rep);
+
+  // Local audit row needs the tenant DB context; skip it when unavailable.
   let ctx: DbCtx | undefined;
   try {
     ctx = c.get("ctx") as DbCtx | undefined;
@@ -33,12 +51,6 @@ const logServerError = (
     auth = undefined;
   }
   const meta = requestMeta(c.req.raw);
-  let path: string;
-  try {
-    path = new URL(c.req.url).pathname;
-  } catch {
-    path = c.req.path;
-  }
   keepAlive(
     c,
     recordActivity(
@@ -55,14 +67,6 @@ const logServerError = (
       },
     ),
   );
-  // Opt-in: report to the cloud control plane (no-op unless provisioned).
-  const rep = reportToCloud(c.env as Env, {
-    kind: "error",
-    message: message.slice(0, 500),
-    route: `${c.req.method} ${path}`.slice(0, 200),
-    status,
-  });
-  if (rep) keepAlive(c, rep);
 };
 
 export const errorHandler = (err: Error, c: Context) => {

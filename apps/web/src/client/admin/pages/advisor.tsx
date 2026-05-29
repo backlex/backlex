@@ -12,9 +12,9 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent } from "../icons";
 import { Button, PageHeader } from "../ui";
 import { useAdvisor, queryKeys } from "../queries";
-import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@workeros/ui/components/collapsible";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@backlex/ui/components/collapsible";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { AdvisorSkeleton } from "../page-skeletons";
 
 type CheckKind = "security" | "performance";
@@ -35,7 +35,7 @@ interface AdvisorCheck {
 
 type LevelCounts = { error: number; warn: number; info: number };
 
-const DISMISSED_KEY = "workeros.advisor.dismissed";
+const DISMISSED_KEY = "backlex.advisor.dismissed";
 
 /** error → warn → info, for severity ordering. */
 const LEVEL_RANK: Record<CheckLevel, number> = { error: 0, warn: 1, info: 2 };

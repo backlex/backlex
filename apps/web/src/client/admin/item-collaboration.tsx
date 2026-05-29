@@ -15,9 +15,9 @@ import {
   useSharedLinks,
   queryKeys,
 } from "./queries";
-import { Input } from "@workeros/ui/components/input";
-import { Textarea } from "@workeros/ui/components/textarea";
-import { Skeleton } from "@workeros/ui/components/skeleton";
+import { Input } from "@backlex/ui/components/input";
+import { Textarea } from "@backlex/ui/components/textarea";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 
 const CARD_CLS =
   "overflow-hidden rounded-2xl border border-border bg-card text-card-foreground";

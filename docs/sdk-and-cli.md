@@ -1,21 +1,21 @@
 ---
 title: SDK & CLI
-description: The @workeros/client typed fetch wrapper and the workeros CLI for project scaffolding.
+description: The @backlex/client typed fetch wrapper and the backlex CLI for project scaffolding.
 ---
 
 Two packages ship for client-side and developer-side use.
 
-## `@workeros/client`
+## `@backlex/client`
 
 Typed fetch wrapper, browser + Node.
 
 ```ts
-import { createClient } from "@workeros/client";
+import { createClient } from "@backlex/client";
 
 const wks = createClient({
   url: "https://api.your.app",
   // For server-to-server / CI; browser apps use the cookie session and skip:
-  apiKey: process.env.WORKEROS_API_KEY,
+  apiKey: process.env.BACKLEX_API_KEY,
 });
 
 // CRUD
@@ -66,14 +66,14 @@ await wks.storage.delete("avatars/me.png");
 
 ### Errors
 
-Failed requests throw `WorkerosError`:
+Failed requests throw `BacklexError`:
 
 ```ts
-import { WorkerosError } from "@workeros/client";
+import { BacklexError } from "@backlex/client";
 try {
   await wks.from("posts").create({});
 } catch (e) {
-  if (e instanceof WorkerosError) {
+  if (e instanceof BacklexError) {
     e.status   // 422
     e.code     // "VALIDATION"
     e.message  // 'Field "title" is required'
@@ -88,9 +88,9 @@ Pair the SDK with auto-generated types so `wks.from<Posts>("posts")` is
 type-safe:
 
 ```bash
-bun run workeros gen-types https://api.your.app --out src/workeros-types.ts
+bun run backlex gen-types https://api.your.app --out src/backlex-types.ts
 # Or with API key:
-bun run workeros gen-types https://api.your.app --key pak_xxx --out src/workeros-types.ts
+bun run backlex gen-types https://api.your.app --key pak_xxx --out src/backlex-types.ts
 ```
 
 Output:
@@ -113,32 +113,32 @@ export interface Collections {
 }
 ```
 
-## `workeros` CLI
+## `backlex` CLI
 
-Run from any project that has `@workeros/cli` (root has it as
-`bun run workeros ...`).
+Run from any project that has `@backlex/cli` (root has it as
+`bun run backlex ...`).
 
 ```
-workeros help
-workeros migrate [db-path]                      apply SQLite migrations
-workeros gen-types <api-url> [--out <file>] [--key <pak_...>]
+backlex help
+backlex migrate [db-path]                      apply SQLite migrations
+backlex gen-types <api-url> [--out <file>] [--key <pak_...>]
                                                  generate TS types
 ```
 
-### `workeros migrate`
+### `backlex migrate`
 
 Applies the same Drizzle migrations the API uses. Default path is
-`./.data/workeros.sqlite` (or `$DATABASE_PATH`).
+`./.data/backlex.sqlite` (or `$DATABASE_PATH`).
 
 ```bash
-bun run workeros migrate
-bun run workeros migrate /var/lib/workeros/data.sqlite
+bun run backlex migrate
+bun run backlex migrate /var/lib/backlex/data.sqlite
 ```
 
 For Postgres, use `bun run db:migrate:pg` directly — the CLI is
 SQLite-only for now.
 
-### `workeros gen-types`
+### `backlex gen-types`
 
 Fetches `/api/collections` (admin-readable; `--key` for API key auth)
 and emits a TypeScript module. Wire into your build:
@@ -147,7 +147,7 @@ and emits a TypeScript module. Wire into your build:
 // package.json
 {
   "scripts": {
-    "predev": "workeros gen-types $WORKEROS_URL --out src/types/wks.ts"
+    "predev": "backlex gen-types $BACKLEX_URL --out src/types/wks.ts"
   }
 }
 ```
@@ -156,18 +156,18 @@ Re-run after schema changes. The output is deterministic — safe to commit.
 
 ## Adding the SDK to a separate repo
 
-The SDK is published as `@workeros/client` (workspace today; NPM package
+The SDK is published as `@backlex/client` (workspace today; NPM package
 in a follow-up). To use locally:
 
 ```bash
-bun add file:../workeros/packages/client
+bun add file:../backlex/packages/client
 ```
 
 Or, once published:
 
 ```bash
-bun add @workeros/client
+bun add @backlex/client
 ```
 
-The SDK has zero dependencies beyond `@workeros/core` (types only) and
+The SDK has zero dependencies beyond `@backlex/core` (types only) and
 the runtime's `fetch` / `EventSource`.

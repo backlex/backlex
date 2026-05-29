@@ -110,7 +110,7 @@ export const signAccessToken = async (
 
 /**
  * Verify + decode an access token. Returns the claims on success, or `null`
- * for anything that isn't a valid, unexpired workeros app access token —
+ * for anything that isn't a valid, unexpired backlex app access token —
  * wrong signature, malformed, expired, or simply not a JWT at all (an opaque
  * `app_…` refresh token or a `pak_…` API key both land here). Never throws,
  * so callers can use it as a cheap "is this one of ours?" probe.

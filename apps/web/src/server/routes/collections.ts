@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { and, eq, sql, type SQL } from "drizzle-orm";
-import { AppError, EMBEDDING_MODEL_NAMES, type EmbeddingModel } from "@workeros/core";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
+import { AppError, EMBEDDING_MODEL_NAMES, type EmbeddingModel } from "@backlex/core";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
 import {
   applyCollection,
   assertIdent,
@@ -12,7 +12,7 @@ import {
   type FieldDef,
   tableExists,
   validateFields,
-} from "@workeros/db";
+} from "@backlex/db";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { inspectTable, RESERVED_NAMES } from "../services/adopt";
@@ -640,7 +640,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       // Archive adopted collections: physical table is intact (the
       // applier already short-circuits on adopted), so flipping
       // `status` on the metadata row is enough. The data stays
-      // queryable directly on the source DB; only workeros stops
+      // queryable directly on the source DB; only backlex stops
       // treating the table as a collection. `POST /:slug/restore`
       // flips it back. We DON'T do this for managed collections
       // because their `c_<slug>` table is about to be dropped — a

@@ -30,7 +30,7 @@ import type {
   SamlAuthnRequest,
   SamlLogoutRequest,
   SamlProviderConfig,
-} from "@workeros/core/adapters";
+} from "@backlex/core/adapters";
 
 // `samlify` is CJS; normalise the import shape regardless of how the
 // downstream bundler resolves `* as`.

@@ -3,9 +3,9 @@ title: Adopting existing tables
 description: Point a collection at a table you already own — no DDL, no migrations.
 ---
 
-workeros normally creates a fresh physical table (`c_<slug>`) for every
+backlex normally creates a fresh physical table (`c_<slug>`) for every
 collection. **Adoption** is the opposite path: you point a collection at
-a table you already have and workeros wraps it with permissions, the
+a table you already have and backlex wraps it with permissions, the
 items API, realtime, and the admin UI — without writing a single DDL
 statement against your data.
 
@@ -13,7 +13,7 @@ statement against your data.
 
 Adopt when another app already writes to the table, when you want
 your own migration tooling to stay the only thing that touches DDL,
-or when you want workeros on top of legacy data without backfilling.
+or when you want backlex on top of legacy data without backfilling.
 Use a normal **managed** collection when the table doesn't exist yet
 or when admin-UI field add/remove should alter the physical table.
 
@@ -28,7 +28,7 @@ are rejected at inspect.
 
 **Supported column types.**
 
-| Source (PG / SQLite)              | workeros FieldType |
+| Source (PG / SQLite)              | backlex FieldType |
 |-----------------------------------|--------------------|
 | `varchar(n)` / `text` (n ≤ 255)   | `text`             |
 | `varchar(n)` / `text` (n > 255)   | `longtext`         |
@@ -45,7 +45,7 @@ surface in the items API. The table itself can still be adopted.
 
 **Reserved column names.** `id`, `tenant_id`, `created_at`,
 `updated_at`, `owner_id`, `_status`, `_published_at`. If your table
-uses one of these the column has to match its workeros role (e.g. `id`
+uses one of these the column has to match its backlex role (e.g. `id`
 must be the PK). Conflicts surface as warnings on inspect.
 
 ## The 3-step wizard
@@ -59,7 +59,7 @@ step maps to one admin endpoint, so the flow scripts cleanly too.
 curl -b cookies.txt http://localhost:5173/api/admin/adopt/tables
 ```
 
-Lists every table in the current database minus workeros system
+Lists every table in the current database minus backlex system
 tables (`users`, `sessions`, `roles`, `c_*`, …) and anything already
 adopted.
 
@@ -76,7 +76,7 @@ this as a toggle plus a type dropdown per column.
 
 Three optional toggles live on this step: **created_at**,
 **updated_at**, and **owner-scoped**. The first two are only available
-if the column already exists — workeros never adds them. None of these
+if the column already exists — backlex never adds them. None of these
 toggles run DDL; they only set flags on the collection row.
 
 ### 3. Metadata + create
@@ -100,7 +100,7 @@ collection. The items router reads `pk_column` from the collection
 row, so if your PK is `sku`, the URL is still
 `/api/items/products/<sku>`.
 
-**POST gotcha.** workeros only auto-generates the PK when
+**POST gotcha.** backlex only auto-generates the PK when
 `pk_column = "id"` *and* the column is `uuid`. Any other shape, and
 the body must include the PK — otherwise you get a `VALIDATION` error
 (`Primary key 'sku' is required in the body`).
@@ -116,7 +116,7 @@ Identical to managed collections — same DSL, same role seeding. The
 Where `owner_id` lives is the one place adopted and managed
 collections diverge:
 
-- **Managed**: `c_<slug>.owner_id`, a column workeros added when it
+- **Managed**: `c_<slug>.owner_id`, a column backlex added when it
   created the table.
 - **Adopted + ownerScoped**: a sidecar row in
   `item_ownership(collection_id, item_id, owner_id, created_at)`. The
@@ -142,7 +142,7 @@ don't have it.) Drop the table yourself if you want it gone.
 `status = 'archived'` and an `archived_at` timestamp, the physical table
 is never touched, and a single `POST .../restore` brings everything
 back. Managed collections still hard-delete — there's no row to recover
-because the data only ever lived inside workeros. The split keeps both
+because the data only ever lived inside backlex. The split keeps both
 sides honest: adopted data outlives the collection, managed data doesn't.
 
 ### What "archive" means
@@ -184,7 +184,7 @@ hard-delete: the `c_<slug>` table is dropped, the metadata row is gone,
 and there is no restore. The asymmetry is on purpose — for an adopted
 table the data lives in some other application and the user owns it, so
 deleting the wrapper can't be irreversible. For a managed table the
-data only ever lived in workeros, so `DELETE` means what it says.
+data only ever lived in backlex, so `DELETE` means what it says.
 
 ### Worked example
 
@@ -212,11 +212,11 @@ curl -sX GET localhost:5173/api/items/legacy_orders
 
 ## Aliasing existing columns
 
-Adopted tables rarely follow workeros' conventional column names —
+Adopted tables rarely follow backlex' conventional column names —
 they have `inserted_at` instead of `created_at`, `user_id` instead of
 `owner_id`. **Aliasing** lets a collection treat one of your columns
 *as* a system field without renaming or copying it. The original
-column stays put; workeros just learns where to look. This keeps
+column stays put; backlex just learns where to look. This keeps
 adoption truly DDL-free: no `ALTER TABLE` to add a duplicate column,
 no backfill, no drift between your migration tool and ours.
 
@@ -329,7 +329,7 @@ Mismatches return `VALIDATION` with the offending field name.
 
 Adopted tables almost always already have foreign keys — `orders.customer_id
 → customers.id`, the usual shape. The adopt flow now introspects those
-constraints and offers to wire each one as a workeros `relation` field, so
+constraints and offers to wire each one as a backlex `relation` field, so
 items written through the API are validated against the target collection
 without you hand-writing a single field definition. Nothing about your
 schema changes; the FK stays where it is, and only the collection metadata
@@ -350,7 +350,7 @@ The route layer then matches each `referencesTable` against the workspace's
 collections by `physical_table`, so both managed (`c_<tenant>_customers`)
 and adopted (`customers`) targets are recognised and surface as
 `targetCollection: { slug, id }`. Targets that don't yet exist as a
-workeros collection come back with `targetCollection: null`.
+backlex collection come back with `targetCollection: null`.
 
 ### The wizard
 
@@ -359,7 +359,7 @@ listing every FK with its source column, target table, and an **"Adopt as
 relation"** toggle. Toggling it adds a `{ type: "relation", to: "<slug>" }`
 entry to the apply payload for that column; leaving it off keeps the
 column as its inferred scalar type. Rows with `composite: true` are
-disabled — workeros relation fields are single-column — and rows whose
+disabled — backlex relation fields are single-column — and rows whose
 target collection isn't in the workspace show a hint to **"Adopt the
 target table first"** before coming back.
 
@@ -380,7 +380,7 @@ always does).
 
 ### Limits
 
-- **Composite FKs** (multi-column). workeros relations are single-column,
+- **Composite FKs** (multi-column). backlex relations are single-column,
   so composite constraints are detected and shown but not offered as a
   toggle. Define the columns manually as `text` fields if you need them.
 - **Cross-schema FKs (PG).** The inspector is scoped to `current_schema()`;
@@ -388,14 +388,14 @@ always does).
 - **Cross-DB FKs.** D1 has no `ATTACH`, so adoption is single-DB; PG has
   no cross-database FKs in the SQL standard.
 - **`ON DELETE CASCADE`.** Cascaded deletes happen at the DB layer and
-  workeros never sees them — no audit row, no webhook fire, no realtime
+  backlex never sees them — no audit row, no webhook fire, no realtime
   event for the cascaded children. If your adopted table relies on
   cascade, treat those deletions as out-of-band.
 
 ### Type rules
 
 A detected FK column is offered as `relation` regardless of its underlying
-type (`uuid`, `integer`, `text` all work — workeros stores the raw value
+type (`uuid`, `integer`, `text` all work — backlex stores the raw value
 and validates membership on write). The schema also supports
 `relation_many`, but auto-detect always proposes `relation` because a
 single-column FK is by definition to-one; pick `relation_many` manually
@@ -466,7 +466,7 @@ steps; both paths land on the same `POST /api/collections` endpoint.
 ## Troubleshooting
 
 - **`Primary key 'sku' is required in the body`** — `pk_column` isn't
-  `id` and you omitted it on POST. Add the PK field; workeros never
+  `id` and you omitted it on POST. Add the PK field; backlex never
   generates non-`id` keys.
 - **`Composite primary keys are not supported`** — change the PK in
   your migration layer, or wrap the table in a view with a

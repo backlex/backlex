@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { KeyRoundIcon, MailCheckIcon, ShieldIcon } from "lucide-react";
-import { cn } from "@workeros/ui/lib/utils";
-import { Input } from "@workeros/ui/components/input";
-import { Label } from "@workeros/ui/components/label";
-import { Checkbox } from "@workeros/ui/components/checkbox";
+import { cn } from "@backlex/ui/lib/utils";
+import { Input } from "@backlex/ui/components/input";
+import { Label } from "@backlex/ui/components/label";
+import { Checkbox } from "@backlex/ui/components/checkbox";
 import {
   AuthCallout,
   AuthCard,

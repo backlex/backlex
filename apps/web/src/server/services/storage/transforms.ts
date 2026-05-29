@@ -1,4 +1,4 @@
-import { AppError, type ImageTransform } from "@workeros/core";
+import { AppError, type ImageTransform } from "@backlex/core";
 
 // Only the values that work on BOTH transform backends without semantic
 // drift: CF Image Resizing supports {cover, contain, scale-down, crop,

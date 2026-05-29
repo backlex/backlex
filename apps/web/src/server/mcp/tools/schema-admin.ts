@@ -17,7 +17,7 @@ const requireSlug = (args: Record<string, unknown>): string => {
 export const createCollection: McpTool = {
   name: "schema.create_collection",
   description:
-    "Create a new collection — either managed (workeros creates the physical " +
+    "Create a new collection — either managed (backlex creates the physical " +
     "table) or adopted (existing table). Field schema follows the same shape " +
     "as the admin UI: `{ name, type, required?, unique?, to? }`. Returns the " +
     "created collection metadata. Requires `create` on `system_collections`.",

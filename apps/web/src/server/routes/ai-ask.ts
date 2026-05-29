@@ -17,7 +17,7 @@
  * docs/ask-ai.md for why logging stays here instead of in the dispatcher.
  */
 import { Hono, type MiddlewareHandler } from "hono";
-import { AppError, SYSTEM_ROLES } from "@workeros/core";
+import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { AppBindings } from "../app";
 import type { Env } from "../env";
 import { requireUser } from "../middleware/session";
@@ -77,7 +77,7 @@ const buildPlanSystem = (): string => {
     (name) => `  - ${name}: ${PLAN_TOOL_DESCRIPTIONS[name]}`,
   ).join("\n");
   return (
-    "You translate a single natural-language question from a workeros admin " +
+    "You translate a single natural-language question from a backlex admin " +
     "into ONE MCP tool call. Output EXACTLY one fenced JSON block " +
     "(```json ... ```) with shape: {rationale: string, tool: string, args: object}. " +
     "`rationale` is one or two short sentences that justify the choice. " +

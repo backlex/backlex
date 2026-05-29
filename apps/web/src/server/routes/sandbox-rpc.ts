@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { AppError, type AuthSubject } from "@workeros/core";
+import { AppError, type AuthSubject } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { dispatchRpc } from "../services/sandbox/host-bridge";
 import type { RpcOp } from "../services/sandbox/types";

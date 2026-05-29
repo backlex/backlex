@@ -1,5 +1,5 @@
 import { sql, type SQL } from "drizzle-orm";
-import type { AuthSubject, ComparisonObj, Condition } from "@workeros/core";
+import type { AuthSubject, ComparisonObj, Condition } from "@backlex/core";
 
 const FALSE: SQL = sql`(1=0)`;
 const TRUE: SQL = sql`(1=1)`;

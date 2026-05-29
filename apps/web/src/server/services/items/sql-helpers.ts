@@ -1,5 +1,5 @@
 import { sql, type SQL } from "drizzle-orm";
-import { AppError } from "@workeros/core";
+import { AppError } from "@backlex/core";
 import type { Ctx } from "../../context";
 import type { CollectionRow } from "./collection-loader";
 
@@ -26,7 +26,7 @@ export const nowFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? new Date().toISOString() : Date.now();
 
 /**
- * Translate DB-level FK violations into a workeros-shaped error. Adopted
+ * Translate DB-level FK violations into a backlex-shaped error. Adopted
  * tables can carry real FK constraints (D1 enforces them unconditionally;
  * Postgres does the same when the constraint exists). Without this map,
  * any caller that writes a value pointing at a row that doesn't exist

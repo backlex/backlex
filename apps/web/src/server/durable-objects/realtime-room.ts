@@ -1,5 +1,5 @@
-import { matchesCondition } from "@workeros/db";
-import type { AuthSubject, Condition } from "@workeros/core";
+import { matchesCondition } from "@backlex/db";
+import type { AuthSubject, Condition } from "@backlex/core";
 
 interface Meta {
   authSubject: AuthSubject;

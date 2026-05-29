@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
-import { AppError } from "@workeros/core";
-import { validateValue, type FieldDef } from "@workeros/db";
+import { AppError } from "@backlex/core";
+import { validateValue, type FieldDef } from "@backlex/db";
 import type { Ctx } from "../../context";
 import { loadCollection, type CollectionRow } from "./collection-loader";
 import { queryAll } from "./sql-helpers";

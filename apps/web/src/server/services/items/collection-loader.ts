@@ -1,8 +1,8 @@
 import { and, eq } from "drizzle-orm";
-import { AppError } from "@workeros/core";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
-import type { FieldDef } from "@workeros/db";
+import { AppError } from "@backlex/core";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
+import type { FieldDef } from "@backlex/db";
 import type { Context } from "hono";
 import type { AppBindings } from "../../app";
 import type { Ctx } from "../../context";
@@ -77,7 +77,7 @@ export const loadCollection = async (
   if (!rows[0]) throw new AppError("NOT_FOUND", `Collection "${slug}" not found`);
   const r = rows[0] as Record<string, unknown>;
   // Archived (adopted) collections are 404 from every items endpoint;
-  // workeros stops treating the underlying table as a collection until
+  // backlex stops treating the underlying table as a collection until
   // someone calls `POST /collections/:slug/restore`.
   if (((r.status ?? "active") as string) !== "active") {
     throw new AppError("NOT_FOUND", `Collection "${slug}" not found`);

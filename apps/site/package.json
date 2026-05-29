@@ -1,13 +1,15 @@
 {
-  "name": "@workeros/site",
+  "name": "@backlex/site",
   "type": "module",
   "version": "0.0.1",
   "private": true,
-  "description": "Public marketing site for workeros — standalone Astro + Tailwind v4.",
+  "description": "Public marketing site for backlex — standalone Astro + Tailwind v4.",
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro check && astro build",
+    "build:web": "astro build && bun run --cwd ../docs build && rm -rf dist/docs && cp -r ../docs/dist dist/docs",
+    "deploy": "bun run build:web && wrangler deploy",
     "typecheck": "astro check",
     "preview": "astro preview",
     "astro": "astro"

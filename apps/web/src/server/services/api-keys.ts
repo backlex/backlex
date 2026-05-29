@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
-import { AppError } from "@workeros/core";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
+import { AppError } from "@backlex/core";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
 import type { DbCtx } from "./seed";
 
 const tableFor = (dialect: "pg" | "sqlite") =>

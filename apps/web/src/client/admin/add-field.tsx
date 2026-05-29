@@ -9,16 +9,16 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { type CollectionSchema } from "./config";
 import { Badge, Button, IconButton, Switch } from "./ui";
-import { Input } from "@workeros/ui/components/input";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+import { Input } from "@backlex/ui/components/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@backlex/ui/components/input-group";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
+} from "@backlex/ui/components/dialog";
 import { Select } from "./select";
 import { AlterPreview } from "./extras";
 import {

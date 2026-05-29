@@ -26,7 +26,7 @@ describe("isXataPgUrl", () => {
         "postgres://user:pwd@ep-abc-pooler.us-east-1.aws.neon.tech/db?sslmode=require",
       ),
     ).toBe(false);
-    expect(isXataPgUrl("postgres://user:pass@localhost:5432/workeros")).toBe(false);
+    expect(isXataPgUrl("postgres://user:pass@localhost:5432/backlex")).toBe(false);
   });
 
   test("handles undefined / empty", () => {

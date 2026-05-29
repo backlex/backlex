@@ -12,8 +12,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { CopyIcon, CheckIcon, TerminalSquareIcon, MonitorSmartphoneIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Button } from "@workeros/ui/components/button";
-import { Checkbox } from "@workeros/ui/components/checkbox";
+import { Button } from "@backlex/ui/components/button";
+import { Checkbox } from "@backlex/ui/components/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -21,10 +21,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
-import { Label } from "@workeros/ui/components/label";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+} from "@backlex/ui/components/dialog";
+import { Label } from "@backlex/ui/components/label";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { notifyError } from "@/lib/error";
 import { api } from "@/lib/api";
 import {
@@ -59,7 +59,7 @@ interface ToolsListResponse {
   result?: { tools: ToolDescriptor[] };
 }
 
-const MCP_URL_PLACEHOLDER = "https://your-workeros.example.com/mcp";
+const MCP_URL_PLACEHOLDER = "https://your-backlex.example.com/mcp";
 
 export const McpKeyModal = ({
   open,

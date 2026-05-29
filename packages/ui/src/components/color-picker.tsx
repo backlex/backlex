@@ -4,8 +4,8 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@workeros/ui/components/popover"
-import { cn } from "@workeros/ui/lib/utils"
+} from "@backlex/ui/components/popover"
+import { cn } from "@backlex/ui/lib/utils"
 
 interface ColorPickerProps {
   value: string

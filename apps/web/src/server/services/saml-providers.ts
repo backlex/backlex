@@ -10,12 +10,12 @@
  *     so the admin UI can show "configured" without exposing the value.
  */
 import { and, eq } from "drizzle-orm";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
-import type { PgDb } from "@workeros/db/pg";
-import type { SqliteDb } from "@workeros/db/sqlite";
-import type { SamlAdapter, SamlProviderConfig } from "@workeros/core/adapters";
-import { AppError } from "@workeros/core";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
+import type { PgDb } from "@backlex/db/pg";
+import type { SqliteDb } from "@backlex/db/sqlite";
+import type { SamlAdapter, SamlProviderConfig } from "@backlex/core/adapters";
+import { AppError } from "@backlex/core";
 import { decryptSecret, encryptSecret } from "../lib/crypto";
 import { buildSamlAdapter } from "../lib/auth-select";
 import type { Env } from "../env";

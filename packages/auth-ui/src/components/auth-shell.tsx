@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Button } from "@workeros/ui/components/button";
+import { Button } from "@backlex/ui/components/button";
 import type {
   AuthBranding,
   AuthMode,
@@ -16,7 +16,7 @@ import type {
  * Lingui- and router-free: the consumer passes a `Link` component and a
  * `copy` object with the per-mode headline + lede already resolved.
  *
- * The CSS for the animated beams lives in `@workeros/auth-ui/auth-shell.css`;
+ * The CSS for the animated beams lives in `@backlex/auth-ui/auth-shell.css`;
  * make sure to import it once at app bootstrap.
  */
 export interface AuthShellProps {
@@ -50,7 +50,7 @@ export const AuthShell = ({
   themeToggle,
   children,
 }: AuthShellProps) => {
-  const brandName = branding.name?.trim() || "workeros";
+  const brandName = branding.name?.trim() || "backlex";
   const brandLogo = branding.logoUrl ?? null;
 
   // Sign-in screen can have its headline/tagline overridden by admin branding.

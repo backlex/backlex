@@ -326,7 +326,7 @@ export const emailTemplatesRoutes = new OpenAPIHono<AppBindings>()
         confirm_url: `${ctx.env.APP_URL}/verify?token=test`,
         reset_url: `${ctx.env.APP_URL}/reset?token=test`,
         magic_url: `${ctx.env.APP_URL}/magic?token=test`,
-        site: { name: "workeros" },
+        site: { name: "backlex" },
       };
       const vars = { ...defaults, ...(body.vars ?? {}) };
 

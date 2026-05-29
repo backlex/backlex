@@ -114,7 +114,7 @@ describe("MCP — initialize + tools/list", () => {
     expect(isErr(r)).toBe(false);
     const result = (r as RpcSuccess).result;
     expect(result.protocolVersion).toBe("2025-03-26");
-    expect(result.serverInfo.name).toBe("workeros");
+    expect(result.serverInfo.name).toBe("backlex");
     expect(result.capabilities.tools).toBeDefined();
   });
 

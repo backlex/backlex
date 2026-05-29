@@ -1,6 +1,6 @@
 import { Route, Routes, useNavigate } from "react-router-dom";
 import { I18nProvider } from "@lingui/react";
-import { Toaster } from "@workeros/ui/components/sonner";
+import { Toaster } from "@backlex/ui/components/sonner";
 import { i18n } from "@/admin/i18n";
 import { AuthGate } from "@/components/auth-gate";
 import { AdminApp } from "@/admin/app";

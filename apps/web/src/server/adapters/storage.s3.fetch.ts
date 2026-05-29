@@ -1,5 +1,5 @@
 import { AwsClient } from "aws4fetch";
-import type { StorageAdapter, StoredObject } from "@workeros/core/adapters";
+import type { StorageAdapter, StoredObject } from "@backlex/core/adapters";
 
 export interface S3FetchConfig {
   bucket: string;

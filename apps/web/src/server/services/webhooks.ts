@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
 import type { DbCtx } from "./seed";
 
 const webhooksTable = (dialect: "pg" | "sqlite") =>
@@ -107,11 +107,11 @@ const sendOne = async (
 ): Promise<{ status: number; ms: number; responseBody: string | null; error: string | null }> => {
   const headers: Record<string, string> = {
     "content-type": "application/json",
-    "x-workeros-event": `${channel}:${event}`,
+    "x-backlex-event": `${channel}:${event}`,
     ...(row.headers ?? {}),
   };
   if (row.secret) {
-    headers["x-workeros-signature"] = await hmacSha256Hex(row.secret, body);
+    headers["x-backlex-signature"] = await hmacSha256Hex(row.secret, body);
   }
   const start = Date.now();
   try {

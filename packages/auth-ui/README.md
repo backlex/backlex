@@ -1,16 +1,16 @@
-# @workeros/auth-ui
+# @backlex/auth-ui
 
-workeros auth screens — i18n-free, router-agnostic React components for sign-in / sign-up / forgot / reset-password / magic-link. Built on `@workeros/ui` (shadcn / Tailwind v4). Source-consumed; no build step.
+backlex auth screens — i18n-free, router-agnostic React components for sign-in / sign-up / forgot / reset-password / magic-link. Built on `@backlex/ui` (shadcn / Tailwind v4). Source-consumed; no build step.
 
 ## Install
 
 ```bash
-bun add @workeros/auth-ui @workeros/ui
+bun add @backlex/auth-ui @backlex/ui
 # or
-npm i @workeros/auth-ui @workeros/ui
+npm i @backlex/auth-ui @backlex/ui
 ```
 
-Peer deps: `react@^19`, `react-dom@^19`, and `@workeros/ui` ≥ 0.1.0.
+Peer deps: `react@^19`, `react-dom@^19`, and `@backlex/ui` ≥ 0.1.0.
 
 ## Usage
 
@@ -24,9 +24,9 @@ Each page expects:
 - `socialButtons` — render-prop slot for provider buttons (the consumer owns the surface API)
 
 ```tsx
-import "@workeros/ui/globals.css";
-import "@workeros/auth-ui/auth-shell.css";
-import { SignInPage } from "@workeros/auth-ui";
+import "@backlex/ui/globals.css";
+import "@backlex/auth-ui/auth-shell.css";
+import { SignInPage } from "@backlex/auth-ui";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 export const SignIn = () => {
@@ -80,18 +80,18 @@ export const SignIn = () => {
 
 | Export | Purpose |
 |---|---|
-| `@workeros/auth-ui` | Barrel — re-exports every page + shell component |
-| `@workeros/auth-ui/auth-shell.css` | Animated brand-panel beams (import once at bootstrap) |
-| `@workeros/auth-ui/pages/*` | `sign-in`, `sign-up`, `forgot`, `reset-password`, `magic-link` |
-| `@workeros/auth-ui/components/auth-shell` | `AuthShell`, `AuthCard`, `AuthCardHeader`, `AuthDivider`, … |
+| `@backlex/auth-ui` | Barrel — re-exports every page + shell component |
+| `@backlex/auth-ui/auth-shell.css` | Animated brand-panel beams (import once at bootstrap) |
+| `@backlex/auth-ui/pages/*` | `sign-in`, `sign-up`, `forgot`, `reset-password`, `magic-link` |
+| `@backlex/auth-ui/components/auth-shell` | `AuthShell`, `AuthCard`, `AuthCardHeader`, `AuthDivider`, … |
 
 ## Conventions
 
-- The package is **i18n-free** — pass already-translated strings via `copy`. The OSS workeros admin wraps each call site in `useLingui()` to translate at render time; cloud / external consumers can pass plain literals.
+- The package is **i18n-free** — pass already-translated strings via `copy`. The OSS backlex admin wraps each call site in `useLingui()` to translate at render time; cloud / external consumers can pass plain literals.
 - The package is **router-free** — `navigate` and `Link` are injected. Use `react-router-dom`, Next.js, TanStack Router, or roll your own.
 - The package is **branding-aware** — pass `branding={{ name, logoUrl, signInHeadline?, signInTagline? }}`; the shell renders an initial-letter chip when no logo is set.
 - The visual structure (Tailwind classes, layout, animations) is identical across consumers — the same auth screen renders in OSS and cloud.
 
 ## License
 
-MIT — part of the [workeros](https://github.com/furkankinyas/workeros) project.
+MIT — part of the [backlex](https://github.com/furkankinyas/backlex) project.

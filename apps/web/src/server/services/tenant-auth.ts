@@ -4,10 +4,10 @@ import {
   type TenantAuth,
   type OAuthProviderConfig,
   type AuthPlugin,
-} from "@workeros/auth";
-import type { EmailAdapter } from "@workeros/core";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
+} from "@backlex/auth";
+import type { EmailAdapter } from "@backlex/core";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
 import type { Env } from "../env";
 import type { DbCtx } from "./seed";
 import { decryptSecret } from "../lib/crypto";

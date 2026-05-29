@@ -1,13 +1,13 @@
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Button } from "@workeros/ui/components/button";
+import { Button } from "@backlex/ui/components/button";
 import {
   SignInPage as BaseSignInPage,
   type AuthBranding,
   type AuthShellCopy,
   type SignInCopy,
-} from "@workeros/auth-ui";
+} from "@backlex/auth-ui";
 import { SocialButtons } from "@/components/social-buttons";
 import { useTheme } from "@/components/theme-provider";
 import { notifyError } from "@/lib/error";
@@ -18,7 +18,7 @@ import { version as appVersion } from "../../../package.json";
 /**
  * Thin wrapper that wires the OSS admin's Lingui copy, React Router, the
  * workspace branding/surface stores, and the social-button slot into the
- * generic `<SignInPage>` from `@workeros/auth-ui`.
+ * generic `<SignInPage>` from `@backlex/auth-ui`.
  */
 export const SignIn = () => {
   const { t } = useLingui();
@@ -31,14 +31,14 @@ export const SignIn = () => {
   const dark = theme === "dark";
 
   const branding: AuthBranding = {
-    name: wsBranding?.workspaceName?.trim() || "workeros",
+    name: wsBranding?.workspaceName?.trim() || "backlex",
     logoUrl: wsBranding?.logoUrl ?? null,
     signInHeadline: surface?.branding?.signInHeadline ?? null,
     signInTagline: surface?.branding?.signInTagline ?? null,
   };
 
   const shellCopy: AuthShellCopy = {
-    headline: <Trans>Sign in to <em>workeros</em>.</Trans>,
+    headline: <Trans>Sign in to <em>backlex</em>.</Trans>,
     lede: (
       <Trans>Welcome back. Pick up where you left off — content, data, and APIs all in one place.</Trans>
     ),

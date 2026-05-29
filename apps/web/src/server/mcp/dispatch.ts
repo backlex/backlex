@@ -13,7 +13,7 @@ import { listResources, readResource } from "./resources";
 import { getPrompt, listPrompts } from "./prompts";
 
 const PROTOCOL_VERSION = "2025-03-26";
-const SERVER_NAME = "workeros";
+const SERVER_NAME = "backlex";
 const SERVER_VERSION = "0.0.1";
 
 const error = (id: JsonRpcRequest["id"] | null, code: number, message: string, data?: unknown): JsonRpcResponse => ({
@@ -103,7 +103,7 @@ export const dispatch = async (
         serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
         capabilities: {
           tools: { listChanged: false },
-          // Resources expose every collection as `workeros://collection/<slug>`
+          // Resources expose every collection as `backlex://collection/<slug>`
           // so MCP clients with attach pickers (Claude Desktop) can browse
           // and pull collection schema + sample rows into a chat. Subscribe
           // isn't supported yet — would require resumable SSE.
@@ -113,7 +113,7 @@ export const dispatch = async (
           prompts: { listChanged: false },
         },
         instructions:
-          "workeros MCP server — schema discovery, collection CRUD, storage, " +
+          "backlex MCP server — schema discovery, collection CRUD, storage, " +
           "vector / graphql / functions, role + permission management, plus " +
           "workspace resources and prompt templates. Permissions are enforced " +
           "by the caller's identity (API key or session); per-key allowlist + " +

@@ -12,7 +12,7 @@
  * Tune by adjusting the `max` field per pattern.
  */
 import type { MiddlewareHandler } from "hono";
-import { AppError } from "@workeros/core";
+import { AppError } from "@backlex/core";
 import type { Env } from "../env";
 import { rateLimitOk } from "./rate-limit";
 

@@ -10,9 +10,9 @@ import { TENANT_COOKIE } from "../src/server/middleware/tenant";
  *   - GET    /api/tenants            → list workspaces the caller belongs to
  *                                       (`{ data: [...], active: <id> }`)
  *   - POST   /api/tenants            → create workspace; caller becomes owner
- *   - POST   /api/tenants/switch     → sets `workeros-tenant` cookie + persists
+ *   - POST   /api/tenants/switch     → sets `backlex-tenant` cookie + persists
  *                                       user.activeTenantId
- *   - Active tenant resolution: `X-Workeros-Tenant` header → cookie →
+ *   - Active tenant resolution: `X-Backlex-Tenant` header → cookie →
  *     user.activeTenantId → first membership → default tenant.
  *   - Default tenant slug = "default" (from ensureDefaultTenant on first req).
  *   - Collections + items are tenant-scoped; slug is unique per tenant.
@@ -136,12 +136,12 @@ describe("tenants: collections and items are isolated per workspace", () => {
   });
 
   test("collection created in default tenant is not visible from tenant-B", async () => {
-    // Step 1: create collection in the default workspace (X-Workeros-Tenant header).
+    // Step 1: create collection in the default workspace (X-Backlex-Tenant header).
     const createA = await h.fetch("/api/collections", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Workeros-Tenant": "default",
+        "X-Backlex-Tenant": "default",
       },
       body: JSON.stringify({
         slug: collSlug,
@@ -154,7 +154,7 @@ describe("tenants: collections and items are isolated per workspace", () => {
 
     // Step 2: list collections in tenant-B — the slug must NOT show up.
     const listB = await h.fetch("/api/collections", {
-      headers: { "X-Workeros-Tenant": tenantBSlug },
+      headers: { "X-Backlex-Tenant": tenantBSlug },
     });
     expect(listB.status).toBe(200);
     const bodyB = (await listB.json()) as { data: { slug: string }[] };
@@ -166,7 +166,7 @@ describe("tenants: collections and items are isolated per workspace", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Workeros-Tenant": tenantBSlug,
+        "X-Backlex-Tenant": tenantBSlug,
       },
       body: JSON.stringify({
         slug: collSlug,
@@ -182,11 +182,11 @@ describe("tenants: collections and items are isolated per workspace", () => {
     // Step 4: each workspace's GET /api/collections/:slug resolves to its own
     // collection (no leak across the membrane).
     const getA = await h.fetch(`/api/collections/${collSlug}`, {
-      headers: { "X-Workeros-Tenant": "default" },
+      headers: { "X-Backlex-Tenant": "default" },
     });
     expect(getA.status).toBe(200);
     const getB = await h.fetch(`/api/collections/${collSlug}`, {
-      headers: { "X-Workeros-Tenant": tenantBSlug },
+      headers: { "X-Backlex-Tenant": tenantBSlug },
     });
     expect(getB.status).toBe(200);
   });
@@ -197,7 +197,7 @@ describe("tenants: collections and items are isolated per workspace", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Workeros-Tenant": "default",
+        "X-Backlex-Tenant": "default",
       },
       body: JSON.stringify({ title: "from-default" }),
     });
@@ -208,7 +208,7 @@ describe("tenants: collections and items are isolated per workspace", () => {
     // tenant-B's items list for the same slug points at tenant-B's collection
     // (different physical table) — must be empty.
     const listB = await h.fetch(`/api/items/${collSlug}`, {
-      headers: { "X-Workeros-Tenant": tenantBSlug },
+      headers: { "X-Backlex-Tenant": tenantBSlug },
     });
     expect(listB.status).toBe(200);
     const bodyB = (await listB.json()) as { data: { id: string }[] };
@@ -218,13 +218,13 @@ describe("tenants: collections and items are isolated per workspace", () => {
     // collection slug resolves to tenant-B's table (which has no such row).
     // Contract → 404 NOT_FOUND, not 403/empty.
     const getB = await h.fetch(`/api/items/${collSlug}/${insertedA.data.id}`, {
-      headers: { "X-Workeros-Tenant": tenantBSlug },
+      headers: { "X-Backlex-Tenant": tenantBSlug },
     });
     expect(getB.status).toBe(404);
 
     // Default still sees its own row.
     const listA = await h.fetch(`/api/items/${collSlug}`, {
-      headers: { "X-Workeros-Tenant": "default" },
+      headers: { "X-Backlex-Tenant": "default" },
     });
     expect(listA.status).toBe(200);
     const bodyA = (await listA.json()) as { data: { id: string }[] };
@@ -232,7 +232,7 @@ describe("tenants: collections and items are isolated per workspace", () => {
   });
 });
 
-describe("tenants: nonexistent slug in X-Workeros-Tenant falls back gracefully", () => {
+describe("tenants: nonexistent slug in X-Backlex-Tenant falls back gracefully", () => {
   let h: TestHarness;
 
   beforeAll(async () => {
@@ -249,7 +249,7 @@ describe("tenants: nonexistent slug in X-Workeros-Tenant falls back gracefully",
     // through to firstUserTenant / ensureDefaultTenant. The admin still lands
     // somewhere they're a member of, never in a workspace they don't own.
     const res = await h.fetch("/api/tenants", {
-      headers: { "X-Workeros-Tenant": "no-such-workspace-here" },
+      headers: { "X-Backlex-Tenant": "no-such-workspace-here" },
     });
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
@@ -351,7 +351,7 @@ describe("tenants: cross-tenant admin gets baseline access in foreign workspaces
     // workspace. A has zero user_roles rows in tenant-B, so the bundle
     // resolves to empty and the gate returns 403.
     const forbidden = await h.fetch("/api/roles", {
-      headers: { "X-Workeros-Tenant": tenantBSlug },
+      headers: { "X-Backlex-Tenant": tenantBSlug },
     });
     expect(forbidden.status).toBe(403);
     const body = (await forbidden.json()) as {
@@ -360,7 +360,7 @@ describe("tenants: cross-tenant admin gets baseline access in foreign workspaces
     expect(body.error?.code).toBe("FORBIDDEN");
   });
 
-  test("the cross-tenant visit doesn't leak workeros-tenant cookie", async () => {
+  test("the cross-tenant visit doesn't leak backlex-tenant cookie", async () => {
     // The previous test routed A through tenantB via header. tenantMiddleware
     // must NOT have written a tenantB cookie back — otherwise every following
     // request without a header would silently keep landing in the foreign

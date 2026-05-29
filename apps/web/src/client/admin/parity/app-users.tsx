@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Input } from "@workeros/ui/components/input";
+import { Input } from "@backlex/ui/components/input";
 import {
   Sheet,
   SheetContent,
@@ -9,9 +9,9 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-} from "@workeros/ui/components/sheet";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+} from "@backlex/ui/components/sheet";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { I } from "../icons";
 import { Badge, Button, Checkbox, PageHeader } from "../ui";
 import { ConfirmDialog } from "../sheet";

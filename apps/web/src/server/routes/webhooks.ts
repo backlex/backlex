@@ -1,9 +1,9 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
 import { and, eq } from "drizzle-orm";
-import { AppError, SYSTEM_ROLES } from "@workeros/core";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
+import { AppError, SYSTEM_ROLES } from "@backlex/core";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { fireDelivery, listDeliveries, retryDelivery } from "../services/webhooks";
@@ -24,7 +24,7 @@ const WebhookInput = z
       description: "Custom request headers sent on every delivery.",
     }),
     secret: z.string().optional().openapi({
-      description: "Used to sign deliveries (`X-Workeros-Signature` HMAC-SHA256).",
+      description: "Used to sign deliveries (`X-Backlex-Signature` HMAC-SHA256).",
     }),
     active: z.boolean().optional(),
   })

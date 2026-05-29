@@ -97,8 +97,8 @@ would mean exposing them via the public URL anyway.
 
 1. Enable a public origin for the R2 bucket:
    ```bash
-   bunx wrangler r2 bucket dev-url enable workeros-files
-   bunx wrangler r2 bucket dev-url get workeros-files
+   bunx wrangler r2 bucket dev-url enable backlex-files
+   bunx wrangler r2 bucket dev-url get backlex-files
    # → Public URL: https://pub-<hash>.r2.dev
    ```
 2. Set `R2_PUBLIC_BASE` in `apps/web/wrangler.toml` under `[vars]` to
@@ -178,7 +178,7 @@ when available.
 
 ## Security tradeoffs (R2 r2.dev)
 
-Enabling `wrangler r2 bucket dev-url enable workeros-files` makes
+Enabling `wrangler r2 bucket dev-url enable backlex-files` makes
 *every* object in the bucket fetchable at
 `https://pub-<hash>.r2.dev/<key>` by anyone who knows the key path.
 

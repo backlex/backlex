@@ -30,10 +30,10 @@ export interface Env {
    *  to trigger cron). Cloudflare Workers and Bun run cron internally and
    *  don't expose this endpoint. */
   CRON_SECRET?: string;
-  /** SQLite file path for Bun self-host. Defaults to `./.data/workeros.sqlite`.
+  /** SQLite file path for Bun self-host. Defaults to `./.data/backlex.sqlite`.
    *  Override for tests (e.g. a temp file per run) or alternate disk layouts.
-   *  Point this at `/litefs/workeros.sqlite` (or wherever LiteFS mounts) to
-   *  run on top of Fly LiteFS — workeros doesn't need any additional code
+   *  Point this at `/litefs/backlex.sqlite` (or wherever LiteFS mounts) to
+   *  run on top of Fly LiteFS — backlex doesn't need any additional code
    *  to talk to LiteFS; the FUSE layer handles replication transparently. */
   SQLITE_PATH?: string;
   /** libSQL / Turso URL. Selects the libSQL transport client instead of

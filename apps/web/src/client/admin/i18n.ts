@@ -22,7 +22,7 @@ export const DEFAULT_ADMIN_LOCALE: AdminLocale = "en";
 
 /** localStorage key for the last active locale — lets the next boot paint
  *  the right language before the preferences API responds. */
-const LOCALE_STORAGE_KEY = "workeros.adminLocale";
+const LOCALE_STORAGE_KEY = "backlex.adminLocale";
 
 function persistLocale(locale: string): void {
   try {

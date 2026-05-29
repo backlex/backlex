@@ -19,9 +19,9 @@
 // Returned counts feed the activity log so admins can see what moved.
 
 import { and, eq } from "drizzle-orm";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
-import type { Dialect } from "@workeros/db";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
+import type { Dialect } from "@backlex/db";
 
 export interface RenameCounts {
   permissions: number;

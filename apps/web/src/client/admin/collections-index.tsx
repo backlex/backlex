@@ -5,20 +5,20 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "./icons";
 import type { CollectionListItem } from "./config";
 import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
-import { Input } from "@workeros/ui/components/input";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@backlex/ui/components/input-group";
+import { Input } from "@backlex/ui/components/input";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
+} from "@backlex/ui/components/dialog";
 import { AdoptWizard } from "./adopt-wizard";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import { useUrlState } from "@/lib/use-url-state";
-import { Skeleton } from "@workeros/ui/components/skeleton";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import { SkeletonRow } from "./loading";
 import { useCollections } from "./queries";
 
@@ -632,7 +632,7 @@ function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt }: Create
             <div className="flex flex-col gap-1">
               <span className="text-[13.5px] font-semibold"><Trans>From existing table</Trans></span>
               <span className="text-xs leading-[1.45] text-muted-foreground">
-                <Trans>Register a table that already exists in your database. No DDL is run on the table — workeros only writes its own metadata.</Trans>
+                <Trans>Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata.</Trans>
               </span>
             </div>
           </button>

@@ -15,7 +15,7 @@
 import { generateText } from "ai";
 import { createGateway } from "@ai-sdk/gateway";
 import { createAnthropic } from "@ai-sdk/anthropic";
-import { AppError } from "@workeros/core";
+import { AppError } from "@backlex/core";
 import type { Env } from "../env";
 
 const DEFAULT_GATEWAY_MODEL = "anthropic/claude-haiku-4-5";
@@ -50,7 +50,7 @@ const pickProvider = (env: Env): { kind: Provider; key: string } => {
   if (direct) return { kind: "anthropic", key: direct };
   throw new AppError(
     "UNAVAILABLE",
-    "No AI provider configured for this workspace — set AI_GATEWAY_API_KEY (recommended, multi-provider) or the legacy ANTHROPIC_API_KEY on the workeros deployment.",
+    "No AI provider configured for this workspace — set AI_GATEWAY_API_KEY (recommended, multi-provider) or the legacy ANTHROPIC_API_KEY on the backlex deployment.",
   );
 };
 

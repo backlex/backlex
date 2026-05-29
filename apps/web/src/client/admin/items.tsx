@@ -1,15 +1,15 @@
 // @ts-nocheck
-// Filter DSL builder + Items DataTable for the workeros admin design.
+// Filter DSL builder + Items DataTable for the backlex admin design.
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "./icons";
 import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button, Checkbox, IconButton } from "./ui";
 import { Select } from "./select";
-import { Input } from "@workeros/ui/components/input";
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workeros/ui/components/input-group";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
-import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+import { Input } from "@backlex/ui/components/input";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@backlex/ui/components/input-group";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
+import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { getAuthors, subscribeAuthors } from "./authors-cache";
 
 const ADMIN_TABLE_CLS =

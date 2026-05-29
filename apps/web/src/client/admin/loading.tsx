@@ -1,4 +1,4 @@
-import { Skeleton } from "@workeros/ui/components/skeleton";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 
 /**
  * Tablo-yapılı listeler için tek satırlık skeleton — `mp-table`/`fg-grid`/

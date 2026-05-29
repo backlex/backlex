@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import type { EmailAdapter } from "@workeros/core";
+import type { EmailAdapter } from "@backlex/core";
 
 export interface SmtpConfig {
   host: string;

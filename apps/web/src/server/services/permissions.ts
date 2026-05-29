@@ -1,13 +1,13 @@
 import { and, eq, inArray, or, type SQL } from "drizzle-orm";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
 import {
   type Action,
   type AuthSubject,
   type Condition,
   SYSTEM_ROLES,
-} from "@workeros/core";
-import { combineConditions } from "@workeros/db";
+} from "@backlex/core";
+import { combineConditions } from "@backlex/db";
 import type { DbCtx } from "./seed";
 import {
   type CachedRoleRow,

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { stringify as yamlStringify } from "yaml";
-import { AppError, SYSTEM_ROLES } from "@workeros/core";
+import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { buildOpenApiDoc } from "../lib/openapi";

@@ -1,4 +1,4 @@
-import type { EmailAdapter } from "@workeros/core";
+import type { EmailAdapter } from "@backlex/core";
 
 export const consoleEmail = (): EmailAdapter => ({
   async send(msg) {

@@ -14,8 +14,8 @@
     "components": "@/components",
     "hooks": "@/hooks",
     "lib": "@/lib",
-    "utils": "@workeros/ui/lib/utils",
-    "ui": "@workeros/ui/components"
+    "utils": "@backlex/ui/lib/utils",
+    "ui": "@backlex/ui/components"
   },
   "rtl": false,
   "menuColor": "default",

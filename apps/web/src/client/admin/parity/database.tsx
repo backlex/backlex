@@ -4,12 +4,12 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { ADAPTER_PROFILES, type AdapterId } from "../config";
 import { Badge, Button, PageHeader, Switch } from "../ui";
-import { Input } from "@workeros/ui/components/input";
-import { Textarea } from "@workeros/ui/components/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
-import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
-import { Skeleton } from "@workeros/ui/components/skeleton";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+import { Input } from "@backlex/ui/components/input";
+import { Textarea } from "@backlex/ui/components/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
+import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
+import { Skeleton } from "@backlex/ui/components/skeleton";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { dbAdminApi } from "../api";
 
 const ADMIN_TABLE_CLS =
@@ -381,7 +381,7 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
       <div className="grid grid-cols-3 gap-3 overflow-hidden rounded-2xl border border-border bg-card p-3.5 text-card-foreground max-[640px]:grid-cols-1">
         <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Schedule</Trans></div><div className="font-medium"><Trans>Daily 03:00 UTC</Trans></div></div>
         <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Retention</Trans></div><div className="font-medium"><Trans>30 days</Trans></div></div>
-        <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Destination</Trans></div><div className="font-mono text-xs font-medium">r2://workeros-backups/</div></div>
+        <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Destination</Trans></div><div className="font-mono text-xs font-medium">r2://backlex-backups/</div></div>
       </div>
       <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">

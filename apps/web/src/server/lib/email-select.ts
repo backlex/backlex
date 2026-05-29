@@ -1,4 +1,4 @@
-import type { EmailAdapter } from "@workeros/core/adapters";
+import type { EmailAdapter } from "@backlex/core/adapters";
 import { consoleEmail } from "../adapters/email.console";
 import { resendEmail } from "../adapters/email.resend";
 import { sendgridEmail } from "../adapters/email.sendgrid";

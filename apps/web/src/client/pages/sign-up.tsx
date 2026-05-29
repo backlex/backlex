@@ -1,13 +1,13 @@
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Button } from "@workeros/ui/components/button";
+import { Button } from "@backlex/ui/components/button";
 import {
   SignUpPage as BaseSignUpPage,
   type AuthBranding,
   type AuthShellCopy,
   type SignUpCopy,
-} from "@workeros/auth-ui";
+} from "@backlex/auth-ui";
 import { SocialButtons, useHasSocialProviders } from "@/components/social-buttons";
 import { useTheme } from "@/components/theme-provider";
 import { notifyError } from "@/lib/error";
@@ -18,7 +18,7 @@ import { version as appVersion } from "../../../package.json";
 /**
  * Thin wrapper that wires the OSS admin's Lingui copy, React Router, the
  * workspace branding/surface stores, and the social-button slot into the
- * generic `<SignUpPage>` from `@workeros/auth-ui`.
+ * generic `<SignUpPage>` from `@backlex/auth-ui`.
  */
 export const SignUp = () => {
   const { t } = useLingui();
@@ -34,7 +34,7 @@ export const SignUp = () => {
   const isFirst = surface?.firstUserMode === true && isFirstParam;
 
   const branding: AuthBranding = {
-    name: wsBranding?.workspaceName?.trim() || "workeros",
+    name: wsBranding?.workspaceName?.trim() || "backlex",
     logoUrl: wsBranding?.logoUrl ?? null,
   };
 
@@ -42,7 +42,7 @@ export const SignUp = () => {
     headline: isFirst ? (
       <Trans>You're the <em>first</em>. Claim this instance.</Trans>
     ) : (
-      <Trans>Create your <em>workeros</em> account.</Trans>
+      <Trans>Create your <em>backlex</em> account.</Trans>
     ),
     lede: isFirst ? (
       <Trans>Detected an empty users table. The first account on a fresh instance is provisioned as admin automatically.</Trans>

@@ -1,7 +1,7 @@
 /**
  * libSQL (Turso) client. Works over libSQL's HTTP/WS protocol — same SQLite
  * dialect, same schema, same migrations as Bun SQLite + D1, just a remote
- * transport. Pure fetch-based so it runs on every workeros runtime: Bun,
+ * transport. Pure fetch-based so it runs on every backlex runtime: Bun,
  * Node, CF Workers, Vercel/Netlify Edge.
  *
  * The url scheme picks the transport:

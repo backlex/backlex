@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRightIcon } from "lucide-react";
-import { cn } from "@workeros/ui/lib/utils";
+import { cn } from "@backlex/ui/lib/utils";
 import { useLingui } from "@lingui/react/macro";
 
 export interface BreadcrumbItem {

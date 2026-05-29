@@ -1,4 +1,4 @@
-import type { ImageAdapter, ImageTransform } from "@workeros/core";
+import type { ImageAdapter, ImageTransform } from "@backlex/core";
 
 /**
  * Bun built-in image-resize adapter (`Bun.Image`).

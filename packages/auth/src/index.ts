@@ -98,7 +98,7 @@ const buildPlugins = (config: AuthConfig) => {
   if (enabled.has("passkey")) {
     out.push(
       passkey({
-        rpName: "workeros",
+        rpName: "backlex",
         // `requireSession: true` means passkeys can only be added by an
         // already-signed-in user — first-factor sign-in still goes through
         // email/password (or social), then they enrol a passkey for the

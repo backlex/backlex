@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "bin": {
-    "workeros": "./bin/workeros.ts"
+    "backlex": "./bin/backlex.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

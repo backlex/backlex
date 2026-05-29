@@ -5,9 +5,9 @@ import { I } from "../icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
 import { api } from "@/lib/api";
-import { Input } from "@workeros/ui/components/input";
-import { Textarea } from "@workeros/ui/components/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
+import { Input } from "@backlex/ui/components/input";
+import { Textarea } from "@backlex/ui/components/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import {
   Dialog,
   DialogContent,
@@ -15,15 +15,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
+} from "@backlex/ui/components/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@workeros/ui/components/dropdown-menu";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+} from "@backlex/ui/components/dropdown-menu";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { fetchSafely } from "./_shared";
 import { WebhooksSkeleton } from "../page-skeletons";
 

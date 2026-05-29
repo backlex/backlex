@@ -34,7 +34,7 @@ import {
 } from "../src/server/adapters/ldap.ldapts";
 import { __setLdapAdapterFactoryForTests } from "../src/server/lib/auth-select";
 import { verifyAccessToken } from "../src/server/lib/jwt";
-import type { LdapAdapter, LdapAttributes } from "@workeros/core/adapters";
+import type { LdapAdapter, LdapAttributes } from "@backlex/core/adapters";
 
 const TENANT_SLUG = "default";
 

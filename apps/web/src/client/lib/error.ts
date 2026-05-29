@@ -1,4 +1,4 @@
-import { toast } from "@workeros/ui/components/sonner";
+import { toast } from "@backlex/ui/components/sonner";
 
 /**
  * Surface an API or runtime error as a toast. Centralizes the

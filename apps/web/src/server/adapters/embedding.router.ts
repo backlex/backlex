@@ -1,6 +1,6 @@
-import { AppError } from "@workeros/core";
-import type { EmbeddingAdapter } from "@workeros/core/adapters";
-import { getEmbeddingModel, type EmbeddingModel } from "@workeros/core";
+import { AppError } from "@backlex/core";
+import type { EmbeddingAdapter } from "@backlex/core/adapters";
+import { getEmbeddingModel, type EmbeddingModel } from "@backlex/core";
 
 /**
  * Combines per-provider embedding adapters into a single adapter that picks

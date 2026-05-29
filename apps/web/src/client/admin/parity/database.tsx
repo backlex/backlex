@@ -4,12 +4,12 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { ADAPTER_PROFILES, type AdapterId } from "../config";
 import { Badge, Button, PageHeader, Switch } from "../ui";
-import { Input } from "@workeros/ui/components/input";
-import { Textarea } from "@workeros/ui/components/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
-import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
-import { Skeleton } from "@workeros/ui/components/skeleton";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+import { Input } from "@backlex/ui/components/input";
+import { Textarea } from "@backlex/ui/components/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
+import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
+import { Skeleton } from "@backlex/ui/components/skeleton";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { dbAdminApi } from "../api";
 
 const ADMIN_TABLE_CLS =

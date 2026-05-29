@@ -273,10 +273,10 @@ Full reference (response shape, refresh endpoint, trade-offs):
 
 ## SDK integration
 
-`@workeros/client` has two modes, controlled by the `workspace` option:
+`@backlex/client` has two modes, controlled by the `workspace` option:
 
 ```ts
-import { createClient } from "@workeros/client";
+import { createClient } from "@backlex/client";
 
 // Admin / control-plane mode — talks to /api/auth/* (better-auth cookies).
 const admin = createClient({ url: "https://api.example.com" });
@@ -346,7 +346,7 @@ instance with the new providers.
 **3. End-user signs up through the customer-facing app.**
 
 ```ts
-import { createClient } from "@workeros/client";
+import { createClient } from "@backlex/client";
 
 const wks = createClient({
   url: "https://api.workeros.example.com",

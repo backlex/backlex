@@ -3,7 +3,7 @@
 import * as React from "react"
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
 
-import { cn } from "@workeros/ui/lib/utils"
+import { cn } from "@backlex/ui/lib/utils"
 import { CheckIcon, ChevronRightIcon } from "lucide-react"
 
 function DropdownMenu({

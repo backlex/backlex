@@ -1,7 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { streamSSE } from "hono/streaming";
 import type { SSEStreamingApi } from "hono/streaming";
-import { AppError, SYSTEM_ROLES } from "@workeros/core";
+import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { AppBindings } from "../app";
 import type { Env } from "../env";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";

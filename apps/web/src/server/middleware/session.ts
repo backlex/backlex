@@ -1,7 +1,7 @@
 import type { MiddlewareHandler } from "hono";
 import { and, eq, isNull } from "drizzle-orm";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { findApiKey, touchLastUsed } from "../services/api-keys";
 import { verifyAccessToken } from "../lib/jwt";

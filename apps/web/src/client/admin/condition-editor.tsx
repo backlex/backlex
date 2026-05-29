@@ -1,9 +1,9 @@
 // Directus-parity permission editor.
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Input } from "@workeros/ui/components/input";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
-import { Textarea } from "@workeros/ui/components/textarea";
+import { Input } from "@backlex/ui/components/input";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Textarea } from "@backlex/ui/components/textarea";
 import { I } from "./icons";
 import { Badge, Button, Checkbox, IconButton } from "./ui";
 import { Select } from "./select";

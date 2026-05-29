@@ -4,8 +4,8 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { Badge, Button, PageHeader } from "../ui";
 import { ConfirmDialog } from "../sheet";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
-import { Skeleton } from "@workeros/ui/components/skeleton";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import { RevisionsSkeleton } from "../page-skeletons";
 
 const REV_AUTO_FIELDS = new Set([

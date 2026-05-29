@@ -4,8 +4,8 @@
 // collection. Mounted as the 4th tab next to Items / Schema / Permissions.
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Input } from "@workeros/ui/components/input";
-import { Textarea } from "@workeros/ui/components/textarea";
+import { Input } from "@backlex/ui/components/input";
+import { Textarea } from "@backlex/ui/components/textarea";
 import { I } from "./icons";
 import { Select } from "./select";
 import { Button, Switch } from "./ui";

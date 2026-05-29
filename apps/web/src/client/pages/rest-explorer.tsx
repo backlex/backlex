@@ -10,21 +10,21 @@ import {
 import { useSearchParams } from "react-router-dom";
 import { RefreshCwIcon, SearchIcon, SendIcon, ChevronRightIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Button } from "@workeros/ui/components/button";
-import { Input } from "@workeros/ui/components/input";
-import { Badge } from "@workeros/ui/components/badge";
+import { Button } from "@backlex/ui/components/button";
+import { Input } from "@backlex/ui/components/input";
+import { Badge } from "@backlex/ui/components/badge";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from "@workeros/ui/components/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@workeros/ui/components/collapsible";
-import { Separator } from "@workeros/ui/components/separator";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+} from "@backlex/ui/components/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@backlex/ui/components/collapsible";
+import { Separator } from "@backlex/ui/components/separator";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { RestExplorerSkeleton } from "@/admin/page-skeletons";
-import { cn } from "@workeros/ui/lib/utils";
+import { cn } from "@backlex/ui/lib/utils";
 import { PageHeader } from "@/components/page-header";
 import { CodeEditor } from "@/components/code-editor-lazy";
 import { JsonBlock } from "@/admin/ui";

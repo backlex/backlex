@@ -1,9 +1,9 @@
 // @ts-nocheck
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Input } from "@workeros/ui/components/input";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
-import { Textarea } from "@workeros/ui/components/textarea";
+import { Input } from "@backlex/ui/components/input";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Textarea } from "@backlex/ui/components/textarea";
 import {
   Dialog,
   DialogContent,
@@ -11,12 +11,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
+} from "@backlex/ui/components/dialog";
 import { I } from "../icons";
 import { Badge, Button, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
-import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
+import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { i18nApi, settingsApi } from "../api";
 import { I18N_KEY_PATTERN } from "./_shared";
 import { TranslationsSkeleton } from "../page-skeletons";

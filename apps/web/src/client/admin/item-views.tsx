@@ -10,7 +10,7 @@ import { useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent } from "./icons";
 import { Badge, Button, IconButton } from "./ui";
-import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { authorById } from "./items";
 import type { Post } from "./config";
 

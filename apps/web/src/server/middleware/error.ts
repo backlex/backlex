@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import { ZodError } from "zod";
-import { isAppError } from "@workeros/core";
+import { isAppError } from "@backlex/core";
 import { keepAlive, recordActivity, requestMeta } from "../services/activity";
 import type { DbCtx } from "../services/seed";
 

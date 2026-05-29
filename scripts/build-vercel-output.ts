@@ -47,7 +47,7 @@ if (existsSync(OUTPUT_ROOT)) rmSync(OUTPUT_ROOT, { recursive: true });
 mkdirSync(FUNC_DIR, { recursive: true });
 
 // 1. Pre-bundle the Hono entry into the function dir. Self-contained —
-//    every workspace `@workeros/*` and every npm dep is inlined, because
+//    every workspace `@backlex/*` and every npm dep is inlined, because
 //    the Vercel runtime can't follow Bun's `node_modules/.bun` monorepo
 //    store. `bun:sqlite` is aliased to its shim so the Node ESM loader
 //    doesn't choke on the `bun:` protocol at module init.

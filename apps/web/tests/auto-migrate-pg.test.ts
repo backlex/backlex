@@ -32,8 +32,8 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { sql, type SQL } from "drizzle-orm";
-import { ensureMigrations, type AutoMigrateDb } from "@workeros/db";
-import { MIGRATIONS as PG_MIGRATIONS } from "@workeros/db/pg/migrations-bundle";
+import { ensureMigrations, type AutoMigrateDb } from "@backlex/db";
+import { MIGRATIONS as PG_MIGRATIONS } from "@backlex/db/pg/migrations-bundle";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Layer 1 — error classifier + per-migration loop, no pglite

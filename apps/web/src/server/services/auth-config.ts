@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
 import type { Env } from "../env";
 import { userCount, type DbCtx } from "./seed";
 import { loadSignInBranding } from "./settings";

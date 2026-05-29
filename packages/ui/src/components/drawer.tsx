@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Drawer as DrawerPrimitive } from "vaul"
 
-import { cn } from "@workeros/ui/lib/utils"
+import { cn } from "@backlex/ui/lib/utils"
 
 function Drawer({
   ...props

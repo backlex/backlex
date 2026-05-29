@@ -1,9 +1,9 @@
 import { sql } from "drizzle-orm";
-import type { PgDb } from "@workeros/db/pg";
-import { schema } from "@workeros/db/pg";
-import { AppError } from "@workeros/core";
-import type { VectorAdapter } from "@workeros/core/adapters";
-import { getEmbeddingModel, type EmbeddingModel } from "@workeros/core";
+import type { PgDb } from "@backlex/db/pg";
+import { schema } from "@backlex/db/pg";
+import { AppError } from "@backlex/core";
+import type { VectorAdapter } from "@backlex/core/adapters";
+import { getEmbeddingModel, type EmbeddingModel } from "@backlex/core";
 
 /**
  * One Postgres table per embedding model — table name comes from the model

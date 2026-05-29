@@ -458,6 +458,7 @@ mostly available — SAML, LDAP, SMTP, samlify all load (full
 | `S3_ENDPOINT`                | no        | Custom S3 endpoint for R2/B2/MinIO/Spaces    |
 | `S3_REGION`                  | no        | Defaults to `auto`                           |
 | `R2_PUBLIC_BASE`             | no        | Workers only. Public origin for the R2 bucket; activates cf.image edge resizing for public-ACL files. See `docs/storage.md`. |
+| `CLOUD_REPORT_URL` + `CLOUD_REPORT_SECRET` + `CLOUD_PROJECT_ID` | no | **Managed-cloud only.** Set automatically by the workeros cloud provisioner so a tenant can opt-in report 5xx errors + AI token usage to the control plane. Self-hosted installs leave all three unset and never phone home — the reporting path is a no-op (`server/lib/cloud-report.ts`). |
 
 ## Verifying a deploy
 

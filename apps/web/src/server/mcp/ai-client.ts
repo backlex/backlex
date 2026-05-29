@@ -16,6 +16,7 @@ import { generateText } from "ai";
 import { createGateway } from "@ai-sdk/gateway";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { AppError } from "@backlex/core";
+import { reportToCloud } from "../lib/cloud-report";
 import type { Env } from "../env";
 
 const DEFAULT_GATEWAY_MODEL = "anthropic/claude-haiku-4-5";
@@ -84,6 +85,13 @@ export const callClaude = async (
       system,
       messages: [{ role: "user", content: user }],
       maxOutputTokens: maxTokens ?? DEFAULT_MAX_TOKENS,
+    });
+    // Opt-in: self-report token usage to the cloud control plane (no-op
+    // unless provisioned). Fire-and-forget — never blocks the response.
+    void reportToCloud(env, {
+      kind: "ai_usage",
+      tokensIn: result.usage?.inputTokens,
+      tokensOut: result.usage?.outputTokens,
     });
     return {
       text: result.text,

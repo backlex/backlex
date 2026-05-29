@@ -77,6 +77,13 @@ export interface Env {
   /** Cloudflare Workers AI binding. Required for the `bge-m3` model
    *  (`@cf/baai/bge-m3`). Add `[ai] binding = "AI"` in wrangler.toml. */
   AI?: Ai;
+
+  /** Opt-in observability reporting to the workeros cloud control plane.
+   *  ONLY set when provisioned as a managed cloud tenant — self-hosted installs
+   *  leave these unset and never report anything (see lib/cloud-report.ts). */
+  CLOUD_REPORT_URL?: string;
+  CLOUD_REPORT_SECRET?: string;
+  CLOUD_PROJECT_ID?: string;
   // Optional AI provider keys.
   OPENAI_API_KEY?: string;
   /** Vercel AI Gateway API key — preferred multi-provider credential.

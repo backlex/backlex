@@ -3,12 +3,21 @@ import type { Env } from "../env";
 /**
  * Opt-in observability reporting to the workeros **cloud** control plane.
  *
- * This is a NO-OP unless the cloud provisioner injected `CLOUD_REPORT_URL` +
- * `CLOUD_REPORT_SECRET` + `CLOUD_PROJECT_ID` into the worker. Self-hosted /
- * OSS installs never set these, so nothing is ever sent — no phone-home.
+ * This is a NO-OP unless the cloud provisioner injected `CLOUD_REPORT_SECRET` +
+ * `CLOUD_PROJECT_ID` plus a delivery channel. Self-hosted / OSS installs never
+ * set these, so nothing is ever sent — no phone-home.
  *
- * When enabled, it HMAC-SHA256-signs the JSON body with the per-project secret
- * and fire-and-forget POSTs it to the control plane's `/api/webhooks/tenant-report`.
+ * Delivery channel, in order of preference:
+ *  1. `CLOUD_REPORT_SERVICE` — a Service Binding to the control-plane worker.
+ *     Required on Workers for Platforms: a provisioned tenant runs *inside* the
+ *     dispatch namespace, so a plain `fetch()` to the control plane's public
+ *     hostname loops back into the dispatcher and is dropped (HTTP 522). A
+ *     service binding calls the worker directly, bypassing the public route.
+ *  2. `CLOUD_REPORT_URL` — plain HTTPS POST. Used by non-WfP managed deploys
+ *     where no loopback exists.
+ *
+ * Either way it HMAC-SHA256-signs the JSON body with the per-project secret and
+ * fire-and-forget POSTs it to the control plane's `/api/webhooks/tenant-report`.
  */
 export type CloudReport =
   | { kind: "error"; message: string; route?: string; status?: number }
@@ -29,14 +38,23 @@ const hmacHex = async (secret: string, body: string): Promise<string> => {
 /** Returns the fetch promise (caller can keepAlive it), or undefined if disabled. */
 export function reportToCloud(env: Env | undefined, report: CloudReport): Promise<unknown> | undefined {
   if (!env) return undefined;
-  const url = env.CLOUD_REPORT_URL;
   const secret = env.CLOUD_REPORT_SECRET;
   const projectId = env.CLOUD_PROJECT_ID;
-  if (!url || !secret || !projectId) return undefined;
+  if (!secret || !projectId) return undefined;
+
+  const service = env.CLOUD_REPORT_SERVICE;
+  const url = env.CLOUD_REPORT_URL;
+  if (!service && !url) return undefined;
+
   const body = JSON.stringify(report);
+  // Service bindings ignore the request hostname (they target the bound worker
+  // directly), so a placeholder origin is fine; only the path is meaningful.
+  const base = service ? "https://cloud-report.internal" : (url as string).replace(/\/$/, "");
+  const target = `${base}/api/webhooks/tenant-report`;
+
   return hmacHex(secret, body)
-    .then((sig) =>
-      fetch(`${url.replace(/\/$/, "")}/api/webhooks/tenant-report`, {
+    .then((sig) => {
+      const init: RequestInit = {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -44,7 +62,8 @@ export function reportToCloud(env: Env | undefined, report: CloudReport): Promis
           "X-Backlex-Signature": sig,
         },
         body,
-      }),
-    )
+      };
+      return service ? service.fetch(new Request(target, init)) : fetch(target, init);
+    })
     .catch(() => undefined);
 }

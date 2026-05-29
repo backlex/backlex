@@ -84,6 +84,10 @@ export interface Env {
   CLOUD_REPORT_URL?: string;
   CLOUD_REPORT_SECRET?: string;
   CLOUD_PROJECT_ID?: string;
+  /** Service Binding to the control-plane worker. Preferred delivery channel on
+   *  Workers for Platforms, where a tenant runs inside the dispatch namespace
+   *  and a plain fetch to the public hostname loops back (HTTP 522). */
+  CLOUD_REPORT_SERVICE?: Fetcher;
   // Optional AI provider keys.
   OPENAI_API_KEY?: string;
   /** Vercel AI Gateway API key — preferred multi-provider credential.

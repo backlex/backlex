@@ -2,6 +2,8 @@ import type { Context } from "hono";
 import { ZodError } from "zod";
 import { isAppError } from "@backlex/core";
 import { keepAlive, recordActivity, requestMeta } from "../services/activity";
+import { reportToCloud } from "../lib/cloud-report";
+import type { Env } from "../env";
 import type { DbCtx } from "../services/seed";
 
 /**
@@ -53,6 +55,14 @@ const logServerError = (
       },
     ),
   );
+  // Opt-in: report to the cloud control plane (no-op unless provisioned).
+  const rep = reportToCloud(c.env as Env, {
+    kind: "error",
+    message: message.slice(0, 500),
+    route: `${c.req.method} ${path}`.slice(0, 200),
+    status,
+  });
+  if (rep) keepAlive(c, rep);
 };
 
 export const errorHandler = (err: Error, c: Context) => {

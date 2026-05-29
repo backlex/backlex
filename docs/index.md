@@ -13,7 +13,7 @@ Five minutes from clone to first item.
 ## Install + run
 
 ```bash
-git clone https://github.com/your/workeros && cd workeros
+git clone https://github.com/your/backlex && cd backlex
 bun install
 cp apps/web/.dev.vars.example apps/web/.dev.vars
 
@@ -73,7 +73,7 @@ curl -X POST http://localhost:5173/api/graphql \
 ## Generate types for your client
 
 ```bash
-bun run workeros gen-types http://localhost:5173 --out src/types.ts
+bun run backlex gen-types http://localhost:5173 --out src/types.ts
 ```
 
 The CLI fetches `/api/collections` and emits one TypeScript interface per

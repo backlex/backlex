@@ -622,7 +622,7 @@ msgstr "\"{id}\" kimliğine sahip bir sağlayıcı zaten mevcut."
 msgid "A read-only view of one record from <0>{collection}</0>."
 msgstr "<0>{collection}</0> koleksiyonundan bir kaydın salt okunur görünümü."
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/magic-link.tsx
 msgid "A signed link will arrive in your inbox. Single-use, expires in 15 minutes."
 msgstr "İmzalı bir bağlantı gelen kutunuza gönderilecek. Tek kullanımlık, 15 dakika içinde sona erer."
 
@@ -918,16 +918,16 @@ msgstr "Adminler"
 
 #. placeholder {0}: fk.referencesTable
 #: src/client/admin/adopt-wizard.tsx
-msgid "Adopt <0>{0}</0> as a workeros collection first, then revisit this step."
-msgstr "Önce <0>{0}</0> tablosunu workeros koleksiyonu olarak benimseyin, ardından bu adıma geri dönün."
+msgid "Adopt <0>{0}</0> as a backlex collection first, then revisit this step."
+msgstr "Önce <0>{0}</0> tablosunu backlex koleksiyonu olarak benimseyin, ardından bu adıma geri dönün."
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "adopt as backlex relations"
+msgstr "backlex ilişkisi olarak benimse"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Adopt as relation"
 msgstr "İlişki olarak benimse"
-
-#: src/client/admin/adopt-wizard.tsx
-msgid "adopt as workeros relations"
-msgstr "workeros ilişkisi olarak benimse"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Adopt existing table"
@@ -1317,6 +1317,19 @@ msgstr "Giriş yap sayfasına dön"
 msgid "Back up now"
 msgstr "Şimdi yedekle"
 
+#. placeholder {0}: schema.slug
+#: src/client/admin/collection-settings.tsx
+msgid "Backlex stops treating <0>{0}</0> as a collection. The underlying table and its rows stay intact; you can restore from the Archived view."
+msgstr "Backlex, <0>{0}</0>'ı artık koleksiyon olarak işlemez. Temel tablo ve satırları yerinde kalır; Arşivlenmiş görünümden geri yükleyebilirsiniz."
+
+#: src/client/admin/app.tsx
+msgid "Backlex stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view."
+msgstr "Backlex bu tabloyu artık koleksiyon olarak işlemez. Temel tablo ve satırları yerinde kalır; Arşivlenmiş görünümden geri yükleyebilirsiniz."
+
+#: src/client/admin/app.tsx
+msgid "Backlex will start treating this table as a collection again. Owner-scoped permissions are re-seeded if they were configured."
+msgstr "Backlex bu tabloyu yeniden koleksiyon olarak işlemeye başlayacak. Sahip kapsamlı izinler yapılandırılmışsa yeniden tohumlanır."
+
 #: src/client/admin/parity/database.tsx
 msgid "Backups"
 msgstr "Yedekler"
@@ -1553,7 +1566,11 @@ msgstr "Yeni parola seçin"
 msgid "ci-bot (optional)"
 msgstr "ci-bot (isteğe bağlı)"
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/forgot.tsx
+#: src/client/pages/magic-link.tsx
+#: src/client/pages/reset-password.tsx
+#: src/client/pages/sign-in.tsx
+#: src/client/pages/sign-up.tsx
 msgid "Claim instance"
 msgstr "Örneği sahiplen"
 
@@ -1783,8 +1800,8 @@ msgid "composite — not supported"
 msgstr "bileşik — desteklenmiyor"
 
 #: src/client/admin/adopt-wizard.tsx
-msgid "Composite (multi-column) FKs cannot be adopted as a workeros relation"
-msgstr "Bileşik (çok sütunlu) FK'lar workeros ilişkisi olarak benimsenemez"
+msgid "Composite (multi-column) FKs cannot be adopted as a backlex relation"
+msgstr "Bileşik (çok sütunlu) FK'lar backlex ilişkisi olarak benimsenemez"
 
 #: src/client/admin/permissions-matrix.tsx
 msgid "conditional access"
@@ -1822,12 +1839,12 @@ msgid "Configure this provider (add a Client ID) before enabling it"
 msgstr "Etkinleştirmeden önce bu sağlayıcıyı yapılandırın (Client ID ekleyin)"
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "Configured via <0>AI_GATEWAY_API_KEY</0> on the workeros deployment (or legacy <1>ANTHROPIC_API_KEY</1>)."
-msgstr "Workeros dağıtımında <0>AI_GATEWAY_API_KEY</0> üzerinden (veya eski <1>ANTHROPIC_API_KEY</1> ile) yapılandırılır."
+msgid "Configured via <0>AI_GATEWAY_API_KEY</0> on the backlex deployment (or legacy <1>ANTHROPIC_API_KEY</1>)."
+msgstr "Backlex dağıtımında <0>AI_GATEWAY_API_KEY</0> üzerinden (veya eski <1>ANTHROPIC_API_KEY</1> ile) yapılandırılır."
 
 #: src/client/admin/pages/ask-ai.tsx
-#~ msgid "Configured via <0>ANTHROPIC_API_KEY</0> on the workeros deployment."
-#~ msgstr "Workeros dağıtımında <0>ANTHROPIC_API_KEY</0> üzerinden yapılandırılır."
+#~ msgid "Configured via <0>ANTHROPIC_API_KEY</0> on the backlex deployment."
+#~ msgstr "Backlex dağıtımında <0>ANTHROPIC_API_KEY</0> üzerinden yapılandırılır."
 
 #: src/client/admin/relational-pickers.tsx
 #: src/client/admin/sheet.tsx
@@ -2089,9 +2106,9 @@ msgstr "Webhook oluştur"
 msgid "Create workspace"
 msgstr "Çalışma alanı oluştur"
 
-#: src/client/components/auth-shell.tsx
-msgid "Create your <0>workeros</0> account."
-msgstr "<0>workeros</0> hesabınızı oluşturun."
+#: src/client/pages/sign-up.tsx
+msgid "Create your <0>backlex</0> account."
+msgstr "<0>backlex</0> hesabınızı oluşturun."
 
 #: src/client/pages/sign-up.tsx
 msgid "Create your admin account"
@@ -2408,7 +2425,7 @@ msgstr "Açıklama"
 msgid "Destination"
 msgstr "Hedef"
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/sign-up.tsx
 msgid "Detected an empty users table. The first account on a fresh instance is provisioned as admin automatically."
 msgstr "Boş bir kullanıcılar tablosu algılandı. Yeni bir örnekte ilk hesap otomatik olarak admin olarak ayarlanır."
 
@@ -2729,7 +2746,7 @@ msgstr "E-posta özniteliği"
 msgid "Email changes aren't supported yet — contact an admin if you need to switch addresses."
 msgstr "E-posta değişikliği henüz desteklenmiyor — adres değiştirmeniz gerekiyorsa bir admin ile iletişime geçin."
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/sign-up.tsx
 msgid "Email is the only required field. Roles assigned post-signup — first user gets admin."
 msgstr "E-posta tek zorunlu alandır. Roller kayıt sonrası atanır — ilk kullanıcı admin olur."
 
@@ -3515,10 +3532,14 @@ msgstr "IdP SLO URL'si <0>(isteğe bağlı)</0>"
 msgid "IdP SSO URL"
 msgstr "IdP SSO URL'si"
 
+#: src/client/pages/magic-link.tsx
+msgid "If {displayEmail} matches an account, a sign-in link is on its way. It expires in 15 minutes."
+msgstr "{displayEmail} bir hesapla eşleşiyorsa, giriş bağlantısı yola çıktı. 15 dakika içinde geçerliliğini yitirir."
+
 #. placeholder {0}: email || t`your address`
 #: src/client/pages/magic-link.tsx
-msgid "If <0>{0}</0> matches an account, a sign-in link is on its way. It expires in 15 minutes."
-msgstr "<0>{0}</0> bir hesapla eşleşiyorsa giriş bağlantısı gönderildi. 15 dakika içinde sona erer."
+#~ msgid "If <0>{0}</0> matches an account, a sign-in link is on its way. It expires in 15 minutes."
+#~ msgstr "<0>{0}</0> bir hesapla eşleşiyorsa giriş bağlantısı gönderildi. 15 dakika içinde sona erer."
 
 #: src/client/admin/storage.tsx
 msgid "Import"
@@ -4141,8 +4162,11 @@ msgstr "m2m"
 msgid "Machine-readable spec for every /api endpoint in this workspace — including dynamic /api/items/{slug} entries for your collections. Import into Postman, Insomnia, Swagger UI, or any code-gen tool."
 msgstr "Bu çalışma alanındaki her /api uç noktası için makine tarafından okunabilir spec — koleksiyonlarınız için dinamik /api/items/{slug} girdileri dahil. Postman, Insomnia, Swagger UI veya herhangi bir kod üretim aracına içe aktarın."
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/forgot.tsx
 #: src/client/pages/magic-link.tsx
+#: src/client/pages/reset-password.tsx
+#: src/client/pages/sign-in.tsx
+#: src/client/pages/sign-up.tsx
 msgid "Magic link"
 msgstr "Sihirli bağlantı"
 
@@ -4988,8 +5012,8 @@ msgid "OAuth required"
 msgstr "OAuth gerekli"
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "OAuth scope mapping → workeros roles"
-msgstr "OAuth kapsam eşlemesi → workeros rolleri"
+msgid "OAuth scope mapping → backlex roles"
+msgstr "OAuth kapsam eşlemesi → backlex rolleri"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a separate epic."
@@ -5034,8 +5058,8 @@ msgid "One or more adopted FKs are missing a target collection."
 msgstr "Bir veya daha fazla benimsenmiş FK'da hedef koleksiyon eksik."
 
 #: src/client/admin/pages/webhooks.tsx
-msgid "One per line. <0>Content-Type</0> and <1>X-Workeros-*</1> are reserved."
-msgstr "Satır başına bir tane. <0>Content-Type</0> ve <1>X-Workeros-*</1> ayrılmış."
+msgid "One per line. <0>Content-Type</0> and <1>X-Backlex-*</1> are reserved."
+msgstr "Satır başına bir tane. <0>Content-Type</0> ve <1>X-Backlex-*</1> ayrılmış."
 
 #. placeholder {0}: agg.groupBy
 #: src/client/admin/parity/insights.tsx
@@ -5046,7 +5070,7 @@ msgstr "\"{0}\" başına bir satır — çubuklar / halka / tablo dağılımı g
 msgid "One URL per line — saved when you click away."
 msgstr "Satır başına bir URL — tıklayıp uzaklaştığınızda kaydedilir."
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/magic-link.tsx
 msgid "One-time link, no <0>password</0>."
 msgstr "Tek kullanımlık bağlantı, <0>parola</0> gerektirmez."
 
@@ -5932,12 +5956,12 @@ msgid "Register a custom OpenID Connect identity provider."
 msgstr "Özel bir OpenID Connect kimlik sağlayıcısı kaydet."
 
 #: src/client/admin/adopt-wizard.tsx
-msgid "Register a physical table as a workeros collection. No DDL is run on the table — only the collection metadata row + field registrations are written."
-msgstr "Fiziksel bir tabloyu workeros koleksiyonu olarak kaydet. Tabloda hiç DDL çalıştırılmaz — yalnızca koleksiyon meta veri satırı + alan kayıtları yazılır."
+msgid "Register a physical table as a backlex collection. No DDL is run on the table — only the collection metadata row + field registrations are written."
+msgstr "Fiziksel bir tabloyu backlex koleksiyonu olarak kaydet. Tabloda hiç DDL çalıştırılmaz — yalnızca koleksiyon meta veri satırı + alan kayıtları yazılır."
 
 #: src/client/admin/collections-index.tsx
-msgid "Register a table that already exists in your database. No DDL is run on the table — workeros only writes its own metadata."
-msgstr "Veritabanınızda zaten var olan bir tabloyu kaydet. Tabloda hiç DDL çalıştırılmaz — workeros yalnızca kendi meta verilerini yazar."
+msgid "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
+msgstr "Veritabanınızda zaten var olan bir tabloyu kaydet. Tabloda hiç DDL çalıştırılmaz — backlex yalnızca kendi meta verilerini yazar."
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Reject"
@@ -6116,7 +6140,8 @@ msgstr "Parolayı sıfırla"
 msgid "Reset view"
 msgstr "Görünümü sıfırla"
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/forgot.tsx
+#: src/client/pages/reset-password.tsx
 msgid "Reset your <0>password</0>."
 msgstr "<0>Parolanızı</0> sıfırlayın."
 
@@ -6796,8 +6821,8 @@ msgid "Sends a one-time sign-in link by email — requires a configured email ad
 msgstr "E-posta ile tek kullanımlık giriş bağlantısı gönderir — yapılandırılmış bir e-posta bağdaştırıcısı gerektirir (RESEND_API_KEY + EMAIL_FROM ayarlayın)."
 
 #: src/client/admin/pages/webhooks.tsx
-msgid "Sent as <0>X-Workeros-Signature: sha256=…</0>. Verify on the receiver."
-msgstr "<0>X-Workeros-Signature: sha256=…</0> olarak gönderilir. Alıcı tarafında doğrulayın."
+msgid "Sent as <0>X-Backlex-Signature: sha256=…</0>. Verify on the receiver."
+msgstr "<0>X-Backlex-Signature: sha256=…</0> olarak gönderilir. Alıcı tarafında doğrulayın."
 
 #: src/client/admin/item-views.tsx
 msgid "September"
@@ -6954,8 +6979,8 @@ msgid "Shared record"
 msgstr "Paylaşılan kayıt"
 
 #: src/client/pages/shared-record.tsx
-msgid "Shared via workeros · this link can be revoked at any time."
-msgstr "workeros aracılığıyla paylaşıldı · bu bağlantı istediğiniz zaman iptal edilebilir."
+msgid "Shared via backlex · this link can be revoked at any time."
+msgstr "backlex aracılığıyla paylaşıldı · bu bağlantı istediğiniz zaman iptal edilebilir."
 
 #: src/client/admin/pages/settings.tsx
 msgid "Short sentence shown under the headline."
@@ -7042,20 +7067,21 @@ msgstr "Kenar çubuğunda ve tarayıcı başlığında gösterilir."
 msgid "Side-table (item_ownership)"
 msgstr "Yan tablo (item_ownership)"
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/forgot.tsx
 #: src/client/pages/magic-link.tsx
+#: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Sign in"
 msgstr "Giriş yap"
 
-#: src/client/components/auth-shell.tsx
-msgid "Sign in to <0>workeros</0>."
-msgstr "<0>workeros</0>'a giriş yapın."
+#: src/client/pages/sign-in.tsx
+msgid "Sign in to <0>backlex</0>."
+msgstr "<0>backlex</0>'a giriş yapın."
 
 #: src/client/admin/pages/settings.tsx
-msgid "Sign in to workeros."
-msgstr "workeros'a giriş yapın."
+msgid "Sign in to backlex."
+msgstr "backlex'a giriş yapın."
 
 #: src/client/pages/sign-in.tsx
 msgid "Sign in with passkey"
@@ -7085,8 +7111,11 @@ msgstr "Diğer tüm cihazlardan çıkış yap"
 msgid "Sign out other devices"
 msgstr "Diğer cihazlardan çıkış yap"
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/forgot.tsx
+#: src/client/pages/magic-link.tsx
+#: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
+#: src/client/pages/sign-up.tsx
 msgid "Sign up"
 msgstr "Kayıt ol"
 
@@ -7679,7 +7708,11 @@ msgid "Toggle sidebar"
 msgstr "Kenar çubuğunu aç/kapat"
 
 #: src/client/admin/extras.tsx
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/forgot.tsx
+#: src/client/pages/magic-link.tsx
+#: src/client/pages/reset-password.tsx
+#: src/client/pages/sign-in.tsx
+#: src/client/pages/sign-up.tsx
 msgid "Toggle theme"
 msgstr "Temayı değiştir"
 
@@ -8184,7 +8217,8 @@ msgstr "uyarı"
 msgid "We sent a verification link to {email}. Click it to finish creating your account."
 msgstr "{email} adresine doğrulama bağlantısı gönderdik. Hesabınızı oluşturmayı tamamlamak için tıklayın."
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/forgot.tsx
+#: src/client/pages/reset-password.tsx
 msgid "We'll email a reset link. Until you click it, your existing password still works."
 msgstr "Bir sıfırlama bağlantısı e-postalaştıracağız. Tıklayana kadar mevcut parolanız çalışmaya devam eder."
 
@@ -8215,7 +8249,7 @@ msgstr "Çar"
 msgid "Welcome back"
 msgstr "Tekrar hoş geldiniz"
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/sign-in.tsx
 msgid "Welcome back. Pick up where you left off — content, data, and APIs all in one place."
 msgstr "Tekrar hoş geldin. Kaldığın yerden devam et — içerik, veri ve API'lar tek yerde."
 
@@ -8303,19 +8337,6 @@ msgstr "worker bağlamaları"
 #: src/client/admin/pages/overview.tsx
 msgid "worker thread + RPC"
 msgstr "worker thread + RPC"
-
-#. placeholder {0}: schema.slug
-#: src/client/admin/collection-settings.tsx
-msgid "Workeros stops treating <0>{0}</0> as a collection. The underlying table and its rows stay intact; you can restore from the Archived view."
-msgstr "Workeros, <0>{0}</0>'ı artık koleksiyon olarak işlemez. Temel tablo ve satırları yerinde kalır; Arşivlenmiş görünümden geri yükleyebilirsiniz."
-
-#: src/client/admin/app.tsx
-msgid "Workeros stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view."
-msgstr "Workeros bu tabloyu artık koleksiyon olarak işlemez. Temel tablo ve satırları yerinde kalır; Arşivlenmiş görünümden geri yükleyebilirsiniz."
-
-#: src/client/admin/app.tsx
-msgid "Workeros will start treating this table as a collection again. Owner-scoped permissions are re-seeded if they were configured."
-msgstr "Workeros bu tabloyu yeniden koleksiyon olarak işlemeye başlayacak. Sahip kapsamlı izinler yapılandırılmışsa yeniden tohumlanır."
 
 #: src/client/components/confirm-action.tsx
 msgid "Working…"
@@ -8432,7 +8453,7 @@ msgstr "Varsayılan olarak authenticated rolünü alacaksınız."
 msgid "You're all caught up."
 msgstr "Her şey güncel."
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/sign-up.tsx
 msgid "You're the <0>first</0>. Claim this instance."
 msgstr "Siz <0>ilk</0> kişisiniz. Bu örneği sahiplenin."
 

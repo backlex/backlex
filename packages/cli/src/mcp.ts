@@ -1,13 +1,13 @@
 /**
- * stdio MCP transport for workeros — proxies JSON-RPC over stdin/stdout to
- * a remote workeros HTTP endpoint (`/mcp` by default). Lets local agents
- * (Claude Desktop, Cursor, IDE plugins) talk to a deployed workeros
+ * stdio MCP transport for backlex — proxies JSON-RPC over stdin/stdout to
+ * a remote backlex HTTP endpoint (`/mcp` by default). Lets local agents
+ * (Claude Desktop, Cursor, IDE plugins) talk to a deployed backlex
  * instance through a single auth path: the PAK passed via `--key`.
  *
  * The CLI deliberately does NOT speak directly to a local SQLite — that
  * would mean a second auth & adapter setup with its own surprises. Going
  * through HTTP keeps permissions, rate-limits, activity logging, and the
- * tenant boundary identical to every other workeros caller.
+ * tenant boundary identical to every other backlex caller.
  */
 
 interface Options {
@@ -42,7 +42,7 @@ const readMessages = async function* (): AsyncGenerator<unknown> {
         // Spec says malformed messages should be ignored. We do echo to
         // stderr so the operator notices, since this only happens when
         // the upstream MCP client is misbehaving.
-        process.stderr.write(`[workeros mcp] dropping non-JSON line\n`);
+        process.stderr.write(`[backlex mcp] dropping non-JSON line\n`);
       }
     }
   }
@@ -57,7 +57,7 @@ const proxy = async (opts: Options, body: unknown): Promise<unknown | null> => {
     "content-type": "application/json",
     authorization: `Bearer ${opts.key}`,
   };
-  if (opts.tenant) headers["x-workeros-tenant"] = opts.tenant;
+  if (opts.tenant) headers["x-backlex-tenant"] = opts.tenant;
   const res = await fetch(opts.url, {
     method: "POST",
     headers,
@@ -86,10 +86,10 @@ const proxy = async (opts: Options, body: unknown): Promise<unknown | null> => {
 
 export const runMcp = async (rawOpts: Partial<Options>): Promise<void> => {
   const url = rawOpts.url ?? "http://localhost:8787/mcp";
-  const key = rawOpts.key ?? process.env.WORKEROS_API_KEY ?? "";
+  const key = rawOpts.key ?? process.env.BACKLEX_API_KEY ?? "";
   if (!key) {
     process.stderr.write(
-      "workeros mcp: missing API key. Pass --key pak_… or set WORKEROS_API_KEY.\n",
+      "backlex mcp: missing API key. Pass --key pak_… or set BACKLEX_API_KEY.\n",
     );
     process.exit(1);
   }
@@ -107,13 +107,13 @@ export const runMcp = async (rawOpts: Partial<Options>): Promise<void> => {
     });
     if (probe && typeof probe === "object" && "error" in probe) {
       process.stderr.write(
-        `workeros mcp: handshake failed: ${JSON.stringify((probe as { error: unknown }).error)}\n`,
+        `backlex mcp: handshake failed: ${JSON.stringify((probe as { error: unknown }).error)}\n`,
       );
       process.exit(1);
     }
   } catch (e) {
     process.stderr.write(
-      `workeros mcp: cannot reach ${opts.url}: ${(e as Error).message}\n`,
+      `backlex mcp: cannot reach ${opts.url}: ${(e as Error).message}\n`,
     );
     process.exit(1);
   }

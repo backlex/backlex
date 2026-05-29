@@ -406,7 +406,7 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>()
         .then((transport) =>
           transport.send({
             to: body.email,
-            subject: `You've been invited to a workeros workspace`,
+            subject: `You've been invited to a backlex workspace`,
             text: `Open ${ctx.env.APP_URL}/invite?token=${token} to accept.`,
           }),
         )

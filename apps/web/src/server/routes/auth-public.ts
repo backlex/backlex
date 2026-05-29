@@ -5,11 +5,11 @@ import { resolveAuthSurface } from "../services/auth-config";
 
 /**
  * Public, unauthenticated discovery endpoint for a workspace's auth surface —
- * the "auth as a service" entry point a frontend app built on a workeros
+ * the "auth as a service" entry point a frontend app built on a backlex
  * workspace calls to learn which sign-in providers to render.
  *
- * The active workspace is resolved the usual way (`X-Workeros-Tenant` header /
- * `workeros-tenant` cookie / default workspace). The response carries no
+ * The active workspace is resolved the usual way (`X-Backlex-Tenant` header /
+ * `backlex-tenant` cookie / default workspace). The response carries no
  * secrets: only provider ids, labels, `enabled` flags, and non-secret policy
  * toggles (e.g. whether sign-up is open).
  *
@@ -41,7 +41,7 @@ export const authPublicRoutes = new OpenAPIHono<AppBindings>().openapi(
     tags: ["auth-public"],
     summary: "Public auth surface",
     description:
-      "Unauthenticated discovery endpoint — returns the active workspace's sign-in providers and non-secret policy flags. The workspace is resolved from `X-Workeros-Tenant` / cookie / default.",
+      "Unauthenticated discovery endpoint — returns the active workspace's sign-in providers and non-secret policy flags. The workspace is resolved from `X-Backlex-Tenant` / cookie / default.",
     security: [],
     responses: {
       200: {

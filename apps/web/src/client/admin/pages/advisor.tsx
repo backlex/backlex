@@ -35,7 +35,7 @@ interface AdvisorCheck {
 
 type LevelCounts = { error: number; warn: number; info: number };
 
-const DISMISSED_KEY = "workeros.advisor.dismissed";
+const DISMISSED_KEY = "backlex.advisor.dismissed";
 
 /** error → warn → info, for severity ordering. */
 const LEVEL_RANK: Record<CheckLevel, number> = { error: 0, warn: 1, info: 2 };

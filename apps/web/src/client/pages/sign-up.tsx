@@ -34,7 +34,7 @@ export const SignUp = () => {
   const isFirst = surface?.firstUserMode === true && isFirstParam;
 
   const branding: AuthBranding = {
-    name: wsBranding?.workspaceName?.trim() || "workeros",
+    name: wsBranding?.workspaceName?.trim() || "backlex",
     logoUrl: wsBranding?.logoUrl ?? null,
   };
 
@@ -42,7 +42,7 @@ export const SignUp = () => {
     headline: isFirst ? (
       <Trans>You're the <em>first</em>. Claim this instance.</Trans>
     ) : (
-      <Trans>Create your <em>workeros</em> account.</Trans>
+      <Trans>Create your <em>backlex</em> account.</Trans>
     ),
     lede: isFirst ? (
       <Trans>Detected an empty users table. The first account on a fresh instance is provisioned as admin automatically.</Trans>

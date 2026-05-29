@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.0.1",
   "private": true,
-  "description": "Public marketing site for workeros — standalone Astro + Tailwind v4.",
+  "description": "Public marketing site for backlex — standalone Astro + Tailwind v4.",
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",

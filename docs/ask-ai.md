@@ -1,9 +1,9 @@
 ---
 title: Ask AI (admin page)
-description: Natural-language MCP-tool dispatch from the workeros admin. Translate prompts into reviewable tool calls, approve or auto-run reads, and watch the audit log fill itself.
+description: Natural-language MCP-tool dispatch from the backlex admin. Translate prompts into reviewable tool calls, approve or auto-run reads, and watch the audit log fill itself.
 ---
 
-The **Ask AI** page in the workeros admin (sidebar → *Ask AI*) lets an
+The **Ask AI** page in the backlex admin (sidebar → *Ask AI*) lets an
 operator type a question, get back a single proposed MCP tool call with
 JSON arguments, edit the arguments if the model picked imperfectly, and
 then execute. Reads (`collections.list`, `vector.search`, `schema.*`, …)
@@ -107,7 +107,7 @@ backend behind that).
 
 ## Requirements
 
-- An AI provider credential on the workeros deployment. workeros routes
+- An AI provider credential on the backlex deployment. backlex routes
   through [Vercel AI Gateway](https://ai-gateway.vercel.sh) by default —
   set `AI_GATEWAY_API_KEY` and one key reaches Anthropic, OpenAI, Google,
   and every other gateway-supported provider. The UI ships provider-
@@ -180,10 +180,10 @@ Google / xAI / DeepSeek / Alibaba model returns `503 UNAVAILABLE` until
 ## Model picker + preferences
 
 The model dropdown defaults to `anthropic/claude-haiku-4-5` and persists
-the choice to `localStorage` under `workeros.askai.model`. Pre-gateway
+the choice to `localStorage` under `backlex.askai.model`. Pre-gateway
 values stored as bare ids (`claude-haiku-4-5`) are silently rewritten on
 read so the dropdown highlights the right row on first paint. The
-"auto-run reads" toggle persists to `workeros.askai.autoRun` (`"1"` /
+"auto-run reads" toggle persists to `backlex.askai.autoRun` (`"1"` /
 `"0"`). Neither is workspace-scoped — they are per-browser, which is
 what an operator expects from a power-user surface.
 

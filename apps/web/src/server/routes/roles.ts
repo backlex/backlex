@@ -573,7 +573,7 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
       const sent = await transport
         .send({
           to: body.email,
-          subject: "You've been invited to workeros",
+          subject: "You've been invited to backlex",
           text: `Open ${ctx.env.APP_URL}/sign-up?invite=${encodeURIComponent(body.email)} to accept.`,
         })
         .then(() => true)

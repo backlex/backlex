@@ -36,8 +36,8 @@ samlify.setSchemaValidator({
   validate: async () => "skipped",
 });
 
-const SP_ENTITY_ID = "https://workeros.example/api/t/acme/saml/okta/metadata";
-const SP_ACS_URL = "https://workeros.example/api/t/acme/auth/saml/okta/acs";
+const SP_ENTITY_ID = "https://backlex.example/api/t/acme/saml/okta/metadata";
+const SP_ACS_URL = "https://backlex.example/api/t/acme/auth/saml/okta/acs";
 const IDP_ENTITY_ID = "https://idp.example/saml";
 const IDP_SSO_URL = "https://idp.example/saml/sso";
 
@@ -59,7 +59,7 @@ const buildSelfSignedCert = (): string => {
   cert.serialNumber = "01";
   cert.validity.notBefore = new Date();
   cert.validity.notAfter = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
-  const attrs = [{ name: "commonName", value: "workeros-saml-spike" }];
+  const attrs = [{ name: "commonName", value: "backlex-saml-spike" }];
   cert.setSubject(attrs);
   cert.setIssuer(attrs);
   cert.sign(fwdPrivate, forge.md.sha256.create());
@@ -80,7 +80,7 @@ const idp = samlify.IdentityProvider({
   isAssertionEncrypted: false,
 });
 
-// 4. SP fixture (the workeros side).
+// 4. SP fixture (the backlex side).
 const sp = samlify.ServiceProvider({
   entityID: SP_ENTITY_ID,
   assertionConsumerService: [

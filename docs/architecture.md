@@ -1,6 +1,6 @@
 ---
 title: Architecture
-description: The big picture of workeros in one page — repo shape, runtimes, and adapter layers.
+description: The big picture of backlex in one page — repo shape, runtimes, and adapter layers.
 ---
 
 The big picture in one page.
@@ -8,7 +8,7 @@ The big picture in one page.
 ## Repo shape
 
 ```
-workeros/
+backlex/
 ├─ apps/
 │  └─ web/                 One workspace — Hono API + Vite + React admin SPA
 │                          (server/ + client/ + entries/{bun,worker,vercel,netlify}.ts)
@@ -18,7 +18,7 @@ workeros/
    ├─ auth/                better-auth wrapper + plugin selection
    ├─ ui/                  shadcn radix-luma component library
    ├─ client/              `@backlex/client` typed SDK
-   └─ cli/                 `workeros` CLI
+   └─ cli/                 `backlex` CLI
 ```
 
 ## Adapter pattern
@@ -209,11 +209,11 @@ in lockstep. After schema changes:
 bun run db:generate:pg         # refresh snapshot only (interactive TTY)
 bun run db:generate:sqlite
 bun run db:migrate:pg          # needs DATABASE_URL; also CREATE EXTENSION vector
-bun run db:migrate:sqlite      # writes to ./.data/workeros.sqlite
+bun run db:migrate:sqlite      # writes to ./.data/backlex.sqlite
 bun run db:migrate:d1          # apply sqlite migrations to a local D1
 bun run db:migrate:d1:remote   # same, but to deployed CF D1
 # or via the CLI:
-bun run workeros migrate
+bun run backlex migrate
 ```
 
 ## Why these tradeoffs

@@ -78,7 +78,7 @@ const ensureTable = async (a: Applier): Promise<void> => {
   if (a.dialect === "pg") {
     await runStatement(
       a,
-      sql`CREATE TABLE IF NOT EXISTS __workeros_migrations (
+      sql`CREATE TABLE IF NOT EXISTS __backlex_migrations (
         name TEXT PRIMARY KEY,
         applied_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
       )`,
@@ -86,7 +86,7 @@ const ensureTable = async (a: Applier): Promise<void> => {
   } else {
     await runStatement(
       a,
-      sql`CREATE TABLE IF NOT EXISTS __workeros_migrations (
+      sql`CREATE TABLE IF NOT EXISTS __backlex_migrations (
         name TEXT PRIMARY KEY,
         applied_at INTEGER NOT NULL DEFAULT (CAST(strftime('%s', 'now') AS INTEGER) * 1000)
       )`,
@@ -97,13 +97,13 @@ const ensureTable = async (a: Applier): Promise<void> => {
 const fetchApplied = async (a: Applier): Promise<Set<string>> => {
   const rows = await selectRows<{ name: string }>(
     a,
-    sql`SELECT name FROM __workeros_migrations`,
+    sql`SELECT name FROM __backlex_migrations`,
   );
   return new Set(rows.map((r) => r.name));
 };
 
 /** Per-statement error filter. Tolerates "this object is already there"
- *  failures so a database that was created before `__workeros_migrations`
+ *  failures so a database that was created before `__backlex_migrations`
  *  existed can still adopt the ledger without re-applying every CREATE
  *  TABLE. Anything else propagates so the operator sees a real failure.
  *
@@ -207,7 +207,7 @@ const apply = async (a: Applier): Promise<void> => {
       }
       await runStatement(
         a,
-        sql`INSERT INTO __workeros_migrations (name) VALUES (${m.name})`,
+        sql`INSERT INTO __backlex_migrations (name) VALUES (${m.name})`,
       );
     } catch (e) {
       // Surface the deepest cause-chain message so the operator sees the
@@ -220,7 +220,7 @@ const apply = async (a: Applier): Promise<void> => {
 };
 
 /** Apply every migration the bundle carries that hasn't already been
- *  recorded in `__workeros_migrations`. Safe to call concurrently; the
+ *  recorded in `__backlex_migrations`. Safe to call concurrently; the
  *  per-isolate WeakMap ensures only one apply runs at a time per handle.
  *
  *  Throws if the database is unreachable or any statement fails. The

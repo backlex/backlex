@@ -1,7 +1,7 @@
 /**
  * Apply hand-written SQLite migrations to a local Bun SQLite file.
  *   bun run packages/db/src/sqlite/migrate.ts [path]
- * Default path: ./.data/workeros.sqlite
+ * Default path: ./.data/backlex.sqlite
  *
  * Mirrors `migrate-d1.ts`'s contract: each `migration.sql` is hashed,
  * `__drizzle_migrations` keeps the ledger, and we only execute SQL for
@@ -15,7 +15,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-const path = process.argv[2] ?? "./.data/workeros.sqlite";
+const path = process.argv[2] ?? "./.data/backlex.sqlite";
 mkdirSync(dirname(path), { recursive: true });
 
 const db = new Database(path, { create: true });

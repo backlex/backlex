@@ -1,4 +1,4 @@
-// Inline lucide-style icon components used by the workeros admin design.
+// Inline lucide-style icon components used by the backlex admin design.
 import type { ReactNode, SVGProps } from "react";
 
 export type IconProps = Omit<SVGProps<SVGSVGElement>, "fill" | "stroke"> & {

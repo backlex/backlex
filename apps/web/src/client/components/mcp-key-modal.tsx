@@ -59,7 +59,7 @@ interface ToolsListResponse {
   result?: { tools: ToolDescriptor[] };
 }
 
-const MCP_URL_PLACEHOLDER = "https://your-workeros.example.com/mcp";
+const MCP_URL_PLACEHOLDER = "https://your-backlex.example.com/mcp";
 
 export const McpKeyModal = ({
   open,

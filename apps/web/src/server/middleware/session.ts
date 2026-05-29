@@ -137,7 +137,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
   // When a request authenticates with an API key, the key carries the tenant
   // it was issued for. Surface it so tenantMiddleware can pin the request to
   // that workspace — header/cookie/user-pref resolution would otherwise miss
-  // it on machine-to-machine calls that don't send the X-Workeros-Tenant.
+  // it on machine-to-machine calls that don't send the X-Backlex-Tenant.
   let apiKeyTenantId: string | null = null;
   // A role-scoped key narrows the request to a single role (see api_keys.role_id).
   let apiKeyRoleId: string | null = null;

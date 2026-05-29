@@ -200,7 +200,7 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
             <Input
               value={cfg.bindDn}
               onChange={(e) => patch({ bindDn: e.target.value })}
-              placeholder="cn=workeros,ou=service,dc=corp,dc=example"
+              placeholder="cn=backlex,ou=service,dc=corp,dc=example"
             />
           </div>
           <div className="flex flex-col gap-1.5">

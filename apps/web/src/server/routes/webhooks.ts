@@ -24,7 +24,7 @@ const WebhookInput = z
       description: "Custom request headers sent on every delivery.",
     }),
     secret: z.string().optional().openapi({
-      description: "Used to sign deliveries (`X-Workeros-Signature` HMAC-SHA256).",
+      description: "Used to sign deliveries (`X-Backlex-Signature` HMAC-SHA256).",
     }),
     active: z.boolean().optional(),
   })

@@ -1,4 +1,4 @@
-# workeros
+# backlex
 
 Self-hostable Supabase + Directus alternative. **One codebase, four deploy
 targets**: Bun (long-running), Cloudflare Workers, Vercel Edge, Netlify Edge.
@@ -37,7 +37,7 @@ packages/
   auth/     better-auth wrapper (email + OAuth + plugins + passkey)
   ui/       shadcn radix-luma component library
   client/   Typed SDK (browser + Node)
-  cli/      `workeros` CLI (migrate, gen-types)
+  cli/      `backlex` CLI (migrate, gen-types)
 ```
 
 ## Quick start
@@ -65,7 +65,7 @@ The API picks a database based on bindings/env in this order:
 
 1. `D1` binding (Cloudflare Workers) → D1 SQLite
 2. `DATABASE_URL` → Postgres via `postgres-js`
-3. otherwise → Bun SQLite at `./.data/workeros.sqlite`
+3. otherwise → Bun SQLite at `./.data/backlex.sqlite`
 
 ## Deploy targets
 
@@ -92,11 +92,11 @@ APP_URL=https://your.app DATABASE_URL=postgres://... \
 
 ```bash
 cd apps/web
-wrangler d1 create workeros          # paste id into wrangler.toml
-wrangler r2 bucket create workeros-files
-wrangler vectorize create workeros-embeddings --dimensions=1536 --metric=cosine
+wrangler d1 create backlex          # paste id into wrangler.toml
+wrangler r2 bucket create backlex-files
+wrangler vectorize create backlex-embeddings --dimensions=1536 --metric=cosine
 wrangler secret put AUTH_SECRET
-wrangler d1 migrations apply workeros --remote
+wrangler d1 migrations apply backlex --remote
 wrangler deploy
 ```
 
@@ -208,7 +208,7 @@ POST   /api/_internal/sandbox-rpc   internal — Bearer-auth, used by the remote
 - [Querying items](docs/querying.md) — filter / sort / projection / expand / locale / meta
 - [Adopting tables](docs/adopting-tables.md) — wrap an existing table without DDL
 - [Functions / sandbox](docs/functions.md) — three providers, RPC bridge, security
-- [SDK + CLI](docs/sdk-and-cli.md) — `@backlex/client` + `workeros` commands
+- [SDK + CLI](docs/sdk-and-cli.md) — `@backlex/client` + `backlex` commands
 - [GraphQL](docs/graphql.md) — auto-schema, relations, mutations
 - [Realtime](docs/realtime.md) — channels, permission filtering, hosting
 - [Storage](docs/storage.md) — adapters, image transforms, signed URLs

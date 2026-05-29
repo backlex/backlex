@@ -43,7 +43,7 @@ export interface SamlProviderConfig {
   wantSignedAssertions: boolean;
   /** NameID format the SP requests in AuthnRequest. */
   nameIdFormat: string;
-  /** Maps assertion attribute names → canonical workeros user fields.
+  /** Maps assertion attribute names → canonical backlex user fields.
    *  Keys expected: `email`, `firstName`, `lastName`, `groups`. */
   attributeMap: Record<string, string>;
 }

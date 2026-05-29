@@ -43,7 +43,7 @@ export const listTables: McpTool = {
   name: "db.list_tables",
   description:
     "List every physical table in the workspace database (admin-only) — " +
-    "includes workeros system tables, managed collection tables, and any " +
+    "includes backlex system tables, managed collection tables, and any " +
     "adopted tables. Useful for discovery before `db.execute_sql`.",
   inputSchema: { type: "object", properties: {}, additionalProperties: false },
   handler: async (_args, ctx) => {

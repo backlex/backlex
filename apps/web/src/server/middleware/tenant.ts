@@ -14,8 +14,8 @@ import { loadUnfilteredRoleNames } from "./session";
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export const TENANT_COOKIE = "workeros-tenant";
-export const TENANT_HEADER = "x-workeros-tenant";
+export const TENANT_COOKIE = "backlex-tenant";
+export const TENANT_HEADER = "x-backlex-tenant";
 
 const tablesFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg"
@@ -163,8 +163,8 @@ const touchMember = async (
 
 /**
  * Resolve the active tenant for the request:
- *   1. `X-Workeros-Tenant` header (slug or id)
- *   2. `workeros-tenant` cookie
+ *   1. `X-Backlex-Tenant` header (slug or id)
+ *   2. `backlex-tenant` cookie
  *   3. user.activeTenantId
  *   4. first tenant the user belongs to
  *   5. default tenant (created on demand)
@@ -220,7 +220,7 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   // the lookup off the request path for every member-of-tenant call, which
   // is by far the common case.
   let tenantRoles: string[] = [];
-  // Whether to persist this tenant choice in the workeros-tenant cookie.
+  // Whether to persist this tenant choice in the backlex-tenant cookie.
   // Default true — the common case is a member operating on a workspace they
   // belong to. Flipped to false when we're letting a cross-tenant admin
   // *view* another workspace via the super-admin shortcut: their actual home

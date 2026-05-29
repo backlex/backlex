@@ -48,7 +48,7 @@ guides; this list is everything else.
 
 - **Webhooks** (`routes/webhooks.ts`, `routes/webhook-trigger.ts`,
   `services/webhooks.ts`) — outbound delivery with HMAC
-  `X-Workeros-Signature` + retry. The trigger route is the inbound
+  `X-Backlex-Signature` + retry. The trigger route is the inbound
   side that flows/functions hook into.
 - **Flows** (`routes/flows.ts`, `services/flows.ts`) — visual
   workflow builder. Trigger keys are `event` / `cron` / `webhook` /

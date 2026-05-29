@@ -53,6 +53,34 @@ describe("reportToCloud — opt-in", () => {
     expect(init?.body).toBe(JSON.stringify({ kind: "error", message: "boom", route: "GET /x", status: 500 }));
   });
 
+  test("prefers the service binding over HTTP when both are present", async () => {
+    const serviceCalls: { url: string; init?: RequestInit }[] = [];
+    const env = {
+      CLOUD_REPORT_URL: "https://cloud.example.com",
+      CLOUD_REPORT_SECRET: "rs_secret",
+      CLOUD_PROJECT_ID: "proj_123",
+      CLOUD_REPORT_SERVICE: {
+        fetch: async (req: Request) => {
+          serviceCalls.push({ url: req.url, init: { method: req.method } });
+          return new Response(null, { status: 202 });
+        },
+      },
+    } as unknown as Env;
+    const p = reportToCloud(env, { kind: "error", message: "via binding" });
+    expect(p).toBeDefined();
+    await p;
+    // Service binding used; global fetch untouched.
+    expect(serviceCalls).toHaveLength(1);
+    expect(serviceCalls[0]?.url).toBe("https://cloud-report.internal/api/webhooks/tenant-report");
+    expect(calls).toHaveLength(0);
+  });
+
+  test("no-op when secret/project present but neither service nor URL is set", async () => {
+    const env = { CLOUD_REPORT_SECRET: "s", CLOUD_PROJECT_ID: "p" } as Env;
+    expect(reportToCloud(env, { kind: "error", message: "x" })).toBeUndefined();
+    expect(calls).toHaveLength(0);
+  });
+
   test("swallows fetch failures (fire-and-forget)", async () => {
     globalThis.fetch = (async () => {
       throw new Error("network down");

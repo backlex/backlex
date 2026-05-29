@@ -103,7 +103,7 @@ export const dispatch = async (
         serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
         capabilities: {
           tools: { listChanged: false },
-          // Resources expose every collection as `workeros://collection/<slug>`
+          // Resources expose every collection as `backlex://collection/<slug>`
           // so MCP clients with attach pickers (Claude Desktop) can browse
           // and pull collection schema + sample rows into a chat. Subscribe
           // isn't supported yet — would require resumable SSE.

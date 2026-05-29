@@ -15,7 +15,7 @@ interface SessionResp {
  * and every API call surfaced 401 toasts before the user was forced
  * through sign-in.
  *
- * Listens for `workeros:session-expired` so any 401 from `api()` can ask
+ * Listens for `backlex:session-expired` so any 401 from `api()` can ask
  * the gate to recheck/redirect mid-session.
  */
 export const AuthGate = ({ children }: { children: ReactNode }) => {
@@ -39,11 +39,11 @@ export const AuthGate = ({ children }: { children: ReactNode }) => {
     const onExpired = () => {
       setState("anon");
     };
-    window.addEventListener("workeros:session-expired", onExpired);
+    window.addEventListener("backlex:session-expired", onExpired);
 
     return () => {
       cancelled = true;
-      window.removeEventListener("workeros:session-expired", onExpired);
+      window.removeEventListener("backlex:session-expired", onExpired);
     };
   }, []);
 

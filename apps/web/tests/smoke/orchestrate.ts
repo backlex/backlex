@@ -46,7 +46,7 @@ interface RuntimeProfile {
 
 const sqliteProfile: RuntimeProfile = {
   setupDb: async () => {
-    const dir = mkdtempSync(join(tmpdir(), "workeros-smoke-"));
+    const dir = mkdtempSync(join(tmpdir(), "backlex-smoke-"));
     const dbPath = join(dir, "smoke.sqlite");
     // The sqlite migrator reads the DB path from argv[2] (see
     // packages/db/src/sqlite/migrate.ts), so we invoke it directly
@@ -135,7 +135,7 @@ const bundleProfile = (bundlePath: string): RuntimeProfile => ({
 // off for this profile.
 const cloudflareProfile: RuntimeProfile = {
   setupDb: async () => {
-    const dir = mkdtempSync(join(tmpdir(), "workeros-smoke-cf-"));
+    const dir = mkdtempSync(join(tmpdir(), "backlex-smoke-cf-"));
     const r = await runOnce(
       "bun",
       [

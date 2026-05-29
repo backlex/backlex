@@ -21,7 +21,7 @@ const SYSTEM_AUTH: AuthSubject = { userId: null, email: null, roles: [] };
  * scanned for due crons; the next tick fires every cron whose pattern's
  * `prev()` falls inside `(lastTickAt, now]`. This collapses missed
  * minutes (after a restart or pause) into at most one execution per
- * pattern per missed window — i.e. workeros guarantees at-most-once
+ * pattern per missed window — i.e. backlex guarantees at-most-once
  * dispatch per minute, never doubles.
  */
 let lastTickAt: Date | null = null;

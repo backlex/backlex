@@ -21,7 +21,7 @@ const insertErrorRow = (
 ) =>
   h.fetch("/api/admin/db/sql/run?writes=1", {
     method: "POST",
-    headers: { ...JSON_HEADERS, "x-workeros-confirm": "yes" },
+    headers: { ...JSON_HEADERS, "x-backlex-confirm": "yes" },
     body: JSON.stringify({
       sql:
         "INSERT INTO activity (id, action, collection, payload, created_at) VALUES (" +

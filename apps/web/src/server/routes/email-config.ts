@@ -314,7 +314,7 @@ export const emailConfigRoutes = new OpenAPIHono<AppBindings>()
       const transport = await ctx.emailFor(auth.tenantId ?? null);
       await transport.send({
         to,
-        subject: "workeros — email delivery test",
+        subject: "backlex — email delivery test",
         text: `This is a test message confirming your workspace email transport is working.\n\nSent from ${ctx.env.APP_URL} at ${new Date().toISOString()}.`,
         html: `<p>This is a test message confirming your workspace email transport is working.</p><p style="color:#888;font-size:12px">Sent from ${ctx.env.APP_URL} at ${new Date().toISOString()}.</p>`,
       });

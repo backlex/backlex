@@ -347,7 +347,7 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Endpoint URL</Trans> <span className="text-destructive">*</span></label>
             <div className="flex gap-2">
               <Select size="sm" value={draft.method} onChange={(v) => update("method", v)} className="h-9 w-[100px]" options={["POST", "PUT", "PATCH"]} />
-              <Input className="font-mono flex-1 text-[12.5px]" aria-invalid={!!errors.url} value={draft.url} onChange={(e) => update("url", e.target.value)} placeholder="https://api.example.com/webhooks/workeros" />
+              <Input className="font-mono flex-1 text-[12.5px]" aria-invalid={!!errors.url} value={draft.url} onChange={(e) => update("url", e.target.value)} placeholder="https://api.example.com/webhooks/backlex" />
             </div>
             {errors.url ? <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{errors.url}</div> : <span className="text-[11.5px] text-muted-foreground"><Trans>Must accept the chosen HTTP method and respond with 2xx within 10s.</Trans></span>}
           </div>
@@ -378,13 +378,13 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
               <Button variant="outline" size="sm" icon={revealSecret ? I.X : I.Eye} onClick={() => setRevealSecret(!revealSecret)}>{revealSecret ? <Trans>Hide</Trans> : <Trans>Show</Trans>}</Button>
               <Button variant="outline" size="sm" icon={I.Refresh} onClick={() => { update("secret", "whsec_" + Math.random().toString(16).slice(2, 14)); pushToast(t`Secret rotated.`); }}><Trans>Rotate</Trans></Button>
             </div>
-            <span className="text-[11.5px] text-muted-foreground"><Trans>Sent as <span className="font-mono">X-Workeros-Signature: sha256=…</span>. Verify on the receiver.</Trans></span>
+            <span className="text-[11.5px] text-muted-foreground"><Trans>Sent as <span className="font-mono">X-Backlex-Signature: sha256=…</span>. Verify on the receiver.</Trans></span>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Custom headers</Trans></label>
-            <Textarea className="font-mono min-h-[70px] text-xs" value={draft.headers} onChange={(e) => update("headers", e.target.value)} placeholder={"Authorization: Bearer …\nX-Tenant: workeros"} />
-            <span className="text-[11.5px] text-muted-foreground"><Trans>One per line. <span className="font-mono">Content-Type</span> and <span className="font-mono">X-Workeros-*</span> are reserved.</Trans></span>
+            <Textarea className="font-mono min-h-[70px] text-xs" value={draft.headers} onChange={(e) => update("headers", e.target.value)} placeholder={"Authorization: Bearer …\nX-Tenant: backlex"} />
+            <span className="text-[11.5px] text-muted-foreground"><Trans>One per line. <span className="font-mono">Content-Type</span> and <span className="font-mono">X-Backlex-*</span> are reserved.</Trans></span>
           </div>
 
           <div className="flex items-center justify-between gap-3">

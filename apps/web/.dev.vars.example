@@ -2,11 +2,11 @@ APP_URL = "http://localhost:5173"
 AUTH_SECRET = "dev-only-secret-not-for-prod-please-rotate"
 
 # Database — pick ONE block. Without DATABASE_URL the runtime falls back to
-# bun:sqlite at ./.data/workeros.sqlite (or to the D1 binding on CF Workers).
+# bun:sqlite at ./.data/backlex.sqlite (or to the D1 binding on CF Workers).
 # Full provider matrix + caveats: docs/database-providers.md
 #
 # Self-hosted Postgres
-# DATABASE_URL = "postgres://user:pass@localhost:5432/workeros"
+# DATABASE_URL = "postgres://user:pass@localhost:5432/backlex"
 #
 # Supabase — use the **transaction pooler** URL (port 6543). postgres-js
 # already runs with `prepare: false` so the pooler is happy. pgvector is
@@ -20,7 +20,7 @@ AUTH_SECRET = "dev-only-secret-not-for-prod-please-rotate"
 # DATABASE_DRIVER = "neon-http"   # Vercel Edge only
 #
 # Xata — standard PG wire (postgres-js works). NOTE: Xata does NOT ship the
-# pgvector extension. To use workeros' vector endpoints with Xata you must
+# pgvector extension. To use backlex' vector endpoints with Xata you must
 # also bind a Cloudflare Vectorize index (VECTORIZE_OPENAI / VECTORIZE_BGE_M3)
 # or vector endpoints will reject with "No vector backend configured".
 # DATABASE_URL = "postgres://<workspace-id>:<api-key>@<workspace>.<region>.xata.sh:5432/<db>:<branch>?sslmode=require"
@@ -36,7 +36,7 @@ AUTH_SECRET = "dev-only-secret-not-for-prod-please-rotate"
 # SQLITE_PATH at the mounted SQLite file, and the Bun SQLite driver picks
 # it up unchanged. Writes routed to the primary node automatically by the
 # FUSE layer; replicas serve reads.
-# SQLITE_PATH = "/litefs/workeros.sqlite"
+# SQLITE_PATH = "/litefs/backlex.sqlite"
 
 # Local-only seeded admin used by smoke tests / Claude debug runs.
 # Sign in or POST /api/auth/sign-up/email with these on a fresh DB; if

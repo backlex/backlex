@@ -25,7 +25,7 @@ bun run db:generate:pg     # drizzle-kit generate against packages/db/src/pg/sch
                            # on column renames); run from your own terminal.
 bun run db:generate:sqlite
 bun run db:migrate:pg      # needs DATABASE_URL; also CREATE EXTENSION vector
-bun run db:migrate:sqlite  # writes to ./.data/workeros.sqlite (Bun SQLite)
+bun run db:migrate:sqlite  # writes to ./.data/backlex.sqlite (Bun SQLite)
 bun run db:migrate:d1      # apply drizzle/sqlite migrations to a local D1
 bun run db:migrate:d1:remote # same, but to the deployed CF D1 (--remote)
 bun run db:studio          # drizzle-kit studio against the active dialect config
@@ -108,7 +108,7 @@ Bun workspaces — every package is source-consumed (no build step between them)
 - `packages/core` — runtime-agnostic types: `Env`, `AppError`, adapter contracts, permission DSL types.
 - `packages/ui` — shared shadcn design system (see below).
 - `packages/cli` — `backlex` binary, invoked via `bun backlex <cmd>`; see `docs/sdk-and-cli.md`.
-- `packages/client` — public TypeScript SDK end-user apps consume against the workeros API.
+- `packages/client` — public TypeScript SDK end-user apps consume against the backlex API.
 
 ### One app, four runtimes
 
@@ -128,8 +128,8 @@ The admin's API client (`client/lib/api.ts`) defaults to relative `/api/...` pat
 System tables live in `packages/db/src/{pg,sqlite}/schema.ts` (Drizzle, dual-dialect — **always edit both files** when changing schema). User collections live in **physical tables** whose name is whatever the collection metadata row's `physical_table` column says — the default the unified create endpoint picks is `c_<tenantPrefix12>_<slug>`, but adopted collections can wrap any existing table name.
 
 `POST /api/collections` is the single create endpoint:
-- `adopted: false` (default) — workeros creates the physical table (managed).
-- `adopted: true` — table already exists; workeros only writes the metadata row.
+- `adopted: false` (default) — backlex creates the physical table (managed).
+- `adopted: true` — table already exists; backlex only writes the metadata row.
 
 `packages/db/src/schema-applier.ts::applyCollection` is **additive only**: it never drops or alters existing columns and short-circuits when `def.adopted === true`. Field removal goes through `dropField` so admins audit destructive moves. See `docs/adopting-tables.md` for the full lifecycle.
 

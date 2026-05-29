@@ -369,7 +369,7 @@ export const storageRoutes = new OpenAPIHono<AppBindings>()
         resp = await fetch(body.url, {
           signal: controller.signal,
           redirect: "follow",
-          headers: { "user-agent": "workeros-storage-import/1.0" },
+          headers: { "user-agent": "backlex-storage-import/1.0" },
         });
       } catch (e) {
         clearTimeout(timer);

@@ -3,10 +3,10 @@ title: Auth planes & workspace end-users
 description: The control-plane vs app-plane split — how admin users (running the dashboard) and workspace end-users (customers of the app built on a workspace) coexist with separate tables, sessions, and APIs.
 ---
 
-workeros is built for **two distinct audiences inside the same instance**:
+backlex is built for **two distinct audiences inside the same instance**:
 
 - The team running the dashboard — operators, developers, internal
-  admins. They sign into `app.your-workeros.com`, configure
+  admins. They sign into `app.your-backlex.com`, configure
   collections, write permissions, invite teammates.
 - The end-users of whatever product is being *built on top of* a
   workspace — the customers of a SaaS, the readers of a CMS, the
@@ -46,7 +46,7 @@ role load, condition compilation — can branch on it without re-asking
 "which kind of user is this". For example,
 `apps/web/src/server/middleware/tenant.ts:204` pins an app-plane request
 to the workspace stamped on its session row and *ignores* any
-`X-Workeros-Tenant` header — a customer's frontend can never accidentally
+`X-Backlex-Tenant` header — a customer's frontend can never accidentally
 walk into another tenant's data even if it sends one.
 
 ## Tables at a glance
@@ -113,7 +113,7 @@ Admin CRUD lives in `apps/web/src/server/routes/tenants.ts`:
 |-------------------------------------|----------------------------------------------------------|
 | `GET    /api/tenants`               | List workspaces the caller belongs to                    |
 | `POST   /api/tenants`               | Create a workspace; caller becomes owner + `admin` role  |
-| `POST   /api/tenants/switch`        | Set the `workeros-tenant` cookie + persist `active_tenant_id` |
+| `POST   /api/tenants/switch`        | Set the `backlex-tenant` cookie + persist `active_tenant_id` |
 | `GET    /api/tenants/{id}/members`  | List `tenant_members`                                    |
 | `POST   /api/tenants/{id}/members/invite` | Send a 7-day invite token (best-effort mail via workspace transport) |
 | `DELETE /api/tenants/{id}/members/{memberId}` | Remove a membership                              |
@@ -122,7 +122,7 @@ Admin CRUD lives in `apps/web/src/server/routes/tenants.ts`:
 `/switch` is the only endpoint that mutates the *active* workspace —
 everything else respects whatever `tenantMiddleware` resolved (see
 `apps/web/src/server/middleware/tenant.ts:165`). Resolution order:
-`X-Workeros-Tenant` header → `workeros-tenant` cookie →
+`X-Backlex-Tenant` header → `backlex-tenant` cookie →
 `users.active_tenant_id` → first membership → `ensureDefaultTenant`.
 
 ## End-user auth surface (`/api/t/:slug/auth/*`)
@@ -313,22 +313,22 @@ In app mode:
 
 ## End-to-end flow example
 
-A SaaS app called "Acme" runs on top of workeros. The flow from
+A SaaS app called "Acme" runs on top of backlex. The flow from
 zero to "logged-in customer reading their data":
 
 **1. Operator creates the workspace + a collection (control plane).**
 
 ```bash
-# Browser session at app.workeros.example.com — admin cookie.
-curl -X POST https://api.workeros.example.com/api/tenants \
+# Browser session at app.backlex.example.com — admin cookie.
+curl -X POST https://api.backlex.example.com/api/tenants \
   -H "content-type: application/json" \
   --cookie "$ADMIN_COOKIES" \
   -d '{ "name": "Acme", "env": "production" }'
 # → { data: { id: "ten_…", slug: "acme", name: "Acme" } }
 
-curl -X POST https://api.workeros.example.com/api/collections \
+curl -X POST https://api.backlex.example.com/api/collections \
   -H "content-type: application/json" \
-  -H "X-Workeros-Tenant: acme" \
+  -H "X-Backlex-Tenant: acme" \
   --cookie "$ADMIN_COOKIES" \
   -d '{ "slug": "tasks", "fields": [
         { "name": "title", "type": "text", "required": true },
@@ -349,7 +349,7 @@ instance with the new providers.
 import { createClient } from "@backlex/client";
 
 const wks = createClient({
-  url: "https://api.workeros.example.com",
+  url: "https://api.backlex.example.com",
   workspace: "acme",
 });
 
@@ -389,6 +389,6 @@ Every request goes through:
   `permissions` for the workspace; `ownerScoped` injects an `owner_id
   = $user.id` condition compiled to a Drizzle SQL fragment.
 
-The same workeros instance, on the same routes, serves Acme's
+The same backlex instance, on the same routes, serves Acme's
 internal operators and Alice's CRUD with no shared identity surface
 between them.

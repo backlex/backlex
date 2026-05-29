@@ -1,7 +1,7 @@
 // Ask AI — admin page.
 //
-// Ports the design's four-tab AI/MCP page (/tmp/design-bundle/workeros/project/ai-mcp.jsx)
-// onto the canonical workeros UI primitives:
+// Ports the design's four-tab AI/MCP page (/tmp/design-bundle/backlex/project/ai-mcp.jsx)
+// onto the canonical backlex UI primitives:
 //   - Ask     — natural-language → MCP tool dispatcher (Phase 1)
 //   - Tools   — searchable catalog + per-key guard editor (Phase 2)
 //   - Runs    — filtered activity table with CSV export    (Phase 2)
@@ -306,7 +306,7 @@ function ModelPicker({
             <Trans>
               Configured via{" "}
               <span className="font-mono text-foreground">AI_GATEWAY_API_KEY</span>{" "}
-              on the workeros deployment (or legacy{" "}
+              on the backlex deployment (or legacy{" "}
               <span className="font-mono text-foreground">ANTHROPIC_API_KEY</span>).
             </Trans>
           </div>
@@ -329,7 +329,7 @@ function ModelPicker({
           <Trans>
             Configured via{" "}
             <span className="font-mono text-foreground">AI_GATEWAY_API_KEY</span>{" "}
-            on the workeros deployment (or legacy{" "}
+            on the backlex deployment (or legacy{" "}
             <span className="font-mono text-foreground">ANTHROPIC_API_KEY</span>).
           </Trans>
         </div>
@@ -477,8 +477,8 @@ export const mapActivityToRun = (row: ApiActivity): RunRow => {
   };
 };
 
-const STORAGE_AUTO_RUN = "workeros.askai.autoRun";
-const STORAGE_MODEL = "workeros.askai.model";
+const STORAGE_AUTO_RUN = "backlex.askai.autoRun";
+const STORAGE_MODEL = "backlex.askai.model";
 
 const readBoolPref = (key: string, fallback: boolean): boolean => {
   if (typeof window === "undefined") return fallback;
@@ -1703,7 +1703,7 @@ function ToolsTab({
                 PATCH
               </div>
               <pre className="m-0 font-mono text-[11.5px] leading-relaxed whitespace-pre-wrap text-muted-foreground">
-                {`curl -X PATCH $WORKEROS_URL/api/api-keys/<id>/mcp-guards \\
+                {`curl -X PATCH $BACKLEX_URL/api/api-keys/<id>/mcp-guards \\
   -H "Authorization: Bearer pak_<admin>" \\
   -H "Content-Type: application/json" \\
   -d '{"mcpReadOnly": ${selectedKey?.mcpReadOnly === true ? "true" : "false"}}'`}
@@ -2013,7 +2013,7 @@ function ConnectTab({
   const [client, setClient] = useState<ConnectClient>("claude-desktop");
 
   const mcpUrl = useMemo(() => {
-    if (typeof window === "undefined") return "https://your-workeros.example.com/mcp";
+    if (typeof window === "undefined") return "https://your-backlex.example.com/mcp";
     return `${window.location.origin}/mcp`;
   }, []);
 
@@ -2158,7 +2158,7 @@ function ConnectTab({
               </Trans>
             </li>
             <li>
-              <Trans>OAuth scope mapping → workeros roles</Trans>
+              <Trans>OAuth scope mapping → backlex roles</Trans>
             </li>
           </ul>
         </div>

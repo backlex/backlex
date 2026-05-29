@@ -1,11 +1,11 @@
 /**
  * MCP resources surface. Two URI shapes exposed:
  *
- *   - `workeros://collection/<slug>` — per-collection resource. `read` returns
+ *   - `backlex://collection/<slug>` — per-collection resource. `read` returns
  *     the full field schema + the first N rows of the collection's data, so
  *     a client can `📎 attach` a collection into an AI conversation without
  *     having to compose a tool call.
- *   - `workeros://schema` — workspace-level resource. `read` returns every
+ *   - `backlex://schema` — workspace-level resource. `read` returns every
  *     collection's slug + field names (an at-a-glance directory).
  *
  * Resources go through the same `fetchInternal` sub-fetch the tools use, so
@@ -37,13 +37,13 @@ export interface McpResourceContents {
   contents: Array<{ uri: string; mimeType: string; text: string }>;
 }
 
-const collectionUri = (slug: string): string => `workeros://collection/${slug}`;
+const collectionUri = (slug: string): string => `backlex://collection/${slug}`;
 
-const SCHEMA_URI = "workeros://schema";
+const SCHEMA_URI = "backlex://schema";
 
 const parseUri = (uri: string): { kind: "schema" } | { kind: "collection"; slug: string } | null => {
   if (uri === SCHEMA_URI) return { kind: "schema" };
-  const m = uri.match(/^workeros:\/\/collection\/([a-z][a-z0-9_-]*)$/i);
+  const m = uri.match(/^backlex:\/\/collection\/([a-z][a-z0-9_-]*)$/i);
   if (!m) return null;
   return { kind: "collection", slug: m[1]! };
 };

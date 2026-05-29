@@ -3,7 +3,7 @@ title: SSO (SAML & LDAP)
 description: Per-tenant SAML 2.0 and LDAP/Active Directory sign-in for the workspace end-user pool.
 ---
 
-workeros supports per-tenant SAML 2.0 SSO **and** LDAP / Active Directory
+backlex supports per-tenant SAML 2.0 SSO **and** LDAP / Active Directory
 for the **workspace end-user pool** (the `app_users` table, served via
 `/api/t/<slug>/auth/*`). The admin app itself stays on the existing
 `/api/auth/*` better-auth surface.
@@ -18,7 +18,7 @@ page.
 ```
 +-------------+      AuthnRequest      +-------------+      SAMLResponse      +----------------+
 |             | ---------------------> |             | <--------------------- |                |
-|  customer   |                        |    IdP      |                        |    workeros    |
+|  customer   |                        |    IdP      |                        |    backlex    |
 |  end-user   | <--------------------- | (Okta etc)  | -- 302 to ACS POST --> |  (workspace SP)|
 |             |  sign-in form          |             |                        |                |
 +-------------+                        +-------------+                        +----------------+
@@ -60,15 +60,15 @@ only ever decrypt it inside `resolveSamlProvider`, never return it.
 ### Okta
 
 1. Okta admin → **Applications** → **Create App Integration** → SAML 2.0.
-2. Single Sign On URL: paste the ACS URL from the workeros admin dialog
+2. Single Sign On URL: paste the ACS URL from the backlex admin dialog
    (`Authentication → SAML provider → ACS URL`).
 3. Audience URI (SP Entity ID): paste the SP entity id (= metadata URL by
    default).
 4. Name ID format: `EmailAddress` (matches our default).
 5. Attribute Statements: add `email`, `firstName`, `lastName`, and
    (optionally) `groups`. Use the names from the attribute-map fields in
-   the workeros dialog.
-6. Okta will give you a metadata URL — paste it into the workeros
+   the backlex dialog.
+6. Okta will give you a metadata URL — paste it into the backlex
    dialog's **Import metadata** tab and click **Fetch & parse**.
 
 ### Azure AD / Entra ID
@@ -79,7 +79,7 @@ only ever decrypt it inside `resolveSamlProvider`, never return it.
 3. Identifier (Entity ID): paste the SP entity id.
 4. Reply URL (ACS): paste the ACS URL.
 5. Attributes: keep the default `http://schemas.xmlsoap.org/…` namespace —
-   the workeros **Azure AD / Entra ID** template maps those already.
+   the backlex **Azure AD / Entra ID** template maps those already.
 6. Download the **Federation Metadata XML** and import it via the dialog,
    or paste the SAML Signing Certificate (Base64) into the manual tab.
 
@@ -89,10 +89,10 @@ only ever decrypt it inside `resolveSamlProvider`, never return it.
    **Add custom SAML app**.
 2. Download the metadata file Google offers; paste into the dialog's
    **Import metadata** tab.
-3. Service provider details: ACS URL = the workeros ACS URL; Entity ID =
+3. Service provider details: ACS URL = the backlex ACS URL; Entity ID =
    SP entity id; Name ID format = `EMAIL`.
 4. Attribute mapping: map `Primary email` → `email`, `First name` →
-   `first_name`, `Last name` → `last_name`. The workeros **Google
+   `first_name`, `Last name` → `last_name`. The backlex **Google
    Workspace** template uses those keys.
 
 ## Security knobs
@@ -123,7 +123,7 @@ assignments aren't touched.
 ## Troubleshooting
 
 - **"SAML audience mismatch"** → the IdP set `Audience` to a different
-  value than the workeros SP entity id. Set the IdP's Audience URI / Entity
+  value than the backlex SP entity id. Set the IdP's Audience URI / Entity
   ID to the SP entity id printed in the admin dialog.
 - **"SAML issuer mismatch"** → the IdP's `<Issuer>` doesn't match the
   configured `entityId`. Copy the IdP entity id exactly from its metadata.
@@ -135,7 +135,7 @@ assignments aren't touched.
   a request). Treat as the design: re-initiate by hitting the `/login`
   endpoint again.
 - **Clock skew** → samlify enforces `NotBefore` / `NotOnOrAfter`. If your
-  IdP or workeros host is more than ~5 min off NTP, fix that first.
+  IdP or backlex host is more than ~5 min off NTP, fix that first.
 - **Cert format** → must be PEM (`-----BEGIN CERTIFICATE-----…`). DER
   binary or `.crt` with Windows line endings: re-export as PEM.
 - **Cloudflare Workers runtime** — samlify imports `xml-crypto` which uses
@@ -210,7 +210,7 @@ dc=example,dc=com
 Settings:
 - **URL** — `ldaps://ldap.example.com:636` (use `ldaps://` in production).
 - **Bind DN** — a read-only service account, e.g.
-  `cn=workeros-readonly,ou=service,dc=example,dc=com`.
+  `cn=backlex-readonly,ou=service,dc=example,dc=com`.
 - **Base DN** — `ou=users,dc=example,dc=com`.
 - **User filter** — `(&(objectClass=inetOrgPerson)(uid={{username}}))`.
 - **Attribute map** — `email = mail`, `firstName = givenName`,
@@ -223,8 +223,8 @@ Settings:
 Settings:
 - **URL** — `ldaps://dc1.corp.example:636`. Workers can't reach AD over
   raw TCP — host on Bun/Node.
-- **Bind DN** — typically a domain account: `cn=workeros,ou=Service
-  Accounts,dc=corp,dc=example` or the UPN `workeros@corp.example`.
+- **Bind DN** — typically a domain account: `cn=backlex,ou=Service
+  Accounts,dc=corp,dc=example` or the UPN `backlex@corp.example`.
 - **Base DN** — `dc=corp,dc=example` (or scope tighter — `ou=Users,...` —
   if all sign-in users live below one OU).
 - **User filter** — `(&(objectClass=user)(sAMAccountName={{username}}))`

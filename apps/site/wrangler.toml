@@ -1,0 +1,12 @@
+name = "backlex-website"
+compatibility_date = "2025-01-01"
+
+# Apex marketing site + docs, served as a static-assets-only Worker (no script).
+# Build/assemble with `bun run build:web` (vite build + overlay the Starlight
+# docs from apps/docs into ./dist/docs). The apex route needs a proxied A/AAAA
+# record on backlex.com (the *.backlex.com wildcard does NOT cover the apex).
+routes = [{ pattern = "backlex.com/*", zone_name = "backlex.com" }]
+
+[assets]
+directory = "./dist"
+not_found_handling = "none"

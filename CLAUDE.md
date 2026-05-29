@@ -16,7 +16,7 @@ bun run lint:fix           # biome lint --write (safe auto-fixes)
 bun run build              # vite build (admin SPA + worker bundle)
 bun run deploy             # vite build + wrangler deploy (CF)
 bun run test               # bun test (apps/web/tests/, fresh temp SQLite per spec)
-bun workeros <cmd>         # workeros CLI (packages/cli/bin/workeros.ts) — see docs/sdk-and-cli.md
+bun backlex <cmd>          # backlex CLI (packages/cli/bin/backlex.ts) — see docs/sdk-and-cli.md
 bun run --cwd apps/web i18n:extract  # lingui extract → apps/web/src/client/locales/*.po
 
 # DB — pick the dialect explicitly; there is no shared command:
@@ -107,7 +107,7 @@ Bun workspaces — every package is source-consumed (no build step between them)
 - `packages/auth` — better-auth wrapper; `createAuth(db, dialect, config)`.
 - `packages/core` — runtime-agnostic types: `Env`, `AppError`, adapter contracts, permission DSL types.
 - `packages/ui` — shared shadcn design system (see below).
-- `packages/cli` — `workeros` binary, invoked via `bun workeros <cmd>`; see `docs/sdk-and-cli.md`.
+- `packages/cli` — `backlex` binary, invoked via `bun backlex <cmd>`; see `docs/sdk-and-cli.md`.
 - `packages/client` — public TypeScript SDK end-user apps consume against the workeros API.
 
 ### One app, four runtimes

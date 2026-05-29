@@ -1,5 +1,5 @@
 {
-  "name": "workeros",
+  "name": "backlex",
   "version": "0.0.1",
   "private": true,
   "description": "Bun + Cloudflare Workers backend platform (Supabase/Directus alternative) with Drizzle, better-auth and shadcn admin",
@@ -29,7 +29,7 @@
     "lint": "biome lint apps packages",
     "lint:fix": "biome lint --write apps packages",
     "prepare": "lefthook install --force",
-    "workeros": "bun run packages/cli/bin/workeros.ts"
+    "backlex": "bun run packages/cli/bin/backlex.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",

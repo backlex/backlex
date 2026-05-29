@@ -3,7 +3,7 @@ import { Toaster as Sonner, toast, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
 // Local theme detection — reads `.dark` off <html> and watches for changes.
-// Avoids the next-themes dep; matches the workeros admin's ThemeProvider which
+// Avoids the next-themes dep; matches the backlex admin's ThemeProvider which
 // toggles `.dark` on documentElement.
 const useResolvedTheme = (): "light" | "dark" => {
   const [theme, setTheme] = React.useState<"light" | "dark">(() => {

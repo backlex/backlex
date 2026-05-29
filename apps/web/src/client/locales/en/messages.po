@@ -622,7 +622,7 @@ msgstr "A provider with id \"{id}\" already exists."
 msgid "A read-only view of one record from <0>{collection}</0>."
 msgstr "A read-only view of one record from <0>{collection}</0>."
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/magic-link.tsx
 msgid "A signed link will arrive in your inbox. Single-use, expires in 15 minutes."
 msgstr "A signed link will arrive in your inbox. Single-use, expires in 15 minutes."
 
@@ -918,16 +918,16 @@ msgstr "Admins"
 
 #. placeholder {0}: fk.referencesTable
 #: src/client/admin/adopt-wizard.tsx
-msgid "Adopt <0>{0}</0> as a workeros collection first, then revisit this step."
-msgstr "Adopt <0>{0}</0> as a workeros collection first, then revisit this step."
+msgid "Adopt <0>{0}</0> as a backlex collection first, then revisit this step."
+msgstr "Adopt <0>{0}</0> as a backlex collection first, then revisit this step."
+
+#: src/client/admin/adopt-wizard.tsx
+msgid "adopt as backlex relations"
+msgstr "adopt as backlex relations"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Adopt as relation"
 msgstr "Adopt as relation"
-
-#: src/client/admin/adopt-wizard.tsx
-msgid "adopt as workeros relations"
-msgstr "adopt as workeros relations"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Adopt existing table"
@@ -1317,6 +1317,19 @@ msgstr "Back to sign in"
 msgid "Back up now"
 msgstr "Back up now"
 
+#. placeholder {0}: schema.slug
+#: src/client/admin/collection-settings.tsx
+msgid "Backlex stops treating <0>{0}</0> as a collection. The underlying table and its rows stay intact; you can restore from the Archived view."
+msgstr "Backlex stops treating <0>{0}</0> as a collection. The underlying table and its rows stay intact; you can restore from the Archived view."
+
+#: src/client/admin/app.tsx
+msgid "Backlex stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view."
+msgstr "Backlex stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view."
+
+#: src/client/admin/app.tsx
+msgid "Backlex will start treating this table as a collection again. Owner-scoped permissions are re-seeded if they were configured."
+msgstr "Backlex will start treating this table as a collection again. Owner-scoped permissions are re-seeded if they were configured."
+
 #: src/client/admin/parity/database.tsx
 msgid "Backups"
 msgstr "Backups"
@@ -1553,7 +1566,11 @@ msgstr "Choose a new password"
 msgid "ci-bot (optional)"
 msgstr "ci-bot (optional)"
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/forgot.tsx
+#: src/client/pages/magic-link.tsx
+#: src/client/pages/reset-password.tsx
+#: src/client/pages/sign-in.tsx
+#: src/client/pages/sign-up.tsx
 msgid "Claim instance"
 msgstr "Claim instance"
 
@@ -1783,8 +1800,8 @@ msgid "composite — not supported"
 msgstr "composite — not supported"
 
 #: src/client/admin/adopt-wizard.tsx
-msgid "Composite (multi-column) FKs cannot be adopted as a workeros relation"
-msgstr "Composite (multi-column) FKs cannot be adopted as a workeros relation"
+msgid "Composite (multi-column) FKs cannot be adopted as a backlex relation"
+msgstr "Composite (multi-column) FKs cannot be adopted as a backlex relation"
 
 #: src/client/admin/permissions-matrix.tsx
 msgid "conditional access"
@@ -1822,12 +1839,12 @@ msgid "Configure this provider (add a Client ID) before enabling it"
 msgstr "Configure this provider (add a Client ID) before enabling it"
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "Configured via <0>AI_GATEWAY_API_KEY</0> on the workeros deployment (or legacy <1>ANTHROPIC_API_KEY</1>)."
-msgstr "Configured via <0>AI_GATEWAY_API_KEY</0> on the workeros deployment (or legacy <1>ANTHROPIC_API_KEY</1>)."
+msgid "Configured via <0>AI_GATEWAY_API_KEY</0> on the backlex deployment (or legacy <1>ANTHROPIC_API_KEY</1>)."
+msgstr "Configured via <0>AI_GATEWAY_API_KEY</0> on the backlex deployment (or legacy <1>ANTHROPIC_API_KEY</1>)."
 
 #: src/client/admin/pages/ask-ai.tsx
-#~ msgid "Configured via <0>ANTHROPIC_API_KEY</0> on the workeros deployment."
-#~ msgstr "Configured via <0>ANTHROPIC_API_KEY</0> on the workeros deployment."
+#~ msgid "Configured via <0>ANTHROPIC_API_KEY</0> on the backlex deployment."
+#~ msgstr "Configured via <0>ANTHROPIC_API_KEY</0> on the backlex deployment."
 
 #: src/client/admin/relational-pickers.tsx
 #: src/client/admin/sheet.tsx
@@ -2089,9 +2106,9 @@ msgstr "Create webhook"
 msgid "Create workspace"
 msgstr "Create workspace"
 
-#: src/client/components/auth-shell.tsx
-msgid "Create your <0>workeros</0> account."
-msgstr "Create your <0>workeros</0> account."
+#: src/client/pages/sign-up.tsx
+msgid "Create your <0>backlex</0> account."
+msgstr "Create your <0>backlex</0> account."
 
 #: src/client/pages/sign-up.tsx
 msgid "Create your admin account"
@@ -2408,7 +2425,7 @@ msgstr "Description"
 msgid "Destination"
 msgstr "Destination"
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/sign-up.tsx
 msgid "Detected an empty users table. The first account on a fresh instance is provisioned as admin automatically."
 msgstr "Detected an empty users table. The first account on a fresh instance is provisioned as admin automatically."
 
@@ -2729,7 +2746,7 @@ msgstr "Email attribute"
 msgid "Email changes aren't supported yet — contact an admin if you need to switch addresses."
 msgstr "Email changes aren't supported yet — contact an admin if you need to switch addresses."
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/sign-up.tsx
 msgid "Email is the only required field. Roles assigned post-signup — first user gets admin."
 msgstr "Email is the only required field. Roles assigned post-signup — first user gets admin."
 
@@ -3515,10 +3532,14 @@ msgstr "IdP SLO URL <0>(optional)</0>"
 msgid "IdP SSO URL"
 msgstr "IdP SSO URL"
 
+#: src/client/pages/magic-link.tsx
+msgid "If {displayEmail} matches an account, a sign-in link is on its way. It expires in 15 minutes."
+msgstr "If {displayEmail} matches an account, a sign-in link is on its way. It expires in 15 minutes."
+
 #. placeholder {0}: email || t`your address`
 #: src/client/pages/magic-link.tsx
-msgid "If <0>{0}</0> matches an account, a sign-in link is on its way. It expires in 15 minutes."
-msgstr "If <0>{0}</0> matches an account, a sign-in link is on its way. It expires in 15 minutes."
+#~ msgid "If <0>{0}</0> matches an account, a sign-in link is on its way. It expires in 15 minutes."
+#~ msgstr "If <0>{0}</0> matches an account, a sign-in link is on its way. It expires in 15 minutes."
 
 #: src/client/admin/storage.tsx
 msgid "Import"
@@ -4141,8 +4162,11 @@ msgstr "m2m"
 msgid "Machine-readable spec for every /api endpoint in this workspace — including dynamic /api/items/{slug} entries for your collections. Import into Postman, Insomnia, Swagger UI, or any code-gen tool."
 msgstr "Machine-readable spec for every /api endpoint in this workspace — including dynamic /api/items/{slug} entries for your collections. Import into Postman, Insomnia, Swagger UI, or any code-gen tool."
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/forgot.tsx
 #: src/client/pages/magic-link.tsx
+#: src/client/pages/reset-password.tsx
+#: src/client/pages/sign-in.tsx
+#: src/client/pages/sign-up.tsx
 msgid "Magic link"
 msgstr "Magic link"
 
@@ -4988,8 +5012,8 @@ msgid "OAuth required"
 msgstr "OAuth required"
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "OAuth scope mapping → workeros roles"
-msgstr "OAuth scope mapping → workeros roles"
+msgid "OAuth scope mapping → backlex roles"
+msgstr "OAuth scope mapping → backlex roles"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a separate epic."
@@ -5030,8 +5054,8 @@ msgid "One or more adopted FKs are missing a target collection."
 msgstr "One or more adopted FKs are missing a target collection."
 
 #: src/client/admin/pages/webhooks.tsx
-msgid "One per line. <0>Content-Type</0> and <1>X-Workeros-*</1> are reserved."
-msgstr "One per line. <0>Content-Type</0> and <1>X-Workeros-*</1> are reserved."
+msgid "One per line. <0>Content-Type</0> and <1>X-Backlex-*</1> are reserved."
+msgstr "One per line. <0>Content-Type</0> and <1>X-Backlex-*</1> are reserved."
 
 #. placeholder {0}: agg.groupBy
 #: src/client/admin/parity/insights.tsx
@@ -5042,7 +5066,7 @@ msgstr "One row per \"{0}\" — bars / donut / table show the breakdown; counter
 msgid "One URL per line — saved when you click away."
 msgstr "One URL per line — saved when you click away."
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/magic-link.tsx
 msgid "One-time link, no <0>password</0>."
 msgstr "One-time link, no <0>password</0>."
 
@@ -5924,12 +5948,12 @@ msgid "Register a custom OpenID Connect identity provider."
 msgstr "Register a custom OpenID Connect identity provider."
 
 #: src/client/admin/adopt-wizard.tsx
-msgid "Register a physical table as a workeros collection. No DDL is run on the table — only the collection metadata row + field registrations are written."
-msgstr "Register a physical table as a workeros collection. No DDL is run on the table — only the collection metadata row + field registrations are written."
+msgid "Register a physical table as a backlex collection. No DDL is run on the table — only the collection metadata row + field registrations are written."
+msgstr "Register a physical table as a backlex collection. No DDL is run on the table — only the collection metadata row + field registrations are written."
 
 #: src/client/admin/collections-index.tsx
-msgid "Register a table that already exists in your database. No DDL is run on the table — workeros only writes its own metadata."
-msgstr "Register a table that already exists in your database. No DDL is run on the table — workeros only writes its own metadata."
+msgid "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
+msgstr "Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata."
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Reject"
@@ -6108,7 +6132,8 @@ msgstr "Reset password"
 msgid "Reset view"
 msgstr "Reset view"
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/forgot.tsx
+#: src/client/pages/reset-password.tsx
 msgid "Reset your <0>password</0>."
 msgstr "Reset your <0>password</0>."
 
@@ -6788,8 +6813,8 @@ msgid "Sends a one-time sign-in link by email — requires a configured email ad
 msgstr "Sends a one-time sign-in link by email — requires a configured email adapter (set RESEND_API_KEY + EMAIL_FROM)."
 
 #: src/client/admin/pages/webhooks.tsx
-msgid "Sent as <0>X-Workeros-Signature: sha256=…</0>. Verify on the receiver."
-msgstr "Sent as <0>X-Workeros-Signature: sha256=…</0>. Verify on the receiver."
+msgid "Sent as <0>X-Backlex-Signature: sha256=…</0>. Verify on the receiver."
+msgstr "Sent as <0>X-Backlex-Signature: sha256=…</0>. Verify on the receiver."
 
 #: src/client/admin/item-views.tsx
 msgid "September"
@@ -6946,8 +6971,8 @@ msgid "Shared record"
 msgstr "Shared record"
 
 #: src/client/pages/shared-record.tsx
-msgid "Shared via workeros · this link can be revoked at any time."
-msgstr "Shared via workeros · this link can be revoked at any time."
+msgid "Shared via backlex · this link can be revoked at any time."
+msgstr "Shared via backlex · this link can be revoked at any time."
 
 #: src/client/admin/pages/settings.tsx
 msgid "Short sentence shown under the headline."
@@ -7034,20 +7059,21 @@ msgstr "Shown in the sidebar and the browser title."
 msgid "Side-table (item_ownership)"
 msgstr "Side-table (item_ownership)"
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/forgot.tsx
 #: src/client/pages/magic-link.tsx
+#: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Sign in"
 msgstr "Sign in"
 
-#: src/client/components/auth-shell.tsx
-msgid "Sign in to <0>workeros</0>."
-msgstr "Sign in to <0>workeros</0>."
+#: src/client/pages/sign-in.tsx
+msgid "Sign in to <0>backlex</0>."
+msgstr "Sign in to <0>backlex</0>."
 
 #: src/client/admin/pages/settings.tsx
-msgid "Sign in to workeros."
-msgstr "Sign in to workeros."
+msgid "Sign in to backlex."
+msgstr "Sign in to backlex."
 
 #: src/client/pages/sign-in.tsx
 msgid "Sign in with passkey"
@@ -7077,8 +7103,11 @@ msgstr "Sign out from all other devices"
 msgid "Sign out other devices"
 msgstr "Sign out other devices"
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/forgot.tsx
+#: src/client/pages/magic-link.tsx
+#: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
+#: src/client/pages/sign-up.tsx
 msgid "Sign up"
 msgstr "Sign up"
 
@@ -7671,7 +7700,11 @@ msgid "Toggle sidebar"
 msgstr "Toggle sidebar"
 
 #: src/client/admin/extras.tsx
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/forgot.tsx
+#: src/client/pages/magic-link.tsx
+#: src/client/pages/reset-password.tsx
+#: src/client/pages/sign-in.tsx
+#: src/client/pages/sign-up.tsx
 msgid "Toggle theme"
 msgstr "Toggle theme"
 
@@ -8176,7 +8209,8 @@ msgstr "warn"
 msgid "We sent a verification link to {email}. Click it to finish creating your account."
 msgstr "We sent a verification link to {email}. Click it to finish creating your account."
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/forgot.tsx
+#: src/client/pages/reset-password.tsx
 msgid "We'll email a reset link. Until you click it, your existing password still works."
 msgstr "We'll email a reset link. Until you click it, your existing password still works."
 
@@ -8207,7 +8241,7 @@ msgstr "Wed"
 msgid "Welcome back"
 msgstr "Welcome back"
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/sign-in.tsx
 msgid "Welcome back. Pick up where you left off — content, data, and APIs all in one place."
 msgstr "Welcome back. Pick up where you left off — content, data, and APIs all in one place."
 
@@ -8291,19 +8325,6 @@ msgstr "worker bindings"
 #: src/client/admin/pages/overview.tsx
 msgid "worker thread + RPC"
 msgstr "worker thread + RPC"
-
-#. placeholder {0}: schema.slug
-#: src/client/admin/collection-settings.tsx
-msgid "Workeros stops treating <0>{0}</0> as a collection. The underlying table and its rows stay intact; you can restore from the Archived view."
-msgstr "Workeros stops treating <0>{0}</0> as a collection. The underlying table and its rows stay intact; you can restore from the Archived view."
-
-#: src/client/admin/app.tsx
-msgid "Workeros stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view."
-msgstr "Workeros stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view."
-
-#: src/client/admin/app.tsx
-msgid "Workeros will start treating this table as a collection again. Owner-scoped permissions are re-seeded if they were configured."
-msgstr "Workeros will start treating this table as a collection again. Owner-scoped permissions are re-seeded if they were configured."
 
 #: src/client/components/confirm-action.tsx
 msgid "Working…"
@@ -8420,7 +8441,7 @@ msgstr "You'll get the authenticated role by default."
 msgid "You're all caught up."
 msgstr "You're all caught up."
 
-#: src/client/components/auth-shell.tsx
+#: src/client/pages/sign-up.tsx
 msgid "You're the <0>first</0>. Claim this instance."
 msgstr "You're the <0>first</0>. Claim this instance."
 

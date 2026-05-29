@@ -25,7 +25,7 @@ export const Forgot = () => {
   const dark = theme === "dark";
 
   const branding: AuthBranding = {
-    name: wsBranding?.workspaceName?.trim() || "workeros",
+    name: wsBranding?.workspaceName?.trim() || "backlex",
     logoUrl: wsBranding?.logoUrl ?? null,
   };
 

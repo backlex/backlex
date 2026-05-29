@@ -105,7 +105,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           <span className="grid size-7 place-items-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
             w
           </span>
-          workeros
+          backlex
         </div>
         {children}
       </div>
@@ -209,7 +209,7 @@ export function SharedRecord() {
         </CardContent>
       </Card>
       <p className="mt-4 text-center text-[11.5px] text-muted-foreground">
-        <Trans>Shared via workeros · this link can be revoked at any time.</Trans>
+        <Trans>Shared via backlex · this link can be revoked at any time.</Trans>
       </p>
     </Shell>
   );

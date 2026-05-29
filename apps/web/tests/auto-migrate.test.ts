@@ -33,7 +33,7 @@ let client: Database;
 let db: ReturnType<typeof drizzleBunSqlite>;
 
 beforeEach(() => {
-  tmp = mkdtempSync(join(tmpdir(), "workeros-am-"));
+  tmp = mkdtempSync(join(tmpdir(), "backlex-am-"));
   dbPath = join(tmp, "test.sqlite");
   client = new Database(dbPath, { create: true });
   client.exec("PRAGMA journal_mode = WAL");
@@ -53,14 +53,14 @@ const tableExists = (name: string): boolean => {
 };
 
 const ledgerNames = (): string[] => {
-  if (!tableExists("__workeros_migrations")) return [];
+  if (!tableExists("__backlex_migrations")) return [];
   return (client
-    .query("SELECT name FROM __workeros_migrations ORDER BY name")
+    .query("SELECT name FROM __backlex_migrations ORDER BY name")
     .all() as { name: string }[]).map((r) => r.name);
 };
 
 describe("auto-migrate — fresh DB path", () => {
-  test("creates every workeros table from an empty database", async () => {
+  test("creates every backlex table from an empty database", async () => {
     expect(tableExists("users")).toBe(false);
     expect(tableExists("api_keys")).toBe(false);
 
@@ -95,7 +95,7 @@ describe("auto-migrate — fresh DB path", () => {
     const db2 = drizzleBunSqlite({ client: client2 });
     await ensureMigrations(db2, "sqlite");
     const ledger2 = (client2
-      .query("SELECT name FROM __workeros_migrations ORDER BY name")
+      .query("SELECT name FROM __backlex_migrations ORDER BY name")
       .all() as { name: string }[]).map((r) => r.name);
     expect(ledger2.length).toBe(before);
     client2.close();
@@ -110,7 +110,7 @@ describe("auto-migrate — adopt existing schema path", () => {
     // auto-migrate feature shipped) — schema is correct, ledger empty.
     await ensureMigrations(db, "sqlite");
     client.exec("INSERT INTO users (id, email, name, email_verified, created_at, updated_at) VALUES ('keep-me', 'sentinel@x', 'Sentinel', 1, " + Date.now() + ", " + Date.now() + ")");
-    client.exec("DROP TABLE __workeros_migrations");
+    client.exec("DROP TABLE __backlex_migrations");
 
     // Fresh handle so the per-isolate WeakMap doesn't dedupe
     const client2 = new Database(dbPath, { readwrite: true });
@@ -125,7 +125,7 @@ describe("auto-migrate — adopt existing schema path", () => {
 
     // Ledger is re-populated with every migration name
     const ledger = (client2
-      .query("SELECT name FROM __workeros_migrations ORDER BY name")
+      .query("SELECT name FROM __backlex_migrations ORDER BY name")
       .all() as { name: string }[]).map((r) => r.name);
     expect(ledger.length).toBe(SQLITE_MIGRATIONS.length);
 
@@ -146,7 +146,7 @@ describe("auto-migrate — diff apply path", () => {
     // already idempotent enough — for this test we just verify the
     // bookkeeping replays cleanly).
     const lastName = SQLITE_MIGRATIONS[SQLITE_MIGRATIONS.length - 1]!.name;
-    client.exec(`DELETE FROM __workeros_migrations WHERE name = '${lastName}'`);
+    client.exec(`DELETE FROM __backlex_migrations WHERE name = '${lastName}'`);
     expect(ledgerNames().length).toBe(SQLITE_MIGRATIONS.length - 1);
 
     // Re-run on a FRESH handle so the per-isolate WeakMap doesn't dedupe.

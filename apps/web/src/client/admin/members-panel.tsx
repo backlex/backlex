@@ -68,7 +68,7 @@ const fromApiMember = (m: ApiTenantMember): Member => {
 
 const sniffActiveTenantId = (): string | null => {
   if (typeof document === "undefined") return null;
-  const m = /workeros-tenant=([^;]+)/.exec(document.cookie);
+  const m = /backlex-tenant=([^;]+)/.exec(document.cookie);
   return m ? decodeURIComponent(m[1]) : null;
 };
 

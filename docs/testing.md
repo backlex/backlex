@@ -3,7 +3,7 @@ title: Testing
 description: Three-layer test pyramid that gates every change against business logic, build artifacts, and real-runtime behavior.
 ---
 
-workeros ships to four runtimes from one source tree (Bun, Cloudflare
+backlex ships to four runtimes from one source tree (Bun, Cloudflare
 Workers, Vercel Functions, Netlify Functions). To keep that promise
 honest, the test setup runs at three layers, each catching what the
 layer above can't see.

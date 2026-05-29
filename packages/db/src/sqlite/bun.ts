@@ -14,7 +14,7 @@ import * as schema from "./schema";
 import type { SqliteDb } from "./index";
 
 export const createBunSqliteClient = (
-  path = "./.data/workeros.sqlite",
+  path = "./.data/backlex.sqlite",
 ): SqliteDb => {
   mkdirSync(dirname(path), { recursive: true });
   const db = new Database(path, { create: true });

@@ -139,7 +139,7 @@ export const createAuth = (
             }) => {
               await config.email!.send({
                 to: user.email,
-                subject: "Reset your workeros password",
+                subject: "Reset your backlex password",
                 text:
                   `We received a request to reset your password.\n\n` +
                   `Choose a new password: ${url}\n\n` +

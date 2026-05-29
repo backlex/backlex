@@ -1,5 +1,5 @@
 // @ts-nocheck
-// workeros admin — main app
+// backlex admin — main app
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./admin.css";
@@ -740,7 +740,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                       ? <Trans>Archive collection <span className="font-mono">c_{slug}</span>?</Trans>
                       : <Trans>Delete collection <span className="font-mono">c_{slug}</span>?</Trans>,
                     description: adopted
-                      ? <Trans>Workeros stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view.</Trans>
+                      ? <Trans>Backlex stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view.</Trans>
                       : <Trans>The physical table and all rows are dropped. This is irreversible. Permissions, revisions, and webhooks tied to this collection are removed too.</Trans>,
                     actionLabel: adopted ? t`Archive collection` : t`Delete collection`,
                     destructive: !adopted,
@@ -761,7 +761,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                 }}
                 onRestore={(slug) => setConfirm({
                   title: <Trans>Restore collection <span className="font-mono">c_{slug}</span>?</Trans>,
-                  description: <Trans>Workeros will start treating this table as a collection again. Owner-scoped permissions are re-seeded if they were configured.</Trans>,
+                  description: <Trans>Backlex will start treating this table as a collection again. Owner-scoped permissions are re-seeded if they were configured.</Trans>,
                   actionLabel: t`Restore collection`,
                   destructive: false,
                   onConfirm: async () => {
@@ -981,7 +981,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                         ? <Trans>Archive collection <span className="font-mono">c_{activeCollection}</span>?</Trans>
                         : <Trans>Delete collection <span className="font-mono">c_{activeCollection}</span>?</Trans>,
                       description: adopted
-                        ? <Trans>Workeros stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view.</Trans>
+                        ? <Trans>Backlex stops treating this table as a collection. The underlying table and its rows stay intact; you can restore from the Archived view.</Trans>
                         : <Trans>The physical table and all rows are dropped. This is irreversible.</Trans>,
                       actionLabel: adopted ? t`Archive collection` : t`Delete collection`,
                       destructive: !adopted,

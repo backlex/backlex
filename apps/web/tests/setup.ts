@@ -34,7 +34,7 @@ export interface TestHarness {
 const DEFAULT_APP_URL = "http://localhost:5173";
 
 export const makeHarness = (overrides: Partial<Env> = {}): TestHarness => {
-  const dbPath = resolve(tmpdir(), `workeros-test-${randomUUID()}.sqlite`);
+  const dbPath = resolve(tmpdir(), `backlex-test-${randomUUID()}.sqlite`);
   mkdirSync(dirname(dbPath), { recursive: true });
 
   const migClient = new Database(dbPath, { create: true });

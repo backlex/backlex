@@ -3,11 +3,11 @@ import {
   type ItemResponse,
   type ListQuery,
   type ListResponse,
-  WorkerosError,
+  BacklexError,
 } from "./types";
 
 export type { ListQuery, ListResponse, ItemResponse, ItemEvent } from "./types";
-export { WorkerosError } from "./types";
+export { BacklexError } from "./types";
 
 export interface ClientOptions {
   url: string;
@@ -106,7 +106,7 @@ export const createClient = (opts: ClientOptions) => {
       const errBody = (await res.json().catch(() => ({}))) as
         | { error?: { code: string; message: string; details?: unknown } }
         | undefined;
-      throw new WorkerosError(res.status, errBody);
+      throw new BacklexError(res.status, errBody);
     }
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
@@ -231,7 +231,7 @@ export const createClient = (opts: ClientOptions) => {
         const errBody = (await res.json().catch(() => ({}))) as
           | { error?: { code: string; message: string; details?: unknown } }
           | undefined;
-        throw new WorkerosError(res.status, errBody);
+        throw new BacklexError(res.status, errBody);
       }
       return res.json();
     },
@@ -241,7 +241,7 @@ export const createClient = (opts: ClientOptions) => {
         headers: authHeader(),
       });
       if (!res.ok) {
-        throw new WorkerosError(res.status, undefined);
+        throw new BacklexError(res.status, undefined);
       }
       return res;
     },
@@ -262,4 +262,4 @@ export const createClient = (opts: ClientOptions) => {
   };
 };
 
-export type WorkerosClient = ReturnType<typeof createClient>;
+export type BacklexClient = ReturnType<typeof createClient>;

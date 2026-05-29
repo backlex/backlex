@@ -4,7 +4,7 @@
  * The package is i18n-free and router-agnostic: every page receives a `copy`
  * object (already-translated strings), a `navigate` callback, and an auth
  * client that satisfies the minimal surface below. Consumers (the OSS admin
- * SPA, the upcoming workeros-cloud repo, …) wire React Router / Lingui /
+ * SPA, the upcoming backlex-cloud repo, …) wire React Router / Lingui /
  * better-auth on the outside.
  */
 

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// Filter DSL builder + Items DataTable for the workeros admin design.
+// Filter DSL builder + Items DataTable for the backlex admin design.
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "./icons";

@@ -107,7 +107,7 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>()
       tags: [TAG],
       summary: "Run SQL",
       description:
-        "Read-only by default. Writes require `?writes=1` AND `X-Workeros-Confirm: yes` header. Splits on `;` and runs each statement.",
+        "Read-only by default. Writes require `?writes=1` AND `X-Backlex-Confirm: yes` header. Splits on `;` and runs each statement.",
       security: SECURITY,
       middleware: [requireUser, requireAdmin],
       request: {
@@ -133,7 +133,7 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>()
     /**
      * Run a single SQL statement (or short multi-statement block) against the
      * active database. Defaults to read-only; the client must opt into writes
-     * with `?writes=1` AND `X-Workeros-Confirm: yes` to actually execute
+     * with `?writes=1` AND `X-Backlex-Confirm: yes` to actually execute
      * mutating SQL. Auditable through the activity log (best-effort).
      */
     async (c) => {
@@ -143,12 +143,12 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>()
       const stmts = splitStatements(body.sql);
       if (stmts.length === 0) throw new AppError("VALIDATION", "Empty query.");
       const allowWrites = q.writes === "1";
-      const confirmed = c.req.header("x-workeros-confirm") === "yes";
+      const confirmed = c.req.header("x-backlex-confirm") === "yes";
       const writeStmts = stmts.filter(isWrite);
       if (writeStmts.length > 0 && !(allowWrites && confirmed)) {
         throw new AppError(
           "FORBIDDEN",
-          "Write statements require ?writes=1 and X-Workeros-Confirm: yes header.",
+          "Write statements require ?writes=1 and X-Backlex-Confirm: yes header.",
         );
       }
       const t0 = Date.now();

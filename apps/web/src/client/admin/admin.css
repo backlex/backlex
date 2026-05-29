@@ -1,4 +1,4 @@
-/* workeros admin — shell styles. Color, sidebar and font tokens are the
+/* backlex admin — shell styles. Color, sidebar and font tokens are the
    single source of truth in packages/ui/src/styles/globals.css (loaded
    app-wide via main.tsx). Only admin-shell-specific tokens live here. */
 :root {
@@ -143,7 +143,7 @@ body {
   margin-inline: auto;
 }
 /* PageHeader, Button, and form input/textarea primitives moved to shadcn
-   via apps/web/src/client/admin/ui.tsx + @workeros/ui/components/*. The
+   via apps/web/src/client/admin/ui.tsx + @backlex/ui/components/*. The
    legacy `.page-header`/`.btn`/`.input`/`.textarea` rules used to live
    here; they were dropped during the shadcn migration. `.input-affix*`
    below is a separate wrapper component and stays. */
@@ -194,7 +194,7 @@ body {
 
 /* `.search-input` was dropped during the shadcn migration — every search
    field now uses InputGroup + InputGroupAddon + InputGroupInput from
-   @workeros/ui/components/input-group. */
+   @backlex/ui/components/input-group. */
 
 .chip {
   display: inline-flex;
@@ -436,7 +436,7 @@ body {
 .field-hint { font-size: 11.5px; color: var(--muted-foreground); }
 .field-error { font-size: 11.5px; color: var(--destructive); display: flex; gap: 4px; align-items: center; }
 /* `.input`, `.textarea`, `.select` rules were dropped during the shadcn
-   migration — every callsite now renders @workeros/ui Input/Textarea/Select
+   migration — every callsite now renders @backlex/ui Input/Textarea/Select
    via apps/web/src/client/admin/ui.tsx and admin/select.tsx. */
 
 /* Native range input — paired with `accent-color: var(--primary)` set

@@ -381,7 +381,7 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
       <div className="grid grid-cols-3 gap-3 overflow-hidden rounded-2xl border border-border bg-card p-3.5 text-card-foreground max-[640px]:grid-cols-1">
         <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Schedule</Trans></div><div className="font-medium"><Trans>Daily 03:00 UTC</Trans></div></div>
         <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Retention</Trans></div><div className="font-medium"><Trans>30 days</Trans></div></div>
-        <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Destination</Trans></div><div className="font-mono text-xs font-medium">r2://workeros-backups/</div></div>
+        <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Destination</Trans></div><div className="font-mono text-xs font-medium">r2://backlex-backups/</div></div>
       </div>
       <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">

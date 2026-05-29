@@ -7,7 +7,7 @@ const HELP = `backlex — self-hostable backend platform CLI
 
 Usage:
   backlex migrate [db-path]
-      Apply SQLite migrations to db-path (default: ./.data/workeros.sqlite,
+      Apply SQLite migrations to db-path (default: ./.data/backlex.sqlite,
       or $DATABASE_PATH if set).
 
   backlex gen-types <api-url> [--out <file>] [--key <pak_...>]
@@ -19,7 +19,7 @@ Usage:
       Run an MCP (Model Context Protocol) server over stdio that proxies
       to a remote backlex /mcp HTTP endpoint. Wire into Claude Desktop /
       Cursor as a stdio command. URL defaults to http://localhost:8787/mcp;
-      key falls back to WORKEROS_API_KEY env var.
+      key falls back to BACKLEX_API_KEY env var.
 
   backlex help
       Show this message.

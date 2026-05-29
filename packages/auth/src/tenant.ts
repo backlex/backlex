@@ -30,7 +30,7 @@ export interface TenantAuthConfig {
   /** URL-safe workspace handle — used for the cookie prefix + the route the
    *  instance is mounted at (`{appUrl}/api/t/{slug}/auth`). */
   tenantSlug: string;
-  /** Origin of the platform (e.g. `https://app.workeros.com`). Better-auth
+  /** Origin of the platform (e.g. `https://app.backlex.com`). Better-auth
    *  builds redirect URLs / cookie domains from this. */
   appURL: string;
   secret: string;

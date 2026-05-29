@@ -1,6 +1,6 @@
 # @backlex/auth-ui
 
-workeros auth screens — i18n-free, router-agnostic React components for sign-in / sign-up / forgot / reset-password / magic-link. Built on `@backlex/ui` (shadcn / Tailwind v4). Source-consumed; no build step.
+backlex auth screens — i18n-free, router-agnostic React components for sign-in / sign-up / forgot / reset-password / magic-link. Built on `@backlex/ui` (shadcn / Tailwind v4). Source-consumed; no build step.
 
 ## Install
 
@@ -87,11 +87,11 @@ export const SignIn = () => {
 
 ## Conventions
 
-- The package is **i18n-free** — pass already-translated strings via `copy`. The OSS workeros admin wraps each call site in `useLingui()` to translate at render time; cloud / external consumers can pass plain literals.
+- The package is **i18n-free** — pass already-translated strings via `copy`. The OSS backlex admin wraps each call site in `useLingui()` to translate at render time; cloud / external consumers can pass plain literals.
 - The package is **router-free** — `navigate` and `Link` are injected. Use `react-router-dom`, Next.js, TanStack Router, or roll your own.
 - The package is **branding-aware** — pass `branding={{ name, logoUrl, signInHeadline?, signInTagline? }}`; the shell renders an initial-letter chip when no logo is set.
 - The visual structure (Tailwind classes, layout, animations) is identical across consumers — the same auth screen renders in OSS and cloud.
 
 ## License
 
-MIT — part of the [workeros](https://github.com/furkankinyas/workeros) project.
+MIT — part of the [backlex](https://github.com/furkankinyas/backlex) project.

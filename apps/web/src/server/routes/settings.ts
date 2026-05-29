@@ -245,13 +245,13 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>()
       const present = (k: string) =>
         env[k] !== undefined && env[k] !== null && env[k] !== "";
       const bindings = [
-        { type: "D1", name: "D1", target: "workeros (D1)", status: env.D1 ? "connected" : "optional" },
-        { type: "R2", name: "R2", target: "workeros-files (R2)", status: env.R2 ? "connected" : "optional" },
+        { type: "D1", name: "D1", target: "backlex (D1)", status: env.D1 ? "connected" : "optional" },
+        { type: "R2", name: "R2", target: "backlex-files (R2)", status: env.R2 ? "connected" : "optional" },
         { type: "DurableObj", name: "REALTIME", target: "RealtimeRoom", status: env.REALTIME ? "connected" : "optional" },
-        { type: "Vectorize", name: "VECTORIZE_OPENAI", target: "workeros-openai-1536", status: env.VECTORIZE_OPENAI ? "connected" : "optional" },
-        { type: "Vectorize", name: "VECTORIZE_OPENAI_LARGE", target: "workeros-openai-3072", status: env.VECTORIZE_OPENAI_LARGE ? "connected" : "optional" },
-        { type: "Vectorize", name: "VECTORIZE_BGE_M3", target: "workeros-bge-m3", status: env.VECTORIZE_BGE_M3 ? "connected" : "optional" },
-        { type: "Vectorize", name: "VECTORIZE_SELF_HOST_BGE_M3", target: "workeros-self-host-bge-m3", status: env.VECTORIZE_SELF_HOST_BGE_M3 ? "connected" : "optional" },
+        { type: "Vectorize", name: "VECTORIZE_OPENAI", target: "backlex-openai-1536", status: env.VECTORIZE_OPENAI ? "connected" : "optional" },
+        { type: "Vectorize", name: "VECTORIZE_OPENAI_LARGE", target: "backlex-openai-3072", status: env.VECTORIZE_OPENAI_LARGE ? "connected" : "optional" },
+        { type: "Vectorize", name: "VECTORIZE_BGE_M3", target: "backlex-bge-m3", status: env.VECTORIZE_BGE_M3 ? "connected" : "optional" },
+        { type: "Vectorize", name: "VECTORIZE_SELF_HOST_BGE_M3", target: "backlex-self-host-bge-m3", status: env.VECTORIZE_SELF_HOST_BGE_M3 ? "connected" : "optional" },
         { type: "WorkersAI", name: "AI", target: "@cf/baai/bge-m3", status: env.AI ? "connected" : "optional" },
         { type: "HTTP", name: "EMBEDDING_HTTP_URL", target: "self-host embeddings", status: env.EMBEDDING_HTTP_URL ? "connected" : "optional" },
         { type: "Hyperdrive", name: "HYPERDRIVE", target: "pg-pool", status: env.HYPERDRIVE ? "connected" : "optional" },

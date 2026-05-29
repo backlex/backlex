@@ -5,7 +5,7 @@ description: Provider matrix for the Postgres dialect — self-host, Supabase, N
 
 # Database providers
 
-workeros runs on two SQL dialects — Postgres (`pg`) and SQLite — and within
+backlex runs on two SQL dialects — Postgres (`pg`) and SQLite — and within
 each dialect it accepts several wire-compatible providers. Picking a
 provider is mostly an env-var change; the schema, migrations, permission
 compiler, and queries are the same for every entry in a column.
@@ -21,7 +21,7 @@ Turso/libSQL, LiteFS).
 1. `env.D1` binding (Cloudflare Workers) → SQLite via D1
 2. `env.HYPERDRIVE` binding (Cloudflare Workers) → Postgres via Hyperdrive
 3. `env.DATABASE_URL` → Postgres
-4. otherwise → SQLite via `bun:sqlite` at `./.data/workeros.sqlite`
+4. otherwise → SQLite via `bun:sqlite` at `./.data/backlex.sqlite`
 
 The Postgres driver is chosen with `DATABASE_DRIVER`:
 
@@ -37,7 +37,7 @@ The Postgres driver is chosen with `DATABASE_DRIVER`:
 
 | Provider          | DATABASE_URL example                                                       | Driver           | pgvector | FTS (tsvector) | JSONB | Notes |
 |-------------------|----------------------------------------------------------------------------|------------------|----------|----------------|-------|-------|
-| **Self-hosted PG**| `postgres://user:pass@host:5432/workeros`                                  | postgres-js      | ✅ (CREATE EXTENSION vector) | ✅ | ✅ | Reference setup. |
+| **Self-hosted PG**| `postgres://user:pass@host:5432/backlex`                                  | postgres-js      | ✅ (CREATE EXTENSION vector) | ✅ | ✅ | Reference setup. |
 | **Supabase**      | `postgres://postgres.<ref>:<pwd>@aws-0-<region>.pooler.supabase.com:6543/postgres` | postgres-js | ✅ (toggle in Dashboard → Extensions) | ✅ | ✅ | Use **transaction pooler** (6543), not session pooler. |
 | **Neon**          | `postgres://<user>:<pwd>@ep-<id>-pooler.<region>.aws.neon.tech/<db>?sslmode=require` | postgres-js (Bun/CF/Node) / neon-http (Vercel Edge) | ✅ (CREATE EXTENSION vector) | ✅ | ✅ | Auto-suspend wakes on first query; first request after idle ≈ 100–500 ms. |
 | **Xata**          | `postgres://<workspace-id>:<api-key>@<workspace>.<region>.xata.sh:5432/<db>:<branch>?sslmode=require` | postgres-js | ❌ — pair with Vectorize or another PG | ✅ | ✅ | Branch lives in the URL after the database name (`<db>:<branch>`). |
@@ -49,12 +49,12 @@ The Postgres driver is chosen with `DATABASE_DRIVER`:
 ### Supabase
 
 - The **transaction pooler** on port `6543` is the right URL — it terminates
-  prepared statements before they hit Postgres, which is why workeros sets
+  prepared statements before they hit Postgres, which is why backlex sets
   `prepare: false` on the postgres-js driver. Using the **session pooler**
   (`5432`) also works, but you lose the pooler's protection against connection
   exhaustion on serverless invocations.
 - Enable pgvector once per project: **Database → Extensions → `vector` → Enable**.
-- Supabase Realtime is *not* used. workeros has its own realtime layer
+- Supabase Realtime is *not* used. backlex has its own realtime layer
   (`docs/realtime.md`) over SSE / Durable Objects, which respects the
   permission DSL — Supabase Realtime ignores it.
 
@@ -74,7 +74,7 @@ The Postgres driver is chosen with `DATABASE_DRIVER`:
 
 - Xata speaks standard Postgres — the `postgres-js` driver works out of
   the box with the connection string from the Xata dashboard.
-- **No pgvector.** workeros detects `.xata.sh` URLs and routes vector
+- **No pgvector.** backlex detects `.xata.sh` URLs and routes vector
   endpoints to `noVectorAdapter` unless a Cloudflare Vectorize binding
   is present (`VECTORIZE_OPENAI` / `VECTORIZE_OPENAI_LARGE` /
   `VECTORIZE_BGE_M3` / `VECTORIZE_SELF_HOST_BGE_M3`). Two combinations
@@ -82,12 +82,12 @@ The Postgres driver is chosen with `DATABASE_DRIVER`:
   - **Xata + Cloudflare Workers** → bind a Vectorize index, vector
     endpoints route there automatically.
   - **Xata for relational + another PG for vector** → not supported in a
-    single deploy (workeros uses one DB). Use Vectorize.
+    single deploy (backlex uses one DB). Use Vectorize.
 - The URL embeds the branch name *after* the database with a colon:
-  `…/<db>:<branch>`. workeros doesn't manage Xata branches; the branch is
+  `…/<db>:<branch>`. backlex doesn't manage Xata branches; the branch is
   fixed at deploy time via the URL.
 - Workspace-level full-text search via Xata's `/search` endpoint is also
-  not used — workeros uses Postgres `tsvector` + `websearch_to_tsquery`
+  not used — backlex uses Postgres `tsvector` + `websearch_to_tsquery`
   on the underlying table, which goes through the standard wire protocol.
 
 ### Hyperdrive (CF Workers only)

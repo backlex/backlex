@@ -2,7 +2,7 @@
  * Smoke tests for the three event-fanout subsystems:
  *   - Realtime SSE (subscribe + admin test-publish gate)
  *   - Flows engine (manual trigger + event-triggered run)
- *   - Outgoing webhooks (HMAC-SHA256 signed via x-workeros-signature)
+ *   - Outgoing webhooks (HMAC-SHA256 signed via x-backlex-signature)
  *
  * Everything runs in-process through the harness from ./setup — Bun.serve()
  * is only used for the webhook target so we can capture the inbound POST.
@@ -461,7 +461,7 @@ describe("outgoing webhooks (HMAC signed)", () => {
     return null;
   };
 
-  test("registered webhook receives POST with valid x-workeros-signature", async () => {
+  test("registered webhook receives POST with valid x-backlex-signature", async () => {
     const secret = "shhhhhh-one";
     const register = await h.fetch("/api/webhooks", {
       method: "POST",
@@ -501,7 +501,7 @@ describe("outgoing webhooks (HMAC signed)", () => {
     expect(parsed.data.title).toBe("webhook-fire");
 
     // Verify HMAC. Header format is `sha256=<hex>` — hex digest of HMAC-SHA256(body, secret).
-    const sig = inbound!.headers["x-workeros-signature"];
+    const sig = inbound!.headers["x-backlex-signature"];
     expect(sig).toBeTruthy();
     const expected =
       "sha256=" + createHmac("sha256", secret).update(inbound!.body).digest("hex");
@@ -560,7 +560,7 @@ describe("outgoing webhooks (HMAC signed)", () => {
     expect(bHit).not.toBeNull();
 
     const verify = (req: CapturedRequest, secret: string) => {
-      const sig = req.headers["x-workeros-signature"];
+      const sig = req.headers["x-backlex-signature"];
       expect(sig).toBeTruthy();
       const expected =
         "sha256=" + createHmac("sha256", secret).update(req.body).digest("hex");
@@ -572,8 +572,8 @@ describe("outgoing webhooks (HMAC signed)", () => {
     // Cross-check: the two signatures must differ (each uses its own
     // secret). Both hooks see the same JSON body, so identical signatures
     // would mean the server applied the same secret to both deliveries.
-    const aSig = aHit!.headers["x-workeros-signature"];
-    const bSig = bHit!.headers["x-workeros-signature"];
+    const aSig = aHit!.headers["x-backlex-signature"];
+    const bSig = bHit!.headers["x-backlex-signature"];
     expect(aSig).not.toBe(bSig);
   });
 });

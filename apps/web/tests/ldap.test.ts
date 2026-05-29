@@ -73,7 +73,7 @@ const configureLdap = async (
     body: JSON.stringify({
       enabled: true,
       url: "ldaps://dc1.test.example:636",
-      bindDn: "cn=workeros,ou=service,dc=test,dc=example",
+      bindDn: "cn=backlex,ou=service,dc=test,dc=example",
       baseDn: "ou=users,dc=test,dc=example",
       userFilter: "(&(objectClass=person)(uid={{username}}))",
       secrets: { bindPassword: "service-password" },

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { createWorkerosAuthClient } from "@backlex/auth/client";
+import { createBacklexAuthClient } from "@backlex/auth/client";
 import { api } from "./api";
 
-export const auth = createWorkerosAuthClient(
+export const auth = createBacklexAuthClient(
   import.meta.env.VITE_API_URL ?? window.location.origin,
 );
 

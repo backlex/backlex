@@ -1,9 +1,9 @@
 ---
 title: MCP (Model Context Protocol)
-description: Expose a workeros workspace to AI agents — Claude Desktop, Cursor, IDE plugins — over the MCP Streamable HTTP and stdio transports.
+description: Expose a backlex workspace to AI agents — Claude Desktop, Cursor, IDE plugins — over the MCP Streamable HTTP and stdio transports.
 ---
 
-workeros ships a built-in MCP (Model Context Protocol) server so AI
+backlex ships a built-in MCP (Model Context Protocol) server so AI
 agents can read schema, query collections, manage storage, and invoke
 sandbox functions through one authenticated endpoint. The same identity
 model the rest of the API uses (personal access keys / sessions /
@@ -16,7 +16,7 @@ Two mounts, same tool set:
 
 | Mount | Auth | Use case |
 |---|---|---|
-| `POST /mcp` | Any authenticated identity (cookie session, `pak_…` API key, app-plane bearer). Permissions DSL filters results per the caller's roles. | Tenant agents (a workspace member wires Claude Desktop to their own workeros). |
+| `POST /mcp` | Any authenticated identity (cookie session, `pak_…` API key, app-plane bearer). Permissions DSL filters results per the caller's roles. | Tenant agents (a workspace member wires Claude Desktop to their own backlex). |
 | `POST /api/admin/mcp` | Same as above **plus** the system `admin` role. | Ops bots, CI agents — fails loudly on non-admin auth instead of silently returning empty results. |
 
 Both speak the [MCP Streamable HTTP transport](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#streamable-http)
@@ -149,7 +149,7 @@ additive to the standard MCP descriptor.
 | Tool | Description |
 |---|---|
 | `db.execute_sql` | Run raw SQL against the workspace database (admin-only; bypasses DSL — pair with per-key allowlist). |
-| `db.list_tables` | List every physical table (workeros + collections + adopted). |
+| `db.list_tables` | List every physical table (backlex + collections + adopted). |
 | `activity.search` | Search the audit log by action, collection, item, user, date range. |
 
 ### Tenants & app-users
@@ -201,7 +201,7 @@ additive to the standard MCP descriptor.
 
 ### AI-native
 
-Three tools delegate to an LLM (via the Vercel AI Gateway when `AI_GATEWAY_API_KEY` is set, else the direct Anthropic provider via `ANTHROPIC_API_KEY`) and wire the structured reply back into workeros sub-fetches:
+Three tools delegate to an LLM (via the Vercel AI Gateway when `AI_GATEWAY_API_KEY` is set, else the direct Anthropic provider via `ANTHROPIC_API_KEY`) and wire the structured reply back into backlex sub-fetches:
 
 | Tool | Description |
 |---|---|
@@ -226,12 +226,12 @@ Every tool delegates to the same REST endpoint the admin UI uses, so:
    ```json
    {
      "mcpServers": {
-       "workeros": {
+       "backlex": {
          "command": "bun",
          "args": [
-           "/abs/path/to/workeros/packages/cli/bin/workeros.ts",
+           "/abs/path/to/backlex/packages/cli/bin/backlex.ts",
            "mcp",
-           "--url", "https://your-workeros.example.com/mcp",
+           "--url", "https://your-backlex.example.com/mcp",
            "--key", "pak_xxxxxxxx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
          ]
        }
@@ -239,7 +239,7 @@ Every tool delegates to the same REST endpoint the admin UI uses, so:
    }
    ```
 
-   On a globally-installed CLI, swap the absolute path for `workeros`.
+   On a globally-installed CLI, swap the absolute path for `backlex`.
 3. Restart Claude Desktop. The MCP server appears under the 🔌 icon; the
    13 tools listed above are now callable from any conversation.
 
@@ -255,9 +255,9 @@ Cursor reads the same `mcpServers` shape under `Settings → MCP → Add`:
 {
   "command": "bun",
   "args": [
-    "/abs/path/to/workeros/packages/cli/bin/workeros.ts",
+    "/abs/path/to/backlex/packages/cli/bin/backlex.ts",
     "mcp",
-    "--url", "https://your-workeros.example.com/mcp",
+    "--url", "https://your-backlex.example.com/mcp",
     "--key", "pak_…"
   ]
 }
@@ -269,14 +269,14 @@ If your client speaks Streamable HTTP natively, point it straight at
 `/mcp` with a bearer header:
 
 ```bash
-curl -X POST https://your-workeros.example.com/mcp \
+curl -X POST https://your-backlex.example.com/mcp \
   -H 'Authorization: Bearer pak_xxxxxxxx_…' \
   -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
 ```bash
-curl -X POST https://your-workeros.example.com/mcp \
+curl -X POST https://your-backlex.example.com/mcp \
   -H 'Authorization: Bearer pak_xxxxxxxx_…' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -310,7 +310,7 @@ These run **before** the upstream permission DSL, so a read-only key gets a clea
 Configure both from the admin UI (**API Keys → 🔌 button → Connect MCP**) or via the API:
 
 ```bash
-curl -X PATCH https://your-workeros.example.com/api/api-keys/<id>/mcp-guards \
+curl -X PATCH https://your-backlex.example.com/api/api-keys/<id>/mcp-guards \
   -H 'Authorization: Bearer pak_<admin-key>' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -323,12 +323,12 @@ The "Connect MCP" modal also generates copyable install snippets for Claude Desk
 
 ## Resources
 
-Beyond tools, workeros exposes **MCP resources** so attach-aware clients (Claude Desktop) can browse the workspace from their resource picker:
+Beyond tools, backlex exposes **MCP resources** so attach-aware clients (Claude Desktop) can browse the workspace from their resource picker:
 
 | URI | Read returns |
 |---|---|
-| `workeros://schema` | Every collection's slug + field list (workspace-level directory). |
-| `workeros://collection/<slug>` | The collection's full field schema + the first 5 rows of data. |
+| `backlex://schema` | Every collection's slug + field list (workspace-level directory). |
+| `backlex://collection/<slug>` | The collection's full field schema + the first 5 rows of data. |
 
 Resource reads sub-fetch the same REST surface tools use, so permissions DSL still filters what the agent sees. The per-key MCP allowlist also gates resources — an agent that can't call `collections.list` won't see the resource either.
 

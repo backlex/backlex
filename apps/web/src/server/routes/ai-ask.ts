@@ -77,7 +77,7 @@ const buildPlanSystem = (): string => {
     (name) => `  - ${name}: ${PLAN_TOOL_DESCRIPTIONS[name]}`,
   ).join("\n");
   return (
-    "You translate a single natural-language question from a workeros admin " +
+    "You translate a single natural-language question from a backlex admin " +
     "into ONE MCP tool call. Output EXACTLY one fenced JSON block " +
     "(```json ... ```) with shape: {rationale: string, tool: string, args: object}. " +
     "`rationale` is one or two short sentences that justify the choice. " +

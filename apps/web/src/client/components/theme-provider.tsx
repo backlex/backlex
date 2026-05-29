@@ -57,7 +57,7 @@ function isEditableTarget(target: EventTarget | null) {
 export function ThemeProvider({
   children,
   defaultTheme = "system",
-  storageKey = "workeros-theme",
+  storageKey = "backlex-theme",
   disableTransitionOnChange = true,
 }: ThemeProviderProps) {
   const [theme, setThemeState] = React.useState<Theme>(() => {

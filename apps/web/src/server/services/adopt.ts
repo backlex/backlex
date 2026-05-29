@@ -1,7 +1,7 @@
 /**
  * Collection adoption — pure service layer.
  *
- * "Adopting" a table = registering a workeros `collections` row that points
+ * "Adopting" a table = registering a backlex `collections` row that points
  * at a physical table the user already owns, **without** any DDL on that
  * table. The schema-applier's `adopted` branch is a no-op (see
  * `packages/db/src/schema-applier.ts`); `routes/items.ts` reads
@@ -27,7 +27,7 @@ interface DbCtx {
 
 /**
  * System tables that must never appear in the adopt picker. We include
- * every workeros-managed table (auth, multi-tenant control plane, items
+ * every backlex-managed table (auth, multi-tenant control plane, items
  * subsystem, etc.) plus the various per-runtime bookkeeping tables that
  * each database engine creates on its own (`__drizzle_migrations`,
  * `_cf_KV`, `d1_migrations`).
@@ -85,7 +85,7 @@ export const SYSTEM_TABLES: ReadonlySet<string> = new Set([
   "d1_migrations",
 ]);
 
-/** Reserved names on the workeros side — adopting a table whose column
+/** Reserved names on the backlex side — adopting a table whose column
  *  collides with one of these will be flagged in the inspect response so
  *  the admin sees the issue before applying. The column can still be
  *  adopted, but the API maps it through with the same name; downstream
@@ -123,7 +123,7 @@ export interface AdoptableTable {
 /**
  * List every physical table in the active database, minus:
  *   - managed `c_*` collection tables
- *   - workeros system tables (see `SYSTEM_TABLES`)
+ *   - backlex system tables (see `SYSTEM_TABLES`)
  *   - tables already adopted (caller passes `excludeTables`)
  *
  * Each row carries a best-effort `rowCount` and a `disabled` reason
@@ -325,7 +325,7 @@ export interface InspectedTable {
     ownerId: string | null;
   };
   /** Foreign keys declared on the source table. Composite FKs are
-   *  reported with `composite: true` (workeros doesn't model multi-column
+   *  reported with `composite: true` (backlex doesn't model multi-column
    *  references; UI surfaces them as informational, not adoptable).
    *  `targetCollection` is filled in by the route layer after the service
    *  returns — it requires the request's tenant to scope the lookup. */
@@ -342,7 +342,7 @@ export interface ForeignKey {
    *  column list (`REFERENCES parent` without parentheses) and we could
    *  not resolve the parent's PK — flag it but don't fail introspection. */
   referencesColumn: string;
-  /** True when this FK spans multiple columns. workeros' relation field
+  /** True when this FK spans multiple columns. backlex' relation field
    *  is single-column, so composite FKs are shown but cannot be adopted
    *  as `relation`/`relation_many`. */
   composite: boolean;

@@ -93,7 +93,7 @@ export const getFile: McpTool = {
         {
           type: "resource",
           resource: {
-            uri: `workeros://storage/${key}`,
+            uri: `backlex://storage/${key}`,
             mimeType: contentType,
             text: base64,
           },

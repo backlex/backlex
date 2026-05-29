@@ -135,10 +135,10 @@ export const buildOpenApiDoc = async (
   const baseDoc = globalGen.generateDocument({
     openapi: "3.1.0",
     info: {
-      title: opts.title ?? "Workeros API",
+      title: opts.title ?? "Backlex API",
       version: opts.version ?? "0.1.0",
       description:
-        "REST surface for the workeros admin app and SDKs. Schema is generated from the live Zod validators; per-collection `/api/items/{slug}` paths are added from your workspace's collection metadata at request time.",
+        "REST surface for the backlex admin app and SDKs. Schema is generated from the live Zod validators; per-collection `/api/items/{slug}` paths are added from your workspace's collection metadata at request time.",
     },
     servers: opts.baseUrl ? [{ url: opts.baseUrl }] : undefined,
     security: [{ sessionCookie: [] }, { apiKey: [] }],

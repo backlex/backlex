@@ -1,5 +1,5 @@
 /**
- * workeros fn-exec-server — out-of-isolate function executor for the
+ * backlex fn-exec-server — out-of-isolate function executor for the
  * `remote-http` sandbox provider.
  *
  * Run this as a standalone Bun process anywhere `eval` / `new Function` are
@@ -171,4 +171,4 @@ Bun.serve({
   },
 });
 
-console.log(`workeros fn-exec-server listening on :${PORT}`);
+console.log(`backlex fn-exec-server listening on :${PORT}`);

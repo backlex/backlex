@@ -25,7 +25,7 @@ export const createWebhook: McpTool = {
   description:
     "Register a new outgoing webhook. `events` is an array of dot-patterns " +
     "(`items.<slug>.created`, `items.*.updated`, etc.). A `secret`, when " +
-    "supplied, signs each delivery via HMAC-SHA256 in `X-Workeros-Signature`.",
+    "supplied, signs each delivery via HMAC-SHA256 in `X-Backlex-Signature`.",
   inputSchema: {
     type: "object",
     properties: {

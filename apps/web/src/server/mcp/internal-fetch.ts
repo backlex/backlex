@@ -2,7 +2,7 @@ import type { Hono } from "hono";
 import type { Env } from "../env";
 
 /** Build a forwarder that calls the Hono `app` with the original MCP
- *  request's identity (Authorization, Cookie, X-Workeros-Tenant). Every
+ *  request's identity (Authorization, Cookie, X-Backlex-Tenant). Every
  *  layer of middleware re-runs against the sub-request, so permissions,
  *  tenant resolution, CORS, and validation behave exactly as they would
  *  for a direct HTTP call. */
@@ -14,7 +14,7 @@ export const makeInternalFetch = (
   const originUrl = new URL(originRequest.url);
   const auth = originRequest.headers.get("authorization");
   const cookie = originRequest.headers.get("cookie");
-  const tenant = originRequest.headers.get("x-workeros-tenant");
+  const tenant = originRequest.headers.get("x-backlex-tenant");
   const xff = originRequest.headers.get("x-forwarded-for");
   const ip = originRequest.headers.get("cf-connecting-ip");
 
@@ -23,8 +23,8 @@ export const makeInternalFetch = (
     const headers = new Headers(init.headers ?? {});
     if (auth && !headers.has("authorization")) headers.set("authorization", auth);
     if (cookie && !headers.has("cookie")) headers.set("cookie", cookie);
-    if (tenant && !headers.has("x-workeros-tenant"))
-      headers.set("x-workeros-tenant", tenant);
+    if (tenant && !headers.has("x-backlex-tenant"))
+      headers.set("x-backlex-tenant", tenant);
     if (xff && !headers.has("x-forwarded-for")) headers.set("x-forwarded-for", xff);
     if (ip && !headers.has("cf-connecting-ip"))
       headers.set("cf-connecting-ip", ip);

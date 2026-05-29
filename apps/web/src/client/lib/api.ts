@@ -53,7 +53,7 @@ export const api = async <T>(path: string, init?: RequestInit): Promise<T> => {
     if (res.status === 401 && typeof window !== "undefined") {
       const onAuthPage = /^\/sign-(in|up)/.test(window.location.pathname);
       if (!onAuthPage) {
-        window.dispatchEvent(new Event("workeros:session-expired"));
+        window.dispatchEvent(new Event("backlex:session-expired"));
       }
     }
     // Two error response shapes flow through here:

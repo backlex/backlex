@@ -50,7 +50,7 @@ export const AuthShell = ({
   themeToggle,
   children,
 }: AuthShellProps) => {
-  const brandName = branding.name?.trim() || "workeros";
+  const brandName = branding.name?.trim() || "backlex";
   const brandLogo = branding.logoUrl ?? null;
 
   // Sign-in screen can have its headline/tagline overridden by admin branding.

@@ -6,9 +6,12 @@ export { RealtimeRoom } from "../durable-objects/realtime-room";
 export { RateLimitRoom } from "../durable-objects/rate-limit-room";
 
 export default {
-  fetch(request: Request, env: Env, _ctx: unknown) {
+  fetch(request: Request, env: Env, ctx: ExecutionContext) {
     const app = createApp(env);
-    return app.fetch(request, env);
+    // Pass `ctx` through so `c.executionCtx.waitUntil` works — without it the
+    // fire-and-forget tasks in keepAlive (5xx audit rows, opt-in cloud error /
+    // AI usage reports) get cancelled when the response returns.
+    return app.fetch(request, env, ctx);
   },
 
   /**

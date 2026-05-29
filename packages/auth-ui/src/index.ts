@@ -1,5 +1,5 @@
 /**
- * @workeros/auth-ui — i18n-free, router-agnostic auth screens.
+ * @backlex/auth-ui — i18n-free, router-agnostic auth screens.
  *
  * The package ships the JSX + shadcn wiring for sign-in, sign-up, forgot,
  * reset-password, and magic-link. Consumers pass:
@@ -9,9 +9,9 @@
  *   - `branding` — workspace logo + name (+ optional sign-in headline override)
  *   - `socialButtons` — render-prop slot for provider buttons
  *
- * No Lingui, no React Router, no `@/lib/*` imports — only `@workeros/ui`.
+ * No Lingui, no React Router, no `@/lib/*` imports — only `@backlex/ui`.
  *
- * Don't forget to import `@workeros/auth-ui/auth-shell.css` once at bootstrap
+ * Don't forget to import `@backlex/auth-ui/auth-shell.css` once at bootstrap
  * for the animated brand-panel beams.
  */
 

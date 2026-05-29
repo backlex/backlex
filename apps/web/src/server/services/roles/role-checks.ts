@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { AppError } from "@workeros/core";
+import { AppError } from "@backlex/core";
 import { tableFor } from "./tables";
 
 /** Verify the role exists *and* belongs to the active tenant. Routes that

@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { and, eq, sql, type SQL } from "drizzle-orm";
-import { AppError, EMBEDDING_MODEL_NAMES, type EmbeddingModel } from "@workeros/core";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
+import { AppError, EMBEDDING_MODEL_NAMES, type EmbeddingModel } from "@backlex/core";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
 import {
   applyCollection,
   assertIdent,
@@ -12,7 +12,7 @@ import {
   type FieldDef,
   tableExists,
   validateFields,
-} from "@workeros/db";
+} from "@backlex/db";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { inspectTable, RESERVED_NAMES } from "../services/adopt";

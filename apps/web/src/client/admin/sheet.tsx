@@ -4,23 +4,23 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "./icons";
 import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button, Checkbox, Switch } from "./ui";
-import { Input } from "@workeros/ui/components/input";
-import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
-import { Textarea } from "@workeros/ui/components/textarea";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+import { Input } from "@backlex/ui/components/input";
+import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
+import { Textarea } from "@backlex/ui/components/textarea";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@workeros/ui/components/dropdown-menu";
+} from "@backlex/ui/components/dropdown-menu";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
+} from "@backlex/ui/components/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,8 +30,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@workeros/ui/components/alert-dialog";
-import { cn } from "@workeros/ui/lib/utils";
+} from "@backlex/ui/components/alert-dialog";
+import { cn } from "@backlex/ui/lib/utils";
 import { Select } from "./select";
 import { RelationPicker, FilePicker, MultiFilePicker } from "./relational-pickers";
 import { ItemCommentsPanel } from "./item-collaboration";

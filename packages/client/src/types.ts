@@ -1,4 +1,4 @@
-import type { Condition } from "@workeros/core";
+import type { Condition } from "@backlex/core";
 
 export interface ListResponse<T> {
   data: T[];

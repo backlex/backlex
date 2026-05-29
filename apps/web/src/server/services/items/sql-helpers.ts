@@ -1,5 +1,5 @@
 import { sql, type SQL } from "drizzle-orm";
-import { AppError } from "@workeros/core";
+import { AppError } from "@backlex/core";
 import type { Ctx } from "../../context";
 import type { CollectionRow } from "./collection-loader";
 

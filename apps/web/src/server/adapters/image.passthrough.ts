@@ -1,4 +1,4 @@
-import type { ImageAdapter } from "@workeros/core";
+import type { ImageAdapter } from "@backlex/core";
 
 /**
  * Default image adapter — returns the source body untouched. Used when no

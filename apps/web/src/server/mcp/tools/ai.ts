@@ -15,7 +15,7 @@
  * of them auto-apply destructive changes — every mutation is a follow-up
  * tool call the agent must make explicitly.
  */
-import { AppError } from "@workeros/core";
+import { AppError } from "@backlex/core";
 import type { McpTool, ToolResult, ToolCtx } from "../types";
 import { callClaude, extractJson } from "../ai-client";
 import { readJson } from "../internal-fetch";

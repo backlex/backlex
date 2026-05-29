@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { and, count, desc, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
-import { AppError } from "@workeros/core";
+import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
 import { logActivity } from "../services/activity";

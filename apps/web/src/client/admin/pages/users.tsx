@@ -4,9 +4,9 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { Badge, Button, Checkbox, IconButton, PageHeader } from "../ui";
 import { Select } from "../select";
-import { Input } from "@workeros/ui/components/input";
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@workeros/ui/components/input-group";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
+import { Input } from "@backlex/ui/components/input";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@backlex/ui/components/input-group";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
+} from "@backlex/ui/components/dialog";
 import {
   Sheet,
   SheetContent,
@@ -22,15 +22,15 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-} from "@workeros/ui/components/sheet";
+} from "@backlex/ui/components/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@workeros/ui/components/dropdown-menu";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+} from "@backlex/ui/components/dropdown-menu";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { rolesApi, usersApi, type ApiRole, type ApiUser } from "../api";
 import { UsersSkeleton } from "../page-skeletons";
 import { auth } from "@/lib/auth";

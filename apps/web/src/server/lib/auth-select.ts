@@ -14,7 +14,7 @@
  * runtime; the route layer maps that to a 503 "UNAVAILABLE" so tenants
  * either configure SAML or run the app on Bun / a Node host.
  */
-import type { LdapAdapter, SamlAdapter } from "@workeros/core/adapters";
+import type { LdapAdapter, SamlAdapter } from "@backlex/core/adapters";
 import { samlifySamlAdapter } from "../adapters/saml.samlify";
 import { ldaptsLdapAdapter, type LdapSpec } from "../adapters/ldap.ldapts";
 import { isEdgeRuntime, isStatelessEdge } from "./runtime";

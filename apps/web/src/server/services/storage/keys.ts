@@ -1,4 +1,4 @@
-import { AppError } from "@workeros/core";
+import { AppError } from "@backlex/core";
 
 /**
  * Reserved physical-key prefix that namespaces every uploaded object under

@@ -16,14 +16,14 @@ import {
   type GraphQLOutputType,
 } from "graphql";
 import { eq, sql, type SQL } from "drizzle-orm";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
 import {
   compileCondition,
   type FieldDef,
   type FieldType,
-} from "@workeros/db";
-import type { AuthSubject, Condition } from "@workeros/core";
+} from "@backlex/db";
+import type { AuthSubject, Condition } from "@backlex/core";
 import { resolvePermission, type PermResolveCache } from "./permissions";
 import { publishEvent } from "./events";
 import type { Ctx } from "../context";

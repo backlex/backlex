@@ -208,7 +208,7 @@ POST   /api/_internal/sandbox-rpc   internal — Bearer-auth, used by the remote
 - [Querying items](docs/querying.md) — filter / sort / projection / expand / locale / meta
 - [Adopting tables](docs/adopting-tables.md) — wrap an existing table without DDL
 - [Functions / sandbox](docs/functions.md) — three providers, RPC bridge, security
-- [SDK + CLI](docs/sdk-and-cli.md) — `@workeros/client` + `workeros` commands
+- [SDK + CLI](docs/sdk-and-cli.md) — `@backlex/client` + `workeros` commands
 - [GraphQL](docs/graphql.md) — auto-schema, relations, mutations
 - [Realtime](docs/realtime.md) — channels, permission filtering, hosting
 - [Storage](docs/storage.md) — adapters, image transforms, signed URLs
@@ -221,7 +221,7 @@ POST   /api/_internal/sandbox-rpc   internal — Bearer-auth, used by the remote
 
 ## Adapter pattern
 
-Cross-runtime concerns live behind interfaces in `@workeros/core/adapters`:
+Cross-runtime concerns live behind interfaces in `@backlex/core/adapters`:
 
 - `StorageAdapter` — `fsStorage` (Bun dev) / `r2Storage` (Workers) / `bunS3Storage` (Bun + S3) / `s3FetchStorage` (any runtime + S3)
 - `VectorAdapter` — `pgvectorAdapter` (PG) / `vectorizeAdapter` (Workers)

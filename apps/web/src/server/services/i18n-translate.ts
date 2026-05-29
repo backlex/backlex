@@ -1,4 +1,4 @@
-import { AppError } from "@workeros/core";
+import { AppError } from "@backlex/core";
 
 /**
  * Auto-translate a batch of source strings into a target locale using the

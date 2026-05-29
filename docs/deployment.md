@@ -411,12 +411,12 @@ build runs it fresh every deploy.
 ### CLI alternative
 
 The Netlify CLI's monorepo prompt asks which workspace you're targeting;
-pass `--filter @workeros/web` to keep it non-interactive:
+pass `--filter @backlex/web` to keep it non-interactive:
 
 ```bash
-netlify env:set DATABASE_URL postgres://... --filter @workeros/web
-netlify env:set AUTH_SECRET $(openssl rand -hex 32) --filter @workeros/web
-netlify deploy --build --prod --filter @workeros/web
+netlify env:set DATABASE_URL postgres://... --filter @backlex/web
+netlify env:set AUTH_SECRET $(openssl rand -hex 32) --filter @backlex/web
+netlify deploy --build --prod --filter @backlex/web
 ```
 
 For a brand-new site, `netlify api createSiteInTeam` plus a manual

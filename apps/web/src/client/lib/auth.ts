@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createWorkerosAuthClient } from "@workeros/auth/client";
+import { createWorkerosAuthClient } from "@backlex/auth/client";
 import { api } from "./api";
 
 export const auth = createWorkerosAuthClient(

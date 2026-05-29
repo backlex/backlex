@@ -14,10 +14,10 @@ import {
 import { useTheme } from "@/components/theme-provider";
 import { applyPrimaryColor } from "@/main";
 import { refreshBranding } from "@/lib/branding";
-import { ColorPicker } from "@workeros/ui/components/color-picker";
-import { Input } from "@workeros/ui/components/input";
-import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
-import { Textarea } from "@workeros/ui/components/textarea";
+import { ColorPicker } from "@backlex/ui/components/color-picker";
+import { Input } from "@backlex/ui/components/input";
+import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
+import { Textarea } from "@backlex/ui/components/textarea";
 import { SettingsSkeleton } from "../page-skeletons";
 import {
   LOCALE_CODE_RE,

@@ -1,7 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
 ---
-<Base title="workeros Cloud — enterprise">
+<Base title="backlex Cloud — enterprise">
 
 <!-- ─────────────────── Hero ─────────────────── -->
 <section class="relative pt-24 pb-16 border-b border-border overflow-hidden"
@@ -13,7 +13,7 @@ import Base from "../layouts/Base.astro";
         <span>enterprise · single-tenant</span>
       </span>
       <h1 class="font-semibold -tracking-[0.038em] leading-[1.05] text-[clamp(36px,5vw,58px)] mt-5">A <span class='text-primary dark:text-[oklch(0.82_0.22_131)]'>backend</span> that passes vendor review.</h1>
-      <p class="text-[17px] text-muted-foreground mt-5 leading-snug max-w-[52ch]">SAML SSO, SCIM, SOC 2, dedicated cluster, TR-pin for KVKK. workeros's flexibility for engineering, contractual armor for legal and security.</p>
+      <p class="text-[17px] text-muted-foreground mt-5 leading-snug max-w-[52ch]">SAML SSO, SCIM, SOC 2, dedicated cluster, TR-pin for KVKK. backlex's flexibility for engineering, contractual armor for legal and security.</p>
       <div class="flex gap-2.5 mt-6 flex-wrap">
         <a href="#contact" class="inline-flex items-center gap-2 h-11 px-5 rounded-4xl bg-primary text-primary-foreground text-[14.5px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap">Book a call →</a>
         <a href="#trust" class="inline-flex items-center gap-2 h-11 px-5 rounded-4xl border border-border bg-background hover:bg-muted text-foreground text-[14.5px] font-medium no-underline transition-colors whitespace-nowrap">Security & compliance</a>
@@ -30,7 +30,7 @@ import Base from "../layouts/Base.astro";
     <!-- Vendor checklist preview -->
     <div class="relative border border-border rounded-3xl bg-card overflow-hidden shadow-[0_24px_48px_-16px_oklch(0_0_0/0.1)]">
       <div class="px-5 py-3 border-b border-border bg-muted flex items-center gap-2">
-        <span class="font-mono text-[11px] text-muted-foreground uppercase tracking-wider">vendor review — workeros</span>
+        <span class="font-mono text-[11px] text-muted-foreground uppercase tracking-wider">vendor review — backlex</span>
         <span class="ml-auto cf-pill"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>12 / 12</span>
       </div>
       <div class="divide-y divide-border text-[13px]">
@@ -107,7 +107,7 @@ import Base from "../layouts/Base.astro";
         </div>
         <p class="text-[13.5px] text-muted-foreground leading-snug">Single-tenant cluster — your own Cloudflare account + D1 + R2. KVKK? We pin primary to Istanbul; backups stay in TR.</p>
         <ul class="text-[12.5px] text-muted-foreground space-y-1.5 list-none p-0 mt-1">
-          <li class="flex gap-2"><span class="text-primary">✓</span><span>Dedicated CF account + workeros instance</span></li>
+          <li class="flex gap-2"><span class="text-primary">✓</span><span>Dedicated CF account + backlex instance</span></li>
           <li class="flex gap-2"><span class="text-primary">✓</span><span>Region pin (IST, FRA, IAD, SYD, GRU)</span></li>
           <li class="flex gap-2"><span class="text-primary">✓</span><span>Customer-managed encryption key (BYOK)</span></li>
           <li class="flex gap-2"><span class="text-primary">✓</span><span>VPC-style access — IP allowlist + mTLS</span></li>
@@ -200,7 +200,7 @@ import Base from "../layouts/Base.astro";
     <div class="flex flex-col gap-4 max-w-[720px] mb-10">
       <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span><span>architecture</span></span>
       <h2 class="text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.022em] leading-[1.15]">Per-tenant isolated layers.</h2>
-      <p class="text-[15px] text-muted-foreground max-w-[60ch]">Single-tenant cluster — own CF account, own D1, own R2. The only shared layer is workeros's control plane (read-only).</p>
+      <p class="text-[15px] text-muted-foreground max-w-[60ch]">Single-tenant cluster — own CF account, own D1, own R2. The only shared layer is backlex's control plane (read-only).</p>
     </div>
 
     <div class="border border-border rounded-3xl bg-card p-6 grid grid-cols-3 max-[820px]:grid-cols-1 gap-3.5">
@@ -222,7 +222,7 @@ import Base from "../layouts/Base.astro";
           <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px]"><span class="w-6 h-6 rounded bg-muted grid place-items-center text-[10.5px] font-semibold">O</span>Okta · AAD · Google</div>
           <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px] text-muted-foreground"><span class="font-mono">SAML 2.0</span> <span class="ml-auto">user auth</span></div>
           <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px] text-muted-foreground"><span class="font-mono">SCIM 2.0</span> <span class="ml-auto">provisioning</span></div>
-          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px] text-muted-foreground"><span class="font-mono">mTLS</span> <span class="ml-auto">API → workeros</span></div>
+          <div class="bg-card border border-border rounded-xl px-3 py-2.5 flex items-center gap-2 text-[12.5px] text-muted-foreground"><span class="font-mono">mTLS</span> <span class="ml-auto">API → backlex</span></div>
         </div>
       </div>
       <!-- Control plane -->
@@ -252,15 +252,15 @@ import Base from "../layouts/Base.astro";
         <div class="mt-8 grid grid-cols-2 max-[480px]:grid-cols-1 gap-3">
           <div class="border border-border rounded-2xl bg-card p-4">
             <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1">sales</div>
-            <a href="mailto:sales@workeros.dev" class="text-[13px] font-medium text-foreground hover:text-primary no-underline">sales@workeros.dev</a>
+            <a href="mailto:sales@backlex.com" class="text-[13px] font-medium text-foreground hover:text-primary no-underline">sales@backlex.com</a>
           </div>
           <div class="border border-border rounded-2xl bg-card p-4">
             <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1">security</div>
-            <a href="mailto:security@workeros.dev" class="text-[13px] font-medium text-foreground hover:text-primary no-underline">security@workeros.dev</a>
+            <a href="mailto:security@backlex.com" class="text-[13px] font-medium text-foreground hover:text-primary no-underline">security@backlex.com</a>
           </div>
           <div class="border border-border rounded-2xl bg-card p-4">
             <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1">legal</div>
-            <a href="mailto:legal@workeros.dev" class="text-[13px] font-medium text-foreground hover:text-primary no-underline">legal@workeros.dev</a>
+            <a href="mailto:legal@backlex.com" class="text-[13px] font-medium text-foreground hover:text-primary no-underline">legal@backlex.com</a>
           </div>
           <div class="border border-border rounded-2xl bg-card p-4">
             <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1">office</div>

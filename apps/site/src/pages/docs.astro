@@ -1,14 +1,14 @@
 ---
 import Base from "../layouts/Base.astro";
 ---
-<Base title="workeros docs" bodyClass="docs-page" showChrome={false} showBeams={false}>
+<Base title="backlex docs" bodyClass="docs-page" showChrome={false} showBeams={false}>
 
 <div class="app">
   <nav class="top">
     <div class="row">
       <a class="brand" href="/">
-        <span class="brand-mark">w</span>
-        <span>workeros</span>
+        <span class="brand-mark">b</span>
+        <span>backlex</span>
         <span class="docs-tag mono">docs</span>
       </a>
       <span class="crumb"><span class="sep">/</span><span class="here" id="crumb-title">Getting started</span></span>
@@ -78,7 +78,7 @@ import Base from "../layouts/Base.astro";
       </ul>
 
       <h2 id="install">Install + run</h2>
-      <div class="codeblock"><div class="head"><span class="dot"></span>terminal</div><pre><span class="c-prompt">$ </span><span class="c-fn">git clone</span> github.com/your/workeros &amp;&amp; <span class="c-kw">cd</span> workeros
+      <div class="codeblock"><div class="head"><span class="dot"></span>terminal</div><pre><span class="c-prompt">$ </span><span class="c-fn">git clone</span> github.com/your/backlex &amp;&amp; <span class="c-kw">cd</span> backlex
 <span class="c-prompt">$ </span><span class="c-fn">bun install</span>
 <span class="c-prompt">$ </span><span class="c-fn">cp</span> apps/web/.dev.vars.example apps/web/.dev.vars
 
@@ -120,9 +120,9 @@ import Base from "../layouts/Base.astro";
        -d <span class="c-str">'&#123;"query":"&#123; posts(sort:\"-views\", limit:5) &#123; id title views &#125; &#125;"&#125;'</span></pre></div>
 
       <h2 id="generate-types">Generate types for your client</h2>
-      <div class="codeblock"><div class="head"><span class="dot"></span>terminal</div><pre><span class="c-prompt">$ </span><span class="c-fn">bun run</span> workeros gen-types http://localhost:5173 --out src/types.ts</pre></div>
-      <p>The CLI fetches <code>/api/collections</code> and emits one TypeScript interface per collection plus a <code>Collections</code> registry. Use with <code>@workeros/client</code>:</p>
-      <div class="codeblock"><div class="head"><span class="dot"></span>typescript</div><pre><span class="c-kw">import</span> &#123; createClient &#125; <span class="c-kw">from</span> <span class="c-str">"@workeros/client"</span>;
+      <div class="codeblock"><div class="head"><span class="dot"></span>terminal</div><pre><span class="c-prompt">$ </span><span class="c-fn">bun run</span> backlex gen-types http://localhost:5173 --out src/types.ts</pre></div>
+      <p>The CLI fetches <code>/api/collections</code> and emits one TypeScript interface per collection plus a <code>Collections</code> registry. Use with <code>@backlex/client</code>:</p>
+      <div class="codeblock"><div class="head"><span class="dot"></span>typescript</div><pre><span class="c-kw">import</span> &#123; createClient &#125; <span class="c-kw">from</span> <span class="c-str">"@backlex/client"</span>;
 <span class="c-kw">import</span> <span class="c-kw">type</span> &#123; Posts &#125; <span class="c-kw">from</span> <span class="c-str">"./types"</span>;
 
 <span class="c-kw">const</span> wks = <span class="c-fn">createClient</span>(&#123; url: <span class="c-str">"http://localhost:5173"</span> &#125;);
@@ -152,11 +152,11 @@ import Base from "../layouts/Base.astro";
       <div class="frontmatter">
         <span class="eyebrow"><span class="dot"></span>Start here</span>
         <h1>Architecture</h1>
-        <p class="desc">The big picture of workeros in one page — repo shape, runtimes, and adapter layers.</p>
+        <p class="desc">The big picture of backlex in one page — repo shape, runtimes, and adapter layers.</p>
       </div>
 
       <h2 id="repo-shape">Repo shape</h2>
-      <div class="codeblock"><div class="head"><span class="dot"></span>tree</div><pre>workeros/
+      <div class="codeblock"><div class="head"><span class="dot"></span>tree</div><pre>backlex/
 ├─ apps/
 │  └─ web/                 One workspace — Hono API + Vite + React admin SPA
 │                          (server/ + client/ + entries/&#123;bun,worker,vercel,netlify&#125;.ts)
@@ -165,11 +165,11 @@ import Base from "../layouts/Base.astro";
    ├─ db/                  Drizzle schemas (pg + sqlite) + dynamic-DDL applier + DSL compiler
    ├─ auth/                better-auth wrapper + plugin selection
    ├─ ui/                  shadcn radix-luma component library
-   ├─ client/              @workeros/client typed SDK
-   └─ cli/                 workeros CLI</pre></div>
+   ├─ client/              @backlex/client typed SDK
+   └─ cli/                 backlex CLI</pre></div>
 
       <h2 id="adapter-pattern">Adapter pattern</h2>
-      <p>Every cross-runtime concern hides behind a TypeScript interface in <code>@workeros/core/adapters</code>. <code>buildContext</code> picks the right implementation based on bindings/env.</p>
+      <p>Every cross-runtime concern hides behind a TypeScript interface in <code>@backlex/core/adapters</code>. <code>buildContext</code> picks the right implementation based on bindings/env.</p>
       <table class="doc-table">
         <thead><tr><th>Interface</th><th>Bun</th><th>Cloudflare Workers</th><th>Vercel / Netlify (Node 22)</th></tr></thead>
         <tbody>
@@ -253,7 +253,7 @@ import Base from "../layouts/Base.astro";
 
       <h2 id="bun">Bun (self-host)</h2>
       <div class="codeblock"><div class="head"><span class="dot"></span>terminal</div><pre><span class="c-prompt">$ </span><span class="c-key">APP_URL</span>=https://your.app \
-  <span class="c-key">DATABASE_URL</span>=postgres://user:pass@host:5432/workeros \
+  <span class="c-key">DATABASE_URL</span>=postgres://user:pass@host:5432/backlex \
   <span class="c-key">AUTH_SECRET</span>=$(openssl rand -hex 32) \
   bun run --cwd apps/web dev:bun</pre></div>
       <p>For a managed process: systemd unit, Docker, or pm2. The Bun scheduler boots inside <code>apps/web/src/server/entries/bun.ts</code>; cron functions tick every 30 seconds.</p>
@@ -262,14 +262,14 @@ import Base from "../layouts/Base.astro";
       <p><code>apps/web/wrangler.toml</code> covers the bindings. First-time setup:</p>
       <div class="codeblock"><div class="head"><span class="dot"></span>terminal</div><pre><span class="c-prompt">$ </span><span class="c-kw">cd</span> apps/web
 
-<span class="c-prompt">$ </span><span class="c-fn">wrangler</span> d1 create workeros           <span class="c-comment"># paste id into wrangler.toml</span>
-<span class="c-prompt">$ </span><span class="c-fn">wrangler</span> r2 bucket create workeros-files
-<span class="c-prompt">$ </span><span class="c-fn">wrangler</span> vectorize create workeros-embeddings --dimensions=1536 --metric=cosine
+<span class="c-prompt">$ </span><span class="c-fn">wrangler</span> d1 create backlex           <span class="c-comment"># paste id into wrangler.toml</span>
+<span class="c-prompt">$ </span><span class="c-fn">wrangler</span> r2 bucket create backlex-files
+<span class="c-prompt">$ </span><span class="c-fn">wrangler</span> vectorize create backlex-embeddings --dimensions=1536 --metric=cosine
 
 <span class="c-prompt">$ </span><span class="c-fn">wrangler</span> secret put AUTH_SECRET
 <span class="c-prompt">$ </span><span class="c-fn">wrangler</span> secret put RESEND_API_KEY          <span class="c-comment"># or SENDGRID_API_KEY / etc.</span>
 
-<span class="c-prompt">$ </span><span class="c-fn">wrangler</span> d1 migrations apply workeros --remote
+<span class="c-prompt">$ </span><span class="c-fn">wrangler</span> d1 migrations apply backlex --remote
 <span class="c-prompt">$ </span><span class="c-fn">wrangler</span> deploy</pre></div>
       <div class="callout info"><span class="label">Recommended</span><br>Connect the GitHub repo from the Cloudflare dashboard and let every push to <code>main</code> auto-deploy. No GitHub Actions workflow is needed.</div>
 
@@ -380,16 +380,16 @@ import Base from "../layouts/Base.astro";
         <p class="desc">Point a collection at a table you already own — no DDL, no migrations.</p>
       </div>
 
-      <p>workeros normally creates a fresh physical table (<code>c_&lt;slug&gt;</code>) for every collection. <strong>Adoption</strong> is the opposite path: you point a collection at a table you already have and workeros wraps it with permissions, the items API, realtime, and the admin UI — without writing a single DDL statement against your data.</p>
+      <p>backlex normally creates a fresh physical table (<code>c_&lt;slug&gt;</code>) for every collection. <strong>Adoption</strong> is the opposite path: you point a collection at a table you already have and backlex wraps it with permissions, the items API, realtime, and the admin UI — without writing a single DDL statement against your data.</p>
 
       <h2 id="when-to-adopt">When to adopt vs create</h2>
-      <p>Adopt when another app already writes to the table, when you want your own migration tooling to stay the only thing that touches DDL, or when you want workeros on top of legacy data without backfilling. Use a normal <strong>managed</strong> collection when the table doesn't exist yet or when admin-UI field add/remove should alter the physical table.</p>
+      <p>Adopt when another app already writes to the table, when you want your own migration tooling to stay the only thing that touches DDL, or when you want backlex on top of legacy data without backfilling. Use a normal <strong>managed</strong> collection when the table doesn't exist yet or when admin-UI field add/remove should alter the physical table.</p>
 
       <h2 id="limits">Limits and prerequisites</h2>
       <p><strong>Primary key.</strong> Single-column only: <code>uuid</code>, <code>text</code> / <code>varchar</code>, <code>integer</code>, or <code>bigint</code>. Composite PKs, views, and partitioned tables are rejected at inspect.</p>
       <p><strong>Supported column types.</strong></p>
       <table class="doc-table">
-        <thead><tr><th>Source (PG / SQLite)</th><th>workeros FieldType</th></tr></thead>
+        <thead><tr><th>Source (PG / SQLite)</th><th>backlex FieldType</th></tr></thead>
         <tbody>
           <tr><td><code>varchar(n)</code> / <code>text</code> (n ≤ 255)</td><td><code>text</code></td></tr>
           <tr><td><code>varchar(n)</code> / <code>text</code> (n &gt; 255)</td><td><code>longtext</code></td></tr>
@@ -402,7 +402,7 @@ import Base from "../layouts/Base.astro";
         </tbody>
       </table>
       <p>Arrays, enum types, geometry/PostGIS, and custom domains aren't mapped — inspect flags them, the wizard hides them, and they don't surface in the items API. The table itself can still be adopted.</p>
-      <p><strong>Reserved column names.</strong> <code>id</code>, <code>tenant_id</code>, <code>created_at</code>, <code>updated_at</code>, <code>owner_id</code>. If your table uses one of these the column has to match its workeros role (e.g. <code>id</code> must be the PK). Conflicts surface as warnings on inspect.</p>
+      <p><strong>Reserved column names.</strong> <code>id</code>, <code>tenant_id</code>, <code>created_at</code>, <code>updated_at</code>, <code>owner_id</code>. If your table uses one of these the column has to match its backlex role (e.g. <code>id</code> must be the PK). Conflicts surface as warnings on inspect.</p>
 
       <h2 id="wizard">The 3-step wizard</h2>
       <p>The admin lives at <strong>Collections → Adopt existing</strong>. Each step maps to one admin endpoint, so the flow scripts cleanly too.</p>
@@ -413,7 +413,7 @@ import Base from "../layouts/Base.astro";
   <span class="c-str">"data"</span>: [
     &#123; <span class="c-str">"name"</span>: <span class="c-str">"legacy_articles"</span>, <span class="c-str">"columns"</span>: <span class="c-num">14</span>, <span class="c-str">"rowCount"</span>: <span class="c-num">4280</span> &#125;,
     &#123; <span class="c-str">"name"</span>: <span class="c-str">"newsletter_subs"</span>, <span class="c-str">"columns"</span>: <span class="c-num">6</span>,  <span class="c-str">"rowCount"</span>: <span class="c-num">12482</span> &#125;,
-    &#123; <span class="c-str">"name"</span>: <span class="c-str">"sessions"</span>,        <span class="c-str">"columns"</span>: <span class="c-num">6</span>,  <span class="c-str">"disabled"</span>: <span class="c-str">"reserved by workeros (auth)"</span> &#125;
+    &#123; <span class="c-str">"name"</span>: <span class="c-str">"sessions"</span>,        <span class="c-str">"columns"</span>: <span class="c-num">6</span>,  <span class="c-str">"disabled"</span>: <span class="c-str">"reserved by backlex (auth)"</span> &#125;
   ]
 &#125;</pre></div>
 
@@ -444,7 +444,7 @@ import Base from "../layouts/Base.astro";
   <span class="c-str">"ownerScoped"</span>: <span class="c-num">false</span>,
   <span class="c-str">"fields"</span>: [ <span class="c-comment">/* user-mapped */</span> ]
 &#125;</pre></div>
-      <div class="callout warning"><span class="label">No DDL</span><br><code>applyCollection</code> short-circuits on <code>adopted: true</code> — workeros never runs <code>CREATE TABLE</code> or <code>ALTER TABLE</code> against your data. Field changes via the admin <strong>do not</strong> persist on adopted collections.</div>
+      <div class="callout warning"><span class="label">No DDL</span><br><code>applyCollection</code> short-circuits on <code>adopted: true</code> — backlex never runs <code>CREATE TABLE</code> or <code>ALTER TABLE</code> against your data. Field changes via the admin <strong>do not</strong> persist on adopted collections.</div>
 
       <div class="doc-footer">
         <a href="#collections"><span class="dir">← Previous</span><span class="title">Collections</span></a>
@@ -460,7 +460,7 @@ import Base from "../layouts/Base.astro";
         <p class="desc">One Directus-shaped URL for filter, search, sort, projection, pagination, and counts.</p>
       </div>
 
-      <p><code>GET /api/items/&lt;slug&gt;</code> is workeros' Directus-shaped REST query endpoint: one URL covers filter, full-text search, sort, projection, pagination, count metadata, and locale projection. Parsing lives in <code>apps/web/src/server/lib/query.ts::parseQuery</code>; the same compile path backs the GraphQL resolver.</p>
+      <p><code>GET /api/items/&lt;slug&gt;</code> is backlex' Directus-shaped REST query endpoint: one URL covers filter, full-text search, sort, projection, pagination, count metadata, and locale projection. Parsing lives in <code>apps/web/src/server/lib/query.ts::parseQuery</code>; the same compile path backs the GraphQL resolver.</p>
 
       <h2 id="shape">The shape</h2>
       <table class="doc-table">
@@ -591,7 +591,7 @@ import Base from "../layouts/Base.astro";
         <p class="desc">JSON permission language shared by REST, GraphQL, realtime filters, and DB persistence.</p>
       </div>
 
-      <p>workeros has its own JSON permission language. The same DSL is used for:</p>
+      <p>backlex has its own JSON permission language. The same DSL is used for:</p>
       <ul>
         <li>Role permission <code>condition</code> field (DB persistence)</li>
         <li>REST <code>?filter=...</code> query string</li>
@@ -681,9 +681,9 @@ import Base from "../layouts/Base.astro";
         <p class="desc">The control-plane vs app-plane split — admins running the dashboard, and the end-users of whatever product is built on top of a workspace.</p>
       </div>
 
-      <p>workeros is built for <strong>two distinct audiences inside the same instance</strong>:</p>
+      <p>backlex is built for <strong>two distinct audiences inside the same instance</strong>:</p>
       <ul>
-        <li>The team running the dashboard — operators, developers, internal admins. They sign into <code>app.your-workeros.com</code>, configure collections, write permissions, invite teammates.</li>
+        <li>The team running the dashboard — operators, developers, internal admins. They sign into <code>app.your-backlex.com</code>, configure collections, write permissions, invite teammates.</li>
         <li>The end-users of whatever product is being <em>built on top of</em> a workspace — the customers of a SaaS, the readers of a CMS, the members of a community. They never see the dashboard. They only talk to the workspace's own auth surface and its data API.</li>
       </ul>
 
@@ -698,7 +698,7 @@ import Base from "../layouts/Base.astro";
       </table>
 
       <p>Both planes share the same <code>tenants</code> table and the same role / permission machinery. The plane tag flows from <code>sessionMiddleware</code> into <code>tenantMiddleware</code> into <code>requirePermission</code>. Every downstream check can branch on it without re-asking "which kind of user is this".</p>
-      <div class="callout info"><span class="label">Isolation</span><br><code>tenant.ts:204</code> pins an app-plane request to the workspace stamped on its session row and <em>ignores</em> any <code>X-Workeros-Tenant</code> header — a customer's frontend can never accidentally walk into another tenant's data even if it sends one.</div>
+      <div class="callout info"><span class="label">Isolation</span><br><code>tenant.ts:204</code> pins an app-plane request to the workspace stamped on its session row and <em>ignores</em> any <code>X-Backlex-Tenant</code> header — a customer's frontend can never accidentally walk into another tenant's data even if it sends one.</div>
 
       <h2 id="sign-in-flows">Sign-in flows</h2>
       <p><strong>Platform users</strong> sign in at <code>/sign-in</code>. The default surface is email + password; the workspace can enable OAuth (Google / GitHub / Apple), magic link, OTP, passkey, SAML 2.0 SSO, or LDAP. First user to sign up auto-gets the <code>admin</code> role.</p>
@@ -914,17 +914,17 @@ ctx.user       <span class="c-comment">// &#123; id, email, roles[] &#125; — n
       <div class="frontmatter">
         <span class="eyebrow"><span class="dot"></span>Tooling</span>
         <h1>SDK &amp; CLI</h1>
-        <p class="desc">The @workeros/client typed fetch wrapper and the workeros CLI for project scaffolding.</p>
+        <p class="desc">The @backlex/client typed fetch wrapper and the backlex CLI for project scaffolding.</p>
       </div>
 
-      <h2 id="client">@workeros/client</h2>
+      <h2 id="client">@backlex/client</h2>
       <p>Typed fetch wrapper, browser + Node.</p>
-      <div class="codeblock"><div class="head"><span class="dot"></span>typescript</div><pre><span class="c-kw">import</span> &#123; createClient &#125; <span class="c-kw">from</span> <span class="c-str">"@workeros/client"</span>;
+      <div class="codeblock"><div class="head"><span class="dot"></span>typescript</div><pre><span class="c-kw">import</span> &#123; createClient &#125; <span class="c-kw">from</span> <span class="c-str">"@backlex/client"</span>;
 
 <span class="c-kw">const</span> wks = <span class="c-fn">createClient</span>(&#123;
   url: <span class="c-str">"https://api.your.app"</span>,
   <span class="c-comment">// For server-to-server / CI; browser apps use the cookie session:</span>
-  apiKey: process.env.WORKEROS_API_KEY,
+  apiKey: process.env.BACKLEX_API_KEY,
 &#125;);
 
 <span class="c-comment">// CRUD</span>
@@ -949,14 +949,14 @@ ctx.user       <span class="c-comment">// &#123; id, email, roles[] &#125; — n
 <span class="c-comment">// Storage</span>
 <span class="c-kw">await</span> wks.storage.<span class="c-fn">put</span>(<span class="c-str">"avatars/me.png"</span>, file, <span class="c-str">"image/png"</span>);</pre></div>
 
-      <h2 id="cli">workeros CLI</h2>
+      <h2 id="cli">backlex CLI</h2>
       <table class="doc-table">
         <thead><tr><th>Command</th><th>Does</th></tr></thead>
         <tbody>
-          <tr><td><code>workeros migrate</code></td><td>Apply pending hand-written SQL migrations (pg + sqlite)</td></tr>
-          <tr><td><code>workeros gen-types &lt;url&gt;</code></td><td>Fetch <code>/api/collections</code> and emit one TS interface per collection</td></tr>
-          <tr><td><code>workeros adopt &lt;slug&gt; &lt;table&gt;</code></td><td>Run the 3-step adopt wizard from the terminal</td></tr>
-          <tr><td><code>workeros seed</code></td><td>Run <code>./scripts/seed.ts</code> if present</td></tr>
+          <tr><td><code>backlex migrate</code></td><td>Apply pending hand-written SQL migrations (pg + sqlite)</td></tr>
+          <tr><td><code>backlex gen-types &lt;url&gt;</code></td><td>Fetch <code>/api/collections</code> and emit one TS interface per collection</td></tr>
+          <tr><td><code>backlex adopt &lt;slug&gt; &lt;table&gt;</code></td><td>Run the 3-step adopt wizard from the terminal</td></tr>
+          <tr><td><code>backlex seed</code></td><td>Run <code>./scripts/seed.ts</code> if present</td></tr>
         </tbody>
       </table>
 
@@ -992,18 +992,18 @@ ctx.user       <span class="c-comment">// &#123; id, email, roles[] &#125; — n
         <p class="desc">Expose the workspace to Claude Desktop, Cursor, and other IDE agents via the Model Context Protocol.</p>
       </div>
 
-      <p>workeros ships a built-in MCP server at <code>/api/mcp</code>. It exposes your collections, items, storage, and roles as tools — meaning Claude Desktop, Cursor, Continue, and any other MCP client can read and write data through the same permission pipeline as your app.</p>
+      <p>backlex ships a built-in MCP server at <code>/api/mcp</code>. It exposes your collections, items, storage, and roles as tools — meaning Claude Desktop, Cursor, Continue, and any other MCP client can read and write data through the same permission pipeline as your app.</p>
 
       <h2 id="connecting">Connecting from Claude Desktop</h2>
       <p>Generate an API key from the admin (<strong>Settings → API keys</strong>, prefix <code>pak_</code>), then add to your Claude Desktop config:</p>
       <div class="codeblock"><div class="head"><span class="dot"></span>json</div><pre>&#123;
   <span class="c-str">"mcpServers"</span>: &#123;
-    <span class="c-str">"workeros"</span>: &#123;
+    <span class="c-str">"backlex"</span>: &#123;
       <span class="c-str">"command"</span>: <span class="c-str">"npx"</span>,
-      <span class="c-str">"args"</span>: [<span class="c-str">"-y"</span>, <span class="c-str">"@workeros/mcp-bridge"</span>],
+      <span class="c-str">"args"</span>: [<span class="c-str">"-y"</span>, <span class="c-str">"@backlex/mcp-bridge"</span>],
       <span class="c-str">"env"</span>: &#123;
-        <span class="c-str">"WORKEROS_URL"</span>:    <span class="c-str">"https://your-instance.workeros.app"</span>,
-        <span class="c-str">"WORKEROS_API_KEY"</span>: <span class="c-str">"pak_..."</span>
+        <span class="c-str">"BACKLEX_URL"</span>:    <span class="c-str">"https://your-instance.backlex.app"</span>,
+        <span class="c-str">"BACKLEX_API_KEY"</span>: <span class="c-str">"pak_..."</span>
       &#125;
     &#125;
   &#125;
@@ -1101,7 +1101,7 @@ ctx.user       <span class="c-comment">// &#123; id, email, roles[] &#125; — n
     });
     const crumb = document.getElementById("crumb-title");
     if (crumb) crumb.textContent = TITLES[id] || id;
-    document.title = (TITLES[id] || id) + " — workeros docs";
+    document.title = (TITLES[id] || id) + " — backlex docs";
     buildToc(id);
     window.scrollTo(0, 0);
   }

@@ -8,6 +8,8 @@
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro check && astro build",
+    "build:web": "astro build && bun run --cwd ../docs build && rm -rf dist/docs && cp -r ../docs/dist dist/docs",
+    "deploy": "bun run build:web && wrangler deploy",
     "typecheck": "astro check",
     "preview": "astro preview",
     "astro": "astro"

@@ -38,7 +38,7 @@ const {
       // Apply theme before paint to avoid a flash.
       try {
         var t =
-          localStorage.getItem("workeros.theme") ||
+          localStorage.getItem("backlex.theme") ||
           (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
         if (t === "dark") document.documentElement.classList.add("dark");
       } catch (_) {}
@@ -65,7 +65,7 @@ const {
         btn.addEventListener("click", function () {
           var next = root.classList.contains("dark") ? "light" : "dark";
           try {
-            localStorage.setItem("workeros.theme", next);
+            localStorage.setItem("backlex.theme", next);
           } catch (_) {}
           applyTheme(next);
         });

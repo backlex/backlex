@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { KeyRoundIcon } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
-import { Button } from "@workeros/ui/components/button";
+import { Button } from "@backlex/ui/components/button";
 import { auth, useAuthSurface, type PublicProvider } from "@/lib/auth";
 import { notifyError } from "@/lib/error";
 

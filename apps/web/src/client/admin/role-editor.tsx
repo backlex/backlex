@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "./ui";
-import { Input } from "@workeros/ui/components/input";
+import { Input } from "@backlex/ui/components/input";
 import {
   Dialog,
   DialogContent,
@@ -11,8 +11,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+} from "@backlex/ui/components/dialog";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 
 const ACTIONS = ["read", "create", "update", "delete"] as const;
 

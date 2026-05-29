@@ -77,10 +77,10 @@ bun run workeros gen-types http://localhost:5173 --out src/types.ts
 ```
 
 The CLI fetches `/api/collections` and emits one TypeScript interface per
-collection plus a `Collections` registry. Use with `@workeros/client`:
+collection plus a `Collections` registry. Use with `@backlex/client`:
 
 ```ts
-import { createClient } from "@workeros/client";
+import { createClient } from "@backlex/client";
 import type { Posts } from "./types";
 
 const wks = createClient({ url: "http://localhost:5173" });

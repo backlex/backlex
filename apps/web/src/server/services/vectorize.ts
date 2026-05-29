@@ -1,5 +1,5 @@
-import { isEmbeddingModel, type EmbeddingModel } from "@workeros/core";
-import type { FieldDef } from "@workeros/db";
+import { isEmbeddingModel, type EmbeddingModel } from "@backlex/core";
+import type { FieldDef } from "@backlex/db";
 import type { Ctx } from "../context";
 import type { Env } from "../env";
 

@@ -1,8 +1,8 @@
 import type { MiddlewareHandler } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { and, eq, or } from "drizzle-orm";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { ensureDefaultTenant } from "../services/seed";
 import { loadUnfilteredRoleNames } from "./session";

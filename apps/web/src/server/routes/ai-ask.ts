@@ -17,7 +17,7 @@
  * docs/ask-ai.md for why logging stays here instead of in the dispatcher.
  */
 import { Hono, type MiddlewareHandler } from "hono";
-import { AppError, SYSTEM_ROLES } from "@workeros/core";
+import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { AppBindings } from "../app";
 import type { Env } from "../env";
 import { requireUser } from "../middleware/session";

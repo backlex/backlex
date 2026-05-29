@@ -1,20 +1,20 @@
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Button } from "@workeros/ui/components/button";
+import { Button } from "@backlex/ui/components/button";
 import {
   ResetPasswordPage as BaseResetPasswordPage,
   type AuthBranding,
   type AuthShellCopy,
   type ResetPasswordCopy,
-} from "@workeros/auth-ui";
+} from "@backlex/auth-ui";
 import { useTheme } from "@/components/theme-provider";
 import { notifyError } from "@/lib/error";
 import { auth, useAuthSurface } from "@/lib/auth";
 import { useWorkspaceBranding } from "@/lib/branding";
 import { version as appVersion } from "../../../package.json";
 
-/** OSS-admin wrapper around `<ResetPasswordPage>` from `@workeros/auth-ui`. */
+/** OSS-admin wrapper around `<ResetPasswordPage>` from `@backlex/auth-ui`. */
 export const ResetPassword = () => {
   const { t } = useLingui();
   const navigate = useNavigate();

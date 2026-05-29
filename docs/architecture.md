@@ -17,14 +17,14 @@ workeros/
    ├─ db/                  Drizzle schemas (pg + sqlite) + dynamic-DDL applier + DSL compiler
    ├─ auth/                better-auth wrapper + plugin selection
    ├─ ui/                  shadcn radix-luma component library
-   ├─ client/              `@workeros/client` typed SDK
+   ├─ client/              `@backlex/client` typed SDK
    └─ cli/                 `workeros` CLI
 ```
 
 ## Adapter pattern
 
 Every cross-runtime concern hides behind a TypeScript interface in
-`@workeros/core/adapters`. `apps/web/src/server/context.ts::buildContext`
+`@backlex/core/adapters`. `apps/web/src/server/context.ts::buildContext`
 picks the right implementation based on bindings/env.
 
 | Interface           | Bun                | Cloudflare Workers      | Vercel / Netlify (Node 22) |

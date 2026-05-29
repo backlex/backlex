@@ -6,9 +6,9 @@ import {
   KeyRoundIcon,
   MailIcon,
 } from "lucide-react";
-import { Button } from "@workeros/ui/components/button";
-import { Input } from "@workeros/ui/components/input";
-import { Label } from "@workeros/ui/components/label";
+import { Button } from "@backlex/ui/components/button";
+import { Input } from "@backlex/ui/components/input";
+import { Label } from "@backlex/ui/components/label";
 import {
   AuthCard,
   AuthCardHeader,

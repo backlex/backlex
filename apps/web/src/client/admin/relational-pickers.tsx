@@ -22,9 +22,9 @@ import {
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "./icons";
 import { Button, IconButton, Checkbox } from "./ui";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@workeros/ui/components/input-group";
-import { Skeleton } from "@workeros/ui/components/skeleton";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@backlex/ui/components/input-group";
+import { Skeleton } from "@backlex/ui/components/skeleton";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -32,7 +32,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
+} from "@backlex/ui/components/dialog";
 import { api } from "@/lib/api";
 import { itemsApi } from "./api";
 

@@ -5,7 +5,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import "./admin.css";
 import "./flow-builder.css";
 import { I } from "./icons";
-import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import {
   ADAPTER_PROFILES,
   NAV_DEVELOPERS,
@@ -48,7 +48,7 @@ import { useCollections, useMetricsOverview } from "./queries";
 import { api } from "@/lib/api";
 import { useUrlState, useUrlStateJson } from "@/lib/use-url-state";
 import { useTheme } from "@/components/theme-provider";
-import { SidebarInset, SidebarProvider } from "@workeros/ui/components/sidebar";
+import { SidebarInset, SidebarProvider } from "@backlex/ui/components/sidebar";
 import { StoragePage } from "./storage";
 import {
   AppUsersPage,

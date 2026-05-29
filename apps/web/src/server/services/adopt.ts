@@ -13,9 +13,9 @@
  * stay DB-dialect-aware in one place and the route stays a thin shell.
  */
 import { sql } from "drizzle-orm";
-import type { PgDb } from "@workeros/db/pg";
-import type { SqliteDb } from "@workeros/db/sqlite";
-import type { FieldType } from "@workeros/db";
+import type { PgDb } from "@backlex/db/pg";
+import type { SqliteDb } from "@backlex/db/sqlite";
+import type { FieldType } from "@backlex/db";
 
 type Dialect = "pg" | "sqlite";
 type AnyDb = PgDb | SqliteDb;

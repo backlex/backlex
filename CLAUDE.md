@@ -135,21 +135,21 @@ System tables live in `packages/db/src/{pg,sqlite}/schema.ts` (Drizzle, dual-dia
 
 ### Errors
 
-Throw `AppError(code, message, details?)` from `@workeros/core` in route handlers. The global handler (`apps/web/src/server/middleware/error.ts`) maps the code to the right HTTP status (`UNAUTHORIZED → 401`, `VALIDATION → 422`, etc.). **Don't return `c.json({ error: ... }, 4xx)` ad-hoc** — use `AppError` so the response shape stays uniform.
+Throw `AppError(code, message, details?)` from `@backlex/core` in route handlers. The global handler (`apps/web/src/server/middleware/error.ts`) maps the code to the right HTTP status (`UNAUTHORIZED → 401`, `VALIDATION → 422`, etc.). **Don't return `c.json({ error: ... }, 4xx)` ad-hoc** — use `AppError` so the response shape stays uniform.
 
 ### Permissions DSL (one-paragraph version)
 
 Granular permissions live in `roles` + `user_roles` + `permissions`. Each `permission` row binds a role to a (collection, action) pair with optional `condition` (mini DSL) and `fields` allow-list. The DSL compiles to a Drizzle `SQL` fragment for REST/GraphQL filters and to an in-memory predicate for realtime filtering — same operators, same variables (`$user.id`, `$user.email`, `$user.roles`, `$tenant.id`, `$now`). When wiring a new resource, add a `requirePermission(collection, action)` middleware and apply `c.var.permission.whereSql` / `c.var.permission.fields`. Full reference: `docs/permissions.md`.
 
-## UI package (`@workeros/ui`)
+## UI package (`@backlex/ui`)
 
 Shared design system in `packages/ui`, built from the shadcn `radix-luma` preset. Single source of truth for tokens, components, and `globals.css`.
 
-- **Importing:** `import { Button } from "@workeros/ui/components/button"`, `import { cn } from "@workeros/ui/lib/utils"`, `import "@workeros/ui/globals.css"`. Subpath exports — no barrel.
-- **Adding components:** run `bun run --cwd packages/ui shadcn add <name>` (uses `packages/ui/components.json`, writes into `src/components/`). For app-local components use `bun run --cwd apps/web shadcn add <name>` — that one's `components.json` writes into `apps/web/src/client/components/` but still pulls `cn` from `@workeros/ui/lib/utils`.
+- **Importing:** `import { Button } from "@backlex/ui/components/button"`, `import { cn } from "@backlex/ui/lib/utils"`, `import "@backlex/ui/globals.css"`. Subpath exports — no barrel.
+- **Adding components:** run `bun run --cwd packages/ui shadcn add <name>` (uses `packages/ui/components.json`, writes into `src/components/`). For app-local components use `bun run --cwd apps/web shadcn add <name>` — that one's `components.json` writes into `apps/web/src/client/components/` but still pulls `cn` from `@backlex/ui/lib/utils`.
 - **Tokens & theme:** `packages/ui/src/styles/globals.css` holds the OKLCH palette + Tailwind v4 `@theme` block + `.dark` overrides. `apps/web/src/client/components/theme-provider.tsx` toggles the `.dark` class (press `d` in dev to toggle).
 - **Slots/primitives:** components use the `radix-ui` meta-package (`import { Slot } from "radix-ui"`), not the per-component `@radix-ui/react-*` packages.
-- **Scrollable areas:** never put a raw `overflow-auto` / `overflow-y-auto` / `overflow-x-auto` on a scroll container — always use `<ScrollArea>` from `@workeros/ui/components/scroll-area` so the scrollbar styling stays consistent. Height caps go on `viewportClassName`; fill/visual classes (`min-h-0 flex-1`, `w-full`, `border*`, `rounded-*`, `bg-*`) go on `className`; layout (`flex`, `grid`, `gap-*`), padding, and event handlers stay on an inner `<div>` inside the `ScrollArea`. For a dialog/sheet whose body scrolls, give `DialogContent` `flex flex-col overflow-hidden` and wrap only the body in `<ScrollArea className="min-h-0 flex-1">` so the header/footer stay pinned.
+- **Scrollable areas:** never put a raw `overflow-auto` / `overflow-y-auto` / `overflow-x-auto` on a scroll container — always use `<ScrollArea>` from `@backlex/ui/components/scroll-area` so the scrollbar styling stays consistent. Height caps go on `viewportClassName`; fill/visual classes (`min-h-0 flex-1`, `w-full`, `border*`, `rounded-*`, `bg-*`) go on `className`; layout (`flex`, `grid`, `gap-*`), padding, and event handlers stay on an inner `<div>` inside the `ScrollArea`. For a dialog/sheet whose body scrolls, give `DialogContent` `flex flex-col overflow-hidden` and wrap only the body in `<ScrollArea className="min-h-0 flex-1">` so the header/footer stay pinned.
 
 ## Conventions worth knowing
 

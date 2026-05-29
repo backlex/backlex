@@ -1,8 +1,8 @@
 /**
  * Bun-only SQLite client. Lives in its own subpath so the top-level
- * `@workeros/db/sqlite` module can be loaded on edge runtimes (Vercel Edge /
+ * `@backlex/db/sqlite` module can be loaded on edge runtimes (Vercel Edge /
  * Netlify Deno Deploy) that don't ship `bun:sqlite`. Import this file via
- * dynamic `await import("@workeros/db/sqlite/bun")` from a code path that
+ * dynamic `await import("@backlex/db/sqlite/bun")` from a code path that
  * has already decided it's running on Bun (or under Vite + miniflare for
  * dev — the Worker bundle aliases `bun:sqlite` to a throwing shim).
  */

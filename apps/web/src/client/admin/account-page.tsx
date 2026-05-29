@@ -12,13 +12,13 @@ import {
   ShieldIcon,
 } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Button } from "@workeros/ui/components/button";
-import { Badge } from "@workeros/ui/components/badge";
-import { Input } from "@workeros/ui/components/input";
-import { Label } from "@workeros/ui/components/label";
-import { Checkbox } from "@workeros/ui/components/checkbox";
-import { Avatar, AvatarFallback, AvatarImage } from "@workeros/ui/components/avatar";
-import { Card, CardContent, CardHeader, CardTitle } from "@workeros/ui/components/card";
+import { Button } from "@backlex/ui/components/button";
+import { Badge } from "@backlex/ui/components/badge";
+import { Input } from "@backlex/ui/components/input";
+import { Label } from "@backlex/ui/components/label";
+import { Checkbox } from "@backlex/ui/components/checkbox";
+import { Avatar, AvatarFallback, AvatarImage } from "@backlex/ui/components/avatar";
+import { Card, CardContent, CardHeader, CardTitle } from "@backlex/ui/components/card";
 import {
   Table,
   TableBody,
@@ -26,10 +26,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@workeros/ui/components/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
-import { Separator } from "@workeros/ui/components/separator";
-import { Skeleton } from "@workeros/ui/components/skeleton";
+} from "@backlex/ui/components/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
+import { Separator } from "@backlex/ui/components/separator";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import { PageHeader } from "@/components/page-header";
 import { auth } from "@/lib/auth";
 import { api } from "@/lib/api";

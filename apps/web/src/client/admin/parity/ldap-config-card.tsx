@@ -6,7 +6,7 @@
  * the shared `card`/`field` CSS classes the rest of the admin page uses.
  *
  * shadcn-only rule: every interactive element comes from `@/admin/ui`
- * (the local re-export of `@workeros/ui`).
+ * (the local re-export of `@backlex/ui`).
  *
  * Secrets — `bindPassword` and `caPem` — are never returned by the server.
  * The card shows a "set" badge when `secretsSet.bindPassword === true`, and
@@ -15,20 +15,20 @@
  */
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Input } from "@workeros/ui/components/input";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
-import { Textarea } from "@workeros/ui/components/textarea";
-import { Skeleton } from "@workeros/ui/components/skeleton";
+import { Input } from "@backlex/ui/components/input";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Textarea } from "@backlex/ui/components/textarea";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import { I } from "../icons";
 import { Badge, Button, Switch } from "../ui";
 import { Select } from "../select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@workeros/ui/components/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
+} from "@backlex/ui/components/dialog";
 import {
   ldapAdminApi,
   type ApiLdapConfig,

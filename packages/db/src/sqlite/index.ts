@@ -5,7 +5,7 @@ import * as schema from "./schema";
 
 /** Type-only re-export of the SQLite client union. The runtime factories
  *  for Bun (`createBunSqliteClient`) and libSQL (`createLibsqlClient`)
- *  live in `@workeros/db/sqlite/bun` and `@workeros/db/sqlite/libsql` and
+ *  live in `@backlex/db/sqlite/bun` and `@backlex/db/sqlite/libsql` and
  *  are loaded via dynamic `await import()` so this top-level module stays
  *  edge-safe (no `bun:sqlite` / no `@libsql/client` import at module init). */
 export type SqliteDb =

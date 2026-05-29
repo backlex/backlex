@@ -1,5 +1,5 @@
 {
-  "name": "@workeros/auth",
+  "name": "@backlex/auth",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -14,8 +14,8 @@
   },
   "dependencies": {
     "@better-auth/passkey": "^1.6.9",
-    "@workeros/core": "workspace:*",
-    "@workeros/db": "workspace:*",
+    "@backlex/core": "workspace:*",
+    "@backlex/db": "workspace:*",
     "better-auth": "^1.1.4",
     "drizzle-orm": "1.0.0-beta.22"
   },

@@ -24,8 +24,8 @@ import { sql } from "drizzle-orm";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ensureMigrations } from "@workeros/db";
-import { MIGRATIONS as SQLITE_MIGRATIONS } from "@workeros/db/sqlite/migrations-bundle";
+import { ensureMigrations } from "@backlex/db";
+import { MIGRATIONS as SQLITE_MIGRATIONS } from "@backlex/db/sqlite/migrations-bundle";
 
 let tmp: string;
 let dbPath: string;

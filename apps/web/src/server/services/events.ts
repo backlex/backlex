@@ -1,7 +1,7 @@
-import { matchesCondition } from "@workeros/db";
-import type { AuthSubject, Condition, EmailAdapter } from "@workeros/core";
-import type { PgDb } from "@workeros/db/pg";
-import type { SqliteDb } from "@workeros/db/sqlite";
+import { matchesCondition } from "@backlex/db";
+import type { AuthSubject, Condition, EmailAdapter } from "@backlex/core";
+import type { PgDb } from "@backlex/db/pg";
+import type { SqliteDb } from "@backlex/db/sqlite";
 import type { Ctx } from "../context";
 import type { Env } from "../env";
 import { dispatchWebhooks } from "./webhooks";

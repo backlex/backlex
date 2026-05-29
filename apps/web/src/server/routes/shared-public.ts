@@ -1,7 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { sql } from "drizzle-orm";
-import { AppError } from "@workeros/core";
-import type { FieldDef } from "@workeros/db";
+import { AppError } from "@backlex/core";
+import type { FieldDef } from "@backlex/db";
 import type { AppBindings } from "../app";
 import { PUBLIC_SECURITY, errorResponses } from "../lib/openapi";
 import { loadCollection } from "../services/items/collection-loader";

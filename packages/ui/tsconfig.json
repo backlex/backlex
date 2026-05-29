@@ -5,7 +5,7 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@workeros/ui/*": ["./src/*"]
+      "@backlex/ui/*": ["./src/*"]
     }
   },
   "include": ["src/**/*"]

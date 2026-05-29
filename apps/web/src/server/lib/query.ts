@@ -1,6 +1,6 @@
-import { AppError } from "@workeros/core";
-import type { Condition } from "@workeros/core";
-import type { FieldDef } from "@workeros/db";
+import { AppError } from "@backlex/core";
+import type { Condition } from "@backlex/core";
+import type { FieldDef } from "@backlex/db";
 
 export interface SortClause {
   field: string;

@@ -1,8 +1,8 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { AlertTriangleIcon } from "lucide-react";
-import { Input } from "@workeros/ui/components/input";
-import { Label } from "@workeros/ui/components/label";
-import { Button } from "@workeros/ui/components/button";
+import { Input } from "@backlex/ui/components/input";
+import { Label } from "@backlex/ui/components/label";
+import { Button } from "@backlex/ui/components/button";
 import {
   AuthCard,
   AuthCardHeader,

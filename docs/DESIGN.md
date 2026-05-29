@@ -11,7 +11,7 @@ new pages must follow).
 
 ## 1. Brand & voice
 
-**workeros** is a self-hostable Supabase/Directus alternative. The admin is
+**backlex** is a self-hostable Supabase/Directus alternative. The admin is
 an operator's dashboard, not a marketing surface. It is used by people who
 already know what a collection, a webhook, and a Bearer token are.
 
@@ -69,7 +69,7 @@ Tailwind theme aliases.
 | `rounded-3xl` | 2.2× | inputs, primary buttons (signature pill shape) |
 | `rounded-4xl` | 2.6× | hero buttons, full-width auth cards |
 
-**Convention**: pill-shaped Inputs + Buttons are the workeros signature.
+**Convention**: pill-shaped Inputs + Buttons are the backlex signature.
 Don't shrink them to `rounded-md` to look "more pro" — that's another
 design system. Embrace the generous radius.
 
@@ -161,10 +161,10 @@ nav entry instead — flat is faster to scan.
 
 ## 4. Component patterns
 
-### Toasts (`@workeros/ui/components/sonner`)
+### Toasts (`@backlex/ui/components/sonner`)
 
 ```tsx
-import { toast } from "@workeros/ui/components/sonner";
+import { toast } from "@backlex/ui/components/sonner";
 import { notifyError } from "@/lib/error";
 
 toast.success("Item saved");

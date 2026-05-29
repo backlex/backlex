@@ -1,6 +1,6 @@
 // @ts-nocheck
 // Collection adoption wizard — turn an existing physical table into a
-// workeros collection. 3 steps:
+// backlex collection. 3 steps:
 //   1) pick a table (GET /api/admin/adopt/tables)
 //   2) map columns to FieldType (POST /api/admin/adopt/inspect)
 //   3) metadata + dry-run summary → POST /api/collections (adopted: true)
@@ -13,9 +13,9 @@
 // introspected `physicalTable`/`pkColumn`/alias columns.
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Input } from "@workeros/ui/components/input";
-import { Textarea } from "@workeros/ui/components/textarea";
-import { Skeleton } from "@workeros/ui/components/skeleton";
+import { Input } from "@backlex/ui/components/input";
+import { Textarea } from "@backlex/ui/components/textarea";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import { I } from "./icons";
 import { Select } from "./select";
 import { Badge, Button, IconButton, Switch } from "./ui";
@@ -66,7 +66,7 @@ interface InspectForeignKey {
   referencesTable: string;
   // Parent column. May be empty string if unresolvable.
   referencesColumn: string;
-  // True when the FK spans multiple columns. workeros' relation field is
+  // True when the FK spans multiple columns. backlex' relation field is
   // single-column, so composite FKs are surfaced but cannot be adopted.
   composite: boolean;
   // Set by the route layer when the parent table already maps to an existing
@@ -91,7 +91,7 @@ interface InspectResult {
     ownerId: string | null;
   };
   // Foreign keys detected on the source table. Composite FKs are listed but
-  // disabled in the UI — workeros relations are single-column only.
+  // disabled in the UI — backlex relations are single-column only.
   foreignKeys: InspectForeignKey[];
   warnings: string[];
 }
@@ -368,7 +368,7 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
 
   // FK drafts that are toggled "Adopt as relation" AND have a target slug
   // picked. These get their `type` overridden to `relation` in the apply
-  // payload (with `to: <slug>`). Composite FKs are filtered out — workeros'
+  // payload (with `to: <slug>`). Composite FKs are filtered out — backlex'
   // relation field is single-column only.
   const activeFkRelations = useMemo(
     () => fkDrafts.filter((fk) => fk.adopt && !fk.composite && fk.targetSlug),
@@ -498,7 +498,7 @@ export function AdoptWizard({ open, onClose, onComplete }: AdoptWizardProps) {
               <Trans>Adopt existing table</Trans>
             </div>
             <div className="muted" style={{ fontSize: 12.5 }}>
-              <Trans>Register a physical table as a workeros collection. No DDL is run on the table — only the collection metadata row + field registrations are written.</Trans>
+              <Trans>Register a physical table as a backlex collection. No DDL is run on the table — only the collection metadata row + field registrations are written.</Trans>
             </div>
           </div>
           <IconButton icon={I.X} onClick={onClose} />
@@ -865,7 +865,7 @@ function Step2Fields({
 
   // Build dropdown options from the inspect columns. Timestamp/integer
   // columns can back created_at / updated_at; text/longtext/uuid can back
-  // owner_id. We label with the column name in mono + the workeros type
+  // owner_id. We label with the column name in mono + the backlex type
   // in muted (the dbType is redundant once you see the suggested type).
   const timestampLikeColumns = inspect.columns
     .filter((c) => c.suggested === "timestamp" || c.suggested === "integer")
@@ -1138,7 +1138,7 @@ function ForeignKeysPanel({
         <I.Link size={13} />
         <span style={{ fontSize: 13, fontWeight: 500 }}><Trans>Foreign keys detected</Trans></span>
         <span className="font-mono muted" style={{ fontSize: 12 }}>
-          {fkDrafts.length} {fkDrafts.length === 1 ? <Trans>key</Trans> : <Trans>keys</Trans>} — <Trans>adopt as workeros relations</Trans>
+          {fkDrafts.length} {fkDrafts.length === 1 ? <Trans>key</Trans> : <Trans>keys</Trans>} — <Trans>adopt as backlex relations</Trans>
         </span>
       </div>
       <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 14 }}>
@@ -1159,7 +1159,7 @@ function ForeignKeysPanel({
                 borderBottom: i === fkDrafts.length - 1 ? "none" : "1px solid var(--border)",
                 opacity: composite ? 0.6 : 1,
               }}
-              title={composite ? t`Composite (multi-column) FKs cannot be adopted as a workeros relation` : undefined}
+              title={composite ? t`Composite (multi-column) FKs cannot be adopted as a backlex relation` : undefined}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <span className="font-mono" style={{ fontSize: 13, fontWeight: 500 }}>
@@ -1201,7 +1201,7 @@ function ForeignKeysPanel({
                 </div>
                 {noTarget && (
                   <span className="muted" style={{ fontSize: 11.5 }}>
-                    <Trans>Adopt <span className="font-mono">{fk.referencesTable}</span> as a workeros
+                    <Trans>Adopt <span className="font-mono">{fk.referencesTable}</span> as a backlex
                     collection first, then revisit this step.</Trans>
                   </span>
                 )}

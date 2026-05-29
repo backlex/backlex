@@ -4,8 +4,8 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { Badge, Button, IconButton, Switch } from "./ui";
 import { Select } from "./select";
-import { Input } from "@workeros/ui/components/input";
-import { Textarea } from "@workeros/ui/components/textarea";
+import { Input } from "@backlex/ui/components/input";
+import { Textarea } from "@backlex/ui/components/textarea";
 import { emailTemplatesApi, functionsApi, collectionsApi, type ApiEmailTemplate, type ApiFunction, type ApiCollection } from "./api";
 
 const dataInterpolationExample = "{{ data.* }}";
@@ -30,7 +30,7 @@ const ACTIONS = [
   { id: "notification", label: "In-app notification", desc: "Drop a row in the notifications table", icon: "Bell" },
   { id: "transform", label: "Transform", desc: "Compute a value and pipe it into $last", icon: "Function" },
   { id: "run-script", label: "Run script", desc: "Sandboxed JS — full ctx, `data`, `last`", icon: "Code" },
-  { id: "fn", label: "Run function", desc: "Invoke a saved workeros function", icon: "Function" },
+  { id: "fn", label: "Run function", desc: "Invoke a saved backlex function", icon: "Function" },
   { id: "item.create", label: "Create item", desc: "Insert into a collection", icon: "Plus" },
   { id: "item.update", label: "Update item", desc: "Patch an existing row", icon: "Pencil" },
   { id: "slack", label: "Slack message", desc: "Post to a channel", icon: "Webhook", pending: "phase 2" },
@@ -109,7 +109,7 @@ export function FlowBuilder({ initial, onClose, onSave, pushToast }: FlowBuilder
   // we pop the sentinel ourselves so the back stack stays clean and the
   // address bar's back button doesn't end up needing two presses.
   useEffect(() => {
-    const sentinel = { __workerosFlowBuilder: true };
+    const sentinel = { __backlexFlowBuilder: true };
     history.pushState(sentinel, "", location.pathname + location.search);
     let popped = false;
     const onPop = () => { popped = true; onClose(); };
@@ -628,7 +628,7 @@ function TestRunPanel({ name, nodes, edges: _edges, onClose }: { name: string; n
     "title": "Drizzle 1.0 in production",
     "status": "published",
     "tags": ["release", "drizzle"],
-    "author": { "email": "rana@workeros.dev" }
+    "author": { "email": "rana@backlex.dev" }
   }
 }`);
   const [running, setRunning] = useState(false);

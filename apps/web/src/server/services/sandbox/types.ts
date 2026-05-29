@@ -1,4 +1,4 @@
-import type { AuthSubject } from "@workeros/core";
+import type { AuthSubject } from "@backlex/core";
 import type { Ctx } from "../../context";
 
 export interface SandboxBindings {

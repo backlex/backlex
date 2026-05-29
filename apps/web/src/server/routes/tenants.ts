@@ -1,9 +1,9 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { setCookie } from "hono/cookie";
 import { and, desc, eq } from "drizzle-orm";
-import { AppError, SYSTEM_ROLES } from "@workeros/core";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
+import { AppError, SYSTEM_ROLES } from "@backlex/core";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { TENANT_COOKIE } from "../middleware/tenant";
@@ -406,7 +406,7 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>()
         .then((transport) =>
           transport.send({
             to: body.email,
-            subject: `You've been invited to a workeros workspace`,
+            subject: `You've been invited to a backlex workspace`,
             text: `Open ${ctx.env.APP_URL}/invite?token=${token} to accept.`,
           }),
         )

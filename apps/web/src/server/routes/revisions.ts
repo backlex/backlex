@@ -1,9 +1,9 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { sql, type SQL } from "drizzle-orm";
-import { AppError } from "@workeros/core";
-import { type FieldDef } from "@workeros/db";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
+import { AppError } from "@backlex/core";
+import { type FieldDef } from "@backlex/db";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
 import type { Context } from "hono";
 import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";

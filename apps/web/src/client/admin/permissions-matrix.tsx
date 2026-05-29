@@ -4,21 +4,21 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "./icons";
 import { Badge, IconButton } from "./ui";
-import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@workeros/ui/components/dropdown-menu";
+} from "@backlex/ui/components/dropdown-menu";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+} from "@backlex/ui/components/dialog";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { api } from "@/lib/api";
 import type { RoleData } from "./role-editor";
 import { ConditionEditor } from "./condition-editor";

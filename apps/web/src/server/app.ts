@@ -2,8 +2,8 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
-import type { AuthPlane } from "@workeros/core";
-import { createD1SessionClient } from "@workeros/db/sqlite";
+import type { AuthPlane } from "@backlex/core";
+import { createD1SessionClient } from "@backlex/db/sqlite";
 import { buildContext, type Ctx } from "./context";
 import { errorHandler } from "./middleware/error";
 import { sessionMiddleware } from "./middleware/session";
@@ -112,7 +112,7 @@ export type AppBindings = {
       /** Set by sessionMiddleware when the request authenticates with a
        *  workspace end-user bearer token (plane = "app"). The session row
        *  carries the issuing workspace; we pin the request to it so the
-       *  customer's app never needs to send `X-Workeros-Tenant`. */
+       *  customer's app never needs to send `X-Backlex-Tenant`. */
       appSessionTenantId?: string | null;
     };
     permission: PermissionVar;
@@ -201,7 +201,7 @@ export const createApp = (env: Env) => {
         return isWorkspaceAllowedOrigin(origin, env) ? origin : env.APP_URL;
       },
       credentials: true,
-      allowHeaders: ["Content-Type", "Authorization", "X-Workeros-Tenant", "X-D1-Bookmark"],
+      allowHeaders: ["Content-Type", "Authorization", "X-Backlex-Tenant", "X-D1-Bookmark"],
       allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
       // Expose so the browser SPA can read the bookmark off the response and
       // round-trip it on the next request (D1 Sessions API).

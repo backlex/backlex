@@ -6,11 +6,11 @@ import { magicLink } from "better-auth/plugins/magic-link";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { anonymous } from "better-auth/plugins/anonymous";
 import { passkey } from "@better-auth/passkey";
-import type { EmailAdapter } from "@workeros/core";
-import * as pgSchema from "@workeros/db/pg/schema";
-import * as sqliteSchema from "@workeros/db/sqlite/schema";
-import type { PgDb } from "@workeros/db/pg";
-import type { SqliteDb } from "@workeros/db/sqlite";
+import type { EmailAdapter } from "@backlex/core";
+import * as pgSchema from "@backlex/db/pg/schema";
+import * as sqliteSchema from "@backlex/db/sqlite/schema";
+import type { PgDb } from "@backlex/db/pg";
+import type { SqliteDb } from "@backlex/db/sqlite";
 
 export interface AuthHooks {
   /** Runs before a user row is created (any sign-up path: email/password,
@@ -98,7 +98,7 @@ const buildPlugins = (config: AuthConfig) => {
   if (enabled.has("passkey")) {
     out.push(
       passkey({
-        rpName: "workeros",
+        rpName: "backlex",
         // `requireSession: true` means passkeys can only be added by an
         // already-signed-in user — first-factor sign-in still goes through
         // email/password (or social), then they enrol a passkey for the
@@ -139,7 +139,7 @@ export const createAuth = (
             }) => {
               await config.email!.send({
                 to: user.email,
-                subject: "Reset your workeros password",
+                subject: "Reset your backlex password",
                 text:
                   `We received a request to reset your password.\n\n` +
                   `Choose a new password: ${url}\n\n` +

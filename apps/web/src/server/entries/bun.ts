@@ -37,6 +37,6 @@ const server = Bun.serve({
   fetch: app.fetch,
 });
 
-console.log(`workeros api listening on ${server.url.href}`);
+console.log(`backlex api listening on ${server.url.href}`);
 
 startBunScheduler(env);

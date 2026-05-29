@@ -51,7 +51,7 @@ const insertRow = (
 ) =>
   h.fetch("/api/admin/db/sql/run?writes=1", {
     method: "POST",
-    headers: { ...JSON_HEADERS, "x-workeros-confirm": "yes" },
+    headers: { ...JSON_HEADERS, "x-backlex-confirm": "yes" },
     body: JSON.stringify({
       sql:
         "INSERT INTO activity (id, user_id, action, collection, created_at) VALUES (" +

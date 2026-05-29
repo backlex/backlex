@@ -57,7 +57,7 @@ const PROMPTS: McpPromptDescriptor[] = [
   {
     name: "permission_rule",
     description:
-      "Translate an English access-control sentence into a workeros " +
+      "Translate an English access-control sentence into a backlex " +
       "permissions DSL condition + fields allow-list.",
     arguments: [
       { name: "collection", description: "Collection slug.", required: true },
@@ -178,7 +178,7 @@ export const getPrompt = async (
       const context = await renderCollectionContext(ctx, slug, false);
       const text =
         `${context}\n\n` +
-        `Translate this access-control intent into a workeros permissions ` +
+        `Translate this access-control intent into a backlex permissions ` +
         `DSL condition and (optionally) a field allow-list:\n\n` +
         `Intent: "${intent}"\n\n` +
         `Output exactly two JSON blocks in fenced code blocks:\n` +

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// Thin wrapper over @workeros/ui/components/select. Keeps the legacy
+// Thin wrapper over @backlex/ui/components/select. Keeps the legacy
 // admin-side API (value/onChange + options[]) so existing callsites don't
 // need to change, but delegates rendering + keyboard nav to the shadcn
 // Radix-based Select primitive.
@@ -11,8 +11,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@workeros/ui/components/select";
-import { cn } from "@workeros/ui/lib/utils";
+} from "@backlex/ui/components/select";
+import { cn } from "@backlex/ui/lib/utils";
 import type { IconComponent } from "./icons";
 import { Badge } from "./ui";
 

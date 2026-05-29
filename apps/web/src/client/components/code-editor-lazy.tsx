@@ -1,5 +1,5 @@
 import { Suspense, lazy, type ComponentProps } from "react";
-import { Skeleton } from "@workeros/ui/components/skeleton";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 
 const CodeEditorImpl = lazy(() => import("./code-editor"));
 

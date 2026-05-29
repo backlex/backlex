@@ -1,7 +1,7 @@
 import { and, eq, isNull, or } from "drizzle-orm";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
-import { renderTemplate, htmlToText } from "@workeros/core";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
+import { renderTemplate, htmlToText } from "@backlex/core";
 import type { Ctx } from "../context";
 
 const tableFor = (dialect: "pg" | "sqlite") =>

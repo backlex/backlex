@@ -1,4 +1,4 @@
-import type { ImageAdapter, ImageTransform } from "@workeros/core";
+import type { ImageAdapter, ImageTransform } from "@backlex/core";
 
 /**
  * Cloudflare Image Resizing — works on the Workers runtime when the zone is

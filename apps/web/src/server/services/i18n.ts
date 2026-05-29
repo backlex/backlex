@@ -1,8 +1,8 @@
 import { eq, isNull, or } from "drizzle-orm";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
-import type { PgDb } from "@workeros/db/pg";
-import type { SqliteDb } from "@workeros/db/sqlite";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
+import type { PgDb } from "@backlex/db/pg";
+import type { SqliteDb } from "@backlex/db/sqlite";
 import { loadAppSettings } from "./settings";
 
 const tableFor = (dialect: "pg" | "sqlite") =>

@@ -18,10 +18,10 @@ export const claudeDesktopSnippet = (url: string, secret: string): string =>
   JSON.stringify(
     {
       mcpServers: {
-        workeros: {
+        backlex: {
           command: "bun",
           args: [
-            "/abs/path/to/workeros/packages/cli/bin/workeros.ts",
+            "/abs/path/to/backlex/packages/cli/bin/backlex.ts",
             "mcp",
             "--url",
             url,

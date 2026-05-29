@@ -14,10 +14,10 @@ import {
 import { useTheme } from "@/components/theme-provider";
 import { applyPrimaryColor } from "@/main";
 import { refreshBranding } from "@/lib/branding";
-import { ColorPicker } from "@workeros/ui/components/color-picker";
-import { Input } from "@workeros/ui/components/input";
-import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
-import { Textarea } from "@workeros/ui/components/textarea";
+import { ColorPicker } from "@backlex/ui/components/color-picker";
+import { Input } from "@backlex/ui/components/input";
+import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
+import { Textarea } from "@backlex/ui/components/textarea";
 import { SettingsSkeleton } from "../page-skeletons";
 import {
   LOCALE_CODE_RE,
@@ -620,7 +620,7 @@ function SignInBrandingCard({ pushToast }: { pushToast: (m: string) => void }) {
           value={headline}
           disabled={loading}
           maxLength={120}
-          placeholder={t`Sign in to workeros.`}
+          placeholder={t`Sign in to backlex.`}
           onChange={(e) => { setHeadline(e.target.value); setDirty(true); }}
         />
         <span className="text-[11.5px] text-muted-foreground"><Trans>Large title in the sign-in brand panel.</Trans></span>
@@ -1057,15 +1057,15 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
             </div>
             <pre className="m-0 whitespace-pre-wrap rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-[11.5px] leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)]">{`[[d1_databases]]
 binding = "D1"
-database_name = "workeros"
+database_name = "backlex"
 
 [[r2_buckets]]
 binding = "R2"
-bucket_name = "workeros-files"
+bucket_name = "backlex-files"
 
 [[vectorize]]
 binding = "VECTORIZE"
-index_name = "workeros-embeddings"
+index_name = "backlex-embeddings"
 
 [[durable_objects.bindings]]
 name = "REALTIME"
@@ -1112,7 +1112,7 @@ class_name = "RealtimeRoom"`}</pre>
               [t`Runtime`, adapter],
               [t`Wrangler`, "3.78.0"],
               [t`License`, "MIT"],
-              [t`Repository`, "github.com/workeros/workeros"],
+              [t`Repository`, "github.com/backlex/backlex"],
             ].map(([k, v]) => (
               <div key={k} className="flex items-center justify-between gap-3">
                 <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{k}</span>

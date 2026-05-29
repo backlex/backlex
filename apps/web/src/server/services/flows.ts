@@ -1,8 +1,8 @@
 import { and, eq } from "drizzle-orm";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
-import { matchesCondition } from "@workeros/db";
-import type { AuthSubject, Condition, Operation } from "@workeros/core";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
+import { matchesCondition } from "@backlex/db";
+import type { AuthSubject, Condition, Operation } from "@backlex/core";
 import type { Ctx } from "../context";
 import { runFunction } from "./sandbox";
 import { sendTemplatedEmail } from "./email";

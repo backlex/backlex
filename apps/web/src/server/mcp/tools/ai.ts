@@ -1,6 +1,6 @@
 /**
  * AI-native MCP tools. Each delegates to Claude (via `callClaude`) and
- * then wires the structured reply back into workeros sub-fetches:
+ * then wires the structured reply back into backlex sub-fetches:
  *
  *   ai.query           — NL question → Directus `filter` JSON → executed
  *                        against `/api/items/<collection>`.
@@ -15,7 +15,7 @@
  * of them auto-apply destructive changes — every mutation is a follow-up
  * tool call the agent must make explicitly.
  */
-import { AppError } from "@workeros/core";
+import { AppError } from "@backlex/core";
 import type { McpTool, ToolResult, ToolCtx } from "../types";
 import { callClaude, extractJson } from "../ai-client";
 import { readJson } from "../internal-fetch";
@@ -32,7 +32,7 @@ const requireAiKey = (ctx: ToolCtx): void => {
   if (!gw && !anth) {
     throw new AppError(
       "UNAVAILABLE",
-      "No AI provider configured for this workspace — set AI_GATEWAY_API_KEY (recommended, multi-provider) or the legacy ANTHROPIC_API_KEY on the workeros deployment.",
+      "No AI provider configured for this workspace — set AI_GATEWAY_API_KEY (recommended, multi-provider) or the legacy ANTHROPIC_API_KEY on the backlex deployment.",
     );
   }
 };
@@ -101,7 +101,7 @@ export const aiQuery: McpTool = {
 
     const meta = await loadCollectionMeta(ctx, collection);
     const system =
-      "You translate plain-English questions about a single workeros " +
+      "You translate plain-English questions about a single backlex " +
       "collection into a JSON query object. Output EXACTLY one fenced " +
       "JSON block (```json ... ```). The JSON has shape: " +
       "{filter?: object, sort?: string, limit?: number}. The `filter` uses " +
@@ -183,7 +183,7 @@ export const aiSuggestSchema: McpTool = {
     const slugHint = typeof args.slug === "string" ? args.slug : null;
 
     const system =
-      "You design workeros collection schemas. Output EXACTLY one fenced " +
+      "You design backlex collection schemas. Output EXACTLY one fenced " +
       "JSON block (```json ... ```) with shape: " +
       "{slug: string, singular?: string, plural?: string, fields: Array<" +
       "{name: string, type: 'text'|'longtext'|'integer'|'number'|'boolean'|" +
@@ -368,7 +368,7 @@ export const aiImportCsv: McpTool = {
       return obj;
     });
     const system =
-      "You infer workeros collection schemas from CSV data. Output EXACTLY " +
+      "You infer backlex collection schemas from CSV data. Output EXACTLY " +
       "one fenced JSON block (```json ... ```) with shape: " +
       "{slug: string, fields: Array<{name, type, required?, unique?}>}. " +
       "Field types: text, longtext, integer, number, boolean, json, " +

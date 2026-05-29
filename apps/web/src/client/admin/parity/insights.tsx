@@ -1,10 +1,10 @@
 // @ts-nocheck
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useIsMobile } from "@workeros/ui/hooks/use-mobile";
-import { Input } from "@workeros/ui/components/input";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
-import { Textarea } from "@workeros/ui/components/textarea";
+import { useIsMobile } from "@backlex/ui/hooks/use-mobile";
+import { Input } from "@backlex/ui/components/input";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Textarea } from "@backlex/ui/components/textarea";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
+} from "@backlex/ui/components/dialog";
 import { I } from "../icons";
 import { Badge, Button, IconButton, PageHeader } from "../ui";
 import { Select } from "../select";

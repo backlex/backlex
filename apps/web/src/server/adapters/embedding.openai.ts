@@ -1,6 +1,6 @@
-import { AppError } from "@workeros/core";
-import type { EmbeddingAdapter } from "@workeros/core/adapters";
-import { getEmbeddingModel } from "@workeros/core";
+import { AppError } from "@backlex/core";
+import type { EmbeddingAdapter } from "@backlex/core/adapters";
+import { getEmbeddingModel } from "@backlex/core";
 
 interface OpenAiEmbedResponse {
   data: { embedding: number[]; index: number }[];

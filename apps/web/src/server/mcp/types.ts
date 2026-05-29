@@ -79,7 +79,7 @@ export interface McpTool {
 
 export interface ToolCtx {
   /** Forwards an internal sub-request through the same Hono app with the
-   *  original MCP request's auth (Authorization / Cookie / X-Workeros-Tenant).
+   *  original MCP request's auth (Authorization / Cookie / X-Backlex-Tenant).
    *  Reuses every middleware: session, tenant, CORS, permission DSL, etc. */
   fetchInternal: (path: string, init?: RequestInit) => Promise<Response>;
   /** Which mount surfaced this tool — `tenant` for `/mcp`, `admin` for

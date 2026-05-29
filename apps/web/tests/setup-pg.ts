@@ -16,7 +16,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import { sql } from "drizzle-orm";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { schema } from "@workeros/db/pg";
+import { schema } from "@backlex/db/pg";
 import { createApp } from "../src/server/app";
 import { __setDbOverrideForTests } from "../src/server/context";
 import type { Env } from "../src/server/env";

@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useQueryClient } from "@tanstack/react-query";
-import { Input } from "@workeros/ui/components/input";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+import { Input } from "@backlex/ui/components/input";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { I } from "./icons";
 import { Badge, Button, IconButton } from "./ui";
 import { Select } from "./select";
@@ -68,7 +68,7 @@ const fromApiMember = (m: ApiTenantMember): Member => {
 
 const sniffActiveTenantId = (): string | null => {
   if (typeof document === "undefined") return null;
-  const m = /workeros-tenant=([^;]+)/.exec(document.cookie);
+  const m = /backlex-tenant=([^;]+)/.exec(document.cookie);
   return m ? decodeURIComponent(m[1]) : null;
 };
 

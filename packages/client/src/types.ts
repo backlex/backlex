@@ -31,7 +31,7 @@ export interface ApiError {
   details?: unknown;
 }
 
-export class WorkerosError extends Error {
+export class BacklexError extends Error {
   readonly code: string;
   readonly status: number;
   readonly details?: unknown;

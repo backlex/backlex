@@ -3,7 +3,7 @@ title: Querying the items API
 description: One Directus-shaped URL for filter, search, sort, projection, pagination, and counts.
 ---
 
-`GET /api/items/<slug>` is workeros' Directus-shaped REST query endpoint:
+`GET /api/items/<slug>` is backlex' Directus-shaped REST query endpoint:
 one URL covers filter, full-text search, sort, projection, pagination,
 count metadata, and locale projection. Parsing lives in
 `apps/web/src/server/lib/query.ts::parseQuery`; the same compile path
@@ -404,7 +404,7 @@ the caller:
 3. has `email` inside the role's `fields` allow-list on the target.
 
 This is deliberately invasive: a nested filter leaks the presence of
-target rows through differential response shape, so workeros treats
+target rows through differential response shape, so backlex treats
 the join as a read against the target and refuses to compile it when
 the caller can't read directly either.
 

@@ -23,7 +23,7 @@ export const switchTenant: McpTool = {
   name: "tenants.switch",
   description:
     "Switch the active tenant for subsequent MCP calls. The change is " +
-    "persisted on the user's profile and applies to every workeros surface " +
+    "persisted on the user's profile and applies to every backlex surface " +
     "(REST, GraphQL, MCP) until switched again.",
   inputSchema: {
     type: "object",

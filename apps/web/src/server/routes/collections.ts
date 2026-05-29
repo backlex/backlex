@@ -640,7 +640,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       // Archive adopted collections: physical table is intact (the
       // applier already short-circuits on adopted), so flipping
       // `status` on the metadata row is enough. The data stays
-      // queryable directly on the source DB; only workeros stops
+      // queryable directly on the source DB; only backlex stops
       // treating the table as a collection. `POST /:slug/restore`
       // flips it back. We DON'T do this for managed collections
       // because their `c_<slug>` table is about to be dropped — a

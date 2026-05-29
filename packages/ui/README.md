@@ -1,6 +1,6 @@
 # @backlex/ui
 
-workeros design system — shadcn-based React component library on Tailwind v4 (radix-luma preset, Geist font, oklch palette). Source-consumed; no build step.
+backlex design system — shadcn-based React component library on Tailwind v4 (radix-luma preset, Geist font, oklch palette). Source-consumed; no build step.
 
 ## Install
 
@@ -24,7 +24,7 @@ export function Example() {
 }
 ```
 
-`globals.css` provides the `@theme` block (oklch palette + radius scale + Geist font), the `.dark` overrides, and the `@source` globs for Tailwind content scanning. If your project layout differs from the workeros monorepo, override `@source` with your own globs in your local `globals.css`:
+`globals.css` provides the `@theme` block (oklch palette + radius scale + Geist font), the `.dark` overrides, and the `@source` globs for Tailwind content scanning. If your project layout differs from the backlex monorepo, override `@source` with your own globs in your local `globals.css`:
 
 ```css
 @import "@backlex/ui/globals.css";
@@ -50,4 +50,4 @@ No barrel file by design — import the specific component path so the bundler c
 
 ## License
 
-MIT — part of the [workeros](https://github.com/furkankinyas/workeros) project.
+MIT — part of the [backlex](https://github.com/furkankinyas/backlex) project.

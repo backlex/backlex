@@ -632,7 +632,7 @@ function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt }: Create
             <div className="flex flex-col gap-1">
               <span className="text-[13.5px] font-semibold"><Trans>From existing table</Trans></span>
               <span className="text-xs leading-[1.45] text-muted-foreground">
-                <Trans>Register a table that already exists in your database. No DDL is run on the table — workeros only writes its own metadata.</Trans>
+                <Trans>Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata.</Trans>
               </span>
             </div>
           </button>

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// Shared UI primitives + layout for the workeros admin design.
+// Shared UI primitives + layout for the backlex admin design.
 import {
   Fragment,
   useCallback,
@@ -537,7 +537,7 @@ function NewWorkspaceDialog({ onClose, onCreate, existing }: { onClose: () => vo
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans></label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="acme-prod" onKeyDown={(e) => e.key === "Enter" && submit()} />
             {taken && <span className="text-[11.5px] text-destructive"><Trans>Workspace "{slug}" already exists.</Trans></span>}
-            {!taken && slug && <span className="text-[11.5px] text-muted-foreground"><Trans>URL:</Trans> <span className="font-mono">workeros.dev/{slug}</span></span>}
+            {!taken && slug && <span className="text-[11.5px] text-muted-foreground"><Trans>URL:</Trans> <span className="font-mono">backlex.dev/{slug}</span></span>}
             {!slug && <span className="text-[11.5px] text-muted-foreground"><Trans>Lowercase, alphanumeric, 2–24 chars.</Trans></span>}
           </div>
           <div className="flex flex-col gap-1.5">

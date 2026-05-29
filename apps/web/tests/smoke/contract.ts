@@ -1,5 +1,5 @@
 /**
- * Runtime-agnostic smoke scenario. Hits the workeros API over HTTP
+ * Runtime-agnostic smoke scenario. Hits the backlex API over HTTP
  * (not via in-process `app.fetch`) so the same scenario can verify any
  * deployed runtime: Bun standalone, the pre-bundled Vercel function,
  * the pre-bundled Netlify function, or a remote URL.

@@ -117,7 +117,7 @@ describe("advisor: public-read permission produces a finding", () => {
     // the SQL console — the advisor should flag it.
     const roleRes = await h.fetch("/api/admin/db/sql/run?writes=1", {
       method: "POST",
-      headers: { ...JSON_HEADERS, "x-workeros-confirm": "yes" },
+      headers: { ...JSON_HEADERS, "x-backlex-confirm": "yes" },
       body: JSON.stringify({
         sql: `INSERT INTO permissions (id, role_id, collection, action, fields, condition, created_at) SELECT '${crypto.randomUUID()}', id, '${slug}', 'read', NULL, NULL, ${Date.now()} FROM roles WHERE name = 'public'`,
       }),
@@ -166,7 +166,7 @@ describe("advisor: public-write permission produces an error finding", () => {
     // Grant the `public` role a `create` permission — anonymous writes.
     const roleRes = await h.fetch("/api/admin/db/sql/run?writes=1", {
       method: "POST",
-      headers: { ...JSON_HEADERS, "x-workeros-confirm": "yes" },
+      headers: { ...JSON_HEADERS, "x-backlex-confirm": "yes" },
       body: JSON.stringify({
         sql: `INSERT INTO permissions (id, role_id, collection, action, fields, condition, created_at) SELECT '${crypto.randomUUID()}', id, '${slug}', 'create', NULL, NULL, ${Date.now()} FROM roles WHERE name = 'public'`,
       }),
@@ -204,7 +204,7 @@ describe("advisor: findings are tenant-scoped", () => {
     const runSql = async (statement: string) => {
       const res = await h.fetch("/api/admin/db/sql/run?writes=1", {
         method: "POST",
-        headers: { ...JSON_HEADERS, "x-workeros-confirm": "yes" },
+        headers: { ...JSON_HEADERS, "x-backlex-confirm": "yes" },
         body: JSON.stringify({ sql: statement }),
       });
       expect(res.status).toBe(200);

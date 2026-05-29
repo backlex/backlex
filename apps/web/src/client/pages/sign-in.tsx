@@ -31,14 +31,14 @@ export const SignIn = () => {
   const dark = theme === "dark";
 
   const branding: AuthBranding = {
-    name: wsBranding?.workspaceName?.trim() || "workeros",
+    name: wsBranding?.workspaceName?.trim() || "backlex",
     logoUrl: wsBranding?.logoUrl ?? null,
     signInHeadline: surface?.branding?.signInHeadline ?? null,
     signInTagline: surface?.branding?.signInTagline ?? null,
   };
 
   const shellCopy: AuthShellCopy = {
-    headline: <Trans>Sign in to <em>workeros</em>.</Trans>,
+    headline: <Trans>Sign in to <em>backlex</em>.</Trans>,
     lede: (
       <Trans>Welcome back. Pick up where you left off — content, data, and APIs all in one place.</Trans>
     ),

@@ -1,4 +1,4 @@
-// Static config + shared domain types for the workeros admin.
+// Static config + shared domain types for the backlex admin.
 //
 // Nothing here is mock data: the navigation menu is the admin's own structure
 // (there is no API for it) and ADAPTER_PROFILES is a fixed description of what

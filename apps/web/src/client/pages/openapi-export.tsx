@@ -259,7 +259,7 @@ export const OpenApiExportPage = () => {
       // (collections may have been added/removed since mount).
       const fresh = await api<OpenApiDoc>("/api/openapi.json");
       const text = JSON.stringify(fresh, null, 2);
-      triggerDownload("workeros-openapi.json", new Blob([text], { type: "application/json" }));
+      triggerDownload("backlex-openapi.json", new Blob([text], { type: "application/json" }));
     } catch (err) {
       notifyError(err, "while downloading JSON");
     } finally {
@@ -273,7 +273,7 @@ export const OpenApiExportPage = () => {
       const res = await fetch("/api/openapi.yaml", { credentials: "include" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
-      triggerDownload("workeros-openapi.yaml", new Blob([text], { type: "application/yaml" }));
+      triggerDownload("backlex-openapi.yaml", new Blob([text], { type: "application/yaml" }));
     } catch (err) {
       notifyError(err, "while downloading YAML");
     } finally {

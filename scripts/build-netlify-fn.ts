@@ -5,7 +5,7 @@
  * - Source: `apps/web/src/server/entries/netlify-fn-entry.ts`
  * - Output: `apps/web/netlify/functions/api.mjs`
  *
- * Everything is inlined — workspace `@workeros/*` and every npm dep —
+ * Everything is inlined — workspace `@backlex/*` and every npm dep —
  * because Bun's monorepo `node_modules/.bun` store layout confuses
  * Netlify's nft tracer (e.g. `postgres` ends up missing from the zip
  * even though `drizzle-orm/postgres-js` imports it). A self-contained

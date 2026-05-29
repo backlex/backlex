@@ -984,7 +984,7 @@ export const authConfig = pgTable(
  * SP entity id (`sp_entity_id`) — typically the metadata URL — and the
  * ACS URL is derived from `tenant.slug + slug` at request time.
  *
- * `attribute_map` maps assertion attribute names → workeros user fields
+ * `attribute_map` maps assertion attribute names → backlex user fields
  * (`email`, `firstName`, `lastName`, `groups`).
  *
  * `groups_to_roles` is reserved for v2 — a mapping from IdP group string

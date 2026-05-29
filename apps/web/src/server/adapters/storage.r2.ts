@@ -1,4 +1,4 @@
-import type { StorageAdapter } from "@workeros/core/adapters";
+import type { StorageAdapter } from "@backlex/core/adapters";
 
 export const r2Storage = (bucket: R2Bucket): StorageAdapter => ({
   async put({ key, body, contentType, metadata }) {

@@ -1,10 +1,10 @@
-import { AppError } from "@workeros/core";
-import type { VectorAdapter } from "@workeros/core/adapters";
+import { AppError } from "@backlex/core";
+import type { VectorAdapter } from "@backlex/core/adapters";
 import {
   EMBEDDING_MODELS,
   getEmbeddingModel,
   type EmbeddingModel,
-} from "@workeros/core";
+} from "@backlex/core";
 
 /**
  * One Vectorize index per embedding model. The map keys are model names

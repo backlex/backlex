@@ -7,20 +7,20 @@ import {
   TriangleAlertIcon,
 } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Card, CardContent, CardHeader, CardTitle } from "@workeros/ui/components/card";
-import { Button } from "@workeros/ui/components/button";
-import { Input } from "@workeros/ui/components/input";
-import { Label } from "@workeros/ui/components/label";
-import { Badge } from "@workeros/ui/components/badge";
-import { Checkbox } from "@workeros/ui/components/checkbox";
-import { Skeleton } from "@workeros/ui/components/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@backlex/ui/components/card";
+import { Button } from "@backlex/ui/components/button";
+import { Input } from "@backlex/ui/components/input";
+import { Label } from "@backlex/ui/components/label";
+import { Badge } from "@backlex/ui/components/badge";
+import { Checkbox } from "@backlex/ui/components/checkbox";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@workeros/ui/components/select";
+} from "@backlex/ui/components/select";
 import {
   Dialog,
   DialogContent,
@@ -28,8 +28,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+} from "@backlex/ui/components/dialog";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { ConfirmAction } from "@/components/confirm-action";
 import { DatePicker } from "@/components/date-picker";
 import { EmptyState } from "@/components/empty-state";

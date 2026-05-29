@@ -5,8 +5,8 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { NAV_ITEMS, NAV_SETTINGS, type CollectionListItem, type CollectionSchema, type Post, type SchemaField } from "./config";
 import { Badge, Button, IconButton, JsonBlock, navLabel } from "./ui";
-import { Input } from "@workeros/ui/components/input";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+import { Input } from "@backlex/ui/components/input";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
+} from "@backlex/ui/components/dialog";
 
 export type PaletteSelection =
   | { kind: "page"; id: string; label: string; icon: string; meta: string }

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { createYoga } from "graphql-yoga";
-import { AppError } from "@workeros/core";
+import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { getSchema } from "../services/graphql";
 import { getRequestPermCache } from "../middleware/permission";

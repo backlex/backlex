@@ -32,7 +32,7 @@ const buf = (u: Uint8Array): BufferSource => u as unknown as BufferSource;
 const deriveKey = async (secret: string): Promise<CryptoKey> => {
   const material = await crypto.subtle.digest(
     "SHA-256",
-    buf(new TextEncoder().encode(`workeros:auth-config-secret:v1:${secret}`)),
+    buf(new TextEncoder().encode(`backlex:auth-config-secret:v1:${secret}`)),
   );
   return crypto.subtle.importKey("raw", material, { name: "AES-GCM" }, false, [
     "encrypt",
@@ -104,7 +104,7 @@ const b64urlDecode = (s: string): Uint8Array => {
 const deriveHmacKey = async (secret: string): Promise<CryptoKey> => {
   const material = await crypto.subtle.digest(
     "SHA-256",
-    buf(new TextEncoder().encode(`workeros:storage-url-sign:v1:${secret}`)),
+    buf(new TextEncoder().encode(`backlex:storage-url-sign:v1:${secret}`)),
   );
   return crypto.subtle.importKey(
     "raw",

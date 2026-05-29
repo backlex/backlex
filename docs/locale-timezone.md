@@ -3,7 +3,7 @@ title: Language & time zone
 description: How locale and IANA time zone resolve from per-user override to workspace default.
 ---
 
-workeros resolves a **locale** and an **IANA time zone** for every signed-in
+backlex resolves a **locale** and an **IANA time zone** for every signed-in
 admin and uses them to format dates, times and numbers across the admin SPA.
 Both are layered: a personal override falls through to a workspace default,
 which falls through to a built-in fallback.

@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 import { parseExpression } from "cron-parser";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
-import type { AuthSubject } from "@workeros/core";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
+import type { AuthSubject } from "@backlex/core";
 import { runFunction } from "./sandbox";
 import { buildContext } from "../context";
 import type { Env } from "../env";
@@ -21,7 +21,7 @@ const SYSTEM_AUTH: AuthSubject = { userId: null, email: null, roles: [] };
  * scanned for due crons; the next tick fires every cron whose pattern's
  * `prev()` falls inside `(lastTickAt, now]`. This collapses missed
  * minutes (after a restart or pause) into at most one execution per
- * pattern per missed window — i.e. workeros guarantees at-most-once
+ * pattern per missed window — i.e. backlex guarantees at-most-once
  * dispatch per minute, never doubles.
  */
 let lastTickAt: Date | null = null;

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import CodeMirror, { EditorView } from "@uiw/react-codemirror";
 import { json } from "@codemirror/lang-json";
 import { oneDark } from "@codemirror/theme-one-dark";
-import { cn } from "@workeros/ui/lib/utils";
+import { cn } from "@backlex/ui/lib/utils";
 
 interface CodeEditorProps {
   value: string;

@@ -32,8 +32,8 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { sql, type SQL } from "drizzle-orm";
-import { ensureMigrations, type AutoMigrateDb } from "@workeros/db";
-import { MIGRATIONS as PG_MIGRATIONS } from "@workeros/db/pg/migrations-bundle";
+import { ensureMigrations, type AutoMigrateDb } from "@backlex/db";
+import { MIGRATIONS as PG_MIGRATIONS } from "@backlex/db/pg/migrations-bundle";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Layer 1 — error classifier + per-migration loop, no pglite
@@ -80,13 +80,13 @@ const makeMockApplier = (opts: {
       executed.push(text);
       const thrown = opts.throwOn?.(text);
       if (thrown) throw thrown;
-      // Special-case: SELECT name FROM __workeros_migrations → return the
-      // ledger we've been recording. INSERT INTO __workeros_migrations →
+      // Special-case: SELECT name FROM __backlex_migrations → return the
+      // ledger we've been recording. INSERT INTO __backlex_migrations →
       // record the value.
-      if (/select\s+name\s+from\s+__workeros_migrations/i.test(text)) {
+      if (/select\s+name\s+from\s+__backlex_migrations/i.test(text)) {
         return { rows: ledgerInserts.map((n) => ({ name: n })) };
       }
-      const ins = /__workeros_migrations.*values\s*\(\s*['"]?([^'")]+)/i.exec(text);
+      const ins = /__backlex_migrations.*values\s*\(\s*['"]?([^'")]+)/i.exec(text);
       if (ins?.[1]) ledgerInserts.push(ins[1]);
       return { rows: [] };
     },
@@ -111,13 +111,13 @@ describe("auto-migrate: idempotency classifier covers PG-specific failure shapes
   for (const [msg, label] of tolerated) {
     test(`tolerates: ${label}`, async () => {
       // Throw on the FIRST migration statement only (skip the
-      // __workeros_migrations bookkeeping). The per-statement tolerance
+      // __backlex_migrations bookkeeping). The per-statement tolerance
       // + per-migration catch must keep the loop alive and resolve
       // ensureMigrations cleanly.
       let thrown = false;
       const { db } = makeMockApplier({
         throwOn: (text) => {
-          if (/__workeros_migrations/.test(text)) return null;
+          if (/__backlex_migrations/.test(text)) return null;
           if (!thrown) {
             thrown = true;
             return drizzleErr(msg);
@@ -142,7 +142,7 @@ describe("auto-migrate: idempotency classifier covers PG-specific failure shapes
     let thrown = false;
     const { db } = makeMockApplier({
       throwOn: (text) => {
-        if (/__workeros_migrations/.test(text)) return null;
+        if (/__backlex_migrations/.test(text)) return null;
         if (!thrown) {
           thrown = true;
           return drizzleErr("syntax error at or near 'banana'");
@@ -215,7 +215,7 @@ describe("auto-migrate (pg) — end-to-end pglite (best-effort)", () => {
       await db.execute(sql.raw("CREATE EXTENSION IF NOT EXISTS vector"));
       await ensureMigrations(db, "pg");
       const r = (await db.execute(
-        sql`SELECT name FROM __workeros_migrations ORDER BY name`,
+        sql`SELECT name FROM __backlex_migrations ORDER BY name`,
       )) as unknown as { rows: Array<{ name: string }> };
       expect(r.rows.length).toBe(PG_MIGRATIONS.length);
     } catch (e) {

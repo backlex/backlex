@@ -1,20 +1,20 @@
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Button } from "@workeros/ui/components/button";
+import { Button } from "@backlex/ui/components/button";
 import {
   MagicLinkPage as BaseMagicLinkPage,
   type AuthBranding,
   type AuthShellCopy,
   type MagicLinkCopy,
-} from "@workeros/auth-ui";
+} from "@backlex/auth-ui";
 import { useTheme } from "@/components/theme-provider";
 import { notifyError } from "@/lib/error";
 import { auth, useAuthSurface } from "@/lib/auth";
 import { useWorkspaceBranding } from "@/lib/branding";
 import { version as appVersion } from "../../../package.json";
 
-/** OSS-admin wrapper around `<MagicLinkPage>` from `@workeros/auth-ui`. */
+/** OSS-admin wrapper around `<MagicLinkPage>` from `@backlex/auth-ui`. */
 export const MagicLink = () => {
   const { t } = useLingui();
   const navigate = useNavigate();
@@ -25,7 +25,7 @@ export const MagicLink = () => {
   const dark = theme === "dark";
 
   const branding: AuthBranding = {
-    name: wsBranding?.workspaceName?.trim() || "workeros",
+    name: wsBranding?.workspaceName?.trim() || "backlex",
     logoUrl: wsBranding?.logoUrl ?? null,
   };
 

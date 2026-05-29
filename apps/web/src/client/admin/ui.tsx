@@ -1,5 +1,5 @@
 // @ts-nocheck
-// Shared UI primitives + layout for the workeros admin design.
+// Shared UI primitives + layout for the backlex admin design.
 import {
   Fragment,
   useCallback,
@@ -22,14 +22,14 @@ import { NAV_ITEMS, NAV_SETTINGS, NAV_DEVELOPERS } from "./config";
 import { notificationsApi, tenantsApi, type ApiNotification, type ApiTenant } from "./api";
 import { useNotifications, useNotificationsUnread, queryKeys } from "./queries";
 import { useWorkspaceBranding } from "@/lib/branding";
-import { Button as ShadcnButton } from "@workeros/ui/components/button";
-import { Badge as ShadcnBadge } from "@workeros/ui/components/badge";
-import { Switch as ShadcnSwitch } from "@workeros/ui/components/switch";
-import { Checkbox as ShadcnCheckbox } from "@workeros/ui/components/checkbox";
-import { Input } from "@workeros/ui/components/input";
-import { Tabs, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
-import { Skeleton } from "@workeros/ui/components/skeleton";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
+import { Button as ShadcnButton } from "@backlex/ui/components/button";
+import { Badge as ShadcnBadge } from "@backlex/ui/components/badge";
+import { Switch as ShadcnSwitch } from "@backlex/ui/components/switch";
+import { Checkbox as ShadcnCheckbox } from "@backlex/ui/components/checkbox";
+import { Input } from "@backlex/ui/components/input";
+import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
+import { Skeleton } from "@backlex/ui/components/skeleton";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -37,7 +37,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@workeros/ui/components/dialog";
+} from "@backlex/ui/components/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,19 +45,19 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@workeros/ui/components/dropdown-menu";
+} from "@backlex/ui/components/dropdown-menu";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@workeros/ui/components/popover";
+} from "@backlex/ui/components/popover";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@workeros/ui/components/select";
+} from "@backlex/ui/components/select";
 import {
   Sidebar as ShadcnSidebar,
   SidebarContent,
@@ -71,8 +71,8 @@ import {
   SidebarRail,
   SidebarTrigger,
   useSidebar,
-} from "@workeros/ui/components/sidebar";
-import { TooltipProvider } from "@workeros/ui/components/tooltip";
+} from "@backlex/ui/components/sidebar";
+import { TooltipProvider } from "@backlex/ui/components/tooltip";
 
 export function formatJson(value: unknown): string {
   try {
@@ -537,7 +537,7 @@ function NewWorkspaceDialog({ onClose, onCreate, existing }: { onClose: () => vo
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans></label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="acme-prod" onKeyDown={(e) => e.key === "Enter" && submit()} />
             {taken && <span className="text-[11.5px] text-destructive"><Trans>Workspace "{slug}" already exists.</Trans></span>}
-            {!taken && slug && <span className="text-[11.5px] text-muted-foreground"><Trans>URL:</Trans> <span className="font-mono">workeros.dev/{slug}</span></span>}
+            {!taken && slug && <span className="text-[11.5px] text-muted-foreground"><Trans>URL:</Trans> <span className="font-mono">backlex.dev/{slug}</span></span>}
             {!slug && <span className="text-[11.5px] text-muted-foreground"><Trans>Lowercase, alphanumeric, 2–24 chars.</Trans></span>}
           </div>
           <div className="flex flex-col gap-1.5">

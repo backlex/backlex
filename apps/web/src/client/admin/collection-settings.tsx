@@ -4,8 +4,8 @@
 // collection. Mounted as the 4th tab next to Items / Schema / Permissions.
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Input } from "@workeros/ui/components/input";
-import { Textarea } from "@workeros/ui/components/textarea";
+import { Input } from "@backlex/ui/components/input";
+import { Textarea } from "@backlex/ui/components/textarea";
 import { I } from "./icons";
 import { Select } from "./select";
 import { Button, Switch } from "./ui";
@@ -385,7 +385,7 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
             <div>
               <div className="text-[13px] font-medium"><Trans>Archive this collection</Trans></div>
               <div className="text-[11.5px] text-muted-foreground">
-                <Trans>Workeros stops treating <span className="font-mono">{schema.slug}</span> as a collection.
+                <Trans>Backlex stops treating <span className="font-mono">{schema.slug}</span> as a collection.
                 The underlying table and its rows stay intact; you can restore from the Archived view.</Trans>
               </div>
             </div>

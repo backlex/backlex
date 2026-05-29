@@ -11,11 +11,11 @@
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@workeros/ui/components",
-    "utils": "@workeros/ui/lib/utils",
-    "hooks": "@workeros/ui/hooks",
-    "lib": "@workeros/ui/lib",
-    "ui": "@workeros/ui/components"
+    "components": "@backlex/ui/components",
+    "utils": "@backlex/ui/lib/utils",
+    "hooks": "@backlex/ui/hooks",
+    "lib": "@backlex/ui/lib",
+    "ui": "@backlex/ui/components"
   },
   "rtl": false,
   "menuColor": "default",

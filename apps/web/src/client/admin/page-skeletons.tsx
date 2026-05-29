@@ -9,7 +9,7 @@
 //
 // Every shimmer block comes from the shadcn `Skeleton` component (or the
 // `loading.tsx` primitives that wrap it) — no hand-rolled animate-pulse.
-import { Skeleton } from "@workeros/ui/components/skeleton";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import { type ComponentType, useEffect, useState } from "react";
 
 /* ──────────────────────────────────────────────────────────────────────

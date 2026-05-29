@@ -1,12 +1,12 @@
 import { and, eq, sql, type SQL } from "drizzle-orm";
-import * as pg from "@workeros/db/pg";
-import * as sqlite from "@workeros/db/sqlite";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
 import {
   compileCondition,
   type FieldDef,
   type FieldType,
-} from "@workeros/db";
-import type { Condition } from "@workeros/core";
+} from "@backlex/db";
+import type { Condition } from "@backlex/core";
 import { resolvePermission } from "../permissions";
 import type { Ctx } from "../../context";
 import type { RpcOp, SandboxBindings } from "./types";

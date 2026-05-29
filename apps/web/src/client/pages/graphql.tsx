@@ -20,15 +20,15 @@ import {
   XIcon,
 } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Button } from "@workeros/ui/components/button";
-import { Input } from "@workeros/ui/components/input";
-import { Badge } from "@workeros/ui/components/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@workeros/ui/components/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@workeros/ui/components/tabs";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@workeros/ui/components/collapsible";
-import { Skeleton } from "@workeros/ui/components/skeleton";
-import { ScrollArea } from "@workeros/ui/components/scroll-area";
-import { cn } from "@workeros/ui/lib/utils";
+import { Button } from "@backlex/ui/components/button";
+import { Input } from "@backlex/ui/components/input";
+import { Badge } from "@backlex/ui/components/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@backlex/ui/components/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@backlex/ui/components/collapsible";
+import { Skeleton } from "@backlex/ui/components/skeleton";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { cn } from "@backlex/ui/lib/utils";
 import { CodeEditor } from "@/components/code-editor-lazy";
 import { PageHeader } from "@/components/page-header";
 import { JsonBlock } from "@/admin/ui";

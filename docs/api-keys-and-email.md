@@ -4,7 +4,7 @@ description: Personal access keys, access / refresh token pair, per-workspace em
 ---
 
 This page covers the bearer-token + outbound-mail surfaces that ship
-with workeros's auth plane (Phase 5): personal access keys (PAKs),
+with backlex's auth plane (Phase 5): personal access keys (PAKs),
 the access / refresh token pair issued to workspace end-users, email
 transport selection (env-level + per-workspace overrides), and OAuth
 social providers.
@@ -83,7 +83,7 @@ A key may set `role_id`. When present:
 admins get every workspace role; everyone else gets only roles they
 hold. `auth.apiKeyRoleId` carries the scope through the middleware
 chain (set in `app.ts` `AppBindings` and `AuthSubject` in
-`@workeros/core`).
+`@backlex/core`).
 
 ## Email transports
 

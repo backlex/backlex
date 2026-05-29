@@ -1,17 +1,17 @@
 {
-  "name": "@workeros/ui",
+  "name": "@backlex/ui",
   "version": "0.1.0",
-  "description": "workeros design system — shadcn-based React component library on Tailwind v4 (radix-luma preset, Geist, oklch palette).",
+  "description": "backlex design system — shadcn-based React component library on Tailwind v4 (radix-luma preset, Geist, oklch palette).",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/furkankinyas/workeros.git",
+    "url": "git+https://github.com/furkankinyas/backlex.git",
     "directory": "packages/ui"
   },
-  "homepage": "https://github.com/furkankinyas/workeros/tree/main/packages/ui",
-  "bugs": "https://github.com/furkankinyas/workeros/issues",
+  "homepage": "https://github.com/furkankinyas/backlex/tree/main/packages/ui",
+  "bugs": "https://github.com/furkankinyas/backlex/issues",
   "keywords": [
-    "workeros",
+    "backlex",
     "shadcn",
     "tailwind",
     "radix",

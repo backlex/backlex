@@ -10,6 +10,11 @@ export default defineConfig({
       title: "Backlex",
       description: "Self-hostable Supabase/Directus alternative — admin, API, runtime.",
       favicon: "/favicon.svg",
+      logo: {
+        light: "./src/assets/logo-light.svg",
+        dark: "./src/assets/logo-dark.svg",
+        alt: "Backlex",
+      },
       customCss: ["./src/styles/custom.css"],
       components: {
         PageTitle: "./src/components/PageTitle.astro",

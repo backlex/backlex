@@ -1,4 +1,5 @@
 ---
+import ThemeToggle from "./ThemeToggle.astro";
 // Shared footer — mirrors the homepage's 5-column layout.
 ---
 <footer class="relative z-[1] pt-16 pb-12 bg-muted border-t border-border">
@@ -51,12 +52,15 @@
     </div>
     <div class="mt-12 pt-6 border-t border-border flex items-center justify-between gap-3.5 flex-wrap text-xs text-muted-foreground">
       <span>© 2026 backlex · open source core, managed cloud on Cloudflare</span>
-      <div class="flex items-center gap-2">
-        <a href="#" class="hover:text-foreground no-underline">Privacy</a>
-        <span class="text-border">·</span>
-        <a href="#" class="hover:text-foreground no-underline">Terms</a>
-        <span class="text-border">·</span>
-        <a href="#" class="hover:text-foreground no-underline">Security</a>
+      <div class="flex items-center gap-3.5">
+        <div class="flex items-center gap-2">
+          <a href="#" class="hover:text-foreground no-underline">Privacy</a>
+          <span class="text-border">·</span>
+          <a href="#" class="hover:text-foreground no-underline">Terms</a>
+          <span class="text-border">·</span>
+          <a href="#" class="hover:text-foreground no-underline">Security</a>
+        </div>
+        <ThemeToggle />
       </div>
     </div>
   </div>

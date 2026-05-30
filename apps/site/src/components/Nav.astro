@@ -1,9 +1,8 @@
 ---
-import ThemeToggle from "./ThemeToggle.astro";
 ---
 <nav class="sticky top-0 z-50 backdrop-blur-md bg-background/85 border-b border-border">
-  <div class="max-w-[1240px] mx-auto px-8 max-md:px-5 h-[60px] flex items-center gap-7">
-    <a href="/" class="inline-flex items-center gap-2.5 font-semibold text-[15px] -tracking-[0.01em] text-foreground no-underline">
+  <div class="max-w-[1240px] mx-auto px-8 max-md:px-5 h-[60px] flex items-center gap-7 max-md:gap-3">
+    <a href="/" class="inline-flex items-center gap-2.5 font-semibold text-[15px] -tracking-[0.01em] text-foreground no-underline shrink-0">
       <span class="w-7 h-7 bg-primary text-primary-foreground rounded-md grid place-items-center font-bold text-base leading-none">b</span>
       <span>backlex</span>
     </a>
@@ -17,13 +16,53 @@ import ThemeToggle from "./ThemeToggle.astro";
       <a href="/pricing" class="text-muted-foreground hover:text-foreground hover:bg-muted text-[13.5px] px-3 py-1.5 rounded-3xl no-underline transition-colors whitespace-nowrap">Pricing</a>
       <a href="/docs" class="text-muted-foreground hover:text-foreground hover:bg-muted text-[13.5px] px-3 py-1.5 rounded-3xl no-underline transition-colors whitespace-nowrap">Docs</a>
     </div>
-    <div class="flex items-center gap-2">
-      <a class="hidden sm:inline-flex items-center text-[13px] text-foreground hover:bg-muted px-4 h-9 rounded-3xl no-underline transition-colors whitespace-nowrap" href="https://cloud.backlex.com">Open Cloud →</a>
-      <ThemeToggle />
-      <a class="inline-flex items-center gap-2 px-3.5 h-9 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13px] font-medium no-underline transition-colors" href="https://github.com" target="_blank" rel="noopener">
+    <div class="flex items-center gap-2 ml-auto md:ml-0 shrink-0">
+      <a class="inline-flex items-center text-[13px] text-foreground hover:bg-muted px-4 max-md:px-3 h-9 rounded-3xl no-underline transition-colors whitespace-nowrap" href="https://cloud.backlex.com">Open Cloud →</a>
+      <a class="inline-flex items-center gap-2 px-3.5 h-9 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13px] font-medium no-underline transition-colors max-md:hidden" href="https://github.com" target="_blank" rel="noopener">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8.1 3.2.8.8 1.3 1.9 1.3 3.1 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3"/></svg>
         GitHub
       </a>
+      <button id="nav-toggle" type="button" aria-label="Toggle menu" aria-expanded="false" aria-controls="nav-menu" class="md:hidden w-9 h-9 grid place-items-center rounded-3xl border border-border bg-background hover:bg-muted text-foreground transition-colors shrink-0">
+        <svg class="ic-menu" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        <svg class="ic-close hidden" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+  <div id="nav-menu" class="hidden md:hidden border-t border-border bg-background/95 backdrop-blur-md">
+    <div class="px-5 py-3 flex flex-col gap-0.5">
+      <a href="/#features" class="text-foreground no-underline text-[14px] px-3 py-2.5 rounded-xl hover:bg-muted transition-colors">Features</a>
+      <a href="/#deploy" class="text-foreground no-underline text-[14px] px-3 py-2.5 rounded-xl hover:bg-muted transition-colors">Deploy</a>
+      <a href="/#cloud" class="text-foreground no-underline text-[14px] px-3 py-2.5 rounded-xl hover:bg-muted transition-colors">Cloud</a>
+      <a href="/#ai" class="text-foreground no-underline text-[14px] px-3 py-2.5 rounded-xl hover:bg-muted transition-colors">AI · MCP</a>
+      <a href="/#stack" class="text-foreground no-underline text-[14px] px-3 py-2.5 rounded-xl hover:bg-muted transition-colors">Stack</a>
+      <a href="/#compare" class="text-foreground no-underline text-[14px] px-3 py-2.5 rounded-xl hover:bg-muted transition-colors">Why backlex</a>
+      <a href="/pricing" class="text-foreground no-underline text-[14px] px-3 py-2.5 rounded-xl hover:bg-muted transition-colors">Pricing</a>
+      <a href="/docs" class="text-foreground no-underline text-[14px] px-3 py-2.5 rounded-xl hover:bg-muted transition-colors">Docs</a>
+      <a href="https://github.com" target="_blank" rel="noopener" class="text-foreground no-underline text-[14px] px-3 py-2.5 rounded-xl hover:bg-muted transition-colors">GitHub ↗</a>
     </div>
   </div>
 </nav>
+<script is:inline>
+  (function () {
+    var btn = document.getElementById("nav-toggle");
+    var menu = document.getElementById("nav-menu");
+    if (!btn || !menu) return;
+    var menuIcon = btn.querySelector(".ic-menu");
+    var closeIcon = btn.querySelector(".ic-close");
+    function setOpen(open) {
+      menu.classList.toggle("hidden", !open);
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      if (menuIcon) menuIcon.classList.toggle("hidden", open);
+      if (closeIcon) closeIcon.classList.toggle("hidden", !open);
+    }
+    btn.addEventListener("click", function () {
+      setOpen(menu.classList.contains("hidden"));
+    });
+    menu.querySelectorAll("a").forEach(function (a) {
+      a.addEventListener("click", function () { setOpen(false); });
+    });
+    window.addEventListener("resize", function () {
+      if (window.innerWidth >= 768) setOpen(false);
+    });
+  })();
+</script>

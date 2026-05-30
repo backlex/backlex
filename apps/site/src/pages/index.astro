@@ -9,7 +9,7 @@ import Base from "../layouts/Base.astro";
   <div class="grid-mask"></div>
   <div class="relative max-w-[1240px] mx-auto px-8 max-md:px-5 flex flex-col items-center text-center gap-6">
 
-    <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap border border-border rounded-full px-3 py-1.5 bg-muted">
+    <span class="inline-flex flex-wrap justify-center items-center gap-x-2 gap-y-1 max-w-full text-center font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] border border-border rounded-full px-3 py-1.5 bg-muted">
       <span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
       v0.7 · AI-native · MIT · Bun · Workers · Vercel · Netlify
     </span>
@@ -980,6 +980,7 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
       <p class="text-[17px] text-muted-foreground max-w-[60ch]">Other tools do parts of this. backlex's design choice is to keep every part under one source tree, behind one API, deployable to four runtimes — without forking.</p>
     </div>
     <div class="border border-border rounded-3xl bg-card overflow-hidden">
+      <div class="overflow-x-auto">
       <table class="w-full border-collapse text-[13.5px]">
         <thead>
           <tr>
@@ -1063,6 +1064,7 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
     <p class="text-muted-foreground text-[12.5px] mt-3.5">No vendor-managed cloud is on purpose — every team we've talked to wanted to own the DB credentials themselves. If you'd like one, fork and run it.</p>
   </div>

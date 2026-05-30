@@ -56,6 +56,11 @@ body {
   object-fit: contain;
   padding: 1px;
 }
+/* Default layered-diamond logo: no primary fill, the SVG paints itself. */
+.brand-mark--logo {
+  background: transparent;
+  border-radius: 0;
+}
 /* ─── Workspace switcher ─── */
 .ws-mark {
   width: 26px; height: 26px;

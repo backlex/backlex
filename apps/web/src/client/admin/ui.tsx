@@ -123,13 +123,13 @@ export function JsonBlock({ label, value, maxHeight = 280 }: { label: string; va
 
 export interface BrandMarkProps {
   size?: number;
-  /** Uploaded workspace logo. When set it renders instead of the initial. */
+  /** Uploaded workspace logo. When set it renders instead of the default mark. */
   logoUrl?: string | null;
-  /** Source for the fallback initial when no logo is configured (defaults to "w"). */
+  /** Reserved for callers that still pass a label; the default mark ignores it. */
   label?: string;
 }
 
-export function BrandMark({ size = 32, logoUrl, label }: BrandMarkProps) {
+export function BrandMark({ size = 32, logoUrl }: BrandMarkProps) {
   if (logoUrl) {
     return (
       <img
@@ -140,11 +140,23 @@ export function BrandMark({ size = 32, logoUrl, label }: BrandMarkProps) {
       />
     );
   }
-  const initial = label?.trim().charAt(0).toLowerCase() || "w";
   return (
-    <div className="brand-mark" style={{ width: size, height: size, fontSize: size * 0.55 }}>
-      {initial}
-    </div>
+    <svg
+      viewBox="-6 -6 104 100"
+      width={size}
+      height={size}
+      className="brand-mark brand-mark--logo"
+      style={{ width: size, height: size }}
+      fill="var(--foreground)"
+      stroke="var(--background)"
+      strokeWidth={7}
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polygon points="46,44 92,66 46,88 0,66" />
+      <polygon points="46,22 92,44 46,66 0,44" />
+      <polygon points="46,0 92,22 46,44 0,22" fill="var(--primary)" />
+    </svg>
   );
 }
 

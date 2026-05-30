@@ -102,9 +102,19 @@ function Shell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-svh w-full items-center justify-center bg-background px-4 py-10 text-foreground">
       <div className="w-full max-w-[520px]">
         <div className="mb-5 flex items-center gap-2.5 font-mono text-sm font-semibold tracking-tight">
-          <span className="grid size-7 place-items-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
-            w
-          </span>
+          <svg
+            viewBox="-6 -6 104 100"
+            className="size-7"
+            fill="var(--color-foreground)"
+            stroke="var(--color-background)"
+            strokeWidth={7}
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <polygon points="46,44 92,66 46,88 0,66" />
+            <polygon points="46,22 92,44 46,66 0,44" />
+            <polygon points="46,0 92,22 46,44 0,22" fill="var(--color-primary)" />
+          </svg>
           backlex
         </div>
         {children}

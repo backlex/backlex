@@ -185,6 +185,12 @@ body {
   animation-delay: 1.6s;
 }
 
+.region-card {
+  min-width: 0;
+}
+.region-card > div {
+  min-width: 0;
+}
 .region-card .led {
   @apply w-[7px] h-[7px] rounded-full bg-primary ml-1;
   box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-primary) 25%, transparent);

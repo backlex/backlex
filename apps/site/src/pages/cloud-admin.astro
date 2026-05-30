@@ -6,23 +6,25 @@ import Base from "../layouts/Base.astro";
 <div class="app-shell">
 
   <!-- ─────── Topbar ─────── -->
-  <header class="border-b border-border bg-background flex items-center gap-3 px-4 sticky top-0 z-30" data-screen-label="Topbar">
+  <header class="border-b border-border bg-background flex items-center gap-3 max-md:gap-2 px-4 max-md:px-3 min-w-0 sticky top-0 z-30" data-screen-label="Topbar">
     <a href="/" class="inline-flex items-center gap-2 font-semibold text-[14px] -tracking-[0.01em] text-foreground no-underline">
       <span class="w-6 h-6 bg-primary text-primary-foreground rounded-md grid place-items-center font-bold text-[13px] leading-none">b</span>
       <span>backlex</span>
-      <span class="font-mono text-[9.5px] uppercase tracking-[0.14em] text-muted-foreground border border-border rounded-full px-1.5 py-0.5">cloud</span>
+      <span class="font-mono text-[9.5px] uppercase tracking-[0.14em] text-muted-foreground border border-border rounded-full px-1.5 py-0.5 max-md:hidden">cloud</span>
     </a>
 
     <span class="text-border">/</span>
 
     <!-- workspace switcher -->
-    <button class="ws-switch inline-flex items-center gap-2 h-8 px-2.5 rounded-md hover:bg-muted text-[13px] font-medium">
+    <button class="ws-switch inline-flex items-center gap-2 h-8 px-2.5 rounded-md hover:bg-muted text-[13px] font-medium min-w-0">
       <span class="w-5 h-5 rounded grid place-items-center text-[11px] font-bold text-primary-foreground" style="background: oklch(0.6 0.15 30);">A</span>
-      <span>Acme A.Ş.</span>
-      <span class="badge badge-primary text-[10px]">Pro</span>
-      <span class="badge badge-muted text-[10px] inline-flex items-center gap-1" title="EU + Türkiye data residency (KVKK + GDPR)">
-        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        EU
+      <span class="truncate">Acme A.Ş.</span>
+      <span class="inline-flex items-center gap-1.5 max-md:hidden">
+        <span class="badge badge-primary text-[10px]">Pro</span>
+        <span class="badge badge-muted text-[10px] inline-flex items-center gap-1" title="EU + Türkiye data residency (KVKK + GDPR)">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          EU
+        </span>
       </span>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-muted-foreground"><polyline points="6 9 12 15 18 9"/></svg>
     </button>
@@ -37,20 +39,22 @@ import Base from "../layouts/Base.astro";
     <div class="flex-1 max-md:hidden"></div>
 
     <!-- right side -->
-    <a href="#" class="btn btn-ghost btn-sm max-md:hidden" title="Switch to in-project admin">
+    <div class="flex items-center gap-1 max-md:hidden">
+    <a href="#" class="btn btn-ghost btn-sm" title="Switch to in-project admin">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
       <span class="hidden lg:inline">Collections admin</span>
     </a>
-    <a class="btn btn-ghost btn-sm max-md:hidden cursor-pointer" data-link="onboarding" title="View getting-started flow">
+    <a class="btn btn-ghost btn-sm cursor-pointer" data-link="onboarding" title="View getting-started flow">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
       <span class="hidden lg:inline">Onboarding</span>
     </a>
-    <a href="/docs" class="btn btn-ghost btn-sm max-md:hidden">Docs</a>
+    <a href="/docs" class="btn btn-ghost btn-sm">Docs</a>
+    </div>
     <button id="theme-toggle" title="Theme" class="w-8 h-8 grid place-items-center rounded-md hover:bg-muted text-foreground transition-colors">
       <svg class="ic-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
       <svg class="ic-moon hidden" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
     </button>
-    <button class="w-8 h-8 grid place-items-center rounded-md hover:bg-muted text-foreground transition-colors relative">
+    <button class="w-8 h-8 grid place-items-center rounded-md hover:bg-muted text-foreground transition-colors relative max-md:hidden">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
       <span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary"></span>
     </button>

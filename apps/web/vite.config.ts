@@ -47,34 +47,82 @@ function linguiMacro(): Plugin {
 }
 
 /**
- * Pins the Worker build's bundler `platform` to `neutral`.
+ * Prepended to the top of every Worker chunk to synthesize a `require`.
  *
- * rolldown picks a `__require` runtime helper based on the build platform.
- * For `platform: "node"` it emits an EAGER `var __require =
- * createRequire(import.meta.url)` that runs at module top level — and on
- * Cloudflare Workers `import.meta.url` is `undefined`, so `createRequire`
- * throws during deploy validation (`A request to .../versions failed …
- * argument 'path' … Received 'undefined'` [code 10021]) even though the
- * Worker never actually calls `require`. `platform: "neutral"` emits a LAZY
- * stub that only throws if `require` is genuinely invoked (it never is —
- * deps are bundled ESM or shimmed), so the bundle is safe.
+ * Cloudflare Workers run ESM under `nodejs_compat` but expose NO `require`
+ * global. Any bundled dependency that calls `require("node:buffer")` at
+ * module-eval time — e.g. `@whatwg-node`'s `createNodePonyfill`, pulled in
+ * transitively by graphql-yoga — therefore crashes the Worker during deploy
+ * validation:
  *
- * rolldown-vite leaves the Worker (server-consumer) environment's default
- * platform up to the runtime: Node 22 / Bun 1.2 resolves it to `"node"`
- * (the createRequire crash), Node 26 to `"neutral"`. That made the deploy
- * pass locally but fail in Cloudflare Workers Builds. Forcing `"neutral"`
- * here makes the output deterministic across every build host. `client`
- * (the browser SPA) is left untouched.
+ *   Uncaught Error: Calling `require` for "node:buffer" in an environment
+ *   that doesn't expose the `require` function.   [code 10021]
+ *
+ * Whether that `require` call ends up in the bundle is NOT deterministic: the
+ * Cloudflare Workers Builds host (linux-x64, bun 1.2) resolves a different
+ * `@whatwg-node` variant than a local macOS (arm64, bun 1.3) build, so the
+ * deploy fails in CI while building clean locally. Rather than chase the
+ * resolution, we make `require` actually work at runtime: rolldown's
+ * `__require` stub delegates to a global `require` if one exists, so we
+ * synthesize one from `node:module`'s `createRequire` (provided by
+ * nodejs_compat), with a static map of the common builtins as a fallback.
+ * As a prepended banner it runs before any other top-level chunk code.
  */
-function neutralWorkerPlatform(): Plugin {
+const WORKER_REQUIRE_SHIM = [
+  'import { createRequire as __cfCreateRequire } from "node:module";',
+  'import * as __cfBuffer from "node:buffer";',
+  'import * as __cfEvents from "node:events";',
+  'import * as __cfStream from "node:stream";',
+  'import * as __cfUtil from "node:util";',
+  'import * as __cfAsyncHooks from "node:async_hooks";',
+  "if (!globalThis.require) {",
+  "  const __cfBuiltins = {",
+  '    "node:buffer": __cfBuffer, buffer: __cfBuffer,',
+  '    "node:events": __cfEvents, events: __cfEvents,',
+  '    "node:stream": __cfStream, stream: __cfStream,',
+  '    "node:util": __cfUtil, util: __cfUtil,',
+  '    "node:async_hooks": __cfAsyncHooks, async_hooks: __cfAsyncHooks,',
+  "  };",
+  "  let __cfNativeRequire;",
+  '  try { __cfNativeRequire = __cfCreateRequire("file:///worker.js"); } catch {}',
+  "  globalThis.require = (id) => {",
+  "    const mod = __cfBuiltins[id];",
+  "    if (mod) return mod.default ?? mod;",
+  "    if (__cfNativeRequire) return __cfNativeRequire(id);",
+  "    throw new Error(\"require() unavailable for '\" + id + \"' on Cloudflare Workers\");",
+  "  };",
+  "}",
+].join("\n");
+
+/**
+ * Configures the Worker (non-`client`) build for Cloudflare:
+ *
+ * 1. `platform: "neutral"` — rolldown otherwise emits an EAGER
+ *    `var __require = createRequire(import.meta.url)` runtime helper for
+ *    `platform: "node"`, which throws at module top level on Workers because
+ *    `import.meta.url` is `undefined` (deploy validation, code 10021). The
+ *    build host's runtime picks the default platform (node 22 → "node" =
+ *    crash, node 26 → "neutral" = safe), so pinning it keeps deploys
+ *    deterministic. "neutral" yields a LAZY `__require` stub that delegates
+ *    to a global `require` when present — which is exactly what (2) supplies.
+ * 2. `output.banner: WORKER_REQUIRE_SHIM` — see above.
+ *
+ * The `client` (browser SPA) environment is left untouched.
+ */
+function workerCloudflareCompat(): Plugin {
   return {
-    name: "neutral-worker-platform",
+    name: "worker-cloudflare-compat",
     configEnvironment(name) {
       if (name === "client") return null;
       // `platform` is a rolldown-vite extension to rollupOptions; the upstream
       // Rollup types don't know it, hence the cast.
       return {
-        build: { rollupOptions: { platform: "neutral" } },
+        build: {
+          rollupOptions: {
+            platform: "neutral",
+            output: { banner: WORKER_REQUIRE_SHIM },
+          },
+        },
       } as { build: { rollupOptions: Record<string, unknown> } };
     },
   };
@@ -98,7 +146,7 @@ export default defineConfig({
     tailwind(),
     cloudflare(),
     // Must run after cloudflare() so it wins the merge for the Worker env.
-    neutralWorkerPlatform(),
+    workerCloudflareCompat(),
   ],
   resolve: {
     alias: {

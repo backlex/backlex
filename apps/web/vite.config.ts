@@ -47,6 +47,40 @@ function linguiMacro(): Plugin {
 }
 
 /**
+ * Pins the Worker build's bundler `platform` to `neutral`.
+ *
+ * rolldown picks a `__require` runtime helper based on the build platform.
+ * For `platform: "node"` it emits an EAGER `var __require =
+ * createRequire(import.meta.url)` that runs at module top level — and on
+ * Cloudflare Workers `import.meta.url` is `undefined`, so `createRequire`
+ * throws during deploy validation (`A request to .../versions failed …
+ * argument 'path' … Received 'undefined'` [code 10021]) even though the
+ * Worker never actually calls `require`. `platform: "neutral"` emits a LAZY
+ * stub that only throws if `require` is genuinely invoked (it never is —
+ * deps are bundled ESM or shimmed), so the bundle is safe.
+ *
+ * rolldown-vite leaves the Worker (server-consumer) environment's default
+ * platform up to the runtime: Node 22 / Bun 1.2 resolves it to `"node"`
+ * (the createRequire crash), Node 26 to `"neutral"`. That made the deploy
+ * pass locally but fail in Cloudflare Workers Builds. Forcing `"neutral"`
+ * here makes the output deterministic across every build host. `client`
+ * (the browser SPA) is left untouched.
+ */
+function neutralWorkerPlatform(): Plugin {
+  return {
+    name: "neutral-worker-platform",
+    configEnvironment(name) {
+      if (name === "client") return null;
+      // `platform` is a rolldown-vite extension to rollupOptions; the upstream
+      // Rollup types don't know it, hence the cast.
+      return {
+        build: { rollupOptions: { platform: "neutral" } },
+      } as { build: { rollupOptions: Record<string, unknown> } };
+    },
+  };
+}
+
+/**
  * Single Vite app for both admin SPA and the Hono Worker. The
  * `@cloudflare/vite-plugin` reads `wrangler.toml` and runs the Worker
  * (entry from `wrangler.toml::main`) inside Vite's dev server with
@@ -63,6 +97,8 @@ export default defineConfig({
     lingui(),
     tailwind(),
     cloudflare(),
+    // Must run after cloudflare() so it wins the merge for the Worker env.
+    neutralWorkerPlatform(),
   ],
   resolve: {
     alias: {

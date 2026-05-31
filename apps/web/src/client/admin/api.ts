@@ -278,6 +278,26 @@ export const collectionsApi = {
     ),
 };
 
+export interface TemplateSummary {
+  id: string;
+  label: string;
+  description: string;
+  collections: { slug: string; label: string; fieldCount: number }[];
+}
+export interface TemplateCatalog {
+  data: TemplateSummary[];
+  defaultTemplateId: string;
+  hasCollections: boolean;
+}
+export const templatesApi = {
+  list: () => api<TemplateCatalog>(`/api/admin/templates`),
+  apply: (templateId: string) =>
+    api<{ data: { templateId: string; created: string[]; skipped: string[] } }>(
+      `/api/admin/templates/apply`,
+      { method: "POST", body: JSON.stringify({ templateId }) },
+    ),
+};
+
 export interface ItemsListResp<T = Record<string, unknown>> {
   data: T[];
   limit: number;

@@ -37,6 +37,8 @@ import {
   ensureTenantMembership,
   userCount,
 } from "./services/seed";
+import { applyTemplate } from "./services/templates";
+import { getTemplate } from "./templates/catalog";
 import { loadAppSettings } from "./services/settings";
 import { invalidateUserRoles } from "./services/permissions-cache";
 import { publishEvent } from "./services/events";
@@ -360,6 +362,17 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
         const role =
           total <= 1 ? SYSTEM_ROLES.admin : SYSTEM_ROLES.authenticated;
         await assignRoleByName(dbCtx, tenantId, user.id, role);
+        // Zero-touch schema template: the first user is the cloud-seeded admin.
+        // If the cloud passed a SEED_TEMPLATE, materialize its collections into
+        // the default workspace now. Idempotent + best-effort — never blocks
+        // sign-up.
+        if (total <= 1 && env.SEED_TEMPLATE && getTemplate(env.SEED_TEMPLATE)) {
+          try {
+            await applyTemplate(dbCtx, tenantId, env.SEED_TEMPLATE);
+          } catch (e) {
+            console.error("[seed-template] apply failed", env.SEED_TEMPLATE, (e as Error).message);
+          }
+        }
         // Drop any cached "no roles" entry from the public path so the first
         // protected call after sign-up sees the freshly assigned role.
         invalidateUserRoles(tenantId, user.id);

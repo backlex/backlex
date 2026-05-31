@@ -8,6 +8,9 @@
 export interface Env {
   APP_URL: string;
   AUTH_SECRET: string;
+  /** Schema-template id set by the cloud provisioner; the first workspace of a
+   *  fresh install seeds the matching collections (zero-touch). */
+  SEED_TEMPLATE?: string;
   // Postgres URL (self-host or Hyperdrive). One of DATABASE_URL or D1 is required.
   DATABASE_URL?: string;
   /** Optional read-replica Postgres URL. When set (pg dialect only), `ctx.dbRead`

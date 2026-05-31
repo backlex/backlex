@@ -16,6 +16,7 @@ import {
   type ApiRuntime,
 } from "../api";
 import { OverviewSkeleton } from "../page-skeletons";
+import { TemplateOnboarding } from "./template-onboarding";
 
 function Sparkline({ data, color = "var(--primary)", height = 36, fill = true }: { data: number[]; color?: string; height?: number; fill?: boolean }) {
   const w = 100, h = height;
@@ -178,6 +179,11 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
           <Button variant="outline" icon={I.Refresh} onClick={() => pushToast(t`Status refreshed.`)}><Trans>Refresh</Trans></Button>
         </>}
       />
+
+      {/* First-run: pick a schema template (preselected to the cloud choice).
+          Hides itself once the workspace has collections. */}
+      <TemplateOnboarding pushToast={pushToast} onApplied={() => setActiveNav("collections")} />
+
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
         {todayMetrics.map((m) => (

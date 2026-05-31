@@ -31,6 +31,7 @@ import { accountRoutes } from "./routes/account";
 import { tenantAuthRoutes } from "./routes/tenant-auth";
 import { apiKeysRoutes } from "./routes/api-keys";
 import { collectionsRoutes } from "./routes/collections";
+import { templatesRoutes } from "./routes/templates";
 import { foldersRoutes } from "./routes/folders";
 import { itemsRoutes } from "./routes/items";
 import { storageRoutes, FILES_COLLECTION } from "./routes/storage";
@@ -253,6 +254,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/advisor", advisorRoutes);
   app.route("/api/api-keys", apiKeysRoutes);
   app.route("/api/collections", collectionsRoutes);
+  app.route("/api/admin/templates", templatesRoutes);
   app.route("/api/items", itemsRoutes);
   app.route("/api/activity", activityRoutes);
   app.route("/api/revisions", revisionsRoutes);

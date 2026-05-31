@@ -4,7 +4,7 @@ import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { templateSummaries } from "../templates/catalog";
-import { applyTemplate } from "../services/templates";
+import { applyTemplate, hasNoManagedCollections } from "../services/templates";
 import { logActivity } from "../services/activity";
 
 const requireTenant = (c: { get: (k: string) => unknown }): string => {
@@ -19,7 +19,18 @@ const ApplyInput = z.object({ templateId: z.string().min(1).max(40) });
  *  of collections into the active workspace; the cloud control plane preselects
  *  one via the SEED_TEMPLATE worker var. */
 export const templatesRoutes = new Hono<AppBindings>()
-  .get("/", requireUser, (c) => c.json({ data: templateSummaries() }))
+  .get("/", requireUser, async (c) => {
+    const { db, dialect, env } = c.get("ctx");
+    const tenantId = requireTenant(c);
+    // `hasCollections` lets the onboarding card decide whether to show; the
+    // default is the cloud-selected template so the picker can preselect it.
+    const empty = await hasNoManagedCollections({ db, dialect }, tenantId);
+    return c.json({
+      data: templateSummaries(),
+      defaultTemplateId: env.SEED_TEMPLATE ?? "blank",
+      hasCollections: !empty,
+    });
+  })
   .post("/apply", requireUser, async (c) => {
     const { templateId } = ApplyInput.parse(await c.req.json());
     const { db, dialect } = c.get("ctx");

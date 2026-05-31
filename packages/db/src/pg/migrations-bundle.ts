@@ -40,6 +40,7 @@ import m33 from "../../drizzle/pg/20260520000000_shared_links/migration.sql" wit
 import m34 from "../../drizzle/pg/20260520190000_workspace_theme_colors/migration.sql" with { type: "text" };
 import m35 from "../../drizzle/pg/20260522120000_user_locale_timezone/migration.sql" with { type: "text" };
 import m36 from "../../drizzle/pg/20260525010000_api_keys_mcp_metadata/migration.sql" with { type: "text" };
+import m37 from "../../drizzle/pg/20260601210000_integrations/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -84,4 +85,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260520190000_workspace_theme_colors", sql: m34 },
   { name: "20260522120000_user_locale_timezone", sql: m35 },
   { name: "20260525010000_api_keys_mcp_metadata", sql: m36 },
+  { name: "20260601210000_integrations", sql: m37 },
 ];

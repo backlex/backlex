@@ -799,6 +799,7 @@ export function PageSkeleton({ nav }: { nav: string }) {
     case "functions":
       return <FunctionsSkeleton />;
     case "webhooks":
+    case "integrations":
       return <WebhooksSkeleton />;
     case "realtime":
       return <RealtimeSkeleton />;

@@ -64,6 +64,8 @@ export default defineConfig({
             { slug: "querying" },
             { slug: "permissions" },
             { slug: "adopting-tables" },
+            { slug: "vector-search" },
+            { slug: "ask-ai" },
           ],
         },
         {

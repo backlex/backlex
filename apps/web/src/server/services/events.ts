@@ -5,6 +5,7 @@ import type { SqliteDb } from "@backlex/db/sqlite";
 import type { Ctx } from "../context";
 import type { Env } from "../env";
 import { dispatchWebhooks } from "./webhooks";
+import { dispatchIntegrations } from "./integrations";
 import { runFlows } from "./flows";
 import { runEventFunctions } from "./functions";
 
@@ -294,6 +295,7 @@ export const publishEvent = async (
   ) {
     const evt = payload as ItemEventPayload;
     void dispatchWebhooks(serverCtx, channel, evt);
+    void dispatchIntegrations(env, serverCtx, channel, evt);
     if (serverCtx.fullCtx) {
       void runFlows(serverCtx.fullCtx, channel, evt);
       void runEventFunctions(

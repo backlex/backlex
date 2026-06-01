@@ -14,6 +14,20 @@ import {
  */
 export type VectorizeIndexMap = Partial<Record<EmbeddingModel, VectorizeIndex>>;
 
+/**
+ * A Vectorize vector `id` is unique across the WHOLE index — `namespace` is only
+ * a query filter, not part of the key. With one index per project (namespace =
+ * collection slug), two collections sharing a record id (e.g. adopted tables
+ * with integer PKs) would otherwise clobber each other on upsert and cross-
+ * delete. Key vectors by `<namespace>:<id>` so each collection's ids are
+ * distinct within the index; strip the prefix back off on query.
+ */
+const vectorKey = (namespace: string | undefined, id: string): string =>
+  namespace ? `${namespace}:${id}` : id;
+
+const stripKey = (namespace: string | undefined, key: string): string =>
+  namespace && key.startsWith(`${namespace}:`) ? key.slice(namespace.length + 1) : key;
+
 const indexFor = (
   bindings: VectorizeIndexMap,
   model: EmbeddingModel,
@@ -48,7 +62,7 @@ export const vectorizeAdapter = (
     const index = indexFor(bindings, model);
     await index.upsert(
       records.map((r) => ({
-        id: r.id,
+        id: vectorKey(r.namespace, r.id),
         values: r.values,
         namespace: r.namespace,
         metadata: r.metadata as
@@ -73,15 +87,15 @@ export const vectorizeAdapter = (
       returnMetadata: "all",
     });
     return res.matches.map((m) => ({
-      id: m.id,
+      id: stripKey(namespace, m.id),
       score: m.score,
       metadata: m.metadata as Record<string, unknown> | undefined,
     }));
   },
-  async delete(model, ids) {
+  async delete(model, ids, namespace) {
     if (ids.length === 0) return;
     const index = indexFor(bindings, model);
-    await index.deleteByIds(ids);
+    await index.deleteByIds(ids.map((id) => vectorKey(namespace, id)));
   },
 });
 

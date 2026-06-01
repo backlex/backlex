@@ -85,7 +85,7 @@ export const embedAndUpsert = async (
     return;
   }
   try {
-    const { values } = await ctx.embedding.embed({ model, texts: [text] });
+    const { values } = await ctx.embedding.embed({ model, texts: [text], intent: "index" });
     await ctx.vector.upsert(model, [
       {
         id: itemId,
@@ -120,6 +120,7 @@ export const embedAndUpsertBatch = async (
   const { values } = await ctx.embedding.embed({
     model,
     texts: prepared.map((p) => p.text),
+    intent: "index",
   });
   const records = prepared.map((p, i) => ({
     id: p.id,

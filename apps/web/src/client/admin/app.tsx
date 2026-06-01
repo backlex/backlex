@@ -70,6 +70,7 @@ const AskAiPage = lazy(() => import("./pages/ask-ai").then((m) => ({ default: m.
 const FlowsPage = lazy(() => import("./pages/flows").then((m) => ({ default: m.FlowsPage })));
 const FunctionsPage = lazy(() => import("./pages/functions").then((m) => ({ default: m.FunctionsPage })));
 const WebhooksPage = lazy(() => import("./pages/webhooks").then((m) => ({ default: m.WebhooksPage })));
+const IntegrationsPage = lazy(() => import("./pages/integrations").then((m) => ({ default: m.IntegrationsPage })));
 const RealtimePage = lazy(() => import("./pages/realtime").then((m) => ({ default: m.RealtimePage })));
 const LogsPage = lazy(() => import("./pages/logs").then((m) => ({ default: m.LogsPage })));
 const AdvisorPage = lazy(() => import("./pages/advisor").then((m) => ({ default: m.AdvisorPage })));
@@ -699,6 +700,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "flows" && <FlowsPage pushToast={pushToast} activeFlow={activeFlow} setActiveFlow={setActiveFlow} />}
             {activeNav === "functions" && <FunctionsPage pushToast={pushToast} />}
             {activeNav === "webhooks" && <WebhooksPage pushToast={pushToast} />}
+            {activeNav === "integrations" && <IntegrationsPage pushToast={pushToast} />}
             {activeNav === "graphql" && <GraphqlPage />}
             {activeNav === "rest-explorer" && <RestExplorerPage />}
             {activeNav === "openapi" && <OpenApiExportPage />}

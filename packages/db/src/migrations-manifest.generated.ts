@@ -44,6 +44,8 @@ export const MIGRATION_TAGS_SQLITE: Record<string, string> = {
   "d86e8faf523e2846e5ca760fbea330425de7cc0d65fd2aedb1bfe553cc5a83c9": "20260520000000_shared_links",
   "c25368d24f2665354cdf13d73cbcf08265ba2c704e1cfd143a25c1851baf1cc2": "20260520190000_workspace_theme_colors",
   "07a963b60e78de864fda9d5150c7de1b3dc9039a231bfcc8de729298c2de071e": "20260522120000_user_locale_timezone",
+  "067a49146e505605fae666d0388def85038e770c26208dd32174204d08423142": "20260525010000_api_keys_mcp_metadata",
+  "bb04ff1704db02fce6b312b52b491318a1c70d7cd57eec18b91b923678138248": "20260601210000_integrations",
 };
 
 export const MIGRATION_TAGS_PG: Record<string, string> = {
@@ -83,4 +85,6 @@ export const MIGRATION_TAGS_PG: Record<string, string> = {
   "c87a7e04f7b7a3fbd19cb9012fcf70478943cd3ea6960f9c4a8bf9d005d8160b": "20260520000000_shared_links",
   "a9fb4605763b1f13b448ac03eba29072194aced8fcd01597e4f6ae4d69dc422f": "20260520190000_workspace_theme_colors",
   "91207ae61a293f04c121702882f8307e5abadf9f0b436d13e4e88514d5f3393c": "20260522120000_user_locale_timezone",
+  "4927b201cee90712e23319bfb7af012a9e283ed91bef907c5fcc9d51a0a3d8b3": "20260525010000_api_keys_mcp_metadata",
+  "61b697c226dcdc5d3dba09c0a0080a940947cfa0fe59c5484b8cc919d140c8fa": "20260601210000_integrations",
 };

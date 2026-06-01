@@ -16,7 +16,7 @@ import { generateText } from "ai";
 import { createGateway } from "@ai-sdk/gateway";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { AppError } from "@backlex/core";
-import { reportToCloud } from "../lib/cloud-report";
+import { cloudConfigured, cloudPost, reportToCloud } from "../lib/cloud-report";
 import type { Env } from "../env";
 
 const DEFAULT_GATEWAY_MODEL = "anthropic/claude-haiku-4-5";
@@ -66,10 +66,52 @@ const resolveModelId = (provider: Provider, model: string | undefined): string =
   return model.startsWith("anthropic/") ? model.slice("anthropic/".length) : model;
 };
 
+/**
+ * Managed-cloud generation path. On a provisioned cloud project the customer
+ * brings no AI key, so generation runs on the platform's Workers AI via the
+ * control-plane gateway (neuron-metered + hard-capped per plan) instead of
+ * Anthropic. The Anthropic-style model id is ignored unless the caller passed
+ * an explicit Workers AI id (`@cf/...`); otherwise the gateway's default
+ * generation model is used. The gateway meters authoritatively, so we do NOT
+ * also reportToCloud here (that would double-count).
+ */
+const callCloudGeneration = async (
+  env: Env,
+  { system, user, model }: ClaudeRequest,
+): Promise<ClaudeResponse> => {
+  const messages = [
+    ...(system ? [{ role: "system", content: system }] : []),
+    { role: "user", content: user },
+  ];
+  const cfModel = model && model.startsWith("@cf/") ? model : undefined;
+  let res: Response;
+  try {
+    res = await cloudPost(env, "/api/internal/ai/generate", { messages, ...(cfModel ? { model: cfModel } : {}) });
+  } catch (e) {
+    throw new AppError("UNAVAILABLE", `Cloud AI gateway unreachable: ${e instanceof Error ? e.message : "error"}`);
+  }
+  if (!res.ok) {
+    let message = `Cloud AI gateway returned ${res.status}`;
+    try {
+      const j = (await res.json()) as { error?: { message?: string } };
+      if (j?.error?.message) message = j.error.message;
+    } catch {
+      // keep status-based message
+    }
+    // 402 = monthly AI budget exhausted.
+    throw new AppError(res.status === 402 ? "VALIDATION" : "UNAVAILABLE", message);
+  }
+  const json = (await res.json()) as { response?: string };
+  return { text: json.response ?? "" };
+};
+
 export const callClaude = async (
   env: Env,
   { system, user, model, maxTokens }: ClaudeRequest,
 ): Promise<ClaudeResponse> => {
+  // Managed cloud projects route generation through the metered/capped gateway.
+  if (cloudConfigured(env)) return callCloudGeneration(env, { system, user, model, maxTokens });
+
   const provider = pickProvider(env);
   const modelId = resolveModelId(provider.kind, model);
   // createGateway / createAnthropic let us inject the key from `env`

@@ -1205,3 +1205,25 @@ export const backups = pgTable(
     index("backups_created_idx").on(t.createdAt),
   ],
 );
+
+/**
+ * Third-party integrations (Slack/Discord/Datadog/GitHub) connected at the
+ * workspace level. Data events fan out to them via @backlex/integrations.
+ * `config` holds provider settings with secret fields encrypted at rest
+ * (AUTH_SECRET); `events` null = all events, else a subscribed list.
+ */
+export const integrations = pgTable(
+  "integrations",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    kind: text("kind").notNull(),
+    config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
+    events: jsonb("events").$type<string[] | null>(),
+    status: text("status").notNull().default("connected"),
+    lastEventAt: timestamp("last_event_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("integrations_tenant_idx").on(t.tenantId)],
+);

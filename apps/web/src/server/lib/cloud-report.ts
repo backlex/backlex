@@ -21,7 +21,8 @@ import type { Env } from "../env";
  */
 export type CloudReport =
   | { kind: "error"; message: string; route?: string; status?: number }
-  | { kind: "ai_usage"; tokensIn?: number; tokensOut?: number; neurons?: number };
+  | { kind: "ai_usage"; tokensIn?: number; tokensOut?: number; neurons?: number }
+  | { kind: "vector_query"; queries: number };
 
 const hmacHex = async (secret: string, body: string): Promise<string> => {
   const key = await crypto.subtle.importKey(

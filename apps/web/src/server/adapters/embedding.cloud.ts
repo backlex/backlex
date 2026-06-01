@@ -19,11 +19,11 @@ import { cloudPost } from "../lib/cloud-report";
  */
 export function cloudEmbeddingAdapter(env: Env): EmbeddingAdapter {
   return {
-    async embed({ model, texts }: EmbedRequest): Promise<EmbedResult> {
+    async embed({ model, texts, intent }: EmbedRequest): Promise<EmbedResult> {
       const def = getEmbeddingModel(model);
       let res: Response;
       try {
-        res = await cloudPost(env, "/api/internal/ai/embed", { model: def.providerModel, texts });
+        res = await cloudPost(env, "/api/internal/ai/embed", { model: def.providerModel, texts, intent });
       } catch (e) {
         throw new AppError("INTERNAL", `Cloud embedding gateway unreachable: ${e instanceof Error ? e.message : "error"}`);
       }

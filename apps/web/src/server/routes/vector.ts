@@ -221,6 +221,7 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>()
       const { values } = await embedding.embed({
         model: body.model,
         texts: body.records.map((r) => r.text),
+        intent: "index",
       });
       const records = body.records.map((r, i) => ({
         id: r.id,
@@ -263,6 +264,7 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>()
       const { values } = await embedding.embed({
         model: body.model,
         texts: [body.text],
+        intent: "query",
       });
       const matches = await vector.query(body.model, {
         values: values[0]!,

@@ -38,6 +38,7 @@ import { storageRoutes, FILES_COLLECTION } from "./routes/storage";
 import { vectorRoutes } from "./routes/vector";
 import { realtimeRoutes } from "./routes/realtime";
 import { webhooksRoutes } from "./routes/webhooks";
+import { integrationsRoutes } from "./routes/integrations";
 import { webhookTriggerRoutes } from "./routes/webhook-trigger";
 import { commentsRoutes } from "./routes/comments";
 import { sharedLinksRoutes } from "./routes/shared-links";
@@ -263,6 +264,7 @@ export const createApp = (env: Env) => {
   app.route("/api/vector", vectorRoutes);
   app.route("/api/realtime", realtimeRoutes);
   app.route("/api/webhooks", webhooksRoutes);
+  app.route("/api/admin/integrations", integrationsRoutes);
   // Public flow-trigger endpoint — POST /api/webhook/:flowId fires the
   // matching `webhook`-triggered flow. Distinct path from /api/webhooks
   // (outgoing dispatch admin) by design.

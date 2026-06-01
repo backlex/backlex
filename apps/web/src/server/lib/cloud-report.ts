@@ -35,35 +35,63 @@ const hmacHex = async (secret: string, body: string): Promise<string> => {
   return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
 };
 
-/** Returns the fetch promise (caller can keepAlive it), or undefined if disabled. */
-export function reportToCloud(env: Env | undefined, report: CloudReport): Promise<unknown> | undefined {
-  if (!env) return undefined;
+interface CloudChannel {
+  secret: string;
+  projectId: string;
+  service?: Env["CLOUD_REPORT_SERVICE"];
+  base: string;
+}
+
+/** Resolve the signed delivery channel, or null when cloud reporting is off
+ *  (self-hosted / OSS installs never set these). */
+function cloudChannel(env: Env | undefined): CloudChannel | null {
+  if (!env) return null;
   const secret = env.CLOUD_REPORT_SECRET;
   const projectId = env.CLOUD_PROJECT_ID;
-  if (!secret || !projectId) return undefined;
-
+  if (!secret || !projectId) return null;
   const service = env.CLOUD_REPORT_SERVICE;
   const url = env.CLOUD_REPORT_URL;
-  if (!service && !url) return undefined;
-
-  const body = JSON.stringify(report);
+  if (!service && !url) return null;
   // Service bindings ignore the request hostname (they target the bound worker
   // directly), so a placeholder origin is fine; only the path is meaningful.
   const base = service ? "https://cloud-report.internal" : (url as string).replace(/\/$/, "");
-  const target = `${base}/api/webhooks/tenant-report`;
+  return { secret, projectId, service, base };
+}
 
-  return hmacHex(secret, body)
-    .then((sig) => {
-      const init: RequestInit = {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Backlex-Project": projectId,
-          "X-Backlex-Signature": sig,
-        },
-        body,
-      };
-      return service ? service.fetch(new Request(target, init)) : fetch(target, init);
-    })
-    .catch(() => undefined);
+/** True when this install is a managed cloud project (control-plane reachable). */
+export const cloudConfigured = (env: Env | undefined): boolean => cloudChannel(env) !== null;
+
+async function signedPost(ch: CloudChannel, path: string, body: string): Promise<Response> {
+  const sig = await hmacHex(ch.secret, body);
+  const init: RequestInit = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Backlex-Project": ch.projectId,
+      "X-Backlex-Signature": sig,
+    },
+    body,
+  };
+  const target = `${ch.base}${path}`;
+  return ch.service ? ch.service.fetch(new Request(target, init)) : fetch(target, init);
+}
+
+/** Signed POST to a control-plane path, awaiting the Response. Throws when the
+ *  cloud channel isn't configured (callers should guard with `cloudConfigured`).
+ *  Used by the managed-AI gateway client where the response body is needed. */
+export async function cloudPost(
+  env: Env | undefined,
+  path: string,
+  payload: unknown,
+): Promise<Response> {
+  const ch = cloudChannel(env);
+  if (!ch) throw new Error("cloud channel not configured");
+  return signedPost(ch, path, JSON.stringify(payload));
+}
+
+/** Returns the fetch promise (caller can keepAlive it), or undefined if disabled. */
+export function reportToCloud(env: Env | undefined, report: CloudReport): Promise<unknown> | undefined {
+  const ch = cloudChannel(env);
+  if (!ch) return undefined;
+  return signedPost(ch, "/api/webhooks/tenant-report", JSON.stringify(report)).catch(() => undefined);
 }

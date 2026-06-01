@@ -46,7 +46,6 @@ const requireAdminMiddleware: MiddlewareHandler<AppBindings> = async (c, next) =
 };
 const adminGate = [requireUser, requireAdminMiddleware];
 
-// biome-ignore lint/suspicious/noExplicitAny: minimal accessor for the auth var
 const requireTenant = (c: { get: (k: string) => any }): string => {
   const tenantId = c.get("auth")?.tenantId as string | undefined;
   if (!tenantId) throw new AppError("UNAUTHORIZED", "Active tenant required");

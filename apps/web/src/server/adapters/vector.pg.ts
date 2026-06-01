@@ -15,6 +15,17 @@ import { getEmbeddingModel, type EmbeddingModel } from "@backlex/core";
 const tableFor = (model: EmbeddingModel): string =>
   getEmbeddingModel(model).pgTable;
 
+/**
+ * Each table's primary key is `id` alone, so two collections (namespaces)
+ * sharing a record id — e.g. adopted tables with integer PKs — would clobber
+ * each other on `ON CONFLICT (id)`. Key rows by `<namespace>:<id>` (mirrors the
+ * Vectorize adapter) so each namespace's ids are distinct; strip the prefix back
+ * off on query. The original id is also kept in `ref_id`.
+ */
+const vectorKey = (namespace: string, id: string): string => `${namespace}:${id}`;
+const stripKey = (namespace: string, key: string): string =>
+  key.startsWith(`${namespace}:`) ? key.slice(namespace.length + 1) : key;
+
 const assertDim = (
   model: EmbeddingModel,
   values: number[],
@@ -36,12 +47,13 @@ export const pgvectorAdapter = (db: PgDb): VectorAdapter => ({
     for (const r of records) assertDim(model, r.values, "Vector");
     await db.transaction(async (tx) => {
       for (const r of records) {
+        const namespace = r.namespace ?? "default";
         await tx.execute(sql`
           INSERT INTO ${sql.identifier(table)} (id, namespace, ref_id, content, embedding, metadata)
           VALUES (
-            ${r.id},
-            ${r.namespace ?? "default"},
-            ${(r.metadata?.refId as string) ?? null},
+            ${vectorKey(namespace, r.id)},
+            ${namespace},
+            ${(r.metadata?.refId as string) ?? r.id},
             ${(r.metadata?.content as string) ?? null},
             ${`[${r.values.join(",")}]`}::vector,
             ${r.metadata ? JSON.stringify(r.metadata) : null}::jsonb
@@ -77,7 +89,7 @@ export const pgvectorAdapter = (db: PgDb): VectorAdapter => ({
         ? (result as Array<{ id: string; score: number; metadata: unknown }>)
         : ((result as { rows: Array<{ id: string; score: number; metadata: unknown }> }).rows ?? []);
     return rows.map((r) => ({
-      id: r.id,
+      id: stripKey(namespace, r.id),
       score: Number(r.score),
       metadata: (r.metadata ?? undefined) as
         | Record<string, unknown>
@@ -89,7 +101,7 @@ export const pgvectorAdapter = (db: PgDb): VectorAdapter => ({
     const table = tableFor(model);
     await db.execute(sql`
       DELETE FROM ${sql.identifier(table)}
-      WHERE namespace = ${namespace} AND id = ANY(${ids})
+      WHERE namespace = ${namespace} AND id = ANY(${ids.map((id) => vectorKey(namespace, id))})
     `);
   },
 });

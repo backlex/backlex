@@ -20,6 +20,8 @@ import {
   type VectorizeIndexMap,
 } from "./adapters/vector.cf";
 import { workersAiEmbeddingAdapter } from "./adapters/embedding.workers-ai";
+import { cloudEmbeddingAdapter } from "./adapters/embedding.cloud";
+import { cloudConfigured } from "./lib/cloud-report";
 import { openaiEmbeddingAdapter } from "./adapters/embedding.openai";
 import { selfHostEmbeddingAdapter } from "./adapters/embedding.self-host";
 import {
@@ -453,11 +455,23 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   // Embedding (text → vector). Models are routed to providers by the
   // registry: bge-m3 → Workers AI, openai-3-small → OpenAI. A model whose
   // provider isn't configured here fails loudly when invoked.
+  //
+  // On a managed cloud project the Workers-AI provider runs through the
+  // control-plane gateway (metered + hard-capped per plan) instead of the
+  // tenant's own env.AI — the customer brings no AI key, so their embeddings
+  // are our cost. OpenAI / self-host stay on the customer's own keys (their
+  // cost), so they're never proxied.
+  const managedCloud = cloudConfigured(env);
+  const workersAiEmbedding = managedCloud
+    ? cloudEmbeddingAdapter(env)
+    : env.AI
+      ? workersAiEmbeddingAdapter(env.AI)
+      : null;
   const hasAnyEmbeddingProvider =
-    env.AI || env.OPENAI_API_KEY || env.EMBEDDING_HTTP_URL;
+    workersAiEmbedding || env.OPENAI_API_KEY || env.EMBEDDING_HTTP_URL;
   const embedding: EmbeddingAdapter = hasAnyEmbeddingProvider
     ? embeddingRouter({
-        ...(env.AI ? { "workers-ai": workersAiEmbeddingAdapter(env.AI) } : {}),
+        ...(workersAiEmbedding ? { "workers-ai": workersAiEmbedding } : {}),
         ...(env.OPENAI_API_KEY
           ? { openai: openaiEmbeddingAdapter(env.OPENAI_API_KEY) }
           : {}),

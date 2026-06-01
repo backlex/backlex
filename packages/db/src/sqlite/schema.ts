@@ -1012,3 +1012,24 @@ export const backups = sqliteTable(
     index("backups_created_idx").on(t.createdAt),
   ],
 );
+
+/**
+ * Third-party integrations (Slack/Discord/Datadog/GitHub) connected at the
+ * workspace level. Mirror of the PG table; `config` secret fields are
+ * encrypted at rest, `events` null = all events.
+ */
+export const integrations = sqliteTable(
+  "integrations",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    kind: text("kind").notNull(),
+    config: text("config", { mode: "json" }).$type<Record<string, unknown>>().notNull().default({}),
+    events: text("events", { mode: "json" }).$type<string[] | null>(),
+    status: text("status").notNull().default("connected"),
+    lastEventAt: integer("last_event_at", { mode: "timestamp_ms" }),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [index("integrations_tenant_idx").on(t.tenantId)],
+);

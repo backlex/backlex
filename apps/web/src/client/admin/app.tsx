@@ -1025,11 +1025,25 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
           // added by the backend per the ownerScoped flag.
           let created = false;
           try {
-            const tplFields = (c as { templateFields?: Array<{ name: string; type: string; required?: boolean; unique?: boolean }> }).templateFields ?? [];
+            const wiz = c as {
+              templateFields?: Array<{ name: string; type: string; required?: boolean; unique?: boolean }>;
+              tenantScoped?: boolean;
+              softDelete?: boolean;
+              singleton?: boolean;
+              timestamps?: boolean;
+            };
+            const tplFields = wiz.templateFields ?? [];
             await collectionsApi.create({
               slug: c.slug,
               fields: tplFields,
               ownerScoped: c.ownerScoped,
+              tenantScoped: wiz.tenantScoped,
+              softDelete: wiz.softDelete,
+              singleton: wiz.singleton,
+              // "timestamps off" maps to the has_created_at/has_updated_at
+              // flags the backend already threads through schema-applier.
+              hasCreatedAt: wiz.timestamps,
+              hasUpdatedAt: wiz.timestamps,
             } as any);
             // Refetch — the new row comes back metrics-enriched from the
             // canonical list rather than the wizard's partial draft.

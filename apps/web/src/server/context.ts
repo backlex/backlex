@@ -447,7 +447,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     Object.keys(vectorizeBindings).length > 0;
   const pgHasPgvector = dialect === "pg" && !isXataPgUrl(pgUrl);
   const vector: VectorAdapter = hasAnyVectorize
-    ? vectorizeAdapter(vectorizeBindings)
+    ? vectorizeAdapter(vectorizeBindings, env)
     : pgHasPgvector
       ? pgvectorAdapter(db as PgDb)
       : noVectorAdapter();

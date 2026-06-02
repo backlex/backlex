@@ -26,6 +26,9 @@ export interface AuthSurface {
   branding?: {
     signInHeadline: string;
     signInTagline: string;
+    /** Absolute URLs for the sign-up consent links; empty = hide that link. */
+    termsUrl?: string;
+    privacyUrl?: string;
   };
 }
 

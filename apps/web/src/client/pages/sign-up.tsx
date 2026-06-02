@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -14,6 +15,24 @@ import { notifyError } from "@/lib/error";
 import { auth, invalidateAuthSurface, useAuthSurface } from "@/lib/auth";
 import { useWorkspaceBranding } from "@/lib/branding";
 import { version as appVersion } from "../../../package.json";
+
+/** Sign-up consent link — renders a real anchor when the instance owner has
+ *  configured a Terms/Privacy URL in Settings, otherwise plain emphasis (so the
+ *  consent line never shows a dead link). The tag index is preserved, so the
+ *  Lingui message id is unchanged and existing translations keep matching. */
+const LegalLink = ({ href, children }: { href?: string; children: ReactNode }) =>
+  href ? (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="font-medium text-foreground underline underline-offset-2"
+    >
+      {children}
+    </a>
+  ) : (
+    <span className="font-medium text-foreground">{children}</span>
+  );
 
 /**
  * Thin wrapper that wires the OSS admin's Lingui copy, React Router, the
@@ -114,7 +133,7 @@ export const SignUp = () => {
       <Trans>Faster, phishing-resistant sign-in. Your device will prompt for biometric or PIN after the account is created. You can add or remove passkeys later in Settings.</Trans>
     ),
     termsAgreement: (
-      <Trans>I agree to the <span className="font-medium text-foreground">Terms</span> and <span className="font-medium text-foreground">Privacy</span>.</Trans>
+      <Trans>I agree to the <LegalLink href={surface?.branding?.termsUrl || undefined}>Terms</LegalLink> and <LegalLink href={surface?.branding?.privacyUrl || undefined}>Privacy</LegalLink>.</Trans>
     ),
     submitNormal: <Trans>Create account</Trans>,
     submitClaim: <Trans>Claim this instance</Trans>,

@@ -46,6 +46,7 @@ export const MIGRATION_TAGS_SQLITE: Record<string, string> = {
   "07a963b60e78de864fda9d5150c7de1b3dc9039a231bfcc8de729298c2de071e": "20260522120000_user_locale_timezone",
   "067a49146e505605fae666d0388def85038e770c26208dd32174204d08423142": "20260525010000_api_keys_mcp_metadata",
   "bb04ff1704db02fce6b312b52b491318a1c70d7cd57eec18b91b923678138248": "20260601210000_integrations",
+  "2c8c175c85bcee6cedaa416a9a02cb56416b82db940cef5b8e856cc26eaf32f8": "20260603120000_collections_soft_delete_singleton",
 };
 
 export const MIGRATION_TAGS_PG: Record<string, string> = {
@@ -87,4 +88,5 @@ export const MIGRATION_TAGS_PG: Record<string, string> = {
   "91207ae61a293f04c121702882f8307e5abadf9f0b436d13e4e88514d5f3393c": "20260522120000_user_locale_timezone",
   "4927b201cee90712e23319bfb7af012a9e283ed91bef907c5fcc9d51a0a3d8b3": "20260525010000_api_keys_mcp_metadata",
   "61b697c226dcdc5d3dba09c0a0080a940947cfa0fe59c5484b8cc919d140c8fa": "20260601210000_integrations",
+  "e6162d3f985fae7160dfdd0480e7b6c3ecef154011f12f6928b01841fea18394": "20260603120000_collections_soft_delete_singleton",
 };

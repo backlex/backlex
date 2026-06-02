@@ -34,6 +34,7 @@ import { resolveExpands, applyExpandToRow } from "../services/items/expand";
 import { validateBody, validateRelations } from "../services/items/validate";
 import { localizeRow, mergeI18nPatch } from "../services/items/i18n";
 import {
+  deletedFilter,
   execute,
   fromOf,
   nowFor,
@@ -488,12 +489,18 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
               target.tenantScoped && auth.tenantId
                 ? sql` AND ${subAlias}.${sql.identifier("tenant_id")} = ${auth.tenantId}`
                 : sql``;
+            // Don't let a soft-deleted target row satisfy the EXISTS — the
+            // relation filter must see the same live rows the target's own
+            // list endpoint would.
+            const deletedClause = target.softDelete
+              ? sql` AND ${subAlias}.${sql.identifier("deleted_at")} IS NULL`
+              : sql``;
             const pkRef = sql`${subAlias}.${sql.identifier(target.pkColumn)}`;
             const arrayUnpack =
               ctx.dialect === "pg"
                 ? sql`SELECT value FROM jsonb_array_elements_text(${baseCol})`
                 : sql`SELECT value FROM json_each(${baseCol})`;
-            return sql`EXISTS (SELECT 1 FROM ${targetTbl} AS ${subAlias} WHERE ${pkRef} IN (${arrayUnpack})${tenantClause} AND ${innerWhere})`;
+            return sql`EXISTS (SELECT 1 FROM ${targetTbl} AS ${subAlias} WHERE ${pkRef} IN (${arrayUnpack})${tenantClause}${deletedClause} AND ${innerWhere})`;
           }
         : undefined;
 
@@ -517,7 +524,13 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         hasJoins && tenantWhereRaw && collection.tenantScoped && auth.tenantId
           ? sql`${baseTblId}.${sql.identifier("tenant_id")} = ${auth.tenantId}`
           : tenantWhereRaw;
-      const wheres = [userWhere, permWhere, tenantWhere].filter(
+      // Hide soft-deleted rows. When joins are present the column must be
+      // qualified to the base table (same reason the tenant clause is).
+      const deletedWhere = deletedFilter(
+        collection,
+        hasJoins ? collection.physicalTable : undefined,
+      );
+      const wheres = [userWhere, permWhere, tenantWhere, deletedWhere].filter(
         (x): x is SQL => x != null,
       );
       const whereClause = wheres.length
@@ -664,9 +677,13 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
           // sibling workspaces to the API consumer. No nested joins here:
           // the total is meant to count *everything visible to this tenant*
           // regardless of the filter.
-          const totalTenant = tenantWhereRaw;
-          const totalWhere = totalTenant
-            ? sql`WHERE ${totalTenant}`
+          // Soft-deleted rows must be excluded here too, or total_count
+          // overcounts everything that was logically removed.
+          const totalFilters = [tenantWhereRaw, deletedFilter(collection)].filter(
+            (x): x is SQL => x != null,
+          );
+          const totalWhere = totalFilters.length
+            ? sql`WHERE ${sql.join(totalFilters, sql` AND `)}`
             : sql``;
           const r = await queryAll<{ count: number | string | bigint }>(
             ctx,
@@ -865,9 +882,13 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       const fromClause: SQL = hasJoins
         ? sql`${fromOf(collection)} ${sql.join(expandJoins, sql` `)}`
         : fromOf(collection);
+      const deletedWhere = deletedFilter(
+        collection,
+        hasJoins ? collection.physicalTable : undefined,
+      );
       const rows = await queryAll<Record<string, unknown>>(
         ctx,
-        sql`SELECT ${selectCols} FROM ${fromClause} ${whereOf(pkWhere, perm.whereSql, tenantWhere)} LIMIT 1`,
+        sql`SELECT ${selectCols} FROM ${fromClause} ${whereOf(pkWhere, perm.whereSql, tenantWhere, deletedWhere)} LIMIT 1`,
       );
       if (!rows[0]) throw new AppError("NOT_FOUND", "Item not found");
       const locale = c.req.query("locale") ?? null;
@@ -950,6 +971,21 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       }
       validateBody(data, collection.fields, false, perm.fields);
       await validateRelations(data, collection.fields, ctx, auth.tenantId);
+      // Singleton: reject the insert when a live row already exists (scoped to
+      // the tenant, ignoring soft-deleted rows). Not a DB constraint, so this
+      // is a best-effort check — two truly-concurrent inserts could both pass.
+      if (collection.singleton) {
+        const existingOne = await queryAll<{ one: number }>(
+          ctx,
+          sql`SELECT 1 AS one FROM ${fromOf(collection)} ${whereOf(tenantFilter(collection, auth), deletedFilter(collection))} LIMIT 1`,
+        );
+        if (existingOne[0]) {
+          throw new AppError(
+            "VALIDATION",
+            "This collection is a singleton and already has a row",
+          );
+        }
+      }
       if (hasI18nField(collection.fields)) {
         const writeLocale = c.req.query("locale") ?? null;
         mergeI18nPatch(data, {}, collection.fields, writeLocale);
@@ -1088,9 +1124,11 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
 
       const table = collection.physicalTable;
       const tenantWhere = tenantFilter(collection, auth);
+      // Soft-deleted rows are invisible to updates too — a PATCH on one is a
+      // 404, same as a read.
       const existing = await queryAll<Record<string, unknown>>(
         ctx,
-        sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)} LIMIT 1`,
+        sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere, deletedFilter(collection))} LIMIT 1`,
       );
       if (!existing[0]) throw new AppError("NOT_FOUND", "Item not found");
       const beforeRow = deserializeRow(
@@ -1207,9 +1245,13 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       const table = collection.physicalTable;
       const tenantWhere = tenantFilter(collection, auth);
 
+      // Filter out already-soft-deleted rows so a repeat delete is a clean
+      // 404 (idempotent) rather than re-stamping deleted_at and re-firing the
+      // "deleted" event.
+      const deletedWhere = deletedFilter(collection);
       const existing = await queryAll<Record<string, unknown>>(
         ctx,
-        sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)} LIMIT 1`,
+        sql`SELECT ${selectStar(collection)} FROM ${fromOf(collection)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere, deletedWhere)} LIMIT 1`,
       );
       if (!existing[0]) throw new AppError("NOT_FOUND", "Item not found");
       const oldRow = deserializeRow(
@@ -1219,19 +1261,31 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         collection.ownerScoped,
       );
 
-      await execute(
-        ctx,
-        sql`DELETE FROM ${sql.identifier(table)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)}`,
-      );
-      // Cascade-clean the ownership side table for adopted owner-scoped rows.
-      // No-op for everyone else (the row simply doesn't exist there).
-      if (usesOwnershipSideTable(collection)) {
+      if (collection.softDelete) {
+        // Soft delete: stamp deleted_at instead of removing the row. Every
+        // read path filters `deleted_at IS NULL`, so the row vanishes from
+        // the API while staying recoverable in the physical table.
         await execute(
           ctx,
-          sql`DELETE FROM ${sql.identifier("item_ownership")}
-              WHERE ${sql.identifier("collection_id")} = ${collection.id}
-              AND ${sql.identifier("item_id")} = ${id}`,
+          sql`UPDATE ${sql.identifier(table)} SET ${sql.identifier("deleted_at")} = ${nowFor(ctx.dialect)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)}`,
         );
+      } else {
+        await execute(
+          ctx,
+          sql`DELETE FROM ${sql.identifier(table)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)}`,
+        );
+        // Cascade-clean the ownership side table for adopted owner-scoped rows.
+        // No-op for everyone else (the row simply doesn't exist there). For
+        // soft-delete we keep the ownership row — the item still logically
+        // exists.
+        if (usesOwnershipSideTable(collection)) {
+          await execute(
+            ctx,
+            sql`DELETE FROM ${sql.identifier("item_ownership")}
+                WHERE ${sql.identifier("collection_id")} = ${collection.id}
+                AND ${sql.identifier("item_id")} = ${id}`,
+          );
+        }
       }
       await deleteVector(ctx, collection, id);
       await publishEvent(

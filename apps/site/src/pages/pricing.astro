@@ -43,7 +43,6 @@ import Base from "../layouts/Base.astro";
             <li class="flex gap-2"><span class="text-primary">✓</span>500MB D1 · 1GB R2</li>
             <li class="flex gap-2"><span class="text-primary">✓</span><span>1 project · 1 env</span></li>
             <li class="flex gap-2"><span class="text-primary">✓</span>backlex.com subdomain</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>50 realtime conn.</li>
             <li class="flex gap-2"><span class="text-muted-foreground">−</span><span class="text-muted-foreground">No backup / PITR</span></li>
             <li class="flex gap-2"><span class="text-muted-foreground">−</span><span class="text-muted-foreground">Community support</span></li>
           </ul>
@@ -70,7 +69,6 @@ import Base from "../layouts/Base.astro";
             <li class="flex gap-2"><span class="text-primary">✓</span><span>Daily backup, 7-day PITR</span></li>
             <li class="flex gap-2"><span class="text-primary">✓</span>Preview branches</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>Slack Connect destek</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>5K realtime conn.</li>
           </ul>
         </div>
       </div>
@@ -90,10 +88,9 @@ import Base from "../layouts/Base.astro";
             <li class="flex gap-2"><span class="text-primary">✓</span>5min CPU / req</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>10GB D1 · 500GB R2</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>25 <span>projects</span></li>
-            <li class="flex gap-2"><span class="text-primary">✓</span><span>11 regions, pinning</span></li>
+            <li class="flex gap-2"><span class="text-primary">✓</span><span>Region pinning</span></li>
             <li class="flex gap-2"><span class="text-primary">✓</span>30 <span>day PITR</span></li>
             <li class="flex gap-2"><span class="text-primary">✓</span>90-day audit log</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>50K realtime conn.</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>99.9% SLA</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>SAML SSO</li>
           </ul>
@@ -115,7 +112,6 @@ import Base from "../layouts/Base.astro";
             <li class="flex gap-2"><span class="text-primary">✓</span>10GB D1 · 2TB R2</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>100 <span>projects</span></li>
             <li class="flex gap-2"><span class="text-primary">✓</span>1-year audit log</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>200K realtime conn.</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>99.95% SLA</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>SCIM provisioning</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>Priority phone support</li>
@@ -157,13 +153,13 @@ import Base from "../layouts/Base.astro";
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">R2 storage</td><td class="px-5 py-2.5 border-b border-border font-mono">1GB</td><td class="px-5 py-2.5 border-b border-border font-mono">25GB</td><td class="px-5 py-2.5 border-b border-border font-mono">500GB</td><td class="px-5 py-2.5 border-b border-border font-mono">2TB</td></tr>
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">Workers AI</td><td class="px-5 py-2.5 border-b border-border font-mono">5K/mo</td><td class="px-5 py-2.5 border-b border-border font-mono">200K/mo</td><td class="px-5 py-2.5 border-b border-border font-mono">2M/mo</td><td class="px-5 py-2.5 border-b border-border font-mono">10M/mo</td></tr>
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">Egress</td><td class="px-5 py-2.5 border-b border-border text-primary font-mono">∞</td><td class="px-5 py-2.5 border-b border-border text-primary font-mono">∞</td><td class="px-5 py-2.5 border-b border-border text-primary font-mono">∞</td><td class="px-5 py-2.5 border-b border-border text-primary font-mono">∞</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Realtime conn.</td><td class="px-5 py-2.5 border-b border-border font-mono">50</td><td class="px-5 py-2.5 border-b border-border font-mono">5K</td><td class="px-5 py-2.5 border-b border-border font-mono">50K</td><td class="px-5 py-2.5 border-b border-border font-mono">200K</td></tr>
+          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Realtime (WebSocket / SSE)</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">Projects</td><td class="px-5 py-2.5 border-b border-border font-mono">1</td><td class="px-5 py-2.5 border-b border-border font-mono">3</td><td class="px-5 py-2.5 border-b border-border font-mono">25</td><td class="px-5 py-2.5 border-b border-border font-mono">100</td></tr>
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">Team members</td><td class="px-5 py-2.5 border-b border-border font-mono">1</td><td class="px-5 py-2.5 border-b border-border font-mono">10</td><td class="px-5 py-2.5 border-b border-border font-mono">50</td><td class="px-5 py-2.5 border-b border-border font-mono">200</td></tr>
 
           <!-- Regions / runtime -->
           <tr class="bg-muted/50"><td colspan="5" class="px-5 py-2 text-[11px] uppercase tracking-wider font-mono text-muted-foreground">runtime · region</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Edge regions</td><td class="px-5 py-2.5 border-b border-border font-mono">1</td><td class="px-5 py-2.5 border-b border-border font-mono">3</td><td class="px-5 py-2.5 border-b border-border font-mono">11</td><td class="px-5 py-2.5 border-b border-border font-mono">11</td></tr>
+          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Edge network</td><td class="px-5 py-2.5 border-b border-border font-mono text-primary">Global</td><td class="px-5 py-2.5 border-b border-border font-mono text-primary">Global</td><td class="px-5 py-2.5 border-b border-border font-mono text-primary">Global</td><td class="px-5 py-2.5 border-b border-border font-mono text-primary">Global</td></tr>
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">Region pinning</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">Custom domain</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">Preview branches</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>

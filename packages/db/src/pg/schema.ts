@@ -659,6 +659,14 @@ export const collections = pgTable(
     tenantScoped: boolean("tenant_scoped").notNull().default(true),
     /** When true, the physical table has `_status` + `_published_at` columns. */
     versioned: boolean("versioned").notNull().default(false),
+    /** When true, the physical table gains a nullable `deleted_at` column and
+     *  DELETE soft-deletes (sets `deleted_at = now()`) instead of removing the
+     *  row; every read path filters `deleted_at IS NULL`. Forced false for
+     *  adopted collections (no DDL on the source table). */
+    softDelete: boolean("soft_delete").notNull().default(false),
+    /** When true, the collection is locked to a single row — inserts are
+     *  rejected once one live row exists (useful for site settings). */
+    singleton: boolean("singleton").notNull().default(false),
     /** When true, item writes auto-generate embeddings from fields flagged
      *  `vectorize: true` on the field definition. Drives both the on-write
      *  hook in routes/items.ts and the bulk `POST /:slug/vectorize` route. */

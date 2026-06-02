@@ -104,6 +104,12 @@ const CollectionInput = z.object({
    *  rows are scoped to the active tenant. */
   tenantScoped: z.boolean().optional().default(true),
   versioned: z.boolean().optional().default(false),
+  /** When true (managed only), the physical table gets a nullable
+   *  `deleted_at` column, DELETE soft-deletes, and reads filter
+   *  `deleted_at IS NULL`. Forced false for adopted creates. */
+  softDelete: z.boolean().optional().default(false),
+  /** When true, the collection is locked to a single live row. */
+  singleton: z.boolean().optional().default(false),
   /** Master switch — when true, item writes auto-embed fields with
    *  `vectorize: true` and the bulk endpoint backfills existing rows. */
   vectorize: z.boolean().optional().default(false),
@@ -422,6 +428,11 @@ export const collectionsRoutes = new Hono<AppBindings>()
       // Managed path. Custom physicalTable is allowed but optional — the
       // default `c_<tenantPrefix12>_<slug>` keeps two workspaces from
       // colliding when they happen to pick the same slug.
+      // Honor the timestamps toggle: when the caller opts out, the applier
+      // skips the created_at/updated_at columns and the read/write paths
+      // gate on these flags (same plumbing adopted tables already use).
+      hasCreatedAt = body.hasCreatedAt ?? true;
+      hasUpdatedAt = body.hasUpdatedAt ?? true;
       if (body.physicalTable) {
         try {
           assertIdent(body.physicalTable);
@@ -454,6 +465,13 @@ export const collectionsRoutes = new Hono<AppBindings>()
       );
     }
 
+    // Soft-delete needs a physical `deleted_at` column, so it's managed-only;
+    // forcing it false for adopted creates avoids reads referencing a column
+    // that doesn't exist on the source table. Singleton is pure insert-guard
+    // behavior (no DDL), so it's allowed on either path.
+    const softDelete = body.adopted ? false : body.softDelete;
+    const singleton = body.singleton;
+
     const id = crypto.randomUUID();
     await (db as any).insert(t).values({
       id,
@@ -468,6 +486,8 @@ export const collectionsRoutes = new Hono<AppBindings>()
       ownerScoped: body.ownerScoped,
       tenantScoped: body.tenantScoped,
       versioned: body.versioned,
+      softDelete,
+      singleton,
       vectorize: body.vectorize,
       vectorizeModel: body.vectorizeModel ?? null,
       defaultSort: body.defaultSort ?? null,
@@ -485,6 +505,9 @@ export const collectionsRoutes = new Hono<AppBindings>()
       ownerScoped: body.ownerScoped,
       tenantScoped: body.tenantScoped,
       versioned: body.versioned,
+      hasCreatedAt,
+      hasUpdatedAt,
+      softDelete,
       adopted: body.adopted,
     });
     if (body.ownerScoped) {
@@ -504,6 +527,8 @@ export const collectionsRoutes = new Hono<AppBindings>()
       ownerScoped: body.ownerScoped,
       tenantScoped: body.tenantScoped,
       versioned: body.versioned,
+      softDelete,
+      singleton,
       vectorize: body.vectorize,
       vectorizeModel: body.vectorizeModel ?? null,
       defaultSort: body.defaultSort ?? null,
@@ -607,6 +632,12 @@ export const collectionsRoutes = new Hono<AppBindings>()
       ownerScoped: merged.ownerScoped,
       tenantScoped: merged.tenantScoped ?? merged.tenant_scoped ?? true,
       versioned: merged.versioned,
+      // Thread the collection's stored timestamp/soft-delete shape so a PATCH
+      // doesn't re-add created_at/updated_at to a timestamps-off collection
+      // (the applier defaults these to true when omitted).
+      hasCreatedAt: merged.hasCreatedAt ?? merged.has_created_at ?? true,
+      hasUpdatedAt: merged.hasUpdatedAt ?? merged.has_updated_at ?? true,
+      softDelete: Boolean(merged.softDelete ?? merged.soft_delete),
       adopted: Boolean(merged.adopted),
     });
     if (merged.ownerScoped) {

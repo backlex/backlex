@@ -579,6 +579,13 @@ export const collections = sqliteTable(
      *  + `_published_at` column. PATCH writes update the draft; explicit
      *  `POST /:id/publish` flips status. */
     versioned: integer("versioned", { mode: "boolean" }).notNull().default(false),
+    /** When true, the physical table gains a nullable `deleted_at` column and
+     *  DELETE soft-deletes instead of removing the row; reads filter
+     *  `deleted_at IS NULL`. Forced false for adopted collections. See the
+     *  pg/schema.ts twin. */
+    softDelete: integer("soft_delete", { mode: "boolean" }).notNull().default(false),
+    /** When true, the collection is locked to a single live row. */
+    singleton: integer("singleton", { mode: "boolean" }).notNull().default(false),
     /** When true, item writes auto-generate embeddings from fields flagged
      *  `vectorize: true` on the field definition. */
     vectorize: integer("vectorize", { mode: "boolean" }).notNull().default(false),

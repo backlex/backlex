@@ -426,9 +426,10 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
   ];
 
   const sql = `CREATE TABLE ${slugClean || "<slug>"} (
-  id          uuid PRIMARY KEY DEFAULT gen_uuid(),${tenantScoped ? `\n  tenant_id   uuid NOT NULL REFERENCES tenants(id),` : ""}${ownerScoped ? `\n  owner_id    uuid NOT NULL,` : ""}${timestamps ? `\n  created_at  timestamptz NOT NULL DEFAULT now(),\n  updated_at  timestamptz NOT NULL DEFAULT now(),` : ""}${softDelete ? `\n  deleted_at  timestamptz,` : ""}
-  -- + template columns
-);${tenantScoped ? `\n\n-- RLS auto-injected:\n-- ALTER TABLE ${slugClean || "<slug>"} ENABLE ROW LEVEL SECURITY;\n-- CREATE POLICY tenant_isolation ON ${slugClean || "<slug>"}\n--   USING (tenant_id = current_setting('app.tenant_id')::uuid);` : ""}`;
+  id          uuid PRIMARY KEY,${tenantScoped ? `\n  tenant_id   text,` : ""}${ownerScoped ? `\n  owner_id    text,` : ""}${timestamps ? `\n  created_at  timestamptz NOT NULL,\n  updated_at  timestamptz NOT NULL,` : ""}${softDelete ? `\n  deleted_at  timestamptz,` : ""}
+  -- + your template columns
+);${tenantScoped ? `\n\n-- Tenant isolation is enforced in the app layer: every read/write\n-- adds WHERE tenant_id = <active tenant>. (No Postgres RLS.)` : ""}${softDelete ? `\n-- DELETE soft-deletes (sets deleted_at); reads filter deleted_at IS NULL.` : ""}${singleton ? `\n-- Singleton: inserts are rejected once one row exists.` : ""}
+-- Postgres types shown; SQLite/D1 uses TEXT + INTEGER equivalents.`;
 
   const submit = () => {
     if (!slugClean || slugError) return;
@@ -460,14 +461,14 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[90vh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-[640px]">
+      <DialogContent className="grid max-h-[90vh] w-full grid-rows-[auto_1fr_auto] gap-0 overflow-hidden p-0 sm:max-w-[640px]">
         <DialogHeader className="flex-row items-center gap-2.5 border-b border-border px-4 py-3.5 pr-12 text-left">
           <I.Database size={14} />
           <DialogTitle className="text-sm font-medium"><Trans>New collection</Trans></DialogTitle>
           <span className="font-mono text-[11.5px] text-muted-foreground"><Trans>step {step + 1} of 2</Trans></span>
         </DialogHeader>
 
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea className="min-h-0">
         <div className="flex flex-col gap-4 p-[22px]">
           {step === 0 && (
             <>
@@ -516,7 +517,7 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
               <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
                 <div>
                   <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Tenant-scoped</Trans> <Badge variant="secondary"><Trans>recommended</Trans></Badge></div>
-                  <div className="text-[11.5px] text-muted-foreground"><Trans>Auto-add <span className="font-mono">tenant_id</span>; row-level security isolates data per workspace. All read/write rules get <span className="font-mono">tenant_id = $user.tenant_id</span> injected.</Trans></div>
+                  <div className="text-[11.5px] text-muted-foreground"><Trans>Auto-add <span className="font-mono">tenant_id</span>; data is isolated per workspace at the app layer — every read/write gets <span className="font-mono">tenant_id = $user.tenant_id</span> injected.</Trans></div>
                 </div>
                 <Switch checked={tenantScoped} onChange={setTenantScoped} />
               </div>

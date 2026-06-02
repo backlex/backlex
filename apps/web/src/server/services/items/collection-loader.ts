@@ -20,6 +20,12 @@ export interface CollectionRow {
    *  reads/writes are scoped to the active tenant. */
   tenantScoped: boolean;
   versioned?: boolean;
+  /** When true, the physical table has a nullable `deleted_at` column; DELETE
+   *  soft-deletes (sets `deleted_at = now()`) and every read path filters
+   *  `deleted_at IS NULL`. Always false for adopted collections. */
+  softDelete: boolean;
+  /** When true, inserts are rejected once one live row exists. */
+  singleton: boolean;
   /** Auto-vectorize items on write (POST/PATCH) and clear on delete. The
    *  fields that contribute to the embed text are the ones whose `FieldDef`
    *  has `vectorize: true` (text/longtext only). */
@@ -90,6 +96,8 @@ export const loadCollection = async (
     ownerScoped: Boolean(r.ownerScoped ?? r.owner_scoped),
     tenantScoped: r.tenantScoped ?? r.tenant_scoped ?? true ? true : false,
     versioned: Boolean(r.versioned),
+    softDelete: Boolean(r.softDelete ?? r.soft_delete),
+    singleton: Boolean(r.singleton),
     vectorize: Boolean(r.vectorize),
     vectorizeModel: ((r.vectorizeModel ?? r.vectorize_model) as string | null | undefined) ?? null,
     defaultSort: ((r.defaultSort ?? r.default_sort) as string | null | undefined) ?? null,

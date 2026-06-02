@@ -33,6 +33,11 @@ interface CollectionRow {
   physicalTable: string;
   fields: FieldDef[];
   ownerScoped: boolean | number;
+  pkColumn: string;
+  hasCreatedAt: boolean;
+  hasUpdatedAt: boolean;
+  softDelete: boolean;
+  singleton: boolean;
 }
 
 interface GqlCtx {
@@ -266,12 +271,12 @@ const renderRow = (
   fields: FieldDef[],
   dialect: "pg" | "sqlite",
   ownerScoped: boolean,
+  hasCreatedAt = true,
+  hasUpdatedAt = true,
 ): Record<string, unknown> => {
-  const out: Record<string, unknown> = {
-    id: row.id,
-    createdAt: deserialize(row.created_at, "timestamp", dialect),
-    updatedAt: deserialize(row.updated_at, "timestamp", dialect),
-  };
+  const out: Record<string, unknown> = { id: row.id };
+  if (hasCreatedAt) out.createdAt = deserialize(row.created_at, "timestamp", dialect);
+  if (hasUpdatedAt) out.updatedAt = deserialize(row.updated_at, "timestamp", dialect);
   if (ownerScoped) out.ownerId = row.owner_id ?? null;
   for (const f of fields) {
     out[camel(f.name)] = deserialize(row[f.name], f.type, dialect);
@@ -279,10 +284,16 @@ const renderRow = (
   return out;
 };
 
-const buildOrderClause = (sortStr: string | undefined): SQL => {
-  if (!sortStr) {
-    return sql`ORDER BY ${sql.identifier("created_at")} DESC`;
-  }
+const buildOrderClause = (
+  sortStr: string | undefined,
+  collection: CollectionRow,
+): SQL => {
+  // Default sort needs a column that exists: created_at when the collection
+  // has it, otherwise the primary key (timestamps-off collections).
+  const fallback = collection.hasCreatedAt
+    ? sql`ORDER BY ${sql.identifier("created_at")} DESC`
+    : sql`ORDER BY ${sql.identifier(collection.pkColumn)} DESC`;
+  if (!sortStr) return fallback;
   const parts = sortStr
     .split(",")
     .map((s) => s.trim())
@@ -292,9 +303,7 @@ const buildOrderClause = (sortStr: string | undefined): SQL => {
       const field = s.replace(/^[-+]/, "");
       return sql`${sql.identifier(field)} ${sql.raw(dir)}`;
     });
-  return parts.length === 0
-    ? sql`ORDER BY ${sql.identifier("created_at")} DESC`
-    : sql`ORDER BY ${sql.join(parts, sql`, `)}`;
+  return parts.length === 0 ? fallback : sql`ORDER BY ${sql.join(parts, sql`, `)}`;
 };
 
 const denyOrThrow = (auth: AuthSubject, slug: string) => {
@@ -317,11 +326,17 @@ const listResolver = async (
 
   const table = collection.physicalTable;
   const userWhere = args.filter ? compileCondition(args.filter, auth) : null;
-  const wheres = [userWhere, perm.whereSql].filter((x): x is SQL => x != null);
+  // Hide soft-deleted rows (column is always `deleted_at`; managed-only).
+  const deletedWhere = collection.softDelete
+    ? sql`${sql.identifier("deleted_at")} IS NULL`
+    : null;
+  const wheres = [userWhere, perm.whereSql, deletedWhere].filter(
+    (x): x is SQL => x != null,
+  );
   const whereClause = wheres.length
     ? sql`WHERE ${sql.join(wheres, sql` AND `)}`
     : sql``;
-  const orderClause = buildOrderClause(args.sort);
+  const orderClause = buildOrderClause(args.sort, collection);
   const limit = Math.min(200, Math.max(1, args.limit ?? 50));
   const offset = Math.max(0, args.offset ?? 0);
 
@@ -330,7 +345,14 @@ const listResolver = async (
     sql`SELECT * FROM ${sql.identifier(table)} ${whereClause} ${orderClause} LIMIT ${limit} OFFSET ${offset}`,
   );
   return rows.map((r) =>
-    renderRow(r, collection.fields, ctx.dialect, !!collection.ownerScoped),
+    renderRow(
+      r,
+      collection.fields,
+      ctx.dialect,
+      !!collection.ownerScoped,
+      collection.hasCreatedAt,
+      collection.hasUpdatedAt,
+    ),
   );
 };
 
@@ -346,6 +368,7 @@ const getResolver = async (
   const table = collection.physicalTable;
   const wheres: SQL[] = [sql`${sql.identifier("id")} = ${id}`];
   if (perm.whereSql) wheres.push(perm.whereSql);
+  if (collection.softDelete) wheres.push(sql`${sql.identifier("deleted_at")} IS NULL`);
   const rows = await queryAll<Record<string, unknown>>(
     ctx,
     sql`SELECT * FROM ${sql.identifier(table)} WHERE ${sql.join(wheres, sql` AND `)} LIMIT 1`,
@@ -356,6 +379,8 @@ const getResolver = async (
     collection.fields,
     ctx.dialect,
     !!collection.ownerScoped,
+    collection.hasCreatedAt,
+    collection.hasUpdatedAt,
   );
 };
 
@@ -375,11 +400,43 @@ const createResolver = async (
   validateInput(args.data, collection, perm, false);
 
   const table = collection.physicalTable;
+
+  // Singleton: reject when a live row already exists (scoped by the caller's
+  // read permission, ignoring soft-deleted rows). GraphQL has no tenant
+  // filter of its own, so isolation rides on `perm.whereSql`.
+  if (collection.singleton) {
+    const guardWheres = [
+      perm.whereSql,
+      collection.softDelete ? sql`${sql.identifier("deleted_at")} IS NULL` : null,
+    ].filter((x): x is SQL => x != null);
+    const guardClause = guardWheres.length
+      ? sql`WHERE ${sql.join(guardWheres, sql` AND `)}`
+      : sql``;
+    const existingOne = await queryAll<{ one: number }>(
+      ctx,
+      sql`SELECT 1 AS one FROM ${sql.identifier(table)} ${guardClause} LIMIT 1`,
+    );
+    if (existingOne[0]) {
+      throw new GraphQLError(
+        "This collection is a singleton and already has a row",
+        { extensions: { code: "VALIDATION" } },
+      );
+    }
+  }
+
   const id = crypto.randomUUID();
   const now = ctx.dialect === "pg" ? new Date() : Date.now();
 
-  const cols: string[] = ["id", "created_at", "updated_at"];
-  const vals: unknown[] = [id, now, now];
+  const cols: string[] = ["id"];
+  const vals: unknown[] = [id];
+  if (collection.hasCreatedAt) {
+    cols.push("created_at");
+    vals.push(now);
+  }
+  if (collection.hasUpdatedAt) {
+    cols.push("updated_at");
+    vals.push(now);
+  }
   if (collection.ownerScoped) {
     cols.push("owner_id");
     vals.push(auth.userId);
@@ -397,11 +454,13 @@ const createResolver = async (
     sql`INSERT INTO ${sql.identifier(table)} (${colSql}) VALUES (${valSql})`,
   );
 
-  const out: Record<string, unknown> = {
-    id,
-    createdAt: ctx.dialect === "pg" ? (now as Date).toISOString() : new Date(now as number).toISOString(),
-    updatedAt: ctx.dialect === "pg" ? (now as Date).toISOString() : new Date(now as number).toISOString(),
-  };
+  const nowIso =
+    ctx.dialect === "pg"
+      ? (now as Date).toISOString()
+      : new Date(now as number).toISOString();
+  const out: Record<string, unknown> = { id };
+  if (collection.hasCreatedAt) out.createdAt = nowIso;
+  if (collection.hasUpdatedAt) out.updatedAt = nowIso;
   if (collection.ownerScoped) out.ownerId = auth.userId;
   for (const f of collection.fields) {
     const v = args.data[camel(f.name)];
@@ -434,6 +493,7 @@ const updateResolver = async (
   const table = collection.physicalTable;
   const wheres: SQL[] = [sql`${sql.identifier("id")} = ${args.id}`];
   if (perm.whereSql) wheres.push(perm.whereSql);
+  if (collection.softDelete) wheres.push(sql`${sql.identifier("deleted_at")} IS NULL`);
   const existing = await queryAll<Record<string, unknown>>(
     ctx,
     sql`SELECT * FROM ${sql.identifier(table)} WHERE ${sql.join(wheres, sql` AND `)} LIMIT 1`,
@@ -443,16 +503,22 @@ const updateResolver = async (
   }
 
   const now = ctx.dialect === "pg" ? new Date() : Date.now();
-  const sets: SQL[] = [sql`${sql.identifier("updated_at")} = ${now}`];
+  // Only stamp updated_at when the collection has it; skip the UPDATE entirely
+  // if there's nothing to set (no timestamp + no changed fields → empty SET).
+  const sets: SQL[] = collection.hasUpdatedAt
+    ? [sql`${sql.identifier("updated_at")} = ${now}`]
+    : [];
   for (const f of collection.fields) {
     const v = args.data[camel(f.name)];
     if (v === undefined) continue;
     sets.push(sql`${sql.identifier(f.name)} = ${serialize(v, f.type, ctx.dialect)}`);
   }
-  await execute(
-    ctx,
-    sql`UPDATE ${sql.identifier(table)} SET ${sql.join(sets, sql`, `)} WHERE ${sql.join(wheres, sql` AND `)}`,
-  );
+  if (sets.length > 0) {
+    await execute(
+      ctx,
+      sql`UPDATE ${sql.identifier(table)} SET ${sql.join(sets, sql`, `)} WHERE ${sql.join(wheres, sql` AND `)}`,
+    );
+  }
 
   const refreshed = await queryAll<Record<string, unknown>>(
     ctx,
@@ -463,6 +529,8 @@ const updateResolver = async (
     collection.fields,
     ctx.dialect,
     !!collection.ownerScoped,
+    collection.hasCreatedAt,
+    collection.hasUpdatedAt,
   );
   await publishEvent(
     ctx.env,
@@ -489,6 +557,8 @@ const deleteResolver = async (
   const table = collection.physicalTable;
   const wheres: SQL[] = [sql`${sql.identifier("id")} = ${args.id}`];
   if (perm.whereSql) wheres.push(perm.whereSql);
+  // Already-soft-deleted rows are a clean "not found" (idempotent).
+  if (collection.softDelete) wheres.push(sql`${sql.identifier("deleted_at")} IS NULL`);
 
   const existing = await queryAll<Record<string, unknown>>(
     ctx,
@@ -502,11 +572,21 @@ const deleteResolver = async (
     collection.fields,
     ctx.dialect,
     !!collection.ownerScoped,
+    collection.hasCreatedAt,
+    collection.hasUpdatedAt,
   );
-  await execute(
-    ctx,
-    sql`DELETE FROM ${sql.identifier(table)} WHERE ${sql.join(wheres, sql` AND `)}`,
-  );
+  if (collection.softDelete) {
+    const now = ctx.dialect === "pg" ? new Date() : Date.now();
+    await execute(
+      ctx,
+      sql`UPDATE ${sql.identifier(table)} SET ${sql.identifier("deleted_at")} = ${now} WHERE ${sql.join(wheres, sql` AND `)}`,
+    );
+  } else {
+    await execute(
+      ctx,
+      sql`DELETE FROM ${sql.identifier(table)} WHERE ${sql.join(wheres, sql` AND `)}`,
+    );
+  }
   await publishEvent(
     ctx.env,
     `items:${collection.slug}`,
@@ -643,6 +723,11 @@ export const getSchema = async (
     physicalTable: (r.physicalTable ?? r.physical_table) as string,
     fields: r.fields as FieldDef[],
     ownerScoped: Boolean(r.ownerScoped ?? r.owner_scoped),
+    pkColumn: ((r.pkColumn ?? r.pk_column) as string | undefined) ?? "id",
+    hasCreatedAt: (r.hasCreatedAt ?? r.has_created_at) === false ? false : true,
+    hasUpdatedAt: (r.hasUpdatedAt ?? r.has_updated_at) === false ? false : true,
+    softDelete: Boolean(r.softDelete ?? r.soft_delete),
+    singleton: Boolean(r.singleton),
   }));
   const hash = hashCollections(normalized);
   const hit = cached.get(tenantId);

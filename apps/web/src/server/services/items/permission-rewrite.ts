@@ -99,6 +99,11 @@ export const rewriteSortField = (field: string, collection: CollectionRow): stri
   if (field === "created_at" || field === "updated_at" || field === "owner_id") {
     const physical = physicalSystemCol(collection, field);
     if (physical) return physical;
+    // The timestamp column doesn't exist on this collection (timestamps-off,
+    // or an adopted table without created_at/updated_at). Fall back to the
+    // primary key so the default `-created_at` sort can't reference a missing
+    // column and 500 the list endpoint.
+    if (field === "created_at" || field === "updated_at") return collection.pkColumn;
   }
   return field;
 };

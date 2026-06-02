@@ -45,6 +45,14 @@ interface CollectionShape {
   tenantScoped?: boolean;
   /** When true, the physical table gets `_status` + `_published_at` columns. */
   versioned?: boolean;
+  /** Whether to create the `created_at` / `updated_at` columns. Default true.
+   *  Managed collections may opt out (the items router gates reads/writes on
+   *  the matching `has*` metadata flags). */
+  hasCreatedAt?: boolean;
+  hasUpdatedAt?: boolean;
+  /** When true, the physical table gets a nullable `deleted_at` column so
+   *  DELETE can soft-delete instead of removing the row. */
+  softDelete?: boolean;
   /** When true, the table is *adopted* (already exists, not managed by us).
    *  Apply is a no-op — we never DDL someone else's table. The collections
    *  metadata is the only thing that changes for adoptions. */
@@ -56,14 +64,18 @@ const systemColumns = (
   ownerScoped: boolean,
   versioned: boolean = false,
   tenantScoped: boolean = true,
+  hasCreatedAt: boolean = true,
+  hasUpdatedAt: boolean = true,
+  softDelete: boolean = false,
 ): string[] => {
   const ts = sqlTypeFor("timestamp", dialect);
   const cols = [
     `${quote("id")} ${sqlTypeFor("uuid", dialect)} PRIMARY KEY`,
     ...(tenantScoped ? [`${quote("tenant_id")} ${sqlTypeFor("text", dialect)}`] : []),
     ...(ownerScoped ? [`${quote("owner_id")} ${sqlTypeFor("text", dialect)}`] : []),
-    `${quote("created_at")} ${ts} NOT NULL`,
-    `${quote("updated_at")} ${ts} NOT NULL`,
+    ...(hasCreatedAt ? [`${quote("created_at")} ${ts} NOT NULL`] : []),
+    ...(hasUpdatedAt ? [`${quote("updated_at")} ${ts} NOT NULL`] : []),
+    ...(softDelete ? [`${quote("deleted_at")} ${ts}`] : []),
     ...(versioned
       ? [
           `${quote("_status")} ${sqlTypeFor("text", dialect)} NOT NULL DEFAULT 'draft'`,
@@ -139,10 +151,21 @@ export const applyCollection = async (
   // collections that opt out must do so explicitly.
   const tenantScoped = def.tenantScoped !== false;
   const versioned = Boolean(def.versioned);
+  const hasCreatedAt = def.hasCreatedAt !== false;
+  const hasUpdatedAt = def.hasUpdatedAt !== false;
+  const softDelete = Boolean(def.softDelete);
 
   if (!(await tableExists(db, dialect, table))) {
     const cols = [
-      ...systemColumns(dialect, ownerScoped, versioned, tenantScoped),
+      ...systemColumns(
+        dialect,
+        ownerScoped,
+        versioned,
+        tenantScoped,
+        hasCreatedAt,
+        hasUpdatedAt,
+        softDelete,
+      ),
       ...def.fields.map((f) => columnDefSql(f, dialect)),
     ];
     await exec(
@@ -171,6 +194,13 @@ export const applyCollection = async (
         `CREATE INDEX ${quote(`${table}_status_idx`)} ON ${quote(table)} (${quote("_status")})`,
       );
     }
+    if (softDelete) {
+      await exec(
+        db,
+        dialect,
+        `CREATE INDEX ${quote(`${table}_deleted_idx`)} ON ${quote(table)} (${quote("deleted_at")})`,
+      );
+    }
     return;
   }
 
@@ -186,6 +216,19 @@ export const applyCollection = async (
       db,
       dialect,
       `CREATE INDEX ${quote(`${table}_tenant_idx`)} ON ${quote(table)} (${quote("tenant_id")})`,
+    );
+  }
+  // Promote an existing collection to soft-delete by adding the column.
+  if (softDelete && !existing.has("deleted_at")) {
+    await exec(
+      db,
+      dialect,
+      `ALTER TABLE ${quote(table)} ADD COLUMN ${quote("deleted_at")} ${sqlTypeFor("timestamp", dialect)}`,
+    );
+    await exec(
+      db,
+      dialect,
+      `CREATE INDEX ${quote(`${table}_deleted_idx`)} ON ${quote(table)} (${quote("deleted_at")})`,
     );
   }
   // Promote an existing collection to versioned by adding the system cols.

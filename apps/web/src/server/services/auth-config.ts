@@ -12,6 +12,26 @@ import { loadSignInBranding } from "./settings";
  */
 export const GLOBAL_AUTH_CONFIG_ID = "_global";
 
+/**
+ * Default policy flags applied when a workspace's stored `auth_config.policy`
+ * doesn't set them. Single source of truth for both the public auth surface and
+ * the server-side sign-up enforcement (`onBeforeUserCreated`).
+ *
+ * `openSignup` defaults to **false**: a fresh instance only ever admits its
+ * first user (the bootstrap admin) and anyone holding a valid workspace invite;
+ * an admin must explicitly open public sign-up in Auth Settings.
+ */
+export const POLICY_DEFAULTS = {
+  openSignup: false,
+  requireEmailVerification: true,
+} as const;
+
+export interface ResolvedPolicy {
+  openSignup: boolean;
+  requireEmailVerification: boolean;
+  [key: string]: unknown;
+}
+
 /** Provider keys recognised by the auth-config layer — same keys the admin
  *  "Auth Settings" page reads/writes under `providers.<key>`. */
 export type AuthProviderKey =
@@ -57,6 +77,10 @@ export interface ResolvedAuthSurface {
    *  provisioned as admin. Lets the client show the "claim instance" copy
    *  only when it actually applies (server-validated, not query-param). */
   firstUserMode: boolean;
+  /** When `firstUserMode` and the deployment pinned an owner (managed cloud),
+   *  the email allowed to claim the first-admin account. Empty = anyone may
+   *  claim (self-host default). */
+  ownerEmail: string;
   /** Admin-customised copy for the sign-in screen's brand panel — instance-
    *  global (not per-workspace, since the sign-in page has no active tenant).
    *  Empty strings mean the client should fall back to its built-in default. */
@@ -144,6 +168,19 @@ export const loadAuthConfigRow = async (
     }
   }
   return null;
+};
+
+/**
+ * Resolve just the policy flags for a workspace (stored `auth_config.policy`
+ * over {@link POLICY_DEFAULTS}). Lean alternative to {@link resolveAuthSurface}
+ * for the sign-up enforcement path, which only needs `openSignup`.
+ */
+export const loadPolicy = async (
+  ctx: DbCtx,
+  tenantId: string | null | undefined,
+): Promise<ResolvedPolicy> => {
+  const stored = await loadAuthConfigRow(ctx, tenantId);
+  return { ...POLICY_DEFAULTS, ...((stored?.policy as Record<string, unknown>) ?? {}) };
 };
 
 /**
@@ -256,8 +293,12 @@ export const resolveAuthSurface = async (
   return {
     tenantId: tenantId ?? null,
     providers,
-    policy: { openSignup: true, requireEmailVerification: true, ...policy },
+    policy: { ...POLICY_DEFAULTS, ...policy },
     firstUserMode,
+    // On a managed cloud instance the provisioner pins the owner's email so only
+    // they can claim the first-admin slot. Surfaced (when still in first-user
+    // mode) so the claim screen can prefill + lock the email. Empty otherwise.
+    ownerEmail: firstUserMode ? (env.OWNER_EMAIL?.trim() ?? "") : "",
     branding,
   };
 };

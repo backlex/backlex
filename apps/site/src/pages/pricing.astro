@@ -342,6 +342,15 @@ import Base from "../layouts/Base.astro";
         var val = mode === "monthly" ? el.dataset.priceMonthly : el.dataset.priceAnnual;
         el.textContent = "$" + val;
       });
+      // Carry the chosen interval into the sign-up CTAs so checkout opens on it.
+      document.querySelectorAll('a[href*="/sign-up?plan="]').forEach(function (a) {
+        try {
+          var u = new URL(a.href);
+          if (mode === "annual") u.searchParams.set("interval", "annual");
+          else u.searchParams.delete("interval");
+          a.href = u.toString();
+        } catch (e) {}
+      });
       [monthlyBtn, annualBtn].forEach(function (b) {
         var on = b.id === "billing-" + mode;
         b.classList.toggle("bg-muted", on);

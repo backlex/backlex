@@ -1,7 +1,5 @@
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { MoonIcon, SunIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Button } from "@backlex/ui/components/button";
 import {
   SignInPage as BaseSignInPage,
   type AuthBranding,
@@ -9,7 +7,6 @@ import {
   type SignInCopy,
 } from "@backlex/auth-ui";
 import { SocialButtons } from "@/components/social-buttons";
-import { useTheme } from "@/components/theme-provider";
 import { notifyError } from "@/lib/error";
 import { auth, useAuthSurface } from "@/lib/auth";
 import { useWorkspaceBranding } from "@/lib/branding";
@@ -27,8 +24,6 @@ export const SignIn = () => {
   const next = params.get("next") || "/";
   const { surface } = useAuthSurface();
   const wsBranding = useWorkspaceBranding();
-  const { theme, setTheme } = useTheme();
-  const dark = theme === "dark";
 
   const branding: AuthBranding = {
     name: wsBranding?.workspaceName?.trim() || "backlex",
@@ -74,20 +69,6 @@ export const SignIn = () => {
     footLabel: t`Sign up`,
   };
 
-  const themeToggle = (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon-sm"
-      onClick={() => setTheme(dark ? "light" : "dark")}
-      aria-label={shellCopy.toggleTheme}
-      title={shellCopy.toggleTheme}
-      className="text-muted-foreground"
-    >
-      {dark ? <SunIcon size={14} /> : <MoonIcon size={14} />}
-    </Button>
-  );
-
   return (
     <BaseSignInPage
       authClient={auth}
@@ -104,7 +85,6 @@ export const SignIn = () => {
       branding={branding}
       surface={surface ?? null}
       appVersion={appVersion}
-      themeToggle={themeToggle}
       socialButtons={<SocialButtons callbackURL={next} />}
     />
   );

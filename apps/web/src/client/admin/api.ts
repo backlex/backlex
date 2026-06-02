@@ -40,6 +40,15 @@ export interface ApiCollection {
   ownerScoped: boolean;
   tenantScoped?: boolean;
   versioned: boolean;
+  /** When true, the physical table has a `deleted_at` column and DELETE
+   *  soft-deletes. Managed-only. */
+  softDelete?: boolean;
+  /** When true, the collection is locked to a single live row. */
+  singleton?: boolean;
+  /** Whether the physical table has created_at/updated_at columns. "Timestamps
+   *  off" sends both as false. */
+  hasCreatedAt?: boolean;
+  hasUpdatedAt?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

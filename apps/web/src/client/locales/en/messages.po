@@ -232,6 +232,11 @@ msgstr "{0} cols"
 msgid "{0} connected · {1} optional"
 msgstr "{0} connected · {1} optional"
 
+#. placeholder {0}: LABELS[dialog.kind] ?? dialog.kind
+#: src/client/admin/pages/integrations.tsx
+msgid "{0} connected."
+msgstr "{0} connected."
+
 #. placeholder {0}: h.name
 #. placeholder {0}: u.email
 #. placeholder {0}: user.email
@@ -239,6 +244,11 @@ msgstr "{0} connected · {1} optional"
 #: src/client/admin/pages/webhooks.tsx
 msgid "{0} deleted."
 msgstr "{0} deleted."
+
+#. placeholder {0}: LABELS[it.kind] ?? it.kind
+#: src/client/admin/pages/integrations.tsx
+msgid "{0} disconnected."
+msgstr "{0} disconnected."
 
 #. placeholder {0}: c?.activeFlows ?? 0
 #. placeholder {1}: c?.pausedFlows ?? 0
@@ -1117,6 +1127,10 @@ msgstr "Applied to users with no local override yet."
 msgid "Apply"
 msgstr "Apply"
 
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Apply template"
+msgstr "Apply template"
+
 #: src/client/admin/pages/users.tsx
 msgid "Apply to selection:"
 msgstr "Apply to selection:"
@@ -1474,6 +1488,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -1865,8 +1880,14 @@ msgid "Confirm password"
 msgstr "Confirm password"
 
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/integrations.tsx
 msgid "Connect"
 msgstr "Connect"
+
+#. placeholder {0}: dialog ? (LABELS[dialog.kind] ?? dialog.kind) : ""
+#: src/client/admin/pages/integrations.tsx
+msgid "Connect {0}"
+msgstr "Connect {0}"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Connect an MCP client"
@@ -1886,8 +1907,13 @@ msgid "connected"
 msgstr "connected"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/pages/integrations.tsx
 msgid "Connected"
 msgstr "Connected"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Connecting…"
+msgstr "Connecting…"
 
 #: src/client/admin/pages/overview.tsx
 msgid "console (dev)"
@@ -2143,6 +2169,10 @@ msgstr "Creating key"
 #: src/client/pages/api-keys.tsx
 msgid "Creating…"
 msgstr "Creating…"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Credentials are encrypted at rest and never shown again."
+msgstr "Credentials are encrypted at rest and never shown again."
 
 #: src/client/admin/pages/functions.tsx
 msgid "Cron expression"
@@ -2476,11 +2506,21 @@ msgstr "disabled"
 msgid "Discard"
 msgstr "Discard"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Disconnect"
+msgstr "Disconnect"
+
+#. placeholder {0}: LABELS[it.kind] ?? it.kind
+#: src/client/admin/pages/integrations.tsx
+msgid "Disconnect {0}?"
+msgstr "Disconnect {0}?"
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Discovery URL <0>(optional)</0>"
 msgstr "Discovery URL <0>(optional)</0>"
 
 #: src/client/admin/pages/advisor.tsx
+#: src/client/admin/pages/template-onboarding.tsx
 #: src/client/pages/api-keys.tsx
 msgid "Dismiss"
 msgstr "Dismiss"
@@ -3040,6 +3080,10 @@ msgstr "failing"
 msgid "Failures (24h)"
 msgstr "Failures (24h)"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Fan record events out to Slack, Discord, Datadog, or GitHub. Secrets are encrypted at rest."
+msgstr "Fan record events out to Slack, Discord, Datadog, or GitHub. Secrets are encrypted at rest."
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "fast · cheap · routine reads"
 msgstr "fast · cheap · routine reads"
@@ -3434,8 +3478,12 @@ msgstr "Headline"
 #~ msgstr "Headline and tagline shown on the public sign-in screen. Leave a field blank to use the built-in default copy."
 
 #: src/client/admin/pages/settings.tsx
-msgid "Headline and tagline shown on the public sign-in screen. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default copy."
-msgstr "Headline and tagline shown on the public sign-in screen. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default copy."
+#~ msgid "Headline and tagline shown on the public sign-in screen. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default copy."
+#~ msgstr "Headline and tagline shown on the public sign-in screen. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default copy."
+
+#: src/client/admin/pages/settings.tsx
+msgid "Headline, tagline, and the Terms/Privacy links shown on the public sign-in and sign-up screens. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default (or, for the URLs, to show plain text with no link)."
+msgstr "Headline, tagline, and the Terms/Privacy links shown on the public sign-in and sign-up screens. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default (or, for the URLs, to show plain text with no link)."
 
 #: src/client/admin/pages/advisor.tsx
 msgid "health"
@@ -3631,6 +3679,11 @@ msgstr "Inspect failed: {inspectError}"
 #: src/client/admin/parity/insights.tsx
 msgid "Integer between 1 and 200."
 msgstr "Integer between 1 and 200."
+
+#: src/client/admin/pages/integrations.tsx
+#: src/client/admin/ui.tsx
+msgid "Integrations"
+msgstr "Integrations"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
@@ -4003,6 +4056,10 @@ msgstr "Linked — you can sign in with this provider."
 msgid "Linked {0}."
 msgstr "Linked {0}."
 
+#: src/client/admin/pages/settings.tsx
+msgid "Linked from the sign-up consent line. Leave blank to show plain text with no link."
+msgstr "Linked from the sign-up consent line. Leave blank to show plain text with no link."
+
 #: src/client/admin/storage.tsx
 msgid "List"
 msgstr "List"
@@ -4071,6 +4128,7 @@ msgstr "Loading runs…"
 msgid "Loading tool catalog…"
 msgstr "Loading tool catalog…"
 
+#: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Loading…"
 msgstr "Loading…"
@@ -4615,6 +4673,10 @@ msgstr "No choices yet. Click \"Add choice\" — value is what the column stores
 #: src/client/admin/parity/insights.tsx
 msgid "No collections"
 msgstr "No collections"
+
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "No collections — you'll start from scratch."
+msgstr "No collections — you'll start from scratch."
 
 #: src/client/admin/parity/insights.tsx
 msgid "No collections in this workspace yet — create one first, or switch <0>Kind</0> to <1>sql</1>."
@@ -5671,6 +5733,10 @@ msgstr "Primary key"
 msgid "primary key {0} is unsupported"
 msgstr "primary key {0} is unsupported"
 
+#: src/client/admin/pages/settings.tsx
+msgid "Privacy Policy URL"
+msgstr "Privacy Policy URL"
+
 #: src/client/admin/storage.tsx
 msgid "Private"
 msgstr "Private"
@@ -6695,6 +6761,10 @@ msgstr "Secret rotated."
 msgid "Security"
 msgstr "Security"
 
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Seed a ready-made set of collections for your use case. You can edit or add more anytime."
+msgstr "Seed a ready-made set of collections for your use case. You can edit or add more anytime."
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "Select"
 msgstr "Select"
@@ -7252,9 +7322,17 @@ msgstr "SQL editor"
 msgid "Staging"
 msgstr "Staging"
 
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Start blank"
+msgstr "Start blank"
+
 #: src/client/admin/collections-index.tsx
 msgid "Start from"
 msgstr "Start from"
+
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Start with a template"
+msgstr "Start with a template"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Stateless Streamable HTTP. No <0>GET /mcp</0> (resumable SSE) yet."
@@ -7483,6 +7561,10 @@ msgstr "Tenant-scoped"
 #: src/client/admin/flow-builder.tsx
 msgid "Tenant-scoped lookup at run time. Inactive functions throw at execution."
 msgstr "Tenant-scoped lookup at run time. Inactive functions throw at execution."
+
+#: src/client/admin/pages/settings.tsx
+msgid "Terms of Service URL"
+msgstr "Terms of Service URL"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Test"

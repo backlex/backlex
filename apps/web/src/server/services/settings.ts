@@ -88,11 +88,17 @@ export interface SignInBranding {
   signInHeadline: string;
   /** Custom tagline; empty string = use the client's built-in default. */
   signInTagline: string;
+  /** Terms of Service URL shown on the sign-up consent line; empty = hide link. */
+  termsUrl: string;
+  /** Privacy Policy URL shown on the sign-up consent line; empty = hide link. */
+  privacyUrl: string;
 }
 
 export const SIGN_IN_BRANDING_DEFAULTS: SignInBranding = {
   signInHeadline: "",
   signInTagline: "",
+  termsUrl: "",
+  privacyUrl: "",
 };
 
 /** Keys persisted by {@link SignInBranding}. The settings route consults this
@@ -100,6 +106,8 @@ export const SIGN_IN_BRANDING_DEFAULTS: SignInBranding = {
 export const SIGN_IN_BRANDING_KEYS = [
   "signInHeadline",
   "signInTagline",
+  "termsUrl",
+  "privacyUrl",
 ] as const;
 
 /** Read the instance-global login-screen branding (always the
@@ -120,6 +128,10 @@ export const loadSignInBranding = async (
         out.signInHeadline = r.value;
       else if (r.key === "signInTagline" && typeof r.value === "string")
         out.signInTagline = r.value;
+      else if (r.key === "termsUrl" && typeof r.value === "string")
+        out.termsUrl = r.value;
+      else if (r.key === "privacyUrl" && typeof r.value === "string")
+        out.privacyUrl = r.value;
     }
   } catch {
     // Pre-migration deploy (table missing) — fall back to empty defaults.

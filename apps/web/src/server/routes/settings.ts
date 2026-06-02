@@ -51,6 +51,10 @@ const SettingsInput = z
      *  `tenant_id IS NULL` row, not per-workspace. Blank = built-in default. */
     signInHeadline: z.string().max(120).optional(),
     signInTagline: z.string().max(280).optional(),
+    /** Sign-up consent links. Empty string clears (hides) the link; otherwise
+     *  must be a valid absolute URL. Also instance-global (`tenant_id IS NULL`). */
+    termsUrl: z.union([z.literal(""), z.string().url().max(2048)]).optional(),
+    privacyUrl: z.union([z.literal(""), z.string().url().max(2048)]).optional(),
   })
   .strict()
   .refine(

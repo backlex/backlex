@@ -5,6 +5,8 @@ import {
   getEmbeddingModel,
   type EmbeddingModel,
 } from "@backlex/core";
+import type { Env } from "../env";
+import { reportToCloud } from "../lib/cloud-report";
 
 /**
  * One Vectorize index per embedding model. The map keys are model names
@@ -47,6 +49,7 @@ const indexFor = (
 
 export const vectorizeAdapter = (
   bindings: VectorizeIndexMap,
+  env?: Env,
 ): VectorAdapter => ({
   async upsert(model, records) {
     if (records.length === 0) return;
@@ -86,6 +89,9 @@ export const vectorizeAdapter = (
       filter: filter as VectorizeVectorMetadataFilter | undefined,
       returnMetadata: "all",
     });
+    // CF exposes no Vectorize query analytics, so self-report the query for
+    // cloud cost visibility (no-op unless this is a managed cloud project).
+    void reportToCloud(env, { kind: "vector_query", queries: 1 });
     return res.matches.map((m) => ({
       id: stripKey(namespace, m.id),
       score: m.score,

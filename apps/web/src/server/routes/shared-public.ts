@@ -7,6 +7,7 @@ import { PUBLIC_SECURITY, errorResponses } from "../lib/openapi";
 import { loadCollection } from "../services/items/collection-loader";
 import { deserializeRow } from "../services/items/serialize";
 import {
+  deletedFilter,
   fromOf,
   pkEq,
   queryAll,
@@ -97,6 +98,7 @@ export const sharedPublicRoutes = new OpenAPIHono<AppBindings>().openapi(
         collection.tenantScoped && link.tenantId
           ? sql`${sql.identifier("tenant_id")} = ${link.tenantId}`
           : null,
+        deletedFilter(collection),
       )} LIMIT 1`,
     );
     if (!rows[0]) {

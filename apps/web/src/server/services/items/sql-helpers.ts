@@ -17,6 +17,26 @@ export const tenantFilter = (
   return sql`${sql.identifier("tenant_id")} = ${auth.tenantId}`;
 };
 
+/**
+ * Build a `deleted_at IS NULL` filter when the collection uses soft-delete,
+ * so every read path hides rows that were soft-deleted. Returns null
+ * otherwise so callers can compose with `whereOf` cleanly. Soft-delete is
+ * managed-only (adopted collections force it off), so the column is always
+ * the conventional `deleted_at` — no aliasing to resolve. The optional
+ * `qualifier` table name qualifies the column for queries that JOIN (e.g.
+ * the list path's `item_ownership` join), mirroring how the tenant filter is
+ * re-qualified there.
+ */
+export const deletedFilter = (
+  collection: CollectionRow,
+  qualifier?: string,
+): SQL | null => {
+  if (!collection.softDelete) return null;
+  return qualifier
+    ? sql`${sql.identifier(qualifier)}.${sql.identifier("deleted_at")} IS NULL`
+    : sql`${sql.identifier("deleted_at")} IS NULL`;
+};
+
 // Postgres-js's prepared-statement binder calls `byteLength` on params
 // when it has no per-column type info from the schema (the dynamic
 // `c_*` / adopted tables aren't in Drizzle's type map). Date instances

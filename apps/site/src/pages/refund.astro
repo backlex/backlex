@@ -1,0 +1,105 @@
+---
+import Base from "../layouts/Base.astro";
+
+const updated = "June 2, 2026";
+---
+<Base
+  title="backlex — Refund Policy"
+  description="How cancellations and refunds work for backlex paid plans."
+>
+  <section class="relative z-[1] max-w-[760px] mx-auto px-8 max-md:px-5 py-20">
+    <div class="flex flex-col gap-3 mb-12">
+      <span class="inline-block self-start font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground border border-border rounded-full px-3 py-1.5 bg-muted">
+        Legal
+      </span>
+      <h1 class="text-[clamp(32px,5vw,48px)] font-semibold -tracking-[0.04em] leading-[1.05]">
+        Refund Policy
+      </h1>
+      <p class="text-[13px] text-muted-foreground">Last updated: {updated}</p>
+    </div>
+
+    <div class="flex flex-col gap-8 text-[15px] leading-relaxed text-muted-foreground">
+      <p>
+        This Refund Policy explains how cancellations and refunds work for paid
+        plans of the backlex managed cloud ("the Service", "we"). It forms part
+        of, and should be read together with, our
+        <a href="/terms" class="text-foreground underline underline-offset-2 hover:text-primary transition-colors">Terms of Service</a>.
+      </p>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">1. Free plan</h2>
+        <p>
+          The Free plan requires no payment card and is never charged. When its
+          limits are reached, the project pauses until you upgrade or export your
+          data. There is nothing to refund on the Free plan.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">2. Cancel any time</h2>
+        <p>
+          You can cancel a paid subscription at any time from your billing
+          settings in the
+          <a href="https://cloud.backlex.com" class="text-foreground underline underline-offset-2 hover:text-primary transition-colors">cloud dashboard</a>,
+          or by emailing us. Cancellation takes effect immediately — your
+          subscription will not renew for the next period.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">3. Pro-rated refunds on cancellation</h2>
+        <p class="mb-3">
+          When you cancel a paid plan, you are charged only for the part of the
+          billing period you actually used. We refund the unused remainder of the
+          current period on a pro-rated (daily) basis.
+        </p>
+        <ul class="list-disc pl-5 flex flex-col gap-2">
+          <li>The refund covers the unused days of the plan's current billing period, calculated from the cancellation date.</li>
+          <li>One-time charges and consumed usage-based add-ons (for example extra request packs, storage, or AI overage that has already been used) are non-refundable.</li>
+          <li>Pro-rated refunds are issued to the original payment method.</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">4. Payments &amp; Merchant of Record</h2>
+        <p>
+          Payments for the managed cloud are processed by our Merchant of Record,
+          <strong class="text-foreground font-medium">Lemon Squeezy</strong>, which
+          handles billing, tax, and the issuing of refunds on our behalf.
+          Approved refunds are returned to the original payment method through
+          Lemon Squeezy and typically appear within 5–10 business days, depending
+          on your bank or card provider.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">5. How to request a refund</h2>
+        <p>
+          Cancel your plan from the billing settings in the cloud dashboard, or
+          email us at
+          <a href="mailto:hi@backlex.com" class="text-foreground underline underline-offset-2 hover:text-primary transition-colors">hi@backlex.com</a>
+          with your account email and the subscription concerned. The pro-rated
+          refund for the unused period is processed once the cancellation is
+          confirmed.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">6. Changes</h2>
+        <p>
+          We may update this Refund Policy from time to time. We will publish the
+          updated policy on this page; the version in effect at the time of your
+          purchase applies to that purchase.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">7. Contact</h2>
+        <p>
+          For any questions about cancellations or refunds, contact us at
+          <a href="mailto:hi@backlex.com" class="text-foreground underline underline-offset-2 hover:text-primary transition-colors">hi@backlex.com</a>.
+        </p>
+      </div>
+    </div>
+  </section>
+</Base>

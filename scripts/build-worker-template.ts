@@ -23,7 +23,7 @@
  * Flow:
  *   1. (Skippable with --no-build) Run `bun run build` (vite build) which
  *      writes the SPA into `apps/web/dist/client/` and the worker bundle
- *      into `apps/web/dist/workeros_api/` (entry `index.js` + chunked
+ *      into `apps/web/dist/backlex_admin/` (entry `index.js` + chunked
  *      `assets/`, including per-migration `migration-*.sql` chunks).
  *   2. Copy those two trees into a staging dir.
  *   3. Synthesize `wrangler.template.toml`, `meta.json`, and the
@@ -262,7 +262,7 @@ const main = async (): Promise<void> => {
     console.log("↷ skipping build (--no-build)");
   }
 
-  const workerDist = join(REPO_ROOT, "apps/web/dist/workeros_api");
+  const workerDist = join(REPO_ROOT, "apps/web/dist/backlex_admin");
   const clientDist = join(REPO_ROOT, "apps/web/dist/client");
   if (!existsSync(workerDist) || !existsSync(join(workerDist, "index.js"))) {
     throw new Error(
@@ -282,7 +282,7 @@ const main = async (): Promise<void> => {
   const stageDir = join(args.output, `workeros-app-worker-v${args.version}`);
   mkdirSync(stageDir, { recursive: true });
 
-  // 2a. Worker entry + assets — copy the whole `workeros_api/` minus the
+  // 2a. Worker entry + assets — copy the whole `backlex_admin/` minus the
   //     auto-emitted `wrangler.json` (it embeds the maintainer's IDs and
   //     we ship a clean `wrangler.template.toml` instead).
   console.log("→ copy worker bundle");

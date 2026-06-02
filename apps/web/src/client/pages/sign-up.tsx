@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { MoonIcon, SunIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Button } from "@backlex/ui/components/button";
 import {
   SignUpPage as BaseSignUpPage,
   type AuthBranding,
@@ -10,7 +8,6 @@ import {
   type SignUpCopy,
 } from "@backlex/auth-ui";
 import { SocialButtons, useHasSocialProviders } from "@/components/social-buttons";
-import { useTheme } from "@/components/theme-provider";
 import { notifyError } from "@/lib/error";
 import { auth, invalidateAuthSurface, useAuthSurface } from "@/lib/auth";
 import { useWorkspaceBranding } from "@/lib/branding";
@@ -46,8 +43,6 @@ export const SignUp = () => {
   const { surface } = useAuthSurface();
   const wsBranding = useWorkspaceBranding();
   const hasSocials = useHasSocialProviders();
-  const { theme, setTheme } = useTheme();
-  const dark = theme === "dark";
 
   const isFirstParam = params.get("claim") === "1";
   const isFirst = surface?.firstUserMode === true && isFirstParam;
@@ -145,20 +140,6 @@ export const SignUp = () => {
     signUpFailed: t`Sign-up failed`,
   };
 
-  const themeToggle = (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon-sm"
-      onClick={() => setTheme(dark ? "light" : "dark")}
-      aria-label={shellCopy.toggleTheme}
-      title={shellCopy.toggleTheme}
-      className="text-muted-foreground"
-    >
-      {dark ? <SunIcon size={14} /> : <MoonIcon size={14} />}
-    </Button>
-  );
-
   return (
     <BaseSignUpPage
       authClient={auth}
@@ -175,7 +156,6 @@ export const SignUp = () => {
       branding={branding}
       surface={surface ?? null}
       appVersion={appVersion}
-      themeToggle={themeToggle}
       socialButtons={<SocialButtons />}
       hasSocials={hasSocials}
       onInvalidateSurface={invalidateAuthSurface}

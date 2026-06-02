@@ -467,44 +467,6 @@ import Base from "../layouts/Base.astro";
       <div class="px-7 py-4 border-t border-border bg-muted/40 text-[12px] text-muted-foreground">Changes in Cloudflare's plans flow through to ours. We email 30 days ahead of any tightening.</div>
     </div>
 
-    <!-- Enterprise inline CTA (replaces top-nav Enterprise link) -->
-    <div class="mt-10 border border-border rounded-3xl bg-card overflow-hidden">
-      <div class="grid grid-cols-[1.4fr_1fr] max-[860px]:grid-cols-1">
-        <div class="p-8 max-md:p-6 flex flex-col gap-3 border-r border-border max-[860px]:border-r-0 max-[860px]:border-b">
-          <div class="flex items-center gap-2">
-            <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>enterprise</span>
-          </div>
-          <h3 class="text-[clamp(22px,2.4vw,28px)] font-semibold -tracking-[0.022em] leading-[1.15] max-w-[24ch]">A backend that passes vendor review.</h3>
-          <p class="text-[14px] text-muted-foreground max-w-[52ch] leading-snug">SAML SSO, SCIM provisioning, SOC 2 (in progress), DPA + MSA, dedicated single-tenant cluster with region pinning. Annual invoicing for finance, redlines for legal.</p>
-          <div class="mt-3 flex gap-2 flex-wrap">
-            <a href="/enterprise" class="inline-flex items-center gap-2 h-10 px-4 rounded-3xl bg-primary text-primary-foreground text-[13.5px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap">Enterprise details →</a>
-            <a href="/enterprise#contact" class="inline-flex items-center gap-2 h-10 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13.5px] font-medium no-underline transition-colors whitespace-nowrap">Book a call</a>
-          </div>
-        </div>
-        <div class="p-6 grid grid-cols-2 gap-2.5 bg-muted/40">
-          <div class="border border-border rounded-2xl bg-card p-4">
-            <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1">SSO</div>
-            <div class="text-[13px] font-medium">SAML 2.0 · SCIM</div>
-            <div class="text-[11.5px] text-muted-foreground mt-1">Okta, Azure AD, Google, JumpCloud</div>
-          </div>
-          <div class="border border-border rounded-2xl bg-card p-4">
-            <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1">Compliance</div>
-            <div class="text-[13px] font-medium">SOC 2 · GDPR</div>
-            <div class="text-[11.5px] text-muted-foreground mt-1">DPA + MSA templates</div>
-          </div>
-          <div class="border border-border rounded-2xl bg-card p-4">
-            <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1">SLA</div>
-            <div class="text-[13px] font-medium">99.99% uptime</div>
-            <div class="text-[11.5px] text-muted-foreground mt-1">4-hour first response, 24/7</div>
-          </div>
-          <div class="border border-border rounded-2xl bg-card p-4">
-            <div class="font-mono text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground mb-1">Isolation</div>
-            <div class="text-[13px] font-medium">Dedicated cluster</div>
-            <div class="text-[11.5px] text-muted-foreground mt-1">Single-tenant, region-pinned</div>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </section>
 

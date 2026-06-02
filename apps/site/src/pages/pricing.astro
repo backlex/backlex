@@ -34,7 +34,7 @@ import Base from "../layouts/Base.astro";
           <div class="text-[36px] font-semibold -tracking-[0.022em] leading-none">$0</div>
           <p class="text-[12.5px] text-muted-foreground mt-2">Forever. No card.</p>
         </div>
-        <a href="#" class="inline-flex items-center justify-center h-10 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13px] font-medium no-underline transition-colors">Sign up</a>
+        <a href="https://cloud.backlex.com/sign-up" class="inline-flex items-center justify-center h-10 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13px] font-medium no-underline transition-colors">Sign up</a>
         <div class="pt-3 border-t border-border">
           <div class="text-[11px] uppercase tracking-wider font-medium text-muted-foreground mb-2">includes</div>
           <ul class="text-[12.5px] space-y-1.5 list-none p-0">
@@ -43,7 +43,6 @@ import Base from "../layouts/Base.astro";
             <li class="flex gap-2"><span class="text-primary">✓</span>500MB D1 · 1GB R2</li>
             <li class="flex gap-2"><span class="text-primary">✓</span><span>1 project · 1 env</span></li>
             <li class="flex gap-2"><span class="text-primary">✓</span>backlex.com subdomain</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>50 realtime conn.</li>
             <li class="flex gap-2"><span class="text-muted-foreground">−</span><span class="text-muted-foreground">No backup / PITR</span></li>
             <li class="flex gap-2"><span class="text-muted-foreground">−</span><span class="text-muted-foreground">Community support</span></li>
           </ul>
@@ -58,7 +57,7 @@ import Base from "../layouts/Base.astro";
           <div class="text-[36px] font-semibold -tracking-[0.022em] leading-none"><span data-price-monthly="19" data-price-annual="15">$19</span><span class="text-[14px] font-normal text-muted-foreground"> / <span>project / mo</span></span></div>
           <p class="text-[12.5px] text-muted-foreground mt-2">Production, small teams. 14-day free trial.</p>
         </div>
-        <a href="#" class="inline-flex items-center justify-center h-10 px-4 rounded-3xl bg-primary text-primary-foreground hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] text-[13px] font-medium no-underline transition-colors">Try 14 days free</a>
+        <a href="https://cloud.backlex.com/sign-up?plan=pro" class="inline-flex items-center justify-center h-10 px-4 rounded-3xl bg-primary text-primary-foreground hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] text-[13px] font-medium no-underline transition-colors">Try 14 days free</a>
         <div class="pt-3 border-t border-border">
           <div class="text-[11px] uppercase tracking-wider font-medium text-muted-foreground mb-2">Free + </div>
           <ul class="text-[12.5px] space-y-1.5 list-none p-0">
@@ -70,7 +69,6 @@ import Base from "../layouts/Base.astro";
             <li class="flex gap-2"><span class="text-primary">✓</span><span>Daily backup, 7-day PITR</span></li>
             <li class="flex gap-2"><span class="text-primary">✓</span>Preview branches</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>Slack Connect destek</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>5K realtime conn.</li>
           </ul>
         </div>
       </div>
@@ -82,7 +80,7 @@ import Base from "../layouts/Base.astro";
           <div class="text-[36px] font-semibold -tracking-[0.022em] leading-none"><span data-price-monthly="99" data-price-annual="79">$99</span><span class="text-[14px] font-normal text-muted-foreground"> / <span>project / mo</span></span></div>
           <p class="text-[12.5px] text-muted-foreground mt-2">Traffic grew, SLA matters.</p>
         </div>
-        <a href="#" class="inline-flex items-center justify-center h-10 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13px] font-medium no-underline transition-colors">Go Scale</a>
+        <a href="https://cloud.backlex.com/sign-up?plan=scale" class="inline-flex items-center justify-center h-10 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13px] font-medium no-underline transition-colors">Go Scale</a>
         <div class="pt-3 border-t border-border">
           <div class="text-[11px] uppercase tracking-wider font-medium text-muted-foreground mb-2">Pro + </div>
           <ul class="text-[12.5px] space-y-1.5 list-none p-0">
@@ -90,10 +88,9 @@ import Base from "../layouts/Base.astro";
             <li class="flex gap-2"><span class="text-primary">✓</span>5min CPU / req</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>10GB D1 · 500GB R2</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>25 <span>projects</span></li>
-            <li class="flex gap-2"><span class="text-primary">✓</span><span>11 regions, pinning</span></li>
+            <li class="flex gap-2"><span class="text-primary">✓</span><span>Region pinning</span></li>
             <li class="flex gap-2"><span class="text-primary">✓</span>30 <span>day PITR</span></li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>Neon Postgres add-on</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>50K realtime conn.</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span>90-day audit log</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>99.9% SLA</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>SAML SSO</li>
           </ul>
@@ -107,25 +104,23 @@ import Base from "../layouts/Base.astro";
           <div class="text-[36px] font-semibold -tracking-[0.022em] leading-none"><span data-price-monthly="199" data-price-annual="159">$199</span><span class="text-[14px] font-normal text-muted-foreground"> / <span>project / mo</span></span></div>
           <p class="text-[12.5px] text-muted-foreground mt-2">Highest tier — self-serve, no sales call.</p>
         </div>
-        <a href="https://cloud.backlex.com" class="inline-flex items-center justify-center h-10 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13px] font-medium no-underline transition-colors">Go Max</a>
+        <a href="https://cloud.backlex.com/sign-up?plan=max" class="inline-flex items-center justify-center h-10 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13px] font-medium no-underline transition-colors">Go Max</a>
         <div class="pt-3 border-t border-border">
           <div class="text-[11px] uppercase tracking-wider font-medium text-muted-foreground mb-2">Scale + </div>
           <ul class="text-[12.5px] space-y-1.5 list-none p-0">
             <li class="flex gap-2"><span class="text-primary">✓</span><span>500M requests / mo</span></li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>5min CPU / req</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>10GB D1 · 2TB R2</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>100 <span>projects</span></li>
-            <li class="flex gap-2"><span class="text-primary">✓</span><span>90-day PITR</span></li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>SCIM provisioning</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>200K realtime conn.</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span>1-year audit log</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>99.95% SLA</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span>SCIM provisioning</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>Priority phone support</li>
           </ul>
         </div>
       </div>
     </div>
 
-    <p class="mt-6 text-[12.5px] text-muted-foreground text-center">All prices exclude VAT. TRY invoicing available for Turkey-based customers. 20% off annual plans. D1 is capped at 10&nbsp;GB per database — use the Neon Postgres add-on for larger datasets.</p>
+    <p class="mt-6 text-[12.5px] text-muted-foreground text-center">All prices exclude VAT. TRY invoicing available for Turkey-based customers. 20% off annual plans. D1 is capped at 10&nbsp;GB per database.</p>
   </div>
 </section>
 
@@ -156,15 +151,15 @@ import Base from "../layouts/Base.astro";
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">CPU / request</td><td class="px-5 py-2.5 border-b border-border font-mono">10ms</td><td class="px-5 py-2.5 border-b border-border font-mono">30s</td><td class="px-5 py-2.5 border-b border-border font-mono">5min</td><td class="px-5 py-2.5 border-b border-border font-mono">5min</td></tr>
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">D1 size</td><td class="px-5 py-2.5 border-b border-border font-mono">500MB</td><td class="px-5 py-2.5 border-b border-border font-mono">5GB</td><td class="px-5 py-2.5 border-b border-border font-mono">10GB</td><td class="px-5 py-2.5 border-b border-border font-mono">10GB</td></tr>
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">R2 storage</td><td class="px-5 py-2.5 border-b border-border font-mono">1GB</td><td class="px-5 py-2.5 border-b border-border font-mono">25GB</td><td class="px-5 py-2.5 border-b border-border font-mono">500GB</td><td class="px-5 py-2.5 border-b border-border font-mono">2TB</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Workers AI</td><td class="px-5 py-2.5 border-b border-border font-mono">5K neurons/day</td><td class="px-5 py-2.5 border-b border-border font-mono">200K/mo</td><td class="px-5 py-2.5 border-b border-border font-mono">2M/mo</td><td class="px-5 py-2.5 border-b border-border font-mono">10M/mo</td></tr>
+          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Workers AI</td><td class="px-5 py-2.5 border-b border-border font-mono">5K/mo</td><td class="px-5 py-2.5 border-b border-border font-mono">200K/mo</td><td class="px-5 py-2.5 border-b border-border font-mono">2M/mo</td><td class="px-5 py-2.5 border-b border-border font-mono">10M/mo</td></tr>
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">Egress</td><td class="px-5 py-2.5 border-b border-border text-primary font-mono">∞</td><td class="px-5 py-2.5 border-b border-border text-primary font-mono">∞</td><td class="px-5 py-2.5 border-b border-border text-primary font-mono">∞</td><td class="px-5 py-2.5 border-b border-border text-primary font-mono">∞</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Realtime conn.</td><td class="px-5 py-2.5 border-b border-border font-mono">50</td><td class="px-5 py-2.5 border-b border-border font-mono">5K</td><td class="px-5 py-2.5 border-b border-border font-mono">50K</td><td class="px-5 py-2.5 border-b border-border font-mono">200K</td></tr>
+          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Realtime (WebSocket / SSE)</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">Projects</td><td class="px-5 py-2.5 border-b border-border font-mono">1</td><td class="px-5 py-2.5 border-b border-border font-mono">3</td><td class="px-5 py-2.5 border-b border-border font-mono">25</td><td class="px-5 py-2.5 border-b border-border font-mono">100</td></tr>
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">Team members</td><td class="px-5 py-2.5 border-b border-border font-mono">1</td><td class="px-5 py-2.5 border-b border-border font-mono">10</td><td class="px-5 py-2.5 border-b border-border font-mono">50</td><td class="px-5 py-2.5 border-b border-border font-mono">200</td></tr>
 
           <!-- Regions / runtime -->
           <tr class="bg-muted/50"><td colspan="5" class="px-5 py-2 text-[11px] uppercase tracking-wider font-mono text-muted-foreground">runtime · region</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Edge regions</td><td class="px-5 py-2.5 border-b border-border font-mono">1</td><td class="px-5 py-2.5 border-b border-border font-mono">3</td><td class="px-5 py-2.5 border-b border-border font-mono">11</td><td class="px-5 py-2.5 border-b border-border font-mono">11</td></tr>
+          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Edge network</td><td class="px-5 py-2.5 border-b border-border font-mono text-primary">Global</td><td class="px-5 py-2.5 border-b border-border font-mono text-primary">Global</td><td class="px-5 py-2.5 border-b border-border font-mono text-primary">Global</td><td class="px-5 py-2.5 border-b border-border font-mono text-primary">Global</td></tr>
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">Region pinning</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">Custom domain</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">Preview branches</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
@@ -172,7 +167,7 @@ import Base from "../layouts/Base.astro";
           <!-- Backup -->
           <tr class="bg-muted/50"><td colspan="5" class="px-5 py-2 text-[11px] uppercase tracking-wider font-mono text-muted-foreground">backup · restore</td></tr>
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">Daily backup</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">PITR window</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border font-mono">7d</td><td class="px-5 py-2.5 border-b border-border font-mono">30d</td><td class="px-5 py-2.5 border-b border-border font-mono">90d</td></tr>
+          <tr><td class="px-5 py-2.5 border-b border-border font-medium">PITR window</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border font-mono">7d</td><td class="px-5 py-2.5 border-b border-border font-mono">30d</td><td class="px-5 py-2.5 border-b border-border font-mono">30d</td></tr>
           <tr><td class="px-5 py-2.5 border-b border-border font-medium">One-click export</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td><td class="px-5 py-2.5 border-b border-border text-primary">✓</td></tr>
 
           <!-- Auth -->
@@ -202,20 +197,6 @@ import Base from "../layouts/Base.astro";
       <h2 class="text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.022em] leading-[1.15]">Added when needed, paused any day.</h2>
     </div>
     <div class="grid grid-cols-3 max-[920px]:grid-cols-1 gap-3.5">
-      <div class="border border-border rounded-3xl bg-card p-6">
-        <div class="flex items-center gap-2.5 mb-2">
-          <span class="w-8 h-8 rounded-md bg-muted grid place-items-center font-mono text-[12px] font-semibold">N</span>
-          <h3 class="text-[15.5px] font-semibold">Neon Postgres</h3>
-          <span class="ml-auto cf-pill">Scale+</span>
-        </div>
-        <div class="text-[24px] font-semibold -tracking-[0.018em]">$29<span class="text-[13px] font-normal text-muted-foreground"> / <span>mo</span></span></div>
-        <p class="text-[12.5px] text-muted-foreground mt-2 leading-snug">Full Postgres where D1 isn't enough. Branching, PITR, pgvector. One-click connect from backlex.</p>
-        <ul class="text-[12px] text-muted-foreground mt-3 space-y-1 list-none p-0">
-          <li class="flex gap-2"><span class="text-primary">✓</span>10GB depolama dahil</li>
-          <li class="flex gap-2"><span class="text-primary">✓</span><span>Compute billed hourly</span></li>
-          <li class="flex gap-2"><span class="text-primary">✓</span><span>Branches in seconds</span></li>
-        </ul>
-      </div>
       <div class="border border-border rounded-3xl bg-card p-6">
         <div class="flex items-center gap-2.5 mb-2">
           <span class="w-8 h-8 rounded-md bg-muted grid place-items-center font-mono text-[12px] font-semibold">R</span>
@@ -290,10 +271,10 @@ import Base from "../layouts/Base.astro";
         </details>
         <details class="faq border border-border rounded-2xl bg-card overflow-hidden">
           <summary class="px-5 py-4 flex items-center gap-3">
-            <span class="text-[14.5px] font-medium">My workload doesn't fit D1. Can I use Postgres?</span>
+            <span class="text-[14.5px] font-medium">My workload doesn't fit D1. What are my options?</span>
             <svg class="chev ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </summary>
-          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">From Scale onwards we offer the Neon Postgres add-on. Full pg starting at $29/mo with branching and PITR. Connects from the backlex admin — you don't manage the connection string.</div>
+          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">The managed cloud runs on Cloudflare D1, capped at 10&nbsp;GB per database. Keep large blobs in R2 (separately billed, effectively uncapped). If you need full Postgres, the open-source backlex runs on any Postgres — self-host it on your own infrastructure with one-click export from Cloud.</div>
         </details>
         <details class="faq border border-border rounded-2xl bg-card overflow-hidden">
           <summary class="px-5 py-4 flex items-center gap-3">
@@ -337,8 +318,8 @@ import Base from "../layouts/Base.astro";
         <p class="text-muted-foreground mt-2 text-[14.5px]">Don't like it? One-click export, run on your own Cloudflare account.</p>
       </div>
       <div class="flex gap-2.5 flex-shrink-0 flex-wrap">
-        <a class="inline-flex items-center gap-2 h-11 px-5 rounded-4xl bg-primary text-primary-foreground text-[14.5px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap" href="#">Start free →</a>
-        <a class="inline-flex items-center gap-2 h-11 px-5 rounded-4xl border border-border bg-background text-foreground text-[14.5px] font-medium no-underline hover:bg-muted transition-colors whitespace-nowrap" href="https://cloud.backlex.com">Go Max</a>
+        <a class="inline-flex items-center gap-2 h-11 px-5 rounded-4xl bg-primary text-primary-foreground text-[14.5px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap" href="https://cloud.backlex.com/sign-up">Start free →</a>
+        <a class="inline-flex items-center gap-2 h-11 px-5 rounded-4xl border border-border bg-background text-foreground text-[14.5px] font-medium no-underline hover:bg-muted transition-colors whitespace-nowrap" href="https://cloud.backlex.com/sign-up?plan=max">Go Max</a>
       </div>
     </div>
   </div>
@@ -355,6 +336,15 @@ import Base from "../layouts/Base.astro";
       document.querySelectorAll("[data-price-monthly]").forEach(function (el) {
         var val = mode === "monthly" ? el.dataset.priceMonthly : el.dataset.priceAnnual;
         el.textContent = "$" + val;
+      });
+      // Carry the chosen interval into the sign-up CTAs so checkout opens on it.
+      document.querySelectorAll('a[href*="/sign-up?plan="]').forEach(function (a) {
+        try {
+          var u = new URL(a.href);
+          if (mode === "annual") u.searchParams.set("interval", "annual");
+          else u.searchParams.delete("interval");
+          a.href = u.toString();
+        } catch (e) {}
       });
       [monthlyBtn, annualBtn].forEach(function (b) {
         var on = b.id === "billing-" + mode;

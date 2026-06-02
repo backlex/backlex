@@ -22,6 +22,9 @@ export interface AuthSurface {
     [key: string]: unknown;
   };
   firstUserMode: boolean;
+  /** When in first-user mode and the deployment pinned an owner (managed
+   *  cloud), the email allowed to claim the first-admin account. */
+  ownerEmail?: string;
   /** Admin-customised sign-in screen copy. Empty strings = use the default. */
   branding?: {
     signInHeadline: string;

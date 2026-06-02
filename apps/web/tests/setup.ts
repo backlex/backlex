@@ -110,11 +110,18 @@ export const makeHarness = (overrides: Partial<Env> = {}): TestHarness => {
 };
 
 /** Sign up + sign in as a fresh admin (the first user of a brand-new DB
- *  is auto-promoted via the `onUserCreated` hook in context.ts). */
+ *  is auto-promoted via the `onUserCreated` hook in context.ts).
+ *
+ *  Public sign-up now defaults to CLOSED (auth_config.policy.openSignup). Most
+ *  multi-user tests seed an admin and then create additional users via
+ *  `/api/auth/sign-up/email`, so this helper opens public sign-up by default
+ *  (the admin session from autoSignIn authorises the config PATCH). Pass
+ *  `{ openSignup: false }` to exercise the closed-by-default behavior. */
 export const seedAdmin = async (
   h: TestHarness,
   email = `admin-${Date.now()}@example.test`,
   password = "correct-horse-battery",
+  opts: { openSignup?: boolean } = {},
 ): Promise<{ email: string; password: string }> => {
   const res = await h.fetch("/api/auth/sign-up/email", {
     method: "POST",
@@ -123,6 +130,16 @@ export const seedAdmin = async (
   });
   if (!res.ok) {
     throw new Error(`sign-up failed: ${res.status} ${await res.text()}`);
+  }
+  if (opts.openSignup !== false) {
+    const patch = await h.fetch("/api/admin/auth/config", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ policy: { openSignup: true } }),
+    });
+    if (!patch.ok) {
+      throw new Error(`open signup failed: ${patch.status} ${await patch.text()}`);
+    }
   }
   return { email, password };
 };

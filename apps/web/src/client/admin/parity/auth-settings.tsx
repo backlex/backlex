@@ -65,7 +65,7 @@ const POLICY_ROWS: { key: string; label: string; desc: string; fallback: boolean
   { key: "mfaTotp", label: "Multi-factor (TOTP)", desc: "Users can enroll an authenticator app.", fallback: true },
   { key: "mfaRequiredForAdmins", label: "Multi-factor required for admins", desc: "Force admins to enroll MFA.", fallback: false },
   { key: "passkeys", label: "Passkeys", desc: "WebAuthn-based passwordless sign-in.", fallback: true },
-  { key: "openSignup", label: "Open sign-up", desc: "Anyone can create an account.", fallback: true },
+  { key: "openSignup", label: "Open sign-up", desc: "Anyone can create an account. When off, only the first user and invited addresses can sign up.", fallback: false },
 ];
 
 const isHttpUrl = (s: string) => {

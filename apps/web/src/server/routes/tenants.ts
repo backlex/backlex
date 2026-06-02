@@ -8,6 +8,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { TENANT_COOKIE } from "../middleware/tenant";
 import { assignRoleByName, ensureSystemRoles } from "../services/seed";
+import { findInviteByToken } from "../services/invites";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 
 const tablesFor = (dialect: "pg" | "sqlite") =>
@@ -448,6 +449,50 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>()
         .delete(t.members)
         .where(and(eq(t.members.tenantId, tenantId), eq(t.members.id, memberId)));
       return c.json({ ok: true });
+    },
+  )
+  /** Public — resolve an invite token to its email + workspace so the `/invite`
+   *  page can render and pre-fill the (locked) email. No `requireUser`: the
+   *  invitee has no account yet. Returns only non-sensitive fields. */
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/invite/{token}",
+      tags: [TAG],
+      summary: "Resolve an invite token",
+      description:
+        "Public. Returns the invited email + workspace name for the accept page. Expired tokens return 200 with `expired:true`; unknown tokens 404.",
+      request: { params: z.object({ token: z.string().min(8) }) },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z.object({
+                  email: z.string(),
+                  workspaceName: z.string(),
+                  expired: z.boolean(),
+                }),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const { token } = c.req.valid("param");
+      const found = await findInviteByToken({ db: ctx.db, dialect: ctx.dialect }, token);
+      if (!found) throw new AppError("NOT_FOUND", "Invite not found");
+      return c.json({
+        data: {
+          email: found.invite.email,
+          workspaceName: found.workspaceName,
+          expired: found.expired,
+        },
+      });
     },
   )
   /** Accept an invite token and bind to the current user. */

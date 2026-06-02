@@ -3,6 +3,7 @@ import { EMBEDDING_MODEL_NAMES, type EmbeddingModel } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
+import { reportToCloud } from "../lib/cloud-report";
 
 // Build the model enum from the registry so adding a model in
 // embedding-models.ts is the only change required to expose it via the API.
@@ -143,7 +144,7 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>()
       },
     }),
     async (c) => {
-      const { vector } = c.get("ctx");
+      const { vector, env } = c.get("ctx");
       const body = c.req.valid("json");
       const matches = await vector.query(body.model, {
         values: body.values,
@@ -151,6 +152,10 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>()
         namespace: body.namespace,
         filter: body.filter,
       });
+      // Self-report the Vectorize query for cloud cost visibility (CF has no
+      // query analytics). waitUntil so it survives the response return.
+      const report = reportToCloud(env, { kind: "vector_query", queries: 1 });
+      if (report) c.executionCtx?.waitUntil?.(report);
       return c.json({ data: matches, model: body.model });
     },
   )
@@ -259,7 +264,7 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>()
       },
     }),
     async (c) => {
-      const { vector, embedding } = c.get("ctx");
+      const { vector, embedding, env } = c.get("ctx");
       const body = c.req.valid("json");
       const { values } = await embedding.embed({
         model: body.model,
@@ -272,6 +277,10 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>()
         namespace: body.namespace,
         filter: body.filter,
       });
+      // Self-report the Vectorize query for cloud cost visibility (CF has no
+      // query analytics). waitUntil so it survives the response return.
+      const report = reportToCloud(env, { kind: "vector_query", queries: 1 });
+      if (report) c.executionCtx?.waitUntil?.(report);
       return c.json({ data: matches, model: body.model });
     },
   );

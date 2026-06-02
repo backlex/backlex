@@ -232,6 +232,11 @@ msgstr "{0} sütun"
 msgid "{0} connected · {1} optional"
 msgstr "{0} bağlı · {1} isteğe bağlı"
 
+#. placeholder {0}: LABELS[dialog.kind] ?? dialog.kind
+#: src/client/admin/pages/integrations.tsx
+msgid "{0} connected."
+msgstr "{0} bağlandı."
+
 #. placeholder {0}: h.name
 #. placeholder {0}: u.email
 #. placeholder {0}: user.email
@@ -239,6 +244,11 @@ msgstr "{0} bağlı · {1} isteğe bağlı"
 #: src/client/admin/pages/webhooks.tsx
 msgid "{0} deleted."
 msgstr "{0} silindi."
+
+#. placeholder {0}: LABELS[it.kind] ?? it.kind
+#: src/client/admin/pages/integrations.tsx
+msgid "{0} disconnected."
+msgstr "{0} bağlantısı kesildi."
 
 #. placeholder {0}: c?.activeFlows ?? 0
 #. placeholder {1}: c?.pausedFlows ?? 0
@@ -1117,6 +1127,10 @@ msgstr "Henüz yerel geçersiz kılma ayarı yapmamış kullanıcılara uygulan�
 msgid "Apply"
 msgstr "Uygula"
 
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Apply template"
+msgstr "Şablonu uygula"
+
 #: src/client/admin/pages/users.tsx
 msgid "Apply to selection:"
 msgstr "Seçime uygula:"
@@ -1474,6 +1488,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -1865,8 +1880,14 @@ msgid "Confirm password"
 msgstr "Parolayı onayla"
 
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/integrations.tsx
 msgid "Connect"
 msgstr "Bağlantı"
+
+#. placeholder {0}: dialog ? (LABELS[dialog.kind] ?? dialog.kind) : ""
+#: src/client/admin/pages/integrations.tsx
+msgid "Connect {0}"
+msgstr "{0} bağla"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Connect an MCP client"
@@ -1886,8 +1907,13 @@ msgid "connected"
 msgstr "bağlı"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/pages/integrations.tsx
 msgid "Connected"
 msgstr "Bağlı"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Connecting…"
+msgstr "Bağlanıyor…"
 
 #: src/client/admin/pages/overview.tsx
 msgid "console (dev)"
@@ -2143,6 +2169,10 @@ msgstr "Anahtar oluşturuluyor"
 #: src/client/pages/api-keys.tsx
 msgid "Creating…"
 msgstr "Oluşturuluyor…"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Credentials are encrypted at rest and never shown again."
+msgstr "Kimlik bilgileri beklemede şifrelenir ve bir daha gösterilmez."
 
 #: src/client/admin/pages/functions.tsx
 msgid "Cron expression"
@@ -2476,11 +2506,21 @@ msgstr "devre dışı"
 msgid "Discard"
 msgstr "Vazgeç"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Disconnect"
+msgstr "Bağlantıyı kes"
+
+#. placeholder {0}: LABELS[it.kind] ?? it.kind
+#: src/client/admin/pages/integrations.tsx
+msgid "Disconnect {0}?"
+msgstr "{0} bağlantısı kesilsin mi?"
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Discovery URL <0>(optional)</0>"
 msgstr "Keşif URL'si <0>(isteğe bağlı)</0>"
 
 #: src/client/admin/pages/advisor.tsx
+#: src/client/admin/pages/template-onboarding.tsx
 #: src/client/pages/api-keys.tsx
 msgid "Dismiss"
 msgstr "Kapat"
@@ -3040,6 +3080,10 @@ msgstr "başarısız"
 msgid "Failures (24h)"
 msgstr "Başarısızlıklar (24s)"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Fan record events out to Slack, Discord, Datadog, or GitHub. Secrets are encrypted at rest."
+msgstr "Kayıt olaylarını Slack, Discord, Datadog veya GitHub'a dağıtın. Sırlar beklemede şifrelenir."
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "fast · cheap · routine reads"
 msgstr "hızlı · ucuz · rutin okumalar"
@@ -3434,8 +3478,12 @@ msgstr "Başlık"
 #~ msgstr "Genel giriş ekranında gösterilen başlık ve slogan. Yerleşik varsayılan metni kullanmak için bir alanı boş bırakın."
 
 #: src/client/admin/pages/settings.tsx
-msgid "Headline and tagline shown on the public sign-in screen. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default copy."
-msgstr "Genel giriş ekranında gösterilen başlık ve slogan. Bu ayar tüm instance genelinde geçerlidir — giriş sayfası herhangi bir workspace seçilmeden önce açılır. Yerleşik varsayılan metni kullanmak için bir alanı boş bırakın."
+#~ msgid "Headline and tagline shown on the public sign-in screen. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default copy."
+#~ msgstr "Genel giriş ekranında gösterilen başlık ve slogan. Bu ayar tüm instance genelinde geçerlidir — giriş sayfası herhangi bir workspace seçilmeden önce açılır. Yerleşik varsayılan metni kullanmak için bir alanı boş bırakın."
+
+#: src/client/admin/pages/settings.tsx
+msgid "Headline, tagline, and the Terms/Privacy links shown on the public sign-in and sign-up screens. This applies instance-wide — the sign-in page is reached before any workspace is selected. Leave a field blank to use the built-in default (or, for the URLs, to show plain text with no link)."
+msgstr "Genel giriş ve kayıt ekranlarında gösterilen başlık, slogan ve Şartlar/Gizlilik bağlantıları. Bu ayar tüm instance genelinde geçerlidir — giriş sayfası herhangi bir workspace seçilmeden önce açılır. Yerleşik varsayılanı kullanmak (veya URL'lerde bağlantısız düz metin göstermek) için bir alanı boş bırakın."
 
 #: src/client/admin/pages/advisor.tsx
 msgid "health"
@@ -3631,6 +3679,11 @@ msgstr "İnceleme başarısız: {inspectError}"
 #: src/client/admin/parity/insights.tsx
 msgid "Integer between 1 and 200."
 msgstr "1 ile 200 arasında tam sayı."
+
+#: src/client/admin/pages/integrations.tsx
+#: src/client/admin/ui.tsx
+msgid "Integrations"
+msgstr "Entegrasyonlar"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
@@ -4003,6 +4056,10 @@ msgstr "Bağlandı — bu sağlayıcıyla giriş yapabilirsiniz."
 msgid "Linked {0}."
 msgstr "{0} bağlandı."
 
+#: src/client/admin/pages/settings.tsx
+msgid "Linked from the sign-up consent line. Leave blank to show plain text with no link."
+msgstr "Kayıt onay satırından bağlantı verilir. Bağlantısız düz metin göstermek için boş bırakın."
+
 #: src/client/admin/storage.tsx
 msgid "List"
 msgstr "Liste"
@@ -4071,6 +4128,7 @@ msgstr "Çalıştırmalar yükleniyor…"
 msgid "Loading tool catalog…"
 msgstr "Araç kataloğu yükleniyor…"
 
+#: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Loading…"
 msgstr "Yükleniyor…"
@@ -4615,6 +4673,10 @@ msgstr "Henüz seçenek yok. \"Seçenek ekle\"ye tıklayın — değer, sütunun
 #: src/client/admin/parity/insights.tsx
 msgid "No collections"
 msgstr "Koleksiyon yok"
+
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "No collections — you'll start from scratch."
+msgstr "Koleksiyon yok — sıfırdan başlayacaksınız."
 
 #: src/client/admin/parity/insights.tsx
 msgid "No collections in this workspace yet — create one first, or switch <0>Kind</0> to <1>sql</1>."
@@ -5679,6 +5741,10 @@ msgstr "Birincil anahtar"
 msgid "primary key {0} is unsupported"
 msgstr "birincil anahtar {0} desteklenmiyor"
 
+#: src/client/admin/pages/settings.tsx
+msgid "Privacy Policy URL"
+msgstr "Gizlilik Politikası URL'si"
+
 #: src/client/admin/storage.tsx
 msgid "Private"
 msgstr "Özel"
@@ -6703,6 +6769,10 @@ msgstr "Gizli anahtar döndürüldü."
 msgid "Security"
 msgstr "Güvenlik"
 
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Seed a ready-made set of collections for your use case. You can edit or add more anytime."
+msgstr "Kullanım senaryonuz için hazır bir koleksiyon seti oluşturun. İstediğiniz zaman düzenleyebilir veya yenilerini ekleyebilirsiniz."
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "Select"
 msgstr "Seç"
@@ -7260,9 +7330,17 @@ msgstr "SQL editörü"
 msgid "Staging"
 msgstr "Hazırlık"
 
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Start blank"
+msgstr "Boş başla"
+
 #: src/client/admin/collections-index.tsx
 msgid "Start from"
 msgstr "Başlangıç noktası"
+
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Start with a template"
+msgstr "Bir şablonla başla"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Stateless Streamable HTTP. No <0>GET /mcp</0> (resumable SSE) yet."
@@ -7491,6 +7569,10 @@ msgstr "Kiracı kapsamlı"
 #: src/client/admin/flow-builder.tsx
 msgid "Tenant-scoped lookup at run time. Inactive functions throw at execution."
 msgstr "Çalışma zamanında kiracı kapsamlı arama. Etkin olmayan fonksiyonlar çalıştırmada hata verir."
+
+#: src/client/admin/pages/settings.tsx
+msgid "Terms of Service URL"
+msgstr "Hizmet Şartları URL'si"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Test"

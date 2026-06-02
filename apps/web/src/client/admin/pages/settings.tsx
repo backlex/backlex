@@ -567,6 +567,8 @@ function SignInBrandingCard({ pushToast }: { pushToast: (m: string) => void }) {
   const { t } = useLingui();
   const [headline, setHeadline] = useState("");
   const [tagline, setTagline] = useState("");
+  const [termsUrl, setTermsUrl] = useState("");
+  const [privacyUrl, setPrivacyUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -578,6 +580,8 @@ function SignInBrandingCard({ pushToast }: { pushToast: (m: string) => void }) {
       const d = r.data as Record<string, unknown>;
       setHeadline(typeof d.signInHeadline === "string" ? d.signInHeadline : "");
       setTagline(typeof d.signInTagline === "string" ? d.signInTagline : "");
+      setTermsUrl(typeof d.termsUrl === "string" ? d.termsUrl : "");
+      setPrivacyUrl(typeof d.privacyUrl === "string" ? d.privacyUrl : "");
       setDirty(false);
     } catch (e) {
       pushToast((e as Error).message);
@@ -594,6 +598,8 @@ function SignInBrandingCard({ pushToast }: { pushToast: (m: string) => void }) {
       await settingsApi.patch({
         signInHeadline: headline.trim(),
         signInTagline: tagline.trim(),
+        termsUrl: termsUrl.trim(),
+        privacyUrl: privacyUrl.trim(),
       });
       setDirty(false);
       pushToast(t`Sign-in screen saved.`);
@@ -609,9 +615,10 @@ function SignInBrandingCard({ pushToast }: { pushToast: (m: string) => void }) {
       <div className="flex items-start gap-2.5">
         <I.Info size={14} className="mt-0.5" />
         <span className="text-xs text-muted-foreground">
-          <Trans>Headline and tagline shown on the public sign-in screen. This applies
-          instance-wide — the sign-in page is reached before any workspace is selected.
-          Leave a field blank to use the built-in default copy.</Trans>
+          <Trans>Headline, tagline, and the Terms/Privacy links shown on the public
+          sign-in and sign-up screens. This applies instance-wide — the sign-in page is
+          reached before any workspace is selected. Leave a field blank to use the
+          built-in default (or, for the URLs, to show plain text with no link).</Trans>
         </span>
       </div>
       <div className="flex flex-col gap-1.5">
@@ -635,6 +642,30 @@ function SignInBrandingCard({ pushToast }: { pushToast: (m: string) => void }) {
           onChange={(e) => { setTagline(e.target.value); setDirty(true); }}
         />
         <span className="text-[11.5px] text-muted-foreground"><Trans>Short sentence shown under the headline.</Trans></span>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Terms of Service URL</Trans></label>
+        <Input
+          type="url"
+          value={termsUrl}
+          disabled={loading}
+          maxLength={2048}
+          placeholder="https://example.com/terms"
+          onChange={(e) => { setTermsUrl(e.target.value); setDirty(true); }}
+        />
+        <span className="text-[11.5px] text-muted-foreground"><Trans>Linked from the sign-up consent line. Leave blank to show plain text with no link.</Trans></span>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Privacy Policy URL</Trans></label>
+        <Input
+          type="url"
+          value={privacyUrl}
+          disabled={loading}
+          maxLength={2048}
+          placeholder="https://example.com/privacy"
+          onChange={(e) => { setPrivacyUrl(e.target.value); setDirty(true); }}
+        />
+        <span className="text-[11.5px] text-muted-foreground"><Trans>Linked from the sign-up consent line. Leave blank to show plain text with no link.</Trans></span>
       </div>
       <div className="flex justify-end gap-2 border-t border-border pt-2.5">
         <Button variant="ghost" size="sm" disabled={!dirty || saving || loading} onClick={() => void load()}><Trans>Discard</Trans></Button>

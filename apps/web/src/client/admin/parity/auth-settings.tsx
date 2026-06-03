@@ -61,7 +61,7 @@ const SESSION_LIFETIMES = ["1h", "24h", "7d", "30d", "90d"];
 const appUrlPlaceholder = "{app-url}";
 const workspacePlaceholder = "{workspace}";
 const POLICY_ROWS: { key: string; label: string; desc: string; fallback: boolean }[] = [
-  { key: "requireEmailVerification", label: "Require email verification", desc: "Users must confirm their email before sign-in.", fallback: true },
+  { key: "requireEmailVerification", label: "Require email verification", desc: "Users must confirm their email before sign-in.", fallback: false },
   { key: "mfaTotp", label: "Multi-factor (TOTP)", desc: "Users can enroll an authenticator app.", fallback: true },
   { key: "mfaRequiredForAdmins", label: "Multi-factor required for admins", desc: "Force admins to enroll MFA.", fallback: false },
   { key: "passkeys", label: "Passkeys", desc: "WebAuthn-based passwordless sign-in.", fallback: true },

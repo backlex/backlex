@@ -23,7 +23,10 @@ export const GLOBAL_AUTH_CONFIG_ID = "_global";
  */
 export const POLICY_DEFAULTS = {
   openSignup: false,
-  requireEmailVerification: true,
+  // Email verification is not wired into the auth plane yet (no verification
+  // email is sent or enforced), so default it OFF — otherwise the sign-up UI
+  // shows a "check your inbox" screen for a mail that never arrives.
+  requireEmailVerification: false,
 } as const;
 
 export interface ResolvedPolicy {

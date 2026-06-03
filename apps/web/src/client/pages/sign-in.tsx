@@ -8,7 +8,7 @@ import {
 } from "@backlex/auth-ui";
 import { SocialButtons } from "@/components/social-buttons";
 import { notifyError } from "@/lib/error";
-import { auth, useAuthSurface } from "@/lib/auth";
+import { auth, toSurfaceFlags, useAuthSurface } from "@/lib/auth";
 import { useWorkspaceBranding } from "@/lib/branding";
 import { version as appVersion } from "../../../package.json";
 
@@ -83,7 +83,7 @@ export const SignIn = () => {
       copy={copy}
       shellCopy={shellCopy}
       branding={branding}
-      surface={surface ?? null}
+      surface={toSurfaceFlags(surface)}
       appVersion={appVersion}
       socialButtons={<SocialButtons callbackURL={next} />}
     />

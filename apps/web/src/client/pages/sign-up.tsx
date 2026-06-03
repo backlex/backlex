@@ -9,7 +9,7 @@ import {
 } from "@backlex/auth-ui";
 import { SocialButtons, useHasSocialProviders } from "@/components/social-buttons";
 import { notifyError } from "@/lib/error";
-import { auth, invalidateAuthSurface, useAuthSurface } from "@/lib/auth";
+import { auth, invalidateAuthSurface, toSurfaceFlags, useAuthSurface } from "@/lib/auth";
 import { useWorkspaceBranding } from "@/lib/branding";
 import { version as appVersion } from "../../../package.json";
 
@@ -154,7 +154,7 @@ export const SignUp = () => {
       copy={copy}
       shellCopy={shellCopy}
       branding={branding}
-      surface={surface ?? null}
+      surface={toSurfaceFlags(surface)}
       appVersion={appVersion}
       socialButtons={<SocialButtons />}
       hasSocials={hasSocials}

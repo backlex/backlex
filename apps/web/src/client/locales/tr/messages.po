@@ -1283,7 +1283,7 @@ msgstr "<0>owner_id</0> otomatik ekle; <1>authenticated</1> rolü yalnızca kend
 
 #: src/client/admin/collections-index.tsx
 msgid "Auto-add <0>tenant_id</0>; data is isolated per workspace at the app layer — every read/write gets <1>tenant_id = $user.tenant_id</1> injected."
-msgstr ""
+msgstr "<0>tenant_id</0> otomatik eklenir; veriler uygulama katmanında her çalışma alanı için izole edilir — her okuma/yazmaya <1>tenant_id = $user.tenant_id</1> enjekte edilir."
 
 #: src/client/admin/collections-index.tsx
 #~ msgid "Auto-add <0>tenant_id</0>; row-level security isolates data per workspace. All read/write rules get <1>tenant_id = $user.tenant_id</1> injected."

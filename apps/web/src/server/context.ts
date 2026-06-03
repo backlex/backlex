@@ -420,13 +420,26 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
         }
         // Fan out to flows + webhooks. `fullCtx` is set at the bottom of
         // buildContext so it's available by the time a hook can fire.
+        //
+        // Best-effort: the signup event is broadcast over the REALTIME Durable
+        // Object (`publishEvent` → `stub.fetch`), and on a freshly provisioned
+        // Workers-for-Platforms instance that binding can be momentarily
+        // unready — a throw there would otherwise escape the better-auth hook
+        // and surface as a raw 1101/500 to a user who was, in fact, created
+        // successfully. The actual sign-up has already committed by this point,
+        // so a failed fan-out must never fail the request. Same swallow-and-log
+        // policy as the invite auto-accept above.
         if (fullCtx) {
-          await publishEvent(
-            env,
-            "auth",
-            { event: "signup", data: { id: user.id, email: user.email, tenantId } },
-            { db, dialect, email: fullCtx.email, fullCtx, tenantId },
-          );
+          try {
+            await publishEvent(
+              env,
+              "auth",
+              { event: "signup", data: { id: user.id, email: user.email, tenantId } },
+              { db, dialect, email: fullCtx.email, fullCtx, tenantId },
+            );
+          } catch (e) {
+            console.error("[auth] signup event publish failed", (e as Error).message);
+          }
         }
       },
     },

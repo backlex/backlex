@@ -162,7 +162,8 @@ function envAuthDefaults(env: any) {
       },
     } as Record<string, Record<string, unknown>>,
     policy: {
-      requireEmailVerification: true,
+      // Off until verification is actually wired (no email is sent/enforced).
+      requireEmailVerification: false,
       mfaTotp: false,
       mfaRequiredForAdmins: false,
       passkeys: Boolean(env.AUTH_PLUGINS?.includes("passkey")),

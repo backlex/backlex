@@ -2,6 +2,7 @@
 // collections. Lets the user pick a schema template (preselected to the
 // cloud-chosen SEED_TEMPLATE), preview its collections, and apply it.
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Trans } from "@lingui/react/macro";
 import { I } from "../icons";
 import { Badge, Button } from "../ui";
@@ -14,6 +15,7 @@ export function TemplateOnboarding({
   pushToast: (msg: string, type?: "success" | "error") => void;
   onApplied: () => void;
 }) {
+  const qc = useQueryClient();
   const [templates, setTemplates] = useState<TemplateSummary[] | null>(null);
   const [hidden, setHidden] = useState(false);
   const [selected, setSelected] = useState<string>("blank");
@@ -52,6 +54,12 @@ export function TemplateOnboarding({
         return;
       }
       const res = await templatesApi.apply(selected);
+      // The template just bulk-created collections server-side; refresh the
+      // cached list (prefix match covers active + archived entries) so the
+      // Collections page renders them without a manual page reload — same as
+      // the manual create flow's `invalidateCollections()`.
+      void qc.invalidateQueries({ queryKey: ["collections"] });
+      void qc.invalidateQueries({ queryKey: ["metrics"] });
       pushToast(`Created ${res.data.created.length} collections`, "success");
       setHidden(true);
       onApplied();

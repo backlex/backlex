@@ -11,6 +11,11 @@ export interface Env {
   /** Schema-template id set by the cloud provisioner; the first workspace of a
    *  fresh install seeds the matching collections (zero-touch). */
   SEED_TEMPLATE?: string;
+  /** Email pinned by the cloud provisioner as the only address allowed to claim
+   *  the first-admin account on a fresh instance (prevents a stranger from
+   *  claiming a public instance URL first). Unset on self-host → any first
+   *  visitor may claim. */
+  OWNER_EMAIL?: string;
   // Postgres URL (self-host or Hyperdrive). One of DATABASE_URL or D1 is required.
   DATABASE_URL?: string;
   /** Optional read-replica Postgres URL. When set (pg dialect only), `ctx.dbRead`

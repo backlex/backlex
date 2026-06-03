@@ -116,6 +116,10 @@ export interface SignUpPageProps extends AuthWiring {
   onInvalidateSurface?: () => void;
   /** Called after a successful sign-up (post-verify if applicable). */
   onSignedUp?: () => void;
+  /** When set, the email field is pre-filled and locked (read-only). Used for
+   *  the managed-cloud first-admin claim, where only the pinned owner address
+   *  may register. */
+  forcedEmail?: string;
 }
 
 /**
@@ -141,9 +145,10 @@ export const SignUpPage = ({
   hasSocials = false,
   onInvalidateSurface,
   onSignedUp,
+  forcedEmail,
 }: SignUpPageProps) => {
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(forcedEmail ?? "");
   const [password, setPassword] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [supportsPasskey] = useState(() => passkeysSupported());
@@ -175,6 +180,12 @@ export const SignUpPage = ({
       cancelled = true;
     };
   }, [authClient, navigate]);
+
+  // `forcedEmail` may arrive after first paint (it rides the async auth
+  // surface); sync it into the field once it's known.
+  useEffect(() => {
+    if (forcedEmail) setEmail(forcedEmail);
+  }, [forcedEmail]);
 
   const strength = useMemo(() => computeStrength(password), [password]);
 
@@ -348,6 +359,8 @@ export const SignUpPage = ({
               onChange={(e) => setEmail(e.target.value)}
               placeholder={copy.emailPlaceholder}
               className="h-10"
+              readOnly={Boolean(forcedEmail)}
+              disabled={Boolean(forcedEmail)}
             />
           </div>
 

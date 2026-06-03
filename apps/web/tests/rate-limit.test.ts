@@ -17,8 +17,12 @@ const uniqueIp = (() => {
 describe("auth-rate-limit: signup is capped per IP", () => {
   let h: TestHarness;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     h = makeHarness();
+    // Public sign-up defaults to closed; seed an admin (also opens sign-up) so
+    // the test signups below exercise the rate limiter rather than the policy
+    // gate. The admin uses the harness's default IP, not the test's uniqueIp().
+    await seedAdmin(h);
   });
   afterAll(() => h.cleanup());
 

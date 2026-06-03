@@ -14,9 +14,11 @@ import type { SqliteDb } from "@backlex/db/sqlite";
 
 export interface AuthHooks {
   /** Runs before a user row is created (any sign-up path: email/password,
-   *  social, magic-link, anonymous). Return `{ allow: false }` to reject the
+   *  social, magic-link, anonymous). Receives the pending user's email/name so
+   *  the host can make admission decisions (e.g. allow an invited address even
+   *  when public sign-up is closed). Return `{ allow: false }` to reject the
    *  sign-up — the auth handler turns it into a 403 with `reason` as message. */
-  onBeforeUserCreated?: () =>
+  onBeforeUserCreated?: (user: { email: string; name?: string }) =>
     | Promise<{ allow: boolean; reason?: string }>
     | { allow: boolean; reason?: string };
   onUserCreated?: (user: { id: string; email: string }) => Promise<void> | void;
@@ -169,8 +171,11 @@ export const createAuth = (
               create: {
                 ...(config.hooks?.onBeforeUserCreated
                   ? {
-                      before: async () => {
-                        const r = await config.hooks!.onBeforeUserCreated!();
+                      before: async (data: { email?: string; name?: string }) => {
+                        const r = await config.hooks!.onBeforeUserCreated!({
+                          email: data.email ?? "",
+                          name: data.name,
+                        });
                         if (!r.allow)
                           throw new APIError("FORBIDDEN", {
                             message: r.reason ?? "Sign-up is disabled",

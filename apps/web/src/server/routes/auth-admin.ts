@@ -166,7 +166,9 @@ function envAuthDefaults(env: any) {
       mfaTotp: false,
       mfaRequiredForAdmins: false,
       passkeys: Boolean(env.AUTH_PLUGINS?.includes("passkey")),
-      openSignup: true,
+      // Closed by default — admins open public sign-up explicitly; the first
+      // user and invited addresses are admitted regardless (see context.ts).
+      openSignup: false,
     } as Record<string, unknown>,
     sessionLifetime: "30d",
     redirectUrls: [`${env.APP_URL}/auth/callback`] as string[],

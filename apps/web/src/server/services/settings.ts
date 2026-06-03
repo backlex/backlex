@@ -13,9 +13,6 @@ import { DEFAULT_TIMEZONE, isValidTimeZone } from "../lib/locale";
  * `routes/settings.ts`.
  */
 export interface AppSettings {
-  /** When false, account creation is rejected (any sign-up path). The very
-   *  first user is always allowed so a fresh instance can bootstrap. */
-  openSignup: boolean;
   /** Active locales for this workspace. Drives the Translations admin grid
    *  and the public `/api/i18n` endpoint. First entry is the default. */
   i18nLocales: string[];
@@ -28,7 +25,6 @@ export interface AppSettings {
 }
 
 export const APP_SETTINGS_DEFAULTS: AppSettings = {
-  openSignup: true,
   i18nLocales: ["en", "tr", "de", "es", "fr", "ja"],
   i18nDefaultLocale: "en",
   timezone: DEFAULT_TIMEZONE,
@@ -56,9 +52,7 @@ export const loadAppSettings = async (
     }[];
     const out: AppSettings = { ...APP_SETTINGS_DEFAULTS };
     for (const r of rows) {
-      if (r.key === "openSignup" && typeof r.value === "boolean")
-        out.openSignup = r.value;
-      else if (r.key === "i18nLocales" && isStringArray(r.value) && r.value.length > 0)
+      if (r.key === "i18nLocales" && isStringArray(r.value) && r.value.length > 0)
         out.i18nLocales = r.value;
       else if (r.key === "i18nDefaultLocale" && typeof r.value === "string")
         out.i18nDefaultLocale = r.value;

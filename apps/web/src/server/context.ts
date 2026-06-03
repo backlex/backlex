@@ -28,7 +28,9 @@ import {
   embeddingRouter,
   noEmbeddingAdapter,
 } from "./adapters/embedding.router";
-import { selectEmailAdapter } from "./lib/email-select";
+import { buildEmailAdapter, selectEmailSpec } from "./lib/email-select";
+import { cloudEmailAdapter } from "./adapters/email.cloud";
+import { consoleEmail } from "./adapters/email.console";
 import { resolveEmailAdapter } from "./services/email-config";
 import { bunImage } from "./adapters/image.bun";
 import { passthroughImage } from "./adapters/image.passthrough";
@@ -41,7 +43,8 @@ import {
 } from "./services/seed";
 import { applyTemplate } from "./services/templates";
 import { getTemplate } from "./templates/catalog";
-import { loadAppSettings } from "./services/settings";
+import { loadPolicy } from "./services/auth-config";
+import { hasValidInvite, acceptInviteForUser } from "./services/invites";
 import { invalidateUserRoles } from "./services/permissions-cache";
 import { publishEvent } from "./services/events";
 import { isCloudflareWorkers, isStatelessEdge, isXataPgUrl } from "./lib/runtime";
@@ -282,7 +285,16 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     };
   }
 
-  const email: EmailAdapter = selectEmailAdapter(env);
+  // Deployment-level transport. On a managed cloud project the worker is
+  // injected with no `EMAIL_*` vars, so the spec resolves to `console` (mail
+  // never leaves the box) — in that case route through the control-plane email
+  // gateway instead. A per-workspace `email_config` row still overrides this
+  // (resolveEmailAdapter checks the DB first, falling back to `email`).
+  const emailSpec = selectEmailSpec(env);
+  const email: EmailAdapter =
+    cloudConfigured(env) && emailSpec.provider === "console"
+      ? cloudEmailAdapter(env)
+      : (buildEmailAdapter(emailSpec) ?? consoleEmail());
 
   // `emailFor` resolves a tenant's stored email_config (with fallback) on
   // first call and caches the adapter. Cache is isolate-wide (one entry per
@@ -346,14 +358,27 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     email,
     plugins: pluginList,
     hooks: {
-      onBeforeUserCreated: async () => {
-        // The first user always gets in — that's how a fresh instance
-        // bootstraps its admin. After that, honour the `openSignup` setting.
+      onBeforeUserCreated: async ({ email }) => {
+        // The first user bootstraps the instance admin. On a managed cloud
+        // instance the provisioner pins OWNER_EMAIL so a stranger can't claim
+        // the public instance URL before the real owner does; self-host leaves
+        // it unset, so any first visitor may claim.
         const total = await userCount(dbCtx);
-        if (total === 0) return { allow: true };
+        if (total === 0) {
+          const owner = env.OWNER_EMAIL?.trim().toLowerCase();
+          if (owner && email.trim().toLowerCase() !== owner)
+            return {
+              allow: false,
+              reason: "Only the project owner can claim this instance",
+            };
+          return { allow: true };
+        }
+        // An invited address may sign up even while public sign-up is closed —
+        // that's how admins add users without opening the door to everyone.
+        if (await hasValidInvite(dbCtx, email)) return { allow: true };
         const tenantId = await ensureDefaultTenant(dbCtx);
-        const { openSignup } = await loadAppSettings(db, dialect, tenantId);
-        return { allow: openSignup, reason: "Sign-up is disabled" };
+        const { openSignup } = await loadPolicy(dbCtx, tenantId);
+        return { allow: openSignup === true, reason: "Sign-up is disabled" };
       },
       onUserCreated: async (user) => {
         // Land every new user in the default tenant. The first user becomes
@@ -385,6 +410,14 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
           user.email,
           total <= 1 ? "owner" : "member",
         );
+        // If this sign-up matches a pending invite, bind that membership now so
+        // the invited user lands as an active member of the inviting workspace
+        // in one step — no separate signed-in `POST /accept` round-trip needed.
+        try {
+          await acceptInviteForUser(dbCtx, user.id, user.email);
+        } catch (e) {
+          console.error("[invite] auto-accept failed", (e as Error).message);
+        }
         // Fan out to flows + webhooks. `fullCtx` is set at the bottom of
         // buildContext so it's available by the time a hook can fire.
         if (fullCtx) {

@@ -49,6 +49,24 @@ const fetchAuthSurface = (): Promise<AuthSurface> => {
   return surfaceCache;
 };
 
+/**
+ * Flatten the auth surface into the `AuthSurfaceFlags` shape the `@backlex/auth-ui`
+ * pages consume (they read `openSignup` / `requireEmailVerification` at the top
+ * level, while the API nests them under `policy`). Without this the "Sign-up is
+ * disabled" / "verify your email" branches never trigger.
+ */
+export const toSurfaceFlags = (
+  s: AuthSurface | null | undefined,
+): { firstUserMode: boolean; openSignup: boolean; requireEmailVerification: boolean; ownerEmail?: string } | null =>
+  s
+    ? {
+        firstUserMode: s.firstUserMode,
+        openSignup: s.policy.openSignup,
+        requireEmailVerification: s.policy.requireEmailVerification,
+        ownerEmail: s.ownerEmail,
+      }
+    : null;
+
 /** Drop the cached `/api/auth/providers` response so a fresh fetch happens
  *  on the next `useAuthSurface()` read — useful after first sign-up so the
  *  "claim instance" UI disappears immediately. */

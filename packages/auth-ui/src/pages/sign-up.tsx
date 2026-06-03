@@ -165,6 +165,11 @@ export const SignUpPage = ({
     ? surface.requireEmailVerification !== false
     : false;
   const blocked = surface != null && !openSignup && !isFirst;
+  // Only offer passkey enrolment when the browser supports WebAuthn AND the
+  // server actually has the passkey plugin enabled — otherwise `addPasskey`
+  // hits an endpoint that doesn't exist and fails with "unknown". `surface`
+  // may be null while loading; fall back to browser support only.
+  const passkeyOffered = supportsPasskey && surface?.passkey !== false;
 
   useEffect(() => {
     let cancelled = false;
@@ -205,7 +210,7 @@ export const SignUpPage = ({
 
     onInvalidateSurface?.();
 
-    if (enrollPasskey && supportsPasskey) {
+    if (enrollPasskey && passkeyOffered) {
       setStage("enrolling");
       try {
         const fn = authClient.passkey?.addPasskey;
@@ -401,7 +406,7 @@ export const SignUpPage = ({
             </p>
           </div>
 
-          {supportsPasskey && (
+          {passkeyOffered && (
             <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-primary/30 bg-primary/8 px-3 py-2.5 text-[12.5px]">
               <Checkbox
                 checked={enrollPasskey}

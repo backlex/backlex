@@ -133,4 +133,8 @@ export interface AuthSurfaceFlags {
   openSignup?: boolean;
   /** Whether new accounts must verify their email. */
   requireEmailVerification?: boolean;
+  /** Whether the server has the passkey plugin enabled. Gates the sign-up
+   *  passkey-enrolment checkbox (browser support alone isn't enough — the
+   *  endpoint must exist). */
+  passkey?: boolean;
 }

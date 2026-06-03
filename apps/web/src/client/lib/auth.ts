@@ -57,12 +57,19 @@ const fetchAuthSurface = (): Promise<AuthSurface> => {
  */
 export const toSurfaceFlags = (
   s: AuthSurface | null | undefined,
-): { firstUserMode: boolean; openSignup: boolean; requireEmailVerification: boolean; ownerEmail?: string } | null =>
+): {
+  firstUserMode: boolean;
+  openSignup: boolean;
+  requireEmailVerification: boolean;
+  passkey: boolean;
+  ownerEmail?: string;
+} | null =>
   s
     ? {
         firstUserMode: s.firstUserMode,
         openSignup: s.policy.openSignup,
         requireEmailVerification: s.policy.requireEmailVerification,
+        passkey: s.providers.some((p) => p.id === "passkey" && p.enabled),
         ownerEmail: s.ownerEmail,
       }
     : null;

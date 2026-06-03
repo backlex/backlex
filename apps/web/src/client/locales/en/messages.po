@@ -656,6 +656,10 @@ msgstr "a, b, c"
 msgid "About"
 msgstr "About"
 
+#: src/client/pages/invite.tsx
+msgid "Accept invite"
+msgstr "Accept invite"
+
 #: src/client/admin/ui.tsx
 msgid "Access"
 msgstr "Access"
@@ -1045,6 +1049,7 @@ msgstr "Allowed redirect URLs"
 msgid "already exists"
 msgstr "already exists"
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Already have an account?"
 msgstr "Already have an account?"
@@ -1201,6 +1206,10 @@ msgstr "Ask"
 msgid "Ask AI"
 msgstr "Ask AI"
 
+#: src/client/pages/invite.tsx
+msgid "Ask an admin to send you a fresh invite, or sign in if you already have an account."
+msgstr "Ask an admin to send you a fresh invite, or sign in if you already have an account."
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Ask in natural language"
 msgstr "Ask in natural language"
@@ -1213,6 +1222,7 @@ msgstr "asking {model}…"
 msgid "Aspect-cropping active. Focal point picks which area is kept."
 msgstr "Aspect-cropping active. Focal point picks which area is kept."
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "At least 8 characters"
 msgstr "At least 8 characters"
@@ -1272,8 +1282,12 @@ msgid "Auto-add <0>owner_id</0>; the <1>authenticated</1> role can only read/upd
 msgstr "Auto-add <0>owner_id</0>; the <1>authenticated</1> role can only read/update its own rows."
 
 #: src/client/admin/collections-index.tsx
-msgid "Auto-add <0>tenant_id</0>; row-level security isolates data per workspace. All read/write rules get <1>tenant_id = $user.tenant_id</1> injected."
-msgstr "Auto-add <0>tenant_id</0>; row-level security isolates data per workspace. All read/write rules get <1>tenant_id = $user.tenant_id</1> injected."
+msgid "Auto-add <0>tenant_id</0>; data is isolated per workspace at the app layer — every read/write gets <1>tenant_id = $user.tenant_id</1> injected."
+msgstr "Auto-add <0>tenant_id</0>; data is isolated per workspace at the app layer — every read/write gets <1>tenant_id = $user.tenant_id</1> injected."
+
+#: src/client/admin/collections-index.tsx
+#~ msgid "Auto-add <0>tenant_id</0>; row-level security isolates data per workspace. All read/write rules get <1>tenant_id = $user.tenant_id</1> injected."
+#~ msgstr "Auto-add <0>tenant_id</0>; row-level security isolates data per workspace. All read/write rules get <1>tenant_id = $user.tenant_id</1> injected."
 
 #: src/client/admin/pages/overview.tsx
 msgid "auto-creates c_<slug> table"
@@ -1568,6 +1582,10 @@ msgstr "Channels refreshed."
 msgid "Check your inbox"
 msgstr "Check your inbox"
 
+#: src/client/pages/invite.tsx
+msgid "Checking your invite…"
+msgstr "Checking your invite…"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Choices"
@@ -1582,6 +1600,7 @@ msgid "ci-bot (optional)"
 msgstr "ci-bot (optional)"
 
 #: src/client/pages/forgot.tsx
+#: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
@@ -2153,6 +2172,7 @@ msgstr "Created"
 msgid "created {0}"
 msgstr "created {0}"
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Creating account…"
 msgstr "Creating account…"
@@ -2545,6 +2565,7 @@ msgstr "Display label. The storage key stays <0>{0}</0>."
 msgid "Display name"
 msgstr "Display name"
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Display name <0>(optional)</0>"
 msgstr "Display name <0>(optional)</0>"
@@ -2768,6 +2789,7 @@ msgstr "Editor"
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/pages/forgot.tsx
+#: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
@@ -3465,6 +3487,7 @@ msgstr "Hash"
 msgid "Hashed with argon2id · stored in <0>users.password_hash</0>."
 msgstr "Hashed with argon2id · stored in <0>users.password_hash</0>."
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Have an account?"
 msgstr "Have an account?"
@@ -3720,6 +3743,14 @@ msgstr "invite by email…"
 msgid "Invite dialog opened."
 msgstr "Invite dialog opened."
 
+#: src/client/pages/invite.tsx
+msgid "Invite expired"
+msgstr "Invite expired"
+
+#: src/client/pages/invite.tsx
+msgid "Invite not found"
+msgstr "Invite not found"
+
 #. placeholder {0}: payload.email
 #: src/client/admin/pages/users.tsx
 msgid "Invite sent to {0}."
@@ -3737,6 +3768,10 @@ msgstr "Invite user"
 #: src/client/admin/pages/users.tsx
 msgid "invited"
 msgstr "invited"
+
+#: src/client/pages/invite.tsx
+msgid "Invites are valid for 7 days. Ask an admin to send a new one."
+msgstr "Invites are valid for 7 days. Ask an admin to send a new one."
 
 #: src/client/admin/pages/functions.tsx
 msgid "invocations · p95"
@@ -3790,6 +3825,15 @@ msgstr "Items refreshed."
 #: src/client/admin/item-views.tsx
 msgid "January"
 msgstr "January"
+
+#. placeholder {0}: state.meta.workspaceName
+#: src/client/pages/invite.tsx
+msgid "Join {0}"
+msgstr "Join {0}"
+
+#: src/client/pages/invite.tsx
+msgid "Join the <0>team</0>."
+msgstr "Join the <0>team</0>."
 
 #: src/client/admin/condition-editor.tsx
 msgid "JSON"
@@ -4221,6 +4265,7 @@ msgid "Machine-readable spec for every /api endpoint in this workspace — inclu
 msgstr "Machine-readable spec for every /api endpoint in this workspace — including dynamic /api/items/{slug} entries for your collections. Import into Postman, Insomnia, Swagger UI, or any code-gen tool."
 
 #: src/client/pages/forgot.tsx
+#: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
@@ -5111,6 +5156,10 @@ msgstr "On error"
 msgid "Once you leave this page, the secret can’t be retrieved — only revoked."
 msgstr "Once you leave this page, the secret can’t be retrieved — only revoked."
 
+#: src/client/pages/invite.tsx
+msgid "One moment."
+msgstr "One moment."
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "One or more adopted FKs are missing a target collection."
 msgstr "One or more adopted FKs are missing a target collection."
@@ -5157,8 +5206,8 @@ msgid "Open resource"
 msgstr "Open resource"
 
 #: src/client/admin/pages/settings.tsx
-msgid "Open sign-up"
-msgstr "Open sign-up"
+#~ msgid "Open sign-up"
+#~ msgstr "Open sign-up"
 
 #: src/client/admin/pages/settings.tsx
 msgid "Open-source · MIT licensed"
@@ -5311,6 +5360,7 @@ msgid "Passkeys"
 msgstr "Passkeys"
 
 #: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Password"
@@ -5327,6 +5377,10 @@ msgstr "Password changed."
 #: src/client/pages/reset-password.tsx
 msgid "Password must be at least 8 characters"
 msgstr "Password must be at least 8 characters"
+
+#: src/client/pages/invite.tsx
+msgid "Password must be at least 8 characters."
+msgstr "Password must be at least 8 characters."
 
 #: src/client/pages/forgot.tsx
 #: src/client/pages/reset-password.tsx
@@ -5864,6 +5918,7 @@ msgstr "Qwen flagship · 1M context · strong multilingual"
 msgid "Qwen mid-tier · balanced pricing"
 msgstr "Qwen mid-tier · balanced pricing"
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Rana"
 msgstr "Rana"
@@ -6961,6 +7016,10 @@ msgstr "Set a new password for your account — at least 8 characters."
 msgid "Set a password"
 msgstr "Set a password"
 
+#: src/client/pages/invite.tsx
+msgid "Set a password to accept the invite and create your account."
+msgstr "Set a password to accept the invite and create your account."
+
 #: src/client/admin/pages/overview.tsx
 msgid "set EMAIL_FROM + a provider key"
 msgstr "set EMAIL_FROM + a provider key"
@@ -7017,8 +7076,8 @@ msgid "Settings → MCP → Add. Same JSON shape Claude Desktop uses."
 msgstr "Settings → MCP → Add. Same JSON shape Claude Desktop uses."
 
 #: src/client/admin/pages/settings.tsx
-msgid "Settings saved."
-msgstr "Settings saved."
+#~ msgid "Settings saved."
+#~ msgstr "Settings saved."
 
 #: src/client/admin/item-collaboration.tsx
 msgid "Share link copied."
@@ -7130,6 +7189,7 @@ msgid "Side-table (item_ownership)"
 msgstr "Side-table (item_ownership)"
 
 #: src/client/pages/forgot.tsx
+#: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
@@ -7174,6 +7234,7 @@ msgid "Sign out other devices"
 msgstr "Sign out other devices"
 
 #: src/client/pages/forgot.tsx
+#: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
@@ -7201,6 +7262,7 @@ msgstr "Sign-in screen saved."
 msgid "Sign-up / sign-in / get-session / sign-out"
 msgstr "Sign-up / sign-in / get-session / sign-out"
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Sign-up failed"
 msgstr "Sign-up failed"
@@ -7680,6 +7742,15 @@ msgstr "this collection"
 msgid "This database has no tables."
 msgstr "This database has no tables."
 
+#: src/client/pages/invite.tsx
+msgid "This invite link is invalid or has already been used."
+msgstr "This invite link is invalid or has already been used."
+
+#. placeholder {0}: state.meta.workspaceName
+#: src/client/pages/invite.tsx
+msgid "This invite to {0} has expired."
+msgstr "This invite to {0} has expired."
+
 #: src/client/admin/parity/revisions.tsx
 msgid "This is already the current state"
 msgstr "This is already the current state"
@@ -7783,6 +7854,7 @@ msgstr "Toggle sidebar"
 
 #: src/client/admin/extras.tsx
 #: src/client/pages/forgot.tsx
+#: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
@@ -8348,8 +8420,8 @@ msgid "When off, existing translations in the target locale are overwritten."
 msgstr "When off, existing translations in the target locale are overwritten."
 
 #: src/client/admin/pages/settings.tsx
-msgid "When off, new account creation is rejected on every path (email/password, social, magic-link). The first user is always allowed so a fresh instance can bootstrap its admin."
-msgstr "When off, new account creation is rejected on every path (email/password, social, magic-link). The first user is always allowed so a fresh instance can bootstrap its admin."
+#~ msgid "When off, new account creation is rejected on every path (email/password, social, magic-link). The first user is always allowed so a fresh instance can bootstrap its admin."
+#~ msgstr "When off, new account creation is rejected on every path (email/password, social, magic-link). The first user is always allowed so a fresh instance can bootstrap its admin."
 
 #: src/client/admin/pages/functions.tsx
 msgid "When paused, triggers stop firing and HTTP invokes are rejected."
@@ -8523,9 +8595,18 @@ msgstr "You'll get the authenticated role by default."
 msgid "You're all caught up."
 msgstr "You're all caught up."
 
+#. placeholder {0}: state.meta.email
+#: src/client/pages/invite.tsx
+msgid "You're joining as <0>{0}</0>."
+msgstr "You're joining as <0>{0}</0>."
+
 #: src/client/pages/sign-up.tsx
 msgid "You're the <0>first</0>. Claim this instance."
 msgstr "You're the <0>first</0>. Claim this instance."
+
+#: src/client/pages/invite.tsx
+msgid "You've been invited to a backlex workspace. Set a password to finish creating your account."
+msgstr "You've been invited to a backlex workspace. Set a password to finish creating your account."
 
 #: src/client/pages/forgot.tsx
 #: src/client/pages/magic-link.tsx

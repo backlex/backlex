@@ -9,10 +9,13 @@ import { Textarea } from "@backlex/ui/components/textarea";
 import { I } from "./icons";
 import { Select } from "./select";
 import { Button, Switch } from "./ui";
+import { DisplayTemplateEditor } from "./display-template-editor";
 
 interface FieldLike {
   name: string;
   type?: string;
+  /** Target collection slug — present on `relation` fields. */
+  to?: string;
 }
 
 interface SchemaLike {
@@ -59,12 +62,15 @@ export interface CollectionSettingsProps {
   // Existing slugs in the workspace, used to validate the rename target
   // before the PATCH round-trip lights up a 409.
   existingSlugs: string[];
+  // All workspace collections (slug + fields) — powers the display-template
+  // editor's relation drill-down (`{{ author.name }}`).
+  collections: { slug: string; fields?: FieldLike[] }[];
   onPatch: (patch: Partial<SchemaLike>) => void | Promise<void>;
   onRename: (nextSlug: string) => void | Promise<void>;
   onDelete: () => void;
 }
 
-export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, onDelete }: CollectionSettingsProps) {
+export function CollectionSettings({ schema, existingSlugs, collections, onPatch, onRename, onDelete }: CollectionSettingsProps) {
   const { t } = useLingui();
   const [slug, setSlug] = useState(schema.slug);
   const [singular, setSingular] = useState(schema.singular ?? "");
@@ -174,8 +180,12 @@ export function CollectionSettings({ schema, existingSlugs, onPatch, onRename, o
           </div>
           <div className="col-span-full flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Display template</Trans></label>
-            <Input className="font-mono" value={displayTemplate} onChange={(e) => setDisplayTemplate(e.target.value)} placeholder="{{ title }} — {{ status }}" />
-            <span className="text-[11.5px] text-muted-foreground"><Trans>Mustache-style template for row display in pickers and references.</Trans></span>
+            <DisplayTemplateEditor
+              value={displayTemplate}
+              onChange={setDisplayTemplate}
+              fields={schema.fields ?? []}
+              collections={collections}
+            />
           </div>
           <div className="col-span-full flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Note</Trans></label>

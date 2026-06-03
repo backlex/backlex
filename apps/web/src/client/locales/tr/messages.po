@@ -656,6 +656,10 @@ msgstr "a, b, c"
 msgid "About"
 msgstr "Hakkında"
 
+#: src/client/pages/invite.tsx
+msgid "Accept invite"
+msgstr "Daveti kabul et"
+
 #: src/client/admin/ui.tsx
 msgid "Access"
 msgstr "Erişim"
@@ -1045,6 +1049,7 @@ msgstr "İzin verilen yönlendirme URL'leri"
 msgid "already exists"
 msgstr "zaten mevcut"
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Already have an account?"
 msgstr "Zaten bir hesabınız var mı?"
@@ -1201,6 +1206,10 @@ msgstr "Sor"
 msgid "Ask AI"
 msgstr "Yapay zekâya sor"
 
+#: src/client/pages/invite.tsx
+msgid "Ask an admin to send you a fresh invite, or sign in if you already have an account."
+msgstr "Bir yöneticiden yeni bir davet istemesini iste ya da zaten hesabın varsa giriş yap."
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Ask in natural language"
 msgstr "Doğal dilde sor"
@@ -1213,6 +1222,7 @@ msgstr "{model} düşünüyor…"
 msgid "Aspect-cropping active. Focal point picks which area is kept."
 msgstr "En-boy kırpma etkin. Odak noktası hangi alanın korunacağını belirler."
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "At least 8 characters"
 msgstr "En az 8 karakter"
@@ -1272,8 +1282,12 @@ msgid "Auto-add <0>owner_id</0>; the <1>authenticated</1> role can only read/upd
 msgstr "<0>owner_id</0> otomatik ekle; <1>authenticated</1> rolü yalnızca kendi satırlarını okuyabilir/güncelleyebilir."
 
 #: src/client/admin/collections-index.tsx
-msgid "Auto-add <0>tenant_id</0>; row-level security isolates data per workspace. All read/write rules get <1>tenant_id = $user.tenant_id</1> injected."
-msgstr "<0>tenant_id</0> otomatik ekle; satır düzeyinde güvenlik veriyi çalışma alanı bazında yalıtır. Tüm okuma/yazma kurallarına <1>tenant_id = $user.tenant_id</1> eklenir."
+msgid "Auto-add <0>tenant_id</0>; data is isolated per workspace at the app layer — every read/write gets <1>tenant_id = $user.tenant_id</1> injected."
+msgstr ""
+
+#: src/client/admin/collections-index.tsx
+#~ msgid "Auto-add <0>tenant_id</0>; row-level security isolates data per workspace. All read/write rules get <1>tenant_id = $user.tenant_id</1> injected."
+#~ msgstr "<0>tenant_id</0> otomatik ekle; satır düzeyinde güvenlik veriyi çalışma alanı bazında yalıtır. Tüm okuma/yazma kurallarına <1>tenant_id = $user.tenant_id</1> eklenir."
 
 #: src/client/admin/pages/overview.tsx
 msgid "auto-creates c_<slug> table"
@@ -1568,6 +1582,10 @@ msgstr "Kanallar yenilendi."
 msgid "Check your inbox"
 msgstr "Gelen kutunuzu kontrol edin"
 
+#: src/client/pages/invite.tsx
+msgid "Checking your invite…"
+msgstr "Davetin kontrol ediliyor…"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Choices"
@@ -1582,6 +1600,7 @@ msgid "ci-bot (optional)"
 msgstr "ci-bot (isteğe bağlı)"
 
 #: src/client/pages/forgot.tsx
+#: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
@@ -2153,6 +2172,7 @@ msgstr "Oluşturuldu"
 msgid "created {0}"
 msgstr "{0} tarihinde oluşturuldu"
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Creating account…"
 msgstr "Hesap oluşturuluyor…"
@@ -2545,6 +2565,7 @@ msgstr "Görüntü etiketi. Depolama anahtarı <0>{0}</0> olarak kalır."
 msgid "Display name"
 msgstr "Görünen ad"
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Display name <0>(optional)</0>"
 msgstr "Görünen ad <0>(isteğe bağlı)</0>"
@@ -2768,6 +2789,7 @@ msgstr "Editör"
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/pages/forgot.tsx
+#: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
@@ -3465,6 +3487,7 @@ msgstr "Hash"
 msgid "Hashed with argon2id · stored in <0>users.password_hash</0>."
 msgstr "argon2id ile hashlendi · <0>users.password_hash</0> alanında saklanır."
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Have an account?"
 msgstr "Hesabınız var mı?"
@@ -3720,6 +3743,14 @@ msgstr "e-postayla davet et…"
 msgid "Invite dialog opened."
 msgstr "Davet iletişim kutusu açıldı."
 
+#: src/client/pages/invite.tsx
+msgid "Invite expired"
+msgstr "Davet süresi doldu"
+
+#: src/client/pages/invite.tsx
+msgid "Invite not found"
+msgstr "Davet bulunamadı"
+
 #. placeholder {0}: payload.email
 #: src/client/admin/pages/users.tsx
 msgid "Invite sent to {0}."
@@ -3737,6 +3768,10 @@ msgstr "Kullanıcı davet et"
 #: src/client/admin/pages/users.tsx
 msgid "invited"
 msgstr "davet edildi"
+
+#: src/client/pages/invite.tsx
+msgid "Invites are valid for 7 days. Ask an admin to send a new one."
+msgstr "Davetler 7 gün geçerlidir. Bir yöneticiden yenisini göndermesini iste."
 
 #: src/client/admin/pages/functions.tsx
 msgid "invocations · p95"
@@ -3790,6 +3825,15 @@ msgstr "Öğeler yenilendi."
 #: src/client/admin/item-views.tsx
 msgid "January"
 msgstr "Ocak"
+
+#. placeholder {0}: state.meta.workspaceName
+#: src/client/pages/invite.tsx
+msgid "Join {0}"
+msgstr "{0} çalışma alanına katıl"
+
+#: src/client/pages/invite.tsx
+msgid "Join the <0>team</0>."
+msgstr "<0>Ekibe</0> katıl."
 
 #: src/client/admin/condition-editor.tsx
 msgid "JSON"
@@ -4221,6 +4265,7 @@ msgid "Machine-readable spec for every /api endpoint in this workspace — inclu
 msgstr "Bu çalışma alanındaki her /api uç noktası için makine tarafından okunabilir spec — koleksiyonlarınız için dinamik /api/items/{slug} girdileri dahil. Postman, Insomnia, Swagger UI veya herhangi bir kod üretim aracına içe aktarın."
 
 #: src/client/pages/forgot.tsx
+#: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
@@ -5115,6 +5160,10 @@ msgstr "Hata durumunda"
 msgid "Once you leave this page, the secret can’t be retrieved — only revoked."
 msgstr "Bu sayfadan ayrıldığınızda gizli anahtar bir daha alınamaz — yalnızca iptal edilebilir."
 
+#: src/client/pages/invite.tsx
+msgid "One moment."
+msgstr "Bir saniye."
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "One or more adopted FKs are missing a target collection."
 msgstr "Bir veya daha fazla benimsenmiş FK'da hedef koleksiyon eksik."
@@ -5161,8 +5210,8 @@ msgid "Open resource"
 msgstr "Kaynağı aç"
 
 #: src/client/admin/pages/settings.tsx
-msgid "Open sign-up"
-msgstr "Açık kayıt"
+#~ msgid "Open sign-up"
+#~ msgstr "Açık kayıt"
 
 #: src/client/admin/pages/settings.tsx
 msgid "Open-source · MIT licensed"
@@ -5319,6 +5368,7 @@ msgid "Passkeys"
 msgstr "Geçiş anahtarları"
 
 #: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-in.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Password"
@@ -5335,6 +5385,10 @@ msgstr "Parola değiştirildi."
 #: src/client/pages/reset-password.tsx
 msgid "Password must be at least 8 characters"
 msgstr "Parola en az 8 karakter olmalıdır"
+
+#: src/client/pages/invite.tsx
+msgid "Password must be at least 8 characters."
+msgstr "Parola en az 8 karakter olmalı."
 
 #: src/client/pages/forgot.tsx
 #: src/client/pages/reset-password.tsx
@@ -5872,6 +5926,7 @@ msgstr "Qwen amiral · 1M bağlam · çok dilli güçlü"
 msgid "Qwen mid-tier · balanced pricing"
 msgstr "Qwen orta seviye · dengeli fiyat"
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Rana"
 msgstr "Rana"
@@ -6969,6 +7024,10 @@ msgstr "Hesabınız için yeni bir parola belirleyin — en az 8 karakter."
 msgid "Set a password"
 msgstr "Parola belirle"
 
+#: src/client/pages/invite.tsx
+msgid "Set a password to accept the invite and create your account."
+msgstr "Daveti kabul edip hesabını oluşturmak için bir parola belirle."
+
 #: src/client/admin/pages/overview.tsx
 msgid "set EMAIL_FROM + a provider key"
 msgstr "EMAIL_FROM + sağlayıcı anahtarı ayarlayın"
@@ -7025,8 +7084,8 @@ msgid "Settings → MCP → Add. Same JSON shape Claude Desktop uses."
 msgstr "Ayarlar → MCP → Ekle. Claude Desktop ile aynı JSON şeklini kullanır."
 
 #: src/client/admin/pages/settings.tsx
-msgid "Settings saved."
-msgstr "Ayarlar kaydedildi."
+#~ msgid "Settings saved."
+#~ msgstr "Ayarlar kaydedildi."
 
 #: src/client/admin/item-collaboration.tsx
 msgid "Share link copied."
@@ -7138,6 +7197,7 @@ msgid "Side-table (item_ownership)"
 msgstr "Yan tablo (item_ownership)"
 
 #: src/client/pages/forgot.tsx
+#: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
@@ -7182,6 +7242,7 @@ msgid "Sign out other devices"
 msgstr "Diğer cihazlardan çıkış yap"
 
 #: src/client/pages/forgot.tsx
+#: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
@@ -7209,6 +7270,7 @@ msgstr "Giriş ekranı kaydedildi."
 msgid "Sign-up / sign-in / get-session / sign-out"
 msgstr "Kayıt ol / giriş yap / oturum al / çıkış yap"
 
+#: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
 msgid "Sign-up failed"
 msgstr "Kayıt başarısız"
@@ -7688,6 +7750,15 @@ msgstr "bu koleksiyon"
 msgid "This database has no tables."
 msgstr "Bu veritabanında hiç tablo yok."
 
+#: src/client/pages/invite.tsx
+msgid "This invite link is invalid or has already been used."
+msgstr "Bu davet bağlantısı geçersiz veya zaten kullanılmış."
+
+#. placeholder {0}: state.meta.workspaceName
+#: src/client/pages/invite.tsx
+msgid "This invite to {0} has expired."
+msgstr "{0} çalışma alanına yapılan bu davetin süresi dolmuş."
+
 #: src/client/admin/parity/revisions.tsx
 msgid "This is already the current state"
 msgstr "Bu zaten mevcut durum"
@@ -7791,6 +7862,7 @@ msgstr "Kenar çubuğunu aç/kapat"
 
 #: src/client/admin/extras.tsx
 #: src/client/pages/forgot.tsx
+#: src/client/pages/invite.tsx
 #: src/client/pages/magic-link.tsx
 #: src/client/pages/reset-password.tsx
 #: src/client/pages/sign-in.tsx
@@ -8356,8 +8428,8 @@ msgid "When off, existing translations in the target locale are overwritten."
 msgstr "Kapalıyken, hedef yerel ayardaki mevcut çeviriler üzerine yazılır."
 
 #: src/client/admin/pages/settings.tsx
-msgid "When off, new account creation is rejected on every path (email/password, social, magic-link). The first user is always allowed so a fresh instance can bootstrap its admin."
-msgstr "Kapalıyken, her yolda (e-posta/parola, sosyal, sihirli bağlantı) yeni hesap oluşturma reddedilir. İlk kullanıcıya her zaman izin verilir, böylece yeni bir örnek kendi yöneticisini oluşturabilir."
+#~ msgid "When off, new account creation is rejected on every path (email/password, social, magic-link). The first user is always allowed so a fresh instance can bootstrap its admin."
+#~ msgstr "Kapalıyken, her yolda (e-posta/parola, sosyal, sihirli bağlantı) yeni hesap oluşturma reddedilir. İlk kullanıcıya her zaman izin verilir, böylece yeni bir örnek kendi yöneticisini oluşturabilir."
 
 #: src/client/admin/pages/functions.tsx
 msgid "When paused, triggers stop firing and HTTP invokes are rejected."
@@ -8535,9 +8607,18 @@ msgstr "Varsayılan olarak authenticated rolünü alacaksınız."
 msgid "You're all caught up."
 msgstr "Her şey güncel."
 
+#. placeholder {0}: state.meta.email
+#: src/client/pages/invite.tsx
+msgid "You're joining as <0>{0}</0>."
+msgstr "<0>{0}</0> olarak katılıyorsun."
+
 #: src/client/pages/sign-up.tsx
 msgid "You're the <0>first</0>. Claim this instance."
 msgstr "Siz <0>ilk</0> kişisiniz. Bu örneği sahiplenin."
+
+#: src/client/pages/invite.tsx
+msgid "You've been invited to a backlex workspace. Set a password to finish creating your account."
+msgstr "Bir backlex çalışma alanına davet edildin. Hesabını oluşturmayı tamamlamak için bir parola belirle."
 
 #: src/client/pages/forgot.tsx
 #: src/client/pages/magic-link.tsx

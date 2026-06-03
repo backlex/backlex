@@ -11,6 +11,7 @@ import { MagicLink } from "@/pages/magic-link";
 import { SharedRecord } from "@/pages/shared-record";
 import { SignIn } from "@/pages/sign-in";
 import { SignUp } from "@/pages/sign-up";
+import { Invite } from "@/pages/invite";
 
 export const App = () => {
   const navigate = useNavigate();
@@ -30,6 +31,9 @@ export const App = () => {
         <Route path="/magic-link" element={<MagicLink />} />
         <Route path="/forgot" element={<Forgot />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        {/* Public invite-acceptance — outside AuthGate; the invitee has no
+            account yet. Resolves the token, then signs up + binds membership. */}
+        <Route path="/invite" element={<Invite />} />
         {/* Public record-share view — outside AuthGate, no session needed. */}
         <Route path="/s/:token" element={<SharedRecord />} />
         <Route

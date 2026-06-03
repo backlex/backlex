@@ -129,33 +129,42 @@ const envSpecs = (
 };
 
 /**
- * Resolve the deployment-level email adapter from `Env`. `EMAIL_PROVIDER`
- * forces a specific transport; when unset we auto-detect from whichever
- * provider has complete credentials (priority: resend → sendgrid → mailgun →
- * ses → smtp) and otherwise log to stdout. An explicitly-requested provider
- * with missing/unsupported config warns and degrades to the console adapter
- * rather than crashing the runtime.
+ * Resolve the deployment-level email *spec* from `Env`. `EMAIL_PROVIDER` forces
+ * a specific transport; when unset we auto-detect from whichever provider has
+ * complete credentials (priority: resend → sendgrid → mailgun → ses → smtp) and
+ * otherwise fall back to `console`. A spec that can't be built *here* (currently
+ * only `smtp` on edge runtimes) is treated as not-configured, so the result is
+ * the spec that {@link selectEmailAdapter} would actually run — i.e.
+ * `{provider:"console"}` exactly when no usable real transport exists. Callers
+ * (see `context.ts`) use that signal to swap in the managed-cloud adapter.
  */
-export const selectEmailAdapter = (env: Env): EmailAdapter => {
+export const selectEmailSpec = (env: Env): EmailSpec => {
   const specs = envSpecs(env);
   const explicit = env.EMAIL_PROVIDER?.trim().toLowerCase();
-  if (explicit === "console") return consoleEmail();
+  if (explicit === "console") return { provider: "console" };
   if (explicit && explicit in specs) {
     const spec = specs[explicit as Exclude<EmailProviderId, "console">]();
-    const adapter = spec ? buildEmailAdapter(spec) : undefined;
-    if (adapter) return adapter;
+    if (spec && buildEmailAdapter(spec)) return spec;
     console.warn(
       `[email] EMAIL_PROVIDER=${explicit} but its config (+ EMAIL_FROM) is not usable here — falling back to console adapter`,
     );
-    return consoleEmail();
+    return { provider: "console" };
   }
   if (explicit) {
     console.warn(`[email] unknown EMAIL_PROVIDER=${explicit} — falling back to auto-detect`);
   }
   for (const key of ["resend", "sendgrid", "mailgun", "ses", "smtp"] as const) {
     const spec = specs[key]();
-    const adapter = spec ? buildEmailAdapter(spec) : undefined;
-    if (adapter) return adapter;
+    if (spec && buildEmailAdapter(spec)) return spec;
   }
-  return consoleEmail();
+  return { provider: "console" };
 };
+
+/**
+ * Resolve the deployment-level email adapter from `Env`. Thin wrapper over
+ * {@link selectEmailSpec} + {@link buildEmailAdapter}; the spec layer never
+ * returns an unbuildable provider, so the `?? consoleEmail()` is just a
+ * type-level guard.
+ */
+export const selectEmailAdapter = (env: Env): EmailAdapter =>
+  buildEmailAdapter(selectEmailSpec(env)) ?? consoleEmail();

@@ -41,7 +41,6 @@ const LocaleCode = z
 
 const SettingsInput = z
   .object({
-    openSignup: z.boolean().optional(),
     i18nLocales: z.array(LocaleCode).min(1).max(50).optional(),
     i18nDefaultLocale: LocaleCode.optional(),
     /** Workspace default IANA time zone — applied to users with no personal
@@ -71,7 +70,6 @@ const SettingsInput = z
 
 const SettingsRow = z
   .object({
-    openSignup: z.boolean().optional(),
     i18nLocales: z.array(z.string()).optional(),
     i18nDefaultLocale: z.string().nullable().optional(),
     timezone: z.string().optional(),

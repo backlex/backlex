@@ -159,6 +159,7 @@ export const SignUp = () => {
       socialButtons={<SocialButtons />}
       hasSocials={hasSocials}
       onInvalidateSurface={invalidateAuthSurface}
+      forcedEmail={isFirst ? surface?.ownerEmail || undefined : undefined}
     />
   );
 };

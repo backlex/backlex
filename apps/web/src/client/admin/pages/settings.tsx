@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent } from "../icons";
 import { type AdapterId } from "../config";
-import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
+import { Badge, Button, IconButton, PageHeader } from "../ui";
 import { Select } from "../select";
 import {
   emailConfigApi,
@@ -896,15 +896,13 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
   const [tab, setTab] = useState("general");
   const [appUrl, setAppUrl] = useState("http://localhost:8787");
   const [from, setFrom] = useState("hello@example.com");
-  const [signupOpen, setSignupOpen] = useState(true);
-  const [dirty, setDirty] = useState(false);
   // First-load gate — drives the page skeleton until the General-tab settings
   // hydrate from the server.
   const [loaded, setLoaded] = useState(false);
-  // Hydrate the General-tab form from /api/admin/settings on mount. APP_URL
-  // and EMAIL_FROM come from env (read-only here); openSignup is the
-  // runtime-mutable setting persisted in app_settings. The display name lives
-  // in workspace_config and is edited from the Appearance tab.
+  // Hydrate the General-tab form from /api/admin/settings on mount. APP_URL and
+  // EMAIL_FROM come from env (read-only here). Public sign-up is governed by
+  // Auth Settings (auth_config.policy.openSignup), not this page. The display
+  // name lives in workspace_config and is edited from the Appearance tab.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -914,7 +912,6 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
         const d = r.data as Record<string, unknown>;
         if (typeof d.appUrl === "string") setAppUrl(d.appUrl);
         if (typeof d.emailFrom === "string") setFrom(d.emailFrom);
-        if (typeof d.openSignup === "boolean") setSignupOpen(d.openSignup);
       } catch {
         // keep seed
       } finally {
@@ -958,16 +955,6 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
     })();
     return () => { cancelled = true; };
   }, []);
-  const persistGeneral = async () => {
-    try {
-      await settingsApi.patch({ openSignup: signupOpen });
-      setDirty(false);
-      pushToast(t`Settings saved.`);
-    } catch (e) {
-      pushToast((e as Error).message);
-    }
-  };
-
   const bindingIcon = (t: string): IconComponent => (({ D1: I.Database, KV: I.Folder, R2: I.Server, DurableObj: I.Bolt, Vectorize: I.Bolt, Hyperdrive: I.Database, Dispatch: I.Bolt, Queue: I.Webhook, AI: I.Bolt } as Record<string, IconComponent>)[t] || I.Folder);
 
   // First whole-page fetch — General-tab settings haven't hydrated yet.
@@ -1013,21 +1000,10 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
           </div>
           <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <div>
-              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Open sign-up</Trans></div>
-              <div className="text-[11.5px] text-muted-foreground"><Trans>When off, new account creation is rejected on every path (email/password, social, magic-link). The first user is always allowed so a fresh instance can bootstrap its admin.</Trans></div>
-            </div>
-            <Switch checked={signupOpen} onChange={(v) => { setSignupOpen(v); setDirty(true); }} />
-          </div>
-          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-            <div>
               <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Runtime</Trans></div>
               <div className="text-[11.5px] text-muted-foreground"><Trans>Auto-detected from <span className="font-mono">env</span> bindings.</Trans></div>
             </div>
             <span className="inline-flex items-center gap-1.5 rounded-3xl border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className="size-[7px] shrink-0 rounded-full bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]" />{adapter}</span>
-          </div>
-          <div className="flex justify-end gap-2 pt-1.5">
-            <Button variant="ghost" size="sm" disabled={!dirty} onClick={() => setDirty(false)}><Trans>Discard</Trans></Button>
-            <Button variant="primary" size="sm" disabled={!dirty} onClick={persistGeneral}><Trans>Save</Trans></Button>
           </div>
         </div>
         <WorkspaceLocaleCard pushToast={pushToast} />

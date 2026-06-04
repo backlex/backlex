@@ -121,13 +121,13 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
   const skeletonKinds = catalog.kinds.length ? catalog.kinds : ["slack", "discord", "datadog", "github"];
 
   return (
-    <div className="px-8 max-md:px-5 py-8 max-w-[1100px]">
+    <div className="flex flex-col gap-4.5">
       <PageHeader
         title={t`Integrations`}
         description={t`Fan record events out to Slack, Discord, Datadog, or GitHub. Secrets are encrypted at rest.`}
       />
 
-      <div className="mt-6 grid grid-cols-3 max-[920px]:grid-cols-2 max-[560px]:grid-cols-1 gap-3">
+      <div className="grid grid-cols-3 max-[920px]:grid-cols-2 max-[560px]:grid-cols-1 gap-3">
         {!loaded
           ? skeletonKinds.map((k) => (
               <div key={k} className="rounded-xl border border-border bg-card p-5 flex flex-col gap-3">

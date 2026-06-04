@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@backlex/ui/components/dialog";
 import { I } from "../icons";
-import { Badge, Button, IconButton, PageHeader } from "../ui";
+import { Badge, Button, EmptyState, IconButton, PageHeader } from "../ui";
 import { Select } from "../select";
 import { ConfirmDialog } from "../sheet";
 import { ApiError } from "@/lib/api";
@@ -366,14 +366,14 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
           renderPanel={renderPanelCard}
         />
       ) : (
-        <div className="flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card p-12 text-center text-muted-foreground">
-          <I.BarChart size={28} className="text-muted-foreground" />
-          <div className="text-sm font-medium text-foreground"><Trans>No insight panels yet</Trans></div>
-          <div className="max-w-[460px] text-[12.5px] leading-[1.5]">
+        <EmptyState
+          icon={I.BarChart}
+          title={<Trans>No insight panels yet</Trans>}
+          description={
             <Trans>Insight panels chart a collection aggregate (count / sum / average …) or a saved SQL query as a counter, sparkline, bars, donut, or table.
             Click <strong>+ New panel</strong> to build your first one — pick a collection, no SQL required.</Trans>
-          </div>
-        </div>
+          }
+        />
       )}
 
       {editor && (

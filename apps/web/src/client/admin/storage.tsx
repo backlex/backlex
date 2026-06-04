@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "./icons";
-import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
+import { Badge, Button, EmptyState, IconButton, PageHeader, Switch } from "./ui";
 import { Input } from "@backlex/ui/components/input";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@backlex/ui/components/input-group";
 import { Textarea } from "@backlex/ui/components/textarea";
@@ -781,11 +781,12 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
               <span className={`ml-auto text-[11px] tabular-nums ${folder == null ? "text-foreground" : "text-muted-foreground"}`}>{folderCounts.total}</span>
             </button>
             {folderTreeFiltered.length === 0 && (
-              <div className="px-2.5 py-3 text-[11.5px] text-muted-foreground">
-                {folders.length === 0
+              <EmptyState
+                size="sm"
+                title={folders.length === 0
                   ? <Trans>No folders yet. <button type="button" onClick={openNewFolder} className="cursor-pointer border-0 bg-transparent p-0 font-[inherit] text-primary underline">Create one</button>.</Trans>
                   : <Trans>No folders match.</Trans>}
-              </div>
+              />
             )}
             {folderTreeFiltered.map((node: any) => {
               const hasKids = node.children.size > 0;
@@ -832,9 +833,13 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                 </>
               )}
               {visible.length === 0 && !filesLoading && (
-                <div className="col-span-full p-9 text-center text-[13px] text-muted-foreground">
-                  <Trans>No files. Drop files anywhere on this page or use Upload.</Trans>
-                </div>
+                <EmptyState
+                  bare
+                  className="col-span-full"
+                  icon={I.Upload}
+                  title={<Trans>No files yet</Trans>}
+                  description={<Trans>Drop files anywhere on this page or use Upload.</Trans>}
+                />
               )}
               {visible.map((f) => (
                 <FileTile

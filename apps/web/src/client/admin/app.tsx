@@ -368,6 +368,17 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
           // Pass through `adopted` so CollectionSettings can pick the
           // archive-vs-destroy lifecycle for the danger zone.
           adopted: !!(res.data as any).adopted,
+          // Hydrate the Settings-tab metadata. Without these the form reseeds
+          // from `undefined` on every load, so a saved display template /
+          // singular / plural / note / default-sort silently reverts to empty
+          // on refresh even though the PATCH persisted it.
+          singular: (res.data as any).singular ?? null,
+          plural: (res.data as any).plural ?? null,
+          note: (res.data as any).note ?? null,
+          displayTemplate: (res.data as any).displayTemplate ?? null,
+          defaultSort: (res.data as any).defaultSort ?? null,
+          tenantScoped: (res.data as any).tenantScoped !== false,
+          versioned: !!(res.data as any).versioned,
           fields: fields as any,
         } as any);
       } catch {

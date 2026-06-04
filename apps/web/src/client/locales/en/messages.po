@@ -1332,6 +1332,7 @@ msgstr "B-tree index — speeds up filter/sort by this column."
 #: src/client/admin/add-field.tsx
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/display-template-editor.tsx
 #: src/client/admin/flow-builder.tsx
 msgid "Back"
 msgstr "Back"
@@ -3171,9 +3172,15 @@ msgstr "fields"
 
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/display-template-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "Fields"
 msgstr "Fields"
+
+#. placeholder {0}: drill.target
+#: src/client/admin/display-template-editor.tsx
+msgid "Fields of {0}"
+msgstr "Fields of {0}"
 
 #: src/client/admin/storage.tsx
 msgid "File detail"
@@ -3680,6 +3687,10 @@ msgstr "Initial revision — the first recorded state of this item."
 #: src/client/admin/flow-builder.tsx
 msgid "Input"
 msgstr "Input"
+
+#: src/client/admin/display-template-editor.tsx
+msgid "Insert field"
+msgstr "Insert field"
 
 #. placeholder {0}: ownerScoped ? <>. Owner is set to <span className="font-mono">$user.id</span></> : null
 #: src/client/admin/sheet.tsx
@@ -4492,7 +4503,7 @@ msgstr "must start with a letter; snake_case only"
 msgid "must start with http:// or https://"
 msgstr "must start with http:// or https://"
 
-#: src/client/admin/collection-settings.tsx
+#: src/client/admin/display-template-editor.tsx
 msgid "Mustache-style template for row display in pickers and references."
 msgstr "Mustache-style template for row display in pickers and references."
 
@@ -4795,6 +4806,10 @@ msgstr "No field changes from {0}."
 #: src/client/admin/condition-editor.tsx
 msgid "No fields defined for <0>{collection}</0> yet — add fields in the schema editor before writing rules."
 msgstr "No fields defined for <0>{collection}</0> yet — add fields in the schema editor before writing rules."
+
+#: src/client/admin/display-template-editor.tsx
+msgid "No fields."
+msgstr "No fields."
 
 #: src/client/admin/relational-pickers.tsx
 msgid "No file selected"
@@ -5762,6 +5777,10 @@ msgstr "Preview · {0} rows · {1}ms"
 msgid "Preview error"
 msgstr "Preview error"
 
+#: src/client/admin/display-template-editor.tsx
+msgid "Preview:"
+msgstr "Preview:"
+
 #: src/client/admin/account-page.tsx
 msgid "Preview: "
 msgstr "Preview: "
@@ -5927,6 +5946,7 @@ msgstr "Rana"
 msgid "Rate limit (per email / minute)"
 msgstr "Rate limit (per email / minute)"
 
+#: src/client/admin/display-template-editor.tsx
 #: src/client/pages/graphql.tsx
 msgid "Raw"
 msgstr "Raw"
@@ -6115,6 +6135,11 @@ msgstr "Reload schema"
 #: src/client/admin/pages/settings.tsx
 msgid "Remove"
 msgstr "Remove"
+
+#. placeholder {0}: seg.path
+#: src/client/admin/display-template-editor.tsx
+msgid "Remove {0}"
+msgstr "Remove {0}"
 
 #: src/client/admin/relational-pickers.tsx
 msgid "Remove {k}"
@@ -6774,6 +6799,10 @@ msgstr "Search collections by slug or group…"
 #: src/client/admin/ui.tsx
 msgid "Search collections, items, settings…"
 msgstr "Search collections, items, settings…"
+
+#: src/client/admin/display-template-editor.tsx
+msgid "Search fields…"
+msgstr "Search fields…"
 
 #: src/client/admin/relational-pickers.tsx
 msgid "Search files by key…"
@@ -7541,6 +7570,7 @@ msgstr "suspended"
 msgid "system"
 msgstr "system"
 
+#: src/client/admin/display-template-editor.tsx
 #: src/client/admin/pages/settings.tsx
 msgid "System"
 msgstr "System"
@@ -8342,6 +8372,10 @@ msgstr "View profile"
 #: src/client/admin/items.tsx
 msgid "Views"
 msgstr "Views"
+
+#: src/client/admin/display-template-editor.tsx
+msgid "Visual"
+msgstr "Visual"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Visualization"

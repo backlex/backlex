@@ -33,8 +33,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@backlex/ui/components/dialog";
+import { renderTemplate } from "@backlex/core";
 import { api } from "@/lib/api";
 import { itemsApi } from "./api";
+import { useCollections } from "./queries";
+import { expandParam } from "./display-template";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared bits
@@ -54,6 +57,32 @@ function pickRelationLabel(row: Record<string, unknown>): string | null {
     if (typeof v === "string" && v.trim()) return v;
   }
   return null;
+}
+
+/** Resolve a target collection's display config (mustache template + fields)
+ *  from the cached collections list so pickers can render rich row labels. */
+function useTargetMeta(target: string) {
+  const { data } = useCollections();
+  return useMemo(() => {
+    const col = data?.data?.find((c) => c.slug === target);
+    return {
+      displayTemplate: col?.displayTemplate ?? null,
+      fields: col?.fields ?? [],
+    };
+  }, [data, target]);
+}
+
+type LabelFn = (row: Record<string, unknown>) => string | null;
+
+/** Build a row-labeller: prefer the collection's display template (rendered
+ *  against the — optionally expanded — row), falling back to the heuristic
+ *  field scan when there's no template or it renders empty. */
+function makeLabelFor(displayTemplate: string | null): LabelFn {
+  if (!displayTemplate) return pickRelationLabel;
+  return (row) => {
+    const rendered = renderTemplate(displayTemplate, row).trim();
+    return rendered || pickRelationLabel(row);
+  };
 }
 
 function fmtSize(n: number): string {
@@ -699,29 +728,34 @@ export function RelationPicker({ value, onChange, target, error, placeholder }: 
   const [open, setOpen] = useState(false);
   const [labelCache, setLabelCache] = useState<Record<string, string>>({});
 
+  const meta = useTargetMeta(target);
+  const labelFor = useMemo(() => makeLabelFor(meta.displayTemplate), [meta.displayTemplate]);
+  // One-hop expand so `{{ rel.field }}` resolves to the related row's value.
+  const expand = expandParam(meta.displayTemplate, meta.fields);
+
   useEffect(() => {
     if (!value || !target || labelCache[value]) return;
     let cancelled = false;
-    itemsApi.get(target, value)
+    itemsApi.get(target, value, expand ? { expand } : undefined)
       .then((res) => {
         if (cancelled || !res?.data) return;
-        const lbl = pickRelationLabel(res.data as Record<string, unknown>);
+        const lbl = labelFor(res.data as Record<string, unknown>);
         if (lbl) setLabelCache((c) => ({ ...c, [value]: lbl }));
       })
       .catch(() => { /* row may be deleted — keep id-only */ });
     return () => { cancelled = true; };
-  }, [value, target, labelCache]);
+  }, [value, target, labelCache, labelFor, expand]);
 
   const seedLabels = useCallback((rows: Array<Record<string, unknown>>) => {
     setLabelCache((c) => {
       const next = { ...c };
       for (const r of rows) {
         const id = String(r.id ?? "");
-        if (id) next[id] = pickRelationLabel(r) ?? id;
+        if (id) next[id] = labelFor(r) ?? id;
       }
       return next;
     });
-  }, []);
+  }, [labelFor]);
 
   return (
     <>
@@ -741,6 +775,8 @@ export function RelationPicker({ value, onChange, target, error, placeholder }: 
           onCommit={(id) => { onChange(id); setOpen(false); }}
           onClose={() => setOpen(false)}
           seedLabels={seedLabels}
+          labelFor={labelFor}
+          expand={expand}
         />
       )}
     </>
@@ -790,12 +826,14 @@ function RelationTrigger({ value, label, error, target, placeholder, onOpen, onC
   );
 }
 
-function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }: {
+function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels, labelFor, expand }: {
   target: string;
   initial: string;
   onCommit: (id: string) => void;
   onClose: () => void;
   seedLabels: (rows: Array<Record<string, unknown>>) => void;
+  labelFor: LabelFn;
+  expand?: string;
 }) {
   const { t } = useLingui();
   const [rows, setRows] = useState<Array<Record<string, unknown>> | null>(null);
@@ -808,7 +846,7 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
     let cancelled = false;
     setLoading(true);
     setErr(null);
-    itemsApi.list(target, { limit: 100, sort: "-updated_at" })
+    itemsApi.list(target, { limit: 100, sort: "-updated_at", ...(expand ? { expand } : {}) })
       .then((res) => {
         if (cancelled) return;
         const next = (res?.data ?? []) as Array<Record<string, unknown>>;
@@ -818,17 +856,17 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
       .catch((e: Error) => { if (!cancelled) setErr(e.message || "Failed to load rows"); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [target, seedLabels]);
+  }, [target, seedLabels, expand]);
 
   const filtered = useMemo(() => {
     if (!rows) return [];
     const query = q.trim().toLowerCase();
     if (!query) return rows;
     return rows.filter((r) => {
-      const hay = `${pickRelationLabel(r) ?? ""} ${r.id ?? ""}`.toLowerCase();
+      const hay = `${labelFor(r) ?? ""} ${r.id ?? ""}`.toLowerCase();
       return hay.includes(query);
     });
-  }, [rows, q]);
+  }, [rows, q, labelFor]);
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -870,7 +908,7 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels }
             )}
             {filtered.map((r) => {
               const id = String(r.id ?? "");
-              const lbl = pickRelationLabel(r);
+              const lbl = labelFor(r);
               const on = selected === id;
               return (
                 <div

@@ -936,6 +936,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                 <CollectionSettings
                   schema={schemaState}
                   existingSlugs={collections.map((c) => c.slug)}
+                  collections={(collectionsQuery.data?.data ?? []).map((c: any) => ({ slug: c.slug, fields: c.fields }))}
                   onRename={async (nextSlug) => {
                     const slug = activeCollection || "posts";
                     setConfirm({

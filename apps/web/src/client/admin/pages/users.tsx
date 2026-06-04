@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
-import { Badge, Button, Checkbox, IconButton, PageHeader } from "../ui";
+import { Badge, Button, Checkbox, EmptyState, IconButton, PageHeader } from "../ui";
 import { Select } from "../select";
 import { Input } from "@backlex/ui/components/input";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@backlex/ui/components/input-group";
@@ -340,11 +340,12 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
             })}
             {filtered.length === 0 && (
               <TableRow><TableCell colSpan={8}>
-                <div className="flex flex-col items-center gap-3 py-8 text-center">
-                  <I.Users size={20} />
-                  <h4 className="m-0 text-[15px] font-semibold"><Trans>No users match</Trans></h4>
-                  <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground"><Trans>Adjust your filters or invite a new teammate.</Trans></p>
-                </div>
+                <EmptyState
+                  bare
+                  icon={I.Users}
+                  title={<Trans>No users match</Trans>}
+                  description={<Trans>Adjust your filters or invite a new teammate.</Trans>}
+                />
               </TableCell></TableRow>
             )}
           </TableBody>

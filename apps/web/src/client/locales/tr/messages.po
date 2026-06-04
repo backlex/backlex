@@ -1644,6 +1644,14 @@ msgstr "Filtreyi temizle"
 msgid "Clear selection"
 msgstr "Seçimi temizle"
 
+#: src/client/admin/pages/flows.tsx
+msgid "Click <0>+ New flow</0> to create your first one."
+msgstr "İlkini oluşturmak için <0>+ Yeni akış</0>'a tıklayın."
+
+#: src/client/admin/pages/functions.tsx
+msgid "Click <0>+ New function</0> to create one."
+msgstr "Bir tane oluşturmak için <0>+ Yeni fonksiyon</0>'a tıklayın."
+
 #: src/client/admin/permissions-matrix.tsx
 msgid "Click any cell to set state. Custom opens the rule builder in a dialog."
 msgstr "Durum belirlemek için herhangi bir hücreye tıklayın. Özel, kural oluşturucuyu bir iletişim kutusunda açar."
@@ -2650,6 +2658,10 @@ msgstr "Sütunu sil"
 #: src/client/admin/app.tsx
 msgid "Drop column \"{name}\"?"
 msgstr "\"{name}\" sütunu silinsin mi?"
+
+#: src/client/admin/storage.tsx
+msgid "Drop files anywhere on this page or use Upload."
+msgstr "Dosyaları bu sayfanın herhangi bir yerine bırakın veya Yükle'yi kullanın."
 
 #: src/client/admin/relational-pickers.tsx
 msgid "Drop files here, or click to upload"
@@ -4824,12 +4836,24 @@ msgid "No files uploaded yet — drop one above to get started."
 msgstr "Henüz dosya yüklenmedi — başlamak için yukarıya bir dosya bırakın."
 
 #: src/client/admin/storage.tsx
-msgid "No files. Drop files anywhere on this page or use Upload."
-msgstr "Dosya yok. Bu sayfanın herhangi bir yerine dosya bırakın veya Yükle'yi kullanın."
+msgid "No files yet"
+msgstr "Henüz dosya yok"
+
+#: src/client/admin/storage.tsx
+#~ msgid "No files. Drop files anywhere on this page or use Upload."
+#~ msgstr "Dosya yok. Bu sayfanın herhangi bir yerine dosya bırakın veya Yükle'yi kullanın."
 
 #: src/client/admin/pages/flows.tsx
-msgid "No flow selected. Click <0>+ New flow</0> to create your first one."
-msgstr "Akış seçilmedi. İlkini oluşturmak için <0>+ Yeni akış</0>'a tıklayın."
+msgid "No flow selected"
+msgstr "Akış seçilmedi"
+
+#: src/client/admin/pages/flows.tsx
+#~ msgid "No flow selected. Click <0>+ New flow</0> to create your first one."
+#~ msgstr "Akış seçilmedi. İlkini oluşturmak için <0>+ Yeni akış</0>'a tıklayın."
+
+#: src/client/admin/pages/flows.tsx
+msgid "No flows yet — click + New flow."
+msgstr "Henüz akış yok — + Yeni akış'a tıklayın."
 
 #: src/client/admin/storage.tsx
 msgid "No folders match."
@@ -4844,8 +4868,12 @@ msgid "No folders yet. <0>Create one</0>."
 msgstr "Henüz klasör yok. <0>Bir tane oluşturun</0>."
 
 #: src/client/admin/pages/functions.tsx
-msgid "No function selected. Click <0>+ New function</0> to create one."
-msgstr "Fonksiyon seçilmedi. Bir tane oluşturmak için <0>+ Yeni fonksiyon</0>'a tıklayın."
+msgid "No function selected"
+msgstr "Fonksiyon seçilmedi"
+
+#: src/client/admin/pages/functions.tsx
+#~ msgid "No function selected. Click <0>+ New function</0> to create one."
+#~ msgstr "Fonksiyon seçilmedi. Bir tane oluşturmak için <0>+ Yeni fonksiyon</0>'a tıklayın."
 
 #: src/client/admin/pages/functions.tsx
 msgid "No functions yet — click + New function."
@@ -4956,6 +4984,10 @@ msgstr "İlişki türünde alan tespit edilmedi. Kenar çizmek için <0>relation
 #: src/client/pages/rest-explorer.tsx
 msgid "No responses defined."
 msgstr "Yanıt tanımlanmamış."
+
+#: src/client/admin/parity/revisions.tsx
+msgid "No revision selected"
+msgstr "Sürüm seçilmedi"
 
 #: src/client/admin/parity/revisions.tsx
 msgid "No revisions yet for this item."

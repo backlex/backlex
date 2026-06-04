@@ -43,6 +43,18 @@ export interface CollectionSchema {
   slug: string;
   ownerScoped: boolean;
   fields: SchemaField[];
+  // Collection metadata edited in the Settings tab. These ride along on the
+  // GET /api/collections/:slug response and must be hydrated into schemaState
+  // so the Settings form reseeds them on load (otherwise edits appear to save
+  // but revert to empty on refresh).
+  singular?: string | null;
+  plural?: string | null;
+  note?: string | null;
+  displayTemplate?: string | null;
+  defaultSort?: string | null;
+  tenantScoped?: boolean;
+  versioned?: boolean;
+  adopted?: boolean;
 }
 
 export interface CollectionListItem {

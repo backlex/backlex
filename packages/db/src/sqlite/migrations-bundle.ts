@@ -47,6 +47,7 @@ import m40 from "../../drizzle/sqlite/20260522120000_user_locale_timezone/migrat
 import m41 from "../../drizzle/sqlite/20260525010000_api_keys_mcp_metadata/migration.sql" with { type: "text" };
 import m42 from "../../drizzle/sqlite/20260601210000_integrations/migration.sql" with { type: "text" };
 import m43 from "../../drizzle/sqlite/20260603120000_collections_soft_delete_singleton/migration.sql" with { type: "text" };
+import m44 from "../../drizzle/sqlite/20260604120000_passkey_aaguid/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -98,4 +99,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260525010000_api_keys_mcp_metadata", sql: m41 },
   { name: "20260601210000_integrations", sql: m42 },
   { name: "20260603120000_collections_soft_delete_singleton", sql: m43 },
+  { name: "20260604120000_passkey_aaguid", sql: m44 },
 ];

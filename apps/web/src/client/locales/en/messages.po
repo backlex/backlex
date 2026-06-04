@@ -232,7 +232,7 @@ msgstr "{0} cols"
 msgid "{0} connected · {1} optional"
 msgstr "{0} connected · {1} optional"
 
-#. placeholder {0}: LABELS[dialog.kind] ?? dialog.kind
+#. placeholder {0}: brandFor(kind).name
 #: src/client/admin/pages/integrations.tsx
 msgid "{0} connected."
 msgstr "{0} connected."
@@ -245,7 +245,7 @@ msgstr "{0} connected."
 msgid "{0} deleted."
 msgstr "{0} deleted."
 
-#. placeholder {0}: LABELS[it.kind] ?? it.kind
+#. placeholder {0}: brandFor(it.kind).name
 #: src/client/admin/pages/integrations.tsx
 msgid "{0} disconnected."
 msgstr "{0} disconnected."
@@ -1914,8 +1914,12 @@ msgstr "Connect"
 
 #. placeholder {0}: dialog ? (LABELS[dialog.kind] ?? dialog.kind) : ""
 #: src/client/admin/pages/integrations.tsx
-msgid "Connect {0}"
-msgstr "Connect {0}"
+#~ msgid "Connect {0}"
+#~ msgstr "Connect {0}"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Connect {name}"
+msgstr "Connect {name}"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Connect an MCP client"
@@ -2541,8 +2545,12 @@ msgstr "Disconnect"
 
 #. placeholder {0}: LABELS[it.kind] ?? it.kind
 #: src/client/admin/pages/integrations.tsx
-msgid "Disconnect {0}?"
-msgstr "Disconnect {0}?"
+#~ msgid "Disconnect {0}?"
+#~ msgstr "Disconnect {0}?"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Disconnecting…"
+msgstr "Disconnecting…"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Discovery URL <0>(optional)</0>"
@@ -2997,6 +3005,7 @@ msgstr "Event"
 msgid "Event pattern"
 msgstr "Event pattern"
 
+#: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Events"
 msgstr "Events"
@@ -3247,6 +3256,10 @@ msgstr "Filter tools"
 msgid "Filter tools…"
 msgstr "Filter tools…"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Fire a repository_dispatch on data events."
+msgstr "Fire a repository_dispatch on data events."
+
 #: src/client/admin/pages/functions.tsx
 msgid "fires on matching pub-sub channel events"
 msgstr "fires on matching pub-sub channel events"
@@ -3350,6 +3363,10 @@ msgstr "Forgot?"
 #: src/client/admin/storage.tsx
 msgid "Format"
 msgstr "Format"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Forward data events to the Datadog events API."
+msgstr "Forward data events to the Datadog events API."
 
 #: src/client/admin/item-views.tsx
 msgid "Fri"
@@ -4005,6 +4022,11 @@ msgstr "Last 7 days"
 msgid "Last active"
 msgstr "Last active"
 
+#. placeholder {0}: relativeTime(it.lastEventAt)
+#: src/client/admin/pages/integrations.tsx
+msgid "last event {0}"
+msgstr "last event {0}"
+
 #: src/client/admin/pages/functions.tsx
 msgid "last invocation"
 msgstr "last invocation"
@@ -4195,7 +4217,6 @@ msgstr "Loading runs…"
 msgid "Loading tool catalog…"
 msgstr "Loading tool catalog…"
 
-#: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Loading…"
 msgstr "Loading…"
@@ -4758,6 +4779,10 @@ msgstr "No collections to graph — create one to populate the ERD."
 msgid "No collections yet — create one in the Schema tab to manage permissions here."
 msgstr "No collections yet — create one in the Schema tab to manage permissions here."
 
+#: src/client/admin/pages/integrations.tsx
+msgid "No collections yet — events fire once you create one."
+msgstr "No collections yet — events fire once you create one."
+
 #: src/client/admin/item-collaboration.tsx
 msgid "No comments yet — start the thread below."
 msgstr "No comments yet — start the thread below."
@@ -5076,6 +5101,10 @@ msgstr "none"
 #: src/client/pages/rest-explorer.tsx
 msgid "none (public)"
 msgstr "none (public)"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "none selected = all"
+msgstr "none selected = all"
 
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -5762,6 +5791,14 @@ msgstr "Policy"
 #: src/client/admin/app.tsx
 msgid "Post \"{0}{1}\" created."
 msgstr "Post \"{0}{1}\" created."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Post data events to a Discord channel."
+msgstr "Post data events to a Discord channel."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Post data events to a Slack channel."
+msgstr "Post data events to a Slack channel."
 
 #: src/client/admin/app.tsx
 msgid "Post saved."

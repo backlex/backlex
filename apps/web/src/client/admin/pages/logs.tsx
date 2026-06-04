@@ -16,7 +16,7 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "../icons";
-import { Badge, Button, IconButton, JsonBlock, PageHeader } from "../ui";
+import { Badge, Button, EmptyState, IconButton, JsonBlock, PageHeader } from "../ui";
 import { Input } from "@backlex/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import {
@@ -377,26 +377,22 @@ export function LogsPage({
       </div>
 
       {isError ? (
-        <div className="card empty">
-          <div className="ico">
-            <I.AlertTriangle size={18} />
-          </div>
-          <h4><Trans>Couldn't load logs</Trans></h4>
-          <p><Trans>The activity endpoint returned an error. Try again in a moment.</Trans></p>
-        </div>
+        <EmptyState
+          icon={I.AlertTriangle}
+          title={<Trans>Couldn't load logs</Trans>}
+          description={<Trans>The activity endpoint returned an error. Try again in a moment.</Trans>}
+        />
       ) : allRows.length === 0 ? (
-        <div className="card empty">
-          <div className="ico">
-            <I.ScrollText size={18} />
-          </div>
-          <h4><Trans>No activity in this window</Trans></h4>
-          <p>
+        <EmptyState
+          icon={I.ScrollText}
+          title={<Trans>No activity in this window</Trans>}
+          description={
             <Trans>
               Nothing landed in the last {range}. Widen the range, or wait for
               requests, item writes, and automation runs to flow in.
             </Trans>
-          </p>
-        </div>
+          }
+        />
       ) : view === "stream" ? (
         <StreamView
           rows={allRows}
@@ -686,13 +682,12 @@ function StreamView({
       >
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           {filtered.length === 0 ? (
-            <div className="empty">
-              <div className="ico">
-                <I.ScrollText size={18} />
-              </div>
-              <h4><Trans>No log entries match</Trans></h4>
-              <p><Trans>Try a wider time range or clear the level filter.</Trans></p>
-            </div>
+            <EmptyState
+              bare
+              icon={I.ScrollText}
+              title={<Trans>No log entries match</Trans>}
+              description={<Trans>Try a wider time range or clear the level filter.</Trans>}
+            />
           ) : (
             <div>
               {filtered.map((r) => (

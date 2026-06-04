@@ -94,10 +94,10 @@ const ModelEnum = z.enum(
 
 const CollectionInput = z.object({
   slug: z.string().min(1).regex(/^[a-z][a-z0-9_]*$/),
-  singular: z.string().optional(),
-  plural: z.string().optional(),
-  note: z.string().optional(),
-  displayTemplate: z.string().optional(),
+  singular: z.string().nullable().optional(),
+  plural: z.string().nullable().optional(),
+  note: z.string().nullable().optional(),
+  displayTemplate: z.string().nullable().optional(),
   fields: z.array(FieldSchema),
   ownerScoped: z.boolean().optional().default(false),
   /** When true (default), the physical table gets a `tenant_id` column and

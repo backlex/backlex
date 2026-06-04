@@ -1644,6 +1644,14 @@ msgstr "Clear filter"
 msgid "Clear selection"
 msgstr "Clear selection"
 
+#: src/client/admin/pages/flows.tsx
+msgid "Click <0>+ New flow</0> to create your first one."
+msgstr "Click <0>+ New flow</0> to create your first one."
+
+#: src/client/admin/pages/functions.tsx
+msgid "Click <0>+ New function</0> to create one."
+msgstr "Click <0>+ New function</0> to create one."
+
 #: src/client/admin/permissions-matrix.tsx
 msgid "Click any cell to set state. Custom opens the rule builder in a dialog."
 msgstr "Click any cell to set state. Custom opens the rule builder in a dialog."
@@ -2650,6 +2658,10 @@ msgstr "Drop column"
 #: src/client/admin/app.tsx
 msgid "Drop column \"{name}\"?"
 msgstr "Drop column \"{name}\"?"
+
+#: src/client/admin/storage.tsx
+msgid "Drop files anywhere on this page or use Upload."
+msgstr "Drop files anywhere on this page or use Upload."
 
 #: src/client/admin/relational-pickers.tsx
 msgid "Drop files here, or click to upload"
@@ -4824,12 +4836,24 @@ msgid "No files uploaded yet — drop one above to get started."
 msgstr "No files uploaded yet — drop one above to get started."
 
 #: src/client/admin/storage.tsx
-msgid "No files. Drop files anywhere on this page or use Upload."
-msgstr "No files. Drop files anywhere on this page or use Upload."
+msgid "No files yet"
+msgstr "No files yet"
+
+#: src/client/admin/storage.tsx
+#~ msgid "No files. Drop files anywhere on this page or use Upload."
+#~ msgstr "No files. Drop files anywhere on this page or use Upload."
 
 #: src/client/admin/pages/flows.tsx
-msgid "No flow selected. Click <0>+ New flow</0> to create your first one."
-msgstr "No flow selected. Click <0>+ New flow</0> to create your first one."
+msgid "No flow selected"
+msgstr "No flow selected"
+
+#: src/client/admin/pages/flows.tsx
+#~ msgid "No flow selected. Click <0>+ New flow</0> to create your first one."
+#~ msgstr "No flow selected. Click <0>+ New flow</0> to create your first one."
+
+#: src/client/admin/pages/flows.tsx
+msgid "No flows yet — click + New flow."
+msgstr "No flows yet — click + New flow."
 
 #: src/client/admin/storage.tsx
 msgid "No folders match."
@@ -4844,8 +4868,12 @@ msgid "No folders yet. <0>Create one</0>."
 msgstr "No folders yet. <0>Create one</0>."
 
 #: src/client/admin/pages/functions.tsx
-msgid "No function selected. Click <0>+ New function</0> to create one."
-msgstr "No function selected. Click <0>+ New function</0> to create one."
+msgid "No function selected"
+msgstr "No function selected"
+
+#: src/client/admin/pages/functions.tsx
+#~ msgid "No function selected. Click <0>+ New function</0> to create one."
+#~ msgstr "No function selected. Click <0>+ New function</0> to create one."
 
 #: src/client/admin/pages/functions.tsx
 msgid "No functions yet — click + New function."
@@ -4956,6 +4984,10 @@ msgstr "No relation-typed fields detected. Add a field with type <0>relation</0>
 #: src/client/pages/rest-explorer.tsx
 msgid "No responses defined."
 msgstr "No responses defined."
+
+#: src/client/admin/parity/revisions.tsx
+msgid "No revision selected"
+msgstr "No revision selected"
 
 #: src/client/admin/parity/revisions.tsx
 msgid "No revisions yet for this item."

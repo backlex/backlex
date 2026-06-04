@@ -232,7 +232,7 @@ msgstr "{0} sütun"
 msgid "{0} connected · {1} optional"
 msgstr "{0} bağlı · {1} isteğe bağlı"
 
-#. placeholder {0}: LABELS[dialog.kind] ?? dialog.kind
+#. placeholder {0}: brandFor(kind).name
 #: src/client/admin/pages/integrations.tsx
 msgid "{0} connected."
 msgstr "{0} bağlandı."
@@ -245,7 +245,7 @@ msgstr "{0} bağlandı."
 msgid "{0} deleted."
 msgstr "{0} silindi."
 
-#. placeholder {0}: LABELS[it.kind] ?? it.kind
+#. placeholder {0}: brandFor(it.kind).name
 #: src/client/admin/pages/integrations.tsx
 msgid "{0} disconnected."
 msgstr "{0} bağlantısı kesildi."
@@ -1914,8 +1914,12 @@ msgstr "Bağlantı"
 
 #. placeholder {0}: dialog ? (LABELS[dialog.kind] ?? dialog.kind) : ""
 #: src/client/admin/pages/integrations.tsx
-msgid "Connect {0}"
-msgstr "{0} bağla"
+#~ msgid "Connect {0}"
+#~ msgstr "{0} bağla"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Connect {name}"
+msgstr "{name} bağlantısı"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Connect an MCP client"
@@ -2541,8 +2545,12 @@ msgstr "Bağlantıyı kes"
 
 #. placeholder {0}: LABELS[it.kind] ?? it.kind
 #: src/client/admin/pages/integrations.tsx
-msgid "Disconnect {0}?"
-msgstr "{0} bağlantısı kesilsin mi?"
+#~ msgid "Disconnect {0}?"
+#~ msgstr "{0} bağlantısı kesilsin mi?"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Disconnecting…"
+msgstr "Bağlantı kesiliyor…"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Discovery URL <0>(optional)</0>"
@@ -2997,6 +3005,7 @@ msgstr "Olay"
 msgid "Event pattern"
 msgstr "Olay deseni"
 
+#: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Events"
 msgstr "Olaylar"
@@ -3247,6 +3256,10 @@ msgstr "Araçları filtrele"
 msgid "Filter tools…"
 msgstr "Araçları filtrele…"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Fire a repository_dispatch on data events."
+msgstr "Veri olaylarında bir repository_dispatch tetikler."
+
 #: src/client/admin/pages/functions.tsx
 msgid "fires on matching pub-sub channel events"
 msgstr "eşleşen pub-sub kanal olaylarında tetiklenir"
@@ -3350,6 +3363,10 @@ msgstr "Unuttunuz mu?"
 #: src/client/admin/storage.tsx
 msgid "Format"
 msgstr "Biçim"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Forward data events to the Datadog events API."
+msgstr "Veri olaylarını Datadog olaylar API'sine iletir."
 
 #: src/client/admin/item-views.tsx
 msgid "Fri"
@@ -4005,6 +4022,11 @@ msgstr "Son 7 gün"
 msgid "Last active"
 msgstr "Son etkinlik"
 
+#. placeholder {0}: relativeTime(it.lastEventAt)
+#: src/client/admin/pages/integrations.tsx
+msgid "last event {0}"
+msgstr "son olay {0}"
+
 #: src/client/admin/pages/functions.tsx
 msgid "last invocation"
 msgstr "son çağrı"
@@ -4195,7 +4217,6 @@ msgstr "Çalıştırmalar yükleniyor…"
 msgid "Loading tool catalog…"
 msgstr "Araç kataloğu yükleniyor…"
 
-#: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Loading…"
 msgstr "Yükleniyor…"
@@ -4758,6 +4779,10 @@ msgstr "Grafik için koleksiyon yok — ERD'yi doldurmak için bir tane oluştur
 msgid "No collections yet — create one in the Schema tab to manage permissions here."
 msgstr "Henüz koleksiyon yok — burada izinleri yönetmek için Şema sekmesinde bir tane oluşturun."
 
+#: src/client/admin/pages/integrations.tsx
+msgid "No collections yet — events fire once you create one."
+msgstr "Henüz koleksiyon yok — bir tane oluşturduğunuzda olaylar tetiklenir."
+
 #: src/client/admin/item-collaboration.tsx
 msgid "No comments yet — start the thread below."
 msgstr "Henüz yorum yok — aşağıdan konuşmayı başlatın."
@@ -5076,6 +5101,10 @@ msgstr "yok"
 #: src/client/pages/rest-explorer.tsx
 msgid "none (public)"
 msgstr "yok (herkese açık)"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "none selected = all"
+msgstr "hiçbiri seçili değil = tümü"
 
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -5770,6 +5799,14 @@ msgstr "Politika"
 #: src/client/admin/app.tsx
 msgid "Post \"{0}{1}\" created."
 msgstr "\"{0}{1}\" gönderisi oluşturuldu."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Post data events to a Discord channel."
+msgstr "Veri olaylarını bir Discord kanalına gönderir."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Post data events to a Slack channel."
+msgstr "Veri olaylarını bir Slack kanalına gönderir."
 
 #: src/client/admin/app.tsx
 msgid "Post saved."

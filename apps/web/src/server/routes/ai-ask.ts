@@ -17,7 +17,7 @@
  * docs/ask-ai.md for why logging stays here instead of in the dispatcher.
  */
 import { Hono, type MiddlewareHandler } from "hono";
-import { AppError, SYSTEM_ROLES } from "@backlex/core";
+import { AppError, EMBEDDING_MODEL_NAMES, SYSTEM_ROLES } from "@backlex/core";
 import type { AppBindings } from "../app";
 import type { Env } from "../env";
 import { requireUser } from "../middleware/session";
@@ -63,7 +63,13 @@ const PLAN_TOOL_DESCRIPTIONS: Record<(typeof PLAN_TOOL_WHITELIST)[number], strin
     "storage.list":
       "{prefix?: string, folder?: string, search?: string, limit?: number} — list files in object storage.",
     "vector.search":
-      "{collection: string, query: string, top_k?: number} — semantic search over an embedded collection.",
+      `{model: string, text: string, topK?: number, namespace?: string, filter?: object} — ` +
+      `semantic search: embeds free-text \`text\` with \`model\` and returns nearest neighbors. ` +
+      `\`model\` MUST be one of: ${EMBEDDING_MODEL_NAMES.join(", ")} (default bge-m3). ` +
+      `\`topK\` is camelCase (1-100, default 10). \`namespace\` (NOT \`collection\`) scopes the search. ` +
+      `\`filter\` is a provider-specific metadata map — NOT a Directus filter, and it is NOT used for ` +
+      `date ranges or field comparisons. For structured queries (date ranges, field filters, "last month", ` +
+      `counts) use \`collections.list\` with a Directus filter instead — \`text\` is for meaning, not predicates.`,
     "schema.list_collections":
       "{} — every collection visible to the workspace, with field counts.",
     "schema.describe_collection":

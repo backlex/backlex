@@ -1332,6 +1332,7 @@ msgstr "B-tree indeksi — bu sütuna göre filtreleme/sıralamayı hızlandır�
 #: src/client/admin/add-field.tsx
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/display-template-editor.tsx
 #: src/client/admin/flow-builder.tsx
 msgid "Back"
 msgstr "Geri"
@@ -3171,9 +3172,15 @@ msgstr "alanlar"
 
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/display-template-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "Fields"
 msgstr "Alanlar"
+
+#. placeholder {0}: drill.target
+#: src/client/admin/display-template-editor.tsx
+msgid "Fields of {0}"
+msgstr "{0} alanları"
 
 #: src/client/admin/storage.tsx
 msgid "File detail"
@@ -3680,6 +3687,10 @@ msgstr "İlk revizyon — bu öğenin kaydedilen ilk durumu."
 #: src/client/admin/flow-builder.tsx
 msgid "Input"
 msgstr "Girdi"
+
+#: src/client/admin/display-template-editor.tsx
+msgid "Insert field"
+msgstr "Alan ekle"
 
 #. placeholder {0}: ownerScoped ? <>. Owner is set to <span className="font-mono">$user.id</span></> : null
 #: src/client/admin/sheet.tsx
@@ -4492,7 +4503,7 @@ msgstr "bir harfle başlamalıdır; yalnızca snake_case"
 msgid "must start with http:// or https://"
 msgstr "http:// veya https:// ile başlamalıdır"
 
-#: src/client/admin/collection-settings.tsx
+#: src/client/admin/display-template-editor.tsx
 msgid "Mustache-style template for row display in pickers and references."
 msgstr "Seçicilerde ve referanslarda satır görüntülemek için Mustache tarzı şablon."
 
@@ -4795,6 +4806,10 @@ msgstr "{0}'dan itibaren alan değişikliği yok."
 #: src/client/admin/condition-editor.tsx
 msgid "No fields defined for <0>{collection}</0> yet — add fields in the schema editor before writing rules."
 msgstr "<0>{collection}</0> için henüz alan tanımlanmamış — kurallar yazmadan önce şema düzenleyicisine alan ekleyin."
+
+#: src/client/admin/display-template-editor.tsx
+msgid "No fields."
+msgstr "Alan yok."
 
 #: src/client/admin/relational-pickers.tsx
 msgid "No file selected"
@@ -5770,6 +5785,10 @@ msgstr "Önizleme · {0} satır · {1}ms"
 msgid "Preview error"
 msgstr "Önizleme hatası"
 
+#: src/client/admin/display-template-editor.tsx
+msgid "Preview:"
+msgstr "Önizleme:"
+
 #: src/client/admin/account-page.tsx
 msgid "Preview: "
 msgstr "Önizleme: "
@@ -5935,6 +5954,7 @@ msgstr "Rana"
 msgid "Rate limit (per email / minute)"
 msgstr "Hız sınırı (e-posta başına / dakika)"
 
+#: src/client/admin/display-template-editor.tsx
 #: src/client/pages/graphql.tsx
 msgid "Raw"
 msgstr "Ham"
@@ -6123,6 +6143,11 @@ msgstr "Şemayı yeniden yükle"
 #: src/client/admin/pages/settings.tsx
 msgid "Remove"
 msgstr "Kaldır"
+
+#. placeholder {0}: seg.path
+#: src/client/admin/display-template-editor.tsx
+msgid "Remove {0}"
+msgstr "{0} kaldır"
 
 #: src/client/admin/relational-pickers.tsx
 msgid "Remove {k}"
@@ -6782,6 +6807,10 @@ msgstr "Koleksiyonları slug veya gruba göre ara…"
 #: src/client/admin/ui.tsx
 msgid "Search collections, items, settings…"
 msgstr "Koleksiyonları, öğeleri, ayarları ara…"
+
+#: src/client/admin/display-template-editor.tsx
+msgid "Search fields…"
+msgstr "Alanlarda ara…"
 
 #: src/client/admin/relational-pickers.tsx
 msgid "Search files by key…"
@@ -7549,6 +7578,7 @@ msgstr "askıya alındı"
 msgid "system"
 msgstr "sistem"
 
+#: src/client/admin/display-template-editor.tsx
 #: src/client/admin/pages/settings.tsx
 msgid "System"
 msgstr "Sistem"
@@ -8350,6 +8380,10 @@ msgstr "Profili görüntüle"
 #: src/client/admin/items.tsx
 msgid "Views"
 msgstr "Görünümler"
+
+#: src/client/admin/display-template-editor.tsx
+msgid "Visual"
+msgstr "Görsel"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Visualization"

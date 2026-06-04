@@ -36,7 +36,17 @@ export interface ApiCollection {
   singular?: string | null;
   plural?: string | null;
   note?: string | null;
-  fields: { name: string; type: string; required?: boolean; unique?: boolean }[];
+  /** Mustache-style row-display template, e.g. `{{ title }} — {{ status }}`. */
+  displayTemplate?: string | null;
+  fields: {
+    name: string;
+    type: string;
+    required?: boolean;
+    unique?: boolean;
+    /** Target collection slug — present when `type === "relation"`. */
+    to?: string;
+    interface?: string;
+  }[];
   ownerScoped: boolean;
   tenantScoped?: boolean;
   versioned: boolean;
@@ -325,8 +335,16 @@ export const itemsApi = {
       : "";
     return api<ItemsListResp>(`/api/items/${slug}${qs}`);
   },
-  get: (slug: string, id: string) =>
-    api<Envelope<Record<string, unknown>>>(`/api/items/${slug}/${id}`),
+  get: (slug: string, id: string, query?: Record<string, string | number>) => {
+    const qs = query
+      ? "?" + new URLSearchParams(
+          Object.fromEntries(
+            Object.entries(query).map(([k, v]) => [k, String(v)]),
+          ),
+        ).toString()
+      : "";
+    return api<Envelope<Record<string, unknown>>>(`/api/items/${slug}/${id}${qs}`);
+  },
   create: (slug: string, body: Record<string, unknown>) =>
     api<Envelope<Record<string, unknown>>>(`/api/items/${slug}`, {
       method: "POST",

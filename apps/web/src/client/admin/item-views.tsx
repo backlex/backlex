@@ -8,6 +8,7 @@
 // arrow nav (the prototype hardcoded May 2026; that wouldn't age well).
 import { useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { renderTemplate } from "@backlex/core";
 import { I, type IconComponent } from "./icons";
 import { Badge, Button, IconButton } from "./ui";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
@@ -19,7 +20,18 @@ export type ItemsViewMode = "table" | "kanban" | "gallery" | "calendar";
 // Rows come from arbitrary user collections, not the design's `posts` mock —
 // any field beyond `id` may be missing. These readers degrade instead of
 // throwing (e.g. `r.word_count.toLocaleString()` on a column-less collection).
-const rowLabel = (r: Post): string => r.title || r.slug || r.id;
+// Row display label. When the collection defines a `displayTemplate` (a
+// mustache string like `{{ city }}`), render it against the row — same helper
+// the relation pickers use — and fall back to the conventional fields when the
+// template is absent or renders empty. Keeps Kanban/Gallery/Calendar in step
+// with the Table view and the pickers.
+const rowLabel = (r: Post, displayTemplate?: string | null): string => {
+  if (displayTemplate) {
+    const rendered = renderTemplate(displayTemplate, r as unknown as Record<string, unknown>).trim();
+    if (rendered) return rendered;
+  }
+  return r.title || r.slug || r.id;
+};
 const rowNumber = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
 interface ToggleOption {
@@ -79,7 +91,7 @@ const KANBAN_COLS: { id: string; label: string }[] = [
   { id: "archived", label: "Archived" },
 ];
 
-export function KanbanBoard({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post) => void }) {
+export function KanbanBoard({ rows, onEdit, displayTemplate }: { rows: Post[]; onEdit: (it: Post) => void; displayTemplate?: string | null }) {
   const { t } = useLingui();
   const KANBAN_LABELS: Record<string, string> = {
     draft: t`Draft`,
@@ -110,7 +122,7 @@ export function KanbanBoard({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post)
                   const views = rowNumber(r.view_count);
                   return (
                     <button key={r.id} type="button" className="flex cursor-pointer flex-col gap-1.5 rounded-lg border border-border bg-card px-3 py-2.5 text-left hover:border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))]" onClick={() => onEdit(r)}>
-                      <div className="text-[12.5px] font-medium leading-[1.3]">{rowLabel(r)}</div>
+                      <div className="text-[12.5px] font-medium leading-[1.3]">{rowLabel(r, displayTemplate)}</div>
                       {r.slug && (
                         <div className="text-[11px] text-muted-foreground">
                           <span className="font-mono">{r.slug}</span>
@@ -160,7 +172,7 @@ const statusBadgeVariant = (s: Post["status"]): "default" | "secondary" | "outli
   return "outline";
 };
 
-export function GalleryGrid({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post) => void }) {
+export function GalleryGrid({ rows, onEdit, displayTemplate }: { rows: Post[]; onEdit: (it: Post) => void; displayTemplate?: string | null }) {
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3.5 p-3.5">
       {rows.map((r) => {
@@ -173,7 +185,7 @@ export function GalleryGrid({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post)
               <span className="rounded-md bg-[color-mix(in_oklch,var(--background)_65%,transparent)] px-2 py-0.5 font-mono text-[10.5px] text-foreground backdrop-blur-[4px]">{r.slug || r.id}</span>
             </div>
             <div className="flex flex-col gap-1.5 px-3 pb-3 pt-2.5">
-              <div className="text-[12.5px] font-medium leading-[1.3]">{rowLabel(r)}</div>
+              <div className="text-[12.5px] font-medium leading-[1.3]">{rowLabel(r, displayTemplate)}</div>
               <div className="flex items-center gap-2">
                 {r.status && <Badge variant={statusBadgeVariant(r.status)}>{r.status}</Badge>}
                 {words != null && (
@@ -194,7 +206,7 @@ export function GalleryGrid({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post)
 // Calendar
 // ─────────────────────────────────────────────────────────────────
 
-export function CalendarView({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post) => void }) {
+export function CalendarView({ rows, onEdit, displayTemplate }: { rows: Post[]; onEdit: (it: Post) => void; displayTemplate?: string | null }) {
   const { t } = useLingui();
   const MONTH_LABELS = [
     t`January`, t`February`, t`March`, t`April`, t`May`, t`June`,
@@ -281,7 +293,7 @@ export function CalendarView({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post
                       type="button"
                       className="flex cursor-pointer items-center gap-[5px] overflow-hidden rounded-sm border-0 bg-muted px-1.5 py-[3px] text-left text-[10.5px] text-foreground hover:bg-accent"
                       onClick={() => onEdit(r)}
-                      title={rowLabel(r)}
+                      title={rowLabel(r, displayTemplate)}
                     >
                       <span
                         className={`size-[5px] shrink-0 rounded-full ${
@@ -292,7 +304,7 @@ export function CalendarView({ rows, onEdit }: { rows: Post[]; onEdit: (it: Post
                               : "bg-muted-foreground"
                         }`}
                       />
-                      <span className="truncate">{rowLabel(r)}</span>
+                      <span className="truncate">{rowLabel(r, displayTemplate)}</span>
                     </button>
                   ))}
                   {(byDay[d] || []).length > 3 && (

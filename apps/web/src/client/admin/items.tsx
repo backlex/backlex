@@ -2,6 +2,7 @@
 // Filter DSL builder + Items DataTable for the backlex admin design.
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { renderTemplate } from "@backlex/core";
 import { I } from "./icons";
 import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button, Checkbox, IconButton } from "./ui";
@@ -448,9 +449,15 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
       <TableBody>
         {rows.map((r) => {
           const a = authorById(r.author);
-          // Fall back to slug/name/id for the display label so even
-          // collections without a `title` column render readable rows.
-          const displayTitle = r.title ?? r.name ?? r.slug ?? r.id ?? "—";
+          // Prefer the collection's display template (e.g. `{{ city }}`) so
+          // the list matches what the Settings tab promises ("how this
+          // collection shows up in nav and lists"). Fall back to
+          // title/name/slug/id when there's no template or it renders empty,
+          // so collections without a `title` column still render readable rows.
+          const rendered = schema?.displayTemplate
+            ? renderTemplate(schema.displayTemplate, r).trim()
+            : "";
+          const displayTitle = rendered || (r.title ?? r.name ?? r.slug ?? r.id ?? "—");
           const displaySlug = r.slug ?? r.id ?? "";
           const rawStatus = statusField ? (r as Record<string, unknown>)[statusField.name] : null;
           const displayStatus = rawStatus != null ? String(rawStatus) : null;

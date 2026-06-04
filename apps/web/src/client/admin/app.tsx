@@ -868,18 +868,18 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                         itemsForView.length === 0 ? (
                           <EmptyItems onCreate={openCreate} slug={activeCollection ?? undefined} />
                         ) : (
-                          <KanbanBoard rows={itemsForView} onEdit={openEdit} />
+                          <KanbanBoard rows={itemsForView} onEdit={openEdit} displayTemplate={schemaState.displayTemplate} />
                         )
                       )}
                       {viewMode === "gallery" && (
                         itemsForView.length === 0 ? (
                           <EmptyItems onCreate={openCreate} slug={activeCollection ?? undefined} />
                         ) : (
-                          <GalleryGrid rows={itemsForView} onEdit={openEdit} />
+                          <GalleryGrid rows={itemsForView} onEdit={openEdit} displayTemplate={schemaState.displayTemplate} />
                         )
                       )}
                       {viewMode === "calendar" && (
-                        <CalendarView rows={itemsForView} onEdit={openEdit} />
+                        <CalendarView rows={itemsForView} onEdit={openEdit} displayTemplate={schemaState.displayTemplate} />
                       )}
                       {viewMode === "table" && pageRows.length > 0 && (
                         <div className="flex items-center gap-2 border-t border-border bg-card px-3.5 py-2.5 text-[12.5px] text-muted-foreground">

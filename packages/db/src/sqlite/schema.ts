@@ -132,15 +132,23 @@ export const passkeys = sqliteTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    credentialId: text("credential_id").notNull(),
+    // Property key MUST be `credentialID` (capital ID): the @better-auth/passkey
+    // plugin maps its `credentialID` field to this Drizzle key. A lowercase
+    // `credentialId` makes better-auth throw "field credentialID does not exist
+    // in the schema for the model passkey" on verify-authentication. The DB
+    // column stays `credential_id`.
+    credentialID: text("credential_id").notNull(),
     counter: integer("counter").notNull().default(0),
     deviceType: text("device_type"),
     backedUp: integer("backed_up", { mode: "boolean" }).notNull().default(false),
     transports: text("transports"),
+    // Authenticator AAGUID — optional field the passkey plugin reads back on
+    // every auth; without the column better-auth errors mapping the row.
+    aaguid: text("aaguid"),
     createdAt: ts("created_at"),
   },
   (t) => [
-    uniqueIndex("passkey_credential_idx").on(t.credentialId),
+    uniqueIndex("passkey_credential_idx").on(t.credentialID),
     index("passkey_user_idx").on(t.userId),
   ],
 );

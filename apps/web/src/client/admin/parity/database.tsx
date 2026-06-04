@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { ADAPTER_PROFILES, type AdapterId } from "../config";
-import { Badge, Button, PageHeader, Switch } from "../ui";
+import { Badge, Button, EmptyState, PageHeader, Switch } from "../ui";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
@@ -180,9 +180,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
                 </div>
               ))
             ) : filteredTables.length === 0 ? (
-              <div className="p-3 text-center text-[11.5px] text-muted-foreground">
-                {tables.length === 0 ? <Trans>This database has no tables.</Trans> : <Trans>No tables match.</Trans>}
-              </div>
+              <EmptyState size="sm" title={tables.length === 0 ? <Trans>This database has no tables.</Trans> : <Trans>No tables match.</Trans>} />
             ) : filteredTables.map((t) => (
               <div key={t.name} title={browseSql(t.name)} className="flex cursor-pointer items-center gap-2 border-t border-border px-3 py-1.5" onClick={() => setSql(browseSql(t.name))}>
                 <I.Braces size={11} className="text-muted-foreground" />
@@ -301,7 +299,7 @@ function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
           <span className="font-mono text-[11px] text-muted-foreground">{migs.length}</span>
         </div>
         {migs.length === 0 && (
-          <div className="px-3 py-4 text-xs text-muted-foreground"><Trans>No migrations applied yet.</Trans></div>
+          <EmptyState size="sm" title={<Trans>No migrations applied yet.</Trans>} />
         )}
         {migs.map((m) => (
           <div

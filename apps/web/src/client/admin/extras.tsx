@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { NAV_ITEMS, NAV_SETTINGS, type CollectionListItem, type CollectionSchema, type Post, type SchemaField } from "./config";
-import { Badge, Button, IconButton, JsonBlock, navLabel } from "./ui";
+import { Badge, Button, EmptyState, IconButton, JsonBlock, navLabel } from "./ui";
 import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
@@ -438,11 +438,12 @@ export function EmptyItems({ onCreate, slug }: { onCreate: () => void; slug?: st
   const { t } = useLingui();
   const tableName = slug ? `c_${slug}` : t`this collection`;
   return (
-    <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
-      <div className="grid size-10 place-items-center rounded-xl bg-muted text-primary"><I.Inbox size={20} /></div>
-      <h4 className="m-0 text-[15px] font-semibold"><Trans>No items yet</Trans></h4>
-      <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground"><Trans>Create the first row in <span className="font-mono">{tableName}</span> via the API or use the New row button.</Trans></p>
-      <Button variant="primary" size="sm" icon={I.Plus} onClick={onCreate}><Trans>New row</Trans></Button>
-    </div>
+    <EmptyState
+      bare
+      icon={I.Inbox}
+      title={<Trans>No items yet</Trans>}
+      description={<Trans>Create the first row in <span className="font-mono">{tableName}</span> via the API or use the New row button.</Trans>}
+      action={<Button variant="primary" size="sm" icon={I.Plus} onClick={onCreate}><Trans>New row</Trans></Button>}
+    />
   );
 }

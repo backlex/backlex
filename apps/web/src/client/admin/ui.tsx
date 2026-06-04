@@ -17,6 +17,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { msg } from "@lingui/core/macro";
 import type { MessageDescriptor } from "@lingui/core";
+import { cn } from "@backlex/ui/lib/utils";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { NAV_ITEMS, NAV_SETTINGS, NAV_DEVELOPERS } from "./config";
 import { notificationsApi, tenantsApi, type ApiNotification, type ApiTenant } from "./api";
@@ -865,6 +866,64 @@ export function PageHeader({ title, slug, description, actions, badges }: PageHe
         )}
       </div>
       {actions && <div className="ml-auto flex flex-wrap items-center justify-end gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+export interface EmptyStateProps {
+  /** Optional leading glyph, e.g. `I.BarChart`. */
+  icon?: IconComponent;
+  title: ReactNode;
+  description?: ReactNode;
+  /** Optional CTA rendered under the copy, e.g. a `<Button>`. */
+  action?: ReactNode;
+  /**
+   * `lg` — full page area (the Insights look). `md` — side panels.
+   * `sm` — compact inline/sidebar placeholders (no card, no icon by default).
+   */
+  size?: "lg" | "md" | "sm";
+  /** Drop the card border/bg — for use inside a table cell or already-bordered parent. */
+  bare?: boolean;
+  className?: string;
+}
+
+/**
+ * Canonical empty / no-data state for the admin. Standardizes the icon size,
+ * heading weight, description size, and card chrome so every "nothing here yet"
+ * surface reads the same — modeled on the Insights "No insight panels yet" panel.
+ */
+export function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+  size = "lg",
+  bare = false,
+  className,
+}: EmptyStateProps) {
+  if (size === "sm") {
+    return (
+      <div className={cn("px-3 py-4 text-center text-[12.5px] text-muted-foreground", className)}>
+        {Icon && <Icon size={20} className="mx-auto mb-1.5 text-muted-foreground" />}
+        <div>{title}</div>
+        {description && <div className="mt-0.5">{description}</div>}
+        {action && <div className="mt-2">{action}</div>}
+      </div>
+    );
+  }
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center gap-3 text-center text-muted-foreground",
+        bare ? "py-8" : "overflow-hidden rounded-2xl border border-border bg-card",
+        !bare && (size === "lg" ? "p-12" : "p-9"),
+        className,
+      )}
+    >
+      {Icon && <Icon size={size === "lg" ? 28 : 22} className="text-muted-foreground" />}
+      <div className="text-sm font-medium text-foreground">{title}</div>
+      {description && <div className="max-w-[460px] text-[12.5px] leading-[1.5]">{description}</div>}
+      {action && <div className="mt-1">{action}</div>}
     </div>
   );
 }

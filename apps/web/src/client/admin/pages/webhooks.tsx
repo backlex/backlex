@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
-import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
+import { Badge, Button, EmptyState, IconButton, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
 import { api } from "@/lib/api";
 import { Input } from "@backlex/ui/components/input";
@@ -243,11 +243,12 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
             })}
             {hooks.length === 0 && (
               <TableRow><TableCell colSpan={6}>
-                <div className="flex flex-col items-center gap-3 py-8 text-center">
-                  <I.Webhook size={20} />
-                  <h4 className="m-0 text-[15px] font-semibold"><Trans>No webhooks yet</Trans></h4>
-                  <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground"><Trans>Pipe collection events to Slack, your API, or any HTTPS endpoint.</Trans></p>
-                </div>
+                <EmptyState
+                  bare
+                  icon={I.Webhook}
+                  title={<Trans>No webhooks yet</Trans>}
+                  description={<Trans>Pipe collection events to Slack, your API, or any HTTPS endpoint.</Trans>}
+                />
               </TableCell></TableRow>
             )}
           </TableBody>
@@ -285,11 +286,12 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
             ))}
             {deliveries.length === 0 && (
               <TableRow><TableCell colSpan={6}>
-                <div className="flex flex-col items-center gap-3 py-8 text-center">
-                  <I.Activity size={20} />
-                  <h4 className="m-0 text-[15px] font-semibold"><Trans>No deliveries yet</Trans></h4>
-                  <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground"><Trans>Outgoing webhook deliveries will show up here once a collection event fires.</Trans></p>
-                </div>
+                <EmptyState
+                  bare
+                  icon={I.Activity}
+                  title={<Trans>No deliveries yet</Trans>}
+                  description={<Trans>Outgoing webhook deliveries will show up here once a collection event fires.</Trans>}
+                />
               </TableCell></TableRow>
             )}
           </TableBody>

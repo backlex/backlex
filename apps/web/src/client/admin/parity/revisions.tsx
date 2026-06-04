@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
-import { Badge, Button, PageHeader } from "../ui";
+import { Badge, Button, EmptyState, PageHeader } from "../ui";
 import { ConfirmDialog } from "../sheet";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Skeleton } from "@backlex/ui/components/skeleton";
@@ -218,7 +218,7 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
               </div>
             )}
             {!itemsLoading && items.length === 0 && (
-              <div className="px-3 py-4 text-xs text-muted-foreground"><Trans>No items in this collection yet.</Trans></div>
+              <EmptyState size="sm" title={<Trans>No items in this collection yet.</Trans>} />
             )}
             {items.map((it) => (
               <div
@@ -246,7 +246,7 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
               </div>
             )}
             {!revsLoading && entries.length === 0 && (
-              <div className="px-3 py-4 text-xs text-muted-foreground">{activeId ? <Trans>No revisions yet for this item.</Trans> : <Trans>Select an item to see its history.</Trans>}</div>
+              <EmptyState size="sm" title={activeId ? <Trans>No revisions yet for this item.</Trans> : <Trans>Select an item to see its history.</Trans>} />
             )}
             {!revsLoading && entries.length === 1 && entries[0].kind === "live" && (
               <div className="border-t border-border px-3 py-2.5 text-[11.5px] text-muted-foreground"><Trans>Only the current state exists — no edits recorded yet.</Trans></div>
@@ -279,9 +279,12 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
                 ))}
               </div>
             ) : (
-              <div className="p-9 text-center text-[13px] text-muted-foreground">
-                <Trans>Pick a revision from the timeline to inspect, diff, or revert.</Trans>
-              </div>
+              <EmptyState
+                bare
+                icon={I.History}
+                title={<Trans>No revision selected</Trans>}
+                description={<Trans>Pick a revision from the timeline to inspect, diff, or revert.</Trans>}
+              />
             )
           ) : (
           <>

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
-import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
+import { Badge, Button, EmptyState, IconButton, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
 import { ConfirmDialog } from "../sheet";
 import { api } from "@/lib/api";
@@ -216,7 +216,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
       <div className="grid grid-cols-[300px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
         <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
           {funcs.length === 0 && (
-            <div className="px-3 py-4 text-xs text-muted-foreground"><Trans>No functions yet — click + New function.</Trans></div>
+            <EmptyState size="sm" title={<Trans>No functions yet — click + New function.</Trans>} />
           )}
           {funcs.map((f) => (
             <div
@@ -236,9 +236,12 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
 
         <div className="flex flex-col gap-3">
           {!active ? (
-            <div className="overflow-hidden rounded-2xl border border-border bg-card p-9 text-center text-[13px] text-muted-foreground">
-              <Trans>No function selected. Click <strong>+ New function</strong> to create one.</Trans>
-            </div>
+            <EmptyState
+              size="md"
+              icon={I.Function}
+              title={<Trans>No function selected</Trans>}
+              description={<Trans>Click <strong>+ New function</strong> to create one.</Trans>}
+            />
           ) : (
           <>
           {renameDraft !== null ? (

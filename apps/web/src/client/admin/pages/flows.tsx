@@ -2,7 +2,7 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent } from "../icons";
-import { Badge, Button, PageHeader, Switch } from "../ui";
+import { Badge, Button, EmptyState, PageHeader, Switch } from "../ui";
 import { FlowBuilder } from "../flow-builder";
 import { compileGraph, decompileGraph, FlowCompileError, type Graph } from "../flow-graph";
 import { api } from "@/lib/api";
@@ -150,6 +150,9 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
 
       <div className="grid grid-cols-[320px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
         <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          {flows.length === 0 && (
+            <EmptyState size="sm" title={<Trans>No flows yet — click + New flow.</Trans>} />
+          )}
           {flows.map((f) => (
             <div
               key={f.id}
@@ -168,9 +171,12 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
 
         <div className="flex flex-col gap-4.5 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
           {!flow ? (
-            <div className="p-9 text-center text-[13px] text-muted-foreground">
-              <Trans>No flow selected. Click <strong>+ New flow</strong> to create your first one.</Trans>
-            </div>
+            <EmptyState
+              bare
+              icon={I.Bolt}
+              title={<Trans>No flow selected</Trans>}
+              description={<Trans>Click <strong>+ New flow</strong> to create your first one.</Trans>}
+            />
           ) : (
           <>
           <div className="flex flex-wrap items-center gap-2.5">

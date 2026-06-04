@@ -1,3 +1,4 @@
+import { useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
 /**
@@ -28,14 +29,22 @@ export function useUrlStateJson<T>(
 ): [T, (next: T) => void] {
   const [params, setParams] = useSearchParams();
   const raw = params.get(key);
-  let value: T = defaultValue;
-  if (raw) {
+  // Keep a stable default reference across renders so the memo below can
+  // fall back to the same object identity when the param is absent.
+  const defaultRef = useRef(defaultValue);
+  // Memoize the parse on the raw URL string. Without this, every render
+  // produces a fresh `JSON.parse` (or fresh `[]` default) reference, which
+  // turns any effect/queryKey depending on the returned value into an
+  // infinite refetch loop (see the items effect in admin/app.tsx).
+  const value = useMemo<T>(() => {
+    if (!raw) return defaultRef.current;
     try {
-      value = JSON.parse(raw) as T;
+      return JSON.parse(raw) as T;
     } catch {
       /* malformed → default */
+      return defaultRef.current;
     }
-  }
+  }, [raw]);
   const set = (next: T) => {
     const np = new URLSearchParams(params);
     const isEmpty =

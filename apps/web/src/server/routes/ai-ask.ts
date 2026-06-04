@@ -87,8 +87,13 @@ const buildPlanSystem = (): string => {
     "allowed tools, still pick the closest read tool and explain the gap " +
     "in `rationale`.\n\nAllowed tools:\n" +
     catalog +
-    "\n\nDirectus filter operators: _eq, _neq, _in, _nin, _lt, _gt, _lte, " +
-    "_gte, _contains, _starts_with, _ends_with, _and, _or, _not. Variables: " +
+    "\n\nFilter shape: a filter is `{ fieldName: { _op: value } }`. " +
+    "Field comparison operators (underscore-prefixed): _eq, _neq, _in, " +
+    "_nin, _lt, _gt, _lte, _gte, _null, _contains, _starts_with, _ends_with. " +
+    "Logical combinators are DOLLAR-prefixed and take an array (or, for " +
+    "$not, a single condition): $and, $or, $not — e.g. " +
+    '{ "$and": [{ "status": { "_eq": "active" } }, { "age": { "_gte": 18 } }] }. ' +
+    "Do NOT write _and/_or/_not — those are rejected. Variables: " +
     "$user.id, $user.email, $user.roles, $tenant.id, $now."
   );
 };

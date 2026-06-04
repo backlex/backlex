@@ -18,7 +18,7 @@ compatibility_flags = ["nodejs_compat"]
 "ldapts" = "./src/server/shims/ldapts-shim.ts"
 
 [vars]
-APP_URL = "https://workeros-api.kinyasfurkan.workers.dev"
+APP_URL = "https://backlex-admin.kinyasfurkan.workers.dev"
 # Public r2.dev origin for the `workeros-files` R2 bucket. Lets the storage
 # route ask Cloudflare Image Resizing to transform public files at the edge
 # (no bytes through the Worker isolate). Only used when the row's ACL is

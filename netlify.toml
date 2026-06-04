@@ -18,7 +18,7 @@
 # this block is only for non-sensitive routing config.
 [context.production.environment]
   APP_URL = "https://workeros.netlify.app"
-  EXTRA_TRUSTED_ORIGINS = "https://workeros.vercel.app,https://workeros-api.kinyasfurkan.workers.dev"
+  EXTRA_TRUSTED_ORIGINS = "https://workeros.vercel.app,https://backlex-admin.kinyasfurkan.workers.dev"
 
 # API surface — Hono app served by a Node 22 serverless function.
 # Edge Functions were dropped because Netlify's Deno edge bundler can't

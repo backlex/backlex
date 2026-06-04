@@ -109,7 +109,7 @@ Workers users still get a sandbox — sync only.
 ### Worker template artifact
 
 `.github/workflows/publish-worker-template.yml` packages the same
-`apps/web` CF build that ships to `workeros-api.kinyasfurkan.workers.dev`
+`apps/web` CF build that ships to `backlex-admin.kinyasfurkan.workers.dev`
 into a downloadable tarball, so a downstream provisioner (the private
 `backlex-cloud` repo) can fetch a pre-built bundle and `wrangler deploy`
 it into a fresh customer account — D1 + R2 + Worker in one shot — without

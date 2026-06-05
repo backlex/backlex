@@ -1,9 +1,15 @@
-import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { eq, and, desc, inArray } from "drizzle-orm";
 import { AppError } from "@backlex/core";
+import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import type { AppBindings } from "../app";
+import { errorResponses, OkSchema, SECURITY } from "../lib/openapi";
 import { requireUser } from "../middleware/session";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import {
+  invalidateTenantMembership,
+  invalidateTenantPermissions,
+  invalidateTenantRoles,
+  invalidateUserRoles,
+} from "../services/permissions-cache";
 import {
   assertTenantMember,
   requireAdminMw,
@@ -17,8 +23,8 @@ import {
   ROLES_TAG,
   RoleInput,
   RoleRowSchema,
-  SYSTEM_ROLE_NAMES,
   SessionRow,
+  SYSTEM_ROLE_NAMES,
   USERS_TAG,
   UserAttachRoleInput,
   UserInviteInput,
@@ -26,11 +32,6 @@ import {
   UserUpdateInput,
 } from "../services/roles/schemas";
 import { tableFor } from "../services/roles/tables";
-import {
-  invalidateTenantPermissions,
-  invalidateTenantRoles,
-  invalidateUserRoles,
-} from "../services/permissions-cache";
 
 export const rolesRoutes = new OpenAPIHono<AppBindings>()
   .openapi(
@@ -885,6 +886,7 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
           ),
         );
       invalidateUserRoles(tenantId, id);
+      invalidateTenantMembership(tenantId);
       return c.json({ ok: true });
     },
   );

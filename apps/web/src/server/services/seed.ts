@@ -1,9 +1,10 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { type Action, type Condition, SYSTEM_ROLES } from "@backlex/core";
 import type { PgDb } from "@backlex/db/pg";
-import type { SqliteDb } from "@backlex/db/sqlite";
 import * as pg from "@backlex/db/pg";
+import type { SqliteDb } from "@backlex/db/sqlite";
 import * as sqlite from "@backlex/db/sqlite";
-import { SYSTEM_ROLES, type Action, type Condition } from "@backlex/core";
+import { and, eq, isNull } from "drizzle-orm";
+import { invalidateTenantMembership } from "./permissions-cache";
 
 export interface DbCtx {
   db: PgDb | SqliteDb;
@@ -92,6 +93,7 @@ export const ensureTenantMembership = async (
       .update(t.tenantMembers)
       .set({ userId, status: "active", joinedAt: new Date() })
       .where(eq(t.tenantMembers.id, existing[0].id));
+    invalidateTenantMembership(tenantId);
     return;
   }
   await (ctx.db as any).insert(t.tenantMembers).values({
@@ -103,6 +105,7 @@ export const ensureTenantMembership = async (
     status: "active",
     joinedAt: new Date(),
   });
+  invalidateTenantMembership(tenantId);
 };
 
 export const ensureSystemRoles = async (

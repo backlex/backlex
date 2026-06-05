@@ -15,8 +15,7 @@
  * either configure SAML or run the app on Bun / a Node host.
  */
 import type { LdapAdapter, SamlAdapter } from "@backlex/core/adapters";
-import { samlifySamlAdapter } from "../adapters/saml.samlify";
-import { ldaptsLdapAdapter, type LdapSpec } from "../adapters/ldap.ldapts";
+import { type LdapSpec, ldaptsLdapAdapter } from "../adapters/ldap.ldapts";
 import { isEdgeRuntime, isStatelessEdge } from "./runtime";
 
 /**
@@ -25,14 +24,20 @@ import { isEdgeRuntime, isStatelessEdge } from "./runtime";
  * `crypto` module surface that those runtimes don't fully provide. Callers
  * should surface that as 503 "SAML is not available on this runtime —
  * deploy to Bun or Cloudflare Workers instead".
+ *
+ * Async because the samlify adapter (samlify + its @peculiar/asn1 + node-rsa +
+ * xml-crypto graph — a large slice of the bundle) is **dynamically imported**
+ * here so it stays out of the worker's cold-start eval path. Only a request
+ * that actually resolves a SAML provider pays the load.
  */
-export const buildSamlAdapter = (): SamlAdapter | undefined => {
+export const buildSamlAdapter = async (): Promise<SamlAdapter | undefined> => {
   if (isStatelessEdge()) {
     console.warn(
       "[saml] not available on Vercel Edge / Netlify Edge — deploy to Bun or Cloudflare Workers instead",
     );
     return undefined;
   }
+  const { samlifySamlAdapter } = await import("../adapters/saml.samlify");
   return samlifySamlAdapter();
 };
 

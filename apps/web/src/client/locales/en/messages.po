@@ -1313,6 +1313,10 @@ msgstr "Auto-translate"
 msgid "Automated lint over schema, permissions, and configuration. Runs on demand against live workspace state."
 msgstr "Automated lint over schema, permissions, and configuration. Runs on demand against live workspace state."
 
+#: src/client/admin/ui.tsx
+msgid "Automation"
+msgstr "Automation"
+
 #: src/client/admin/account-page.tsx
 msgid "Avatar"
 msgstr "Avatar"
@@ -2289,6 +2293,7 @@ msgid "Dark"
 msgstr "Dark"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/ui.tsx
 #: src/client/pages/graphql.tsx
 msgid "Data"
 msgstr "Data"
@@ -5201,6 +5206,10 @@ msgstr "OAuth scope mapping → backlex roles"
 #: src/client/admin/pages/ask-ai.tsx
 msgid "OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a separate epic."
 msgstr "OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a separate epic."
+
+#: src/client/admin/ui.tsx
+msgid "Observability"
+msgstr "Observability"
 
 #: src/client/admin/item-views.tsx
 msgid "October"
@@ -8588,8 +8597,8 @@ msgid "Working…"
 msgstr "Working…"
 
 #: src/client/admin/ui.tsx
-msgid "Workspace"
-msgstr "Workspace"
+#~ msgid "Workspace"
+#~ msgstr "Workspace"
 
 #. placeholder {0}: res.data.slug
 #: src/client/admin/ui.tsx

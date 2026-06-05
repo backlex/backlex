@@ -19,7 +19,7 @@ import { msg } from "@lingui/core/macro";
 import type { MessageDescriptor } from "@lingui/core";
 import { cn } from "@backlex/ui/lib/utils";
 import { I, type IconComponent, type IconKey } from "./icons";
-import { NAV_ITEMS, NAV_SETTINGS, NAV_DEVELOPERS } from "./config";
+import { NAV_PRIMARY, NAV_DATA, NAV_AUTOMATION, NAV_OBSERVABILITY, NAV_SETTINGS, NAV_DEVELOPERS } from "./config";
 import { notificationsApi, tenantsApi, type ApiNotification, type ApiTenant } from "./api";
 import { useNotifications, useNotificationsUnread, queryKeys } from "./queries";
 import { useWorkspaceBranding } from "@/lib/branding";
@@ -347,7 +347,6 @@ export const navLabel = (id: string): MessageDescriptor =>
   NAV_LABELS[id] ?? { id };
 
 export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }: SidebarProps) {
-  const items = NAV_ITEMS;
   const settings = NAV_SETTINGS;
   const developers = NAV_DEVELOPERS;
   const { t, i18n } = useLingui();
@@ -475,12 +474,15 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
 
       <SidebarContent className="group-data-[collapsible=icon]:overflow-y-auto!">
         {[
-          { key: "workspace", label: <Trans>Workspace</Trans>, entries: items },
+          { key: "primary", label: null, entries: NAV_PRIMARY },
+          { key: "data", label: <Trans>Data</Trans>, entries: NAV_DATA },
+          { key: "automation", label: <Trans>Automation</Trans>, entries: NAV_AUTOMATION },
+          { key: "observability", label: <Trans>Observability</Trans>, entries: NAV_OBSERVABILITY },
           { key: "developers", label: <Trans>Developers</Trans>, entries: developers },
           { key: "admin", label: <Trans>Admin</Trans>, entries: settings },
         ].map((group) => (
           <SidebarGroup key={group.key}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            {group.label && <SidebarGroupLabel>{group.label}</SidebarGroupLabel>}
             <SidebarMenu>
               {group.entries.map((it) => {
                 const IconComp = (I as Record<string, IconComponent>)[it.icon as IconKey];

@@ -89,24 +89,53 @@ export type AdapterId = "bun" | "workers" | "vercel";
 // Nav ids double as URL slugs — keep them human-readable (not "api" or
 // "email") because they're rendered into the address bar by AdminApp's
 // URL-driven nav.
-export const NAV_ITEMS: NavItem[] = [
+//
+// The workspace nav is split into themed sub-groups so the sidebar reads as a
+// few short clusters instead of one ~17-item scroll. The sidebar (`ui.tsx`)
+// renders each array under its own header; NAV_PRIMARY is headerless. The flat
+// NAV_ITEMS union below is what the URL router (`app.tsx`) and command palette
+// (`extras.tsx`) consume — keep it as the concatenation, in sidebar order.
+
+// Primary entry points — rendered at the top with no group header.
+export const NAV_PRIMARY: NavItem[] = [
   { id: "overview", icon: "Activity" },
   { id: "ask-ai", icon: "Sparkles" },
+];
+
+// Data — the collection model and the stores behind it.
+export const NAV_DATA: NavItem[] = [
   { id: "collections", icon: "Database" },
   { id: "access", icon: "Shield" },
   { id: "database", icon: "Server" },
   { id: "storage", icon: "Folder" },
+  { id: "schema-graph", icon: "Network" },
+];
+
+// Automation — logic that runs on top of the data.
+export const NAV_AUTOMATION: NavItem[] = [
   { id: "flows", icon: "Bolt" },
   { id: "functions", icon: "Function" },
   { id: "webhooks", icon: "Webhook" },
   { id: "integrations", icon: "Plug" },
   { id: "realtime", icon: "Zap" },
+];
+
+// Observability — what happened, health, and history.
+export const NAV_OBSERVABILITY: NavItem[] = [
   { id: "logs", icon: "ScrollText" },
   { id: "advisor", icon: "ShieldAlert" },
-  { id: "schema-graph", icon: "Network" },
   { id: "insights", icon: "BarChart" },
   { id: "revisions", icon: "History" },
   { id: "translations", icon: "Globe" },
+];
+
+// Flat union of every workspace-level nav id, in sidebar order. Consumed by the
+// URL router and command palette; the sidebar renders the sub-groups directly.
+export const NAV_ITEMS: NavItem[] = [
+  ...NAV_PRIMARY,
+  ...NAV_DATA,
+  ...NAV_AUTOMATION,
+  ...NAV_OBSERVABILITY,
 ];
 
 // Developer-facing tools: REST explorer, GraphQL playground, OpenAPI export.

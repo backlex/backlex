@@ -1,15 +1,16 @@
-import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { setCookie } from "hono/cookie";
-import { and, desc, eq } from "drizzle-orm";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
+import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { and, desc, eq } from "drizzle-orm";
+import { setCookie } from "hono/cookie";
 import type { AppBindings } from "../app";
+import { errorResponses, OkSchema, SECURITY } from "../lib/openapi";
 import { requireUser } from "../middleware/session";
 import { TENANT_COOKIE } from "../middleware/tenant";
-import { assignRoleByName, ensureSystemRoles } from "../services/seed";
 import { findInviteByToken } from "../services/invites";
-import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { invalidateTenantMembership } from "../services/permissions-cache";
+import { assignRoleByName, ensureSystemRoles } from "../services/seed";
 
 const tablesFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg"
@@ -206,6 +207,8 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>()
       const dbCtx = { db: ctx.db, dialect: ctx.dialect };
       await ensureSystemRoles(dbCtx, id);
       await assignRoleByName(dbCtx, id, auth.userId!, SYSTEM_ROLES.admin);
+      // After both the membership row and the RBAC role binding are written.
+      invalidateTenantMembership(id);
       return c.json({ data: { id, slug, name: body.name } }, 201);
     },
   )
@@ -448,6 +451,7 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>()
       await (ctx.db as any)
         .delete(t.members)
         .where(and(eq(t.members.tenantId, tenantId), eq(t.members.id, memberId)));
+      invalidateTenantMembership(tenantId);
       return c.json({ ok: true });
     },
   )
@@ -559,6 +563,8 @@ export const tenantsRoutes = new OpenAPIHono<AppBindings>()
           ? SYSTEM_ROLES.admin
           : SYSTEM_ROLES.authenticated;
       await assignRoleByName(dbCtx, inv.tenantId, auth.userId!, rbacRole);
+      // After both the membership row update and the RBAC role binding.
+      invalidateTenantMembership(inv.tenantId);
       return c.json({ data: { tenantId: inv.tenantId } });
     },
   );

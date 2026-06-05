@@ -1,8 +1,9 @@
-import { and, eq, isNotNull } from "drizzle-orm";
 import { SYSTEM_ROLES } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
-import { assignRoleByName, ensureSystemRoles, type DbCtx } from "./seed";
+import { and, eq, isNotNull } from "drizzle-orm";
+import { invalidateTenantMembership } from "./permissions-cache";
+import { assignRoleByName, type DbCtx, ensureSystemRoles } from "./seed";
 
 /**
  * Shared workspace-invite logic, used by both the tenants route (`POST /accept`,
@@ -116,5 +117,7 @@ export const acceptInviteForUser = async (
       ? SYSTEM_ROLES.admin
       : SYSTEM_ROLES.authenticated;
   await assignRoleByName(ctx, inv.tenantId, userId, rbacRole);
+  // Membership row + RBAC role both just changed for this tenant.
+  invalidateTenantMembership(inv.tenantId);
   return inv.tenantId;
 };

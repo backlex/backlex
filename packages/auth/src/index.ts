@@ -1,16 +1,15 @@
-import { betterAuth } from "better-auth";
-import { APIError } from "better-auth/api";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { bearer } from "better-auth/plugins/bearer";
-import { magicLink } from "better-auth/plugins/magic-link";
-import { emailOTP } from "better-auth/plugins/email-otp";
-import { anonymous } from "better-auth/plugins/anonymous";
-import { passkey } from "@better-auth/passkey";
 import type { EmailAdapter } from "@backlex/core";
-import * as pgSchema from "@backlex/db/pg/schema";
-import * as sqliteSchema from "@backlex/db/sqlite/schema";
 import type { PgDb } from "@backlex/db/pg";
+import * as pgSchema from "@backlex/db/pg/schema";
 import type { SqliteDb } from "@backlex/db/sqlite";
+import * as sqliteSchema from "@backlex/db/sqlite/schema";
+import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { APIError } from "better-auth/api";
+import { anonymous } from "better-auth/plugins/anonymous";
+import { bearer } from "better-auth/plugins/bearer";
+import { emailOTP } from "better-auth/plugins/email-otp";
+import { magicLink } from "better-auth/plugins/magic-link";
 
 export interface AuthHooks {
   /** Runs before a user row is created (any sign-up path: email/password,
@@ -60,7 +59,7 @@ const authSchemaFor = (provider: "pg" | "sqlite") => {
   };
 };
 
-const buildPlugins = (config: AuthConfig) => {
+const buildPlugins = async (config: AuthConfig) => {
   const out: ReturnType<typeof magicLink>[] = [];
   // Always on: lets native/mobile admin clients authenticate with
   // `Authorization: Bearer <session-token>` instead of a cookie. The session
@@ -98,6 +97,10 @@ const buildPlugins = (config: AuthConfig) => {
     out.push(anonymous() as unknown as ReturnType<typeof magicLink>);
   }
   if (enabled.has("passkey")) {
+    // Dynamic import: @better-auth/passkey pulls @simplewebauthn (+ its crypto
+    // graph) — a chunk every cold isolate would otherwise eval even when
+    // passkeys are disabled. Loaded only when the `passkey` plugin is enabled.
+    const { passkey } = await import("@better-auth/passkey");
     out.push(
       passkey({
         rpName: "backlex",
@@ -113,12 +116,17 @@ const buildPlugins = (config: AuthConfig) => {
   return out;
 };
 
-export const createAuth = (
+export const createAuth = async (
   db: PgDb | SqliteDb,
   provider: "pg" | "sqlite",
   config: AuthConfig,
-) =>
-  betterAuth({
+) => {
+  // Awaited up front so the (conditionally dynamic-imported) passkey plugin is
+  // ready before the auth instance is constructed. createAuth is called once
+  // per isolate from the already-async buildContext, so this adds no per-
+  // request cost.
+  const plugins = await buildPlugins(config);
+  return betterAuth({
     baseURL: config.baseURL,
     secret: config.secret,
     trustedOrigins: config.trustedOrigins,
@@ -196,10 +204,11 @@ export const createAuth = (
           }
         : undefined,
     socialProviders: config.socialProviders,
-    plugins: buildPlugins(config),
+    plugins,
   });
+};
 
-export type Auth = ReturnType<typeof createAuth>;
+export type Auth = Awaited<ReturnType<typeof createAuth>>;
 
 export { createTenantAuth, type TenantAuth, type TenantAuthConfig } from "./tenant";
 export { withTenantScope } from "./tenant-adapter";

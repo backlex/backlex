@@ -10,7 +10,7 @@ import Base from "../layouts/Base.astro";
   <div class="relative max-w-[1240px] mx-auto px-8 max-md:px-5 flex flex-col items-center text-center gap-6">
 
     <span class="inline-block max-w-full text-center font-mono text-[11px] leading-relaxed text-muted-foreground uppercase tracking-[0.12em] border border-border rounded-full px-3 py-1.5 bg-muted">
-      <span class="inline-block align-middle w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>v0.7 · AI-native · MIT · Self-host · Workers · Vercel · Netlify
+      <span class="inline-block align-middle w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>AI-native · MIT · Self-host · Workers · Vercel · Netlify
     </span>
 
     <h1 class="font-semibold -tracking-[0.04em] leading-[1.02] text-[clamp(40px,6vw,72px)] max-w-[18ch]">
@@ -186,8 +186,8 @@ import Base from "../layouts/Base.astro";
     </div>
     <div class="grid grid-cols-4 max-[920px]:grid-cols-2 max-[480px]:grid-cols-1 gap-3.5">
       <div class="border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
-        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">B</span><h3 class="text-[17px] font-semibold">Bun</h3></div>
-        <p class="text-muted-foreground text-[13.5px]">Self-host on a VPS, Docker, or your laptop. Single long-running process.</p>
+        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">S</span><h3 class="text-[17px] font-semibold">Self-hosted</h3></div>
+        <p class="text-muted-foreground text-[13.5px]">Your own box — VPS, Docker, or laptop. A single long-running Bun process, shipped with <code class="font-mono text-[11.5px] bg-muted px-1 py-px rounded">docker run</code> or a systemd unit.</p>
         <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">sqlite / pg</dd>
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">fs / s3</dd>
@@ -207,9 +207,9 @@ import Base from "../layouts/Base.astro";
       </div>
       <div class="border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
         <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">V</span><h3 class="text-[17px] font-semibold">Vercel</h3></div>
-        <p class="text-muted-foreground text-[13.5px]">Functions on Node 22. Neon HTTP for DB. Built via Build Output API.</p>
+        <p class="text-muted-foreground text-[13.5px]">Functions on Node 22. Postgres for DB. Built via Build Output API.</p>
         <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">pg (neon http)</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">pg</dd>
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">s3 (required)</dd>
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">sse (capped)</dd>
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">quickjs</dd>
@@ -217,9 +217,9 @@ import Base from "../layouts/Base.astro";
       </div>
       <div class="border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
         <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">N</span><h3 class="text-[17px] font-semibold">Netlify</h3></div>
-        <p class="text-muted-foreground text-[13.5px]">Functions on Node 22. Scheduled functions tick cron. Same Neon HTTP.</p>
+        <p class="text-muted-foreground text-[13.5px]">Functions on Node 22. Scheduled functions tick cron. Same Postgres.</p>
         <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">pg (neon http)</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">pg</dd>
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">s3 (required)</dd>
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">sse (capped)</dd>
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">quickjs</dd>
@@ -782,19 +782,26 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
         <div class="px-5 pt-5 pb-3 flex items-center gap-2">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
           <h3 class="text-[15px] font-semibold">MCP tool catalog</h3>
-          <span class="ml-auto font-mono text-[10.5px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">32 tools</span>
+          <span class="ml-auto font-mono text-[10.5px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">74 tools</span>
         </div>
         <p class="px-5 text-[12.5px] text-muted-foreground leading-snug">Every admin capability is also an MCP tool — grouped, type-validated, and DSL-filtered before it runs.</p>
         <div class="px-5 py-4 mt-1 grid grid-cols-2 gap-y-1.5 gap-x-3 text-[12px] border-t border-border/60 mt-4">
           <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>schema <span class="font-mono text-muted-foreground ml-auto">5</span></div>
           <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>collections <span class="font-mono text-muted-foreground ml-auto">7</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>storage <span class="font-mono text-muted-foreground ml-auto">5</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>vector <span class="font-mono text-muted-foreground ml-auto">2</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>graphql <span class="font-mono text-muted-foreground ml-auto">1</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>permissions <span class="font-mono text-muted-foreground ml-auto">7</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>storage &amp; files <span class="font-mono text-muted-foreground ml-auto">8</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>permissions &amp; roles <span class="font-mono text-muted-foreground ml-auto">7</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>flows &amp; webhooks <span class="font-mono text-muted-foreground ml-auto">7</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>users <span class="font-mono text-muted-foreground ml-auto">7</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>comments &amp; notifs <span class="font-mono text-muted-foreground ml-auto">6</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>shared links <span class="font-mono text-muted-foreground ml-auto">3</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>saml sso <span class="font-mono text-muted-foreground ml-auto">3</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>settings &amp; tenants <span class="font-mono text-muted-foreground ml-auto">4</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>activity &amp; revisions <span class="font-mono text-muted-foreground ml-auto">3</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>vector &amp; embedding <span class="font-mono text-muted-foreground ml-auto">3</span></div>
           <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>api keys <span class="font-mono text-muted-foreground ml-auto">3</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>flows <span class="font-mono text-muted-foreground ml-auto">7</span></div>
           <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>functions <span class="font-mono text-muted-foreground ml-auto">2</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>db <span class="font-mono text-muted-foreground ml-auto">2</span></div>
+          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>graphql <span class="font-mono text-muted-foreground ml-auto">1</span></div>
           <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full" style="background: oklch(0.7 0.18 130);"></span>ai-native <span class="font-mono text-muted-foreground ml-auto">3</span></div>
         </div>
         <div class="px-5 py-3 mt-auto border-t border-border bg-muted/40 flex items-center gap-2 text-[11px] text-muted-foreground font-mono flex-wrap">
@@ -876,7 +883,7 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
       </a>
       <a href="/docs#mcp" class="inline-flex items-center gap-2 h-10 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13.5px] font-medium no-underline transition-colors whitespace-nowrap">MCP spec</a>
       <span class="text-[12px] text-muted-foreground ml-1">
-        Built on <code class="font-mono text-foreground">@modelcontextprotocol/sdk</code> · model picker per workspace · falls back to <code class="font-mono text-foreground">ANTHROPIC_API_KEY</code>
+        Hand-rolled JSON-RPC, no SDK bloat · model picker per workspace · falls back to <code class="font-mono text-foreground">ANTHROPIC_API_KEY</code>
       </span>
     </div>
   </div>
@@ -921,7 +928,7 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
       </div>
       <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 border-b border-border items-center">
         <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">admin</div>
-        <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">Vite</span> + <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">React 18</span> + <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">shadcn/ui</span> + <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">Tailwind v4</span>. Lazy-loaded per route. Lingui-translated.</div>
+        <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">Vite</span> + <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">React 19</span> + <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">shadcn/ui</span> + <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">Tailwind v4</span>. Lazy-loaded per route. Lingui-translated.</div>
       </div>
       <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 items-center">
         <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">sdk + cli</div>
@@ -1017,7 +1024,7 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
           </tr>
           <tr>
             <td class="px-5 py-3 font-medium">Vendor-managed cloud option</td>
-            <td class="px-5 py-3 text-muted-foreground">self-host only</td>
+            <td class="px-5 py-3 text-[oklch(0.55_0.14_80)]">beta</td>
             <td class="px-5 py-3 text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
             <td class="px-5 py-3 text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
             <td class="px-5 py-3 text-muted-foreground">—</td>
@@ -1026,7 +1033,7 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
       </table>
       </div>
     </div>
-    <p class="text-muted-foreground text-[12.5px] mt-3.5">No vendor-managed cloud is on purpose — every team we've talked to wanted to own the DB credentials themselves. If you'd like one, fork and run it.</p>
+    <p class="text-muted-foreground text-[12.5px] mt-3.5">Self-host stays the default — most teams want to own their own DB credentials. <strong class="text-foreground">backlex Cloud</strong> (managed, private beta) runs the same MIT codebase on Cloudflare for teams who'd rather not, with one-click export so you can leave any time.</p>
   </div>
 </section>
 

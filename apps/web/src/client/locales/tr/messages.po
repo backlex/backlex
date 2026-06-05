@@ -1313,6 +1313,10 @@ msgstr "Otomatik çeviri"
 msgid "Automated lint over schema, permissions, and configuration. Runs on demand against live workspace state."
 msgstr "Şema, izinler ve yapılandırma üzerinde otomatik lint. İstek üzerine canlı çalışma alanı durumuna karşı çalışır."
 
+#: src/client/admin/ui.tsx
+msgid "Automation"
+msgstr "Otomasyon"
+
 #: src/client/admin/account-page.tsx
 msgid "Avatar"
 msgstr "Avatar"
@@ -2289,6 +2293,7 @@ msgid "Dark"
 msgstr "Koyu"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/ui.tsx
 #: src/client/pages/graphql.tsx
 msgid "Data"
 msgstr "Veri"
@@ -5201,6 +5206,10 @@ msgstr "OAuth kapsam eşlemesi → backlex rolleri"
 #: src/client/admin/pages/ask-ai.tsx
 msgid "OAuth-flow for hosted Claude (no paste-the-key step) is tracked as a separate epic."
 msgstr "Barındırılan Claude için OAuth akışı (anahtar yapıştırma adımı olmadan) ayrı bir epik olarak takip ediliyor."
+
+#: src/client/admin/ui.tsx
+msgid "Observability"
+msgstr "Gözlemlenebilirlik"
 
 #: src/client/admin/item-views.tsx
 msgid "October"
@@ -8600,8 +8609,8 @@ msgid "Working…"
 msgstr "İşleniyor…"
 
 #: src/client/admin/ui.tsx
-msgid "Workspace"
-msgstr "Çalışma alanı"
+#~ msgid "Workspace"
+#~ msgstr "Çalışma alanı"
 
 #. placeholder {0}: res.data.slug
 #: src/client/admin/ui.tsx

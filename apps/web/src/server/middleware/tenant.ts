@@ -1,9 +1,15 @@
-import type { MiddlewareHandler } from "hono";
-import { deleteCookie, getCookie, setCookie } from "hono/cookie";
-import { and, eq, or } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
+import { and, eq, or } from "drizzle-orm";
+import type { MiddlewareHandler } from "hono";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type { AppBindings } from "../app";
+import {
+  getCachedMembership,
+  getCachedTenantRoleNames,
+  setCachedMembership,
+  setCachedTenantRoleNames,
+} from "../services/permissions-cache";
 import { ensureDefaultTenant } from "../services/seed";
 import { loadUnfilteredRoleNames } from "./session";
 
@@ -48,6 +54,13 @@ const loadTenantRoleNames = async (
   userId: string,
   restrictRoleId: string | null,
 ): Promise<string[]> => {
+  // Hot path: served from the per-isolate cache, invalidated on role grant/
+  // revoke (invalidateUserRoles), role-def change (invalidateTenantRoles), and
+  // membership change (invalidateTenantMembership). See services/permissions-cache.
+  // Copy on hit so a caller that mutates auth.roles can't corrupt the entry.
+  const cacheKey = { tenantId, userId, restrictRoleId };
+  const cached = getCachedTenantRoleNames(cacheKey);
+  if (cached) return [...cached];
   const t = tablesFor(dialect);
   const rows = (await (db as any)
     .select({ name: t.roles.name })
@@ -62,7 +75,9 @@ const loadTenantRoleNames = async (
           )
         : and(eq(t.userRoles.userId, userId), eq(t.roles.tenantId, tenantId)),
     )) as { name: string }[];
-  return rows.map((r) => r.name);
+  const names = rows.map((r) => r.name);
+  setCachedTenantRoleNames(cacheKey, names);
+  return names;
 };
 
 const tenantBySlugOrId = async (
@@ -88,13 +103,21 @@ const isMember = async (
   tenantId: string,
   userId: string,
 ): Promise<boolean> => {
+  // Existence-only check (status changes like suspend don't flip it), so it's
+  // safe to cache per isolate; invalidated on membership add/remove via
+  // invalidateTenantMembership.
+  const cacheKey = { tenantId, userId };
+  const cached = getCachedMembership(cacheKey);
+  if (cached !== undefined) return cached;
   const m = tablesFor(dialect).members;
   const rows = (await (db as any)
     .select({ id: m.id })
     .from(m)
     .where(and(eq(m.tenantId, tenantId), eq(m.userId, userId)))
     .limit(1)) as { id: string }[];
-  return rows.length > 0;
+  const result = rows.length > 0;
+  setCachedMembership(cacheKey, result);
+  return result;
 };
 
 /** Lightweight existence check for a tenant id. Used only by the cross-tenant

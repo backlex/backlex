@@ -4,20 +4,25 @@
  * exercises the cache transparently); these are the targeted unit tests for
  * the contract `services/permissions-cache.ts` exposes.
  */
-import { describe, test, expect, beforeEach } from "bun:test";
+import { beforeEach, describe, expect, test } from "bun:test";
 import {
   __cacheStats,
+  type CachedRoleRow,
+  type CachedStaticPermission,
+  getCachedMembership,
   getCachedRoles,
   getCachedStaticPermission,
+  getCachedTenantRoleNames,
   invalidateAllPermissions,
+  invalidateTenantMembership,
   invalidateTenantPermissions,
   invalidateTenantRoles,
   invalidateUserRoles,
+  setCachedMembership,
   setCachedRoles,
   setCachedStaticPermission,
+  setCachedTenantRoleNames,
   sortRoleIds,
-  type CachedRoleRow,
-  type CachedStaticPermission,
 } from "../src/server/services/permissions-cache";
 
 const mkRoles = (...names: string[]): CachedRoleRow[] =>
@@ -168,7 +173,7 @@ describe("invalidation", () => {
     expect(getCachedRoles(t2u1)).toBeDefined();
   });
 
-  test("invalidateAllPermissions empties both caches", () => {
+  test("invalidateAllPermissions empties every cache", () => {
     setCachedRoles(
       { plane: "platform", tenantId: "t1", userId: "u1", apiKeyRoleId: null },
       mkRoles("authenticated"),
@@ -177,12 +182,113 @@ describe("invalidation", () => {
       { tenantId: "t1", roleIds: "a", collection: "posts", action: "read" },
       mkPerm(),
     );
-    expect(__cacheStats().roles).toBe(1);
-    expect(__cacheStats().perms).toBe(1);
+    setCachedMembership({ tenantId: "t1", userId: "u1" }, true);
+    setCachedTenantRoleNames(
+      { tenantId: "t1", userId: "u1", restrictRoleId: null },
+      ["authenticated"],
+    );
+    expect(__cacheStats()).toEqual({
+      roles: 1,
+      perms: 1,
+      membership: 1,
+      tenantRoleNames: 1,
+    });
 
     invalidateAllPermissions();
 
-    expect(__cacheStats().roles).toBe(0);
-    expect(__cacheStats().perms).toBe(0);
+    expect(__cacheStats()).toEqual({
+      roles: 0,
+      perms: 0,
+      membership: 0,
+      tenantRoleNames: 0,
+    });
+  });
+});
+
+describe("tenantMiddleware caches (membership + tenant role names)", () => {
+  test("membership: set + get, caches false too, isolates by (tenant, user)", () => {
+    setCachedMembership({ tenantId: "t1", userId: "u1" }, true);
+    setCachedMembership({ tenantId: "t1", userId: "u2" }, false);
+    // A cached `false` is a hit, not a miss — non-members shouldn't re-query.
+    expect(getCachedMembership({ tenantId: "t1", userId: "u1" })).toBe(true);
+    expect(getCachedMembership({ tenantId: "t1", userId: "u2" })).toBe(false);
+    expect(getCachedMembership({ tenantId: "t2", userId: "u1" })).toBeUndefined();
+  });
+
+  test("tenant role names: set + get, isolates by user and restrictRoleId", () => {
+    const key = { tenantId: "t1", userId: "u1", restrictRoleId: null };
+    setCachedTenantRoleNames(key, ["admin", "authenticated"]);
+    expect(getCachedTenantRoleNames(key)).toEqual(["admin", "authenticated"]);
+    expect(
+      getCachedTenantRoleNames({ ...key, userId: "u2" }),
+    ).toBeUndefined();
+    expect(
+      getCachedTenantRoleNames({ ...key, restrictRoleId: "scoped" }),
+    ).toBeUndefined();
+  });
+
+  test("invalidateUserRoles drops that user's role names (role grant/revoke)", () => {
+    setCachedTenantRoleNames(
+      { tenantId: "t1", userId: "u1", restrictRoleId: null },
+      ["authenticated"],
+    );
+    setCachedTenantRoleNames(
+      { tenantId: "t1", userId: "u2", restrictRoleId: null },
+      ["authenticated"],
+    );
+    invalidateUserRoles("t1", "u1");
+    expect(
+      getCachedTenantRoleNames({ tenantId: "t1", userId: "u1", restrictRoleId: null }),
+    ).toBeUndefined();
+    expect(
+      getCachedTenantRoleNames({ tenantId: "t1", userId: "u2", restrictRoleId: null }),
+    ).toBeDefined();
+    // Membership is untouched by a pure role change.
+    setCachedMembership({ tenantId: "t1", userId: "u1" }, true);
+    invalidateUserRoles("t1", "u1");
+    expect(getCachedMembership({ tenantId: "t1", userId: "u1" })).toBe(true);
+  });
+
+  test("invalidateTenantMembership wipes membership + role names for the tenant only", () => {
+    setCachedMembership({ tenantId: "t1", userId: "u1" }, true);
+    setCachedMembership({ tenantId: "t2", userId: "u1" }, true);
+    setCachedTenantRoleNames(
+      { tenantId: "t1", userId: "u1", restrictRoleId: null },
+      ["admin"],
+    );
+    setCachedTenantRoleNames(
+      { tenantId: "t2", userId: "u1", restrictRoleId: null },
+      ["admin"],
+    );
+
+    invalidateTenantMembership("t1");
+
+    expect(getCachedMembership({ tenantId: "t1", userId: "u1" })).toBeUndefined();
+    expect(
+      getCachedTenantRoleNames({ tenantId: "t1", userId: "u1", restrictRoleId: null }),
+    ).toBeUndefined();
+    // t2 survives.
+    expect(getCachedMembership({ tenantId: "t2", userId: "u1" })).toBe(true);
+    expect(
+      getCachedTenantRoleNames({ tenantId: "t2", userId: "u1", restrictRoleId: null }),
+    ).toBeDefined();
+  });
+
+  test("invalidateTenantRoles wipes role names tenant-wide (role def change)", () => {
+    setCachedTenantRoleNames(
+      { tenantId: "t1", userId: "u1", restrictRoleId: null },
+      ["editor"],
+    );
+    setCachedTenantRoleNames(
+      { tenantId: "t1", userId: "u2", restrictRoleId: null },
+      ["editor"],
+    );
+    invalidateTenantRoles("t1");
+    expect(
+      getCachedTenantRoleNames({ tenantId: "t1", userId: "u1", restrictRoleId: null }),
+    ).toBeUndefined();
+    expect(
+      getCachedTenantRoleNames({ tenantId: "t1", userId: "u2", restrictRoleId: null }),
+    ).toBeUndefined();
   });
 });

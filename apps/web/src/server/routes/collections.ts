@@ -1,9 +1,4 @@
-import { Hono } from "hono";
-import { z } from "zod";
-import { and, eq, sql, type SQL } from "drizzle-orm";
 import { AppError, EMBEDDING_MODEL_NAMES, type EmbeddingModel } from "@backlex/core";
-import * as pg from "@backlex/db/pg";
-import * as sqlite from "@backlex/db/sqlite";
 import {
   applyCollection,
   assertIdent,
@@ -13,13 +8,23 @@ import {
   tableExists,
   validateFields,
 } from "@backlex/db";
+import * as pg from "@backlex/db/pg";
+import * as sqlite from "@backlex/db/sqlite";
+import { and, eq, type SQL, sql } from "drizzle-orm";
+import { Hono } from "hono";
+import { z } from "zod";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
-import { inspectTable, RESERVED_NAMES } from "../services/adopt";
-import { seedOwnerScopedPermissions } from "../services/seed";
-import { invalidateTenantPermissions } from "../services/permissions-cache";
 import { logActivity } from "../services/activity";
+import { inspectTable, RESERVED_NAMES } from "../services/adopt";
 import { cascadeSlugRename } from "../services/collection-rename";
+import {
+  getCachedCollections,
+  invalidateTenantCollections,
+  setCachedCollections,
+} from "../services/collections-cache";
+import { invalidateTenantPermissions } from "../services/permissions-cache";
+import { seedOwnerScopedPermissions } from "../services/seed";
 import { embedAndUpsertBatch, isVectorizable } from "../services/vectorize";
 
 const FieldSchema = z
@@ -175,6 +180,8 @@ export const collectionsRoutes = new Hono<AppBindings>()
     // `?include_archived=true` opts into the full set — used by the
     // "Archived" panel that exposes restore.
     const includeArchived = c.req.query("include_archived") === "true";
+    const cached = getCachedCollections({ tenantId, includeArchived });
+    if (cached) return c.json({ data: cached });
     const rows = await (db as any)
       .select()
       .from(t)
@@ -183,6 +190,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
           ? eq(t.tenantId, tenantId)
           : and(eq(t.tenantId, tenantId), eq(t.status, "active")),
       );
+    setCachedCollections({ tenantId, includeArchived }, rows);
     return c.json({ data: rows });
   })
   .get("/:slug", async (c) => {
@@ -225,6 +233,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       .update(t)
       .set({ status: "active", archivedAt: null })
       .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)));
+    invalidateTenantCollections(tenantId);
     if (existing[0].ownerScoped ?? existing[0].owner_scoped) {
       await seedOwnerScopedPermissions({ db, dialect }, tenantId, slug);
       invalidateTenantPermissions(tenantId);
@@ -499,6 +508,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       updatedAtColumn,
       ownerIdColumn,
     });
+    invalidateTenantCollections(tenantId);
     await applyCollection(db, dialect, {
       table: physicalTable,
       fields: body.fields,
@@ -644,6 +654,10 @@ export const collectionsRoutes = new Hono<AppBindings>()
       await seedOwnerScopedPermissions({ db, dialect }, tenantId, nextSlug);
       invalidateTenantPermissions(tenantId);
     }
+    // Invalidate after *all* metadata writes (the row update above plus any
+    // cascadeSlugRename) so a same-isolate read can't repopulate the cache
+    // mid-rename.
+    invalidateTenantCollections(tenantId);
     const updateResponse = { ok: true, slug: nextSlug, renamed: renameCounts };
     await logActivity(c, {
       action: "update",
@@ -691,6 +705,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       // would still say "allowed" for a slug that no longer exists.
       invalidateTenantPermissions(tenantId);
     }
+    invalidateTenantCollections(tenantId);
     await logActivity(c, {
       action: adopted ? "archive" : "delete",
       collection: "system_collections",

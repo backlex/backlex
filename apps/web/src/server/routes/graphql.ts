@@ -1,11 +1,19 @@
-import { Hono } from "hono";
-import { createYoga } from "graphql-yoga";
 import { AppError } from "@backlex/core";
+import { createYoga } from "graphql-yoga";
+import type { Context } from "hono";
 import type { AppBindings } from "../app";
-import { getSchema } from "../services/graphql";
 import { getRequestPermCache } from "../middleware/permission";
+import { getSchema } from "../services/graphql";
 
-export const graphqlRoutes = new Hono<AppBindings>().all("/", async (c) => {
+/**
+ * GraphQL request handler. app.ts mounts this via a **dynamic import** so the
+ * whole graphql-yoga + graphql + @graphql-tools dependency graph (a large slice
+ * of the worker bundle) stays OUT of the cold-start eval path — it loads only
+ * when `/api/graphql` is first hit, then the module is cached per isolate.
+ */
+export const handleGraphql = async (
+  c: Context<AppBindings>,
+): Promise<Response> => {
   const ctx = c.get("ctx");
   const auth = c.get("auth");
   if (!auth.tenantId) {
@@ -30,4 +38,4 @@ export const graphqlRoutes = new Hono<AppBindings>().all("/", async (c) => {
     status: res.status,
     headers: res.headers,
   });
-});
+};

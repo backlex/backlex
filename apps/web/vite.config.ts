@@ -1,10 +1,10 @@
-import { defineConfig, type Plugin } from "vite";
-import react from "@vitejs/plugin-react";
-import tailwind from "@tailwindcss/vite";
+import { fileURLToPath, URL } from "node:url";
+import * as babel from "@babel/core";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { lingui } from "@lingui/vite-plugin";
-import * as babel from "@babel/core";
-import { fileURLToPath, URL } from "node:url";
+import tailwind from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
+import { defineConfig, type Plugin } from "vite";
 
 /**
  * Runs the Lingui macro on EVERY client `.ts`/`.tsx` that imports it.
@@ -209,6 +209,52 @@ export default defineConfig({
             id.includes("/node_modules/@uiw/") ||
             id.includes("/node_modules/codemirror/") ||
             id.includes("/node_modules/@xyflow/")
+          ) {
+            return undefined;
+          }
+          // Worker: the GraphQL subsystem is reached only through the
+          // dynamically-imported `/api/graphql` handler. Leaving it unpinned
+          // (vs. the eager `vendor` chunk) lets Rollup keep it in its own lazy
+          // chunk, out of the cold-start eval path. Same rationale as the
+          // CodeMirror/xyflow client lazy routes above. Anything genuinely
+          // reached eagerly too stays eager — Rollup decides by import graph.
+          if (
+            id.includes("/node_modules/graphql/") ||
+            id.includes("/node_modules/graphql-yoga/") ||
+            id.includes("/node_modules/@graphql-yoga/") ||
+            id.includes("/node_modules/@graphql-tools/") ||
+            id.includes("/node_modules/@envelop/")
+          ) {
+            return undefined;
+          }
+          // Worker: the SAML subsystem (samlify + its X.509/ASN.1/RSA graph) is
+          // reached only through the dynamically-imported samlify adapter
+          // (lib/auth-select → adapters/saml.samlify), used on-demand when a
+          // workspace resolves a SAML provider. Keep it unpinned so it lands in
+          // its own lazy chunk instead of the eager `vendor` chunk.
+          if (
+            id.includes("/node_modules/samlify/") ||
+            id.includes("/node_modules/@peculiar/") ||
+            id.includes("/node_modules/node-rsa/") ||
+            id.includes("/node_modules/xml-crypto/") ||
+            id.includes("/node_modules/xml-encryption/") ||
+            id.includes("/node_modules/@xmldom/") ||
+            id.includes("/node_modules/xpath/") ||
+            id.includes("/node_modules/tsyringe/") ||
+            id.includes("/node_modules/reflect-metadata/")
+          ) {
+            return undefined;
+          }
+          // Worker: the WebAuthn/passkey plugin (@better-auth/passkey +
+          // @simplewebauthn + its CBOR/base64 graph) is dynamically imported by
+          // packages/auth only when the `passkey` auth plugin is enabled. Keep
+          // it unpinned so it stays out of the eager chunk when passkeys are off.
+          if (
+            id.includes("/node_modules/@better-auth/passkey/") ||
+            id.includes("/node_modules/@simplewebauthn/") ||
+            id.includes("/node_modules/@hexagon/") ||
+            id.includes("/node_modules/cbor-x/") ||
+            id.includes("/node_modules/cbor/")
           ) {
             return undefined;
           }

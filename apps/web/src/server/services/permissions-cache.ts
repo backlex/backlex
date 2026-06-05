@@ -167,12 +167,67 @@ export const setCachedStaticPermission = (
   v: CachedStaticPermission,
 ): void => permsCache.set(k, v);
 
+/**
+ * `tenantMiddleware` runs on every authenticated request and resolves two
+ * things against D1 before any route handler runs: is this user a member of
+ * the active tenant, and which role *names* do they hold there. Both are stable
+ * between role/membership changes, so caching them per isolate removes that
+ * round-trip from the hot path of every authed endpoint (not just one route).
+ *
+ * Same TTL + invalidation model as the role/permission caches above. The
+ * membership cache stores existence only (matching `isMember`'s `row exists`
+ * semantics — status changes like suspend don't flip it).
+ */
+interface MembershipKey {
+  tenantId: string;
+  userId: string;
+}
+
+const membershipCache = new TtlLru<MembershipKey, boolean>(
+  MAX_ENTRIES,
+  TTL_MS,
+  (k) => `${k.tenantId}|${k.userId}`,
+);
+
+export const getCachedMembership = (k: MembershipKey): boolean | undefined =>
+  membershipCache.get(k);
+
+export const setCachedMembership = (k: MembershipKey, v: boolean): void =>
+  membershipCache.set(k, v);
+
+interface TenantRoleNamesKey {
+  tenantId: string;
+  userId: string;
+  /** Non-null only for role-scoped API keys, which narrow the result. */
+  restrictRoleId: string | null;
+}
+
+const tenantRoleNamesCache = new TtlLru<TenantRoleNamesKey, readonly string[]>(
+  MAX_ENTRIES,
+  TTL_MS,
+  (k) => `${k.tenantId}|${k.userId}|${k.restrictRoleId ?? ""}`,
+);
+
+/** Returns the cached role-name list, or `undefined` on miss. The array is
+ *  shared — callers must treat it as read-only. */
+export const getCachedTenantRoleNames = (
+  k: TenantRoleNamesKey,
+): readonly string[] | undefined => tenantRoleNamesCache.get(k);
+
+export const setCachedTenantRoleNames = (
+  k: TenantRoleNamesKey,
+  v: readonly string[],
+): void => tenantRoleNamesCache.set(k, v);
+
 // --- Invalidation ----------------------------------------------------------
 
 /** Drop the cached role set for a single user in a tenant. Call when their
  *  `user_roles` / `app_user_roles` bindings change. */
 export const invalidateUserRoles = (tenantId: string, userId: string): void => {
   rolesCache.deleteBy((k) => k.tenantId === tenantId && k.userId === userId);
+  tenantRoleNamesCache.deleteBy(
+    (k) => k.tenantId === tenantId && k.userId === userId,
+  );
 };
 
 /** Drop every cached role row for a tenant. Call when a role itself is
@@ -180,6 +235,18 @@ export const invalidateUserRoles = (tenantId: string, userId: string): void => {
  *  affected, so we scrub the whole tenant slice. */
 export const invalidateTenantRoles = (tenantId: string): void => {
   rolesCache.deleteBy((k) => k.tenantId === tenantId);
+  tenantRoleNamesCache.deleteBy((k) => k.tenantId === tenantId);
+};
+
+/** Drop cached membership *and* tenant-scoped role names for a tenant. Call
+ *  when a `tenant_members` row is added or removed (create workspace, accept
+ *  invite, remove member) — both the existence flag and the user's effective
+ *  role set in that tenant may have changed. Tenant-wide (not per-user) because
+ *  the remove path often has only the membership row id, not the user id, and
+ *  membership churn is rare enough that scrubbing the tenant slice is cheap. */
+export const invalidateTenantMembership = (tenantId: string): void => {
+  membershipCache.deleteBy((k) => k.tenantId === tenantId);
+  tenantRoleNamesCache.deleteBy((k) => k.tenantId === tenantId);
 };
 
 /** Drop every cached static permission row for a tenant. Call when a
@@ -193,10 +260,19 @@ export const invalidateTenantPermissions = (tenantId: string): void => {
 export const invalidateAllPermissions = (): void => {
   rolesCache.clear();
   permsCache.clear();
+  membershipCache.clear();
+  tenantRoleNamesCache.clear();
 };
 
 /** Test-only — current entry counts. */
-export const __cacheStats = (): { roles: number; perms: number } => ({
+export const __cacheStats = (): {
+  roles: number;
+  perms: number;
+  membership: number;
+  tenantRoleNames: number;
+} => ({
   roles: rolesCache.size,
   perms: permsCache.size,
+  membership: membershipCache.size,
+  tenantRoleNames: tenantRoleNamesCache.size,
 });

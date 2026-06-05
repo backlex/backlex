@@ -245,6 +245,19 @@ export default defineConfig({
           ) {
             return undefined;
           }
+          // Worker: the WebAuthn/passkey plugin (@better-auth/passkey +
+          // @simplewebauthn + its CBOR/base64 graph) is dynamically imported by
+          // packages/auth only when the `passkey` auth plugin is enabled. Keep
+          // it unpinned so it stays out of the eager chunk when passkeys are off.
+          if (
+            id.includes("/node_modules/@better-auth/passkey/") ||
+            id.includes("/node_modules/@simplewebauthn/") ||
+            id.includes("/node_modules/@hexagon/") ||
+            id.includes("/node_modules/cbor-x/") ||
+            id.includes("/node_modules/cbor/")
+          ) {
+            return undefined;
+          }
           return "vendor";
         },
       },

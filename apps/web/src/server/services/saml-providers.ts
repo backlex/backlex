@@ -9,16 +9,17 @@
  *   - `sanitizeForResponse` strips the ciphertext + flags whether it's set,
  *     so the admin UI can show "configured" without exposing the value.
  */
-import { and, eq } from "drizzle-orm";
-import * as pg from "@backlex/db/pg";
-import * as sqlite from "@backlex/db/sqlite";
-import type { PgDb } from "@backlex/db/pg";
-import type { SqliteDb } from "@backlex/db/sqlite";
-import type { SamlAdapter, SamlProviderConfig } from "@backlex/core/adapters";
+
 import { AppError } from "@backlex/core";
-import { decryptSecret, encryptSecret } from "../lib/crypto";
-import { buildSamlAdapter } from "../lib/auth-select";
+import type { SamlAdapter, SamlProviderConfig } from "@backlex/core/adapters";
+import type { PgDb } from "@backlex/db/pg";
+import * as pg from "@backlex/db/pg";
+import type { SqliteDb } from "@backlex/db/sqlite";
+import * as sqlite from "@backlex/db/sqlite";
+import { and, eq } from "drizzle-orm";
 import type { Env } from "../env";
+import { buildSamlAdapter } from "../lib/auth-select";
+import { decryptSecret, encryptSecret } from "../lib/crypto";
 
 type DbCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite" };
 
@@ -296,7 +297,7 @@ export const resolveSamlProvider = async (
     nameIdFormat: row.nameIdFormat,
     attributeMap: row.attributeMap ?? {},
   };
-  const adapter = buildSamlAdapter();
+  const adapter = await buildSamlAdapter();
   if (!adapter) {
     // Vercel Edge / Netlify Edge can't load samlify (its xml-crypto
     // dependency relies on a `node:crypto` surface neither runtime exposes).

@@ -213,8 +213,20 @@ export const createApp = (env: Env) => {
   app.use("*", sessionMiddleware);
   app.use("*", tenantMiddleware);
 
+  // `version` is the worker-template version baked in at build time (see
+  // vite.config `define`). Lets the cloud control-plane + ops verify which
+  // template a live instance is actually running without guessing. The `typeof`
+  // guard keeps it safe under runtimes that don't apply Vite `define` (bun test,
+  // bun self-host) — there it reports "dev" instead of throwing on the global.
+  const templateVersion =
+    typeof __TEMPLATE_VERSION__ !== "undefined" ? __TEMPLATE_VERSION__ : "dev";
   app.get("/health", (c) =>
-    c.json({ ok: true, dialect: c.get("ctx").dialect, ts: Date.now() }),
+    c.json({
+      ok: true,
+      version: templateVersion,
+      dialect: c.get("ctx").dialect,
+      ts: Date.now(),
+    }),
   );
 
   // Per-IP rate limit on the sensitive auth subpaths (sign-in, sign-up,

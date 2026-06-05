@@ -1,79 +1,78 @@
+import type { AuthPlane } from "@backlex/core";
+import { createD1SessionClient } from "@backlex/db/sqlite";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
-import type { AuthPlane } from "@backlex/core";
-import { createD1SessionClient } from "@backlex/db/sqlite";
 import { buildContext, type Ctx } from "./context";
+import type { Env } from "./env";
+import { authRateLimitMiddleware } from "./lib/auth-rate-limit";
 import { errorHandler } from "./middleware/error";
+import type { PermissionVar } from "./middleware/permission";
 import { sessionMiddleware } from "./middleware/session";
 import { tenantMiddleware } from "./middleware/tenant";
-import { authRateLimitMiddleware } from "./lib/auth-rate-limit";
-import type { PermissionVar } from "./middleware/permission";
-import type { PermResolveCache } from "./services/permissions";
+import { accountRoutes } from "./routes/account";
+import { activityRoutes } from "./routes/activity";
+import { adoptRoutes } from "./routes/adopt";
+import { advisorRoutes } from "./routes/advisor";
+import { aiAskRoutes } from "./routes/ai-ask";
+import { apiKeysRoutes } from "./routes/api-keys";
+import { appUsersRoutes } from "./routes/app-users";
+import { authRoutes } from "./routes/auth";
+import { authAdminRoutes } from "./routes/auth-admin";
+import { authPublicRoutes } from "./routes/auth-public";
+import { collectionsRoutes } from "./routes/collections";
+import { commentsRoutes } from "./routes/comments";
+import { dbAdminRoutes } from "./routes/db-admin";
+import { emailConfigRoutes } from "./routes/email-config";
+import { emailTemplatesRoutes } from "./routes/email-templates";
+import { flowsRoutes } from "./routes/flows";
+import { foldersRoutes } from "./routes/folders";
+import { functionsRoutes } from "./routes/functions";
+import { i18nRoutes } from "./routes/i18n";
+import { i18nPublicRoutes } from "./routes/i18n-public";
+import { integrationsRoutes } from "./routes/integrations";
+import { itemsRoutes } from "./routes/items";
+import { ldapAdminRoutes } from "./routes/ldap-admin";
+import { adminMcpRoutes, tenantMcpRoutes } from "./routes/mcp";
+import { meRoutes } from "./routes/me";
+import { metricsRoutes } from "./routes/metrics";
+import { notificationsRoutes } from "./routes/notifications";
+import { openapiRoutes } from "./routes/openapi";
+import { panelsRoutes } from "./routes/panels";
+import { realtimeRoutes } from "./routes/realtime";
+import { realtimeAdminRoutes } from "./routes/realtime-admin";
+import { revisionsRoutes } from "./routes/revisions";
 import {
-  ensureDefaultTenant,
-  ensureSystemRoles,
-  seedOwnerScopedPermissions,
-  seedEmailTemplates,
-} from "./services/seed";
+  permissionsRoutes,
+  rolesRoutes,
+  usersRoutes,
+} from "./routes/roles";
+import { samlAdminRoutes } from "./routes/saml-admin";
+import { sandboxRpcRoutes } from "./routes/sandbox-rpc";
+import { settingsRoutes } from "./routes/settings";
+import { sharedLinksRoutes } from "./routes/shared-links";
+import { sharedPublicRoutes } from "./routes/shared-public";
+import { FILES_COLLECTION, storageRoutes } from "./routes/storage";
+import { templatesRoutes } from "./routes/templates";
+import { tenantAuthRoutes } from "./routes/tenant-auth";
+import { tenantsRoutes } from "./routes/tenants";
+import { vectorRoutes } from "./routes/vector";
+import { webhookTriggerRoutes } from "./routes/webhook-trigger";
+import { webhooksRoutes } from "./routes/webhooks";
+import { workspaceConfigRoutes } from "./routes/workspace-config";
 import {
   isWorkspaceAllowedOrigin,
   refreshAllowedOriginsIfStale,
   warmAllowedOrigins,
 } from "./services/cors-origins";
-import { activityRoutes } from "./routes/activity";
-import { revisionsRoutes } from "./routes/revisions";
-import { authRoutes } from "./routes/auth";
-import { authPublicRoutes } from "./routes/auth-public";
-import { meRoutes } from "./routes/me";
-import { accountRoutes } from "./routes/account";
-import { tenantAuthRoutes } from "./routes/tenant-auth";
-import { apiKeysRoutes } from "./routes/api-keys";
-import { collectionsRoutes } from "./routes/collections";
-import { templatesRoutes } from "./routes/templates";
-import { foldersRoutes } from "./routes/folders";
-import { itemsRoutes } from "./routes/items";
-import { storageRoutes, FILES_COLLECTION } from "./routes/storage";
-import { vectorRoutes } from "./routes/vector";
-import { realtimeRoutes } from "./routes/realtime";
-import { webhooksRoutes } from "./routes/webhooks";
-import { integrationsRoutes } from "./routes/integrations";
-import { webhookTriggerRoutes } from "./routes/webhook-trigger";
-import { commentsRoutes } from "./routes/comments";
-import { sharedLinksRoutes } from "./routes/shared-links";
-import { sharedPublicRoutes } from "./routes/shared-public";
-import { notificationsRoutes } from "./routes/notifications";
-import { flowsRoutes } from "./routes/flows";
-import { functionsRoutes } from "./routes/functions";
-import { graphqlRoutes } from "./routes/graphql";
-import { sandboxRpcRoutes } from "./routes/sandbox-rpc";
+import type { PermResolveCache } from "./services/permissions";
 import {
-  rolesRoutes,
-  permissionsRoutes,
-  usersRoutes,
-} from "./routes/roles";
-import { appUsersRoutes } from "./routes/app-users";
-import { tenantsRoutes } from "./routes/tenants";
-import { emailTemplatesRoutes } from "./routes/email-templates";
-import { emailConfigRoutes } from "./routes/email-config";
-import { workspaceConfigRoutes } from "./routes/workspace-config";
-import { authAdminRoutes } from "./routes/auth-admin";
-import { samlAdminRoutes } from "./routes/saml-admin";
-import { ldapAdminRoutes } from "./routes/ldap-admin";
-import { adoptRoutes } from "./routes/adopt";
-import { panelsRoutes } from "./routes/panels";
-import { i18nRoutes } from "./routes/i18n";
-import { i18nPublicRoutes } from "./routes/i18n-public";
-import { settingsRoutes } from "./routes/settings";
-import { dbAdminRoutes } from "./routes/db-admin";
-import { metricsRoutes } from "./routes/metrics";
-import { realtimeAdminRoutes } from "./routes/realtime-admin";
-import { advisorRoutes } from "./routes/advisor";
-import { openapiRoutes } from "./routes/openapi";
-import { tenantMcpRoutes, adminMcpRoutes } from "./routes/mcp";
-import { aiAskRoutes } from "./routes/ai-ask";
-import type { Env } from "./env";
+  ensureDefaultTenant,
+  ensureSystemRoles,
+  seedEmailTemplates,
+  seedOwnerScopedPermissions,
+} from "./services/seed";
 
 export type AppBindings = {
   Variables: {
@@ -280,7 +279,12 @@ export const createApp = (env: Env) => {
   app.route("/api/users", usersRoutes);
   app.route("/api/app-users", appUsersRoutes);
   app.route("/api/functions", functionsRoutes);
-  app.route("/api/graphql", graphqlRoutes);
+  // Lazy: the GraphQL subsystem (graphql-yoga + graphql + @graphql-tools) is a
+  // large slice of the bundle that most requests never touch. Dynamic-import it
+  // on first hit so it stays out of the worker's cold-start eval path.
+  app.all("/api/graphql", (c) =>
+    import("./routes/graphql").then((m) => m.handleGraphql(c)),
+  );
   app.route("/api", openapiRoutes);
   app.route("/api/_internal/sandbox-rpc", sandboxRpcRoutes);
   // MCP (Model Context Protocol) — must mount after the routes its tools

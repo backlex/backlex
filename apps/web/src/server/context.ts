@@ -1,8 +1,5 @@
-import { createPgClient, type PgDb, type PgDriver } from "@backlex/db/pg";
-import { createD1Client, type SqliteDb } from "@backlex/db/sqlite";
-import { ensureMigrations } from "@backlex/db";
-import { createAuth, type Auth, type OAuthProviderConfig } from "@backlex/auth";
-import { SYSTEM_ROLES } from "@backlex/core";
+import { type Auth, createAuth, type OAuthProviderConfig } from "@backlex/auth";
+import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type {
   EmailAdapter,
   EmbeddingAdapter,
@@ -10,46 +7,48 @@ import type {
   StorageAdapter,
   VectorAdapter,
 } from "@backlex/core/adapters";
-import { fsStorage } from "./adapters/storage.fs";
-import { r2Storage } from "./adapters/storage.r2";
-import { bunS3Storage } from "./adapters/storage.s3.bun";
-import { s3FetchStorage } from "./adapters/storage.s3.fetch";
-import { pgvectorAdapter } from "./adapters/vector.pg";
-import {
-  vectorizeAdapter,
-  type VectorizeIndexMap,
-} from "./adapters/vector.cf";
-import { workersAiEmbeddingAdapter } from "./adapters/embedding.workers-ai";
+import { ensureMigrations } from "@backlex/db";
+import { createPgClient, type PgDb, type PgDriver } from "@backlex/db/pg";
+import { createD1Client, type SqliteDb } from "@backlex/db/sqlite";
+import { cloudEmailAdapter } from "./adapters/email.cloud";
+import { consoleEmail } from "./adapters/email.console";
 import { cloudEmbeddingAdapter } from "./adapters/embedding.cloud";
-import { cloudConfigured } from "./lib/cloud-report";
 import { openaiEmbeddingAdapter } from "./adapters/embedding.openai";
-import { selfHostEmbeddingAdapter } from "./adapters/embedding.self-host";
 import {
   embeddingRouter,
   noEmbeddingAdapter,
 } from "./adapters/embedding.router";
-import { buildEmailAdapter, selectEmailSpec } from "./lib/email-select";
-import { cloudEmailAdapter } from "./adapters/email.cloud";
-import { consoleEmail } from "./adapters/email.console";
-import { resolveEmailAdapter } from "./services/email-config";
+import { selfHostEmbeddingAdapter } from "./adapters/embedding.self-host";
+import { workersAiEmbeddingAdapter } from "./adapters/embedding.workers-ai";
 import { bunImage } from "./adapters/image.bun";
 import { passthroughImage } from "./adapters/image.passthrough";
+import { fsStorage } from "./adapters/storage.fs";
+import { r2Storage } from "./adapters/storage.r2";
+import { bunS3Storage } from "./adapters/storage.s3.bun";
+import { s3FetchStorage } from "./adapters/storage.s3.fetch";
 import {
-  ensureSystemRoles,
+  type VectorizeIndexMap,
+  vectorizeAdapter,
+} from "./adapters/vector.cf";
+import { pgvectorAdapter } from "./adapters/vector.pg";
+import type { Env } from "./env";
+import { cloudConfigured } from "./lib/cloud-report";
+import { buildEmailAdapter, selectEmailSpec } from "./lib/email-select";
+import { isCloudflareWorkers, isStatelessEdge, isXataPgUrl } from "./lib/runtime";
+import { loadPolicy } from "./services/auth-config";
+import { resolveEmailAdapter } from "./services/email-config";
+import { publishEvent } from "./services/events";
+import { acceptInviteForUser, hasValidInvite } from "./services/invites";
+import { invalidateUserRoles } from "./services/permissions-cache";
+import {
   assignRoleByName,
   ensureDefaultTenant,
+  ensureSystemRoles,
   ensureTenantMembership,
   userCount,
 } from "./services/seed";
 import { applyTemplate } from "./services/templates";
 import { getTemplate } from "./templates/catalog";
-import { loadPolicy } from "./services/auth-config";
-import { hasValidInvite, acceptInviteForUser } from "./services/invites";
-import { invalidateUserRoles } from "./services/permissions-cache";
-import { publishEvent } from "./services/events";
-import { isCloudflareWorkers, isStatelessEdge, isXataPgUrl } from "./lib/runtime";
-import { AppError } from "@backlex/core";
-import type { Env } from "./env";
 
 export interface Ctx {
   env: Env;
@@ -350,7 +349,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     }
   }
 
-  const auth = createAuth(db, dialect, {
+  const auth = await createAuth(db, dialect, {
     baseURL: env.APP_URL,
     secret: env.AUTH_SECRET,
     trustedOrigins,

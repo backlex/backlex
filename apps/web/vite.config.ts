@@ -148,6 +148,13 @@ export default defineConfig({
     // Must run after cloudflare() so it wins the merge for the Worker env.
     workerCloudflareCompat(),
   ],
+  // Bake the worker-template version into the bundle so a running instance can
+  // report it (GET /health → `version`). `scripts/build-worker-template.ts`
+  // sets TEMPLATE_VERSION before the build; a plain `bun run dev`/`build`
+  // leaves it unset → "dev". Replaced textually at build time.
+  define: {
+    __TEMPLATE_VERSION__: JSON.stringify(process.env.TEMPLATE_VERSION ?? "dev"),
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src/client", import.meta.url)),

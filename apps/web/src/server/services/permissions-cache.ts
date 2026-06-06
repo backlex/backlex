@@ -219,6 +219,42 @@ export const setCachedTenantRoleNames = (
   v: readonly string[],
 ): void => tenantRoleNamesCache.set(k, v);
 
+/**
+ * Per-isolate cache of the resolved cookie session, keyed by the signed
+ * `*.session_token` cookie value. `sessionMiddleware` runs `getSession` (a
+ * better-auth call costing ~2 D1 round-trips) on EVERY authed request;
+ * better-auth's own `cookieCache` only short-circuits on its own `/api/auth/*`
+ * routes, not our middleware — so without this every request paid the DB hit.
+ *
+ * Safe because: the key is the signed session cookie (only its holder presents
+ * it; without it you can't read another's entry), and the TTL is shorter than
+ * better-auth's own 60s `cookieCache` — so sign-out/revocation lag is no worse
+ * than the model already in place. false-allow ≤ TTL_MS; the win is the common
+ * case of a logged-in user making many requests.
+ */
+export interface CachedSession {
+  userId: string;
+  email: string | null;
+  sessionId: string | null;
+}
+
+const sessionCache = new TtlLru<string, CachedSession>(
+  MAX_ENTRIES,
+  TTL_MS,
+  (k) => k,
+);
+
+export const getCachedSession = (token: string): CachedSession | undefined =>
+  sessionCache.get(token);
+
+export const setCachedSession = (token: string, v: CachedSession): void =>
+  sessionCache.set(token, v);
+
+/** Drop a cached session (call on sign-out for same-isolate freshness). */
+export const invalidateSession = (token: string): void => {
+  sessionCache.deleteBy((k) => k === token);
+};
+
 // --- Invalidation ----------------------------------------------------------
 
 /** Drop the cached role set for a single user in a tenant. Call when their
@@ -256,12 +292,13 @@ export const invalidateTenantPermissions = (tenantId: string): void => {
   permsCache.deleteBy((k) => k.tenantId === tenantId);
 };
 
-/** Clear both caches. Tests + emergency stop. */
+/** Clear all caches. Tests + emergency stop. */
 export const invalidateAllPermissions = (): void => {
   rolesCache.clear();
   permsCache.clear();
   membershipCache.clear();
   tenantRoleNamesCache.clear();
+  sessionCache.clear();
 };
 
 /** Test-only — current entry counts. */
@@ -270,9 +307,11 @@ export const __cacheStats = (): {
   perms: number;
   membership: number;
   tenantRoleNames: number;
+  session: number;
 } => ({
   roles: rolesCache.size,
   perms: permsCache.size,
   membership: membershipCache.size,
   tenantRoleNames: tenantRoleNamesCache.size,
+  session: sessionCache.size,
 });

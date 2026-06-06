@@ -157,11 +157,21 @@ export const createApp = (env: Env) => {
   // explicitly to build the doc.
   const app = new Hono<AppBindings>();
 
-  // Per-request phase timing → `Server-Timing` response header. First in the
-  // chain so `total` captures the whole instance-worker time; compared against
-  // the external ttfb (and ICMP RTT) this isolates dispatch overhead (WfP
-  // host→instance) vs in-worker time. Diagnostic; negligible cost.
+  // Per-request phase timing → `Server-Timing` response header. Gated behind a
+  // secret header (`x-backlex-timing: $DEBUG_TIMING_SECRET`) so the diagnostic
+  // is on-demand for ops (curl) and never publicly discloses internal phase
+  // latencies. When off (default — no secret, or header mismatch) `__st` is
+  // never set, so the `timed()` wrappers + ctx/d1 marks all no-op (`if (st)`)
+  // and nothing is collected or emitted. `total` captures whole instance-worker
+  // time; vs external ttfb + ICMP RTT it isolates dispatch (WfP) overhead.
   app.use("*", async (c, next) => {
+    const on =
+      !!env.DEBUG_TIMING_SECRET &&
+      c.req.header("x-backlex-timing") === env.DEBUG_TIMING_SECRET;
+    if (!on) {
+      await next();
+      return;
+    }
     const t0 = performance.now();
     const st: Record<string, number> = { _t0: t0 };
     c.set("__st", st);
@@ -249,9 +259,9 @@ export const createApp = (env: Env) => {
       allowHeaders: ["Content-Type", "Authorization", "X-Backlex-Tenant", "X-D1-Bookmark"],
       allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
       // Expose so the browser SPA can read the bookmark off the response and
-      // round-trip it on the next request (D1 Sessions API). `Server-Timing`
-      // is exposed too so per-phase timings are readable from the browser.
-      exposeHeaders: ["X-D1-Bookmark", "Server-Timing"],
+      // round-trip it on the next request (D1 Sessions API). Server-Timing is
+      // NOT exposed — it's an ops-only, secret-gated diagnostic.
+      exposeHeaders: ["X-D1-Bookmark"],
     }),
   ),
   );

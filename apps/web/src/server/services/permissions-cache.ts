@@ -255,6 +255,31 @@ export const invalidateSession = (token: string): void => {
   sessionCache.deleteBy((k) => k === token);
 };
 
+/**
+ * Per-isolate cache of tenant (workspace) resolution: the `slug | id` key passed
+ * on a request → the resolved tenant id. `tenantMiddleware` resolves this on
+ * EVERY request via `tenantBySlugOrId` (one D1 SELECT). Because it's typically
+ * the first D1 call in the request, it also eats the D1 Sessions API setup cost
+ * — traces show ~25ms for this call vs <1ms of actual SQL. `slug→id` and `id→id`
+ * are stable, so caching them per isolate removes the last uncached D1 round-trip
+ * from the hot path: with the session / membership / role-name / collection-list
+ * caches already in place, a warm authed request then makes ZERO D1 calls.
+ *
+ * Only positive resolutions are cached (a miss returns `undefined`, so the caller
+ * runs the SELECT) — a newly-created workspace resolves immediately rather than
+ * being negatively cached. The TTL bounds staleness after a slug rename / tenant
+ * delete, the same model as the caches above (false-resolve ≤ TTL_MS, and a stale
+ * id just makes downstream queries miss and 404 — never a cross-tenant leak,
+ * since the id still belongs to this isolate's single instance DB).
+ */
+const tenantResolveCache = new TtlLru<string, string>(MAX_ENTRIES, TTL_MS, (k) => k);
+
+export const getCachedTenantResolve = (key: string): string | undefined =>
+  tenantResolveCache.get(key);
+
+export const setCachedTenantResolve = (key: string, tenantId: string): void =>
+  tenantResolveCache.set(key, tenantId);
+
 // --- Invalidation ----------------------------------------------------------
 
 /** Drop the cached role set for a single user in a tenant. Call when their
@@ -299,6 +324,7 @@ export const invalidateAllPermissions = (): void => {
   membershipCache.clear();
   tenantRoleNamesCache.clear();
   sessionCache.clear();
+  tenantResolveCache.clear();
 };
 
 /** Test-only — current entry counts. */
@@ -308,10 +334,12 @@ export const __cacheStats = (): {
   membership: number;
   tenantRoleNames: number;
   session: number;
+  tenantResolve: number;
 } => ({
   roles: rolesCache.size,
   perms: permsCache.size,
   membership: membershipCache.size,
   tenantRoleNames: tenantRoleNamesCache.size,
   session: sessionCache.size,
+  tenantResolve: tenantResolveCache.size,
 });

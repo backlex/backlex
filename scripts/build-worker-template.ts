@@ -103,8 +103,21 @@ const parseArgs = (argv: string[]): Args => {
   };
 };
 
-const run = (cmd: string, cmdArgs: string[], cwd = REPO_ROOT): string => {
-  const result = spawnSync(cmd, cmdArgs, { cwd, encoding: "utf8" });
+const run = (
+  cmd: string,
+  cmdArgs: string[],
+  cwd = REPO_ROOT,
+  extraEnv?: Record<string, string>,
+): string => {
+  // Pass env EXPLICITLY (not via a `process.env.X = …` mutation before the
+  // call): under Bun, spawnSync snapshots the parent env and a late mutation
+  // does NOT reach the child — which silently shipped `templateVersion = "dev"`
+  // in v0.4.11. Merging into a fresh object guarantees the override propagates.
+  const result = spawnSync(cmd, cmdArgs, {
+    cwd,
+    encoding: "utf8",
+    env: extraEnv ? { ...process.env, ...extraEnv } : process.env,
+  });
   if (result.status !== 0) {
     throw new Error(
       `\`${cmd} ${cmdArgs.join(" ")}\` exited with code ${result.status}\n` +
@@ -257,10 +270,10 @@ const main = async (): Promise<void> => {
   // 1. (Optional) build the SPA + worker bundle.
   if (args.build) {
     console.log("→ bun run build (vite)");
-    // Bake the version into the bundle (vite.config `define` reads this) so the
-    // running instance can report it at GET /health.
-    process.env.TEMPLATE_VERSION = args.version;
-    run("bun", ["run", "build"]);
+    // Bake the version into the bundle (vite.config `define` reads
+    // TEMPLATE_VERSION) so the running instance can report it at GET /health.
+    // Passed explicitly through `run` — see the env note there.
+    run("bun", ["run", "build"], REPO_ROOT, { TEMPLATE_VERSION: args.version });
   } else {
     console.log("↷ skipping build (--no-build)");
   }

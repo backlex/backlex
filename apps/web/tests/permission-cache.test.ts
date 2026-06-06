@@ -13,6 +13,7 @@ import {
   getCachedRoles,
   getCachedSession,
   getCachedStaticPermission,
+  getCachedTenantResolve,
   getCachedTenantRoleNames,
   invalidateAllPermissions,
   invalidateSession,
@@ -24,6 +25,7 @@ import {
   setCachedRoles,
   setCachedSession,
   setCachedStaticPermission,
+  setCachedTenantResolve,
   setCachedTenantRoleNames,
   sortRoleIds,
 } from "../src/server/services/permissions-cache";
@@ -191,12 +193,14 @@ describe("invalidation", () => {
       ["authenticated"],
     );
     setCachedSession("tok-1", { userId: "u1", email: "u1@x.io", sessionId: "s1" });
+    setCachedTenantResolve("acme", "t1");
     expect(__cacheStats()).toEqual({
       roles: 1,
       perms: 1,
       membership: 1,
       tenantRoleNames: 1,
       session: 1,
+      tenantResolve: 1,
     });
 
     invalidateAllPermissions();
@@ -207,7 +211,17 @@ describe("invalidation", () => {
       membership: 0,
       tenantRoleNames: 0,
       session: 0,
+      tenantResolve: 0,
     });
+  });
+
+  test("tenant-resolve cache: set/get by slug-or-id key, isolates by key", () => {
+    expect(getCachedTenantResolve("acme")).toBeUndefined();
+    setCachedTenantResolve("acme", "t-acme");
+    setCachedTenantResolve("t-acme", "t-acme"); // id→id also cacheable
+    expect(getCachedTenantResolve("acme")).toBe("t-acme");
+    expect(getCachedTenantResolve("t-acme")).toBe("t-acme");
+    expect(getCachedTenantResolve("other")).toBeUndefined();
   });
 
   test("session cache: set/get by token, isolates by token, invalidates", () => {

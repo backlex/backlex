@@ -6,8 +6,10 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type { AppBindings } from "../app";
 import {
   getCachedMembership,
+  getCachedTenantResolve,
   getCachedTenantRoleNames,
   setCachedMembership,
+  setCachedTenantResolve,
   setCachedTenantRoleNames,
 } from "../services/permissions-cache";
 import { ensureDefaultTenant } from "../services/seed";
@@ -85,6 +87,12 @@ const tenantBySlugOrId = async (
   dialect: "pg" | "sqlite",
   key: string,
 ): Promise<string | null> => {
+  // Per-isolate cache: this runs on every request and is usually the first D1
+  // call, so it pays the D1 Sessions setup (~25ms in traces, vs <1ms SQL).
+  // slug→id / id→id are stable; caching removes the last uncached round-trip on
+  // the hot path. See services/permissions-cache `tenantResolveCache`.
+  const cached = getCachedTenantResolve(key);
+  if (cached !== undefined) return cached;
   const t = tablesFor(dialect).tenants;
   // One SELECT against `id = ? OR slug = ?` is cheaper than the two sequential
   // round-trips the previous version did, and the table is small (rows.length
@@ -94,7 +102,9 @@ const tenantBySlugOrId = async (
     .from(t)
     .where(or(eq(t.id, key), eq(t.slug, key)))
     .limit(1)) as { id: string }[];
-  return rows[0]?.id ?? null;
+  const id = rows[0]?.id ?? null;
+  if (id) setCachedTenantResolve(key, id);
+  return id;
 };
 
 const isMember = async (

@@ -28,5 +28,8 @@ describe("GET /health", () => {
     // (no define pass). Either way it must be a non-empty string.
     expect(typeof body.version).toBe("string");
     expect(body.version.length).toBeGreaterThan(0);
+    // Per-request phase timings are emitted for every response.
+    const st = res.headers.get("Server-Timing");
+    expect(st).toContain("total;dur=");
   });
 });

@@ -123,6 +123,10 @@ export type AppBindings = {
      *  request — GraphQL, expand, shared-links, etc. — so a single request
      *  never hits the same `(collection, action)` lookup twice. */
     permCache?: PermResolveCache;
+    /** Per-request phase timings (ms), emitted as a `Server-Timing` response
+     *  header. `_t0` is the worker-entry timestamp; other keys are durations.
+     *  Used to attribute latency (dispatch vs ctx vs middleware vs route). */
+    __st?: Record<string, number>;
   };
 };
 
@@ -135,6 +139,24 @@ export const createApp = (env: Env) => {
   // expose their `openAPIRegistry`; `mountOpenapiRoutes` collects them
   // explicitly to build the doc.
   const app = new Hono<AppBindings>();
+
+  // Per-request phase timing → `Server-Timing` response header. First in the
+  // chain so `total` captures the whole instance-worker time; compared against
+  // the external ttfb (and ICMP RTT) this isolates dispatch overhead (WfP
+  // host→instance) vs in-worker time. Diagnostic; negligible cost.
+  app.use("*", async (c, next) => {
+    const t0 = performance.now();
+    const st: Record<string, number> = { _t0: t0 };
+    c.set("__st", st);
+    await next();
+    const total = performance.now() - t0;
+    const parts = [`total;dur=${total.toFixed(1)}`];
+    for (const k of ["ctx", "d1", "premw"]) {
+      const v = st[k];
+      if (v !== undefined) parts.push(`${k};dur=${v.toFixed(1)}`);
+    }
+    c.res.headers.set("Server-Timing", parts.join(", "));
+  });
 
   app.use("*", logger());
   app.use("*", secureHeaders());
@@ -152,7 +174,10 @@ export const createApp = (env: Env) => {
   // better-auth's own DB writes route to primary, while route handlers use
   // the session-bound `ctx.db` and get replica reads.
   app.use("*", async (c, next) => {
+    const st = c.get("__st");
+    const tc = performance.now();
     const baseCtx = await buildContext(env);
+    if (st) st.ctx = performance.now() - tc;
     let ctx: Ctx = baseCtx;
     let session: { getBookmark: () => string | null } | null = null;
     if (env.D1) {
@@ -160,7 +185,9 @@ export const createApp = (env: Env) => {
       // so CF picks the nearest replica when no anchor is provided. Mutations
       // always route to primary regardless of the constraint.
       const constraint = c.req.header("x-d1-bookmark") ?? "first-unconstrained";
+      const td = performance.now();
       const s = createD1SessionClient(env.D1, constraint);
+      if (st) st.d1 = performance.now() - td;
       session = s;
       ctx = { ...baseCtx, db: s.db };
     }
@@ -205,13 +232,23 @@ export const createApp = (env: Env) => {
       allowHeaders: ["Content-Type", "Authorization", "X-Backlex-Tenant", "X-D1-Bookmark"],
       allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
       // Expose so the browser SPA can read the bookmark off the response and
-      // round-trip it on the next request (D1 Sessions API).
-      exposeHeaders: ["X-D1-Bookmark"],
+      // round-trip it on the next request (D1 Sessions API). `Server-Timing`
+      // is exposed too so per-phase timings are readable from the browser.
+      exposeHeaders: ["X-D1-Bookmark", "Server-Timing"],
     }),
   );
 
   app.use("*", sessionMiddleware);
   app.use("*", tenantMiddleware);
+
+  // Mark when all pre-route middleware (ctx + CORS + session + tenant) is done,
+  // so `premw` vs `route` (= total − premw) can be split in Server-Timing.
+  app.use("*", async (c, next) => {
+    const st = c.get("__st");
+    const t0 = st?._t0;
+    if (st && t0 !== undefined) st.premw = performance.now() - t0;
+    await next();
+  });
 
   // `version` is the worker-template version baked in at build time (see
   // vite.config `define`). Lets the cloud control-plane + ops verify which

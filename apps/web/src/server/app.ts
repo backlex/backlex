@@ -1,6 +1,6 @@
 import type { AuthPlane } from "@backlex/core";
 import { createD1SessionClient } from "@backlex/db/sqlite";
-import { Hono } from "hono";
+import { Hono, type MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
@@ -132,6 +132,23 @@ export type AppBindings = {
 
 let rolesSeeded = false;
 
+/** Wrap a middleware to record its OWN time (excluding the downstream `next()`
+ *  it triggers) into the per-request Server-Timing collector under `name`.
+ *  Diagnostic — lets us split `premw` into cors/session/tenant. */
+const timed =
+  (name: string, mw: MiddlewareHandler<AppBindings>): MiddlewareHandler<AppBindings> =>
+  async (c, next) => {
+    const st = c.get("__st");
+    const start = performance.now();
+    let downstream = 0;
+    await mw(c, async () => {
+      const d0 = performance.now();
+      await next();
+      downstream += performance.now() - d0;
+    });
+    if (st) st[name] = performance.now() - start - downstream;
+  };
+
 export const createApp = (env: Env) => {
   // Main app stays as plain Hono — `OpenAPIHono.route(...)` chains the tag
   // tree types of every sub-app together, which can blow past TS heap
@@ -151,7 +168,7 @@ export const createApp = (env: Env) => {
     await next();
     const total = performance.now() - t0;
     const parts = [`total;dur=${total.toFixed(1)}`];
-    for (const k of ["ctx", "d1", "premw"]) {
+    for (const k of ["ctx", "d1", "cors", "session", "tenant", "premw"]) {
       const v = st[k];
       if (v !== undefined) parts.push(`${k};dur=${v.toFixed(1)}`);
     }
@@ -216,7 +233,7 @@ export const createApp = (env: Env) => {
 
   app.use(
     "*",
-    cors({
+    timed("cors", cors({
       // Allow `APP_URL` always; allow any origin in `EXTRA_TRUSTED_ORIGINS`
       // or derived from a workspace's `auth_config.redirectUrls` (so a
       // customer's app on a different domain can call its workspace's auth
@@ -236,10 +253,11 @@ export const createApp = (env: Env) => {
       // is exposed too so per-phase timings are readable from the browser.
       exposeHeaders: ["X-D1-Bookmark", "Server-Timing"],
     }),
+  ),
   );
 
-  app.use("*", sessionMiddleware);
-  app.use("*", tenantMiddleware);
+  app.use("*", timed("session", sessionMiddleware));
+  app.use("*", timed("tenant", tenantMiddleware));
 
   // Mark when all pre-route middleware (ctx + CORS + session + tenant) is done,
   // so `premw` vs `route` (= total − premw) can be split in Server-Timing.

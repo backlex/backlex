@@ -8,6 +8,10 @@
 export interface Env {
   APP_URL: string;
   AUTH_SECRET: string;
+  /** When set, a request carrying `x-backlex-timing: <this>` gets the per-phase
+   *  `Server-Timing` header (diagnostic). Unset (default) → timings are never
+   *  collected or emitted, so internal phase latencies aren't disclosed. */
+  DEBUG_TIMING_SECRET?: string;
   /** Schema-template id set by the cloud provisioner; the first workspace of a
    *  fresh install seeds the matching collections (zero-touch). */
   SEED_TEMPLATE?: string;

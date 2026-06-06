@@ -1,4 +1,6 @@
 #!/usr/bin/env bun
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 /**
  * Assembles a self-contained "worker template" tarball that a downstream
  * provisioner (the private workeros-cloud repo) can fetch as a release
@@ -42,14 +44,12 @@ import {
   cpSync,
   existsSync,
   mkdirSync,
-  readFileSync,
   readdirSync,
+  readFileSync,
   rmSync,
   statSync,
   writeFileSync,
 } from "node:fs";
-import { createHash } from "node:crypto";
-import { spawnSync } from "node:child_process";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -176,14 +176,14 @@ const buildWranglerTemplate = (): string => {
   // D1 database_id — the only one inside the [[d1_databases]] block we
   // anchor by binding name so we don't accidentally rewrite a comment.
   out = out.replace(
-    /(\[\[d1_databases\]\][^\[]*?database_id\s*=\s*)"[^"]*"/s,
+    /(\[\[d1_databases\]\][^[]*?database_id\s*=\s*)"[^"]*"/s,
     '$1"__D1_DATABASE_ID__"',
   );
 
   // R2 bucket_name — the maintainer's `workeros-files` bucket is
   // account-scoped. Replace inside the [[r2_buckets]] block.
   out = out.replace(
-    /(\[\[r2_buckets\]\][^\[]*?bucket_name\s*=\s*)"[^"]*"/s,
+    /(\[\[r2_buckets\]\][^[]*?bucket_name\s*=\s*)"[^"]*"/s,
     '$1"__R2_BUCKET_NAME__"',
   );
 
@@ -257,6 +257,9 @@ const main = async (): Promise<void> => {
   // 1. (Optional) build the SPA + worker bundle.
   if (args.build) {
     console.log("→ bun run build (vite)");
+    // Bake the version into the bundle (vite.config `define` reads this) so the
+    // running instance can report it at GET /health.
+    process.env.TEMPLATE_VERSION = args.version;
     run("bun", ["run", "build"]);
   } else {
     console.log("↷ skipping build (--no-build)");

@@ -173,6 +173,12 @@ export default defineConfig({
       ),
       // ldapts (the LDAP/AD auth adapter) also needs node:net/node:tls. LDAP
       // is never selected on Workers — same throwing-stub pattern as above.
+      postgres: fileURLToPath(
+        new URL("./src/server/shims/postgres-shim.ts", import.meta.url),
+      ),
+      "@neondatabase/serverless": fileURLToPath(
+        new URL("./src/server/shims/neon-shim.ts", import.meta.url),
+      ),
       ldapts: fileURLToPath(
         new URL("./src/server/shims/ldapts-shim.ts", import.meta.url),
       ),

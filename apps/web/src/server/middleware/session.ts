@@ -1,10 +1,12 @@
-import type { MiddlewareHandler } from "hono";
-import { and, eq, isNull } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
+import { and, eq, isNull } from "drizzle-orm";
+import type { MiddlewareHandler } from "hono";
+import { getCookie } from "hono/cookie";
 import type { AppBindings } from "../app";
-import { findApiKey, touchLastUsed } from "../services/api-keys";
 import { verifyAccessToken } from "../lib/jwt";
+import { findApiKey, touchLastUsed } from "../services/api-keys";
+import { getCachedSession, setCachedSession } from "../services/permissions-cache";
 
 const extractIp = (req: Request): string | null => {
   const h = req.headers;
@@ -153,18 +155,49 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
   // app's frontend doesn't send a tenant header, it just uses its token.
   let appSessionTenantId: string | null = null;
 
-  const session = await ctx.auth.api.getSession({ headers: c.req.raw.headers });
-  if (session?.user?.id) {
-    userId = session.user.id;
-    email = session.user.email ?? null;
-    const sessId = (session as { session?: { id?: string } }).session?.id;
-    if (sessId) {
-      // Fire-and-forget — the row only gets touched when ip/ua is missing.
+  // Cookie session resolution, with a per-isolate cache keyed on the signed
+  // `*.session_token` cookie. better-auth's getSession costs ~2 D1 round-trips
+  // and its own cookieCache only short-circuits on `/api/auth/*`, not here — so
+  // without this cache every authenticated request paid the DB hit. See
+  // services/permissions-cache `CachedSession` for the safety rationale (key is
+  // the signed cookie; TTL < better-auth's 60s cookieCache).
+  let sessionToken: string | undefined;
+  const cookies = getCookie(c);
+  for (const name of Object.keys(cookies)) {
+    if (name.endsWith("session_token")) {
+      sessionToken = cookies[name];
+      break;
+    }
+  }
+  const cached = sessionToken ? getCachedSession(sessionToken) : undefined;
+  if (cached) {
+    userId = cached.userId;
+    email = cached.email;
+    if (cached.sessionId) {
       void stampSessionMeta(
         { db: ctx.db, dialect: ctx.dialect },
-        sessId,
+        cached.sessionId,
         c.req.raw,
       );
+    }
+  } else {
+    const session = await ctx.auth.api.getSession({ headers: c.req.raw.headers });
+    if (session?.user?.id) {
+      userId = session.user.id;
+      email = session.user.email ?? null;
+      const sessId =
+        (session as { session?: { id?: string } }).session?.id ?? null;
+      if (sessId) {
+        // Fire-and-forget — the row only gets touched when ip/ua is missing.
+        void stampSessionMeta(
+          { db: ctx.db, dialect: ctx.dialect },
+          sessId,
+          c.req.raw,
+        );
+      }
+      if (sessionToken) {
+        setCachedSession(sessionToken, { userId, email, sessionId: sessId });
+      }
     }
   }
 

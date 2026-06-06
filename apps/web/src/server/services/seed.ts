@@ -4,7 +4,11 @@ import * as pg from "@backlex/db/pg";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import * as sqlite from "@backlex/db/sqlite";
 import { and, eq, isNull } from "drizzle-orm";
-import { invalidateTenantMembership } from "./permissions-cache";
+import {
+  getCachedTenantResolve,
+  invalidateTenantMembership,
+  setCachedTenantResolve,
+} from "./permissions-cache";
 
 export interface DbCtx {
   db: PgDb | SqliteDb;
@@ -50,13 +54,24 @@ const colorFor = (slug: string) =>
   PALETTE[Math.abs([...slug].reduce((a, c) => a + c.charCodeAt(0), 0)) % PALETTE.length];
 
 export const ensureDefaultTenant = async (ctx: DbCtx): Promise<string> => {
+  // Unauthenticated / no-tenant-context requests fall back to the default
+  // workspace, so this resolves on every such request and is the first D1 call —
+  // it pays the D1 Sessions setup (~12-22ms in traces vs <0.2ms SQL). The
+  // default tenant id is permanent once created, so cache it in the shared
+  // tenant-resolve cache (same one tenantBySlugOrId uses) → warm requests on the
+  // default path make zero D1 calls. See services/permissions-cache.
+  const cached = getCachedTenantResolve(DEFAULT_TENANT_SLUG);
+  if (cached) return cached;
   const t = tablesFor(ctx.dialect);
   const existing = await (ctx.db as any)
     .select({ id: t.tenants.id })
     .from(t.tenants)
     .where(eq(t.tenants.slug, DEFAULT_TENANT_SLUG))
     .limit(1);
-  if (existing[0]) return existing[0].id as string;
+  if (existing[0]) {
+    setCachedTenantResolve(DEFAULT_TENANT_SLUG, existing[0].id as string);
+    return existing[0].id as string;
+  }
   const id = crypto.randomUUID();
   await (ctx.db as any).insert(t.tenants).values({
     id,
@@ -69,6 +84,7 @@ export const ensureDefaultTenant = async (ctx: DbCtx): Promise<string> => {
     color: colorFor(DEFAULT_TENANT_SLUG),
     createdBy: null,
   });
+  setCachedTenantResolve(DEFAULT_TENANT_SLUG, id);
   return id;
 };
 

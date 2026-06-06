@@ -15,6 +15,7 @@ import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { createApp } from "../src/server/app";
 import type { Env } from "../src/server/env";
+import { invalidateAllPermissions } from "../src/server/services/permissions-cache";
 
 const ROOT = resolve(import.meta.dir, "..", "..", "..");
 const MIGRATIONS = resolve(ROOT, "packages/db/drizzle/sqlite");
@@ -34,6 +35,13 @@ export interface TestHarness {
 const DEFAULT_APP_URL = "http://localhost:5173";
 
 export const makeHarness = (overrides: Partial<Env> = {}): TestHarness => {
+  // Per-isolate caches (roles/perms/membership/session/tenant-resolve) are
+  // module-level, so they persist across harnesses in one bun-test process. In
+  // prod each isolate serves a single instance DB, but here every harness is a
+  // fresh DB — a cached default-tenant id from a prior suite would dangle and
+  // break FK inserts. Clear them whenever a new harness (new DB) is built.
+  invalidateAllPermissions();
+
   const dbPath = resolve(tmpdir(), `backlex-test-${randomUUID()}.sqlite`);
   mkdirSync(dirname(dbPath), { recursive: true });
 

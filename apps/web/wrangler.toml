@@ -3,6 +3,16 @@ main = "src/server/entries/worker.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Workers Logs — persist invocation logs (console.* + uncaught exceptions) so
+# we can query them later in the dashboard / via `wrangler tail` history. Off
+# by default on Workers; turn it on fleet-wide so prod debugging of a
+# provisioned instance doesn't depend on catching a live `wrangler tail`.
+# head_sampling_rate = 1 keeps every invocation's logs (drop it below 1.0 if
+# log volume becomes a cost concern).
+[observability]
+enabled = true
+head_sampling_rate = 1
+
 # bun:sqlite is imported transitively (drizzle's bun-sqlite driver +
 # packages/db's createBunSqliteClient). The worker never calls those code
 # paths — D1 is selected via env.D1 — but esbuild still resolves the import.

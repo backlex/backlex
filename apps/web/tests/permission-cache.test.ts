@@ -11,15 +11,18 @@ import {
   type CachedStaticPermission,
   getCachedMembership,
   getCachedRoles,
+  getCachedSession,
   getCachedStaticPermission,
   getCachedTenantRoleNames,
   invalidateAllPermissions,
+  invalidateSession,
   invalidateTenantMembership,
   invalidateTenantPermissions,
   invalidateTenantRoles,
   invalidateUserRoles,
   setCachedMembership,
   setCachedRoles,
+  setCachedSession,
   setCachedStaticPermission,
   setCachedTenantRoleNames,
   sortRoleIds,
@@ -187,11 +190,13 @@ describe("invalidation", () => {
       { tenantId: "t1", userId: "u1", restrictRoleId: null },
       ["authenticated"],
     );
+    setCachedSession("tok-1", { userId: "u1", email: "u1@x.io", sessionId: "s1" });
     expect(__cacheStats()).toEqual({
       roles: 1,
       perms: 1,
       membership: 1,
       tenantRoleNames: 1,
+      session: 1,
     });
 
     invalidateAllPermissions();
@@ -201,7 +206,20 @@ describe("invalidation", () => {
       perms: 0,
       membership: 0,
       tenantRoleNames: 0,
+      session: 0,
     });
+  });
+
+  test("session cache: set/get by token, isolates by token, invalidates", () => {
+    setCachedSession("tok-A", { userId: "uA", email: "a@x.io", sessionId: "sA" });
+    setCachedSession("tok-B", { userId: "uB", email: "b@x.io", sessionId: "sB" });
+    expect(getCachedSession("tok-A")?.userId).toBe("uA");
+    expect(getCachedSession("tok-B")?.userId).toBe("uB");
+    // A token can never read another's entry (keyed by the signed cookie).
+    expect(getCachedSession("tok-unknown")).toBeUndefined();
+    invalidateSession("tok-A");
+    expect(getCachedSession("tok-A")).toBeUndefined();
+    expect(getCachedSession("tok-B")?.userId).toBe("uB");
   });
 });
 

@@ -220,16 +220,36 @@ export const createApp = (env: Env) => {
     }
     c.set("ctx", ctx);
     if (!rolesSeeded) {
+      // Set optimistically so a burst of concurrent first-requests on a cold
+      // isolate doesn't each run the bootstrap.
+      rolesSeeded = true;
       const dbCtx = { db: ctx.db, dialect: ctx.dialect };
-      const defaultTenantId = await ensureDefaultTenant(dbCtx);
-      await ensureSystemRoles(dbCtx, defaultTenantId);
-      await seedOwnerScopedPermissions(dbCtx, defaultTenantId, FILES_COLLECTION);
-      await seedEmailTemplates(dbCtx);
       // Prime the cross-origin allow-list before the CORS middleware runs on
       // this same first request — otherwise the first cross-origin call after
       // a cold isolate start would miss the workspace redirect-URL origins.
+      // One cheap SELECT; stays on the critical path.
       await warmAllowedOrigins(dbCtx);
-      rolesSeeded = true;
+      // The rest is idempotent bootstrap seeding. On an already-provisioned
+      // instance (every cold isolate after the first ever) it's ~11 no-op
+      // SELECTs that needlessly blocked the first request ~110ms — traced on a
+      // cold /api/collections. Defer it off the critical path; `waitUntil` keeps
+      // the isolate alive until it finishes. The genuine first-user bootstrap is
+      // also performed in context.ts, so deferring here is safe. Tests / runtimes
+      // without an ExecutionContext fall back to awaiting inline (deterministic).
+      const seed = async () => {
+        const defaultTenantId = await ensureDefaultTenant(dbCtx);
+        await ensureSystemRoles(dbCtx, defaultTenantId);
+        await seedOwnerScopedPermissions(dbCtx, defaultTenantId, FILES_COLLECTION);
+        await seedEmailTemplates(dbCtx);
+      };
+      let ec: ExecutionContext | undefined;
+      try {
+        ec = c.executionCtx;
+      } catch {
+        ec = undefined;
+      }
+      if (ec) ec.waitUntil(seed().catch(() => {}));
+      else await seed();
     }
     await next();
     // Stamp the latest bookmark on the way out so the client can round-trip

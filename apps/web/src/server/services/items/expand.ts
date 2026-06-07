@@ -72,6 +72,12 @@ export const resolveExpands = async (
   collection: CollectionRow,
   expand: string[],
   joinMap: Map<string, { alias: string; target: CollectionRow }>,
+  /**
+   * Optional per-head sub-field allow-list (from `fields=customer.name`). When
+   * a head has an entry, the inlined object is trimmed to `id` + those columns;
+   * absent ⇒ whole readable row (the `expand=` param default).
+   */
+  subFields: Map<string, Set<string>> = new Map(),
 ): Promise<{ extraJoins: SQL[]; selects: SQL[]; plans: ExpandPlan[] }> => {
   if (expand.length === 0) {
     return { extraJoins: [], selects: [], plans: [] };
@@ -129,20 +135,42 @@ export const resolveExpands = async (
       );
       joinMap.set(head, { alias, target });
     }
+    // Sub-field trim (from `fields=customer.name`): restrict the inlined
+    // object to `id` + the requested leaves. Validate each requested leaf
+    // exists on the target and is readable, so `fields=customer.bogus`
+    // surfaces a precise 422 instead of silently dropping.
+    const subs = subFields.get(head);
+    if (subs) {
+      const targetSys = new Set<string>(["id"]);
+      if (target.hasCreatedAt) targetSys.add("created_at");
+      if (target.hasUpdatedAt) targetSys.add("updated_at");
+      if (target.ownerScoped) targetSys.add("owner_id");
+      const targetFieldNames = new Set(target.fields.map((f) => f.name));
+      for (const s of subs) {
+        if (!targetSys.has(s) && !targetFieldNames.has(s)) {
+          throw new AppError("VALIDATION", `Unknown field: ${head}.${s}`);
+        }
+        if (!targetSys.has(s) && targetPerm.fields && !targetPerm.fields.has(s)) {
+          throw new AppError("FORBIDDEN", `No permission to read "${head}.${s}"`);
+        }
+      }
+    }
+    const wants = (key: string): boolean => !subs || key === "id" || subs.has(key);
     // Build the column list for the JSON object. System columns are
-    // unconditional; user fields are filtered by the target role's
-    // `fields` allow-list. Adopted targets may have aliased created_at /
-    // updated_at — emit the physical column under the logical key so the
-    // wire shape stays consistent across managed and adopted targets.
+    // unconditional (unless sub-trimmed); user fields are filtered by the
+    // target role's `fields` allow-list. Adopted targets may have aliased
+    // created_at / updated_at — emit the physical column under the logical
+    // key so the wire shape stays consistent across managed and adopted
+    // targets.
     const aliasId = sql.identifier(alias);
     const cols: Array<{ key: string; ref: SQL }> = [
       { key: "id", ref: sql`${aliasId}.${sql.identifier(target.pkColumn)}` },
     ];
-    if (target.hasCreatedAt) {
+    if (target.hasCreatedAt && wants("created_at")) {
       const phys = target.createdAtColumn ?? "created_at";
       cols.push({ key: "created_at", ref: sql`${aliasId}.${sql.identifier(phys)}` });
     }
-    if (target.hasUpdatedAt) {
+    if (target.hasUpdatedAt && wants("updated_at")) {
       const phys = target.updatedAtColumn ?? "updated_at";
       cols.push({ key: "updated_at", ref: sql`${aliasId}.${sql.identifier(phys)}` });
     }
@@ -150,12 +178,13 @@ export const resolveExpands = async (
     // adopted-with-alias). The side-table path (`item_ownership`) isn't
     // joined here — leaving it off is the right call for v1; expanding it
     // would need a second LEFT JOIN per expand and isn't worth the cost.
-    if (target.ownerScoped && (!target.adopted || target.ownerIdColumn)) {
+    if (target.ownerScoped && (!target.adopted || target.ownerIdColumn) && wants("owner_id")) {
       const phys = target.ownerIdColumn ?? "owner_id";
       cols.push({ key: "owner_id", ref: sql`${aliasId}.${sql.identifier(phys)}` });
     }
     for (const f of target.fields) {
       if (targetPerm.fields && !targetPerm.fields.has(f.name)) continue;
+      if (!wants(f.name)) continue;
       cols.push({ key: f.name, ref: sql`${aliasId}.${sql.identifier(f.name)}` });
     }
     const outputCol = `__expand_${head}`;

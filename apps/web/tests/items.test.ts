@@ -253,4 +253,63 @@ describe("multi-hop nested filter + sort", () => {
     expect(body.data.length).toBe(2);
     expect(body.meta?.filter_count).toBe(2);
   });
+
+  // Phase 2 — relation traversal in the `fields` projection.
+  test("fields=customer_id.name → trimmed nested object", async () => {
+    const res = await h.fetch(
+      `/api/items/orders?fields=${encodeURIComponent("id,title,customer_id.name")}&sort=title`,
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      data: Array<{ title: string; customer_id: { id: string; name: string } }>;
+    };
+    const o1 = body.data.find((r) => r.title === "Order-1")!;
+    expect(o1.customer_id.name).toBe("Alice");
+    // Trimmed: only id + name, no other customer columns (e.g. address_id).
+    expect(Object.keys(o1.customer_id).sort()).toEqual(["id", "name"]);
+  });
+
+  test("fields=customer_id.* → whole related row", async () => {
+    const res = await h.fetch(
+      `/api/items/orders?fields=${encodeURIComponent("title,customer_id.*")}&sort=title`,
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      data: Array<{ customer_id: Record<string, unknown> }>;
+    };
+    const cust = body.data[0]!.customer_id;
+    expect(cust.name).toBeDefined();
+    expect(cust.address_id).toBeDefined(); // full row, not trimmed
+  });
+
+  test("fields with unknown sub-field → 422", async () => {
+    const res = await h.fetch(
+      `/api/items/orders?fields=${encodeURIComponent("customer_id.bogus")}`,
+    );
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { code: string; message: string } };
+    expect(body.error.code).toBe("VALIDATION");
+    expect(body.error.message).toContain("customer_id.bogus");
+  });
+
+  test("multi-hop field projection (a.b.c) → 422 (deferred)", async () => {
+    const res = await h.fetch(
+      `/api/items/orders?fields=${encodeURIComponent("customer_id.address_id.city")}`,
+    );
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { code: string; message: string } };
+    expect(body.error.message).toMatch(/Multi-hop field projection/);
+  });
+
+  test("fields projection reuses the filter's JOIN (no error when both hit same relation)", async () => {
+    const res = await h.fetch(
+      `/api/items/orders?filter=${encodeURIComponent(JSON.stringify({ "customer_id.name": { _eq: "Alice" } }))}&fields=${encodeURIComponent("title,customer_id.name")}&sort=title`,
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      data: Array<{ title: string; customer_id: { name: string } }>;
+    };
+    expect(body.data.map((r) => r.title)).toEqual(["Order-1", "Order-3"]);
+    expect(body.data.every((r) => r.customer_id.name === "Alice")).toBe(true);
+  });
 });

@@ -82,17 +82,21 @@ export const accountRoutes = new OpenAPIHono<AppBindings>()
       const auth = c.get("auth");
       if (!auth.userId) throw new AppError("UNAUTHORIZED", "Not signed in");
       const t = usersTable(ctx.dialect);
-      const rows = (await (ctx.db as any)
-        .select({ locale: t.locale, timezone: t.timezone })
-        .from(t)
-        .where(eq(t.id, auth.userId))
-        .limit(1)) as { locale: string | null; timezone: string | null }[];
+      // The user row and the workspace settings are independent reads. Each D1
+      // call carries ~20ms of service round-trip overhead regardless of the
+      // (sub-ms) SQL, so issue them concurrently — one round-trip on the wire
+      // instead of two sequential ones.
+      const [rows, settings] = await Promise.all([
+        (ctx.db as any)
+          .select({ locale: t.locale, timezone: t.timezone })
+          .from(t)
+          .where(eq(t.id, auth.userId))
+          .limit(1) as Promise<
+          { locale: string | null; timezone: string | null }[]
+        >,
+        loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null),
+      ]);
       const user = rows[0] ?? { locale: null, timezone: null };
-      const settings = await loadAppSettings(
-        ctx.db,
-        ctx.dialect,
-        auth.tenantId ?? null,
-      );
       return c.json({
         data: {
           user: {

@@ -48,6 +48,34 @@ const stampSessionMeta = async (
   }
 };
 
+// stampSessionMeta only fills ip/ua once (WHERE ip_address IS NULL), so after
+// the first stamp every later UPDATE matches 0 rows — yet still pays a D1
+// round-trip on every request. Remember the session ids we've already stamped
+// in this isolate and skip the no-op write entirely. Capped so a long-lived
+// isolate can't grow it without bound.
+const stampedSessions = new Set<string>();
+const STAMPED_CAP = 10_000;
+
+/** Stamp a session's ip/ua at most once per id per isolate, off the critical
+ *  path. `waitUntil` keeps the isolate alive so the (first) write completes;
+ *  falls back to a dangling promise where no ExecutionContext exists. */
+const stampOnce = (
+  c: { executionCtx: { waitUntil(p: Promise<unknown>): void } },
+  ctx: { db: unknown; dialect: "pg" | "sqlite" },
+  sessionId: string,
+  req: Request,
+): void => {
+  if (stampedSessions.has(sessionId)) return;
+  if (stampedSessions.size >= STAMPED_CAP) stampedSessions.clear();
+  stampedSessions.add(sessionId);
+  const p = stampSessionMeta(ctx, sessionId, req).catch(() => {});
+  try {
+    c.executionCtx.waitUntil(p);
+  } catch {
+    /* no ExecutionContext — the promise still runs to completion */
+  }
+};
+
 /**
  * Cross-tenant role names (unfiltered union). Only consulted by tenantMiddleware
  * when the caller isn't a member of the requested workspace — to decide whether
@@ -174,11 +202,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
     userId = cached.userId;
     email = cached.email;
     if (cached.sessionId) {
-      void stampSessionMeta(
-        { db: ctx.db, dialect: ctx.dialect },
-        cached.sessionId,
-        c.req.raw,
-      );
+      stampOnce(c, { db: ctx.db, dialect: ctx.dialect }, cached.sessionId, c.req.raw);
     }
   } else {
     const session = await ctx.auth.api.getSession({ headers: c.req.raw.headers });
@@ -188,12 +212,7 @@ export const sessionMiddleware: MiddlewareHandler<AppBindings> = async (c, next)
       const sessId =
         (session as { session?: { id?: string } }).session?.id ?? null;
       if (sessId) {
-        // Fire-and-forget — the row only gets touched when ip/ua is missing.
-        void stampSessionMeta(
-          { db: ctx.db, dialect: ctx.dialect },
-          sessId,
-          c.req.raw,
-        );
+        stampOnce(c, { db: ctx.db, dialect: ctx.dialect }, sessId, c.req.raw);
       }
       if (sessionToken) {
         setCachedSession(sessionToken, { userId, email, sessionId: sessId });

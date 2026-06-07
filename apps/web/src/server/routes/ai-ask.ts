@@ -151,10 +151,10 @@ const buildPlanSystem = (schemaDigest: string, todayIso: string): string => {
     "Logical combinators are DOLLAR-prefixed and take an array (or, for " +
     "$not, a single condition): $and, $or, $not — e.g. " +
     '{ "$and": [{ "status": { "_eq": "active" } }, { "age": { "_gte": 18 } }] }. ' +
-    "Do NOT write _and/_or/_not — those are rejected. Combinators may ONLY " +
-    "appear as the key of a condition object, NEVER inside a field's operator " +
-    'object: { "age": { "$not": {...} } } is INVALID; wrap with a top-level ' +
-    '{ "$not": { "age": {...} } } instead.\n\n' +
+    "`$and`/`$or`/`$not` are canonical; `_and`/`_or`/`_not` are also accepted. " +
+    "Combinators may ONLY appear as the key of a condition object, NEVER inside " +
+    'a field\'s operator object: { "age": { "$not": {...} } } is INVALID; wrap ' +
+    'with a top-level { "$not": { "age": {...} } } instead.\n\n' +
     "Filtering through a RELATION: to filter (or sort) by a related record's " +
     "field, use a DOT-PATH key whose first segment is a relation field shown " +
     "in the schema below — e.g. " +
@@ -166,26 +166,26 @@ const buildPlanSystem = (schemaDigest: string, todayIso: string): string => {
     "up to 2 hops (a.b.c); has-many (relation_many) paths are single-hop only " +
     "(a.b) and CANNOT appear in `sort`.\n\n" +
     "Variables (substituted server-side): $user.id, $user.email, $user.roles, " +
-    "$tenant.id, $now. $now is the CURRENT INSTANT ONLY — there is NO date " +
-    'arithmetic; { "$now": "-1 month" } and "$now - 1 month" are INVALID. ' +
-    `For relative ranges, compute ABSOLUTE ISO dates yourself from today's ` +
-    `date (${todayIso}) and use _gte / _lt — e.g. "in the last month" → ` +
-    '{ "placed_at": { "_gte": "<one-month-before-today, ISO>" } }.' +
+    "$tenant.id, and $now. For relative ranges use the relative-date value " +
+    '{ "$now": { "sub"|"add": { years?, months?, weeks?, days?, hours?, ' +
+    "minutes?, seconds? } } } anywhere a value is expected — e.g. " +
+    '"in the last month" → ' +
+    '{ "placed_at": { "_gte": { "$now": { "sub": { "months": 1 } } } } }. ' +
+    `(Today is ${todayIso} if you prefer an absolute ISO date.) ` +
+    "Extra operators: _between [lo,hi]; case-insensitive _icontains / " +
+    "_istarts_with / _iends_with; _empty / _nempty." +
     schemaDigest
   );
 };
+
+type FetchInternal = (path: string, init?: RequestInit) => Promise<Response>;
 
 /** Best-effort fetch of the workspace's collections for the planner's
  *  schema digest. Reuses the in-process Hono app so tenant resolution and
  *  read permissions apply exactly as for a direct call. Never throws — a
  *  failed lookup just yields a schema-less prompt (prior behavior). */
-const loadSchemaDigest = async (
-  app: Hono<AppBindings>,
-  req: Request,
-  env: Env,
-): Promise<string> => {
+const loadSchemaDigest = async (fetchInternal: FetchInternal): Promise<string> => {
   try {
-    const fetchInternal = makeInternalFetch(app as unknown as Hono, req, env);
     const res = await fetchInternal("/api/collections");
     const body = await readJson<{ data: CollectionMeta[] }>(res);
     return buildSchemaDigest(Array.isArray(body.data) ? body.data : []);
@@ -194,13 +194,87 @@ const loadSchemaDigest = async (
   }
 };
 
+/**
+ * Dry-run a `collections.list` plan against the REAL list endpoint (limit=1)
+ * so the SAME parser/validator/permission gate the `/run` path uses decides if
+ * the filter / sort / fields are well-formed — including relation hops, which a
+ * re-implemented validator couldn't reach. Returns the upstream error string on
+ * a 4xx validation/permission/not-found failure, else null (valid, or an
+ * unrelated 5xx we shouldn't try to "correct").
+ *
+ * Exported for tests — it's the core of the planner self-correction loop.
+ */
+export const dryRunListQuery = async (
+  fetchInternal: FetchInternal,
+  args: Record<string, unknown>,
+): Promise<string | null> => {
+  const slug = typeof args.collection === "string" ? args.collection : "";
+  if (!slug) return null;
+  const params = new URLSearchParams();
+  if (args.filter && typeof args.filter === "object") {
+    params.set("filter", JSON.stringify(args.filter));
+  }
+  if (args.sort !== undefined) {
+    params.set(
+      "sort",
+      Array.isArray(args.sort) ? args.sort.join(",") : String(args.sort),
+    );
+  }
+  if (args.fields !== undefined) {
+    params.set(
+      "fields",
+      Array.isArray(args.fields) ? args.fields.join(",") : String(args.fields),
+    );
+  }
+  params.set("limit", "1");
+  let res: Response;
+  try {
+    res = await fetchInternal(`/api/items/${encodeURIComponent(slug)}?${params}`);
+  } catch {
+    return null; // transport hiccup — don't trigger a correction
+  }
+  if (res.ok) return null;
+  const body = (await res.json().catch(() => null)) as
+    | { error?: { code?: string; message?: string } }
+    | null;
+  const err = body?.error;
+  // Only the deterministic, model-fixable failures warrant a retry.
+  if (err?.message && (err.code === "VALIDATION" || err.code === "FORBIDDEN" || err.code === "NOT_FOUND")) {
+    return `${err.code}: ${err.message}`;
+  }
+  return null;
+};
+
 interface PlanResult {
   rationale: string;
   tool: string;
   args: Record<string, unknown>;
   model: string;
   usage?: unknown;
+  /** Set when the plan still fails validation after one corrective retry, so
+   *  the UI can warn before the operator clicks Run (instead of a 422). */
+  validationError?: string;
 }
+
+/** Coerce a raw extractJson result into {rationale, tool, args}. Throws on the
+ *  shape errors the route surfaces as 422. */
+const coercePlan = (parsed: {
+  rationale?: unknown;
+  tool?: unknown;
+  args?: unknown;
+}): { rationale: string; tool: string; args: Record<string, unknown> } => {
+  if (typeof parsed.tool !== "string" || !parsed.tool) {
+    throw new AppError("VALIDATION", "Model reply missing `tool`");
+  }
+  if (typeof parsed.rationale !== "string") {
+    throw new AppError("VALIDATION", "Model reply missing `rationale`");
+  }
+  const args =
+    parsed.args && typeof parsed.args === "object" && !Array.isArray(parsed.args)
+      ? (parsed.args as Record<string, unknown>)
+      : {};
+  return { rationale: parsed.rationale, tool: parsed.tool, args };
+};
 
 const planHandler = async (
   c: Parameters<MiddlewareHandler<AppBindings>>[0],
@@ -220,41 +294,80 @@ const planHandler = async (
       ? body.model.trim()
       : DEFAULT_PLAN_MODEL;
 
-  const schemaDigest = await loadSchemaDigest(app, c.req.raw, env);
+  const fetchInternal = makeInternalFetch(app as unknown as Hono, c.req.raw, env);
+  const schemaDigest = await loadSchemaDigest(fetchInternal);
   const todayIso = new Date().toISOString().slice(0, 10);
+  const system = buildPlanSystem(schemaDigest, todayIso);
+
   const reply = await callClaude(env, {
-    system: buildPlanSystem(schemaDigest, todayIso),
+    system,
     user: prompt,
     model,
     maxTokens: 1024,
   });
 
-  let parsed: { rationale?: unknown; tool?: unknown; args?: unknown };
-  try {
-    parsed = extractJson(reply.text);
-  } catch (e) {
-    throw new AppError(
-      "VALIDATION",
-      `Could not parse model reply as JSON: ${(e as Error).message}`,
-    );
+  const parse = (
+    text: string,
+  ): { rationale?: unknown; tool?: unknown; args?: unknown } => {
+    try {
+      return extractJson(text) as {
+        rationale?: unknown;
+        tool?: unknown;
+        args?: unknown;
+      };
+    } catch (e) {
+      throw new AppError(
+        "VALIDATION",
+        `Could not parse model reply as JSON: ${(e as Error).message}`,
+      );
+    }
+  };
+
+  let plan = coercePlan(parse(reply.text));
+  let usage: unknown = reply.usage;
+  let validationError: string | undefined;
+
+  // Self-correction: dry-run a structured list plan against the real endpoint
+  // and, if it fails validation, hand the model the exact error for ONE
+  // corrective retry. Caps cost/latency at a single extra call; a still-bad
+  // plan is returned annotated so the UI can warn before Run.
+  if (plan.tool === "collections.list") {
+    const err = await dryRunListQuery(fetchInternal, plan.args);
+    if (err) {
+      const retry = await callClaude(env, {
+        system,
+        user:
+          `${prompt}\n\nYour previous answer was:\n` +
+          `\`\`\`json\n${JSON.stringify({ tool: plan.tool, args: plan.args })}\n\`\`\`\n` +
+          `but it failed validation with:\n${err}\n` +
+          "Return ONE corrected JSON block. Use only fields that exist in the " +
+          "schema; relation paths use dotted keys in filter/sort; `fields` " +
+          "takes plain column names of the queried collection.",
+        model,
+        maxTokens: 1024,
+      });
+      try {
+        const corrected = coercePlan(parse(retry.text));
+        plan = corrected;
+        usage = retry.usage;
+        // Re-validate the corrected plan; surface a lingering failure.
+        if (corrected.tool === "collections.list") {
+          validationError = (await dryRunListQuery(fetchInternal, corrected.args)) ?? undefined;
+        }
+      } catch {
+        // Retry produced unparseable JSON — keep the first plan, annotate.
+        validationError = err;
+      }
+    }
   }
-  if (typeof parsed.tool !== "string" || !parsed.tool) {
-    throw new AppError("VALIDATION", "Model reply missing `tool`");
-  }
-  if (typeof parsed.rationale !== "string") {
-    throw new AppError("VALIDATION", "Model reply missing `rationale`");
-  }
-  const args =
-    parsed.args && typeof parsed.args === "object" && !Array.isArray(parsed.args)
-      ? (parsed.args as Record<string, unknown>)
-      : {};
 
   const result: PlanResult = {
-    rationale: parsed.rationale,
-    tool: parsed.tool,
-    args,
+    rationale: plan.rationale,
+    tool: plan.tool,
+    args: plan.args,
     model,
-    usage: reply.usage,
+    usage,
+    ...(validationError ? { validationError } : {}),
   };
   return c.json({ data: result });
 };

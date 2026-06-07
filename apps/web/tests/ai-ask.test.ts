@@ -10,7 +10,7 @@
 import { describe, expect, test, beforeAll, afterAll } from "bun:test";
 import { Database } from "bun:sqlite";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
-import { buildSchemaDigest } from "../src/server/routes/ai-ask";
+import { buildSchemaDigest, dryRunListQuery } from "../src/server/routes/ai-ask";
 
 const APP_URL = "http://localhost:5173";
 
@@ -109,6 +109,75 @@ describe("Ask AI — buildSchemaDigest (planner schema awareness)", () => {
     expect(digest).toContain("field_name_0");
     // …but the per-field type annotation is dropped in the fallback.
     expect(digest).not.toContain("field_name_0 (text)");
+  });
+});
+
+describe("Ask AI — dryRunListQuery (planner self-correction guard)", () => {
+  let h: TestHarness;
+  const slug = `dryrun_${Date.now()}`;
+  // `h.fetch` is already admin-authed and has the FetchInternal shape.
+  const fetchInternal = (path: string, init?: RequestInit) => h.fetch(path, init);
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    const r = await h.fetch("/api/collections", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        slug,
+        fields: [
+          { name: "title", type: "text", required: true },
+          { name: "score", type: "integer" },
+        ],
+      }),
+    });
+    expect(r.status).toBe(201);
+  });
+  afterAll(() => h.cleanup());
+
+  test("valid plan → null (no correction needed)", async () => {
+    const err = await dryRunListQuery(fetchInternal, {
+      collection: slug,
+      filter: { score: { _gte: 10 } },
+      sort: "-score",
+      limit: 5,
+    });
+    expect(err).toBeNull();
+  });
+
+  test("bad filter field → VALIDATION message", async () => {
+    const err = await dryRunListQuery(fetchInternal, {
+      collection: slug,
+      filter: { nonexistent: { _eq: 1 } },
+    });
+    expect(err).toContain("VALIDATION");
+    expect(err).toContain("nonexistent");
+  });
+
+  test("relation dot-path in fields (unsupported) → VALIDATION message", async () => {
+    const err = await dryRunListQuery(fetchInternal, {
+      collection: slug,
+      fields: ["title", "author.name"],
+    });
+    expect(err).toContain("VALIDATION");
+  });
+
+  test("unknown collection → NOT_FOUND message", async () => {
+    const err = await dryRunListQuery(fetchInternal, {
+      collection: "no_such_collection_xyz",
+    });
+    expect(err).toContain("NOT_FOUND");
+  });
+
+  test("normalized input (nested-object relation, _and) validates", async () => {
+    // Phase-1 normalization means the model may emit Directus-style nesting;
+    // dry-run should accept what the real endpoint accepts.
+    const err = await dryRunListQuery(fetchInternal, {
+      collection: slug,
+      filter: { _and: [{ title: "x" }, { score: { _gte: 0 } }] },
+    });
+    expect(err).toBeNull();
   });
 });
 

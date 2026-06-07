@@ -130,7 +130,7 @@ export const buildSchemaDigest = (collections: CollectionMeta[]): string => {
   );
 };
 
-const buildPlanSystem = (schemaDigest: string): string => {
+const buildPlanSystem = (schemaDigest: string, todayIso: string): string => {
   const catalog = PLAN_TOOL_WHITELIST.map(
     (name) => `  - ${name}: ${PLAN_TOOL_DESCRIPTIONS[name]}`,
   ).join("\n");
@@ -151,8 +151,26 @@ const buildPlanSystem = (schemaDigest: string): string => {
     "Logical combinators are DOLLAR-prefixed and take an array (or, for " +
     "$not, a single condition): $and, $or, $not — e.g. " +
     '{ "$and": [{ "status": { "_eq": "active" } }, { "age": { "_gte": 18 } }] }. ' +
-    "Do NOT write _and/_or/_not — those are rejected. Variables: " +
-    "$user.id, $user.email, $user.roles, $tenant.id, $now." +
+    "Do NOT write _and/_or/_not — those are rejected. Combinators may ONLY " +
+    "appear as the key of a condition object, NEVER inside a field's operator " +
+    'object: { "age": { "$not": {...} } } is INVALID; wrap with a top-level ' +
+    '{ "$not": { "age": {...} } } instead.\n\n' +
+    "Filtering through a RELATION: to filter (or sort) by a related record's " +
+    "field, use a DOT-PATH key whose first segment is a relation field shown " +
+    "in the schema below — e.g. " +
+    '{ "customer_id.name": { "_eq": "Alice" } } or ' +
+    '{ "orders.placed_at": { "_gte": "2025-05-01" } }. The leaf still takes ' +
+    "an `{ _op: value }` object. NEVER write a relation field as a bare key " +
+    'with a nested filter object ({ "orders": { ... } } is INVALID — it is ' +
+    "read as a scalar column and rejected). belongs-to (relation) paths allow " +
+    "up to 2 hops (a.b.c); has-many (relation_many) paths are single-hop only " +
+    "(a.b) and CANNOT appear in `sort`.\n\n" +
+    "Variables (substituted server-side): $user.id, $user.email, $user.roles, " +
+    "$tenant.id, $now. $now is the CURRENT INSTANT ONLY — there is NO date " +
+    'arithmetic; { "$now": "-1 month" } and "$now - 1 month" are INVALID. ' +
+    `For relative ranges, compute ABSOLUTE ISO dates yourself from today's ` +
+    `date (${todayIso}) and use _gte / _lt — e.g. "in the last month" → ` +
+    '{ "placed_at": { "_gte": "<one-month-before-today, ISO>" } }.' +
     schemaDigest
   );
 };
@@ -203,8 +221,9 @@ const planHandler = async (
       : DEFAULT_PLAN_MODEL;
 
   const schemaDigest = await loadSchemaDigest(app, c.req.raw, env);
+  const todayIso = new Date().toISOString().slice(0, 10);
   const reply = await callClaude(env, {
-    system: buildPlanSystem(schemaDigest),
+    system: buildPlanSystem(schemaDigest, todayIso),
     user: prompt,
     model,
     maxTokens: 1024,

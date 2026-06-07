@@ -479,6 +479,8 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
               { [sub]: cmp },
               leafCtx,
               subColRef,
+              undefined,
+              { dialect: ctx.dialect },
             );
             const baseCol = hasJoins
               ? sql`${baseTblId}.${sql.identifier(head)}`
@@ -505,7 +507,9 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         : undefined;
 
       const userWhere = userFilter
-        ? compileCondition(userFilter, auth, nestedColRef, relationManyLeaf)
+        ? compileCondition(userFilter, auth, nestedColRef, relationManyLeaf, {
+            dialect: ctx.dialect,
+          })
         : null;
       // When joins are present, recompile permission conditions so their
       // unqualified column references (`owner_id` etc.) also get pinned to
@@ -517,7 +521,9 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       // compiler through this path.
       const permWhere =
         hasJoins && perm.conditions
-          ? combineConditions(perm.conditions, auth, nestedColRef)
+          ? combineConditions(perm.conditions, auth, nestedColRef, undefined, {
+              dialect: ctx.dialect,
+            })
           : perm.whereSql;
       const tenantWhereRaw = tenantFilter(collection, auth);
       const tenantWhere =

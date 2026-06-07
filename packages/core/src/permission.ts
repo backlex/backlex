@@ -9,10 +9,42 @@ export interface ComparisonObj {
   _gte?: unknown;
   _lt?: unknown;
   _lte?: unknown;
+  /** Inclusive range: `col BETWEEN lo AND hi`. */
+  _between?: [unknown, unknown];
   _null?: boolean;
   _contains?: string;
   _starts_with?: string;
   _ends_with?: string;
+  /** Case-insensitive variants (LOWER() both sides → PG/SQLite parity). */
+  _icontains?: string;
+  _istarts_with?: string;
+  _iends_with?: string;
+  /** `_empty: true` ⇒ NULL or empty string; `_nempty: true` ⇒ neither. */
+  _empty?: boolean;
+  _nempty?: boolean;
+}
+
+/**
+ * Relative-date value usable anywhere a comparison value is expected (filters
+ * AND permission rules), e.g. `{ placed_at: { _gte: { $now: { sub: { months: 1 } } } } }`.
+ * Bare `"$now"` still means "this instant". Resolved server-side to the
+ * dialect-correct physical representation (SQLite epoch-ms int / PG ISO string).
+ */
+export interface RelativeNow {
+  $now: {
+    add?: DurationParts;
+    sub?: DurationParts;
+  };
+}
+
+export interface DurationParts {
+  years?: number;
+  months?: number;
+  weeks?: number;
+  days?: number;
+  hours?: number;
+  minutes?: number;
+  seconds?: number;
 }
 
 export type Condition =

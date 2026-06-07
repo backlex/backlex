@@ -1592,18 +1592,22 @@ input[type="range"]:focus-visible::-moz-range-thumb {
     grid-template-columns: minmax(0, 1fr);
   }
   /* Stacked: cap the list height so users can see the detail pane below
-     without a long initial scroll. Wide-width default is full-height. */
+     without a long initial scroll. A *definite* height (not max-height) is
+     required — otherwise the inner Radix ScrollArea viewport (height:100%)
+     can't resolve against an indefinite parent and grows to full content
+     height, so nothing scrolls and the card just clips. */
   .rest-explorer-split .rest-explorer-list-card {
-    max-height: 320px;
+    height: 320px;
   }
 }
 @media (min-width: 769px) {
-  /* Restore the original height constraint when side-by-side. */
+  /* Side-by-side: definite heights (see note above) so both panes' inner
+     ScrollAreas actually scroll instead of overflowing + clipping. */
   .rest-explorer-split .rest-explorer-list-card {
-    max-height: calc(100vh - 220px);
+    height: calc(100vh - 220px);
   }
   .rest-explorer-split .rest-explorer-detail {
-    max-height: calc(100vh - 220px);
+    height: calc(100vh - 220px);
   }
 }
 

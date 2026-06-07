@@ -65,10 +65,11 @@ const PLAN_TOOL_DESCRIPTIONS: Record<(typeof PLAN_TOOL_WHITELIST)[number], strin
       "{collection: string, agg: 'count'|'sum'|'avg'|'min'|'max', field?: string, " +
       "groupBy?: string, filter?: object, limit?: number} — analytics over a " +
       "collection. Use this (NOT collections.list) for totals/averages/counts " +
-      "and \"top N by <metric>\" questions: e.g. top customers by spend → " +
-      "{collection:'orders', agg:'sum', field:'total', groupBy:'customer_id', limit:10}. " +
-      "Grouped results come back ordered by value desc. `field` is required for " +
-      "sum/avg/min/max and must be a numeric column; single-table only.",
+      "and \"top N by <metric>\" questions. `field` (sum/avg/min/max) and " +
+      "`groupBy` MUST be EXACT field names from the schema — use a relation " +
+      "field's own name as shown (e.g. `customer`), do NOT append `_id`. Group " +
+      "by the relation FK column to bucket by the related record. Grouped " +
+      "results come back ordered by value desc; single-table only.",
     "storage.list":
       "{prefix?: string, folder?: string, search?: string, limit?: number} — list files in object storage.",
     "vector.search":
@@ -186,9 +187,12 @@ const buildPlanSystem = (schemaDigest: string, todayIso: string): string => {
     "only lists rows. For totals, averages, counts, or \"top N by <metric>\" " +
     "questions use the `collections.aggregate` tool instead (agg + optional " +
     "groupBy). Do NOT invent $group / $sum / $count / $having inside a filter — " +
-    "they are rejected. \"Top customers by spend last month\" → " +
-    "collections.aggregate { agg: 'sum', field: 'total', groupBy: 'customer_id', " +
-    "filter: { placed_at: { _gte: { $now: { sub: { months: 1 } } } } }, limit: 10 }." +
+    "they are rejected. `field` and `groupBy` MUST be EXACT field names from the " +
+    "schema below — use a relation field's own name verbatim (do NOT append " +
+    "`_id`). \"Top customers by spend last month\" (orders has relation field " +
+    "`customer` + numeric `total`) → collections.aggregate { agg: 'sum', field: " +
+    "'total', groupBy: 'customer', filter: { placed_at: { _gte: { $now: { sub: " +
+    "{ months: 1 } } } } }, limit: 10 }." +
     schemaDigest
   );
 };

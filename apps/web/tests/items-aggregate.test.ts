@@ -81,9 +81,22 @@ describe("items aggregate endpoint", () => {
     expect((json as { error: { code: string } }).error.code).toBe("VALIDATION");
   });
 
-  test("unknown groupBy field → 422", async () => {
-    const { status } = await agg({ agg: "count", groupBy: "bogus" });
+  test("unknown groupBy field → 422 listing valid columns (helps self-correct)", async () => {
+    const { status, json } = await agg({ agg: "count", groupBy: "customer_id" });
     expect(status).toBe(422);
+    const msg = (json as { error: { message: string } }).error.message;
+    expect(msg).toContain("Valid columns:");
+    // The real columns are surfaced so a near-miss can be corrected.
+    expect(msg).toContain("status");
+    expect(msg).toContain("total");
+  });
+
+  test("non-numeric sum field → 422 listing numeric columns", async () => {
+    const { status, json } = await agg({ agg: "sum", field: "status" });
+    expect(status).toBe(422);
+    const msg = (json as { error: { message: string } }).error.message;
+    expect(msg).toContain("Numeric columns:");
+    expect(msg).toContain("total");
   });
 });
 

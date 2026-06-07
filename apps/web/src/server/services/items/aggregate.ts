@@ -82,27 +82,64 @@ export const runItemsAggregate = async (
   const systemColumns = new Set(["id", "owner_id", "created_at", "updated_at"]);
   const isKnownColumn = (name: string) => fieldByName.has(name) || systemColumns.has(name);
   const allowed = opts.allowedFields;
+  // Surface the real column names so a caller (or the AI planner's dry-run
+  // retry) can correct a near-miss like `customer_id` → `customer` instead of
+  // guessing again. Relations are flagged so the model doesn't append `_id`.
+  const columnHint = (): string => {
+    const names = [
+      ...fields
+        .filter((f) => !allowed || allowed.has(f.name))
+        .map((f) =>
+          f.type === "relation" || f.type === "relation_many"
+            ? `${f.name} (relation)`
+            : f.name,
+        ),
+      "id",
+      "created_at",
+      "updated_at",
+    ];
+    return names.join(", ");
+  };
   const gateField = (name: string) => {
     if (allowed && !systemColumns.has(name) && !allowed.has(name)) {
       throw new AppError("FORBIDDEN", `No permission to read field: ${name}`);
     }
   };
+  const numericHint = (): string =>
+    fields
+      .filter((f) => NUMERIC_FIELD_TYPES.has(f.type) && (!allowed || allowed.has(f.name)))
+      .map((f) => f.name)
+      .join(", ") || "(none)";
 
   if (cfg.agg !== "count") {
     if (!cfg.field) throw new AppError("VALIDATION", `field is required for agg "${cfg.agg}"`);
     const f = fieldByName.get(cfg.field);
-    if (!f) throw new AppError("VALIDATION", `Field "${cfg.field}" is not in collection "${cfg.collection}"`);
+    if (!f) {
+      throw new AppError(
+        "VALIDATION",
+        `Field "${cfg.field}" is not in collection "${cfg.collection}". Numeric columns: ${numericHint()}`,
+      );
+    }
     if (!NUMERIC_FIELD_TYPES.has(f.type)) {
-      throw new AppError("VALIDATION", `Field "${cfg.field}" must be numeric for agg "${cfg.agg}" (got "${f.type}")`);
+      throw new AppError(
+        "VALIDATION",
+        `Field "${cfg.field}" must be numeric for agg "${cfg.agg}" (got "${f.type}"). Numeric columns: ${numericHint()}`,
+      );
     }
     gateField(cfg.field);
   } else if (cfg.field && cfg.field !== "*" && !isKnownColumn(cfg.field)) {
-    throw new AppError("VALIDATION", `Field "${cfg.field}" is not in collection "${cfg.collection}"`);
+    throw new AppError(
+      "VALIDATION",
+      `Field "${cfg.field}" is not in collection "${cfg.collection}". Valid columns: ${columnHint()}`,
+    );
   }
 
   if (cfg.groupBy) {
     if (!isKnownColumn(cfg.groupBy)) {
-      throw new AppError("VALIDATION", `groupBy field "${cfg.groupBy}" is not in collection "${cfg.collection}"`);
+      throw new AppError(
+        "VALIDATION",
+        `groupBy field "${cfg.groupBy}" is not in collection "${cfg.collection}". Valid columns: ${columnHint()}`,
+      );
     }
     gateField(cfg.groupBy);
   }

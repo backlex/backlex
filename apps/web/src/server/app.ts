@@ -248,8 +248,16 @@ export const createApp = (env: Env) => {
       } catch {
         ec = undefined;
       }
-      if (ec) ec.waitUntil(seed().catch(() => {}));
-      else await seed();
+      if (ec) {
+        ec.waitUntil(seed().catch(() => {}));
+        // Pre-warm the lazily-chunked GraphQL handler in the background, once per
+        // cold isolate. GraphQL is a first-class data API here — a customer app
+        // may use it exclusively — so we don't want its 452K chunk parsed inside
+        // the first /api/graphql request (a p99 spike on every cold isolate).
+        // Parsing it off the critical path keeps cold-start lean AND has the
+        // module cached before real query load arrives. No-op if already loaded.
+        ec.waitUntil(import("./routes/graphql").catch(() => {}));
+      } else await seed();
     }
     await next();
     // Stamp the latest bookmark on the way out so the client can round-trip

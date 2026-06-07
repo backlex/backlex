@@ -161,6 +161,37 @@ const firstUserTenant = async (
   return rows[0]?.tenantId ?? null;
 };
 
+// ── Hot-path write throttling ──────────────────────────────────────────────
+// persistActive + touchMember run on every authenticated request and both
+// writes hit the D1 PRIMARY (cross-region for most colos — e.g. a FRA worker
+// against a London primary). Re-issuing them when nothing changed is pure
+// waste, so throttle per isolate:
+//   • active_tenant_id — write only when it actually changes for a user.
+//   • last_seen_at     — at most once per minute per (tenant, user).
+// Keys are random ids; a stale entry left over from a prior test harness can
+// only cause a harmless *skip*, never an FK error, so no cross-harness reset
+// is needed (unlike the id-bearing permission caches).
+const lastActiveTenant = new Map<string, string>();
+const lastSeenWrite = new Map<string, number>();
+const LAST_SEEN_DEBOUNCE_MS = 60_000;
+
+/** Run a best-effort write off the request's critical path. `waitUntil` keeps
+ *  the isolate alive until it resolves so the row reliably persists — a bare
+ *  `void` promise can be cancelled by the runtime once the response returns.
+ *  Falls back to a dangling promise on runtimes without an ExecutionContext
+ *  (Bun-native / tests), matching the previous fire-and-forget behavior. */
+const deferWrite = (
+  c: { executionCtx: { waitUntil(p: Promise<unknown>): void } },
+  run: () => Promise<unknown>,
+): void => {
+  const p = run().catch(() => {});
+  try {
+    c.executionCtx.waitUntil(p);
+  } catch {
+    /* no ExecutionContext — the promise still runs to completion */
+  }
+};
+
 const persistActive = async (
   db: unknown,
   dialect: "pg" | "sqlite",
@@ -322,9 +353,21 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   // `auth.roles` stays empty for them — the data-plane permission resolver
   // loads their workspace roles separately.
   if (auth.userId && auth.plane !== "app" && tenantId) {
-    // Best-effort persistence; ignore failures.
-    void persistActive(db, dialect, auth.userId, tenantId).catch(() => {});
-    void touchMember(db, dialect, tenantId, auth.userId).catch(() => {});
+    const uid = auth.userId;
+    // Persist the active tenant only when it changed for this user (this
+    // isolate) — skips a primary-DB write on virtually every steady request.
+    if (lastActiveTenant.get(uid) !== tenantId) {
+      lastActiveTenant.set(uid, tenantId);
+      deferWrite(c, () => persistActive(db, dialect, uid, tenantId));
+    }
+    // Debounce the presence touch to once per minute per (tenant, user); the
+    // Members panel's "active Nm ago" tolerates ~minute granularity.
+    const seenKey = `${tenantId}:${uid}`;
+    const now = Date.now();
+    if (now - (lastSeenWrite.get(seenKey) ?? 0) >= LAST_SEEN_DEBOUNCE_MS) {
+      lastSeenWrite.set(seenKey, now);
+      deferWrite(c, () => touchMember(db, dialect, tenantId, uid));
+    }
   }
 
   c.set("auth", { ...auth, roles: tenantRoles, tenantId });

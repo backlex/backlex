@@ -71,3 +71,69 @@ describe("collections list cache invalidation", () => {
     expect(await list()).not.toContain(renamed);
   });
 });
+
+/**
+ * `loadCollection` resolves the single `(tenant, slug)` collection row on the
+ * items CRUD hot path from a per-isolate cache. The risk a cache introduces is
+ * a *stale schema*: if a field is added but the cached row still lists the old
+ * field set, a write referencing the new field would be silently dropped. These
+ * tests pin that a schema mutation invalidates the single-collection cache too,
+ * exercised end-to-end through the items endpoints (not the cache API directly).
+ */
+describe("single-collection cache invalidation (items hot path)", () => {
+  let h: TestHarness;
+  const slug = `hotpath_${Date.now()}`;
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    const create = await h.fetch("/api/collections", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        slug,
+        fields: [{ name: "title", type: "text", required: true }],
+      }),
+    });
+    expect(create.status).toBe(201);
+  });
+
+  afterAll(() => {
+    h.cleanup();
+  });
+
+  test("a field added after the schema is cached is honored on the next write", async () => {
+    // Prime the single-collection cache via the items read path.
+    const primed = await h.fetch(`/api/items/${slug}`);
+    expect(primed.status).toBe(200);
+
+    // Add a second field. PATCH runs the additive applyCollection, so the
+    // physical column exists; the route must also invalidate the cached row.
+    const patch = await h.fetch(`/api/collections/${slug}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fields: [
+          { name: "title", type: "text", required: true },
+          { name: "subtitle", type: "text" },
+        ],
+      }),
+    });
+    expect(patch.status).toBe(200);
+
+    // Write a row using the new field. With a stale cached schema the handler
+    // wouldn't know `subtitle` and would drop it; invalidation makes it persist.
+    const post = await h.fetch(`/api/items/${slug}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "t", subtitle: "kept" }),
+    });
+    expect(post.status).toBe(201);
+    const created = (await post.json()) as { data: { id: string; subtitle?: string } };
+
+    const get = await h.fetch(`/api/items/${slug}/${created.data.id}`);
+    expect(get.status).toBe(200);
+    const body = (await get.json()) as { data: { subtitle?: string } };
+    expect(body.data.subtitle).toBe("kept");
+  });
+});

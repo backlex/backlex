@@ -312,27 +312,29 @@ export const metricsRoutes = new OpenAPIHono<AppBindings>()
       const tenantClause = auth.tenantId
         ? `WHERE tenant_id = '${auth.tenantId.replace(/'/g, "''")}'`
         : "";
-      for (const t of ["collections", "files", "flows", "functions"] as const) {
+      const activeWhere = auth.tenantId
+        ? `WHERE active = 1 AND tenant_id = '${auth.tenantId.replace(/'/g, "''")}'`
+        : "WHERE active = 1";
+      const countOne = async (label: string, sqlText: string): Promise<[string, number]> => {
         try {
           const r = await queryAll<{ n: number }>(
             { db: ctx.db, dialect: ctx.dialect },
-            sql.raw(`SELECT COUNT(*) AS n FROM ${t} ${tenantClause}`),
+            sql.raw(sqlText),
           );
-          counts[t] = Number(r[0]?.n ?? 0);
+          return [label, Number(r[0]?.n ?? 0)];
         } catch {
-          // table missing
+          return [label, 0]; // table missing
         }
-      }
-      try {
-        const activeWhere = auth.tenantId
-          ? `WHERE active = 1 AND tenant_id = '${auth.tenantId.replace(/'/g, "''")}'`
-          : "WHERE active = 1";
-        const fa = await queryAll<{ n: number }>(
-          { db: ctx.db, dialect: ctx.dialect },
-          sql.raw(`SELECT COUNT(*) AS n FROM flows ${activeWhere}`),
-        );
-        counts.activeFlows = Number(fa[0]?.n ?? 0);
-      } catch {}
+      };
+      // Resource counts are independent — fire them concurrently instead of one
+      // sequential D1 round-trip each.
+      const countPairs = await Promise.all([
+        ...(["collections", "files", "flows", "functions"] as const).map((t) =>
+          countOne(t, `SELECT COUNT(*) AS n FROM ${t} ${tenantClause}`),
+        ),
+        countOne("activeFlows", `SELECT COUNT(*) AS n FROM flows ${activeWhere}`),
+      ]);
+      for (const [label, n] of countPairs) counts[label] = n;
       counts.pausedFlows = Math.max(0, (counts.flows ?? 0) - (counts.activeFlows ?? 0));
 
       // Per-collection writes in the last 24h — counted from the activity rows
@@ -364,37 +366,44 @@ export const metricsRoutes = new OpenAPIHono<AppBindings>()
             `SELECT slug, physical_table FROM collections ${tenantClause} ORDER BY slug`,
           ),
         );
-        for (const c of cs) {
-          const safeTable = (c.physical_table ?? "").replace(/"/g, "");
-          const writes24h = writes24hBySlug.get(c.slug) ?? 0;
-          if (!safeTable) continue;
-          try {
-            const r = await queryAll<{ n: number; m: number | string | null }>(
-              { db: ctx.db, dialect: ctx.dialect },
-              sql.raw(`SELECT COUNT(*) AS n, MAX(updated_at) AS m FROM "${safeTable}"`),
-            );
-            const m = r[0]?.m;
-            const lastWrite =
-              typeof m === "number" ? m : m ? new Date(m).getTime() : null;
-            const rowCount = Number(r[0]?.n ?? 0);
-            // Cheap row-size estimate. PG: pg_total_relation_size when available;
-            // SQLite/D1: fall back to rows × 256 bytes (median row width across
-            // our default field types). Ugly but unblocks the UI.
-            let bytes = rowCount * 256;
-            if (ctx.dialect === "pg") {
-              try {
-                const sz = await queryAll<{ s: number }>(
-                  { db: ctx.db, dialect: ctx.dialect },
-                  sql.raw(`SELECT pg_total_relation_size('"${safeTable}"') AS s`),
-                );
-                if (sz[0]?.s != null) bytes = Number(sz[0].s);
-              } catch {}
+        // Each collection's stats are independent — run them concurrently
+        // instead of a sequential COUNT(*) round-trip per collection (the main
+        // driver of this endpoint's p95). Promise.all preserves `cs` order, so
+        // the slug-sorted output is unchanged.
+        const perColl = await Promise.all(
+          cs.map(async (c) => {
+            const safeTable = (c.physical_table ?? "").replace(/"/g, "");
+            const writes24h = writes24hBySlug.get(c.slug) ?? 0;
+            if (!safeTable) return null;
+            try {
+              const r = await queryAll<{ n: number; m: number | string | null }>(
+                { db: ctx.db, dialect: ctx.dialect },
+                sql.raw(`SELECT COUNT(*) AS n, MAX(updated_at) AS m FROM "${safeTable}"`),
+              );
+              const m = r[0]?.m;
+              const lastWrite =
+                typeof m === "number" ? m : m ? new Date(m).getTime() : null;
+              const rowCount = Number(r[0]?.n ?? 0);
+              // Cheap row-size estimate. PG: pg_total_relation_size when available;
+              // SQLite/D1: fall back to rows × 256 bytes (median row width across
+              // our default field types). Ugly but unblocks the UI.
+              let bytes = rowCount * 256;
+              if (ctx.dialect === "pg") {
+                try {
+                  const sz = await queryAll<{ s: number }>(
+                    { db: ctx.db, dialect: ctx.dialect },
+                    sql.raw(`SELECT pg_total_relation_size('"${safeTable}"') AS s`),
+                  );
+                  if (sz[0]?.s != null) bytes = Number(sz[0].s);
+                } catch {}
+              }
+              return { slug: c.slug, rows: rowCount, bytes, lastWrite, writes24h };
+            } catch {
+              return { slug: c.slug, rows: 0, bytes: 0, lastWrite: null, writes24h };
             }
-            topCollections.push({ slug: c.slug, rows: rowCount, bytes, lastWrite, writes24h });
-          } catch {
-            topCollections.push({ slug: c.slug, rows: 0, bytes: 0, lastWrite: null, writes24h });
-          }
-        }
+          }),
+        );
+        for (const tc of perColl) if (tc) topCollections.push(tc);
       } catch {}
 
       // Request log — last N activity rows verbatim. The UI converts these

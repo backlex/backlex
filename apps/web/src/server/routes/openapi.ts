@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { OpenAPIHono } from "@hono/zod-openapi";
-import { stringify as yamlStringify } from "yaml";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
@@ -117,6 +116,9 @@ export const openapiRoutes = new Hono<AppBindings>()
     const auth = c.get("auth");
     requireAdmin(auth.roles);
     const doc = await docFor(c, auth.tenantId ?? null);
+    // Dynamic-import `yaml` so it stays out of the worker's cold-start eval —
+    // only this on-demand spec endpoint needs it (see vite.config manualChunks).
+    const { stringify: yamlStringify } = await import("yaml");
     return new Response(yamlStringify(doc), {
       headers: { "content-type": "application/yaml; charset=utf-8" },
     });

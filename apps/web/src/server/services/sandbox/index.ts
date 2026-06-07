@@ -1,6 +1,3 @@
-import { bunWorkerProvider } from "./providers/bun-worker";
-import { quickjsProvider } from "./providers/quickjs";
-import { remoteHttpProvider } from "./providers/remote-http";
 import type {
   SandboxBindings,
   SandboxProvider,
@@ -24,12 +21,18 @@ const isBun = (): boolean =>
  *                     Workers, Vercel Edge, Netlify Edge and Node without any
  *                     external infra.
  */
-const selectProvider = (bindings: SandboxBindings): SandboxProvider => {
+const selectProvider = async (
+  bindings: SandboxBindings,
+): Promise<SandboxProvider> => {
+  // Dynamic-import each provider so the heavy QuickJS-WASM blob (and the
+  // bun-worker / remote-http graphs) stay out of the worker's cold-start eval
+  // path — they load only when a function actually executes. Paired with the
+  // `undefined` manualChunks branch in vite.config so they land in lazy chunks.
   if (bindings.ctx.env.FUNCTIONS_EXEC_URL) {
-    return remoteHttpProvider;
+    return (await import("./providers/remote-http")).remoteHttpProvider;
   }
-  if (isBun()) return bunWorkerProvider;
-  return quickjsProvider;
+  if (isBun()) return (await import("./providers/bun-worker")).bunWorkerProvider;
+  return (await import("./providers/quickjs")).quickjsProvider;
 };
 
 export const runFunction = async (
@@ -38,6 +41,6 @@ export const runFunction = async (
   data: unknown,
   timeoutMs: number,
 ): Promise<SandboxResult> => {
-  const provider = selectProvider(bindings);
+  const provider = await selectProvider(bindings);
   return provider.run(source, bindings, data, timeoutMs);
 };

@@ -31,6 +31,10 @@ import {
   projectFields,
 } from "../services/items/serialize";
 import { resolveExpands, applyExpandToRow } from "../services/items/expand";
+import {
+  ITEMS_AGG_FUNCS,
+  runItemsAggregate,
+} from "../services/items/aggregate";
 import { validateBody, validateRelations } from "../services/items/validate";
 import { localizeRow, mergeI18nPatch } from "../services/items/i18n";
 import {
@@ -733,6 +737,63 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         offset: q.offset,
         ...(metaOut ? { meta: metaOut } : {}),
       });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{slug}/aggregate",
+      tags: TAGS,
+      summary: "Aggregate items",
+      description:
+        "Compute count / sum / avg / min / max over a collection, optionally grouped by a column. Returns `[{ value }]` (scalar) or `[{ label, value }, …]` (grouped, ordered by value desc). Respects the caller's read permission (rows AND fields) and tenant scope. Single-table only — no relation traversal.",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "read")],
+      request: {
+        params: z.object({ slug: z.string() }),
+        body: {
+          content: {
+            "application/json": {
+              schema: z.object({
+                agg: z.enum(ITEMS_AGG_FUNCS),
+                field: z.string().optional(),
+                groupBy: z.string().optional(),
+                filter: z.record(z.string(), z.unknown()).optional(),
+                limit: z.number().int().positive().max(200).optional(),
+              }),
+            },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": {
+              schema: z.object({ data: z.array(z.record(z.string(), z.unknown())) }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const perm = c.get("permission");
+      const { slug } = c.req.valid("param");
+      if (!auth.tenantId) {
+        throw new AppError("UNAUTHORIZED", "Active tenant required");
+      }
+      const body = c.req.valid("json");
+      const data = await runItemsAggregate(
+        ctx,
+        auth,
+        auth.tenantId,
+        { collection: slug, ...body },
+        { permWhere: perm.whereSql, allowedFields: perm.fields },
+      );
+      return c.json({ data });
     },
   )
   .openapi(

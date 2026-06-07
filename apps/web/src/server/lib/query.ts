@@ -1,4 +1,4 @@
-import { AppError } from "@backlex/core";
+import { AppError, normalizeCondition } from "@backlex/core";
 import type { Condition } from "@backlex/core";
 import type { FieldDef } from "@backlex/db";
 
@@ -131,14 +131,27 @@ export const parseQuery = (
     }
   }
 
+  // Relation heads — let the normalizer flatten the Directus/PostgREST-style
+  // nested-object filter form (`{ customer: { name: { _eq } } }`) into the
+  // canonical dotted-key form without mistaking a `json` column for a relation.
+  const relationFields = new Set(
+    fields
+      .filter((f) => f.type === "relation" || f.type === "relation_many")
+      .map((f) => f.name),
+  );
+
   let filter: Condition | null = null;
   const filterRaw = params.get("filter");
   if (filterRaw) {
+    let parsed: unknown;
     try {
-      filter = JSON.parse(filterRaw) as Condition;
+      parsed = JSON.parse(filterRaw);
     } catch {
       throw new AppError("VALIDATION", "Invalid `filter` JSON");
     }
+    // Accept `_and`/`_or`/`_not` aliases, nested-object relation filters, and
+    // implicit-equality sugar; everything downstream sees canonical form only.
+    filter = normalizeCondition(parsed, { relationFields });
     const fieldsByName = new Map(fields.map((f) => [f.name, f] as const));
     validateFilterFields(filter, allowedForUser, fieldsByName, allowedForUser);
   }

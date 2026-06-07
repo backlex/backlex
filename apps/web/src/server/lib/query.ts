@@ -21,6 +21,14 @@ export interface ParsedQuery {
    * items list/get handlers when the LEFT JOIN is materialized.
    */
   expand: string[];
+  /**
+   * Per-expanded-head sub-field projection, populated when `fields` carries a
+   * relation dot-path (`fields=customer.name`). The head is added to `expand`
+   * and its requested leaf columns recorded here so the expand SELECT trims the
+   * inlined object to just those columns. A head expanded "whole" (via the
+   * `expand=` param or a `head.*` wildcard) is absent from this map.
+   */
+  expandSubs: Map<string, Set<string>>;
   limit: number;
   offset: number;
   meta: { filterCount: boolean; totalCount: boolean };
@@ -242,21 +250,70 @@ export const parseQuery = (
     });
   if (sort.length === 0) sort.push({ field: "created_at", dir: "desc" });
 
+  // `fields` accepts plain columns AND single-hop relation dot-paths
+  // (`customer.name`, `customer.*`). A dot-path routes its head into `expand`
+  // and records the requested leaves so the inlined object is trimmed — the
+  // SAME traversal grammar filter/sort use, so the projection is no longer the
+  // odd one out. Multi-hop projection (`a.b.c`) is deferred (single-hop expand).
+  const fieldDefsByName = new Map(fields.map((f) => [f.name, f] as const));
+  const expandSubs = new Map<string, Set<string>>();
+  const fieldExpandHeads = new Set<string>();
+  const fieldExpandFull = new Set<string>();
   let fieldsList: string[] | null = null;
   const fieldsRaw = params.get("fields");
   if (fieldsRaw) {
-    fieldsList = fieldsRaw
+    const requested = fieldsRaw
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
-    for (const f of fieldsList) {
+    const baseFields: string[] = [];
+    for (const f of requested) {
+      if (f.includes(".")) {
+        const segs = f.split(".");
+        if (segs.length !== 2) {
+          throw new AppError(
+            "VALIDATION",
+            `Multi-hop field projection not yet supported: ${f}`,
+          );
+        }
+        const [head, sub] = segs as [string, string];
+        if (!head || !sub) {
+          throw new AppError("VALIDATION", `Invalid field path: ${f}`);
+        }
+        const def = fieldDefsByName.get(head);
+        if (!def) throw new AppError("VALIDATION", `Unknown field: ${head}`);
+        if (def.type === "relation_many") {
+          throw new AppError(
+            "VALIDATION",
+            `Field projection through relation_many not yet supported: ${f}`,
+          );
+        }
+        if (def.type !== "relation") {
+          throw new AppError(
+            "VALIDATION",
+            `Cannot project a sub-field of non-relation "${head}"`,
+          );
+        }
+        if (!allowedForUser.has(head)) {
+          throw new AppError("FORBIDDEN", `No permission to read field: ${head}`);
+        }
+        fieldExpandHeads.add(head);
+        if (sub === "*") fieldExpandFull.add(head);
+        else {
+          if (!expandSubs.has(head)) expandSubs.set(head, new Set());
+          expandSubs.get(head)!.add(sub);
+        }
+        continue;
+      }
       if (!valid.has(f)) {
         throw new AppError("VALIDATION", `Unknown field: ${f}`);
       }
       if (!allowedForUser.has(f)) {
         throw new AppError("FORBIDDEN", `No permission to read field: ${f}`);
       }
+      baseFields.push(f);
     }
+    fieldsList = baseFields;
   }
 
   // `expand=<relation_field>[,<relation_field>…]` — inline the target row of
@@ -304,6 +361,18 @@ export const parseQuery = (
       }
     }
   }
+  // Fold relation dot-paths from `fields` into the expand set. A head also
+  // requested via the explicit `expand=` param (or `head.*`) is expanded whole
+  // — drop any sub-trim for it so the full row wins.
+  const explicitExpand = new Set(expand);
+  for (const head of fieldExpandHeads) {
+    if (!explicitExpand.has(head)) expand.push(head);
+  }
+  for (const head of [...expandSubs.keys()]) {
+    if (explicitExpand.has(head) || fieldExpandFull.has(head)) {
+      expandSubs.delete(head);
+    }
+  }
 
   const limit = Math.min(
     200,
@@ -318,7 +387,7 @@ export const parseQuery = (
     totalCount: metaParts.has("total_count") || metaParts.has("*"),
   };
 
-  return { filter, sort, fields: fieldsList, expand, limit, offset, meta };
+  return { filter, sort, fields: fieldsList, expand, expandSubs, limit, offset, meta };
 };
 
 /**

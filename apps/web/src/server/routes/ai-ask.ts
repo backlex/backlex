@@ -155,16 +155,15 @@ const buildPlanSystem = (schemaDigest: string, todayIso: string): string => {
     "Combinators may ONLY appear as the key of a condition object, NEVER inside " +
     'a field\'s operator object: { "age": { "$not": {...} } } is INVALID; wrap ' +
     'with a top-level { "$not": { "age": {...} } } instead.\n\n' +
-    "Filtering through a RELATION: to filter (or sort) by a related record's " +
-    "field, use a DOT-PATH key whose first segment is a relation field shown " +
-    "in the schema below — e.g. " +
-    '{ "customer_id.name": { "_eq": "Alice" } } or ' +
-    '{ "orders.placed_at": { "_gte": "2025-05-01" } }. The leaf still takes ' +
-    "an `{ _op: value }` object. NEVER write a relation field as a bare key " +
-    'with a nested filter object ({ "orders": { ... } } is INVALID — it is ' +
-    "read as a scalar column and rejected). belongs-to (relation) paths allow " +
-    "up to 2 hops (a.b.c); has-many (relation_many) paths are single-hop only " +
-    "(a.b) and CANNOT appear in `sort`.\n\n" +
+    "RELATIONS: filter, sort, AND `fields` can traverse a relation via a " +
+    "DOT-PATH whose first segment is a relation field shown in the schema — e.g. " +
+    'filter { "customer_id.name": { "_eq": "Alice" } }, sort ' +
+    '"customer_id.name", fields ["customer_id.name"] (or "customer_id.*" for ' +
+    "the whole related row, which returns a nested object). The nested-object " +
+    'filter form { "customer_id": { "name": { "_eq": "Alice" } } } is also ' +
+    "accepted and means the same thing. belongs-to chains allow up to 2 hops in " +
+    "filter (a.b.c); has-many (relation_many) is single-hop, not sortable, and " +
+    "not projectable via fields.\n\n" +
     "Variables (substituted server-side): $user.id, $user.email, $user.roles, " +
     "$tenant.id, and $now. For relative ranges use the relative-date value " +
     '{ "$now": { "sub"|"add": { years?, months?, weeks?, days?, hours?, ' +

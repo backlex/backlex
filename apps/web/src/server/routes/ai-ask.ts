@@ -23,7 +23,7 @@ import type { Env } from "../env";
 import { requireUser } from "../middleware/session";
 import { callClaude, extractJson } from "../mcp/ai-client";
 import { allTools } from "../mcp/tools";
-import { makeInternalFetch } from "../mcp/internal-fetch";
+import { makeInternalFetch, readJson } from "../mcp/internal-fetch";
 import type { ToolCtx } from "../mcp/types";
 import { recordActivity, requestMeta } from "../services/activity";
 
@@ -78,7 +78,59 @@ const PLAN_TOOL_DESCRIPTIONS: Record<(typeof PLAN_TOOL_WHITELIST)[number], strin
       "{description: string, slug?: string} — draft a collection schema from prose.",
   };
 
-const buildPlanSystem = (): string => {
+/** Shape of the collection rows GET /api/collections returns — only the
+ *  slice the digest needs. */
+interface CollectionMeta {
+  slug: string;
+  note?: string | null;
+  fields?: Array<{ name: string; type?: string; to?: string }>;
+}
+
+/** System columns every collection can be filtered/sorted on regardless of
+ *  its declared fields — mirrors `SYSTEM_COLUMNS` in server/lib/query.ts. */
+const SYSTEM_FIELDS = "id (uuid), created_at (timestamp), updated_at (timestamp)";
+
+/** Soft cap so a workspace with hundreds of collections can't blow the
+ *  planner's context window. Past this many chars we keep slugs + field
+ *  names but drop types/notes; that's still enough to stop hallucinated
+ *  field names, which is the whole point. */
+const DIGEST_CHAR_BUDGET = 12_000;
+
+/** Render one collection as `slug: f1 (type), f2 (relation→target), …`. */
+const describeOne = (c: CollectionMeta, withTypes: boolean): string => {
+  const fields = Array.isArray(c.fields) ? c.fields : [];
+  const cols = fields.map((f) => {
+    if (!withTypes) return f.name;
+    if (f.to) return `${f.name} (relation→${f.to})`;
+    return f.type ? `${f.name} (${f.type})` : f.name;
+  });
+  const note = withTypes && c.note ? ` — ${c.note}` : "";
+  return `  - ${c.slug}: ${cols.join(", ")}${note}`;
+};
+
+/** Build the schema block the planner sees so it only filters/sorts on
+ *  fields that actually exist. Returns "" when there are no collections.
+ *  Exported for unit tests — not part of the route surface. */
+export const buildSchemaDigest = (collections: CollectionMeta[]): string => {
+  if (!collections.length) return "";
+  let lines = collections.map((c) => describeOne(c, true));
+  let body = lines.join("\n");
+  if (body.length > DIGEST_CHAR_BUDGET) {
+    // Second pass: drop types/notes to fit more collections in budget.
+    lines = collections.map((c) => describeOne(c, false));
+    body = lines.join("\n");
+  }
+  return (
+    "\n\nWorkspace schema — filter, sort, and `fields` may ONLY reference " +
+    "field names that appear here (plus the system fields " +
+    `${SYSTEM_FIELDS}, present on every collection). If a question asks ` +
+    "about something with no matching field, pick the closest real field " +
+    "and say so in `rationale` — NEVER invent a field name:\n" +
+    body
+  );
+};
+
+const buildPlanSystem = (schemaDigest: string): string => {
   const catalog = PLAN_TOOL_WHITELIST.map(
     (name) => `  - ${name}: ${PLAN_TOOL_DESCRIPTIONS[name]}`,
   ).join("\n");
@@ -100,8 +152,28 @@ const buildPlanSystem = (): string => {
     "$not, a single condition): $and, $or, $not — e.g. " +
     '{ "$and": [{ "status": { "_eq": "active" } }, { "age": { "_gte": 18 } }] }. ' +
     "Do NOT write _and/_or/_not — those are rejected. Variables: " +
-    "$user.id, $user.email, $user.roles, $tenant.id, $now."
+    "$user.id, $user.email, $user.roles, $tenant.id, $now." +
+    schemaDigest
   );
+};
+
+/** Best-effort fetch of the workspace's collections for the planner's
+ *  schema digest. Reuses the in-process Hono app so tenant resolution and
+ *  read permissions apply exactly as for a direct call. Never throws — a
+ *  failed lookup just yields a schema-less prompt (prior behavior). */
+const loadSchemaDigest = async (
+  app: Hono<AppBindings>,
+  req: Request,
+  env: Env,
+): Promise<string> => {
+  try {
+    const fetchInternal = makeInternalFetch(app as unknown as Hono, req, env);
+    const res = await fetchInternal("/api/collections");
+    const body = await readJson<{ data: CollectionMeta[] }>(res);
+    return buildSchemaDigest(Array.isArray(body.data) ? body.data : []);
+  } catch {
+    return "";
+  }
 };
 
 interface PlanResult {
@@ -114,6 +186,7 @@ interface PlanResult {
 
 const planHandler = async (
   c: Parameters<MiddlewareHandler<AppBindings>>[0],
+  app: Hono<AppBindings>,
   env: Env,
 ) => {
   const body = (await c.req.json().catch(() => ({}))) as {
@@ -129,8 +202,9 @@ const planHandler = async (
       ? body.model.trim()
       : DEFAULT_PLAN_MODEL;
 
+  const schemaDigest = await loadSchemaDigest(app, c.req.raw, env);
   const reply = await callClaude(env, {
-    system: buildPlanSystem(),
+    system: buildPlanSystem(schemaDigest),
     user: prompt,
     model,
     maxTokens: 1024,
@@ -278,5 +352,5 @@ const runHandler = async (
  *  the same Hono instance (identical pattern to `mcp.ts`). */
 export const aiAskRoutes = (app: Hono<AppBindings>, env: Env) =>
   new Hono<AppBindings>()
-    .post("/plan", requireUser, requireAdmin, (c) => planHandler(c, env))
+    .post("/plan", requireUser, requireAdmin, (c) => planHandler(c, app, env))
     .post("/run", requireUser, requireAdmin, (c) => runHandler(c, app, env));

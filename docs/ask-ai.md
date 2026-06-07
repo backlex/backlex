@@ -29,7 +29,7 @@ The Ask tab itself is a two-hop flow:
 
 | Step | Endpoint | Behaviour |
 |---|---|---|
-| 1. Plan | `POST /api/admin/ai/plan` | The configured model (default `anthropic/claude-haiku-4-5`) is given the prompt + a short whitelist of read-leaning tools and asked for `{rationale, tool, args}` as fenced JSON. The route validates and returns it — nothing is executed. |
+| 1. Plan | `POST /api/admin/ai/plan` | The configured model (default `anthropic/claude-haiku-4-5`) is given the prompt + a short whitelist of read-leaning tools + a **compact schema digest** (every collection's real field names/types, fetched through the same in-process `/api/collections` call so tenant + read permissions apply) and asked for `{rationale, tool, args}` as fenced JSON. The schema digest is what stops the planner inventing field names like `lifetime_value` that the query validator would reject with `VALIDATION: Cannot filter on field`. The route validates and returns it — nothing is executed. |
 | 2. Run  | `POST /api/admin/ai/run`  | The named tool is dispatched against the **in-process** Hono app — same path Claude Desktop's MCP call would take. One row lands in `activity` (success and failure) so the Recent Runs panel and the existing logs page both see it. |
 
 Splitting `plan` from `run` is deliberate. The MCP `ai.query` tool plans

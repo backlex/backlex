@@ -85,12 +85,12 @@ interface RunResponse {
 // returns UNAVAILABLE and the toast surfaces it.
 const DEFAULT_MODEL = "anthropic/claude-haiku-4-5";
 const DEFAULT_PROMPT =
-  "top customers by lifetime_value last month, limit 10";
+  "top customers by total spent in the last 30 days, limit 10";
 
 // Mirrors the planner's whitelist on the server. Auto-run only fires when
 // the proposed tool is one of these read-leaning surfaces.
 const AUTO_RUN_PATTERN =
-  /^(collections\.list|collections\.read|storage\.list|vector\.search|schema\.)/;
+  /^(collections\.list|collections\.read|collections\.aggregate|storage\.list|vector\.search|schema\.)/;
 const DESTRUCTIVE_PATTERN = /\b(delete|drop|revoke|suspend)\b/;
 const WRITE_PATTERN =
   /\b(insert|update|delete|drop|create|upload|grant|revoke|invoke|suspend|activate|assign|unassign|send|test)\b/;
@@ -593,8 +593,12 @@ export function AskAiPage({
   const EXAMPLES = useMemo(
     () => [
       {
-        label: t`Top customers last month`,
-        prompt: "top customers by lifetime_value last month, limit 10",
+        label: t`Top customers by spend`,
+        prompt: "top customers by total spent in the last 30 days, limit 10",
+      },
+      {
+        label: t`Orders by status`,
+        prompt: "count of orders grouped by status",
       },
       {
         label: t`Published posts past week`,
@@ -610,11 +614,6 @@ export function AskAiPage({
         label: t`Draft support_tickets schema`,
         prompt:
           "design a support_tickets collection — subject, body, requester (relation to app_users), priority enum, status workflow, assigned_to",
-      },
-      {
-        label: t`Orphan storage files`,
-        prompt:
-          "storage files in /uploads/ larger than 1MB with no reference in posts.cover_image",
       },
     ],
     [t],

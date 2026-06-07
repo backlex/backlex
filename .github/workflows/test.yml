@@ -20,7 +20,13 @@ jobs:
         with:
           bun-version: latest
 
-      - run: bun install --frozen-lockfile
+      - name: Install dependencies
+        run: |
+          n=0
+          until bun install --frozen-lockfile; do
+            n=$((n+1)); [ "$n" -ge 3 ] && { echo "bun install failed after $n attempts"; exit 1; }
+            echo "bun install flaked (attempt $n) — retrying in 10s"; sleep 10
+          done
 
       - name: Lint
         run: bun run lint
@@ -50,7 +56,13 @@ jobs:
         with:
           bun-version: latest
 
-      - run: bun install --frozen-lockfile
+      - name: Install dependencies
+        run: |
+          n=0
+          until bun install --frozen-lockfile; do
+            n=$((n+1)); [ "$n" -ge 3 ] && { echo "bun install failed after $n attempts"; exit 1; }
+            echo "bun install flaked (attempt $n) — retrying in 10s"; sleep 10
+          done
 
       - name: Build all targets
         run: bun run build:targets
@@ -99,7 +111,13 @@ jobs:
         with:
           bun-version: latest
 
-      - run: bun install --frozen-lockfile
+      - name: Install dependencies
+        run: |
+          n=0
+          until bun install --frozen-lockfile; do
+            n=$((n+1)); [ "$n" -ge 3 ] && { echo "bun install failed after $n attempts"; exit 1; }
+            echo "bun install flaked (attempt $n) — retrying in 10s"; sleep 10
+          done
 
       - name: Build all targets
         run: bun run build:targets

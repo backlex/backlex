@@ -182,6 +182,20 @@ export default defineConfig({
       ldapts: fileURLToPath(
         new URL("./src/server/shims/ldapts-shim.ts", import.meta.url),
       ),
+      // Postgres schema/driver are never used on the D1 (sqlite) Workers build,
+      // but `@backlex/db/pg` is statically imported across ~80 files and would
+      // pull pg/schema.ts (every pgTable) + drizzle-orm/pg-core into the eager
+      // cold-start bundle. Alias both pg entrypoints to sqlite-backed shims (the
+      // pg code paths never run on D1). MORE-SPECIFIC `/schema` MUST come first —
+      // @rollup/plugin-alias prefix-matches, so `@backlex/db/pg` would otherwise
+      // also swallow `@backlex/db/pg/schema`. Source stays dual-dialect for
+      // self-host Postgres; this only rewrites the Workers build.
+      "@backlex/db/pg/schema": fileURLToPath(
+        new URL("./src/server/shims/pg-schema-shim.ts", import.meta.url),
+      ),
+      "@backlex/db/pg": fileURLToPath(
+        new URL("./src/server/shims/pg-shim.ts", import.meta.url),
+      ),
     },
   },
   build: {
@@ -251,6 +265,16 @@ export default defineConfig({
             id.includes("/node_modules/node-rsa/") ||
             id.includes("/node_modules/xml-crypto/") ||
             id.includes("/node_modules/xml-encryption/") ||
+            // samlify's actual XML graph uses the @authenio scope + these
+            // helpers; without the exact patterns they fell through to the eager
+            // `vendor` chunk (same class of bug as libsql) instead of the lazy
+            // samlify chunk. They're reachable ONLY via the dynamic samlify
+            // adapter, so `undefined` keeps them lazy (and stays correct even if
+            // some eager path needs one — Rollup then keeps it eager).
+            id.includes("/node_modules/@authenio/") ||
+            id.includes("/node_modules/asn1/") ||
+            id.includes("/node_modules/xml-escape/") ||
+            id.includes("/node_modules/safer-buffer/") ||
             id.includes("/node_modules/@xmldom/") ||
             id.includes("/node_modules/xpath/") ||
             id.includes("/node_modules/tsyringe/") ||

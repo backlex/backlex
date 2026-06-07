@@ -8,6 +8,10 @@ import {
 
 export type { ListQuery, ListResponse, ItemResponse, ItemEvent } from "./types";
 export { BacklexError } from "./types";
+export { QueryBuilder } from "./query";
+export type { FilterBuilder, FieldKey, SortKey } from "./query";
+
+import { QueryBuilder } from "./query";
 
 export interface ClientOptions {
   url: string;
@@ -112,18 +116,23 @@ export const createClient = (opts: ClientOptions) => {
     return (await res.json()) as T;
   };
 
-  const collection = <T extends Record<string, unknown>>(slug: string) => ({
-    list: (q?: ListQuery): Promise<ListResponse<T>> =>
-      request<ListResponse<T>>("GET", `/api/items/${slug}${buildSearch(q)}`),
-    one: (id: string): Promise<ItemResponse<T>> =>
-      request<ItemResponse<T>>("GET", `/api/items/${slug}/${id}`),
-    create: (data: Partial<T>): Promise<ItemResponse<T>> =>
-      request<ItemResponse<T>>("POST", `/api/items/${slug}`, data),
-    update: (id: string, patch: Partial<T>): Promise<ItemResponse<T>> =>
-      request<ItemResponse<T>>("PATCH", `/api/items/${slug}/${id}`, patch),
-    delete: (id: string): Promise<{ ok: boolean }> =>
-      request<{ ok: boolean }>("DELETE", `/api/items/${slug}/${id}`),
-  });
+  const collection = <T extends Record<string, unknown>>(slug: string) => {
+    const list = (q?: ListQuery): Promise<ListResponse<T>> =>
+      request<ListResponse<T>>("GET", `/api/items/${slug}${buildSearch(q)}`);
+    return {
+      list,
+      /** Fluent, type-safe query builder that compiles to `ListQuery`. */
+      query: (): QueryBuilder<T> => new QueryBuilder<T>(list),
+      one: (id: string): Promise<ItemResponse<T>> =>
+        request<ItemResponse<T>>("GET", `/api/items/${slug}/${id}`),
+      create: (data: Partial<T>): Promise<ItemResponse<T>> =>
+        request<ItemResponse<T>>("POST", `/api/items/${slug}`, data),
+      update: (id: string, patch: Partial<T>): Promise<ItemResponse<T>> =>
+        request<ItemResponse<T>>("PATCH", `/api/items/${slug}/${id}`, patch),
+      delete: (id: string): Promise<{ ok: boolean }> =>
+        request<{ ok: boolean }>("DELETE", `/api/items/${slug}/${id}`),
+    };
+  };
 
   const subscribe = <T = Record<string, unknown>>(
     channel: string,

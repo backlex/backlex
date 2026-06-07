@@ -316,7 +316,13 @@ export const resolvePermission = async (
     });
   }
 
-  const whereSql = combineConditions(staticPerm.rawConditions, auth);
+  const whereSql = combineConditions(
+    staticPerm.rawConditions,
+    auth,
+    undefined,
+    undefined,
+    { dialect: ctx.dialect },
+  );
   const conditions: Condition[] | null = staticPerm.rawConditions.some(
     (c) => c == null,
   )

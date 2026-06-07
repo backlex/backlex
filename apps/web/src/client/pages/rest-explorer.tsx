@@ -1277,7 +1277,10 @@ const EndpointList = ({
         </div>
       </CardHeader>
       <Separator />
-      <ScrollArea className="min-h-0 flex-1">
+      {/* `type="auto"` keeps the scrollbar visible whenever the list overflows
+          (Radix defaults to "hover", which hid it and made the `items:<slug>`
+          collection groups further down the alphabetised list look absent). */}
+      <ScrollArea type="auto" className="min-h-0 flex-1">
         <div className="p-2">
         {!loading && filtered.length === 0 && (
           <p className="px-2 py-4 text-sm text-muted-foreground"><Trans>No matches.</Trans></p>
@@ -1422,7 +1425,7 @@ export const RestExplorerPage = () => {
             loading={loading}
           />
         </div>
-        <ScrollArea className="rest-explorer-detail min-h-0">
+        <ScrollArea type="auto" className="rest-explorer-detail min-h-0">
           {selected ? (
             <EndpointDetail ep={selected} doc={doc} baseUrl={baseUrl} />
           ) : (

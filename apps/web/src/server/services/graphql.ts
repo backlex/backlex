@@ -333,7 +333,13 @@ const listResolver = async (
       .map((f) => f.name),
   );
   const userWhere = args.filter
-    ? compileCondition(normalizeCondition(args.filter, { relationFields }), auth)
+    ? compileCondition(
+        normalizeCondition(args.filter, { relationFields }),
+        auth,
+        undefined,
+        undefined,
+        { dialect: ctx.dialect },
+      )
     : null;
   // Hide soft-deleted rows (column is always `deleted_at`; managed-only).
   const deletedWhere = collection.softDelete

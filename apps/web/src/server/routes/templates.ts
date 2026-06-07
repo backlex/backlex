@@ -5,6 +5,7 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { templateSummaries } from "../templates/catalog";
 import { applyTemplate, hasNoManagedCollections } from "../services/templates";
+import { invalidateTenantCollections } from "../services/collections-cache";
 import { logActivity } from "../services/activity";
 
 const requireTenant = (c: { get: (k: string) => unknown }): string => {
@@ -36,6 +37,10 @@ export const templatesRoutes = new Hono<AppBindings>()
     const { db, dialect } = c.get("ctx");
     const tenantId = requireTenant(c);
     const result = await applyTemplate({ db, dialect }, tenantId, templateId);
+    // Drop the cached collection list/rows so the freshly-seeded collections
+    // resolve immediately in this isolate (matches every other schema-mutating
+    // route). Cross-isolate convergence still falls back to the cache TTL.
+    invalidateTenantCollections(tenantId);
     await logActivity(c, {
       action: "create",
       collection: "system_collections",

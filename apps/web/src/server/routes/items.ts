@@ -667,40 +667,55 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         ? sql`${fromOf(collection)} ${sql.join(extraJoins, sql` `)}`
         : fromOf(collection);
 
-      const rows = await queryAll<Record<string, unknown>>(
+      // Fire the page query and the optional COUNT(s) concurrently. Each is
+      // its own (cross-region) D1 round-trip, so awaiting them in series cost
+      // one extra round-trip per requested meta — `?meta=*` was 3 sequential
+      // round-trips (data + filter_count + total_count). With Promise.all the
+      // COUNT round-trips overlap the data fetch; wall time ≈ the slowest one.
+      const rowsPromise = queryAll<Record<string, unknown>>(
         ctx,
         sql`SELECT ${selectCols} FROM ${fromClause} ${whereClause} ORDER BY ${orderClause} LIMIT ${q.limit} OFFSET ${q.offset}`,
       );
 
-      let metaOut: { filter_count?: number; total_count?: number } | undefined;
-      if (q.meta.filterCount || q.meta.totalCount) {
-        metaOut = {};
-        if (q.meta.filterCount) {
-          const r = await queryAll<{ count: number | string | bigint }>(
+      type CountRow = { count: number | string | bigint };
+      const filterCountPromise: Promise<CountRow[]> | null = q.meta.filterCount
+        ? queryAll<CountRow>(
             ctx,
             sql`SELECT COUNT(*) AS count FROM ${fromClause} ${whereClause}`,
-          );
-          metaOut.filter_count = Number(r[0]?.count ?? 0);
-        }
-        if (q.meta.totalCount) {
-          // total_count still respects tenant scoping — never leak rows from
-          // sibling workspaces to the API consumer. No nested joins here:
-          // the total is meant to count *everything visible to this tenant*
-          // regardless of the filter.
-          // Soft-deleted rows must be excluded here too, or total_count
-          // overcounts everything that was logically removed.
-          const totalFilters = [tenantWhereRaw, deletedFilter(collection)].filter(
-            (x): x is SQL => x != null,
-          );
-          const totalWhere = totalFilters.length
-            ? sql`WHERE ${sql.join(totalFilters, sql` AND `)}`
-            : sql``;
-          const r = await queryAll<{ count: number | string | bigint }>(
-            ctx,
-            sql`SELECT COUNT(*) AS count FROM ${fromOf(collection)} ${totalWhere}`,
-          );
-          metaOut.total_count = Number(r[0]?.count ?? 0);
-        }
+          )
+        : null;
+
+      let totalCountPromise: Promise<CountRow[]> | null = null;
+      if (q.meta.totalCount) {
+        // total_count still respects tenant scoping — never leak rows from
+        // sibling workspaces to the API consumer. No nested joins here:
+        // the total is meant to count *everything visible to this tenant*
+        // regardless of the filter.
+        // Soft-deleted rows must be excluded here too, or total_count
+        // overcounts everything that was logically removed.
+        const totalFilters = [tenantWhereRaw, deletedFilter(collection)].filter(
+          (x): x is SQL => x != null,
+        );
+        const totalWhere = totalFilters.length
+          ? sql`WHERE ${sql.join(totalFilters, sql` AND `)}`
+          : sql``;
+        totalCountPromise = queryAll<CountRow>(
+          ctx,
+          sql`SELECT COUNT(*) AS count FROM ${fromOf(collection)} ${totalWhere}`,
+        );
+      }
+
+      const [rows, filterCountRows, totalCountRows] = await Promise.all([
+        rowsPromise,
+        filterCountPromise,
+        totalCountPromise,
+      ]);
+
+      let metaOut: { filter_count?: number; total_count?: number } | undefined;
+      if (filterCountRows || totalCountRows) {
+        metaOut = {};
+        if (filterCountRows) metaOut.filter_count = Number(filterCountRows[0]?.count ?? 0);
+        if (totalCountRows) metaOut.total_count = Number(totalCountRows[0]?.count ?? 0);
       }
 
       const locale = c.req.query("locale") ?? null;

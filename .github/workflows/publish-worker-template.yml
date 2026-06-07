@@ -48,7 +48,15 @@ jobs:
         with:
           bun-version: latest
 
-      - run: bun install --frozen-lockfile
+      # Retry on transient npm-registry download flakes (e.g. a failed
+      # @pagefind/* tarball fetch) so a release build never fails on a hiccup.
+      - name: Install dependencies
+        run: |
+          n=0
+          until bun install --frozen-lockfile; do
+            n=$((n+1)); [ "$n" -ge 3 ] && { echo "bun install failed after $n attempts"; exit 1; }
+            echo "bun install flaked (attempt $n) — retrying in 10s"; sleep 10
+          done
 
       # Strict release gates — mirror .github/workflows/test.yml so a
       # tarball never ships from a tree that wouldn't pass the normal

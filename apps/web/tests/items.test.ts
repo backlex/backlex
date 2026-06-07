@@ -160,6 +160,41 @@ describe("multi-hop nested filter + sort", () => {
     expect(body.data.map((r) => r.title).sort()).toEqual(["Order-1", "Order-3"]);
   });
 
+  test("normalize: _and alias matches $and result set", async () => {
+    const filter = {
+      _and: [
+        { "customer_id.name": { _eq: "Alice" } },
+        { title: { _contains: "Order" } },
+      ],
+    };
+    const res = await h.fetch(
+      `/api/items/orders?filter=${encodeURIComponent(JSON.stringify(filter))}`,
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { title: string }[] };
+    expect(body.data.map((r) => r.title).sort()).toEqual(["Order-1", "Order-3"]);
+  });
+
+  test("normalize: nested-object relation filter == dotted-path result", async () => {
+    // Directus/PostgREST-style nested form should flatten to customer_id.name.
+    const nested = { customer_id: { name: { _eq: "Alice" } } };
+    const res = await h.fetch(
+      `/api/items/orders?filter=${encodeURIComponent(JSON.stringify(nested))}`,
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { title: string }[] };
+    expect(body.data.map((r) => r.title).sort()).toEqual(["Order-1", "Order-3"]);
+  });
+
+  test("normalize: implicit equality (bare scalar value)", async () => {
+    const res = await h.fetch(
+      `/api/items/orders?filter=${encodeURIComponent(JSON.stringify({ title: "Order-2" }))}`,
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { title: string }[] };
+    expect(body.data.map((r) => r.title)).toEqual(["Order-2"]);
+  });
+
   test("2-hop filter: customer_id.address_id.city == Berlin → Alice's orders", async () => {
     const res = await h.fetch(
       `/api/items/orders?filter=${encodeURIComponent(JSON.stringify({ "customer_id.address_id.city": { _eq: "Berlin" } }))}`,

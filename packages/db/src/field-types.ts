@@ -99,6 +99,13 @@ export interface FieldDef {
   type: FieldType;
   required?: boolean;
   unique?: boolean;
+  /**
+   * Create a plain B-tree index on this column (speeds up filter / sort by it).
+   * Applied additively by `applyCollection` as `CREATE INDEX IF NOT EXISTS`.
+   * Skipped when `unique` is set (the UNIQUE constraint already indexes it) and
+   * for adopted tables (no DDL). Indexing aids write cost — opt-in per field.
+   */
+  indexed?: boolean;
   /** Target collection slug. Required when `type === "relation"`. The
    *  column stores the foreign id as TEXT; integrity enforced at the app
    *  layer (no DB-level FK in v1 to keep ALTER paths simple on SQLite). */

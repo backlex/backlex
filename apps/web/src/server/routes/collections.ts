@@ -44,6 +44,9 @@ const FieldSchema = z
     ]),
     required: z.boolean().optional(),
     unique: z.boolean().optional(),
+    // Plain B-tree index on the column — speeds up filter/sort. Applied by
+    // the schema applier; the admin UI already sends this flag.
+    indexed: z.boolean().optional(),
     to: z
       .string()
       .regex(/^[a-z][a-z0-9_]*$/, "snake_case")

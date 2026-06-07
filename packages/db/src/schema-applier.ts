@@ -131,6 +131,29 @@ export const introspectColumns = async (
 };
 
 /**
+ * Emit a plain B-tree index for every field flagged `indexed`. Idempotent
+ * (`CREATE INDEX IF NOT EXISTS` — supported on both PG and SQLite) so it can
+ * run on create AND on every subsequent `applyCollection`, picking up fields
+ * that gained the flag later. `unique` fields are skipped — the UNIQUE
+ * constraint already provides an index.
+ */
+const ensureFieldIndexes = async (
+  db: AnyDb,
+  dialect: Dialect,
+  table: string,
+  fields: FieldDef[],
+): Promise<void> => {
+  for (const f of fields) {
+    if (!f.indexed || f.unique) continue;
+    await exec(
+      db,
+      dialect,
+      `CREATE INDEX IF NOT EXISTS ${quote(`${table}_${f.name}_idx`)} ON ${quote(table)} (${quote(f.name)})`,
+    );
+  }
+};
+
+/**
  * Idempotent: creates the physical table for a collection, or adds any
  * columns that aren't already present. Never drops columns; for that, use
  * `dropField` explicitly.
@@ -201,6 +224,7 @@ export const applyCollection = async (
         `CREATE INDEX ${quote(`${table}_deleted_idx`)} ON ${quote(table)} (${quote("deleted_at")})`,
       );
     }
+    await ensureFieldIndexes(db, dialect, table, def.fields);
     return;
   }
 
@@ -257,6 +281,9 @@ export const applyCollection = async (
       `ALTER TABLE ${quote(table)} ADD COLUMN ${columnDefSql(f, dialect)}`,
     );
   }
+  // Run after column adds so a freshly-added indexed field gets its index, and
+  // so a field that gained `indexed` on a later update is picked up too.
+  await ensureFieldIndexes(db, dialect, table, def.fields);
 };
 
 export const dropField = async (

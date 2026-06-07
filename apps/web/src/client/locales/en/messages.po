@@ -5340,13 +5340,17 @@ msgstr "or"
 msgid "or with email"
 msgstr "or with email"
 
+#: src/client/admin/pages/ask-ai.tsx
+msgid "Orders by status"
+msgstr "Orders by status"
+
 #: src/client/admin/storage.tsx
 msgid "Original"
 msgstr "Original"
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "Orphan storage files"
-msgstr "Orphan storage files"
+#~ msgid "Orphan storage files"
+#~ msgstr "Orphan storage files"
 
 #: src/client/admin/parity/translations.tsx
 msgid "Other locales stay empty until filled in the matrix."
@@ -8008,8 +8012,12 @@ msgid "Top collections"
 msgstr "Top collections"
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "Top customers last month"
-msgstr "Top customers last month"
+msgid "Top customers by spend"
+msgstr "Top customers by spend"
+
+#: src/client/admin/pages/ask-ai.tsx
+#~ msgid "Top customers last month"
+#~ msgstr "Top customers last month"
 
 #: src/client/admin/pages/users.tsx
 msgid "Total users"

@@ -47,6 +47,7 @@ const DEFAULT_PLAN_MODEL = "anthropic/claude-haiku-4-5";
 const PLAN_TOOL_WHITELIST = [
   "collections.list",
   "collections.read",
+  "collections.aggregate",
   "storage.list",
   "vector.search",
   "schema.list_collections",
@@ -60,6 +61,14 @@ const PLAN_TOOL_DESCRIPTIONS: Record<(typeof PLAN_TOOL_WHITELIST)[number], strin
       "{collection: string, filter?: object, sort?: string|string[], limit?: number, fields?: string[]} — list items with a Directus-shaped filter.",
     "collections.read":
       "{collection: string, id: string, fields?: string[]} — read one item by id.",
+    "collections.aggregate":
+      "{collection: string, agg: 'count'|'sum'|'avg'|'min'|'max', field?: string, " +
+      "groupBy?: string, filter?: object, limit?: number} — analytics over a " +
+      "collection. Use this (NOT collections.list) for totals/averages/counts " +
+      "and \"top N by <metric>\" questions: e.g. top customers by spend → " +
+      "{collection:'orders', agg:'sum', field:'total', groupBy:'customer_id', limit:10}. " +
+      "Grouped results come back ordered by value desc. `field` is required for " +
+      "sum/avg/min/max and must be a numeric column; single-table only.",
     "storage.list":
       "{prefix?: string, folder?: string, search?: string, limit?: number} — list files in object storage.",
     "vector.search":
@@ -172,7 +181,14 @@ const buildPlanSystem = (schemaDigest: string, todayIso: string): string => {
     '{ "placed_at": { "_gte": { "$now": { "sub": { "months": 1 } } } } }. ' +
     `(Today is ${todayIso} if you prefer an absolute ISO date.) ` +
     "Extra operators: _between [lo,hi]; case-insensitive _icontains / " +
-    "_istarts_with / _iends_with; _empty / _nempty." +
+    "_istarts_with / _iends_with; _empty / _nempty.\n\n" +
+    "AGGREGATION: collections.list has NO grouping or aggregate functions — it " +
+    "only lists rows. For totals, averages, counts, or \"top N by <metric>\" " +
+    "questions use the `collections.aggregate` tool instead (agg + optional " +
+    "groupBy). Do NOT invent $group / $sum / $count / $having inside a filter — " +
+    "they are rejected. \"Top customers by spend last month\" → " +
+    "collections.aggregate { agg: 'sum', field: 'total', groupBy: 'customer_id', " +
+    "filter: { placed_at: { _gte: { $now: { sub: { months: 1 } } } } }, limit: 10 }." +
     schemaDigest
   );
 };
@@ -193,56 +209,80 @@ const loadSchemaDigest = async (fetchInternal: FetchInternal): Promise<string> =
   }
 };
 
-/**
- * Dry-run a `collections.list` plan against the REAL list endpoint (limit=1)
- * so the SAME parser/validator/permission gate the `/run` path uses decides if
- * the filter / sort / fields are well-formed — including relation hops, which a
- * re-implemented validator couldn't reach. Returns the upstream error string on
- * a 4xx validation/permission/not-found failure, else null (valid, or an
- * unrelated 5xx we shouldn't try to "correct").
- *
- * Exported for tests — it's the core of the planner self-correction loop.
- */
-export const dryRunListQuery = async (
-  fetchInternal: FetchInternal,
-  args: Record<string, unknown>,
-): Promise<string | null> => {
-  const slug = typeof args.collection === "string" ? args.collection : "";
-  if (!slug) return null;
-  const params = new URLSearchParams();
-  if (args.filter && typeof args.filter === "object") {
-    params.set("filter", JSON.stringify(args.filter));
-  }
-  if (args.sort !== undefined) {
-    params.set(
-      "sort",
-      Array.isArray(args.sort) ? args.sort.join(",") : String(args.sort),
-    );
-  }
-  if (args.fields !== undefined) {
-    params.set(
-      "fields",
-      Array.isArray(args.fields) ? args.fields.join(",") : String(args.fields),
-    );
-  }
-  params.set("limit", "1");
-  let res: Response;
-  try {
-    res = await fetchInternal(`/api/items/${encodeURIComponent(slug)}?${params}`);
-  } catch {
-    return null; // transport hiccup — don't trigger a correction
-  }
+/** Read a non-OK Response and return the upstream error string only for the
+ *  deterministic, model-fixable failures (VALIDATION / FORBIDDEN / NOT_FOUND);
+ *  null for OK or an unrelated 5xx we shouldn't try to "correct". */
+const modelFixableError = async (res: Response): Promise<string | null> => {
   if (res.ok) return null;
   const body = (await res.json().catch(() => null)) as
     | { error?: { code?: string; message?: string } }
     | null;
   const err = body?.error;
-  // Only the deterministic, model-fixable failures warrant a retry.
-  if (err?.message && (err.code === "VALIDATION" || err.code === "FORBIDDEN" || err.code === "NOT_FOUND")) {
+  if (
+    err?.message &&
+    (err.code === "VALIDATION" || err.code === "FORBIDDEN" || err.code === "NOT_FOUND")
+  ) {
     return `${err.code}: ${err.message}`;
   }
   return null;
 };
+
+/**
+ * Dry-run a structured plan against the REAL endpoint so the SAME
+ * parser/validator/permission gate the `/run` path uses decides if it is
+ * well-formed — including relation hops a re-implemented validator couldn't
+ * reach. `collections.list` runs with limit=1; `collections.aggregate` POSTs
+ * its config. Returns the upstream error string on a model-fixable 4xx, else
+ * null. Other tools aren't dry-run (return null).
+ *
+ * Exported for tests — it's the core of the planner self-correction loop.
+ */
+export const dryRunPlan = async (
+  fetchInternal: FetchInternal,
+  tool: string,
+  args: Record<string, unknown>,
+): Promise<string | null> => {
+  const slug = typeof args.collection === "string" ? args.collection : "";
+  if (!slug) return null;
+  try {
+    if (tool === "collections.aggregate") {
+      const { collection: _c, ...body } = args;
+      const res = await fetchInternal(
+        `/api/items/${encodeURIComponent(slug)}/aggregate`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      return await modelFixableError(res);
+    }
+    if (tool === "collections.list") {
+      const params = new URLSearchParams();
+      if (args.filter && typeof args.filter === "object") {
+        params.set("filter", JSON.stringify(args.filter));
+      }
+      if (args.sort !== undefined) {
+        params.set("sort", Array.isArray(args.sort) ? args.sort.join(",") : String(args.sort));
+      }
+      if (args.fields !== undefined) {
+        params.set("fields", Array.isArray(args.fields) ? args.fields.join(",") : String(args.fields));
+      }
+      params.set("limit", "1");
+      const res = await fetchInternal(`/api/items/${encodeURIComponent(slug)}?${params}`);
+      return await modelFixableError(res);
+    }
+  } catch {
+    return null; // transport hiccup — don't trigger a correction
+  }
+  return null;
+};
+
+/** @deprecated kept as a thin alias for existing tests. */
+export const dryRunListQuery = (
+  fetchInternal: FetchInternal,
+  args: Record<string, unknown>,
+): Promise<string | null> => dryRunPlan(fetchInternal, "collections.list", args);
 
 interface PlanResult {
   rationale: string;
@@ -326,37 +366,35 @@ const planHandler = async (
   let usage: unknown = reply.usage;
   let validationError: string | undefined;
 
-  // Self-correction: dry-run a structured list plan against the real endpoint
-  // and, if it fails validation, hand the model the exact error for ONE
-  // corrective retry. Caps cost/latency at a single extra call; a still-bad
-  // plan is returned annotated so the UI can warn before Run.
-  if (plan.tool === "collections.list") {
-    const err = await dryRunListQuery(fetchInternal, plan.args);
-    if (err) {
-      const retry = await callClaude(env, {
-        system,
-        user:
-          `${prompt}\n\nYour previous answer was:\n` +
-          `\`\`\`json\n${JSON.stringify({ tool: plan.tool, args: plan.args })}\n\`\`\`\n` +
-          `but it failed validation with:\n${err}\n` +
-          "Return ONE corrected JSON block. Use only fields that exist in the " +
-          "schema; relation paths use dotted keys in filter/sort; `fields` " +
-          "takes plain column names of the queried collection.",
-        model,
-        maxTokens: 1024,
-      });
-      try {
-        const corrected = coercePlan(parse(retry.text));
-        plan = corrected;
-        usage = retry.usage;
-        // Re-validate the corrected plan; surface a lingering failure.
-        if (corrected.tool === "collections.list") {
-          validationError = (await dryRunListQuery(fetchInternal, corrected.args)) ?? undefined;
-        }
-      } catch {
-        // Retry produced unparseable JSON — keep the first plan, annotate.
-        validationError = err;
-      }
+  // Self-correction: dry-run a structured plan (list or aggregate) against the
+  // real endpoint and, if it fails validation, hand the model the exact error
+  // for ONE corrective retry. Caps cost/latency at a single extra call; a
+  // still-bad plan is returned annotated so the UI can warn before Run.
+  const err = await dryRunPlan(fetchInternal, plan.tool, plan.args);
+  if (err) {
+    const retry = await callClaude(env, {
+      system,
+      user:
+        `${prompt}\n\nYour previous answer was:\n` +
+        `\`\`\`json\n${JSON.stringify({ tool: plan.tool, args: plan.args })}\n\`\`\`\n` +
+        `but it failed validation with:\n${err}\n` +
+        "Return ONE corrected JSON block. Use only fields that exist in the " +
+        "schema; relation paths use dotted keys in filter/sort; `fields` " +
+        "takes plain column names; for totals/counts/top-N use " +
+        "collections.aggregate (agg + groupBy), not $group/$sum in a filter.",
+      model,
+      maxTokens: 1024,
+    });
+    try {
+      const corrected = coercePlan(parse(retry.text));
+      plan = corrected;
+      usage = retry.usage;
+      // Re-validate the corrected plan; surface a lingering failure.
+      validationError =
+        (await dryRunPlan(fetchInternal, corrected.tool, corrected.args)) ?? undefined;
+    } catch {
+      // Retry produced unparseable JSON — keep the first plan, annotate.
+      validationError = err;
     }
   }
 

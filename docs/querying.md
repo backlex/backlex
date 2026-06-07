@@ -136,6 +136,33 @@ Multi-hop projection (`a.b.c`) and `relation_many` projection return `422`
 (use `filter`/`sort` for those, or expand one hop). Under the hood this reuses
 the `expand` JOIN, sharing the alias when a filter already joined the relation.
 
+## Aggregation
+
+The list endpoint only returns rows — it has no grouping or aggregate
+functions. For totals, averages, counts, or "top N by metric" analytics, use
+the dedicated aggregate endpoint:
+
+```
+POST /api/items/<collection>/aggregate
+{ "agg": "sum", "field": "total", "groupBy": "customer_id",
+  "filter": { "placed_at": { "_gte": { "$now": { "sub": { "months": 1 } } } } },
+  "limit": 10 }
+```
+
+- `agg` — `count` | `sum` | `avg` | `min` | `max`. `count` ignores `field`;
+  the others require a numeric `field`.
+- `groupBy` — optional column; each distinct value yields a `{ label, value }`
+  row, ordered by `value` desc and capped by `limit` (default 50, max 200).
+  Without `groupBy` the result is a single `{ value }`.
+- `filter` — same grammar as the list endpoint, applied before aggregation.
+- **Permission + tenant gated** — the caller's read `whereSql` is AND-ed in and
+  the `field`/`groupBy` columns must be readable; tenant scope is enforced.
+- **Single-table only** — no relation traversal (the agg target and `groupBy`
+  are plain columns of the collection).
+
+The same engine backs dashboard `items-aggregate` panels and the
+`collections.aggregate` MCP tool (so Ask AI can answer analytics questions).
+
 ## Indexes (performance)
 
 Flag a field `indexed: true` (in the create/update collection payload, or the

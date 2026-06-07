@@ -271,6 +271,35 @@ export default defineConfig({
           ) {
             return undefined;
           }
+          // Worker: the libSQL/Turso driver is reached ONLY through the
+          // dynamically-imported `@backlex/db/sqlite/libsql` factory (context.ts,
+          // and only when LIBSQL_URL is set — never on the D1-backed Workers
+          // build). Without this branch the default `return "vendor"` pins its
+          // whole graph (@libsql/* + hrana-client) into the eager chunk, undoing
+          // the dynamic import. Keep it unpinned → lazy chunk.
+          if (
+            id.includes("/node_modules/@libsql/") ||
+            id.includes("/node_modules/libsql/") ||
+            id.includes("/node_modules/drizzle-orm/libsql/")
+          ) {
+            return undefined;
+          }
+          // Worker: the in-isolate QuickJS-WASM function sandbox is reached only
+          // through the dynamically-imported provider (services/sandbox), used
+          // when a stored function actually executes in-isolate. The WASM blob is
+          // large; keep it out of cold-start eval by leaving it in a lazy chunk.
+          if (
+            id.includes("/node_modules/quickjs-emscripten") ||
+            id.includes("/node_modules/@jitl/quickjs") ||
+            id.includes("/node_modules/@cf-wasm/")
+          ) {
+            return undefined;
+          }
+          // Worker: `yaml` is used only by the on-demand `/api/openapi.yaml`
+          // handler (dynamic-imported there). Unpin so it doesn't sit eager.
+          if (id.includes("/node_modules/yaml/")) {
+            return undefined;
+          }
           return "vendor";
         },
       },

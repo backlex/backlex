@@ -10,6 +10,7 @@
 import { describe, expect, test, beforeAll, afterAll } from "bun:test";
 import { Database } from "bun:sqlite";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import { buildSchemaDigest } from "../src/server/routes/ai-ask";
 
 const APP_URL = "http://localhost:5173";
 
@@ -54,6 +55,60 @@ describe("Ask AI — /api/admin/ai/plan", () => {
     expect(res.status).toBe(503);
     const body = (await res.json()) as { error?: { code?: string } };
     expect(body.error?.code).toBe("UNAVAILABLE");
+  });
+});
+
+describe("Ask AI — buildSchemaDigest (planner schema awareness)", () => {
+  test("empty collection list yields no digest", () => {
+    expect(buildSchemaDigest([])).toBe("");
+  });
+
+  test("lists each collection's real field names and types", () => {
+    const digest = buildSchemaDigest([
+      {
+        slug: "customers",
+        note: "people who pay us",
+        fields: [
+          { name: "name", type: "text" },
+          { name: "total_spent", type: "number" },
+          { name: "owner_id", type: "relation", to: "users" },
+        ],
+      },
+    ]);
+    // Header steers the model away from inventing fields.
+    expect(digest).toContain("Workspace schema");
+    expect(digest).toContain("NEVER invent a field name");
+    // System fields are advertised as always-present.
+    expect(digest).toContain("created_at (timestamp)");
+    // Real field names + types are surfaced.
+    expect(digest).toContain("customers:");
+    expect(digest).toContain("name (text)");
+    expect(digest).toContain("total_spent (number)");
+    expect(digest).toContain("owner_id (relation→users)");
+    expect(digest).toContain("people who pay us");
+    // A hallucinated field the planner previously guessed is absent.
+    expect(digest).not.toContain("lifetime_value");
+  });
+
+  test("drops types/notes when the digest exceeds the char budget", () => {
+    // Many wide collections push past DIGEST_CHAR_BUDGET (12k chars),
+    // triggering the names-only fallback.
+    const many: Parameters<typeof buildSchemaDigest>[0] = Array.from(
+      { length: 200 },
+      (_, i) => ({
+        slug: `collection_number_${i}`,
+        note: "a fairly long descriptive note that eats into the char budget",
+        fields: Array.from({ length: 8 }, (__, j) => ({
+          name: `field_name_${j}`,
+          type: "text",
+        })),
+      }),
+    );
+    const digest = buildSchemaDigest(many);
+    // Field names survive (needed to stop hallucination)…
+    expect(digest).toContain("field_name_0");
+    // …but the per-field type annotation is dropped in the fallback.
+    expect(digest).not.toContain("field_name_0 (text)");
   });
 });
 

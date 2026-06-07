@@ -23,7 +23,7 @@ import {
   type FieldDef,
   type FieldType,
 } from "@backlex/db";
-import type { AuthSubject, Condition } from "@backlex/core";
+import { type AuthSubject, type Condition, normalizeCondition } from "@backlex/core";
 import { resolvePermission, type PermResolveCache } from "./permissions";
 import { publishEvent } from "./events";
 import type { Ctx } from "../context";
@@ -325,7 +325,16 @@ const listResolver = async (
   if (!perm.allowed) denyOrThrow(auth, collection.slug);
 
   const table = collection.physicalTable;
-  const userWhere = args.filter ? compileCondition(args.filter, auth) : null;
+  // Normalize the same accepted input shapes as REST (`_and` aliases,
+  // nested-object relation filters, implicit-equality) before compiling.
+  const relationFields = new Set(
+    collection.fields
+      .filter((f) => f.type === "relation" || f.type === "relation_many")
+      .map((f) => f.name),
+  );
+  const userWhere = args.filter
+    ? compileCondition(normalizeCondition(args.filter, { relationFields }), auth)
+    : null;
   // Hide soft-deleted rows (column is always `deleted_at`; managed-only).
   const deletedWhere = collection.softDelete
     ? sql`${sql.identifier("deleted_at")} IS NULL`

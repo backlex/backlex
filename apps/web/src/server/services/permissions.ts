@@ -5,6 +5,7 @@ import {
   type Action,
   type AuthSubject,
   type Condition,
+  normalizeCondition,
   SYSTEM_ROLES,
 } from "@backlex/core";
 import { combineConditions } from "@backlex/db";
@@ -278,7 +279,14 @@ export const resolvePermission = async (
         fields: null,
       };
     } else {
-      const rawConditions = rows.map((r) => r.condition);
+      // Normalize stored conditions (schema-blind) so hand-authored permission
+      // rows may use `_and`/`_or`/`_not` aliases or implicit-equality; canonical
+      // rows pass through unchanged. Nested-object flattening needs the schema,
+      // so it's intentionally not applied here — permission rules use dotted
+      // relation paths, like the compiler has always expected.
+      const rawConditions = rows.map((r) =>
+        r.condition ? normalizeCondition(r.condition) : r.condition,
+      );
       let fields: string[] | null = null;
       for (const r of rows) {
         if (!r.fields) {

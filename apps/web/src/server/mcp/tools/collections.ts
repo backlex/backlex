@@ -209,9 +209,69 @@ export const deleteItem: McpTool = {
   },
 };
 
+export const aggregateItems: McpTool = {
+  name: "collections.aggregate",
+  description:
+    "Aggregate a collection: count / sum / avg / min / max over a numeric " +
+    "field, optionally grouped by a column. Use this for analytics questions " +
+    "(\"top customers by total spent\", \"orders per status\", \"revenue last " +
+    "month\") that collections.list CANNOT answer — list has no grouping or " +
+    "sums. Returns `{ data: [{ value }] }` (scalar) or `{ data: [{ label, " +
+    "value }, …] }` (grouped, ordered by value desc). Single-table only — no " +
+    "relation traversal; `field` (for sum/avg/min/max) and `groupBy` must be " +
+    "plain columns of the collection.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      collection: { type: "string", description: "Collection slug." },
+      agg: {
+        type: "string",
+        enum: ["count", "sum", "avg", "min", "max"],
+        description: "Aggregate function. `count` ignores `field`.",
+      },
+      field: {
+        type: "string",
+        description:
+          "Numeric column to aggregate (required for sum/avg/min/max).",
+      },
+      groupBy: {
+        type: "string",
+        description:
+          "Column to group by — each distinct value becomes a `{label, value}` row.",
+      },
+      filter: {
+        type: "object",
+        description:
+          "Same filter grammar as collections.list (applied before aggregation).",
+      },
+      limit: {
+        type: "number",
+        description: "Max grouped rows (1-200, default 50). Ignored when ungrouped.",
+      },
+    },
+    required: ["collection", "agg"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const slug = requireSlug(args);
+    const { collection: _c, ...body } = args;
+    const res = await ctx.fetchInternal(
+      `/api/items/${encodeURIComponent(slug)}/aggregate`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+    const out = await readJson<unknown>(res);
+    return textResult(out);
+  },
+};
+
 export const collectionsTools: McpTool[] = [
   listItems,
   readItem,
+  aggregateItems,
   insertItem,
   updateItem,
   deleteItem,

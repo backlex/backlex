@@ -3,33 +3,19 @@ import { and, eq, isNull, or, type SQL } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
-import { compileCondition, type FieldDef } from "@backlex/db";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import {
+  ITEMS_AGG_FUNCS,
+  ItemsAggregateConfig,
+  runItemsAggregate,
+} from "../services/items/aggregate";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.savedPanels : sqlite.schema.savedPanels;
-
-const collectionsTable = (dialect: "pg" | "sqlite") =>
-  dialect === "pg" ? pg.schema.collections : sqlite.schema.collections;
-
-const ITEMS_AGG_FUNCS = ["count", "sum", "avg", "min", "max"] as const;
-type ItemsAggFunc = (typeof ITEMS_AGG_FUNCS)[number];
-
-/** Numeric column types accepted as the agg target for sum/avg/min/max. */
-const NUMERIC_FIELD_TYPES = new Set<string>(["integer", "number"]);
-
-const ItemsAggregateConfig = z.object({
-  collection: z.string().min(1),
-  agg: z.enum(ITEMS_AGG_FUNCS),
-  field: z.string().min(1).optional(),
-  filter: z.record(z.string(), z.unknown()).optional(),
-  groupBy: z.string().min(1).optional(),
-  limit: z.number().int().positive().max(200).optional(),
-});
 
 const PanelInput = z
   .object({
@@ -407,88 +393,3 @@ export const panelsRoutes = new OpenAPIHono<AppBindings>()
       }
     },
   );
-
-/**
- * Execute an items-aggregate panel. Resolves the collection's physical table,
- * validates the agg function + numeric column constraints, applies a tenant
- * filter (when the collection is tenant-scoped) AND the user's optional DSL
- * filter, and runs a single grouped or scalar query.
- *
- * Returns rows shaped like `[{ value: <n> }]` for non-grouped, or
- * `[{ label, value }, …]` for grouped — same wire format as a SQL panel,
- * so the existing client viz code (counter / sparkline / bars / donut /
- * table) renders without a special case.
- */
-async function runItemsAggregate(
-  ctx: { db: unknown; dialect: "pg" | "sqlite" },
-  auth: { userId: string | null; email: string | null; tenantId?: string | null; roles: string[] },
-  tenantId: string,
-  rawConfig: unknown,
-): Promise<Record<string, unknown>[]> {
-  const parsed = ItemsAggregateConfig.safeParse(rawConfig ?? {});
-  if (!parsed.success) {
-    throw new AppError("VALIDATION", `Invalid items-aggregate config: ${parsed.error.issues.map((e) => `${e.path.join(".")}: ${e.message}`).join(", ")}`);
-  }
-  const cfg = parsed.data;
-
-  // Resolve collection metadata so we can map slug -> physical_table and
-  // validate that field/groupBy names refer to actual columns.
-  const colTable = collectionsTable(ctx.dialect);
-  const cRows = await (ctx.db as any)
-    .select()
-    .from(colTable)
-    .where(and(eq(colTable.tenantId, tenantId), eq(colTable.slug, cfg.collection)))
-    .limit(1);
-  const cRow = cRows[0] as Record<string, unknown> | undefined;
-  if (!cRow) throw new AppError("NOT_FOUND", `Collection "${cfg.collection}" not found`);
-  const physical = (cRow.physicalTable ?? cRow.physical_table) as string;
-  const fields = (cRow.fields ?? []) as FieldDef[];
-  const tenantScoped = (cRow.tenantScoped ?? cRow.tenant_scoped ?? true) ? true : false;
-  const fieldByName = new Map(fields.map((f) => [f.name, f]));
-  // System columns the user can also reference for groupBy/filter.
-  const systemColumns = new Set(["id", "owner_id", "created_at", "updated_at"]);
-  const isKnownColumn = (name: string) => fieldByName.has(name) || systemColumns.has(name);
-
-  if (cfg.agg !== "count") {
-    if (!cfg.field) throw new AppError("VALIDATION", `field is required for agg "${cfg.agg}"`);
-    const f = fieldByName.get(cfg.field);
-    if (!f) throw new AppError("VALIDATION", `Field "${cfg.field}" is not in collection "${cfg.collection}"`);
-    if (!NUMERIC_FIELD_TYPES.has(f.type)) {
-      throw new AppError("VALIDATION", `Field "${cfg.field}" must be numeric for agg "${cfg.agg}" (got "${f.type}")`);
-    }
-  } else if (cfg.field && cfg.field !== "*" && !isKnownColumn(cfg.field)) {
-    throw new AppError("VALIDATION", `Field "${cfg.field}" is not in collection "${cfg.collection}"`);
-  }
-
-  if (cfg.groupBy && !isKnownColumn(cfg.groupBy)) {
-    throw new AppError("VALIDATION", `groupBy field "${cfg.groupBy}" is not in collection "${cfg.collection}"`);
-  }
-
-  // value = COUNT(*) | <agg>(<field>)
-  const valueExpr: SQL = cfg.agg === "count"
-    ? sql`COUNT(*)`
-    : sql`${sql.raw(cfg.agg.toUpperCase())}(${sql.identifier(cfg.field!)})`;
-
-  const wheres: SQL[] = [];
-  if (tenantScoped) {
-    wheres.push(sql`${sql.identifier("tenant_id")} = ${tenantId}`);
-  }
-  if (cfg.filter && Object.keys(cfg.filter).length > 0) {
-    wheres.push(compileCondition(cfg.filter as never, auth as never));
-  }
-  const whereClause: SQL = wheres.length === 0 ? sql`` : sql` WHERE ${sql.join(wheres, sql` AND `)}`;
-
-  let q: SQL;
-  if (cfg.groupBy) {
-    const limit = cfg.limit ?? 50;
-    q = sql`SELECT ${sql.identifier(cfg.groupBy)} AS label, ${valueExpr} AS value FROM ${sql.identifier(physical)}${whereClause} GROUP BY ${sql.identifier(cfg.groupBy)} ORDER BY value DESC LIMIT ${sql.raw(String(limit))}`;
-  } else {
-    q = sql`SELECT ${valueExpr} AS value FROM ${sql.identifier(physical)}${whereClause}`;
-  }
-
-  try {
-    return await queryAll<Record<string, unknown>>({ db: ctx.db, dialect: ctx.dialect }, q);
-  } catch (e) {
-    throw new AppError("VALIDATION", `Aggregate query failed: ${(e as Error).message}`);
-  }
-}

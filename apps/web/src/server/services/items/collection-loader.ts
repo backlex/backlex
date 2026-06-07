@@ -6,6 +6,10 @@ import type { FieldDef } from "@backlex/db";
 import type { Context } from "hono";
 import type { AppBindings } from "../../app";
 import type { Ctx } from "../../context";
+import {
+  getCachedCollection,
+  setCachedCollection,
+} from "../collections-cache";
 
 export interface CollectionRow {
   /** Collections.id — primary key in the metadata table. Needed for the
@@ -74,6 +78,13 @@ export const loadCollection = async (
       "Active tenant required to access collections",
     );
   }
+  // Per-isolate cache hit skips the metadata round-trip on the items CRUD /
+  // GraphQL / realtime hot path. Only active rows are cached (see below), so a
+  // hit is always a resolvable collection. Schema mutations call
+  // `invalidateTenantCollections` for same-isolate freshness; the TTL bounds
+  // cross-isolate staleness (≤ TTL_MS, same model as the list/permission caches).
+  const cached = getCachedCollection(tenantId, slug);
+  if (cached) return cached;
   const t = collectionsTable(ctx.dialect);
   const rows = await (ctx.db as any)
     .select()
@@ -84,11 +95,12 @@ export const loadCollection = async (
   const r = rows[0] as Record<string, unknown>;
   // Archived (adopted) collections are 404 from every items endpoint;
   // backlex stops treating the underlying table as a collection until
-  // someone calls `POST /collections/:slug/restore`.
+  // someone calls `POST /collections/:slug/restore`. Never cached — a restore
+  // must resolve immediately, not wait out a negative-cache TTL.
   if (((r.status ?? "active") as string) !== "active") {
     throw new AppError("NOT_FOUND", `Collection "${slug}" not found`);
   }
-  return {
+  const row: CollectionRow = {
     id: r.id as string,
     slug: r.slug as string,
     physicalTable: (r.physicalTable ?? r.physical_table) as string,
@@ -109,6 +121,8 @@ export const loadCollection = async (
     updatedAtColumn: ((r.updatedAtColumn ?? r.updated_at_column) as string | null | undefined) ?? null,
     ownerIdColumn: ((r.ownerIdColumn ?? r.owner_id_column) as string | null | undefined) ?? null,
   };
+  setCachedCollection(tenantId, slug, row);
+  return row;
 };
 
 export const collectionFromParam = (c: Context<AppBindings>) =>

@@ -416,7 +416,7 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         extraJoins: expandJoins,
         selects: expandSelects,
         plans: expandPlans,
-      } = await resolveExpands(ctx, auth, collection, q.expand, joinMap);
+      } = await resolveExpands(ctx, auth, collection, q.expand, joinMap, q.expandSubs);
       for (const j of expandJoins) extraJoins.push(j);
       const hasJoins = extraJoins.length > 0;
 

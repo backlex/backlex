@@ -33,14 +33,23 @@ export class ApiError extends Error {
 }
 
 export const api = async <T>(path: string, init?: RequestInit): Promise<T> => {
+  // Pull `headers` out of `init` so the spread below can't clobber our computed
+  // header set. Callers pass `headers: undefined` on requests with no extra
+  // headers (e.g. a plain JSON POST); spreading `...init` last would then reset
+  // `headers` back to undefined, dropping `content-type: application/json`. The
+  // browser would fall back to `text/plain`, and the server's zod-openapi JSON
+  // validator only parses `application/json` bodies — so the payload arrived
+  // unparsed and every such write 422'd ("sql: expected string, received
+  // undefined"). Spread `restInit` first, then set merged headers last.
+  const { headers: initHeaders, ...restInit } = init ?? {};
   const res = await fetch(`${base}${path}`, {
     credentials: "include",
+    ...restInit,
     headers: {
       "content-type": "application/json",
       ...(d1Bookmark ? { "x-d1-bookmark": d1Bookmark } : {}),
-      ...(init?.headers ?? {}),
+      ...(initHeaders ?? {}),
     },
-    ...init,
   });
   // Capture the latest bookmark so the next request can pin its session
   // forward. Header is exposed via CORS in app.ts so reading it here works

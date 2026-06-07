@@ -46,11 +46,15 @@ GET (`GET /:id`) also accepts. `POST`, `PATCH`, and `DELETE` use
 | `_contains`    | LIKE `%x%`                     | `{ "title": { "_contains": "foo" } }`    |
 | `_starts_with` | LIKE `x%`                      |                                          |
 | `_ends_with`   | LIKE `%x`                      |                                          |
+| `_between`     | inclusive range `[lo, hi]`     | `{ "total": { "_between": [10, 20] } }`  |
+| `_icontains` / `_istarts_with` / `_iends_with` | case-insensitive LIKE (LOWER() both sides → PG/SQLite parity) | `{ "name": { "_icontains": "alice" } }` |
+| `_empty` / `_nempty` | is / is-not (null or empty string) | `{ "note": { "_empty": true } }`   |
 
 ### Logical combinators
 
 Top-level keys are an implicit `$and`. `$and`, `$or`, and `$not` nest
-freely.
+freely. The underscore aliases `_and` / `_or` / `_not` are also accepted
+and normalized to the `$`-forms.
 
 ```json
 {
@@ -60,6 +64,21 @@ freely.
   ]
 }
 ```
+
+### Accepted input shapes (normalization)
+
+Incoming filters pass through `normalizeCondition` (`@backlex/core`) before
+validation, so three conveniences map onto the one canonical form:
+
+- **Logical aliases** — `_and` / `_or` / `_not` → `$and` / `$or` / `$not`.
+- **Nested-object relation filters** — `{ "customer": { "name": { "_eq": "A" } } }`
+  flattens to the dotted key `{ "customer.name": { "_eq": "A" } }` (only when
+  the head is a relation field — a `json` column named like a relation is left
+  alone).
+- **Implicit equality** — `{ "status": "active" }` → `{ "status": { "_eq": "active" } }`.
+
+The canonical stored/wire form is unchanged, so permission rows need no
+migration.
 
 ### Variables
 
@@ -71,7 +90,16 @@ Resolved against the auth subject before the SQL fragment is emitted:
 - `$user.email`
 - `$user.roles` — role-name array
 - `$tenant.id` — active workspace id
-- `$now` — `Date.now()`
+- `$now` — the current instant. Supports **relative offsets** via an object
+  form usable anywhere a value is expected (filters and permission rules):
+  `{ "$now": { "sub": { "months": 1 } } }` (also `add`; units: `years`,
+  `months`, `weeks`, `days`, `hours`, `minutes`, `seconds`). Resolved to the
+  dialect-correct physical type (SQLite epoch-ms, PG `timestamptz`). A single
+  clock is captured per request so SQL and the realtime predicate agree.
+
+```json
+{ "placed_at": { "_gte": { "$now": { "sub": { "months": 1 } } } } }
+```
 
 ### Free-text search (`q`)
 
@@ -97,6 +125,16 @@ collections) are always re-added. Unknown fields → `422 VALIDATION`;
 fields outside the role's allow-list → `403 FORBIDDEN`. Omit `fields`
 and projection collapses to the role's `fields` set (or all columns
 when that set is null).
+
+**Relation projection.** `fields` accepts single-hop relation dot-paths —
+the same traversal grammar filter and sort use. `fields=id,title,customer.name`
+returns the related row inlined and trimmed: `{ id, title, customer: { id, name } }`.
+`customer.*` inlines the whole readable related row (equivalent to
+`expand=customer`). Each requested leaf is validated against the target's
+schema + read permission (unknown leaf → `422`, no permission → `403`).
+Multi-hop projection (`a.b.c`) and `relation_many` projection return `422`
+(use `filter`/`sort` for those, or expand one hop). Under the hood this reuses
+the `expand` JOIN, sharing the alias when a filter already joined the relation.
 
 ## Pagination
 
@@ -438,3 +476,32 @@ doesn't ambiguously resolve against the joined target's `owner_id`.
   foreign ids would emit `array<object>` rather than `object`, which
   needs a different SQL strategy (PG: `LATERAL` + `jsonb_agg`; SQLite:
   correlated sub-`SELECT json_group_array(…)`). Returns `422` for now.
+
+## SDK fluent query builder
+
+The public SDK (`@backlex/client`) ships a chainable, type-safe builder that
+**compiles to the canonical `ListQuery` JSON** above — it's an ergonomics layer,
+not a new wire format, so permissions, AI plans, and serialization all stay on
+the one grammar.
+
+```ts
+const { data } = await client.from<Order>("orders").query()
+  .where(f => f.and(
+    f.eq("status", "active"),
+    f.gte("total", 100),
+    f.rel("customer", c => c.eq("tier", "gold")),     // → "customer.tier"
+    f.gte("placed_at", f.now({ sub: { months: 1 } })), // relative date
+  ))
+  .select("id", "total", "customer.name")             // relation projection
+  .orderBy("-placed_at", "id")
+  .limit(50)
+  .list();
+```
+
+`f` exposes every operator (`eq`/`neq`/`gt`/`gte`/`lt`/`lte`/`in`/`nin`/
+`between`/`isNull`/`empty`/`nempty`/`contains`/`icontains`/`startsWith`/
+`endsWith`), the combinators `and`/`or`/`not`, `rel(head, …)` for relation
+traversal, and `now({ add | sub })` for relative dates. Field arguments are
+typed `keyof T | (string & {})` — autocomplete for known columns, dotted
+relation paths still allowed, no codegen. `.toQuery()` returns the plain
+`ListQuery`; `from(slug).list(rawQuery)` remains for hand-built queries.

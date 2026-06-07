@@ -25,6 +25,12 @@ and an in-process matcher (`matchesCondition`) for realtime/sandbox.
 | `_contains`    | LIKE %x%                       | `{ "title": { "_contains": "foo" } }`    |
 | `_starts_with` | LIKE x%                        |                                          |
 | `_ends_with`   | LIKE %x                        |                                          |
+| `_between`, `_icontains`/`_istarts_with`/`_iends_with`, `_empty`/`_nempty` | range, case-insensitive LIKE, null-or-empty | see [Querying › Operators](./querying.md#operators) |
+
+Conditions speak the **same DSL as REST `filter`** — the full operator set,
+relation dot-paths, the `_and`/`_or`/`_not` aliases, and relative dates
+(`{ "$now": { "sub": { "months": 1 } } }`) all work in a `permission.condition`
+too. See [docs/querying.md](./querying.md) for the complete reference.
 
 ## Logical combinators
 
@@ -40,6 +46,7 @@ and an in-process matcher (`matchesCondition`) for realtime/sandbox.
 - `$and: [...]` — all must match. Top-level keys are also implicit AND.
 - `$or:  [...]` — any.
 - `$not: {...}` — negation.
+- `_and` / `_or` / `_not` are accepted aliases (normalized to the `$`-forms).
 
 ## Variables
 

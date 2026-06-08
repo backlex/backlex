@@ -634,7 +634,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
         className={`flex cursor-pointer items-center gap-3.5 rounded-2xl border-[1.5px] bg-[color-mix(in_oklch,var(--muted)_22%,var(--card))] px-[18px] py-4 transition-all duration-[120ms] hover:bg-muted ${
           dragOver
             ? "scale-[1.005] border-solid border-primary bg-muted"
-            : "border-dashed border-border hover:border-[color-mix(in_oklch,var(--primary)_50%,var(--border))]"
+            : "border-dashed border-border hover:border-interactive-hover-border"
         }`}
         onClick={() => dropFileInputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -743,7 +743,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
             key={v}
             type="button"
             className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border bg-card px-[11px] text-[12.5px] text-foreground hover:bg-accent ${
-              view === v ? "border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent" : "border-border"
+              view === v ? "border-chip-border bg-accent" : "border-border"
             }`}
             onClick={() => setView(v)}
           >
@@ -893,7 +893,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                     key={f.key}
                     data-selected={selectedKey === f.key}
                     onClick={() => openDetail(f.key)}
-                    className="cursor-pointer data-[selected=true]:bg-[color-mix(in_oklch,var(--primary)_10%,var(--card))]"
+                    className="cursor-pointer data-[selected=true]:bg-selected-surface"
                   >
                     <TableCell>
                       <div className="flex min-w-0 items-center gap-2">

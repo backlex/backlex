@@ -218,7 +218,7 @@ body {
 .chip:hover { background: var(--accent); }
 .chip.active {
   background: var(--accent);
-  border-color: color-mix(in oklch, var(--foreground) 22%, var(--border));
+  border-color: var(--color-chip-border);
   color: var(--foreground);
 }
 .chip .x { width: 14px; height: 14px; display: grid; place-items: center; opacity: 0.6; border-radius: 999px; }
@@ -244,7 +244,7 @@ body {
 .table tbody tr { border-bottom: 1px solid var(--border); }
 .table tbody tr:last-child td { border-bottom: 0; }
 .table tbody tr:hover td { background: color-mix(in oklch, var(--accent) 60%, transparent); }
-.table tbody tr[data-selected="true"] td { background: color-mix(in oklch, var(--primary) 10%, var(--card)); }
+.table tbody tr[data-selected="true"] td { background: var(--color-selected-surface); }
 .table td { font-size: 13px; border-bottom: 1px solid var(--border); }
 .table tbody tr:last-child td { border-bottom: 0; }
 
@@ -263,7 +263,7 @@ body {
   background: color-mix(in oklch, var(--accent) 60%, var(--card));
 }
 .table tbody tr[data-selected="true"] td.col-actions {
-  background: color-mix(in oklch, var(--primary) 10%, var(--card));
+  background: var(--color-selected-surface);
 }
 
 .checkbox {
@@ -1008,7 +1008,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .type-card:hover { background: var(--accent); }
 .type-card.active {
   border-color: color-mix(in oklch, var(--primary) 60%, var(--border));
-  background: color-mix(in oklch, var(--primary) 10%, var(--card));
+  background: var(--color-selected-surface);
 }
 .type-card .type-icon {
   grid-row: 1 / span 2; align-self: center;
@@ -1017,7 +1017,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   background: var(--muted); border-radius: 8px;
   color: var(--foreground);
 }
-.type-card.active .type-icon { background: color-mix(in oklch, var(--primary) 30%, var(--card)); }
+.type-card.active .type-icon { background: var(--color-icon-surface); }
 .type-card .type-label { font-size: 13px; font-weight: 500; }
 .type-card .type-sub { grid-column: 2; font-size: 11.5px; color: var(--muted-foreground); }
 .type-card .type-sql {
@@ -1172,7 +1172,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   z-index: 2;
 }
 .pm-cell.is-open {
-  background: color-mix(in oklch, var(--primary) 10%, var(--card));
+  background: var(--color-selected-surface);
   box-shadow: inset 0 0 0 1.5px color-mix(in oklch, var(--primary) 70%, transparent);
   z-index: 2;
 }
@@ -1519,7 +1519,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 .wh-event:hover { color: var(--foreground); border-color: color-mix(in oklch, var(--foreground) 25%, var(--border)); }
 .wh-event.on {
   background: var(--muted);
-  border-color: color-mix(in oklch, var(--primary) 50%, var(--border));
+  border-color: var(--color-interactive-hover-border);
   color: var(--foreground);
 }
 
@@ -1980,7 +1980,7 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   background: var(--muted);
   color: var(--muted-foreground);
 }
-.notif-ico-mention { background: color-mix(in oklch, var(--primary) 18%, var(--card)); color: oklch(0.42 0.12 130); }
+.notif-ico-mention { background: var(--color-active-surface); color: oklch(0.42 0.12 130); }
 .dark .notif-ico-mention { color: oklch(0.88 0.16 130); }
 .notif-ico-advisor { background: color-mix(in oklch, var(--destructive) 18%, var(--card)); color: var(--destructive); }
 .notif-ico-flow { background: color-mix(in oklch, oklch(0.75 0.18 70) 22%, var(--card)); color: oklch(0.55 0.18 70); }

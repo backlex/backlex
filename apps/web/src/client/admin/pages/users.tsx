@@ -268,7 +268,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
           <TableBody>
             {filtered.map((u) => {
               return (
-                <TableRow key={u.id} data-selected={selected.has(u.id)} onClick={() => setActiveUser(u)} className="cursor-pointer data-[selected=true]:bg-[color-mix(in_oklch,var(--primary)_10%,var(--card))]">
+                <TableRow key={u.id} data-selected={selected.has(u.id)} onClick={() => setActiveUser(u)} className="cursor-pointer data-[selected=true]:bg-selected-surface">
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox checked={selected.has(u.id)} onChange={() => toggle(u.id)} />
                   </TableCell>

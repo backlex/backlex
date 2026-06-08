@@ -306,7 +306,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
               </div>
               {PM_ACTIONS.map((a) => {
                 const state = (matrix[activeRole]?.[c]?.[a.v] || "none") as CellState;
-                const cellCls = `relative grid h-11 w-full place-items-center border-0 border-l border-t border-border outline-none transition-[background,box-shadow] focus-visible:z-[2] focus-visible:shadow-[inset_0_0_0_1.5px_color-mix(in_oklch,var(--ring)_70%,transparent)] data-[state=open]:z-[2] data-[state=open]:bg-[color-mix(in_oklch,var(--primary)_10%,var(--card))] data-[state=open]:shadow-[inset_0_0_0_1.5px_color-mix(in_oklch,var(--primary)_70%,transparent)] ${
+                const cellCls = `relative grid h-11 w-full place-items-center border-0 border-l border-t border-border outline-none transition-[background,box-shadow] focus-visible:z-[2] focus-visible:shadow-[inset_0_0_0_1.5px_color-mix(in_oklch,var(--ring)_70%,transparent)] data-[state=open]:z-[2] data-[state=open]:bg-selected-surface data-[state=open]:shadow-[inset_0_0_0_1.5px_color-mix(in_oklch,var(--primary)_70%,transparent)] ${
                   isAdmin
                     ? "cursor-not-allowed bg-card opacity-85"
                     : "cursor-pointer bg-card hover:bg-[color-mix(in_oklch,var(--accent)_50%,var(--card))]"

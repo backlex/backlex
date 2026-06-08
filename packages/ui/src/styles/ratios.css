@@ -1,0 +1,20 @@
+/* Shared interaction / "ratio" layer — pre-mixed semantic colors so admin and
+ * cloud render identical hover / selected / active / chip states from one place.
+ *
+ * Every mix derives from var(--primary) (or var(--foreground)), so a per-workspace
+ * brand override flows through automatically. Exposed as --color-* utilities
+ * (e.g. hover:border-interactive-hover-border, bg-selected-surface). Non-inline
+ * @theme so the var(--*) values resolve at the element, not at definition time.
+ *
+ * Raw ratio numbers (e.g. --ratio-hover: 50%) were intentionally NOT used:
+ * Tailwind can't turn a bare percentage into a utility, so call sites would
+ * still hand-author color-mix() and the centralization would be lost. */
+
+@theme {
+    --color-interactive-hover-border: color-mix(in oklch, var(--primary) 50%, var(--border));
+    --color-selected-surface: color-mix(in oklch, var(--primary) 10%, var(--card));
+    --color-active-surface: color-mix(in oklch, var(--primary) 18%, var(--card));
+    --color-icon-surface: color-mix(in oklch, var(--primary) 30%, var(--card));
+    --color-node-border: color-mix(in oklch, var(--primary) 35%, var(--border));
+    --color-chip-border: color-mix(in oklch, var(--foreground) 22%, var(--border));
+}

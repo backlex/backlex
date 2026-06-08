@@ -198,11 +198,11 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                       <button
                         key={t.id}
                         type="button"
-                        className={`grid cursor-pointer grid-cols-[28px_1fr_auto] grid-rows-[auto_auto] items-center gap-x-2.5 rounded-xl border p-3 text-left text-foreground transition-colors ${on ? "border-[color-mix(in_oklch,var(--primary)_60%,var(--border))] bg-[color-mix(in_oklch,var(--primary)_10%,var(--card))]" : "border-border bg-card hover:bg-accent"}`}
+                        className={`grid cursor-pointer grid-cols-[28px_1fr_auto] grid-rows-[auto_auto] items-center gap-x-2.5 rounded-xl border p-3 text-left text-foreground transition-colors ${on ? "border-[color-mix(in_oklch,var(--primary)_60%,var(--border))] bg-selected-surface" : "border-border bg-card hover:bg-accent"}`}
                         onClick={() => pickInterface(t.id)}
                         title={t.sub}
                       >
-                        <span className={`row-span-2 grid size-7 place-items-center self-center rounded-[8px] text-foreground ${on ? "bg-[color-mix(in_oklch,var(--primary)_30%,var(--card))]" : "bg-muted"}`}><Ic size={14} /></span>
+                        <span className={`row-span-2 grid size-7 place-items-center self-center rounded-[8px] text-foreground ${on ? "bg-icon-surface" : "bg-muted"}`}><Ic size={14} /></span>
                         <span className="text-[13px] font-medium">{t.label}</span>
                         <span className="col-start-2 text-[11.5px] text-muted-foreground">{t.sub}</span>
                         <span className="row-span-2 self-center rounded-[6px] bg-muted px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground">{t.type}</span>

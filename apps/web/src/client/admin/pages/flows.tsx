@@ -402,7 +402,7 @@ function FlowStatCard({
 
 function FlowNode({ x, y, kind, title, sub }: { x: number; y: number; kind: string; title: string; sub: string }) {
   const colors: Record<string, { bg: string; bd: string; ic: IconComponent }> = {
-    trigger: { bg: "color-mix(in oklch, var(--primary) 20%, var(--card))", bd: "color-mix(in oklch, var(--primary) 50%, var(--border))", ic: I.Zap },
+    trigger: { bg: "color-mix(in oklch, var(--primary) 20%, var(--card))", bd: "var(--color-interactive-hover-border)", ic: I.Zap },
     condition: { bg: "color-mix(in oklch, oklch(0.78 0.16 75) 18%, var(--card))", bd: "color-mix(in oklch, oklch(0.78 0.16 75) 50%, var(--border))", ic: I.Filter },
     action: { bg: "var(--card)", bd: "var(--border)", ic: I.Function },
   };

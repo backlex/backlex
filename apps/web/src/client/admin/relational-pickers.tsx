@@ -477,7 +477,7 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
             </div>
 
             <div
-              className={`flex cursor-pointer items-center gap-3.5 rounded-2xl border-[1.5px] border-dashed px-3.5 py-2.5 transition-all ${dragOver ? "scale-[1.005] border-solid border-primary bg-muted" : "border-border bg-[color-mix(in_oklch,var(--muted)_22%,var(--card))] hover:border-[color-mix(in_oklch,var(--primary)_50%,var(--border))] hover:bg-muted"}`}
+              className={`flex cursor-pointer items-center gap-3.5 rounded-2xl border-[1.5px] border-dashed px-3.5 py-2.5 transition-all ${dragOver ? "scale-[1.005] border-solid border-primary bg-muted" : "border-border bg-[color-mix(in_oklch,var(--muted)_22%,var(--card))] hover:border-interactive-hover-border hover:bg-muted"}`}
               onClick={() => fileInputRef.current?.click()}
               role="button"
               tabIndex={0}

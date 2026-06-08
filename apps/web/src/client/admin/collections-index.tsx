@@ -247,7 +247,7 @@ function CollectionCard({ c, onOpen, archived, onRestore, onOpenApi }: { c: Coll
   const Ic = (I as Record<string, IconComponent>)[c.icon as IconKey] || I.Database;
   return (
     <div
-      className={`flex cursor-pointer flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground transition-colors hover:border-[color-mix(in_oklch,var(--primary)_50%,var(--border))] ${archived ? "opacity-90" : ""}`}
+      className={`flex cursor-pointer flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground transition-colors hover:border-interactive-hover-border ${archived ? "opacity-90" : ""}`}
       onClick={onOpen}
     >
       <div className="flex items-center gap-2.5">
@@ -615,7 +615,7 @@ function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt }: Create
           <button
             type="button"
             onClick={onPickEmpty}
-            className="flex cursor-pointer flex-col gap-2.5 rounded-2xl border border-border bg-card p-[18px] text-left text-card-foreground transition-colors hover:border-[color-mix(in_oklch,var(--primary)_50%,var(--border))]"
+            className="flex cursor-pointer flex-col gap-2.5 rounded-2xl border border-border bg-card p-[18px] text-left text-card-foreground transition-colors hover:border-interactive-hover-border"
           >
             <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted"><I.Braces size={16} /></span>
             <div className="flex flex-col gap-1">
@@ -628,7 +628,7 @@ function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt }: Create
           <button
             type="button"
             onClick={onPickAdopt}
-            className="flex cursor-pointer flex-col gap-2.5 rounded-2xl border border-border bg-card p-[18px] text-left text-card-foreground transition-colors hover:border-[color-mix(in_oklch,var(--primary)_50%,var(--border))]"
+            className="flex cursor-pointer flex-col gap-2.5 rounded-2xl border border-border bg-card p-[18px] text-left text-card-foreground transition-colors hover:border-interactive-hover-border"
           >
             <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted"><I.Database size={16} /></span>
             <div className="flex flex-col gap-1">

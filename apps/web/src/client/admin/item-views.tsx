@@ -121,7 +121,7 @@ export function KanbanBoard({ rows, onEdit, displayTemplate }: { rows: Post[]; o
                   const words = rowNumber(r.word_count);
                   const views = rowNumber(r.view_count);
                   return (
-                    <button key={r.id} type="button" className="flex cursor-pointer flex-col gap-1.5 rounded-lg border border-border bg-card px-3 py-2.5 text-left hover:border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))]" onClick={() => onEdit(r)}>
+                    <button key={r.id} type="button" className="flex cursor-pointer flex-col gap-1.5 rounded-lg border border-border bg-card px-3 py-2.5 text-left hover:border-chip-border" onClick={() => onEdit(r)}>
                       <div className="text-[12.5px] font-medium leading-[1.3]">{rowLabel(r, displayTemplate)}</div>
                       {r.slug && (
                         <div className="text-[11px] text-muted-foreground">
@@ -180,7 +180,7 @@ export function GalleryGrid({ rows, onEdit, displayTemplate }: { rows: Post[]; o
         const b = hashColor(r.id.split("").reverse().join(""));
         const words = rowNumber(r.word_count);
         return (
-          <button key={r.id} type="button" className="cursor-pointer overflow-hidden rounded-xl border border-border bg-card text-left text-foreground hover:border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))]" onClick={() => onEdit(r)}>
+          <button key={r.id} type="button" className="cursor-pointer overflow-hidden rounded-xl border border-border bg-card text-left text-foreground hover:border-chip-border" onClick={() => onEdit(r)}>
             <div className="relative grid aspect-[16/10] p-2.5 [place-items:end_start]" style={{ background: `linear-gradient(135deg, ${a}, ${b})` }}>
               <span className="rounded-md bg-[color-mix(in_oklch,var(--background)_65%,transparent)] px-2 py-0.5 font-mono text-[10.5px] text-foreground backdrop-blur-[4px]">{r.slug || r.id}</span>
             </div>

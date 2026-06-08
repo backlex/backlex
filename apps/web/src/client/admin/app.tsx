@@ -87,7 +87,9 @@ import { PreferencesProvider } from "./preferences";
 import { AdminLocaleSync } from "./i18n";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { GraphqlPage } from "@/pages/graphql";
-import { RestExplorerPage } from "@/pages/rest-explorer";
+const RestExplorerPage = lazy(() =>
+  import("@/pages/rest-explorer").then((m) => ({ default: m.RestExplorerPage })),
+);
 import { OpenApiExportPage } from "@/pages/openapi-export";
 import { ApiKeys } from "@/pages/api-keys";
 

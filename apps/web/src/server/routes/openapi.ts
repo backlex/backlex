@@ -110,10 +110,11 @@ export const openapiRoutes = new Hono<AppBindings>()
     const auth = c.get("auth");
     requireAdmin(auth.roles);
     const doc = await docFor(c, auth.tenantId ?? null);
-    // Admin-only + tenant-scoped → `private`. The spec only changes when
-    // collections change, so a short browser cache spares the REST Explorer a
-    // refetch (and the dynamic-paths query) when toggling tabs / revisiting.
-    c.header("Cache-Control", "private, max-age=60");
+    // No browser caching: the dynamic `/api/items/{slug}` paths must reflect a
+    // just-created collection immediately (the Collections page deep-links here
+    // with `?slug=` right after create). Server-side memoization already makes
+    // regeneration cheap, so revalidating on every request costs little.
+    c.header("Cache-Control", "no-store");
     return c.json(doc);
   })
   .get("/openapi.yaml", requireUser, async (c) => {

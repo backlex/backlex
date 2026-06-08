@@ -119,7 +119,7 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
                         key={opt.v}
                         type="button"
                         onClick={() => setRule((r) => ({ ...r, [a]: opt.v as RuleState }))}
-                        className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border px-[11px] text-[11.5px] text-foreground hover:bg-accent ${rule[a] === opt.v ? "border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent" : "border-border bg-card"}`}
+                        className={`inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border px-[11px] text-[11.5px] text-foreground hover:bg-accent ${rule[a] === opt.v ? "border-chip-border bg-accent" : "border-border bg-card"}`}
                       >
                         {opt.label}
                       </button>

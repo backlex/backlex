@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "vite",
     "dev:bun": "bun run --hot src/server/entries/bun.ts",
-    "build": "vite build",
+    "build": "bun scripts/gen-openapi-static.ts && vite build",
+    "gen:openapi-static": "bun scripts/gen-openapi-static.ts",
     "i18n:extract": "lingui extract",
     "preview": "vite preview",
-    "deploy": "vite build && wrangler deploy",
+    "deploy": "bun scripts/gen-openapi-static.ts && vite build && wrangler deploy",
     "typecheck": "tsc --noEmit -p tsconfig.client.json && NODE_OPTIONS=--max-old-space-size=8192 tsc --noEmit -p tsconfig.server.json",
     "test": "bun test tests/"
   },

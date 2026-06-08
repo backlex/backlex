@@ -49,7 +49,7 @@ import { accountRoutes } from "./account";
 // `any` on purpose — `OpenAPIHono<AppBindings>` for each sub-app blows
 // past TypeScript's inference budget on this many entries. Only the
 // runtime `openAPIRegistry.definitions` walk needs to work.
-const SUBAPPS: ReadonlyArray<readonly [string, OpenAPIHono<any>]> = [
+export const SUBAPPS: ReadonlyArray<readonly [string, OpenAPIHono<any>]> = [
   ["/api/api-keys", apiKeysRoutes as unknown as OpenAPIHono<any>],
   ["/api/collections", collectionsRoutes as unknown as OpenAPIHono<any>],
   ["/api/folders", foldersRoutes as unknown as OpenAPIHono<any>],

@@ -2,6 +2,7 @@ import { OpenAPIRegistry, OpenApiGeneratorV31 } from "@asteasolutions/zod-to-ope
 import { z, OpenAPIHono } from "@hono/zod-openapi";
 import type { Ctx } from "../context";
 import { buildDynamicCollectionPaths } from "../services/openapi-dynamic";
+import staticGenerated from "./openapi-static.generated.json";
 
 /**
  * Re-export the extended `z` from `@hono/zod-openapi`. That package wraps
@@ -120,19 +121,25 @@ export type BuildDocOptions = {
 
 /**
  * The static half of the spec — global registry + every sub-app's Zod schemas
- * run through `OpenApiGeneratorV31`. This is CPU-heavy (~34 generator passes)
- * and produces byte-identical output for every request: it depends only on the
- * module-level registries, not on the tenant, `baseUrl`, or anything per-call.
- * So we build it once and memoize. Per-request work is then just the cheap
- * tenant collection query + a shallow merge (see `buildOpenApiDoc`).
+ * run through `OpenApiGeneratorV31`. This is CPU-heavy (~34 generator passes,
+ * ~5-6s on a Worker) and produces byte-identical output for every request: it
+ * depends only on the module-level registries, not on the tenant, `baseUrl`,
+ * or anything per-call.
+ *
+ * In production it is precomputed at build time (`scripts/gen-openapi-static.ts`
+ * → `openapi-static.generated.json`, imported below) so NO generation happens
+ * at runtime — critical on Cloudflare, where this rarely-hit admin route lands
+ * on cold isolates whose in-memory cache is always empty. `buildStaticDoc` is
+ * still used at runtime in dev (always fresh as routes change) and as a fallback
+ * when the precomputed doc is absent/empty.
  *
  * `servers` is intentionally omitted here (it's the only request-varying field)
- * and injected per request. The cached object is treated as read-only — callers
- * spread it into a fresh doc rather than mutating it.
+ * and injected per request. The result is treated as read-only — callers spread
+ * it into a fresh doc rather than mutating it.
  */
 let staticDocCache: ReturnType<OpenApiGeneratorV31["generateDocument"]> | null = null;
 
-const buildStaticDoc = (opts: BuildDocOptions) => {
+export const buildStaticDoc = (opts: BuildDocOptions) => {
   // Build the global registry's doc first. This catches the seed schemas
   // (AppError, Ok, PaginationMeta) + any remaining sibling metadata files.
   const globalGen = new OpenApiGeneratorV31(
@@ -189,6 +196,16 @@ const buildStaticDoc = (opts: BuildDocOptions) => {
   return baseDoc;
 };
 
+// Build-time precomputed static spec (see `scripts/gen-openapi-static.ts`).
+// On a fresh checkout / in dev this is the `{ "paths": {} }` placeholder; the
+// build script overwrites it with the full doc before bundling.
+const precomputedHasPaths =
+  Object.keys((staticGenerated as { paths?: Record<string, unknown> }).paths ?? {}).length > 0;
+// Vite replaces `import.meta.env.DEV` at build (false in prod bundles); it's
+// undefined on the non-Vite Bun entry → treated as prod. In dev we always
+// regenerate so the spec tracks live route edits.
+const isDev = (import.meta as { env?: { DEV?: boolean } }).env?.DEV === true;
+
 export const buildOpenApiDoc = async (
   ctx: Ctx,
   tenantId: string | null,
@@ -198,10 +215,15 @@ export const buildOpenApiDoc = async (
     ? await buildDynamicCollectionPaths(ctx, tenantId)
     : {};
 
-  // The expensive Zod→OpenAPI generation is identical for every request, so
-  // run it at most once per worker instance and reuse the result thereafter.
-  if (!staticDocCache) staticDocCache = buildStaticDoc(opts);
-  const baseDoc = staticDocCache;
+  // Prefer the build-time precomputed doc (zero runtime generation). Fall back
+  // to generating once per instance in dev or if the precompute is missing.
+  let baseDoc: ReturnType<OpenApiGeneratorV31["generateDocument"]>;
+  if (precomputedHasPaths && !isDev) {
+    baseDoc = staticGenerated as unknown as typeof baseDoc;
+  } else {
+    if (!staticDocCache) staticDocCache = buildStaticDoc(opts);
+    baseDoc = staticDocCache;
+  }
 
   // Compose a fresh doc per request — never mutate the cached `baseDoc`.
   // `paths` gets a new object (static ∪ dynamic); path *items* are shared by

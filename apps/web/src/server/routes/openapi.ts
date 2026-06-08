@@ -110,6 +110,10 @@ export const openapiRoutes = new Hono<AppBindings>()
     const auth = c.get("auth");
     requireAdmin(auth.roles);
     const doc = await docFor(c, auth.tenantId ?? null);
+    // Admin-only + tenant-scoped → `private`. The spec only changes when
+    // collections change, so a short browser cache spares the REST Explorer a
+    // refetch (and the dynamic-paths query) when toggling tabs / revisiting.
+    c.header("Cache-Control", "private, max-age=60");
     return c.json(doc);
   })
   .get("/openapi.yaml", requireUser, async (c) => {

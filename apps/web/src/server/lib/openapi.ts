@@ -118,15 +118,21 @@ export type BuildDocOptions = {
   subApps?: ReadonlyArray<readonly [string, OpenAPIHono<any>]>;
 };
 
-export const buildOpenApiDoc = async (
-  ctx: Ctx,
-  tenantId: string | null,
-  opts: BuildDocOptions = {},
-) => {
-  const dynamicPaths = tenantId
-    ? await buildDynamicCollectionPaths(ctx, tenantId)
-    : {};
+/**
+ * The static half of the spec — global registry + every sub-app's Zod schemas
+ * run through `OpenApiGeneratorV31`. This is CPU-heavy (~34 generator passes)
+ * and produces byte-identical output for every request: it depends only on the
+ * module-level registries, not on the tenant, `baseUrl`, or anything per-call.
+ * So we build it once and memoize. Per-request work is then just the cheap
+ * tenant collection query + a shallow merge (see `buildOpenApiDoc`).
+ *
+ * `servers` is intentionally omitted here (it's the only request-varying field)
+ * and injected per request. The cached object is treated as read-only — callers
+ * spread it into a fresh doc rather than mutating it.
+ */
+let staticDocCache: ReturnType<OpenApiGeneratorV31["generateDocument"]> | null = null;
 
+const buildStaticDoc = (opts: BuildDocOptions) => {
   // Build the global registry's doc first. This catches the seed schemas
   // (AppError, Ok, PaginationMeta) + any remaining sibling metadata files.
   const globalGen = new OpenApiGeneratorV31(
@@ -140,7 +146,6 @@ export const buildOpenApiDoc = async (
       description:
         "REST surface for the backlex admin app and SDKs. Schema is generated from the live Zod validators; per-collection `/api/items/{slug}` paths are added from your workspace's collection metadata at request time.",
     },
-    servers: opts.baseUrl ? [{ url: opts.baseUrl }] : undefined,
     security: [{ sessionCookie: [] }, { apiKey: [] }],
   });
 
@@ -181,9 +186,32 @@ export const buildOpenApiDoc = async (
     }
   }
 
-  baseDoc.paths = {
-    ...(baseDoc.paths ?? {}),
-    ...dynamicPaths,
-  } as typeof baseDoc.paths;
   return baseDoc;
+};
+
+export const buildOpenApiDoc = async (
+  ctx: Ctx,
+  tenantId: string | null,
+  opts: BuildDocOptions = {},
+) => {
+  const dynamicPaths = tenantId
+    ? await buildDynamicCollectionPaths(ctx, tenantId)
+    : {};
+
+  // The expensive Zod→OpenAPI generation is identical for every request, so
+  // run it at most once per worker instance and reuse the result thereafter.
+  if (!staticDocCache) staticDocCache = buildStaticDoc(opts);
+  const baseDoc = staticDocCache;
+
+  // Compose a fresh doc per request — never mutate the cached `baseDoc`.
+  // `paths` gets a new object (static ∪ dynamic); path *items* are shared by
+  // reference (read-only). `servers` is the only request-varying field.
+  return {
+    ...baseDoc,
+    ...(opts.baseUrl ? { servers: [{ url: opts.baseUrl }] } : {}),
+    paths: {
+      ...(baseDoc.paths ?? {}),
+      ...dynamicPaths,
+    },
+  } as typeof baseDoc;
 };

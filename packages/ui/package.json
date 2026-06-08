@@ -1,6 +1,6 @@
 {
   "name": "@backlex/ui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "backlex design system — shadcn-based React component library on Tailwind v4 (radix-luma preset, Geist, oklch palette).",
   "license": "MIT",
   "repository": {
@@ -59,6 +59,8 @@
   },
   "exports": {
     "./globals.css": "./src/styles/globals.css",
+    "./styles/tokens.css": "./src/styles/tokens.css",
+    "./styles/ratios.css": "./src/styles/ratios.css",
     "./lib/*": "./src/lib/*.ts",
     "./components/*": "./src/components/*.tsx",
     "./hooks/*": "./src/hooks/*.ts"

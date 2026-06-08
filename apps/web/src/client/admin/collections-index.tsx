@@ -167,9 +167,10 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
                   />
                 ))}
                 {!showArchived && (
-                  <button onClick={onNew} className="grid min-h-[138px] cursor-pointer place-items-center gap-1.5 rounded-2xl border-[1.5px] border-dashed border-border bg-transparent text-muted-foreground">
-                    <I.Plus size={18} />
-                    <span className="text-[12.5px] font-medium"><Trans>New collection</Trans></span>
+                  <button onClick={onNew} className="flex min-h-[138px] cursor-pointer flex-col items-center justify-center gap-2 rounded-4xl border border-dashed border-border bg-card p-5 text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground">
+                    <I.Plus size={20} />
+                    <span className="text-[13px] font-medium"><Trans>New collection</Trans></span>
+                    <span className="text-[11px]"><Trans>Create or adopt a table</Trans></span>
                   </button>
                 )}
               </div>

@@ -675,6 +675,11 @@ export const collections = pgTable(
     /** When true, the collection is locked to a single row — inserts are
      *  rejected once one live row exists (useful for site settings). */
     singleton: boolean("singleton").notNull().default(false),
+    /** Opt-in sensitive-read auditing. When true, REST read operations on this
+     *  collection (list + by-id) record an `access.read` activity row so admins
+     *  get a "who viewed this" trail for regulated data (HIPAA/PCI/gov). Off by
+     *  default — reads are otherwise never logged to keep the audit table small. */
+    auditReads: boolean("audit_reads").notNull().default(false),
     /** When true, item writes auto-generate embeddings from fields flagged
      *  `vectorize: true` on the field definition. Drives both the on-write
      *  hook in routes/items.ts and the bulk `POST /:slug/vectorize` route. */

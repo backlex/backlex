@@ -118,6 +118,12 @@ const CollectionInput = z.object({
   softDelete: z.boolean().optional().default(false),
   /** When true, the collection is locked to a single live row. */
   singleton: z.boolean().optional().default(false),
+  /** Opt-in sensitive-read auditing. When true, REST read operations on this
+   *  collection (list + by-id) record an `access.read` activity row so admins
+   *  get a "who viewed this" trail. Off by default — reads are otherwise not
+   *  logged. Pruned on a shorter retention than other activity (see
+   *  ACCESS_AUDIT_RETENTION_DAYS). */
+  auditReads: z.boolean().optional().default(false),
   /** Master switch — when true, item writes auto-embed fields with
    *  `vectorize: true` and the bulk endpoint backfills existing rows. */
   vectorize: z.boolean().optional().default(false),
@@ -500,6 +506,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       versioned: body.versioned,
       softDelete,
       singleton,
+      auditReads: body.auditReads,
       vectorize: body.vectorize,
       vectorizeModel: body.vectorizeModel ?? null,
       defaultSort: body.defaultSort ?? null,
@@ -542,6 +549,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       versioned: body.versioned,
       softDelete,
       singleton,
+      auditReads: body.auditReads,
       vectorize: body.vectorize,
       vectorizeModel: body.vectorizeModel ?? null,
       defaultSort: body.defaultSort ?? null,
@@ -618,6 +626,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
         ? { tenantScoped: body.tenantScoped }
         : {}),
       ...(body.versioned !== undefined ? { versioned: body.versioned } : {}),
+      ...(body.auditReads !== undefined ? { auditReads: body.auditReads } : {}),
       ...(body.vectorize !== undefined ? { vectorize: body.vectorize } : {}),
       ...(body.vectorizeModel !== undefined
         ? { vectorizeModel: body.vectorizeModel ?? null }

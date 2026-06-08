@@ -211,4 +211,9 @@ export interface Env {
   /** Days of audit-log history to keep. Rows older than this are pruned by
    *  the daily cron tick. Defaults to 90. Set to `0` to disable pruning. */
   ACTIVITY_RETENTION_DAYS?: string;
+  /** Days of sensitive-read audit (`access.*`) history to keep. These rows are
+   *  higher-volume and opt-in per collection, so they get a shorter clock than
+   *  the global retention. Pruned by the same daily cron tick. Defaults to 30.
+   *  Set to `0` to disable (rows then fall back to ACTIVITY_RETENTION_DAYS). */
+  ACCESS_AUDIT_RETENTION_DAYS?: string;
 }

@@ -363,7 +363,7 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
               {WH_EVENTS.map((ev) => {
                 const on = draft.events.includes(ev);
                 return (
-                  <button key={ev} type="button" className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 ${on ? "border-[color-mix(in_oklch,var(--primary)_50%,var(--border))] bg-muted text-foreground" : "border-border bg-card text-muted-foreground hover:border-[color-mix(in_oklch,var(--foreground)_25%,var(--border))] hover:text-foreground"}`} onClick={() => toggleEvent(ev)}>
+                  <button key={ev} type="button" className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 ${on ? "border-interactive-hover-border bg-muted text-foreground" : "border-border bg-card text-muted-foreground hover:border-[color-mix(in_oklch,var(--foreground)_25%,var(--border))] hover:text-foreground"}`} onClick={() => toggleEvent(ev)}>
                     {on ? <I.Check size={11} /> : <I.Plus size={11} />}
                     <span className="font-mono text-[11.5px]">{ev}</span>
                   </button>

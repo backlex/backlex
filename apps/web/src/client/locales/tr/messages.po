@@ -2144,6 +2144,10 @@ msgstr "Anahtar oluştur"
 msgid "Create new link"
 msgstr "Yeni bağlantı oluştur"
 
+#: src/client/admin/collections-index.tsx
+msgid "Create or adopt a table"
+msgstr "Tablo oluştur veya devral"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Create panel"
 msgstr "Panel oluştur"

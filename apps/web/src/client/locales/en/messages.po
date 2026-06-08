@@ -2144,6 +2144,10 @@ msgstr "Create key"
 msgid "Create new link"
 msgstr "Create new link"
 
+#: src/client/admin/collections-index.tsx
+msgid "Create or adopt a table"
+msgstr "Create or adopt a table"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Create panel"
 msgstr "Create panel"

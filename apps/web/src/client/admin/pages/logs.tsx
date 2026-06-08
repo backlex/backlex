@@ -699,7 +699,10 @@ function StreamView({
                 >
                   <span className="log-t font-mono">{fmtTime(r.ts)}</span>
                   <span className={`log-pill log-pill-${r.level}`}>{r.level}</span>
-                  <span className={`log-method log-method-${r.method.toLowerCase()}`}>
+                  <span
+                    className={`log-method log-method-${r.method.toLowerCase()}`}
+                    title={r.method}
+                  >
                     {r.method}
                   </span>
                   {r.status != null && (

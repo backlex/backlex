@@ -1736,7 +1736,11 @@ input[type="range"]:focus-visible::-moz-range-thumb {
 /* ─────────────────────────────────────────────────────────── */
 .log-row {
   display: grid;
-  grid-template-columns: 92px 56px 70px 56px 1fr 64px 1.4fr;
+  /* method track grows with content (capped via .log-method max-width) so long
+     verbs like COLLECTIONS.AGGREGATE no longer overflow their cell; the path/msg
+     fr tracks use minmax(0,…) so they can shrink and truncate instead of pushing
+     content into adjacent columns. */
+  grid-template-columns: 92px 56px minmax(70px, auto) 56px minmax(0, 1fr) 64px minmax(0, 1.4fr);
   gap: 10px;
   align-items: center;
   padding: 7px 14px;
@@ -1776,6 +1780,14 @@ input[type="range"]:focus-visible::-moz-range-thumb {
   font-size: 10.5px;
   letter-spacing: 0.02em;
   color: var(--muted-foreground);
+  /* Multi-segment actions (e.g. mcp.collections.aggregate → COLLECTIONS.AGGREGATE)
+     can be far wider than the track; clamp + ellipsis so they never paint over the
+     neighbouring cell. Full action stays visible in the message column + detail. */
+  min-width: 0;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .log-method-get, .log-method-select, .log-method-sub { color: oklch(0.55 0.13 200); }
 .dark .log-method-get, .dark .log-method-select, .dark .log-method-sub { color: oklch(0.78 0.13 200); }

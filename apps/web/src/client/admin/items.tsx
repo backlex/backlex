@@ -126,7 +126,7 @@ function FilterChip({ field, op, value, onRemove, onClick }: { field: string; op
   const { t } = useLingui();
   const valStr = Array.isArray(value) ? `[${(value as unknown[]).join(", ")}]` : op === "_null" ? (value ? t`is null` : t`is not null`) : String(value);
   return (
-    <span className="inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border border-[color-mix(in_oklch,var(--foreground)_22%,var(--border))] bg-accent px-[11px] text-[12.5px] text-foreground" onClick={onClick}>
+    <span className="inline-flex h-7 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-3xl border border-chip-border bg-accent px-[11px] text-[12.5px] text-foreground" onClick={onClick}>
       <span className="text-muted-foreground">{field}</span>
       <span className="font-mono text-[11.5px] text-muted-foreground">{op}</span>
       <span className="font-mono">{valStr}</span>
@@ -463,7 +463,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
           const displayStatus = rawStatus != null ? String(rawStatus) : null;
           const choice = displayStatus ? choiceByValue.get(displayStatus) : null;
           return (
-            <TableRow key={r.id} data-selected={selected.has(r.id)} onClick={() => onEdit(r)} className="cursor-pointer data-[selected=true]:bg-[color-mix(in_oklch,var(--primary)_10%,var(--card))]">
+            <TableRow key={r.id} data-selected={selected.has(r.id)} onClick={() => onEdit(r)} className="cursor-pointer data-[selected=true]:bg-selected-surface">
               <TableCell onClick={(e) => e.stopPropagation()}>
                 <Checkbox checked={selected.has(r.id)} onChange={() => toggleRow(r.id)} />
               </TableCell>

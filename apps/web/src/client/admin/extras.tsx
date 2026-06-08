@@ -85,7 +85,7 @@ export function Palette({ open, onClose, onNavigate, items, collections }: Palet
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent
         showCloseButton={false}
-        className="top-[18%] flex max-h-[60vh] w-[min(640px,92vw)] translate-y-0 flex-col gap-0 overflow-hidden bg-popover p-0 sm:max-w-none"
+        className="top-[18%] flex max-h-[60vh] w-[min(640px,92vw)] translate-y-0 flex-col gap-0 overflow-hidden rounded-2xl bg-popover p-0 sm:max-w-none"
       >
         <DialogTitle className="sr-only"><Trans>Command palette</Trans></DialogTitle>
         <DialogDescription className="sr-only"><Trans>Type a command, collection, or item title to navigate.</Trans></DialogDescription>
@@ -134,7 +134,7 @@ export function Palette({ open, onClose, onNavigate, items, collections }: Palet
           )}
           </div>
         </ScrollArea>
-        <div className="flex items-center gap-3.5 border-t border-border px-3.5 py-2 font-mono text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-3.5 border-t border-border px-4 py-2.5 font-mono text-[11px] text-muted-foreground">
           <span><span className={kbd}>↵</span> <Trans>open</Trans></span>
           <span><span className={kbd}>↑↓</span> <Trans>navigate</Trans></span>
           <span><span className={kbd}>esc</span> <Trans>close</Trans></span>

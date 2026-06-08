@@ -43,6 +43,7 @@ import m36 from "../../drizzle/pg/20260525010000_api_keys_mcp_metadata/migration
 import m37 from "../../drizzle/pg/20260601210000_integrations/migration.sql" with { type: "text" };
 import m38 from "../../drizzle/pg/20260603120000_collections_soft_delete_singleton/migration.sql" with { type: "text" };
 import m39 from "../../drizzle/pg/20260604120000_passkey_aaguid/migration.sql" with { type: "text" };
+import m40 from "../../drizzle/pg/20260609120000_collections_audit_reads/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -90,4 +91,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260601210000_integrations", sql: m37 },
   { name: "20260603120000_collections_soft_delete_singleton", sql: m38 },
   { name: "20260604120000_passkey_aaguid", sql: m39 },
+  { name: "20260609120000_collections_audit_reads", sql: m40 },
 ];

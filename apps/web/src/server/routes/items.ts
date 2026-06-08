@@ -1,4 +1,5 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
+import type { Context } from "hono";
 import { sql, type SQL } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import {
@@ -13,7 +14,7 @@ import { requirePermission } from "../middleware/permission";
 import { parseQuery, resolveProjection } from "../lib/query";
 import { resolvePermission } from "../services/permissions";
 import { publishEvent } from "../services/events";
-import { elapsedMs, recordActivity, requestMeta } from "../services/activity";
+import { elapsedMs, keepAlive, recordActivity, requestMeta } from "../services/activity";
 import { recordRevision } from "../services/revisions";
 import { embedAndUpsert, deleteVector } from "../services/vectorize";
 import { loadAppSettings } from "../services/settings";
@@ -62,6 +63,43 @@ import {
   ListQuery,
   TAGS,
 } from "../services/items/schemas";
+
+/**
+ * Fire-and-forget sensitive-read audit. No-op unless the collection opted in
+ * via `auditReads`. Records an `access.read` activity row with **metadata only**
+ * (who / when / ip + query shape, result count, item id(s)) — never the row
+ * bodies, which would re-store the very sensitive data the audit exists to
+ * protect. Runs inside `keepAlive` (waitUntil) so reads take zero added latency,
+ * and `recordActivity` swallows its own errors so a failed insert never fails
+ * the read. The `access.` prefix keeps these rows on their own Logs lens +
+ * shorter retention (see ACCESS_AUDIT_RETENTION_DAYS in services/scheduler.ts).
+ */
+const auditRead = (
+  c: Context<AppBindings>,
+  collection: CollectionRow,
+  itemId: string | null,
+  payload: Record<string, unknown>,
+): void => {
+  if (!collection.auditReads) return;
+  const ctx = c.get("ctx");
+  const auth = c.get("auth");
+  keepAlive(
+    c,
+    recordActivity(
+      { db: ctx.db, dialect: ctx.dialect },
+      {
+        userId: auth.userId,
+        tenantId: auth.tenantId ?? null,
+        action: "access.read",
+        collection: collection.slug,
+        itemId,
+        ...requestMeta(c.req.raw),
+        payload,
+        durationMs: elapsedMs(c),
+      },
+    ),
+  );
+};
 
 export const itemsRoutes = new OpenAPIHono<AppBindings>()
   .openapi(
@@ -723,6 +761,20 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         locale && locale !== "*" && hasI18nField(collection.fields)
           ? (await loadAppSettings(ctx.db, ctx.dialect, auth.tenantId ?? null)).i18nDefaultLocale
           : null;
+      // Sensitive-read audit (opt-in per collection). Metadata only: the query
+      // shape, result count, and a capped page of returned PK ids — never the
+      // row contents. Fires after permission + fetch, so denied reads never log.
+      auditRead(c, collection, null, {
+        query: {
+          filter: c.req.query("filter") ?? null,
+          sort: c.req.query("sort") ?? null,
+          q: c.req.query("q") ?? null,
+          limit: q.limit,
+          offset: q.offset,
+        },
+        count: rows.length,
+        ids: rows.slice(0, 50).map((r) => r[collection.pkColumn] ?? null),
+      });
       return c.json({
         data: rows.map((r) => {
           const out = localizeRow(
@@ -996,6 +1048,11 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       if (expandPlans.length > 0) {
         applyExpandToRow(projected, rows[0], expandPlans, ctx.dialect);
       }
+      // Sensitive-read audit (opt-in). Records the viewed item id + the field
+      // names returned — never the field values themselves.
+      auditRead(c, collection, c.req.param("id"), {
+        fields: Object.keys(projected),
+      });
       return c.json({ data: projected });
     },
   )

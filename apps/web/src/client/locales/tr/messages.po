@@ -1239,6 +1239,10 @@ msgstr "En az bir dil gereklidir."
 msgid "Attribute map"
 msgstr "Öznitelik eşlemesi"
 
+#: src/client/admin/collection-settings.tsx
+msgid "Audit reads"
+msgstr "Okumaları denetle"
+
 #: src/client/admin/item-views.tsx
 msgid "August"
 msgstr "Ağustos"
@@ -6130,6 +6134,10 @@ msgstr "Alıcı (userId)"
 #: src/client/pages/sign-up.tsx
 msgid "recommended"
 msgstr "önerilen"
+
+#: src/client/admin/collection-settings.tsx
+msgid "Record every read of this collection (list + by-id) to the audit log under the <0>Access</0> lens — a \"who viewed this\" trail for sensitive data. Off by default; reads are otherwise not logged. Only request metadata is stored (who, when, query, item ids) — never row values."
+msgstr "Bu koleksiyonun her okumasını (liste + tekil) <0>Access</0> merceği altında denetim günlüğüne kaydet — hassas veriler için bir \"kim görüntüledi\" izi. Varsayılan kapalı; okumalar aksi halde loglanmaz. Yalnızca istek meta verisi saklanır (kim, ne zaman, sorgu, kayıt id'leri) — asla satır değerleri."
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Redelivered."

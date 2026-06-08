@@ -424,7 +424,7 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
                     padding: "6px 10px",
                     border: `1px solid ${on ? "var(--primary)" : "var(--border)"}`,
                     borderRadius: 999,
-                    background: on ? "color-mix(in oklch, var(--primary) 18%, var(--card))" : "var(--card)",
+                    background: on ? "var(--color-active-surface)" : "var(--card)",
                     cursor: "pointer", font: "inherit", fontSize: 12.5, color: "var(--foreground)",
                   }}
                 >

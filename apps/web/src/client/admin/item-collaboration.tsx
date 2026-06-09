@@ -15,12 +15,11 @@ import {
   useSharedLinks,
   queryKeys,
 } from "./queries";
+import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 
-const CARD_CLS =
-  "overflow-hidden rounded-2xl border border-border bg-card text-card-foreground";
 const CARD_SECTION_CLS = "flex items-center gap-2 border-b border-border px-4 py-3.5";
 const FIELD_CLS = "flex flex-col gap-1.5";
 const FIELD_LABEL_CLS = "flex items-center gap-2 text-[12.5px] font-medium text-foreground";
@@ -96,7 +95,7 @@ function ShareLinkCard({
   };
 
   return (
-    <div className={CARD_CLS}>
+    <Card className="gap-0 py-0">
       <div className={CARD_SECTION_CLS}>
         <I.Share size={13} />
         <span className="text-[12.5px] font-medium"><Trans>share this record</Trans></span>
@@ -196,7 +195,7 @@ function ShareLinkCard({
           </span>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -274,7 +273,7 @@ export function ItemCommentsPanel({
       />
 
       {/* Comments — real, backed by /api/comments. */}
-      <div className={CARD_CLS}>
+      <Card className="gap-0 py-0">
         <div className={CARD_SECTION_CLS}>
           <I.MessageSquare size={13} />
           <span className="text-[12.5px] font-medium"><Trans>comments</Trans></span>
@@ -343,7 +342,7 @@ export function ItemCommentsPanel({
             {createMut.isPending ? <Trans>Sending…</Trans> : <Trans>Send</Trans>}
           </Button>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

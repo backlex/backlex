@@ -1,6 +1,7 @@
 // Directus-parity permission editor.
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Textarea } from "@backlex/ui/components/textarea";
@@ -341,7 +342,7 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
   const allowedWriteCount = Object.values(fieldPerms).filter((p) => p.write).length;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+    <Card className="gap-0 py-0">
       <ScrollArea className="border-b border-border bg-[color-mix(in_oklch,var(--muted)_25%,var(--card))]">
       <div className="flex gap-1 px-3.5">
         {[
@@ -591,6 +592,6 @@ export function ConditionEditor({ role, action, collection, roles, pushToast, av
           }}><Trans>Save</Trans></Button>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

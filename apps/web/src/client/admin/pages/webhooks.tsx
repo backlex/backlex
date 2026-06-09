@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@backlex/ui/components/dropdown-menu";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Card } from "@backlex/ui/components/card";
 import { fetchSafely } from "./_shared";
 import { WebhooksSkeleton } from "../page-skeletons";
 
@@ -155,7 +156,7 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
         description={t`Outgoing HTTP on collection events. Failed deliveries retry with exponential backoff.`}
         actions={<Button variant="primary" icon={I.Plus} onClick={() => setEditor({ mode: "create", hook: null })}><Trans>New webhook</Trans></Button>}
       />
-      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <Card className="py-0 gap-0">
         <Table className={ADMIN_TABLE_CLS}>
           <TableHeader>
             <TableRow>
@@ -253,9 +254,9 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
             )}
           </TableBody>
         </Table>
-      </div>
+      </Card>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <Card className="py-0 gap-0">
         <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
           <I.Activity size={14} /><span className="text-[13px] font-medium"><Trans>Recent deliveries</Trans></span>
           <div className="flex-1" />
@@ -296,7 +297,7 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
             )}
           </TableBody>
         </Table>
-      </div>
+      </Card>
 
       {editor && <WebhookEditorDialog mode={editor.mode} hook={editor.hook} onClose={() => setEditor(null)} onSave={saveHook} pushToast={pushToast} />}
     </div>

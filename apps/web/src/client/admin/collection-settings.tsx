@@ -4,6 +4,7 @@
 // collection. Mounted as the 4th tab next to Items / Schema / Permissions.
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { I } from "./icons";
@@ -136,7 +137,7 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
 
   return (
     <div className="flex flex-col gap-3.5">
-      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <Card className="py-0 gap-0">
         <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
           <I.Settings size={14} />
           <span className="text-[13px] font-medium"><Trans>display</Trans></span>
@@ -215,9 +216,9 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
             <Trans>Save changes</Trans>
           </Button>
         </div>
-      </div>
+      </Card>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <Card className="py-0 gap-0">
         <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
           <I.Shield size={14} />
           <span className="text-[13px] font-medium"><Trans>scoping &amp; lifecycle</Trans></span>
@@ -267,9 +268,9 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
             <Switch checked={!!schema.auditReads} onChange={(v) => onPatch({ auditReads: v })} />
           </div>
         </div>
-      </div>
+      </Card>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <Card className="py-0 gap-0">
         <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
           <I.ArrowUpDown size={14} />
           <span className="text-[13px] font-medium"><Trans>list &amp; sort</Trans></span>
@@ -395,7 +396,7 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
             <Trans>Save sort</Trans>
           </Button>
         </div>
-      </div>
+      </Card>
 
       {schema.adopted ? (
         // Adopted collections soft-delete (archive). The physical table stays

@@ -24,6 +24,7 @@ import { notificationsApi, tenantsApi, type ApiNotification, type ApiTenant } fr
 import { useNotifications, useNotificationsUnread, queryKeys } from "./queries";
 import { useWorkspaceBranding } from "@/lib/branding";
 import { Button as ShadcnButton } from "@backlex/ui/components/button";
+import { Card } from "@backlex/ui/components/card";
 import { Badge as ShadcnBadge } from "@backlex/ui/components/badge";
 import { Switch as ShadcnSwitch } from "@backlex/ui/components/switch";
 import { Checkbox as ShadcnCheckbox } from "@backlex/ui/components/checkbox";
@@ -916,20 +917,31 @@ export function EmptyState({
       </div>
     );
   }
-  return (
-    <div
-      className={cn(
-        "flex flex-col items-center gap-3 text-center text-muted-foreground",
-        bare ? "py-8" : "overflow-hidden rounded-2xl border border-border bg-card",
-        !bare && (size === "lg" ? "p-12" : "p-9"),
-        className,
-      )}
-    >
+  const content = (
+    <>
       {Icon && <Icon size={size === "lg" ? 28 : 22} className="text-muted-foreground" />}
       <div className="text-sm font-medium text-foreground">{title}</div>
       {description && <div className="max-w-[460px] text-[12.5px] leading-[1.5]">{description}</div>}
       {action && <div className="mt-1">{action}</div>}
-    </div>
+    </>
+  );
+  if (bare) {
+    return (
+      <div className={cn("flex flex-col items-center gap-3 text-center text-muted-foreground py-8", className)}>
+        {content}
+      </div>
+    );
+  }
+  return (
+    <Card
+      className={cn(
+        "items-center gap-3 text-center text-muted-foreground",
+        size === "lg" ? "p-12" : "p-9",
+        className,
+      )}
+    >
+      {content}
+    </Card>
   );
 }
 

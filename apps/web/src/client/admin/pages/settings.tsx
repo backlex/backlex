@@ -14,6 +14,7 @@ import {
 import { useTheme } from "@/components/theme-provider";
 import { applyPrimaryColor } from "@/main";
 import { refreshBranding } from "@/lib/branding";
+import { Card } from "@backlex/ui/components/card";
 import { ColorPicker } from "@backlex/ui/components/color-picker";
 import { Input } from "@backlex/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
@@ -124,7 +125,7 @@ function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
       : "";
 
   return (
-    <div className="flex max-w-[920px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
+    <Card className="max-w-[920px] gap-4 p-[22px]">
       <div className="flex items-start gap-2.5">
         <I.Info size={14} className="mt-0.5" />
         <span className="text-xs text-muted-foreground">
@@ -180,7 +181,7 @@ function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
           <Button variant="primary" size="sm" disabled={!dirty || saving} onClick={() => void save()}>{saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}</Button>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -350,7 +351,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
   const faviconSrc = previewUrl(faviconFileKey, faviconBust);
 
   return (
-    <div className="flex max-w-[920px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
+    <Card className="max-w-[920px] gap-4 p-[22px]">
       <div className="flex flex-col gap-1.5">
         <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Workspace name</Trans></label>
         <Input
@@ -551,7 +552,7 @@ function AppearanceSettingsCard({ pushToast }: { pushToast: (m: string) => void 
           {saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
         </Button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -611,7 +612,7 @@ function SignInBrandingCard({ pushToast }: { pushToast: (m: string) => void }) {
   };
 
   return (
-    <div className="flex max-w-[920px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
+    <Card className="max-w-[920px] gap-4 p-[22px]">
       <div className="flex items-start gap-2.5">
         <I.Info size={14} className="mt-0.5" />
         <span className="text-xs text-muted-foreground">
@@ -673,7 +674,7 @@ function SignInBrandingCard({ pushToast }: { pushToast: (m: string) => void }) {
           {saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
         </Button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -770,7 +771,7 @@ function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) 
   };
 
   return (
-    <div className="flex max-w-[920px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
+    <Card className="max-w-[920px] gap-4 p-[22px]">
       <div className="flex items-start gap-2.5">
         <I.Globe size={14} className="mt-0.5" />
         <span className="text-xs text-muted-foreground">
@@ -887,7 +888,7 @@ function WorkspaceLocaleCard({ pushToast }: { pushToast: (m: string) => void }) 
           {saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}
         </Button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -983,7 +984,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
 
       {tab === "general" && (
         <div className="flex flex-col gap-4">
-        <div className="flex max-w-[920px] flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
+        <Card className="max-w-[920px] gap-4 p-[22px]">
           <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <div>
               <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">APP_URL</div>
@@ -1005,7 +1006,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
             </div>
             <span className="inline-flex items-center gap-1.5 rounded-3xl border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className="size-[7px] shrink-0 rounded-full bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]" />{adapter}</span>
           </div>
-        </div>
+        </Card>
         <WorkspaceLocaleCard pushToast={pushToast} />
         </div>
       )}
@@ -1028,7 +1029,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
               <span className="text-xs text-muted-foreground"><Trans>Edit them in <span className="font-mono text-foreground">wrangler.toml</span> and redeploy. This panel reflects the live binding map from <span className="font-mono text-foreground">env</span>.</Trans></span>
             </div>
           </div>
-          <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          <Card className="py-0 gap-0">
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 border-b border-border px-4 py-3.5">
               <I.Server size={14} className="shrink-0" /><span className="whitespace-nowrap text-[13px] font-medium"><Trans>worker bindings</Trans></span>
               <span className="font-mono text-xs text-muted-foreground"><Trans>{bindings.filter((b) => b.status === "connected").length} connected · {bindings.filter((b) => b.status !== "connected").length} optional</Trans></span>
@@ -1056,8 +1057,8 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
                 </div>
               );
             })}
-          </div>
-          <div className="overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground">
+          </Card>
+          <Card className="p-4 gap-0">
             <div className="mb-2 flex items-center gap-2">
               <I.Code size={13} />
               <span className="text-[12.5px] font-medium"><Trans>wrangler.toml snippet</Trans></span>
@@ -1077,7 +1078,7 @@ index_name = "backlex-embeddings"
 [[durable_objects.bindings]]
 name = "REALTIME"
 class_name = "RealtimeRoom"`}</pre>
-          </div>
+          </Card>
         </div>
       )}
 
@@ -1090,7 +1091,7 @@ class_name = "RealtimeRoom"`}</pre>
               <span className="text-xs text-muted-foreground"><Trans>Set them in <span className="font-mono text-foreground">wrangler.toml [vars]</span> / <span className="font-mono text-foreground">wrangler secret put</span> (or <span className="font-mono text-foreground">apps/web/.env</span> on self-host) and redeploy. This panel only reports which keys are present — secret values are never sent to the browser.</Trans></span>
             </div>
           </div>
-          <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          <Card className="py-0 gap-0">
             <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-4 py-3.5">
               <I.Lock size={14} /><span className="text-[13px] font-medium"><Trans>environment</Trans></span>
               <span className="font-mono text-xs text-muted-foreground"><Trans>{envVars.filter((v) => v.value !== "(unset)").length} set · {envVars.filter((v) => v.value === "(unset)").length} unset</Trans></span>
@@ -1106,13 +1107,13 @@ class_name = "RealtimeRoom"`}</pre>
                 <span className="ml-auto shrink-0 md:ml-0">{v.value === "(unset)" ? <Badge variant="secondary"><Trans>unset</Trans></Badge> : <Badge variant="default"><Trans>set</Trans></Badge>}</span>
               </div>
             ))}
-          </div>
+          </Card>
         </div>
       )}
 
       {tab === "about" && (
         <div className="flex max-w-[920px] flex-col gap-3">
-          <div className="flex flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
+          <Card className="gap-3 p-[22px]">
             {[
               [t`Version`, "v0.9.4 (a8b2f1c)"],
               [t`Released`, "2025-10-12"],
@@ -1126,8 +1127,8 @@ class_name = "RealtimeRoom"`}</pre>
                 <span className="font-mono text-[12.5px] text-muted-foreground">{v}</span>
               </div>
             ))}
-          </div>
-          <div className="flex items-center gap-2.5 overflow-hidden rounded-2xl border border-border bg-card p-[18px] text-card-foreground">
+          </Card>
+          <Card className="flex items-center gap-2.5 p-[18px]">
             <I.Shield size={14} />
             <div className="flex flex-col gap-0.5">
               <span className="text-[13px] font-medium"><Trans>Open-source · MIT licensed</Trans></span>
@@ -1136,7 +1137,7 @@ class_name = "RealtimeRoom"`}</pre>
             <div className="flex-1" />
             <Button variant="outline" size="sm" icon={I.Code}><Trans>GitHub</Trans></Button>
             <Button variant="ghost" size="sm" icon={I.Folder}><Trans>Docs</Trans></Button>
-          </div>
+          </Card>
         </div>
       )}
     </div>

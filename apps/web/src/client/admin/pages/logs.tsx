@@ -307,6 +307,7 @@ export function LogsPage({
       <PageHeader
         title={t`Logs`}
         description={t`Unified log explorer over the activity audit store. Switch between the Stream lens (HTTP, data, automation, functions, storage) and the Table audit trail — both read the same rows.`}
+        descriptionClassName="hidden sm:block"
         badges={
           <>
             <Badge variant="outline" mono>
@@ -376,7 +377,14 @@ export function LogsPage({
             style={{ paddingLeft: 32 }}
           />
         </div>
-        <Tabs value={range} onValueChange={(v) => setRange(v as RangeFilter)}>
+        {/* `ml-auto` keeps the range picker hugging the right edge — on its own
+            line on mobile (search takes the full width above it) and inline on
+            desktop where the flex-1 search already pushes it right. */}
+        <Tabs
+          className="ml-auto"
+          value={range}
+          onValueChange={(v) => setRange(v as RangeFilter)}
+        >
           <TabsList>
             {(["15m", "1h", "24h", "7d"] as RangeFilter[]).map((r) => (
               <TabsTrigger key={r} value={r}>
@@ -605,8 +613,11 @@ function StreamView({
     <>
       {/* Source tabs + export */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {/* `flex-1 min-w-0` lets the lens strip claim the full row width and
+            scroll within it (TabsList is overflow-x-auto), instead of being
+            pinched by the export button on narrow screens. */}
         <Tabs
-          className="min-w-0"
+          className="min-w-0 flex-1"
           value={activeSrc}
           onValueChange={(v) => {
             setSrc(v as SourceId);
@@ -627,9 +638,19 @@ function StreamView({
             })}
           </TabsList>
         </Tabs>
-        <div style={{ flex: 1 }} />
-        <Button variant="outline" icon={I.Download} onClick={exportNdjson}>
-          <Trans>Export NDJSON</Trans>
+        <Button
+          variant="outline"
+          icon={I.Download}
+          onClick={exportNdjson}
+          aria-label={t`Export NDJSON`}
+          // Icon-only on mobile (label hidden) so the lens strip gets the full
+          // row width. `px-2` keeps the icon-only button square — the default
+          // `pl-2 / pr-3` icon padding would leave dead space right of the icon.
+          className="px-2 sm:px-3"
+        >
+          <span className="hidden sm:inline">
+            <Trans>Export NDJSON</Trans>
+          </span>
         </Button>
       </div>
 
@@ -657,7 +678,7 @@ function StreamView({
             />
           ))}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap justify-end gap-2 sm:justify-start">
           {levelButtons.map((x) => (
             <Button
               key={x.k}

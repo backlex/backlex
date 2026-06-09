@@ -753,11 +753,18 @@ body.docs-page code {
   border-radius: 5px;
   font-variant-ligatures: none;
 }
+.table-wrap {
+  margin: 16px 0;
+  overflow-x: auto;
+  border-radius: 8px;
+  -webkit-overflow-scrolling: touch;
+}
 .doc-table {
   width: 100%;
+  min-width: max-content;
   border-collapse: separate;
   border-spacing: 0;
-  margin: 16px 0;
+  margin: 0;
   font-size: 13.5px;
   border: 1px solid var(--color-border);
   border-radius: 8px;

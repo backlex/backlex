@@ -6,6 +6,7 @@ import { ADAPTER_PROFILES, type AdapterId } from "../config";
 import { Badge, Button, PageHeader } from "../ui";
 import { Select } from "../select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
+import { Card } from "@backlex/ui/components/card";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
@@ -187,7 +188,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
         {todayMetrics.map((m) => (
-          <div key={m.label} className="flex flex-col gap-2 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          <Card key={m.label} className="gap-2 py-0">
             <div className="flex items-center justify-between px-3.5 pt-3.5">
               <div className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{m.label}</div>
               <span className="font-mono text-[11px] tabular-nums" style={{ color: m.up ? "oklch(0.55 0.16 145)" : "var(--destructive)" }}>{m.delta}</span>
@@ -196,7 +197,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
             <div className="mt-1.5 block leading-[0]">
               <Sparkline data={m.series} color={m.color} height={36} />
             </div>
-          </div>
+          </Card>
         ))}
       </div>
 
@@ -223,21 +224,21 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
         {stats.map((s) => {
           const Icon = s.icon;
           return (
-            <div key={s.label} className="flex cursor-pointer flex-col gap-1 overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground" onClick={() => setActiveNav(s.nav)}>
+            <Card key={s.label} className="cursor-pointer gap-1 p-4" onClick={() => setActiveNav(s.nav)}>
               <div className="flex items-center gap-2">
                 <Icon size={13} className="text-muted-foreground" />
                 <div className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{s.label}</div>
               </div>
               <div className="mt-0.5 text-[28px] font-semibold tabular-nums tracking-[-0.02em]">{s.value}</div>
               <div className="text-xs text-muted-foreground">{s.sub}</div>
-            </div>
+            </Card>
           );
         })}
       </div>
 
       <div className="grid grid-cols-[1fr_320px] items-start gap-4 max-[1280px]:grid-cols-1">
         <div className="flex min-w-0 flex-col gap-3.5">
-          <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          <Card className="gap-0 py-0">
             <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
               <I.Database size={14} />
               <span className="text-[13px] font-medium"><Trans>Top collections</Trans></span>
@@ -258,9 +259,9 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </Card>
 
-          <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          <Card className="gap-0 py-0">
             <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
               <I.Activity size={14} />
               <span className="text-[13px] font-medium"><Trans>Activity</Trans></span>
@@ -293,9 +294,9 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
                 })}
               </div>
             )}
-          </div>
+          </Card>
 
-          <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          <Card className="gap-0 py-0">
             <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
               <I.AlertTriangle size={14} />
               <span className="text-[13px] font-medium"><Trans>Recent errors</Trans></span>
@@ -318,11 +319,11 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
                 <span className="font-mono text-[11.5px] text-muted-foreground">{e.last}</span>
               </div>
             ))}
-          </div>
+          </Card>
         </div>
 
         <div className="flex flex-col gap-3.5">
-          <div className="flex flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground">
+          <Card className="gap-3 p-4">
             <div className="flex items-center gap-2">
               <I.Globe size={14} /><span className="text-[13px] font-medium"><Trans>Health</Trans></span>
               <div className="flex-1" />
@@ -376,7 +377,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
                 <span className="inline-flex items-center gap-1.5 rounded-3xl border border-border bg-background py-0.5 pl-1.5 pr-2 text-[11px]"><span className={`size-[7px] shrink-0 rounded-full ${status === t`idle` ? "bg-[oklch(0.78_0.16_75)] shadow-[0_0_0_3px_oklch(0.78_0.16_75/0.2)]" : "bg-primary shadow-[0_0_0_3px_color-mix(in_oklch,var(--primary)_20%,transparent)]"}`} />{status}</span>
               </div>
             ))}
-          </div>
+          </Card>
         </div>
       </div>
     </div>

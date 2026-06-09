@@ -89,6 +89,23 @@
   background:
     radial-gradient(circle, color-mix(in oklch, var(--border) 60%, transparent) 1px, transparent 1px) 0 0 / 18px 18px,
     var(--background);
+  /* Firefox: thin primary scrollbar (matches the shadcn ScrollArea thumb) */
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--primary) 70%, transparent) transparent;
+}
+/* WebKit: rounded primary thumb on a transparent track */
+.fb-canvas::-webkit-scrollbar { width: 11px; height: 11px; }
+.fb-canvas::-webkit-scrollbar-track,
+.fb-canvas::-webkit-scrollbar-corner { background: transparent; }
+.fb-canvas::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--primary) 70%, transparent);
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+.fb-canvas::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+  background-clip: padding-box;
 }
 .fb-grid {
   position: relative;

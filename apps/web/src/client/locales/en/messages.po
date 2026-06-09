@@ -1239,6 +1239,10 @@ msgstr "At least one language is required."
 msgid "Attribute map"
 msgstr "Attribute map"
 
+#: src/client/admin/collection-settings.tsx
+msgid "Audit reads"
+msgstr "Audit reads"
+
 #: src/client/admin/item-views.tsx
 msgid "August"
 msgstr "August"
@@ -6122,6 +6126,10 @@ msgstr "Recipient (userId)"
 #: src/client/pages/sign-up.tsx
 msgid "recommended"
 msgstr "recommended"
+
+#: src/client/admin/collection-settings.tsx
+msgid "Record every read of this collection (list + by-id) to the audit log under the <0>Access</0> lens — a \"who viewed this\" trail for sensitive data. Off by default; reads are otherwise not logged. Only request metadata is stored (who, when, query, item ids) — never row values."
+msgstr "Record every read of this collection (list + by-id) to the audit log under the <0>Access</0> lens — a \"who viewed this\" trail for sensitive data. Off by default; reads are otherwise not logged. Only request metadata is stored (who, when, query, item ids) — never row values."
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Redelivered."

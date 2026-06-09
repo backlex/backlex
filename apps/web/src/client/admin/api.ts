@@ -55,6 +55,9 @@ export interface ApiCollection {
   softDelete?: boolean;
   /** When true, the collection is locked to a single live row. */
   singleton?: boolean;
+  /** Opt-in sensitive-read auditing. When true, reads (list + by-id) record an
+   *  `access.read` row in the audit log. Off by default. */
+  auditReads?: boolean;
   /** Whether the physical table has created_at/updated_at columns. "Timestamps
    *  off" sends both as false. */
   hasCreatedAt?: boolean;

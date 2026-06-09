@@ -851,11 +851,14 @@ export interface PageHeaderProps {
   title?: ReactNode;
   slug?: string;
   description?: ReactNode;
+  /** Extra classes on the description wrapper — e.g. `hidden sm:block` to drop
+   *  a long description on mobile where vertical space is scarce. */
+  descriptionClassName?: string;
   actions?: ReactNode;
   badges?: ReactNode;
 }
 
-export function PageHeader({ title, slug, description, actions, badges }: PageHeaderProps) {
+export function PageHeader({ title, slug, description, descriptionClassName, actions, badges }: PageHeaderProps) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-[18px]">
       <div className="flex min-w-0 flex-col gap-1">
@@ -864,7 +867,7 @@ export function PageHeader({ title, slug, description, actions, badges }: PageHe
           {badges}
         </h1>
         {description && (
-          <div className="max-w-[720px] text-sm text-muted-foreground">{description}</div>
+          <div className={cn("max-w-[720px] text-sm text-muted-foreground", descriptionClassName)}>{description}</div>
         )}
       </div>
       {actions && <div className="ml-auto flex flex-wrap items-center justify-end gap-2">{actions}</div>}

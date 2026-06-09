@@ -2609,6 +2609,7 @@ msgid "Distinct users with a session in the last 24h"
 msgstr "Distinct users with a session in the last 24h"
 
 #: src/client/admin/pages/settings.tsx
+#: src/client/admin/ui.tsx
 msgid "Docs"
 msgstr "Docs"
 

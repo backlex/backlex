@@ -1669,8 +1669,8 @@ msgid "Click any step to edit its configuration. Drag to rearrange. Click <0>+</
 msgstr "Yapılandırmasını düzenlemek için herhangi bir adıma tıklayın. Yeniden düzenlemek için sürükleyin. Bir sonrakini eklemek için bir adımdaki <0>+</0> simgesine tıklayın."
 
 #: src/client/admin/storage.tsx
-msgid "Click anywhere to set the crop pivot for <0>fit=cover</0>."
-msgstr "<0>fit=cover</0> için kırpma eksenini belirlemek amacıyla herhangi bir yere tıklayın."
+#~ msgid "Click anywhere to set the crop pivot for <0>fit=cover</0>."
+#~ msgstr "<0>fit=cover</0> için kırpma eksenini belirlemek amacıyla herhangi bir yere tıklayın."
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/logs.tsx
@@ -1684,6 +1684,12 @@ msgstr "Simüle etmek için Çalıştır'a tıklayın."
 #: src/client/pages/forgot.tsx
 msgid "Click the link in your inbox to set a new password. The token expires in 1 hour. Your existing password still works in the meantime."
 msgstr "Yeni parola belirlemek için gelen kutunuzdaki bağlantıya tıklayın. Token 1 saat içinde sona erer. Bu süre zarfında mevcut parolanız çalışmaya devam eder."
+
+#. placeholder {0}: focal.x
+#. placeholder {1}: focal.y
+#: src/client/admin/storage.tsx
+msgid "Click the preview to set the crop pivot — <0>focal {0},{1}</0> — applied when <1>fit=cover</1>."
+msgstr "Kırpma merkezini ayarlamak için önizlemeye tıklayın — <0>focal {0},{1}</0> — <1>fit=cover</1> ile uygulanır."
 
 #: src/client/admin/pages/flows.tsx
 msgid "Click to edit"
@@ -3325,8 +3331,8 @@ msgid "Flows"
 msgstr "Akışlar"
 
 #: src/client/admin/storage.tsx
-msgid "Focal point"
-msgstr "Odak noktası"
+#~ msgid "Focal point"
+#~ msgstr "Odak noktası"
 
 #: src/client/admin/storage.tsx
 msgid "Folder"

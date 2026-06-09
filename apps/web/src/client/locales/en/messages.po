@@ -1669,8 +1669,8 @@ msgid "Click any step to edit its configuration. Drag to rearrange. Click <0>+</
 msgstr "Click any step to edit its configuration. Drag to rearrange. Click <0>+</0> on a step to add the next."
 
 #: src/client/admin/storage.tsx
-msgid "Click anywhere to set the crop pivot for <0>fit=cover</0>."
-msgstr "Click anywhere to set the crop pivot for <0>fit=cover</0>."
+#~ msgid "Click anywhere to set the crop pivot for <0>fit=cover</0>."
+#~ msgstr "Click anywhere to set the crop pivot for <0>fit=cover</0>."
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/logs.tsx
@@ -1684,6 +1684,12 @@ msgstr "Click Run to simulate."
 #: src/client/pages/forgot.tsx
 msgid "Click the link in your inbox to set a new password. The token expires in 1 hour. Your existing password still works in the meantime."
 msgstr "Click the link in your inbox to set a new password. The token expires in 1 hour. Your existing password still works in the meantime."
+
+#. placeholder {0}: focal.x
+#. placeholder {1}: focal.y
+#: src/client/admin/storage.tsx
+msgid "Click the preview to set the crop pivot — <0>focal {0},{1}</0> — applied when <1>fit=cover</1>."
+msgstr "Click the preview to set the crop pivot — <0>focal {0},{1}</0> — applied when <1>fit=cover</1>."
 
 #: src/client/admin/pages/flows.tsx
 msgid "Click to edit"
@@ -3325,8 +3331,8 @@ msgid "Flows"
 msgstr "Flows"
 
 #: src/client/admin/storage.tsx
-msgid "Focal point"
-msgstr "Focal point"
+#~ msgid "Focal point"
+#~ msgstr "Focal point"
 
 #: src/client/admin/storage.tsx
 msgid "Folder"

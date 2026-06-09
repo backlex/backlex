@@ -1174,17 +1174,15 @@ function FileTile({ f, active, onSelect, onCopyUrl }: { f: StoredFile; active: b
 function FileDetailModal({ f, onClose, ...rest }: any) {
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex max-h-[min(86vh,720px)] w-[min(720px,92vw)] flex-col gap-0 overflow-hidden p-0">
+      <DialogContent className="flex max-h-[min(86vh,720px)] w-[min(720px,92vw)] flex-col gap-0 overflow-hidden p-0 lg:w-[min(1000px,94vw)] lg:max-w-[1000px]">
         <DialogHeader className="flex items-start gap-3 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <div className="min-w-0 flex-1">
             <DialogTitle className="text-[14.5px] font-semibold tracking-[-0.01em]"><Trans>Edit file</Trans></DialogTitle>
             <DialogDescription className="mt-0.5 truncate font-mono text-xs">{f.key}</DialogDescription>
           </div>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)]">
-        <div className="flex flex-col gap-4 p-0">
+        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-7rem)]">
           <FileDetail f={f} {...rest} embedded />
-        </div>
         </ScrollArea>
       </DialogContent>
     </Dialog>
@@ -1380,6 +1378,10 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
         </div>
       )}
 
+      {/* Desktop: two columns — visual+transform | info+form. Mobile: stacked. */}
+      <div className="grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+      {/* LEFT — preview (the focal-point picker) + transform controls */}
+      <div className="flex min-w-0 flex-col">
       <div
         className="relative grid aspect-[16/9] place-items-center overflow-hidden"
         onClick={(e) => {
@@ -1401,6 +1403,15 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
               className="absolute inset-0 block size-full bg-muted"
               style={{ objectFit: fit === "contain" ? "contain" : "cover" }}
             />
+            {/* Focal-point picker lives here now — click anywhere or snap to a third. */}
+            <div className="pointer-events-none absolute inset-0 [background-image:linear-gradient(to_right,oklch(1_0_0/0.22)_1px,transparent_1px),linear-gradient(to_bottom,oklch(1_0_0/0.22)_1px,transparent_1px)] [background-size:33.33%_33.33%]">
+              {[0, 1, 2].map((row) => (
+                [0, 1, 2].map((col) => {
+                  const x = col * 50; const y = row * 50;
+                  return <button key={`${row}-${col}`} type="button" className={cn("pointer-events-auto absolute size-3 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-[1.5px] p-0", focal.x === x && focal.y === y ? "border-white bg-[oklch(0.55_0.22_22)]" : "border-[oklch(0_0_0/0.4)] bg-[oklch(1_0_0/0.6)] hover:bg-white")} style={{ left: `${x}%`, top: `${y}%` }} onClick={(e: any) => { e.stopPropagation(); setFocal({ x, y }); }} title={`${x},${y}`} />;
+                })
+              ))}
+            </div>
             <div
               className="pointer-events-none absolute grid size-[18px] place-items-center rounded-full border-2 border-[oklch(0.55_0.22_22)] bg-white shadow-[0_2px_6px_oklch(0_0_0/0.4)]"
               style={{ left: `calc(${focal.x}% - 1px)`, top: `calc(${focal.y}% - 1px)` }}
@@ -1417,7 +1428,140 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
         )}
       </div>
 
-      <div className="flex flex-col gap-3 p-3.5 text-[12.5px]">
+      {isImage && (
+        <>
+          <div className="flex flex-col gap-3 border-t border-border p-3.5">
+            <div className="flex items-center gap-2">
+              <I.Sliders size={13} />
+              <span className="text-xs font-medium uppercase tracking-[0.06em]"><Trans>Transform</Trans></span>
+              <div className="flex-1" />
+              <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-[11px] text-muted-foreground hover:text-foreground hover:underline" onClick={() => { setW(f.w || 1600); setH(null); setQ(80); setFmt("webp"); setFit("cover"); setFocal({ x: 50, y: 50 }); }}><Trans>Reset</Trans></button>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
+                <Trans>Width</Trans>
+                <span className="tabular-nums text-muted-foreground">{w}px {f.w && <span className="opacity-60">· {Math.round((w / f.w) * 100)}%</span>}</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <input type="range" min={120} max={Math.max(1600, f.w || 1600)} step={20} value={w} onChange={(e) => setW(Number(e.target.value))} className="flex-1" />
+              </div>
+              <div className="mt-1.5 flex gap-1">
+                {[256, 512, 800, 1200, 1600].map((preset) => (
+                  <button key={preset} className={cn(SIZE_CHIP_BASE, (w === preset) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setW(preset)}>{preset}</button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
+                <Trans>Height</Trans>
+                <span className="tabular-nums text-muted-foreground">
+                  {h != null ? `${h}px` : t`auto`}
+                </span>
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min={120}
+                  max={Math.max(1600, f.h || 1600)}
+                  step={20}
+                  value={h ?? Math.round(w * aspect)}
+                  onChange={(e) => setH(Number(e.target.value))}
+                  className="flex-1"
+                  disabled={h == null}
+                  aria-disabled={h == null}
+                />
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                <button className={cn(SIZE_CHIP_BASE, (h == null) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(null)} title={t`Derive from width × source aspect`}><Trans>auto</Trans></button>
+                <button className={cn(SIZE_CHIP_BASE, (h === w) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(w)} title={t`1:1 square`}>1:1</button>
+                <button className={cn(SIZE_CHIP_BASE, (h === Math.round(w * 9 / 16)) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(Math.round(w * 9 / 16))} title={t`16:9 widescreen`}>16:9</button>
+                <button className={cn(SIZE_CHIP_BASE, (h === Math.round(w * 5 / 4)) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(Math.round(w * 5 / 4))} title={t`4:5 portrait`}>4:5</button>
+                <button className={cn(SIZE_CHIP_BASE, (h === Math.round(w * 2 / 3)) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(Math.round(w * 2 / 3))} title={t`3:2 standard`}>3:2</button>
+              </div>
+              <span className="text-[11.5px] text-muted-foreground">
+                {h == null
+                  ? <Trans>Auto = preserve source aspect. Pin height to crop to a different aspect (uses Focal point + fit=cover).</Trans>
+                  : <Trans>Aspect-cropping active. Focal point picks which area is kept.</Trans>}
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Quality</Trans> <span className="tabular-nums text-muted-foreground">{q}</span></label>
+              <input type="range" min={10} max={100} step={5} value={q} onChange={(e) => setQ(Number(e.target.value))} className="w-full" />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Format</Trans></label>
+              <div className="inline-flex w-full divide-x divide-border overflow-hidden rounded-md border border-border bg-card">
+                {[
+                  { v: "webp", save: "−45%" },
+                  { v: "avif", save: "−60%" },
+                  { v: "jpeg", save: "0%" },
+                  { v: "png", save: "+lossless" },
+                ].map((o) => (
+                  <button key={o.v} type="button" className={cn(SEG_BTN_BASE, fmt === o.v ? SEG_BTN_ON : SEG_BTN_OFF)} onClick={() => setFmt(o.v)}>
+                    <span className="font-mono">{o.v}</span>
+                    <span className="ml-1 text-[10px] opacity-70">{o.save}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Fit</Trans></label>
+              <div className="inline-flex w-full divide-x divide-border overflow-hidden rounded-md border border-border bg-card">
+                {["cover", "contain"].map((o) => (
+                  <button key={o} type="button" className={cn(SEG_BTN_BASE, fit === o ? SEG_BTN_ON : SEG_BTN_OFF)} onClick={() => setFit(o)}><span className="font-mono">{o}</span></button>
+                ))}
+              </div>
+            </div>
+
+            <span className="text-[11.5px] text-muted-foreground"><Trans>Click the preview to set the crop pivot — <span className="font-mono">focal {focal.x},{focal.y}</span> — applied when <span className="font-mono">fit=cover</span>.</Trans></span>
+          </div>
+
+          <div className="px-3.5 pb-3.5">
+          {transformError ? (
+            <div
+              className="flex items-start gap-2 rounded-md border border-border bg-[color-mix(in_oklch,var(--muted)_25%,var(--card))] px-3 py-2.5 text-xs"
+              role="alert"
+            >
+              <I.Shield size={14} className="mt-0.5 shrink-0 text-[oklch(0.65_0.16_50)]" />
+              <div className="min-w-0">
+                <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Transform unavailable</Trans></div>
+                <div className="text-xs leading-[1.4]">{transformError}</div>
+                <div className="mt-1 text-[11.5px] text-muted-foreground">
+                  <Trans>Showing the original above. Toggle <span className="font-mono">Public</span> to enable edge resizing for this file.</Trans>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5 rounded-md border border-border bg-[color-mix(in_oklch,var(--muted)_25%,var(--card))] px-3 py-2.5 text-xs">
+              <div>
+                <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Original</Trans></div>
+                <div className="tabular-nums">{fmtSize(f.size)}</div>
+              </div>
+              <I.ChevronRight size={14} className="text-muted-foreground" />
+              <div>
+                <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Transformed</Trans></div>
+                <div className="font-medium tabular-nums" style={{ color: transformedSize != null ? "oklch(0.55 0.16 145)" : "var(--muted-foreground)" }}>
+                  {transformedLoading ? "…" : transformedSize != null ? fmtSize(transformedSize) : "—"}
+                </div>
+              </div>
+              <div className="flex-1" />
+              {transformedSize != null && (
+                <Badge variant="outline" mono><Trans>{Math.round((1 - transformedSize / f.size) * 100)}% smaller</Trans></Badge>
+              )}
+            </div>
+          )}
+          </div>
+        </>
+      )}
+      </div>
+
+      {/* RIGHT — file info + metadata + actions */}
+      <div className="flex min-w-0 flex-col gap-3 border-t border-border p-3.5 text-[12.5px] lg:border-l lg:border-t-0">
         <div className="flex flex-col gap-1">
           <span className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Key</Trans></span>
           <span className="break-all font-mono text-xs">{f.key}</span>
@@ -1575,158 +1719,6 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
           </div>
         </div>
 
-        {isImage && (
-          <>
-            <div className="flex flex-col gap-3 border-t border-border pt-3">
-              <div className="flex items-center gap-2">
-                <I.Sliders size={13} />
-                <span className="text-xs font-medium uppercase tracking-[0.06em]"><Trans>Transform</Trans></span>
-                <div className="flex-1" />
-                <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-[11px] text-muted-foreground hover:text-foreground hover:underline" onClick={() => { setW(f.w || 1600); setH(null); setQ(80); setFmt("webp"); setFit("cover"); setFocal({ x: 50, y: 50 }); }}><Trans>Reset</Trans></button>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
-                  <Trans>Width</Trans>
-                  <span className="tabular-nums text-muted-foreground">{w}px {f.w && <span className="opacity-60">· {Math.round((w / f.w) * 100)}%</span>}</span>
-                </label>
-                <div className="flex items-center gap-2">
-                  <input type="range" min={120} max={Math.max(1600, f.w || 1600)} step={20} value={w} onChange={(e) => setW(Number(e.target.value))} className="flex-1" />
-                </div>
-                <div className="mt-1.5 flex gap-1">
-                  {[256, 512, 800, 1200, 1600].map((preset) => (
-                    <button key={preset} className={cn(SIZE_CHIP_BASE, (w === preset) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setW(preset)}>{preset}</button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
-                  <Trans>Height</Trans>
-                  <span className="tabular-nums text-muted-foreground">
-                    {h != null ? `${h}px` : t`auto`}
-                  </span>
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="range"
-                    min={120}
-                    max={Math.max(1600, f.h || 1600)}
-                    step={20}
-                    value={h ?? Math.round(w * aspect)}
-                    onChange={(e) => setH(Number(e.target.value))}
-                    className="flex-1"
-                    disabled={h == null}
-                    aria-disabled={h == null}
-                  />
-                </div>
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  <button className={cn(SIZE_CHIP_BASE, (h == null) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(null)} title={t`Derive from width × source aspect`}><Trans>auto</Trans></button>
-                  <button className={cn(SIZE_CHIP_BASE, (h === w) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(w)} title={t`1:1 square`}>1:1</button>
-                  <button className={cn(SIZE_CHIP_BASE, (h === Math.round(w * 9 / 16)) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(Math.round(w * 9 / 16))} title={t`16:9 widescreen`}>16:9</button>
-                  <button className={cn(SIZE_CHIP_BASE, (h === Math.round(w * 5 / 4)) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(Math.round(w * 5 / 4))} title={t`4:5 portrait`}>4:5</button>
-                  <button className={cn(SIZE_CHIP_BASE, (h === Math.round(w * 2 / 3)) ? SIZE_CHIP_ON : SIZE_CHIP_OFF)} onClick={() => setH(Math.round(w * 2 / 3))} title={t`3:2 standard`}>3:2</button>
-                </div>
-                <span className="text-[11.5px] text-muted-foreground">
-                  {h == null
-                    ? <Trans>Auto = preserve source aspect. Pin height to crop to a different aspect (uses Focal point + fit=cover).</Trans>
-                    : <Trans>Aspect-cropping active. Focal point picks which area is kept.</Trans>}
-                </span>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Quality</Trans> <span className="tabular-nums text-muted-foreground">{q}</span></label>
-                <input type="range" min={10} max={100} step={5} value={q} onChange={(e) => setQ(Number(e.target.value))} className="w-full" />
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Format</Trans></label>
-                <div className="inline-flex w-full divide-x divide-border overflow-hidden rounded-md border border-border bg-card">
-                  {[
-                    { v: "webp", save: "−45%" },
-                    { v: "avif", save: "−60%" },
-                    { v: "jpeg", save: "0%" },
-                    { v: "png", save: "+lossless" },
-                  ].map((o) => (
-                    <button key={o.v} type="button" className={cn(SEG_BTN_BASE, fmt === o.v ? SEG_BTN_ON : SEG_BTN_OFF)} onClick={() => setFmt(o.v)}>
-                      <span className="font-mono">{o.v}</span>
-                      <span className="ml-1 text-[10px] opacity-70">{o.save}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Fit</Trans></label>
-                <div className="inline-flex w-full divide-x divide-border overflow-hidden rounded-md border border-border bg-card">
-                  {["cover", "contain"].map((o) => (
-                    <button key={o} type="button" className={cn(SEG_BTN_BASE, fit === o ? SEG_BTN_ON : SEG_BTN_OFF)} onClick={() => setFit(o)}><span className="font-mono">{o}</span></button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Focal point</Trans> <span className="font-mono text-muted-foreground">{focal.x}, {focal.y}</span></label>
-                <div className="relative aspect-[16/9] w-full cursor-crosshair overflow-hidden rounded-md border border-border" onClick={(e: any) => {
-                  const r = e.currentTarget.getBoundingClientRect();
-                  setFocal({ x: Math.round(((e.clientX - r.left) / r.width) * 100), y: Math.round(((e.clientY - r.top) / r.height) * 100) });
-                }}>
-                  <img
-                    src={`/api/storage/${encodeURI(f.key)}`}
-                    alt=""
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                    className="absolute inset-0 block size-full bg-muted object-cover"
-                  />
-                  <div className="absolute inset-0 [background-image:linear-gradient(to_right,oklch(1_0_0/0.3)_1px,transparent_1px),linear-gradient(to_bottom,oklch(1_0_0/0.3)_1px,transparent_1px)] [background-size:33.33%_33.33%]">
-                    {[0, 1, 2].map((row) => (
-                      [0, 1, 2].map((col) => {
-                        const x = col * 50; const y = row * 50;
-                        return <button key={`${row}-${col}`} className={cn("absolute size-3 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border-[1.5px] p-0", focal.x === x && focal.y === y ? "border-white bg-[oklch(0.55_0.22_22)]" : "border-[oklch(0_0_0/0.4)] bg-[oklch(1_0_0/0.6)] hover:bg-white")} style={{ left: `${x}%`, top: `${y}%` }} onClick={(e: any) => { e.stopPropagation(); setFocal({ x, y }); }} title={`${x},${y}`} />;
-                      })
-                    ))}
-                    <div className="pointer-events-none absolute grid size-[18px] place-items-center rounded-full border-2 border-[oklch(0.55_0.22_22)] bg-white shadow-[0_2px_6px_oklch(0_0_0/0.4)]" style={{ left: `calc(${focal.x}% - 1px)`, top: `calc(${focal.y}% - 1px)` }}><span className="size-1 rounded-full bg-[oklch(0.55_0.22_22)]" /></div>
-                  </div>
-                </div>
-                <span className="text-[11.5px] text-muted-foreground"><Trans>Click anywhere to set the crop pivot for <span className="font-mono">fit=cover</span>.</Trans></span>
-              </div>
-            </div>
-
-            {transformError ? (
-              <div
-                className="flex items-start gap-2 rounded-md border border-border bg-[color-mix(in_oklch,var(--muted)_25%,var(--card))] px-3 py-2.5 text-xs"
-                role="alert"
-              >
-                <I.Shield size={14} className="mt-0.5 shrink-0 text-[oklch(0.65_0.16_50)]" />
-                <div className="min-w-0">
-                  <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Transform unavailable</Trans></div>
-                  <div className="text-xs leading-[1.4]">{transformError}</div>
-                  <div className="mt-1 text-[11.5px] text-muted-foreground">
-                    <Trans>Showing the original above. Toggle <span className="font-mono">Public</span> to enable edge resizing for this file.</Trans>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2.5 rounded-md border border-border bg-[color-mix(in_oklch,var(--muted)_25%,var(--card))] px-3 py-2.5 text-xs">
-                <div>
-                  <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Original</Trans></div>
-                  <div className="tabular-nums">{fmtSize(f.size)}</div>
-                </div>
-                <I.ChevronRight size={14} className="text-muted-foreground" />
-                <div>
-                  <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Transformed</Trans></div>
-                  <div className="font-medium tabular-nums" style={{ color: transformedSize != null ? "oklch(0.55 0.16 145)" : "var(--muted-foreground)" }}>
-                    {transformedLoading ? "…" : transformedSize != null ? fmtSize(transformedSize) : "—"}
-                  </div>
-                </div>
-                <div className="flex-1" />
-                {transformedSize != null && (
-                  <Badge variant="outline" mono><Trans>{Math.round((1 - transformedSize / f.size) * 100)}% smaller</Trans></Badge>
-                )}
-              </div>
-            )}
-          </>
-        )}
-
         <div className="whitespace-pre-wrap break-words rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-2.5 font-mono text-[11px] leading-normal text-[oklch(from_var(--primary)_0.95_0.02_h)]">
           <span className="text-[oklch(0.78_0.18_95)]">GET</span> <span className="text-foreground">{url}</span>{params && <span className="text-muted-foreground">{params}</span>}
         </div>
@@ -1736,6 +1728,7 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
           {f.acl === "private" && <Button size="sm" variant="outline" icon={I.Shield} onClick={onSignUrl}><Trans>Sign URL</Trans></Button>}
           <Button size="sm" variant="outline" icon={I.Download} onClick={onDownload}><Trans>Download</Trans></Button>
         </div>
+      </div>
       </div>
     </Wrapper>
   );

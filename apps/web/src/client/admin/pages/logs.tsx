@@ -35,6 +35,7 @@ import {
   TableRow,
 } from "@backlex/ui/components/table";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Card } from "@backlex/ui/components/card";
 import { useActivity } from "../queries";
 import { LogsSkeleton } from "../page-skeletons";
 import { authorById } from "../items";
@@ -1012,7 +1013,7 @@ function TableView({
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <Card className="py-0 gap-0">
         <Table className={ADMIN_TABLE_CLS}>
           <TableHeader>
             <TableRow>
@@ -1078,7 +1079,7 @@ function TableView({
                 : <Trans>No more rows</Trans>}
           </Button>
         </div>
-      </div>
+      </Card>
 
       {openRow && (
         <ActivityEventDialog row={openRow} onClose={() => setOpenRow(null)} />

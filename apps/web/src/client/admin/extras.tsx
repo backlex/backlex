@@ -5,6 +5,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { NAV_ITEMS, NAV_SETTINGS, type CollectionListItem, type CollectionSchema, type Post, type SchemaField } from "./config";
 import { Badge, Button, EmptyState, IconButton, JsonBlock, navLabel } from "./ui";
+import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
@@ -237,7 +238,7 @@ export function RealtimeTail({ events, channel, connected }: { events: RealtimeE
     [events, openId],
   );
   return (
-    <div className="sticky top-4 flex max-h-[calc(100vh-140px)] flex-col overflow-hidden rounded-2xl border border-border bg-card">
+    <Card className="sticky top-4 max-h-[calc(100vh-140px)] py-0 gap-0">
       <div className="flex items-center gap-2 border-b border-border px-3.5 py-3">
         <I.Zap size={14} />
         <h3 className="m-0 text-[13px] font-semibold"><Trans>Live tail</Trans></h3>
@@ -288,7 +289,7 @@ export function RealtimeTail({ events, channel, connected }: { events: RealtimeE
       {openEvent && (
         <RealtimeEventDialog ev={openEvent} channel={channel} onClose={() => setOpenId(null)} />
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -327,7 +328,7 @@ export function SchemaView({
   const [overIndex, setOverIndex] = useState<number | null>(null);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+    <Card className="py-0 gap-0">
       <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
         <I.Braces size={14} />
         <span className="text-[13px] font-medium"><Trans>fields</Trans></span>
@@ -407,7 +408,7 @@ export function SchemaView({
           );
         })}
       </ScrollArea>
-    </div>
+    </Card>
   );
 }
 

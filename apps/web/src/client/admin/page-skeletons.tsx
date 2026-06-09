@@ -9,6 +9,7 @@
 //
 // Every shimmer block comes from the shadcn `Skeleton` component (or the
 // `loading.tsx` primitives that wrap it) — no hand-rolled animate-pulse.
+import { Card } from "@backlex/ui/components/card";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { type ComponentType, useEffect, useState } from "react";
 
@@ -86,18 +87,18 @@ function HeaderSkeleton({
 /** A rounded-2xl card shell with N body lines — the generic admin card. */
 function CardSkeleton({ lines = 3, className = "" }: { lines?: number; className?: string }) {
   return (
-    <div className={`flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 ${className}`}>
+    <Card className={`gap-3 p-4 ${className}`}>
       {Array.from({ length: lines }).map((_, i) => (
         <Skeleton key={i} className={`h-4 ${i === 0 ? "w-1/2" : "w-full"}`} />
       ))}
-    </div>
+    </Card>
   );
 }
 
 /** A bordered card containing a faux table — header strip + N rows. */
 function TableCardSkeleton({ rows = 7, cols = 5 }: { rows?: number; cols?: number }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+    <Card className="gap-0 py-0">
       <div className="flex items-center gap-3 border-b border-border px-3.5 py-3">
         {Array.from({ length: cols }).map((_, i) => (
           <Skeleton key={i} className="h-3 flex-1" />
@@ -113,7 +114,7 @@ function TableCardSkeleton({ rows = 7, cols = 5 }: { rows?: number; cols?: numbe
           ))}
         </div>
       ))}
-    </div>
+    </Card>
   );
 }
 
@@ -131,7 +132,7 @@ function TabStripSkeleton({ tabs = 3 }: { tabs?: number }) {
 /** A vertical list of rows inside a bordered card — left sidebar lists. */
 function ListCardSkeleton({ rows = 6, header = true }: { rows?: number; header?: boolean }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+    <Card className="gap-0 py-0">
       {header && (
         <div className="border-b border-border px-4 py-3.5">
           <Skeleton className="h-4 w-24" />
@@ -149,7 +150,7 @@ function ListCardSkeleton({ rows = 6, header = true }: { rows?: number; header?:
           </div>
         </div>
       ))}
-    </div>
+    </Card>
   );
 }
 
@@ -166,7 +167,7 @@ function AskAiSkeletonImpl() {
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[1fr_320px]">
         <div className="flex min-w-0 flex-col gap-5">
           {/* Prompt card */}
-          <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
+          <Card className="gap-3 p-5">
             <div className="flex items-center gap-2">
               <Skeleton className="size-4 rounded" />
               <Skeleton className="h-3.5 w-44" />
@@ -180,9 +181,9 @@ function AskAiSkeletonImpl() {
               <Skeleton className="h-8 w-20 rounded-full" />
               <Skeleton className="h-8 w-20 rounded-full" />
             </div>
-          </div>
+          </Card>
           {/* Plan card */}
-          <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-5">
+          <Card className="gap-3 p-5">
             <div className="flex items-center gap-2">
               <Skeleton className="size-6 rounded-full" />
               <Skeleton className="h-4 w-16" />
@@ -190,10 +191,10 @@ function AskAiSkeletonImpl() {
             </div>
             <Skeleton className="h-3.5 w-3/4" />
             <Skeleton className="h-32 w-full rounded-xl" />
-          </div>
+          </Card>
         </div>
         {/* Recent runs rail */}
-        <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4">
+        <Card className="gap-2 p-4">
           <Skeleton className="h-4 w-28" />
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex flex-col gap-1.5 border-b border-border/60 py-2 last:border-b-0">
@@ -201,7 +202,7 @@ function AskAiSkeletonImpl() {
               <Skeleton className="h-3 w-1/2" />
             </div>
           ))}
-        </div>
+        </Card>
       </div>
     </div>
   );
@@ -215,11 +216,11 @@ function OverviewSkeletonImpl() {
       {/* metric cards */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-3.5">
+          <Card key={i} className="gap-2 p-3.5">
             <Skeleton className="h-3 w-24" />
             <Skeleton className="h-7 w-20" />
             <Skeleton className="mt-1.5 h-9 w-full" />
-          </div>
+          </Card>
         ))}
       </div>
       {/* quick actions */}
@@ -266,20 +267,20 @@ function LogsSkeletonImpl() {
         <Skeleton className="h-8 w-36 rounded-md" />
       </div>
       {/* Volume sparkline + level-filter summary card (info / warn / error). */}
-      <div className="flex items-center gap-3.5 rounded-2xl border border-border bg-card p-3.5">
+      <Card className="flex items-center gap-3.5 p-3.5">
         <Skeleton className="h-11 flex-1" />
         <Skeleton className="h-8 w-20 rounded-md" />
         <Skeleton className="h-8 w-20 rounded-md" />
         <Skeleton className="h-8 w-20 rounded-md" />
-      </div>
+      </Card>
       {/* Log-row stream. */}
-      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <Card className="gap-0 py-0">
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="border-b border-border px-3.5 py-2.5 last:border-b-0">
             <Skeleton className="h-4 w-full" />
           </div>
         ))}
-      </div>
+      </Card>
     </div>
   );
 }
@@ -311,11 +312,11 @@ function FlowsSkeletonImpl() {
       <HeaderSkeleton actions={1} />
       <div className="grid grid-cols-[320px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
         <ListCardSkeleton rows={5} header={false} />
-        <div className="flex flex-col gap-4.5 rounded-2xl border border-border bg-card p-[22px]">
+        <Card className="gap-4.5 p-[22px]">
           <Skeleton className="h-6 w-48" />
           <Skeleton className="h-[220px] w-full rounded-2xl" />
           <Skeleton className="h-24 w-full rounded-2xl" />
-        </div>
+        </Card>
       </div>
     </div>
   );
@@ -370,7 +371,7 @@ function AdvisorSkeletonImpl() {
       <HeaderSkeleton actions={1} />
       {/* Score card: ~140px score ring on the left + Security/Performance
           tiles, then a "Last run" line. */}
-      <div className="grid grid-cols-[160px_1fr] items-center gap-[22px] rounded-2xl border border-border bg-card p-5">
+      <Card className="grid grid-cols-[160px_1fr] items-center gap-[22px] p-5">
         <Skeleton className="size-[140px] rounded-full" />
         <div className="flex flex-col gap-3.5">
           <div className="grid grid-cols-2 gap-3.5">
@@ -380,7 +381,7 @@ function AdvisorSkeletonImpl() {
           </div>
           <Skeleton className="h-3 w-32" />
         </div>
-      </div>
+      </Card>
       <TabStripSkeleton tabs={2} />
       <div className="flex flex-col gap-2.5">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -396,14 +397,14 @@ function SchemaGraphSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={2} />
-      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <Card className="gap-0 py-0">
         <div className="flex items-center gap-3 border-b border-border px-4 py-3.5">
           <Skeleton className="h-4 w-48" />
         </div>
         <div className="p-6">
           <Skeleton className="h-[360px] w-full rounded-xl" />
         </div>
-      </div>
+      </Card>
       <TableCardSkeleton rows={4} cols={6} />
     </div>
   );
@@ -445,14 +446,14 @@ function TranslationsSkeletonImpl() {
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={3} />
       {/* Locale-completion card — one small progress tile per locale. */}
-      <div className="grid grid-cols-4 gap-3 rounded-2xl border border-border bg-card p-3.5">
+      <Card className="grid grid-cols-4 gap-3 p-3.5">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="flex flex-col gap-1.5">
             <Skeleton className="h-3 w-12" />
             <Skeleton className="h-3.5 w-full" />
           </div>
         ))}
-      </div>
+      </Card>
       {/* Controls row — base-locale select + All/Missing tabs + Manage locales. */}
       <div className="flex flex-wrap items-center gap-2">
         <Skeleton className="h-8 w-32 rounded-md" />
@@ -526,7 +527,7 @@ function AppUsersSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={0} />
-      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <Card className="gap-0 py-0">
         {/* Card header strip — icon + "End-users" + count + filter input. */}
         <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
           <Skeleton className="size-3.5 shrink-0 rounded" />
@@ -555,7 +556,7 @@ function AppUsersSkeletonImpl() {
             ))}
           </div>
         ))}
-      </div>
+      </Card>
     </div>
   );
 }
@@ -565,7 +566,7 @@ function ApiKeysSkeletonImpl() {
   return (
     <div className="flex flex-col gap-5">
       <HeaderSkeleton actions={1} />
-      <div className="rounded-2xl border border-border bg-card p-4">
+      <Card className="gap-0 p-4">
         {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={i}
@@ -578,7 +579,7 @@ function ApiKeysSkeletonImpl() {
             <Skeleton className="size-8 rounded-full" />
           </div>
         ))}
-      </div>
+      </Card>
     </div>
   );
 }
@@ -618,13 +619,13 @@ function StorageSkeletonImpl() {
       <Skeleton className="h-[72px] w-full rounded-2xl" />
       <div className="grid grid-cols-[240px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
         <ListCardSkeleton rows={6} />
-        <div className="overflow-hidden rounded-2xl border border-border bg-card p-3">
+        <Card className="gap-0 p-3">
           <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2">
             {Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} className="h-[140px] w-full rounded-xl" />
             ))}
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

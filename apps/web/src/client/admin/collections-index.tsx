@@ -19,6 +19,7 @@ import { AdoptWizard } from "./adopt-wizard";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import { useUrlState } from "@/lib/use-url-state";
 import { Skeleton } from "@backlex/ui/components/skeleton";
+import { Card } from "@backlex/ui/components/card";
 import { SkeletonRow } from "./loading";
 import { useCollections } from "./queries";
 
@@ -142,9 +143,9 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
           {loading && groups.length === 0 && (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex min-h-[138px] flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground">
+                <Card key={i} className="min-h-[138px] gap-3 p-4">
                   <SkeletonRow cols={3} />
-                </div>
+                </Card>
               ))}
             </div>
           )}
@@ -167,18 +168,20 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
                   />
                 ))}
                 {!showArchived && (
-                  <button onClick={onNew} className="flex min-h-[138px] cursor-pointer flex-col items-center justify-center gap-2 rounded-4xl border border-dashed border-border bg-card p-5 text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground">
-                    <I.Plus size={20} />
-                    <span className="text-[13px] font-medium"><Trans>New collection</Trans></span>
-                    <span className="text-[11px]"><Trans>Create or adopt a table</Trans></span>
-                  </button>
+                  <Card asChild variant="dashed" interactive className="min-h-[138px] items-center justify-center gap-2 rounded-4xl p-5 text-muted-foreground hover:text-foreground">
+                    <button onClick={onNew}>
+                      <I.Plus size={20} />
+                      <span className="text-[13px] font-medium"><Trans>New collection</Trans></span>
+                      <span className="text-[11px]"><Trans>Create or adopt a table</Trans></span>
+                    </button>
+                  </Card>
                 )}
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <Card className="gap-0 py-0">
           <Table className={ADMIN_TABLE_CLS}>
             <TableHeader>
               <TableRow>
@@ -236,7 +239,7 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
               })}
             </TableBody>
           </Table>
-        </div>
+        </Card>
       )}
     </div>
   );
@@ -246,8 +249,9 @@ function CollectionCard({ c, onOpen, archived, onRestore, onOpenApi }: { c: Coll
   const { t } = useLingui();
   const Ic = (I as Record<string, IconComponent>)[c.icon as IconKey] || I.Database;
   return (
-    <div
-      className={`flex cursor-pointer flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground transition-colors hover:border-interactive-hover-border ${archived ? "opacity-90" : ""}`}
+    <Card
+      interactive
+      className={`gap-3 p-4 transition-colors ${archived ? "opacity-90" : ""}`}
       onClick={onOpen}
     >
       <div className="flex items-center gap-2.5">
@@ -292,7 +296,7 @@ function CollectionCard({ c, onOpen, archived, onRestore, onOpenApi }: { c: Coll
           </>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -497,15 +501,17 @@ export function NewCollectionDialog({ open, onClose, onCreate, existingSlugs }: 
                     const Ic = (I as Record<string, IconComponent>)[t.icon as IconKey] || I.Braces;
                     const active = template === t.id;
                     return (
-                      <button key={t.id} type="button" onClick={() => setTemplate(t.id)} className={`cursor-pointer rounded-2xl border p-3 text-left ${active ? "border-primary bg-[color-mix(in_oklch,var(--primary)_8%,var(--card))]" : "border-border bg-card"}`}>
-                        <div className="mb-1 flex items-center gap-2">
-                          <Ic size={13} />
-                          <span className="text-[13px] font-medium">{t.name}</span>
-                          <div className="flex-1" />
-                          <span className="tabular-nums text-[11px] text-muted-foreground"><Trans>{t.fields.length} fields</Trans></span>
-                        </div>
-                        <span className="text-[11.5px] leading-[1.4] text-muted-foreground">{t.desc}</span>
-                      </button>
+                      <Card key={t.id} asChild interactive className={`gap-0 py-0 p-3 text-left ${active ? "border-primary bg-[color-mix(in_oklch,var(--primary)_8%,var(--card))]" : ""}`}>
+                        <button type="button" onClick={() => setTemplate(t.id)}>
+                          <div className="mb-1 flex items-center gap-2">
+                            <Ic size={13} />
+                            <span className="text-[13px] font-medium">{t.name}</span>
+                            <div className="flex-1" />
+                            <span className="tabular-nums text-[11px] text-muted-foreground"><Trans>{t.fields.length} fields</Trans></span>
+                          </div>
+                          <span className="text-[11.5px] leading-[1.4] text-muted-foreground">{t.desc}</span>
+                        </button>
+                      </Card>
                     );
                   })}
                 </div>
@@ -612,32 +618,34 @@ function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt }: Create
           <DialogTitle className="text-sm font-medium"><Trans>New collection</Trans></DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3 p-[22px]">
-          <button
-            type="button"
-            onClick={onPickEmpty}
-            className="flex cursor-pointer flex-col gap-2.5 rounded-2xl border border-border bg-card p-[18px] text-left text-card-foreground transition-colors hover:border-interactive-hover-border"
-          >
-            <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted"><I.Braces size={16} /></span>
-            <div className="flex flex-col gap-1">
-              <span className="text-[13.5px] font-semibold"><Trans>Empty or template</Trans></span>
-              <span className="text-xs leading-[1.45] text-muted-foreground">
-                <Trans>Create a new physical table from scratch. Pick a preset (Content / Taxonomy / People / Blank) and configure scope toggles.</Trans>
-              </span>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={onPickAdopt}
-            className="flex cursor-pointer flex-col gap-2.5 rounded-2xl border border-border bg-card p-[18px] text-left text-card-foreground transition-colors hover:border-interactive-hover-border"
-          >
-            <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted"><I.Database size={16} /></span>
-            <div className="flex flex-col gap-1">
-              <span className="text-[13.5px] font-semibold"><Trans>From existing table</Trans></span>
-              <span className="text-xs leading-[1.45] text-muted-foreground">
-                <Trans>Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata.</Trans>
-              </span>
-            </div>
-          </button>
+          <Card asChild interactive className="gap-2.5 py-0 p-[18px] text-left">
+            <button
+              type="button"
+              onClick={onPickEmpty}
+            >
+              <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted"><I.Braces size={16} /></span>
+              <div className="flex flex-col gap-1">
+                <span className="text-[13.5px] font-semibold"><Trans>Empty or template</Trans></span>
+                <span className="text-xs leading-[1.45] text-muted-foreground">
+                  <Trans>Create a new physical table from scratch. Pick a preset (Content / Taxonomy / People / Blank) and configure scope toggles.</Trans>
+                </span>
+              </div>
+            </button>
+          </Card>
+          <Card asChild interactive className="gap-2.5 py-0 p-[18px] text-left">
+            <button
+              type="button"
+              onClick={onPickAdopt}
+            >
+              <span className="grid size-9 place-items-center rounded-lg border border-border bg-muted"><I.Database size={16} /></span>
+              <div className="flex flex-col gap-1">
+                <span className="text-[13.5px] font-semibold"><Trans>From existing table</Trans></span>
+                <span className="text-xs leading-[1.45] text-muted-foreground">
+                  <Trans>Register a table that already exists in your database. No DDL is run on the table — backlex only writes its own metadata.</Trans>
+                </span>
+              </div>
+            </button>
+          </Card>
         </div>
         <div className="flex items-center gap-2 border-t border-border px-4 py-3.5">
           <div className="flex-1" />

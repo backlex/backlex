@@ -4,6 +4,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { Badge, Button, EmptyState, PageHeader } from "../ui";
 import { ConfirmDialog } from "../sheet";
+import { Card } from "@backlex/ui/components/card";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { RevisionsSkeleton } from "../page-skeletons";
@@ -204,7 +205,7 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
     <div className="flex flex-col gap-4.5">
       <PageHeader title={t`Revisions`} description={t`Every write is versioned. Inspect, diff, or revert any prior state.`} />
       <div className="grid grid-cols-[280px_220px_minmax(0,1fr)] items-start gap-3.5 max-[1024px]:grid-cols-[minmax(0,1fr)]">
-        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <Card className="py-0 gap-0">
           <div className="border-b border-border px-4 py-3.5 text-xs font-medium"><Trans>Items</Trans> <span className="font-mono text-[11px] text-muted-foreground">· c_{collectionSlug}</span></div>
           <ScrollArea className="h-[60vh]">
             {itemsLoading && (
@@ -231,8 +232,8 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
               </div>
             ))}
           </ScrollArea>
-        </div>
-        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        </Card>
+        <Card className="py-0 gap-0">
           <div className="border-b border-border px-4 py-3.5 text-xs font-medium"><Trans>Timeline</Trans> · {item?.title?.slice(0, 18) ?? "—"}{item ? "…" : ""}</div>
           <ScrollArea className="h-[60vh]">
             {revsLoading && (
@@ -268,8 +269,8 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
               );
             })}
           </ScrollArea>
-        </div>
-        <div className="flex flex-col gap-3.5 overflow-hidden rounded-2xl border border-border bg-card p-[18px] text-card-foreground">
+        </Card>
+        <Card className="gap-3.5 p-[18px]">
           {!active ? (
             revsLoading ? (
               <div className="flex flex-col gap-3">
@@ -353,7 +354,7 @@ export function RevisionsPage({ pushToast }: { pushToast?: (m: string, t?: "succ
           </div>
           </>
           )}
-        </div>
+        </Card>
       </div>
       <ConfirmDialog
         open={!!confirmRev}

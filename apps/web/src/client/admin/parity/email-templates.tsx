@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { I } from "../icons";
@@ -145,7 +146,7 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
     <div className="flex flex-col gap-4.5">
       <PageHeader title={t`Email templates`} description={<><Trans>Variables use Liquid-style <span className="font-mono">{userEmailExample}</span>. Template renders run through the Functions sandbox.</Trans></>} actions={<Button size="sm" variant="outline" icon={I.Plus} onClick={onNew}><Trans>New template</Trans></Button>} />
       <div className="grid grid-cols-[240px_minmax(0,1fr)_minmax(0,1fr)] items-start gap-3.5 max-[1024px]:grid-cols-[minmax(0,1fr)]">
-        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <Card className="py-0 gap-0">
           {templates.length === 0 && !active?.isNew && (
             <div className="px-3.5 py-3 text-xs text-muted-foreground"><Trans>No templates yet — use "New template" to add one.</Trans></div>
           )}
@@ -165,8 +166,8 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
               <div className="font-mono text-[11px] text-muted-foreground">{t.key || t.id}</div>
             </div>
           ))}
-        </div>
-        <div className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        </Card>
+        <Card className="py-0 gap-0">
           <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
             <span className="text-xs font-medium"><Trans>Editor</Trans></span>
             <div className="flex-1" />
@@ -190,13 +191,13 @@ export function EmailTemplatesPage({ pushToast }: { pushToast: (m: string) => vo
               ))}
             </div>
           </div>
-        </div>
-        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        </Card>
+        <Card className="py-0 gap-0">
           <div className="border-b border-border px-4 py-3.5"><span className="text-xs font-medium"><Trans>Preview</Trans></span></div>
           <div className="min-h-[280px] bg-[oklch(0.97_0.005_130)] p-6">
             <div className="mx-auto max-w-[480px] rounded-[12px] bg-white p-7 text-[#1a1a1a] shadow-[0_1px_4px_oklch(0_0_0/0.06)]" dangerouslySetInnerHTML={{ __html: preview.replace(/<a /g, '<a style="display:inline-block;margin-top:8px;padding:10px 16px;background:oklch(0.85 0.18 125);color:#1a1a1a;border-radius:999px;text-decoration:none;font-weight:500;font-family:Geist,sans-serif" ') }} />
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

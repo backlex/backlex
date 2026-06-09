@@ -32,6 +32,7 @@ import { cn } from "@backlex/ui/lib/utils";
 import { api } from "@/lib/api";
 import { useUrlState } from "@/lib/use-url-state";
 import { Skeleton } from "@backlex/ui/components/skeleton";
+import { Card } from "@backlex/ui/components/card";
 import { SkeletonCard } from "./loading";
 
 const ADMIN_TABLE_CLS =
@@ -660,7 +661,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
       </div>
 
       {uploads.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <Card className="gap-0 py-0">
           <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
             <I.Activity size={14} />
             <span className="text-[13px] font-medium"><Trans>Uploads</Trans></span>
@@ -726,7 +727,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
             })}
           </div>
           </ScrollArea>
-        </div>
+        </Card>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
@@ -753,7 +754,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
       </div>
 
       <div className="grid grid-cols-[240px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
-        <div className="sticky top-3 flex max-h-[calc(100vh-160px)] flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground max-[900px]:static max-[900px]:max-h-none">
+        <Card className="sticky top-3 max-h-[calc(100vh-160px)] gap-0 py-0 max-[900px]:static max-[900px]:max-h-none">
           <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
             <I.Folder size={13} />
             <span className="text-[12.5px] font-medium"><Trans>Folders</Trans></span>
@@ -820,8 +821,8 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
             })}
           </div>
           </ScrollArea>
-        </div>
-        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        </Card>
+        <Card className="gap-0 py-0">
           {view === "grid" ? (
             <>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2 p-3">
@@ -922,7 +923,7 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
             />
             </>
           )}
-        </div>
+        </Card>
       </div>
 
       {detailOpen && selected && (

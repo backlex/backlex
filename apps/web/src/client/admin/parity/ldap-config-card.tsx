@@ -19,6 +19,7 @@ import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { Skeleton } from "@backlex/ui/components/skeleton";
+import { Card } from "@backlex/ui/components/card";
 import { I } from "../icons";
 import { Badge, Button, Switch } from "../ui";
 import { Select } from "../select";
@@ -151,7 +152,7 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
   if (!loaded) {
     // First-load placeholder — mirrors the card's header strip + body fields.
     return (
-      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <Card className="gap-0 py-0">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
           <Skeleton className="size-4 rounded" />
           <Skeleton className="h-4 w-44" />
@@ -163,12 +164,12 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
             <Skeleton key={i} className="h-9 w-full" />
           ))}
         </div>
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+    <Card className="gap-0 py-0">
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3.5">
         <I.Shield size={13} className="shrink-0" />
         <span className="text-[13px] font-medium"><Trans>LDAP / Active Directory</Trans></span>
@@ -368,7 +369,7 @@ export function LdapConfigCard({ availableRoles, pushToast }: Props) {
           pushToast={pushToast}
         />
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -434,7 +435,7 @@ function LdapTestDialog({
             </Button>
           </div>
           {result && result.ok && (
-            <div className="rounded-2xl border border-border bg-card p-3 text-card-foreground">
+            <Card className="gap-0 p-3">
               <div className="mb-1.5 text-xs font-medium">
                 <Trans>Authentication succeeded</Trans>
                 <Badge variant="default" className="ml-1.5">ok</Badge>
@@ -451,15 +452,15 @@ function LdapTestDialog({
                   <TableRow><TableCell>groups</TableCell><TableCell className="font-mono text-muted-foreground">{attributeMap.groups}</TableCell><TableCell className="font-mono text-[11px]">{result.attributes.groups.length === 0 ? <span className="text-muted-foreground">—</span> : result.attributes.groups.join("\n")}</TableCell></TableRow>
                 </TableBody>
               </Table>
-            </div>
+            </Card>
           )}
           {result && !result.ok && (
-            <div className="rounded-2xl border border-border bg-card p-3 text-card-foreground">
+            <Card className="gap-0 p-3">
               <div className="mb-1.5 text-xs font-medium text-destructive">
                 <Trans>Authentication failed</Trans>
               </div>
               <div className="text-xs text-muted-foreground">{result.reason}</div>
-            </div>
+            </Card>
           )}
         </div>
         </ScrollArea>

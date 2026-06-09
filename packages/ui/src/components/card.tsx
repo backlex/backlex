@@ -5,14 +5,30 @@ import { cn } from "@backlex/ui/lib/utils"
 function Card({
   className,
   size = "default",
+  variant = "default",
+  interactive = false,
   ...props
-}: React.ComponentProps<"div"> & { size?: "default" | "sm" }) {
+}: React.ComponentProps<"div"> & {
+  size?: "default" | "sm"
+  /** `dashed` = the empty/"new" tile look (dashed border, transparent fill). */
+  variant?: "default" | "dashed"
+  /** Clickable card: adds pointer + a hover border highlight (brand on solid
+   *  cards, neutral white on dashed "new" tiles). */
+  interactive?: boolean
+}) {
   return (
     <div
       data-slot="card"
       data-size={size}
+      data-variant={variant}
       className={cn(
         "group/card flex flex-col gap-6 overflow-hidden rounded-2xl bg-card py-6 text-sm text-card-foreground border border-border has-[>img:first-child]:pt-0 data-[size=sm]:gap-4 data-[size=sm]:py-4 *:[img:first-child]:rounded-t-2xl *:[img:last-child]:rounded-b-2xl",
+        variant === "dashed" && "border-dashed bg-transparent",
+        interactive && "cursor-pointer transition-colors",
+        interactive &&
+          (variant === "dashed"
+            ? "hover:border-foreground/30 hover:text-foreground"
+            : "hover:border-interactive-hover-border"),
         className
       )}
       {...props}

@@ -386,9 +386,9 @@ const SnippetBlock = ({
   onCopy: () => void;
 }) => (
   <div className="relative min-w-0">
-    <pre className="min-w-0 overflow-x-auto rounded-md border border-border bg-muted/50 p-3 font-mono text-xs">
-      {snippet}
-    </pre>
+    <ScrollArea className="min-w-0 rounded-md border border-border bg-muted/50">
+      <pre className="m-0 p-3 font-mono text-xs">{snippet}</pre>
+    </ScrollArea>
     <Button
       type="button"
       variant="outline"

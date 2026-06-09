@@ -623,12 +623,12 @@ function InviteUserDialog({ roles, onClose, onInvite }: { roles: string[]; onClo
   const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="flex w-[460px] max-w-[92vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+      <DialogContent className="flex max-h-[min(86vh,720px)] w-[460px] max-w-[92vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
         <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Invite user</Trans></DialogTitle>
           <DialogDescription className="mt-0.5 text-[12.5px]"><Trans>Send an email invite. The user finishes signup themselves.</Trans></DialogDescription>
         </DialogHeader>
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)]">
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Email</Trans></label>

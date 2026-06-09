@@ -189,7 +189,7 @@ function RealtimeEventDialog({ ev, channel, onClose }: { ev: RealtimeEvent; chan
           </DialogTitle>
           <DialogDescription className="sr-only">{t`${ev.event} event detail`}</DialogDescription>
         </DialogHeader>
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)]">
           <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="grid grid-cols-[120px_1fr] gap-x-3.5 gap-y-2 text-[12.5px]">
             <span className="text-muted-foreground"><Trans>Channel</Trans></span>

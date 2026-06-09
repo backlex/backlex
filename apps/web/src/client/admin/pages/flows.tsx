@@ -5,6 +5,7 @@ import { I, type IconComponent } from "../icons";
 import { Badge, Button, EmptyState, PageHeader, Switch } from "../ui";
 import { FlowBuilder } from "../flow-builder";
 import { compileGraph, decompileGraph, FlowCompileError, type Graph } from "../flow-graph";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { api } from "@/lib/api";
 import { fetchSafely } from "./_shared";
 import { FlowsSkeleton } from "../page-skeletons";
@@ -256,6 +257,11 @@ function FlowPreview({ trigger, operations, onEdit }: { trigger: string; operati
   const visible = operations.slice(0, 3);
   const overflow = Math.max(0, operations.length - visible.length);
   const X0 = 20, Y = 80, NODE_W = 176, GAP = 104;
+  // Width of the absolutely-positioned node canvas so the ScrollArea knows how
+  // far it can scroll horizontally. Last node's right edge, plus room for the
+  // "+N more" pill when present, plus a trailing margin.
+  const lastNodeRight = X0 + visible.length * (NODE_W + GAP) + NODE_W;
+  const contentWidth = lastNodeRight + (overflow > 0 ? GAP + 12 + 90 : 24);
   return (
     <div
       style={{
@@ -264,45 +270,50 @@ function FlowPreview({ trigger, operations, onEdit }: { trigger: string; operati
         background: "color-mix(in oklch, var(--muted) 40%, transparent)",
         borderRadius: "var(--radius-2xl)",
         border: "1px solid var(--border)",
-        overflow: "auto",
+        overflow: "hidden",
         backgroundImage: "radial-gradient(circle, var(--border) 1px, transparent 1px)",
         backgroundSize: "14px 14px",
         cursor: "pointer",
       }}
       onClick={onEdit}
     >
-      <FlowNode x={X0} y={Y} kind="trigger" title="trigger" sub={trigger || "—"} />
-      {visible.map((op, i) => {
-        const prevX = X0 + i * (NODE_W + GAP);
-        const x = prevX + NODE_W + GAP;
-        return (
-          <Fragment key={i}>
-            <FlowConnector x1={prevX + NODE_W} y1={Y + 28} x2={x} y2={Y + 28} />
-            <FlowNode x={x} y={Y} kind={opKind(op)} title={op?.type ?? "step"} sub={describeOpShort(op)} />
-          </Fragment>
-        );
-      })}
-      {overflow > 0 && (
-        <div
-          style={{
-            position: "absolute",
-            top: Y + 14,
-            left: X0 + visible.length * (NODE_W + GAP) + NODE_W + GAP + 12,
-            padding: "4px 10px",
-            border: "1px dashed var(--border)",
-            borderRadius: "var(--radius-3xl)",
-            fontSize: 11,
-            color: "var(--muted-foreground)",
-          }}
-        >
-          +{overflow} <Trans>more</Trans>
+      <ScrollArea className="size-full" viewportClassName="rounded-2xl">
+        <div style={{ position: "relative", height: 220, minWidth: contentWidth }}>
+          <FlowNode x={X0} y={Y} kind="trigger" title="trigger" sub={trigger || "—"} />
+          {visible.map((op, i) => {
+            const prevX = X0 + i * (NODE_W + GAP);
+            const x = prevX + NODE_W + GAP;
+            return (
+              <Fragment key={i}>
+                <FlowConnector x1={prevX + NODE_W} y1={Y + 28} x2={x} y2={Y + 28} />
+                <FlowNode x={x} y={Y} kind={opKind(op)} title={op?.type ?? "step"} sub={describeOpShort(op)} />
+              </Fragment>
+            );
+          })}
+          {overflow > 0 && (
+            <div
+              style={{
+                position: "absolute",
+                top: Y + 14,
+                left: X0 + visible.length * (NODE_W + GAP) + NODE_W + GAP + 12,
+                padding: "4px 10px",
+                border: "1px dashed var(--border)",
+                borderRadius: "var(--radius-3xl)",
+                fontSize: 11,
+                color: "var(--muted-foreground)",
+              }}
+            >
+              +{overflow} <Trans>more</Trans>
+            </div>
+          )}
+          {operations.length === 0 && (
+            <div style={{ position: "absolute", left: X0 + NODE_W + 24, top: Y + 12, fontSize: 12, color: "var(--muted-foreground)" }}>
+              <Trans>No actions yet — click to add steps.</Trans>
+            </div>
+          )}
         </div>
-      )}
-      {operations.length === 0 && (
-        <div style={{ position: "absolute", left: X0 + NODE_W + 24, top: Y + 12, fontSize: 12, color: "var(--muted-foreground)" }}>
-          <Trans>No actions yet — click to add steps.</Trans>
-        </div>
-      )}
+      </ScrollArea>
+      {/* Pinned to the visible top-right corner so it stays put while the canvas scrolls. */}
       <div
         style={{
           position: "absolute",

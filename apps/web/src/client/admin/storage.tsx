@@ -1567,7 +1567,17 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
           <span className="break-all font-mono text-xs">{f.key}</span>
         </div>
 
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="whitespace-pre-wrap break-words rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-2.5 font-mono text-[11px] leading-normal text-[oklch(from_var(--primary)_0.95_0.02_h)]">
+          <span className="text-[oklch(0.78_0.18_95)]">GET</span> <span className="text-foreground">{url}</span>{params && <span className="text-muted-foreground">{params}</span>}
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          <Button size="sm" variant="outline" icon={I.Code} onClick={() => onCopy(toAbsolute(effectiveSrc))}><Trans>Copy URL</Trans></Button>
+          {f.acl === "private" && <Button size="sm" variant="outline" icon={I.Shield} onClick={onSignUrl}><Trans>Sign URL</Trans></Button>}
+          <Button size="sm" variant="outline" icon={I.Download} onClick={onDownload}><Trans>Download</Trans></Button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2.5 border-t border-border pt-3">
           <div>
             <div className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Size</Trans></div>
             <div className="font-medium tabular-nums">{fmtSize(f.size)}</div>
@@ -1717,16 +1727,6 @@ function FileDetail({ f, fmtSize, isImage, w, setW, h, setH, q, setQ, fmt, setFm
               {metaSaving ? <Trans>Saving…</Trans> : <Trans>Save metadata</Trans>}
             </Button>
           </div>
-        </div>
-
-        <div className="whitespace-pre-wrap break-words rounded-xl bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-2.5 font-mono text-[11px] leading-normal text-[oklch(from_var(--primary)_0.95_0.02_h)]">
-          <span className="text-[oklch(0.78_0.18_95)]">GET</span> <span className="text-foreground">{url}</span>{params && <span className="text-muted-foreground">{params}</span>}
-        </div>
-
-        <div className="flex flex-wrap gap-1.5">
-          <Button size="sm" variant="outline" icon={I.Code} onClick={() => onCopy(toAbsolute(effectiveSrc))}><Trans>Copy URL</Trans></Button>
-          {f.acl === "private" && <Button size="sm" variant="outline" icon={I.Shield} onClick={onSignUrl}><Trans>Sign URL</Trans></Button>}
-          <Button size="sm" variant="outline" icon={I.Download} onClick={onDownload}><Trans>Download</Trans></Button>
         </div>
       </div>
       </div>

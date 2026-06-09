@@ -7,6 +7,7 @@ import { Badge, Button, PageHeader } from "../ui";
 import { Select } from "../select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import { Card } from "@backlex/ui/components/card";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
@@ -186,20 +187,22 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
       <TemplateOnboarding pushToast={pushToast} onApplied={() => setActiveNav("collections")} />
 
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
-        {todayMetrics.map((m) => (
-          <Card key={m.label} className="gap-2 py-0">
-            <div className="flex items-center justify-between px-3.5 pt-3.5">
-              <div className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{m.label}</div>
-              <span className="font-mono text-[11px] tabular-nums" style={{ color: m.up ? "oklch(0.55 0.16 145)" : "var(--destructive)" }}>{m.delta}</span>
-            </div>
-            <div className="px-3.5 text-2xl font-semibold tabular-nums tracking-[-0.02em]">{m.value}</div>
-            <div className="mt-1.5 block leading-[0]">
-              <Sparkline data={m.series} color={m.color} height={36} />
-            </div>
-          </Card>
-        ))}
-      </div>
+      <ScrollArea className="-mx-1 sm:mx-0" viewportClassName="snap-x snap-mandatory sm:snap-none">
+        <div className="flex gap-3 px-1 pb-2 sm:grid sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))] sm:px-0 sm:pb-0">
+          {todayMetrics.map((m) => (
+            <Card key={m.label} className="w-[80%] shrink-0 snap-start gap-2 py-0 sm:w-auto sm:shrink">
+              <div className="flex items-center justify-between px-3.5 pt-3.5">
+                <div className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{m.label}</div>
+                <span className="font-mono text-[11px] tabular-nums" style={{ color: m.up ? "oklch(0.55 0.16 145)" : "var(--destructive)" }}>{m.delta}</span>
+              </div>
+              <div className="px-3.5 text-2xl font-semibold tabular-nums tracking-[-0.02em]">{m.value}</div>
+              <div className="mt-1.5 block leading-[0]">
+                <Sparkline data={m.series} color={m.color} height={36} />
+              </div>
+            </Card>
+          ))}
+        </div>
+      </ScrollArea>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
         {quickActions.map((a) => {

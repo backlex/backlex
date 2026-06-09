@@ -673,7 +673,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     } else if (sel.kind === "page") {
       setActiveNav(sel.id);
     } else if (sel.kind === "collection") {
-      setActiveNav("collections");
+      setActiveCollection(sel.id);
     }
   };
 

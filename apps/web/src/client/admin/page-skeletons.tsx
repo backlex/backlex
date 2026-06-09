@@ -213,15 +213,26 @@ function OverviewSkeletonImpl() {
   return (
     <div className="flex flex-col gap-4.5">
       <HeaderSkeleton actions={2} />
-      {/* metric cards */}
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="gap-2 p-3.5">
-            <Skeleton className="h-3 w-24" />
-            <Skeleton className="h-7 w-20" />
-            <Skeleton className="mt-1.5 h-9 w-full" />
-          </Card>
-        ))}
+      {/* metric cards — mirrors the live slider: a single full-width card plus
+          slide bullets on mobile, the auto-fit grid on sm+. */}
+      <div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className={`gap-2 p-3.5${i > 0 ? " hidden sm:flex" : ""}`}>
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-7 w-20" />
+              <Skeleton className="mt-1.5 h-9 w-full" />
+            </Card>
+          ))}
+        </div>
+        <div className="mt-2.5 flex justify-center gap-1.5 sm:hidden">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <span
+              key={i}
+              className={`h-1.5 rounded-full ${i === 0 ? "w-4 bg-muted-foreground/40" : "w-1.5 bg-muted-foreground/20"}`}
+            />
+          ))}
+        </div>
       </div>
       {/* quick actions */}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-2.5">

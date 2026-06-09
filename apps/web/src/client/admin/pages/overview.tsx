@@ -1,5 +1,5 @@
 // Overview page — adapter dashboard, runtime stats, recent activity + errors
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { ADAPTER_PROFILES, type AdapterId } from "../config";
@@ -35,6 +35,89 @@ function Sparkline({ data, color = "var(--primary)", height = 36, fill = true }:
       <path d={d} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
       <circle cx={last[0]} cy={last[1]} r="2" fill={color} />
     </svg>
+  );
+}
+
+type Metric = { label: string; value: string; delta: string; up: boolean; series: number[]; color: string };
+
+// Metric cards. Mobile: a snap carousel with slide-bullet pagination (no
+// scrollbar). sm+: the original auto-fit grid showing every card at once.
+// Scroll math is measured off the real card rects (not clientWidth) because
+// radix wraps the viewport content in a display:table node that throws off
+// width-based arithmetic.
+function MetricsSlider({ metrics }: { metrics: Metric[] }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(0);
+  const viewport = () =>
+    wrapRef.current?.querySelector<HTMLElement>('[data-slot="scroll-area-viewport"]') ?? null;
+  const cards = (vp: HTMLElement) =>
+    Array.from(vp.querySelectorAll<HTMLElement>('[data-slot="card"]'));
+
+  useEffect(() => {
+    const vp = viewport();
+    if (!vp) return;
+    const onScroll = () => {
+      const left = vp.getBoundingClientRect().left;
+      let best = 0, bestD = Number.POSITIVE_INFINITY;
+      cards(vp).forEach((c, i) => {
+        const d = Math.abs(c.getBoundingClientRect().left - left);
+        if (d < bestD) { bestD = d; best = i; }
+      });
+      setActive(best);
+    };
+    vp.addEventListener("scroll", onScroll, { passive: true });
+    return () => vp.removeEventListener("scroll", onScroll);
+  }, [metrics.length]);
+
+  const goTo = (i: number) => {
+    const vp = viewport();
+    const card = vp && cards(vp)[i];
+    if (!vp || !card) return;
+    const delta = card.getBoundingClientRect().left - vp.getBoundingClientRect().left;
+    vp.scrollTo({ left: vp.scrollLeft + delta, behavior: "smooth" });
+  };
+
+  return (
+    <div ref={wrapRef}>
+      <ScrollArea
+        className="[&_[data-slot=scroll-area-scrollbar]]:hidden"
+        // radix wraps viewport content in a display:table node; forcing it to
+        // block makes the inner flex size against the viewport (so w-full = one
+        // card per view) instead of ballooning to its own content width.
+        viewportClassName="snap-x snap-mandatory sm:snap-none [&>div]:!block"
+      >
+        <div className="flex gap-3 sm:grid sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
+          {metrics.map((m) => (
+            <Card key={m.label} className="w-full shrink-0 snap-start gap-2 py-0 sm:w-auto sm:shrink">
+              <div className="flex items-center justify-between px-3.5 pt-3.5">
+                <div className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{m.label}</div>
+                <span className="font-mono text-[11px] tabular-nums" style={{ color: m.up ? "oklch(0.55 0.16 145)" : "var(--destructive)" }}>{m.delta}</span>
+              </div>
+              <div className="px-3.5 text-2xl font-semibold tabular-nums tracking-[-0.02em]">{m.value}</div>
+              <div className="mt-1.5 block leading-[0]">
+                <Sparkline data={m.series} color={m.color} height={36} />
+              </div>
+            </Card>
+          ))}
+        </div>
+      </ScrollArea>
+      {/* Slide bullets — mobile only; sm+ grid already shows every card */}
+      <div className="mt-2.5 flex justify-center gap-1.5 sm:hidden">
+        {metrics.map((m, i) => (
+          <button
+            key={m.label}
+            type="button"
+            aria-label={m.label}
+            aria-current={i === active}
+            onClick={() => goTo(i)}
+            className={
+              "h-1.5 rounded-full transition-all " +
+              (i === active ? "w-4 bg-primary" : "w-1.5 bg-muted-foreground/30")
+            }
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -187,22 +270,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
       <TemplateOnboarding pushToast={pushToast} onApplied={() => setActiveNav("collections")} />
 
 
-      <ScrollArea className="-mx-1 sm:mx-0" viewportClassName="snap-x snap-mandatory sm:snap-none">
-        <div className="flex gap-3 px-1 pb-2 sm:grid sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))] sm:px-0 sm:pb-0">
-          {todayMetrics.map((m) => (
-            <Card key={m.label} className="w-[80%] shrink-0 snap-start gap-2 py-0 sm:w-auto sm:shrink">
-              <div className="flex items-center justify-between px-3.5 pt-3.5">
-                <div className="text-[11.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{m.label}</div>
-                <span className="font-mono text-[11px] tabular-nums" style={{ color: m.up ? "oklch(0.55 0.16 145)" : "var(--destructive)" }}>{m.delta}</span>
-              </div>
-              <div className="px-3.5 text-2xl font-semibold tabular-nums tracking-[-0.02em]">{m.value}</div>
-              <div className="mt-1.5 block leading-[0]">
-                <Sparkline data={m.series} color={m.color} height={36} />
-              </div>
-            </Card>
-          ))}
-        </div>
-      </ScrollArea>
+      <MetricsSlider metrics={todayMetrics} />
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
         {quickActions.map((a) => {

@@ -170,7 +170,7 @@ import Base from "../layouts/Base.astro";
 
       <h2 id="adapter-pattern">Adapter pattern</h2>
       <p>Every cross-runtime concern hides behind a TypeScript interface in <code>@backlex/core/adapters</code>. <code>buildContext</code> picks the right implementation based on bindings/env.</p>
-      <table class="doc-table">
+      <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Interface</th><th>Bun</th><th>Cloudflare Workers</th><th>Vercel / Netlify (Node 22)</th></tr></thead>
         <tbody>
           <tr><td><code>StorageAdapter</code></td><td>fsStorage / bunS3Storage</td><td>r2Storage / s3FetchStorage</td><td>s3FetchStorage (S3 env vars required)</td></tr>
@@ -181,7 +181,7 @@ import Base from "../layouts/Base.astro";
           <tr><td><code>SamlAdapter</code></td><td>samlify</td><td>samlify (via nodejs_compat)</td><td>samlify (Node 22 native crypto)</td></tr>
           <tr><td><code>LdapAdapter</code></td><td>ldapts</td><td>— (no raw TCP)</td><td>ldapts</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2 id="hybrid-schema">Hybrid schema ownership</h2>
       <p>System tables (<code>users</code>, <code>sessions</code>, <code>roles</code>, <code>permissions</code>, <code>files</code>, <code>activity</code>, <code>revisions</code>, <code>webhooks</code>, <code>flows</code>, <code>functions</code>, plus auth / SSO tables) live in <code>packages/db/src/&#123;pg,sqlite&#125;/schema.ts</code> — Drizzle owns them, and they migrate via hand-written SQL under <code>packages/db/drizzle/&#123;pg,sqlite&#125;/</code>.</p>
@@ -189,14 +189,14 @@ import Base from "../layouts/Base.astro";
       <div class="callout"><span class="label">Important</span><br><code>applyCollection</code> is <strong>additive only</strong> — it never drops or alters existing columns and short-circuits on adopted collections. Field removal goes through the explicit <code>dropField</code> function so admins can audit destructive moves.</div>
 
       <h2 id="permission-dsl-paths">Permission DSL — three execution paths</h2>
-      <table class="doc-table">
+      <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Path</th><th>Compiler</th><th>Output</th></tr></thead>
         <tbody>
           <tr><td>REST + GraphQL filter</td><td><code>compileCondition</code></td><td>Drizzle SQL fragment, parameterized</td></tr>
           <tr><td>Realtime per-event filter</td><td><code>matchesCondition</code></td><td>boolean (in-memory)</td></tr>
           <tr><td>Sandbox <code>ctx.db.list/one</code></td><td><code>compileCondition</code> (via host bridge)</td><td>SQL fragment</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>Same operators, same variables (<code>$user.id</code> etc.), same logical combinators. A filter that works in one place works in the others.</p>
 
       <h2 id="event-flow">Event flow</h2>
@@ -238,7 +238,7 @@ import Base from "../layouts/Base.astro";
       </div>
 
       <h2 id="targets">Targets at a glance</h2>
-      <table class="doc-table">
+      <div class="table-wrap"><table class="doc-table">
         <thead><tr><th></th><th>Bun (self-host)</th><th>Cloudflare Workers</th><th>Vercel Functions</th><th>Netlify Functions</th></tr></thead>
         <tbody>
           <tr><td>Database</td><td>SQLite or PG</td><td>D1 or Hyperdrive→PG</td><td>PG (neon-http recommended)</td><td>PG (neon-http recommended)</td></tr>
@@ -249,7 +249,7 @@ import Base from "../layouts/Base.astro";
           <tr><td>Sandbox</td><td>Bun worker</td><td>QuickJS / remote HTTP</td><td>QuickJS / remote HTTP</td><td>QuickJS / remote HTTP</td></tr>
           <tr><td>Cost</td><td>VPS</td><td>$0–5/mo</td><td>$0–20/mo</td><td>$0–19/mo</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2 id="bun">Bun (self-host)</h2>
       <div class="codeblock"><div class="head"><span class="dot"></span>terminal</div><pre><span class="c-prompt">$ </span><span class="c-key">APP_URL</span>=https://your.app \
@@ -340,7 +340,7 @@ import Base from "../layouts/Base.astro";
 &#125;</pre></div>
 
       <h2 id="field-types">Field types</h2>
-      <table class="doc-table">
+      <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>FieldType</th><th>SQL (PG)</th><th>SQL (SQLite)</th><th>Notes</th></tr></thead>
         <tbody>
           <tr><td><code>text</code></td><td><code>text</code></td><td><code>text</code></td><td>Default for short strings</td></tr>
@@ -354,7 +354,7 @@ import Base from "../layouts/Base.astro";
           <tr><td><code>relation</code></td><td><code>uuid</code></td><td><code>text</code></td><td>Stores the target row's <code>id</code></td></tr>
           <tr><td><code>file</code></td><td><code>text</code></td><td><code>text</code></td><td>Stores the file's <code>key</code></td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2 id="system-columns">System columns</h2>
       <p>Every <code>c_&lt;slug&gt;</code> table automatically gets:</p>
@@ -388,7 +388,7 @@ import Base from "../layouts/Base.astro";
       <h2 id="limits">Limits and prerequisites</h2>
       <p><strong>Primary key.</strong> Single-column only: <code>uuid</code>, <code>text</code> / <code>varchar</code>, <code>integer</code>, or <code>bigint</code>. Composite PKs, views, and partitioned tables are rejected at inspect.</p>
       <p><strong>Supported column types.</strong></p>
-      <table class="doc-table">
+      <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Source (PG / SQLite)</th><th>backlex FieldType</th></tr></thead>
         <tbody>
           <tr><td><code>varchar(n)</code> / <code>text</code> (n ≤ 255)</td><td><code>text</code></td></tr>
@@ -400,7 +400,7 @@ import Base from "../layouts/Base.astro";
           <tr><td><code>timestamp</code> / <code>timestamptz</code></td><td><code>timestamp</code></td></tr>
           <tr><td><code>uuid</code></td><td><code>uuid</code></td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>Arrays, enum types, geometry/PostGIS, and custom domains aren't mapped — inspect flags them, the wizard hides them, and they don't surface in the items API. The table itself can still be adopted.</p>
       <p><strong>Reserved column names.</strong> <code>id</code>, <code>tenant_id</code>, <code>created_at</code>, <code>updated_at</code>, <code>owner_id</code>. If your table uses one of these the column has to match its backlex role (e.g. <code>id</code> must be the PK). Conflicts surface as warnings on inspect.</p>
 
@@ -463,7 +463,7 @@ import Base from "../layouts/Base.astro";
       <p><code>GET /api/items/&lt;slug&gt;</code> is backlex' Directus-shaped REST query endpoint: one URL covers filter, full-text search, sort, projection, pagination, count metadata, and locale projection. Parsing lives in <code>apps/web/src/server/lib/query.ts::parseQuery</code>; the same compile path backs the GraphQL resolver.</p>
 
       <h2 id="shape">The shape</h2>
-      <table class="doc-table">
+      <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Param</th><th>Type</th><th>Default</th><th>Does</th></tr></thead>
         <tbody>
           <tr><td><code>filter</code></td><td>JSON-encoded DSL condition</td><td><code>null</code></td><td>Row predicate; AND'd with the role's permission whereSql</td></tr>
@@ -476,12 +476,12 @@ import Base from "../layouts/Base.astro";
           <tr><td><code>meta</code></td><td><code>filter_count</code>, <code>total_count</code>, <code>*</code></td><td>—</td><td>Adds extra <code>SELECT COUNT(*)</code> to <code>response.meta</code></td></tr>
           <tr><td><code>locale</code></td><td>string or <code>*</code></td><td><code>null</code></td><td>Projects <code>i18n_text</code> fields to one locale</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2 id="filters">Filters</h2>
       <p><code>filter=&lt;JSON&gt;</code> takes the same mini-DSL as a role's <code>permission.condition</code>. The compiler emits Drizzle SQL fragments (parameterized) and never string-concatenates user input.</p>
       <h3 id="operators">Operators</h3>
-      <table class="doc-table">
+      <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Op</th><th>Means</th><th>Example</th></tr></thead>
         <tbody>
           <tr><td><code>_eq</code></td><td>equal</td><td><code>&#123; "status": &#123; "_eq": "published" &#125; &#125;</code></td></tr>
@@ -493,7 +493,7 @@ import Base from "../layouts/Base.astro";
           <tr><td><code>_contains</code></td><td>LIKE %x%</td><td><code>&#123; "title": &#123; "_contains": "foo" &#125; &#125;</code></td></tr>
           <tr><td><code>_starts_with</code> / <code>_ends_with</code></td><td>LIKE x% / %x</td><td></td></tr>
         </tbody>
-      </table>
+      </table></div>
       <h3 id="combinators">Logical combinators</h3>
       <p>Top-level keys are an implicit <code>$and</code>. <code>$and</code>, <code>$or</code>, and <code>$not</code> nest freely.</p>
       <div class="codeblock"><div class="head"><span class="dot"></span>json</div><pre>&#123;
@@ -645,7 +645,7 @@ import Base from "../layouts/Base.astro";
 
       <h2 id="owner-scoped">ownerScoped: true shortcut</h2>
       <p>When a collection is created with <code>ownerScoped: true</code>, the API auto-seeds four permissions for the <code>authenticated</code> role:</p>
-      <table class="doc-table">
+      <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Action</th><th>Condition</th></tr></thead>
         <tbody>
           <tr><td>read</td><td><code>&#123; owner_id: &#123; _eq: "$user.id" &#125; &#125;</code></td></tr>
@@ -653,18 +653,18 @@ import Base from "../layouts/Base.astro";
           <tr><td>update</td><td><code>&#123; owner_id: &#123; _eq: "$user.id" &#125; &#125;</code></td></tr>
           <tr><td>delete</td><td><code>&#123; owner_id: &#123; _eq: "$user.id" &#125; &#125;</code></td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>These are real permission rows — admin can edit them in <code>/settings</code> afterward.</p>
 
       <h2 id="system-roles">System roles</h2>
-      <table class="doc-table">
+      <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Role</th><th>Bypass</th><th>Auto-assigned</th></tr></thead>
         <tbody>
           <tr><td><code>admin</code></td><td>yes</td><td>First user to sign up</td></tr>
           <tr><td><code>authenticated</code></td><td>no</td><td>Implicit on every signed-in request</td></tr>
           <tr><td><code>public</code></td><td>no</td><td>Anonymous requests</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>System roles cannot be deleted from the admin UI.</p>
 
       <div class="doc-footer">
@@ -689,13 +689,13 @@ import Base from "../layouts/Base.astro";
 
       <h2 id="two-plane-model">The two-plane model</h2>
       <p><code>auth.plane</code> (set on <code>c.var.auth</code> by <code>session.ts</code> middleware) tags every authenticated request with one of two values:</p>
-      <table class="doc-table">
+      <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Plane</th><th>Who</th><th>Tables</th><th>Auth surface</th><th>Cookie / token</th></tr></thead>
         <tbody>
           <tr><td><code>"platform"</code></td><td>Admins running the dashboard</td><td><code>users</code>, <code>sessions</code>, <code>accounts</code>, <code>verifications</code>, <code>passkeys</code></td><td><code>/api/auth/*</code> (better-auth)</td><td><code>better-auth.*</code> cookies + PAKs (<code>pak_…</code>)</td></tr>
           <tr><td><code>"app"</code></td><td>Workspace customers</td><td><code>app_users</code>, <code>app_sessions</code>, <code>app_accounts</code>, <code>app_verifications</code>, <code>external_identities</code></td><td><code>/api/t/&lt;slug&gt;/auth/*</code> (per-workspace better-auth)</td><td><code>Authorization: Bearer &lt;token&gt;</code></td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <p>Both planes share the same <code>tenants</code> table and the same role / permission machinery. The plane tag flows from <code>sessionMiddleware</code> into <code>tenantMiddleware</code> into <code>requirePermission</code>. Every downstream check can branch on it without re-asking "which kind of user is this".</p>
       <div class="callout info"><span class="label">Isolation</span><br><code>tenant.ts:204</code> pins an app-plane request to the workspace stamped on its session row and <em>ignores</em> any <code>X-Backlex-Tenant</code> header — a customer's frontend can never accidentally walk into another tenant's data even if it sends one.</div>
@@ -754,7 +754,7 @@ import Base from "../layouts/Base.astro";
       <p>Permission-aware change feed over Server-Sent Events. <strong>The client transport is always SSE (EventSource)</strong> — on Cloudflare Workers the route bridges an internal Durable Object WebSocket into an SSE response, so admin / SDK code never speaks raw WebSocket.</p>
 
       <h2 id="channels">Channels</h2>
-      <table class="doc-table">
+      <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Channel</th><th>Auth</th><th>Filtered</th><th>What lands on it</th></tr></thead>
         <tbody>
           <tr><td><code>items:&lt;slug&gt;</code></td><td>session/key</td><td>yes</td><td>created/updated/deleted for the collection</td></tr>
@@ -762,7 +762,7 @@ import Base from "../layouts/Base.astro";
           <tr><td><code>presence:&lt;name&gt;</code></td><td>signed-in</td><td>no</td><td>Roster of currently connected members</td></tr>
           <tr><td>anything else</td><td>none</td><td>no</td><td>Free-form pub/sub</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>System channels (<code>items:*</code>, <code>collections</code>, <code>presence:*</code>) reject external publish — events come from the API itself when CRUD routes fire (or, for presence, on join/leave).</p>
 
       <h2 id="subscribing">Subscribing</h2>
@@ -810,7 +810,7 @@ es.<span class="c-fn">addEventListener</span>(<span class="c-str">"message"</spa
       <p>Object storage with per-tenant isolation, public/private ACL, on-the-fly image transforms, and short-lived signed URLs. Runs on local fs (Bun dev), Cloudflare R2 (Workers), or any S3-compatible bucket (AWS, R2, B2, MinIO, DigitalOcean Spaces, Wasabi).</p>
 
       <h2 id="adapter-selection">Adapter selection</h2>
-      <table class="doc-table">
+      <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Condition</th><th>Adapter</th></tr></thead>
         <tbody>
           <tr><td><code>env.R2</code> binding present</td><td><code>r2Storage</code> (Workers)</td></tr>
@@ -818,14 +818,14 @@ es.<span class="c-fn">addEventListener</span>(<span class="c-str">"message"</spa
           <tr><td><code>env.S3_BUCKET</code> set elsewhere</td><td><code>s3FetchStorage</code> (aws4fetch)</td></tr>
           <tr><td>otherwise</td><td><code>fsStorage("./.data/files")</code> (dev)</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2 id="tenant-prefix">Tenant prefix</h2>
       <p>Every physical key on disk / in the bucket is prefixed with <code>tenants/&lt;tenant-id&gt;/</code>. The API hides this — clients use logical keys (<code>uploads/photo.jpg</code>), and the route adds/strips the prefix. Two tenants can reuse the same logical key without colliding either in the bucket or in <code>files.key</code>.</p>
       <p>Logical keys starting with <code>tenants/</code> are rejected with <code>VALIDATION</code> so clients can't sneak into another workspace.</p>
 
       <h2 id="endpoints">Endpoints</h2>
-      <table class="doc-table">
+      <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Method</th><th>Path</th><th>Permission</th><th>Notes</th></tr></thead>
         <tbody>
           <tr><td>GET</td><td><code>/api/storage</code></td><td><code>system_files.read</code></td><td>List files (filterable by <code>?prefix=</code>)</td></tr>
@@ -835,10 +835,10 @@ es.<span class="c-fn">addEventListener</span>(<span class="c-str">"message"</spa
           <tr><td>DELETE</td><td><code>/api/storage/:key</code></td><td><code>system_files.delete</code></td><td>Removes object + row</td></tr>
           <tr><td>POST</td><td><code>/api/storage/:key/sign</code></td><td><code>system_files.read</code></td><td>Returns <code>&#123; url, expiresAt &#125;</code></td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h2 id="image-transform">Image transforms</h2>
-      <table class="doc-table">
+      <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Param</th><th>Range / values</th></tr></thead>
         <tbody>
           <tr><td><code>width</code></td><td>1–4096 (integer)</td></tr>
@@ -848,7 +848,7 @@ es.<span class="c-fn">addEventListener</span>(<span class="c-str">"message"</spa
           <tr><td><code>fit</code></td><td><code>cover | contain</code></td></tr>
           <tr><td><code>focal</code></td><td><code>"x,y"</code> with x/y in 0–100 (percent)</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>Invalid params throw <code>VALIDATION</code> (HTTP 422) — silently dropping bad input would let UI bugs ship without notice.</p>
 
       <div class="doc-footer">
@@ -867,25 +867,25 @@ es.<span class="c-fn">addEventListener</span>(<span class="c-str">"message"</spa
 
       <h2 id="providers">Three providers</h2>
       <p>A selector in <code>apps/web/src/server/services/sandbox/index.ts</code> picks one based on the runtime + bindings:</p>
-      <table class="doc-table">
+      <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Priority</th><th>Provider</th><th>Runtime</th><th>Async ctx.*</th><th>Isolation</th></tr></thead>
         <tbody>
           <tr><td>1</td><td>remote-http</td><td>any (FUNCTIONS_EXEC_URL set)</td><td>yes (HTTP RPC)</td><td>separate process / host</td></tr>
           <tr><td>2</td><td>bun-worker</td><td>Bun</td><td>yes (postMessage RPC)</td><td>Worker thread (soft)</td></tr>
           <tr><td>3</td><td>quickjs</td><td>anywhere (fallback)</td><td>no</td><td>WASM (true)</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>quickjs stays as the cross-runtime safety net — Workers / Vercel / Netlify users still get sandbox execution (sync only) without standing up a separate executor service.</p>
 
       <h2 id="triggers">Triggers</h2>
-      <table class="doc-table">
+      <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Trigger</th><th>Pattern</th><th>Fires on</th></tr></thead>
         <tbody>
           <tr><td><code>http</code></td><td>(none)</td><td><code>POST /api/functions/:name/invoke</code> (admin only)</td></tr>
           <tr><td><code>event</code></td><td><code>items:posts:*</code></td><td>Any <code>publishEvent</code> whose channel/event matches</td></tr>
           <tr><td><code>cron</code></td><td><code>*/5 * * * *</code></td><td>Bun scheduler / Workers triggers / Vercel cron</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <p>Pattern matching: <code>*</code> is a wildcard segment. <code>items:posts:*</code> matches <code>items:posts:created</code>, <code>items:posts:updated</code>, etc.</p>
 
       <h2 id="ctx">The ctx surface</h2>
@@ -950,7 +950,7 @@ ctx.user       <span class="c-comment">// &#123; id, email, roles[] &#125; — n
 <span class="c-kw">await</span> wks.storage.<span class="c-fn">put</span>(<span class="c-str">"avatars/me.png"</span>, file, <span class="c-str">"image/png"</span>);</pre></div>
 
       <h2 id="cli">backlex CLI</h2>
-      <table class="doc-table">
+      <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Command</th><th>Does</th></tr></thead>
         <tbody>
           <tr><td><code>backlex migrate</code></td><td>Apply pending hand-written SQL migrations (pg + sqlite)</td></tr>
@@ -958,7 +958,7 @@ ctx.user       <span class="c-comment">// &#123; id, email, roles[] &#125; — n
           <tr><td><code>backlex adopt &lt;slug&gt; &lt;table&gt;</code></td><td>Run the 3-step adopt wizard from the terminal</td></tr>
           <tr><td><code>backlex seed</code></td><td>Run <code>./scripts/seed.ts</code> if present</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <h3 id="gen-types">gen-types output</h3>
       <div class="codeblock"><div class="head"><span class="dot"></span>typescript</div><pre><span class="c-comment">// src/types.ts — generated</span>
@@ -1010,7 +1010,7 @@ ctx.user       <span class="c-comment">// &#123; id, email, roles[] &#125; — n
 &#125;</pre></div>
 
       <h2 id="tools">Tools exposed</h2>
-      <table class="doc-table">
+      <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Tool</th><th>Does</th></tr></thead>
         <tbody>
           <tr><td><code>list_collections</code></td><td>Return the schema of every collection the API key can read</td></tr>
@@ -1019,7 +1019,7 @@ ctx.user       <span class="c-comment">// &#123; id, email, roles[] &#125; — n
           <tr><td><code>read_file</code> / <code>upload_file</code></td><td>Read / write objects in storage</td></tr>
           <tr><td><code>describe_role</code></td><td>Pretty-print a role's permission rows + condition DSL</td></tr>
         </tbody>
-      </table>
+      </table></div>
       <div class="callout warning"><span class="label">Permissions</span><br>MCP traffic runs through <code>requirePermission</code> like any other call. Give the API key a narrow role if you don't want the IDE agent to be able to drop a table.</div>
 
       <div class="doc-footer">

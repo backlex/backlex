@@ -5,6 +5,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { useQueryClient } from "@tanstack/react-query";
 import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Card } from "@backlex/ui/components/card";
 import { I } from "./icons";
 import { Badge, Button, IconButton } from "./ui";
 import { Select } from "./select";
@@ -147,7 +148,7 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+    <Card className="py-0 gap-0">
       <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-4 py-3.5">
         <I.Users size={14} />
         <span className="text-[13px] font-medium"><Trans>members</Trans></span>
@@ -235,6 +236,6 @@ export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
           </div>
         )}
       </ScrollArea>
-    </div>
+    </Card>
   );
 }

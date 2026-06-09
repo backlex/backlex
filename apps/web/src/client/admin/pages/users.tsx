@@ -31,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@backlex/ui/components/dropdown-menu";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Card } from "@backlex/ui/components/card";
 import { rolesApi, usersApi, type ApiRole, type ApiUser } from "../api";
 import { UsersSkeleton } from "../page-skeletons";
 import { auth } from "@/lib/auth";
@@ -249,7 +250,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
         </div>
       )}
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <Card className="py-0 gap-0">
         <Table className="[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground">
           <TableHeader>
             <TableRow>
@@ -350,7 +351,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
             )}
           </TableBody>
         </Table>
-      </div>
+      </Card>
 
       {activeUser && <UserDrawer user={activeUser} allRoles={allRoles} onClose={() => setActiveUser(null)} onSaved={applyUserPatch} pushToast={pushToast} />}
       {inviteOpen && <InviteUserDialog roles={roleNames} onClose={() => setInviteOpen(false)} onInvite={async (payload: any) => {

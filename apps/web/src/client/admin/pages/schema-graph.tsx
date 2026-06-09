@@ -10,6 +10,7 @@ import { I } from "../icons";
 import { Badge, Button, IconButton, PageHeader } from "../ui";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@backlex/ui/components/table";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Card } from "@backlex/ui/components/card";
 import { collectionsApi, type ApiCollection } from "../api";
 import { SchemaGraphSkeleton } from "../page-skeletons";
 
@@ -179,7 +180,7 @@ export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "
         }
       />
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <Card className="py-0 gap-0">
         <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3.5">
           <span className="text-[12.5px] font-medium">
             <Trans>{nodes.length} collections · {edges.length} relations</Trans>
@@ -298,10 +299,10 @@ export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "
             </svg>
           )}
         </ScrollArea>
-      </div>
+      </Card>
 
       {/* Relations table */}
-      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <Card className="py-0 gap-0">
         <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
           <I.Network size={14} />
           <span className="text-[13px] font-medium"><Trans>relations</Trans></span>
@@ -346,7 +347,7 @@ export function SchemaGraphPage({ pushToast }: { pushToast: (m: string, type?: "
             </TableBody>
           </Table>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

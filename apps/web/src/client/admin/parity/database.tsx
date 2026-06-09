@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Card } from "@backlex/ui/components/card";
 import { dbAdminApi } from "../api";
 
 const ADMIN_TABLE_CLS =
@@ -155,7 +156,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
   return (
     <div className="grid grid-cols-[240px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
       <div className="flex flex-col gap-2.5">
-        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <Card className="gap-0 py-0">
           <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
             <I.Database size={13} /><span className="text-xs font-medium"><Trans>Tables</Trans></span>
             <div className="flex-1" />
@@ -189,8 +190,8 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
               </div>
             ))}
           </ScrollArea>
-        </div>
-        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        </Card>
+        <Card className="gap-0 py-0">
           <div className="border-b border-border px-4 py-3.5 text-xs font-medium"><Trans>Snippets</Trans></div>
           <ScrollArea viewportClassName="max-h-[220px]">
             {snippets.length === 0 ? (
@@ -199,11 +200,11 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
               <div key={s.name} title={s.sql} onClick={() => setSql(s.sql)} className="cursor-pointer truncate border-t border-border px-3 py-2 text-xs">{s.name}</div>
             ))}
           </ScrollArea>
-        </div>
+        </Card>
       </div>
 
       <div className="flex min-w-0 flex-col gap-3">
-        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <Card className="gap-0 py-0">
           <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-border px-4 py-3.5">
             <div className="flex min-w-0 items-center gap-2.5">
               <span className="text-xs font-medium">query.sql</span>
@@ -224,8 +225,8 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
               <I.AlertTriangle size={12} /> <Trans>Writes blocked. Toggle "read-only" off to run mutations.</Trans>
             </div>
           )}
-        </div>
-        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        </Card>
+        <Card className="gap-0 py-0">
           <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-border px-4 py-3.5">
             <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
               <span className="text-xs font-medium"><Trans>Result</Trans></span>
@@ -254,7 +255,7 @@ function SqlEditor({ pushToast }: { pushToast: (m: string) => void }) {
               </TableBody>
             </Table>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );
@@ -292,7 +293,7 @@ function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
   }, [pushToast]);
   return (
     <div className="grid grid-cols-[380px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
-      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <Card className="gap-0 py-0">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
           <span className="text-xs font-medium"><Trans>Migrations</Trans></span>
           <div className="flex-1" />
@@ -317,8 +318,8 @@ function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
             <Badge variant="default"><Trans>applied</Trans></Badge>
           </div>
         ))}
-      </div>
-      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      </Card>
+      <Card className="gap-0 py-0">
         {!active ? (
           <div className="p-9 text-center text-[13px] text-muted-foreground"><Trans>Pick a migration to inspect its details.</Trans></div>
         ) : (
@@ -336,7 +337,7 @@ function Migrations({ pushToast }: { pushToast: (m: string) => void }) {
             </div>
           </>
         )}
-      </div>
+      </Card>
     </div>
   );
 }
@@ -376,12 +377,12 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
   };
   return (
     <div className="flex flex-col gap-3.5">
-      <div className="grid grid-cols-3 gap-3 overflow-hidden rounded-2xl border border-border bg-card p-3.5 text-card-foreground max-[640px]:grid-cols-1">
+      <Card className="grid grid-cols-3 gap-3 p-3.5 max-[640px]:grid-cols-1">
         <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Schedule</Trans></div><div className="font-medium"><Trans>Daily 03:00 UTC</Trans></div></div>
         <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Retention</Trans></div><div className="font-medium"><Trans>30 days</Trans></div></div>
         <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Destination</Trans></div><div className="font-mono text-xs font-medium">r2://backlex-backups/</div></div>
-      </div>
-      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      </Card>
+      <Card className="gap-0 py-0">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
           <span className="text-xs font-medium"><Trans>Backups</Trans></span>
           <div className="flex-1" />
@@ -415,7 +416,7 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
             ))}
           </TableBody>
         </Table>
-      </div>
+      </Card>
     </div>
   );
 }

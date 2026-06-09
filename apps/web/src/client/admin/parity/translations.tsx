@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { Card } from "@backlex/ui/components/card";
 import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Textarea } from "@backlex/ui/components/textarea";
@@ -147,7 +148,7 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
           }}
         />
       )}
-      <div className="grid gap-x-4 gap-y-3 overflow-hidden rounded-2xl border border-border bg-card p-3.5 text-card-foreground" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(118px, 1fr))" }}>
+      <Card className="grid gap-x-4 gap-y-3 p-3.5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(118px, 1fr))" }}>
         {completion.map((c) => (
           <div key={c.l} className="min-w-0">
             <div className="truncate text-[10.5px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{c.l}</div>
@@ -159,7 +160,7 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
             </div>
           </div>
         ))}
-      </div>
+      </Card>
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[11.5px] text-muted-foreground"><Trans>base</Trans></span>
         <Select value={base} onChange={setBase} options={[...locales]} />
@@ -196,7 +197,7 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
           }}
         />
       )}
-      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <Card className="py-0 gap-0">
         <Table className={TR_TABLE_CLS} style={{ minWidth: 100 + locales.length * 160 }}>
           <TableHeader>
             <TableRow>
@@ -217,7 +218,7 @@ export function TranslationsPage({ pushToast }: { pushToast: (m: string) => void
             ))}
           </TableBody>
         </Table>
-      </div>
+      </Card>
     </div>
   );
 }

@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@backlex/ui/components/dialog";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Card } from "@backlex/ui/components/card";
 import { fetchSafely } from "./_shared";
 import { FunctionsSkeleton } from "../page-skeletons";
 
@@ -214,7 +215,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
       />
 
       <div className="grid grid-cols-[300px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
-        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <Card className="py-0 gap-0">
           {funcs.length === 0 && (
             <EmptyState size="sm" title={<Trans>No functions yet — click + New function.</Trans>} />
           )}
@@ -232,7 +233,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
               <Badge variant="outline">{f.kind}</Badge>
             </div>
           ))}
-        </div>
+        </Card>
 
         <div className="flex flex-col gap-3">
           {!active ? (
@@ -284,7 +285,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
             className="min-h-[200px] w-full resize-y whitespace-pre-wrap rounded-xl border-0 bg-[oklch(from_var(--primary)_0.18_0.01_h)] p-3.5 font-mono text-xs leading-[1.55] text-[oklch(from_var(--primary)_0.95_0.02_h)] [word-break:break-word]"
           />
 
-          <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+          <Card className="py-0 gap-0">
             <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
               <I.Code size={14} /><span className="text-[13px] font-medium"><Trans>Logs</Trans></span>
               <span className="font-mono text-[11.5px] text-muted-foreground"><Trans>last invocation</Trans></span>
@@ -303,7 +304,7 @@ export function FunctionsPage({ pushToast }: { pushToast: (m: string) => void })
               ))}
             </div>
             </ScrollArea>
-          </div>
+          </Card>
           </>
           )}
         </div>

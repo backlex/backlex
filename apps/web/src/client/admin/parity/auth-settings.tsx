@@ -4,6 +4,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Textarea } from "@backlex/ui/components/textarea";
+import { Card } from "@backlex/ui/components/card";
 import { I } from "../icons";
 import { Badge, Button, IconButton, PageHeader, Switch } from "../ui";
 import { Select } from "../select";
@@ -324,7 +325,7 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
     <div className="flex flex-col gap-4.5">
       <PageHeader title={t`Authentication`} description={<><Trans>Configure sign-in methods, MFA, and session policy. Tokens are signed with <span className="font-mono">$AUTH_SECRET</span>.</Trans></>} />
       <div className="grid grid-cols-[1fr_320px] items-start gap-4 max-[1280px]:grid-cols-1">
-        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <Card className="gap-0 py-0">
           <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
             <span className="text-[13px] font-medium"><Trans>Providers</Trans></span>
             <div className="flex-1" />
@@ -356,8 +357,8 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
             </div>
             );
           })}
-        </div>
-        <div className="flex flex-col gap-3.5 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground p-[18px]">
+        </Card>
+        <Card className="gap-3.5 p-[18px]">
           <span className="text-[13px] font-medium"><Trans>Policy</Trans></span>
           {POLICY_ROWS.map((r) => (
             <div key={r.key} className="flex items-center justify-between gap-3 border-t border-border pt-3">
@@ -384,10 +385,10 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
             />
             <span className="text-[11.5px] text-muted-foreground"><Trans>One URL per line — saved when you click away.</Trans></span>
           </div>
-        </div>
+        </Card>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <Card className="gap-0 py-0">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
           <I.Shield size={13} />
           <span className="text-[13px] font-medium"><Trans>SAML 2.0 SSO</Trans></span>
@@ -456,7 +457,7 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
             />
           </div>
         ))}
-      </div>
+      </Card>
 
       <LdapConfigCard availableRoles={availableRoles} pushToast={pushToast} />
 
@@ -511,7 +512,7 @@ curl -X POST ${authBase}/sign-in/email \\
 # use the token on later calls
 curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
         return (
-          <div className="flex flex-col gap-3.5 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground p-[18px]">
+          <Card className="gap-3.5 p-[18px]">
             <div>
               <span className="text-[13px] font-medium"><Trans>Workspace auth API <span className="font-normal text-muted-foreground">· auth as a service</span></Trans></span>
               <div className="mt-[3px] text-xs text-muted-foreground"><Trans>End-users of the app built on this workspace sign in here — separate from the admin login. Configure providers above.</Trans></div>
@@ -526,11 +527,11 @@ curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
             </div>
             <Snippet label={t`Frontend SDK`} code={sdkCode} />
             <Snippet label="curl" code={curlCode} />
-          </div>
+          </Card>
         );
       })()}
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <Card className="gap-0 py-0">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
           <I.Activity size={13} />
           <span className="text-[13px] font-medium"><Trans>Active sessions</Trans></span>
@@ -555,7 +556,7 @@ curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
             ))}
           </TableBody>
         </Table>
-      </div>
+      </Card>
 
       {configuring && (
         <ProviderConfigDialog

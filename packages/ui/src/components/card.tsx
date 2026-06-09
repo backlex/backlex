@@ -1,4 +1,5 @@
 import * as React from "react"
+import { Slot } from "radix-ui"
 
 import { cn } from "@backlex/ui/lib/utils"
 
@@ -7,6 +8,7 @@ function Card({
   size = "default",
   variant = "default",
   interactive = false,
+  asChild = false,
   ...props
 }: React.ComponentProps<"div"> & {
   size?: "default" | "sm"
@@ -15,9 +17,13 @@ function Card({
   /** Clickable card: adds pointer + a hover border highlight (brand on solid
    *  cards, neutral white on dashed "new" tiles). */
   interactive?: boolean
+  /** Render as the single child element (e.g. an `<a>`/`<button>`/`<Link>`)
+   *  instead of a `<div>`, so a clickable card stays one semantic element. */
+  asChild?: boolean
 }) {
+  const Comp = asChild ? Slot.Root : "div"
   return (
-    <div
+    <Comp
       data-slot="card"
       data-size={size}
       data-variant={variant}

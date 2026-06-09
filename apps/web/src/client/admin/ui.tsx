@@ -509,6 +509,18 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
                   </SidebarMenuItem>
                 );
               })}
+              {group.key === "developers" && (
+                // Public docs live on a separate site — external link, new tab.
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip={t`Docs`}>
+                    <a href="https://backlex.com/docs" target="_blank" rel="noreferrer">
+                      <I.BookOpen size={15} />
+                      <span><Trans>Docs</Trans></span>
+                      <I.ExternalLink size={12} className="ml-auto opacity-60" />
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroup>
         ))}

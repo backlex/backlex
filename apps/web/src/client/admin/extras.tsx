@@ -100,7 +100,7 @@ export function Palette({ open, onClose, onNavigate, items, collections }: Palet
           />
           <span className="rounded-sm border border-border bg-muted px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground">esc</span>
         </div>
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea className="min-h-0 flex-1" viewportClassName="max-h-[calc(60vh-88px)]">
           <div className="p-1.5">
           {flat.length === 0 ? (
             <div className="p-7 text-center text-[13px] text-muted-foreground">

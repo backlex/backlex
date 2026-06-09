@@ -169,7 +169,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
         </div>
 
         {step === 1 && (
-          <ScrollArea className="min-h-0 flex-1">
+          <ScrollArea viewportClassName="max-h-[calc(92vh-10rem)]">
             <div className="px-5 py-[18px]">
             <InputGroup className="mb-3.5">
               <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
@@ -217,7 +217,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
         )}
 
         {step === 2 && (
-          <ScrollArea className="min-h-0 flex-1">
+          <ScrollArea viewportClassName="max-h-[calc(92vh-10rem)]">
             <div className="grid grid-cols-2 gap-3 px-5 py-[18px] max-[640px]:grid-cols-1">
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">

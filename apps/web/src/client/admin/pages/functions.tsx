@@ -441,7 +441,7 @@ function NewFunctionDialog({
           <DialogDescription className="mt-0.5 text-[12.5px]"><Trans>Sandboxed JS. HTTP for manual invoke, event for pub-sub triggers, or cron for scheduled runs.</Trans></DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea viewportClassName="max-h-[calc(90vh-10rem)]">
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans> <span className="text-destructive">*</span></label>

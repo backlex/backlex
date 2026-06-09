@@ -1121,7 +1121,7 @@ function ActivityEventDialog({
           </div>
           <h3 className="m-0 text-sm font-medium">{row.user}</h3>
         </DialogHeader>
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)]">
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="grid grid-cols-[140px_1fr] gap-x-3.5 gap-y-2 text-[12.5px]">
             <span className="text-muted-foreground"><Trans>Time</Trans></span>

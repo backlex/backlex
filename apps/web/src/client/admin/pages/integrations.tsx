@@ -258,7 +258,7 @@ function ConnectDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)]">
           <div className="flex flex-col gap-3.5 px-5 py-4">
             {fields.map((f) => (
               <label key={f.key} className="block">

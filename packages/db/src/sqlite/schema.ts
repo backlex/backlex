@@ -594,6 +594,11 @@ export const collections = sqliteTable(
     softDelete: integer("soft_delete", { mode: "boolean" }).notNull().default(false),
     /** When true, the collection is locked to a single live row. */
     singleton: integer("singleton", { mode: "boolean" }).notNull().default(false),
+    /** Opt-in sensitive-read auditing. When true, REST read operations on this
+     *  collection (list + by-id) record an `access.read` activity row so admins
+     *  get a "who viewed this" trail for regulated data. Off by default — reads
+     *  are otherwise never logged. See the pg/schema.ts twin. */
+    auditReads: integer("audit_reads", { mode: "boolean" }).notNull().default(false),
     /** When true, item writes auto-generate embeddings from fields flagged
      *  `vectorize: true` on the field definition. */
     vectorize: integer("vectorize", { mode: "boolean" }).notNull().default(false),

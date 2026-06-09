@@ -89,7 +89,7 @@ export function Palette({ open, onClose, onNavigate, items, collections }: Palet
       >
         <DialogTitle className="sr-only"><Trans>Command palette</Trans></DialogTitle>
         <DialogDescription className="sr-only"><Trans>Type a command, collection, or item title to navigate.</Trans></DialogDescription>
-        <div className="flex items-center gap-2.5 border-b border-border px-[18px] py-3.5">
+        <div className="flex shrink-0 items-center gap-2.5 border-b border-border px-[18px] py-3.5">
           <I.Search size={15} />
           <Input
             ref={inputRef}
@@ -100,7 +100,7 @@ export function Palette({ open, onClose, onNavigate, items, collections }: Palet
           />
           <span className="rounded-sm border border-border bg-muted px-1.5 py-0.5 font-mono text-[10.5px] text-muted-foreground">esc</span>
         </div>
-        <ScrollArea className="min-h-0 flex-1" viewportClassName="max-h-[calc(60vh-88px)]">
+        <ScrollArea className="min-h-0 flex-1" viewportClassName="max-h-[calc(60vh-100px)]">
           <div className="p-1.5">
           {flat.length === 0 ? (
             <div className="p-7 text-center text-[13px] text-muted-foreground">
@@ -134,7 +134,7 @@ export function Palette({ open, onClose, onNavigate, items, collections }: Palet
           )}
           </div>
         </ScrollArea>
-        <div className="flex items-center gap-3.5 border-t border-border px-5 py-3.5 font-mono text-[11px] text-muted-foreground">
+        <div className="flex shrink-0 items-center gap-3.5 border-t border-border px-5 py-3.5 font-mono text-[11px] text-muted-foreground">
           <span><span className={kbd}>↵</span> <Trans>open</Trans></span>
           <span><span className={kbd}>↑↓</span> <Trans>navigate</Trans></span>
           <span><span className={kbd}>esc</span> <Trans>close</Trans></span>

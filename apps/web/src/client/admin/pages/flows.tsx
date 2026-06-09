@@ -273,9 +273,7 @@ function FlowPreview({ trigger, operations, onEdit }: { trigger: string; operati
         overflow: "hidden",
         backgroundImage: "radial-gradient(circle, var(--border) 1px, transparent 1px)",
         backgroundSize: "14px 14px",
-        cursor: "pointer",
       }}
-      onClick={onEdit}
     >
       <ScrollArea className="size-full" viewportClassName="rounded-2xl">
         <div style={{ position: "relative", height: 220, minWidth: contentWidth }}>
@@ -313,8 +311,11 @@ function FlowPreview({ trigger, operations, onEdit }: { trigger: string; operati
           )}
         </div>
       </ScrollArea>
-      {/* Pinned to the visible top-right corner so it stays put while the canvas scrolls. */}
-      <div
+      {/* The only edit affordance — pinned top-right, stays put while the canvas
+          scrolls. The canvas itself is view/scroll-only (no whole-box onClick). */}
+      <button
+        type="button"
+        onClick={onEdit}
         style={{
           position: "absolute",
           top: 12,
@@ -328,10 +329,11 @@ function FlowPreview({ trigger, operations, onEdit }: { trigger: string; operati
           display: "flex",
           alignItems: "center",
           gap: 6,
+          cursor: "pointer",
         }}
       >
         <I.Pencil size={11} /> <Trans>Click to edit</Trans>
-      </div>
+      </button>
     </div>
   );
 }

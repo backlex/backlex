@@ -19,6 +19,7 @@ import { api } from "@/lib/api";
 import { activityApi, type ApiActivity } from "../api";
 import { I } from "../icons";
 import { Badge, Button, PageHeader, Switch } from "../ui";
+import { Card } from "@backlex/ui/components/card";
 import { Textarea } from "@backlex/ui/components/textarea";
 import {
   Tabs,
@@ -833,7 +834,7 @@ export function AskAiPage({
       {tab === "ask" && (
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[1fr_320px]">
         <div className="flex min-w-0 flex-col gap-5">
-          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          <Card className="py-0 gap-0">
             <div className="flex items-center gap-2 px-5 pt-4 pb-2">
               <I.Sparkles size={14} className="text-primary" />
               <span className="text-[12px] font-medium">
@@ -911,7 +912,7 @@ export function AskAiPage({
                 </Button>
               </div>
             </div>
-          </div>
+          </Card>
 
           {phase === "idle" && !planError && (
             <div className="flex flex-wrap gap-2">
@@ -941,7 +942,7 @@ export function AskAiPage({
           )}
 
           {phase === "thinking" && (
-            <div className="overflow-hidden rounded-2xl border border-border bg-card">
+            <Card className="py-0 gap-0">
               <div className="flex flex-col items-start gap-4 px-5 py-7">
                 <div className="flex items-center gap-2.5 text-[13px] font-medium">
                   <I.Brain size={14} className="text-primary" />
@@ -951,11 +952,11 @@ export function AskAiPage({
                   <Trans>asking {model}…</Trans>
                 </div>
               </div>
-            </div>
+            </Card>
           )}
 
           {plan && phase !== "thinking" && phase !== "idle" && (
-            <div className="overflow-hidden rounded-2xl border border-border bg-card">
+            <Card className="py-0 gap-0">
               <div className="flex flex-wrap items-center gap-2 px-5 pt-4 pb-2">
                 <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/15 text-primary">
                   <I.Brain size={13} />
@@ -1090,7 +1091,7 @@ export function AskAiPage({
                   </Button>
                 </div>
               </div>
-            </div>
+            </Card>
           )}
 
           {result && (phase === "done" || phase === "running") && (
@@ -1107,7 +1108,7 @@ export function AskAiPage({
         </div>
 
         {/* Recent runs side panel */}
-        <div className="overflow-hidden rounded-2xl border border-border bg-card xl:sticky xl:top-4">
+        <Card className="py-0 gap-0 xl:sticky xl:top-4">
           <div className="flex items-center gap-2 px-5 pt-4 pb-3">
             <I.History size={13} className="text-muted-foreground" />
             <span className="text-[13px] font-semibold">
@@ -1164,7 +1165,7 @@ export function AskAiPage({
               </div>
             </ScrollArea>
           )}
-        </div>
+        </Card>
       </div>
       )}
     </div>
@@ -1204,7 +1205,7 @@ function ResultCard({
   }, [ok, result]);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+    <Card className="py-0 gap-0">
       <div className="flex flex-wrap items-center gap-2 px-5 pt-4 pb-3">
         <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/15 text-primary">
           {ok ? <I.CheckCircle size={13} /> : <I.AlertTriangle size={13} />}
@@ -1247,7 +1248,7 @@ function ResultCard({
           )}
         </div>
       </ScrollArea>
-    </div>
+    </Card>
   );
 }
 
@@ -1515,7 +1516,7 @@ function ToolsTab({
   return (
     <>
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[1fr_340px]">
-        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        <Card className="py-0 gap-0">
           <div className="flex flex-wrap items-center gap-3 px-5 pt-4 pb-3">
             <I.Layers size={14} />
             <span className="text-[13px] font-semibold">
@@ -1633,10 +1634,10 @@ function ToolsTab({
               })
             )}
           </div>
-        </div>
+        </Card>
 
         <div className="flex flex-col gap-4 xl:sticky xl:top-4">
-          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          <Card className="py-0 gap-0">
             <div className="flex items-center gap-2 px-5 pt-4 pb-3">
               <I.Key size={13} />
               <span className="text-[13px] font-semibold">
@@ -1708,9 +1709,9 @@ function ToolsTab({
   -d '{"mcpReadOnly": ${selectedKey?.mcpReadOnly === true ? "true" : "false"}}'`}
               </pre>
             </div>
-          </div>
+          </Card>
 
-          <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          <Card className="py-0 gap-0">
             <div className="flex items-center gap-2 px-5 pt-4 pb-3">
               <I.Globe size={13} />
               <span className="text-[13px] font-semibold">
@@ -1747,7 +1748,7 @@ function ToolsTab({
                 </Trans>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
 
@@ -1899,7 +1900,7 @@ function RunsTab({
           </Button>
         </div>
       </div>
-      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <Card className="py-0 gap-0">
         {loading ? (
           <div className="px-5 py-8 text-center text-[12.5px] text-muted-foreground">
             <Trans>Loading runs…</Trans>
@@ -1984,7 +1985,7 @@ function RunsTab({
               </table>
           </ScrollArea>
         )}
-      </div>
+      </Card>
     </div>
   );
 }
@@ -2040,7 +2041,7 @@ function ConnectTab({
 
   return (
     <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_340px]">
-      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <Card className="py-0 gap-0">
         <div className="flex flex-wrap items-center gap-2 px-5 pt-4 pb-3">
           <I.Plug size={13} />
           <span className="text-[13px] font-semibold">
@@ -2118,9 +2119,9 @@ function ConnectTab({
             )}
           </span>
         </div>
-      </div>
+      </Card>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <Card className="py-0 gap-0">
         <div className="flex items-center gap-2 px-5 pt-4 pb-3">
           <I.Sparkles size={13} className="text-primary" />
           <span className="text-[13px] font-semibold">
@@ -2159,7 +2160,7 @@ function ConnectTab({
             </li>
           </ul>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }

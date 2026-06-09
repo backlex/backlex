@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { Badge, Button, PageHeader } from "../ui";
+import { Card } from "@backlex/ui/components/card";
 import { RealtimeTail, type RealtimeEvent } from "../extras";
 import { RealtimeSkeleton } from "../page-skeletons";
 
@@ -94,7 +95,7 @@ export function RealtimePage({ events, active, onActiveChange, pushToast }: { ev
         actions={<Button variant="outline" icon={I.Refresh} onClick={() => pushToast(t`Channels refreshed.`)}><Trans>Refresh</Trans></Button>}
       />
       <div className="grid grid-cols-[300px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
-        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <Card className="py-0 gap-0">
           {channelsToRender.length === 0 && (
             <div className="px-3 py-4 text-xs text-muted-foreground"><Trans>No channels — create a collection to get one.</Trans></div>
           )}
@@ -114,7 +115,7 @@ export function RealtimePage({ events, active, onActiveChange, pushToast }: { ev
               {c.subs != null && <Badge variant="outline" mono>{c.subs} <Trans>sub</Trans></Badge>}
             </div>
           ))}
-        </div>
+        </Card>
 
         <RealtimeTail events={events} channel={active} connected />
       </div>

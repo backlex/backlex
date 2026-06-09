@@ -51,7 +51,14 @@ const PAGE_SIZE = 100;
 
 /** Source ids the Stream view projects activity rows into. `other` is only
  *  surfaced when at least one row lands there. */
-type SourceId = "http" | "data" | "automation" | "functions" | "storage" | "other";
+type SourceId =
+  | "http"
+  | "data"
+  | "access"
+  | "automation"
+  | "functions"
+  | "storage"
+  | "other";
 
 interface SourceDef {
   id: SourceId;
@@ -62,6 +69,7 @@ interface SourceDef {
 const SOURCE_DEFS: SourceDef[] = [
   { id: "http", label: "HTTP", icon: "ExternalLink" },
   { id: "data", label: "Data", icon: "Database" },
+  { id: "access", label: "Access", icon: "Eye" },
   { id: "automation", label: "Automation", icon: "Webhook" },
   { id: "functions", label: "Functions", icon: "Function" },
   { id: "storage", label: "Storage", icon: "Archive" },
@@ -80,6 +88,7 @@ const RANGE_MS: Record<RangeFilter, number> = {
 const CATEGORY_CHIPS = [
   "all",
   "item",
+  "access",
   "auth",
   "schema",
   "role",
@@ -119,6 +128,8 @@ function sourceForAction(action: string): SourceId {
   if (action === "request.error") return "http";
   const category = action.split(".", 1)[0] ?? "";
   switch (category) {
+    case "access":
+      return "access";
     case "item":
     case "schema":
     case "role":
@@ -467,6 +478,7 @@ function StreamView({
     const out: Record<SourceId, number> = {
       http: 0,
       data: 0,
+      access: 0,
       automation: 0,
       functions: 0,
       storage: 0,

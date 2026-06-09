@@ -30,6 +30,9 @@ export interface CollectionRow {
   softDelete: boolean;
   /** When true, inserts are rejected once one live row exists. */
   singleton: boolean;
+  /** Opt-in sensitive-read auditing. When true, the item read routes (list +
+   *  by-id) record an `access.read` activity row per read. Defaults false. */
+  auditReads: boolean;
   /** Auto-vectorize items on write (POST/PATCH) and clear on delete. The
    *  fields that contribute to the embed text are the ones whose `FieldDef`
    *  has `vectorize: true` (text/longtext only). */
@@ -110,6 +113,7 @@ export const loadCollection = async (
     versioned: Boolean(r.versioned),
     softDelete: Boolean(r.softDelete ?? r.soft_delete),
     singleton: Boolean(r.singleton),
+    auditReads: Boolean(r.auditReads ?? r.audit_reads),
     vectorize: Boolean(r.vectorize),
     vectorizeModel: ((r.vectorizeModel ?? r.vectorize_model) as string | null | undefined) ?? null,
     defaultSort: ((r.defaultSort ?? r.default_sort) as string | null | undefined) ?? null,

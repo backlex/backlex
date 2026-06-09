@@ -9,7 +9,7 @@ import type { Env } from "../env";
 import type { FunctionRow } from "./functions";
 import { listCronFlows, runFlowById, resumeContinuation } from "./flows";
 import { claimDueTasks, deleteTask } from "./scheduled-tasks";
-import { pruneOldActivity } from "./activity";
+import { pruneOldActivity, pruneOldActivityByPrefix } from "./activity";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.functions : sqlite.schema.functions;
@@ -32,6 +32,9 @@ let lastTickAt: Date | null = null;
 let lastActivityPruneAt: number = 0;
 const ACTIVITY_PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_ACTIVITY_RETENTION_DAYS = 90;
+// Sensitive-read audit rows (`access.*`) are opt-in but higher-volume, so they
+// get a shorter default clock than the global retention.
+const DEFAULT_ACCESS_AUDIT_RETENTION_DAYS = 30;
 
 const dueCronFunctions = (
   fns: FunctionRow[],
@@ -154,6 +157,18 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
     const raw = env.ACTIVITY_RETENTION_DAYS;
     const days = raw == null || raw === "" ? DEFAULT_ACTIVITY_RETENTION_DAYS : Number(raw);
     await pruneOldActivity({ db: ctx.db, dialect: ctx.dialect }, days);
+    // Sensitive-read audit rows get their own shorter retention so they don't
+    // dominate the table; they're still bounded by the global prune above.
+    const accessRaw = env.ACCESS_AUDIT_RETENTION_DAYS;
+    const accessDays =
+      accessRaw == null || accessRaw === ""
+        ? DEFAULT_ACCESS_AUDIT_RETENTION_DAYS
+        : Number(accessRaw);
+    await pruneOldActivityByPrefix(
+      { db: ctx.db, dialect: ctx.dialect },
+      accessDays,
+      "access.",
+    );
   }
 };
 

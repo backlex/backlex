@@ -1,4 +1,4 @@
-import { lt } from "drizzle-orm";
+import { and, like, lt } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { DbCtx } from "./seed";
@@ -113,6 +113,35 @@ export const pruneOldActivity = async (
     return { cutoff, ok: true };
   } catch (e) {
     console.error("[activity] prune failed", e);
+    return { cutoff, ok: false };
+  }
+};
+
+/**
+ * Deletes activity rows whose `action` starts with `prefix` (e.g. `"access."`)
+ * and that are older than `retentionDays`. Used to trim the high-volume,
+ * opt-in sensitive-read audit (`access.read`) on a shorter clock than the
+ * global retention without touching mutation/error rows. A retention of `0`
+ * (or negative) disables this prune. Called from `cronTick` once per day.
+ */
+export const pruneOldActivityByPrefix = async (
+  ctx: DbCtx,
+  retentionDays: number,
+  prefix: string,
+): Promise<{ cutoff: Date; ok: boolean }> => {
+  const days = Math.floor(retentionDays);
+  if (!Number.isFinite(days) || days <= 0) {
+    return { cutoff: new Date(0), ok: false };
+  }
+  const t = tableFor(ctx.dialect);
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  try {
+    await (ctx.db as any)
+      .delete(t)
+      .where(and(lt(t.createdAt, cutoff), like(t.action, `${prefix}%`)));
+    return { cutoff, ok: true };
+  } catch (e) {
+    console.error("[activity] prefix prune failed", e);
     return { cutoff, ok: false };
   }
 };

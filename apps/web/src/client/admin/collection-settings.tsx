@@ -27,6 +27,9 @@ interface SchemaLike {
   ownerScoped?: boolean;
   tenantScoped?: boolean;
   versioned?: boolean;
+  /** Opt-in sensitive-read auditing. When on, every read of this collection
+   *  (list + by-id) records an `access.read` row in the audit log. */
+  auditReads?: boolean;
   /** True when the collection was adopted from a pre-existing physical table.
    *  Adopted collections soft-delete (archive) rather than hard-drop; managed
    *  collections hard-DROP the underlying `c_<slug>` table on delete. */
@@ -241,7 +244,7 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
             </div>
             <Switch checked={schema.tenantScoped !== false} onChange={(v) => onPatch({ tenantScoped: v })} />
           </div>
-          <div className="flex items-center justify-between gap-3 pb-1">
+          <div className="mb-2.5 flex items-center justify-between gap-3 border-b border-border pb-2.5">
             <div>
               <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Versioned (draft / published)</Trans></div>
               <div className="text-[11.5px] text-muted-foreground">
@@ -250,6 +253,18 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
               </div>
             </div>
             <Switch checked={!!schema.versioned} onChange={(v) => onPatch({ versioned: v })} />
+          </div>
+          <div className="flex items-center justify-between gap-3 pb-1">
+            <div>
+              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Audit reads</Trans></div>
+              <div className="text-[11.5px] text-muted-foreground">
+                <Trans>Record every read of this collection (list + by-id) to the audit log
+                under the <span className="font-mono">Access</span> lens — a "who viewed this"
+                trail for sensitive data. Off by default; reads are otherwise not logged.
+                Only request metadata is stored (who, when, query, item ids) — never row values.</Trans>
+              </div>
+            </div>
+            <Switch checked={!!schema.auditReads} onChange={(v) => onPatch({ auditReads: v })} />
           </div>
         </div>
       </div>

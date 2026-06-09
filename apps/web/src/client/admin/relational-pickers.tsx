@@ -443,7 +443,7 @@ function FileBrowserModal({ kind, mode, initialSelection, onCommit, onClose }: F
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea viewportClassName="max-h-[calc(min(88vh,760px)-10rem)]">
           <div className="flex flex-row">
           <FolderSidebar
             folders={folders}
@@ -880,7 +880,7 @@ function RelationBrowserModal({ target, initial, onCommit, onClose, seedLabels, 
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea viewportClassName="max-h-[calc(min(88vh,720px)-10rem)]">
           <div className="flex flex-col gap-3 p-4">
           <InputGroup>
             <InputGroupAddon><I.Search size={14} /></InputGroupAddon>

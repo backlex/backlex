@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trans } from "@lingui/react/macro";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { I } from "../icons";
 import { Badge, Button } from "../ui";
 import { templatesApi, type TemplateSummary } from "../api";
@@ -98,7 +99,10 @@ export function TemplateOnboarding({
 
       <div className="grid grid-cols-[260px_1fr] max-md:grid-cols-1">
         {/* template list */}
-        <div className="border-r border-border max-md:border-r-0 max-md:border-b max-h-[320px] overflow-y-auto">
+        <ScrollArea
+          className="border-r border-border max-md:border-r-0 max-md:border-b"
+          viewportClassName="max-h-[320px]"
+        >
           {templates.map((t) => (
             <button
               key={t.id}
@@ -117,7 +121,7 @@ export function TemplateOnboarding({
               {selected === t.id && <I.Check size={14} className="text-primary shrink-0" />}
             </button>
           ))}
-        </div>
+        </ScrollArea>
 
         {/* preview */}
         <div className="p-5 flex flex-col">

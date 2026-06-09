@@ -271,7 +271,7 @@ function AddTranslationKeyDialog({ base, locales, existingKeys, onClose, onCreat
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>New translation key</Trans></DialogTitle>
           <DialogDescription className="text-[12.5px]"><Trans>Adds a row to <span className="font-mono">i18n_strings</span>. The key is shared across all locales; values are filled per locale.</Trans></DialogDescription>
         </DialogHeader>
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)]">
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground" htmlFor="i18n-new-key">
@@ -377,7 +377,7 @@ function AutoTranslateDialog({ locales, base, data, busy, onClose, onRun }: Auto
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Auto-translate</Trans></DialogTitle>
           <DialogDescription className="text-[12.5px]"><Trans>Translate UI strings using Claude. Requires <span className="font-mono">ANTHROPIC_API_KEY</span> on the server.</Trans></DialogDescription>
         </DialogHeader>
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)]">
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>From</Trans></label>
@@ -460,7 +460,7 @@ function ManageLocalesDialog({ locales, defaultLocale, onClose, onSave }: Manage
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Manage locales</Trans></DialogTitle>
           <DialogDescription className="text-[12.5px]"><Trans>Active languages for this workspace. The default is returned by the public API when a requested locale has no string.</Trans></DialogDescription>
         </DialogHeader>
-        <ScrollArea className="min-h-0 flex-1">
+        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)]">
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">

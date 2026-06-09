@@ -786,7 +786,7 @@ export function AskAiPage({
         }
       />
 
-      <div className="-mx-1 overflow-x-auto px-1">
+      <div className="-mx-1 px-1">
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
           <TabsList className="whitespace-nowrap">
             <TabsTrigger value="ask">
@@ -1850,7 +1850,7 @@ function RunsTab({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <div className="-mx-1 overflow-x-auto px-1">
+        <div className="-mx-1 px-1">
           <Tabs value={filter} onValueChange={(v) => setFilter(v as RunFilter)}>
             <TabsList className="whitespace-nowrap">
               <TabsTrigger value="all">
@@ -1910,8 +1910,7 @@ function RunsTab({
           </div>
         ) : (
           <ScrollArea viewportClassName="max-h-[640px]">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[680px] border-collapse text-[13px]">
+            <table className="w-full min-w-[680px] border-collapse text-[13px]">
                 <thead>
                   <tr className="border-b border-border">
                     {[
@@ -1983,7 +1982,6 @@ function RunsTab({
                   ))}
                 </tbody>
               </table>
-            </div>
           </ScrollArea>
         )}
       </div>

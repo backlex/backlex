@@ -20,6 +20,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@backlex/ui/components/input";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { I } from "../icons";
 import { Badge, Button, Switch } from "../ui";
@@ -584,20 +585,14 @@ export function SamlProviderDialog({
                 </Button>
               </div>
               {testResult ? (
-                <pre
-                  className="font-mono"
-                  style={{
-                    margin: 0,
-                    padding: 12,
-                    background: "var(--muted)",
-                    borderRadius: 8,
-                    fontSize: 11.5,
-                    maxHeight: 240,
-                    overflow: "auto",
-                  }}
+                <ScrollArea
+                  style={{ background: "var(--muted)", borderRadius: 8 }}
+                  viewportStyle={{ maxHeight: 240 }}
                 >
-                  {JSON.stringify(testResult, null, 2)}
-                </pre>
+                  <pre className="font-mono" style={{ margin: 0, padding: 12, fontSize: 11.5 }}>
+                    {JSON.stringify(testResult, null, 2)}
+                  </pre>
+                </ScrollArea>
               ) : null}
             </div>
           )}

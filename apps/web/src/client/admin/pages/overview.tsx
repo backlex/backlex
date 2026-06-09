@@ -201,7 +201,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
         ))}
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-2.5">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
         {quickActions.map((a) => {
           const Icon = a.icon;
           return (

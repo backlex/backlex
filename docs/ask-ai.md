@@ -45,7 +45,7 @@ click — except when "auto-run reads" is on and the proposed tool matches
 `POST /api/admin/mcp` with `{ method: "tools/list" }` returns every tool
 the dispatcher exposes plus the `kind` (`read` / `write` / `destruct`)
 and `adminOnly` hints introduced in this phase (see
-[MCP](./mcp.md#tool-kind-metadata)). Rows are grouped by namespace
+[MCP](/docs/mcp/#tool-kind-metadata)). Rows are grouped by namespace
 prefix (`collections.*`, `schema.*`, …), all collapsed on first load,
 and filtered by a single search input that matches against name +
 description. Each row carries a per-tool switch wired to the selected
@@ -200,5 +200,5 @@ existing popover behaviour is unchanged.
 | `apps/web/src/client/admin/pages/ask-ai.tsx` | The page. Replaces the design's mock `planForPrompt` with the two real fetches. |
 | `apps/web/tests/ai-ask.test.ts` | Contract tests — UNAVAILABLE branch, unknown tool, happy-path run + activity row, 401/403 gates. |
 
-See also: [MCP (Model Context Protocol)](./mcp.md) for the underlying
+See also: [MCP (Model Context Protocol)](/docs/mcp/) for the underlying
 tool roster and per-key guards.

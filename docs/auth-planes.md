@@ -227,7 +227,7 @@ behaviour the better-auth instance picks up:
   also folded into the CORS allow-list).
 - **`email_config`** (`packages/db/src/pg/schema.ts:1131`). Same
   shape — per-workspace email transport. Full reference in
-  [API keys, access tokens, email & OAuth](api-keys-and-email.md).
+  [API keys, access tokens, email & OAuth](/docs/api-keys-and-email/).
 
 Resolution order is consistent across both:
 
@@ -269,7 +269,7 @@ it to "24 hours" and accidentally turn revocation off. If you need a
 different window, edit the constant.
 
 Full reference (response shape, refresh endpoint, trade-offs):
-[API keys, access tokens, email & OAuth](api-keys-and-email.md).
+[API keys, access tokens, email & OAuth](/docs/api-keys-and-email/).
 
 ## SDK integration
 

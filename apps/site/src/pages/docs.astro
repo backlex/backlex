@@ -14,8 +14,8 @@ import Base from "../layouts/Base.astro";
       <span class="crumb"><span class="sep">/</span><span class="here" id="crumb-title">Getting started</span></span>
       <div class="search">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-        <input placeholder="Search docs…" id="search-input" />
-        <span class="kbd">⌘K</span>
+        <input placeholder="Search docsâ¦" id="search-input" />
+        <span class="kbd">âK</span>
       </div>
       <div class="actions">
         <a class="btn" href="/">Home</a>
@@ -23,7 +23,7 @@ import Base from "../layouts/Base.astro";
           <svg class="ic-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
           <svg class="ic-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
         </button>
-        <a class="btn btn-primary" href="#">Admin demo</a>
+        <a class="btn btn-primary" href="https://cloud.backlex.com">Open Cloud →</a>
       </div>
     </div>
   </nav>
@@ -63,7 +63,7 @@ import Base from "../layouts/Base.astro";
   </aside>
 
   <main>
-    <!-- ───────────── Getting started ───────────── -->
+    <!-- âââââââââââââ Getting started âââââââââââââ -->
     <article id="article-getting-started">
       <div class="frontmatter">
         <span class="eyebrow"><span class="dot"></span>Start here</span>
@@ -73,12 +73,12 @@ import Base from "../layouts/Base.astro";
 
       <h2 id="prerequisites">Prerequisites</h2>
       <ul>
-        <li>Bun ≥ 1.1 — <code>curl -fsSL https://bun.sh/install | bash</code></li>
+        <li>Bun â¥ 1.1 â <code>curl -fsSL https://bun.sh/install | bash</code></li>
         <li>Optional: Postgres 14+ for production. Dev defaults to Bun's built-in SQLite.</li>
       </ul>
 
       <h2 id="install">Install + run</h2>
-      <div class="codeblock"><div class="head"><span class="dot"></span>terminal</div><pre><span class="c-prompt">$ </span><span class="c-fn">git clone</span> github.com/your/backlex &amp;&amp; <span class="c-kw">cd</span> backlex
+      <div class="codeblock"><div class="head"><span class="dot"></span>terminal</div><pre><span class="c-prompt">$ </span><span class="c-fn">git clone</span> github.com/backlex/backlex &amp;&amp; <span class="c-kw">cd</span> backlex
 <span class="c-prompt">$ </span><span class="c-fn">bun install</span>
 <span class="c-prompt">$ </span><span class="c-fn">cp</span> apps/web/.dev.vars.example apps/web/.dev.vars
 
@@ -86,13 +86,13 @@ import Base from "../layouts/Base.astro";
 <span class="c-prompt">$ </span><span class="c-fn">bun run</span> db:migrate:sqlite
 
 <span class="c-comment"># Vite + Cloudflare miniflare in one process on :5173</span>
-<span class="c-comment"># (admin SPA + Worker bundled — no separate API port, no proxy)</span>
+<span class="c-comment"># (admin SPA + Worker bundled â no separate API port, no proxy)</span>
 <span class="c-prompt">$ </span><span class="c-fn">bun run</span> dev</pre></div>
 
-      <p>Open <code>http://localhost:5173/sign-up</code> and create the first user — they auto-receive the <code>admin</code> role. Subsequent sign-ups get <code>authenticated</code>.</p>
+      <p>Open <code>http://localhost:5173/sign-up</code> and create the first user â they auto-receive the <code>admin</code> role. Subsequent sign-ups get <code>authenticated</code>.</p>
 
       <h2 id="first-collection">Your first collection</h2>
-      <p>In the admin, go to <strong>Collections → New</strong> and define:</p>
+      <p>In the admin, go to <strong>Collections â New</strong> and define:</p>
       <div class="codeblock"><div class="head"><span class="dot"></span>collection definition</div><pre><span class="c-key">slug</span>: posts
 <span class="c-key">fields</span>:
   - <span class="c-key">title</span> (text, required)
@@ -100,7 +100,7 @@ import Base from "../layouts/Base.astro";
   - <span class="c-key">published</span> (boolean)
   - <span class="c-key">views</span> (integer)
 <span class="c-key">ownerScoped</span>: <span class="c-num">true</span></pre></div>
-      <p>Click <strong>Create</strong>. The API runs <code>CREATE TABLE c_posts (...)</code> against the live database — no redeploy.</p>
+      <p>Click <strong>Create</strong>. The API runs <code>CREATE TABLE c_posts (...)</code> against the live database â no redeploy.</p>
 
       <h2 id="first-items">Your first items</h2>
       <p>Click on <code>posts</code> in the list, then <strong>+ New item</strong>. Type-aware inputs render based on field type (textarea for longtext, checkbox for boolean, number input for views). Save.</p>
@@ -111,7 +111,7 @@ import Base from "../layouts/Base.astro";
 <span class="c-prompt">$ </span><span class="c-fn">curl</span> http://localhost:5173/api/items/posts?limit=10 \
        --cookie <span class="c-str">"$(cat /tmp/cookie.txt)"</span>
 
-<span class="c-comment"># REST with filter (DSL — same as permissions)</span>
+<span class="c-comment"># REST with filter (DSL â same as permissions)</span>
 <span class="c-prompt">$ </span><span class="c-fn">curl</span> <span class="c-str">"http://localhost:5173/api/items/posts?filter=$(echo '&#123;\"published\":&#123;\"_eq\":true&#125;,\"views\":&#123;\"_gt\":10&#125;&#125;' | jq -sRr @uri)&amp;sort=-views"</span>
 
 <span class="c-comment"># GraphQL</span>
@@ -134,39 +134,39 @@ import Base from "../layouts/Base.astro";
 
       <h2 id="what-next">What next</h2>
       <ul>
-        <li><a class="in-text" href="#permissions">Permissions DSL</a> — granular role + condition rules</li>
-        <li><a class="in-text" href="#auth-planes">Auth planes</a> — admin pool vs workspace end-user pool</li>
-        <li><a class="in-text" href="#sandbox">Sandbox functions</a> — JavaScript code that runs in a sandbox</li>
-        <li><a class="in-text" href="#mcp">MCP server</a> — expose the workspace to Claude Desktop / Cursor / IDE agents</li>
-        <li><a class="in-text" href="#deployment">Deployment</a> — push to Bun, Workers, Vercel, or Netlify</li>
+        <li><a class="in-text" href="#permissions">Permissions DSL</a> â granular role + condition rules</li>
+        <li><a class="in-text" href="#auth-planes">Auth planes</a> â admin pool vs workspace end-user pool</li>
+        <li><a class="in-text" href="#sandbox">Sandbox functions</a> â JavaScript code that runs in a sandbox</li>
+        <li><a class="in-text" href="#mcp">MCP server</a> â expose the workspace to Claude Desktop / Cursor / IDE agents</li>
+        <li><a class="in-text" href="#deployment">Deployment</a> â push to Bun, Workers, Vercel, or Netlify</li>
       </ul>
 
       <div class="doc-footer">
         <span></span>
-        <a class="next" href="#architecture"><span class="dir">Next →</span><span class="title">Architecture</span></a>
+        <a class="next" href="#architecture"><span class="dir">Next â</span><span class="title">Architecture</span></a>
       </div>
     </article>
 
-    <!-- ───────────── Architecture ───────────── -->
+    <!-- âââââââââââââ Architecture âââââââââââââ -->
     <article id="article-architecture">
       <div class="frontmatter">
         <span class="eyebrow"><span class="dot"></span>Start here</span>
         <h1>Architecture</h1>
-        <p class="desc">The big picture of backlex in one page — repo shape, runtimes, and adapter layers.</p>
+        <p class="desc">The big picture of backlex in one page â repo shape, runtimes, and adapter layers.</p>
       </div>
 
       <h2 id="repo-shape">Repo shape</h2>
       <div class="codeblock"><div class="head"><span class="dot"></span>tree</div><pre>backlex/
-├─ apps/
-│  └─ web/                 One workspace — Hono API + Vite + React admin SPA
-│                          (server/ + client/ + entries/&#123;bun,worker,vercel,netlify&#125;.ts)
-└─ packages/
-   ├─ core/                Types only (DSL, errors, adapter interfaces)
-   ├─ db/                  Drizzle schemas (pg + sqlite) + dynamic-DDL applier + DSL compiler
-   ├─ auth/                better-auth wrapper + plugin selection
-   ├─ ui/                  shadcn radix-luma component library
-   ├─ client/              @backlex/client typed SDK
-   └─ cli/                 backlex CLI</pre></div>
+ââ apps/
+â  ââ web/                 One workspace â Hono API + Vite + React admin SPA
+â                          (server/ + client/ + entries/&#123;bun,worker,vercel,netlify&#125;.ts)
+ââ packages/
+   ââ core/                Types only (DSL, errors, adapter interfaces)
+   ââ db/                  Drizzle schemas (pg + sqlite) + dynamic-DDL applier + DSL compiler
+   ââ auth/                better-auth wrapper + plugin selection
+   ââ ui/                  shadcn radix-luma component library
+   ââ client/              @backlex/client typed SDK
+   ââ cli/                 backlex CLI</pre></div>
 
       <h2 id="adapter-pattern">Adapter pattern</h2>
       <p>Every cross-runtime concern hides behind a TypeScript interface in <code>@backlex/core/adapters</code>. <code>buildContext</code> picks the right implementation based on bindings/env.</p>
@@ -175,20 +175,20 @@ import Base from "../layouts/Base.astro";
         <tbody>
           <tr><td><code>StorageAdapter</code></td><td>fsStorage / bunS3Storage</td><td>r2Storage / s3FetchStorage</td><td>s3FetchStorage (S3 env vars required)</td></tr>
           <tr><td><code>VectorAdapter</code></td><td>pgvectorAdapter</td><td>vectorizeAdapter</td><td>pgvectorAdapter</td></tr>
-          <tr><td>Realtime</td><td>in-proc + SSE</td><td>DO (Hibernation API) → SSE bridge</td><td>SSE loads but impractical</td></tr>
+          <tr><td>Realtime</td><td>in-proc + SSE</td><td>DO (Hibernation API) â SSE bridge</td><td>SSE loads but impractical</td></tr>
           <tr><td><code>EmailAdapter</code></td><td>console/resend/sendgrid/mailgun/ses/smtp</td><td>same minus smtp (no raw TCP)</td><td>console/resend/sendgrid/mailgun/ses/smtp</td></tr>
           <tr><td><code>ImageAdapter</code></td><td>bunImage</td><td>cfImage</td><td>passthroughImage</td></tr>
           <tr><td><code>SamlAdapter</code></td><td>samlify</td><td>samlify (via nodejs_compat)</td><td>samlify (Node 22 native crypto)</td></tr>
-          <tr><td><code>LdapAdapter</code></td><td>ldapts</td><td>— (no raw TCP)</td><td>ldapts</td></tr>
+          <tr><td><code>LdapAdapter</code></td><td>ldapts</td><td>â (no raw TCP)</td><td>ldapts</td></tr>
         </tbody>
       </table></div>
 
       <h2 id="hybrid-schema">Hybrid schema ownership</h2>
-      <p>System tables (<code>users</code>, <code>sessions</code>, <code>roles</code>, <code>permissions</code>, <code>files</code>, <code>activity</code>, <code>revisions</code>, <code>webhooks</code>, <code>flows</code>, <code>functions</code>, plus auth / SSO tables) live in <code>packages/db/src/&#123;pg,sqlite&#125;/schema.ts</code> — Drizzle owns them, and they migrate via hand-written SQL under <code>packages/db/drizzle/&#123;pg,sqlite&#125;/</code>.</p>
-      <p>User collections live in <strong>physical tables</strong> whose name is whatever the collection metadata row's <code>physical_table</code> column says — the default is <code>c_&lt;tenantPrefix12&gt;_&lt;slug&gt;</code>, but adopted collections can wrap any existing table name. <code>POST /api/collections</code> is the single create endpoint and runs DDL only on managed collections (<code>adopted: false</code>); <code>adopted: true</code> writes the metadata row alone.</p>
-      <div class="callout"><span class="label">Important</span><br><code>applyCollection</code> is <strong>additive only</strong> — it never drops or alters existing columns and short-circuits on adopted collections. Field removal goes through the explicit <code>dropField</code> function so admins can audit destructive moves.</div>
+      <p>System tables (<code>users</code>, <code>sessions</code>, <code>roles</code>, <code>permissions</code>, <code>files</code>, <code>activity</code>, <code>revisions</code>, <code>webhooks</code>, <code>flows</code>, <code>functions</code>, plus auth / SSO tables) live in <code>packages/db/src/&#123;pg,sqlite&#125;/schema.ts</code> â Drizzle owns them, and they migrate via hand-written SQL under <code>packages/db/drizzle/&#123;pg,sqlite&#125;/</code>.</p>
+      <p>User collections live in <strong>physical tables</strong> whose name is whatever the collection metadata row's <code>physical_table</code> column says â the default is <code>c_&lt;tenantPrefix12&gt;_&lt;slug&gt;</code>, but adopted collections can wrap any existing table name. <code>POST /api/collections</code> is the single create endpoint and runs DDL only on managed collections (<code>adopted: false</code>); <code>adopted: true</code> writes the metadata row alone.</p>
+      <div class="callout"><span class="label">Important</span><br><code>applyCollection</code> is <strong>additive only</strong> â it never drops or alters existing columns and short-circuits on adopted collections. Field removal goes through the explicit <code>dropField</code> function so admins can audit destructive moves.</div>
 
-      <h2 id="permission-dsl-paths">Permission DSL — three execution paths</h2>
+      <h2 id="permission-dsl-paths">Permission DSL â three execution paths</h2>
       <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Path</th><th>Compiler</th><th>Output</th></tr></thead>
         <tbody>
@@ -201,19 +201,19 @@ import Base from "../layouts/Base.astro";
 
       <h2 id="event-flow">Event flow</h2>
       <p>CRUD routes call <code>publishEvent(env, channel, payload, serverCtx)</code>:</p>
-      <div class="codeblock"><div class="head"><span class="dot"></span>flow</div><pre>┌─ items.ts route ─┐
-│  POST /api/items │
-│        │         │
-│        ▼         │
-│ publishEvent ────┼───► realtime (SSE / DO)       ◄── connected subscribers
-│        │         │
-│        ├───────► dispatchWebhooks ──► HMAC-signed POST to webhook.url
-│        │
-│        ├───────► runFlows ──────► op chain (log/webhook/email/condition)
-│        │
-│        └───────► runEventFunctions ──► matching trigger functions
-└──────────────────┘                     in the sandbox provider</pre></div>
-      <p>All four downstream consumers see the same event payload. Webhooks, flows, and functions are fire-and-forget — they don't block the API response.</p>
+      <div class="codeblock"><div class="head"><span class="dot"></span>flow</div><pre>ââ items.ts route ââ
+â  POST /api/items â
+â        â         â
+â        â¼         â
+â publishEvent âââââ¼ââââº realtime (SSE / DO)       âââ connected subscribers
+â        â         â
+â        âââââââââº dispatchWebhooks âââº HMAC-signed POST to webhook.url
+â        â
+â        âââââââââº runFlows âââââââº op chain (log/webhook/email/condition)
+â        â
+â        âââââââââº runEventFunctions âââº matching trigger functions
+ââââââââââââââââââââ                     in the sandbox provider</pre></div>
+      <p>All four downstream consumers see the same event payload. Webhooks, flows, and functions are fire-and-forget â they don't block the API response.</p>
 
       <h2 id="why-these-tradeoffs">Why these tradeoffs</h2>
       <ul>
@@ -224,12 +224,12 @@ import Base from "../layouts/Base.astro";
       </ul>
 
       <div class="doc-footer">
-        <a href="#getting-started"><span class="dir">← Previous</span><span class="title">Getting started</span></a>
-        <a class="next" href="#deployment"><span class="dir">Next →</span><span class="title">Deployment</span></a>
+        <a href="#getting-started"><span class="dir">â Previous</span><span class="title">Getting started</span></a>
+        <a class="next" href="#deployment"><span class="dir">Next â</span><span class="title">Deployment</span></a>
       </div>
     </article>
 
-    <!-- ───────────── Deployment ───────────── -->
+    <!-- âââââââââââââ Deployment âââââââââââââ -->
     <article id="article-deployment">
       <div class="frontmatter">
         <span class="eyebrow"><span class="dot"></span>Start here</span>
@@ -241,13 +241,13 @@ import Base from "../layouts/Base.astro";
       <div class="table-wrap"><table class="doc-table">
         <thead><tr><th></th><th>Bun (self-host)</th><th>Cloudflare Workers</th><th>Vercel Functions</th><th>Netlify Functions</th></tr></thead>
         <tbody>
-          <tr><td>Database</td><td>SQLite or PG</td><td>D1 or Hyperdrive→PG</td><td>PG (neon-http recommended)</td><td>PG (neon-http recommended)</td></tr>
+          <tr><td>Database</td><td>SQLite or PG</td><td>D1 or HyperdriveâPG</td><td>PG (neon-http recommended)</td><td>PG (neon-http recommended)</td></tr>
           <tr><td>Storage</td><td>local fs / S3 / Bun.S3Client</td><td>R2 (S3 fallback)</td><td>S3 (required)</td><td>S3 (required)</td></tr>
           <tr><td>Realtime</td><td>in-proc + SSE</td><td>Durable Objects + WS</td><td>loads but impractical</td><td>loads but impractical</td></tr>
           <tr><td>SAML</td><td>yes</td><td>yes (nodejs_compat)</td><td>yes</td><td>yes</td></tr>
           <tr><td>LDAP / SMTP</td><td>yes</td><td>503 (no raw TCP)</td><td>yes (Node 22)</td><td>yes (Node 22)</td></tr>
           <tr><td>Sandbox</td><td>Bun worker</td><td>QuickJS / remote HTTP</td><td>QuickJS / remote HTTP</td><td>QuickJS / remote HTTP</td></tr>
-          <tr><td>Cost</td><td>VPS</td><td>$0–5/mo</td><td>$0–20/mo</td><td>$0–19/mo</td></tr>
+          <tr><td>Cost</td><td>VPS</td><td>$0â5/mo</td><td>$0â20/mo</td><td>$0â19/mo</td></tr>
         </tbody>
       </table></div>
 
@@ -282,28 +282,28 @@ import Base from "../layouts/Base.astro";
       <p>Cron triggers (<code>* * * * *</code> in <code>vercel.json</code>) hit <code>/api/_cron/tick</code> and call the same <code>cronTick</code> the Bun scheduler uses.</p>
 
       <h2 id="netlify">Netlify</h2>
-      <p><code>netlify.toml</code> at the repo root mirrors the Vercel layout — admin SPA + edge function for <code>/api/*</code> + scheduled function for cron.</p>
+      <p><code>netlify.toml</code> at the repo root mirrors the Vercel layout â admin SPA + edge function for <code>/api/*</code> + scheduled function for cron.</p>
       <div class="codeblock"><div class="head"><span class="dot"></span>terminal</div><pre><span class="c-prompt">$ </span><span class="c-fn">netlify</span> init
 <span class="c-prompt">$ </span><span class="c-fn">netlify</span> env:set DATABASE_URL postgres://...
 <span class="c-prompt">$ </span><span class="c-fn">netlify</span> env:set AUTH_SECRET $(openssl rand -hex 32)
 <span class="c-prompt">$ </span><span class="c-fn">netlify</span> deploy --prod</pre></div>
 
       <div class="doc-footer">
-        <a href="#architecture"><span class="dir">← Previous</span><span class="title">Architecture</span></a>
-        <a class="next" href="#collections"><span class="dir">Next →</span><span class="title">Collections</span></a>
+        <a href="#architecture"><span class="dir">â Previous</span><span class="title">Architecture</span></a>
+        <a class="next" href="#collections"><span class="dir">Next â</span><span class="title">Collections</span></a>
       </div>
     </article>
 
-    <!-- ───────────── Collections ───────────── -->
+    <!-- âââââââââââââ Collections âââââââââââââ -->
     <article id="article-collections">
       <div class="frontmatter">
         <span class="eyebrow"><span class="dot"></span>Data</span>
         <h1>Collections</h1>
-        <p class="desc">Dynamic schema. Each collection becomes a physical c_&lt;slug&gt; table at runtime — drop or alter via the admin UI without writing migrations.</p>
+        <p class="desc">Dynamic schema. Each collection becomes a physical c_&lt;slug&gt; table at runtime â drop or alter via the admin UI without writing migrations.</p>
       </div>
 
       <h2 id="what-is-a-collection">What's a collection</h2>
-      <p>A collection is a metadata row plus a physical table. The metadata row lives in the <code>collections</code> system table and stores the slug, owner-scope flag, default sort, display template, and the registered field list. The physical table — typically <code>c_&lt;tenantPrefix12&gt;_&lt;slug&gt;</code> — holds the actual data.</p>
+      <p>A collection is a metadata row plus a physical table. The metadata row lives in the <code>collections</code> system table and stores the slug, owner-scope flag, default sort, display template, and the registered field list. The physical table â typically <code>c_&lt;tenantPrefix12&gt;_&lt;slug&gt;</code> â holds the actual data.</p>
       <p><code>POST /api/collections</code> is the single create endpoint. It runs DDL on managed collections (<code>adopted: false</code>) and writes the metadata row alone on adopted ones.</p>
 
       <h2 id="create">Creating a collection</h2>
@@ -330,7 +330,7 @@ import Base from "../layouts/Base.astro";
       </ul>
 
       <h2 id="adding-fields">Adding fields</h2>
-      <p>Each call appends one column via <code>ALTER TABLE c_posts ADD COLUMN ...</code>. The applier is <strong>additive only</strong> — it never drops or modifies existing columns. Field removal is a separate explicit operation (<code>dropField</code>).</p>
+      <p>Each call appends one column via <code>ALTER TABLE c_posts ADD COLUMN ...</code>. The applier is <strong>additive only</strong> â it never drops or modifies existing columns. Field removal is a separate explicit operation (<code>dropField</code>).</p>
       <div class="codeblock"><div class="head"><span class="dot"></span>http</div><pre>PATCH /api/collections/posts
 &#123;
   <span class="c-str">"fields"</span>: [
@@ -359,28 +359,28 @@ import Base from "../layouts/Base.astro";
       <h2 id="system-columns">System columns</h2>
       <p>Every <code>c_&lt;slug&gt;</code> table automatically gets:</p>
       <ul>
-        <li><code>id</code> — UUIDv7 primary key (ULID-shaped on SQLite)</li>
-        <li><code>created_at</code>, <code>updated_at</code> — server-stamped timestamps</li>
-        <li><code>owner_id</code> — set on create if the collection is <code>ownerScoped</code></li>
-        <li><code>tenant_id</code> — multi-tenant isolation column</li>
+        <li><code>id</code> â UUIDv7 primary key (ULID-shaped on SQLite)</li>
+        <li><code>created_at</code>, <code>updated_at</code> â server-stamped timestamps</li>
+        <li><code>owner_id</code> â set on create if the collection is <code>ownerScoped</code></li>
+        <li><code>tenant_id</code> â multi-tenant isolation column</li>
       </ul>
-      <p>These names are reserved — user-defined fields cannot reuse them.</p>
+      <p>These names are reserved â user-defined fields cannot reuse them.</p>
 
       <div class="doc-footer">
-        <a href="#deployment"><span class="dir">← Previous</span><span class="title">Deployment</span></a>
-        <a class="next" href="#adopting-tables"><span class="dir">Next →</span><span class="title">Adopting tables</span></a>
+        <a href="#deployment"><span class="dir">â Previous</span><span class="title">Deployment</span></a>
+        <a class="next" href="#adopting-tables"><span class="dir">Next â</span><span class="title">Adopting tables</span></a>
       </div>
     </article>
 
-    <!-- ───────────── Adopting tables ───────────── -->
+    <!-- âââââââââââââ Adopting tables âââââââââââââ -->
     <article id="article-adopting-tables">
       <div class="frontmatter">
         <span class="eyebrow"><span class="dot"></span>Data</span>
         <h1>Adopting existing tables</h1>
-        <p class="desc">Point a collection at a table you already own — no DDL, no migrations.</p>
+        <p class="desc">Point a collection at a table you already own â no DDL, no migrations.</p>
       </div>
 
-      <p>backlex normally creates a fresh physical table (<code>c_&lt;slug&gt;</code>) for every collection. <strong>Adoption</strong> is the opposite path: you point a collection at a table you already have and backlex wraps it with permissions, the items API, realtime, and the admin UI — without writing a single DDL statement against your data.</p>
+      <p>backlex normally creates a fresh physical table (<code>c_&lt;slug&gt;</code>) for every collection. <strong>Adoption</strong> is the opposite path: you point a collection at a table you already have and backlex wraps it with permissions, the items API, realtime, and the admin UI â without writing a single DDL statement against your data.</p>
 
       <h2 id="when-to-adopt">When to adopt vs create</h2>
       <p>Adopt when another app already writes to the table, when you want your own migration tooling to stay the only thing that touches DDL, or when you want backlex on top of legacy data without backfilling. Use a normal <strong>managed</strong> collection when the table doesn't exist yet or when admin-UI field add/remove should alter the physical table.</p>
@@ -391,7 +391,7 @@ import Base from "../layouts/Base.astro";
       <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Source (PG / SQLite)</th><th>backlex FieldType</th></tr></thead>
         <tbody>
-          <tr><td><code>varchar(n)</code> / <code>text</code> (n ≤ 255)</td><td><code>text</code></td></tr>
+          <tr><td><code>varchar(n)</code> / <code>text</code> (n â¤ 255)</td><td><code>text</code></td></tr>
           <tr><td><code>varchar(n)</code> / <code>text</code> (n &gt; 255)</td><td><code>longtext</code></td></tr>
           <tr><td><code>integer</code> / <code>bigint</code> / <code>smallint</code></td><td><code>integer</code></td></tr>
           <tr><td><code>numeric</code> / <code>real</code> / <code>double</code></td><td><code>number</code></td></tr>
@@ -401,15 +401,15 @@ import Base from "../layouts/Base.astro";
           <tr><td><code>uuid</code></td><td><code>uuid</code></td></tr>
         </tbody>
       </table></div>
-      <p>Arrays, enum types, geometry/PostGIS, and custom domains aren't mapped — inspect flags them, the wizard hides them, and they don't surface in the items API. The table itself can still be adopted.</p>
+      <p>Arrays, enum types, geometry/PostGIS, and custom domains aren't mapped â inspect flags them, the wizard hides them, and they don't surface in the items API. The table itself can still be adopted.</p>
       <p><strong>Reserved column names.</strong> <code>id</code>, <code>tenant_id</code>, <code>created_at</code>, <code>updated_at</code>, <code>owner_id</code>. If your table uses one of these the column has to match its backlex role (e.g. <code>id</code> must be the PK). Conflicts surface as warnings on inspect.</p>
 
       <h2 id="wizard">The 3-step wizard</h2>
-      <p>The admin lives at <strong>Collections → Adopt existing</strong>. Each step maps to one admin endpoint, so the flow scripts cleanly too.</p>
+      <p>The admin lives at <strong>Collections â Adopt existing</strong>. Each step maps to one admin endpoint, so the flow scripts cleanly too.</p>
       <h3 id="step-1">1. Pick a table</h3>
       <div class="codeblock"><div class="head"><span class="dot"></span>http</div><pre>GET /api/admin/adopt/tables
 
-→ &#123;
+â &#123;
   <span class="c-str">"data"</span>: [
     &#123; <span class="c-str">"name"</span>: <span class="c-str">"legacy_articles"</span>, <span class="c-str">"columns"</span>: <span class="c-num">14</span>, <span class="c-str">"rowCount"</span>: <span class="c-num">4280</span> &#125;,
     &#123; <span class="c-str">"name"</span>: <span class="c-str">"newsletter_subs"</span>, <span class="c-str">"columns"</span>: <span class="c-num">6</span>,  <span class="c-str">"rowCount"</span>: <span class="c-num">12482</span> &#125;,
@@ -421,12 +421,12 @@ import Base from "../layouts/Base.astro";
       <div class="codeblock"><div class="head"><span class="dot"></span>http</div><pre>POST /api/admin/adopt/inspect
 &#123; <span class="c-str">"table"</span>: <span class="c-str">"legacy_articles"</span> &#125;
 
-→ &#123;
+â &#123;
   <span class="c-str">"data"</span>: &#123;
     <span class="c-str">"pk"</span>: &#123; <span class="c-str">"column"</span>: <span class="c-str">"id"</span>, <span class="c-str">"dbType"</span>: <span class="c-str">"uuid"</span>, <span class="c-str">"supported"</span>: <span class="c-num">true</span> &#125;,
     <span class="c-str">"columns"</span>: [
       &#123; <span class="c-str">"name"</span>: <span class="c-str">"title"</span>, <span class="c-str">"dbType"</span>: <span class="c-str">"text"</span>, <span class="c-str">"suggested"</span>: <span class="c-str">"text"</span> &#125;,
-      <span class="c-comment">/* … */</span>
+      <span class="c-comment">/* â¦ */</span>
     ],
     <span class="c-str">"fks"</span>: [
       &#123; <span class="c-str">"column"</span>: <span class="c-str">"author_id"</span>, <span class="c-str">"referencesTable"</span>: <span class="c-str">"wp_users"</span>, <span class="c-str">"referencesColumn"</span>: <span class="c-str">"id"</span> &#125;
@@ -444,15 +444,15 @@ import Base from "../layouts/Base.astro";
   <span class="c-str">"ownerScoped"</span>: <span class="c-num">false</span>,
   <span class="c-str">"fields"</span>: [ <span class="c-comment">/* user-mapped */</span> ]
 &#125;</pre></div>
-      <div class="callout warning"><span class="label">No DDL</span><br><code>applyCollection</code> short-circuits on <code>adopted: true</code> — backlex never runs <code>CREATE TABLE</code> or <code>ALTER TABLE</code> against your data. Field changes via the admin <strong>do not</strong> persist on adopted collections.</div>
+      <div class="callout warning"><span class="label">No DDL</span><br><code>applyCollection</code> short-circuits on <code>adopted: true</code> â backlex never runs <code>CREATE TABLE</code> or <code>ALTER TABLE</code> against your data. Field changes via the admin <strong>do not</strong> persist on adopted collections.</div>
 
       <div class="doc-footer">
-        <a href="#collections"><span class="dir">← Previous</span><span class="title">Collections</span></a>
-        <a class="next" href="#querying"><span class="dir">Next →</span><span class="title">Querying items</span></a>
+        <a href="#collections"><span class="dir">â Previous</span><span class="title">Collections</span></a>
+        <a class="next" href="#querying"><span class="dir">Next â</span><span class="title">Querying items</span></a>
       </div>
     </article>
 
-    <!-- ───────────── Querying ───────────── -->
+    <!-- âââââââââââââ Querying âââââââââââââ -->
     <article id="article-querying">
       <div class="frontmatter">
         <span class="eyebrow"><span class="dot"></span>Data</span>
@@ -467,13 +467,13 @@ import Base from "../layouts/Base.astro";
         <thead><tr><th>Param</th><th>Type</th><th>Default</th><th>Does</th></tr></thead>
         <tbody>
           <tr><td><code>filter</code></td><td>JSON-encoded DSL condition</td><td><code>null</code></td><td>Row predicate; AND'd with the role's permission whereSql</td></tr>
-          <tr><td><code>q</code></td><td>string</td><td>—</td><td>Free-text <code>_contains</code> across every readable text/longtext field</td></tr>
+          <tr><td><code>q</code></td><td>string</td><td>â</td><td>Free-text <code>_contains</code> across every readable text/longtext field</td></tr>
           <tr><td><code>sort</code></td><td>comma-separated field list</td><td><code>default_sort</code> or <code>-created_at</code></td><td><code>-</code> prefix = DESC; multi-column</td></tr>
           <tr><td><code>fields</code></td><td>comma-separated field list</td><td>all readable</td><td>SQL-level projection; system columns always re-added</td></tr>
-          <tr><td><code>expand</code></td><td>comma-separated relation fields</td><td>—</td><td>Inline-expand each named relation</td></tr>
-          <tr><td><code>limit</code></td><td>integer 1–200</td><td>50</td><td>Page size</td></tr>
-          <tr><td><code>offset</code></td><td>integer ≥ 0</td><td>0</td><td>Page offset</td></tr>
-          <tr><td><code>meta</code></td><td><code>filter_count</code>, <code>total_count</code>, <code>*</code></td><td>—</td><td>Adds extra <code>SELECT COUNT(*)</code> to <code>response.meta</code></td></tr>
+          <tr><td><code>expand</code></td><td>comma-separated relation fields</td><td>â</td><td>Inline-expand each named relation</td></tr>
+          <tr><td><code>limit</code></td><td>integer 1â200</td><td>50</td><td>Page size</td></tr>
+          <tr><td><code>offset</code></td><td>integer â¥ 0</td><td>0</td><td>Page offset</td></tr>
+          <tr><td><code>meta</code></td><td><code>filter_count</code>, <code>total_count</code>, <code>*</code></td><td>â</td><td>Adds extra <code>SELECT COUNT(*)</code> to <code>response.meta</code></td></tr>
           <tr><td><code>locale</code></td><td>string or <code>*</code></td><td><code>null</code></td><td>Projects <code>i18n_text</code> fields to one locale</td></tr>
         </tbody>
       </table></div>
@@ -506,10 +506,10 @@ import Base from "../layouts/Base.astro";
       <h2 id="expand">Expanding relations</h2>
       <div class="codeblock"><div class="head"><span class="dot"></span>http</div><pre>GET /api/items/posts?expand=author,category&amp;limit=5
 
-→ &#123;
+â &#123;
   <span class="c-str">"data"</span>: [&#123;
-    <span class="c-str">"id"</span>: <span class="c-str">"01HZ…"</span>,
-    <span class="c-str">"title"</span>: <span class="c-str">"…"</span>,
+    <span class="c-str">"id"</span>: <span class="c-str">"01HZâ¦"</span>,
+    <span class="c-str">"title"</span>: <span class="c-str">"â¦"</span>,
     <span class="c-str">"author"</span>: &#123; <span class="c-str">"id"</span>: <span class="c-str">"u_01"</span>, <span class="c-str">"name"</span>: <span class="c-str">"Rana"</span> &#125;,
     <span class="c-str">"category"</span>: &#123; <span class="c-str">"id"</span>: <span class="c-str">"c_01"</span>, <span class="c-str">"slug"</span>: <span class="c-str">"engineering"</span> &#125;
   &#125;]
@@ -519,7 +519,7 @@ import Base from "../layouts/Base.astro";
       <h2 id="meta">Counts</h2>
       <div class="codeblock"><div class="head"><span class="dot"></span>http</div><pre>GET /api/items/posts?meta=filter_count,total_count
 
-→ &#123;
+â &#123;
   <span class="c-str">"data"</span>: [ <span class="c-comment">/* page */</span> ],
   <span class="c-str">"meta"</span>: &#123;
     <span class="c-str">"filter_count"</span>: <span class="c-num">42</span>,    <span class="c-comment">// rows matching the filter + permission</span>
@@ -528,12 +528,12 @@ import Base from "../layouts/Base.astro";
 &#125;</pre></div>
 
       <div class="doc-footer">
-        <a href="#adopting-tables"><span class="dir">← Previous</span><span class="title">Adopting tables</span></a>
-        <a class="next" href="#graphql"><span class="dir">Next →</span><span class="title">GraphQL</span></a>
+        <a href="#adopting-tables"><span class="dir">â Previous</span><span class="title">Adopting tables</span></a>
+        <a class="next" href="#graphql"><span class="dir">Next â</span><span class="title">GraphQL</span></a>
       </div>
     </article>
 
-    <!-- ───────────── GraphQL ───────────── -->
+    <!-- âââââââââââââ GraphQL âââââââââââââ -->
     <article id="article-graphql">
       <div class="frontmatter">
         <span class="eyebrow"><span class="dot"></span>Data</span>
@@ -541,7 +541,7 @@ import Base from "../layouts/Base.astro";
         <p class="desc">Auto-generated schema from your collections, with queries, mutations, and the same permission DSL.</p>
       </div>
 
-      <p>GraphQL is exposed at <code>/api/graphql</code>. The schema is built at boot from <code>/api/collections</code> + the system tables — there's no SDL file to maintain. Every managed and adopted collection becomes a queryable type with matching <code>create / update / delete</code> mutations, permission-checked on every resolver.</p>
+      <p>GraphQL is exposed at <code>/api/graphql</code>. The schema is built at boot from <code>/api/collections</code> + the system tables â there's no SDL file to maintain. Every managed and adopted collection becomes a queryable type with matching <code>create / update / delete</code> mutations, permission-checked on every resolver.</p>
 
       <h2 id="query">Queries</h2>
       <div class="codeblock"><div class="head"><span class="dot"></span>graphql</div><pre><span class="c-kw">query</span> LatestPosts &#123;
@@ -567,23 +567,23 @@ import Base from "../layouts/Base.astro";
 &#125;
 
 <span class="c-kw">mutation</span> &#123;
-  create_posts(data: &#123; title: <span class="c-str">"hi"</span>, body: <span class="c-str">"…"</span> &#125;) &#123; id &#125;
+  create_posts(data: &#123; title: <span class="c-str">"hi"</span>, body: <span class="c-str">"â¦"</span> &#125;) &#123; id &#125;
 &#125;
 
 <span class="c-kw">mutation</span> &#123;
-  delete_posts(id: <span class="c-str">"01HZ…"</span>) &#123; ok &#125;
+  delete_posts(id: <span class="c-str">"01HZâ¦"</span>) &#123; ok &#125;
 &#125;</pre></div>
 
       <h2 id="introspection">Introspection</h2>
       <p>Introspection is enabled in dev and disabled in prod unless <code>GRAPHQL_INTROSPECTION=1</code> is set. The auto-generated SDL is also downloadable from <code>/api/graphql/sdl</code> for tooling.</p>
 
       <div class="doc-footer">
-        <a href="#querying"><span class="dir">← Previous</span><span class="title">Querying items</span></a>
-        <a class="next" href="#permissions"><span class="dir">Next →</span><span class="title">Permissions DSL</span></a>
+        <a href="#querying"><span class="dir">â Previous</span><span class="title">Querying items</span></a>
+        <a class="next" href="#permissions"><span class="dir">Next â</span><span class="title">Permissions DSL</span></a>
       </div>
     </article>
 
-    <!-- ───────────── Permissions ───────────── -->
+    <!-- âââââââââââââ Permissions âââââââââââââ -->
     <article id="article-permissions">
       <div class="frontmatter">
         <span class="eyebrow"><span class="dot"></span>Access</span>
@@ -605,11 +605,11 @@ import Base from "../layouts/Base.astro";
       <h2 id="variables">Variables</h2>
       <p>Resolved against the request's auth subject:</p>
       <ul>
-        <li><code>$user.id</code> — current user's id (null when anonymous)</li>
+        <li><code>$user.id</code> â current user's id (null when anonymous)</li>
         <li><code>$user.email</code></li>
-        <li><code>$user.roles</code> — array of role names</li>
-        <li><code>$tenant.id</code> (aka <code>$user.tenant_id</code>) — active workspace id</li>
-        <li><code>$now</code> — <code>Date.now()</code></li>
+        <li><code>$user.roles</code> â array of role names</li>
+        <li><code>$tenant.id</code> (aka <code>$user.tenant_id</code>) â active workspace id</li>
+        <li><code>$now</code> â <code>Date.now()</code></li>
       </ul>
       <div class="callout"><code>$user.id</code> resolving to null short-circuits comparison ops to false, so anonymous users never accidentally match <code>&#123; owner_id: &#123; _eq: "$user.id" &#125; &#125;</code>.</div>
 
@@ -628,16 +628,16 @@ import Base from "../layouts/Base.astro";
       <ul>
         <li><code>collection: "*"</code> matches every collection.</li>
         <li><code>action</code>: one of <code>read | create | update | delete</code>.</li>
-        <li><code>condition: null</code> → no row-level filter (full access).</li>
-        <li><code>fields: null</code> → all fields readable/writable. Otherwise allow-list.</li>
+        <li><code>condition: null</code> â no row-level filter (full access).</li>
+        <li><code>fields: null</code> â all fields readable/writable. Otherwise allow-list.</li>
       </ul>
 
       <h2 id="resolution">Resolution flow</h2>
       <ol>
-        <li><code>loadRolesForUser</code> — fetch the user's roles. Anonymous = <code>public</code>; any signed-in user gets <code>authenticated</code> implicitly.</li>
-        <li>If any role has <code>admin: true</code> → bypass all checks.</li>
+        <li><code>loadRolesForUser</code> â fetch the user's roles. Anonymous = <code>public</code>; any signed-in user gets <code>authenticated</code> implicitly.</li>
+        <li>If any role has <code>admin: true</code> â bypass all checks.</li>
         <li>Else find permission rows matching <code>(role IN roles) AND action AND collection IN (slug, '*')</code>.</li>
-        <li>None found → 403.</li>
+        <li>None found â 403.</li>
         <li>OR-combine the conditions across matching rows (most permissive wins). <code>null</code> condition on any matching row = unrestricted.</li>
         <li>Field allow-list = union of <code>fields</code> across matching rows.</li>
       </ol>
@@ -649,12 +649,12 @@ import Base from "../layouts/Base.astro";
         <thead><tr><th>Action</th><th>Condition</th></tr></thead>
         <tbody>
           <tr><td>read</td><td><code>&#123; owner_id: &#123; _eq: "$user.id" &#125; &#125;</code></td></tr>
-          <tr><td>create</td><td>(none — ownership set by route)</td></tr>
+          <tr><td>create</td><td>(none â ownership set by route)</td></tr>
           <tr><td>update</td><td><code>&#123; owner_id: &#123; _eq: "$user.id" &#125; &#125;</code></td></tr>
           <tr><td>delete</td><td><code>&#123; owner_id: &#123; _eq: "$user.id" &#125; &#125;</code></td></tr>
         </tbody>
       </table></div>
-      <p>These are real permission rows — admin can edit them in <code>/settings</code> afterward.</p>
+      <p>These are real permission rows â admin can edit them in <code>/settings</code> afterward.</p>
 
       <h2 id="system-roles">System roles</h2>
       <div class="table-wrap"><table class="doc-table">
@@ -668,23 +668,23 @@ import Base from "../layouts/Base.astro";
       <p>System roles cannot be deleted from the admin UI.</p>
 
       <div class="doc-footer">
-        <a href="#graphql"><span class="dir">← Previous</span><span class="title">GraphQL</span></a>
-        <a class="next" href="#auth-planes"><span class="dir">Next →</span><span class="title">Auth planes</span></a>
+        <a href="#graphql"><span class="dir">â Previous</span><span class="title">GraphQL</span></a>
+        <a class="next" href="#auth-planes"><span class="dir">Next â</span><span class="title">Auth planes</span></a>
       </div>
     </article>
 
-    <!-- ───────────── Auth planes ───────────── -->
+    <!-- âââââââââââââ Auth planes âââââââââââââ -->
     <article id="article-auth-planes">
       <div class="frontmatter">
         <span class="eyebrow"><span class="dot"></span>Access</span>
         <h1>Auth planes &amp; workspace end-users</h1>
-        <p class="desc">The control-plane vs app-plane split — admins running the dashboard, and the end-users of whatever product is built on top of a workspace.</p>
+        <p class="desc">The control-plane vs app-plane split â admins running the dashboard, and the end-users of whatever product is built on top of a workspace.</p>
       </div>
 
       <p>backlex is built for <strong>two distinct audiences inside the same instance</strong>:</p>
       <ul>
-        <li>The team running the dashboard — operators, developers, internal admins. They sign into <code>app.your-backlex.com</code>, configure collections, write permissions, invite teammates.</li>
-        <li>The end-users of whatever product is being <em>built on top of</em> a workspace — the customers of a SaaS, the readers of a CMS, the members of a community. They never see the dashboard. They only talk to the workspace's own auth surface and its data API.</li>
+        <li>The team running the dashboard â operators, developers, internal admins. They sign into <code>app.your-backlex.com</code>, configure collections, write permissions, invite teammates.</li>
+        <li>The end-users of whatever product is being <em>built on top of</em> a workspace â the customers of a SaaS, the readers of a CMS, the members of a community. They never see the dashboard. They only talk to the workspace's own auth surface and its data API.</li>
       </ul>
 
       <h2 id="two-plane-model">The two-plane model</h2>
@@ -692,25 +692,25 @@ import Base from "../layouts/Base.astro";
       <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Plane</th><th>Who</th><th>Tables</th><th>Auth surface</th><th>Cookie / token</th></tr></thead>
         <tbody>
-          <tr><td><code>"platform"</code></td><td>Admins running the dashboard</td><td><code>users</code>, <code>sessions</code>, <code>accounts</code>, <code>verifications</code>, <code>passkeys</code></td><td><code>/api/auth/*</code> (better-auth)</td><td><code>better-auth.*</code> cookies + PAKs (<code>pak_…</code>)</td></tr>
+          <tr><td><code>"platform"</code></td><td>Admins running the dashboard</td><td><code>users</code>, <code>sessions</code>, <code>accounts</code>, <code>verifications</code>, <code>passkeys</code></td><td><code>/api/auth/*</code> (better-auth)</td><td><code>better-auth.*</code> cookies + PAKs (<code>pak_â¦</code>)</td></tr>
           <tr><td><code>"app"</code></td><td>Workspace customers</td><td><code>app_users</code>, <code>app_sessions</code>, <code>app_accounts</code>, <code>app_verifications</code>, <code>external_identities</code></td><td><code>/api/t/&lt;slug&gt;/auth/*</code> (per-workspace better-auth)</td><td><code>Authorization: Bearer &lt;token&gt;</code></td></tr>
         </tbody>
       </table></div>
 
       <p>Both planes share the same <code>tenants</code> table and the same role / permission machinery. The plane tag flows from <code>sessionMiddleware</code> into <code>tenantMiddleware</code> into <code>requirePermission</code>. Every downstream check can branch on it without re-asking "which kind of user is this".</p>
-      <div class="callout info"><span class="label">Isolation</span><br><code>tenant.ts:204</code> pins an app-plane request to the workspace stamped on its session row and <em>ignores</em> any <code>X-Backlex-Tenant</code> header — a customer's frontend can never accidentally walk into another tenant's data even if it sends one.</div>
+      <div class="callout info"><span class="label">Isolation</span><br><code>tenant.ts:204</code> pins an app-plane request to the workspace stamped on its session row and <em>ignores</em> any <code>X-Backlex-Tenant</code> header â a customer's frontend can never accidentally walk into another tenant's data even if it sends one.</div>
 
       <h2 id="sign-in-flows">Sign-in flows</h2>
       <p><strong>Platform users</strong> sign in at <code>/sign-in</code>. The default surface is email + password; the workspace can enable OAuth (Google / GitHub / Apple), magic link, OTP, passkey, SAML 2.0 SSO, or LDAP. First user to sign up auto-gets the <code>admin</code> role.</p>
       <p><strong>App users</strong> sign in at <code>/t/&lt;slug&gt;/sign-in</code>. Each workspace runs its own better-auth instance with its own provider list, its own <code>app_users</code> table, and its own access + refresh tokens. The workspace owner picks which providers to expose.</p>
 
       <div class="doc-footer">
-        <a href="#permissions"><span class="dir">← Previous</span><span class="title">Permissions DSL</span></a>
-        <a class="next" href="#sso"><span class="dir">Next →</span><span class="title">SSO &amp; LDAP</span></a>
+        <a href="#permissions"><span class="dir">â Previous</span><span class="title">Permissions DSL</span></a>
+        <a class="next" href="#sso"><span class="dir">Next â</span><span class="title">SSO &amp; LDAP</span></a>
       </div>
     </article>
 
-    <!-- ───────────── SSO ───────────── -->
+    <!-- âââââââââââââ SSO âââââââââââââ -->
     <article id="article-sso">
       <div class="frontmatter">
         <span class="eyebrow"><span class="dot"></span>Access</span>
@@ -720,13 +720,13 @@ import Base from "../layouts/Base.astro";
 
       <h2 id="saml">SAML 2.0</h2>
       <p>SAML providers are configured per-workspace. The SP metadata is served from <code>/api/t/&lt;slug&gt;/auth/saml/&lt;provider&gt;/metadata</code> and the ACS endpoint at <code>/api/t/&lt;slug&gt;/auth/saml/&lt;provider&gt;/acs</code>.</p>
-      <p>The adapter (<code>samlify</code>) works on every runtime — Workers via <code>nodejs_compat</code>, Vercel / Netlify via Node 22's native crypto.</p>
+      <p>The adapter (<code>samlify</code>) works on every runtime â Workers via <code>nodejs_compat</code>, Vercel / Netlify via Node 22's native crypto.</p>
       <div class="codeblock"><div class="head"><span class="dot"></span>http</div><pre>POST /api/admin/saml/providers
 &#123;
   <span class="c-str">"name"</span>: <span class="c-str">"okta"</span>,
   <span class="c-str">"entityId"</span>: <span class="c-str">"https://your-okta.example.com/app/abc"</span>,
   <span class="c-str">"ssoUrl"</span>:   <span class="c-str">"https://your-okta.example.com/app/abc/sso/saml"</span>,
-  <span class="c-str">"x509Cert"</span>: <span class="c-str">"MIIDp…"</span>,
+  <span class="c-str">"x509Cert"</span>: <span class="c-str">"MIIDpâ¦"</span>,
   <span class="c-str">"attributeMapping"</span>: &#123;
     <span class="c-str">"email"</span>: <span class="c-str">"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"</span>,
     <span class="c-str">"name"</span>:  <span class="c-str">"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"</span>
@@ -734,16 +734,16 @@ import Base from "../layouts/Base.astro";
 &#125;</pre></div>
 
       <h2 id="ldap">LDAP / Active Directory</h2>
-      <p>Per-tenant LDAP config under <code>/api/admin/ldap-config</code>. The <code>ldapts</code> adapter is used on Bun, Vercel, and Netlify; Cloudflare Workers fall through to a throwing shim (no raw TCP) — use SAML there.</p>
+      <p>Per-tenant LDAP config under <code>/api/admin/ldap-config</code>. The <code>ldapts</code> adapter is used on Bun, Vercel, and Netlify; Cloudflare Workers fall through to a throwing shim (no raw TCP) â use SAML there.</p>
       <p>Secrets are write-only: PATCH sets the bind password, GET returns the rest of the config without it. The workspace's <code>/api/t/&lt;slug&gt;/auth/ldap/sign-in</code> endpoint accepts <code>&#123; username, password &#125;</code> and returns the same access + refresh token pair as any other app-plane sign-in.</p>
 
       <div class="doc-footer">
-        <a href="#auth-planes"><span class="dir">← Previous</span><span class="title">Auth planes</span></a>
-        <a class="next" href="#realtime"><span class="dir">Next →</span><span class="title">Realtime</span></a>
+        <a href="#auth-planes"><span class="dir">â Previous</span><span class="title">Auth planes</span></a>
+        <a class="next" href="#realtime"><span class="dir">Next â</span><span class="title">Realtime</span></a>
       </div>
     </article>
 
-    <!-- ───────────── Realtime ───────────── -->
+    <!-- âââââââââââââ Realtime âââââââââââââ -->
     <article id="article-realtime">
       <div class="frontmatter">
         <span class="eyebrow"><span class="dot"></span>Runtime</span>
@@ -751,7 +751,7 @@ import Base from "../layouts/Base.astro";
         <p class="desc">Permission-aware change feed over SSE, with a Durable Object bridge on Workers.</p>
       </div>
 
-      <p>Permission-aware change feed over Server-Sent Events. <strong>The client transport is always SSE (EventSource)</strong> — on Cloudflare Workers the route bridges an internal Durable Object WebSocket into an SSE response, so admin / SDK code never speaks raw WebSocket.</p>
+      <p>Permission-aware change feed over Server-Sent Events. <strong>The client transport is always SSE (EventSource)</strong> â on Cloudflare Workers the route bridges an internal Durable Object WebSocket into an SSE response, so admin / SDK code never speaks raw WebSocket.</p>
 
       <h2 id="channels">Channels</h2>
       <div class="table-wrap"><table class="doc-table">
@@ -763,7 +763,7 @@ import Base from "../layouts/Base.astro";
           <tr><td>anything else</td><td>none</td><td>no</td><td>Free-form pub/sub</td></tr>
         </tbody>
       </table></div>
-      <p>System channels (<code>items:*</code>, <code>collections</code>, <code>presence:*</code>) reject external publish — events come from the API itself when CRUD routes fire (or, for presence, on join/leave).</p>
+      <p>System channels (<code>items:*</code>, <code>collections</code>, <code>presence:*</code>) reject external publish â events come from the API itself when CRUD routes fire (or, for presence, on join/leave).</p>
 
       <h2 id="subscribing">Subscribing</h2>
       <div class="codeblock"><div class="head"><span class="dot"></span>typescript</div><pre><span class="c-kw">const</span> es = <span class="c-kw">new</span> <span class="c-fn">EventSource</span>(<span class="c-str">"/api/realtime/items:posts/subscribe"</span>, &#123;
@@ -782,24 +782,24 @@ es.<span class="c-fn">addEventListener</span>(<span class="c-str">"message"</spa
       <h2 id="filtering">How filtering works</h2>
       <p>When a subscriber connects, the API resolves their <code>read</code> permission for the target collection. Three pieces are stored with the connection:</p>
       <ol>
-        <li><code>authSubject</code> — <code>&#123; userId, email, roles &#125;</code></li>
-        <li><code>fieldAllowlist</code> — projected onto each event before delivery</li>
+        <li><code>authSubject</code> â <code>&#123; userId, email, roles &#125;</code></li>
+        <li><code>fieldAllowlist</code> â projected onto each event before delivery</li>
         <li>compiled in-memory matcher (<code>matchesCondition</code>) for the role's <code>read</code> condition</li>
       </ol>
       <p>For every <code>publishEvent</code>, the matcher is run against the row. If it returns false, the subscriber never sees the event. If it returns true, the row is projected to the field allow-list before being serialized.</p>
 
       <h2 id="hosting">Hosting</h2>
-      <p><strong>Bun:</strong> in-process subscriber map. Fan-out is synchronous, no extra service. Multi-instance Bun deploys lose cross-instance fan-out — accept that or move to Workers.</p>
-      <p><strong>Workers:</strong> a per-channel Durable Object holds the subscriber WebSockets. The HTTP route opens an internal WebSocket to the DO and pipes messages out as SSE — clients see one transport regardless.</p>
-      <p><strong>Vercel / Netlify:</strong> SSE loads but is impractical — Lambda is stateless and function execution caps the stream. Use Workers for production realtime.</p>
+      <p><strong>Bun:</strong> in-process subscriber map. Fan-out is synchronous, no extra service. Multi-instance Bun deploys lose cross-instance fan-out â accept that or move to Workers.</p>
+      <p><strong>Workers:</strong> a per-channel Durable Object holds the subscriber WebSockets. The HTTP route opens an internal WebSocket to the DO and pipes messages out as SSE â clients see one transport regardless.</p>
+      <p><strong>Vercel / Netlify:</strong> SSE loads but is impractical â Lambda is stateless and function execution caps the stream. Use Workers for production realtime.</p>
 
       <div class="doc-footer">
-        <a href="#sso"><span class="dir">← Previous</span><span class="title">SSO &amp; LDAP</span></a>
-        <a class="next" href="#storage"><span class="dir">Next →</span><span class="title">Storage</span></a>
+        <a href="#sso"><span class="dir">â Previous</span><span class="title">SSO &amp; LDAP</span></a>
+        <a class="next" href="#storage"><span class="dir">Next â</span><span class="title">Storage</span></a>
       </div>
     </article>
 
-    <!-- ───────────── Storage ───────────── -->
+    <!-- âââââââââââââ Storage âââââââââââââ -->
     <article id="article-storage">
       <div class="frontmatter">
         <span class="eyebrow"><span class="dot"></span>Runtime</span>
@@ -821,7 +821,7 @@ es.<span class="c-fn">addEventListener</span>(<span class="c-str">"message"</spa
       </table></div>
 
       <h2 id="tenant-prefix">Tenant prefix</h2>
-      <p>Every physical key on disk / in the bucket is prefixed with <code>tenants/&lt;tenant-id&gt;/</code>. The API hides this — clients use logical keys (<code>uploads/photo.jpg</code>), and the route adds/strips the prefix. Two tenants can reuse the same logical key without colliding either in the bucket or in <code>files.key</code>.</p>
+      <p>Every physical key on disk / in the bucket is prefixed with <code>tenants/&lt;tenant-id&gt;/</code>. The API hides this â clients use logical keys (<code>uploads/photo.jpg</code>), and the route adds/strips the prefix. Two tenants can reuse the same logical key without colliding either in the bucket or in <code>files.key</code>.</p>
       <p>Logical keys starting with <code>tenants/</code> are rejected with <code>VALIDATION</code> so clients can't sneak into another workspace.</p>
 
       <h2 id="endpoints">Endpoints</h2>
@@ -830,7 +830,7 @@ es.<span class="c-fn">addEventListener</span>(<span class="c-str">"message"</spa
         <tbody>
           <tr><td>GET</td><td><code>/api/storage</code></td><td><code>system_files.read</code></td><td>List files (filterable by <code>?prefix=</code>)</td></tr>
           <tr><td>PUT</td><td><code>/api/storage/:key</code></td><td><code>system_files.create</code></td><td>Stream body to storage; row upserted</td></tr>
-          <tr><td>GET</td><td><code>/api/storage/:key</code></td><td><code>system_files.read</code> or <code>?token=</code></td><td>Stream object — with image transform params</td></tr>
+          <tr><td>GET</td><td><code>/api/storage/:key</code></td><td><code>system_files.read</code> or <code>?token=</code></td><td>Stream object â with image transform params</td></tr>
           <tr><td>PATCH</td><td><code>/api/storage/:key</code></td><td><code>system_files.update</code></td><td>Body: <code>&#123; acl?, folderId? &#125;</code></td></tr>
           <tr><td>DELETE</td><td><code>/api/storage/:key</code></td><td><code>system_files.delete</code></td><td>Removes object + row</td></tr>
           <tr><td>POST</td><td><code>/api/storage/:key/sign</code></td><td><code>system_files.read</code></td><td>Returns <code>&#123; url, expiresAt &#125;</code></td></tr>
@@ -841,23 +841,23 @@ es.<span class="c-fn">addEventListener</span>(<span class="c-str">"message"</spa
       <div class="table-wrap"><table class="doc-table">
         <thead><tr><th>Param</th><th>Range / values</th></tr></thead>
         <tbody>
-          <tr><td><code>width</code></td><td>1–4096 (integer)</td></tr>
-          <tr><td><code>height</code></td><td>1–4096 (integer)</td></tr>
-          <tr><td><code>quality</code></td><td>1–100 (ignored for lossless)</td></tr>
+          <tr><td><code>width</code></td><td>1â4096 (integer)</td></tr>
+          <tr><td><code>height</code></td><td>1â4096 (integer)</td></tr>
+          <tr><td><code>quality</code></td><td>1â100 (ignored for lossless)</td></tr>
           <tr><td><code>format</code></td><td><code>webp | jpeg | png | avif</code></td></tr>
           <tr><td><code>fit</code></td><td><code>cover | contain</code></td></tr>
-          <tr><td><code>focal</code></td><td><code>"x,y"</code> with x/y in 0–100 (percent)</td></tr>
+          <tr><td><code>focal</code></td><td><code>"x,y"</code> with x/y in 0â100 (percent)</td></tr>
         </tbody>
       </table></div>
-      <p>Invalid params throw <code>VALIDATION</code> (HTTP 422) — silently dropping bad input would let UI bugs ship without notice.</p>
+      <p>Invalid params throw <code>VALIDATION</code> (HTTP 422) â silently dropping bad input would let UI bugs ship without notice.</p>
 
       <div class="doc-footer">
-        <a href="#realtime"><span class="dir">← Previous</span><span class="title">Realtime</span></a>
-        <a class="next" href="#sandbox"><span class="dir">Next →</span><span class="title">Functions / sandbox</span></a>
+        <a href="#realtime"><span class="dir">â Previous</span><span class="title">Realtime</span></a>
+        <a class="next" href="#sandbox"><span class="dir">Next â</span><span class="title">Functions / sandbox</span></a>
       </div>
     </article>
 
-    <!-- ───────────── Sandbox ───────────── -->
+    <!-- âââââââââââââ Sandbox âââââââââââââ -->
     <article id="article-sandbox">
       <div class="frontmatter">
         <span class="eyebrow"><span class="dot"></span>Runtime</span>
@@ -875,7 +875,7 @@ es.<span class="c-fn">addEventListener</span>(<span class="c-str">"message"</spa
           <tr><td>3</td><td>quickjs</td><td>anywhere (fallback)</td><td>no</td><td>WASM (true)</td></tr>
         </tbody>
       </table></div>
-      <p>quickjs stays as the cross-runtime safety net — Workers / Vercel / Netlify users still get sandbox execution (sync only) without standing up a separate executor service.</p>
+      <p>quickjs stays as the cross-runtime safety net â Workers / Vercel / Netlify users still get sandbox execution (sync only) without standing up a separate executor service.</p>
 
       <h2 id="triggers">Triggers</h2>
       <div class="table-wrap"><table class="doc-table">
@@ -890,7 +890,7 @@ es.<span class="c-fn">addEventListener</span>(<span class="c-str">"message"</spa
 
       <h2 id="ctx">The ctx surface</h2>
       <div class="codeblock"><div class="head"><span class="dot"></span>typescript</div><pre>ctx.data       <span class="c-comment">// input payload (request body for http; &#123; event, data &#125; for event)</span>
-ctx.user       <span class="c-comment">// &#123; id, email, roles[] &#125; — null/anon for cron</span>
+ctx.user       <span class="c-comment">// &#123; id, email, roles[] &#125; â null/anon for cron</span>
 <span class="c-fn">console.log</span>    <span class="c-comment">// captured into the result's logs[]</span>
 
 <span class="c-comment">// Async (bun-worker / remote-http only):</span>
@@ -904,12 +904,12 @@ ctx.user       <span class="c-comment">// &#123; id, email, roles[] &#125; — n
       <p>The host bridge (<code>apps/web/src/server/services/sandbox/host-bridge.ts</code>) is the single dispatcher for <code>ctx.fetch / ctx.db / ctx.email</code>. bun-worker calls it in-process; remote-http calls it over HTTP at <code>/api/_internal/sandbox-rpc</code> with a Bearer token. Both paths funnel through the same permission pipeline.</p>
 
       <div class="doc-footer">
-        <a href="#storage"><span class="dir">← Previous</span><span class="title">Storage</span></a>
-        <a class="next" href="#sdk-and-cli"><span class="dir">Next →</span><span class="title">SDK &amp; CLI</span></a>
+        <a href="#storage"><span class="dir">â Previous</span><span class="title">Storage</span></a>
+        <a class="next" href="#sdk-and-cli"><span class="dir">Next â</span><span class="title">SDK &amp; CLI</span></a>
       </div>
     </article>
 
-    <!-- ───────────── SDK + CLI ───────────── -->
+    <!-- âââââââââââââ SDK + CLI âââââââââââââ -->
     <article id="article-sdk-and-cli">
       <div class="frontmatter">
         <span class="eyebrow"><span class="dot"></span>Tooling</span>
@@ -961,7 +961,7 @@ ctx.user       <span class="c-comment">// &#123; id, email, roles[] &#125; — n
       </table></div>
 
       <h3 id="gen-types">gen-types output</h3>
-      <div class="codeblock"><div class="head"><span class="dot"></span>typescript</div><pre><span class="c-comment">// src/types.ts — generated</span>
+      <div class="codeblock"><div class="head"><span class="dot"></span>typescript</div><pre><span class="c-comment">// src/types.ts â generated</span>
 <span class="c-kw">export interface</span> Posts &#123;
   id: <span class="c-tag">string</span>;
   title: <span class="c-tag">string</span>;
@@ -975,16 +975,16 @@ ctx.user       <span class="c-comment">// &#123; id, email, roles[] &#125; — n
 <span class="c-kw">export interface</span> Collections &#123;
   posts: Posts;
   authors: Authors;
-  <span class="c-comment">/* … */</span>
+  <span class="c-comment">/* â¦ */</span>
 &#125;</pre></div>
 
       <div class="doc-footer">
-        <a href="#sandbox"><span class="dir">← Previous</span><span class="title">Functions / sandbox</span></a>
-        <a class="next" href="#mcp"><span class="dir">Next →</span><span class="title">MCP server</span></a>
+        <a href="#sandbox"><span class="dir">â Previous</span><span class="title">Functions / sandbox</span></a>
+        <a class="next" href="#mcp"><span class="dir">Next â</span><span class="title">MCP server</span></a>
       </div>
     </article>
 
-    <!-- ───────────── MCP ───────────── -->
+    <!-- âââââââââââââ MCP âââââââââââââ -->
     <article id="article-mcp">
       <div class="frontmatter">
         <span class="eyebrow"><span class="dot"></span>Tooling</span>
@@ -992,10 +992,10 @@ ctx.user       <span class="c-comment">// &#123; id, email, roles[] &#125; — n
         <p class="desc">Expose the workspace to Claude Desktop, Cursor, and other IDE agents via the Model Context Protocol.</p>
       </div>
 
-      <p>backlex ships a built-in MCP server at <code>/api/mcp</code>. It exposes your collections, items, storage, and roles as tools — meaning Claude Desktop, Cursor, Continue, and any other MCP client can read and write data through the same permission pipeline as your app.</p>
+      <p>backlex ships a built-in MCP server at <code>/api/mcp</code>. It exposes your collections, items, storage, and roles as tools â meaning Claude Desktop, Cursor, Continue, and any other MCP client can read and write data through the same permission pipeline as your app.</p>
 
       <h2 id="connecting">Connecting from Claude Desktop</h2>
-      <p>Generate an API key from the admin (<strong>Settings → API keys</strong>, prefix <code>pak_</code>), then add to your Claude Desktop config:</p>
+      <p>Generate an API key from the admin (<strong>Settings â API keys</strong>, prefix <code>pak_</code>), then add to your Claude Desktop config:</p>
       <div class="codeblock"><div class="head"><span class="dot"></span>json</div><pre>&#123;
   <span class="c-str">"mcpServers"</span>: &#123;
     <span class="c-str">"backlex"</span>: &#123;
@@ -1023,12 +1023,12 @@ ctx.user       <span class="c-comment">// &#123; id, email, roles[] &#125; — n
       <div class="callout warning"><span class="label">Permissions</span><br>MCP traffic runs through <code>requirePermission</code> like any other call. Give the API key a narrow role if you don't want the IDE agent to be able to drop a table.</div>
 
       <div class="doc-footer">
-        <a href="#sdk-and-cli"><span class="dir">← Previous</span><span class="title">SDK &amp; CLI</span></a>
-        <a class="next" href="#advisor"><span class="dir">Next →</span><span class="title">Advisor</span></a>
+        <a href="#sdk-and-cli"><span class="dir">â Previous</span><span class="title">SDK &amp; CLI</span></a>
+        <a class="next" href="#advisor"><span class="dir">Next â</span><span class="title">Advisor</span></a>
       </div>
     </article>
 
-    <!-- ───────────── Advisor ───────────── -->
+    <!-- âââââââââââââ Advisor âââââââââââââ -->
     <article id="article-advisor">
       <div class="frontmatter">
         <span class="eyebrow"><span class="dot"></span>Tooling</span>
@@ -1036,21 +1036,21 @@ ctx.user       <span class="c-comment">// &#123; id, email, roles[] &#125; — n
         <p class="desc">Automated lint over schema, permissions, and configuration. Like ESLint, for your workspace.</p>
       </div>
 
-      <p>Advisor runs a set of static checks against your live workspace and surfaces findings in the admin (and via <code>GET /api/admin/advisor</code>). It is read-only — fixes are always proposed, never applied.</p>
+      <p>Advisor runs a set of static checks against your live workspace and surfaces findings in the admin (and via <code>GET /api/admin/advisor</code>). It is read-only â fixes are always proposed, never applied.</p>
 
       <h2 id="categories">Categories</h2>
       <ul>
-        <li><strong>Security</strong> — over-broad permissions, public-write collections, leaked secrets in flow definitions.</li>
-        <li><strong>Performance</strong> — missing indexes on frequently-filtered columns, sequential scans on large tables, JSON fields used in <code>filter</code>.</li>
-        <li><strong>Data integrity</strong> — nullable foreign keys without <code>ON DELETE</code> rules, columns with mismatched types between collection metadata and physical table.</li>
-        <li><strong>Hygiene</strong> — collections without any rows in 90 days, webhooks with consistently failing deliveries, API keys not used in 60+ days.</li>
+        <li><strong>Security</strong> â over-broad permissions, public-write collections, leaked secrets in flow definitions.</li>
+        <li><strong>Performance</strong> â missing indexes on frequently-filtered columns, sequential scans on large tables, JSON fields used in <code>filter</code>.</li>
+        <li><strong>Data integrity</strong> â nullable foreign keys without <code>ON DELETE</code> rules, columns with mismatched types between collection metadata and physical table.</li>
+        <li><strong>Hygiene</strong> â collections without any rows in 90 days, webhooks with consistently failing deliveries, API keys not used in 60+ days.</li>
       </ul>
 
       <h2 id="score">Score</h2>
-      <p>The endpoint returns a numeric score in <code>0–100</code> alongside the finding list. Score weights are configurable in <code>apps/web/src/server/services/advisor.ts</code> — the default weighting puts security findings at 3× the impact of hygiene ones.</p>
+      <p>The endpoint returns a numeric score in <code>0â100</code> alongside the finding list. Score weights are configurable in <code>apps/web/src/server/services/advisor.ts</code> â the default weighting puts security findings at 3Ã the impact of hygiene ones.</p>
 
       <div class="doc-footer">
-        <a href="#mcp"><span class="dir">← Previous</span><span class="title">MCP server</span></a>
+        <a href="#mcp"><span class="dir">â Previous</span><span class="title">MCP server</span></a>
         <span></span>
       </div>
     </article>
@@ -1101,7 +1101,7 @@ ctx.user       <span class="c-comment">// &#123; id, email, roles[] &#125; — n
     });
     const crumb = document.getElementById("crumb-title");
     if (crumb) crumb.textContent = TITLES[id] || id;
-    document.title = (TITLES[id] || id) + " — backlex docs";
+    document.title = (TITLES[id] || id) + " â backlex docs";
     buildToc(id);
     window.scrollTo(0, 0);
   }

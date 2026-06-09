@@ -31,7 +31,7 @@ persistent session.
 ### Tool kind metadata
 
 `tools/list` decorates every tool descriptor with two optional fields the
-[Ask AI Tools tab](./ask-ai.md#tools-tab) uses for at-a-glance badges:
+[Ask AI Tools tab](/docs/ask-ai/#tools-tab) uses for at-a-glance badges:
 
 - `kind` — `"read"` / `"write"` / `"destruct"`. When a tool definition
   doesn't set it explicitly, the dispatcher derives the value from the

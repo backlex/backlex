@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import "./admin.css";
 import "./flow-builder.css";
 import { I } from "./icons";
+import { Card } from "@backlex/ui/components/card";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import {
   ADAPTER_PROFILES,
@@ -842,7 +843,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                       status={statusTab} setStatus={setStatusTab}
                       total={tweaks.populated ? posts.length : 0}
                     />
-                    <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+                    <Card className="py-0 gap-0">
                       <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
                         <ItemsViewToggle
                           mode={viewMode}
@@ -892,7 +893,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                           <Button variant="ghost" size="sm" iconRight={I.ChevronRight} disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}><Trans>Next</Trans></Button>
                         </div>
                       )}
-                    </div>
+                    </Card>
                   </div>
                   {tweaks.showRealtime && (
                     <RealtimeTail events={events} channel={`items:${activeCollection ?? ""}`} connected />
@@ -1208,7 +1209,7 @@ function PermissionsPanel({ pushToast }: { pushToast: (m: string) => void }) {
   const close = () => { setEditing(null); setIsNew(false); };
   return (
     <div className="flex flex-col gap-3.5">
-      <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+      <Card className="py-0 gap-0">
         <div className="flex items-center gap-2.5 border-b border-border px-4 py-3.5">
           <I.Shield size={14} />
           <span className="text-[13px] font-medium"><Trans>roles</Trans></span>
@@ -1228,7 +1229,7 @@ function PermissionsPanel({ pushToast }: { pushToast: (m: string) => void }) {
             <IconButton icon={I.Pencil} title={t`Edit`} onClick={() => openEdit(r)} />
           </div>
         ))}
-      </div>
+      </Card>
 
       <PermissionsMatrix roles={roles} pushToast={pushToast} />
       <RoleEditor open={editing !== null || isNew} role={editing} isNew={isNew} onClose={close} onSave={save} />

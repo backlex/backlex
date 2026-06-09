@@ -5,6 +5,7 @@ import { useIsMobile } from "@backlex/ui/hooks/use-mobile";
 import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Textarea } from "@backlex/ui/components/textarea";
+import { Card } from "@backlex/ui/components/card";
 import {
   Dialog,
   DialogContent,
@@ -1221,7 +1222,7 @@ function Panel({
 }) {
   const { t } = useLingui();
   return (
-    <div className="flex flex-col gap-2 overflow-hidden rounded-2xl border border-border bg-card p-4 text-card-foreground">
+    <Card className="gap-2 p-4">
       <div className="flex items-baseline gap-2">
         <span className="text-[13px] font-medium">{title}</span>
         <span className="flex-1 text-[11.5px] text-muted-foreground">{sub}</span>
@@ -1229,7 +1230,7 @@ function Panel({
         {onDelete && <IconButton icon={I.Trash} onClick={onDelete} title={t`Delete panel`} />}
       </div>
       {children}
-    </div>
+    </Card>
   );
 }
 

@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@backlex/ui/components/dialog";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Card } from "@backlex/ui/components/card";
 import { api } from "@/lib/api";
 import type { RoleData } from "./role-editor";
 import { ConditionEditor } from "./condition-editor";
@@ -257,7 +258,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
   }, [matrix, activeRole, collections]);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+    <Card className="py-0 gap-0">
       <div className="flex flex-wrap items-center gap-2.5 border-b border-border px-4 py-3.5">
         <I.Shield size={14} />
         <span className="text-[13px] font-medium"><Trans>permission matrix</Trans></span>
@@ -401,6 +402,6 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
           </ScrollArea>
         </DialogContent>
       </Dialog>
-    </div>
+    </Card>
   );
 }

@@ -12,6 +12,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent } from "../icons";
 import { Button, PageHeader } from "../ui";
 import { useAdvisor, queryKeys } from "../queries";
+import { Card } from "@backlex/ui/components/card";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@backlex/ui/components/collapsible";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
@@ -163,7 +164,7 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
       />
 
       {/* Score card */}
-      <div className="grid grid-cols-[160px_1fr] max-[640px]:grid-cols-1 max-[640px]:justify-items-center items-center gap-[22px] overflow-hidden rounded-2xl border border-border bg-card p-5 text-card-foreground">
+      <Card className="grid grid-cols-[160px_1fr] max-[640px]:grid-cols-1 max-[640px]:justify-items-center items-center gap-[22px] p-5">
         <div className="relative size-[140px]">
           <ScoreRing score={score} />
           <div className="absolute inset-0 grid place-items-center text-center">
@@ -200,7 +201,7 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
             </div>
           )}
         </div>
-      </div>
+      </Card>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as CheckKind)}>
         <TabsList>
@@ -218,17 +219,17 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
       {/* Findings */}
       <div className="flex flex-col gap-2.5">
         {isError ? (
-          <div className="flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card px-6 py-12 text-center text-card-foreground">
+          <Card className="items-center gap-3 px-6 py-12 text-center">
             <div className="grid size-10 place-items-center rounded-xl bg-muted text-primary"><I.AlertTriangle size={18} /></div>
             <h4 className="m-0 text-[15px] font-semibold"><Trans>Couldn't load advisor findings</Trans></h4>
             <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground"><Trans>The advisor endpoint returned an error. Re-run to try again.</Trans></p>
-          </div>
+          </Card>
         ) : list.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card px-6 py-12 text-center text-card-foreground">
+          <Card className="items-center gap-3 px-6 py-12 text-center">
             <div className="grid size-10 place-items-center rounded-xl bg-muted text-primary"><I.CheckCircle size={18} /></div>
             <h4 className="m-0 text-[15px] font-semibold"><Trans>All clear in this category</Trans></h4>
             <p className="m-0 max-w-[360px] text-[13px] text-muted-foreground"><Trans>No outstanding findings. Re-run after a schema or permission change.</Trans></p>
-          </div>
+          </Card>
         ) : (
           groups.map((g) =>
             g.items.length === 1 ? (

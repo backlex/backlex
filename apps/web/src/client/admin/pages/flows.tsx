@@ -6,6 +6,7 @@ import { Badge, Button, EmptyState, PageHeader, Switch } from "../ui";
 import { FlowBuilder } from "../flow-builder";
 import { compileGraph, decompileGraph, FlowCompileError, type Graph } from "../flow-graph";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Card } from "@backlex/ui/components/card";
 import { api } from "@/lib/api";
 import { fetchSafely } from "./_shared";
 import { FlowsSkeleton } from "../page-skeletons";
@@ -150,7 +151,7 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
       />
 
       <div className="grid grid-cols-[320px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
-        <div className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground">
+        <Card className="py-0 gap-0">
           {flows.length === 0 && (
             <EmptyState size="sm" title={<Trans>No flows yet — click + New flow.</Trans>} />
           )}
@@ -168,9 +169,9 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
               <Badge variant={f.status === "active" ? "default" : "secondary"}>{f.status}</Badge>
             </div>
           ))}
-        </div>
+        </Card>
 
-        <div className="flex flex-col gap-4.5 overflow-hidden rounded-2xl border border-border bg-card p-[22px] text-card-foreground">
+        <Card className="gap-4.5 p-[22px]">
           {!flow ? (
             <EmptyState
               bare
@@ -216,7 +217,7 @@ export function FlowsPage({ pushToast, activeFlow, setActiveFlow }: { pushToast:
           </div>
           </>
           )}
-        </div>
+        </Card>
       </div>
 
       {builderOpen && <FlowBuilder initial={editingFlow} onClose={() => setBuilderOpen(false)} onSave={saveFromBuilder} pushToast={pushToast} />}

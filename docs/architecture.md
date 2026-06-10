@@ -155,7 +155,7 @@ load. Notable surfaces:
 - **Ask AI** (`ask-ai`) — natural-language MCP-tool dispatch; the same
   surface Claude Desktop sees but driven from the admin's own session.
   Splits `plan` (Claude → tool + args) and `run` (execute + audit) into
-  two endpoints under `/api/admin/ai/`. See [ask-ai.md](./ask-ai.md).
+  two endpoints under `/api/admin/ai/`. See [ask-ai.md](/docs/ask-ai/).
 - **Collections / Items / Storage / Database / Logs** — the workspace
   data-management cluster.
 - **Flows / Functions / Webhooks / Realtime** — the automation cluster.

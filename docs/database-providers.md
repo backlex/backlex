@@ -11,7 +11,7 @@ provider is mostly an env-var change; the schema, migrations, permission
 compiler, and queries are the same for every entry in a column.
 
 This page documents the **Postgres** column. For the SQLite column see
-[sqlite-providers.md](./sqlite-providers.md) (Bun SQLite, Cloudflare D1,
+[sqlite-providers.md](/docs/sqlite-providers/) (Bun SQLite, Cloudflare D1,
 Turso/libSQL, LiteFS).
 
 ## Selection rule (one line)

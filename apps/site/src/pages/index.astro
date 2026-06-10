@@ -236,7 +236,7 @@ import Base from "../layouts/Base.astro";
     <div class="flex flex-col gap-4 max-w-[720px] mb-2">
       <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>global edge</span>
       <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">Your backend, where your users are.</h2>
-      <p class="text-[17px] text-muted-foreground max-w-[64ch]">Deploy to Cloudflare Workers and your API runs in <strong class="text-foreground font-semibold">330+ cities</strong> on six continents. The request never crosses an ocean to find its origin — D1 reads, Durable Object subscribers, and R2 object fetches happen at the city closest to the user.</p>
+      <p class="text-[17px] text-muted-foreground max-w-[64ch]">Deploy to Cloudflare Workers and your API runs in <strong class="text-foreground font-semibold">330+ cities</strong> on six continents. The request never crosses an ocean to find its origin — database reads, live subscriptions, and file fetches all happen at the city closest to the user.</p>
     </div>
 
     <div class="grid grid-cols-2 max-[1020px]:grid-cols-1 gap-14 items-center mt-8">
@@ -315,16 +315,16 @@ import Base from "../layouts/Base.astro";
 
     <div class="grid grid-cols-3 max-md:grid-cols-1 gap-3.5 mt-14">
       <div class="border border-border rounded-3xl p-5 bg-card">
-        <div class="flex items-center gap-2.5 mb-2"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">D1</span><h3 class="text-[15px] font-semibold">D1 reads stay local</h3></div>
-        <p class="text-muted-foreground text-[13px] leading-snug">SQLite-shaped reads run at the colo that holds the replica. Writes ship to the primary asynchronously; reads never cross-region.</p>
+        <div class="flex items-center gap-2.5 mb-2"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">01</span><h3 class="text-[15px] font-semibold">Reads stay local</h3></div>
+        <p class="text-muted-foreground text-[13px] leading-snug">Database reads are served from the city closest to your users. Writes sync to the primary in the background, so a read never waits on another region.</p>
       </div>
       <div class="border border-border rounded-3xl p-5 bg-card">
-        <div class="flex items-center gap-2.5 mb-2"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">DO</span><h3 class="text-[15px] font-semibold">Realtime via Durable Objects</h3></div>
-        <p class="text-muted-foreground text-[13px] leading-snug">Each <code class="font-mono text-xs">items:&lt;slug&gt;</code> channel pins to a DO. Subscribers connect to the closest DO via WebSocket; SSE bridges to clients.</p>
+        <div class="flex items-center gap-2.5 mb-2"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">02</span><h3 class="text-[15px] font-semibold">Realtime, region-free</h3></div>
+        <p class="text-muted-foreground text-[13px] leading-snug">Each collection has its own live channel that pins to the nearest edge node. Clients stream updates over WebSocket or SSE — no round-trip to a central server.</p>
       </div>
       <div class="border border-border rounded-3xl p-5 bg-card">
-        <div class="flex items-center gap-2.5 mb-2"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">R2</span><h3 class="text-[15px] font-semibold">R2 storage at the edge</h3></div>
-        <p class="text-muted-foreground text-[13px] leading-snug">Object reads served from R2 with zero egress. Image transforms run via Cloudflare Images at the PoP; payload never travels twice.</p>
+        <div class="flex items-center gap-2.5 mb-2"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">03</span><h3 class="text-[15px] font-semibold">Files at the edge</h3></div>
+        <p class="text-muted-foreground text-[13px] leading-snug">Uploads and downloads are served from edge storage with zero egress fees. Image resizing runs at the same location, so the payload never travels twice.</p>
       </div>
     </div>
   </div>
@@ -338,7 +338,7 @@ import Base from "../layouts/Base.astro";
       <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">Don't want to run it yourself? <span class="text-primary dark:text-[oklch(0.82_0.22_131)]">backlex Cloud</span> hosts it for you.</h2>
       <p class="text-[17px] text-muted-foreground max-w-[64ch]">Same MIT codebase, same admin, same API — running on Cloudflare's Workers + D1 + R2. <strong class="text-foreground font-semibold">30 seconds from signup to first deploy</strong>, 50ms first request, 330+ edge cities. One-click export if you ever want to bring it back home.</p>
       <div class="flex gap-2.5 flex-wrap mt-1">
-        <a href="#" class="inline-flex items-center gap-2 h-10 px-4 rounded-3xl bg-primary text-primary-foreground text-[13.5px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap">Start free — no card →</a>
+        <a href="https://cloud.backlex.com/sign-up" class="inline-flex items-center gap-2 h-10 px-4 rounded-3xl bg-primary text-primary-foreground text-[13.5px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap">Start free — no card →</a>
         <a href="/pricing" class="inline-flex items-center gap-2 h-10 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13.5px] font-medium no-underline transition-colors whitespace-nowrap">See pricing</a>
         <span class="inline-flex items-center gap-2 h-10 px-3 text-[12.5px] text-muted-foreground"><span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>private beta · 100K requests / mo on free</span>
       </div>
@@ -404,7 +404,7 @@ import Base from "../layouts/Base.astro";
           <span class="text-muted-foreground mt-1">−</span><div class="text-muted-foreground">Migrations and upgrades are on you</div>
         </div>
         <div class="mt-auto pt-4 border-t border-border flex items-center gap-2">
-          <a href="https://github.com" target="_blank" rel="noopener" class="inline-flex items-center gap-2 h-9 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13px] font-medium no-underline transition-colors whitespace-nowrap">Go to GitHub →</a>
+          <a href="https://github.com/backlex/backlex" target="_blank" rel="noopener" class="inline-flex items-center gap-2 h-9 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13px] font-medium no-underline transition-colors whitespace-nowrap">Go to GitHub →</a>
           <a href="/docs#deployment" class="text-[12.5px] text-muted-foreground hover:text-foreground no-underline">Deploy guide</a>
         </div>
       </div>
@@ -484,7 +484,7 @@ import Base from "../layouts/Base.astro";
           <button class="tab px-3.5 py-2.5 text-[11.5px] font-mono text-muted-foreground border-b-2 border-transparent -mb-px cursor-pointer transition-colors" data-pane="sdk">sdk</button>
         </div>
         <pre id="pane-shell" class="m-0 p-5 text-[12.5px] leading-relaxed overflow-x-auto"><span class="c-comment"># clone, install, run — one terminal</span>
-<span class="c-prompt">$ </span><span class="c-fn">git clone</span> github.com/your/backlex &amp;&amp; <span class="c-kw">cd</span> backlex
+<span class="c-prompt">$ </span><span class="c-fn">git clone</span> github.com/backlex/backlex &amp;&amp; <span class="c-kw">cd</span> backlex
 <span class="c-prompt">$ </span><span class="c-fn">bun install</span>
 <span class="c-prompt">$ </span><span class="c-fn">cp</span> apps/web/.dev.vars.example apps/web/.dev.vars
 

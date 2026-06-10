@@ -11,7 +11,7 @@ and queries are identical across all of them; what changes is *where the
 bytes live* and *how the runtime talks to them*.
 
 For the Postgres-side matrix (Supabase / Neon / Xata / self-host) see
-[database-providers.md](./database-providers.md).
+[database-providers.md](/docs/database-providers/).
 
 ## Selection rule
 

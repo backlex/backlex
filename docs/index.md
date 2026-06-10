@@ -13,7 +13,7 @@ Five minutes from clone to first item.
 ## Install + run
 
 ```bash
-git clone https://github.com/your/backlex && cd backlex
+git clone https://github.com/backlex/backlex && cd backlex
 bun install
 cp apps/web/.dev.vars.example apps/web/.dev.vars
 
@@ -93,9 +93,9 @@ const r = await wks.from<Posts>("posts").list({
 
 ## What next
 
-- [Permissions DSL](permissions.md) — granular role + condition rules
-- [Auth planes](auth-planes.md) — admin pool vs workspace end-user pool
-- [Sandbox functions](sandbox.md) — JavaScript code that runs in a sandbox
-- [MCP server](mcp.md) — expose the workspace to Claude Desktop / Cursor / IDE agents
-- [Deployment](deployment.md) — push to Bun, Workers, Vercel, or Netlify
-- [Testing](testing.md) — three-layer pyramid (bun test / build-targets / runtime-smoke)
+- [Permissions DSL](/docs/permissions/) — granular role + condition rules
+- [Auth planes](/docs/auth-planes/) — admin pool vs workspace end-user pool
+- [Sandbox functions](/docs/sandbox/) — JavaScript code that runs in a sandbox
+- [MCP server](/docs/mcp/) — expose the workspace to Claude Desktop / Cursor / IDE agents
+- [Deployment](/docs/deployment/) — push to Bun, Workers, Vercel, or Netlify
+- [Testing](/docs/testing/) — three-layer pyramid (bun test / build-targets / runtime-smoke)

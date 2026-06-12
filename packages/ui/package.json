@@ -2,7 +2,7 @@
   "name": "@backlex/ui",
   "version": "0.2.4",
   "description": "backlex design system — shadcn-based React component library on Tailwind v4 (radix-luma preset, Geist, oklch palette).",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/backlex/backlex.git",

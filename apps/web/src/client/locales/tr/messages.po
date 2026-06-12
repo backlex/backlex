@@ -5314,8 +5314,12 @@ msgstr "Kaynağı aç"
 #~ msgstr "Açık kayıt"
 
 #: src/client/admin/pages/settings.tsx
-msgid "Open-source · MIT licensed"
-msgstr "Açık kaynak · MIT lisanslı"
+msgid "Open-source · Apache-2.0 licensed"
+msgstr "Açık kaynak · Apache-2.0 lisanslı"
+
+#: src/client/admin/pages/settings.tsx
+#~ msgid "Open-source · MIT licensed"
+#~ msgstr "Açık kaynak · MIT lisanslı"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "OpenAI flagship; comparable to Opus"

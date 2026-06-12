@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "description": "Bun + Cloudflare Workers backend platform (Supabase/Directus alternative) with Drizzle, better-auth and shadcn admin",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "workspaces": [
     "apps/*",

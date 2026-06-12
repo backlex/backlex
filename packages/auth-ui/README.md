@@ -94,4 +94,4 @@ export const SignIn = () => {
 
 ## License
 
-MIT — part of the [backlex](https://github.com/furkankinyas/backlex) project.
+Apache-2.0 — part of the [backlex](https://github.com/furkankinyas/backlex) project.

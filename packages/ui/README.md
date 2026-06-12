@@ -50,4 +50,4 @@ No barrel file by design — import the specific component path so the bundler c
 
 ## License
 
-MIT — part of the [backlex](https://github.com/furkankinyas/backlex) project.
+Apache-2.0 — part of the [backlex](https://github.com/furkankinyas/backlex) project.

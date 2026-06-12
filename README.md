@@ -235,4 +235,4 @@ Cross-runtime concerns live behind interfaces in `@backlex/core/adapters`:
 
 ## License
 
-MIT
+Apache-2.0

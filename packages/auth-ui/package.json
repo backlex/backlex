@@ -2,7 +2,7 @@
   "name": "@backlex/auth-ui",
   "version": "0.1.0",
   "description": "backlex auth screens — i18n-free, router-agnostic React components for sign-in / sign-up / forgot / reset / magic-link. Source-consumed; consumers pass copy + auth client + navigate.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/backlex/backlex.git",

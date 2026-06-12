@@ -1119,7 +1119,7 @@ class_name = "RealtimeRoom"`}</pre>
               [t`Released`, "2025-10-12"],
               [t`Runtime`, adapter],
               [t`Wrangler`, "3.78.0"],
-              [t`License`, "MIT"],
+              [t`License`, "Apache-2.0"],
               [t`Repository`, "github.com/backlex/backlex"],
             ].map(([k, v]) => (
               <div key={k} className="flex items-center justify-between gap-3">
@@ -1131,7 +1131,7 @@ class_name = "RealtimeRoom"`}</pre>
           <Card className="flex items-center gap-2.5 p-[18px]">
             <I.Shield size={14} />
             <div className="flex flex-col gap-0.5">
-              <span className="text-[13px] font-medium"><Trans>Open-source · MIT licensed</Trans></span>
+              <span className="text-[13px] font-medium"><Trans>Open-source · Apache-2.0 licensed</Trans></span>
               <span className="text-xs text-muted-foreground"><Trans>Self-hosted on Cloudflare Workers. No telemetry, no billing — just clone, deploy, run.</Trans></span>
             </div>
             <div className="flex-1" />

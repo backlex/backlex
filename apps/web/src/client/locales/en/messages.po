@@ -5310,8 +5310,12 @@ msgstr "Open resource"
 #~ msgstr "Open sign-up"
 
 #: src/client/admin/pages/settings.tsx
-msgid "Open-source · MIT licensed"
-msgstr "Open-source · MIT licensed"
+msgid "Open-source · Apache-2.0 licensed"
+msgstr "Open-source · Apache-2.0 licensed"
+
+#: src/client/admin/pages/settings.tsx
+#~ msgid "Open-source · MIT licensed"
+#~ msgstr "Open-source · MIT licensed"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "OpenAI flagship; comparable to Opus"

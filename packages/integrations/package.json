@@ -2,7 +2,7 @@
   "name": "@backlex/integrations",
   "version": "0.0.1",
   "description": "Runtime-agnostic third-party integration adapters (Slack/Discord/Datadog/GitHub) for backlex.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",

@@ -104,6 +104,46 @@ Load-bearing details worth pinning:
     `services/platform-sso-provisioning.ts`. Runtime caveat: LDAP can't run on
     Cloudflare Workers, so on cloud projects only platform SAML is available.
 
+### Cloud-brokered SSO (handoff)
+
+Managed **cloud** projects can skip per-project IdP setup entirely. The cloud
+control plane already authenticates operators via *org-level* SSO; cloud-brokered
+SSO bridges that into a project's admin so operators don't reconfigure SAML in
+every project.
+
+```
+operator → org SSO at cloud → "Open admin via SSO"
+   → cloud mints a short-lived token signed with the project's reportSecret
+   → 302 to https://<slug>.backlex.com/api/auth/platform/sso/handoff?token=…
+   → proj worker verifies + mints the dashboard session → admin
+```
+
+- **Trust anchor** is the per-project `reportSecret` — the value the cloud
+  generates at provisioning and injects into the worker as `CLOUD_REPORT_SECRET`
+  (the same secret used for tenant→cloud report signing). Because every project
+  has a different secret, a token minted for project A cannot be verified by
+  project B: the signature *is* the project scoping. No JWKS / key rotation.
+- **Token** = `b64url(utf8(JSON)).b64url(HMAC-SHA256(body, reportSecret))` —
+  UTF-8-safe so non-Latin1 names survive. Payload carries `email`, `name`,
+  `subject`, `aud` (the project id, checked against `CLOUD_PROJECT_ID`), a 45s
+  expiry, and a single-use `jti`. Minted by the cloud
+  (`backlex-cloud .../lib/handoff-token.ts`), verified by the proj worker
+  (`server/lib/cloud-handoff.ts`).
+- **Endpoint** `GET /api/auth/platform/sso/handoff?token=…`
+  (`routes/platform-auth.ts`) — gated on `cloudConfigured(env)` **and**
+  `PLATFORM_SSO_ENABLED`, so it 404s on self-host / non-cloud installs. The
+  `jti` is recorded once in the `verifications` table (`pbroker-jti:*`), so a
+  replay → 401.
+- **Provisioning** reuses `provisionPlatformUser` with `providerType = "cloud"`,
+  `providerId = "cloud-broker"`. Brokered operators are **not** auto-linked to a
+  local password/SSO account and carry no group→role map, so on an
+  already-claimed instance they land as `authenticated` — never a silent admin
+  escalation.
+- **Enablement** is auto for Scale+ orgs (gated cloud-side on
+  `planFor(org.planId).sso`, the same flag that controls whether
+  `PLATFORM_SSO_ENABLED` is injected). Free/Pro projects get
+  `PLATFORM_SSO_ENABLED=false`, so the handoff 404s there too.
+
 ## Workspaces (`tenants`)
 
 A *workspace* is a `tenants` row. It carries:

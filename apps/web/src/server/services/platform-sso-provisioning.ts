@@ -52,9 +52,10 @@ const tables = (dialect: "pg" | "sqlite") =>
 
 export interface ProvisionPlatformUserArgs {
   ctx: DbCtx;
-  /** saml | ldap. */
-  providerType: "saml" | "ldap";
-  /** For SAML: `platform_saml_providers.id`. For LDAP: the literal `"ldap"`. */
+  /** saml | ldap | cloud (cloud-brokered SSO handoff). */
+  providerType: "saml" | "ldap" | "cloud";
+  /** For SAML: `platform_saml_providers.id`. For LDAP: the literal `"ldap"`.
+   *  For cloud-brokered SSO: the literal `"cloud-broker"`. */
   providerId: string;
   /** IdP-side stable identifier — SAML NameID or LDAP DN. */
   subject: string;

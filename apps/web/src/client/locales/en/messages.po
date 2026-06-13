@@ -866,9 +866,11 @@ msgid "Add role"
 msgstr "Add role"
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Add SAML"
 msgstr "Add SAML"
 
+#: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Add SAML provider"
 msgstr "Add SAML provider"
@@ -1036,6 +1038,10 @@ msgstr "All statuses"
 #: src/client/components/mcp-key-modal.tsx
 msgid "Allow all"
 msgstr "Allow all"
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Allowed email domains (optional, comma-separated)"
+msgstr "Allowed email domains (optional, comma-separated)"
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Allowed email domains (optional)"
@@ -1379,6 +1385,10 @@ msgstr "balanced — recommended for most queries"
 msgid "base"
 msgstr "base"
 
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Base DN"
+msgstr "Base DN"
+
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Base DN (search root)"
 msgstr "Base DN (search root)"
@@ -1400,10 +1410,12 @@ msgid "before"
 msgstr "before"
 
 #: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Bind DN"
 msgstr "Bind DN"
 
 #: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Bind password"
 msgstr "Bind password"
 
@@ -1516,6 +1528,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 #: src/client/admin/parity/translations.tsx
 #: src/client/admin/relational-pickers.tsx
@@ -1977,6 +1990,11 @@ msgstr "context"
 msgid "Continue"
 msgstr "Continue"
 
+#. placeholder {0}: p.label
+#: src/client/components/platform-sso.tsx
+msgid "Continue with {0}"
+msgstr "Continue with {0}"
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "conventional column present"
 msgstr "conventional column present"
@@ -2014,6 +2032,7 @@ msgstr "copy"
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 #: src/client/components/mcp-key-modal.tsx
 #: src/client/pages/openapi-export.tsx
@@ -2109,6 +2128,7 @@ msgstr "count / sum / average over a collection — no SQL"
 msgid "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
 msgstr "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
 
+#: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/pages/api-keys.tsx
 msgid "Create"
 msgstr "Create"
@@ -2395,6 +2415,7 @@ msgstr "Defaults to the URL's filename"
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/storage.tsx
 msgid "Delete"
 msgstr "Delete"
@@ -2440,6 +2461,7 @@ msgid "Delete panel"
 msgstr "Delete panel"
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Delete SAML provider?"
 msgstr "Delete SAML provider?"
 
@@ -2841,6 +2863,7 @@ msgstr "Email"
 msgid "Email + password is always available — toggle it off to hide the form from the sign-in screen."
 msgstr "Email + password is always available — toggle it off to hide the form from the sign-in screen."
 
+#: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Email attribute"
 msgstr "Email attribute"
@@ -2964,6 +2987,14 @@ msgstr "Enter the email you signed up with — we'll send a reset link."
 #: src/client/pages/sign-in.tsx
 msgid "Enter your email and password."
 msgstr "Enter your email and password."
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Enterprise SSO for operators signing into this dashboard."
+msgstr "Enterprise SSO for operators signing into this dashboard."
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Enterprise SSO for operators signing into this dashboard. Separate from workspace end-user auth."
+msgstr "Enterprise SSO for operators signing into this dashboard. Separate from workspace end-user auth."
 
 #: src/client/admin/pages/logs.tsx
 msgid "Entry id copied to clipboard."
@@ -3639,6 +3670,10 @@ msgstr "id <0>{0}</0>"
 msgid "idle"
 msgstr "idle"
 
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "IdP Entity ID"
+msgstr "IdP Entity ID"
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "IdP entity ID (Issuer)"
 msgstr "IdP entity ID (Issuer)"
@@ -3646,6 +3681,10 @@ msgstr "IdP entity ID (Issuer)"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "IdP signing cert (PEM)"
 msgstr "IdP signing cert (PEM)"
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "IdP signing certificate (PEM)"
+msgstr "IdP signing certificate (PEM)"
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "IdP signing certificate (PEM) is required."
@@ -3655,6 +3694,7 @@ msgstr "IdP signing certificate (PEM) is required."
 msgid "IdP SLO URL <0>(optional)</0>"
 msgstr "IdP SLO URL <0>(optional)</0>"
 
+#: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "IdP SSO URL"
 msgstr "IdP SSO URL"
@@ -4088,10 +4128,12 @@ msgid "Latency"
 msgstr "Latency"
 
 #: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "LDAP / Active Directory"
 msgstr "LDAP / Active Directory"
 
 #: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "LDAP config saved."
 msgstr "LDAP config saved."
 
@@ -4103,9 +4145,29 @@ msgstr "LDAP disabled."
 msgid "LDAP enabled."
 msgstr "LDAP enabled."
 
+#: src/client/components/platform-sso.tsx
+msgid "LDAP password"
+msgstr "LDAP password"
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "LDAP runs only on self-hosted (Bun/Node) deployments — it is unavailable on Cloudflare Workers, which block raw TCP. Use SAML there."
+msgstr "LDAP runs only on self-hosted (Bun/Node) deployments — it is unavailable on Cloudflare Workers, which block raw TCP. Use SAML there."
+
+#: src/client/components/platform-sso.tsx
+msgid "LDAP sign-in"
+msgstr "LDAP sign-in"
+
+#: src/client/components/platform-sso.tsx
+msgid "LDAP sign-in failed"
+msgstr "LDAP sign-in failed"
+
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "LDAP URL"
 msgstr "LDAP URL"
+
+#: src/client/components/platform-sso.tsx
+msgid "LDAP username"
+msgstr "LDAP username"
 
 #: src/client/admin/parity/translations.tsx
 msgid "Leave blank to create the key with empty values across all locales."
@@ -4131,6 +4193,10 @@ msgstr "leave empty for admins"
 #: src/client/admin/flow-builder.tsx
 msgid "leave empty to pass the trigger payload"
 msgstr "leave empty to pass the trigger payload"
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Leave empty to provision any operator your IdP authenticates. Set domains to restrict who gets a dashboard account."
+msgstr "Leave empty to provision any operator your IdP authenticates. Set domains to restrict who gets a dashboard account."
 
 #: src/client/admin/pages/settings.tsx
 msgid "Leave to user"
@@ -4446,6 +4512,10 @@ msgstr "Metadata"
 msgid "Metadata imported."
 msgstr "Metadata imported."
 
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Metadata parsed — review and save."
+msgstr "Metadata parsed — review and save."
+
 #: src/client/admin/storage.tsx
 msgid "Metadata saved."
 msgstr "Metadata saved."
@@ -4581,6 +4651,7 @@ msgstr "My theme"
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/role-editor.tsx
 #: src/client/admin/storage.tsx
 #: src/client/admin/ui.tsx
@@ -4603,6 +4674,10 @@ msgstr "name is required"
 #: src/client/admin/account-page.tsx
 msgid "Name this passkey (e.g. MacBook Touch ID)"
 msgstr "Name this passkey (e.g. MacBook Touch ID)"
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Name, Entity ID, SSO URL and IdP certificate are required."
+msgstr "Name, Entity ID, SSO URL and IdP certificate are required."
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "NameID format"
@@ -5062,11 +5137,16 @@ msgstr "No runs yet — your tool calls will show up here."
 msgid "No SAML providers configured. Add one to enable IdP-based SSO for this workspace's end-users."
 msgstr "No SAML providers configured. Add one to enable IdP-based SSO for this workspace's end-users."
 
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "No SAML providers configured. Operators will sign in with email/password until you add one."
+msgstr "No SAML providers configured. Operators will sign in with email/password until you add one."
+
 #: src/client/pages/rest-explorer.tsx
 msgid "No schema."
 msgstr "No schema."
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "No signing cert stored — login will fail."
 msgstr "No signing cert stored — login will fail."
 
@@ -5334,6 +5414,10 @@ msgstr "OpenAPI spec refreshed."
 msgid "Operations"
 msgstr "Operations"
 
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Operators using this IdP will no longer be able to sign in."
+msgstr "Operators using this IdP will no longer be able to sign in."
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Ops bots — admin role required."
 msgstr "Ops bots — admin role required."
@@ -5447,6 +5531,10 @@ msgstr "Panel \"{name}\" saved."
 msgid "parent not adopted"
 msgstr "parent not adopted"
 
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Parse metadata"
+msgstr "Parse metadata"
+
 #: src/client/admin/account-page.tsx
 msgid "Passkey added."
 msgstr "Passkey added."
@@ -5510,6 +5598,10 @@ msgstr "Paste a base64 SAMLResponse"
 #: src/client/admin/parity/auth-settings.tsx
 msgid "paste from the provider"
 msgstr "paste from the provider"
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Paste IdP metadata XML (optional — prefills the fields below)"
+msgstr "Paste IdP metadata XML (optional — prefills the fields below)"
 
 #: src/client/pages/openapi-export.tsx
 msgid "Paths"
@@ -5793,6 +5885,15 @@ msgstr "Planning the tool call…"
 msgid "Planning…"
 msgstr "Planning…"
 
+#: src/client/admin/parity/platform-auth-settings.tsx
+#: src/client/admin/ui.tsx
+msgid "Platform SSO"
+msgstr "Platform SSO"
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Platform SSO is not enabled on this instance. It's available on plans with enterprise SSO, or on self-hosted deployments."
+msgstr "Platform SSO is not enabled on this instance. It's available on plans with enterprise SSO, or on self-hosted deployments."
+
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collection-settings.tsx
 msgid "Plural"
@@ -5939,6 +6040,7 @@ msgid "Profile saved."
 msgstr "Profile saved."
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "provider"
 msgstr "provider"
 
@@ -5952,6 +6054,7 @@ msgid "Provider created."
 msgstr "Provider created."
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Provider deleted."
 msgstr "Provider deleted."
 
@@ -5964,6 +6067,7 @@ msgid "Provider saved."
 msgstr "Provider saved."
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "providers"
 msgstr "providers"
 
@@ -6711,6 +6815,7 @@ msgid "Same DSL as roles & permissions. Operators: <0>_eq</0>, <1>_in</1>, <2>_g
 msgstr "Same DSL as roles & permissions. Operators: <0>_eq</0>, <1>_in</1>, <2>_gte</2>, … Variables: <3>$user.id</3>, <4>$now</4>, …"
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "SAML 2.0 SSO"
 msgstr "SAML 2.0 SSO"
 
@@ -6792,6 +6897,10 @@ msgstr "Save flow"
 #: src/client/components/mcp-key-modal.tsx
 msgid "Save guards"
 msgstr "Save guards"
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Save LDAP config"
+msgstr "Save LDAP config"
 
 #: src/client/admin/storage.tsx
 msgid "Save metadata"
@@ -7087,6 +7196,10 @@ msgstr "Server fetches the URL and stores it in this workspace. http/https only 
 msgid "Server log line. Use <0>{dataInterpolationExample}</0> for interpolation."
 msgstr "Server log line. Use <0>{dataInterpolationExample}</0> for interpolation."
 
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Server URL"
+msgstr "Server URL"
+
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "service-account password"
 msgstr "service-account password"
@@ -7339,6 +7452,14 @@ msgstr "Sign in to <0>backlex</0>."
 msgid "Sign in to backlex."
 msgstr "Sign in to backlex."
 
+#: src/client/components/platform-sso.tsx
+msgid "Sign in with LDAP"
+msgstr "Sign in with LDAP"
+
+#: src/client/components/platform-sso.tsx
+msgid "Sign in with LDAP / AD"
+msgstr "Sign in with LDAP / AD"
+
 #: src/client/pages/sign-in.tsx
 msgid "Sign in with passkey"
 msgstr "Sign in with passkey"
@@ -7413,6 +7534,7 @@ msgstr "Signature algorithm"
 msgid "Signed URL copied (1h)."
 msgstr "Signed URL copied (1h)."
 
+#: src/client/components/platform-sso.tsx
 #: src/client/pages/sign-in.tsx
 msgid "Signing in…"
 msgstr "Signing in…"
@@ -7459,6 +7581,10 @@ msgstr "SLO URL"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Slug"
 msgstr "Slug"
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Slug (URL handle)"
+msgstr "Slug (URL handle)"
 
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collection-settings.tsx
@@ -8354,6 +8480,7 @@ msgid "User"
 msgstr "User"
 
 #: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "User filter"
 msgstr "User filter"
 

@@ -1,7 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { AppBindings } from "../app";
 import { errorResponses } from "../lib/openapi";
-import { resolveAuthSurface } from "../services/auth-config";
+import { resolvePlatformAuthSurface } from "../services/auth-config";
 
 /**
  * Public, unauthenticated discovery endpoint for a workspace's auth surface —
@@ -54,7 +54,11 @@ export const authPublicRoutes = new OpenAPIHono<AppBindings>().openapi(
   async (c) => {
     const ctx = c.get("ctx");
     const auth = c.get("auth");
-    const surface = await resolveAuthSurface(
+    // Control-plane surface: email/password (+passkey/magic/otp) with social
+    // excluded, plus instance-global platform SAML/LDAP SSO (gated by
+    // PLATFORM_SSO_ENABLED). Consumer social login lives on the workspace
+    // end-user surface (`/api/t/<slug>/auth/providers`).
+    const surface = await resolvePlatformAuthSurface(
       { db: ctx.db, dialect: ctx.dialect },
       ctx.env,
       auth.tenantId ?? null,

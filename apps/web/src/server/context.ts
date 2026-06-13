@@ -1,4 +1,4 @@
-import { type Auth, createAuth, type OAuthProviderConfig } from "@backlex/auth";
+import { type Auth, createAuth } from "@backlex/auth";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
 import type {
   EmailAdapter,
@@ -260,29 +260,12 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     }
   }
 
-  const social: {
-    google?: OAuthProviderConfig;
-    github?: OAuthProviderConfig;
-    apple?: OAuthProviderConfig;
-  } = {};
-  if (env.OAUTH_GOOGLE_CLIENT_ID && env.OAUTH_GOOGLE_CLIENT_SECRET) {
-    social.google = {
-      clientId: env.OAUTH_GOOGLE_CLIENT_ID,
-      clientSecret: env.OAUTH_GOOGLE_CLIENT_SECRET,
-    };
-  }
-  if (env.OAUTH_GITHUB_CLIENT_ID && env.OAUTH_GITHUB_CLIENT_SECRET) {
-    social.github = {
-      clientId: env.OAUTH_GITHUB_CLIENT_ID,
-      clientSecret: env.OAUTH_GITHUB_CLIENT_SECRET,
-    };
-  }
-  if (env.OAUTH_APPLE_CLIENT_ID && env.OAUTH_APPLE_CLIENT_SECRET) {
-    social.apple = {
-      clientId: env.OAUTH_APPLE_CLIENT_ID,
-      clientSecret: env.OAUTH_APPLE_CLIENT_SECRET,
-    };
-  }
+  // The control-plane (admin) auth instance deliberately ships NO social
+  // providers. Consumer OAuth (Google / Apple / GitHub) belongs to the
+  // workspace end-user plane — each workspace's better-auth instance wires its
+  // own social set from env + per-workspace `auth_config` (see
+  // services/tenant-auth.ts::getTenantAuth). Operators sign into the dashboard
+  // with email/password (+ passkey) and, going forward, enterprise SSO.
 
   // Deployment-level transport. On a managed cloud project the worker is
   // injected with no `EMAIL_*` vars, so the spec resolves to `console` (mail
@@ -353,7 +336,8 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     baseURL: env.APP_URL,
     secret: env.AUTH_SECRET,
     trustedOrigins,
-    socialProviders: Object.keys(social).length > 0 ? social : undefined,
+    // No social providers on the control plane — see the note above where the
+    // env OAuth block used to build `social`.
     email,
     plugins: pluginList,
     hooks: {

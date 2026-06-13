@@ -141,7 +141,7 @@ interface ImportedMetadata {
 // `(?:\w+:)?` makes the XML namespace prefix optional — mocksaml.com,
 // Okta, Azure AD all emit `<md:EntityDescriptor>` / `<ds:X509Certificate>`
 // while some bare-namespace IdPs emit unprefixed tags.
-const parseMetadataXml = (xml: string): ImportedMetadata => {
+export const parseMetadataXml = (xml: string): ImportedMetadata => {
   const entityMatch = xml.match(/<(?:\w+:)?EntityDescriptor\b[^>]*\bentityID="([^"]+)"/);
   const entityId = entityMatch?.[1];
   if (!entityId) throw new AppError("VALIDATION", "Metadata missing EntityDescriptor/@entityID");

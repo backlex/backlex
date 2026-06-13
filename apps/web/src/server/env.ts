@@ -169,6 +169,10 @@ export interface Env {
   OAUTH_APPLE_CLIENT_SECRET?: string;
   /** Comma-separated better-auth plugin names: `magic-link,email-otp,anonymous`. */
   AUTH_PLUGINS?: string;
+  /** Control-plane (admin) SAML/LDAP SSO toggle. Enabled unless explicitly set
+   *  to `"false"`/`"0"` — so self-host gets it by default. The cloud injects
+   *  `"false"` for projects on plans without enterprise SSO (Free/Pro). */
+  PLATFORM_SSO_ENABLED?: string;
   /** Comma-separated extra origins (scheme://host[:port]) allowed to make
    *  cross-origin requests with credentials — on top of `APP_URL` and the
    *  origins derived from each workspace's `auth_config.redirectUrls`. Set

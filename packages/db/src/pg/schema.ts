@@ -1158,6 +1158,125 @@ export const ldapConfigs = pgTable(
 );
 
 /**
+ * Instance-global SAML 2.0 IdP configuration for the **control plane** (admin
+ * dashboard operators). Mirror of `saml_providers` minus `tenant_id`: admin SSO
+ * is not workspace-scoped — one IdP set per instance. `slug` is unique
+ * instance-wide and used in `/api/auth/saml/<slug>/...`. Identities provisioned
+ * by these providers land in `users` (not `app_users`). See docs/auth-planes.md.
+ */
+export const platformSamlProviders = pgTable(
+  "platform_saml_providers",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    idpTemplate: text("idp_template"),
+    entityId: text("entity_id").notNull(),
+    ssoUrl: text("sso_url").notNull(),
+    sloUrl: text("slo_url"),
+    /** AES-256-GCM ciphertext of the IdP signing cert PEM. */
+    idpCertPem: text("idp_cert_pem").notNull(),
+    spEntityId: text("sp_entity_id").notNull(),
+    attributeMap: jsonb("attribute_map")
+      .$type<Record<string, string>>()
+      .notNull()
+      .default({}),
+    defaultRoleId: text("default_role_id").references(() => roles.id, {
+      onDelete: "set null",
+    }),
+    /** Tenant-aware group→role map: `{ "<idp-group>": { tenantId, roleId } }`.
+     *  Lets a platform operator's IdP group grant a role in a specific
+     *  workspace (membership is ensured on login). */
+    groupsToRoles: jsonb("groups_to_roles").$type<
+      Record<string, { tenantId: string; roleId: string }>
+    >(),
+    signatureAlgorithm: text("signature_algorithm").notNull().default("sha256"),
+    wantSignedAssertions: boolean("want_signed_assertions").notNull().default(true),
+    linkByVerifiedEmail: boolean("link_by_verified_email").notNull().default(false),
+    nameIdFormat: text("name_id_format").notNull().default("emailAddress"),
+    /** Optional JIT allow-list: when set, only IdP-asserted emails whose domain
+     *  is listed get a platform account provisioned. Empty/null = any email the
+     *  IdP authenticates. */
+    domainMatch: jsonb("domain_match").$type<string[]>(),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("platform_saml_providers_slug_idx").on(t.slug)],
+);
+
+/**
+ * Instance-global LDAP / AD configuration for the control plane. Singleton:
+ * PK is the fixed `'singleton'` id. Mirror of `ldap_configs` minus tenant
+ * scoping. NOTE: LDAP only runs on Bun / Node self-host — on Cloudflare Workers
+ * (and other edge runtimes) `buildLdapAdapter` returns undefined, so this is a
+ * self-host-only auth method (see apps/web/src/server/lib/auth-select.ts).
+ */
+export const platformLdapConfig = pgTable("platform_ldap_config", {
+  id: text("id").primaryKey().default("singleton"),
+  enabled: boolean("enabled").notNull().default(false),
+  url: text("url").notNull(),
+  bindDn: text("bind_dn").notNull(),
+  baseDn: text("base_dn").notNull(),
+  userFilter: text("user_filter")
+    .notNull()
+    .default("(&(objectClass=person)(uid={{username}}))"),
+  groupFilter: text("group_filter"),
+  attributeMap: jsonb("attribute_map")
+    .$type<{ email: string; firstName: string; lastName: string; groups: string }>()
+    .notNull()
+    .default({ email: "mail", firstName: "givenName", lastName: "sn", groups: "memberOf" }),
+  defaultRoleId: text("default_role_id").references(() => roles.id, {
+    onDelete: "set null",
+  }),
+  /** Tenant-aware group→role map: `{ "<group>": { tenantId, roleId } }`. */
+  groupsToRoles: jsonb("groups_to_roles").$type<
+    Record<string, { tenantId: string; roleId: string }>
+  >(),
+  tlsOptions: jsonb("tls_options").$type<{ rejectUnauthorized?: boolean }>(),
+  secrets: jsonb("secrets").$type<Record<string, string>>().notNull().default({}),
+  domainMatch: jsonb("domain_match").$type<string[]>(),
+  rateLimitPerMinute: integer("rate_limit_per_minute").notNull().default(10),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Federated identity link for the **platform** plane — maps an IdP subject to a
+ * `users` row. Mirror of `external_identities` minus `tenant_id`/`plane`
+ * (always platform here) with a real FK to `users`. Lookups go through the
+ * `(provider_type, provider_id, subject)` unique index (instance-global).
+ */
+export const platformExternalIdentities = pgTable(
+  "platform_external_identities",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** saml | ldap. */
+    providerType: text("provider_type").notNull(),
+    /** For SAML: `platform_saml_providers.id`. For LDAP: the literal `"ldap"`. */
+    providerId: text("provider_id").notNull(),
+    /** SAML NameID or LDAP DN. */
+    subject: text("subject").notNull(),
+    emailAtProvision: text("email_at_provision"),
+    rolesFromGroups: jsonb("roles_from_groups").$type<string[]>(),
+    lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+    lastLoginIp: text("last_login_ip"),
+    lastAuthnContext: text("last_authn_context"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("platform_external_identities_lookup_idx").on(
+      t.providerType,
+      t.providerId,
+      t.subject,
+    ),
+    index("platform_external_identities_user_idx").on(t.userId),
+  ],
+);
+
+/**
  * Per-workspace email transport. `tenant_id` is the workspace id, or the
  * `_global` sentinel for the instance-wide override row. `provider = "inherit"`
  * (or no usable config) falls through to the next level and ultimately to the

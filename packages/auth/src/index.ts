@@ -3,6 +3,7 @@ import type { PgDb } from "@backlex/db/pg";
 import * as pgSchema from "@backlex/db/pg/schema";
 import type { SqliteDb } from "@backlex/db/sqlite";
 import * as sqliteSchema from "@backlex/db/sqlite/schema";
+import { eq } from "drizzle-orm";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
@@ -172,8 +173,35 @@ export const createAuth = async (
       // the cache on its own sign-out paths.
       cookieCache: { enabled: true, maxAge: 60 },
     },
-    databaseHooks:
-      config.hooks?.onUserCreated || config.hooks?.onBeforeUserCreated
+    databaseHooks: {
+      // Block session creation for suspended operators at the source — covers
+      // every sign-in path (email/password, magic-link, and the SSO mint, which
+      // goes through better-auth's internalAdapter.createSession). Mirrors the
+      // workspace end-user guard in tenant.ts. `sessionMiddleware` still rejects
+      // a slipped-through session, so this just fails the flow earlier.
+      session: {
+        create: {
+          before: async (session: { userId?: string }) => {
+            const userId = session.userId;
+            if (userId) {
+              const u = provider === "pg" ? pgSchema.users : sqliteSchema.users;
+              try {
+                const rows = (await (db as never as { select: Function })
+                  .select({ status: u.status })
+                  .from(u)
+                  .where(eq(u.id, userId))
+                  .limit(1)) as Array<{ status: string }>;
+                if (rows[0] && rows[0].status === "suspended") return false;
+              } catch {
+                // Degrade open on a transient read error — don't lock everyone
+                // out if the status read fails.
+              }
+            }
+            return { data: session };
+          },
+        },
+      },
+      ...(config.hooks?.onUserCreated || config.hooks?.onBeforeUserCreated
         ? {
             user: {
               create: {
@@ -202,7 +230,8 @@ export const createAuth = async (
               },
             },
           }
-        : undefined,
+        : {}),
+    },
     socialProviders: config.socialProviders,
     plugins,
   });

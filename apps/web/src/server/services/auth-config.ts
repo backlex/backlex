@@ -4,6 +4,8 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { Env } from "../env";
 import { userCount, type DbCtx } from "./seed";
 import { loadSignInBranding } from "./settings";
+import { isPlatformSsoEnabled } from "../lib/platform-sso";
+import { isEdgeRuntime } from "../lib/runtime";
 
 /**
  * Tenant id of the instance-wide `auth_config` row — the fallback used when a
@@ -54,7 +56,7 @@ export interface PublicProvider {
    *  use their per-tenant slug as the id and point to
    *  `/api/t/<slug>/auth/saml/<slug>/login`. */
   id: AuthProviderKey | string;
-  kind: "credential" | "magic-link" | "email-otp" | "passkey" | "social" | "saml";
+  kind: "credential" | "magic-link" | "email-otp" | "passkey" | "social" | "saml" | "ldap";
   label: string;
   /** Whether sign-in with this provider is currently offered for this
    *  workspace. The list itself only contains providers the running worker is
@@ -94,6 +96,10 @@ export interface ResolvedAuthSurface {
     termsUrl: string;
     privacyUrl: string;
   };
+  /** Control-plane only: whether admin SAML/LDAP SSO is enabled for this
+   *  instance (the `PLATFORM_SSO_ENABLED` gate). Lets the admin client show or
+   *  hide the "Platform SSO" settings page. Absent on the workspace surface. */
+  platformSso?: boolean;
 }
 
 interface StoredAuthConfigRow {
@@ -193,12 +199,19 @@ export const loadPolicy = async (
  *
  * `tenantSlug` is optional; when provided, SAML providers are included in the
  * list with a `loginUrl` pointing at the SP-initiated login redirect.
+ *
+ * `excludeSocial` drops consumer OAuth (Google / Apple / GitHub) from the list.
+ * The control-plane (admin) sign-in screen passes `true` — social login belongs
+ * to the workspace end-user plane only. The admin better-auth instance also
+ * ships without these providers (see context.ts), so hiding the buttons here
+ * keeps the discovery surface honest rather than advertising a dead route.
  */
 export const resolveAuthSurface = async (
   ctx: DbCtx,
   env: Env,
   tenantId: string | null | undefined,
   tenantSlug?: string,
+  excludeSocial = false,
 ): Promise<ResolvedAuthSurface> => {
   const stored = await loadAuthConfigRow(ctx, tenantId);
   const envConfigured = envConfiguredProviders(env);
@@ -230,6 +243,7 @@ export const resolveAuthSurface = async (
     Object.keys(PROVIDER_META) as AuthProviderKey[]
   )
     .filter((key) => isConfigured(key))
+    .filter((key) => !(excludeSocial && PROVIDER_META[key].kind === "social"))
     .map((key) => {
       const entry = stored?.providers?.[key] as { enabled?: unknown } | undefined;
       const enabled =
@@ -304,4 +318,76 @@ export const resolveAuthSurface = async (
     ownerEmail: firstUserMode ? (env.OWNER_EMAIL?.trim() ?? "") : "",
     branding,
   };
+};
+
+/**
+ * The CONTROL-PLANE (admin) sign-in surface. Reuses {@link resolveAuthSurface}
+ * with `excludeSocial` (consumer OAuth belongs to the workspace plane only),
+ * then appends the instance-global platform SAML providers and a synthetic LDAP
+ * entry. Gated by `PLATFORM_SSO_ENABLED`: when off, no SSO providers are listed
+ * and `platformSso` is false so the admin client hides the settings page.
+ *
+ * LDAP is advertised only on a runtime that can actually serve it — on
+ * Cloudflare Workers / other edge runtimes `buildLdapAdapter` returns undefined,
+ * so the entry is omitted there (SAML still works on Workers).
+ */
+export const resolvePlatformAuthSurface = async (
+  ctx: DbCtx,
+  env: Env,
+  tenantId: string | null | undefined,
+): Promise<ResolvedAuthSurface> => {
+  const base = await resolveAuthSurface(ctx, env, tenantId, undefined, true);
+  if (!isPlatformSsoEnabled(env)) return { ...base, platformSso: false };
+
+  const providers: PublicProvider[] = [...base.providers];
+  const baseUrl = env.APP_URL.replace(/\/+$/, "");
+
+  // Platform SAML providers.
+  const st =
+    ctx.dialect === "pg"
+      ? pg.schema.platformSamlProviders
+      : sqlite.schema.platformSamlProviders;
+  try {
+    const rows = (await (ctx.db as any)
+      .select({ slug: st.slug, name: st.name, enabled: st.enabled })
+      .from(st)) as Array<{ slug: string; name: string; enabled: boolean }>;
+    for (const r of rows) {
+      providers.push({
+        id: r.slug,
+        kind: "saml",
+        label: r.name,
+        enabled: Boolean(r.enabled),
+        loginUrl: `${baseUrl}/api/auth/saml/${r.slug}/login`,
+      });
+    }
+  } catch {
+    // table not migrated yet — skip.
+  }
+
+  // Platform LDAP — only where the adapter can run (self-host, not edge).
+  if (!isEdgeRuntime()) {
+    const lt =
+      ctx.dialect === "pg"
+        ? pg.schema.platformLdapConfig
+        : sqlite.schema.platformLdapConfig;
+    try {
+      const rows = (await (ctx.db as any)
+        .select({ enabled: lt.enabled })
+        .from(lt)
+        .where(eq(lt.id, "singleton"))
+        .limit(1)) as Array<{ enabled: boolean }>;
+      if (rows[0]?.enabled) {
+        providers.push({
+          id: "ldap",
+          kind: "ldap",
+          label: "LDAP / Active Directory",
+          enabled: true,
+        });
+      }
+    } catch {
+      // table not migrated yet — skip.
+    }
+  }
+
+  return { ...base, providers, platformSso: true };
 };

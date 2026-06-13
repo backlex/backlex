@@ -967,6 +967,119 @@ export const ldapConfigs = sqliteTable(
 );
 
 /**
+ * Instance-global control-plane (admin) SAML provider — mirror of
+ * `platform_saml_providers` in packages/db/src/pg/schema.ts. No tenant scoping;
+ * identities land in `users`. Booleans are integer 0/1; JSON columns use text.
+ */
+export const platformSamlProviders = sqliteTable(
+  "platform_saml_providers",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    idpTemplate: text("idp_template"),
+    entityId: text("entity_id").notNull(),
+    ssoUrl: text("sso_url").notNull(),
+    sloUrl: text("slo_url"),
+    /** AES-256-GCM ciphertext of the IdP signing cert PEM. */
+    idpCertPem: text("idp_cert_pem").notNull(),
+    spEntityId: text("sp_entity_id").notNull(),
+    attributeMap: text("attribute_map", { mode: "json" })
+      .$type<Record<string, string>>()
+      .notNull()
+      .default({}),
+    defaultRoleId: text("default_role_id").references(() => roles.id, {
+      onDelete: "set null",
+    }),
+    groupsToRoles: text("groups_to_roles", { mode: "json" }).$type<
+      Record<string, { tenantId: string; roleId: string }>
+    >(),
+    signatureAlgorithm: text("signature_algorithm").notNull().default("sha256"),
+    wantSignedAssertions: integer("want_signed_assertions", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    linkByVerifiedEmail: integer("link_by_verified_email", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    nameIdFormat: text("name_id_format").notNull().default("emailAddress"),
+    /** JIT allow-list of email domains (json array); null/empty = any. */
+    domainMatch: text("domain_match", { mode: "json" }).$type<string[]>(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [uniqueIndex("platform_saml_providers_slug_idx").on(t.slug)],
+);
+
+/**
+ * Instance-global control-plane LDAP config (singleton, PK `'singleton'`) —
+ * mirror of `platform_ldap_config` in pg. Self-host only (LDAP can't run on
+ * Workers — see lib/auth-select.ts).
+ */
+export const platformLdapConfig = sqliteTable("platform_ldap_config", {
+  id: text("id").primaryKey().default("singleton"),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+  url: text("url").notNull(),
+  bindDn: text("bind_dn").notNull(),
+  baseDn: text("base_dn").notNull(),
+  userFilter: text("user_filter")
+    .notNull()
+    .default("(&(objectClass=person)(uid={{username}}))"),
+  groupFilter: text("group_filter"),
+  attributeMap: text("attribute_map", { mode: "json" })
+    .$type<{ email: string; firstName: string; lastName: string; groups: string }>()
+    .notNull()
+    .default({ email: "mail", firstName: "givenName", lastName: "sn", groups: "memberOf" }),
+  defaultRoleId: text("default_role_id").references(() => roles.id, {
+    onDelete: "set null",
+  }),
+  groupsToRoles: text("groups_to_roles", { mode: "json" }).$type<
+    Record<string, { tenantId: string; roleId: string }>
+  >(),
+  tlsOptions: text("tls_options", { mode: "json" }).$type<{
+    rejectUnauthorized?: boolean;
+  }>(),
+  secrets: text("secrets", { mode: "json" })
+    .$type<Record<string, string>>()
+    .notNull()
+    .default({}),
+  domainMatch: text("domain_match", { mode: "json" }).$type<string[]>(),
+  rateLimitPerMinute: integer("rate_limit_per_minute").notNull().default(10),
+  updatedAt: ts("updated_at"),
+});
+
+/**
+ * Platform-plane federated identity link — mirror of
+ * `platform_external_identities` in pg. Maps an IdP subject to a `users` row.
+ */
+export const platformExternalIdentities = sqliteTable(
+  "platform_external_identities",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    providerType: text("provider_type").notNull(),
+    providerId: text("provider_id").notNull(),
+    subject: text("subject").notNull(),
+    emailAtProvision: text("email_at_provision"),
+    rolesFromGroups: text("roles_from_groups", { mode: "json" }).$type<string[]>(),
+    lastLoginAt: integer("last_login_at", { mode: "timestamp_ms" }),
+    lastLoginIp: text("last_login_ip"),
+    lastAuthnContext: text("last_authn_context"),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    uniqueIndex("platform_external_identities_lookup_idx").on(
+      t.providerType,
+      t.providerId,
+      t.subject,
+    ),
+    index("platform_external_identities_user_idx").on(t.userId),
+  ],
+);
+
+/**
  * Per-workspace email transport. `tenant_id` is the workspace id, or the
  * `_global` sentinel for the instance-wide override row. `provider = "inherit"`
  * (or no usable config) falls through to the next level and ultimately to the

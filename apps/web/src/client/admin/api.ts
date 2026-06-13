@@ -712,6 +712,105 @@ export const ldapAdminApi = {
     }),
 };
 
+// --- Platform (control-plane / admin) SSO — instance-global, no tenant. ---
+
+/** Sanitized platform SAML provider (no `tenantId`; cert PEM never returned). */
+export interface ApiPlatformSamlProvider {
+  id: string;
+  name: string;
+  slug: string;
+  idpTemplate: string | null;
+  entityId: string;
+  ssoUrl: string;
+  sloUrl: string | null;
+  idpCertSet: boolean;
+  spEntityId: string;
+  attributeMap: Record<string, string>;
+  defaultRoleId: string | null;
+  groupsToRoles: Record<string, { tenantId: string; roleId: string }> | null;
+  signatureAlgorithm: string;
+  wantSignedAssertions: boolean;
+  linkByVerifiedEmail: boolean;
+  nameIdFormat: string;
+  /** JIT email-domain allow-list; null/empty = any IdP-authenticated email. */
+  domainMatch: string[] | null;
+  enabled: boolean;
+  createdAt: string | number;
+  updatedAt: string | number;
+}
+
+/** Platform SAML create input — the shared workspace shape plus the platform-
+ *  only JIT `domainMatch` allow-list. */
+export type PlatformSamlProviderCreate = Omit<SamlProviderCreate, "groupsToRoles"> & {
+  domainMatch?: string[] | null;
+  /** Tenant-aware group→role map (platform-only). */
+  groupsToRoles?: Record<string, { tenantId: string; roleId: string }> | null;
+};
+
+export const platformSamlAdminApi = {
+  list: () =>
+    api<Envelope<ApiPlatformSamlProvider[]>>(`/api/admin/platform-saml/providers`),
+  create: (body: PlatformSamlProviderCreate) =>
+    api<Envelope<ApiPlatformSamlProvider>>(`/api/admin/platform-saml/providers`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  update: (id: string, body: Partial<PlatformSamlProviderCreate>) =>
+    api<Envelope<ApiPlatformSamlProvider>>(`/api/admin/platform-saml/providers/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  remove: (id: string) =>
+    api<{ ok: true }>(`/api/admin/platform-saml/providers/${id}`, { method: "DELETE" }),
+  importMetadata: (body: { metadataXml?: string; metadataUrl?: string }) =>
+    api<Envelope<{
+      entityId: string;
+      ssoUrl: string;
+      sloUrl: string | null;
+      idpCertPem: string;
+      spEntityIdSuggested: string;
+    }>>(`/api/admin/platform-saml/providers/import-metadata`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+};
+
+/** Sanitized platform LDAP singleton config (`id` instead of `tenantId`). */
+export interface ApiPlatformLdapConfig {
+  id: string;
+  enabled: boolean;
+  url: string;
+  bindDn: string;
+  baseDn: string;
+  userFilter: string;
+  groupFilter: string | null;
+  attributeMap: { email: string; firstName: string; lastName: string; groups: string };
+  defaultRoleId: string | null;
+  groupsToRoles: Record<string, { tenantId: string; roleId: string }> | null;
+  tlsOptions: { rejectUnauthorized?: boolean } | null;
+  secretsSet: { bindPassword: boolean; caPem: boolean };
+  domainMatch: string[] | null;
+  rateLimitPerMinute: number;
+  updatedAt: string | number | null;
+}
+
+export const platformLdapAdminApi = {
+  load: () => api<Envelope<ApiPlatformLdapConfig>>(`/api/admin/platform-ldap-config`),
+  save: (body: LdapConfigPatch) =>
+    api<{ ok: true }>(`/api/admin/platform-ldap-config`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  test: (username: string, password: string) =>
+    api<
+      | { ok: true; dn: string; attributes: { email: string | null; firstName: string | null; lastName: string | null; groups: string[] } }
+      | { ok: false; reason: string }
+    >(`/api/admin/platform-ldap-config/test`, {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+};
+
 export const settingsApi = {
   load: () => api<Envelope<Record<string, unknown>>>(`/api/admin/settings`),
   patch: (body: Record<string, unknown>) =>

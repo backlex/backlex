@@ -6,7 +6,8 @@ import {
   type AuthShellCopy,
   type SignInCopy,
 } from "@backlex/auth-ui";
-import { SocialButtons } from "@/components/social-buttons";
+import { SocialButtons, useHasSocialProviders } from "@/components/social-buttons";
+import { PlatformSso, useHasPlatformSso } from "@/components/platform-sso";
 import { notifyError } from "@/lib/error";
 import { auth, toSurfaceFlags, useAuthSurface } from "@/lib/auth";
 import { useWorkspaceBranding } from "@/lib/branding";
@@ -23,6 +24,8 @@ export const SignIn = () => {
   const [params] = useSearchParams();
   const next = params.get("next") || "/";
   const { surface } = useAuthSurface();
+  const hasSocials = useHasSocialProviders();
+  const hasSso = useHasPlatformSso();
   const wsBranding = useWorkspaceBranding();
 
   const branding: AuthBranding = {
@@ -86,6 +89,9 @@ export const SignIn = () => {
       surface={toSurfaceFlags(surface)}
       appVersion={appVersion}
       socialButtons={<SocialButtons callbackURL={next} />}
+      hasSocials={hasSocials}
+      ssoButtons={<PlatformSso callbackURL={next} />}
+      hasSso={hasSso}
     />
   );
 };

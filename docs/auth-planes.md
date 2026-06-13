@@ -91,6 +91,18 @@ Load-bearing details worth pinning:
   There's no FK because the referent table depends on the plane —
   same pattern `tenant_members.user_id` uses
   (`packages/db/src/pg/schema.ts:1042`).
+  - **Control-plane (admin) SSO uses dedicated tables, not this one.**
+    Instance-global admin SAML/LDAP (operators signing into the dashboard)
+    stores its providers + federated links in `platform_saml_providers`,
+    `platform_ldap_config` (singleton) and `platform_external_identities`
+    (a real FK to `users`, unique on `(provider_type, provider_id, subject)` —
+    no `tenant_id`). They were added separately rather than overloading the
+    tenant-scoped `external_identities`/`saml_providers`/`ldap_configs` (whose
+    `tenant_id` FK to `tenants` has no instance-global slot). In practice the
+    `external_identities.plane = "platform"` path is therefore unused — app-plane
+    federation only. See `routes/platform-auth.ts` and
+    `services/platform-sso-provisioning.ts`. Runtime caveat: LDAP can't run on
+    Cloudflare Workers, so on cloud projects only platform SAML is available.
 
 ## Workspaces (`tenants`)
 

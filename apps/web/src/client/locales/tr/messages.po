@@ -866,9 +866,11 @@ msgid "Add role"
 msgstr "Rol ekle"
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Add SAML"
 msgstr "SAML ekle"
 
+#: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Add SAML provider"
 msgstr "SAML sağlayıcı ekle"
@@ -1036,6 +1038,10 @@ msgstr "Tüm durumlar"
 #: src/client/components/mcp-key-modal.tsx
 msgid "Allow all"
 msgstr "Tümüne izin ver"
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Allowed email domains (optional, comma-separated)"
+msgstr "İzin verilen e-posta alanları (isteğe bağlı, virgülle ayrılmış)"
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Allowed email domains (optional)"
@@ -1379,6 +1385,10 @@ msgstr "dengeli — çoğu sorgu için önerilir"
 msgid "base"
 msgstr "temel"
 
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Base DN"
+msgstr "Base DN"
+
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Base DN (search root)"
 msgstr "Temel DN (arama kökü)"
@@ -1400,10 +1410,12 @@ msgid "before"
 msgstr "önce"
 
 #: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Bind DN"
 msgstr "Bind DN"
 
 #: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Bind password"
 msgstr "Bind parolası"
 
@@ -1516,6 +1528,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 #: src/client/admin/parity/translations.tsx
 #: src/client/admin/relational-pickers.tsx
@@ -1977,6 +1990,11 @@ msgstr "bağlam"
 msgid "Continue"
 msgstr "Devam et"
 
+#. placeholder {0}: p.label
+#: src/client/components/platform-sso.tsx
+msgid "Continue with {0}"
+msgstr "{0} ile devam et"
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "conventional column present"
 msgstr "geleneksel sütun mevcut"
@@ -2014,6 +2032,7 @@ msgstr "kopyala"
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 #: src/client/components/mcp-key-modal.tsx
 #: src/client/pages/openapi-export.tsx
@@ -2109,6 +2128,7 @@ msgstr "bir koleksiyon üzerinde say / topla / ortalama — SQL gerektirmez"
 msgid "Counter takes the first numeric column of row 1; sparkline / bars plot it across all rows; donut / table pair the first two columns."
 msgstr "Sayaç, 1. satırın ilk sayısal sütununu alır; kıvılcım grafik / çubuklar tüm satırlarda gösterir; halka / tablo ilk iki sütunu eşleştirir."
 
+#: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/pages/api-keys.tsx
 msgid "Create"
 msgstr "Oluştur"
@@ -2395,6 +2415,7 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/storage.tsx
 msgid "Delete"
 msgstr "Sil"
@@ -2440,6 +2461,7 @@ msgid "Delete panel"
 msgstr "Paneli sil"
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Delete SAML provider?"
 msgstr "SAML sağlayıcısı silinsin mi?"
 
@@ -2841,6 +2863,7 @@ msgstr "E-posta"
 msgid "Email + password is always available — toggle it off to hide the form from the sign-in screen."
 msgstr "E-posta + parola her zaman kullanılabilir — giriş ekranındaki formu gizlemek için kapatın."
 
+#: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Email attribute"
 msgstr "E-posta özniteliği"
@@ -2964,6 +2987,14 @@ msgstr "Kayıt olduğunuz e-postayı girin — sıfırlama bağlantısı gönder
 #: src/client/pages/sign-in.tsx
 msgid "Enter your email and password."
 msgstr "E-posta ve parolanızı girin."
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Enterprise SSO for operators signing into this dashboard."
+msgstr "Bu panele giriş yapan operatörler için kurumsal SSO."
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Enterprise SSO for operators signing into this dashboard. Separate from workspace end-user auth."
+msgstr "Bu panele giriş yapan operatörler için kurumsal SSO. Workspace son kullanıcı kimlik doğrulamasından ayrıdır."
 
 #: src/client/admin/pages/logs.tsx
 msgid "Entry id copied to clipboard."
@@ -3639,6 +3670,10 @@ msgstr "id <0>{0}</0>"
 msgid "idle"
 msgstr "boşta"
 
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "IdP Entity ID"
+msgstr "IdP Entity ID"
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "IdP entity ID (Issuer)"
 msgstr "IdP varlık ID'si (Issuer)"
@@ -3646,6 +3681,10 @@ msgstr "IdP varlık ID'si (Issuer)"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "IdP signing cert (PEM)"
 msgstr "IdP imza sertifikası (PEM)"
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "IdP signing certificate (PEM)"
+msgstr "IdP imzalama sertifikası (PEM)"
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "IdP signing certificate (PEM) is required."
@@ -3655,6 +3694,7 @@ msgstr "IdP imza sertifikası (PEM) zorunludur."
 msgid "IdP SLO URL <0>(optional)</0>"
 msgstr "IdP SLO URL'si <0>(isteğe bağlı)</0>"
 
+#: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "IdP SSO URL"
 msgstr "IdP SSO URL'si"
@@ -4088,10 +4128,12 @@ msgid "Latency"
 msgstr "Gecikme"
 
 #: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "LDAP / Active Directory"
 msgstr "LDAP / Active Directory"
 
 #: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "LDAP config saved."
 msgstr "LDAP yapılandırması kaydedildi."
 
@@ -4103,9 +4145,29 @@ msgstr "LDAP devre dışı bırakıldı."
 msgid "LDAP enabled."
 msgstr "LDAP etkinleştirildi."
 
+#: src/client/components/platform-sso.tsx
+msgid "LDAP password"
+msgstr "LDAP parolası"
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "LDAP runs only on self-hosted (Bun/Node) deployments — it is unavailable on Cloudflare Workers, which block raw TCP. Use SAML there."
+msgstr "LDAP yalnızca self-host (Bun/Node) dağıtımlarında çalışır — ham TCP'yi engelleyen Cloudflare Workers'da kullanılamaz. Orada SAML kullanın."
+
+#: src/client/components/platform-sso.tsx
+msgid "LDAP sign-in"
+msgstr "LDAP girişi"
+
+#: src/client/components/platform-sso.tsx
+msgid "LDAP sign-in failed"
+msgstr "LDAP girişi başarısız"
+
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "LDAP URL"
 msgstr "LDAP URL'si"
+
+#: src/client/components/platform-sso.tsx
+msgid "LDAP username"
+msgstr "LDAP kullanıcı adı"
 
 #: src/client/admin/parity/translations.tsx
 msgid "Leave blank to create the key with empty values across all locales."
@@ -4131,6 +4193,10 @@ msgstr "yöneticiler için boş bırakın"
 #: src/client/admin/flow-builder.tsx
 msgid "leave empty to pass the trigger payload"
 msgstr "tetikleyici yükünü iletmek için boş bırakın"
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Leave empty to provision any operator your IdP authenticates. Set domains to restrict who gets a dashboard account."
+msgstr "IdP'nizin doğruladığı her operatöre hesap açmak için boş bırakın. Kimlerin pano hesabı alacağını kısıtlamak için alan girin."
 
 #: src/client/admin/pages/settings.tsx
 msgid "Leave to user"
@@ -4446,6 +4512,10 @@ msgstr "Metadata"
 msgid "Metadata imported."
 msgstr "Metadata içe aktarıldı."
 
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Metadata parsed — review and save."
+msgstr "Metadata ayrıştırıldı — gözden geçirip kaydedin."
+
 #: src/client/admin/storage.tsx
 msgid "Metadata saved."
 msgstr "Metadata kaydedildi."
@@ -4581,6 +4651,7 @@ msgstr "Temam"
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/role-editor.tsx
 #: src/client/admin/storage.tsx
 #: src/client/admin/ui.tsx
@@ -4603,6 +4674,10 @@ msgstr "ad zorunludur"
 #: src/client/admin/account-page.tsx
 msgid "Name this passkey (e.g. MacBook Touch ID)"
 msgstr "Bu geçiş anahtarını adlandırın (örn. MacBook Touch ID)"
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Name, Entity ID, SSO URL and IdP certificate are required."
+msgstr "Ad, Entity ID, SSO URL ve IdP sertifikası gereklidir."
 
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "NameID format"
@@ -5062,11 +5137,16 @@ msgstr "Henüz çalışma yok — araç çağrıların burada görünecek."
 msgid "No SAML providers configured. Add one to enable IdP-based SSO for this workspace's end-users."
 msgstr "SAML sağlayıcısı yapılandırılmamış. Bu çalışma alanının son kullanıcıları için IdP tabanlı SSO'yu etkinleştirmek için bir tane ekleyin."
 
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "No SAML providers configured. Operators will sign in with email/password until you add one."
+msgstr "Yapılandırılmış SAML sağlayıcı yok. Bir tane ekleyene kadar operatörler e-posta/parola ile giriş yapar."
+
 #: src/client/pages/rest-explorer.tsx
 msgid "No schema."
 msgstr "Şema yok."
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "No signing cert stored — login will fail."
 msgstr "İmza sertifikası saklanmamış — giriş başarısız olacak."
 
@@ -5338,6 +5418,10 @@ msgstr "OpenAPI spec yenilendi."
 msgid "Operations"
 msgstr "İşlemler"
 
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Operators using this IdP will no longer be able to sign in."
+msgstr "Bu IdP'yi kullanan operatörler artık giriş yapamayacak."
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Ops bots — admin role required."
 msgstr "Operasyon botları — yönetici rolü gerekli."
@@ -5455,6 +5539,10 @@ msgstr "\"{name}\" paneli kaydedildi."
 msgid "parent not adopted"
 msgstr "üst benimsenmedi"
 
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Parse metadata"
+msgstr "Metadata'yı ayrıştır"
+
 #: src/client/admin/account-page.tsx
 msgid "Passkey added."
 msgstr "Geçiş anahtarı eklendi."
@@ -5518,6 +5606,10 @@ msgstr "Base64 SAMLResponse yapıştırın"
 #: src/client/admin/parity/auth-settings.tsx
 msgid "paste from the provider"
 msgstr "sağlayıcıdan yapıştırın"
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Paste IdP metadata XML (optional — prefills the fields below)"
+msgstr "IdP metadata XML yapıştırın (isteğe bağlı — aşağıdaki alanları doldurur)"
 
 #: src/client/pages/openapi-export.tsx
 msgid "Paths"
@@ -5801,6 +5893,15 @@ msgstr "Araç çağrısı planlanıyor…"
 msgid "Planning…"
 msgstr "Planlanıyor…"
 
+#: src/client/admin/parity/platform-auth-settings.tsx
+#: src/client/admin/ui.tsx
+msgid "Platform SSO"
+msgstr "Platform SSO"
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Platform SSO is not enabled on this instance. It's available on plans with enterprise SSO, or on self-hosted deployments."
+msgstr "Bu örnekte Platform SSO etkin değil. Kurumsal SSO içeren planlarda veya self-host dağıtımlarda kullanılabilir."
+
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collection-settings.tsx
 msgid "Plural"
@@ -5947,6 +6048,7 @@ msgid "Profile saved."
 msgstr "Profil kaydedildi."
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "provider"
 msgstr "sağlayıcı"
 
@@ -5960,6 +6062,7 @@ msgid "Provider created."
 msgstr "Sağlayıcı oluşturuldu."
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Provider deleted."
 msgstr "Sağlayıcı silindi."
 
@@ -5972,6 +6075,7 @@ msgid "Provider saved."
 msgstr "Sağlayıcı kaydedildi."
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "providers"
 msgstr "sağlayıcılar"
 
@@ -6719,6 +6823,7 @@ msgid "Same DSL as roles & permissions. Operators: <0>_eq</0>, <1>_in</1>, <2>_g
 msgstr "Roller ve izinlerle aynı DSL. Operatörler: <0>_eq</0>, <1>_in</1>, <2>_gte</2>, … Değişkenler: <3>$user.id</3>, <4>$now</4>, …"
 
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "SAML 2.0 SSO"
 msgstr "SAML 2.0 SSO"
 
@@ -6800,6 +6905,10 @@ msgstr "Akışı kaydet"
 #: src/client/components/mcp-key-modal.tsx
 msgid "Save guards"
 msgstr "Korumaları kaydet"
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Save LDAP config"
+msgstr "LDAP yapılandırmasını kaydet"
 
 #: src/client/admin/storage.tsx
 msgid "Save metadata"
@@ -7095,6 +7204,10 @@ msgstr "Sunucu URL'yi getirir ve bu çalışma alanında depolar. Yalnızca http
 msgid "Server log line. Use <0>{dataInterpolationExample}</0> for interpolation."
 msgstr "Sunucu günlük satırı. İçleme için <0>{dataInterpolationExample}</0> kullanın."
 
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Server URL"
+msgstr "Sunucu URL'si"
+
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "service-account password"
 msgstr "servis hesabı parolası"
@@ -7347,6 +7460,14 @@ msgstr "<0>backlex</0>'a giriş yapın."
 msgid "Sign in to backlex."
 msgstr "backlex'a giriş yapın."
 
+#: src/client/components/platform-sso.tsx
+msgid "Sign in with LDAP"
+msgstr "LDAP ile giriş yap"
+
+#: src/client/components/platform-sso.tsx
+msgid "Sign in with LDAP / AD"
+msgstr "LDAP / AD ile giriş yap"
+
 #: src/client/pages/sign-in.tsx
 msgid "Sign in with passkey"
 msgstr "Passkey ile giriş yap"
@@ -7421,6 +7542,7 @@ msgstr "İmza algoritması"
 msgid "Signed URL copied (1h)."
 msgstr "İmzalı URL kopyalandı (1 saat)."
 
+#: src/client/components/platform-sso.tsx
 #: src/client/pages/sign-in.tsx
 msgid "Signing in…"
 msgstr "Giriş yapılıyor…"
@@ -7467,6 +7589,10 @@ msgstr "SLO URL"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Slug"
 msgstr "Slug"
+
+#: src/client/admin/parity/platform-auth-settings.tsx
+msgid "Slug (URL handle)"
+msgstr "Slug (URL tanıtıcısı)"
 
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collection-settings.tsx
@@ -8362,6 +8488,7 @@ msgid "User"
 msgstr "Kullanıcı"
 
 #: src/client/admin/parity/ldap-config-card.tsx
+#: src/client/admin/parity/platform-auth-settings.tsx
 msgid "User filter"
 msgstr "Kullanıcı filtresi"
 

@@ -54,6 +54,7 @@ import { StoragePage } from "./storage";
 import {
   AppUsersPage,
   AuthSettingsPage,
+  PlatformSsoSettingsPage,
   DatabasePage,
   EmailTemplatesPage,
   InsightsPage,
@@ -726,6 +727,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "revisions" && <RevisionsPage pushToast={pushToast} />}
             {activeNav === "translations" && <TranslationsPage pushToast={pushToast} />}
             {activeNav === "authentication" && <AuthSettingsPage pushToast={pushToast} />}
+            {activeNav === "platform-sso" && <PlatformSsoSettingsPage pushToast={pushToast} />}
             {activeNav === "users" && <UsersPage pushToast={pushToast} />}
             {activeNav === "app-users" && <AppUsersPage pushToast={pushToast} />}
             {activeNav === "api-keys" && <ApiKeys />}

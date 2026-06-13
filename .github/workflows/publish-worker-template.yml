@@ -48,6 +48,13 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Cache bun install cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+
       # Retry on transient npm-registry download flakes (e.g. a failed
       # @pagefind/* tarball fetch) so a release build never fails on a hiccup.
       - name: Install dependencies
@@ -58,18 +65,14 @@ jobs:
             echo "bun install flaked (attempt $n) — retrying in 10s"; sleep 10
           done
 
-      # Strict release gates — mirror .github/workflows/test.yml so a
-      # tarball never ships from a tree that wouldn't pass the normal
-      # PR-time gate. (build:targets is not re-run here: the assemble
-      # step below already runs `bun run build` for the CF target.)
-      - name: Lint
-        run: bun run lint
-
+      # Release gate. Tags are cut from main, which already passed the full
+      # PR-time gate (lint + typecheck + smoke + 4-runtime matrix), so we do
+      # NOT re-run the expensive smoke/lint here — only a typecheck as a cheap
+      # net against a tag accidentally cut from a non-green commit. The
+      # assemble step below also runs `bun run build`, which would surface a
+      # hard compile break on its own.
       - name: Typecheck
         run: bun run typecheck
-
-      - name: Smoke tests
-        run: bun run test
 
       # Derive the human version from either the tag (`worker-v0.1.0` →
       # `0.1.0`) or the workflow_dispatch input. Exported as VERSION for

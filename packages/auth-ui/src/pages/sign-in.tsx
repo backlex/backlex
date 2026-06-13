@@ -76,6 +76,16 @@ export interface SignInPageProps extends AuthWiring {
   /** Render-prop for social-provider buttons. The consumer decides which
    *  providers to show and how (the OSS admin reads the auth surface). */
   socialButtons?: ReactNode;
+  /** Whether any social provider is actually rendered. Gates the
+   *  "or with email" divider so it doesn't strand above the email form when
+   *  there are no social buttons (e.g. the control-plane sign-in, which ships
+   *  no social providers). Mirrors `sign-up.tsx`. */
+  hasSocials?: boolean;
+  /** Render-prop slot for enterprise SSO entry points (SAML buttons + an LDAP
+   *  form). The control-plane sign-in fills this from the auth surface. */
+  ssoButtons?: ReactNode;
+  /** Whether `ssoButtons` actually renders anything — also gates the divider. */
+  hasSso?: boolean;
   /** Called after a successful sign-in. Default: `window.location.href = next`. */
   onSignedIn?: (next: string) => void;
 }
@@ -98,6 +108,9 @@ export const SignInPage = ({
   appVersion,
   themeToggle,
   socialButtons,
+  hasSocials = false,
+  ssoButtons,
+  hasSso = false,
   onSignedIn,
 }: SignInPageProps) => {
   const [email, setEmail] = useState("");
@@ -186,7 +199,9 @@ export const SignInPage = ({
 
         {socialButtons}
 
-        <AuthDivider>{copy.orWithEmail}</AuthDivider>
+        {ssoButtons}
+
+        {(hasSocials || hasSso) && <AuthDivider>{copy.orWithEmail}</AuthDivider>}
 
         {error && (
           <AuthError>

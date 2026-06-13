@@ -21,6 +21,7 @@ import { appUsersRoutes } from "./routes/app-users";
 import { authRoutes } from "./routes/auth";
 import { authAdminRoutes } from "./routes/auth-admin";
 import { authPublicRoutes } from "./routes/auth-public";
+import { platformAuthRoutes } from "./routes/platform-auth";
 import { collectionsRoutes } from "./routes/collections";
 import { commentsRoutes } from "./routes/comments";
 import { dbAdminRoutes } from "./routes/db-admin";
@@ -49,6 +50,8 @@ import {
   usersRoutes,
 } from "./routes/roles";
 import { samlAdminRoutes } from "./routes/saml-admin";
+import { platformSamlAdminRoutes } from "./routes/platform-saml-admin";
+import { platformLdapAdminRoutes } from "./routes/platform-ldap-admin";
 import { sandboxRpcRoutes } from "./routes/sandbox-rpc";
 import { settingsRoutes } from "./routes/settings";
 import { sharedLinksRoutes } from "./routes/shared-links";
@@ -334,6 +337,9 @@ export const createApp = (env: Env) => {
   // Public auth-surface discovery — must be registered before the better-auth
   // catch-all (`/api/auth/*`) so it isn't shadowed by it.
   app.route("/api/auth", authPublicRoutes);
+  // Control-plane SSO (SAML ACS/metadata/slo, LDAP sign-in) — must precede the
+  // better-auth catch-all so `/api/auth/saml/*` and `/api/auth/ldap/*` win.
+  app.route("/api/auth", platformAuthRoutes);
   app.route("/api/auth", authRoutes);
   app.route("/api/me", meRoutes);
   app.route("/api/account", accountRoutes);
@@ -348,6 +354,8 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/auth", authAdminRoutes);
   app.route("/api/admin/saml", samlAdminRoutes);
   app.route("/api/admin/ldap-config", ldapAdminRoutes);
+  app.route("/api/admin/platform-saml", platformSamlAdminRoutes);
+  app.route("/api/admin/platform-ldap-config", platformLdapAdminRoutes);
   app.route("/api/admin/adopt", adoptRoutes);
   app.route("/api/admin/panels", panelsRoutes);
   app.route("/api/admin/i18n", i18nRoutes);

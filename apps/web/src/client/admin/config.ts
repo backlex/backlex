@@ -149,6 +149,7 @@ export const NAV_DEVELOPERS: NavItem[] = [
 
 export const NAV_SETTINGS: NavItem[] = [
   { id: "authentication", icon: "Shield" },
+  { id: "platform-sso", icon: "Shield" },
   { id: "users", icon: "Users" },
   { id: "app-users", icon: "Users" },
   { id: "api-keys", icon: "Code" },

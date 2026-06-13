@@ -8,9 +8,11 @@ export const auth = createBacklexAuthClient(
 
 export interface PublicProvider {
   id: string;
-  kind: "credential" | "magic-link" | "email-otp" | "passkey" | "social";
+  kind: "credential" | "magic-link" | "email-otp" | "passkey" | "social" | "saml" | "ldap";
   label: string;
   enabled: boolean;
+  /** SAML only — the SP-initiated login URL to redirect the browser to. */
+  loginUrl?: string;
 }
 
 export interface AuthSurface {
@@ -25,6 +27,9 @@ export interface AuthSurface {
   /** When in first-user mode and the deployment pinned an owner (managed
    *  cloud), the email allowed to claim the first-admin account. */
   ownerEmail?: string;
+  /** Control-plane only: admin SAML/LDAP SSO feature gate. Hides the
+   *  "Platform SSO" settings page when false. */
+  platformSso?: boolean;
   /** Admin-customised sign-in screen copy. Empty strings = use the default. */
   branding?: {
     signInHeadline: string;

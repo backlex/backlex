@@ -336,6 +336,7 @@ const NAV_LABELS: Record<string, MessageDescriptor> = {
   graphql: msg`GraphQL`,
   openapi: msg`OpenAPI`,
   authentication: msg`Authentication`,
+  "platform-sso": msg`Platform SSO`,
   users: msg`Users`,
   "app-users": msg`App users`,
   "api-keys": msg`API keys`,

@@ -48,6 +48,8 @@ export const MIGRATION_TAGS_SQLITE: Record<string, string> = {
   "bb04ff1704db02fce6b312b52b491318a1c70d7cd57eec18b91b923678138248": "20260601210000_integrations",
   "2c8c175c85bcee6cedaa416a9a02cb56416b82db940cef5b8e856cc26eaf32f8": "20260603120000_collections_soft_delete_singleton",
   "c326114aa241c6027d5f407f0bd7719f637bcfa92fd4b87eb6d01b19ba990f67": "20260604120000_passkey_aaguid",
+  "65444f35a9488056f490939846584b2170b5fde2c3ceffdd38b669d1a6b6e0a8": "20260609120000_collections_audit_reads",
+  "d93d41bcd01451cb680826505992b3a2fadd66c444d094e5ddbfc986b37e92ce": "20260613120000_platform_sso",
 };
 
 export const MIGRATION_TAGS_PG: Record<string, string> = {
@@ -91,4 +93,6 @@ export const MIGRATION_TAGS_PG: Record<string, string> = {
   "61b697c226dcdc5d3dba09c0a0080a940947cfa0fe59c5484b8cc919d140c8fa": "20260601210000_integrations",
   "e6162d3f985fae7160dfdd0480e7b6c3ecef154011f12f6928b01841fea18394": "20260603120000_collections_soft_delete_singleton",
   "b34393dcb60f4a09ffb82b7f3fccbae0c2fcb63827ba17223a4d516e5a27e6ad": "20260604120000_passkey_aaguid",
+  "04ac5c05abf261572224cd6912e69934118d235a39052552adddd39c6c612028": "20260609120000_collections_audit_reads",
+  "117d13156cadd25d796b490f8d628409691cd19ce22d71cde2845035ecbd96e6": "20260613120000_platform_sso",
 };

@@ -16,7 +16,11 @@ function Tabs({
       data-slot="tabs"
       data-orientation={orientation}
       className={cn(
-        "group/tabs flex gap-2 data-horizontal:flex-col",
+        // `min-w-0` lets the Tabs shrink when it's a flex-item inside a flex
+        // row (e.g. the items FilterBar / view-toggle); without it the pill
+        // TabsList can't engage its own `max-w-full overflow-x-auto` and the
+        // strip forces horizontal page overflow on narrow viewports.
+        "group/tabs flex min-w-0 gap-2 data-horizontal:flex-col",
         className
       )}
       {...props}

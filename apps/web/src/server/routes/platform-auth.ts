@@ -27,6 +27,8 @@ import { rateLimitOk } from "../lib/rate-limit";
 import { recordActivity, requestMeta } from "../services/activity";
 import { isPlatformSsoEnabled } from "../lib/platform-sso";
 import { extractIp, mintPlatformSession } from "../lib/platform-session";
+import { cloudConfigured } from "../lib/cloud-report";
+import { verifyHandoffToken } from "../lib/cloud-handoff";
 import {
   resolvePlatformSamlProvider,
 } from "../services/platform-saml-providers";
@@ -100,18 +102,20 @@ const consumeVerification = async (ctx: DbCtx, id: string): Promise<void> => {
   await (ctx.db as any).delete(t).where(eq(t.id, id));
 };
 
-/** Best-effort cleanup of expired `psaml-*` rows so the shared verifications
- *  table doesn't grow unbounded. Scoped to our prefix so it never touches
- *  better-auth's own verification rows. */
+/** Best-effort cleanup of expired `psaml-*` / `pbroker-*` rows so the shared
+ *  verifications table doesn't grow unbounded. Scoped to our prefixes so it
+ *  never touches better-auth's own verification rows. */
 const pruneExpiredVerifications = async (ctx: DbCtx): Promise<void> => {
   const t = verificationsTable(ctx.dialect);
   const now = ctx.dialect === "pg" ? new Date() : (Date.now() as never);
-  try {
-    await (ctx.db as any)
-      .delete(t)
-      .where(and(lt(t.expiresAt, now as never), like(t.identifier, "psaml-%")));
-  } catch {
-    // best-effort
+  for (const prefix of ["psaml-%", "pbroker-%"]) {
+    try {
+      await (ctx.db as any)
+        .delete(t)
+        .where(and(lt(t.expiresAt, now as never), like(t.identifier, prefix)));
+    } catch {
+      // best-effort
+    }
   }
 };
 
@@ -434,4 +438,77 @@ export const platformAuthRoutes = new Hono<AppBindings>()
       },
     );
     return c.json({ ok: true, user: { id: userId, email: attrs.email } });
+  })
+  /**
+   * Cloud-brokered SSO handoff → exchange a cloud-minted token for a platform
+   * session. The backlex **cloud** control plane redirects an operator's browser
+   * here after an org-level SSO login; this verifies the per-project-signed token
+   * and mints the dashboard cookie, so operators never configure SAML per
+   * project. Only meaningful for managed cloud tenants (needs CLOUD_REPORT_SECRET
+   * + CLOUD_PROJECT_ID); 404 otherwise. Token signature is the auth, so no CSRF
+   * token is needed for this top-level GET navigation.
+   */
+  .get("/platform/sso/handoff", async (c) => {
+    const ctx = c.get("ctx");
+    ensureEnabled(ctx.env);
+    if (!cloudConfigured(ctx.env)) {
+      throw new AppError("NOT_FOUND", "Cloud-brokered SSO is not available");
+    }
+
+    const claims = await verifyHandoffToken(
+      c.req.query("token"),
+      ctx.env.CLOUD_REPORT_SECRET,
+      ctx.env.CLOUD_PROJECT_ID,
+    );
+    if (!claims) throw new AppError("UNAUTHORIZED", "Invalid or expired handoff token");
+
+    // Single-use: a jti may be redeemed exactly once within its TTL.
+    const jtiKey = `pbroker-jti:${claims.jti}`;
+    if (await findVerification({ db: ctx.db, dialect: ctx.dialect }, jtiKey)) {
+      throw new AppError("UNAUTHORIZED", "Handoff token already used");
+    }
+    await writeVerification(
+      { db: ctx.db, dialect: ctx.dialect },
+      jtiKey,
+      "1",
+      new Date(claims.exp * 1000),
+    );
+
+    // Provision the operator into `users` as a `cloud` identity. Brokered users
+    // never auto-link to a local password/SSO account (linkByVerifiedEmail:false)
+    // and carry no group→role map, so on an already-claimed instance they land
+    // as `authenticated` — the safe default, no silent admin escalation.
+    const nameParts = (claims.name ?? "").trim().split(/\s+/).filter(Boolean);
+    const firstName = nameParts[0];
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : undefined;
+    const { userId, isNew } = await provisionPlatformUser({
+      ctx: { db: ctx.db, dialect: ctx.dialect },
+      providerType: "cloud",
+      providerId: "cloud-broker",
+      subject: claims.subject,
+      email: claims.email,
+      firstName,
+      lastName,
+      groups: claims.groups ?? [],
+      defaultRoleId: null,
+      groupsToRoles: null,
+      linkByVerifiedEmail: false,
+      ipAddress: extractIp(c.req.raw) ?? undefined,
+      authnContext: "cloud-broker",
+    });
+
+    await mintPlatformSession(c, userId);
+    void recordActivity(
+      { db: ctx.db, dialect: ctx.dialect },
+      {
+        userId,
+        tenantId: null,
+        action: "auth.sso.broker_login",
+        collection: "auth",
+        ...requestMeta(c.req.raw),
+        payload: { providerType: "cloud", providerId: "cloud-broker", isNew, email: claims.email },
+      },
+    );
+    void pruneExpiredVerifications({ db: ctx.db, dialect: ctx.dialect });
+    return c.redirect(ctx.env.APP_URL, 302);
   });

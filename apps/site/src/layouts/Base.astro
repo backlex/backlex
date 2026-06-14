@@ -21,7 +21,11 @@ const {
 } = Astro.props;
 
 // Canonical absolute URL for this page (Astro.site = https://backlex.com).
-const canonical = new URL(Astro.url.pathname, Astro.site).href;
+// With `build.format: "file"` the pathname carries a `.html` suffix
+// (`/pricing.html`); strip it (and `index.html` for `/`) so the canonical
+// matches the slash-free URL Cloudflare actually serves and the sitemap emits.
+const cleanPath = Astro.url.pathname.replace(/(?:index)?\.html$/, "");
+const canonical = new URL(cleanPath || "/", Astro.site).href;
 ---
 <!doctype html>
 <html lang="en">

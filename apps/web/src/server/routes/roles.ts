@@ -431,11 +431,42 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
         }
         bucket.push({ id: r.roleId, name: r.name });
       }
+
+      // Auth method per user. A platform federated identity (saml/ldap/cloud)
+      // wins — it's the most security-relevant attribute — else the better-auth
+      // account provider ("credential" → password, else github/google/…).
+      const providerByUser = new Map<string, string>();
+      if (userIds.length) {
+        const accountRows = (await (ctx.db as any)
+          .select({ userId: t.accounts.userId, providerId: t.accounts.providerId })
+          .from(t.accounts)
+          .where(inArray(t.accounts.userId, userIds))) as {
+          userId: string;
+          providerId: string;
+        }[];
+        for (const a of accountRows) {
+          if (providerByUser.has(a.userId)) continue;
+          providerByUser.set(a.userId, a.providerId === "credential" ? "password" : a.providerId);
+        }
+        const identRows = (await (ctx.db as any)
+          .select({
+            userId: t.platformExternalIdentities.userId,
+            providerType: t.platformExternalIdentities.providerType,
+          })
+          .from(t.platformExternalIdentities)
+          .where(inArray(t.platformExternalIdentities.userId, userIds))) as {
+          userId: string;
+          providerType: string;
+        }[];
+        for (const i of identRows) providerByUser.set(i.userId, i.providerType);
+      }
+
       return c.json({
         data: users.map((u) => ({
           ...u,
           roles: byUser.get(u.id) ?? [],
           lastSeenAt: lastByUser.get(u.id) ?? null,
+          provider: providerByUser.get(u.id) ?? "password",
         })),
       });
     },

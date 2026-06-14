@@ -73,6 +73,10 @@ export interface ApiUser {
   status?: "active" | "suspended";
   createdAt?: string;
   roles: { id: string; name: string }[];
+  /** Auth method: `password`/`github`/`google`/`magic` or a federated
+   *  identity (`saml`/`ldap`/`cloud`). */
+  provider?: string;
+  lastSeenAt?: number | null;
 }
 
 /** A workspace end-user (the `app_users` pool — the customers of the app

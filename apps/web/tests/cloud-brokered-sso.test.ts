@@ -199,6 +199,37 @@ describe("control-plane: cloud-brokered SSO handoff route", () => {
   });
 });
 
+describe("control-plane: /api/users surfaces the auth provider", () => {
+  let h: TestHarness;
+  let admin: { email: string; password: string };
+
+  beforeAll(async () => {
+    h = makeHarness(cloudEnv);
+    admin = await seedAdmin(h); // password operator (better-auth credential)
+    // Broker a cloud operator in — this also leaves the brokered session in the
+    // harness cookie jar, so we re-auth as admin before listing users.
+    const token = await mintToken({ email: "broker-view@acme.test", subject: "cloud-view-1" });
+    expect((await handoff(h, token)).status).toBe(302);
+    const back = await h.fetch("/api/auth/sign-in/email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: admin.email, password: admin.password }),
+    });
+    expect(back.status).toBe(200);
+  });
+  afterAll(() => h.cleanup());
+
+  test("brokered user shows provider=cloud; password admin shows provider=password", async () => {
+    const res = await h.fetch("/api/users");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: Array<{ email: string; provider: string }> };
+    const brokered = body.data.find((u) => u.email === "broker-view@acme.test");
+    const pwAdmin = body.data.find((u) => u.email === admin.email);
+    expect(brokered?.provider).toBe("cloud");
+    expect(pwAdmin?.provider).toBe("password");
+  });
+});
+
 describe("control-plane: handoff 404s on a non-cloud install", () => {
   let h: TestHarness;
   beforeAll(async () => {

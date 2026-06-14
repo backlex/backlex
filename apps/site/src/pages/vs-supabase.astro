@@ -1,0 +1,97 @@
+---
+import Base from "../layouts/Base.astro";
+
+const rows = [
+  ["License", "Apache-2.0 open-source core + managed Cloud", "Apache-2.0 open-source + managed cloud"],
+  ["Database", "PostgreSQL and SQLite / Cloudflare D1 (dual-dialect)", "PostgreSQL only"],
+  ["Runtimes", "Cloudflare Workers, Vercel, Netlify, self-host (Bun/Node) — one codebase", "Containers / managed cloud; self-host via Docker"],
+  ["Edge-native", "Yes — runs inside the edge runtime, close to users", "Regional Postgres + edge functions in front"],
+  ["REST API", "Auto-generated, permission-aware", "Auto-generated via PostgREST"],
+  ["GraphQL", "Built in, auto-generated", "Via pg_graphql extension"],
+  ["Realtime", "SSE fan-out with permission filtering", "Postgres logical replication over WebSockets"],
+  ["Permissions", "Role-based DSL: conditions + field-level allow-lists", "Postgres Row-Level Security (SQL policies)"],
+  ["Adopt existing tables", "Yes — wrap any existing table, no data migration", "Works against any Postgres schema"],
+  ["AI / MCP", "Built-in MCP server exposes collections to AI agents", "No first-party MCP server"],
+  ["Vector search", "Built in (pgvector + Cloudflare Vectorize)", "Built in (pgvector)"],
+];
+---
+<Base
+  title="backlex vs Supabase — edge-native, multi-runtime backend"
+  description="How backlex compares to Supabase: an open-source backend that runs on Cloudflare Workers, Vercel, Netlify, or your own server, with a built-in MCP server for AI agents and support for both PostgreSQL and SQLite/D1."
+>
+  <section class="relative z-[1] max-w-[860px] mx-auto px-8 max-md:px-5 py-20">
+    <div class="flex flex-col gap-3 mb-10">
+      <span class="inline-block self-start font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground border border-border rounded-full px-3 py-1.5 bg-muted">
+        Compare
+      </span>
+      <h1 class="text-[clamp(32px,5vw,48px)] font-semibold -tracking-[0.04em] leading-[1.05]">
+        backlex vs Supabase
+      </h1>
+      <p class="text-[17px] text-muted-foreground max-w-[60ch] leading-snug">
+        Both give you an instant backend over a real database. The difference is
+        <strong class="text-foreground font-medium">where it runs</strong> and
+        <strong class="text-foreground font-medium">how AI agents reach it</strong>.
+      </p>
+    </div>
+
+    <div class="flex flex-col gap-8 text-[15px] leading-relaxed text-muted-foreground">
+      <p>
+        <strong class="text-foreground font-medium">Supabase</strong> is an
+        excellent open-source backend built around a single managed PostgreSQL
+        database, with PostgREST, Realtime, Auth, and Storage layered on top.
+        <strong class="text-foreground font-medium">backlex</strong> targets a
+        different shape: one codebase that deploys to Cloudflare Workers, Vercel,
+        Netlify, or your own server, runs on either PostgreSQL or SQLite/D1, and
+        ships a first-class <strong class="text-foreground font-medium">MCP
+        server</strong> so AI agents can use your backend as a tool.
+      </p>
+
+      <div class="overflow-x-auto -mx-2">
+        <table class="w-full text-[13.5px] border-collapse">
+          <thead>
+            <tr class="text-left">
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border"></th>
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">backlex</th>
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">Supabase</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(([label, a, b]) => (
+              <tr class="align-top">
+                <td class="py-2.5 px-2 border-b border-border font-medium text-foreground whitespace-nowrap">{label}</td>
+                <td class="py-2.5 px-2 border-b border-border">{a}</td>
+                <td class="py-2.5 px-2 border-b border-border">{b}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When backlex is the better fit</h2>
+        <ul class="list-disc pl-5 flex flex-col gap-2">
+          <li>You want your backend to <strong class="text-foreground font-medium">run at the edge</strong> (Cloudflare Workers / Vercel / Netlify) instead of in front of a regional database.</li>
+          <li>You're building <strong class="text-foreground font-medium">AI agents or tools</strong> and want your data reachable over MCP out of the box.</li>
+          <li>You need <strong class="text-foreground font-medium">SQLite / D1</strong> as well as Postgres, or want to avoid being tied to one database engine.</li>
+          <li>You prefer a <strong class="text-foreground font-medium">permissions DSL</strong> with conditions and field-level allow-lists over hand-written SQL row-level security.</li>
+          <li>You want to <strong class="text-foreground font-medium">adopt existing tables</strong> without migrating data into a new system.</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When Supabase is the better fit</h2>
+        <ul class="list-disc pl-5 flex flex-col gap-2">
+          <li>You're committed to PostgreSQL and want a large, mature ecosystem around it.</li>
+          <li>You rely on Postgres Row-Level Security and existing PostgREST tooling.</li>
+          <li>You want a long-established managed platform with a big community.</li>
+        </ul>
+      </div>
+
+      <p>
+        See the <a href="/docs/" class="text-primary hover:underline">backlex documentation</a> or the
+        <a href="https://github.com/backlex/backlex" class="text-primary hover:underline">source on GitHub</a> to get started.
+        Self-hosting is free under Apache-2.0; the managed <a href="/pricing" class="text-primary hover:underline">Cloud</a> is optional.
+      </p>
+    </div>
+  </section>
+</Base>

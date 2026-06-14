@@ -26,6 +26,10 @@ head_sampling_rate = 1
 "bun:sqlite" = "./src/server/shims/bun-sqlite-shim.ts"
 "nodemailer" = "./src/server/shims/nodemailer-shim.ts"
 "ldapts" = "./src/server/shims/ldapts-shim.ts"
+# sharp is a native addon — unusable on the Workers isolate. The sharp image
+# adapter is gated out on Workers (CF Image Resizing handles edge resize); this
+# stub keeps the dynamic import() from pulling the native binary into the bundle.
+"sharp" = "./src/server/shims/sharp-shim.ts"
 
 [vars]
 APP_URL = "https://backlex-admin.kinyasfurkan.workers.dev"

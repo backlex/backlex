@@ -44,10 +44,21 @@ const ProviderGlyph = ({ kind, size = 12 }: { kind: string; size?: number }) => 
     <svg width={size} height={size} viewBox="0 0 24 24"><path fill="#4285F4" d="M22 12.2c0-.8-.07-1.6-.2-2.4H12v4.5h5.6a4.8 4.8 0 0 1-2.1 3.1v2.6h3.4c2-1.8 3.1-4.5 3.1-7.8Z" /><path fill="#34A853" d="M12 22c2.8 0 5.2-.9 6.9-2.5l-3.4-2.6c-.9.6-2.1 1-3.5 1-2.7 0-5-1.8-5.8-4.3H2.7v2.7A10 10 0 0 0 12 22Z" /><path fill="#FBBC05" d="M6.2 13.6a6 6 0 0 1 0-3.8V7.1H2.7a10 10 0 0 0 0 9l3.5-2.5Z" /><path fill="#EA4335" d="M12 5.4c1.5 0 2.9.5 4 1.5l3-3A10 10 0 0 0 2.7 7.1l3.5 2.7C7 7.2 9.3 5.4 12 5.4Z" /></svg>
   );
   if (kind === "magic") return <I.Bolt size={size} />;
+  if (kind === "saml") return <I.Shield size={size} />;
+  if (kind === "ldap") return <I.Network size={size} />;
+  if (kind === "cloud") return <I.Globe size={size} />;
   return <I.Lock size={size} />;
 };
 
-const PROVIDER_LABEL: Record<string, string> = { password: "password", github: "github", google: "google", magic: "magic link" };
+const PROVIDER_LABEL: Record<string, string> = {
+  password: "password",
+  github: "github",
+  google: "google",
+  magic: "magic link",
+  saml: "SAML SSO",
+  ldap: "LDAP / AD",
+  cloud: "cloud SSO",
+};
 
 export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
   const { t } = useLingui();
@@ -78,7 +89,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
               email: u.email,
               roles: u.roles.map((x) => x.name),
               status: u.status ?? "active",
-              provider: "password",
+              provider: u.provider ?? "password",
               mfa: false,
               last: fmt(lastSeenAt),
               lastIso: lastSeenAt ? new Date(lastSeenAt).toISOString().slice(0, 19).replace("T", " ") : null,
@@ -231,7 +242,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
         <div className="flex items-center gap-1.5 text-xs">
           <span className="text-[11.5px] text-muted-foreground"><Trans>Provider</Trans></span>
           <Select size="sm" value={providerFilter} onChange={setProviderFilter} className="w-[150px]"
-            options={[{ value: "all", label: t`All providers` }, { value: "password", label: "password" }, { value: "github", label: "github" }, { value: "google", label: "google" }, { value: "magic", label: "magic link" }]} />
+            options={[{ value: "all", label: t`All providers` }, { value: "password", label: "password" }, { value: "github", label: "github" }, { value: "google", label: "google" }, { value: "magic", label: "magic link" }, { value: "saml", label: "SAML SSO" }, { value: "ldap", label: "LDAP / AD" }, { value: "cloud", label: "cloud SSO" }]} />
         </div>
         <div className="flex-1" />
         <span className="text-xs text-muted-foreground"><Trans>{filtered.length} of {users.length}</Trans></span>
@@ -291,7 +302,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
                   <TableCell>
                     <span className="inline-flex items-center gap-1.5 text-foreground">
                       <ProviderGlyph kind={u.provider} />
-                      <span className="text-[12.5px]">{PROVIDER_LABEL[u.provider]}</span>
+                      <span className="text-[12.5px]">{PROVIDER_LABEL[u.provider] ?? u.provider}</span>
                     </span>
                   </TableCell>
                   <TableCell className="text-center">
@@ -498,7 +509,7 @@ function UserDrawer({ user, allRoles, onClose, onSaved, pushToast }: { user: any
           </div>
 
           <div className="grid grid-cols-2 gap-x-3.5 gap-y-2.5 rounded-xl bg-muted px-3.5 py-3 max-[900px]:grid-cols-1">
-            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Provider</Trans></span><span className="inline-flex items-center gap-1.5 text-foreground"><ProviderGlyph kind={user.provider} size={12} />{PROVIDER_LABEL[user.provider]}</span></div>
+            <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Provider</Trans></span><span className="inline-flex items-center gap-1.5 text-foreground"><ProviderGlyph kind={user.provider} size={12} />{PROVIDER_LABEL[user.provider] ?? user.provider}</span></div>
             <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>2FA</Trans></span>{user.mfa ? <span className="inline-flex items-center gap-1 rounded-full border border-[color-mix(in_oklch,oklch(0.55_0.15_145)_35%,var(--border))] bg-[color-mix(in_oklch,oklch(0.78_0.14_145)_14%,transparent)] px-[7px] py-0.5 font-mono text-[11px] text-[oklch(0.55_0.15_145)]"><I.Shield size={11} /> <Trans>enrolled</Trans></span> : <span className="inline-flex items-center gap-1 rounded-full border border-border px-[7px] py-0.5 font-mono text-[11px] text-muted-foreground"><Trans>disabled</Trans></span>}</div>
             <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Created</Trans></span><span className="font-mono text-xs">{user.created}</span></div>
             <div className="flex min-w-0 flex-col gap-1"><span className="text-[11px] uppercase tracking-[0.02em] text-muted-foreground"><Trans>Last seen</Trans></span><span className="font-mono text-xs">{user.lastIso || "—"}</span></div>

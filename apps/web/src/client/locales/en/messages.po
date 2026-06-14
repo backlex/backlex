@@ -1110,8 +1110,8 @@ msgstr "API Keys"
 
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/ui.tsx
-msgid "App users"
-msgstr "App users"
+#~ msgid "App users"
+#~ msgstr "App users"
 
 #: src/client/admin/pages/settings.tsx
 msgid "Appearance"
@@ -2940,8 +2940,12 @@ msgid "End-users of the app built on this workspace sign in here — separate fr
 msgstr "End-users of the app built on this workspace sign in here — separate from the admin login. Configure providers above."
 
 #: src/client/admin/parity/app-users.tsx
-msgid "End-users of the application built on this workspace — a pool separate from the admin/control-plane <0>users</0>. They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
-msgstr "End-users of the application built on this workspace — a pool separate from the admin/control-plane <0>users</0>. They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
+#~ msgid "End-users of the application built on this workspace — a pool separate from the admin/control-plane <0>users</0>. They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
+#~ msgstr "End-users of the application built on this workspace — a pool separate from the admin/control-plane <0>users</0>. They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
+
+#: src/client/admin/parity/app-users.tsx
+msgid "End-users of the application built on this workspace — a pool separate from the dashboard <0>Team</0> (the admin/control-plane operators). They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
+msgstr "End-users of the application built on this workspace — a pool separate from the dashboard <0>Team</0> (the admin/control-plane operators). They sign up via this workspace's own auth endpoint (see <1>Authentication → Workspace auth API</1>)."
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Endpoint"
@@ -5418,6 +5422,10 @@ msgstr "Operations"
 msgid "Operators using this IdP will no longer be able to sign in."
 msgstr "Operators using this IdP will no longer be able to sign in."
 
+#: src/client/admin/pages/users.tsx
+msgid "Operators with access to this dashboard. The first to sign up becomes admin; everyone else lands in authenticated. Sessions, providers, and 2FA are tracked per account."
+msgstr "Operators with access to this dashboard. The first to sign up becomes admin; everyone else lands in authenticated. Sessions, providers, and 2FA are tracked per account."
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Ops bots — admin role required."
 msgstr "Ops bots — admin role required."
@@ -7863,6 +7871,11 @@ msgstr "Target:"
 msgid "Taxonomy"
 msgstr "Taxonomy"
 
+#: src/client/admin/pages/users.tsx
+#: src/client/admin/ui.tsx
+msgid "Team"
+msgstr "Team"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Template"
 msgstr "Template"
@@ -7955,8 +7968,8 @@ msgid "The first account on a fresh instance is provisioned as <0>admin</0> auto
 msgstr "The first account on a fresh instance is provisioned as <0>admin</0> automatically. You can demote yourself later."
 
 #: src/client/admin/pages/users.tsx
-msgid "The first user to sign up becomes admin; everyone else lands in authenticated. Sessions, providers, and 2FA are tracked per account."
-msgstr "The first user to sign up becomes admin; everyone else lands in authenticated. Sessions, providers, and 2FA are tracked per account."
+#~ msgid "The first user to sign up becomes admin; everyone else lands in authenticated. Sessions, providers, and 2FA are tracked per account."
+#~ msgstr "The first user to sign up becomes admin; everyone else lands in authenticated. Sessions, providers, and 2FA are tracked per account."
 
 #: src/client/pages/api-keys.tsx
 msgid "The full secret is shown once after creation — copy it somewhere safe."
@@ -8169,8 +8182,12 @@ msgstr "Top customers by spend"
 #~ msgstr "Top customers last month"
 
 #: src/client/admin/pages/users.tsx
-msgid "Total users"
-msgstr "Total users"
+msgid "Total members"
+msgstr "Total members"
+
+#: src/client/admin/pages/users.tsx
+#~ msgid "Total users"
+#~ msgstr "Total users"
 
 #: src/client/admin/storage.tsx
 msgid "Transform"
@@ -8496,7 +8513,7 @@ msgstr "Username"
 msgid "users"
 msgstr "users"
 
-#: src/client/admin/pages/users.tsx
+#: src/client/admin/parity/app-users.tsx
 #: src/client/admin/ui.tsx
 msgid "Users"
 msgstr "Users"

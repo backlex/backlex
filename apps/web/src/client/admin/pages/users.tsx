@@ -199,14 +199,14 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
-        title={t`Users`}
-        description={t`The first user to sign up becomes admin; everyone else lands in authenticated. Sessions, providers, and 2FA are tracked per account.`}
+        title={t`Team`}
+        description={t`Operators with access to this dashboard. The first to sign up becomes admin; everyone else lands in authenticated. Sessions, providers, and 2FA are tracked per account.`}
         actions={<Button variant="primary" icon={I.Plus} onClick={() => setInviteOpen(true)}><Trans>Invite</Trans></Button>}
       />
 
       <div className="grid grid-cols-4 gap-2.5 max-[900px]:grid-cols-2">
         {[
-          { label: t`Total users`, value: stats.total, hint: t`${users.filter((u) => u.status === "active").length} active` },
+          { label: t`Total members`, value: stats.total, hint: t`${users.filter((u) => u.status === "active").length} active` },
           { label: t`Active in 24h`, value: stats.active24h, hint: t`${Math.round((stats.active24h / Math.max(1, stats.total)) * 100)}% of base` },
           { label: t`Pending invites`, value: stats.pending, hint: stats.pending ? t`awaiting accept` : t`none` },
           { label: t`Admins`, value: stats.admins, hint: t`full access` },

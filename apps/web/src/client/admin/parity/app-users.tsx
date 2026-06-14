@@ -108,11 +108,11 @@ export function AppUsersPage({ pushToast }: { pushToast: (m: string) => void }) 
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
-        title={t`App users`}
+        title={t`Users`}
         description={
           <>
             <Trans>End-users of the application built on this workspace — a pool separate from the
-            admin/control-plane <span className="font-mono">users</span>. They sign up via this
+            dashboard <strong>Team</strong> (the admin/control-plane operators). They sign up via this
             workspace's own auth endpoint (see <strong>Authentication → Workspace auth API</strong>).</Trans>
           </>
         }

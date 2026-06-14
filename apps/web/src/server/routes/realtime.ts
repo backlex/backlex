@@ -447,14 +447,16 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
     // fall through to the unsupported path below.
     if (redisRealtimeEnabled(ctx.env) && !gate.presence) {
       return streamSSE(c, async (stream) => {
-        await stream.writeSSE({ event: "ready", data: channel, retry: RECONNECT_HINT_MS });
-        // Resume from the client's Last-Event-ID, else from "now" (the latest
-        // stream id) so a fresh subscriber only sees future events.
+        // Capture the resume position BEFORE announcing ready: resume from the
+        // client's Last-Event-ID, else from "now" (the latest stream id) so a
+        // fresh subscriber only sees future events. Capturing first means a
+        // publish that lands between here and the first poll isn't skipped.
         const lastHeader = c.req.header("Last-Event-ID");
         let cursor =
           lastHeader && lastHeader.length > 0
             ? lastHeader
             : await redisLatestId(ctx.env, channel);
+        await stream.writeSSE({ event: "ready", data: channel, retry: RECONNECT_HINT_MS });
         let aborted = false;
         c.req.raw.signal.addEventListener("abort", () => {
           aborted = true;

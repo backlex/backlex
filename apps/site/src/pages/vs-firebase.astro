@@ -16,7 +16,7 @@ const rows = [
   ["Vector search", "Built in — pgvector or Cloudflare Vectorize; auto-embed on write", "Firestore vector search + Genkit (embeddings via extension)"],
   ["Embedding models", "OpenAI, Workers AI (bge-m3), or self-hosted TEI/Ollama/vLLM", "Gemini / Vertex AI"],
   ["AI agents / MCP", "Built-in runtime MCP server — collections, vector & admin to agents, per-key tool allow-lists", "MCP via Genkit / Firebase MCP"],
-  ["Storage + images", "Files with ACLs, signed URLs, edge image transforms", "Cloud Storage; image resize via extension"],
+  ["Storage + images", "Files with ACLs, signed URLs; image transforms on Bun in-process or the Cloudflare edge", "Cloud Storage; image resize via extension"],
   ["Functions", "Sandboxed edge functions; http/event/cron triggers", "Cloud Functions"],
   ["Flows (automation)", "Visual, no-code op-chains on item events", "Cloud Functions / Extensions (no visual builder)"],
   ["Auth providers", "Email/password, OAuth, magic link, email-OTP, passkeys", "Firebase Auth (many providers)"],

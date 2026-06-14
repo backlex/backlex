@@ -60,6 +60,10 @@ const buildResult = await Bun.build({
   splitting: false,
   sourcemap: "none",
   minify: false,
+  // sharp is a native addon — leave it external so the bundler doesn't try to
+  // inline the `.node` binary. It's resolved from the function's node_modules at
+  // runtime (copied in below); if absent, the adapter degrades to passthrough.
+  external: ["sharp"],
   plugins: [
     {
       name: "bun-sqlite-shim",

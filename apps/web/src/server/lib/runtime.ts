@@ -50,6 +50,18 @@ export const isEdgeRuntime = (): boolean =>
 export const isStatelessEdge = (): boolean =>
   isVercelEdge() || isNetlifyEdge();
 
+/** Netlify *Functions* (Node 22), as opposed to Netlify Edge (Deno). Netlify
+ *  sets `NETLIFY=true` in the function environment. Used to route image
+ *  transforms through the native Netlify Image CDN (`/.netlify/images`) instead
+ *  of bundling sharp's native addon into the function. */
+export const isNetlify = (): boolean => {
+  const g = globalThis as { Deno?: unknown };
+  if (typeof g.Deno !== "undefined") return false; // that's Netlify Edge
+  const p = (globalThis as { process?: { env?: Record<string, string | undefined> } })
+    .process;
+  return Boolean(p?.env?.NETLIFY);
+};
+
 /** Xata Postgres endpoints host on `*.xata.sh`. Xata speaks the standard
  *  Postgres wire protocol (works with postgres-js out of the box) but does
  *  NOT ship the pgvector extension — vector workloads have to be routed

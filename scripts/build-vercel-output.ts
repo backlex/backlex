@@ -172,7 +172,9 @@ writeFileSync(
       // to the client as they're written, not all at once when the function
       // ends. Without this Vercel buffers the whole body.
       supportsResponseStreaming: true,
-      maxDuration: 60,
+      // Fluid Compute allows long durations; give SSE subscribe room to hold the
+      // stream open (clients reconnect via Last-Event-ID when it eventually ends).
+      maxDuration: 300,
     },
     null,
     2,

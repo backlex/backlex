@@ -18,7 +18,7 @@ const rows = [
   ["Vector search", "Built in — pgvector (PG) or Cloudflare Vectorize (SQLite/D1); auto-embed on write", "Built in (pgvector)"],
   ["Embedding models", "OpenAI, Workers AI (bge-m3), or self-hosted TEI/Ollama/vLLM", "Bring your own (OpenAI, etc.)"],
   ["AI agents / MCP", "Built-in runtime MCP server — collections, vector search & admin exposed to agents, per-key tool allow-lists + read-only guards", "Official MCP server (project / database management from dev tools)"],
-  ["Storage + images", "Files with ACLs, signed URLs, edge image transforms (resize/format/fit)", "Storage with image transformations"],
+  ["Storage + images", "Files with ACLs, signed URLs; image transforms (resize/format/fit) on Bun in-process or the Cloudflare edge", "Storage with image transformations"],
   ["Edge functions", "Sandboxed functions (QuickJS / worker-thread / remote executor); http/event/cron triggers", "Edge Functions (Deno)"],
   ["Auth providers", "Email/password, OAuth, magic link, email-OTP, passkeys, anonymous", "Email/password, OAuth, magic link, OTP"],
   ["SSO", "SAML 2.0 (per-workspace) and LDAP/AD", "SAML (Pro / Enterprise)"],

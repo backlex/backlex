@@ -27,6 +27,10 @@ import { isStatelessEdge } from "../lib/runtime";
 
 /** Poll interval for the Redis-Stream subscribe loop (serverless transport). */
 const REDIS_POLL_MS = 1_000;
+/** Max time a single serverless long-poll holds before closing so the client's
+ *  EventSource reconnects (Vercel: functions "should not subscribe to data
+ *  events" / hold connections open). Well under the function execution limit. */
+const REDIS_HOLD_MS = 20_000;
 
 const ITEMS_PREFIX = "items:";
 const PRESENCE_PREFIX = "presence:";
@@ -466,13 +470,20 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
         c.req.raw.signal.addEventListener("abort", () => {
           aborted = true;
         });
-        let lastBeat = Date.now();
-        while (!aborted) {
+        // Long-poll, not a held subscription: serverless functions must respond
+        // quickly and not hold a stream open (Vercel guidance). Poll Redis for a
+        // bounded window; the moment we deliver a batch, CLOSE so the proxy
+        // flushes it and the browser's EventSource auto-reconnects with
+        // Last-Event-ID to resume. An idle stream closes at REDIS_HOLD_MS and the
+        // client reconnects. (Bun / Workers keep the held stream above.)
+        const startedAt = Date.now();
+        let delivered = false;
+        while (!aborted && Date.now() - startedAt < REDIS_HOLD_MS) {
           let entries: Awaited<ReturnType<typeof redisReadSince>> = [];
           try {
             entries = await redisReadSince(ctx.env, channel, cursor);
           } catch {
-            // transient REST hiccup — keep the stream alive, retry next tick
+            // transient REST hiccup — retry next tick
           }
           for (const entry of entries) {
             cursor = entry.id;
@@ -480,12 +491,9 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
             const rendered = renderEventForMeta(gate.meta, entry.payload);
             if (rendered === null) continue;
             await stream.writeSSE({ event: "message", data: rendered, id: entry.id });
+            delivered = true;
           }
-          if (aborted) break;
-          if (Date.now() - lastBeat >= HEARTBEAT_MS) {
-            await stream.write(": ping\n\n");
-            lastBeat = Date.now();
-          }
+          if (delivered || aborted) break;
           await new Promise((r) => setTimeout(r, REDIS_POLL_MS));
         }
       });

@@ -1,0 +1,47 @@
+# backlex — https://backlex.com
+# We *want* AI assistants and search engines to read and cite backlex.
+# Everything is allowed; the rules below are explicit so a future tightening
+# of defaults never silently blocks the crawlers that drive discovery.
+
+User-agent: *
+Allow: /
+
+# AI / LLM crawlers — explicitly allowed so web-search-grounded assistants
+# (ChatGPT search, Claude, Perplexity, Gemini, etc.) can read and cite docs.
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+# Curated entry point for LLMs (see https://llmstxt.org)
+# https://backlex.com/llms.txt
+
+Sitemap: https://backlex.com/sitemap-index.xml

@@ -82,6 +82,19 @@ const renderFor = (
   return JSON.stringify(payload);
 };
 
+/**
+ * Render a published `payload` for a subscriber identified only by its
+ * `SubscriptionMeta` (no live `send`). Returns the JSON string to emit, or
+ * `null` when the subscriber must not see this event. Reuses the exact same
+ * permission filter + field projection as the in-process fan-out, so the
+ * out-of-process transports (Redis on serverless) can't drift from it.
+ */
+export const renderEventForMeta = (
+  meta: SubscriptionMeta | undefined,
+  payload: unknown,
+): string | null =>
+  renderFor({ send: () => {}, meta }, payload, isItemPayload(payload));
+
 const subscribers = new Map<string, Set<Subscriber>>();
 
 /** Bounded per-channel ring buffer of recent events so a reconnecting SSE

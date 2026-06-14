@@ -203,6 +203,14 @@ export interface Env {
    *  shipping bytes through the Worker. Only used when the file's ACL is
    *  `public` — private files would need a signed origin first. */
   R2_PUBLIC_BASE?: string;
+  /** Upstash Redis (REST) — durable cross-instance realtime transport for
+   *  stateless serverless runtimes (Vercel / Netlify Functions) where the
+   *  in-process pub/sub map doesn't survive between invocations and there's no
+   *  Durable Object. When both are set, the realtime publish/subscribe path
+   *  uses a Redis Stream per channel (XADD + XRANGE replay via `Last-Event-ID`)
+   *  instead of returning 503. Unset on Bun (in-proc) / Workers (DO). */
+  UPSTASH_REDIS_REST_URL?: string;
+  UPSTASH_REDIS_REST_TOKEN?: string;
   /** S3-compatible storage. When `S3_BUCKET` is set the storage adapter
    *  selects S3 (via `Bun.S3Client` when on Bun, else `aws4fetch`).
    *  Compatible with AWS S3, Cloudflare R2, Backblaze B2, MinIO,

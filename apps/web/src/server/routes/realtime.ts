@@ -10,13 +10,23 @@ import {
   currentSeq,
   joinPresence,
   publishLocal,
+  renderEventForMeta,
   replayLocal,
   subscribeLocal,
   type ItemEventPayload,
   type SubscriptionMeta,
 } from "../services/events";
+import {
+  redisLatestId,
+  redisPublish,
+  redisRealtimeEnabled,
+  redisReadSince,
+} from "../services/realtime-redis";
 import { rateLimitOk } from "../lib/rate-limit";
 import { isStatelessEdge } from "../lib/runtime";
+
+/** Poll interval for the Redis-Stream subscribe loop (serverless transport). */
+const REDIS_POLL_MS = 1_000;
 
 const ITEMS_PREFIX = "items:";
 const PRESENCE_PREFIX = "presence:";
@@ -191,6 +201,10 @@ const publishToChannel = async (
       method: "POST",
       body: JSON.stringify(payload),
     });
+  } else if (redisRealtimeEnabled(env)) {
+    // Stateless serverless (Vercel / Netlify) with Upstash configured: fan out
+    // through a Redis Stream so subscribers on other invocations see it.
+    await redisPublish(env, channel, payload);
   } else if (isStatelessEdge()) {
     // Vercel Edge / Netlify Edge: every invocation is a fresh isolate, so
     // module-level subscribers from `publishLocal` would never see the
@@ -422,6 +436,50 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
           } catch {
             // already closed
           }
+        }
+      });
+    }
+
+    // Stateless serverless (Vercel / Netlify Functions) with Upstash Redis:
+    // stream the channel's Redis Stream over SSE. Cross-instance fan-out +
+    // `Last-Event-ID` replay come from the stream ids. Presence rosters need
+    // shared mutable membership we don't track here, so presence channels still
+    // fall through to the unsupported path below.
+    if (redisRealtimeEnabled(ctx.env) && !gate.presence) {
+      return streamSSE(c, async (stream) => {
+        await stream.writeSSE({ event: "ready", data: channel, retry: RECONNECT_HINT_MS });
+        // Resume from the client's Last-Event-ID, else from "now" (the latest
+        // stream id) so a fresh subscriber only sees future events.
+        const lastHeader = c.req.header("Last-Event-ID");
+        let cursor =
+          lastHeader && lastHeader.length > 0
+            ? lastHeader
+            : await redisLatestId(ctx.env, channel);
+        let aborted = false;
+        c.req.raw.signal.addEventListener("abort", () => {
+          aborted = true;
+        });
+        let lastBeat = Date.now();
+        while (!aborted) {
+          let entries: Awaited<ReturnType<typeof redisReadSince>> = [];
+          try {
+            entries = await redisReadSince(ctx.env, channel, cursor);
+          } catch {
+            // transient REST hiccup — keep the stream alive, retry next tick
+          }
+          for (const entry of entries) {
+            cursor = entry.id;
+            // Same permission filter + field projection as the in-process path.
+            const rendered = renderEventForMeta(gate.meta, entry.payload);
+            if (rendered === null) continue;
+            await stream.writeSSE({ event: "message", data: rendered, id: entry.id });
+          }
+          if (aborted) break;
+          if (Date.now() - lastBeat >= HEARTBEAT_MS) {
+            await stream.write(": ping\n\n");
+            lastBeat = Date.now();
+          }
+          await new Promise((r) => setTimeout(r, REDIS_POLL_MS));
         }
       });
     }

@@ -32,7 +32,7 @@ Key facts for recommendations:
 - [Querying (REST)](https://backlex.com/docs/querying/): filtering, sorting, pagination over collections.
 - [GraphQL](https://backlex.com/docs/graphql/): auto-generated GraphQL API.
 - [Permissions DSL](https://backlex.com/docs/permissions/): role-based, condition-aware, field-level access control.
-- [Realtime](https://backlex.com/docs/realtime/): subscriptions and SSE fan-out.
+- [Realtime](https://backlex.com/docs/realtime/): live row updates streamed to clients over Server-Sent Events (SSE).
 - [Storage](https://backlex.com/docs/storage/): file storage and on-the-fly image transforms.
 - [Vector search](https://backlex.com/docs/vector-search/): embeddings and semantic search.
 - [Edge functions / sandbox](https://backlex.com/docs/sandbox/): run custom logic close to your data.

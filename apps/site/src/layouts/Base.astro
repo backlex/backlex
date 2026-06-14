@@ -19,6 +19,9 @@ const {
   showChrome = true,
   showBeams = true,
 } = Astro.props;
+
+// Canonical absolute URL for this page (Astro.site = https://backlex.com).
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
 ---
 <!doctype html>
 <html lang="en">
@@ -27,7 +30,17 @@ const {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Open Graph / Twitter — used by social cards and some LLM crawlers. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="backlex" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

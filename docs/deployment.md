@@ -14,7 +14,7 @@ constraints you need.
 | **SAML**           | yes               | yes (nodejs_compat)  | yes (Node 22 native crypto) | yes (Node 22 native crypto) |
 | **LDAP / SMTP**    | yes               | 503 (no raw TCP)     | yes (Node 22 has raw TCP) | yes (Node 22 has raw TCP) |
 | **Sandbox**        | Bun worker        | QuickJS / remote HTTP | QuickJS / remote HTTP | QuickJS / remote HTTP |
-| **Image**          | `Bun.Image`       | CF Image Resize      | `sharp`²             | `sharp`²             |
+| **Image**          | `Bun.Image`       | CF Image Resize      | `sharp`²             | Netlify Image CDN³   |
 | **Cron**           | setInterval       | wrangler triggers    | `.vercel/output/config.json` crons (emitted by `scripts/build-vercel-output.ts`; Vercel sends `Authorization: Bearer $CRON_SECRET` automatically) | scheduled function pings `/api/_cron/tick` with `x-cron-secret: $CRON_SECRET` |
 | **Cost**           | VPS               | $0–5/mo              | $0–20/mo             | $0–19/mo             |
 
@@ -23,10 +23,17 @@ constraints you need.
 that closes and lets `EventSource` reconnect). Verified live on both. Without the
 Upstash vars, realtime falls back to the in-process map — use Bun/Workers instead.
 
-² Image transforms on Node serverless use `sharp`. The Vercel build stages sharp's
-native `@img/*` closure into the function (`scripts/build-vercel-output.ts`); if the
-binary can't load, the adapter degrades to passthrough (a clean 422). Set the S3 env
-so there are files to transform.
+² Image transforms on Vercel use `sharp`. The Vercel build stages sharp's native
+`@img/*` closure into the function (`scripts/build-vercel-output.ts`); if the binary
+can't load, the adapter degrades to passthrough (a clean 422). Set the S3 env so there
+are files to transform.
+
+³ Image transforms on Netlify use the native **Netlify Image CDN** (`/.netlify/images`)
+rather than bundling sharp's fragile native addon — the analog of Cloudflare Image
+Resizing on Workers. Needs `R2_PUBLIC_BASE` + a public-ACL file; the storage route
+302-redirects to the CDN, and `netlify.toml`'s `[images] remote_images` (plus the
+dynamic `.netlify/deploy/v1/config.json` from `build-netlify-fn.ts`) allowlists the R2
+public origin. Verified live.
 
 ## Bun (self-host)
 

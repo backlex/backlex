@@ -55,6 +55,9 @@ export const isStatelessEdge = (): boolean =>
  *  transforms through the native Netlify Image CDN (`/.netlify/images`) instead
  *  of bundling sharp's native addon into the function. */
 export const isNetlify = (): boolean => {
+  // The Netlify Function entry sets this marker at module load — the most
+  // reliable signal, since `process.env.NETLIFY` isn't guaranteed at runtime.
+  if ((globalThis as { __BACKLEX_NETLIFY?: boolean }).__BACKLEX_NETLIFY) return true;
   const g = globalThis as { Deno?: unknown };
   if (typeof g.Deno !== "undefined") return false; // that's Netlify Edge
   const p = (globalThis as { process?: { env?: Record<string, string | undefined> } })

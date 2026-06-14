@@ -10,13 +10,23 @@ constraints you need.
 |--------------------|-------------------|----------------------|----------------------|------------------------------|
 | **Database**       | SQLite or PG      | D1 or Hyperdrive→PG  | PG via `DATABASE_DRIVER=neon-http` (recommended — HTTP avoids cold-start TCP handshake) | PG via `DATABASE_DRIVER=neon-http` (recommended) |
 | **Storage**        | local fs / S3 / `Bun.S3Client` | R2 (S3 fallback) | S3 (`aws4fetch`) **required** — Lambda zip has no local fs | S3 (`aws4fetch`) **required** — Lambda zip has no local fs |
-| **Realtime**       | in-proc + SSE     | Durable Objects + WS | loads but impractical (Lambda is stateless, SSE capped by function execution limit) | loads but impractical (same Lambda caveat) |
+| **Realtime**       | in-proc + SSE     | Durable Objects + WS | Upstash Redis long-poll¹ | Upstash Redis long-poll¹ |
 | **SAML**           | yes               | yes (nodejs_compat)  | yes (Node 22 native crypto) | yes (Node 22 native crypto) |
 | **LDAP / SMTP**    | yes               | 503 (no raw TCP)     | yes (Node 22 has raw TCP) | yes (Node 22 has raw TCP) |
 | **Sandbox**        | Bun worker        | QuickJS / remote HTTP | QuickJS / remote HTTP | QuickJS / remote HTTP |
-| **Image**          | `Bun.Image`       | CF Image Resize      | passthrough          | passthrough          |
+| **Image**          | `Bun.Image`       | CF Image Resize      | `sharp`²             | `sharp`²             |
 | **Cron**           | setInterval       | wrangler triggers    | `.vercel/output/config.json` crons (emitted by `scripts/build-vercel-output.ts`; Vercel sends `Authorization: Bearer $CRON_SECRET` automatically) | scheduled function pings `/api/_cron/tick` with `x-cron-secret: $CRON_SECRET` |
 | **Cost**           | VPS               | $0–5/mo              | $0–20/mo             | $0–19/mo             |
+
+¹ Realtime on Vercel/Netlify needs `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`
+(publish/subscribe fan out through a Redis stream; subscribe is a bounded long-poll
+that closes and lets `EventSource` reconnect). Verified live on both. Without the
+Upstash vars, realtime falls back to the in-process map — use Bun/Workers instead.
+
+² Image transforms on Node serverless use `sharp`. The Vercel build stages sharp's
+native `@img/*` closure into the function (`scripts/build-vercel-output.ts`); if the
+binary can't load, the adapter degrades to passthrough (a clean 422). Set the S3 env
+so there are files to transform.
 
 ## Bun (self-host)
 
@@ -312,10 +322,15 @@ Vercel Functions run on Node 22, so the Bun-self-host surface is
 mostly available — SAML, LDAP, SMTP all load (full
 `node:crypto`/`node:net`/`node:tls`). Two exceptions:
 
-- **Realtime SSE** loads but is impractical: Lambda is stateless, so
-  the in-process pub/sub `Map` doesn't survive cold starts, and
-  function execution time caps the SSE stream. Use Cloudflare Workers
-  (Durable Object) or Bun self-host for realtime.
+- **Realtime** works via Upstash Redis: set `UPSTASH_REDIS_REST_URL` +
+  `UPSTASH_REDIS_REST_TOKEN` and publish/subscribe fan out through a Redis
+  stream per channel (the in-process `Map` doesn't survive a stateless Lambda).
+  The subscribe endpoint is a **bounded long-poll** — it delivers a batch then
+  closes so the function returns quickly (per Vercel/Netlify guidance: functions
+  shouldn't hold connections), and the browser's `EventSource` auto-reconnects
+  with `Last-Event-ID` to resume. Without the Upstash vars realtime falls back
+  to the in-process map, which is impractical on a Lambda — use Cloudflare
+  Workers (Durable Object) or Bun self-host instead.
 - **`bun:sqlite`** is aliased to a throwing shim. Always set
   `DATABASE_DRIVER=neon-http` (or any non-sqlite driver) so the
   sqlite code path never loads.
@@ -430,10 +445,15 @@ Netlify Functions run on Node 22, so the Bun-self-host surface is
 mostly available — SAML, LDAP, SMTP, samlify all load (full
 `node:crypto`/`node:net`/`node:tls`). Two exceptions:
 
-- **Realtime SSE** loads but is impractical: Lambda is stateless, so
-  the in-process pub/sub `Map` doesn't survive cold starts, and
-  function execution time caps the SSE stream. Use Cloudflare Workers
-  (Durable Object) or Bun self-host for realtime.
+- **Realtime** works via Upstash Redis: set `UPSTASH_REDIS_REST_URL` +
+  `UPSTASH_REDIS_REST_TOKEN` and publish/subscribe fan out through a Redis
+  stream per channel (the in-process `Map` doesn't survive a stateless Lambda).
+  The subscribe endpoint is a **bounded long-poll** — it delivers a batch then
+  closes so the function returns quickly (per Vercel/Netlify guidance: functions
+  shouldn't hold connections), and the browser's `EventSource` auto-reconnects
+  with `Last-Event-ID` to resume. Without the Upstash vars realtime falls back
+  to the in-process map, which is impractical on a Lambda — use Cloudflare
+  Workers (Durable Object) or Bun self-host instead.
 - **`bun:sqlite`** is aliased to a throwing shim. Always set
   `DATABASE_DRIVER=neon-http` (or any non-sqlite driver) so the
   sqlite code path never loads.
@@ -458,6 +478,7 @@ mostly available — SAML, LDAP, SMTP, samlify all load (full
 | `S3_ENDPOINT`                | no        | Custom S3 endpoint for R2/B2/MinIO/Spaces    |
 | `S3_REGION`                  | no        | Defaults to `auto`                           |
 | `R2_PUBLIC_BASE`             | no        | Workers only. Public origin for the R2 bucket; activates cf.image edge resizing for public-ACL files. See `docs/storage.md`. |
+| `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` | no | Durable realtime transport for serverless (Vercel/Netlify), where the in-process pub/sub map doesn't survive between invocations. When both are set, realtime publish/subscribe fan out through an Upstash Redis stream per channel. Unset on Bun (in-proc) / Workers (Durable Object). |
 | `CLOUD_REPORT_URL` + `CLOUD_REPORT_SECRET` + `CLOUD_PROJECT_ID` | no | **Managed-cloud only.** Set automatically by the workeros cloud provisioner so a tenant can opt-in report 5xx errors + AI token usage to the control plane. Self-hosted installs leave all three unset and never phone home — the reporting path is a no-op (`server/lib/cloud-report.ts`). |
 
 ## Verifying a deploy

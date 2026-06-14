@@ -8,6 +8,7 @@ import { dispatchWebhooks } from "./webhooks";
 import { dispatchIntegrations } from "./integrations";
 import { runFlows } from "./flows";
 import { runEventFunctions } from "./functions";
+import { redisPublish, redisRealtimeEnabled } from "./realtime-redis";
 
 export interface ItemEventPayload {
   event: "created" | "updated" | "deleted";
@@ -295,6 +296,11 @@ export const publishEvent = async (
       method: "POST",
       body: JSON.stringify(payload),
     });
+  } else if (redisRealtimeEnabled(env)) {
+    // Stateless serverless (Vercel / Netlify) with Upstash configured: fan out
+    // through a Redis Stream so subscribers on other invocations see the event.
+    // The in-process map (publishLocal) wouldn't reach them.
+    await redisPublish(env, channel, payload);
   } else {
     publishLocal(channel, payload);
   }

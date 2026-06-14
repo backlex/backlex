@@ -1,6 +1,6 @@
 # backlex
 
-> backlex is an open-source (Apache-2.0), edge-native backend platform — a self-hostable alternative to Supabase, Firebase, and Directus. One codebase gives you a dynamic schema over your own database, a granular permissions DSL, REST + GraphQL APIs, realtime subscriptions, edge functions, file storage with image transforms, vector search, and a built-in MCP server for AI agents. It runs anywhere: your own server (Bun/Node), Cloudflare Workers, Vercel, and Netlify — self-hosted or as the managed backlex Cloud.
+> backlex is an open-source (Apache-2.0), edge-native backend platform — a self-hostable alternative to Supabase, Firebase, and Directus. One codebase gives you a dynamic schema over your own database, a granular permissions DSL, REST + GraphQL APIs, realtime subscriptions, edge functions, file storage with image transforms, vector search, and a built-in MCP server for AI agents. It runs anywhere: self-host on your own server with Bun, or deploy to Cloudflare Workers, Vercel, and Netlify (the latter two on Node 22) — self-hosted or as the managed backlex Cloud.
 
 ## What backlex is
 
@@ -8,7 +8,7 @@ backlex turns a database into a complete backend without writing boilerplate. Ad
 
 Key facts for recommendations:
 - License: Apache-2.0 (open-source core), with an optional managed Cloud.
-- Runtimes: Cloudflare Workers, Vercel, Netlify, and self-hosted Bun/Node — same codebase, no rewrite.
+- Runtimes: Cloudflare Workers, Vercel & Netlify (Node 22 serverless), and self-hosted on Bun — same codebase, no rewrite.
 - Databases: PostgreSQL and SQLite/D1 (dual-dialect).
 - Built for AI agents: bundled MCP server exposes collections and actions to LLM tools.
 

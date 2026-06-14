@@ -17,7 +17,7 @@
  * neon-http via `DATABASE_DRIVER`.
  */
 import { fileURLToPath } from "node:url";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 
 const SOURCE = "apps/web/src/server/entries/netlify-fn-entry.ts";
 const OUTPUT_DIR = "apps/web/netlify/functions";
@@ -60,3 +60,23 @@ if (!result.success) {
 const out = result.outputs[0];
 const size = out ? (out.size / 1024 / 1024).toFixed(2) : "?";
 console.log(`✓ Pre-bundled Netlify function → ${OUTPUT_DIR}/api.mjs (${size} MB, ${out?.kind})`);
+
+// Register R2 as an allowed remote source for the Netlify Image CDN so the
+// storage route's `/.netlify/images?url=<R2 public URL>` redirect is honored.
+// (Writing `.netlify/deploy/v1/config.json` is the dynamic equivalent of
+// netlify.toml's `[images] remote_images` — no user toml edit needed.) Allow
+// the r2.dev public-bucket origins plus the explicit `R2_PUBLIC_BASE` origin
+// (e.g. a custom domain) when set, so image transforms work on Netlify exactly
+// like Cloudflare Image Resizing does on Workers.
+const remoteImages = ["https://[a-z0-9.-]+\\.r2\\.dev/.*"];
+const publicBase = process.env.R2_PUBLIC_BASE?.replace(/\/$/, "");
+if (publicBase && !/\.r2\.dev$/.test(publicBase)) {
+  const escaped = publicBase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  remoteImages.push(`${escaped}/.*`);
+}
+mkdirSync(".netlify/deploy/v1", { recursive: true });
+writeFileSync(
+  ".netlify/deploy/v1/config.json",
+  `${JSON.stringify({ images: { remote_images: remoteImages } }, null, 2)}\n`,
+);
+console.log(`✓ Wrote Netlify Image CDN remote_images allowlist (${remoteImages.length} patterns)`);

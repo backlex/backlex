@@ -61,6 +61,7 @@ const buildEnv = (): Env => ({
   S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
   UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
+  R2_PUBLIC_BASE: process.env.R2_PUBLIC_BASE,
 });
 
 const app = createApp(buildEnv());

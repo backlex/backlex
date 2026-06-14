@@ -56,6 +56,9 @@ export const UserRow = z
     createdAt: z.unknown(),
     roles: z.array(UserRoleRef),
     lastSeenAt: z.number().nullable(),
+    /** Auth method: a federated identity (`saml`/`ldap`/`cloud`) wins, else the
+     *  better-auth account provider (`password`/`github`/`google`/…). */
+    provider: z.string(),
   })
   .openapi("UserRow");
 

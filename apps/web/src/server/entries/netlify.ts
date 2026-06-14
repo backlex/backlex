@@ -52,6 +52,8 @@ const buildEnv = (): Env => ({
   S3_ENDPOINT: denoEnv("S3_ENDPOINT"),
   S3_ACCESS_KEY_ID: denoEnv("S3_ACCESS_KEY_ID"),
   S3_SECRET_ACCESS_KEY: denoEnv("S3_SECRET_ACCESS_KEY"),
+  UPSTASH_REDIS_REST_URL: denoEnv("UPSTASH_REDIS_REST_URL"),
+  UPSTASH_REDIS_REST_TOKEN: denoEnv("UPSTASH_REDIS_REST_TOKEN"),
 });
 
 const app = createApp(buildEnv());

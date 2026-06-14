@@ -18,7 +18,7 @@ const rows = [
   ["Vector search", "Built in — pgvector or Cloudflare Vectorize; auto-embed on write", "Not built in (external vector DB / community)"],
   ["Embedding models", "OpenAI, Workers AI (bge-m3), or self-hosted TEI/Ollama/vLLM", "—"],
   ["AI agents / MCP", "Built-in runtime MCP server — collections, vector & admin to agents, per-key tool allow-lists + read-only guards", "Official MCP server (API access)"],
-  ["Storage + images", "Files with ACLs, signed URLs, edge image transforms", "File storage with image transformations"],
+  ["Storage + images", "Files with ACLs, signed URLs; image transforms on Bun in-process or the Cloudflare edge", "File storage with image transformations"],
   ["Edge functions", "Sandboxed functions — http / event / cron triggers", "Extensions / hooks (Node)"],
   ["Flows (automation)", "Visual, no-code op-chains on item events", "Flows (no-code automation)"],
   ["Webhooks", "Signed webhooks on item events", "Webhooks / flow operations"],

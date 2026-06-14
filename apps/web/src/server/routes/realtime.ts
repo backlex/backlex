@@ -337,6 +337,11 @@ export const realtimeRoutes = new OpenAPIHono<AppBindings>()
     const ctx = c.get("ctx");
     const auth = c.get("auth");
     const channel = c.req.param("channel");
+    // Disable proxy buffering for the SSE stream. Without this, Vercel/Netlify
+    // (and nginx-style proxies) buffer `text/event-stream` responses and only
+    // flush when the function ends — frames never reach the client live. This
+    // header tells the proxy to pass bytes through as they're written.
+    c.header("X-Accel-Buffering", "no");
     const gate = await gateForChannel(ctx, auth, channel, false);
     const since = parseSince(c.req.header("Last-Event-ID"));
 

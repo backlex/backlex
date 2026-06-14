@@ -13,6 +13,8 @@ export const tableFor = (dialect: "pg" | "sqlite") =>
         users: pg.schema.users,
         sessions: pg.schema.sessions,
         tenantMembers: pg.schema.tenantMembers,
+        accounts: pg.schema.accounts,
+        platformExternalIdentities: pg.schema.platformExternalIdentities,
       }
     : {
         roles: sqlite.schema.roles,
@@ -21,4 +23,6 @@ export const tableFor = (dialect: "pg" | "sqlite") =>
         users: sqlite.schema.users,
         sessions: sqlite.schema.sessions,
         tenantMembers: sqlite.schema.tenantMembers,
+        accounts: sqlite.schema.accounts,
+        platformExternalIdentities: sqlite.schema.platformExternalIdentities,
       };

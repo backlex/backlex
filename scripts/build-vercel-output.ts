@@ -29,8 +29,67 @@
  * Vercel deprecates the current one.
  */
 import { fileURLToPath } from "node:url";
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
+
+/**
+ * Copy an npm package + its full runtime dependency closure into a function's
+ * `node_modules`. Used for `sharp`, which is left external in the Bun bundle
+ * because its native `@img/*` addon can't be inlined — the Lambda needs the
+ * package on disk to `require("sharp")` at runtime. Resolving from the build
+ * host means only the host platform's `@img/*` binary (linux-x64 on Vercel) is
+ * copied; un-installed optional platform packages just fail to resolve and are
+ * skipped. Best-effort: a failure leaves `sharp` absent → the adapter degrades
+ * to passthrough (clean 422), never a broken deploy.
+ */
+const copyNpmClosure = (
+  entryFrom: string,
+  roots: string[],
+  destNodeModules: string,
+): number => {
+  const seen = new Set<string>();
+  // Each queue item carries the dir of the package that requires it, so deps
+  // resolve through Bun's isolated `node_modules/.bun` store correctly.
+  const queue = roots.map((name) => ({ name, from: entryFrom }));
+  let copied = 0;
+  while (queue.length > 0) {
+    const { name, from } = queue.shift()!;
+    if (seen.has(name)) continue;
+    let pkgJsonPath: string;
+    try {
+      pkgJsonPath = createRequire(from).resolve(`${name}/package.json`);
+    } catch {
+      continue; // optional dep not installed for this platform — skip
+    }
+    seen.add(name);
+    const srcDir = dirname(pkgJsonPath);
+    cpSync(srcDir, join(destNodeModules, ...name.split("/")), {
+      recursive: true,
+      dereference: true,
+    });
+    copied += 1;
+    const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf8")) as {
+      dependencies?: Record<string, string>;
+      optionalDependencies?: Record<string, string>;
+    };
+    const childFrom = join(srcDir, "package.json");
+    for (const dep of [
+      ...Object.keys(pkg.dependencies ?? {}),
+      ...Object.keys(pkg.optionalDependencies ?? {}),
+    ]) {
+      if (!seen.has(dep)) queue.push({ name: dep, from: childFrom });
+    }
+  }
+  return copied;
+};
 
 const REPO_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const OUTPUT_ROOT = join(REPO_ROOT, ".vercel/output");
@@ -79,6 +138,20 @@ const buildResult = await Bun.build({
 if (!buildResult.success) {
   for (const log of buildResult.logs) console.error(log);
   process.exit(1);
+}
+
+// Stage sharp + its native `@img/*` closure into the function's node_modules so
+// `import("sharp")` resolves at runtime (image transforms on Node serverless).
+// Best-effort — a failure just means the sharp adapter falls back to passthrough.
+try {
+  const count = copyNpmClosure(
+    join(REPO_ROOT, "apps/web/package.json"),
+    ["sharp"],
+    join(FUNC_DIR, "node_modules"),
+  );
+  console.log(`[vercel] staged sharp closure (${count} packages) into function`);
+} catch (err) {
+  console.warn("[vercel] sharp closure copy skipped:", err);
 }
 
 // 2. Write the Node function descriptor (`.vc-config.json`). `nodejs22.x`

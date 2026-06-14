@@ -22,6 +22,7 @@ import { selfHostEmbeddingAdapter } from "./adapters/embedding.self-host";
 import { workersAiEmbeddingAdapter } from "./adapters/embedding.workers-ai";
 import { bunImage } from "./adapters/image.bun";
 import { passthroughImage } from "./adapters/image.passthrough";
+import { sharpImage } from "./adapters/image.sharp";
 import { fsStorage } from "./adapters/storage.fs";
 import { r2Storage } from "./adapters/storage.r2";
 import { bunS3Storage } from "./adapters/storage.s3.bun";
@@ -515,9 +516,11 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
       })
     : noEmbeddingAdapter();
 
-  // Image transform: prefer Bun's built-in image API when available; fall
-  // back to passthrough so the route still works (just without resizing).
-  const image: ImageAdapter = bunImage() ?? passthroughImage();
+  // Image transform: Bun's built-in image API (self-host) → sharp (Node
+  // serverless / any Node host, if the native addon loads) → passthrough. CF
+  // Workers don't use this field; they resize at the edge in the storage route.
+  const image: ImageAdapter =
+    bunImage() ?? (await sharpImage()) ?? passthroughImage();
 
   const ctx: Ctx = {
     env,

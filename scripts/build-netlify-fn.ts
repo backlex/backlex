@@ -36,6 +36,10 @@ const result = await Bun.build({
   splitting: false,
   sourcemap: "none",
   minify: false,
+  // sharp is a native addon — keep it external (resolved from node_modules at
+  // runtime via Netlify's `included_files`/auto node_modules bundling). If it
+  // can't load, the sharp adapter degrades to passthrough (clean 422).
+  external: ["sharp"],
   plugins: [
     {
       name: "bun-sqlite-shim",

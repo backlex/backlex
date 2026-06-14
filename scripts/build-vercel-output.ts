@@ -167,6 +167,11 @@ writeFileSync(
       launcherType: "Nodejs",
       shouldAddHelpers: false,
       shouldAddSourcemapSupport: false,
+      // Stream the response body incrementally instead of buffering it — the
+      // realtime SSE subscribe endpoint (`text/event-stream`) must flush frames
+      // to the client as they're written, not all at once when the function
+      // ends. Without this Vercel buffers the whole body.
+      supportsResponseStreaming: true,
       maxDuration: 60,
     },
     null,

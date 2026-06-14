@@ -1,25 +1,38 @@
 ---
 import Base from "../layouts/Base.astro";
 
+// Factual as of 2026. backlex cells reflect the shipping feature set; Supabase
+// cells reflect its documented capabilities (PostgREST, RLS, Studio, pgvector,
+// Edge Functions on Deno, official MCP server for project management).
 const rows = [
-  ["License", "Apache-2.0 open-source core + managed Cloud", "Apache-2.0 open-source + managed cloud"],
+  ["License", "Apache-2.0 core + managed Cloud", "Apache-2.0 + managed cloud"],
   ["Database", "PostgreSQL and SQLite / Cloudflare D1 (dual-dialect)", "PostgreSQL only"],
-  ["Runtimes", "Cloudflare Workers, Vercel, Netlify, self-host (Bun/Node) — one codebase", "Containers / managed cloud; self-host via Docker"],
-  ["Edge-native", "Yes — runs inside the edge runtime, close to users", "Regional Postgres + edge functions in front"],
-  ["REST API", "Auto-generated, permission-aware", "Auto-generated via PostgREST"],
-  ["GraphQL", "Built in, auto-generated", "Via pg_graphql extension"],
-  ["Realtime", "SSE fan-out with permission filtering", "Postgres logical replication over WebSockets"],
-  ["Permissions", "Role-based DSL: conditions + field-level allow-lists", "Postgres Row-Level Security (SQL policies)"],
-  ["Adopt existing tables", "Yes — wrap any existing table, no data migration", "Works against any Postgres schema"],
-  ["AI / MCP", "Built-in MCP server exposes collections to AI agents", "No first-party MCP server"],
-  ["Vector search", "Built in (pgvector + Cloudflare Vectorize)", "Built in (pgvector)"],
+  ["Runtimes", "Cloudflare Workers, Vercel, Netlify, self-host (Bun/Node) — one codebase", "Managed cloud; self-host via Docker"],
+  ["Edge-native", "Runs inside the edge runtime, next to the request", "Regional Postgres + Deno edge functions in front"],
+  ["Collections / schema", "Managed tables (dynamic, additive-only DDL) or adopt existing tables via a metadata row — no data migration", "Manage Postgres schema directly (SQL / migrations / Studio)"],
+  ["Field types", "text, longtext, number, boolean, uuid, timestamp, json, relation / relation_many, i18n_text", "Native Postgres column types"],
+  ["REST API", "Auto-generated; filter/sort/paginate, nested-relation filters (2 hops), expand, aggregation", "Auto-generated via PostgREST"],
+  ["GraphQL", "Built in, auto-generated from collections", "Via pg_graphql extension"],
+  ["Realtime", "Live row changes streamed to clients over Server-Sent Events (SSE), permission-filtered", "Postgres logical replication over WebSockets"],
+  ["Permissions", "Role-based DSL: conditions + field-level allow-lists, one model across REST/GraphQL/realtime", "Postgres Row-Level Security (SQL policies)"],
+  ["Vector search", "Built in — pgvector (PG) or Cloudflare Vectorize (SQLite/D1); auto-embed on write", "Built in (pgvector)"],
+  ["Embedding models", "OpenAI, Workers AI (bge-m3), or self-hosted TEI/Ollama/vLLM", "Bring your own (OpenAI, etc.)"],
+  ["AI agents / MCP", "Built-in runtime MCP server — collections, vector search & admin exposed to agents, per-key tool allow-lists + read-only guards", "Official MCP server (project / database management from dev tools)"],
+  ["Storage + images", "Files with ACLs, signed URLs, edge image transforms (resize/format/fit)", "Storage with image transformations"],
+  ["Edge functions", "Sandboxed functions (QuickJS / worker-thread / remote executor); http/event/cron triggers", "Edge Functions (Deno)"],
+  ["Auth providers", "Email/password, OAuth, magic link, email-OTP, passkeys, anonymous", "Email/password, OAuth, magic link, OTP"],
+  ["SSO", "SAML 2.0 (per-workspace) and LDAP/AD", "SAML (Pro / Enterprise)"],
+  ["Audit logs", "Built-in activity trail + opt-in sensitive-read auditing", "Via Postgres / log drains"],
+  ["Flows (automation)", "Visual, no-code op-chains triggered by item events", "Database triggers / functions (no visual builder)"],
+  ["Webhooks", "Signed webhooks on item CRUD events", "Database webhooks"],
+  ["Admin UI + SDK", "Admin SPA, typed client SDK, and `backlex` CLI", "Studio, supabase-js, CLI"],
 ];
 ---
 <Base
   title="backlex vs Supabase — edge-native, multi-runtime backend"
-  description="How backlex compares to Supabase: an open-source backend that runs on Cloudflare Workers, Vercel, Netlify, or your own server, with a built-in MCP server for AI agents and support for both PostgreSQL and SQLite/D1."
+  description="How backlex compares to Supabase: an open-source backend that runs on Cloudflare Workers, Vercel, Netlify, or your own server, with dynamic collections, a permissions DSL, built-in vector search, and a runtime MCP server for AI agents — on PostgreSQL or SQLite/D1."
 >
-  <section class="relative z-[1] max-w-[860px] mx-auto px-8 max-md:px-5 py-20">
+  <section class="relative z-[1] max-w-[920px] mx-auto px-8 max-md:px-5 py-20">
     <div class="flex flex-col gap-3 mb-10">
       <span class="inline-block self-start font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground border border-border rounded-full px-3 py-1.5 bg-muted">
         Compare
@@ -27,10 +40,12 @@ const rows = [
       <h1 class="text-[clamp(32px,5vw,48px)] font-semibold -tracking-[0.04em] leading-[1.05]">
         backlex vs Supabase
       </h1>
-      <p class="text-[17px] text-muted-foreground max-w-[60ch] leading-snug">
+      <p class="text-[17px] text-muted-foreground max-w-[62ch] leading-snug">
         Both give you an instant backend over a real database. The difference is
-        <strong class="text-foreground font-medium">where it runs</strong> and
-        <strong class="text-foreground font-medium">how AI agents reach it</strong>.
+        <strong class="text-foreground font-medium">where it runs</strong>, how
+        you <strong class="text-foreground font-medium">model collections</strong>,
+        and how <strong class="text-foreground font-medium">AI agents</strong> reach
+        your data.
       </p>
     </div>
 
@@ -38,12 +53,12 @@ const rows = [
       <p>
         <strong class="text-foreground font-medium">Supabase</strong> is an
         excellent open-source backend built around a single managed PostgreSQL
-        database, with PostgREST, Realtime, Auth, and Storage layered on top.
+        database, with PostgREST, Realtime, Auth, and Storage on top.
         <strong class="text-foreground font-medium">backlex</strong> targets a
         different shape: one codebase that deploys to Cloudflare Workers, Vercel,
         Netlify, or your own server, runs on either PostgreSQL or SQLite/D1, and
-        ships a first-class <strong class="text-foreground font-medium">MCP
-        server</strong> so AI agents can use your backend as a tool.
+        ships a first-class <strong class="text-foreground font-medium">runtime
+        MCP server</strong> so AI agents can use your backend as a tool.
       </p>
 
       <div class="overflow-x-auto -mx-2">
@@ -68,20 +83,51 @@ const rows = [
       </div>
 
       <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">Collections flow</h2>
+        <p>
+          In backlex you either let it <strong class="text-foreground font-medium">create
+          a managed table</strong> (dynamic schema with an additive-only DDL
+          applier that never drops or rewrites columns) or
+          <strong class="text-foreground font-medium">adopt an existing table</strong>
+          by writing a single metadata row — no data migration, foreign keys
+          auto-detected and surfaced as relations. Every collection instantly
+          gets permission-aware REST + GraphQL, realtime, and an admin UI. With
+          Supabase you manage the Postgres schema yourself (SQL, migrations, or
+          the Studio table editor) and wire RLS policies per table.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">Vector search &amp; AI</h2>
+        <p>
+          Mark a collection vectorizable and flag the text fields to embed —
+          backlex <strong class="text-foreground font-medium">auto-embeds on every
+          write</strong> and runs approximate-nearest-neighbour search, using
+          <strong class="text-foreground font-medium">pgvector</strong> on Postgres
+          or <strong class="text-foreground font-medium">Cloudflare Vectorize</strong>
+          on SQLite/D1. Embeddings come from OpenAI, Workers AI (bge-m3), or your
+          own self-hosted model. The same vectors back the Ask-AI / RAG page and
+          the <code>vector.search</code> MCP tool, so agents get semantic search
+          for free. Supabase also offers vector search via pgvector, but you wire
+          the embedding pipeline and any agent access yourself.
+        </p>
+      </div>
+
+      <div>
         <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When backlex is the better fit</h2>
         <ul class="list-disc pl-5 flex flex-col gap-2">
-          <li>You want your backend to <strong class="text-foreground font-medium">run at the edge</strong> (Cloudflare Workers / Vercel / Netlify) instead of in front of a regional database.</li>
-          <li>You're building <strong class="text-foreground font-medium">AI agents or tools</strong> and want your data reachable over MCP out of the box.</li>
-          <li>You need <strong class="text-foreground font-medium">SQLite / D1</strong> as well as Postgres, or want to avoid being tied to one database engine.</li>
-          <li>You prefer a <strong class="text-foreground font-medium">permissions DSL</strong> with conditions and field-level allow-lists over hand-written SQL row-level security.</li>
-          <li>You want to <strong class="text-foreground font-medium">adopt existing tables</strong> without migrating data into a new system.</li>
+          <li>You want your backend to <strong class="text-foreground font-medium">run at the edge</strong> (Workers / Vercel / Netlify) instead of in front of a regional database.</li>
+          <li>You're building <strong class="text-foreground font-medium">AI agents</strong> and want collections, vector search, and admin actions reachable over MCP with per-key scoping.</li>
+          <li>You need <strong class="text-foreground font-medium">SQLite / D1</strong> as well as Postgres, or want to stay database-portable.</li>
+          <li>You prefer a <strong class="text-foreground font-medium">permissions DSL</strong> with field-level allow-lists over hand-written SQL row-level security.</li>
+          <li>You want to <strong class="text-foreground font-medium">adopt existing tables</strong> without migrating data.</li>
         </ul>
       </div>
 
       <div>
         <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When Supabase is the better fit</h2>
         <ul class="list-disc pl-5 flex flex-col gap-2">
-          <li>You're committed to PostgreSQL and want a large, mature ecosystem around it.</li>
+          <li>You're committed to PostgreSQL and want its large, mature ecosystem.</li>
           <li>You rely on Postgres Row-Level Security and existing PostgREST tooling.</li>
           <li>You want a long-established managed platform with a big community.</li>
         </ul>

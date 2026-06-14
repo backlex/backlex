@@ -1,5 +1,6 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
+import starlightLlmsTxt from "starlight-llms-txt";
 
 // https://astro.build/config
 export default defineConfig({
@@ -9,6 +10,15 @@ export default defineConfig({
     starlight({
       title: "Backlex",
       description: "Self-hostable Supabase/Directus alternative — admin, API, runtime.",
+      // Emits /docs/llms.txt (curated index) + /docs/llms-full.txt (all docs as
+      // one markdown file) so coding agents / LLMs can ingest the docs cleanly.
+      plugins: [
+        starlightLlmsTxt({
+          projectName: "backlex",
+          description:
+            "Open-source (Apache-2.0), edge-native backend platform and self-hostable alternative to Supabase, Firebase, and Directus. Dynamic schema over PostgreSQL or SQLite/D1, a permissions DSL, REST + GraphQL, realtime, edge functions, vector search, and a built-in MCP server for AI agents — running on Cloudflare Workers, Vercel, Netlify, or your own server.",
+        }),
+      ],
       favicon: "/favicon.svg",
       logo: {
         light: "./src/assets/logo-light.svg",

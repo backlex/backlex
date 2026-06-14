@@ -1,0 +1,97 @@
+---
+import Base from "../layouts/Base.astro";
+
+const rows = [
+  ["License", "Apache-2.0 open-source core + managed Cloud", "Proprietary (Google)"],
+  ["Self-host", "Yes — your server, Workers, Vercel, or Netlify", "No — Google-hosted only"],
+  ["Data model", "Relational: PostgreSQL or SQLite / D1", "NoSQL document store (Firestore / RTDB)"],
+  ["Query API", "REST + GraphQL, SQL-backed", "SDK queries against documents"],
+  ["Realtime", "SSE fan-out with permission filtering", "Realtime document listeners"],
+  ["Permissions", "Role-based DSL: conditions + field-level allow-lists", "Security Rules language"],
+  ["Vendor lock-in", "None — open core, portable, multi-runtime", "High — tied to Google Cloud"],
+  ["AI / MCP", "Built-in MCP server for AI agents", "No first-party MCP server"],
+  ["Vector search", "Built in (pgvector + Cloudflare Vectorize)", "Via add-on / extension"],
+  ["Pricing model", "Free self-host; flat Cloud plans", "Usage-based (reads/writes/egress)"],
+];
+---
+<Base
+  title="backlex vs Firebase — open-source, SQL, self-hostable backend"
+  description="How backlex compares to Firebase: an open-source backend with a real SQL database, no vendor lock-in, self-hosting on Workers/Vercel/Netlify, and a built-in MCP server for AI agents."
+>
+  <section class="relative z-[1] max-w-[860px] mx-auto px-8 max-md:px-5 py-20">
+    <div class="flex flex-col gap-3 mb-10">
+      <span class="inline-block self-start font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground border border-border rounded-full px-3 py-1.5 bg-muted">
+        Compare
+      </span>
+      <h1 class="text-[clamp(32px,5vw,48px)] font-semibold -tracking-[0.04em] leading-[1.05]">
+        backlex vs Firebase
+      </h1>
+      <p class="text-[17px] text-muted-foreground max-w-[60ch] leading-snug">
+        Firebase gives you a fast, proprietary NoSQL backend on Google Cloud.
+        backlex gives you an <strong class="text-foreground font-medium">open-source,
+        SQL-backed</strong> backend you can run anywhere and own end to end.
+      </p>
+    </div>
+
+    <div class="flex flex-col gap-8 text-[15px] leading-relaxed text-muted-foreground">
+      <p>
+        <strong class="text-foreground font-medium">Firebase</strong> is Google's
+        Backend-as-a-Service: a NoSQL document database (Firestore), realtime
+        listeners, auth, and hosting, all managed inside Google Cloud.
+        <strong class="text-foreground font-medium">backlex</strong> is an
+        open-source (Apache-2.0) alternative built on a relational database
+        (PostgreSQL or SQLite/D1), with REST + GraphQL, a permissions DSL,
+        realtime over SSE, and a built-in <strong class="text-foreground font-medium">MCP
+        server</strong> for AI agents — running on your own server, Cloudflare
+        Workers, Vercel, or Netlify.
+      </p>
+
+      <div class="overflow-x-auto -mx-2">
+        <table class="w-full text-[13.5px] border-collapse">
+          <thead>
+            <tr class="text-left">
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border"></th>
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">backlex</th>
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">Firebase</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(([label, a, b]) => (
+              <tr class="align-top">
+                <td class="py-2.5 px-2 border-b border-border font-medium text-foreground whitespace-nowrap">{label}</td>
+                <td class="py-2.5 px-2 border-b border-border">{a}</td>
+                <td class="py-2.5 px-2 border-b border-border">{b}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When backlex is the better fit</h2>
+        <ul class="list-disc pl-5 flex flex-col gap-2">
+          <li>You want a <strong class="text-foreground font-medium">real SQL database</strong> and relational queries instead of a document store.</li>
+          <li>You want to <strong class="text-foreground font-medium">avoid vendor lock-in</strong> and keep the option to self-host.</li>
+          <li>You prefer <strong class="text-foreground font-medium">predictable pricing</strong> over per-read/per-write metering.</li>
+          <li>You're building <strong class="text-foreground font-medium">AI agents</strong> and want native MCP access to your data.</li>
+          <li>You want <strong class="text-foreground font-medium">REST and GraphQL</strong> endpoints without a proprietary client SDK.</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When Firebase is the better fit</h2>
+        <ul class="list-disc pl-5 flex flex-col gap-2">
+          <li>You're deep in the Google Cloud ecosystem and want tight integration.</li>
+          <li>A NoSQL document model fits your data better than relational tables.</li>
+          <li>You want Google's mobile SDKs (iOS/Android) and analytics out of the box.</li>
+        </ul>
+      </div>
+
+      <p>
+        See the <a href="/docs/" class="text-primary hover:underline">backlex documentation</a> or the
+        <a href="https://github.com/backlex/backlex" class="text-primary hover:underline">source on GitHub</a> to get started.
+        Self-hosting is free under Apache-2.0; the managed <a href="/pricing" class="text-primary hover:underline">Cloud</a> is optional.
+      </p>
+    </div>
+  </section>
+</Base>

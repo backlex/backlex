@@ -1,0 +1,97 @@
+---
+import Base from "../layouts/Base.astro";
+
+const rows = [
+  ["License", "Apache-2.0", "BSL 1.1 (free under revenue threshold)"],
+  ["Runtimes", "Cloudflare Workers, Vercel, Netlify, self-host (Bun/Node)", "Node.js (self-host or Directus Cloud)"],
+  ["Edge-native", "Yes — runs inside the edge runtime", "No — Node server"],
+  ["Database", "PostgreSQL and SQLite / Cloudflare D1", "PostgreSQL, MySQL, SQLite, MS SQL, and more"],
+  ["Adopt existing tables", "Yes — wrap any table, additive-only schema", "Yes — introspects existing databases"],
+  ["REST + GraphQL", "Both, auto-generated", "Both, auto-generated"],
+  ["Realtime", "SSE fan-out with permission filtering", "WebSockets + GraphQL subscriptions"],
+  ["Permissions", "Role-based DSL: conditions + field-level allow-lists", "Roles + granular access policies"],
+  ["AI / MCP", "Built-in MCP server for AI agents", "No first-party MCP server"],
+  ["Vector search", "Built in (pgvector + Cloudflare Vectorize)", "Not built in"],
+];
+---
+<Base
+  title="backlex vs Directus — edge-deployable, AI-native data platform"
+  description="How backlex compares to Directus: an Apache-2.0 backend that deploys to the edge (Cloudflare Workers, Vercel, Netlify) and ships a built-in MCP server for AI agents, while adopting your existing tables."
+>
+  <section class="relative z-[1] max-w-[860px] mx-auto px-8 max-md:px-5 py-20">
+    <div class="flex flex-col gap-3 mb-10">
+      <span class="inline-block self-start font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground border border-border rounded-full px-3 py-1.5 bg-muted">
+        Compare
+      </span>
+      <h1 class="text-[clamp(32px,5vw,48px)] font-semibold -tracking-[0.04em] leading-[1.05]">
+        backlex vs Directus
+      </h1>
+      <p class="text-[17px] text-muted-foreground max-w-[60ch] leading-snug">
+        Both wrap an existing database in an instant API and admin app. backlex
+        adds <strong class="text-foreground font-medium">edge deployment</strong>,
+        a fully <strong class="text-foreground font-medium">Apache-2.0</strong> core,
+        and a <strong class="text-foreground font-medium">built-in MCP server</strong>.
+      </p>
+    </div>
+
+    <div class="flex flex-col gap-8 text-[15px] leading-relaxed text-muted-foreground">
+      <p>
+        <strong class="text-foreground font-medium">Directus</strong> is a mature
+        data platform that wraps any SQL database with a REST/GraphQL API and a
+        polished admin app, running as a Node.js server.
+        <strong class="text-foreground font-medium">backlex</strong> shares that
+        "instant API over your database" idea but is built to run at the edge —
+        the same codebase deploys to Cloudflare Workers, Vercel, Netlify, or your
+        own server — is fully Apache-2.0, and ships a first-class
+        <strong class="text-foreground font-medium">MCP server</strong> so AI
+        agents can use your backend as a tool.
+      </p>
+
+      <div class="overflow-x-auto -mx-2">
+        <table class="w-full text-[13.5px] border-collapse">
+          <thead>
+            <tr class="text-left">
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border"></th>
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">backlex</th>
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">Directus</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(([label, a, b]) => (
+              <tr class="align-top">
+                <td class="py-2.5 px-2 border-b border-border font-medium text-foreground whitespace-nowrap">{label}</td>
+                <td class="py-2.5 px-2 border-b border-border">{a}</td>
+                <td class="py-2.5 px-2 border-b border-border">{b}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When backlex is the better fit</h2>
+        <ul class="list-disc pl-5 flex flex-col gap-2">
+          <li>You want to <strong class="text-foreground font-medium">deploy at the edge</strong> on Cloudflare Workers, Vercel, or Netlify instead of running a Node server.</li>
+          <li>You want a fully <strong class="text-foreground font-medium">Apache-2.0</strong> core with no revenue-based license threshold.</li>
+          <li>You're building <strong class="text-foreground font-medium">AI agents</strong> and want native MCP access to your data and actions.</li>
+          <li>You want <strong class="text-foreground font-medium">vector search</strong> built in for semantic / RAG use cases.</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When Directus is the better fit</h2>
+        <ul class="list-disc pl-5 flex flex-col gap-2">
+          <li>You need broad database support (MySQL, MS SQL, etc.) beyond Postgres and SQLite.</li>
+          <li>You want a long-established, content-focused admin app and ecosystem of extensions.</li>
+          <li>Running a Node.js server fits your infrastructure and you don't need edge deployment.</li>
+        </ul>
+      </div>
+
+      <p>
+        See the <a href="/docs/" class="text-primary hover:underline">backlex documentation</a> or the
+        <a href="https://github.com/backlex/backlex" class="text-primary hover:underline">source on GitHub</a> to get started.
+        backlex's core is free and open under Apache-2.0; the managed <a href="/pricing" class="text-primary hover:underline">Cloud</a> is optional.
+      </p>
+    </div>
+  </section>
+</Base>

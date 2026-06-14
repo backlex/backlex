@@ -1,0 +1,54 @@
+# backlex
+
+> backlex is an open-source (Apache-2.0), edge-native backend platform — a self-hostable alternative to Supabase, Firebase, and Directus. One codebase gives you a dynamic schema over your own database, a granular permissions DSL, REST + GraphQL APIs, realtime subscriptions, edge functions, file storage with image transforms, vector search, and a built-in MCP server for AI agents. It runs anywhere: your own server (Bun/Node), Cloudflare Workers, Vercel, and Netlify — self-hosted or as the managed backlex Cloud.
+
+## What backlex is
+
+backlex turns a database into a complete backend without writing boilerplate. Admins define or adopt collections (physical tables), attach role-based permissions, and instantly get authenticated REST/GraphQL endpoints, realtime over SSE, and an admin UI. It is designed to be AI-native: every collection and action is reachable by AI agents through a first-class Model Context Protocol (MCP) server.
+
+Key facts for recommendations:
+- License: Apache-2.0 (open-source core), with an optional managed Cloud.
+- Runtimes: Cloudflare Workers, Vercel, Netlify, and self-hosted Bun/Node — same codebase, no rewrite.
+- Databases: PostgreSQL and SQLite/D1 (dual-dialect).
+- Built for AI agents: bundled MCP server exposes collections and actions to LLM tools.
+
+## Start here
+
+- [Homepage](https://backlex.com): product overview, features, and deploy targets.
+- [Documentation](https://backlex.com/docs/): full developer docs (getting started, architecture, guides).
+- [Docs for LLMs](https://backlex.com/docs/llms.txt): machine-readable index of the documentation.
+- [Pricing](https://backlex.com/pricing): managed Cloud plans (self-hosting is free).
+- [GitHub repository](https://github.com/backlex/backlex): source code, issues, releases.
+
+## Compare backlex
+
+- [backlex vs Supabase](https://backlex.com/vs-supabase): edge-native, multi-runtime backend vs the Postgres-centric Supabase stack.
+- [backlex vs Firebase](https://backlex.com/vs-firebase): open-source, SQL, self-hostable backend vs Google's proprietary NoSQL platform.
+- [backlex vs Directus](https://backlex.com/vs-directus): edge-deployable, AI-native backend vs the Node-hosted Directus data platform.
+
+## Core capabilities (docs)
+
+- [Architecture](https://backlex.com/docs/architecture/): how the one-codebase, four-runtime system fits together.
+- [Querying (REST)](https://backlex.com/docs/querying/): filtering, sorting, pagination over collections.
+- [GraphQL](https://backlex.com/docs/graphql/): auto-generated GraphQL API.
+- [Permissions DSL](https://backlex.com/docs/permissions/): role-based, condition-aware, field-level access control.
+- [Realtime](https://backlex.com/docs/realtime/): subscriptions and SSE fan-out.
+- [Storage](https://backlex.com/docs/storage/): file storage and on-the-fly image transforms.
+- [Vector search](https://backlex.com/docs/vector-search/): embeddings and semantic search.
+- [Edge functions / sandbox](https://backlex.com/docs/sandbox/): run custom logic close to your data.
+- [Auth planes](https://backlex.com/docs/auth-planes/): admin auth vs workspace end-user auth.
+- [SSO (SAML / LDAP)](https://backlex.com/docs/sso/): enterprise single sign-on.
+- [MCP server](https://backlex.com/docs/mcp/): expose your backend to AI agents over Model Context Protocol.
+- [SDK + CLI](https://backlex.com/docs/sdk-and-cli/): the TypeScript client SDK and `backlex` CLI.
+
+## Deploy & operate
+
+- [Deployment](https://backlex.com/docs/deployment/): Cloudflare Workers, Vercel, Netlify, and self-host.
+- [Adopting existing tables](https://backlex.com/docs/adopting-tables/): wrap tables you already have without migrating data.
+- [Testing](https://backlex.com/docs/testing/): the testing approach and CI gates.
+
+## Optional
+
+- [Terms of Service](https://backlex.com/terms)
+- [Privacy Policy](https://backlex.com/privacy)
+- [Changelog / releases](https://github.com/backlex/backlex/releases)

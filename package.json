@@ -28,7 +28,7 @@
     "test": "bun run --cwd apps/web test",
     "lint": "biome lint apps packages",
     "lint:fix": "biome lint --write apps packages",
-    "prepare": "lefthook install --force",
+    "prepare": "lefthook install --force || true",
     "backlex": "bun run packages/cli/bin/backlex.ts"
   },
   "devDependencies": {

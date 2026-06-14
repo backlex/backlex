@@ -12,5 +12,10 @@
 import type { Context } from "@netlify/functions";
 import app from "./netlify";
 
+// Mark the runtime at module load so server code (the image-transform router)
+// can detect a Netlify Function reliably — `process.env.NETLIFY` isn't
+// guaranteed in the function runtime. Runs at module eval, before any request.
+(globalThis as { __BACKLEX_NETLIFY?: boolean }).__BACKLEX_NETLIFY = true;
+
 export default async (req: Request, _context: Context): Promise<Response> =>
   app.fetch(req);

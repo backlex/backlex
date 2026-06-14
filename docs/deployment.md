@@ -1,6 +1,6 @@
 ---
 title: Deployment
-description: Ship the same source to Bun, Cloudflare Workers, Vercel, or Netlify (all Node serverless except Bun and Workers).
+description: Ship the same source to Bun, Node, Cloudflare Workers, Vercel, or Netlify.
 ---
 
 backlex runs on four targets from the same source. Pick one based on the
@@ -47,6 +47,30 @@ bun run --cwd apps/web dev:bun
 For a managed process: systemd unit, Docker, or `pm2`. The Bun scheduler
 boots inside `apps/web/src/server/entries/bun.ts`; cron functions tick
 every 30 seconds.
+
+## Node.js (self-host, no Bun)
+
+The same app runs on plain Node ≥ 20 via `@hono/node-server`. Build a
+self-contained bundle once (Bun does the bundling — `bun:sqlite` aliased to a
+shim, `sharp` left external), then run it with `node`:
+
+```bash
+bun run build:node                 # → apps/web/dist/node/server.mjs
+
+APP_URL=https://your.app \
+DATABASE_URL=postgres://user:pass@host:5432/backlex \
+AUTH_SECRET=$(openssl rand -hex 32) \
+PORT=8787 \
+node apps/web/dist/node/server.mjs   # or: bun run start:node
+```
+
+Node has no `bun:sqlite`, so use **Postgres** (`DATABASE_URL`); for SQLite use a
+libSQL/Turso URL instead. Everything else auto-selects for Node in
+`buildContext`: `sharp` for image transforms, `node:fs`/S3 storage, QuickJS-WASM
+(or remote-http) sandbox, in-process SSE realtime (or Upstash for multi-instance),
+SMTP/`nodemailer` or HTTP email, and the same `setInterval` cron scheduler. Entry:
+`apps/web/src/server/entries/node.ts`. `bun run build:targets` builds it alongside
+the CF/Vercel/Netlify targets.
 
 ## Cloudflare Workers
 

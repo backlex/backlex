@@ -182,6 +182,12 @@ export default defineConfig({
       ldapts: fileURLToPath(
         new URL("./src/server/shims/ldapts-shim.ts", import.meta.url),
       ),
+      // sharp is a native addon — never loadable on the Workers isolate. The
+      // sharp image adapter is gated out on Workers (CF Image Resizing is used
+      // at the edge); this stub keeps the dynamic import out of the bundle.
+      sharp: fileURLToPath(
+        new URL("./src/server/shims/sharp-shim.ts", import.meta.url),
+      ),
       // Postgres schema/driver are never used on the D1 (sqlite) Workers build,
       // but `@backlex/db/pg` is statically imported across ~80 files and would
       // pull pg/schema.ts (every pgTable) + drizzle-orm/pg-core into the eager

@@ -104,6 +104,12 @@ const main = async (): Promise<void> => {
       ["scripts/build-netlify-fn.ts"],
       REPO_ROOT,
     ),
+    runStep(
+      "node (standalone server)",
+      "bun",
+      ["scripts/build-node.ts"],
+      REPO_ROOT,
+    ),
   ]);
 
   for (const r of results) printResult(r);

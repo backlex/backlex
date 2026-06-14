@@ -25,6 +25,8 @@
     "dev:site": "bun run --cwd apps/site dev",
     "build:site": "bun run --cwd apps/site build",
     "build:targets": "bun scripts/build-targets.ts",
+    "build:node": "bun scripts/build-node.ts",
+    "start:node": "node apps/web/dist/node/server.mjs",
     "test": "bun run --cwd apps/web test",
     "lint": "biome lint apps packages",
     "lint:fix": "biome lint --write apps packages",

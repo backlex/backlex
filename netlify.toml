@@ -8,6 +8,15 @@
 [build.environment]
   BUN_VERSION = "1.3.14"
 
+# Allow R2 public-bucket origins as remote sources for the Netlify Image CDN,
+# so the storage route's `/.netlify/images?url=<R2 public URL>` redirect (see
+# serve.ts — the Netlify analog of Cloudflare Image Resizing on Workers) is
+# honored. Regex is double-escaped per Netlify's TOML rules. `build-netlify-fn`
+# also writes the dynamic `.netlify/deploy/v1/config.json` equivalent, but this
+# static block is read in every build path.
+[images]
+  remote_images = ["https:\\/\\/[a-z0-9.-]+\\.r2\\.dev\\/.*"]
+
 # Runtime env injected into the Netlify Function (Node 22) for production
 # deploys. better-auth's `trustedOrigins` is constructed once per isolate
 # from APP_URL + EXTRA_TRUSTED_ORIGINS; without this list, sign-in from

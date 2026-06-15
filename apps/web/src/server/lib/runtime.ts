@@ -78,6 +78,17 @@ export const isNetlify = (): boolean => {
   return Boolean(p?.env?.NETLIFY);
 };
 
+/** Vercel (any plane) — both Node Functions and Edge set `process.env.VERCEL`.
+ *  Unlike `isVercelEdge()` this is true on the serverful Node-Function deploy
+ *  too. Used to refuse the local-fs storage fallback: a Vercel/Netlify function
+ *  has a writable but EPHEMERAL fs, so uploads would vanish between
+ *  invocations — those runtimes must use S3/R2 just like the true edges. */
+export const isVercel = (): boolean => {
+  const p = (globalThis as { process?: { env?: Record<string, string | undefined> } })
+    .process;
+  return Boolean(p?.env?.VERCEL);
+};
+
 /** Xata Postgres endpoints host on `*.xata.sh`. Xata speaks the standard
  *  Postgres wire protocol (works with postgres-js out of the box) but does
  *  NOT ship the pgvector extension — vector workloads have to be routed

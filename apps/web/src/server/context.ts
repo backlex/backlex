@@ -36,7 +36,13 @@ import { pgvectorAdapter } from "./adapters/vector.pg";
 import type { Env } from "./env";
 import { cloudConfigured } from "./lib/cloud-report";
 import { buildEmailAdapter, selectEmailSpec } from "./lib/email-select";
-import { isCloudflareWorkers, isStatelessEdge, isXataPgUrl } from "./lib/runtime";
+import {
+  isCloudflareWorkers,
+  isNetlify,
+  isStatelessEdge,
+  isVercel,
+  isXataPgUrl,
+} from "./lib/runtime";
 import { loadPolicy } from "./services/auth-config";
 import { resolveEmailAdapter } from "./services/email-config";
 import { publishEvent } from "./services/events";
@@ -434,7 +440,8 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   //   1. R2 binding (Cloudflare Workers) — fastest path on the edge.
   //   2. S3-compatible (S3_BUCKET set) — uses Bun.S3Client native when
   //      available, else aws4fetch for any runtime with WHATWG fetch.
-  //   3. Local fs — Bun self-host dev only.
+  //   3. Local fs — serverful self-host only (Bun / Node / Deno `deno run`),
+  //      NOT serverless functions (their fs is ephemeral per-invocation).
   let storage: StorageAdapter;
   if (env.R2) {
     storage = r2Storage(env.R2);
@@ -451,12 +458,18 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
       endpoint: env.S3_ENDPOINT,
     };
     storage = bunS3Storage(s3Cfg) ?? s3FetchStorage(s3Cfg);
-  } else if (isStatelessEdge() || isCloudflareWorkers()) {
-    // No persistent FS on any edge runtime; the local-fs adapter would
-    // silently lose every upload between invocations.
+  } else if (
+    isStatelessEdge() ||
+    isCloudflareWorkers() ||
+    isNetlify() ||
+    isVercel()
+  ) {
+    // No durable filesystem on any edge runtime OR ephemeral serverless
+    // function (Vercel/Netlify Node functions): the local-fs adapter would
+    // silently lose every upload between invocations, so fail loudly instead.
     throw new AppError(
       "UNAVAILABLE",
-      "Edge runtime requires R2 binding (Cloudflare) or S3-compatible config (S3_BUCKET + S3_ACCESS_KEY_ID + S3_SECRET_ACCESS_KEY).",
+      "This runtime has no persistent filesystem — set an R2 binding (Cloudflare) or S3-compatible config (S3_BUCKET + S3_ACCESS_KEY_ID + S3_SECRET_ACCESS_KEY).",
     );
   } else {
     storage = fsStorage("./.data/files");

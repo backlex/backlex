@@ -38,17 +38,30 @@ export const isNetlifyEdge = (): boolean => {
   );
 };
 
+/** Deno Deploy (managed) — sets `DENO_DEPLOYMENT_ID` in the isolate. Distinct
+ *  from `deno run` self-host (which doesn't). Its sandboxed edge isolates have
+ *  no native FFI and unreliable raw TCP, so it must use HTTP-based drivers
+ *  (neon-http / Turso HTTP / aws4fetch) and the WASM image fallback. */
+export const isDenoDeploy = (): boolean => {
+  const g = globalThis as {
+    Deno?: { env?: { get(k: string): string | undefined } };
+  };
+  return Boolean(g.Deno?.env?.get?.("DENO_DEPLOYMENT_ID"));
+};
+
 /** Any V8-isolate / Deno edge runtime where Node TCP, fs, and most native
  *  Node modules are unavailable. Bun, Node self-host, and traditional
  *  serverful processes return false. */
 export const isEdgeRuntime = (): boolean =>
-  isCloudflareWorkers() || isVercelEdge() || isNetlifyEdge();
+  isCloudflareWorkers() || isVercelEdge() || isNetlifyEdge() || isDenoDeploy();
 
 /** Edge runtimes that are also stateless per-invocation — module-level
  *  state (Maps, in-process pub/sub) doesn't survive between requests. CF
- *  Workers reuse isolates and have Durable Objects, so they're excluded. */
+ *  Workers reuse isolates and have Durable Objects, so they're excluded.
+ *  Deno Deploy is included: HTTP DB driver is forced and in-proc realtime
+ *  bails (use Upstash), exactly like Vercel/Netlify serverless. */
 export const isStatelessEdge = (): boolean =>
-  isVercelEdge() || isNetlifyEdge();
+  isVercelEdge() || isNetlifyEdge() || isDenoDeploy();
 
 /** Netlify *Functions* (Node 22), as opposed to Netlify Edge (Deno). Netlify
  *  sets `NETLIFY=true` in the function environment. Used to route image

@@ -1,21 +1,29 @@
 /**
- * Netlify Edge Function entry. Configured via `netlify.toml`'s
- * `[[edge_functions]]` block to claim `/api/*`.
+ * Netlify Function (Node 22) Hono app + cron route. This builds the app and
+ * is re-exported by `netlify-fn-entry.ts`, which Bun pre-bundles into
+ * `apps/web/netlify/functions/api.mjs`; `netlify.toml` (`[functions]` +
+ * redirects to `/.netlify/functions/api/*`) deploys THAT as a Node 22 v2
+ * function. This is NOT a Netlify Edge / Deno Deploy entry — there is no
+ * `[[edge_functions]]` block — so the Node-only constraints below apply.
  *
- * Runtime constraints (Deno Deploy):
- *   - No fs, no `bun:sqlite` → DATABASE_URL is required. Deno has a
- *     `node:net` polyfill, so postgres-js works in principle, but the
- *     recommended path is `DATABASE_DRIVER=neon-http` (no TCP handshake
- *     per cold-start, predictable behaviour across both Vercel + Netlify
- *     edges).
- *   - Storage: set `S3_BUCKET` + `S3_ACCESS_KEY_ID` +
- *     `S3_SECRET_ACCESS_KEY` for the `aws4fetch`-backed S3 adapter.
- *     `buildContext` refuses to fall back to local-fs on edge.
- *   - SAML / LDAP / Realtime are unavailable; route gates return 503.
- *   - Scheduled functions (cron) live in `netlify/functions/cron.ts`
- *     (separate Node function — see template). They POST to
- *     `/api/_cron/tick` with `x-cron-secret: $CRON_SECRET` so the dedupe
- *     state stays in one place AND the public path stays gated.
+ * Runtime constraints (Netlify Node Function):
+ *   - `bun:sqlite` is unavailable (shimmed) → use Postgres (`DATABASE_URL`,
+ *     `neon-http` recommended) or libSQL. Node 22 has real TCP, so
+ *     postgres-js works too.
+ *   - Storage: the function fs is ephemeral, so set `S3_BUCKET` +
+ *     `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY` (`aws4fetch` S3 adapter);
+ *     `buildContext` refuses the local-fs fallback on Netlify (see
+ *     `isNetlify()`).
+ *   - Realtime: in-process pub/sub can't survive between invocations — set
+ *     `UPSTASH_REDIS_REST_*` for the Redis long-poll transport.
+ *   - SAML, LDAP, and SMTP all work here (Node 22 raw TCP) — these are only
+ *     unavailable on the true edge isolates (Workers / Deno Deploy).
+ *   - Image transforms go through the Netlify Image CDN (`/.netlify/images`)
+ *     for public files; sharp isn't bundled into the function.
+ *   - Cron: a scheduled function (`netlify.toml [[scheduled_functions]]`)
+ *     POSTs `/api/_cron/tick` with `x-cron-secret: $CRON_SECRET` (defined
+ *     below) so dedupe state stays in one place and the public path stays
+ *     gated.
  */
 import { timingSafeEqual } from "../lib/timing";
 import { createApp } from "../app";

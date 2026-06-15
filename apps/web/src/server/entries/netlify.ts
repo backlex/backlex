@@ -32,6 +32,8 @@ const buildEnv = (): Env => ({
   AUTH_SECRET: denoEnv("AUTH_SECRET") ?? "dev-secret-change-me",
   DATABASE_URL: denoEnv("DATABASE_URL"),
   DATABASE_DRIVER: denoEnv("DATABASE_DRIVER") as Env["DATABASE_DRIVER"],
+  LIBSQL_URL: denoEnv("LIBSQL_URL"),
+  LIBSQL_AUTH_TOKEN: denoEnv("LIBSQL_AUTH_TOKEN"),
   CRON_SECRET: denoEnv("CRON_SECRET"),
   OPENAI_API_KEY: denoEnv("OPENAI_API_KEY"),
   RESEND_API_KEY: denoEnv("RESEND_API_KEY"),

@@ -91,15 +91,17 @@ Config lives in `deno.json` (`nodeModulesDir: "manual"` + a `bun:sqlite` → shi
 import map). Verified live (`/health` + the realtime route boot against Neon
 Postgres). Caveats:
 
-- **Postgres only** — no `bun:sqlite` (use a libSQL/Turso URL for SQLite).
-- **Image transforms are a gap on Deno** — `sharp` is a native addon that
-  doesn't load under Deno, so the adapter degrades to passthrough (422). Use Bun
-  / Node / Workers, or front public files with a CDN. Realtime, sandbox
-  (QuickJS-WASM), storage, auth, SSO, email, and cron all work.
+- **SQLite** works via libSQL — set `LIBSQL_URL` (a `file:`/`:memory:` path or a
+  Turso `libsql://` URL); no `bun:sqlite`. Postgres via `DATABASE_URL` also works.
+- **Image transforms** run through a **WASM fallback** (`@cf-wasm/photon`) since
+  `sharp`'s native addon doesn't load on Deno — resize + webp/jpeg/png all work
+  (avif falls back to webp). Verified live. Realtime, sandbox (QuickJS-WASM),
+  storage, auth, SSO, and email work too.
 
 This is best-effort: Deno's stricter ESM means an occasional dependency needs a
-cross-runtime tweak (JSON import attributes, CJS-interop default imports). Prefer
-Bun or Node for production self-host.
+cross-runtime tweak (JSON import attributes, CJS-interop default imports). One
+known rough edge: the cron `scheduled_tasks` claim logs a Date-binding interop
+error on Deno (non-fatal). Prefer Bun or Node for production self-host.
 
 ## Cloudflare Workers
 

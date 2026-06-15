@@ -84,7 +84,13 @@ export interface AdapterProfile {
   realtime: string;
 }
 
-export type AdapterId = "bun" | "workers" | "vercel";
+export type AdapterId =
+  | "bun"
+  | "node"
+  | "deno"
+  | "workers"
+  | "vercel"
+  | "netlify";
 
 // Nav ids double as URL slugs — keep them human-readable (not "api" or
 // "email") because they're rendered into the address bar by AdminApp's
@@ -159,6 +165,9 @@ export const NAV_SETTINGS: NavItem[] = [
 
 export const ADAPTER_PROFILES: Record<AdapterId, AdapterProfile> = {
   bun: { db: "sqlite", storage: "fs", realtime: "in-proc + SSE" },
+  node: { db: "pg", storage: "fs / s3", realtime: "in-proc + SSE" },
+  deno: { db: "pg (neon)", storage: "s3", realtime: "upstash / sse" },
   workers: { db: "d1", storage: "r2", realtime: "durable object" },
-  vercel: { db: "pg (neon)", storage: "s3", realtime: "sse" },
+  vercel: { db: "pg (neon)", storage: "s3", realtime: "upstash" },
+  netlify: { db: "pg (neon)", storage: "s3", realtime: "upstash" },
 };

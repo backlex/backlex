@@ -416,9 +416,19 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
               const storageBinding = bindByName.get("R2") ?? bindByName.get("ASSETS");
               const realtimeBinding = bindByName.get("REALTIME");
               const vectorizeBinding = bindByName.get("VECTORIZE");
-              const dbStatus = dbBinding ? dbBinding.status : adapter === "vercel" ? (envSet.has("DATABASE_URL") ? "connected" : "optional") : "connected";
-              const storageStatus = storageBinding ? storageBinding.status : adapter === "bun" ? "connected" : (envSet.has("S3_BUCKET") ? "connected" : "optional");
-              const realtimeStatus = realtimeBinding ? realtimeBinding.status : adapter === "bun" ? "connected" : "optional";
+              // Serverful hosts (Bun/Node) have a local fs + in-process pub/sub
+              // and run with zero external services; serverless/edge targets
+              // (deno deploy / vercel / netlify) need S3 + Upstash for those.
+              const serverful = adapter === "bun" || adapter === "node";
+              const dbStatus = dbBinding ? dbBinding.status
+                : envSet.has("DATABASE_URL") || envSet.has("LIBSQL_URL") ? "connected"
+                : adapter === "bun" ? "connected" : "optional";
+              const storageStatus = storageBinding ? storageBinding.status
+                : envSet.has("S3_BUCKET") ? "connected"
+                : serverful ? "connected" : "optional";
+              const realtimeStatus = realtimeBinding ? realtimeBinding.status
+                : envSet.has("UPSTASH_REDIS_REST_URL") ? "connected"
+                : serverful ? "connected" : "optional";
               const emailProvider =
                 envSet.has("EMAIL_FROM") && envSet.has("RESEND_API_KEY") ? "resend"
                 : envSet.has("EMAIL_FROM") && envSet.has("SENDGRID_API_KEY") ? "sendgrid"
@@ -436,7 +446,7 @@ export function OverviewPage({ adapter, pushToast, setActiveNav }: { adapter: Ad
                 [t`Realtime`, profile.realtime, realtimeStatus === "connected" ? t`connected` : t`optional`, realtimeBinding?.target ?? profile.realtime],
                 [t`Sandbox`, sandboxValue, remoteExec || adapter === "bun" ? t`connected` : t`idle`, sandboxHint],
                 [t`Vectorize`, t`vector index`, vectorizeBinding ? t`connected` : t`optional`, vectorizeBinding?.target ?? "—"],
-                [t`Email`, emailProvider ?? (adapter === "bun" ? t`console (dev)` : t`not configured`), emailConnected ? t`connected` : t`idle`, emailConnected ? t`EMAIL_FROM set` : adapter === "bun" ? t`logs to stdout` : t`set EMAIL_FROM + a provider key`],
+                [t`Email`, emailProvider ?? (serverful ? t`console (dev)` : t`not configured`), emailConnected ? t`connected` : t`idle`, emailConnected ? t`EMAIL_FROM set` : serverful ? t`logs to stdout` : t`set EMAIL_FROM + a provider key`],
               ];
               return rows;
             })().map(([k, v, status, hint], i, arr) => (

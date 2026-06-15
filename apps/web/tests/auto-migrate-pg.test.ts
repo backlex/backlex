@@ -176,7 +176,17 @@ describe("auto-migrate: idempotency classifier covers PG-specific failure shapes
 let pgliteWorks = false;
 let setupErr: Error | undefined;
 
+// Layer 2 is best-effort bonus coverage. pglite's pgvector extension is
+// environment-sensitive under bun-test: even when installed it can fail to
+// locate the extension control file AND emit an async WASM rejection that
+// bun-test attributes to the test (a spurious failure that breaks local
+// `bun test` / the pre-push hook). Run the live e2e only in CI (or when
+// explicitly opted in) — Layer 1 above is the meaningful, env-independent
+// coverage that runs everywhere.
+const RUN_PGLITE_E2E = !!(process.env.CI || process.env.RUN_PGLITE_E2E);
+
 beforeAll(async () => {
+  if (!RUN_PGLITE_E2E) return; // don't even probe pglite locally — avoids the async-rejection flake
   try {
     const { PGlite } = await import("@electric-sql/pglite");
     const { vector } = await import("@electric-sql/pglite/vector");
@@ -191,7 +201,7 @@ beforeAll(async () => {
 }, 60_000);
 
 describe("auto-migrate (pg) — end-to-end pglite (best-effort)", () => {
-  test("fresh pglite DB → ledger fills to PG_MIGRATIONS.length", async () => {
+  test.skipIf(!RUN_PGLITE_E2E)("fresh pglite DB → ledger fills to PG_MIGRATIONS.length", async () => {
     if (!pgliteWorks) {
       // pgvector unavailable in this environment; same fall-through as
       // pg-smoke.test.ts. Layer 1 above covers the regression in any

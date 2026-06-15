@@ -103,6 +103,82 @@ cross-runtime tweak (JSON import attributes, CJS-interop default imports). One
 known rough edge: the cron `scheduled_tasks` claim logs a Date-binding interop
 error on Deno (non-fatal). Prefer Bun or Node for production self-host.
 
+### Deno Deploy (managed)
+
+The same source also runs on **Deno Deploy** (the managed platform). Because the
+managed builder runs on Deno's npm compat and ships **no Bun**, the dance is a
+little different from a plain `deno task start:deno`. Verified live at
+`https://backlex-prod.kinyasfurkan.deno.net` (DB via Neon `neon-http`, auth
+sign-in, realtime, storage). Deno Deploy is an HTTP-only V8-isolate edge, so
+`isDenoDeploy()` (set by `DENO_DEPLOYMENT_ID`) auto-forces `neon-http` for the DB
+and bails the in-process SSE realtime to Upstash — same path as Vercel/Netlify.
+
+Create the app non-interactively with the `deno deploy` CLI (`deno` ≥ 2.8;
+`ddo_…` deploy token via `--token` or `DENO_DEPLOY_TOKEN`):
+
+```bash
+deno deploy create \
+  --org <org-slug> --app backlex \
+  --source local --do-not-use-detected-build-config --app-directory . \
+  --install-command 'npm install -g bun --prefix "$HOME/.local" && "$HOME/.local/bin/bun" install --ignore-scripts' \
+  --build-command 'export PATH="$HOME/.local/bin:$PATH" && bun run build' \
+  --entrypoint apps/web/src/server/entries/deno.ts \
+  --runtime-mode dynamic --region eu \
+  --build-timeout 5 --build-memory-limit 3072
+```
+
+The `--build-command` runs `vite build` so the admin SPA (`apps/web/dist/client`)
+ships inside the deploy artifact — the Deno entry serves it for non-API routes
+(`mountSpa` in `entries/deno.ts`), so the deployed URL shows the full admin UI,
+not just the API. `dist/` is git-ignored and `--source local` honours
+`.gitignore`, so the SPA *must* be built on the builder; a local `dist/client`
+is never uploaded. Building on the builder works because the SPA bundler is
+**rolldown** (its native binding is an optional dependency, not a postinstall),
+so `--ignore-scripts` doesn't starve it. (If you only need the API, drop
+`--build-command`; `/` then 404s and the admin UI lives on the Workers deploy.)
+
+Four gotchas the commands above already work around — each one fails the build
+during the `installing`/`building` step otherwise:
+
+- **No Bun on the builder.** Install it first. A plain `npm install -g bun` hits
+  `EACCES` (the builder runs as a non-root `/home/app` user and can't write the
+  global `/usr/lib/node_modules` prefix), so install into a user-writable
+  `--prefix "$HOME/.local"` and call the binary by its full path. Installing Bun
+  globally (not as a local dep) also keeps npm away from the repo's
+  `workspace:*` deps, which npm can't resolve.
+- **`--ignore-scripts` is mandatory.** Bun runs lifecycle scripts for packages on
+  its built-in trusted-deps allow-list (which includes `msw`, a devDependency).
+  `msw`'s postinstall shells out to `node`, which the builder maps to `deno eval`,
+  and it dies on an unknown `-A` flag. We don't need any postinstall at runtime
+  (`sharp`/`better-sqlite3`/`esbuild` native steps are unused on Deno), so skip
+  them all.
+- **`PATH` in the build command.** The root `build` script shells out to a bare
+  `bun` (`bun run --cwd apps/web build`), but Bun was installed into
+  `$HOME/.local`, which isn't on the builder's `PATH`. Prefix the build command
+  with `export PATH="$HOME/.local/bin:$PATH"` so the nested `bun` resolves
+  (otherwise: `bun: command not found`, exit 127).
+- **Free-plan build limits** cap `--build-timeout` at 5 (minutes) and
+  `--build-memory-limit` at 3072 (MiB). The numbers above are the max.
+
+Then set secrets and push a deploy (the first `create` registers the build
+config; `deno deploy` re-runs it against the latest local source):
+
+```bash
+deno deploy env add --secret AUTH_SECRET "$(openssl rand -hex 32)" --org <org> --app backlex
+deno deploy env add --secret DATABASE_URL "postgres://…"            --org <org> --app backlex
+deno deploy env add DATABASE_DRIVER neon-http                        --org <org> --app backlex
+# …S3_* (R2), UPSTASH_REDIS_REST_* (realtime), APP_URL, AUTH_PLUGINS as needed
+
+deno deploy --org <org> --app backlex --prod
+```
+
+Build config is only settable at `create` time (the CLI has no build-config
+update). To change the install command / limits, create a new app. The
+`--source local` flow uploads your working tree — it is not git-linked, so it
+won't auto-deploy on push; for that, connect the repo at app.deno.com instead and
+use the same install command + entrypoint + env. Build logs aren't streamed
+inline by the CLI — watch them in the dashboard build view.
+
 ## Cloudflare Workers
 
 `apps/web/wrangler.toml` covers the bindings. First-time setup:

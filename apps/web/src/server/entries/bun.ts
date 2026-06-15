@@ -1,4 +1,6 @@
+import { serveStatic } from "hono/bun";
 import { createApp } from "../app";
+import { mountSpa } from "../lib/spa";
 import { startBunScheduler } from "../services/scheduler";
 import type { Env } from "../env";
 
@@ -35,6 +37,8 @@ const env: Env = {
 };
 
 const app = createApp(env);
+// Serve the pre-built admin SPA (dist/client) for non-API routes.
+mountSpa(app, serveStatic);
 const port = Number(process.env.PORT ?? 8787);
 
 const server = Bun.serve({

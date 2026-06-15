@@ -18,7 +18,9 @@
  *   - Cron   → `setInterval` scheduler (same as Bun).
  */
 import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { createApp } from "../app";
+import { mountSpa } from "../lib/spa";
 // `setInterval`-based — runtime-agnostic despite the name; reused here for Node.
 import { startBunScheduler } from "../services/scheduler";
 import type { Env } from "../env";
@@ -57,6 +59,8 @@ const env: Env = {
 };
 
 const app = createApp(env);
+// Serve the pre-built admin SPA (dist/client) for non-API routes.
+mountSpa(app, serveStatic);
 const port = Number(process.env.PORT ?? 8787);
 
 serve({ fetch: app.fetch, port }, (info) => {

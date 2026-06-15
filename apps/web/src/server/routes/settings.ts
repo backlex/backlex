@@ -7,6 +7,7 @@ import type { MiddlewareHandler } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { isCloudflareWorkers, isDenoDeploy, isNetlify } from "../lib/runtime";
 import {
   loadAppSettings,
   loadSignInBranding,
@@ -286,7 +287,26 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>()
         { key: "FUNCTIONS_EXEC_URL", set: present("FUNCTIONS_EXEC_URL"), source: "env", secret: false },
         { key: "SANDBOX_RPC_TOKEN", set: present("SANDBOX_RPC_TOKEN"), source: "env", secret: true },
       ];
-      const adapter = env.D1 ? "workers" : env.DATABASE_URL ? "vercel" : "bun";
+      // Report the actual host runtime, not a DB-presence heuristic. Order
+      // matters: Workers (D1 binding) → Deno (Deno global, covers self-host +
+      // Deno Deploy) → Netlify/Vercel Node functions → Bun → plain Node.
+      const g = globalThis as {
+        Deno?: unknown;
+        Bun?: unknown;
+        process?: { env?: Record<string, string | undefined> };
+      };
+      const adapter =
+        env.D1 || isCloudflareWorkers()
+          ? "workers"
+          : isDenoDeploy() || typeof g.Deno !== "undefined"
+            ? "deno"
+            : isNetlify()
+              ? "netlify"
+              : g.process?.env?.VERCEL
+                ? "vercel"
+                : typeof g.Bun !== "undefined"
+                  ? "bun"
+                  : "node";
       return c.json({
         data: {
           adapter,

@@ -1,6 +1,6 @@
 ---
 title: Deployment
-description: Ship the same source to Bun, Node, Cloudflare Workers, Vercel, or Netlify.
+description: Ship the same source to Bun, Node, Deno, Cloudflare Workers, Vercel, or Netlify.
 ---
 
 backlex runs on four targets from the same source. Pick one based on the
@@ -71,6 +71,35 @@ libSQL/Turso URL instead. Everything else auto-selects for Node in
 SMTP/`nodemailer` or HTTP email, and the same `setInterval` cron scheduler. Entry:
 `apps/web/src/server/entries/node.ts`. `bun run build:targets` builds it alongside
 the CF/Vercel/Netlify targets.
+
+## Deno (self-host, experimental)
+
+The same source also runs on **Deno 2** via its npm compatibility — no bundle
+step; Deno runs the TypeScript source directly. Install deps with Bun first (for
+`node_modules`), then start it:
+
+```bash
+bun install                          # provides node_modules for Deno's npm compat
+
+DATABASE_URL=postgres://user:pass@host:5432/backlex \
+AUTH_SECRET=$(openssl rand -hex 32) \
+PORT=8787 \
+deno task start:deno                 # → deno run -A apps/web/src/server/entries/deno.ts
+```
+
+Config lives in `deno.json` (`nodeModulesDir: "manual"` + a `bun:sqlite` → shim
+import map). Verified live (`/health` + the realtime route boot against Neon
+Postgres). Caveats:
+
+- **Postgres only** — no `bun:sqlite` (use a libSQL/Turso URL for SQLite).
+- **Image transforms are a gap on Deno** — `sharp` is a native addon that
+  doesn't load under Deno, so the adapter degrades to passthrough (422). Use Bun
+  / Node / Workers, or front public files with a CDN. Realtime, sandbox
+  (QuickJS-WASM), storage, auth, SSO, email, and cron all work.
+
+This is best-effort: Deno's stricter ESM means an occasional dependency needs a
+cross-runtime tweak (JSON import attributes, CJS-interop default imports). Prefer
+Bun or Node for production self-host.
 
 ## Cloudflare Workers
 

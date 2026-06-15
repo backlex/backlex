@@ -3,8 +3,11 @@ title: Deployment
 description: Ship the same source to Bun, Node, Deno, Cloudflare Workers, Vercel, or Netlify.
 ---
 
-backlex runs on four targets from the same source. Pick one based on the
-constraints you need.
+backlex runs the same source on six runtimes — **Bun**, **Node**, and **Deno**
+self-host, plus **Cloudflare Workers**, **Vercel**, and **Netlify**. The matrix
+below compares the four managed / serverless targets; standalone **Node** and
+**Deno** self-host (incl. Deno Deploy) get their own sections further down. Pick
+one based on the constraints you need.
 
 |                    | Bun (self-host)   | Cloudflare Workers   | Vercel Functions (Node 22, Build Output API) | Netlify Functions (Node 22) |
 |--------------------|-------------------|----------------------|----------------------|------------------------------|

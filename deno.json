@@ -1,0 +1,10 @@
+{
+  "//": "Deno self-host (experimental). backlex runs the same source on Deno 2 via npm compat — no bundle step. Run: `deno task start:deno` (needs `bun install` first for node_modules). See docs/deployment.md.",
+  "nodeModulesDir": "manual",
+  "imports": {
+    "bun:sqlite": "./apps/web/src/server/shims/bun-sqlite-shim.ts"
+  },
+  "tasks": {
+    "start:deno": "deno run --allow-all apps/web/src/server/entries/deno.ts"
+  }
+}

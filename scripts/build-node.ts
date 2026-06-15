@@ -36,7 +36,7 @@ const result = await Bun.build({
   // Native addons — resolved from node_modules at runtime, not inlined.
   // `@libsql/client` loads a per-platform native binding (`@libsql/<platform>`)
   // for `file:`/`:memory:` SQLite; keep it external so that require resolves.
-  external: ["sharp", "@libsql/client"],
+  external: ["sharp", "@libsql/client", "@cf-wasm/photon"],
   plugins: [
     {
       name: "bun-sqlite-shim",

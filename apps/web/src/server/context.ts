@@ -23,6 +23,7 @@ import { workersAiEmbeddingAdapter } from "./adapters/embedding.workers-ai";
 import { bunImage } from "./adapters/image.bun";
 import { passthroughImage } from "./adapters/image.passthrough";
 import { sharpImage } from "./adapters/image.sharp";
+import { wasmImage } from "./adapters/image.photon";
 import { fsStorage } from "./adapters/storage.fs";
 import { r2Storage } from "./adapters/storage.r2";
 import { bunS3Storage } from "./adapters/storage.s3.bun";
@@ -520,7 +521,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   // serverless / any Node host, if the native addon loads) → passthrough. CF
   // Workers don't use this field; they resize at the edge in the storage route.
   const image: ImageAdapter =
-    bunImage() ?? (await sharpImage()) ?? passthroughImage();
+    bunImage() ?? (await sharpImage()) ?? (await wasmImage()) ?? passthroughImage();
 
   const ctx: Ctx = {
     env,

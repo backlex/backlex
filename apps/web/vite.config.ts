@@ -188,6 +188,11 @@ export default defineConfig({
       sharp: fileURLToPath(
         new URL("./src/server/shims/sharp-shim.ts", import.meta.url),
       ),
+      // @cf-wasm/photon backs the Deno image fallback (image.wasm.ts), gated off
+      // on Workers; stub it so its WASM blob never enters the Worker bundle.
+      "@cf-wasm/photon": fileURLToPath(
+        new URL("./src/server/shims/photon-shim.ts", import.meta.url),
+      ),
       // Postgres schema/driver are never used on the D1 (sqlite) Workers build,
       // but `@backlex/db/pg` is statically imported across ~80 files and would
       // pull pg/schema.ts (every pgTable) + drizzle-orm/pg-core into the eager

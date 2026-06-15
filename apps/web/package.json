@@ -24,6 +24,7 @@
     "@backlex/db": "workspace:*",
     "@backlex/integrations": "workspace:*",
     "@backlex/ui": "workspace:*",
+    "@cf-wasm/photon": "^0.3.6",
     "@cf-wasm/quickjs": "^0.2.5",
     "@codemirror/lang-json": "^6.0.2",
     "@codemirror/theme-one-dark": "^6.1.3",

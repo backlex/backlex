@@ -52,6 +52,7 @@
         "@backlex/db": "workspace:*",
         "@backlex/integrations": "workspace:*",
         "@backlex/ui": "workspace:*",
+        "@cf-wasm/photon": "^0.3.6",
         "@cf-wasm/quickjs": "^0.2.5",
         "@codemirror/lang-json": "^6.0.2",
         "@codemirror/theme-one-dark": "^6.1.3",
@@ -393,6 +394,10 @@
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.4.15", "", { "os": "win32", "cpu": "x64" }, "sha512-zBrGq5mx5wwpnow4+2BxUvleDM+GNd4sLbPaMapsSLQLD0NGRCquqPBTgN+7XkUteHvj7M+BstuI8tmnV7+HgQ=="],
 
     "@capsizecss/unpack": ["@capsizecss/unpack@4.0.0", "", { "dependencies": { "fontkitten": "^1.0.0" } }, "sha512-VERIM64vtTP1C4mxQ5thVT9fK0apjPFobqybMtA1UdUujWka24ERHbRHFGmpbbhp73MhV+KSsHQH9C6uOTdEQA=="],
+
+    "@cf-wasm/internals": ["@cf-wasm/internals@0.1.2", "", {}, "sha512-9d/I3JFv1IpQFYOrIw5RQShQPyuZRw9DyeBylF39Uj/MH7my8+EzKDPpUCHiqZ5O7tZS/A6zwP08egpeI5NBhA=="],
+
+    "@cf-wasm/photon": ["@cf-wasm/photon@0.3.6", "", { "dependencies": { "@cf-wasm/internals": "0.1.2" } }, "sha512-LfLfJ10+Z+DrohjQTSBkgmqxp6d4gvlGuwFkb5c4RHJGAMyVJxrAQWGrLunWE6TvZssIkT5fhKAjQZYhFSYzqg=="],
 
     "@cf-wasm/quickjs": ["@cf-wasm/quickjs@0.2.5", "", { "dependencies": { "@jitl/quickjs-wasmfile-debug-sync": "0.32.0", "@jitl/quickjs-wasmfile-release-sync": "0.32.0", "quickjs-emscripten-core": "0.32.0" } }, "sha512-X/2b5Baf28eyZW//MQImY8T84MGSPNNKVYr+EzdluNQSOWmJp/xxCkuBLM/b1ESvOBPcW4dIUR54qu76wcAYfg=="],
 

@@ -7,6 +7,8 @@ const env: Env = {
   AUTH_SECRET: process.env.AUTH_SECRET ?? "dev-secret-change-me",
   DATABASE_URL: process.env.DATABASE_URL,
   SQLITE_PATH: process.env.SQLITE_PATH,
+  LIBSQL_URL: process.env.LIBSQL_URL,
+  LIBSQL_AUTH_TOKEN: process.env.LIBSQL_AUTH_TOKEN,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
   RESEND_API_KEY: process.env.RESEND_API_KEY,
   EMAIL_FROM: process.env.EMAIL_FROM,

@@ -2,7 +2,7 @@ import { OpenAPIRegistry, OpenApiGeneratorV31 } from "@asteasolutions/zod-to-ope
 import { z, OpenAPIHono } from "@hono/zod-openapi";
 import type { Ctx } from "../context";
 import { buildDynamicCollectionPaths } from "../services/openapi-dynamic";
-import staticGenerated from "./openapi-static.generated.json";
+import staticGenerated from "./openapi-static.generated.json" with { type: "json" };
 
 /**
  * Re-export the extended `z` from `@hono/zod-openapi`. That package wraps

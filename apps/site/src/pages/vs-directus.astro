@@ -8,7 +8,7 @@ import Base from "../layouts/Base.astro";
 // is not core to Directus — it's done via external vector DBs / community work.
 const rows = [
   ["License", "Apache-2.0", "BSL 1.1 (free under a revenue threshold)"],
-  ["Runtimes", "Cloudflare Workers, Vercel & Netlify (Node 22), self-host on Bun", "Node.js (self-host or Directus Cloud)"],
+  ["Runtimes", "Cloudflare Workers, Vercel & Netlify (Node 22), self-host on Bun/Node/Deno, or Deno Deploy", "Node.js (self-host or Directus Cloud)"],
   ["Edge-native", "Runs inside the edge runtime", "No — Node server"],
   ["Database", "PostgreSQL and SQLite / Cloudflare D1", "PostgreSQL, MySQL, SQLite, MS SQL, and more"],
   ["Collections / schema", "Managed tables (dynamic, additive-only DDL) or adopt existing tables via a metadata row", "Introspects existing databases; schema builder"],
@@ -30,7 +30,7 @@ const rows = [
 ---
 <Base
   title="backlex vs Directus — edge-deployable, AI-native data platform"
-  description="How backlex compares to Directus: an Apache-2.0 backend that deploys to the edge (Cloudflare Workers, Vercel, Netlify), adopts your existing tables, ships built-in vector search, and exposes a runtime MCP server to AI agents."
+  description="How backlex compares to Directus: an Apache-2.0 backend that deploys to the edge (Cloudflare Workers, Vercel, Netlify, Deno Deploy) or self-hosts on Bun, Node, or Deno, adopts your existing tables, ships built-in vector search, and exposes a runtime MCP server to AI agents."
 >
   <section class="relative z-[1] max-w-[920px] mx-auto px-8 max-md:px-5 py-20">
     <div class="flex flex-col gap-3 mb-10">
@@ -56,8 +56,9 @@ const rows = [
         polished admin app, running as a Node.js server.
         <strong class="text-foreground font-medium">backlex</strong> shares that
         "instant API over your database" idea but is built to run at the edge —
-        the same codebase deploys to Cloudflare Workers, Vercel, Netlify, or your
-        own server — is fully Apache-2.0, ships built-in semantic/vector search,
+        the same codebase deploys to Cloudflare Workers, Vercel, Netlify, Deno
+        Deploy, or your own server (Bun, Node, or Deno) — is fully Apache-2.0,
+        ships built-in semantic/vector search,
         and exposes a first-class <strong class="text-foreground font-medium">runtime
         MCP server</strong> so AI agents can use your backend as a tool.
       </p>

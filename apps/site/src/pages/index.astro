@@ -10,7 +10,7 @@ import Base from "../layouts/Base.astro";
   <div class="relative max-w-[1240px] mx-auto px-8 max-md:px-5 flex flex-col items-center text-center gap-6">
 
     <span class="inline-block max-w-full text-center font-mono text-[11px] leading-relaxed text-muted-foreground uppercase tracking-[0.12em] border border-border rounded-full px-3 py-1.5 bg-muted">
-      <span class="inline-block align-middle w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>AI-native · Apache-2.0 · Self-host · Workers · Vercel · Netlify
+      <span class="inline-block align-middle w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>AI-native · Apache-2.0 · Self-host · Workers · Vercel · Netlify · Deno
     </span>
 
     <h1 class="font-semibold -tracking-[0.04em] leading-[1.02] text-[clamp(40px,6vw,72px)] max-w-[18ch]">
@@ -18,7 +18,7 @@ import Base from "../layouts/Base.astro";
     </h1>
 
     <p class="text-[19px] text-muted-foreground max-w-[60ch] leading-snug">
-      Dynamic schema, permissions DSL, REST + GraphQL, realtime, edge functions, vector search, and a built-in <strong class="text-foreground font-semibold">MCP server for AI agents</strong> — one codebase that runs anywhere: <strong class="text-foreground font-semibold">your own server, Cloudflare Workers, Vercel, or Netlify</strong>. Self-host or use the managed Cloud.
+      Dynamic schema, permissions DSL, REST + GraphQL, realtime, edge functions, vector search, and a built-in <strong class="text-foreground font-semibold">MCP server for AI agents</strong> — one codebase that runs anywhere: <strong class="text-foreground font-semibold">your own server (Bun, Node, or Deno), Cloudflare Workers, Vercel, Netlify, or Deno Deploy</strong>. Self-host or use the managed Cloud.
     </p>
 
     <div class="flex gap-2.5 flex-wrap justify-center mt-2">
@@ -181,18 +181,18 @@ import Base from "../layouts/Base.astro";
   <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
     <div class="flex flex-col gap-4 max-w-[720px] mb-12">
       <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>deploy</span>
-      <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">One codebase, four runtimes.<br/>Pick the constraints you need.</h2>
-      <p class="text-[17px] text-muted-foreground max-w-[60ch]">The same <code class="font-mono">apps/web</code> source compiles to Bun, Cloudflare Workers, Vercel Functions, and Netlify Functions. <code class="font-mono">context.ts::buildContext</code> picks the right adapter at boot.</p>
+      <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">One codebase, six runtimes.<br/>Pick the constraints you need.</h2>
+      <p class="text-[17px] text-muted-foreground max-w-[60ch]">The same <code class="font-mono">apps/web</code> source runs on Bun, Node, and Deno, and compiles to Cloudflare Workers, Vercel Functions, and Netlify Functions — plus managed Deno Deploy. <code class="font-mono">context.ts::buildContext</code> picks the right adapter at boot.</p>
     </div>
     <div class="grid grid-cols-4 max-[920px]:grid-cols-2 max-[480px]:grid-cols-1 gap-3.5">
       <div class="border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
         <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">S</span><h3 class="text-[17px] font-semibold">Self-hosted</h3></div>
-        <p class="text-muted-foreground text-[13.5px]">Your own box — VPS, Docker, or laptop. A single long-running Bun process, shipped with <code class="font-mono text-[11.5px] bg-muted px-1 py-px rounded">docker run</code> or a systemd unit.</p>
+        <p class="text-muted-foreground text-[13.5px]">Your own box — VPS, Docker, or laptop. A single long-running <strong class="text-foreground font-medium">Bun, Node, or Deno</strong> process, shipped with <code class="font-mono text-[11.5px] bg-muted px-1 py-px rounded">docker run</code> or a systemd unit — or push the same source to <strong class="text-foreground font-medium">Deno Deploy</strong>.</p>
         <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">sqlite / pg</dd>
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">fs / s3</dd>
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">in-proc + sse</dd>
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">worker thread</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">worker thread / quickjs</dd>
         </dl>
       </div>
       <div class="border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
@@ -211,7 +211,7 @@ import Base from "../layouts/Base.astro";
         <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">pg</dd>
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">s3 (required)</dd>
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">sse (capped)</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">upstash long-poll</dd>
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">quickjs</dd>
         </dl>
       </div>
@@ -221,7 +221,7 @@ import Base from "../layouts/Base.astro";
         <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">pg</dd>
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">s3 (required)</dd>
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">sse (capped)</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">upstash long-poll</dd>
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">quickjs</dd>
         </dl>
       </div>
@@ -397,7 +397,7 @@ import Base from "../layouts/Base.astro";
         </div>
         <div class="grid grid-cols-[20px_1fr] gap-x-2.5 gap-y-2 text-[13px]">
           <span class="text-primary mt-1">✓</span><div><strong>Full control</strong> — <span class="text-muted-foreground">DB credentials, secrets, infra all yours</span></div>
-          <span class="text-primary mt-1">✓</span><div><strong>4 deploy targets</strong> — <span class="text-muted-foreground">self-host, Workers, Vercel, Netlify</span></div>
+          <span class="text-primary mt-1">✓</span><div><strong>6 runtimes</strong> — <span class="text-muted-foreground">Bun/Node/Deno, Workers, Vercel, Netlify</span></div>
           <span class="text-primary mt-1">✓</span><div><strong>Unlimited scale</strong> — <span class="text-muted-foreground">start on Cloudflare's own free tier</span></div>
           <span class="text-muted-foreground mt-1">−</span><div class="text-muted-foreground">You set it up — wrangler, DB, secret rotation, monitoring</div>
           <span class="text-muted-foreground mt-1">−</span><div class="text-muted-foreground">You configure backups</div>
@@ -944,7 +944,7 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
     <div class="flex flex-col gap-4 max-w-[720px] mb-12">
       <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>why backlex</span>
       <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">The trade-offs, in one table.</h2>
-      <p class="text-[17px] text-muted-foreground max-w-[60ch]">Other tools do parts of this. backlex's design choice is to keep every part under one source tree, behind one API, deployable to four runtimes — without forking.</p>
+      <p class="text-[17px] text-muted-foreground max-w-[60ch]">Other tools do parts of this. backlex's design choice is to keep every part under one source tree, behind one API, deployable to six runtimes — without forking.</p>
     </div>
     <div class="border border-border rounded-3xl bg-card overflow-hidden">
       <div class="overflow-x-auto">

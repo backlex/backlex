@@ -7,7 +7,7 @@ import Base from "../layouts/Base.astro";
 const rows = [
   ["License", "Apache-2.0 core + managed Cloud", "Apache-2.0 + managed cloud"],
   ["Database", "PostgreSQL and SQLite / Cloudflare D1 (dual-dialect)", "PostgreSQL only"],
-  ["Runtimes", "Cloudflare Workers, Vercel & Netlify (Node 22), self-host on Bun — one codebase", "Managed cloud; self-host via Docker"],
+  ["Runtimes", "Cloudflare Workers, Vercel & Netlify (Node 22), self-host on Bun/Node/Deno, or Deno Deploy — one codebase", "Managed cloud; self-host via Docker"],
   ["Edge-native", "Runs inside the edge runtime, next to the request", "Regional Postgres + Deno edge functions in front"],
   ["Collections / schema", "Managed tables (dynamic, additive-only DDL) or adopt existing tables via a metadata row — no data migration", "Manage Postgres schema directly (SQL / migrations / Studio)"],
   ["Field types", "text, longtext, number, boolean, uuid, timestamp, json, relation / relation_many, i18n_text", "Native Postgres column types"],
@@ -30,7 +30,7 @@ const rows = [
 ---
 <Base
   title="backlex vs Supabase — edge-native, multi-runtime backend"
-  description="How backlex compares to Supabase: an open-source backend that runs on Cloudflare Workers, Vercel, Netlify, or your own server, with dynamic collections, a permissions DSL, built-in vector search, and a runtime MCP server for AI agents — on PostgreSQL or SQLite/D1."
+  description="How backlex compares to Supabase: an open-source backend that runs on Cloudflare Workers, Vercel, Netlify, Deno Deploy, or your own server (Bun, Node, or Deno), with dynamic collections, a permissions DSL, built-in vector search, and a runtime MCP server for AI agents — on PostgreSQL or SQLite/D1."
 >
   <section class="relative z-[1] max-w-[920px] mx-auto px-8 max-md:px-5 py-20">
     <div class="flex flex-col gap-3 mb-10">
@@ -56,7 +56,8 @@ const rows = [
         database, with PostgREST, Realtime, Auth, and Storage on top.
         <strong class="text-foreground font-medium">backlex</strong> targets a
         different shape: one codebase that deploys to Cloudflare Workers, Vercel,
-        Netlify, or your own server, runs on either PostgreSQL or SQLite/D1, and
+        Netlify, Deno Deploy, or your own server (Bun, Node, or Deno), runs on
+        either PostgreSQL or SQLite/D1, and
         ships a first-class <strong class="text-foreground font-medium">runtime
         MCP server</strong> so AI agents can use your backend as a tool.
       </p>

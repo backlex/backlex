@@ -30,6 +30,9 @@ head_sampling_rate = 1
 # adapter is gated out on Workers (CF Image Resizing handles edge resize); this
 # stub keeps the dynamic import() from pulling the native binary into the bundle.
 "sharp" = "./src/server/shims/sharp-shim.ts"
+# @cf-wasm/photon backs the Deno-only WASM image fallback; stub on Workers so its
+# WASM blob never enters the Worker bundle (CF Image Resizing is used here).
+"@cf-wasm/photon" = "./src/server/shims/photon-shim.ts"
 
 [vars]
 APP_URL = "https://backlex-admin.kinyasfurkan.workers.dev"

@@ -183,7 +183,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     if (pgDriver === "postgres-js" && isStatelessEdge()) {
       throw new AppError(
         "UNAVAILABLE",
-        "postgres-js does not work on Vercel Edge — set DATABASE_DRIVER=neon-http",
+        "postgres-js does not work on stateless edge runtimes (Vercel/Netlify Edge, Deno Deploy) — set DATABASE_DRIVER=neon-http",
       );
     }
     db = createPgClient(pgUrl, pgDriver);

@@ -18,14 +18,21 @@
  */
 import { serveStatic } from "hono/deno";
 import { createApp } from "../app";
+import { isDenoDeploy } from "../lib/runtime";
 import { mountSpa } from "../lib/spa";
-// `setInterval`-based — runtime-agnostic despite the name.
-import { startBunScheduler } from "../services/scheduler";
+// `setInterval`-based scheduler (self-host) + the single idempotent tick the
+// managed `Deno.cron` path reuses.
+import { cronTick, startBunScheduler } from "../services/scheduler";
 import type { Env } from "../env";
 
 type DenoGlobal = {
   env: { get(key: string): string | undefined };
   serve: (opts: { port: number }, handler: (req: Request) => Response | Promise<Response>) => unknown;
+  cron?: (
+    name: string,
+    schedule: string,
+    handler: () => void | Promise<void>,
+  ) => unknown;
 };
 const deno = (globalThis as { Deno?: DenoGlobal }).Deno;
 if (!deno) throw new Error("deno.ts entry must run on Deno");
@@ -74,4 +81,12 @@ const port = Number(e("PORT") ?? "8787");
 deno.serve({ port }, (req) => app.fetch(req));
 console.log(`backlex api listening on http://localhost:${port}`);
 
-startBunScheduler(env);
+// Cron: on managed Deno Deploy a long-lived `setInterval` in a request-scoped
+// isolate is unreliable, so drive the same idempotent tick via the native
+// `Deno.cron` scheduler. On `deno run` self-host (no Deno Deploy / no
+// `Deno.cron`) fall back to the `setInterval` scheduler like Bun/Node.
+if (isDenoDeploy() && typeof deno.cron === "function") {
+  deno.cron("backlex-cron", "* * * * *", () => cronTick(env));
+} else {
+  startBunScheduler(env);
+}

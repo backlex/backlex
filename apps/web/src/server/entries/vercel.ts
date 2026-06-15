@@ -7,9 +7,9 @@
  * `vercel-fn-entry.ts` for the URL-reconstruction step that pulls the
  * original path back out of the rewrite query string).
  *
- * Deploys as a Node serverless function (Vercel default — Node 24 LTS
- * as of writing) under Fluid Compute. Node keeps node:net/tls/crypto
- * available, so SAML/LDAP/SMTP load.
+ * Deploys as a Node serverless function under Fluid Compute, pinned to
+ * `nodejs22.x` by the function descriptor (`scripts/build-vercel-output.ts`).
+ * Node keeps node:net/tls/crypto available, so SAML/LDAP/SMTP load.
  *
  * Runtime constraints:
  *   - DATABASE_URL is required. `DATABASE_DRIVER=neon-http` is still

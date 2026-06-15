@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { parseExpression } from "cron-parser";
+import cronParser from "cron-parser";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { AuthSubject } from "@backlex/core";
@@ -8,6 +8,19 @@ import { buildContext } from "../context";
 import type { Env } from "../env";
 import type { FunctionRow } from "./functions";
 import { listCronFlows, runFlowById, resumeContinuation } from "./flows";
+
+// cron-parser is CJS — importing the named `parseExpression` directly breaks on
+// Deno's stricter CJS interop, so reach it via the default (`module.exports`),
+// which holds on Node / Bun / Deno alike.
+type CronDate = { toDate(): Date };
+const parseExpression = (
+  cronParser as unknown as {
+    parseExpression: (
+      expr: string,
+      opts?: { currentDate?: Date },
+    ) => { next(): CronDate; prev(): CronDate };
+  }
+).parseExpression;
 import { claimDueTasks, deleteTask } from "./scheduled-tasks";
 import { pruneOldActivity, pruneOldActivityByPrefix } from "./activity";
 

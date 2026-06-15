@@ -16,7 +16,9 @@
  *   - Realtime → in-process SSE (single instance) or Upstash Redis.
  *   - Email  → SMTP (`nodemailer`, via Deno's node:net compat) or HTTP providers.
  */
+import { serveStatic } from "hono/deno";
 import { createApp } from "../app";
+import { mountSpa } from "../lib/spa";
 // `setInterval`-based — runtime-agnostic despite the name.
 import { startBunScheduler } from "../services/scheduler";
 import type { Env } from "../env";
@@ -64,6 +66,8 @@ const env: Env = {
 };
 
 const app = createApp(env);
+// Serve the pre-built admin SPA (dist/client) for non-API routes.
+mountSpa(app, serveStatic);
 const port = Number(e("PORT") ?? "8787");
 
 // Wrap so Deno's second `ConnInfo` arg isn't passed as Hono's `env` binding.

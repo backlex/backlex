@@ -30,7 +30,7 @@ import Base from "../layouts/Base.astro";
     <div class="mt-6 grid grid-cols-4 max-md:grid-cols-2 gap-7 border-t border-b border-border py-5 max-w-[760px] w-full">
       <div class="flex flex-col items-center gap-0.5"><span class="font-mono text-lg font-medium">330+</span><span class="text-[11px] uppercase tracking-wider text-muted-foreground">edge cities</span></div>
       <div class="flex flex-col items-center gap-0.5"><span class="font-mono text-lg font-medium">~50ms</span><span class="text-[11px] uppercase tracking-wider text-muted-foreground">p95 anywhere</span></div>
-      <div class="flex flex-col items-center gap-0.5"><span class="font-mono text-lg font-medium">4</span><span class="text-[11px] uppercase tracking-wider text-muted-foreground">deploy targets</span></div>
+      <div class="flex flex-col items-center gap-0.5"><span class="font-mono text-lg font-medium">5</span><span class="text-[11px] uppercase tracking-wider text-muted-foreground">deploy targets</span></div>
       <div class="flex flex-col items-center gap-0.5"><span class="font-mono text-lg font-medium">Apache 2.0</span><span class="text-[11px] uppercase tracking-wider text-muted-foreground">license</span></div>
     </div>
 
@@ -181,13 +181,13 @@ import Base from "../layouts/Base.astro";
   <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
     <div class="flex flex-col gap-4 max-w-[720px] mb-12">
       <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>deploy</span>
-      <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">One codebase, six runtimes.<br/>Pick the constraints you need.</h2>
+      <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">One codebase, five deploy targets.<br/>Pick the constraints you need.</h2>
       <p class="text-[17px] text-muted-foreground max-w-[60ch]">The same <code class="font-mono">apps/web</code> source runs on Bun, Node, and Deno, and compiles to Cloudflare Workers, Vercel Functions, and Netlify Functions — plus managed Deno Deploy. <code class="font-mono">context.ts::buildContext</code> picks the right adapter at boot.</p>
     </div>
-    <div class="grid grid-cols-4 max-[920px]:grid-cols-2 max-[480px]:grid-cols-1 gap-3.5">
+    <div class="grid grid-cols-5 max-[1100px]:grid-cols-3 max-[760px]:grid-cols-2 max-[480px]:grid-cols-1 gap-3.5">
       <div class="border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
         <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">S</span><h3 class="text-[17px] font-semibold">Self-hosted</h3></div>
-        <p class="text-muted-foreground text-[13.5px]">Your own box — VPS, Docker, or laptop. A single long-running <strong class="text-foreground font-medium">Bun, Node, or Deno</strong> process, shipped with <code class="font-mono text-[11.5px] bg-muted px-1 py-px rounded">docker run</code> or a systemd unit — or push the same source to <strong class="text-foreground font-medium">Deno Deploy</strong>.</p>
+        <p class="text-muted-foreground text-[13.5px]">Your own box — VPS, Docker, or laptop. A single long-running <strong class="text-foreground font-medium">Bun, Node, or Deno</strong> process, shipped with <code class="font-mono text-[11.5px] bg-muted px-1 py-px rounded">docker run</code> or a systemd unit.</p>
         <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">sqlite / pg</dd>
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">fs / s3</dd>
@@ -221,6 +221,16 @@ import Base from "../layouts/Base.astro";
         <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">pg</dd>
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">s3 (required)</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">upstash long-poll</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">quickjs</dd>
+        </dl>
+      </div>
+      <div class="border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
+        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">D</span><h3 class="text-[17px] font-semibold">Deno Deploy</h3></div>
+        <p class="text-muted-foreground text-[13.5px]">Managed V8-isolate edge. Push the same source — Neon Postgres over HTTP, nothing to run.</p>
+        <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">pg (neon-http)</dd>
+          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">s3</dd>
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">upstash long-poll</dd>
           <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">quickjs</dd>
         </dl>
@@ -397,7 +407,7 @@ import Base from "../layouts/Base.astro";
         </div>
         <div class="grid grid-cols-[20px_1fr] gap-x-2.5 gap-y-2 text-[13px]">
           <span class="text-primary mt-1">✓</span><div><strong>Full control</strong> — <span class="text-muted-foreground">DB credentials, secrets, infra all yours</span></div>
-          <span class="text-primary mt-1">✓</span><div><strong>6 runtimes</strong> — <span class="text-muted-foreground">Bun/Node/Deno, Workers, Vercel, Netlify</span></div>
+          <span class="text-primary mt-1">✓</span><div><strong>5 deploy targets</strong> — <span class="text-muted-foreground">Self-host, Deno Deploy, Workers, Vercel, Netlify</span></div>
           <span class="text-primary mt-1">✓</span><div><strong>Unlimited scale</strong> — <span class="text-muted-foreground">start on Cloudflare's own free tier</span></div>
           <span class="text-muted-foreground mt-1">−</span><div class="text-muted-foreground">You set it up — wrangler, DB, secret rotation, monitoring</div>
           <span class="text-muted-foreground mt-1">−</span><div class="text-muted-foreground">You configure backups</div>
@@ -553,224 +563,71 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
       </p>
     </div>
 
-    <!-- Ask demo + sidebar -->
-    <div class="grid grid-cols-[1fr_320px] max-[1020px]:grid-cols-1 gap-6 items-start">
-
-      <!-- Left column: prompt → plan → result -->
-      <div class="flex flex-col gap-5 min-w-0">
-
-        <!-- Prompt card -->
-        <div class="border border-border rounded-3xl bg-card overflow-hidden">
-          <div class="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
-            <span class="text-[12px] font-medium">Ask in natural language</span>
-            <div class="ml-auto flex items-center gap-3 text-[11.5px] text-muted-foreground">
-              <span class="inline-flex items-center gap-1.5 h-6 px-2 rounded-full">
-                <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                <span class="font-mono">claude-haiku-4-5</span>
-              </span>
-              <span class="hidden sm:inline-flex items-center gap-1.5">auto-run reads
-                <span class="relative h-5 w-9 rounded-full bg-primary inline-block"><span class="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow translate-x-4"></span></span>
-              </span>
-            </div>
-          </div>
-          <div class="px-5 py-3">
-            <div class="text-[15px] text-foreground leading-snug">top customers by lifetime_value last month, limit 10</div>
-          </div>
-          <div class="px-5 py-3 border-t border-border bg-card flex items-center gap-2 flex-wrap">
-            <div class="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-              <kbd class="font-mono text-[10.5px] px-1.5 py-0.5 rounded-md bg-muted border border-border text-muted-foreground leading-none">⌘</kbd>
-              <kbd class="font-mono text-[10.5px] px-1.5 py-0.5 rounded-md bg-muted border border-border text-muted-foreground leading-none">↵</kbd>
-              <span>to run</span>
-              <span class="mx-2 text-border">·</span>
-              <span>scoped to <span class="font-mono text-foreground">pak_8f2a…</span></span>
-            </div>
-            <div class="ml-auto flex gap-2">
-              <span class="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-muted-foreground text-[12.5px]">Clear</span>
-              <span class="inline-flex items-center gap-1.5 h-8 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-medium">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-                Run
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Plan card -->
-        <div class="border border-border rounded-3xl bg-card overflow-hidden">
-          <div class="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
-            <span class="h-6 w-6 rounded-full grid place-items-center text-primary" style="background: color-mix(in oklch, var(--color-primary) 15%, transparent);">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/></svg>
-            </span>
-            <span class="text-[13px] font-semibold">Plan</span>
-            <span class="font-mono text-[11.5px] text-muted-foreground">→</span>
-            <span class="font-mono text-[10.5px] px-2 py-0.5 rounded-full border border-border text-foreground">collections.list</span>
-            <span class="font-mono text-[10.5px] px-2 py-0.5 rounded-full border" style="background: color-mix(in oklch, oklch(0.6 0.13 240) 12%, transparent); border-color: color-mix(in oklch, oklch(0.6 0.13 240) 30%, transparent); color: oklch(0.45 0.12 240);">read</span>
-          </div>
-          <div class="px-5 pt-2 pb-1 text-[12.5px] text-muted-foreground leading-relaxed">
-            Interpreted as a list query against <code class="font-mono text-foreground">app_users</code> with revenue sort. No write semantics detected — read-only plan.
-          </div>
-          <div class="px-5 py-3">
-            <div class="rounded-xl border border-border bg-muted/40 p-4">
-<pre class="font-mono text-[12px] leading-[1.55] m-0 whitespace-pre-wrap break-words"><span class="text-muted-foreground">&#123;</span>
-  <span style="color: oklch(0.45 0.14 70);">"collection"</span><span class="text-muted-foreground">:</span> <span style="color: oklch(0.42 0.14 130);">"app_users"</span><span class="text-muted-foreground">,</span>
-  <span style="color: oklch(0.45 0.14 70);">"filter"</span><span class="text-muted-foreground">:</span> <span class="text-muted-foreground">&#123;</span> <span style="color: oklch(0.45 0.14 70);">"last_order_at"</span><span class="text-muted-foreground">:</span> <span class="text-muted-foreground">&#123;</span> <span style="color: oklch(0.45 0.14 70);">"_gte"</span><span class="text-muted-foreground">:</span> <span class="italic text-muted-foreground">$NOW(-30 days)</span> <span class="text-muted-foreground">&#125;</span> <span class="text-muted-foreground">&#125;,</span>
-  <span style="color: oklch(0.45 0.14 70);">"sort"</span><span class="text-muted-foreground">:</span> <span class="text-muted-foreground">[</span><span style="color: oklch(0.42 0.14 130);">"-lifetime_value"</span><span class="text-muted-foreground">],</span>
-  <span style="color: oklch(0.45 0.14 70);">"limit"</span><span class="text-muted-foreground">:</span> <span style="color: oklch(0.45 0.13 240);">10</span><span class="text-muted-foreground">,</span>
-  <span style="color: oklch(0.45 0.14 70);">"fields"</span><span class="text-muted-foreground">:</span> <span class="text-muted-foreground">[</span><span style="color: oklch(0.42 0.14 130);">"id"</span><span class="text-muted-foreground">,</span> <span style="color: oklch(0.42 0.14 130);">"name"</span><span class="text-muted-foreground">,</span> <span style="color: oklch(0.42 0.14 130);">"email"</span><span class="text-muted-foreground">,</span> <span style="color: oklch(0.42 0.14 130);">"lifetime_value"</span><span class="text-muted-foreground">,</span> <span style="color: oklch(0.42 0.14 130);">"last_order_at"</span><span class="text-muted-foreground">]</span>
-<span class="text-muted-foreground">&#125;</span></pre>
-            </div>
-          </div>
-          <div class="px-5 py-3 border-t border-border flex items-center gap-3 flex-wrap">
-            <div class="flex items-center gap-3 text-[11.5px] text-muted-foreground">
-              <span class="inline-flex items-center gap-1.5">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                Permissions DSL will filter rows
-              </span>
-            </div>
-            <div class="ml-auto flex gap-2">
-              <span class="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-muted-foreground text-[12.5px]">Reject</span>
-              <span class="inline-flex items-center gap-1.5 h-8 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-medium">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                Run
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Result card -->
-        <div class="border border-border rounded-3xl bg-card overflow-hidden">
-          <div class="px-5 pt-4 pb-3 flex items-center gap-2 flex-wrap">
-            <span class="h-6 w-6 rounded-full grid place-items-center text-primary" style="background: color-mix(in oklch, var(--color-primary) 15%, transparent);">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            </span>
-            <span class="text-[13px] font-semibold">Result</span>
-            <span class="font-mono text-[10.5px] px-2 py-0.5 rounded-full bg-muted border border-transparent text-muted-foreground">collections.list</span>
-            <div class="ml-auto flex items-center gap-3 text-[11.5px] text-muted-foreground">
-              <span><span class="text-muted-foreground/80">tokens</span> <span class="font-mono tabular-nums">380</span></span>
-              <span><span class="text-muted-foreground/80">latency</span> <span class="font-mono tabular-nums">28ms</span></span>
-              <span><span class="text-muted-foreground/80">rows</span> <span class="font-mono tabular-nums">10</span></span>
-            </div>
-          </div>
-          <div class="overflow-auto border-t border-border">
-            <table class="w-full text-[13px] border-collapse">
-              <thead class="bg-card">
-                <tr>
-                  <th class="text-left font-semibold text-[10.5px] uppercase tracking-wider text-muted-foreground px-4 h-9 border-b border-border">name</th>
-                  <th class="text-left font-semibold text-[10.5px] uppercase tracking-wider text-muted-foreground px-4 h-9 border-b border-border">email</th>
-                  <th class="text-left font-semibold text-[10.5px] uppercase tracking-wider text-muted-foreground px-4 h-9 border-b border-border">lifetime_value</th>
-                  <th class="text-left font-semibold text-[10.5px] uppercase tracking-wider text-muted-foreground px-4 h-9 border-b border-border max-[680px]:hidden">last_order_at</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr class="border-b border-border/60">
-                  <td class="px-4 h-10 font-medium">Lena Voss</td>
-                  <td class="px-4 h-10 font-mono text-[12px] text-muted-foreground">lena@hexagon.studio</td>
-                  <td class="px-4 h-10 font-mono tabular-nums">$28,142</td>
-                  <td class="px-4 h-10 font-mono tabular-nums text-muted-foreground max-[680px]:hidden">2026-05-22</td>
-                </tr>
-                <tr class="border-b border-border/60">
-                  <td class="px-4 h-10 font-medium">Theo Ranganathan</td>
-                  <td class="px-4 h-10 font-mono text-[12px] text-muted-foreground">theo@frostgate.io</td>
-                  <td class="px-4 h-10 font-mono tabular-nums">$22,005</td>
-                  <td class="px-4 h-10 font-mono tabular-nums text-muted-foreground max-[680px]:hidden">2026-05-19</td>
-                </tr>
-                <tr class="border-b border-border/60">
-                  <td class="px-4 h-10 font-medium">Yuki Okafor</td>
-                  <td class="px-4 h-10 font-mono text-[12px] text-muted-foreground">yuki@altair-labs.com</td>
-                  <td class="px-4 h-10 font-mono tabular-nums">$18,830</td>
-                  <td class="px-4 h-10 font-mono tabular-nums text-muted-foreground max-[680px]:hidden">2026-05-23</td>
-                </tr>
-                <tr class="border-b border-border/60">
-                  <td class="px-4 h-10 font-medium">Mira Halvorsen</td>
-                  <td class="px-4 h-10 font-mono text-[12px] text-muted-foreground">mira@palebrook.co</td>
-                  <td class="px-4 h-10 font-mono tabular-nums">$17,210</td>
-                  <td class="px-4 h-10 font-mono tabular-nums text-muted-foreground max-[680px]:hidden">2026-05-21</td>
-                </tr>
-                <tr>
-                  <td class="px-4 h-10 font-medium">Salim Tessari</td>
-                  <td class="px-4 h-10 font-mono text-[12px] text-muted-foreground">salim@northbore.org</td>
-                  <td class="px-4 h-10 font-mono tabular-nums">$14,902</td>
-                  <td class="px-4 h-10 font-mono tabular-nums text-muted-foreground max-[680px]:hidden">2026-05-18</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="px-5 py-3 border-t border-border flex items-center gap-2 flex-wrap">
-            <div class="flex items-center gap-2 text-[11.5px] text-muted-foreground">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              Permissions DSL applied · 0 fields redacted
-            </div>
-            <div class="ml-auto flex gap-2 text-[11.5px] text-muted-foreground">
-              <span class="font-mono">+5 more rows</span>
-            </div>
-          </div>
+    <!-- Ask demo (compact, static preview) -->
+    <div class="border border-border rounded-3xl bg-card overflow-hidden max-w-[900px]" aria-hidden="true">
+      <div class="px-5 pt-4 pb-3 flex items-center gap-2 flex-wrap border-b border-border">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+        <span class="text-[12px] font-medium">Ask in natural language</span>
+        <span class="ml-auto inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span><span class="font-mono">claude-haiku-4-5</span></span>
+      </div>
+      <div class="px-5 py-3.5 text-[15px] text-foreground leading-snug border-b border-border">top customers by lifetime_value last month, limit 10</div>
+      <div class="px-5 py-2.5 flex items-center gap-2 flex-wrap border-b border-border bg-muted/30">
+        <span class="text-[12px] font-semibold">Plan</span>
+        <span class="font-mono text-[11.5px] text-muted-foreground">→</span>
+        <span class="font-mono text-[10.5px] px-2 py-0.5 rounded-full border border-border text-foreground">collections.list</span>
+        <span class="font-mono text-[10.5px] px-2 py-0.5 rounded-full border" style="background: color-mix(in oklch, oklch(0.6 0.13 240) 12%, transparent); border-color: color-mix(in oklch, oklch(0.6 0.13 240) 30%, transparent); color: oklch(0.45 0.12 240);">read</span>
+        <span class="ml-auto inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          Permissions DSL filters rows
+        </span>
+      </div>
+      <div class="px-5 pt-3 pb-2.5 flex items-center gap-2 flex-wrap">
+        <span class="h-5 w-5 rounded-full grid place-items-center text-primary" style="background: color-mix(in oklch, var(--color-primary) 15%, transparent);">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </span>
+        <span class="text-[13px] font-semibold">Result</span>
+        <div class="ml-auto flex items-center gap-3 text-[11.5px] text-muted-foreground">
+          <span><span class="text-muted-foreground/80">tokens</span> <span class="font-mono tabular-nums">380</span></span>
+          <span><span class="text-muted-foreground/80">latency</span> <span class="font-mono tabular-nums">28ms</span></span>
+          <span><span class="text-muted-foreground/80">rows</span> <span class="font-mono tabular-nums">10</span></span>
         </div>
       </div>
-
-      <!-- Right column: recent runs -->
-      <div class="border border-border rounded-3xl bg-card overflow-hidden">
-        <div class="px-5 pt-4 pb-3 flex items-center gap-2">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="text-muted-foreground"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
-          <span class="text-[13px] font-semibold">Recent runs</span>
-          <span class="font-mono text-[10.5px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">9</span>
-        </div>
-        <div class="border-t border-border">
-          <div class="px-4 py-3 border-b border-border/60 flex flex-col gap-1.5">
-            <div class="flex items-center gap-2 text-[12px]">
-              <span class="w-3 h-3 rounded-full grid place-items-center text-primary">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              </span>
-              <span class="font-mono text-[11px] text-muted-foreground truncate flex-1">ai.query → collections.list</span>
-              <span class="font-mono text-[10.5px] text-muted-foreground">2m</span>
-            </div>
-            <div class="text-[12.5px] truncate">top customers last month</div>
-            <div class="text-[10.5px] text-muted-foreground font-mono tabular-nums">10 rows · 412ms · 380 tok</div>
-          </div>
-          <div class="px-4 py-3 border-b border-border/60 flex flex-col gap-1.5">
-            <div class="flex items-center gap-2 text-[12px]">
-              <span class="w-3 h-3 text-primary">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              </span>
-              <span class="font-mono text-[11px] text-muted-foreground truncate flex-1">collections.bulk_update</span>
-              <span class="font-mono text-[10.5px] text-muted-foreground">6m</span>
-            </div>
-            <div class="text-[12.5px] truncate">set status=archived for 47 posts</div>
-            <div class="text-[10.5px] text-muted-foreground font-mono tabular-nums">47 rows · 1184ms</div>
-          </div>
-          <div class="px-4 py-3 border-b border-border/60 flex flex-col gap-1.5">
-            <div class="flex items-center gap-2 text-[12px]">
-              <span class="w-3 h-3" style="color: oklch(0.55 0.14 80);">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/></svg>
-              </span>
-              <span class="font-mono text-[11px] text-muted-foreground truncate flex-1">ai.suggest_schema</span>
-              <span class="font-mono text-[10.5px] text-muted-foreground">14m</span>
-            </div>
-            <div class="text-[12.5px] truncate">design a support_tickets collection</div>
-            <div class="text-[10.5px] text-muted-foreground font-mono tabular-nums">8 fields · pending review</div>
-          </div>
-          <div class="px-4 py-3 border-b border-border/60 flex flex-col gap-1.5">
-            <div class="flex items-center gap-2 text-[12px]">
-              <span class="w-3 h-3 text-muted-foreground">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-              </span>
-              <span class="font-mono text-[11px] text-muted-foreground truncate flex-1">schema.create_collection</span>
-              <span class="font-mono text-[10.5px] text-muted-foreground">2h</span>
-            </div>
-            <div class="text-[12.5px] truncate">design a faq collection</div>
-            <div class="text-[10.5px] text-muted-foreground font-mono tabular-nums">blocked · mcp_read_only=true</div>
-          </div>
-          <div class="px-4 py-3 flex flex-col gap-1.5">
-            <div class="flex items-center gap-2 text-[12px]">
-              <span class="w-3 h-3 text-primary">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              </span>
-              <span class="font-mono text-[11px] text-muted-foreground truncate flex-1">ai.import_csv</span>
-              <span class="font-mono text-[10.5px] text-muted-foreground">1d</span>
-            </div>
-            <div class="text-[12.5px] truncate">customers.csv → app_users.create</div>
-            <div class="text-[10.5px] text-muted-foreground font-mono tabular-nums">1,284 rows · 8.4s</div>
-          </div>
-        </div>
+      <div class="overflow-auto border-t border-border">
+        <table class="w-full text-[13px] border-collapse">
+          <thead class="bg-card">
+            <tr>
+              <th class="text-left font-semibold text-[10.5px] uppercase tracking-wider text-muted-foreground px-4 h-9 border-b border-border">name</th>
+              <th class="text-left font-semibold text-[10.5px] uppercase tracking-wider text-muted-foreground px-4 h-9 border-b border-border">email</th>
+              <th class="text-left font-semibold text-[10.5px] uppercase tracking-wider text-muted-foreground px-4 h-9 border-b border-border">lifetime_value</th>
+              <th class="text-left font-semibold text-[10.5px] uppercase tracking-wider text-muted-foreground px-4 h-9 border-b border-border max-[680px]:hidden">last_order_at</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-border/60">
+              <td class="px-4 h-10 font-medium">Lena Voss</td>
+              <td class="px-4 h-10 font-mono text-[12px] text-muted-foreground">lena@hexagon.studio</td>
+              <td class="px-4 h-10 font-mono tabular-nums">$28,142</td>
+              <td class="px-4 h-10 font-mono tabular-nums text-muted-foreground max-[680px]:hidden">2026-05-22</td>
+            </tr>
+            <tr class="border-b border-border/60">
+              <td class="px-4 h-10 font-medium">Theo Ranganathan</td>
+              <td class="px-4 h-10 font-mono text-[12px] text-muted-foreground">theo@frostgate.io</td>
+              <td class="px-4 h-10 font-mono tabular-nums">$22,005</td>
+              <td class="px-4 h-10 font-mono tabular-nums text-muted-foreground max-[680px]:hidden">2026-05-19</td>
+            </tr>
+            <tr>
+              <td class="px-4 h-10 font-medium">Yuki Okafor</td>
+              <td class="px-4 h-10 font-mono text-[12px] text-muted-foreground">yuki@altair-labs.com</td>
+              <td class="px-4 h-10 font-mono tabular-nums">$18,830</td>
+              <td class="px-4 h-10 font-mono tabular-nums text-muted-foreground max-[680px]:hidden">2026-05-23</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="px-5 py-2.5 border-t border-border flex items-center gap-2 flex-wrap text-[11.5px] text-muted-foreground">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Permissions DSL applied · 0 fields redacted
+        <span class="ml-auto font-mono">+7 more rows</span>
       </div>
     </div>
 
@@ -944,7 +801,7 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
     <div class="flex flex-col gap-4 max-w-[720px] mb-12">
       <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>why backlex</span>
       <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">The trade-offs, in one table.</h2>
-      <p class="text-[17px] text-muted-foreground max-w-[60ch]">Other tools do parts of this. backlex's design choice is to keep every part under one source tree, behind one API, deployable to six runtimes — without forking.</p>
+      <p class="text-[17px] text-muted-foreground max-w-[60ch]">Other tools do parts of this. backlex's design choice is to keep every part under one source tree, behind one API, deployable to five targets — without forking.</p>
     </div>
     <div class="border border-border rounded-3xl bg-card overflow-hidden">
       <div class="overflow-x-auto">
@@ -1058,7 +915,7 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
     <div class="border border-border rounded-4xl bg-card p-14 max-md:p-7 flex max-md:flex-col items-center max-md:items-start gap-8 justify-between shadow-[0_12px_24px_-8px_oklch(0_0_0/0.06)]">
       <div>
         <h2 class="text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.018em] leading-tight max-w-[22ch]">The backend ships with the docs. Start there.</h2>
-        <p class="text-muted-foreground mt-3 text-[15px]">Five-minute getting-started, the permission DSL spec, four deploy walkthroughs, and a sandbox guide. All in one place.</p>
+        <p class="text-muted-foreground mt-3 text-[15px]">Five-minute getting-started, the permission DSL spec, five deploy walkthroughs, and a sandbox guide. All in one place.</p>
       </div>
       <div class="flex gap-2.5 flex-shrink-0 flex-wrap">
         <a class="inline-flex items-center gap-2 h-11 px-5 rounded-4xl bg-primary text-primary-foreground text-[14.5px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap" href="/docs">Open the docs →</a>

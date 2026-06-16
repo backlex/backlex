@@ -4,22 +4,22 @@ description: Ship the same source to Bun, Node, Deno, Cloudflare Workers, Vercel
 ---
 
 backlex runs the same source on six runtimes — **Bun**, **Node**, and **Deno**
-self-host, plus **Cloudflare Workers**, **Vercel**, and **Netlify**. The matrix
-below compares the four managed / serverless targets; standalone **Node** and
-**Deno** self-host (incl. Deno Deploy) get their own sections further down. Pick
-one based on the constraints you need.
+self-host, plus **Cloudflare Workers**, **Vercel**, **Netlify**, and **Deno
+Deploy**. The matrix below compares the five managed / serverless targets;
+standalone **Node** and **Deno** self-host get their own sections further down.
+Pick one based on the constraints you need.
 
-|                    | Bun (self-host)   | Cloudflare Workers   | Vercel Functions (Node 22, Build Output API) | Netlify Functions (Node 22) |
-|--------------------|-------------------|----------------------|----------------------|------------------------------|
-| **Database**       | SQLite or PG      | D1 or Hyperdrive→PG  | PG via `DATABASE_DRIVER=neon-http` (recommended — HTTP avoids cold-start TCP handshake) | PG via `DATABASE_DRIVER=neon-http` (recommended) |
-| **Storage**        | local fs / S3 / `Bun.S3Client` | R2 (S3 fallback) | S3 (`aws4fetch`) **required** — Lambda zip has no local fs | S3 (`aws4fetch`) **required** — Lambda zip has no local fs |
-| **Realtime**       | in-proc + SSE     | Durable Objects + WS | Upstash Redis long-poll¹ | Upstash Redis long-poll¹ |
-| **SAML**           | yes               | yes (nodejs_compat)  | yes (Node 22 native crypto) | yes (Node 22 native crypto) |
-| **LDAP / SMTP**    | yes               | 503 (no raw TCP)     | yes (Node 22 has raw TCP) | yes (Node 22 has raw TCP) |
-| **Sandbox**        | Bun worker        | QuickJS / remote HTTP | QuickJS / remote HTTP | QuickJS / remote HTTP |
-| **Image**          | `Bun.Image`       | CF Image Resize      | `sharp`²             | Netlify Image CDN³   |
-| **Cron**           | setInterval       | wrangler triggers    | `.vercel/output/config.json` crons (emitted by `scripts/build-vercel-output.ts`; Vercel sends `Authorization: Bearer $CRON_SECRET` automatically) | scheduled function pings `/api/_cron/tick` with `x-cron-secret: $CRON_SECRET` |
-| **Cost**           | VPS               | $0–5/mo              | $0–20/mo             | $0–19/mo             |
+|                    | Bun (self-host)   | Cloudflare Workers   | Vercel Functions (Node 22, Build Output API) | Netlify Functions (Node 22) | Deno Deploy (managed)⁴ |
+|--------------------|-------------------|----------------------|----------------------|------------------------------|------------------------|
+| **Database**       | SQLite or PG      | D1 or Hyperdrive→PG  | PG via `DATABASE_DRIVER=neon-http` (recommended — HTTP avoids cold-start TCP handshake) | PG via `DATABASE_DRIVER=neon-http` (recommended) | PG via `neon-http` (auto-forced); libSQL/Turso too |
+| **Storage**        | local fs / S3 / `Bun.S3Client` | R2 (S3 fallback) | S3 (`aws4fetch`) **required** — Lambda zip has no local fs | S3 (`aws4fetch`) **required** — Lambda zip has no local fs | S3 (`aws4fetch`) **required** — no fs |
+| **Realtime**       | in-proc + SSE     | Durable Objects + WS | Upstash Redis long-poll¹ | Upstash Redis long-poll¹ | Upstash Redis long-poll¹ |
+| **SAML**           | yes               | yes (nodejs_compat)  | yes (Node 22 native crypto) | yes (Node 22 native crypto) | yes (Deno `node:crypto`) |
+| **LDAP / SMTP**    | yes               | 503 (no raw TCP)     | yes (Node 22 has raw TCP) | yes (Node 22 has raw TCP) | no (no raw TCP) |
+| **Sandbox**        | Bun worker        | QuickJS / remote HTTP | QuickJS / remote HTTP | QuickJS / remote HTTP | QuickJS-WASM / remote HTTP |
+| **Image**          | `Bun.Image`       | CF Image Resize      | `sharp`²             | Netlify Image CDN³   | WASM `@cf-wasm/photon`⁴ |
+| **Cron**           | setInterval       | wrangler triggers    | `.vercel/output/config.json` crons (emitted by `scripts/build-vercel-output.ts`; Vercel sends `Authorization: Bearer $CRON_SECRET` automatically) | scheduled function pings `/api/_cron/tick` with `x-cron-secret: $CRON_SECRET` | native `Deno.cron` (1-min idempotent tick) |
+| **Cost**           | VPS               | $0–5/mo              | $0–20/mo             | $0–19/mo             | $0+ (free tier) |
 
 ¹ Realtime on Vercel/Netlify needs `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`
 (publish/subscribe fan out through a Redis stream; subscribe is a bounded long-poll
@@ -37,6 +37,16 @@ Resizing on Workers. Needs `R2_PUBLIC_BASE` + a public-ACL file; the storage rou
 302-redirects to the CDN, and `netlify.toml`'s `[images] remote_images` (plus the
 dynamic `.netlify/deploy/v1/config.json` from `build-netlify-fn.ts`) allowlists the R2
 public origin. Verified live.
+
+⁴ **Deno Deploy is experimental / best-effort** — see the
+[Deno Deploy](#deno-deploy-managed) section for the deploy steps and gotchas.
+`isDenoDeploy()` (set by `DENO_DEPLOYMENT_ID`) auto-forces HTTP-only drivers
+(`neon-http`, Turso HTTP, `aws4fetch`) and bails the in-process realtime to
+Upstash, exactly like Vercel/Netlify serverless. Image transforms run through the
+`@cf-wasm/photon` WASM fallback (avif degrades to webp) because `sharp`'s native
+addon doesn't load; **SMTP/LDAP need raw TCP and aren't available** — use an
+HTTP email provider (resend/sendgrid/mailgun/ses). Verified live: `/health`, auth
+sign-in, realtime, storage.
 
 ## Bun (self-host)
 
@@ -106,7 +116,7 @@ cross-runtime tweak (JSON import attributes, CJS-interop default imports). One
 known rough edge: the cron `scheduled_tasks` claim logs a Date-binding interop
 error on Deno (non-fatal). Prefer Bun or Node for production self-host.
 
-### Deno Deploy (managed)
+## Deno Deploy (managed)
 
 The same source also runs on **Deno Deploy** (the managed platform). Because the
 managed builder runs on Deno's npm compat and ships **no Bun**, the dance is a

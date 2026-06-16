@@ -320,6 +320,11 @@ bun run scripts/build-worker-template.ts --version 0.1.0 --no-build
 
 ## Vercel
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/backlex/backlex&env=APP_URL,AUTH_SECRET,DATABASE_URL,DATABASE_DRIVER,S3_BUCKET,S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY,CRON_SECRET&envDescription=Backlex%20runtime%20secrets%20(Postgres%2C%20S3%2C%20auth)&envLink=https://github.com/backlex/backlex/blob/main/docs/deployment.md)
+
+The one-click button clones the repo and prompts for the env vars below.
+For an existing repo, use the Git integration further down instead.
+
 `vercel.ts` at the repo root configures the install/build commands;
 everything else (routing, function registration, crons) is emitted by
 `scripts/build-vercel-output.ts` into `.vercel/output/` using the
@@ -504,6 +509,13 @@ readable by anyone who knows the key path — see `docs/storage.md`
 "Security tradeoffs" for the mitigations.
 
 ## Netlify
+
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/backlex/backlex)
+
+The one-click button clones the repo and runs the `netlify.toml` build.
+Set the env vars from the Git-integration steps below before the first
+request — without `DATABASE_URL` + `DATABASE_DRIVER=neon-http` the
+function 500s on boot. For an existing repo, use the Git integration.
 
 `netlify.toml` at the repo root deploys the admin SPA + a Node 22
 serverless function for `/api/*` + a scheduled function for cron.

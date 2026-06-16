@@ -74,6 +74,8 @@ export default defineConfig({
             { slug: "querying" },
             { slug: "permissions" },
             { slug: "adopting-tables" },
+            { slug: "database-providers" },
+            { slug: "sqlite-providers" },
             { slug: "vector-search" },
             { slug: "ask-ai" },
           ],

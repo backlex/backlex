@@ -33,6 +33,7 @@ import {
   vectorizeAdapter,
 } from "./adapters/vector.cf";
 import { pgvectorAdapter } from "./adapters/vector.pg";
+import { libsqlVectorAdapter } from "./adapters/vector.libsql";
 import type { Env } from "./env";
 import { cloudConfigured } from "./lib/cloud-report";
 import { buildEmailAdapter, selectEmailSpec } from "./lib/email-select";
@@ -480,8 +481,11 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   // routing per-table — unless the target is Xata (no pgvector extension),
   // in which case we fall through to noVectorAdapter so the vector endpoints
   // fail with a clear "configure Vectorize" message instead of a cryptic
-  // "type vector does not exist" at first upsert. Otherwise (SQLite without
-  // Vectorize) fail loud.
+  // "type vector does not exist" at first upsert. On the libSQL / Turso
+  // transport (SQLite dialect, LIBSQL_URL set, not D1) the engine has native
+  // vector functions, so vectors live in-database — no Vectorize needed. Bun
+  // SQLite and D1 have no vector primitives, so they still fall through to
+  // noVectorAdapter (or Vectorize on Workers) and fail loud.
   const vectorizeBindings: VectorizeIndexMap = {};
   if (env.VECTORIZE_OPENAI) vectorizeBindings["openai-3-small"] = env.VECTORIZE_OPENAI;
   if (env.VECTORIZE_OPENAI_LARGE) vectorizeBindings["openai-3-large"] = env.VECTORIZE_OPENAI_LARGE;
@@ -490,11 +494,15 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
   const hasAnyVectorize =
     Object.keys(vectorizeBindings).length > 0;
   const pgHasPgvector = dialect === "pg" && !isXataPgUrl(pgUrl);
+  const sqliteHasLibsqlVectors =
+    !override && dialect === "sqlite" && !!env.LIBSQL_URL && !env.D1;
   const vector: VectorAdapter = hasAnyVectorize
     ? vectorizeAdapter(vectorizeBindings)
     : pgHasPgvector
       ? pgvectorAdapter(db as PgDb)
-      : noVectorAdapter();
+      : sqliteHasLibsqlVectors
+        ? libsqlVectorAdapter(db as SqliteDb)
+        : noVectorAdapter();
 
   // Embedding (text → vector). Models are routed to providers by the
   // registry: bge-m3 → Workers AI, openai-3-small → OpenAI. A model whose
@@ -559,7 +567,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
 const noVectorAdapter = (): VectorAdapter => {
   const fail = () => {
     throw new Error(
-      "No vector backend configured. Set DATABASE_URL to a Postgres with pgvector (self-host PG, Supabase, Neon) or bind VECTORIZE_OPENAI / VECTORIZE_BGE_M3 on Cloudflare Workers. Xata does not ship pgvector; pair it with Vectorize.",
+      "No vector backend configured. Set DATABASE_URL to a Postgres with pgvector (self-host PG, Supabase, Neon), set LIBSQL_URL to a Turso/libSQL database for native SQLite vectors, or bind VECTORIZE_OPENAI / VECTORIZE_BGE_M3 on Cloudflare Workers. Plain Bun SQLite and D1 have no vector primitives; Xata does not ship pgvector — pair either with Vectorize or use Turso/Postgres.",
     );
   };
   return { upsert: fail, query: fail, delete: fail };

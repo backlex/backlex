@@ -96,6 +96,22 @@ const r = await wks.from<Posts>("posts").list({
 });
 ```
 
+## Deploy
+
+One-click deploy clones the repo into your own Git account and ships it —
+`vercel.ts` (Build Output API) and `netlify.toml` are already in the repo,
+so no extra config is needed:
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/backlex/backlex&env=APP_URL,AUTH_SECRET,DATABASE_URL,DATABASE_DRIVER,S3_BUCKET,S3_ACCESS_KEY_ID,S3_SECRET_ACCESS_KEY,CRON_SECRET&envDescription=Backlex%20runtime%20secrets%20(Postgres%2C%20S3%2C%20auth)&envLink=https://github.com/backlex/backlex/blob/main/docs/deployment.md)
+&nbsp;
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/backlex/backlex)
+
+After the clone you still set the runtime env vars — backlex needs a
+Postgres URL (`DATABASE_DRIVER=neon-http`), S3-compatible storage, and
+`AUTH_SECRET`. Full per-platform steps + every variable:
+[Deployment](/docs/deployment/) — also covers Bun, Node, Deno, and
+Cloudflare Workers.
+
 ## What next
 
 - [Permissions DSL](/docs/permissions/) — granular role + condition rules

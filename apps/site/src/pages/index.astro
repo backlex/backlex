@@ -34,77 +34,6 @@ import Base from "../layouts/Base.astro";
       <div class="flex flex-col items-center gap-0.5"><span class="font-mono text-lg font-medium">Apache 2.0</span><span class="text-[11px] uppercase tracking-wider text-muted-foreground">license</span></div>
     </div>
 
-    <!-- Admin preview window -->
-    <div class="mt-14 relative border border-border rounded-4xl bg-card overflow-hidden max-w-[1100px] w-full mx-auto shadow-[0_32px_64px_-16px_oklch(0_0_0/0.12),0_12px_24px_-6px_oklch(0_0_0/0.08)]" aria-hidden="true">
-      <div class="flex items-center gap-2 px-4 py-3 bg-muted border-b border-border">
-        <span class="w-[11px] h-[11px] rounded-full" style="background: oklch(0.7 0.18 28);"></span>
-        <span class="w-[11px] h-[11px] rounded-full" style="background: oklch(0.8 0.16 80);"></span>
-        <span class="w-[11px] h-[11px] rounded-full" style="background: oklch(0.74 0.18 145);"></span>
-        <span class="flex-1 max-w-[380px] mx-auto px-3 py-[5px] bg-card border border-border rounded-xl font-mono text-[11.5px] text-muted-foreground text-center">backlex.your-app.dev/collections/posts</span>
-      </div>
-      <div class="grid grid-cols-[220px_1fr] min-h-[440px] max-[880px]:grid-cols-1">
-        <div class="bg-[oklch(0.985_0_0)] dark:bg-[oklch(0.18_0.006_286)] border-r border-border p-4 flex flex-col gap-0.5 max-[880px]:hidden">
-          <div class="text-[10.5px] uppercase tracking-[0.1em] text-muted-foreground px-2 pt-2.5 pb-1">Workspace</div>
-          <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] text-muted-foreground"><span class="w-3.5 h-3.5 bg-border rounded-sm"></span>Overview</div>
-          <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] bg-muted text-foreground font-medium"><span class="w-3.5 h-3.5 bg-primary rounded-sm"></span>Collections</div>
-          <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] text-muted-foreground"><span class="w-3.5 h-3.5 bg-border rounded-sm"></span>Storage</div>
-          <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] text-muted-foreground"><span class="w-3.5 h-3.5 bg-border rounded-sm"></span>Realtime</div>
-          <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] text-muted-foreground"><span class="w-3.5 h-3.5 bg-border rounded-sm"></span>Functions</div>
-          <div class="text-[10.5px] uppercase tracking-[0.1em] text-muted-foreground px-2 pt-2.5 pb-1">Developers</div>
-          <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] text-muted-foreground"><span class="w-3.5 h-3.5 bg-border rounded-sm"></span>REST Explorer</div>
-          <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] text-muted-foreground"><span class="w-3.5 h-3.5 bg-border rounded-sm"></span>GraphQL</div>
-          <div class="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[12.5px] text-muted-foreground"><span class="w-3.5 h-3.5 bg-border rounded-sm"></span>Webhooks</div>
-        </div>
-        <div class="p-6 flex flex-col gap-3.5 text-left">
-          <div class="flex items-center gap-3">
-            <span class="font-mono text-muted-foreground text-[13px]">c_</span>
-            <span class="text-[17px] font-semibold -tracking-[0.01em]">posts</span>
-            <span class="text-[10.5px] font-mono px-2 py-0.5 rounded-full border whitespace-nowrap" style="background: color-mix(in oklch, var(--color-primary) 22%, var(--color-card)); border-color: color-mix(in oklch, var(--color-primary) 55%, var(--color-border));">owner-scoped</span>
-            <span class="text-[10.5px] font-mono px-2 py-0.5 rounded-full border whitespace-nowrap border-border bg-background text-muted-foreground">sqlite</span>
-          </div>
-          <div class="border border-border rounded-xl overflow-hidden">
-            <div class="grid grid-cols-[32px_2fr_90px_90px_80px] max-[880px]:grid-cols-[24px_1fr_70px_70px] items-center gap-3 px-3.5 py-2 border-b border-border bg-muted text-muted-foreground text-[10.5px] uppercase tracking-wider">
-              <span></span><span>Title</span><span>Status</span><span>Views</span><span class="max-[880px]:hidden">Updated</span>
-            </div>
-            <div class="grid grid-cols-[32px_2fr_90px_90px_80px] max-[880px]:grid-cols-[24px_1fr_70px_70px] items-center gap-3 px-3.5 py-2 border-b border-border text-[12.5px]">
-              <span class="font-mono text-muted-foreground text-[11px]">01HZ</span>
-              <span>Drizzle 1.0 in production</span>
-              <span class="inline-flex items-center gap-1.5 font-mono text-[11px]"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>published</span>
-              <span class="font-mono">1,284</span>
-              <span class="font-mono text-muted-foreground max-[880px]:hidden">2m ago</span>
-            </div>
-            <div class="grid grid-cols-[32px_2fr_90px_90px_80px] max-[880px]:grid-cols-[24px_1fr_70px_70px] items-center gap-3 px-3.5 py-2 border-b border-border text-[12.5px]">
-              <span class="font-mono text-muted-foreground text-[11px]">01HZ</span>
-              <span>pgvector → Vectorize migration playbook</span>
-              <span class="inline-flex items-center gap-1.5 font-mono text-[11px]"><span class="w-1.5 h-1.5 rounded-full" style="background: oklch(0.78 0.16 80);"></span>in review</span>
-              <span class="font-mono">412</span>
-              <span class="font-mono text-muted-foreground max-[880px]:hidden">5m ago</span>
-            </div>
-            <div class="grid grid-cols-[32px_2fr_90px_90px_80px] max-[880px]:grid-cols-[24px_1fr_70px_70px] items-center gap-3 px-3.5 py-2 border-b border-border text-[12.5px]">
-              <span class="font-mono text-muted-foreground text-[11px]">01HZ</span>
-              <span>Realtime channels: WebSockets vs SSE</span>
-              <span class="inline-flex items-center gap-1.5 font-mono text-[11px]"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>published</span>
-              <span class="font-mono">893</span>
-              <span class="font-mono text-muted-foreground max-[880px]:hidden">38m ago</span>
-            </div>
-            <div class="grid grid-cols-[32px_2fr_90px_90px_80px] max-[880px]:grid-cols-[24px_1fr_70px_70px] items-center gap-3 px-3.5 py-2 border-b border-border text-[12.5px]">
-              <span class="font-mono text-muted-foreground text-[11px]">01HZ</span>
-              <span>Edge functions are now GA</span>
-              <span class="inline-flex items-center gap-1.5 font-mono text-[11px]"><span class="w-1.5 h-1.5 rounded-full" style="background: oklch(0.7 0.02 280);"></span>draft</span>
-              <span class="font-mono">0</span>
-              <span class="font-mono text-muted-foreground max-[880px]:hidden">2h ago</span>
-            </div>
-            <div class="grid grid-cols-[32px_2fr_90px_90px_80px] max-[880px]:grid-cols-[24px_1fr_70px_70px] items-center gap-3 px-3.5 py-2 text-[12.5px]">
-              <span class="font-mono text-muted-foreground text-[11px]">01HZ</span>
-              <span>A simpler permissions DSL</span>
-              <span class="inline-flex items-center gap-1.5 font-mono text-[11px]"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>published</span>
-              <span class="font-mono">2,041</span>
-              <span class="font-mono text-muted-foreground max-[880px]:hidden">1d ago</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </section>
 
@@ -450,7 +379,6 @@ import Base from "../layouts/Base.astro";
           <h3 class="text-[17px] font-semibold -tracking-[0.018em]">Transparent limits</h3>
           <p class="text-[12.5px] text-muted-foreground">Numbers from Cloudflare's vendor docs — same numbers you see here. No marketing copy.</p>
         </div>
-        <span class="cf-pill ml-auto"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>cloudflare native</span>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-[13px] border-collapse">
@@ -755,39 +683,39 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
       <p class="text-[17px] text-muted-foreground max-w-[60ch]">Every cross-runtime concern hides behind an interface in <code class="font-mono">@backlex/core/adapters</code>. Pick the runtime, the adapters fall into place.</p>
     </div>
     <div class="border border-border rounded-3xl bg-card overflow-hidden">
-      <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 border-b border-border items-center">
+      <div class="grid grid-cols-[160px_1fr] max-sm:grid-cols-1 gap-4 max-sm:gap-1 px-6 max-sm:px-5 py-3.5 border-b border-border items-center max-sm:items-start">
         <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">api</div>
         <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-2 bg-muted border border-border rounded-full font-mono text-[11.5px]">Hono</span> on Bun + Workers + Vercel + Netlify edge. Same routes, same middleware, same response shapes everywhere.</div>
       </div>
-      <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 border-b border-border items-center">
+      <div class="grid grid-cols-[160px_1fr] max-sm:grid-cols-1 gap-4 max-sm:gap-1 px-6 max-sm:px-5 py-3.5 border-b border-border items-center max-sm:items-start">
         <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">orm</div>
         <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-2 bg-muted border border-border rounded-full font-mono text-[11.5px]">Drizzle v1</span> for both <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">Postgres</span> and <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-2 bg-muted border border-border rounded-full font-mono text-[11.5px]">SQLite / D1</span>. Hand-written migrations, lockstepped between dialects.</div>
       </div>
-      <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 border-b border-border items-center">
+      <div class="grid grid-cols-[160px_1fr] max-sm:grid-cols-1 gap-4 max-sm:gap-1 px-6 max-sm:px-5 py-3.5 border-b border-border items-center max-sm:items-start">
         <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">auth</div>
         <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-2 bg-muted border border-border rounded-full font-mono text-[11.5px]">better-auth</span> — email, OAuth, magic link, OTP, <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">passkey</span>, <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">SAML 2.0</span>, <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">LDAP / AD</span>.</div>
       </div>
-      <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 border-b border-border items-center">
+      <div class="grid grid-cols-[160px_1fr] max-sm:grid-cols-1 gap-4 max-sm:gap-1 px-6 max-sm:px-5 py-3.5 border-b border-border items-center max-sm:items-start">
         <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">storage</div>
         <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">fs</span> (Bun dev) · <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">R2</span> · <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">S3</span> via aws4fetch on anything that runs JS. Image transforms via Bun.Image / CF Image Resizing.</div>
       </div>
-      <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 border-b border-border items-center">
+      <div class="grid grid-cols-[160px_1fr] max-sm:grid-cols-1 gap-4 max-sm:gap-1 px-6 max-sm:px-5 py-3.5 border-b border-border items-center max-sm:items-start">
         <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">vectors</div>
         <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">pgvector</span> on Postgres · <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">Cloudflare Vectorize</span> on Workers. Same write/query interface.</div>
       </div>
-      <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 border-b border-border items-center">
+      <div class="grid grid-cols-[160px_1fr] max-sm:grid-cols-1 gap-4 max-sm:gap-1 px-6 max-sm:px-5 py-3.5 border-b border-border items-center max-sm:items-start">
         <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">realtime</div>
         <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">SSE</span> in Bun · <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">Durable Objects + WS</span> on Workers. Permission filter runs per event.</div>
       </div>
-      <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 border-b border-border items-center">
+      <div class="grid grid-cols-[160px_1fr] max-sm:grid-cols-1 gap-4 max-sm:gap-1 px-6 max-sm:px-5 py-3.5 border-b border-border items-center max-sm:items-start">
         <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">sandbox</div>
         <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">Bun worker thread</span> · <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">QuickJS-WASM</span> · <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">remote HTTP</span> executor — auto-selected by priority.</div>
       </div>
-      <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 border-b border-border items-center">
+      <div class="grid grid-cols-[160px_1fr] max-sm:grid-cols-1 gap-4 max-sm:gap-1 px-6 max-sm:px-5 py-3.5 border-b border-border items-center max-sm:items-start">
         <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">admin</div>
         <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">Vite</span> + <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">React 19</span> + <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">shadcn/ui</span> + <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">Tailwind v4</span>. Lazy-loaded per route. Lingui-translated.</div>
       </div>
-      <div class="grid grid-cols-[160px_1fr] gap-4 px-6 py-3.5 items-center">
+      <div class="grid grid-cols-[160px_1fr] max-sm:grid-cols-1 gap-4 max-sm:gap-1 px-6 max-sm:px-5 py-3.5 items-center max-sm:items-start">
         <div class="font-mono text-xs text-muted-foreground uppercase tracking-wider">sdk + cli</div>
         <div class="text-[13.5px] leading-snug"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mr-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">@backlex/client</span> with generated types per collection. <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 mx-1 bg-muted border border-border rounded-full font-mono text-[11.5px]">backlex</span> CLI for migrations + type generation.</div>
       </div>

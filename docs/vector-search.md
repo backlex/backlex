@@ -1,6 +1,6 @@
 ---
 title: Vector search & AI
-description: Semantic (vector) search over your collections — pgvector on Postgres, Cloudflare Vectorize on SQLite / D1.
+description: Semantic (vector) search over your collections — pgvector on Postgres, native vectors on Turso/libSQL, Cloudflare Vectorize on D1.
 ---
 
 backlex can embed your records and run semantic (vector) search over them. Mark
@@ -15,18 +15,49 @@ your database.
 
 ## Vector store by database
 
-SQLite has no native vector type and **D1 can't load extensions**, so on
-SQLite / D1 you must pair the app with **Cloudflare Vectorize**. Postgres has
-the `pgvector` extension built in, so it needs nothing extra.
+Where vectors live depends on the database:
+
+- **Postgres** has the `pgvector` extension built in — nothing extra.
+- **Turso / libSQL** has native vector functions (`F32_BLOB` columns,
+  `vector_distance_cos()`) — vectors live in-database, no extra service.
+- **D1 and plain Bun SQLite** have no vector primitives (D1 can't load
+  extensions; `bun:sqlite` has no vector funcs), so they must pair with
+  **Cloudflare Vectorize**.
 
 | Database | Vector store | Extra setup |
 | --- | --- | --- |
 | **Postgres** (Neon, Supabase, self-host) | `pgvector` (in your DB) | none — works out of the box |
-| **SQLite / D1** | **Cloudflare Vectorize** (required) | create + bind indexes (below) |
+| **Turso / libSQL** (`LIBSQL_URL`) | native libSQL vectors (in your DB) | none — works out of the box |
+| **Cloudflare D1** | **Cloudflare Vectorize** (required) | create + bind indexes (below) |
+| **Bun SQLite** (`bun:sqlite`) | none — use Turso/libSQL or Postgres instead | switch to `LIBSQL_URL` (even `file:`) for in-DB vectors |
 | **Xata Postgres** | Cloudflare Vectorize | Xata ships no `pgvector`, so pair it with Vectorize |
 
-If neither is configured, the vector endpoints fail loudly with a "configure a
+If none is configured, the vector endpoints fail loudly with a "configure a
 vector backend" message rather than silently no-op'ing.
+
+> **Turso/libSQL vector search is exact (brute-force), not approximate.** It
+> scans every row in the collection's namespace and orders by cosine distance —
+> correct for any dimension (including `openai-3-large` at 3072, which exceeds
+> Vectorize's 1536 cap) and exact per namespace. The libSQL ANN index
+> (`vector_top_k`) is a future optimization for very large collections.
+
+## Enable native vectors on Turso / libSQL
+
+Point the app at a libSQL database with `LIBSQL_URL` (a Turso `libsql://…` URL
+plus `LIBSQL_AUTH_TOKEN`, or a local `file:…`/`:memory:` path). The migration
+adds an `F32_BLOB` embedding column to each per-model table automatically; on
+write the chosen fields are embedded and stored in-database. Then configure an
+[embedding provider](#embedding-providers) and a default model:
+
+```bash
+LIBSQL_URL=libsql://my-db-org.turso.io
+LIBSQL_AUTH_TOKEN=eyJ...
+OPENAI_API_KEY=sk-...            # or an [ai] binding / EMBEDDING_HTTP_URL
+EMBEDDING_DEFAULT_MODEL=openai-3-small
+```
+
+No index to create and nothing to bind — unlike Vectorize, the vectors live in
+the same database as your rows.
 
 > On **backlex.cloud** this is automatic: every project is D1, and provisioning
 > creates and binds a per-project Vectorize index for you. Managed AI is
@@ -72,7 +103,7 @@ The embedding model determines the provider (and the index dimensions):
 | --- | --- | --- | --- |
 | `bge-m3` | Workers AI | 1024 | `[ai]` binding |
 | `openai-3-small` | OpenAI | 1536 | `OPENAI_API_KEY` |
-| `openai-3-large` | OpenAI | 3072 | `OPENAI_API_KEY` (exceeds Vectorize's 1536 max — Postgres only) |
+| `openai-3-large` | OpenAI | 3072 | `OPENAI_API_KEY` (exceeds Vectorize's 1536 max — Postgres or Turso/libSQL only) |
 | `self-host-bge-m3` | Self-host (TEI / Ollama / vLLM) | 1024 | `EMBEDDING_HTTP_URL` (+ `EMBEDDING_HTTP_TOKEN`) |
 
 OpenAI and self-host run on **your own keys** (your cost). On backlex.cloud the

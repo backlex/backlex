@@ -4,10 +4,23 @@ import {
   integer,
   index,
   uniqueIndex,
+  customType,
 } from "drizzle-orm/sqlite-core";
 
 const ts = (name: string) =>
   integer(name, { mode: "timestamp_ms" }).notNull().$defaultFn(() => new Date());
+
+/**
+ * libSQL / Turso native vector column. Emits `F32_BLOB(<dim>)` DDL — a fixed-
+ * length float32 blob the libSQL engine understands (`vector32()` writes it,
+ * `vector_distance_cos()` / `vector_top_k()` read it). On plain SQLite (Bun) and
+ * D1 the type name carries BLOB affinity, so the column is created without error
+ * and simply sits unused (those backends route vectors elsewhere). Nullable: it
+ * is only populated on the libSQL transport. */
+const f32blob = (dim: number) =>
+  customType<{ data: Uint8Array; driverData: Uint8Array }>({
+    dataType: () => `F32_BLOB(${dim})`,
+  })("embedding");
 
 export const tenants = sqliteTable(
   "tenants",
@@ -668,6 +681,7 @@ export const embeddingsOpenai1536 = sqliteTable(
     namespace: text("namespace").notNull().default("default"),
     refId: text("ref_id"),
     content: text("content"),
+    embedding: f32blob(1536),
     metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
     createdAt: ts("created_at"),
   },
@@ -684,6 +698,7 @@ export const embeddingsOpenai3072 = sqliteTable(
     namespace: text("namespace").notNull().default("default"),
     refId: text("ref_id"),
     content: text("content"),
+    embedding: f32blob(3072),
     metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
     createdAt: ts("created_at"),
   },
@@ -700,6 +715,7 @@ export const embeddingsSelfHostBgeM3 = sqliteTable(
     namespace: text("namespace").notNull().default("default"),
     refId: text("ref_id"),
     content: text("content"),
+    embedding: f32blob(1024),
     metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
     createdAt: ts("created_at"),
   },
@@ -716,6 +732,7 @@ export const embeddingsBgeM3 = sqliteTable(
     namespace: text("namespace").notNull().default("default"),
     refId: text("ref_id"),
     content: text("content"),
+    embedding: f32blob(1024),
     metadata: text("metadata", { mode: "json" }).$type<Record<string, unknown>>(),
     createdAt: ts("created_at"),
   },

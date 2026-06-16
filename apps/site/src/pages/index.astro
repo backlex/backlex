@@ -10,7 +10,7 @@ import Base from "../layouts/Base.astro";
   <div class="relative max-w-[1240px] mx-auto px-8 max-md:px-5 flex flex-col items-center text-center gap-6 max-sm:gap-4">
 
     <span class="inline-block max-w-full text-center font-mono text-[11px] leading-relaxed text-muted-foreground uppercase tracking-[0.12em] border border-border rounded-full px-3 py-1.5 bg-muted">
-      <span class="inline-block align-middle w-1.5 h-1.5 bg-primary rounded-full mr-2"></span>AI-native · Apache-2.0 · Self-host · Workers · Vercel · Netlify · Deno
+      <span class="inline-block align-middle w-1.5 h-1.5 bg-primary rounded-full mr-2.5"></span>AI-native<span class="mx-2 text-border">·</span>Apache-2.0<span class="mx-2 text-border">·</span>Self-host<span class="mx-2 text-border">·</span>Workers<span class="mx-2 text-border">·</span>Vercel<span class="mx-2 text-border">·</span>Netlify<span class="mx-2 text-border">·</span>Deno
     </span>
 
     <h1 class="font-semibold -tracking-[0.04em] leading-[1.02] text-[clamp(40px,6vw,72px)] max-w-[18ch]">
@@ -571,104 +571,31 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
       </div>
     </div>
 
-    <!-- Three-column: tools / guards / connect -->
-    <div class="grid grid-cols-3 max-[1020px]:grid-cols-1 gap-3.5 mt-14">
-
-      <!-- MCP tool catalog -->
-      <div class="border border-border rounded-3xl bg-card overflow-hidden flex flex-col">
-        <div class="px-5 pt-5 pb-3 flex items-center gap-2">
+    <!-- Three-up: tools / guards / connect (minimal) -->
+    <div class="grid grid-cols-3 max-[1020px]:grid-cols-1 gap-3.5 mt-12">
+      <div class="border border-border rounded-3xl bg-card p-5 flex flex-col gap-2">
+        <div class="flex items-center gap-2">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
           <h3 class="text-[15px] font-semibold">MCP tool catalog</h3>
           <span class="ml-auto font-mono text-[10.5px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">74 tools</span>
         </div>
-        <p class="px-5 text-[12.5px] text-muted-foreground leading-snug">Every admin capability is also an MCP tool — grouped, type-validated, and DSL-filtered before it runs.</p>
-        <div class="px-5 py-4 mt-1 grid grid-cols-2 gap-y-1.5 gap-x-3 text-[12px] border-t border-border/60 mt-4">
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>schema <span class="font-mono text-muted-foreground ml-auto">5</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>collections <span class="font-mono text-muted-foreground ml-auto">7</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>storage &amp; files <span class="font-mono text-muted-foreground ml-auto">8</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>permissions &amp; roles <span class="font-mono text-muted-foreground ml-auto">7</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>flows &amp; webhooks <span class="font-mono text-muted-foreground ml-auto">7</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>users <span class="font-mono text-muted-foreground ml-auto">7</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>comments &amp; notifs <span class="font-mono text-muted-foreground ml-auto">6</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>shared links <span class="font-mono text-muted-foreground ml-auto">3</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>saml sso <span class="font-mono text-muted-foreground ml-auto">3</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>settings &amp; tenants <span class="font-mono text-muted-foreground ml-auto">4</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>activity &amp; revisions <span class="font-mono text-muted-foreground ml-auto">3</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>vector &amp; embedding <span class="font-mono text-muted-foreground ml-auto">3</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>api keys <span class="font-mono text-muted-foreground ml-auto">3</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>functions <span class="font-mono text-muted-foreground ml-auto">2</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>db <span class="font-mono text-muted-foreground ml-auto">2</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span>graphql <span class="font-mono text-muted-foreground ml-auto">1</span></div>
-          <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full" style="background: oklch(0.7 0.18 130);"></span>ai-native <span class="font-mono text-muted-foreground ml-auto">3</span></div>
-        </div>
-        <div class="px-5 py-3 mt-auto border-t border-border bg-muted/40 flex items-center gap-2 text-[11px] text-muted-foreground font-mono flex-wrap">
-          <span class="px-2 py-0.5 rounded-full border border-border bg-card" style="color: oklch(0.45 0.12 240);">read</span>
-          <span class="px-2 py-0.5 rounded-full border border-border bg-card" style="color: oklch(0.48 0.13 70);">write</span>
-          <span class="px-2 py-0.5 rounded-full border border-border bg-card" style="color: oklch(0.45 0.18 22);">destruct</span>
-          <span class="px-2 py-0.5 rounded-full border border-border bg-card" style="color: oklch(0.48 0.13 70);">admin</span>
-        </div>
+        <p class="text-[12.5px] text-muted-foreground leading-snug">Every admin capability is an MCP tool — grouped, type-validated, and DSL-filtered before it runs.</p>
       </div>
-
-      <!-- Per-key guards -->
-      <div class="border border-border rounded-3xl bg-card overflow-hidden flex flex-col">
-        <div class="px-5 pt-5 pb-3 flex items-center gap-2">
+      <div class="border border-border rounded-3xl bg-card p-5 flex flex-col gap-2">
+        <div class="flex items-center gap-2">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
           <h3 class="text-[15px] font-semibold">Per-key guards</h3>
           <span class="ml-auto font-mono text-[10.5px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">pak_8f2a…</span>
         </div>
-        <p class="px-5 text-[12.5px] text-muted-foreground leading-snug">Bind an allowlist of tools and a read-only flag to any personal access key. Agents inherit the guards of the key they authenticated with.</p>
-        <div class="px-5 pt-4 pb-3 mt-1 flex flex-col gap-2.5 border-t border-border/60 mt-4">
-          <div class="flex items-center justify-between">
-            <div class="flex flex-col">
-              <span class="text-[12.5px] font-medium">Read-only</span>
-              <span class="text-[11px] text-muted-foreground">Blocks every write tool at the dispatcher.</span>
-            </div>
-            <span class="relative h-5 w-9 rounded-full inline-block" style="background: var(--color-input);"><span class="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow"></span></span>
-          </div>
-          <div class="flex items-center justify-between">
-            <div class="flex flex-col">
-              <span class="text-[12.5px] font-medium">Tool allowlist</span>
-              <span class="text-[11px] text-muted-foreground">Hide everything not switched on.</span>
-            </div>
-            <span class="font-mono text-[10.5px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">24 tools</span>
-          </div>
-        </div>
-        <div class="px-5 py-4 mt-auto border-t border-border bg-muted/40">
-<pre class="font-mono text-[11px] leading-relaxed m-0 whitespace-pre-wrap"><span class="c-comment"># patch the active key's guards</span>
-<span class="c-prompt">$ </span><span class="c-fn">curl</span> -X PATCH <span class="c-str">$URL/api-keys/$id/mcp-guards</span> \
-   -d <span class="c-str">'&#123;"mcpReadOnly":true,</span>
-       <span class="c-str">"mcpTools":["ai.query",</span>
-                  <span class="c-str">"collections.list",…]&#125;'</span></pre>
-        </div>
+        <p class="text-[12.5px] text-muted-foreground leading-snug">Bind a tool allowlist and a read-only flag to any access key — agents inherit the guards of the key they used.</p>
       </div>
-
-      <!-- Connect a client -->
-      <div class="border border-border rounded-3xl bg-card overflow-hidden flex flex-col">
-        <div class="px-5 pt-5 pb-3 flex items-center gap-2">
+      <div class="border border-border rounded-3xl bg-card p-5 flex flex-col gap-2">
+        <div class="flex items-center gap-2">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 4 4-4 4"/><path d="M2 8h14"/><path d="m12 22-4-4 4-4"/><path d="M22 16H8"/></svg>
           <h3 class="text-[15px] font-semibold">Connect a client</h3>
           <span class="ml-auto font-mono text-[10.5px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">streamable http</span>
         </div>
-        <p class="px-5 text-[12.5px] text-muted-foreground leading-snug">Stateless <code class="font-mono text-foreground">POST /mcp</code> for tenant agents, <code class="font-mono text-foreground">/api/admin/mcp</code> for ops bots. JSON-RPC over HTTP — no SSE, no socket churn.</p>
-        <div class="px-5 pt-4 pb-3 border-t border-border/60 mt-4">
-          <div class="text-[10.5px] uppercase tracking-wider text-muted-foreground mb-2">claude desktop · cursor</div>
-<pre class="font-mono text-[11px] leading-relaxed m-0 whitespace-pre-wrap"><span class="text-muted-foreground">&#123;</span>
-  <span class="c-key">"mcpServers"</span><span class="text-muted-foreground">:</span> <span class="text-muted-foreground">&#123;</span>
-    <span class="c-key">"backlex"</span><span class="text-muted-foreground">:</span> <span class="text-muted-foreground">&#123;</span>
-      <span class="c-key">"command"</span><span class="text-muted-foreground">:</span> <span class="c-str">"bun"</span><span class="text-muted-foreground">,</span>
-      <span class="c-key">"args"</span><span class="text-muted-foreground">:</span> <span class="text-muted-foreground">[</span>
-        <span class="c-str">"backlex"</span><span class="text-muted-foreground">,</span> <span class="c-str">"mcp"</span><span class="text-muted-foreground">,</span>
-        <span class="c-str">"--url"</span><span class="text-muted-foreground">,</span> <span class="c-str">"$URL/mcp"</span><span class="text-muted-foreground">,</span>
-        <span class="c-str">"--key"</span><span class="text-muted-foreground">,</span> <span class="c-str">"pak_…"</span>
-      <span class="text-muted-foreground">]</span>
-    <span class="text-muted-foreground">&#125;</span>
-  <span class="text-muted-foreground">&#125;</span>
-<span class="text-muted-foreground">&#125;</span></pre>
-        </div>
-        <div class="px-5 py-3 mt-auto border-t border-border flex items-center gap-2 text-[11.5px] text-muted-foreground">
-          <a href="/docs#mcp" class="font-mono text-foreground hover:text-primary no-underline">docs/mcp →</a>
-          <span class="ml-auto">claude · cursor · curl</span>
-        </div>
+        <p class="text-[12.5px] text-muted-foreground leading-snug">Stateless <code class="font-mono text-foreground">POST /mcp</code> for tenant agents, <code class="font-mono text-foreground">/api/admin/mcp</code> for ops bots — JSON-RPC over HTTP.</p>
       </div>
     </div>
 
@@ -915,19 +842,31 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
 
   // Mobile accordion: .acc cards ship open (graceful no-JS = expanded). Under
   // 640px collapse all but the first in each group (so every section opens with
-  // a hint of content); re-syncs on breakpoint change.
+  // a hint of content), and keep it exclusive — opening one closes its
+  // siblings. Re-syncs on breakpoint change.
   (function () {
     const mq = window.matchMedia("(max-width: 639px)");
+    const items = [...document.querySelectorAll("details.acc")];
     function sync() {
       const mobile = mq.matches;
       const groupSeen = new Set();
-      document.querySelectorAll("details.acc").forEach((d) => {
+      items.forEach((d) => {
         const group = d.parentElement;
         const isFirst = group ? !groupSeen.has(group) : true;
         if (group) groupSeen.add(group);
         d.open = !mobile || isFirst;
       });
     }
+    items.forEach((d) => {
+      d.addEventListener("toggle", () => {
+        if (!mq.matches || !d.open) return;
+        const group = d.parentElement;
+        if (!group) return;
+        group.querySelectorAll(":scope > details.acc").forEach((o) => {
+          if (o !== d) o.open = false;
+        });
+      });
+    });
     sync();
     mq.addEventListener("change", sync);
   })();

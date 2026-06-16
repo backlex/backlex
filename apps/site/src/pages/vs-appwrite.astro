@@ -1,0 +1,147 @@
+---
+import Base from "../layouts/Base.astro";
+
+// Factual as of 2026. backlex cells reflect the shipping feature set; Appwrite
+// cells reflect its documented capabilities (BSD-3-Clause core, Docker-Compose
+// self-host or Appwrite Cloud, its own managed store, REST + GraphQL + Realtime
+// over WebSockets, container Functions in many runtimes, broad SDKs, official
+// MCP server). Appwrite manages its own collections rather than adopting your
+// existing SQL tables, and semantic/vector search is via external vector DBs.
+const rows = [
+  ["License", "Apache-2.0", "BSD-3-Clause"],
+  ["Runtimes", "Cloudflare Workers, Vercel & Netlify (Node 22), self-host on Bun/Node/Deno, or Deno Deploy", "Self-host via Docker Compose, or Appwrite Cloud"],
+  ["Edge-native", "Runs inside the edge runtime", "No — Docker / server containers"],
+  ["Database", "PostgreSQL and SQLite / Cloudflare D1", "Appwrite-managed store (TablesDB)"],
+  ["Data model", "Managed tables (dynamic, additive-only DDL) or adopt existing tables via a metadata row", "Appwrite-managed collections — no adopting existing SQL tables"],
+  ["REST + GraphQL", "Both, auto-generated; nested-relation filters, expand, aggregation", "REST, GraphQL & Realtime APIs"],
+  ["Realtime", "Live row changes streamed to clients over Server-Sent Events (SSE), permission-filtered", "WebSocket subscriptions"],
+  ["Permissions", "Role-based DSL: conditions + field-level allow-lists, one model across APIs + realtime", "Per-document / collection permissions (roles, users, teams)"],
+  ["Vector search", "Built in — pgvector or Cloudflare Vectorize; auto-embed on write", "Not built in (integrate Pinecone, Qdrant, Weaviate, etc.)"],
+  ["Embedding models", "OpenAI, Workers AI (bge-m3), or self-hosted TEI/Ollama/vLLM", "—"],
+  ["AI agents / MCP", "Built-in runtime MCP server — collections, vector & admin to agents, per-key tool allow-lists + read-only guards", "Official MCP server (databases, functions, sites)"],
+  ["Storage + images", "Files with ACLs, signed URLs; image transforms on Bun in-process or the Cloudflare edge", "File storage with image transformations"],
+  ["Edge functions", "Sandboxed functions — http / event / cron triggers", "Functions (many runtimes, container-based)"],
+  ["Automation", "Visual, no-code op-chains on item events", "Event triggers / functions"],
+  ["Webhooks", "Signed webhooks on item events", "Webhooks on events"],
+  ["Auth providers", "Email/password, OAuth, magic link, email-OTP, passkeys", "Email/password, OAuth (many), phone, magic URL, anonymous"],
+  ["SSO", "SAML 2.0 + LDAP/AD (per workspace)", "OAuth / OpenID; SAML on Cloud (Enterprise)"],
+  ["Audit logs", "Built-in activity trail + opt-in sensitive-read auditing + revisions", "Activity / usage logs"],
+  ["Admin UI + SDK", "Admin SPA, typed client SDK, and `backlex` CLI", "Console, SDKs (many languages), CLI"],
+];
+---
+<Base
+  title="backlex vs Appwrite — edge-deployable, relational, AI-native backend"
+  description="How backlex compares to Appwrite: an Apache-2.0 backend that deploys to the edge (Cloudflare Workers, Vercel, Netlify, Deno Deploy) or self-hosts on Bun, Node, or Deno, runs on PostgreSQL/SQLite and adopts your existing tables, ships built-in vector search, and exposes a runtime MCP server to AI agents — versus a container-based, all-in-one BaaS on its own managed store."
+>
+  <section class="relative z-[1] max-w-[920px] mx-auto px-8 max-md:px-5 py-20">
+    <div class="flex flex-col gap-3 mb-10">
+      <span class="inline-block self-start font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground border border-border rounded-full px-3 py-1.5 bg-muted">
+        Compare
+      </span>
+      <h1 class="text-[clamp(32px,5vw,48px)] font-semibold -tracking-[0.04em] leading-[1.05]">
+        backlex vs Appwrite
+      </h1>
+      <p class="text-[17px] text-muted-foreground max-w-[62ch] leading-snug">
+        Both are open-source backends with auth, storage, functions, and an
+        admin console. backlex adds <strong class="text-foreground font-medium">edge
+        deployment</strong>, runs on
+        <strong class="text-foreground font-medium">PostgreSQL/SQLite</strong> and
+        <strong class="text-foreground font-medium">adopts your existing tables</strong>,
+        and ships <strong class="text-foreground font-medium">built-in vector
+        search</strong> with a runtime MCP server.
+      </p>
+    </div>
+
+    <div class="flex flex-col gap-8 text-[15px] leading-relaxed text-muted-foreground">
+      <p>
+        <strong class="text-foreground font-medium">Appwrite</strong> is a popular
+        open-source Firebase alternative — a self-hosted (Docker Compose) or
+        cloud BaaS that bundles auth, a managed store, storage, functions, and
+        realtime behind broad client SDKs.
+        <strong class="text-foreground font-medium">backlex</strong> covers the
+        same surface but is built to run at the edge — the same codebase deploys
+        to Cloudflare Workers, Vercel, Netlify, Deno Deploy, or your own server
+        (Bun, Node, or Deno) — sits directly on <strong class="text-foreground font-medium">your
+        relational database</strong>, ships built-in semantic/vector search, and
+        exposes a first-class <strong class="text-foreground font-medium">runtime
+        MCP server</strong> so AI agents can use your backend as a tool.
+      </p>
+
+      <div class="overflow-x-auto -mx-2">
+        <table class="w-full text-[13.5px] border-collapse">
+          <thead>
+            <tr class="text-left">
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border"></th>
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">backlex</th>
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">Appwrite</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(([label, a, b]) => (
+              <tr class="align-top">
+                <td class="py-2.5 px-2 border-b border-border font-medium text-foreground whitespace-nowrap">{label}</td>
+                <td class="py-2.5 px-2 border-b border-border">{a}</td>
+                <td class="py-2.5 px-2 border-b border-border">{b}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">Your relational database, not an abstracted store</h2>
+        <p>
+          Appwrite manages its own store and exposes it through SDK collections —
+          you don't point it at an existing SQL database. backlex runs directly on
+          <strong class="text-foreground font-medium">PostgreSQL or SQLite / Cloudflare
+          D1</strong>: it can create <strong class="text-foreground font-medium">managed
+          tables</strong> with an additive-only DDL applier, or
+          <strong class="text-foreground font-medium">adopt an existing
+          database</strong> by writing a metadata row, auto-detecting foreign keys
+          as relations with no data migration. Your data stays in plain SQL tables
+          you can query with anything.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">Vector search &amp; AI</h2>
+        <p>
+          backlex builds semantic search into the backend: flag a collection's
+          text fields and it auto-embeds on write and runs ANN search via
+          <strong class="text-foreground font-medium">pgvector</strong> or
+          <strong class="text-foreground font-medium">Cloudflare Vectorize</strong>,
+          with embeddings from OpenAI, Workers AI, or a self-hosted model — and
+          the same vectors reach agents through the <code>vector.search</code> MCP
+          tool and the Ask-AI / RAG page. Appwrite ships an official MCP server and
+          rich SDKs, but semantic/vector search isn't native — you connect an
+          external vector database such as Pinecone, Qdrant, or Weaviate.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When backlex is the better fit</h2>
+        <ul class="list-disc pl-5 flex flex-col gap-2">
+          <li>You want to <strong class="text-foreground font-medium">deploy at the edge</strong> on Workers, Vercel, or Netlify instead of running Docker containers.</li>
+          <li>You want your data in a <strong class="text-foreground font-medium">relational database</strong> you own — and the option to adopt tables you already have.</li>
+          <li>You want <strong class="text-foreground font-medium">built-in vector search</strong> and native MCP access for AI agents.</li>
+          <li>You want one <strong class="text-foreground font-medium">permissions DSL</strong> that also filters realtime and sandboxed functions.</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When Appwrite is the better fit</h2>
+        <ul class="list-disc pl-5 flex flex-col gap-2">
+          <li>You want batteries-included messaging/push and a wide range of native client SDKs across languages and mobile platforms.</li>
+          <li>You prefer an all-in-one Docker Compose stack and don't need edge deployment.</li>
+          <li>You're happy with an abstracted document/collection store rather than direct SQL.</li>
+        </ul>
+      </div>
+
+      <p>
+        See the <a href="/docs/" class="text-primary hover:underline">backlex documentation</a> or the
+        <a href="https://github.com/backlex/backlex" class="text-primary hover:underline">source on GitHub</a> to get started.
+        backlex's core is free and open under Apache-2.0; the managed <a href="/pricing" class="text-primary hover:underline">Cloud</a> is optional.
+      </p>
+    </div>
+  </section>
+</Base>

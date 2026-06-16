@@ -7,8 +7,13 @@ Five minutes from clone to first item.
 
 ## Prerequisites
 
-- Bun ≥ 1.1 (`curl -fsSL https://bun.sh/install | bash`)
+- Bun ≥ 1.1 (`curl -fsSL https://bun.sh/install | bash`) — the dev toolchain
+  (workspaces, scripts, `bun run dev`) runs on Bun.
 - Optional: Postgres 14+ for production. Dev defaults to Bun's built-in SQLite.
+
+> Bun is only required for local development. The same source **runs** on
+> Bun, Node, Deno, Cloudflare Workers, Vercel, and Netlify — see
+> [Deployment](/docs/deployment/) for the Node and Deno self-host steps.
 
 ## Install + run
 

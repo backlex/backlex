@@ -15,6 +15,7 @@ const rows = [
   ["GraphQL", "Built in, auto-generated from collections", "Via pg_graphql extension"],
   ["Realtime", "Live row changes streamed to clients over Server-Sent Events (SSE), permission-filtered", "Postgres logical replication over WebSockets"],
   ["Permissions", "Role-based DSL: conditions + field-level allow-lists, one model across REST/GraphQL/realtime", "Postgres Row-Level Security (SQL policies)"],
+  ["Multi-tenancy", "First-class — workspaces with isolated data, end-users, auth, SSO & email; one deployment serves many, sessions pinned per tenant", "DIY via Postgres RLS / separate schemas"],
   ["Vector search", "Built in — pgvector (PG) or Cloudflare Vectorize (SQLite/D1); auto-embed on write", "Built in (pgvector)"],
   ["Embedding models", "OpenAI, Workers AI (bge-m3), or self-hosted TEI/Ollama/vLLM", "Bring your own (OpenAI, etc.)"],
   ["AI agents / MCP", "Built-in runtime MCP server — collections, vector search & admin exposed to agents, per-key tool allow-lists + read-only guards", "Official MCP server (project / database management from dev tools)"],

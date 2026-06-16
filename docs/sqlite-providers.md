@@ -31,13 +31,17 @@ Step 3 means a Postgres URL always wins over the Bun-SQLite fallback. Set
 |-------------------|-------------------|------------------------------------------|--------|------------|------------------------------------------------------|
 | **Bun SQLite**    | local file        | Bun + Node self-host                     | ❌ — pair with Vectorize / pgvector | ✅ | `bun run db:migrate:sqlite` (CLI) |
 | **Cloudflare D1** | binding           | CF Workers only                          | ❌ — pair with Vectorize | ✅ | `wrangler d1 migrations apply` inside the Workers Build command |
-| **Turso / libSQL**| HTTP / WS / WS-libsql | every runtime (fetch-based)         | ❌ — pair with Vectorize | ✅ | `bun run db:migrate:libsql` (CLI) **or** boot-time auto-migrate |
+| **Turso / libSQL**| HTTP / WS / WS-libsql | every runtime (fetch-based)         | ✅ **native** (`F32_BLOB` + `vector_distance_cos`) | ✅ | `bun run db:migrate:libsql` (CLI) **or** boot-time auto-migrate |
 | **LiteFS (Fly)**  | local file via FUSE | Bun / Node only (no edge)              | ❌ — pair with Vectorize / pgvector | ✅ | Same as Bun SQLite — runs on primary, replicates to read-replicas |
 
-**Vector**: SQLite has no first-class vector type that backlex uses. Vector
-endpoints require **either** a Cloudflare Vectorize binding (`VECTORIZE_OPENAI`
-/ `VECTORIZE_BGE_M3` / …) **or** switching to a Postgres deploy with
-pgvector. Without one, vector endpoints fail loud with a clear message.
+**Vector**: only **Turso / libSQL** has native vectors among the SQLite
+providers — the libSQL engine ships `F32_BLOB` columns and `vector_distance_cos()`,
+so vectors live in-database with no extra service (exact/brute-force search,
+namespace-scoped; see [vector-search.md](/docs/vector-search/)). Plain **Bun
+SQLite** and **D1** have no vector primitives (D1 can't load extensions), so they
+require **either** a Cloudflare Vectorize binding (`VECTORIZE_OPENAI` /
+`VECTORIZE_BGE_M3` / …) **or** a Postgres deploy with pgvector. Without one,
+vector endpoints on those providers fail loud with a clear message.
 
 ## Per-provider gotchas
 
@@ -84,6 +88,10 @@ pgvector. Without one, vector endpoints fail loud with a clear message.
   LIBSQL_AUTH_TOKEN=eyJ... \
     bun run --cwd packages/db migrate:libsql
   ```
+- **Native vector search** is on automatically — the engine's `F32_BLOB`
+  columns + `vector_distance_cos()` back semantic search with no Vectorize
+  binding and no Postgres. This is the only SQLite provider with in-database
+  vectors. See [vector-search.md](/docs/vector-search/).
 - Embedded replicas (`@libsql/client` `syncUrl`) are out of scope for
   backlex — open a custom client outside the standard adapter if you
   need them.

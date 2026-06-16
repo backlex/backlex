@@ -643,3 +643,42 @@ curl https://your.app/health
 
 Then sign up at `https://your.app/sign-up` (or your admin URL); the first
 user gets the `admin` role.
+
+## Staying up to date
+
+The one-click buttons and the git-clone flow create a **standalone copy** of
+the repo in your own Git account — not a GitHub fork — so your instance does
+**not** auto-track upstream `backlex/backlex`. Pulling in later releases is a
+manual `git` step (then your platform's Git integration redeploys the push):
+
+```bash
+# one-time: register the upstream repo
+git remote add upstream https://github.com/backlex/backlex
+
+# each upgrade:
+git fetch upstream
+git merge upstream/main      # or: git rebase upstream/main
+git push origin main         # → Cloudflare / Vercel / Netlify auto-redeploys
+```
+
+What happens automatically after the redeploy:
+
+- **DB migrations** apply on the next request via `ensureMigrations`
+  (`apps/web/src/server/context.ts`) — idempotent against the
+  `__drizzle_migrations` ledger, so only new migrations run. There is no
+  manual `db:migrate` step on managed deploys.
+- **Build + deploy** are triggered by the push through the platform's native
+  Git integration — no GitHub Actions workflow needed.
+
+What you still do by hand:
+
+- **New env vars.** Check the release notes for any newly *required* variable
+  (e.g. a new provider key) and add it in the platform dashboard before — or
+  together with — the upgrade.
+- **Conflicts.** A clean, unmodified instance merges without conflict. If you
+  edited code, conflicts are limited to the files you touched.
+
+**Deno Deploy caveat:** the `--source local` CLI flow is **not** git-linked, so
+`git push` won't redeploy it. After pulling, either re-run
+`deno deploy --org <org> --app <app> --prod`, or connect the repo at
+app.deno.com for push-to-deploy (see [Deno Deploy](#deno-deploy-managed)).

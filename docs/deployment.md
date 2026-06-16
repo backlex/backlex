@@ -11,7 +11,7 @@ Pick one based on the constraints you need.
 
 |                    | Bun (self-host)   | Cloudflare Workers   | Vercel Functions (Node 22, Build Output API) | Netlify Functions (Node 22) | Deno Deploy (managed)⁴ |
 |--------------------|-------------------|----------------------|----------------------|------------------------------|------------------------|
-| **Database**       | SQLite or PG      | D1 or Hyperdrive→PG  | PG via `DATABASE_DRIVER=neon-http` (recommended — HTTP avoids cold-start TCP handshake) | PG via `DATABASE_DRIVER=neon-http` (recommended) | PG via `neon-http` (auto-forced); libSQL/Turso too |
+| **Database**       | SQLite, libSQL/Turso, or PG | D1, libSQL/Turso, or Hyperdrive→PG | PG via `DATABASE_DRIVER=neon-http` (recommended — HTTP avoids cold-start TCP handshake), or libSQL/Turso | PG via `DATABASE_DRIVER=neon-http` (recommended), or libSQL/Turso | PG via `neon-http` (auto-forced); libSQL/Turso too |
 | **Storage**        | local fs / S3 / `Bun.S3Client` | R2 (S3 fallback) | S3 (`aws4fetch`) **required** — Lambda zip has no local fs | S3 (`aws4fetch`) **required** — Lambda zip has no local fs | S3 (`aws4fetch`) **required** — no fs |
 | **Realtime**       | in-proc + SSE     | Durable Objects + WS | Upstash Redis long-poll¹ | Upstash Redis long-poll¹ | Upstash Redis long-poll¹ |
 | **SAML**           | yes               | yes (nodejs_compat)  | yes (Node 22 native crypto) | yes (Node 22 native crypto) | yes (Deno `node:crypto`) |

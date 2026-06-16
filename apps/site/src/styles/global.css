@@ -1428,3 +1428,19 @@ body.is-onboarding .app-shell {
 .dark .code {
   background: oklch(0.16 0.005 286);
 }
+
+/* Mobile accordion cards (.acc): native <details>, collapsed on phones,
+   forced-open grid cells on >=640px (the inline script toggles `open` by
+   viewport; this just hides the UA marker and animates the chevron). */
+details.acc > summary {
+  list-style: none;
+}
+details.acc > summary::-webkit-details-marker {
+  display: none;
+}
+.acc-chev {
+  transition: transform 0.18s ease;
+}
+details.acc[open] > summary .acc-chev {
+  transform: rotate(180deg);
+}

@@ -15,6 +15,7 @@ const rows = [
   ["REST + GraphQL", "Both, auto-generated; nested-relation filters, expand, aggregation", "GraphQL via AppSync (REST via API Gateway add-on)"],
   ["Realtime", "Live row changes streamed to clients over Server-Sent Events (SSE), permission-filtered", "AppSync GraphQL subscriptions (WebSocket)"],
   ["Permissions", "Role-based DSL: conditions + field-level allow-lists, one model across APIs + realtime", "Authorization rules (owner / group / public) via Cognito + IAM"],
+  ["Multi-tenancy", "First-class — workspaces with isolated data, end-users, auth, SSO & email; one deployment serves many, sessions pinned per tenant", "DIY via Cognito groups + authorization rules"],
   ["Vector search", "Built in — pgvector or Cloudflare Vectorize; auto-embed on write", "Not built in (Amazon OpenSearch / Bedrock)"],
   ["Embedding models", "OpenAI, Workers AI (bge-m3), or self-hosted TEI/Ollama/vLLM", "— (bring Amazon Bedrock)"],
   ["AI agents / MCP", "Built-in runtime MCP server — collections, vector & admin to agents, per-key tool allow-lists + read-only guards", "Community MCP server for Amplify Data"],

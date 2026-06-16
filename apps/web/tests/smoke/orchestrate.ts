@@ -118,6 +118,18 @@ const bundleProfile = (bundlePath: string): RuntimeProfile => ({
           CRON_SECRET: process.env.CRON_SECRET ?? "smoke-cron-secret",
           AUTH_SECRET:
             process.env.AUTH_SECRET ?? "smoke-secret-not-for-prod-stable",
+          // Vercel/Netlify have no persistent fs, so the storage adapter
+          // requires an S3 config — without it, assembleContext throws at
+          // boot and even /health 503s (netlify self-identifies via the
+          // __BACKLEX_NETLIFY module marker; vercel only via process.env).
+          // Provide a dummy S3 config so the (lazy) s3 adapter is selected
+          // and boot succeeds; the smoke contract never touches storage, so
+          // the fake credentials are never exercised. Mirrors how these
+          // runtimes are actually deployed (S3 required — see deployment.md).
+          S3_BUCKET: process.env.S3_BUCKET ?? "smoke-bucket",
+          S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID ?? "smoke-key",
+          S3_SECRET_ACCESS_KEY:
+            process.env.S3_SECRET_ACCESS_KEY ?? "smoke-secret",
         },
         stdio: "inherit",
       },

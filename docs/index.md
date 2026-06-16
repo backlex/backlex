@@ -112,6 +112,12 @@ Postgres URL (`DATABASE_DRIVER=neon-http`), S3-compatible storage, and
 [Deployment](/docs/deployment/) — also covers Bun, Node, Deno, and
 Cloudflare Workers.
 
+**[Deno Deploy](/docs/deployment/#deno-deploy-managed)** is also supported
+(managed, experimental). There's no one-click button — it ships via the
+`deno deploy` CLI or a dashboard Git link rather than a clone URL — but the
+same source runs on it (verified live), with `neon-http` + Upstash forced
+automatically.
+
 ## What next
 
 - [Permissions DSL](/docs/permissions/) — granular role + condition rules

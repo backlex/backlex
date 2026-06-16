@@ -1,0 +1,148 @@
+---
+import Base from "../layouts/Base.astro";
+
+// Factual as of 2026. backlex cells reflect the shipping feature set; AWS
+// Amplify cells reflect Amplify Gen 2 (Apache-2.0 client libraries + CLI, but
+// the backend is AWS-managed services: AppSync GraphQL over DynamoDB, Cognito
+// auth, S3 storage, Lambda functions, AppSync subscriptions for realtime). It is
+// tied to your AWS account; semantic/vector search is via OpenSearch / Bedrock.
+const rows = [
+  ["License", "Apache-2.0 — runs anywhere", "Apache-2.0 libraries & CLI, but the backend is AWS-managed services"],
+  ["Runtimes", "Cloudflare Workers, Vercel & Netlify (Node 22), self-host on Bun/Node/Deno, or Deno Deploy", "AWS only (AppSync, Lambda, DynamoDB, Cognito, S3)"],
+  ["Edge-native", "Runs inside the edge runtime", "No — AWS regional managed services"],
+  ["Database", "PostgreSQL and SQLite / Cloudflare D1", "DynamoDB (NoSQL) by default; SQL via custom resolvers"],
+  ["Data model", "Managed tables (dynamic, additive-only DDL) or adopt existing tables via a metadata row", "Schema-defined GraphQL models (provisions DynamoDB); existing data via custom resolvers"],
+  ["REST + GraphQL", "Both, auto-generated; nested-relation filters, expand, aggregation", "GraphQL via AppSync (REST via API Gateway add-on)"],
+  ["Realtime", "Live row changes streamed to clients over Server-Sent Events (SSE), permission-filtered", "AppSync GraphQL subscriptions (WebSocket)"],
+  ["Permissions", "Role-based DSL: conditions + field-level allow-lists, one model across APIs + realtime", "Authorization rules (owner / group / public) via Cognito + IAM"],
+  ["Vector search", "Built in — pgvector or Cloudflare Vectorize; auto-embed on write", "Not built in (Amazon OpenSearch / Bedrock)"],
+  ["Embedding models", "OpenAI, Workers AI (bge-m3), or self-hosted TEI/Ollama/vLLM", "— (bring Amazon Bedrock)"],
+  ["AI agents / MCP", "Built-in runtime MCP server — collections, vector & admin to agents, per-key tool allow-lists + read-only guards", "Community MCP server for Amplify Data"],
+  ["Storage + images", "Files with ACLs, signed URLs; image transforms on Bun in-process or the Cloudflare edge", "Amazon S3 storage; transforms via Lambda / CloudFront"],
+  ["Edge functions", "Sandboxed functions — http / event / cron triggers", "AWS Lambda functions"],
+  ["Automation", "Visual, no-code op-chains on item events", "Lambda / EventBridge (custom)"],
+  ["Webhooks", "Signed webhooks on item events", "Custom (Lambda / API Gateway)"],
+  ["Auth providers", "Email/password, OAuth, magic link, email-OTP, passkeys", "Amazon Cognito (email/password, OAuth, federation)"],
+  ["SSO", "SAML 2.0 + LDAP/AD (per workspace)", "SAML / OIDC via Cognito federation"],
+  ["Audit logs", "Built-in activity trail + opt-in sensitive-read auditing + revisions", "CloudTrail / CloudWatch (AWS-level)"],
+  ["Admin UI + SDK", "Admin SPA, typed client SDK, and `backlex` CLI", "Amplify console + client libraries + CLI"],
+];
+---
+<Base
+  title="backlex vs AWS Amplify — edge-deployable, relational, no AWS lock-in"
+  description="How backlex compares to AWS Amplify (Gen 2): an Apache-2.0 backend that deploys to the edge (Cloudflare Workers, Vercel, Netlify, Deno Deploy) or self-hosts on Bun, Node, or Deno, runs on PostgreSQL/SQLite and adopts your existing tables, ships built-in vector search, and exposes a runtime MCP server — versus a stack tied to AWS-managed services (AppSync, DynamoDB, Cognito, Lambda, S3)."
+>
+  <section class="relative z-[1] max-w-[920px] mx-auto px-8 max-md:px-5 py-20">
+    <div class="flex flex-col gap-3 mb-10">
+      <span class="inline-block self-start font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground border border-border rounded-full px-3 py-1.5 bg-muted">
+        Compare
+      </span>
+      <h1 class="text-[clamp(32px,5vw,48px)] font-semibold -tracking-[0.04em] leading-[1.05]">
+        backlex vs AWS Amplify
+      </h1>
+      <p class="text-[17px] text-muted-foreground max-w-[62ch] leading-snug">
+        Both turn a schema into a typed API, auth, storage, and realtime. backlex
+        runs <strong class="text-foreground font-medium">anywhere</strong> — the
+        edge or your own server — on a
+        <strong class="text-foreground font-medium">relational database you own</strong>,
+        with <strong class="text-foreground font-medium">built-in vector search</strong>
+        and a runtime MCP server, instead of binding your backend to
+        <strong class="text-foreground font-medium">AWS-managed services</strong>.
+      </p>
+    </div>
+
+    <div class="flex flex-col gap-8 text-[15px] leading-relaxed text-muted-foreground">
+      <p>
+        <strong class="text-foreground font-medium">AWS Amplify</strong> (Gen 2) is
+        a TypeScript-first way to define a backend that AWS provisions for you:
+        AppSync GraphQL over DynamoDB, Cognito for auth, S3 for storage, and Lambda
+        for functions. The libraries are open source, but the running backend
+        lives in your AWS account.
+        <strong class="text-foreground font-medium">backlex</strong> offers the
+        same "define a model, get an API" flow without the lock-in — the same
+        Apache-2.0 codebase deploys to Cloudflare Workers, Vercel, Netlify, Deno
+        Deploy, or your own server (Bun, Node, or Deno), runs on
+        <strong class="text-foreground font-medium">PostgreSQL or SQLite</strong>,
+        and ships built-in vector search plus a first-class
+        <strong class="text-foreground font-medium">runtime MCP server</strong>.
+      </p>
+
+      <div class="overflow-x-auto -mx-2">
+        <table class="w-full text-[13.5px] border-collapse">
+          <thead>
+            <tr class="text-left">
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border"></th>
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">backlex</th>
+              <th class="font-semibold text-foreground py-2.5 px-2 border-b border-border">AWS Amplify</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(([label, a, b]) => (
+              <tr class="align-top">
+                <td class="py-2.5 px-2 border-b border-border font-medium text-foreground whitespace-nowrap">{label}</td>
+                <td class="py-2.5 px-2 border-b border-border">{a}</td>
+                <td class="py-2.5 px-2 border-b border-border">{b}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">Relational and portable, not AWS-bound</h2>
+        <p>
+          Amplify provisions DynamoDB (NoSQL) behind an AppSync GraphQL API in your
+          AWS account; relational access and existing data go through custom
+          resolvers. backlex runs directly on
+          <strong class="text-foreground font-medium">PostgreSQL or SQLite / Cloudflare
+          D1</strong> and either creates <strong class="text-foreground font-medium">managed
+          tables</strong> or <strong class="text-foreground font-medium">adopts an
+          existing database</strong> by writing a metadata row — relations,
+          permissions, and realtime come for free, and nothing is tied to a single
+          cloud. One <strong class="text-foreground font-medium">permissions DSL</strong>
+          replaces the Cognito-plus-IAM authorization model.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">Vector search &amp; AI</h2>
+        <p>
+          Semantic search is built into backlex: flag a collection's text fields
+          and it auto-embeds on write and runs ANN search via
+          <strong class="text-foreground font-medium">pgvector</strong> or
+          <strong class="text-foreground font-medium">Cloudflare Vectorize</strong>,
+          with embeddings from OpenAI, Workers AI, or a self-hosted model — and the
+          same vectors reach agents through the <code>vector.search</code> MCP tool
+          and the Ask-AI / RAG page. With Amplify you assemble it from separate AWS
+          services — Amazon OpenSearch for search and Bedrock for embeddings — and
+          wire them together yourself.
+        </p>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When backlex is the better fit</h2>
+        <ul class="list-disc pl-5 flex flex-col gap-2">
+          <li>You want to avoid <strong class="text-foreground font-medium">AWS lock-in</strong> and deploy to the edge or your own server.</li>
+          <li>You want your data in a <strong class="text-foreground font-medium">relational database</strong> — and the option to adopt tables you already run.</li>
+          <li>You want <strong class="text-foreground font-medium">built-in vector search</strong> and native MCP access for AI agents.</li>
+          <li>You want one <strong class="text-foreground font-medium">permissions DSL</strong> instead of stitching Cognito and IAM rules together.</li>
+        </ul>
+      </div>
+
+      <div>
+        <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When AWS Amplify is the better fit</h2>
+        <ul class="list-disc pl-5 flex flex-col gap-2">
+          <li>You're all-in on AWS and want a backend that snaps into the rest of your AWS services.</li>
+          <li>You want DynamoDB's scaling characteristics and managed AWS operations.</li>
+          <li>You're standardizing on AppSync GraphQL and Cognito across many apps.</li>
+        </ul>
+      </div>
+
+      <p>
+        See the <a href="/docs/" class="text-primary hover:underline">backlex documentation</a> or the
+        <a href="https://github.com/backlex/backlex" class="text-primary hover:underline">source on GitHub</a> to get started.
+        backlex's core is free and open under Apache-2.0; the managed <a href="/pricing" class="text-primary hover:underline">Cloud</a> is optional.
+      </p>
+    </div>
+  </section>
+</Base>

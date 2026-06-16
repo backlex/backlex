@@ -62,7 +62,13 @@ for (const tag of order) {
     .filter(Boolean);
   for (const stmt of statements) {
     try {
-      await client.execute(stmt);
+      // `executeMultiple` runs a SQL script (parameterless) and tolerates a
+      // chunk that holds more than one `;`-separated statement. Several hand-
+      // written migrations bundle multiple statements per chunk WITHOUT a
+      // `--> statement-breakpoint` between them (e.g. a CREATE TABLE followed by
+      // its CREATE INDEXes); `client.execute` rejects those with
+      // SQL_MANY_STATEMENTS, so use the script form for the DDL.
+      await client.executeMultiple(stmt);
     } catch (err) {
       console.error(`✘ ${tag}: failed statement\n${stmt.slice(0, 200)}…`);
       throw err;

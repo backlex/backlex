@@ -50,6 +50,7 @@ import m43 from "../../drizzle/sqlite/20260603120000_collections_soft_delete_sin
 import m44 from "../../drizzle/sqlite/20260604120000_passkey_aaguid/migration.sql" with { type: "text" };
 import m45 from "../../drizzle/sqlite/20260609120000_collections_audit_reads/migration.sql" with { type: "text" };
 import m46 from "../../drizzle/sqlite/20260613120000_platform_sso/migration.sql" with { type: "text" };
+import m47 from "../../drizzle/sqlite/20260617120000_embedding_vectors/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -104,4 +105,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260604120000_passkey_aaguid", sql: m44 },
   { name: "20260609120000_collections_audit_reads", sql: m45 },
   { name: "20260613120000_platform_sso", sql: m46 },
+  { name: "20260617120000_embedding_vectors", sql: m47 },
 ];

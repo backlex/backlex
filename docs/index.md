@@ -118,6 +118,10 @@ Cloudflare Workers.
 same source runs on it (verified live), with `neon-http` + Upstash forced
 automatically.
 
+Already deployed? See
+[Staying up to date](/docs/deployment/#staying-up-to-date) to pull in later
+releases — migrations apply automatically on redeploy.
+
 ## What next
 
 - [Permissions DSL](/docs/permissions/) — granular role + condition rules

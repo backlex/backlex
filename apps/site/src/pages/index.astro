@@ -64,61 +64,106 @@ import Base from "../layouts/Base.astro";
       <p class="text-[17px] text-muted-foreground max-w-[60ch]">No black box. The collection editor in the admin runs the same DDL your migrations would have. The permission DSL the admin writes is the same string your client sends as <code class="font-mono">?filter</code>.</p>
     </div>
     <div class="grid grid-cols-3 max-[920px]:grid-cols-2 max-[600px]:grid-cols-1 gap-px bg-border border border-border rounded-3xl overflow-hidden">
-      <!-- 9 feature cards -->
-      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[200px]">
-        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg></div>
-        <h3 class="text-base font-semibold">Dynamic schema</h3>
-        <p class="text-[13.5px] text-muted-foreground leading-snug">Define collections in the admin, each one becomes a physical <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">c_&lt;slug&gt;</code> table. <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">CREATE TABLE</code> runs against your live DB, no redeploy.</p>
-        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">drizzle · pg + sqlite/d1</span>
-      </div>
-      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[200px]">
-        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg></div>
-        <h3 class="text-base font-semibold">Permissions DSL</h3>
-        <p class="text-[13.5px] text-muted-foreground leading-snug">JSON predicates that compile to Drizzle SQL fragments AND match in-process for realtime. Same syntax in roles, REST <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">?filter</code>, and GraphQL.</p>
-        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">$user.id · _eq · _in · $or</span>
-      </div>
-      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[200px]">
-        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
-        <h3 class="text-base font-semibold">REST + GraphQL</h3>
-        <p class="text-[13.5px] text-muted-foreground leading-snug">Every collection auto-exposes <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">/api/items/:slug</code> with filter/sort/expand/projection. GraphQL schema synthesised from the same metadata.</p>
-        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">openapi 3.1 · graphql-yoga</span>
-      </div>
-      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[200px]">
-        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
-        <h3 class="text-base font-semibold">Realtime</h3>
-        <p class="text-[13.5px] text-muted-foreground leading-snug">SSE in Bun, Durable Object + WebSocket on Workers. Per-event permission filter means subscribers see only what their role can read.</p>
-        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">sse · durable objects</span>
-      </div>
-      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[200px]">
-        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6h6"/><path d="M5 12h7"/></svg></div>
-        <h3 class="text-base font-semibold">Edge functions</h3>
-        <p class="text-[13.5px] text-muted-foreground leading-snug">JavaScript sandbox with a host bridge for <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">ctx.db / fetch / email</code>. Bun worker thread, QuickJS-WASM, or remote HTTP — auto-selected per runtime.</p>
-        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">quickjs · bun worker · http</span>
-      </div>
-      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[200px]">
-        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7l-2-2Z"/></svg></div>
-        <h3 class="text-base font-semibold">Storage + image transforms</h3>
-        <p class="text-[13.5px] text-muted-foreground leading-snug">Local FS in dev, R2 / S3 on edge. Image resize via <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">Bun.Image</code>, CF Image Resizing, or passthrough — same URL shape.</p>
-        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">r2 · s3 · fs</span>
-      </div>
-      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[200px]">
-        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"/><path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06"/></svg></div>
-        <h3 class="text-base font-semibold">Webhooks &amp; Flows</h3>
-        <p class="text-[13.5px] text-muted-foreground leading-snug">HMAC-signed outbound webhooks per event, plus a visual flow builder for branching multi-step automations. Fire-and-forget — never blocks API responses.</p>
-        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">items.* · auth.* · cron</span>
-      </div>
-      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[200px]">
-        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-        <h3 class="text-base font-semibold">Auth that's not yours to maintain</h3>
-        <p class="text-[13.5px] text-muted-foreground leading-snug">better-auth wrapper: email, OAuth (Google/GitHub/Apple), magic link, OTP, passkey, SAML 2.0 SSO, LDAP / AD. First user gets <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">admin</code>.</p>
-        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">better-auth · passkey-first</span>
-      </div>
-      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[200px]">
-        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9-6-18-3 9H2"/></svg></div>
-        <h3 class="text-base font-semibold">Activity + revisions</h3>
-        <p class="text-[13.5px] text-muted-foreground leading-snug">One <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">activity</code> table, dot-namespaced actions (<code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">item.update</code>, <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">auth.login</code>). Every CRUD writes a row to <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">revisions</code> — point-in-time restore included.</p>
-        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">audit log · point-in-time</span>
-      </div>
+      <!-- 9 feature cards — <details>.acc accordion on mobile, grid on desktop -->
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[200px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Dynamic schema</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">Define collections in the admin, each one becomes a physical <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">c_&lt;slug&gt;</code> table. <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">CREATE TABLE</code> runs against your live DB, no redeploy.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">drizzle · pg + sqlite/d1</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[200px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Permissions DSL</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">JSON predicates that compile to Drizzle SQL fragments AND match in-process for realtime. Same syntax in roles, REST <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">?filter</code>, and GraphQL.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">$user.id · _eq · _in · $or</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[200px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">REST + GraphQL</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">Every collection auto-exposes <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">/api/items/:slug</code> with filter/sort/expand/projection. GraphQL schema synthesised from the same metadata.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">openapi 3.1 · graphql-yoga</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[200px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Realtime</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">SSE in Bun, Durable Object + WebSocket on Workers. Per-event permission filter means subscribers see only what their role can read.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">sse · durable objects</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[200px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6h6"/><path d="M5 12h7"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Edge functions</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">JavaScript sandbox with a host bridge for <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">ctx.db / fetch / email</code>. Bun worker thread, QuickJS-WASM, or remote HTTP — auto-selected per runtime.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">quickjs · bun worker · http</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[200px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7l-2-2Z"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Storage + image transforms</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">Local FS in dev, R2 / S3 on edge. Image resize via <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">Bun.Image</code>, CF Image Resizing, or passthrough — same URL shape.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">r2 · s3 · fs</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[200px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"/><path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Webhooks &amp; Flows</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">HMAC-signed outbound webhooks per event, plus a visual flow builder for branching multi-step automations. Fire-and-forget — never blocks API responses.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">items.* · auth.* · cron</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[200px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Auth that's not yours to maintain</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">better-auth wrapper: email, OAuth (Google/GitHub/Apple), magic link, OTP, passkey, SAML 2.0 SSO, LDAP / AD. First user gets <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">admin</code>.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">better-auth · passkey-first</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[200px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9-6-18-3 9H2"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Activity + revisions</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">One <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">activity</code> table, dot-namespaced actions (<code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">item.update</code>, <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">auth.login</code>). Every CRUD writes a row to <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">revisions</code> — point-in-time restore included.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">audit log · point-in-time</span>
+        </div>
+      </details>
     </div>
   </div>
 </section>
@@ -131,57 +176,87 @@ import Base from "../layouts/Base.astro";
       <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">One codebase, five deploy targets.<br/>Pick the constraints you need.</h2>
       <p class="text-[17px] text-muted-foreground max-w-[60ch]">The same <code class="font-mono">apps/web</code> source runs on Bun, Node, and Deno, and compiles to Cloudflare Workers, Vercel Functions, and Netlify Functions — plus managed Deno Deploy. <code class="font-mono">context.ts::buildContext</code> picks the right adapter at boot.</p>
     </div>
-    <div class="grid grid-cols-5 max-[1100px]:grid-cols-3 max-[760px]:grid-cols-2 max-[480px]:grid-cols-1 gap-3.5">
-      <div class="border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
-        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">S</span><h3 class="text-[17px] font-semibold">Self-hosted</h3></div>
-        <p class="text-muted-foreground text-[13.5px]">Your own box — VPS, Docker, or laptop. A single long-running <strong class="text-foreground font-medium">Bun, Node, or Deno</strong> process, shipped with <code class="font-mono text-[11.5px] bg-muted px-1 py-px rounded">docker run</code> or a systemd unit.</p>
-        <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">sqlite / pg</dd>
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">fs / s3</dd>
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">in-proc + sse</dd>
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">worker thread / quickjs</dd>
-        </dl>
-      </div>
-      <div class="border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
-        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">W</span><h3 class="text-[17px] font-semibold">Workers</h3></div>
-        <p class="text-muted-foreground text-[13.5px]">Cloudflare edge. Free tier covers most of it. DO-backed realtime.</p>
-        <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">d1 / pg</dd>
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">r2 / s3</dd>
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">durable object + ws</dd>
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">quickjs / remote http</dd>
-        </dl>
-      </div>
-      <div class="border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
-        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">V</span><h3 class="text-[17px] font-semibold">Vercel</h3></div>
-        <p class="text-muted-foreground text-[13.5px]">Functions on Node 22. Postgres for DB. Built via Build Output API.</p>
-        <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">pg</dd>
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">s3 (required)</dd>
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">upstash long-poll</dd>
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">quickjs</dd>
-        </dl>
-      </div>
-      <div class="border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
-        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">N</span><h3 class="text-[17px] font-semibold">Netlify</h3></div>
-        <p class="text-muted-foreground text-[13.5px]">Functions on Node 22. Scheduled functions tick cron. Same Postgres.</p>
-        <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">pg</dd>
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">s3 (required)</dd>
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">upstash long-poll</dd>
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">quickjs</dd>
-        </dl>
-      </div>
-      <div class="border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
-        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold">D</span><h3 class="text-[17px] font-semibold">Deno Deploy</h3></div>
-        <p class="text-muted-foreground text-[13.5px]">Managed V8-isolate edge. Push the same source — Neon Postgres over HTTP, nothing to run.</p>
-        <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">pg (neon-http)</dd>
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">s3</dd>
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">upstash long-poll</dd>
-          <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">quickjs</dd>
-        </dl>
-      </div>
+    <div class="grid grid-cols-5 max-[1100px]:grid-cols-3 max-[760px]:grid-cols-2 max-sm:grid-cols-1 gap-3.5">
+      <details open class="acc border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
+        <summary class="flex items-center gap-2.5 sm:pointer-events-none">
+          <span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold shrink-0">S</span>
+          <h3 class="text-[17px] font-semibold flex-1">Self-hosted</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-3 flex-1 max-sm:pt-1">
+          <p class="text-muted-foreground text-[13.5px]">Your own box — VPS, Docker, or laptop. A single long-running <strong class="text-foreground font-medium">Bun, Node, or Deno</strong> process, shipped with <code class="font-mono text-[11.5px] bg-muted px-1 py-px rounded">docker run</code> or a systemd unit.</p>
+          <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">sqlite / pg</dd>
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">fs / s3</dd>
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">in-proc + sse</dd>
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">worker thread / quickjs</dd>
+          </dl>
+        </div>
+      </details>
+      <details open class="acc border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
+        <summary class="flex items-center gap-2.5 sm:pointer-events-none">
+          <span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold shrink-0">W</span>
+          <h3 class="text-[17px] font-semibold flex-1">Workers</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-3 flex-1 max-sm:pt-1">
+          <p class="text-muted-foreground text-[13.5px]">Cloudflare edge. Free tier covers most of it. DO-backed realtime.</p>
+          <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">d1 / pg</dd>
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">r2 / s3</dd>
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">durable object + ws</dd>
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">quickjs / remote http</dd>
+          </dl>
+        </div>
+      </details>
+      <details open class="acc border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
+        <summary class="flex items-center gap-2.5 sm:pointer-events-none">
+          <span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold shrink-0">V</span>
+          <h3 class="text-[17px] font-semibold flex-1">Vercel</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-3 flex-1 max-sm:pt-1">
+          <p class="text-muted-foreground text-[13.5px]">Functions on Node 22. Postgres for DB. Built via Build Output API.</p>
+          <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">pg</dd>
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">s3 (required)</dd>
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">upstash long-poll</dd>
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">quickjs</dd>
+          </dl>
+        </div>
+      </details>
+      <details open class="acc border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
+        <summary class="flex items-center gap-2.5 sm:pointer-events-none">
+          <span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold shrink-0">N</span>
+          <h3 class="text-[17px] font-semibold flex-1">Netlify</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-3 flex-1 max-sm:pt-1">
+          <p class="text-muted-foreground text-[13.5px]">Functions on Node 22. Scheduled functions tick cron. Same Postgres.</p>
+          <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">pg</dd>
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">s3 (required)</dd>
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">upstash long-poll</dd>
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">quickjs</dd>
+          </dl>
+        </div>
+      </details>
+      <details open class="acc border border-border rounded-3xl p-5 flex flex-col gap-3 bg-card hover:border-[color-mix(in_oklch,var(--color-primary)_55%,var(--color-border))] transition-colors">
+        <summary class="flex items-center gap-2.5 sm:pointer-events-none">
+          <span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[13px] font-semibold shrink-0">D</span>
+          <h3 class="text-[17px] font-semibold flex-1">Deno Deploy</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-3 flex-1 max-sm:pt-1">
+          <p class="text-muted-foreground text-[13.5px]">Managed V8-isolate edge. Push the same source — Neon Postgres over HTTP, nothing to run.</p>
+          <dl class="grid grid-cols-[70px_1fr] gap-x-3 gap-y-1 text-[12.5px] mt-1.5">
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">db</dt><dd class="font-mono">pg (neon-http)</dd>
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">storage</dt><dd class="font-mono">s3</dd>
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">realtime</dt><dd class="font-mono">upstash long-poll</dd>
+            <dt class="font-mono text-[11.5px] uppercase tracking-wide text-muted-foreground">sandbox</dt><dd class="font-mono">quickjs</dd>
+          </dl>
+        </div>
+      </details>
     </div>
   </div>
 </section>
@@ -303,42 +378,72 @@ import Base from "../layouts/Base.astro";
 
     <!-- What Cloud adds (managed-only features) -->
     <div class="grid grid-cols-3 max-[920px]:grid-cols-2 max-[600px]:grid-cols-1 gap-px bg-border border border-border rounded-3xl overflow-hidden">
-      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[180px]">
-        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0Z"/><path d="M12 3v18M3 12h18"/></svg></div>
-        <h3 class="text-base font-semibold">Multi-region routing</h3>
-        <p class="text-[13.5px] text-muted-foreground leading-snug">3 regions by default (IAD, FRA, IST). Up to 11 on Scale. Optional region pinning for data residency.</p>
-        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">anycast · region pin</span>
-      </div>
-      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[180px]">
-        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h7"/><path d="M3 10h18"/><circle cx="18" cy="18" r="3"/><path d="M18 14v1M18 21v1M21 18h1M14 18h1"/></svg></div>
-        <h3 class="text-base font-semibold">Auto backup + PITR</h3>
-        <p class="text-[13.5px] text-muted-foreground leading-snug">Daily D1 snapshots, 7-day rollback (Pro), 30 days (Scale). One-click restore from the admin.</p>
-        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">d1 snapshot · r2 versioning</span>
-      </div>
-      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[180px]">
-        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
-        <h3 class="text-base font-semibold">Custom domain + edge SSL</h3>
-        <p class="text-[13.5px] text-muted-foreground leading-snug">Bring your own domain. Certificates rotate on Cloudflare. No add-on fee, no config.</p>
-        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">api.acme.app · cname</span>
-      </div>
-      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[180px]">
-        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="12" r="3"/><path d="M6 9v6M6 18a9 9 0 0 0 9-9"/></svg></div>
-        <h3 class="text-base font-semibold">Preview branches</h3>
-        <p class="text-[13.5px] text-muted-foreground leading-snug">Git push → ephemeral environment. Same admin, isolated DB and storage. Auto-cleanup on PR close.</p>
-        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">preview-247.backlex.com</span>
-      </div>
-      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[180px]">
-        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 5-5"/></svg></div>
-        <h3 class="text-base font-semibold">Usage panel + alerts</h3>
-        <p class="text-[13.5px] text-muted-foreground leading-snug">Requests, CPU, D1 r/w, R2, bandwidth — live in dashboard. Email at 80% and 100%, no surprise bills.</p>
-        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">slack · email · webhooks</span>
-      </div>
-      <div class="bg-card p-7 flex flex-col gap-2.5 min-h-[180px]">
-        <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></div>
-        <h3 class="text-base font-semibold">Your exit is preserved</h3>
-        <p class="text-[13.5px] text-muted-foreground leading-snug">One-click full export — schema + data + storage. Same Apache-2.0 backlex, so your own server runs it in minutes.</p>
-        <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">sql + r2 archive · 1-click</span>
-      </div>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[180px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0Z"/><path d="M12 3v18M3 12h18"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Multi-region routing</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">3 regions by default (IAD, FRA, IST). Up to 11 on Scale. Optional region pinning for data residency.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">anycast · region pin</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[180px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h7"/><path d="M3 10h18"/><circle cx="18" cy="18" r="3"/><path d="M18 14v1M18 21v1M21 18h1M14 18h1"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Auto backup + PITR</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">Daily D1 snapshots, 7-day rollback (Pro), 30 days (Scale). One-click restore from the admin.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">d1 snapshot · r2 versioning</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[180px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Custom domain + edge SSL</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">Bring your own domain. Certificates rotate on Cloudflare. No add-on fee, no config.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">api.acme.app · cname</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[180px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="12" r="3"/><path d="M6 9v6M6 18a9 9 0 0 0 9-9"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Preview branches</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">Git push → ephemeral environment. Same admin, isolated DB and storage. Auto-cleanup on PR close.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">preview-247.backlex.com</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[180px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 5-5"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Usage panel + alerts</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">Requests, CPU, D1 r/w, R2, bandwidth — live in dashboard. Email at 80% and 100%, no surprise bills.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">slack · email · webhooks</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[180px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Your exit is preserved</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">One-click full export — schema + data + storage. Same Apache-2.0 backlex, so your own server runs it in minutes.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">sql + r2 archive · 1-click</span>
+        </div>
+      </details>
     </div>
 
   </div>
@@ -810,5 +915,18 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
     tabs.forEach((t) => t.addEventListener("click", () => activate(t.dataset.pane)));
     activate("shell");
   });
+
+  // Mobile accordion: .acc cards ship open (graceful no-JS = expanded) and
+  // collapse under 640px; resizing across the breakpoint re-syncs.
+  (function () {
+    const mq = window.matchMedia("(max-width: 639px)");
+    function sync() {
+      document.querySelectorAll("details.acc").forEach((d) => {
+        d.open = !mq.matches;
+      });
+    }
+    sync();
+    mq.addEventListener("change", sync);
+  })();
 </script>
 </Base>

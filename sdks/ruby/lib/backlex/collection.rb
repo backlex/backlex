@@ -1,0 +1,36 @@
+# frozen_string_literal: true
+
+module Backlex
+  # A CRUD handle for one collection. Obtain via client.from("slug").
+  class Collection
+    def initialize(client, slug)
+      @client = client
+      @slug = slug
+    end
+
+    def list(query = nil)
+      @client.request("GET", "/api/items/#{@slug}#{Client.build_search(query)}")
+    end
+
+    # Fluent builder that compiles to a ListQuery.
+    def query
+      QueryBuilder.new(method(:list))
+    end
+
+    def one(id)
+      @client.request("GET", "/api/items/#{@slug}/#{id}")
+    end
+
+    def create(data)
+      @client.request("POST", "/api/items/#{@slug}", data)
+    end
+
+    def update(id, patch)
+      @client.request("PATCH", "/api/items/#{@slug}/#{id}", patch)
+    end
+
+    def delete(id)
+      @client.request("DELETE", "/api/items/#{@slug}/#{id}")
+    end
+  end
+end

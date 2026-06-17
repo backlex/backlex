@@ -180,6 +180,33 @@ class Auth:
             ),
         )
 
+    def change_password(
+        self, new_password: str, current_password: str, revoke_other_sessions: bool = False
+    ) -> Dict[str, Any]:
+        """Change the signed-in user's password (requires the current password)."""
+        body: Dict[str, Any] = {
+            "newPassword": new_password,
+            "currentPassword": current_password,
+            "revokeOtherSessions": revoke_other_sessions,
+        }
+        return cast(Dict[str, Any], self._client.request("POST", f"{self._base}/change-password", body))
+
+    def update_user(self, attributes: Dict[str, Any]) -> Dict[str, Any]:
+        """Update the signed-in user's profile (e.g. ``{"name": ..., "image": ...}``)."""
+        return cast(
+            Dict[str, Any], self._client.request("POST", f"{self._base}/update-user", attributes)
+        )
+
+    def send_verification_email(self, email: str, callback_url: Optional[str] = None) -> Dict[str, Any]:
+        """Send an email-verification link."""
+        body: Dict[str, Any] = {"email": email}
+        if callback_url is not None:
+            body["callbackURL"] = callback_url
+        return cast(
+            Dict[str, Any],
+            self._client.request("POST", f"{self._base}/send-verification-email", body),
+        )
+
     def sign_out(self) -> Dict[str, Any]:
         result = cast(Dict[str, Any], self._client.request("POST", f"{self._base}/sign-out"))
         if self._client._workspace:

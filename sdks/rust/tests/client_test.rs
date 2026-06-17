@@ -125,6 +125,13 @@ fn password_reset_hits_the_right_path() {
 }
 
 #[test]
+fn change_password_hits_the_right_path() {
+    let (client, last) = mk(|b| b);
+    client.auth().change_password("new", "old", false).unwrap();
+    assert_eq!(url_path(&last.lock().unwrap().url), "/api/auth/change-password");
+}
+
+#[test]
 fn tenant_header_is_sent() {
     let (client, last) = mk(|b| b.tenant("myapp"));
     client.from("posts").list().unwrap();

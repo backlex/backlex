@@ -97,6 +97,13 @@ class ClientTest {
     }
 
     @Test
+    fun changePasswordHitsTheRightPath() {
+        val client = BacklexClient.builder(base).build()
+        client.auth.changePassword("new", "old")
+        assertEquals("/api/auth/change-password", lastPath)
+    }
+
+    @Test
     fun apiKeyBearerHeader() {
         val client = BacklexClient.builder(base).apiKey("pak_secret").build()
         client.from<Any>("posts").list()

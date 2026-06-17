@@ -63,6 +63,26 @@ class Auth {
       await _client.request('POST', '$_base/token/refresh',
           {'refreshToken': _client.appToken}) as Map<String, dynamic>;
 
+  /// Change the signed-in user's password (requires the current password).
+  Future<Map<String, dynamic>> changePassword(String newPassword, String currentPassword,
+      {bool revokeOtherSessions = false}) async =>
+      await _client.request('POST', '$_base/change-password', {
+        'newPassword': newPassword,
+        'currentPassword': currentPassword,
+        'revokeOtherSessions': revokeOtherSessions,
+      }) as Map<String, dynamic>;
+
+  /// Update the signed-in user's profile (e.g. name / image).
+  Future<Map<String, dynamic>> updateUser(Map<String, dynamic> attributes) async =>
+      await _client.request('POST', '$_base/update-user', attributes) as Map<String, dynamic>;
+
+  /// Send an email-verification link.
+  Future<Map<String, dynamic>> sendVerificationEmail(String email, {String? callbackUrl}) async {
+    final body = <String, dynamic>{'email': email};
+    if (callbackUrl != null) body['callbackURL'] = callbackUrl;
+    return await _client.request('POST', '$_base/send-verification-email', body) as Map<String, dynamic>;
+  }
+
   /// Clear the session; in app mode also drops the captured token.
   Future<void> signOut() async {
     await _client.request('POST', '$_base/sign-out');

@@ -48,9 +48,30 @@ Each command assumes you are in `sdks/<lang>` and the version is already bumped.
 Notes:
 - **Go / Swift** have no central registry — a pushed git tag is the release. Their
   module path (`github.com/backlex/backlex-go`) / package URL is resolved from the repo.
-- **Maven Central** additionally requires the artifacts to be **GPG-signed** and the
-  `com.backlex` namespace to be verified in the Central Portal. The poms already carry
-  the required `<licenses>`, `<developers>`, and `<scm>` blocks.
+- **Maven Central** is the most involved. Beyond a Central Portal token, it needs:
+  1. A **verified namespace** — verify `com.backlex` via a DNS TXT record on `backlex.com`,
+     or switch the `groupId` to `io.github.backlex` (verified automatically against the
+     GitHub org). Without this the deploy is rejected.
+  2. **GPG-signed artifacts** — generate a key (`gpg --gen-key`), publish the public key to
+     `keys.openpgp.org`, and keep the secret key + passphrase for signing.
+  3. **Sources + Javadoc jars** — Central requires both. Add `maven-source-plugin` and, for
+     Java, `maven-javadoc-plugin`; the Kotlin module needs **Dokka** (or an empty-javadoc
+     stub) to satisfy the javadoc-jar rule.
+  4. The **publishing plugin** — `central-publishing-maven-plugin` with `publishingServerId`
+     matching the `<server><id>` in `~/.m2/settings.xml` that holds the Portal token.
+
+  The poms already carry the required `<url>`, `<licenses>`, `<developers>`, and `<scm>`
+  blocks. The remaining plugin wiring is best added under a `release` profile (so the normal
+  `mvn verify` used by CI/tests stays fast and unsigned) once the key + namespace exist.
+  settings.xml shape:
+
+  ```xml
+  <server>
+    <id>central</id>
+    <username>TOKEN_USERNAME</username>
+    <password>TOKEN_PASSWORD</password>
+  </server>
+  ```
 - **Packagist** is webhook-driven: register `github.com/backlex/backlex` once, then every
   semver git tag is picked up automatically.
 - First-time PyPI / crates.io / pub.dev / NuGet releases must be done by an account that

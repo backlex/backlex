@@ -1,0 +1,17 @@
+[package]
+name = "backlex"
+version = "0.0.1"
+edition = "2021"
+description = "Official Rust client for the backlex API (CRUD, query builder, auth, realtime, storage)."
+license = "MIT"
+homepage = "https://backlex.com"
+
+[dependencies]
+serde_json = "1"
+# Blocking HTTP client for the default transport + SSE. The query-builder /
+# condition core is pure serde_json and compiles to wasm32 without it.
+ureq = "2"
+
+[[example]]
+name = "quickstart"
+path = "examples/quickstart.rs"

@@ -55,6 +55,7 @@ class ClientTest {
         lastPath == "/api/items/missing" ->
             404 to """{"error":{"code":"NOT_FOUND","message":"no such collection"}}"""
         lastPath.endsWith("/aggregate") -> 200 to """{"data":[{"value":42}]}"""
+        lastPath.endsWith("/list-sessions") -> 200 to """[{"id":"s1","token":"sess_1"}]"""
         lastMethod == "POST" && lastPath.contains("/sign-in/email") -> // email + email-otp
             if (lastPath.startsWith("/api/t/")) 200 to """{"user":{"id":"u1","email":"a@b.c"},"token":"tok_123"}"""
             else 200 to """{"user":{"id":"u1","email":"a@b.c"}}"""
@@ -140,6 +141,21 @@ class ClientTest {
         val client = BacklexClient.builder(base).build()
         client.auth.changePassword("new", "old")
         assertEquals("/api/auth/change-password", lastPath)
+    }
+
+    @Test
+    fun sessionManagement() {
+        val client = BacklexClient.builder(base).build()
+        val sessions = client.auth.listSessions()
+        assertEquals("/api/auth/list-sessions", lastPath)
+        assertEquals("sess_1", sessions[0]["token"])
+
+        client.auth.revokeSession("sess_1")
+        assertEquals("/api/auth/revoke-session", lastPath)
+        assertTrue(lastBody.contains("sess_1"))
+
+        client.auth.revokeOtherSessions()
+        assertEquals("/api/auth/revoke-other-sessions", lastPath)
     }
 
     @Test

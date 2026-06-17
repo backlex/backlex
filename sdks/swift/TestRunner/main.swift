@@ -80,6 +80,9 @@ final class MockURLProtocol: URLProtocol {
         if path.hasSuffix("/aggregate") {
             return (200, j(#"{"data":[{"value":42}]}"#))
         }
+        if path.hasSuffix("/list-sessions") {
+            return (200, j(#"[{"id":"s1","token":"sess_1"}]"#))
+        }
         if method == "POST" && path.contains("/sign-in/email") { // email + email-otp
             return path.hasPrefix("/api/t/")
                 ? (200, j(#"{"user":{"id":"u1","email":"a@b.c"},"token":"tok_123"}"#))
@@ -148,6 +151,20 @@ do {
     _ = try await client.auth.requestPasswordReset(email: "a@b.c")
     check(MockURLProtocol.lastRequest!.url!.path == "/api/auth/request-password-reset",
           "password reset hits the right path")
+}
+
+do {
+    let client = mockClient()
+    let sessions = try await client.auth.listSessions()
+    let listOK = MockURLProtocol.lastRequest!.url!.path == "/api/auth/list-sessions"
+    var sessOK = false
+    if case let .object(first)? = sessions.first, case let .string(tok)? = first["token"] { sessOK = tok == "sess_1" }
+    _ = try await client.auth.revokeSession(token: "sess_1")
+    let revokeOK = MockURLProtocol.lastRequest!.url!.path == "/api/auth/revoke-session"
+    _ = try await client.auth.revokeOtherSessions()
+    check(listOK && sessOK && revokeOK
+            && MockURLProtocol.lastRequest!.url!.path == "/api/auth/revoke-other-sessions",
+          "session management: list / revoke / revoke-others")
 }
 
 do {

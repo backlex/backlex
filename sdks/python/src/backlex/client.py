@@ -185,6 +185,31 @@ class Auth:
             self._client.request("POST", f"{self._base}/sign-in/magic-link", body),
         )
 
+    def send_verification_otp(self, email: str, type: str = "sign-in") -> Dict[str, Any]:
+        """Email a one-time numeric code (requires the ``email-otp`` provider).
+
+        ``type`` is ``"sign-in"`` (default), ``"email-verification"`` or
+        ``"forget-password"``. Complete a sign-in with ``sign_in_email_otp``.
+        """
+        return cast(
+            Dict[str, Any],
+            self._client.request(
+                "POST", f"{self._base}/email-otp/send-verification-otp",
+                {"email": email, "type": type},
+            ),
+        )
+
+    def sign_in_email_otp(self, email: str, otp: str) -> AuthResult:
+        """Complete an email-OTP sign-in with the code from ``send_verification_otp``."""
+        return self._capture(
+            cast(
+                AuthResult,
+                self._client.request(
+                    "POST", f"{self._base}/sign-in/email-otp", {"email": email, "otp": otp}
+                ),
+            )
+        )
+
     def request_password_reset(self, email: str, redirect_to: Optional[str] = None) -> Dict[str, Any]:
         """Send a password-reset email. ``redirect_to`` is where the link points."""
         body: Dict[str, Any] = {"email": email}

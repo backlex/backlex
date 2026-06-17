@@ -75,6 +75,23 @@ impl Auth {
         self.client.request("POST", &format!("{}/sign-in/magic-link", self.base()), Some(&body))
     }
 
+    /// Email a one-time numeric code (requires the email-otp provider). `otp_type`
+    /// is `"sign-in"` (pass `None` for the default), `"email-verification"` or
+    /// `"forget-password"`. Complete a sign-in with [`sign_in_email_otp`](Self::sign_in_email_otp).
+    pub fn send_verification_otp(&self, email: &str, otp_type: Option<&str>) -> Result<Value, BacklexError> {
+        let body = json!({ "email": email, "type": otp_type.unwrap_or("sign-in") });
+        self.client.request("POST", &format!("{}/email-otp/send-verification-otp", self.base()), Some(&body))
+    }
+
+    /// Complete an email-OTP sign-in with the code from
+    /// [`send_verification_otp`](Self::send_verification_otp). In app mode the
+    /// returned session token is captured.
+    pub fn sign_in_email_otp(&self, email: &str, otp: &str) -> Result<Value, BacklexError> {
+        let body = json!({ "email": email, "otp": otp });
+        let r = self.client.request("POST", &format!("{}/sign-in/email-otp", self.base()), Some(&body))?;
+        Ok(self.capture(r))
+    }
+
     /// Clear the session; in app mode also drops the captured token.
     /// Send a password-reset email. Pass `redirect_to: None` to omit.
     pub fn request_password_reset(&self, email: &str, redirect_to: Option<&str>) -> Result<Value, BacklexError> {

@@ -35,6 +35,19 @@ module Backlex
       @client.request("POST", "#{base}/sign-in/magic-link", body)
     end
 
+    # Email a one-time numeric code (requires the email-otp provider). +type+ is
+    # "sign-in" (default), "email-verification" or "forget-password". Complete a
+    # sign-in with #sign_in_email_otp.
+    def send_verification_otp(email, type: "sign-in")
+      @client.request("POST", "#{base}/email-otp/send-verification-otp", { "email" => email, "type" => type })
+    end
+
+    # Complete an email-OTP sign-in with the code from #send_verification_otp. In
+    # app mode the returned session token is captured.
+    def sign_in_email_otp(email, otp)
+      capture(@client.request("POST", "#{base}/sign-in/email-otp", { "email" => email, "otp" => otp }))
+    end
+
     # Clear the session; in app mode also drops the captured token.
     # Send a password-reset email. +redirect_to+ is the link target.
     def request_password_reset(email, redirect_to: nil)

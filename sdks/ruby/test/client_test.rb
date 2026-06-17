@@ -53,7 +53,7 @@ class ClientTest < Minitest::Test
   def self.route(last)
     return [404, '{"error":{"code":"NOT_FOUND","message":"no such collection"}}'] if last[:path] == "/api/items/missing"
 
-    if last[:method] == "POST" && last[:path].end_with?("/sign-in/email")
+    if last[:method] == "POST" && last[:path].include?("/sign-in/email") # email + email-otp
       return last[:path].start_with?("/api/t/") ?
         [200, '{"user":{"id":"u1","email":"a@b.c"},"token":"tok_123"}'] :
         [200, '{"user":{"id":"u1","email":"a@b.c"}}']
@@ -126,6 +126,19 @@ class ClientTest < Minitest::Test
     client = Backlex::Client.new(@base)
     client.auth.request_password_reset("a@b.c")
     assert_equal "/api/auth/request-password-reset", @last[:path]
+  end
+
+  def test_email_otp_flow
+    client = Backlex::Client.new(@base)
+    client.auth.send_verification_otp("a@b.c")
+    assert_equal "/api/auth/email-otp/send-verification-otp", @last[:path]
+    assert_equal "sign-in", JSON.parse(@last[:body])["type"]
+
+    app = Backlex::Client.new(@base, workspace: "myapp")
+    res = app.auth.sign_in_email_otp("a@b.c", "123456")
+    assert_equal "/api/t/myapp/auth/sign-in/email-otp", @last[:path]
+    assert_equal "tok_123", res["token"]
+    assert_equal "tok_123", app.auth.token
   end
 
   def test_change_password_hits_the_right_path

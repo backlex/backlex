@@ -35,6 +35,49 @@ Maven Central, pub.dev, NuGet, RubyGems, Packagist). Use them from the repo, or
 follow the language's README for a local install.
 :::
 
+## Client and server usage
+
+backlex ships **one SDK per language — not a client/server split.** The same
+client works in a browser or mobile app (end-user scoped) and on a trusted server
+(key scoped); which one you're in is decided by *how you authenticate*, and the
+permission DSL enforces the boundary server-side either way.
+
+There are three auth modes:
+
+1. **Server-to-server (trusted backend)** — pass a static API key (`pak_…`). It's
+   sent as a bearer on every call, and the call is bound by that key's granted
+   permissions plus its per-key guards (tool allow-lists, a read-only flag). Use
+   it from your backend, CI, or scripts — never ship a `pak_` key in a
+   browser/mobile bundle.
+2. **App mode (end-user client)** — pass a `workspace` slug. `auth.*` then targets
+   that workspace's own end-user auth pool, and the session token returned by
+   sign-in/up is captured and replayed as a bearer. This is the browser/mobile
+   path: each user acts as themselves, constrained by their role's permissions.
+   Persist the token (`auth.getToken()` / `auth.token`) and restore it next launch.
+3. **Cookie session (same-origin browser)** — omit both; the client rides the
+   cookie session (the admin SPA path).
+
+```ts
+// server — elevated, bound by the key's permissions + guards
+const api = createClient({ url, apiKey: process.env.BACKLEX_API_KEY });
+
+// browser / mobile app — end-user scoped
+const app = createClient({ url, workspace: "myapp" });
+await app.auth.signIn({ email, password }); // token captured + replayed
+
+// same-origin browser (admin SPA) — cookie session
+const web = createClient({ url });
+```
+
+The option names are idiomatic per language (`apiKey` / `api_key`, `workspace`,
+`token`) — see each SDK's README.
+
+**Why there's no separate "admin SDK":** the permission DSL and per-key guards run
+on the **server**, so the same client is safe in both contexts — a `pak_` key with
+a read-only flag and a tool allow-list *is* the guard, not a separate package.
+Privileged management operations (schema, users, roles) are reachable today via the
+raw `request()` escape hatch; a typed admin module is on the roadmap.
+
 ## One wire format, eleven languages
 
 The query builder in every SDK compiles to the **identical canonical JSON**

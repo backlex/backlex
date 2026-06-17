@@ -92,6 +92,28 @@ public struct Auth {
         return try await client.send("POST", "\(base)/token/refresh", try encodeBody(body))
     }
 
+    /// Change the signed-in user's password (requires the current password).
+    public func changePassword(newPassword: String, currentPassword: String, revokeOtherSessions: Bool = false) async throws -> [String: JSONValue] {
+        let body: [String: JSONValue] = [
+            "newPassword": .string(newPassword),
+            "currentPassword": .string(currentPassword),
+            "revokeOtherSessions": .bool(revokeOtherSessions),
+        ]
+        return try await client.send("POST", "\(base)/change-password", try encodeBody(body))
+    }
+
+    /// Update the signed-in user's profile (e.g. name / image).
+    public func updateUser(_ attributes: [String: JSONValue]) async throws -> [String: JSONValue] {
+        try await client.send("POST", "\(base)/update-user", try encodeBody(attributes))
+    }
+
+    /// Send an email-verification link.
+    public func sendVerificationEmail(email: String, callbackURL: String? = nil) async throws -> [String: JSONValue] {
+        var body: [String: JSONValue] = ["email": .string(email)]
+        if let callbackURL { body["callbackURL"] = .string(callbackURL) }
+        return try await client.send("POST", "\(base)/send-verification-email", try encodeBody(body))
+    }
+
     /// Clear the session; in app mode also drops the captured token.
     public func signOut() async throws {
         let _: [String: JSONValue] = try await client.send("POST", "\(base)/sign-out", nil)

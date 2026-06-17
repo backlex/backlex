@@ -113,6 +113,13 @@ class ClientTest {
     }
 
     @Test
+    void changePasswordHitsTheRightPath() {
+        BacklexClient client = BacklexClient.builder(base).build();
+        client.auth.changePassword("new", "old", false);
+        assertEquals("/api/auth/change-password", lastPath);
+    }
+
+    @Test
     void apiKeyBearerHeader() {
         BacklexClient client = BacklexClient.builder(base).apiKey("pak_secret").build();
         client.from("posts", Object.class).list();

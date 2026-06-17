@@ -75,6 +75,29 @@ class Auth(private val client: BacklexClient) {
             linkedMapOf<String, Any?>("refreshToken" to client.appToken), mapType,
         )
 
+    /** Change the signed-in user's password (requires the current password). */
+    fun changePassword(newPassword: String, currentPassword: String, revokeOtherSessions: Boolean = false): Map<String, Any?> =
+        client.request(
+            "POST", "${base()}/change-password",
+            linkedMapOf<String, Any?>(
+                "newPassword" to newPassword,
+                "currentPassword" to currentPassword,
+                "revokeOtherSessions" to revokeOtherSessions,
+            ),
+            mapType,
+        )
+
+    /** Update the signed-in user's profile (e.g. name / image). */
+    fun updateUser(attributes: Map<String, Any?>): Map<String, Any?> =
+        client.request("POST", "${base()}/update-user", attributes, mapType)
+
+    /** Send an email-verification link. Pass callbackUrl=null to omit. */
+    fun sendVerificationEmail(email: String, callbackUrl: String? = null): Map<String, Any?> {
+        val body = linkedMapOf<String, Any?>("email" to email)
+        if (callbackUrl != null) body["callbackURL"] = callbackUrl
+        return client.request("POST", "${base()}/send-verification-email", body, mapType)
+    }
+
     /** Current session payload, or `{"user": null}`. */
     fun session(): Map<String, Any?> = client.request("GET", "${base()}/get-session", null, mapType)
 

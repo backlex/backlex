@@ -151,6 +151,27 @@ impl Auth {
         self.client.request("GET", &format!("{}/get-session", self.base()), None)
     }
 
+    /// List the signed-in user's active sessions (one entry per device/login).
+    pub fn list_sessions(&self) -> Result<Value, BacklexError> {
+        self.client.request("GET", &format!("{}/list-sessions", self.base()), None)
+    }
+
+    /// Revoke one session by its `token` (from [`list_sessions`](Self::list_sessions)).
+    pub fn revoke_session(&self, token: &str) -> Result<Value, BacklexError> {
+        let body = json!({ "token": token });
+        self.client.request("POST", &format!("{}/revoke-session", self.base()), Some(&body))
+    }
+
+    /// Revoke every session except the current one (sign out other devices).
+    pub fn revoke_other_sessions(&self) -> Result<Value, BacklexError> {
+        self.client.request("POST", &format!("{}/revoke-other-sessions", self.base()), None)
+    }
+
+    /// Revoke all sessions, including the current one.
+    pub fn revoke_sessions(&self) -> Result<Value, BacklexError> {
+        self.client.request("POST", &format!("{}/revoke-sessions", self.base()), None)
+    }
+
     /// Public auth surface (provider list + policy flags).
     pub fn providers(&self) -> Result<Value, BacklexError> {
         let r = self.client.request("GET", &format!("{}/providers", self.base()), None)?;

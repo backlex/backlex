@@ -39,6 +39,8 @@ func newServer(cap *capture) *httptest.Server {
 			_, _ = w.Write([]byte(`{"error":{"code":"NOT_FOUND","message":"no such collection"}}`))
 		case strings.HasSuffix(r.URL.Path, "/aggregate"):
 			_, _ = w.Write([]byte(`{"data":[{"value":42}]}`))
+		case strings.HasSuffix(r.URL.Path, "/list-sessions"):
+			_, _ = w.Write([]byte(`[{"id":"s1","token":"sess_1"}]`))
 		case r.Method == "POST" && strings.HasPrefix(r.URL.Path, "/api/t/") && strings.Contains(r.URL.Path, "/sign-in/email"):
 			// Workspace sign-in (email or email-otp) returns a session token.
 			_, _ = w.Write([]byte(`{"user":{"id":"u1","email":"a@b.c"},"token":"tok_123"}`))
@@ -193,6 +195,43 @@ func TestEmailOTPFlow(t *testing.T) {
 	}
 	if res.Token != "tok_123" || app.Auth.Token() != "tok_123" {
 		t.Fatalf("token not captured: %q / %q", res.Token, app.Auth.Token())
+	}
+}
+
+func TestSessionManagement(t *testing.T) {
+	var cap capture
+	srv := newServer(&cap)
+	defer srv.Close()
+	c := New(srv.URL)
+
+	sessions, err := c.Auth.ListSessions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cap.method != "GET" || cap.path != "/api/auth/list-sessions" {
+		t.Fatalf("list path: %s %s", cap.method, cap.path)
+	}
+	if len(sessions) != 1 || sessions[0]["token"] != "sess_1" {
+		t.Fatalf("sessions: %v", sessions)
+	}
+
+	if _, err := c.Auth.RevokeSession("sess_1"); err != nil {
+		t.Fatal(err)
+	}
+	if cap.path != "/api/auth/revoke-session" {
+		t.Fatalf("revoke path: %s", cap.path)
+	}
+	var body map[string]any
+	_ = json.Unmarshal(cap.body, &body)
+	if body["token"] != "sess_1" {
+		t.Fatalf("revoke body: %v", body)
+	}
+
+	if _, err := c.Auth.RevokeOtherSessions(); err != nil {
+		t.Fatal(err)
+	}
+	if cap.path != "/api/auth/revoke-other-sessions" {
+		t.Fatalf("revoke-others path: %s", cap.path)
 	}
 }
 

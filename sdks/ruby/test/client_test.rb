@@ -58,6 +58,7 @@ class ClientTest < Minitest::Test
         [200, '{"user":{"id":"u1","email":"a@b.c"},"token":"tok_123"}'] :
         [200, '{"user":{"id":"u1","email":"a@b.c"}}']
     end
+    return [200, '[{"id":"s1","token":"sess_1"}]'] if last[:path].end_with?("/list-sessions")
     return [200, '{"ok":true}'] if last[:method] == "DELETE"
     return [200, '{"data":{"id":"x1"}}'] if %w[POST PATCH].include?(last[:method])
 
@@ -139,6 +140,21 @@ class ClientTest < Minitest::Test
     assert_equal "/api/t/myapp/auth/sign-in/email-otp", @last[:path]
     assert_equal "tok_123", res["token"]
     assert_equal "tok_123", app.auth.token
+  end
+
+  def test_session_management
+    client = Backlex::Client.new(@base)
+    sessions = client.auth.list_sessions
+    assert_equal "GET", @last[:method]
+    assert_equal "/api/auth/list-sessions", @last[:path]
+    assert_equal "sess_1", sessions[0]["token"]
+
+    client.auth.revoke_session("sess_1")
+    assert_equal "/api/auth/revoke-session", @last[:path]
+    assert_equal "sess_1", JSON.parse(@last[:body])["token"]
+
+    client.auth.revoke_other_sessions
+    assert_equal "/api/auth/revoke-other-sessions", @last[:path]
   end
 
   def test_change_password_hits_the_right_path

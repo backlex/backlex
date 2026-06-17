@@ -25,6 +25,8 @@ class Recorder:
         path = request.url.path
         if "/sign-in/email" in path:  # /sign-in/email and /sign-in/email-otp
             return httpx.Response(200, json={"user": {"id": "u1", "email": "a@b.c"}, "token": "tok_123"})
+        if path.endswith("/list-sessions"):
+            return httpx.Response(200, json=[{"id": "s1", "token": "sess_1"}])
         if path == "/api/items/missing":
             return httpx.Response(
                 404, json={"error": {"code": "NOT_FOUND", "message": "no such collection"}}
@@ -128,6 +130,22 @@ def test_email_otp_flow() -> None:
     assert rec2.last.url.path == "/api/t/myapp/auth/sign-in/email-otp"
     assert res["token"] == "tok_123"
     assert app.auth.get_token() == "tok_123"
+
+
+def test_session_management() -> None:
+    rec = Recorder()
+    client = _client(rec)
+    sessions = client.auth.list_sessions()
+    assert rec.last.method == "GET"
+    assert rec.last.url.path == "/api/auth/list-sessions"
+    assert sessions[0]["token"] == "sess_1"
+
+    client.auth.revoke_session("sess_1")
+    assert rec.last.url.path == "/api/auth/revoke-session"
+    assert json.loads(rec.last.content)["token"] == "sess_1"
+
+    client.auth.revoke_other_sessions()
+    assert rec.last.url.path == "/api/auth/revoke-other-sessions"
 
 
 def test_error_envelope_becomes_backlex_error() -> None:

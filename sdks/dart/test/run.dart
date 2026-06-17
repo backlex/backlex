@@ -47,6 +47,7 @@ List<dynamic> route(Map<String, dynamic> last) {
         ? [200, '{"user":{"id":"u1","email":"a@b.c"},"token":"tok_123"}']
         : [200, '{"user":{"id":"u1","email":"a@b.c"}}'];
   }
+  if (path.endsWith('/list-sessions')) return [200, '[{"id":"s1","token":"sess_1"}]'];
   if (method == 'DELETE') return [200, '{"ok":true}'];
   if (method == 'POST' || method == 'PATCH') return [200, '{"data":{"id":"x1"}}'];
   return [200, '{"data":[],"limit":50,"offset":0}'];
@@ -176,6 +177,18 @@ Future<void> main() async {
           otpRes['token'] == 'tok_123' &&
           app2.auth.token == 'tok_123',
       'email-otp: send + app-mode sign-in captures token');
+
+  client = Client(base);
+  final sessions = await client.auth.listSessions();
+  final listOk = last['method'] == 'GET' &&
+      last['path'] == '/api/auth/list-sessions' &&
+      (sessions[0] as Map)['token'] == 'sess_1';
+  await client.auth.revokeSession('sess_1');
+  final revokeOk = last['path'] == '/api/auth/revoke-session' &&
+      (jsonDecode(last['body'] as String) as Map)['token'] == 'sess_1';
+  await client.auth.revokeOtherSessions();
+  check(listOk && revokeOk && last['path'] == '/api/auth/revoke-other-sessions',
+      'session management: list / revoke / revoke-others');
 
   client = Client(base);
   await client.auth.changePassword('new', 'old');

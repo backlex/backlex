@@ -107,6 +107,22 @@ class Auth {
   Future<Map<String, dynamic>> session() async =>
       await _client.request('GET', '$_base/get-session') as Map<String, dynamic>;
 
+  /// List the signed-in user's active sessions (one row per device/login).
+  Future<List<dynamic>> listSessions() async =>
+      await _client.request('GET', '$_base/list-sessions') as List<dynamic>;
+
+  /// Revoke one session by its [token] (from [listSessions]).
+  Future<Map<String, dynamic>> revokeSession(String token) async =>
+      await _client.request('POST', '$_base/revoke-session', {'token': token}) as Map<String, dynamic>;
+
+  /// Revoke every session except the current one (sign out other devices).
+  Future<Map<String, dynamic>> revokeOtherSessions() async =>
+      await _client.request('POST', '$_base/revoke-other-sessions') as Map<String, dynamic>;
+
+  /// Revoke all sessions, including the current one.
+  Future<Map<String, dynamic>> revokeSessions() async =>
+      await _client.request('POST', '$_base/revoke-sessions') as Map<String, dynamic>;
+
   /// Public auth surface (provider list + policy flags).
   Future<Map<String, dynamic>> providers() async {
     final r = await _client.request('GET', '$_base/providers') as Map<String, dynamic>;

@@ -52,6 +52,9 @@ fn route(method: &str, path: &str) -> (u16, String) {
     if path.ends_with("/aggregate") {
         return (200, r#"{"data":[{"value":42}]}"#.into());
     }
+    if path.ends_with("/list-sessions") {
+        return (200, r#"[{"id":"s1","token":"sess_1"}]"#.into());
+    }
     if method == "POST" && path.contains("/sign-in/email") {
         // email + email-otp
         return if path.starts_with("/api/t/") {
@@ -133,6 +136,25 @@ fn change_password_hits_the_right_path() {
     let (client, last) = mk(|b| b);
     client.auth().change_password("new", "old", false).unwrap();
     assert_eq!(url_path(&last.lock().unwrap().url), "/api/auth/change-password");
+}
+
+#[test]
+fn session_management() {
+    let (client, last) = mk(|b| b);
+    let sessions = client.auth().list_sessions().unwrap();
+    assert_eq!(url_path(&last.lock().unwrap().url), "/api/auth/list-sessions");
+    assert_eq!(sessions[0]["token"], json!("sess_1"));
+
+    client.auth().revoke_session("sess_1").unwrap();
+    {
+        let l = last.lock().unwrap();
+        assert_eq!(url_path(&l.url), "/api/auth/revoke-session");
+        let sent: Value = serde_json::from_slice(l.body.as_ref().unwrap()).unwrap();
+        assert_eq!(sent["token"], json!("sess_1"));
+    }
+
+    client.auth().revoke_other_sessions().unwrap();
+    assert_eq!(url_path(&last.lock().unwrap().url), "/api/auth/revoke-other-sessions");
 }
 
 #[test]

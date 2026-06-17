@@ -143,6 +143,27 @@ public struct Auth {
         try await client.send("GET", "\(base)/get-session", nil)
     }
 
+    /// List the signed-in user's active sessions (one entry per device/login).
+    public func listSessions() async throws -> [JSONValue] {
+        try await client.send("GET", "\(base)/list-sessions", nil)
+    }
+
+    /// Revoke one session by its `token` (from `listSessions`).
+    public func revokeSession(token: String) async throws -> [String: JSONValue] {
+        let body: [String: JSONValue] = ["token": .string(token)]
+        return try await client.send("POST", "\(base)/revoke-session", try encodeBody(body))
+    }
+
+    /// Revoke every session except the current one (sign out other devices).
+    public func revokeOtherSessions() async throws -> [String: JSONValue] {
+        try await client.send("POST", "\(base)/revoke-other-sessions", nil)
+    }
+
+    /// Revoke all sessions, including the current one.
+    public func revokeSessions() async throws -> [String: JSONValue] {
+        try await client.send("POST", "\(base)/revoke-sessions", nil)
+    }
+
     /// Public auth surface (provider list + policy flags).
     public func providers() async throws -> AuthSurface {
         let wrap: ItemResponse<AuthSurface> = try await client.send("GET", "\(base)/providers", nil)

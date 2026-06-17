@@ -63,6 +63,16 @@ interface AuthResult {
   user: AuthUser;
   token?: string;
 }
+interface AuthSession {
+  id: string;
+  token: string;
+  userId: string;
+  expiresAt: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 interface PublicProvider {
   id: string;
   kind: "credential" | "magic-link" | "email-otp" | "passkey" | "social";
@@ -283,6 +293,16 @@ export const createClient = (opts: ClientOptions) => {
     /** Current session, or `{ user: null }`. */
     getSession: () =>
       request<{ user: AuthUser | null } & Record<string, unknown>>("GET", `${authBase}/get-session`),
+    /** List the signed-in user's active sessions (one row per device/login). */
+    listSessions: () => request<AuthSession[]>("GET", `${authBase}/list-sessions`),
+    /** Revoke one session by its `token` (from `listSessions`). */
+    revokeSession: (input: { token: string }) =>
+      request<{ status: boolean }>("POST", `${authBase}/revoke-session`, input),
+    /** Revoke every session **except** the current one (sign out other devices). */
+    revokeOtherSessions: () =>
+      request<{ status: boolean }>("POST", `${authBase}/revoke-other-sessions`),
+    /** Revoke **all** sessions, including the current one. */
+    revokeSessions: () => request<{ status: boolean }>("POST", `${authBase}/revoke-sessions`),
     /** Public description of this workspace's auth surface (provider list +
      *  policy flags) — what a sign-in screen needs to render. No secrets. */
     providers: () =>

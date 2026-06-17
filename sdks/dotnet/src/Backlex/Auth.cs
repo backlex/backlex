@@ -166,6 +166,27 @@ public sealed class Auth
         await _client.RequestAsync<Dictionary<string, object?>>(HttpMethod.Get, $"{Base}/get-session")
             .ConfigureAwait(false) ?? new();
 
+    /// <summary>List the signed-in user's active sessions (one per device/login).</summary>
+    public async Task<List<Dictionary<string, object?>>> ListSessionsAsync() =>
+        await _client.RequestAsync<List<Dictionary<string, object?>>>(HttpMethod.Get, $"{Base}/list-sessions")
+            .ConfigureAwait(false) ?? new();
+
+    /// <summary>Revoke one session by its <paramref name="token"/> (from <see cref="ListSessionsAsync"/>).</summary>
+    public async Task<Dictionary<string, object?>> RevokeSessionAsync(string token) =>
+        await _client.RequestAsync<Dictionary<string, object?>>(
+            HttpMethod.Post, $"{Base}/revoke-session", new Dictionary<string, object?> { ["token"] = token })
+            .ConfigureAwait(false) ?? new();
+
+    /// <summary>Revoke every session except the current one (sign out other devices).</summary>
+    public async Task<Dictionary<string, object?>> RevokeOtherSessionsAsync() =>
+        await _client.RequestAsync<Dictionary<string, object?>>(HttpMethod.Post, $"{Base}/revoke-other-sessions")
+            .ConfigureAwait(false) ?? new();
+
+    /// <summary>Revoke all sessions, including the current one.</summary>
+    public async Task<Dictionary<string, object?>> RevokeSessionsAsync() =>
+        await _client.RequestAsync<Dictionary<string, object?>>(HttpMethod.Post, $"{Base}/revoke-sessions")
+            .ConfigureAwait(false) ?? new();
+
     /// <summary>Public auth surface (provider list + policy flags).</summary>
     public async Task<AuthSurface> ProvidersAsync()
     {

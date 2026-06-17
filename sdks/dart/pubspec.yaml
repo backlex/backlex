@@ -2,6 +2,14 @@ name: backlex
 description: Official Dart client for the backlex API (CRUD, query builder, auth, realtime, storage).
 version: 0.0.1
 homepage: https://backlex.com
+repository: https://github.com/backlex/backlex
+documentation: https://backlex.com/docs/client-sdks
+# License: Apache-2.0 (see LICENSE). pub.dev reads the license from that file.
+topics:
+  - backend
+  - baas
+  - rest
+  - sdk
 
 environment:
   sdk: ^3.0.0

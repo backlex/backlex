@@ -37,4 +37,12 @@ class Collection<T>(
 
     fun delete(id: String): DeleteResult =
         client.request("DELETE", "/api/items/$slug/$id", null, deleteType)
+
+    /** Flip a versioned item to published. */
+    fun publish(id: String): ItemResponse<T> =
+        client.request("POST", "/api/items/$slug/$id/publish", null, itemType)
+
+    /** Flip a versioned item back to draft. */
+    fun unpublish(id: String): ItemResponse<T> =
+        client.request("POST", "/api/items/$slug/$id/publish?unpublish=1", null, itemType)
 }

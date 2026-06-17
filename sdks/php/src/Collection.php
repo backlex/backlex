@@ -47,4 +47,16 @@ final class Collection
     {
         return $this->client->request('DELETE', "/api/items/{$this->slug}/{$id}");
     }
+
+    /** Flip a versioned item to published. */
+    public function publish(string $id): array
+    {
+        return $this->client->request('POST', "/api/items/{$this->slug}/{$id}/publish");
+    }
+
+    /** Flip a versioned item back to draft. */
+    public function unpublish(string $id): array
+    {
+        return $this->client->request('POST', "/api/items/{$this->slug}/{$id}/publish?unpublish=1");
+    }
 }

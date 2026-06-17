@@ -88,6 +88,16 @@ public class ClientTests
     }
 
     [Fact]
+    public async Task PublishUnpublishPaths()
+    {
+        var (client, h) = Make();
+        await client.From<Dictionary<string, object?>>("posts").PublishAsync("p1");
+        Assert.Equal("/api/items/posts/p1/publish", h.Last!.RequestUri!.AbsolutePath);
+        await client.From<Dictionary<string, object?>>("posts").UnpublishAsync("p1");
+        Assert.Contains("unpublish=1", h.Last!.RequestUri!.Query);
+    }
+
+    [Fact]
     public async Task AggregateHitsTheRightPath()
     {
         var (client, h) = Make();

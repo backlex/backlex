@@ -44,4 +44,14 @@ public sealed class Collection<T>
     public async Task<DeleteResult> DeleteAsync(string id) =>
         await _client.RequestAsync<DeleteResult>(HttpMethod.Delete, $"/api/items/{_slug}/{id}")
             .ConfigureAwait(false) ?? new DeleteResult();
+
+    /// <summary>Flip a versioned item to published.</summary>
+    public async Task<ItemResponse<T>> PublishAsync(string id) =>
+        await _client.RequestAsync<ItemResponse<T>>(HttpMethod.Post, $"/api/items/{_slug}/{id}/publish")
+            .ConfigureAwait(false) ?? new ItemResponse<T>();
+
+    /// <summary>Flip a versioned item back to draft.</summary>
+    public async Task<ItemResponse<T>> UnpublishAsync(string id) =>
+        await _client.RequestAsync<ItemResponse<T>>(HttpMethod.Post, $"/api/items/{_slug}/{id}/publish?unpublish=1")
+            .ConfigureAwait(false) ?? new ItemResponse<T>();
 }

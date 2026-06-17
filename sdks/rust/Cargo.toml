@@ -3,8 +3,13 @@ name = "backlex"
 version = "0.0.1"
 edition = "2021"
 description = "Official Rust client for the backlex API (CRUD, query builder, auth, realtime, storage)."
-license = "MIT"
+license = "Apache-2.0"
 homepage = "https://backlex.com"
+repository = "https://github.com/backlex/backlex"
+documentation = "https://backlex.com/docs/client-sdks"
+readme = "README.md"
+keywords = ["backlex", "baas", "backend", "sdk", "rest"]
+categories = ["api-bindings", "web-programming"]
 
 [dependencies]
 serde_json = "1"

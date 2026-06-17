@@ -1,0 +1,183 @@
+name: Publish client SDKs
+
+# Manual-only. Packs (and optionally publishes) the language SDKs under sdks/*.
+#
+# Trigger from the Actions tab:
+#   - sdk:     which SDK to act on (or "all")
+#   - publish: false (default) packs / dry-runs only; true runs the real publish
+#              step — which needs the matching registry secret to be configured.
+#
+# Optional repo secrets (only needed when publish=true for that SDK):
+#   PYPI_API_TOKEN · NUGET_API_KEY · MAVEN_CENTRAL_TOKEN · RUBYGEMS_API_KEY
+#   PUB_TOKEN · CARGO_REGISTRY_TOKEN
+# Go and Swift have no registry — they release via a pushed git tag (see
+# sdks/PUBLISHING.md), so they are not handled here.
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk:
+        description: "Which SDK to pack/publish"
+        required: true
+        type: choice
+        default: all
+        options: [all, python, dotnet, java, kotlin, ruby, php, dart, rust]
+      publish:
+        description: "Actually publish (needs the registry secret). Off = pack/dry-run only."
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    if: ${{ inputs.sdk == 'all' || inputs.sdk == 'python' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: sdks/python
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine check dist/*
+      - name: Publish to PyPI
+        if: ${{ inputs.publish }}
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload dist/*
+
+  dotnet:
+    if: ${{ inputs.sdk == 'all' || inputs.sdk == 'dotnet' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: sdks/dotnet
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: dotnet pack src/Backlex/Backlex.csproj -c Release -o ./nupkg
+      - name: Publish to NuGet
+        if: ${{ inputs.publish }}
+        run: dotnet nuget push ./nupkg/*.nupkg -s https://api.nuget.org/v3/index.json -k "${{ secrets.NUGET_API_KEY }}" --skip-duplicate
+
+  java:
+    if: ${{ inputs.sdk == 'all' || inputs.sdk == 'java' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: sdks/java
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: mvn -B verify
+      - name: Deploy to Maven Central
+        if: ${{ inputs.publish }}
+        # Requires a release profile + GPG signing key wired into settings.xml.
+        env:
+          MAVEN_CENTRAL_TOKEN: ${{ secrets.MAVEN_CENTRAL_TOKEN }}
+        run: mvn -B -DskipTests deploy
+
+  kotlin:
+    if: ${{ inputs.sdk == 'all' || inputs.sdk == 'kotlin' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: sdks/kotlin
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: mvn -B verify
+      - name: Deploy to Maven Central
+        if: ${{ inputs.publish }}
+        env:
+          MAVEN_CENTRAL_TOKEN: ${{ secrets.MAVEN_CENTRAL_TOKEN }}
+        run: mvn -B -DskipTests deploy
+
+  ruby:
+    if: ${{ inputs.sdk == 'all' || inputs.sdk == 'ruby' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: sdks/ruby
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+      - run: gem build backlex.gemspec
+      - name: Publish to RubyGems
+        if: ${{ inputs.publish }}
+        env:
+          GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+        run: gem push backlex-*.gem
+
+  php:
+    if: ${{ inputs.sdk == 'all' || inputs.sdk == 'php' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: sdks/php
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+      - run: composer validate --strict
+      # Packagist is webhook-driven: a pushed semver git tag updates the package.
+      # There is no artifact to push here — see sdks/PUBLISHING.md.
+
+  dart:
+    if: ${{ inputs.sdk == 'all' || inputs.sdk == 'dart' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: sdks/dart
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dart-lang/setup-dart@v1
+      - run: dart pub get
+      - run: dart pub publish --dry-run
+      - name: Publish to pub.dev
+        if: ${{ inputs.publish }}
+        env:
+          PUB_TOKEN: ${{ secrets.PUB_TOKEN }}
+        run: |
+          dart pub token add https://pub.dev --env-var PUB_TOKEN
+          dart pub publish --force
+
+  rust:
+    if: ${{ inputs.sdk == 'all' || inputs.sdk == 'rust' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: sdks/rust
+    steps:
+      - uses: actions/checkout@v5
+      - run: rustup update stable && rustup default stable
+      - run: cargo package
+      - name: Publish to crates.io
+        if: ${{ inputs.publish }}
+        run: cargo publish --token "${{ secrets.CARGO_REGISTRY_TOKEN }}"

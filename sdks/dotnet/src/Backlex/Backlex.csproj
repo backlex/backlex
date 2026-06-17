@@ -9,7 +9,19 @@
     <PackageId>Backlex</PackageId>
     <Version>0.0.1</Version>
     <Description>Official .NET client for the backlex API (CRUD, query builder, auth, realtime, storage).</Description>
+    <Authors>backlex</Authors>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://backlex.com</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/backlex/backlex</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>backlex;baas;backend;sdk;rest</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <!-- Zero NuGet dependencies: only System.Net.Http + System.Text.Json (BCL). -->
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- README lives at the SDK root; ship it inside the package. -->
+    <None Include="../../README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
 </Project>

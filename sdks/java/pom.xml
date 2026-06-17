@@ -10,6 +10,27 @@
   <packaging>jar</packaging>
   <name>backlex</name>
   <description>Official Java client for the backlex API (CRUD, query builder, auth, realtime, storage).</description>
+  <url>https://backlex.com</url>
+
+  <licenses>
+    <license>
+      <name>Apache-2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <name>backlex</name>
+      <url>https://backlex.com</url>
+    </developer>
+  </developers>
+
+  <scm>
+    <url>https://github.com/backlex/backlex</url>
+    <connection>scm:git:https://github.com/backlex/backlex.git</connection>
+    <developerConnection>scm:git:git@github.com:backlex/backlex.git</developerConnection>
+  </scm>
 
   <properties>
     <maven.compiler.release>17</maven.compiler.release>

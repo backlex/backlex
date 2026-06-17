@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -36,6 +37,8 @@ func newServer(cap *capture) *httptest.Server {
 		case r.URL.Path == "/api/items/missing":
 			w.WriteHeader(404)
 			_, _ = w.Write([]byte(`{"error":{"code":"NOT_FOUND","message":"no such collection"}}`))
+		case strings.HasSuffix(r.URL.Path, "/aggregate"):
+			_, _ = w.Write([]byte(`{"data":[{"value":42}]}`))
 		case r.Method == "POST" && r.URL.Path == "/api/t/myapp/auth/sign-in/email":
 			_, _ = w.Write([]byte(`{"user":{"id":"u1","email":"a@b.c"},"token":"tok_123"}`))
 		case r.Method == "DELETE":
@@ -74,6 +77,32 @@ func TestQueryStringNotDoubleEncoded(t *testing.T) {
 	eq(t, filter, map[string]any{"status": map[string]any{"_eq": "active"}})
 	if cap.query["sort"][0] != "-created_at" || cap.query["limit"][0] != "5" {
 		t.Fatalf("sort/limit: %v", cap.query)
+	}
+}
+
+func TestQueryExtrasSerialize(t *testing.T) {
+	var cap capture
+	srv := newServer(&cap)
+	defer srv.Close()
+	c := New(srv.URL)
+	if _, err := From[map[string]any](c, "posts").Query().Expand("author").Locale("tr").Search("hi").List(); err != nil {
+		t.Fatal(err)
+	}
+	if cap.query["expand"][0] != "author" || cap.query["locale"][0] != "tr" || cap.query["q"][0] != "hi" {
+		t.Fatalf("extras: %v", cap.query)
+	}
+}
+
+func TestAggregatePath(t *testing.T) {
+	var cap capture
+	srv := newServer(&cap)
+	defer srv.Close()
+	c := New(srv.URL)
+	if _, err := From[map[string]any](c, "orders").Aggregate(map[string]any{"agg": "sum", "field": "total"}); err != nil {
+		t.Fatal(err)
+	}
+	if cap.method != "POST" || cap.path != "/api/items/orders/aggregate" {
+		t.Fatalf("aggregate: %s %s", cap.method, cap.path)
 	}
 }
 

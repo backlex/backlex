@@ -170,6 +170,27 @@ public sealed class QueryBuilder<T>
         return this;
     }
 
+    /// <summary>Inline single-hop relations (replaces each FK with the related object).</summary>
+    public QueryBuilder<T> Expand(params string[] rels)
+    {
+        _q.Expand.AddRange(rels);
+        return this;
+    }
+
+    /// <summary>Project i18n_text fields to one locale, or "*" for the full map.</summary>
+    public QueryBuilder<T> Locale(string loc)
+    {
+        _q.Locale = loc;
+        return this;
+    }
+
+    /// <summary>Free-text search across readable text fields.</summary>
+    public QueryBuilder<T> Search(string text)
+    {
+        _q.Q = text;
+        return this;
+    }
+
     public QueryBuilder<T> Limit(int n)
     {
         _q.Limit = n;

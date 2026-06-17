@@ -149,9 +149,12 @@ class BacklexClient internal constructor(
         q.filter?.takeIf { it.isNotEmpty() }?.let { parts.add("filter=" + enc(mapper.writeValueAsString(it))) }
         if (q.sort.isNotEmpty()) parts.add("sort=" + enc(q.sort.joinToString(",")))
         if (q.fields.isNotEmpty()) parts.add("fields=" + enc(q.fields.joinToString(",")))
+        if (q.expand.isNotEmpty()) parts.add("expand=" + enc(q.expand.joinToString(",")))
         q.limit?.let { parts.add("limit=$it") }
         q.offset?.let { parts.add("offset=$it") }
         q.meta?.let { parts.add("meta=" + enc(it)) }
+        q.locale?.let { parts.add("locale=" + enc(it)) }
+        q.q?.let { parts.add("q=" + enc(it)) }
         return if (parts.isEmpty()) "" else "?" + parts.joinToString("&")
     }
 

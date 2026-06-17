@@ -173,9 +173,13 @@ class Client {
     if (sort.isNotEmpty) parts.add('sort=${Uri.encodeQueryComponent(sort.join(','))}');
     final fields = (q['fields'] as List?) ?? const [];
     if (fields.isNotEmpty) parts.add('fields=${Uri.encodeQueryComponent(fields.join(','))}');
+    final expand = (q['expand'] as List?) ?? const [];
+    if (expand.isNotEmpty) parts.add('expand=${Uri.encodeQueryComponent(expand.join(','))}');
     if (q['limit'] != null) parts.add('limit=${q['limit']}');
     if (q['offset'] != null) parts.add('offset=${q['offset']}');
     if (q['meta'] != null) parts.add('meta=${Uri.encodeQueryComponent(q['meta'] as String)}');
+    if (q['locale'] != null) parts.add('locale=${Uri.encodeQueryComponent(q['locale'] as String)}');
+    if (q['q'] != null) parts.add('q=${Uri.encodeQueryComponent(q['q'] as String)}');
     return parts.isEmpty ? '' : '?${parts.join('&')}';
   }
 }

@@ -184,9 +184,12 @@ class QueryBuilder:
         self._filter: Optional[Condition] = None
         self._sort: List[str] = []
         self._fields: List[str] = []
+        self._expand: List[str] = []
         self._limit: Optional[int] = None
         self._offset: Optional[int] = None
         self._meta: Optional[str] = None
+        self._locale: Optional[str] = None
+        self._q: Optional[str] = None
 
     def where(self, build: Callable[[FilterBuilder], Condition]) -> "QueryBuilder":
         self._filter = normalize_condition(build(FilterBuilder()))
@@ -203,6 +206,21 @@ class QueryBuilder:
 
     def order_by(self, *sorts: str) -> "QueryBuilder":
         self._sort.extend(sorts)
+        return self
+
+    def expand(self, *rels: str) -> "QueryBuilder":
+        """Inline single-hop relations (replaces each FK with the related object)."""
+        self._expand.extend(rels)
+        return self
+
+    def locale(self, loc: str) -> "QueryBuilder":
+        """Project ``i18n_text`` fields to one locale, or ``"*"`` for the full map."""
+        self._locale = loc
+        return self
+
+    def search(self, text: str) -> "QueryBuilder":
+        """Free-text search across readable text fields."""
+        self._q = text
         return self
 
     def limit(self, n: int) -> "QueryBuilder":
@@ -227,12 +245,18 @@ class QueryBuilder:
             q["sort"] = self._sort
         if self._fields:
             q["fields"] = self._fields
+        if self._expand:
+            q["expand"] = self._expand
         if self._limit is not None:
             q["limit"] = self._limit
         if self._offset is not None:
             q["offset"] = self._offset
         if self._meta:
             q["meta"] = self._meta
+        if self._locale:
+            q["locale"] = self._locale
+        if self._q:
+            q["q"] = self._q
         return q
 
     def list(self) -> ListResponse:

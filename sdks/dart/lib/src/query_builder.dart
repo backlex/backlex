@@ -7,9 +7,12 @@ class QueryBuilder {
     'filter': null,
     'sort': <String>[],
     'fields': <String>[],
+    'expand': <String>[],
     'limit': null,
     'offset': null,
     'meta': null,
+    'locale': null,
+    'q': null,
   };
 
   QueryBuilder(this._listFn);
@@ -32,6 +35,24 @@ class QueryBuilder {
 
   QueryBuilder orderBy(List<String> sorts) {
     (_q['sort'] as List<String>).addAll(sorts);
+    return this;
+  }
+
+  /// Inline single-hop relations (replaces each FK with the related object).
+  QueryBuilder expand(List<String> rels) {
+    (_q['expand'] as List<String>).addAll(rels);
+    return this;
+  }
+
+  /// Project i18n_text fields to one locale, or '*' for the full map.
+  QueryBuilder locale(String loc) {
+    _q['locale'] = loc;
+    return this;
+  }
+
+  /// Free-text search across readable text fields.
+  QueryBuilder search(String text) {
+    _q['q'] = text;
     return this;
   }
 

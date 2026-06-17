@@ -223,6 +223,24 @@ func (b *QueryBuilder[T]) OrderBy(sorts ...string) *QueryBuilder[T] {
 	return b
 }
 
+// Expand inlines single-hop relations (replaces each FK with the related object).
+func (b *QueryBuilder[T]) Expand(rels ...string) *QueryBuilder[T] {
+	b.q.Expand = append(b.q.Expand, rels...)
+	return b
+}
+
+// Locale projects i18n_text fields to one locale, or "*" for the full map.
+func (b *QueryBuilder[T]) Locale(loc string) *QueryBuilder[T] {
+	b.q.Locale = loc
+	return b
+}
+
+// Search sets a free-text query across readable text fields.
+func (b *QueryBuilder[T]) Search(text string) *QueryBuilder[T] {
+	b.q.Q = text
+	return b
+}
+
 func (b *QueryBuilder[T]) Limit(n int) *QueryBuilder[T] {
 	b.q.Limit = &n
 	return b

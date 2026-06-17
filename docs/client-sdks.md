@@ -96,6 +96,23 @@ The `tenant` option exists in every SDK (`tenant` / `Tenant` / `WithTenant` /
 `.tenant(...)`); the server ignores it for app-mode bearer sessions, since their
 tenant comes from the session.
 
+### Query extras & aggregates
+
+The query builder also exposes the rest of the list API: `expand` (inline
+single-hop relations), `locale` (collapse `i18n_text` fields to one locale, or
+`"*"` for the full map), and `search` (free-text across readable text fields). And
+every collection has `aggregate` — a single-function `count`/`sum`/`avg`/`min`/`max`
+over one column, optionally grouped:
+
+```ts
+const top = await client.from("orders").query()
+  .expand("customer").locale("en").search("urgent").list();
+
+const byStatus = await client.from("orders")
+  .aggregate({ agg: "sum", field: "total", groupBy: "status" });
+// → { data: [ { label: "paid", value: 9300 }, { label: "pending", value: 410 } ] }
+```
+
 ### Password reset & token refresh
 
 Beyond sign-in/up, every SDK's `auth` exposes:

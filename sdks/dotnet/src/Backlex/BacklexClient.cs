@@ -152,12 +152,18 @@ public sealed class BacklexClient
             parts.Add("sort=" + Uri.EscapeDataString(string.Join(",", q.Sort)));
         if (q.Fields.Count > 0)
             parts.Add("fields=" + Uri.EscapeDataString(string.Join(",", q.Fields)));
+        if (q.Expand.Count > 0)
+            parts.Add("expand=" + Uri.EscapeDataString(string.Join(",", q.Expand)));
         if (q.Limit.HasValue)
             parts.Add("limit=" + q.Limit.Value);
         if (q.Offset.HasValue)
             parts.Add("offset=" + q.Offset.Value);
         if (!string.IsNullOrEmpty(q.Meta))
             parts.Add("meta=" + Uri.EscapeDataString(q.Meta));
+        if (!string.IsNullOrEmpty(q.Locale))
+            parts.Add("locale=" + Uri.EscapeDataString(q.Locale));
+        if (!string.IsNullOrEmpty(q.Q))
+            parts.Add("q=" + Uri.EscapeDataString(q.Q));
         return parts.Count > 0 ? "?" + string.Join("&", parts) : "";
     }
 }

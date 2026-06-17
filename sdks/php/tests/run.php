@@ -127,6 +127,18 @@ $client->from('posts')->list();
 check(in_array('X-Backlex-Tenant: myapp', $last['headers'], true), 'tenant header is sent');
 
 $client = new Client('http://test', ['transport' => $transport]);
+$client->from('posts')->query()->expand('author')->locale('tr')->search('hi')->list();
+parse_str(parse_url($last['url'], PHP_URL_QUERY) ?? '', $qp);
+check(($qp['expand'] ?? '') === 'author' && ($qp['locale'] ?? '') === 'tr' && ($qp['q'] ?? '') === 'hi', 'query extras serialize');
+
+$client = new Client('http://test', ['transport' => $transport]);
+$client->from('orders')->aggregate(['agg' => 'sum', 'field' => 'total']);
+check(
+    $last['method'] === 'POST' && parse_url($last['url'], PHP_URL_PATH) === '/api/items/orders/aggregate',
+    'aggregate hits the right path'
+);
+
+$client = new Client('http://test', ['transport' => $transport]);
 $client->auth->requestPasswordReset('a@b.c');
 check(parse_url($last['url'], PHP_URL_PATH) === '/api/auth/request-password-reset', 'password reset hits the right path');
 

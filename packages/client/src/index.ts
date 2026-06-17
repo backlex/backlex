@@ -1,4 +1,6 @@
 import {
+  type AggregateQuery,
+  type AggregateRow,
   type ItemEvent,
   type ItemResponse,
   type ListQuery,
@@ -6,7 +8,14 @@ import {
   BacklexError,
 } from "./types";
 
-export type { ListQuery, ListResponse, ItemResponse, ItemEvent } from "./types";
+export type {
+  ListQuery,
+  ListResponse,
+  ItemResponse,
+  ItemEvent,
+  AggregateQuery,
+  AggregateRow,
+} from "./types";
 export { BacklexError } from "./types";
 export { QueryBuilder } from "./query";
 export type { FilterBuilder, FieldKey, SortKey } from "./query";
@@ -74,9 +83,14 @@ const buildSearch = (q: ListQuery | undefined): string => {
   if (q.fields) {
     params.set("fields", Array.isArray(q.fields) ? q.fields.join(",") : q.fields);
   }
+  if (q.expand) {
+    params.set("expand", Array.isArray(q.expand) ? q.expand.join(",") : q.expand);
+  }
   if (q.limit !== undefined) params.set("limit", String(q.limit));
   if (q.offset !== undefined) params.set("offset", String(q.offset));
   if (q.meta) params.set("meta", q.meta);
+  if (q.locale) params.set("locale", q.locale);
+  if (q.q) params.set("q", q.q);
   const s = params.toString();
   return s ? `?${s}` : "";
 };
@@ -135,6 +149,9 @@ export const createClient = (opts: ClientOptions) => {
       list,
       /** Fluent, type-safe query builder that compiles to `ListQuery`. */
       query: (): QueryBuilder<T> => new QueryBuilder<T>(list),
+      /** Run a single-function aggregate (count/sum/avg/min/max), optionally grouped. */
+      aggregate: (body: AggregateQuery): Promise<{ data: AggregateRow[] }> =>
+        request<{ data: AggregateRow[] }>("POST", `/api/items/${slug}/aggregate`, body),
       one: (id: string): Promise<ItemResponse<T>> =>
         request<ItemResponse<T>>("GET", `/api/items/${slug}/${id}`),
       create: (data: Partial<T>): Promise<ItemResponse<T>> =>

@@ -90,6 +90,19 @@ func TestTenantHeader(t *testing.T) {
 	}
 }
 
+func TestPasswordResetPath(t *testing.T) {
+	var cap capture
+	srv := newServer(&cap)
+	defer srv.Close()
+	c := New(srv.URL)
+	if _, err := c.Auth.RequestPasswordReset("a@b.c", ""); err != nil {
+		t.Fatal(err)
+	}
+	if cap.path != "/api/auth/request-password-reset" {
+		t.Fatalf("path: %s", cap.path)
+	}
+}
+
 func TestAPIKeyBearer(t *testing.T) {
 	var cap capture
 	srv := newServer(&cap)

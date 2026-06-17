@@ -73,6 +73,29 @@ public final class Auth {
         return client.request("POST", base() + "/sign-in/magic-link", body, mapType);
     }
 
+    /** Send a password-reset email. Pass redirectTo=null to omit. */
+    public Map<String, Object> requestPasswordReset(String email, String redirectTo) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("email", email);
+        if (redirectTo != null) body.put("redirectTo", redirectTo);
+        return client.request("POST", base() + "/request-password-reset", body, mapType);
+    }
+
+    /** Complete a reset with the token from the email and a new password. */
+    public Map<String, Object> resetPassword(String newPassword, String token) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("newPassword", newPassword);
+        body.put("token", token);
+        return client.request("POST", base() + "/reset-password", body, mapType);
+    }
+
+    /** Mint a fresh access JWT from the stored session token (app mode). */
+    public Map<String, Object> refresh() {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("refreshToken", client.appToken);
+        return client.request("POST", base() + "/token/refresh", body, mapType);
+    }
+
     /** Clear the session; in app mode also drops the captured token. */
     public void signOut() {
         client.request("POST", base() + "/sign-out", null, mapType);

@@ -106,6 +106,13 @@ class ClientTest {
     }
 
     @Test
+    void passwordResetHitsTheRightPath() {
+        BacklexClient client = BacklexClient.builder(base).build();
+        client.auth.requestPasswordReset("a@b.c", null);
+        assertEquals("/api/auth/request-password-reset", lastPath);
+    }
+
+    @Test
     void apiKeyBearerHeader() {
         BacklexClient client = BacklexClient.builder(base).apiKey("pak_secret").build();
         client.from("posts", Object.class).list();

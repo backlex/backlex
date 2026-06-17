@@ -96,6 +96,18 @@ The `tenant` option exists in every SDK (`tenant` / `Tenant` / `WithTenant` /
 `.tenant(...)`); the server ignores it for app-mode bearer sessions, since their
 tenant comes from the session.
 
+### Password reset & token refresh
+
+Beyond sign-in/up, every SDK's `auth` exposes:
+
+- **`requestPasswordReset(email, redirectTo?)`** — send the reset email.
+- **`resetPassword(newPassword, token)`** — complete it with the token from the email.
+- **`refresh()`** (app mode) — mint a fresh short-lived **access JWT** from the
+  stored session token. The SDK's own requests keep using the session token; reach
+  for `refresh()` when a downstream service needs a proper access token. (Sessions
+  themselves last the workspace's `session_lifetime`; once that elapses the user
+  re-authenticates.)
+
 ## One wire format, eleven languages
 
 The query builder in every SDK compiles to the **identical canonical JSON**

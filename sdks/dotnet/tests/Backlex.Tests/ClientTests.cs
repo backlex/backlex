@@ -58,6 +58,14 @@ public class ClientTests
     }
 
     [Fact]
+    public async Task PasswordResetHitsTheRightPath()
+    {
+        var (client, h) = Make();
+        await client.Auth.RequestPasswordResetAsync("a@b.c");
+        Assert.Equal("/api/auth/request-password-reset", h.Last!.RequestUri!.AbsolutePath);
+    }
+
+    [Fact]
     public async Task TenantHeaderIsSent()
     {
         var (client, h) = Make(new BacklexClientOptions { Tenant = "myapp" });

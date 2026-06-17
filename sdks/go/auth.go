@@ -83,6 +83,33 @@ func (a *Auth) SignInMagicLink(email, callbackURL string) (map[string]any, error
 	return out, nil
 }
 
+// SendVerificationOTP emails a one-time numeric code (requires the email-otp
+// provider). otpType is "sign-in" (pass "" for the default), "email-verification"
+// or "forget-password". Complete a sign-in with SignInEmailOTP.
+func (a *Auth) SendVerificationOTP(email, otpType string) (map[string]any, error) {
+	if otpType == "" {
+		otpType = "sign-in"
+	}
+	body := map[string]any{"email": email, "type": otpType}
+	var out map[string]any
+	if err := a.client.Do("POST", a.base()+"/email-otp/send-verification-otp", body, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// SignInEmailOTP completes an email-OTP sign-in with the code from
+// SendVerificationOTP. In app mode the returned session token is captured.
+func (a *Auth) SignInEmailOTP(email, otp string) (*AuthResult, error) {
+	body := map[string]any{"email": email, "otp": otp}
+	var out AuthResult
+	if err := a.client.Do("POST", a.base()+"/sign-in/email-otp", body, &out); err != nil {
+		return nil, err
+	}
+	a.capture(&out)
+	return &out, nil
+}
+
 // RequestPasswordReset sends a password-reset email. Pass redirectTo="" to omit.
 func (a *Auth) RequestPasswordReset(email, redirectTo string) (map[string]any, error) {
 	body := map[string]any{"email": email}

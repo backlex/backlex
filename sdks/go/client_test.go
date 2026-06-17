@@ -39,7 +39,8 @@ func newServer(cap *capture) *httptest.Server {
 			_, _ = w.Write([]byte(`{"error":{"code":"NOT_FOUND","message":"no such collection"}}`))
 		case strings.HasSuffix(r.URL.Path, "/aggregate"):
 			_, _ = w.Write([]byte(`{"data":[{"value":42}]}`))
-		case r.Method == "POST" && r.URL.Path == "/api/t/myapp/auth/sign-in/email":
+		case r.Method == "POST" && strings.HasPrefix(r.URL.Path, "/api/t/") && strings.Contains(r.URL.Path, "/sign-in/email"):
+			// Workspace sign-in (email or email-otp) returns a session token.
 			_, _ = w.Write([]byte(`{"user":{"id":"u1","email":"a@b.c"},"token":"tok_123"}`))
 		case r.Method == "DELETE":
 			_, _ = w.Write([]byte(`{"ok":true}`))
@@ -167,6 +168,31 @@ func TestPasswordResetPath(t *testing.T) {
 	}
 	if cap.path != "/api/auth/request-password-reset" {
 		t.Fatalf("path: %s", cap.path)
+	}
+}
+
+func TestEmailOTPFlow(t *testing.T) {
+	var cap capture
+	srv := newServer(&cap)
+	defer srv.Close()
+	c := New(srv.URL)
+	if _, err := c.Auth.SendVerificationOTP("a@b.c", ""); err != nil {
+		t.Fatal(err)
+	}
+	if cap.path != "/api/auth/email-otp/send-verification-otp" {
+		t.Fatalf("send path: %s", cap.path)
+	}
+
+	app := New(srv.URL, WithWorkspace("myapp"))
+	res, err := app.Auth.SignInEmailOTP("a@b.c", "123456")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cap.path != "/api/t/myapp/auth/sign-in/email-otp" {
+		t.Fatalf("signin path: %s", cap.path)
+	}
+	if res.Token != "tok_123" || app.Auth.Token() != "tok_123" {
+		t.Fatalf("token not captured: %q / %q", res.Token, app.Auth.Token())
 	}
 }
 

@@ -48,6 +48,22 @@ class Auth(private val client: BacklexClient) {
         return client.request("POST", "${base()}/sign-in/magic-link", body, mapType)
     }
 
+    /**
+     * Email a one-time numeric code (requires the email-otp provider). [type] is
+     * "sign-in" (default), "email-verification" or "forget-password". Complete a
+     * sign-in with [signInEmailOtp].
+     */
+    fun sendVerificationOtp(email: String, type: String = "sign-in"): Map<String, Any?> {
+        val body = linkedMapOf<String, Any?>("email" to email, "type" to type)
+        return client.request("POST", "${base()}/email-otp/send-verification-otp", body, mapType)
+    }
+
+    /** Complete an email-OTP sign-in with the code from [sendVerificationOtp]. */
+    fun signInEmailOtp(email: String, otp: String): AuthResult {
+        val body = linkedMapOf<String, Any?>("email" to email, "otp" to otp)
+        return capture(client.request("POST", "${base()}/sign-in/email-otp", body, authType))
+    }
+
     /** Clear the session; in app mode also drops the captured token. */
     fun signOut() {
         client.request<Map<String, Any?>?>("POST", "${base()}/sign-out", null, mapType)

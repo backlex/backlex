@@ -85,6 +85,27 @@ public sealed class Auth
             .ConfigureAwait(false) ?? new();
     }
 
+    /// <summary>
+    /// Email a one-time numeric code (requires the email-otp provider).
+    /// <paramref name="type"/> is "sign-in" (default), "email-verification" or
+    /// "forget-password". Complete a sign-in with <see cref="SignInEmailOtpAsync"/>.
+    /// </summary>
+    public async Task<Dictionary<string, object?>> SendVerificationOtpAsync(string email, string type = "sign-in")
+    {
+        var body = new Dictionary<string, object?> { ["email"] = email, ["type"] = type };
+        return await _client.RequestAsync<Dictionary<string, object?>>(
+            HttpMethod.Post, $"{Base}/email-otp/send-verification-otp", body).ConfigureAwait(false) ?? new();
+    }
+
+    /// <summary>Complete an email-OTP sign-in with the code from <see cref="SendVerificationOtpAsync"/>.</summary>
+    public async Task<AuthResult> SignInEmailOtpAsync(string email, string otp)
+    {
+        var body = new Dictionary<string, object?> { ["email"] = email, ["otp"] = otp };
+        var r = await _client.RequestAsync<AuthResult>(HttpMethod.Post, $"{Base}/sign-in/email-otp", body)
+            .ConfigureAwait(false) ?? new AuthResult();
+        return Capture(r);
+    }
+
     /// <summary>Send a password-reset email. <paramref name="redirectTo"/> is the link target.</summary>
     public async Task<Dictionary<string, object?>> RequestPasswordResetAsync(string email, string? redirectTo = null)
     {

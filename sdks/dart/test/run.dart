@@ -42,7 +42,7 @@ List<dynamic> route(Map<String, dynamic> last) {
   if (path == '/api/items/missing') {
     return [404, '{"error":{"code":"NOT_FOUND","message":"no such collection"}}'];
   }
-  if (method == 'POST' && path.endsWith('/sign-in/email')) {
+  if (method == 'POST' && path.contains('/sign-in/email')) { // email + email-otp
     return path.startsWith('/api/t/')
         ? [200, '{"user":{"id":"u1","email":"a@b.c"},"token":"tok_123"}']
         : [200, '{"user":{"id":"u1","email":"a@b.c"}}'];
@@ -163,6 +163,19 @@ Future<void> main() async {
   client = Client(base);
   await client.auth.requestPasswordReset('a@b.c');
   check(last['path'] == '/api/auth/request-password-reset', 'password reset hits the right path');
+
+  client = Client(base);
+  await client.auth.sendVerificationOtp('a@b.c');
+  final sendOk = last['path'] == '/api/auth/email-otp/send-verification-otp' &&
+      (jsonDecode(last['body'] as String) as Map)['type'] == 'sign-in';
+  final app2 = Client(base, workspace: 'myapp');
+  final otpRes = await app2.auth.signInEmailOtp('a@b.c', '123456');
+  check(
+      sendOk &&
+          last['path'] == '/api/t/myapp/auth/sign-in/email-otp' &&
+          otpRes['token'] == 'tok_123' &&
+          app2.auth.token == 'tok_123',
+      'email-otp: send + app-mode sign-in captures token');
 
   client = Client(base);
   await client.auth.changePassword('new', 'old');

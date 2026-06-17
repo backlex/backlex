@@ -53,6 +53,28 @@ final class Auth
         return $this->client->request('POST', $this->base() . '/sign-in/magic-link', $body);
     }
 
+    /**
+     * Email a one-time numeric code (requires the email-otp provider). $type is
+     * "sign-in" (default), "email-verification" or "forget-password". Complete a
+     * sign-in with signInEmailOTP().
+     */
+    public function sendVerificationOTP(string $email, string $type = 'sign-in'): array
+    {
+        return $this->client->request(
+            'POST',
+            $this->base() . '/email-otp/send-verification-otp',
+            ['email' => $email, 'type' => $type]
+        );
+    }
+
+    /** Complete an email-OTP sign-in with the code from sendVerificationOTP(). */
+    public function signInEmailOTP(string $email, string $otp): array
+    {
+        return $this->capture(
+            $this->client->request('POST', $this->base() . '/sign-in/email-otp', ['email' => $email, 'otp' => $otp])
+        );
+    }
+
     /** Send a password-reset email. Pass redirectTo=null to omit. */
     public function requestPasswordReset(string $email, ?string $redirectTo = null): array
     {

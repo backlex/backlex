@@ -29,10 +29,12 @@ hits the wire.
 | PHP | [`sdks/php`](https://github.com/backlex/backlex/tree/main/sdks/php) | curl | none (ext-curl) |
 
 :::note
-The non-TypeScript clients are proof-of-concept ports today — verified with
-offline contract tests, not yet published to package registries (PyPI, crates.io,
-Maven Central, pub.dev, NuGet, RubyGems, Packagist). Use them from the repo, or
-follow the language's README for a local install.
+The non-TypeScript clients are verified with offline contract + HTTP-layer tests
+and are **release-ready** — each carries an Apache-2.0 `LICENSE` and complete
+registry metadata — but is **not yet pushed** to a package registry (PyPI,
+crates.io, Maven Central, pub.dev, NuGet, RubyGems, Packagist). Use them from the
+repo today; the release runbook lives in
+[`sdks/PUBLISHING.md`](https://github.com/backlex/backlex/blob/main/sdks/PUBLISHING.md).
 :::
 
 ## Client and server usage

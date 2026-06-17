@@ -5,9 +5,9 @@ a `LICENSE` file in their package, and ship complete registry metadata. This doc
 the runbook for the first (and every subsequent) release.
 
 **Published (0.0.1):** Python (PyPI), .NET (NuGet), Ruby (RubyGems), Dart (pub.dev),
-Rust (crates.io), Go (`backlex-go`), Swift (`backlex-swift`). PHP is staged in
-`backlex-php` awaiting a Packagist submission. Java + Kotlin (Maven Central) are
-wired but await GPG + Portal secrets.
+Go (`backlex-go`), Swift (`backlex-swift`). **Pending:** Rust (crates.io) — blocked on
+the account's email verification; PHP — staged in `backlex-php`, awaiting a Packagist
+submission; Java + Kotlin (Maven Central) — wired but await GPG + Portal secrets.
 
 ### Dedicated mirror repos (Go / Swift / PHP)
 

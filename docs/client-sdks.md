@@ -31,7 +31,8 @@ hits the wire.
 :::note
 All clients are Apache-2.0, verified with offline contract + HTTP-layer tests, and
 **published** (`0.0.1`): Python (PyPI), .NET (NuGet), Ruby (RubyGems), Dart (pub.dev),
-Rust (crates.io), Go (`backlex-go`), Swift (`backlex-swift`). PHP is staged in
+Go (`backlex-go`), Swift (`backlex-swift`). Rust (crates.io) is pending email
+verification; PHP is staged in
 [`backlex-php`](https://github.com/backlex/backlex-php) pending a Packagist submission;
 Java + Kotlin are wired for Maven Central pending GPG/Portal secrets. The release
 runbook lives in

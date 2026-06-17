@@ -91,6 +91,12 @@ class ClientTest < Minitest::Test
     assert_equal "myapp", @last[:tenant]
   end
 
+  def test_password_reset_hits_the_right_path
+    client = Backlex::Client.new(@base)
+    client.auth.request_password_reset("a@b.c")
+    assert_equal "/api/auth/request-password-reset", @last[:path]
+  end
+
   def test_crud_methods_paths_and_body
     client = Backlex::Client.new(@base, api_key: "pak_x")
     posts = client.from("posts")

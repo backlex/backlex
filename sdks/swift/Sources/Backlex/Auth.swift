@@ -73,6 +73,25 @@ public struct Auth {
         return try await client.send("POST", "\(base)/sign-in/magic-link", try encodeBody(body))
     }
 
+    /// Send a password-reset email. `redirectTo` is the link target.
+    public func requestPasswordReset(email: String, redirectTo: String? = nil) async throws -> [String: JSONValue] {
+        var body: [String: JSONValue] = ["email": .string(email)]
+        if let redirectTo { body["redirectTo"] = .string(redirectTo) }
+        return try await client.send("POST", "\(base)/request-password-reset", try encodeBody(body))
+    }
+
+    /// Complete a reset with the token from the email and a new password.
+    public func resetPassword(newPassword: String, token: String) async throws -> [String: JSONValue] {
+        let body: [String: JSONValue] = ["newPassword": .string(newPassword), "token": .string(token)]
+        return try await client.send("POST", "\(base)/reset-password", try encodeBody(body))
+    }
+
+    /// Mint a fresh access JWT from the stored session token (app mode).
+    public func refresh() async throws -> [String: JSONValue] {
+        let body: [String: JSONValue] = ["refreshToken": client.appToken.map(JSONValue.string) ?? .null]
+        return try await client.send("POST", "\(base)/token/refresh", try encodeBody(body))
+    }
+
     /// Clear the session; in app mode also drops the captured token.
     public func signOut() async throws {
         let _: [String: JSONValue] = try await client.send("POST", "\(base)/sign-out", nil)

@@ -126,6 +126,10 @@ $client = new Client('http://test', ['tenant' => 'myapp', 'transport' => $transp
 $client->from('posts')->list();
 check(in_array('X-Backlex-Tenant: myapp', $last['headers'], true), 'tenant header is sent');
 
+$client = new Client('http://test', ['transport' => $transport]);
+$client->auth->requestPasswordReset('a@b.c');
+check(parse_url($last['url'], PHP_URL_PATH) === '/api/auth/request-password-reset', 'password reset hits the right path');
+
 $client = new Client('http://test', ['api_key' => 'pak_x', 'transport' => $transport]);
 $posts = $client->from('posts');
 $posts->create(['title' => 'Hi']);

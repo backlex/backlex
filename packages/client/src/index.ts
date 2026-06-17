@@ -197,6 +197,21 @@ export const createClient = (opts: ClientOptions) => {
      *  to be enabled for the workspace). */
     signInMagicLink: (input: { email: string; callbackURL?: string }) =>
       request<{ status: boolean }>("POST", `${authBase}/sign-in/magic-link`, input),
+    /** Send a password-reset email. `redirectTo` is the link the email points at. */
+    requestPasswordReset: (input: { email: string; redirectTo?: string }) =>
+      request<{ status: boolean }>("POST", `${authBase}/request-password-reset`, input),
+    /** Complete a reset with the token from the email and a new password. */
+    resetPassword: (input: { newPassword: string; token: string }) =>
+      request<{ status: boolean }>("POST", `${authBase}/reset-password`, input),
+    /** Mint a fresh short-lived access JWT from the stored session token (app
+     *  mode). The SDK's own requests keep using the session token; use this when a
+     *  downstream service needs a proper access token. */
+    refresh: () =>
+      request<{ accessToken: string; refreshToken: string; expiresIn: number; tokenType: string }>(
+        "POST",
+        `${authBase}/token/refresh`,
+        { refreshToken: appToken },
+      ),
     signOut: () => request<{ success: boolean }>("POST", `${authBase}/sign-out`).then((r) => {
       if (opts.workspace) appToken = null;
       return r;

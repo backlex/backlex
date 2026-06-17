@@ -133,6 +133,21 @@ Beyond sign-in/up, every SDK's `auth` exposes:
   themselves last the workspace's `session_lifetime`; once that elapses the user
   re-authenticates.)
 
+### Passwordless: email one-time codes
+
+When the workspace enables the `email-otp` provider, sign-in is a two-step flow —
+mail a code, then exchange it for a session. In app mode the returned token is
+captured and replayed exactly like a password sign-in:
+
+```ts
+await client.auth.sendVerificationOTP({ email: "user@acme.com" }); // type defaults to "sign-in"
+// …user reads the code from their inbox…
+const { user } = await client.auth.signInEmailOTP({ email: "user@acme.com", otp: "123456" });
+```
+
+`sendVerificationOTP` also drives the `"email-verification"` and `"forget-password"`
+flows via its `type` argument. (For the click-a-link variant, use `signInMagicLink`.)
+
 ### Publishing versioned items
 
 Collections with draft/publish versioning expose two helpers on every collection

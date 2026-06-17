@@ -55,7 +55,7 @@ class ClientTest {
         lastPath == "/api/items/missing" ->
             404 to """{"error":{"code":"NOT_FOUND","message":"no such collection"}}"""
         lastPath.endsWith("/aggregate") -> 200 to """{"data":[{"value":42}]}"""
-        lastMethod == "POST" && lastPath.endsWith("/sign-in/email") ->
+        lastMethod == "POST" && lastPath.contains("/sign-in/email") -> // email + email-otp
             if (lastPath.startsWith("/api/t/")) 200 to """{"user":{"id":"u1","email":"a@b.c"},"token":"tok_123"}"""
             else 200 to """{"user":{"id":"u1","email":"a@b.c"}}"""
         lastMethod == "DELETE" -> 200 to """{"ok":true}"""
@@ -140,6 +140,19 @@ class ClientTest {
         val client = BacklexClient.builder(base).build()
         client.auth.changePassword("new", "old")
         assertEquals("/api/auth/change-password", lastPath)
+    }
+
+    @Test
+    fun emailOtpFlow() {
+        val client = BacklexClient.builder(base).build()
+        client.auth.sendVerificationOtp("a@b.c")
+        assertEquals("/api/auth/email-otp/send-verification-otp", lastPath)
+
+        val app = BacklexClient.builder(base).workspace("myapp").build()
+        val res = app.auth.signInEmailOtp("a@b.c", "123456")
+        assertEquals("/api/t/myapp/auth/sign-in/email-otp", lastPath)
+        assertEquals("tok_123", res.token)
+        assertEquals("tok_123", app.auth.token)
     }
 
     @Test

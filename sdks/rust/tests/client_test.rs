@@ -52,7 +52,8 @@ fn route(method: &str, path: &str) -> (u16, String) {
     if path.ends_with("/aggregate") {
         return (200, r#"{"data":[{"value":42}]}"#.into());
     }
-    if method == "POST" && path.ends_with("/sign-in/email") {
+    if method == "POST" && path.contains("/sign-in/email") {
+        // email + email-otp
         return if path.starts_with("/api/t/") {
             (200, r#"{"user":{"id":"u1","email":"a@b.c"},"token":"tok_123"}"#.into())
         } else {
@@ -132,6 +133,19 @@ fn change_password_hits_the_right_path() {
     let (client, last) = mk(|b| b);
     client.auth().change_password("new", "old", false).unwrap();
     assert_eq!(url_path(&last.lock().unwrap().url), "/api/auth/change-password");
+}
+
+#[test]
+fn email_otp_flow() {
+    let (client, last) = mk(|b| b);
+    client.auth().send_verification_otp("a@b.c", None).unwrap();
+    assert_eq!(url_path(&last.lock().unwrap().url), "/api/auth/email-otp/send-verification-otp");
+
+    let (app, last2) = mk(|b| b.workspace("myapp"));
+    let res = app.auth().sign_in_email_otp("a@b.c", "123456").unwrap();
+    assert_eq!(url_path(&last2.lock().unwrap().url), "/api/t/myapp/auth/sign-in/email-otp");
+    assert_eq!(res["token"], json!("tok_123"));
+    assert_eq!(app.token().as_deref(), Some("tok_123"));
 }
 
 #[test]

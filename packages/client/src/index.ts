@@ -234,6 +234,21 @@ export const createClient = (opts: ClientOptions) => {
      *  to be enabled for the workspace). */
     signInMagicLink: (input: { email: string; callbackURL?: string }) =>
       request<{ status: boolean }>("POST", `${authBase}/sign-in/magic-link`, input),
+    /** Email a one-time numeric code (requires the `email-otp` provider). `type`
+     *  defaults to `"sign-in"`; use `"email-verification"` / `"forget-password"`
+     *  for those flows. Complete a sign-in with `signInEmailOTP`. */
+    sendVerificationOTP: (input: {
+      email: string;
+      type?: "sign-in" | "email-verification" | "forget-password";
+    }) =>
+      request<{ success: boolean }>("POST", `${authBase}/email-otp/send-verification-otp`, {
+        type: "sign-in",
+        ...input,
+      }),
+    /** Complete an email-OTP sign-in with the code from `sendVerificationOTP`. In
+     *  app mode the returned session token is captured and replayed as a bearer. */
+    signInEmailOTP: (input: { email: string; otp: string }) =>
+      request<AuthResult>("POST", `${authBase}/sign-in/email-otp`, input).then(captureToken),
     /** Send a password-reset email. `redirectTo` is the link the email points at. */
     requestPasswordReset: (input: { email: string; redirectTo?: string }) =>
       request<{ status: boolean }>("POST", `${authBase}/request-password-reset`, input),

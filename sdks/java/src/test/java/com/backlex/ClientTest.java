@@ -50,7 +50,9 @@ class ClientTest {
                 json = "{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"no such collection\"}}";
             } else if (lastPath.endsWith("/aggregate")) {
                 json = "{\"data\":[{\"value\":42}]}";
-            } else if (lastMethod.equals("POST") && lastPath.equals("/api/t/myapp/auth/sign-in/email")) {
+            } else if (lastMethod.equals("POST") && lastPath.startsWith("/api/t/")
+                    && lastPath.contains("/sign-in/email")) {
+                // Workspace sign-in (email or email-otp) returns a session token.
                 json = "{\"user\":{\"id\":\"u1\",\"email\":\"a@b.c\"},\"token\":\"tok_123\"}";
             } else if (lastMethod.equals("DELETE")) {
                 json = "{\"ok\":true}";
@@ -163,6 +165,19 @@ class ClientTest {
         BacklexClient client = BacklexClient.builder(base).build();
         client.auth.changePassword("new", "old", false);
         assertEquals("/api/auth/change-password", lastPath);
+    }
+
+    @Test
+    void emailOtpFlow() {
+        BacklexClient client = BacklexClient.builder(base).build();
+        client.auth.sendVerificationOtp("a@b.c", "sign-in");
+        assertEquals("/api/auth/email-otp/send-verification-otp", lastPath);
+
+        BacklexClient app = BacklexClient.builder(base).workspace("myapp").build();
+        Models.AuthResult res = app.auth.signInEmailOtp("a@b.c", "123456");
+        assertEquals("/api/t/myapp/auth/sign-in/email-otp", lastPath);
+        assertEquals("tok_123", res.token);
+        assertEquals("tok_123", app.auth.token());
     }
 
     @Test

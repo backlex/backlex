@@ -5,6 +5,10 @@ description: The @backlex/client typed fetch wrapper and the backlex CLI for pro
 
 Two packages ship for client-side and developer-side use.
 
+> Not on TypeScript? backlex also ships native clients for Python, Go, Rust,
+> Java, Kotlin, Swift, Dart/Flutter, .NET, Ruby, and PHP — same API, idiomatic in
+> each language. See [Client SDKs](/docs/client-sdks/).
+
 ## `@backlex/client`
 
 Typed fetch wrapper, browser + Node.

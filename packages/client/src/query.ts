@@ -114,9 +114,12 @@ export class QueryBuilder<T extends Record<string, unknown>> {
   private _filter?: Condition;
   private _sort: string[] = [];
   private _fields: string[] = [];
+  private _expand: string[] = [];
   private _limit?: number;
   private _offset?: number;
   private _meta?: "filter_count" | "total_count" | "*";
+  private _locale?: string;
+  private _q?: string;
 
   constructor(private readonly listFn: (q: ListQuery) => Promise<ListResponse<T>>) {}
 
@@ -137,6 +140,21 @@ export class QueryBuilder<T extends Record<string, unknown>> {
     this._sort.push(...(sorts as string[]));
     return this;
   }
+  /** Inline single-hop relations (replaces each FK with the related object). */
+  expand(...rels: FieldKey<T>[]): this {
+    this._expand.push(...(rels as string[]));
+    return this;
+  }
+  /** Project `i18n_text` fields to one locale, or `"*"` for the full map. */
+  locale(loc: string): this {
+    this._locale = loc;
+    return this;
+  }
+  /** Free-text search across readable text fields. */
+  search(text: string): this {
+    this._q = text;
+    return this;
+  }
   limit(n: number): this {
     this._limit = n;
     return this;
@@ -155,9 +173,12 @@ export class QueryBuilder<T extends Record<string, unknown>> {
     if (this._filter) q.filter = this._filter;
     if (this._sort.length) q.sort = this._sort;
     if (this._fields.length) q.fields = this._fields;
+    if (this._expand.length) q.expand = this._expand;
     if (this._limit !== undefined) q.limit = this._limit;
     if (this._offset !== undefined) q.offset = this._offset;
     if (this._meta) q.meta = this._meta;
+    if (this._locale) q.locale = this._locale;
+    if (this._q) q.q = this._q;
     return q;
   }
   list(): Promise<ListResponse<T>> {

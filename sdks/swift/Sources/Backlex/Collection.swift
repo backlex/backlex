@@ -14,6 +14,11 @@ public struct Collection<T: Decodable> {
         QueryBuilder { try await self.list($0) }
     }
 
+    /// Single-function aggregate (count/sum/avg/min/max), optionally grouped.
+    public func aggregate<B: Encodable>(_ body: B) async throws -> AggregateResponse {
+        try await client.send("POST", "/api/items/\(slug)/aggregate", try JSONEncoder().encode(body))
+    }
+
     public func one(_ id: String) async throws -> ItemResponse<T> {
         try await client.send("GET", "/api/items/\(slug)/\(id)", nil)
     }

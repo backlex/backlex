@@ -5,7 +5,7 @@ module Backlex
   class QueryBuilder
     def initialize(list_fn)
       @list_fn = list_fn
-      @q = { filter: nil, sort: [], fields: [], limit: nil, offset: nil, meta: nil }
+      @q = { filter: nil, sort: [], fields: [], expand: [], limit: nil, offset: nil, meta: nil, locale: nil, q: nil }
     end
 
     def where(cond)
@@ -26,6 +26,24 @@ module Backlex
 
     def order_by(*sorts)
       @q[:sort].concat(sorts)
+      self
+    end
+
+    # Inline single-hop relations (replaces each FK with the related object).
+    def expand(*rels)
+      @q[:expand].concat(rels)
+      self
+    end
+
+    # Project i18n_text fields to one locale, or "*" for the full map.
+    def locale(loc)
+      @q[:locale] = loc
+      self
+    end
+
+    # Free-text search across readable text fields.
+    def search(text)
+      @q[:q] = text
       self
     end
 

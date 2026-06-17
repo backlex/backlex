@@ -27,4 +27,12 @@ class Collection {
       _client.request('PATCH', '/api/items/$_slug/$id', patch);
 
   Future<dynamic> delete(String id) => _client.request('DELETE', '/api/items/$_slug/$id');
+
+  /// Flip a versioned item to published.
+  Future<dynamic> publish(String id) =>
+      _client.request('POST', '/api/items/$_slug/$id/publish');
+
+  /// Flip a versioned item back to draft.
+  Future<dynamic> unpublish(String id) =>
+      _client.request('POST', '/api/items/$_slug/$id/publish?unpublish=1');
 }

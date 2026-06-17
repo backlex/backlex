@@ -90,6 +90,13 @@ class ClientTest {
     }
 
     @Test
+    fun passwordResetHitsTheRightPath() {
+        val client = BacklexClient.builder(base).build()
+        client.auth.requestPasswordReset("a@b.c")
+        assertEquals("/api/auth/request-password-reset", lastPath)
+    }
+
+    @Test
     fun apiKeyBearerHeader() {
         val client = BacklexClient.builder(base).apiKey("pak_secret").build()
         client.from<Any>("posts").list()

@@ -54,6 +54,27 @@ class Auth(private val client: BacklexClient) {
         if (!client.workspace.isNullOrEmpty()) client.appToken = null
     }
 
+    /** Send a password-reset email. Pass redirectTo=null to omit. */
+    fun requestPasswordReset(email: String, redirectTo: String? = null): Map<String, Any?> {
+        val body = linkedMapOf<String, Any?>("email" to email)
+        if (redirectTo != null) body["redirectTo"] = redirectTo
+        return client.request("POST", "${base()}/request-password-reset", body, mapType)
+    }
+
+    /** Complete a reset with the token from the email and a new password. */
+    fun resetPassword(newPassword: String, token: String): Map<String, Any?> =
+        client.request(
+            "POST", "${base()}/reset-password",
+            linkedMapOf<String, Any?>("newPassword" to newPassword, "token" to token), mapType,
+        )
+
+    /** Mint a fresh access JWT from the stored session token (app mode). */
+    fun refresh(): Map<String, Any?> =
+        client.request(
+            "POST", "${base()}/token/refresh",
+            linkedMapOf<String, Any?>("refreshToken" to client.appToken), mapType,
+        )
+
     /** Current session payload, or `{"user": null}`. */
     fun session(): Map<String, Any?> = client.request("GET", "${base()}/get-session", null, mapType)
 

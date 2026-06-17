@@ -139,6 +139,10 @@ Future<void> main() async {
   await client.from('posts').list();
   check(last['tenant'] == 'myapp', 'tenant header is sent');
 
+  client = Client(base);
+  await client.auth.requestPasswordReset('a@b.c');
+  check(last['path'] == '/api/auth/request-password-reset', 'password reset hits the right path');
+
   client = Client(base, apiKey: 'pak_x');
   final posts = client.from('posts');
   await posts.create({'title': 'Hi'});

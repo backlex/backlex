@@ -34,6 +34,24 @@ public final class QueryBuilder<T> {
         return this;
     }
 
+    /** Inline single-hop relations (replaces each FK with the related object). */
+    public QueryBuilder<T> expand(String... rels) {
+        q.expand.addAll(Arrays.asList(rels));
+        return this;
+    }
+
+    /** Project i18n_text fields to one locale, or "*" for the full map. */
+    public QueryBuilder<T> locale(String loc) {
+        q.locale = loc;
+        return this;
+    }
+
+    /** Free-text search across readable text fields. */
+    public QueryBuilder<T> search(String text) {
+        q.q = text;
+        return this;
+    }
+
     public QueryBuilder<T> limit(int n) {
         q.limit = n;
         return this;

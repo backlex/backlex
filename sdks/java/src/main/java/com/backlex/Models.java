@@ -63,4 +63,15 @@ public final class Models {
         public String url;
         public boolean redirect;
     }
+
+    /** One aggregate row: {value} ungrouped, or {label, value} grouped. */
+    public static class AggregateRow {
+        public double value;
+        public Object label;
+    }
+
+    /** The {@code {"data": [...]}} envelope from Collection#aggregate. */
+    public static class AggregateResponse {
+        public List<AggregateRow> data = new ArrayList<>();
+    }
 }

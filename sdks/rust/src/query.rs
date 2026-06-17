@@ -9,9 +9,12 @@ pub struct ListQuery {
     pub filter: Option<Value>,
     pub sort: Vec<String>,
     pub fields: Vec<String>,
+    pub expand: Vec<String>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
     pub meta: Option<String>,
+    pub locale: Option<String>,
+    pub q: Option<String>,
 }
 
 /// Chainable builder that compiles to a [`ListQuery`] and runs it. Builder methods
@@ -45,6 +48,24 @@ impl QueryBuilder {
 
     pub fn order_by(mut self, sorts: &[&str]) -> Self {
         self.q.sort.extend(sorts.iter().map(|s| s.to_string()));
+        self
+    }
+
+    /// Inline single-hop relations (replaces each FK with the related object).
+    pub fn expand(mut self, rels: &[&str]) -> Self {
+        self.q.expand.extend(rels.iter().map(|s| s.to_string()));
+        self
+    }
+
+    /// Project i18n_text fields to one locale, or "*" for the full map.
+    pub fn locale(mut self, loc: &str) -> Self {
+        self.q.locale = Some(loc.to_string());
+        self
+    }
+
+    /// Free-text search across readable text fields.
+    pub fn search(mut self, text: &str) -> Self {
+        self.q.q = Some(text.to_string());
         self
     }
 

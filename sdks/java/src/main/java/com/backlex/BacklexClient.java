@@ -200,6 +200,9 @@ public final class BacklexClient {
         if (!q.fields.isEmpty()) {
             parts.add("fields=" + enc(String.join(",", q.fields)));
         }
+        if (!q.expand.isEmpty()) {
+            parts.add("expand=" + enc(String.join(",", q.expand)));
+        }
         if (q.limit != null) {
             parts.add("limit=" + q.limit);
         }
@@ -208,6 +211,12 @@ public final class BacklexClient {
         }
         if (q.meta != null && !q.meta.isEmpty()) {
             parts.add("meta=" + enc(q.meta));
+        }
+        if (q.locale != null && !q.locale.isEmpty()) {
+            parts.add("locale=" + enc(q.locale));
+        }
+        if (q.q != null && !q.q.isEmpty()) {
+            parts.add("q=" + enc(q.q));
         }
         return parts.isEmpty() ? "" : "?" + String.join("&", parts);
     }

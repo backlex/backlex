@@ -77,6 +77,9 @@ final class MockURLProtocol: URLProtocol {
         if path == "/api/items/missing" {
             return (404, j(#"{"error":{"code":"NOT_FOUND","message":"no such collection"}}"#))
         }
+        if path.hasSuffix("/aggregate") {
+            return (200, j(#"{"data":[{"value":42}]}"#))
+        }
         if method == "POST" && path.hasSuffix("/sign-in/email") {
             return path.hasPrefix("/api/t/")
                 ? (200, j(#"{"user":{"id":"u1","email":"a@b.c"},"token":"tok_123"}"#))
@@ -141,6 +144,24 @@ do {
     _ = try await client.auth.requestPasswordReset(email: "a@b.c")
     check(MockURLProtocol.lastRequest!.url!.path == "/api/auth/request-password-reset",
           "password reset hits the right path")
+}
+
+do {
+    let client = mockClient()
+    _ = try await client.from("posts", as: JSONValue.self).query()
+        .expand("author").locale("tr").search("hi").list()
+    let comps = URLComponents(url: MockURLProtocol.lastRequest!.url!, resolvingAgainstBaseURL: false)!
+    let items = comps.queryItems ?? []
+    func val(_ n: String) -> String? { items.first { $0.name == n }?.value }
+    check(val("expand") == "author" && val("locale") == "tr" && val("q") == "hi",
+          "query extras serialize")
+}
+
+do {
+    let client = mockClient()
+    let res = try await client.from("orders", as: JSONValue.self).aggregate(["agg": "sum", "field": "total"] as JSONValue)
+    check(MockURLProtocol.lastRequest!.url!.path == "/api/items/orders/aggregate" && res.data[0].value == 42,
+          "aggregate hits the right path")
 }
 
 do {

@@ -20,10 +20,19 @@ class ListQuery {
     var filter: Condition? = null
     val sort = mutableListOf<String>()
     val fields = mutableListOf<String>()
+    val expand = mutableListOf<String>() // inline single-hop relations
     var limit: Int? = null
     var offset: Int? = null
     var meta: String? = null // "filter_count" | "total_count" | "*"
+    var locale: String? = null // one locale, or "*" for the full i18n map
+    var q: String? = null // free-text search across readable text fields
 }
+
+/** One aggregate row: {value} ungrouped, or {label, value} grouped. */
+data class AggregateRow(val value: Double = 0.0, val label: Any? = null)
+
+/** The `{ "data": [...] }` envelope from Collection.aggregate. */
+data class AggregateResponse(val data: List<AggregateRow> = emptyList())
 
 /** Result of a collection list/query call. */
 data class ListResponse<T>(

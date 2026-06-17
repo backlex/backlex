@@ -100,9 +100,14 @@ module Backlex
       end
       parts << "sort=#{URI.encode_www_form_component(query[:sort].join(','))}" unless query[:sort].empty?
       parts << "fields=#{URI.encode_www_form_component(query[:fields].join(','))}" unless query[:fields].empty?
+      unless (query[:expand] || []).empty?
+        parts << "expand=#{URI.encode_www_form_component(query[:expand].join(','))}"
+      end
       parts << "limit=#{query[:limit]}" unless query[:limit].nil?
       parts << "offset=#{query[:offset]}" unless query[:offset].nil?
       parts << "meta=#{URI.encode_www_form_component(query[:meta])}" if query[:meta]
+      parts << "locale=#{URI.encode_www_form_component(query[:locale])}" if query[:locale]
+      parts << "q=#{URI.encode_www_form_component(query[:q])}" if query[:q]
       parts.empty? ? "" : "?#{parts.join('&')}"
     end
 

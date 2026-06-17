@@ -53,6 +53,33 @@ final class Auth
         return $this->client->request('POST', $this->base() . '/sign-in/magic-link', $body);
     }
 
+    /** Send a password-reset email. Pass redirectTo=null to omit. */
+    public function requestPasswordReset(string $email, ?string $redirectTo = null): array
+    {
+        $body = ['email' => $email];
+        if ($redirectTo !== null) {
+            $body['redirectTo'] = $redirectTo;
+        }
+        return $this->client->request('POST', $this->base() . '/request-password-reset', $body);
+    }
+
+    /** Complete a reset with the token from the email and a new password. */
+    public function resetPassword(string $newPassword, string $token): array
+    {
+        return $this->client->request('POST', $this->base() . '/reset-password', [
+            'newPassword' => $newPassword,
+            'token' => $token,
+        ]);
+    }
+
+    /** Mint a fresh access JWT from the stored session token (app mode). */
+    public function refresh(): array
+    {
+        return $this->client->request('POST', $this->base() . '/token/refresh', [
+            'refreshToken' => $this->client->appToken,
+        ]);
+    }
+
     /** Clear the session; in app mode also drops the captured token. */
     public function signOut(): void
     {

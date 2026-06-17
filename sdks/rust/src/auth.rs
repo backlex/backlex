@@ -76,6 +76,27 @@ impl Auth {
     }
 
     /// Clear the session; in app mode also drops the captured token.
+    /// Send a password-reset email. Pass `redirect_to: None` to omit.
+    pub fn request_password_reset(&self, email: &str, redirect_to: Option<&str>) -> Result<Value, BacklexError> {
+        let mut body = json!({ "email": email });
+        if let Some(r) = redirect_to {
+            body["redirectTo"] = json!(r);
+        }
+        self.client.request("POST", &format!("{}/request-password-reset", self.base()), Some(&body))
+    }
+
+    /// Complete a reset with the token from the email and a new password.
+    pub fn reset_password(&self, new_password: &str, token: &str) -> Result<Value, BacklexError> {
+        let body = json!({ "newPassword": new_password, "token": token });
+        self.client.request("POST", &format!("{}/reset-password", self.base()), Some(&body))
+    }
+
+    /// Mint a fresh access JWT from the stored session token (app mode).
+    pub fn refresh(&self) -> Result<Value, BacklexError> {
+        let body = json!({ "refreshToken": self.client.token() });
+        self.client.request("POST", &format!("{}/token/refresh", self.base()), Some(&body))
+    }
+
     pub fn sign_out(&self) -> Result<(), BacklexError> {
         self.client.request("POST", &format!("{}/sign-out", self.base()), None)?;
         if self.workspace_set() {

@@ -73,6 +73,26 @@ public final class Auth {
         return client.request("POST", base() + "/sign-in/magic-link", body, mapType);
     }
 
+    /**
+     * Email a one-time numeric code (requires the email-otp provider). {@code type}
+     * is "sign-in", "email-verification" or "forget-password". Complete a sign-in
+     * with {@link #signInEmailOtp}.
+     */
+    public Map<String, Object> sendVerificationOtp(String email, String type) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("email", email);
+        body.put("type", type == null ? "sign-in" : type);
+        return client.request("POST", base() + "/email-otp/send-verification-otp", body, mapType);
+    }
+
+    /** Complete an email-OTP sign-in with the code from {@link #sendVerificationOtp}. */
+    public Models.AuthResult signInEmailOtp(String email, String otp) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("email", email);
+        body.put("otp", otp);
+        return capture(client.request("POST", base() + "/sign-in/email-otp", body, authResultType));
+    }
+
     /** Send a password-reset email. Pass redirectTo=null to omit. */
     public Map<String, Object> requestPasswordReset(String email, String redirectTo) {
         Map<String, Object> body = new LinkedHashMap<>();

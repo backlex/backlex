@@ -80,7 +80,7 @@ final class MockURLProtocol: URLProtocol {
         if path.hasSuffix("/aggregate") {
             return (200, j(#"{"data":[{"value":42}]}"#))
         }
-        if method == "POST" && path.hasSuffix("/sign-in/email") {
+        if method == "POST" && path.contains("/sign-in/email") { // email + email-otp
             return path.hasPrefix("/api/t/")
                 ? (200, j(#"{"user":{"id":"u1","email":"a@b.c"},"token":"tok_123"}"#))
                 : (200, j(#"{"user":{"id":"u1","email":"a@b.c"}}"#))
@@ -148,6 +148,18 @@ do {
     _ = try await client.auth.requestPasswordReset(email: "a@b.c")
     check(MockURLProtocol.lastRequest!.url!.path == "/api/auth/request-password-reset",
           "password reset hits the right path")
+}
+
+do {
+    let client = mockClient()
+    _ = try await client.auth.sendVerificationOTP(email: "a@b.c")
+    let sendOK = MockURLProtocol.lastRequest!.url!.path == "/api/auth/email-otp/send-verification-otp"
+    let app = mockClient(workspace: "myapp")
+    let res = try await app.auth.signInEmailOTP(email: "a@b.c", otp: "123456")
+    check(sendOK
+            && MockURLProtocol.lastRequest!.url!.path == "/api/t/myapp/auth/sign-in/email-otp"
+            && res.token == "tok_123" && app.auth.token == "tok_123",
+          "email-otp: send + app-mode sign-in captures token")
 }
 
 do {

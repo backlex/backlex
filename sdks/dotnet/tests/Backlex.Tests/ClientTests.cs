@@ -28,7 +28,9 @@ internal sealed class RecordingHandler : HttpMessageHandler
             return Resp(404, "{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"no such collection\"}}");
         if (path.EndsWith("/aggregate", StringComparison.Ordinal))
             return Resp(200, "{\"data\":[{\"value\":42}]}");
-        if (request.Method == HttpMethod.Post && path == "/api/t/myapp/auth/sign-in/email")
+        // Workspace sign-in (email or email-otp) returns a session token.
+        if (request.Method == HttpMethod.Post && path.StartsWith("/api/t/", StringComparison.Ordinal)
+            && path.Contains("/sign-in/email", StringComparison.Ordinal))
             return Resp(200, "{\"user\":{\"id\":\"u1\",\"email\":\"a@b.c\"},\"token\":\"tok_123\"}");
         if (request.Method == HttpMethod.Delete)
             return Resp(200, "{\"ok\":true}");
@@ -68,6 +70,20 @@ public class ClientTests
         var (client, h) = Make();
         await client.Auth.RequestPasswordResetAsync("a@b.c");
         Assert.Equal("/api/auth/request-password-reset", h.Last!.RequestUri!.AbsolutePath);
+    }
+
+    [Fact]
+    public async Task EmailOtpFlow()
+    {
+        var (client, h) = Make();
+        await client.Auth.SendVerificationOtpAsync("a@b.c");
+        Assert.Equal("/api/auth/email-otp/send-verification-otp", h.Last!.RequestUri!.AbsolutePath);
+
+        var (app, ha) = Make(new BacklexClientOptions { Workspace = "myapp" });
+        var res = await app.Auth.SignInEmailOtpAsync("a@b.c", "123456");
+        Assert.Equal("/api/t/myapp/auth/sign-in/email-otp", ha.Last!.RequestUri!.AbsolutePath);
+        Assert.Equal("tok_123", res.Token);
+        Assert.Equal("tok_123", app.Auth.Token);
     }
 
     [Fact]

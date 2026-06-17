@@ -122,6 +122,10 @@ $client = new Client('http://test', ['api_key' => 'pak_secret', 'transport' => $
 $client->from('posts')->list();
 check(in_array('Authorization: Bearer pak_secret', $last['headers'], true), 'api key bearer header');
 
+$client = new Client('http://test', ['tenant' => 'myapp', 'transport' => $transport]);
+$client->from('posts')->list();
+check(in_array('X-Backlex-Tenant: myapp', $last['headers'], true), 'tenant header is sent');
+
 $client = new Client('http://test', ['api_key' => 'pak_x', 'transport' => $transport]);
 $posts = $client->from('posts');
 $posts->create(['title' => 'Hi']);

@@ -17,6 +17,14 @@ public sealed class BacklexClientOptions
     /// <summary>Restore a previously-saved workspace session token (app mode).</summary>
     public string? Token { get; set; }
 
+    /// <summary>
+    /// Scope every request to a tenant/workspace (slug or id) via the
+    /// X-Backlex-Tenant header — for anonymous public reads or a pak_ key
+    /// addressing a tenant other than its home one. Ignored by the server for
+    /// app-mode bearer sessions.
+    /// </summary>
+    public string? Tenant { get; set; }
+
     /// <summary>Custom HttpClient (timeouts, proxies, testing).</summary>
     public HttpClient? HttpClient { get; set; }
 }
@@ -36,6 +44,7 @@ public sealed class BacklexClient
     };
 
     private readonly string? _apiKey;
+    private readonly string? _tenant;
 
     internal string Url { get; }
     internal string? Workspace { get; }
@@ -50,6 +59,7 @@ public sealed class BacklexClient
         var o = options ?? new BacklexClientOptions();
         Url = baseUrl.TrimEnd('/');
         _apiKey = o.ApiKey;
+        _tenant = o.Tenant;
         Workspace = o.Workspace;
         AppToken = o.Token;
         // A cookie container keeps same-origin cookie sessions working across calls.
@@ -68,6 +78,8 @@ public sealed class BacklexClient
             req.Headers.TryAddWithoutValidation("Authorization", $"Bearer {_apiKey}");
         else if (!string.IsNullOrEmpty(AppToken))
             req.Headers.TryAddWithoutValidation("Authorization", $"Bearer {AppToken}");
+        if (!string.IsNullOrEmpty(_tenant))
+            req.Headers.TryAddWithoutValidation("X-Backlex-Tenant", _tenant);
     }
 
     /// <summary>Typed CRUD handle for a collection.</summary>

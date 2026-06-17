@@ -112,6 +112,7 @@ Future<void> main() async {
     last['path'] = req.uri.path;
     last['queryParams'] = req.uri.queryParameters;
     last['auth'] = req.headers.value('Authorization');
+    last['tenant'] = req.headers.value('X-Backlex-Tenant');
     last['body'] = await utf8.decoder.bind(req).join();
     final r = route(last);
     req.response.headers.contentType = ContentType.json;
@@ -133,6 +134,10 @@ Future<void> main() async {
   client = Client(base, apiKey: 'pak_secret');
   await client.from('posts').list();
   check(last['auth'] == 'Bearer pak_secret', 'api key bearer header');
+
+  client = Client(base, tenant: 'myapp');
+  await client.from('posts').list();
+  check(last['tenant'] == 'myapp', 'tenant header is sent');
 
   client = Client(base, apiKey: 'pak_x');
   final posts = client.from('posts');

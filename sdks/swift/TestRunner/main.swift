@@ -128,6 +128,15 @@ do {
 }
 
 do {
+    let cfg = URLSessionConfiguration.ephemeral
+    cfg.protocolClasses = [MockURLProtocol.self]
+    let client = BacklexClient("http://test", tenant: "myapp", session: URLSession(configuration: cfg))
+    _ = try await client.from("posts", as: JSONValue.self).list()
+    check(MockURLProtocol.lastRequest!.value(forHTTPHeaderField: "X-Backlex-Tenant") == "myapp",
+          "tenant header is sent")
+}
+
+do {
     let client = mockClient(apiKey: "pak_x")
     let posts = client.from("posts", as: JSONValue.self)
     _ = try await posts.create(["title": "Hi"] as JSONValue)

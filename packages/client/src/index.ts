@@ -31,6 +31,13 @@ export interface ClientOptions {
   workspace?: string;
   /** Restore a previously-saved workspace session token (app mode). */
   token?: string;
+  /**
+   * Scope every request to a specific tenant/workspace by sending the
+   * `X-Backlex-Tenant` header (slug or id). Needed for anonymous public reads
+   * and for a `pak_` key addressing a tenant other than its home one. The server
+   * ignores it for app-mode bearer sessions (the tenant comes from the session).
+   */
+  tenant?: string;
   /** Optional fetch override (testing / Node polyfill). */
   fetch?: typeof fetch;
 }
@@ -89,6 +96,10 @@ export const createClient = (opts: ClientOptions) => {
     return {};
   };
 
+  // Optional explicit tenant scoping (slug or id) for anonymous / cross-tenant calls.
+  const tenantHeader = (): Record<string, string> =>
+    opts.tenant ? { "x-backlex-tenant": opts.tenant } : {};
+
   const request = async <T>(
     method: string,
     path: string,
@@ -98,6 +109,7 @@ export const createClient = (opts: ClientOptions) => {
     const headers: Record<string, string> = {
       "content-type": "application/json",
       ...authHeader(),
+      ...tenantHeader(),
       ...(extraHeaders ?? {}),
     };
     const res = await f(`${opts.url}${path}`, {
@@ -227,6 +239,7 @@ export const createClient = (opts: ClientOptions) => {
     ) => {
       const headers: Record<string, string> = {
         ...authHeader(),
+        ...tenantHeader(),
         ...(contentType ? { "content-type": contentType } : {}),
       };
       const url = `${opts.url}/api/storage/${encodeURIComponent(key)}${folderId ? `?folderId=${folderId}` : ""}`;
@@ -247,7 +260,7 @@ export const createClient = (opts: ClientOptions) => {
     download: async (key: string): Promise<Response> => {
       const res = await f(`${opts.url}/api/storage/${encodeURIComponent(key)}`, {
         credentials: "include",
-        headers: authHeader(),
+        headers: { ...authHeader(), ...tenantHeader() },
       });
       if (!res.ok) {
         throw new BacklexError(res.status, undefined);

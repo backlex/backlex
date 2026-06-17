@@ -1,6 +1,6 @@
-use crate::client::Client;
+use crate::client::{self, Client};
 use crate::error::BacklexError;
-use crate::query::QueryBuilder;
+use crate::query::{ItemQuery, QueryBuilder};
 use serde_json::Value;
 
 /// A CRUD handle for one collection. Obtain via `client.from("slug")`.
@@ -29,8 +29,11 @@ impl Collection {
         self.client.request("POST", &format!("/api/items/{}/aggregate", self.slug), Some(body))
     }
 
-    pub fn one(&self, id: &str) -> Result<Value, BacklexError> {
-        self.client.request("GET", &format!("/api/items/{}/{}", self.slug, id), None)
+    /// Fetch a single item by id. Pass an optional [`ItemQuery`] to inline
+    /// relations (expand) or project i18n_text fields (locale); None for neither.
+    pub fn one(&self, id: &str, query: Option<&ItemQuery>) -> Result<Value, BacklexError> {
+        let qs = query.map(client::build_item_search).unwrap_or_default();
+        self.client.request("GET", &format!("/api/items/{}/{}{}", self.slug, id, qs), None)
     }
 
     pub fn create(&self, data: &Value) -> Result<Value, BacklexError> {

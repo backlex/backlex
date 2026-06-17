@@ -14,6 +14,14 @@ public struct ListQuery {
     public init() {}
 }
 
+/// Per-call options for `one(_:query:)`. The single-item read endpoint accepts
+/// the same `expand`/`locale` params as the list endpoint.
+public struct ItemQuery {
+    public var expand: [String] = [] // inline single-hop relations
+    public var locale: String? // one locale, or "*" for the full i18n map
+    public init() {}
+}
+
 /// One aggregate row: `{value}` ungrouped, or `{label, value}` grouped.
 public struct AggregateRow: Decodable {
     public let value: Double

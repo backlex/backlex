@@ -43,7 +43,15 @@ public final class Collection<T> {
     }
 
     public ItemResponse<T> one(String id) {
-        return client.request("GET", "/api/items/" + slug + "/" + id, null, itemType);
+        return one(id, null);
+    }
+
+    /**
+     * Fetch a single item by id. Pass an {@link ItemQuery} to inline relations
+     * (expand) or project i18n_text fields (locale); {@code null} for neither.
+     */
+    public ItemResponse<T> one(String id, ItemQuery q) {
+        return client.request("GET", "/api/items/" + slug + "/" + id + BacklexClient.buildItemSearch(q), null, itemType);
     }
 
     public ItemResponse<T> create(Object data) {

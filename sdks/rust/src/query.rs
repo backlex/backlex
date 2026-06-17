@@ -17,6 +17,14 @@ pub struct ListQuery {
     pub q: Option<String>,
 }
 
+/// Per-call options for [`Collection::one`](crate::Collection::one). The single-item
+/// read endpoint accepts the same expand/locale params as the list endpoint.
+#[derive(Default, Clone)]
+pub struct ItemQuery {
+    pub expand: Vec<String>,
+    pub locale: Option<String>,
+}
+
 /// Chainable builder that compiles to a [`ListQuery`] and runs it. Builder methods
 /// consume `self` and return it, so calls chain.
 pub struct QueryBuilder {

@@ -40,9 +40,11 @@ func (col *Collection[T]) Aggregate(body any) (*AggregateResponse, error) {
 	return &out, nil
 }
 
-func (col *Collection[T]) One(id string) (*ItemResponse[T], error) {
+// One fetches a single item by id. Pass an optional *ItemQuery to inline
+// relations (Expand) or project i18n_text fields (Locale); nil for neither.
+func (col *Collection[T]) One(id string, q *ItemQuery) (*ItemResponse[T], error) {
 	var out ItemResponse[T]
-	if err := col.client.Do("GET", "/api/items/"+col.slug+"/"+id, nil, &out); err != nil {
+	if err := col.client.Do("GET", "/api/items/"+col.slug+"/"+id+buildItemSearch(q), nil, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil

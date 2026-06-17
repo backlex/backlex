@@ -23,8 +23,9 @@ module Backlex
       @client.request("POST", "/api/items/#{@slug}/aggregate", body)
     end
 
-    def one(id)
-      @client.request("GET", "/api/items/#{@slug}/#{id}")
+    # query may carry expand/locale, the same params the list endpoint accepts.
+    def one(id, query = nil)
+      @client.request("GET", "/api/items/#{@slug}/#{id}#{Client.build_search(query)}")
     end
 
     def create(data)

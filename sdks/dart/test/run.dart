@@ -145,6 +145,12 @@ Future<void> main() async {
   check(qp2['expand'] == 'author' && qp2['locale'] == 'tr' && qp2['q'] == 'hi', 'query extras serialize');
 
   client = Client(base);
+  await client.from('posts').one('p1', {'expand': ['author'], 'locale': 'tr'});
+  final oneQp = last['queryParams'] as Map<String, String>;
+  check(last['path'] == '/api/items/posts/p1' && oneQp['expand'] == 'author' && oneQp['locale'] == 'tr',
+      'one() forwards expand/locale');
+
+  client = Client(base);
   await client.from('orders').aggregate({'agg': 'sum', 'field': 'total'});
   check(last['method'] == 'POST' && last['path'] == '/api/items/orders/aggregate', 'aggregate hits the right path');
 

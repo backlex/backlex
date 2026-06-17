@@ -56,6 +56,9 @@ class ClientTest {
                 json = "{\"ok\":true}";
             } else if (lastMethod.equals("POST") || lastMethod.equals("PATCH")) {
                 json = "{\"data\":{\"id\":\"x1\"}}";
+            } else if (lastMethod.equals("GET") && lastPath.matches("/api/items/[^/]+/[^/]+")) {
+                // Single-item read: /api/items/<slug>/<id> — object-shaped data.
+                json = "{\"data\":{\"id\":\"x1\"}}";
             } else {
                 json = "{\"data\":[],\"limit\":50,\"offset\":0}";
             }
@@ -114,6 +117,18 @@ class ClientTest {
         assertTrue(lastQuery.contains("expand=author"));
         assertTrue(lastQuery.contains("locale=tr"));
         assertTrue(lastQuery.contains("q=hi"));
+    }
+
+    @Test
+    void oneForwardsExpandAndLocale() {
+        BacklexClient client = BacklexClient.builder(base).build();
+        ItemQuery q = new ItemQuery();
+        q.expand.add("author");
+        q.locale = "tr";
+        client.from("posts", Object.class).one("p1", q);
+        assertEquals("/api/items/posts/p1", lastPath);
+        assertTrue(lastQuery.contains("expand=author"));
+        assertTrue(lastQuery.contains("locale=tr"));
     }
 
     @Test

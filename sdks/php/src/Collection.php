@@ -28,9 +28,10 @@ final class Collection
         return $this->client->request('POST', "/api/items/{$this->slug}/aggregate", $body);
     }
 
-    public function one(string $id): array
+    /** $query may carry expand/locale — the same params the list endpoint accepts. */
+    public function one(string $id, ?array $query = null): array
     {
-        return $this->client->request('GET', "/api/items/{$this->slug}/{$id}");
+        return $this->client->request('GET', "/api/items/{$this->slug}/{$id}" . Client::buildSearch($query));
     }
 
     public function create(array $data): array

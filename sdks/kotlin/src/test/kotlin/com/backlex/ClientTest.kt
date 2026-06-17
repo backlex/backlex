@@ -60,6 +60,8 @@ class ClientTest {
             else 200 to """{"user":{"id":"u1","email":"a@b.c"}}"""
         lastMethod == "DELETE" -> 200 to """{"ok":true}"""
         lastMethod == "POST" || lastMethod == "PATCH" -> 200 to """{"data":{"id":"x1"}}"""
+        // Single-item read: /api/items/<slug>/<id> — object-shaped data.
+        lastMethod == "GET" && Regex("/api/items/[^/]+/[^/]+").matches(lastPath) -> 200 to """{"data":{"id":"x1"}}"""
         else -> 200 to """{"data":[],"limit":50,"offset":0}"""
     }
 
@@ -97,6 +99,16 @@ class ClientTest {
         assertTrue(lastQuery!!.contains("expand=author"))
         assertTrue(lastQuery!!.contains("locale=tr"))
         assertTrue(lastQuery!!.contains("q=hi"))
+    }
+
+    @Test
+    fun oneForwardsExpandAndLocale() {
+        val client = BacklexClient.builder(base).build()
+        val q = ItemQuery().apply { expand.add("author"); locale = "tr" }
+        client.from<Any>("posts").one("p1", q)
+        assertEquals("/api/items/posts/p1", lastPath)
+        assertTrue(lastQuery!!.contains("expand=author"))
+        assertTrue(lastQuery!!.contains("locale=tr"))
     }
 
     @Test

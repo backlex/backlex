@@ -86,6 +86,11 @@ def test_crud_methods_paths_and_body() -> None:
     assert rec.last.method == "GET"
     assert rec.last.url.path == "/api/items/posts/p1"
 
+    client.from_("posts").one("p1", {"expand": "author", "locale": "tr"})
+    assert rec.last.url.path == "/api/items/posts/p1"
+    assert dict(rec.last.url.params)["expand"] == "author"
+    assert dict(rec.last.url.params)["locale"] == "tr"
+
     out = client.from_("posts").delete("p1")
     assert rec.last.method == "DELETE"
     assert out == {"ok": True}

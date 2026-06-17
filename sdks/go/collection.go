@@ -71,3 +71,21 @@ func (col *Collection[T]) Delete(id string) (*DeleteResult, error) {
 	}
 	return &out, nil
 }
+
+// Publish flips a versioned item to published.
+func (col *Collection[T]) Publish(id string) (*ItemResponse[T], error) {
+	var out ItemResponse[T]
+	if err := col.client.Do("POST", "/api/items/"+col.slug+"/"+id+"/publish", nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// Unpublish flips a versioned item back to draft.
+func (col *Collection[T]) Unpublish(id string) (*ItemResponse[T], error) {
+	var out ItemResponse[T]
+	if err := col.client.Do("POST", "/api/items/"+col.slug+"/"+id+"/publish?unpublish=1", nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}

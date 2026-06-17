@@ -163,6 +163,15 @@ fn aggregate_hits_the_right_path() {
 }
 
 #[test]
+fn publish_unpublish_paths() {
+    let (client, last) = mk(|b| b);
+    client.from("posts").publish("p1").unwrap();
+    let pub_ok = url_path(&last.lock().unwrap().url) == "/api/items/posts/p1/publish";
+    client.from("posts").unpublish("p1").unwrap();
+    assert!(pub_ok && last.lock().unwrap().url.contains("unpublish=1"));
+}
+
+#[test]
 fn tenant_header_is_sent() {
     let (client, last) = mk(|b| b.tenant("myapp"));
     client.from("posts").list().unwrap();

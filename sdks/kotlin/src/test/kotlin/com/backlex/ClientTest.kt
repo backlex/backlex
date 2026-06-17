@@ -100,6 +100,15 @@ class ClientTest {
     }
 
     @Test
+    fun publishUnpublishPaths() {
+        val client = BacklexClient.builder(base).build()
+        client.from<Any>("posts").publish("p1")
+        assertEquals("/api/items/posts/p1/publish", lastPath)
+        client.from<Any>("posts").unpublish("p1")
+        assertTrue(lastQuery!!.contains("unpublish=1"))
+    }
+
+    @Test
     fun aggregateHitsTheRightPath() {
         val client = BacklexClient.builder(base).build()
         val res = client.from<Any>("orders").aggregate(mapOf("agg" to "sum", "field" to "total"))

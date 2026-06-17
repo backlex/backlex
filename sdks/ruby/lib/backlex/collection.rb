@@ -38,5 +38,15 @@ module Backlex
     def delete(id)
       @client.request("DELETE", "/api/items/#{@slug}/#{id}")
     end
+
+    # Flip a versioned item to published.
+    def publish(id)
+      @client.request("POST", "/api/items/#{@slug}/#{id}/publish")
+    end
+
+    # Flip a versioned item back to draft.
+    def unpublish(id)
+      @client.request("POST", "/api/items/#{@slug}/#{id}/publish?unpublish=1")
+    end
   end
 end

@@ -137,6 +137,16 @@ def test_aggregate_hits_the_right_path() -> None:
     assert rec.last.url.path == "/api/items/orders/aggregate"
 
 
+def test_publish_unpublish_paths() -> None:
+    rec = Recorder()
+    client = _client(rec)
+    client.from_("posts").publish("p1")
+    assert rec.last.method == "POST"
+    assert rec.last.url.path == "/api/items/posts/p1/publish"
+    client.from_("posts").unpublish("p1")
+    assert dict(rec.last.url.params).get("unpublish") == "1"
+
+
 def test_tenant_header_is_sent() -> None:
     rec = Recorder()
     client = _client(rec, tenant="myapp")

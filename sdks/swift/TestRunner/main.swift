@@ -165,6 +165,15 @@ do {
 }
 
 do {
+    let posts = mockClient().from("posts", as: JSONValue.self)
+    _ = try await posts.publish("p1")
+    let pubOK = MockURLProtocol.lastRequest!.url!.path == "/api/items/posts/p1/publish"
+    _ = try await posts.unpublish("p1")
+    let unpubOK = MockURLProtocol.lastRequest!.url!.query?.contains("unpublish=1") ?? false
+    check(pubOK && unpubOK, "publish / unpublish paths")
+}
+
+do {
     let client = mockClient()
     _ = try await client.auth.changePassword(newPassword: "new", currentPassword: "old")
     check(MockURLProtocol.lastRequest!.url!.path == "/api/auth/change-password",

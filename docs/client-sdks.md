@@ -125,6 +125,17 @@ Beyond sign-in/up, every SDK's `auth` exposes:
   themselves last the workspace's `session_lifetime`; once that elapses the user
   re-authenticates.)
 
+### Publishing versioned items
+
+Collections with draft/publish versioning expose two helpers on every collection
+handle. They map to the same `POST /api/items/<slug>/<id>/publish` endpoint —
+`unpublish` just flips it back with `?unpublish=1`:
+
+```ts
+await client.from("posts").publish("post-id");   // draft → published
+await client.from("posts").unpublish("post-id"); // published → draft
+```
+
 ## One wire format, eleven languages
 
 The query builder in every SDK compiles to the **identical canonical JSON**

@@ -103,6 +103,19 @@ func TestPasswordResetPath(t *testing.T) {
 	}
 }
 
+func TestChangePasswordPath(t *testing.T) {
+	var cap capture
+	srv := newServer(&cap)
+	defer srv.Close()
+	c := New(srv.URL)
+	if _, err := c.Auth.ChangePassword("new", "old", false); err != nil {
+		t.Fatal(err)
+	}
+	if cap.path != "/api/auth/change-password" {
+		t.Fatalf("path: %s", cap.path)
+	}
+}
+
 func TestAPIKeyBearer(t *testing.T) {
 	var cap capture
 	srv := newServer(&cap)

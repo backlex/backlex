@@ -133,6 +133,13 @@ def test_password_reset_hits_the_right_path() -> None:
     assert rec.last.url.path == "/api/auth/request-password-reset"
 
 
+def test_change_password_hits_the_right_path() -> None:
+    rec = Recorder()
+    client = _client(rec)
+    client.auth.change_password("new", "old")
+    assert rec.last.url.path == "/api/auth/change-password"
+
+
 def test_control_plane_auth_does_not_capture_token() -> None:
     rec = Recorder()
     client = _client(rec)  # no workspace → control-plane mode

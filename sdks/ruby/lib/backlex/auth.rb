@@ -53,6 +53,27 @@ module Backlex
       @client.request("POST", "#{base}/token/refresh", { "refreshToken" => @client.app_token })
     end
 
+    # Change the signed-in user's password (requires the current password).
+    def change_password(new_password, current_password, revoke_other_sessions: false)
+      @client.request("POST", "#{base}/change-password", {
+                        "newPassword" => new_password,
+                        "currentPassword" => current_password,
+                        "revokeOtherSessions" => revoke_other_sessions
+                      })
+    end
+
+    # Update the signed-in user's profile (e.g. name / image).
+    def update_user(attributes)
+      @client.request("POST", "#{base}/update-user", attributes)
+    end
+
+    # Send an email-verification link.
+    def send_verification_email(email, callback_url: nil)
+      body = { "email" => email }
+      body["callbackURL"] = callback_url if callback_url
+      @client.request("POST", "#{base}/send-verification-email", body)
+    end
+
     def sign_out
       @client.request("POST", "#{base}/sign-out")
       @client.app_token = nil if workspace?

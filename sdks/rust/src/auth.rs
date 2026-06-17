@@ -97,6 +97,30 @@ impl Auth {
         self.client.request("POST", &format!("{}/token/refresh", self.base()), Some(&body))
     }
 
+    /// Change the signed-in user's password (requires the current password).
+    pub fn change_password(&self, new_password: &str, current_password: &str, revoke_other_sessions: bool) -> Result<Value, BacklexError> {
+        let body = json!({
+            "newPassword": new_password,
+            "currentPassword": current_password,
+            "revokeOtherSessions": revoke_other_sessions,
+        });
+        self.client.request("POST", &format!("{}/change-password", self.base()), Some(&body))
+    }
+
+    /// Update the signed-in user's profile (e.g. name / image).
+    pub fn update_user(&self, attributes: &Value) -> Result<Value, BacklexError> {
+        self.client.request("POST", &format!("{}/update-user", self.base()), Some(attributes))
+    }
+
+    /// Send an email-verification link. Pass `callback_url: None` to omit.
+    pub fn send_verification_email(&self, email: &str, callback_url: Option<&str>) -> Result<Value, BacklexError> {
+        let mut body = json!({ "email": email });
+        if let Some(c) = callback_url {
+            body["callbackURL"] = json!(c);
+        }
+        self.client.request("POST", &format!("{}/send-verification-email", self.base()), Some(&body))
+    }
+
     pub fn sign_out(&self) -> Result<(), BacklexError> {
         self.client.request("POST", &format!("{}/sign-out", self.base()), None)?;
         if self.workspace_set() {

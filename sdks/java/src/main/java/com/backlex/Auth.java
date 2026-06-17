@@ -96,6 +96,28 @@ public final class Auth {
         return client.request("POST", base() + "/token/refresh", body, mapType);
     }
 
+    /** Change the signed-in user's password (requires the current password). */
+    public Map<String, Object> changePassword(String newPassword, String currentPassword, boolean revokeOtherSessions) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("newPassword", newPassword);
+        body.put("currentPassword", currentPassword);
+        body.put("revokeOtherSessions", revokeOtherSessions);
+        return client.request("POST", base() + "/change-password", body, mapType);
+    }
+
+    /** Update the signed-in user's profile (e.g. name / image). */
+    public Map<String, Object> updateUser(Map<String, Object> attributes) {
+        return client.request("POST", base() + "/update-user", attributes, mapType);
+    }
+
+    /** Send an email-verification link. Pass callbackUrl=null to omit. */
+    public Map<String, Object> sendVerificationEmail(String email, String callbackUrl) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("email", email);
+        if (callbackUrl != null) body.put("callbackURL", callbackUrl);
+        return client.request("POST", base() + "/send-verification-email", body, mapType);
+    }
+
     /** Clear the session; in app mode also drops the captured token. */
     public void signOut() {
         client.request("POST", base() + "/sign-out", null, mapType);

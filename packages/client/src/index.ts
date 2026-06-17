@@ -212,6 +212,18 @@ export const createClient = (opts: ClientOptions) => {
         `${authBase}/token/refresh`,
         { refreshToken: appToken },
       ),
+    /** Change the signed-in user's password (requires the current password). */
+    changePassword: (input: {
+      newPassword: string;
+      currentPassword: string;
+      revokeOtherSessions?: boolean;
+    }) => request<Record<string, unknown>>("POST", `${authBase}/change-password`, input),
+    /** Update the signed-in user's profile (e.g. `{ name, image }`). */
+    updateUser: (attributes: Record<string, unknown>) =>
+      request<Record<string, unknown>>("POST", `${authBase}/update-user`, attributes),
+    /** Send an email-verification link to the signed-in (or named) user. */
+    sendVerificationEmail: (input: { email: string; callbackURL?: string }) =>
+      request<{ status: boolean }>("POST", `${authBase}/send-verification-email`, input),
     signOut: () => request<{ success: boolean }>("POST", `${authBase}/sign-out`).then((r) => {
       if (opts.workspace) appToken = null;
       return r;

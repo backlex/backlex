@@ -80,6 +80,32 @@ final class Auth
         ]);
     }
 
+    /** Change the signed-in user's password (requires the current password). */
+    public function changePassword(string $newPassword, string $currentPassword, bool $revokeOtherSessions = false): array
+    {
+        return $this->client->request('POST', $this->base() . '/change-password', [
+            'newPassword' => $newPassword,
+            'currentPassword' => $currentPassword,
+            'revokeOtherSessions' => $revokeOtherSessions,
+        ]);
+    }
+
+    /** Update the signed-in user's profile (e.g. name / image). */
+    public function updateUser(array $attributes): array
+    {
+        return $this->client->request('POST', $this->base() . '/update-user', $attributes);
+    }
+
+    /** Send an email-verification link. Pass callbackUrl=null to omit. */
+    public function sendVerificationEmail(string $email, ?string $callbackUrl = null): array
+    {
+        $body = ['email' => $email];
+        if ($callbackUrl !== null) {
+            $body['callbackURL'] = $callbackUrl;
+        }
+        return $this->client->request('POST', $this->base() . '/send-verification-email', $body);
+    }
+
     /** Clear the session; in app mode also drops the captured token. */
     public function signOut(): void
     {

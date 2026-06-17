@@ -58,4 +58,14 @@ public final class Collection<T> {
         return client.request("DELETE", "/api/items/" + slug + "/" + id, null,
                 BacklexClient.MAPPER.getTypeFactory().constructType(Models.DeleteResult.class));
     }
+
+    /** Flip a versioned item to published. */
+    public ItemResponse<T> publish(String id) {
+        return client.request("POST", "/api/items/" + slug + "/" + id + "/publish", null, itemType);
+    }
+
+    /** Flip a versioned item back to draft. */
+    public ItemResponse<T> unpublish(String id) {
+        return client.request("POST", "/api/items/" + slug + "/" + id + "/publish?unpublish=1", null, itemType);
+    }
 }

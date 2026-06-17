@@ -106,6 +106,19 @@ class Collection:
             Dict[str, Any], self._client.request("DELETE", f"/api/items/{self._slug}/{id}")
         )
 
+    def publish(self, id: str) -> ItemResponse:
+        """Flip a versioned item to published."""
+        return cast(
+            ItemResponse, self._client.request("POST", f"/api/items/{self._slug}/{id}/publish")
+        )
+
+    def unpublish(self, id: str) -> ItemResponse:
+        """Flip a versioned item back to draft."""
+        return cast(
+            ItemResponse,
+            self._client.request("POST", f"/api/items/{self._slug}/{id}/publish?unpublish=1"),
+        )
+
 
 class Auth:
     """Auth surface. In app mode (``workspace`` set), targets the workspace pool."""

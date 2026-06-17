@@ -44,4 +44,14 @@ impl Collection {
     pub fn delete(&self, id: &str) -> Result<Value, BacklexError> {
         self.client.request("DELETE", &format!("/api/items/{}/{}", self.slug, id), None)
     }
+
+    /// Flip a versioned item to published.
+    pub fn publish(&self, id: &str) -> Result<Value, BacklexError> {
+        self.client.request("POST", &format!("/api/items/{}/{}/publish", self.slug, id), None)
+    }
+
+    /// Flip a versioned item back to draft.
+    pub fn unpublish(&self, id: &str) -> Result<Value, BacklexError> {
+        self.client.request("POST", &format!("/api/items/{}/{}/publish?unpublish=1", self.slug, id), None)
+    }
 }

@@ -139,6 +139,12 @@ check(
 );
 
 $client = new Client('http://test', ['transport' => $transport]);
+$client->from('posts')->publish('p1');
+$pubOk = parse_url($last['url'], PHP_URL_PATH) === '/api/items/posts/p1/publish';
+$client->from('posts')->unpublish('p1');
+check($pubOk && str_contains($last['url'], 'unpublish=1'), 'publish / unpublish paths');
+
+$client = new Client('http://test', ['transport' => $transport]);
 $client->auth->requestPasswordReset('a@b.c');
 check(parse_url($last['url'], PHP_URL_PATH) === '/api/auth/request-password-reset', 'password reset hits the right path');
 

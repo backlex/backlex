@@ -106,6 +106,14 @@ class ClientTest < Minitest::Test
     assert_equal "/api/items/orders/aggregate", @last[:path]
   end
 
+  def test_publish_unpublish_paths
+    client = Backlex::Client.new(@base)
+    client.from("posts").publish("p1")
+    assert_equal "/api/items/posts/p1/publish", @last[:path]
+    client.from("posts").unpublish("p1")
+    assert_includes @last[:query], "unpublish=1"
+  end
+
   def test_password_reset_hits_the_right_path
     client = Backlex::Client.new(@base)
     client.auth.request_password_reset("a@b.c")

@@ -93,6 +93,25 @@ func TestQueryExtrasSerialize(t *testing.T) {
 	}
 }
 
+func TestPublishUnpublishPaths(t *testing.T) {
+	var cap capture
+	srv := newServer(&cap)
+	defer srv.Close()
+	c := New(srv.URL)
+	if _, err := From[map[string]any](c, "posts").Publish("p1"); err != nil {
+		t.Fatal(err)
+	}
+	if cap.method != "POST" || cap.path != "/api/items/posts/p1/publish" {
+		t.Fatalf("publish: %s %s", cap.method, cap.path)
+	}
+	if _, err := From[map[string]any](c, "posts").Unpublish("p1"); err != nil {
+		t.Fatal(err)
+	}
+	if cap.query["unpublish"][0] != "1" {
+		t.Fatalf("unpublish: %v", cap.query)
+	}
+}
+
 func TestAggregatePath(t *testing.T) {
 	var cap capture
 	srv := newServer(&cap)

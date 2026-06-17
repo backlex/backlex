@@ -34,4 +34,14 @@ public struct Collection<T: Decodable> {
     public func delete(_ id: String) async throws -> DeleteResult {
         try await client.send("DELETE", "/api/items/\(slug)/\(id)", nil)
     }
+
+    /// Flip a versioned item to published.
+    public func publish(_ id: String) async throws -> ItemResponse<T> {
+        try await client.send("POST", "/api/items/\(slug)/\(id)/publish", nil)
+    }
+
+    /// Flip a versioned item back to draft.
+    public func unpublish(_ id: String) async throws -> ItemResponse<T> {
+        try await client.send("POST", "/api/items/\(slug)/\(id)/publish?unpublish=1", nil)
+    }
 }

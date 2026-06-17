@@ -160,6 +160,12 @@ export const createClient = (opts: ClientOptions) => {
         request<ItemResponse<T>>("PATCH", `/api/items/${slug}/${id}`, patch),
       delete: (id: string): Promise<{ ok: boolean }> =>
         request<{ ok: boolean }>("DELETE", `/api/items/${slug}/${id}`),
+      /** Flip a versioned item to published (`_status`). */
+      publish: (id: string): Promise<ItemResponse<T>> =>
+        request<ItemResponse<T>>("POST", `/api/items/${slug}/${id}/publish`),
+      /** Flip a versioned item back to draft. */
+      unpublish: (id: string): Promise<ItemResponse<T>> =>
+        request<ItemResponse<T>>("POST", `/api/items/${slug}/${id}/publish?unpublish=1`),
     };
   };
 

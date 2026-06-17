@@ -149,6 +149,12 @@ Future<void> main() async {
   check(last['method'] == 'POST' && last['path'] == '/api/items/orders/aggregate', 'aggregate hits the right path');
 
   client = Client(base);
+  await client.from('posts').publish('p1');
+  final pubOk = last['path'] == '/api/items/posts/p1/publish';
+  await client.from('posts').unpublish('p1');
+  check(pubOk && (last['queryParams'] as Map)['unpublish'] == '1', 'publish / unpublish paths');
+
+  client = Client(base);
   await client.auth.requestPasswordReset('a@b.c');
   check(last['path'] == '/api/auth/request-password-reset', 'password reset hits the right path');
 

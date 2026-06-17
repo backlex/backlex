@@ -117,6 +117,15 @@ class ClientTest {
     }
 
     @Test
+    void publishUnpublishPaths() {
+        BacklexClient client = BacklexClient.builder(base).build();
+        client.from("posts", Object.class).publish("p1");
+        assertEquals("/api/items/posts/p1/publish", lastPath);
+        client.from("posts", Object.class).unpublish("p1");
+        assertTrue(lastQuery.contains("unpublish=1"));
+    }
+
+    @Test
     void aggregateHitsTheRightPath() {
         BacklexClient client = BacklexClient.builder(base).build();
         Map<String, Object> spec = new java.util.LinkedHashMap<>();

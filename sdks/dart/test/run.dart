@@ -143,6 +143,10 @@ Future<void> main() async {
   await client.auth.requestPasswordReset('a@b.c');
   check(last['path'] == '/api/auth/request-password-reset', 'password reset hits the right path');
 
+  client = Client(base);
+  await client.auth.changePassword('new', 'old');
+  check(last['path'] == '/api/auth/change-password', 'change password hits the right path');
+
   client = Client(base, apiKey: 'pak_x');
   final posts = client.from('posts');
   await posts.create({'title': 'Hi'});

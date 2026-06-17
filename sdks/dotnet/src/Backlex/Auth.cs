@@ -106,6 +106,31 @@ public sealed class Auth
                 new Dictionary<string, object?> { ["refreshToken"] = _client.AppToken })
             .ConfigureAwait(false) ?? new();
 
+    /// <summary>Change the signed-in user's password (requires the current password).</summary>
+    public async Task<Dictionary<string, object?>> ChangePasswordAsync(string newPassword, string currentPassword, bool revokeOtherSessions = false) =>
+        await _client.RequestAsync<Dictionary<string, object?>>(HttpMethod.Post, $"{Base}/change-password",
+                new Dictionary<string, object?>
+                {
+                    ["newPassword"] = newPassword,
+                    ["currentPassword"] = currentPassword,
+                    ["revokeOtherSessions"] = revokeOtherSessions,
+                })
+            .ConfigureAwait(false) ?? new();
+
+    /// <summary>Update the signed-in user's profile (e.g. name / image).</summary>
+    public async Task<Dictionary<string, object?>> UpdateUserAsync(Dictionary<string, object?> attributes) =>
+        await _client.RequestAsync<Dictionary<string, object?>>(HttpMethod.Post, $"{Base}/update-user", attributes)
+            .ConfigureAwait(false) ?? new();
+
+    /// <summary>Send an email-verification link.</summary>
+    public async Task<Dictionary<string, object?>> SendVerificationEmailAsync(string email, string? callbackUrl = null)
+    {
+        var body = new Dictionary<string, object?> { ["email"] = email };
+        if (callbackUrl != null) body["callbackURL"] = callbackUrl;
+        return await _client.RequestAsync<Dictionary<string, object?>>(HttpMethod.Post, $"{Base}/send-verification-email", body)
+            .ConfigureAwait(false) ?? new();
+    }
+
     /// <summary>Clear the session; in app mode also drops the captured token.</summary>
     public async Task SignOutAsync()
     {

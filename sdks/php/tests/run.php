@@ -130,6 +130,10 @@ $client = new Client('http://test', ['transport' => $transport]);
 $client->auth->requestPasswordReset('a@b.c');
 check(parse_url($last['url'], PHP_URL_PATH) === '/api/auth/request-password-reset', 'password reset hits the right path');
 
+$client = new Client('http://test', ['transport' => $transport]);
+$client->auth->changePassword('new', 'old');
+check(parse_url($last['url'], PHP_URL_PATH) === '/api/auth/change-password', 'change password hits the right path');
+
 $client = new Client('http://test', ['api_key' => 'pak_x', 'transport' => $transport]);
 $posts = $client->from('posts');
 $posts->create(['title' => 'Hi']);

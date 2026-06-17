@@ -116,6 +116,42 @@ func (a *Auth) Refresh() (map[string]any, error) {
 	return out, nil
 }
 
+// ChangePassword changes the signed-in user's password (requires the current one).
+func (a *Auth) ChangePassword(newPassword, currentPassword string, revokeOtherSessions bool) (map[string]any, error) {
+	body := map[string]any{
+		"newPassword":         newPassword,
+		"currentPassword":     currentPassword,
+		"revokeOtherSessions": revokeOtherSessions,
+	}
+	var out map[string]any
+	if err := a.client.Do("POST", a.base()+"/change-password", body, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// UpdateUser updates the signed-in user's profile (e.g. {"name": ..., "image": ...}).
+func (a *Auth) UpdateUser(attributes map[string]any) (map[string]any, error) {
+	var out map[string]any
+	if err := a.client.Do("POST", a.base()+"/update-user", attributes, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// SendVerificationEmail sends an email-verification link. Pass callbackURL="" to omit.
+func (a *Auth) SendVerificationEmail(email, callbackURL string) (map[string]any, error) {
+	body := map[string]any{"email": email}
+	if callbackURL != "" {
+		body["callbackURL"] = callbackURL
+	}
+	var out map[string]any
+	if err := a.client.Do("POST", a.base()+"/send-verification-email", body, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SignOut clears the session; in app mode it also drops the captured token.
 func (a *Auth) SignOut() error {
 	if err := a.client.Do("POST", a.base()+"/sign-out", nil, nil); err != nil {

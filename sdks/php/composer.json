@@ -1,0 +1,20 @@
+{
+  "name": "backlex/backlex",
+  "description": "Official PHP client for the backlex API (CRUD, query builder, auth, realtime, storage).",
+  "type": "library",
+  "license": "MIT",
+  "homepage": "https://backlex.com",
+  "require": {
+    "php": ">=8.1",
+    "ext-curl": "*",
+    "ext-json": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Backlex\\": "src/"
+    }
+  },
+  "scripts": {
+    "test": "php tests/run.php"
+  }
+}

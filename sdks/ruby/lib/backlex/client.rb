@@ -1,0 +1,128 @@
+# frozen_string_literal: true
+
+require "net/http"
+require "uri"
+require "json"
+
+module Backlex
+  # The official Ruby client for the backlex API — a thin, typed wrapper over the
+  # same REST + SSE surface the TypeScript SDK (@backlex/client) speaks. Three auth
+  # modes: server key, workspace app mode (token capture), or cookie session.
+  class Client
+    attr_reader :workspace
+    attr_accessor :app_token
+
+    def initialize(url, api_key: nil, workspace: nil, token: nil)
+      @url = url.chomp("/")
+      @api_key = api_key
+      @workspace = workspace
+      @app_token = token
+    end
+
+    # CRUD handle for a collection.
+    def from(slug)
+      Collection.new(self, slug)
+    end
+
+    def auth
+      @auth ||= Auth.new(self)
+    end
+
+    def storage
+      @storage ||= Storage.new(self)
+    end
+
+    # Subscribe to a realtime channel (e.g. "items:posts"). Returns a Subscription;
+    # #close unsubscribes. on_error may be nil.
+    def subscribe(channel, on_event, on_error = nil)
+      Subscription.new(self, "#{@url}/api/realtime/#{channel}/subscribe", on_event, on_error)
+    end
+
+    # Raw escape hatch — issues a JSON request with auth headers applied.
+    def request(method, path, body = nil)
+      uri = URI(@url + path)
+      req = build_request(method, uri)
+      req["Content-Type"] = "application/json"
+      req.body = JSON.generate(body) unless body.nil?
+      auth_header(req)
+      res = send_request(uri, req)
+      code = res.code.to_i
+      raise Backlex::Error.from(code, res.body) if code < 200 || code >= 300
+      return nil if code == 204 || res.body.nil? || res.body.empty?
+
+      JSON.parse(res.body)
+    end
+
+    # Raw-body upload (storage). Returns the parsed JSON response.
+    def put_raw(path, body, content_type)
+      uri = URI(@url + path)
+      req = Net::HTTP::Put.new(uri)
+      req["Content-Type"] = content_type if content_type
+      req.body = body
+      auth_header(req)
+      res = send_request(uri, req)
+      code = res.code.to_i
+      raise Backlex::Error.from(code, res.body) if code < 200 || code >= 300
+
+      res.body.nil? || res.body.empty? ? nil : JSON.parse(res.body)
+    end
+
+    # Raw byte download (storage). Returns the response body string.
+    def get_raw(path)
+      uri = URI(@url + path)
+      req = Net::HTTP::Get.new(uri)
+      auth_header(req)
+      res = send_request(uri, req)
+      code = res.code.to_i
+      raise Backlex::Error.new(code, "UNKNOWN", "HTTP #{code}") if code < 200 || code >= 300
+
+      res.body
+    end
+
+    def auth_header(req)
+      if @api_key
+        req["Authorization"] = "Bearer #{@api_key}"
+      elsif @app_token
+        req["Authorization"] = "Bearer #{@app_token}"
+      end
+    end
+
+    # Serialize a ListQuery hash into a URL query string (mirrors buildSearch in
+    # index.ts). The filter is compact JSON, percent-encoded exactly once.
+    def self.build_search(query)
+      return "" if query.nil?
+
+      parts = []
+      if query[:filter] && !query[:filter].empty?
+        parts << "filter=#{URI.encode_www_form_component(JSON.generate(query[:filter]))}"
+      end
+      parts << "sort=#{URI.encode_www_form_component(query[:sort].join(','))}" unless query[:sort].empty?
+      parts << "fields=#{URI.encode_www_form_component(query[:fields].join(','))}" unless query[:fields].empty?
+      parts << "limit=#{query[:limit]}" unless query[:limit].nil?
+      parts << "offset=#{query[:offset]}" unless query[:offset].nil?
+      parts << "meta=#{URI.encode_www_form_component(query[:meta])}" if query[:meta]
+      parts.empty? ? "" : "?#{parts.join('&')}"
+    end
+
+    private
+
+    def build_request(method, uri)
+      case method.upcase
+      when "GET"    then Net::HTTP::Get.new(uri)
+      when "POST"   then Net::HTTP::Post.new(uri)
+      when "PATCH"  then Net::HTTP::Patch.new(uri)
+      when "PUT"    then Net::HTTP::Put.new(uri)
+      when "DELETE" then Net::HTTP::Delete.new(uri)
+      else raise ArgumentError, "unsupported method #{method}"
+      end
+    end
+
+    def send_request(uri, req)
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = uri.scheme == "https"
+      http.request(req)
+    rescue StandardError => e
+      raise Backlex::Error.new(0, "NETWORK", e.message)
+    end
+  end
+end

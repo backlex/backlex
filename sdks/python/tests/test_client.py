@@ -23,7 +23,7 @@ class Recorder:
     def handler(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
         path = request.url.path
-        if path.endswith("/sign-in/email"):
+        if "/sign-in/email" in path:  # /sign-in/email and /sign-in/email-otp
             return httpx.Response(200, json={"user": {"id": "u1", "email": "a@b.c"}, "token": "tok_123"})
         if path == "/api/items/missing":
             return httpx.Response(
@@ -112,6 +112,22 @@ def test_app_mode_token_capture_and_replay() -> None:
 
     client.auth.sign_out()
     assert client.auth.get_token() is None
+
+
+def test_email_otp_flow() -> None:
+    rec = Recorder()
+    client = _client(rec)
+    client.auth.send_verification_otp("a@b.c")
+    assert rec.last.url.path == "/api/auth/email-otp/send-verification-otp"
+    assert json.loads(rec.last.content)["type"] == "sign-in"
+
+    # app mode: signing in with the code captures the workspace token
+    rec2 = Recorder()
+    app = _client(rec2, workspace="myapp")
+    res = app.auth.sign_in_email_otp("a@b.c", "123456")
+    assert rec2.last.url.path == "/api/t/myapp/auth/sign-in/email-otp"
+    assert res["token"] == "tok_123"
+    assert app.auth.get_token() == "tok_123"
 
 
 def test_error_envelope_becomes_backlex_error() -> None:

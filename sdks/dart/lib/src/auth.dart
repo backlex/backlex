@@ -46,6 +46,20 @@ class Auth {
     return await _client.request('POST', '$_base/sign-in/magic-link', body) as Map<String, dynamic>;
   }
 
+  /// Email a one-time numeric code (requires the email-otp provider). [type] is
+  /// `"sign-in"` (default), `"email-verification"` or `"forget-password"`.
+  /// Complete a sign-in with [signInEmailOtp].
+  Future<Map<String, dynamic>> sendVerificationOtp(String email, {String type = 'sign-in'}) async =>
+      await _client.request('POST', '$_base/email-otp/send-verification-otp',
+          {'email': email, 'type': type}) as Map<String, dynamic>;
+
+  /// Complete an email-OTP sign-in with the code from [sendVerificationOtp]. In
+  /// app mode the returned session token is captured.
+  Future<Map<String, dynamic>> signInEmailOtp(String email, String otp) async {
+    final r = await _client.request('POST', '$_base/sign-in/email-otp', {'email': email, 'otp': otp});
+    return _capture(r as Map<String, dynamic>);
+  }
+
   /// Send a password-reset email. `redirectTo` is the link target.
   Future<Map<String, dynamic>> requestPasswordReset(String email, {String? redirectTo}) async {
     final body = <String, dynamic>{'email': email};

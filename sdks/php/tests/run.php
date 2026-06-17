@@ -88,7 +88,7 @@ function makeTransport(array &$last): callable
         if ($path === '/api/items/missing') {
             return [404, '{"error":{"code":"NOT_FOUND","message":"no such collection"}}'];
         }
-        if ($method === 'POST' && str_ends_with($path, '/sign-in/email')) {
+        if ($method === 'POST' && str_contains($path, '/sign-in/email')) { // email + email-otp
             return str_starts_with($path, '/api/t/')
                 ? [200, '{"user":{"id":"u1","email":"a@b.c"},"token":"tok_123"}']
                 : [200, '{"user":{"id":"u1","email":"a@b.c"}}'];
@@ -156,6 +156,19 @@ check($pubOk && str_contains($last['url'], 'unpublish=1'), 'publish / unpublish 
 $client = new Client('http://test', ['transport' => $transport]);
 $client->auth->requestPasswordReset('a@b.c');
 check(parse_url($last['url'], PHP_URL_PATH) === '/api/auth/request-password-reset', 'password reset hits the right path');
+
+$client = new Client('http://test', ['transport' => $transport]);
+$client->auth->sendVerificationOTP('a@b.c');
+$sendOk = parse_url($last['url'], PHP_URL_PATH) === '/api/auth/email-otp/send-verification-otp'
+    && json_decode($last['body'], true)['type'] === 'sign-in';
+$app = new Client('http://test', ['workspace' => 'myapp', 'transport' => $transport]);
+$otpRes = $app->auth->signInEmailOTP('a@b.c', '123456');
+check(
+    $sendOk
+        && parse_url($last['url'], PHP_URL_PATH) === '/api/t/myapp/auth/sign-in/email-otp'
+        && $otpRes['token'] === 'tok_123' && $app->auth->token() === 'tok_123',
+    'email-otp: send + app-mode sign-in captures token'
+);
 
 $client = new Client('http://test', ['transport' => $transport]);
 $client->auth->changePassword('new', 'old');

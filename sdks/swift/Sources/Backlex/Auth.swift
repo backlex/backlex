@@ -73,6 +73,22 @@ public struct Auth {
         return try await client.send("POST", "\(base)/sign-in/magic-link", try encodeBody(body))
     }
 
+    /// Email a one-time numeric code (requires the `email-otp` provider). `type` is
+    /// `"sign-in"` (default), `"email-verification"` or `"forget-password"`.
+    /// Complete a sign-in with `signInEmailOTP`.
+    public func sendVerificationOTP(email: String, type: String = "sign-in") async throws -> [String: JSONValue] {
+        let body: [String: JSONValue] = ["email": .string(email), "type": .string(type)]
+        return try await client.send("POST", "\(base)/email-otp/send-verification-otp", try encodeBody(body))
+    }
+
+    /// Complete an email-OTP sign-in with the code from `sendVerificationOTP`. In
+    /// app mode the returned session token is captured.
+    public func signInEmailOTP(email: String, otp: String) async throws -> AuthResult {
+        let body: [String: JSONValue] = ["email": .string(email), "otp": .string(otp)]
+        let r: AuthResult = try await client.send("POST", "\(base)/sign-in/email-otp", try encodeBody(body))
+        return capture(r)
+    }
+
     /// Send a password-reset email. `redirectTo` is the link target.
     public func requestPasswordReset(email: String, redirectTo: String? = nil) async throws -> [String: JSONValue] {
         var body: [String: JSONValue] = ["email": .string(email)]

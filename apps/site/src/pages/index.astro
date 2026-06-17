@@ -613,6 +613,107 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
   </div>
 </section>
 
+<!-- ─────────────────── Client SDKs ─────────────────── -->
+<section id="sdks" class="relative z-[1] py-24 border-b border-border">
+  <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
+    <div class="flex flex-col gap-4 max-w-[760px] mb-12">
+      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>client sdks</span>
+      <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">Ship in any language.<br/>One API, eleven SDKs.</h2>
+      <p class="text-[17px] text-muted-foreground max-w-[64ch]">
+        TypeScript is the reference client; native clients ship for ten more languages. Every one wraps the <strong class="text-foreground font-semibold">same REST + SSE surface</strong> — CRUD, a fluent query builder, auth, realtime, and storage — and the query builder in each compiles to the <strong class="text-foreground font-semibold">same canonical JSON</strong> the server already speaks. Nothing language-specific hits the wire.
+      </p>
+    </div>
+
+    <!-- Language grid -->
+    <div class="grid grid-cols-4 max-[1100px]:grid-cols-3 max-[680px]:grid-cols-2 gap-3.5">
+      <div class="border border-border rounded-3xl p-5 flex flex-col gap-2.5 bg-card">
+        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[11.5px] font-semibold">Ts</span><h3 class="text-[15px] font-semibold">TypeScript</h3></div>
+        <p class="text-muted-foreground text-[12px] font-mono">fetch · browser + node</p>
+      </div>
+      <div class="border border-border rounded-3xl p-5 flex flex-col gap-2.5 bg-card">
+        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[11.5px] font-semibold">Py</span><h3 class="text-[15px] font-semibold">Python</h3></div>
+        <p class="text-muted-foreground text-[12px] font-mono">httpx</p>
+      </div>
+      <div class="border border-border rounded-3xl p-5 flex flex-col gap-2.5 bg-card">
+        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[11.5px] font-semibold">Go</span><h3 class="text-[15px] font-semibold">Go</h3></div>
+        <p class="text-muted-foreground text-[12px] font-mono">net/http · stdlib</p>
+      </div>
+      <div class="border border-border rounded-3xl p-5 flex flex-col gap-2.5 bg-card">
+        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[11.5px] font-semibold">Rs</span><h3 class="text-[15px] font-semibold">Rust</h3></div>
+        <p class="text-muted-foreground text-[12px] font-mono">serde_json · wasm-ready</p>
+      </div>
+      <div class="border border-border rounded-3xl p-5 flex flex-col gap-2.5 bg-card">
+        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[11.5px] font-semibold">Sw</span><h3 class="text-[15px] font-semibold">Swift</h3></div>
+        <p class="text-muted-foreground text-[12px] font-mono">URLSession · iOS</p>
+      </div>
+      <div class="border border-border rounded-3xl p-5 flex flex-col gap-2.5 bg-card">
+        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[11.5px] font-semibold">Da</span><h3 class="text-[15px] font-semibold">Dart</h3></div>
+        <p class="text-muted-foreground text-[12px] font-mono">flutter · ios+android+web</p>
+      </div>
+      <div class="border border-border rounded-3xl p-5 flex flex-col gap-2.5 bg-card">
+        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[11.5px] font-semibold">Kt</span><h3 class="text-[15px] font-semibold">Kotlin</h3></div>
+        <p class="text-muted-foreground text-[12px] font-mono">jvm · android</p>
+      </div>
+      <div class="border border-border rounded-3xl p-5 flex flex-col gap-2.5 bg-card">
+        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[11.5px] font-semibold">Jv</span><h3 class="text-[15px] font-semibold">Java</h3></div>
+        <p class="text-muted-foreground text-[12px] font-mono">java.net.http</p>
+      </div>
+      <div class="border border-border rounded-3xl p-5 flex flex-col gap-2.5 bg-card">
+        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[11.5px] font-semibold">C#</span><h3 class="text-[15px] font-semibold">.NET</h3></div>
+        <p class="text-muted-foreground text-[12px] font-mono">httpclient · zero deps</p>
+      </div>
+      <div class="border border-border rounded-3xl p-5 flex flex-col gap-2.5 bg-card">
+        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[11.5px] font-semibold">Rb</span><h3 class="text-[15px] font-semibold">Ruby</h3></div>
+        <p class="text-muted-foreground text-[12px] font-mono">net/http · stdlib</p>
+      </div>
+      <div class="border border-border rounded-3xl p-5 flex flex-col gap-2.5 bg-card">
+        <div class="flex items-center gap-2.5"><span class="w-7 h-7 rounded-md bg-muted grid place-items-center font-mono text-[11.5px] font-semibold">Ph</span><h3 class="text-[15px] font-semibold">PHP</h3></div>
+        <p class="text-muted-foreground text-[12px] font-mono">curl</p>
+      </div>
+      <div class="border border-dashed border-border rounded-3xl p-5 flex items-center justify-center bg-card/40">
+        <a href="/docs/client-sdks" class="text-[13px] text-muted-foreground hover:text-foreground no-underline font-medium">Browse all SDKs →</a>
+      </div>
+    </div>
+
+    <!-- Three-up: one wire format / native ergonomics / typed models -->
+    <div class="grid grid-cols-3 max-[1020px]:grid-cols-1 gap-3.5 mt-12">
+      <div class="border border-border rounded-3xl bg-card p-5 flex flex-col gap-2">
+        <div class="flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+          <h3 class="text-[15px] font-semibold">One wire format</h3>
+        </div>
+        <p class="text-[12.5px] text-muted-foreground leading-snug">Every SDK's query builder compiles to the same canonical JSON <code class="font-mono text-foreground">Condition</code> — <code class="font-mono text-foreground">$and</code> / <code class="font-mono text-foreground">_eq</code> / dotted relations. The server didn't change to support any of them.</p>
+      </div>
+      <div class="border border-border rounded-3xl bg-card p-5 flex flex-col gap-2">
+        <div class="flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          <h3 class="text-[15px] font-semibold">Native ergonomics</h3>
+        </div>
+        <p class="text-[12.5px] text-muted-foreground leading-snug">Hand-written per language — async or blocking, idiomatic operators, typed errors. Reads like code you'd write, not a generated stub.</p>
+      </div>
+      <div class="border border-border rounded-3xl bg-card p-5 flex flex-col gap-2">
+        <div class="flex items-center gap-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <h3 class="text-[15px] font-semibold">Typed models</h3>
+        </div>
+        <p class="text-[12.5px] text-muted-foreground leading-snug">Generate model types from the OpenAPI spec the server ships. CRUD, auth, realtime, and storage are there in every client.</p>
+      </div>
+    </div>
+
+    <!-- Bottom CTA strip -->
+    <div class="mt-10 flex items-center gap-3 flex-wrap">
+      <a href="/docs/client-sdks" class="inline-flex items-center gap-2 h-10 px-4 rounded-3xl bg-primary text-primary-foreground text-[13.5px] font-medium no-underline hover:bg-[color-mix(in_oklch,var(--color-primary)_90%,var(--color-foreground))] transition-colors whitespace-nowrap">
+        Client SDKs docs
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </a>
+      <a href="https://github.com/backlex/backlex/tree/main/sdks" target="_blank" rel="noopener" class="inline-flex items-center gap-2 h-10 px-4 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13.5px] font-medium no-underline transition-colors whitespace-nowrap">Browse the source ↗</a>
+      <span class="text-[12px] text-muted-foreground ml-1">
+        One canonical query grammar · idiomatic in each language · Rust core compiles to WebAssembly
+      </span>
+    </div>
+  </div>
+</section>
+
 <!-- ─────────────────── Stack ─────────────────── -->
 <section id="stack" class="relative z-[1] py-24 border-b border-border">
   <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">

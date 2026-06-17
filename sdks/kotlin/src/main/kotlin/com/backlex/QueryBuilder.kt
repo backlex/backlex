@@ -13,6 +13,15 @@ class QueryBuilder<T>(private val listFn: (ListQuery) -> ListResponse<T>) {
 
     fun orderBy(vararg sorts: String) = apply { q.sort.addAll(sorts) }
 
+    /** Inline single-hop relations (replaces each FK with the related object). */
+    fun expand(vararg rels: String) = apply { q.expand.addAll(rels) }
+
+    /** Project i18n_text fields to one locale, or "*" for the full map. */
+    fun locale(loc: String) = apply { q.locale = loc }
+
+    /** Free-text search across readable text fields. */
+    fun search(text: String) = apply { q.q = text }
+
     fun limit(n: Int) = apply { q.limit = n }
 
     fun offset(n: Int) = apply { q.offset = n }

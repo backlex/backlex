@@ -26,6 +26,8 @@ internal sealed class RecordingHandler : HttpMessageHandler
 
         if (path == "/api/items/missing")
             return Resp(404, "{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"no such collection\"}}");
+        if (path.EndsWith("/aggregate", StringComparison.Ordinal))
+            return Resp(200, "{\"data\":[{\"value\":42}]}");
         if (request.Method == HttpMethod.Post && path == "/api/t/myapp/auth/sign-in/email")
             return Resp(200, "{\"user\":{\"id\":\"u1\",\"email\":\"a@b.c\"},\"token\":\"tok_123\"}");
         if (request.Method == HttpMethod.Delete)
@@ -71,6 +73,28 @@ public class ClientTests
         var (client, h) = Make();
         await client.Auth.ChangePasswordAsync("new", "old");
         Assert.Equal("/api/auth/change-password", h.Last!.RequestUri!.AbsolutePath);
+    }
+
+    [Fact]
+    public async Task QueryExtrasSerialize()
+    {
+        var (client, h) = Make();
+        await client.From<Dictionary<string, object?>>("posts").Query()
+            .Expand("author").Locale("tr").Search("hi").ListAsync();
+        var query = h.Last!.RequestUri!.Query;
+        Assert.Contains("expand=author", query);
+        Assert.Contains("locale=tr", query);
+        Assert.Contains("q=hi", query);
+    }
+
+    [Fact]
+    public async Task AggregateHitsTheRightPath()
+    {
+        var (client, h) = Make();
+        var res = await client.From<Dictionary<string, object?>>("orders")
+            .AggregateAsync(new Dictionary<string, object?> { ["agg"] = "sum", ["field"] = "total" });
+        Assert.Equal("/api/items/orders/aggregate", h.Last!.RequestUri!.AbsolutePath);
+        Assert.Equal(42, res.Data[0].Value);
     }
 
     [Fact]

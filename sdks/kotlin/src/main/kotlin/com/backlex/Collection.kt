@@ -22,6 +22,10 @@ class Collection<T>(
     /** Fluent builder that compiles to a [ListQuery]. */
     fun query(): QueryBuilder<T> = QueryBuilder { list(it) }
 
+    /** Single-function aggregate (count/sum/avg/min/max), optionally grouped. */
+    fun aggregate(body: Any): AggregateResponse =
+        client.request("POST", "/api/items/$slug/aggregate", body, tf.constructType(AggregateResponse::class.java))
+
     fun one(id: String): ItemResponse<T> =
         client.request("GET", "/api/items/$slug/$id", null, itemType)
 

@@ -24,6 +24,11 @@ public sealed class Collection<T>
     /// <summary>Fluent builder that compiles to a <see cref="ListQuery"/>.</summary>
     public QueryBuilder<T> Query() => new(ListAsync);
 
+    /// <summary>Single-function aggregate (count/sum/avg/min/max), optionally grouped.</summary>
+    public async Task<AggregateResponse> AggregateAsync(object body) =>
+        await _client.RequestAsync<AggregateResponse>(HttpMethod.Post, $"/api/items/{_slug}/aggregate", body)
+            .ConfigureAwait(false) ?? new AggregateResponse();
+
     public async Task<ItemResponse<T>> OneAsync(string id) =>
         await _client.RequestAsync<ItemResponse<T>>(HttpMethod.Get, $"/api/items/{_slug}/{id}")
             .ConfigureAwait(false) ?? new ItemResponse<T>();

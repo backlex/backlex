@@ -30,6 +30,16 @@ func (col *Collection[T]) Query() *QueryBuilder[T] {
 	return &QueryBuilder[T]{listFn: col.List}
 }
 
+// Aggregate runs a single-function aggregate (count/sum/avg/min/max), optionally
+// grouped. body = map[string]any{"agg": "sum", "field": "price", "groupBy": "status"}.
+func (col *Collection[T]) Aggregate(body any) (*AggregateResponse, error) {
+	var out AggregateResponse
+	if err := col.client.Do("POST", "/api/items/"+col.slug+"/aggregate", body, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 func (col *Collection[T]) One(id string) (*ItemResponse[T], error) {
 	var out ItemResponse[T]
 	if err := col.client.Do("GET", "/api/items/"+col.slug+"/"+id, nil, &out); err != nil {

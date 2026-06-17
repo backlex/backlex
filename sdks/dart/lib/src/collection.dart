@@ -13,6 +13,11 @@ class Collection {
   /// Fluent builder that compiles to a ListQuery.
   QueryBuilder query() => QueryBuilder((q) => list(q));
 
+  /// Single-function aggregate (count/sum/avg/min/max), optionally grouped.
+  /// `body` = `{'agg': 'sum', 'field': 'price', 'groupBy': 'status'}`.
+  Future<dynamic> aggregate(Map<String, dynamic> body) =>
+      _client.request('POST', '/api/items/$_slug/aggregate', body);
+
   Future<dynamic> one(String id) => _client.request('GET', '/api/items/$_slug/$id');
 
   Future<dynamic> create(Map<String, dynamic> data) =>

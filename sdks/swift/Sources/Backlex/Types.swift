@@ -5,10 +5,24 @@ public struct ListQuery {
     public var filter: Condition?
     public var sort: [String] = []
     public var fields: [String] = []
+    public var expand: [String] = [] // inline single-hop relations
     public var limit: Int?
     public var offset: Int?
     public var meta: String? // "filter_count" | "total_count" | "*"
+    public var locale: String? // one locale, or "*" for the full i18n map
+    public var q: String? // free-text search across readable text fields
     public init() {}
+}
+
+/// One aggregate row: `{value}` ungrouped, or `{label, value}` grouped.
+public struct AggregateRow: Decodable {
+    public let value: Double
+    public let label: JSONValue?
+}
+
+/// The `{ "data": [...] }` envelope from `Collection.aggregate`.
+public struct AggregateResponse: Decodable {
+    public let data: [AggregateRow]
 }
 
 /// Result of a collection list/query call.

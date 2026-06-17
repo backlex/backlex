@@ -48,6 +48,8 @@ class ClientTest {
             if (lastPath.equals("/api/items/missing")) {
                 code = 404;
                 json = "{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"no such collection\"}}";
+            } else if (lastPath.endsWith("/aggregate")) {
+                json = "{\"data\":[{\"value\":42}]}";
             } else if (lastMethod.equals("POST") && lastPath.equals("/api/t/myapp/auth/sign-in/email")) {
                 json = "{\"user\":{\"id\":\"u1\",\"email\":\"a@b.c\"},\"token\":\"tok_123\"}";
             } else if (lastMethod.equals("DELETE")) {
@@ -103,6 +105,26 @@ class ClientTest {
         BacklexClient client = BacklexClient.builder(base).tenant("myapp").build();
         client.from("posts", Object.class).list();
         assertEquals("myapp", lastTenant);
+    }
+
+    @Test
+    void queryExtrasSerialize() {
+        BacklexClient client = BacklexClient.builder(base).build();
+        client.from("posts", Object.class).query().expand("author").locale("tr").search("hi").list();
+        assertTrue(lastQuery.contains("expand=author"));
+        assertTrue(lastQuery.contains("locale=tr"));
+        assertTrue(lastQuery.contains("q=hi"));
+    }
+
+    @Test
+    void aggregateHitsTheRightPath() {
+        BacklexClient client = BacklexClient.builder(base).build();
+        Map<String, Object> spec = new java.util.LinkedHashMap<>();
+        spec.put("agg", "sum");
+        spec.put("field", "total");
+        Models.AggregateResponse res = client.from("orders", Object.class).aggregate(spec);
+        assertEquals("/api/items/orders/aggregate", lastPath);
+        assertEquals(42.0, res.data.get(0).value, 0.0001);
     }
 
     @Test

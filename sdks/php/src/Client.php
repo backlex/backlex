@@ -150,6 +150,9 @@ final class Client
         if (!empty($q['fields'])) {
             $parts[] = 'fields=' . rawurlencode(implode(',', $q['fields']));
         }
+        if (!empty($q['expand'])) {
+            $parts[] = 'expand=' . rawurlencode(implode(',', $q['expand']));
+        }
         if (($q['limit'] ?? null) !== null) {
             $parts[] = 'limit=' . $q['limit'];
         }
@@ -158,6 +161,12 @@ final class Client
         }
         if (!empty($q['meta'])) {
             $parts[] = 'meta=' . rawurlencode($q['meta']);
+        }
+        if (!empty($q['locale'])) {
+            $parts[] = 'locale=' . rawurlencode($q['locale']);
+        }
+        if (!empty($q['q'])) {
+            $parts[] = 'q=' . rawurlencode($q['q']);
         }
         return empty($parts) ? '' : '?' . implode('&', $parts);
     }

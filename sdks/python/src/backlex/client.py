@@ -44,12 +44,19 @@ def _build_search(q: Optional[ListQuery]) -> str:
     fields = q.get("fields")
     if fields:
         params.append(("fields", ",".join(fields) if isinstance(fields, list) else str(fields)))
+    expand = q.get("expand")
+    if expand:
+        params.append(("expand", ",".join(expand) if isinstance(expand, list) else str(expand)))
     if q.get("limit") is not None:
         params.append(("limit", str(q["limit"])))
     if q.get("offset") is not None:
         params.append(("offset", str(q["offset"])))
     if q.get("meta"):
         params.append(("meta", q["meta"]))
+    if q.get("locale"):
+        params.append(("locale", q["locale"]))
+    if q.get("q"):
+        params.append(("q", q["q"]))
     s = urlencode(params)
     return f"?{s}" if s else ""
 
@@ -70,6 +77,15 @@ class Collection:
     def query(self) -> QueryBuilder:
         """Fluent, type-safe query builder that compiles to a ``ListQuery``."""
         return QueryBuilder(self.list)
+
+    def aggregate(self, body: Dict[str, Any]) -> Dict[str, Any]:
+        """Single-function aggregate (count/sum/avg/min/max), optionally grouped.
+
+        ``body`` = ``{"agg": "sum", "field": "price", "groupBy": "status"}``.
+        """
+        return cast(
+            Dict[str, Any], self._client.request("POST", f"/api/items/{self._slug}/aggregate", body)
+        )
 
     def one(self, id: str) -> ItemResponse:
         return cast(ItemResponse, self._client.request("GET", f"/api/items/{self._slug}/{id}"))

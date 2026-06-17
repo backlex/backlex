@@ -17,6 +17,12 @@ module Backlex
       QueryBuilder.new(method(:list))
     end
 
+    # Single-function aggregate (count/sum/avg/min/max), optionally grouped.
+    # body = { "agg" => "sum", "field" => "price", "groupBy" => "status" }
+    def aggregate(body)
+      @client.request("POST", "/api/items/#{@slug}/aggregate", body)
+    end
+
     def one(id)
       @client.request("GET", "/api/items/#{@slug}/#{id}")
     end

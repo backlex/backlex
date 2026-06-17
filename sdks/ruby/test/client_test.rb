@@ -91,6 +91,21 @@ class ClientTest < Minitest::Test
     assert_equal "myapp", @last[:tenant]
   end
 
+  def test_query_extras_serialize
+    client = Backlex::Client.new(@base)
+    client.from("posts").query.expand("author").locale("tr").search("hi").list
+    assert_includes @last[:query], "expand=author"
+    assert_includes @last[:query], "locale=tr"
+    assert_includes @last[:query], "q=hi"
+  end
+
+  def test_aggregate_hits_the_right_path
+    client = Backlex::Client.new(@base)
+    client.from("orders").aggregate({ "agg" => "sum", "field" => "total" })
+    assert_equal "POST", @last[:method]
+    assert_equal "/api/items/orders/aggregate", @last[:path]
+  end
+
   def test_password_reset_hits_the_right_path
     client = Backlex::Client.new(@base)
     client.auth.request_password_reset("a@b.c")

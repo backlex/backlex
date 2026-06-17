@@ -15,9 +15,32 @@ export interface ListQuery {
   filter?: Condition;
   sort?: string | string[];
   fields?: string | string[];
+  /** Inline single-hop relations (replaces the FK with the related object). */
+  expand?: string | string[];
   limit?: number;
   offset?: number;
   meta?: "filter_count" | "total_count" | "*";
+  /** Collapse `i18n_text` fields to one locale, or `"*"` for the full map. */
+  locale?: string;
+  /** Free-text search — `_contains` OR'd across readable text fields. */
+  q?: string;
+}
+
+/** Body for `from(slug).aggregate(...)`. A single function over one column. */
+export interface AggregateQuery {
+  agg: "count" | "sum" | "avg" | "min" | "max";
+  /** Target column. Required for sum/avg/min/max; omit (or "*") for count. */
+  field?: string;
+  /** Group by a single column — returns one `{ label, value }` row per group. */
+  groupBy?: string;
+  filter?: Condition;
+  limit?: number;
+}
+
+/** A row from `aggregate`: `{ value }` ungrouped, or `{ label, value }` grouped. */
+export interface AggregateRow {
+  value: number;
+  label?: unknown;
 }
 
 export interface ItemEvent<T = Record<string, unknown>> {

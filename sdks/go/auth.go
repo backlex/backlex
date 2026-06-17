@@ -83,6 +83,39 @@ func (a *Auth) SignInMagicLink(email, callbackURL string) (map[string]any, error
 	return out, nil
 }
 
+// RequestPasswordReset sends a password-reset email. Pass redirectTo="" to omit.
+func (a *Auth) RequestPasswordReset(email, redirectTo string) (map[string]any, error) {
+	body := map[string]any{"email": email}
+	if redirectTo != "" {
+		body["redirectTo"] = redirectTo
+	}
+	var out map[string]any
+	if err := a.client.Do("POST", a.base()+"/request-password-reset", body, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// ResetPassword completes a reset with the token from the email and a new password.
+func (a *Auth) ResetPassword(newPassword, token string) (map[string]any, error) {
+	body := map[string]any{"newPassword": newPassword, "token": token}
+	var out map[string]any
+	if err := a.client.Do("POST", a.base()+"/reset-password", body, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// Refresh mints a fresh access JWT from the stored session token (app mode).
+func (a *Auth) Refresh() (map[string]any, error) {
+	body := map[string]any{"refreshToken": a.client.appToken}
+	var out map[string]any
+	if err := a.client.Do("POST", a.base()+"/token/refresh", body, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SignOut clears the session; in app mode it also drops the captured token.
 func (a *Auth) SignOut() error {
 	if err := a.client.Do("POST", a.base()+"/sign-out", nil, nil); err != nil {

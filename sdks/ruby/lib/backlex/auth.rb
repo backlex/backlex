@@ -36,6 +36,23 @@ module Backlex
     end
 
     # Clear the session; in app mode also drops the captured token.
+    # Send a password-reset email. +redirect_to+ is the link target.
+    def request_password_reset(email, redirect_to: nil)
+      body = { "email" => email }
+      body["redirectTo"] = redirect_to if redirect_to
+      @client.request("POST", "#{base}/request-password-reset", body)
+    end
+
+    # Complete a reset with the token from the email and a new password.
+    def reset_password(new_password, token)
+      @client.request("POST", "#{base}/reset-password", { "newPassword" => new_password, "token" => token })
+    end
+
+    # Mint a fresh access JWT from the stored session token (app mode).
+    def refresh
+      @client.request("POST", "#{base}/token/refresh", { "refreshToken" => @client.app_token })
+    end
+
     def sign_out
       @client.request("POST", "#{base}/sign-out")
       @client.app_token = nil if workspace?

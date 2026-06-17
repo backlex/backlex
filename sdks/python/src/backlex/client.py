@@ -152,6 +152,34 @@ class Auth:
             self._client.request("POST", f"{self._base}/sign-in/magic-link", body),
         )
 
+    def request_password_reset(self, email: str, redirect_to: Optional[str] = None) -> Dict[str, Any]:
+        """Send a password-reset email. ``redirect_to`` is where the link points."""
+        body: Dict[str, Any] = {"email": email}
+        if redirect_to is not None:
+            body["redirectTo"] = redirect_to
+        return cast(
+            Dict[str, Any],
+            self._client.request("POST", f"{self._base}/request-password-reset", body),
+        )
+
+    def reset_password(self, new_password: str, token: str) -> Dict[str, Any]:
+        """Complete a reset with the token from the email and a new password."""
+        return cast(
+            Dict[str, Any],
+            self._client.request(
+                "POST", f"{self._base}/reset-password", {"newPassword": new_password, "token": token}
+            ),
+        )
+
+    def refresh(self) -> Dict[str, Any]:
+        """Mint a fresh access JWT from the stored session token (app mode)."""
+        return cast(
+            Dict[str, Any],
+            self._client.request(
+                "POST", f"{self._base}/token/refresh", {"refreshToken": self._client._app_token}
+            ),
+        )
+
     def sign_out(self) -> Dict[str, Any]:
         result = cast(Dict[str, Any], self._client.request("POST", f"{self._base}/sign-out"))
         if self._client._workspace:

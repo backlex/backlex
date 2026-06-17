@@ -85,6 +85,27 @@ public sealed class Auth
             .ConfigureAwait(false) ?? new();
     }
 
+    /// <summary>Send a password-reset email. <paramref name="redirectTo"/> is the link target.</summary>
+    public async Task<Dictionary<string, object?>> RequestPasswordResetAsync(string email, string? redirectTo = null)
+    {
+        var body = new Dictionary<string, object?> { ["email"] = email };
+        if (redirectTo != null) body["redirectTo"] = redirectTo;
+        return await _client.RequestAsync<Dictionary<string, object?>>(HttpMethod.Post, $"{Base}/request-password-reset", body)
+            .ConfigureAwait(false) ?? new();
+    }
+
+    /// <summary>Complete a reset with the token from the email and a new password.</summary>
+    public async Task<Dictionary<string, object?>> ResetPasswordAsync(string newPassword, string token) =>
+        await _client.RequestAsync<Dictionary<string, object?>>(HttpMethod.Post, $"{Base}/reset-password",
+                new Dictionary<string, object?> { ["newPassword"] = newPassword, ["token"] = token })
+            .ConfigureAwait(false) ?? new();
+
+    /// <summary>Mint a fresh access JWT from the stored session token (app mode).</summary>
+    public async Task<Dictionary<string, object?>> RefreshAsync() =>
+        await _client.RequestAsync<Dictionary<string, object?>>(HttpMethod.Post, $"{Base}/token/refresh",
+                new Dictionary<string, object?> { ["refreshToken"] = _client.AppToken })
+            .ConfigureAwait(false) ?? new();
+
     /// <summary>Clear the session; in app mode also drops the captured token.</summary>
     public async Task SignOutAsync()
     {

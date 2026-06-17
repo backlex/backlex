@@ -137,6 +137,13 @@ do {
 }
 
 do {
+    let client = mockClient()
+    _ = try await client.auth.requestPasswordReset(email: "a@b.c")
+    check(MockURLProtocol.lastRequest!.url!.path == "/api/auth/request-password-reset",
+          "password reset hits the right path")
+}
+
+do {
     let client = mockClient(apiKey: "pak_x")
     let posts = client.from("posts", as: JSONValue.self)
     _ = try await posts.create(["title": "Hi"] as JSONValue)

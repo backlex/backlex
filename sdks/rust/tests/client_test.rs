@@ -118,6 +118,13 @@ fn query_string_filter_is_not_double_encoded() {
 }
 
 #[test]
+fn password_reset_hits_the_right_path() {
+    let (client, last) = mk(|b| b);
+    client.auth().request_password_reset("a@b.c", None).unwrap();
+    assert_eq!(url_path(&last.lock().unwrap().url), "/api/auth/request-password-reset");
+}
+
+#[test]
 fn tenant_header_is_sent() {
     let (client, last) = mk(|b| b.tenant("myapp"));
     client.from("posts").list().unwrap();

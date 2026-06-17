@@ -46,6 +46,23 @@ class Auth {
     return await _client.request('POST', '$_base/sign-in/magic-link', body) as Map<String, dynamic>;
   }
 
+  /// Send a password-reset email. `redirectTo` is the link target.
+  Future<Map<String, dynamic>> requestPasswordReset(String email, {String? redirectTo}) async {
+    final body = <String, dynamic>{'email': email};
+    if (redirectTo != null) body['redirectTo'] = redirectTo;
+    return await _client.request('POST', '$_base/request-password-reset', body) as Map<String, dynamic>;
+  }
+
+  /// Complete a reset with the token from the email and a new password.
+  Future<Map<String, dynamic>> resetPassword(String newPassword, String token) async =>
+      await _client.request('POST', '$_base/reset-password',
+          {'newPassword': newPassword, 'token': token}) as Map<String, dynamic>;
+
+  /// Mint a fresh access JWT from the stored session token (app mode).
+  Future<Map<String, dynamic>> refresh() async =>
+      await _client.request('POST', '$_base/token/refresh',
+          {'refreshToken': _client.appToken}) as Map<String, dynamic>;
+
   /// Clear the session; in app mode also drops the captured token.
   Future<void> signOut() async {
     await _client.request('POST', '$_base/sign-out');

@@ -126,6 +126,13 @@ def test_tenant_header_is_sent() -> None:
     assert rec.last.headers.get("x-backlex-tenant") == "myapp"
 
 
+def test_password_reset_hits_the_right_path() -> None:
+    rec = Recorder()
+    client = _client(rec)
+    client.auth.request_password_reset("a@b.c")
+    assert rec.last.url.path == "/api/auth/request-password-reset"
+
+
 def test_control_plane_auth_does_not_capture_token() -> None:
     rec = Recorder()
     client = _client(rec)  # no workspace → control-plane mode

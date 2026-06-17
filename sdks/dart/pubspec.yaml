@@ -1,0 +1,9 @@
+name: backlex
+description: Official Dart client for the backlex API (CRUD, query builder, auth, realtime, storage).
+version: 0.0.1
+homepage: https://backlex.com
+
+environment:
+  sdk: ^3.0.0
+
+# Zero dependencies: dart:io (HttpClient) + dart:convert. No pub packages.

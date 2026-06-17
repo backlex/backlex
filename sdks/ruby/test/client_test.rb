@@ -24,6 +24,7 @@ class ClientTest < Minitest::Test
       @last[:path] = req.path
       @last[:query] = req.query_string
       @last[:auth] = req["Authorization"]
+      @last[:tenant] = req["X-Backlex-Tenant"]
       @last[:body] = req.body
       code, json = ClientTest.route(@last)
       res.status = code
@@ -82,6 +83,12 @@ class ClientTest < Minitest::Test
     client = Backlex::Client.new(@base, api_key: "pak_secret")
     client.from("posts").list
     assert_equal "Bearer pak_secret", @last[:auth]
+  end
+
+  def test_tenant_header_is_sent
+    client = Backlex::Client.new(@base, tenant: "myapp")
+    client.from("posts").list
+    assert_equal "myapp", @last[:tenant]
   end
 
   def test_crud_methods_paths_and_body

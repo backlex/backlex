@@ -30,6 +30,7 @@ impl Client {
         let flag = stop.clone();
         let url = format!("{}/api/realtime/{}/subscribe", self.url(), channel);
         let auth = self.auth_header();
+        let tenant = self.tenant().map(|s| s.to_string());
 
         std::thread::spawn(move || {
             let mut last_id: Option<String> = None;
@@ -37,6 +38,9 @@ impl Client {
                 let mut req = ureq::get(&url).set("Accept", "text/event-stream");
                 if let Some(a) = &auth {
                     req = req.set("Authorization", a);
+                }
+                if let Some(t) = &tenant {
+                    req = req.set("X-Backlex-Tenant", t);
                 }
                 if let Some(id) = &last_id {
                     req = req.set("Last-Event-ID", id);

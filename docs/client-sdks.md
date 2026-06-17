@@ -78,6 +78,24 @@ a read-only flag and a tool allow-list *is* the guard, not a separate package.
 Privileged management operations (schema, users, roles) are reachable today via the
 raw `request()` escape hatch; a typed admin module is on the roadmap.
 
+### Anonymous & public reads
+
+A public collection (one whose built-in `public` role has a read permission) needs
+**no credential at all** — construct the client with neither `apiKey` nor a token.
+On a multi-tenant deployment, pass the `tenant` option so the server knows which
+workspace to read; the client sends it as the `X-Backlex-Tenant` header. (A
+single-tenant self-host resolves the default tenant automatically, so the option
+is optional there.)
+
+```ts
+const pub = createClient({ url, tenant: "myapp" });   // anonymous, tenant-scoped
+const { data } = await pub.from("posts").list({ filter: { published: { _eq: true } } });
+```
+
+The `tenant` option exists in every SDK (`tenant` / `Tenant` / `WithTenant` /
+`.tenant(...)`); the server ignores it for app-mode bearer sessions, since their
+tenant comes from the session.
+
 ## One wire format, eleven languages
 
 The query builder in every SDK compiles to the **identical canonical JSON**

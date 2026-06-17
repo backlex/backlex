@@ -23,6 +23,7 @@ struct Inner {
     url: String,
     api_key: Option<String>,
     workspace: Option<String>,
+    tenant: Option<String>,
     app_token: Mutex<Option<String>>,
     transport: Box<dyn Transport>,
 }
@@ -42,6 +43,7 @@ pub struct ClientBuilder {
     api_key: Option<String>,
     workspace: Option<String>,
     token: Option<String>,
+    tenant: Option<String>,
     transport: Option<Box<dyn Transport>>,
 }
 
@@ -58,6 +60,13 @@ impl ClientBuilder {
         self.token = Some(t.into());
         self
     }
+    /// Scope every request to a tenant/workspace (slug or id) via the
+    /// X-Backlex-Tenant header — for anonymous public reads or a pak_ key
+    /// addressing a tenant other than its home one.
+    pub fn tenant(mut self, t: impl Into<String>) -> Self {
+        self.tenant = Some(t.into());
+        self
+    }
     pub fn transport(mut self, t: Box<dyn Transport>) -> Self {
         self.transport = Some(t);
         self
@@ -68,6 +77,7 @@ impl ClientBuilder {
                 url: self.url.trim_end_matches('/').to_string(),
                 api_key: self.api_key,
                 workspace: self.workspace,
+                tenant: self.tenant,
                 app_token: Mutex::new(self.token),
                 transport: self.transport.unwrap_or_else(|| Box::new(UreqTransport)),
             }),
@@ -82,6 +92,7 @@ impl Client {
             api_key: None,
             workspace: None,
             token: None,
+            tenant: None,
             transport: None,
         }
     }
@@ -117,6 +128,10 @@ impl Client {
         self.inner.workspace.as_deref()
     }
 
+    pub(crate) fn tenant(&self) -> Option<&str> {
+        self.inner.tenant.as_deref()
+    }
+
     pub(crate) fn auth_header(&self) -> Option<String> {
         if let Some(k) = &self.inner.api_key {
             return Some(format!("Bearer {}", k));
@@ -134,6 +149,9 @@ impl Client {
         let mut headers = vec![("Content-Type".to_string(), "application/json".to_string())];
         if let Some(a) = self.auth_header() {
             headers.push(("Authorization".to_string(), a));
+        }
+        if let Some(t) = self.tenant() {
+            headers.push(("X-Backlex-Tenant".to_string(), t.to_string()));
         }
         let body_bytes = body.map(|b| serde_json::to_vec(b).unwrap());
         let url = format!("{}{}", self.inner.url, path);
@@ -164,6 +182,9 @@ impl Client {
         }
         if let Some(a) = self.auth_header() {
             headers.push(("Authorization".to_string(), a));
+        }
+        if let Some(t) = self.tenant() {
+            headers.push(("X-Backlex-Tenant".to_string(), t.to_string()));
         }
         let url = format!("{}{}", self.inner.url, path);
         let (status, bytes) = self.inner.transport.send(method, &url, &headers, body)?;

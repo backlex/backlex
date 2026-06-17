@@ -24,6 +24,7 @@ class ClientTest {
     @Volatile private var lastPath = ""
     @Volatile private var lastQuery: String? = null
     @Volatile private var lastAuth: String? = null
+    @Volatile private var lastTenant: String? = null
     @Volatile private var lastBody = ""
 
     @BeforeEach
@@ -34,6 +35,7 @@ class ClientTest {
             lastPath = ex.requestURI.path
             lastQuery = ex.requestURI.rawQuery
             lastAuth = ex.requestHeaders.getFirst("Authorization")
+            lastTenant = ex.requestHeaders.getFirst("X-Backlex-Tenant")
             lastBody = ex.requestBody.readBytes().toString(StandardCharsets.UTF_8)
 
             val (code, json) = route()
@@ -78,6 +80,13 @@ class ClientTest {
         // If double percent-encoded, readTree would throw.
         val filter = mapper.readTree(filterParam())
         assertEquals("active", filter.get("status").get("_eq").asText())
+    }
+
+    @Test
+    fun tenantHeaderIsSent() {
+        val client = BacklexClient.builder(base).tenant("myapp").build()
+        client.from<Any>("posts").list()
+        assertEquals("myapp", lastTenant)
     }
 
     @Test

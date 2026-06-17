@@ -87,6 +87,10 @@ final class MockURLProtocol: URLProtocol {
         }
         if method == "DELETE" { return (200, j(#"{"ok":true}"#)) }
         if method == "POST" || method == "PATCH" { return (200, j(#"{"data":{"id":"x1"}}"#)) }
+        // Single-item read: /api/items/<slug>/<id> — object-shaped data.
+        if method == "GET" && path.split(separator: "/").count == 4 {
+            return (200, j(#"{"data":{"id":"x1"}}"#))
+        }
         return (200, j(#"{"data":[],"limit":50,"offset":0}"#))
     }
 
@@ -155,6 +159,20 @@ do {
     func val(_ n: String) -> String? { items.first { $0.name == n }?.value }
     check(val("expand") == "author" && val("locale") == "tr" && val("q") == "hi",
           "query extras serialize")
+}
+
+do {
+    let client = mockClient()
+    var q = ItemQuery()
+    q.expand = ["author"]
+    q.locale = "tr"
+    _ = try await client.from("posts", as: JSONValue.self).one("p1", query: q)
+    let comps = URLComponents(url: MockURLProtocol.lastRequest!.url!, resolvingAgainstBaseURL: false)!
+    let items = comps.queryItems ?? []
+    func val(_ n: String) -> String? { items.first { $0.name == n }?.value }
+    check(MockURLProtocol.lastRequest!.url!.path == "/api/items/posts/p1"
+            && val("expand") == "author" && val("locale") == "tr",
+          "one() forwards expand/locale")
 }
 
 do {

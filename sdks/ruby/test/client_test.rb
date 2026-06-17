@@ -99,6 +99,14 @@ class ClientTest < Minitest::Test
     assert_includes @last[:query], "q=hi"
   end
 
+  def test_one_with_query_extras
+    client = Backlex::Client.new(@base)
+    client.from("posts").one("p1", { expand: ["author"], locale: "tr" })
+    assert_equal "/api/items/posts/p1", @last[:path]
+    assert_includes @last[:query], "expand=author"
+    assert_includes @last[:query], "locale=tr"
+  end
+
   def test_aggregate_hits_the_right_path
     client = Backlex::Client.new(@base)
     client.from("orders").aggregate({ "agg" => "sum", "field" => "total" })

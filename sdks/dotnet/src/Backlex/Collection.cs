@@ -29,8 +29,13 @@ public sealed class Collection<T>
         await _client.RequestAsync<AggregateResponse>(HttpMethod.Post, $"/api/items/{_slug}/aggregate", body)
             .ConfigureAwait(false) ?? new AggregateResponse();
 
-    public async Task<ItemResponse<T>> OneAsync(string id) =>
-        await _client.RequestAsync<ItemResponse<T>>(HttpMethod.Get, $"/api/items/{_slug}/{id}")
+    /// <summary>
+    /// Fetch a single item by id. Pass an optional <see cref="ItemQuery"/> to
+    /// inline relations (Expand) or project i18n_text fields (Locale).
+    /// </summary>
+    public async Task<ItemResponse<T>> OneAsync(string id, ItemQuery? query = null) =>
+        await _client.RequestAsync<ItemResponse<T>>(
+            HttpMethod.Get, $"/api/items/{_slug}/{id}{BacklexClient.BuildItemSearch(query)}")
             .ConfigureAwait(false) ?? new ItemResponse<T>();
 
     public async Task<ItemResponse<T>> CreateAsync(object data) =>

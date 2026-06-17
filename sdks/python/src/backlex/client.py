@@ -87,8 +87,12 @@ class Collection:
             Dict[str, Any], self._client.request("POST", f"/api/items/{self._slug}/aggregate", body)
         )
 
-    def one(self, id: str) -> ItemResponse:
-        return cast(ItemResponse, self._client.request("GET", f"/api/items/{self._slug}/{id}"))
+    def one(self, id: str, query: Optional[ListQuery] = None) -> ItemResponse:
+        # The single-item endpoint accepts the same expand/locale params as list.
+        return cast(
+            ItemResponse,
+            self._client.request("GET", f"/api/items/{self._slug}/{id}{_build_search(query)}"),
+        )
 
     def create(self, data: Dict[str, Any]) -> ItemResponse:
         return cast(

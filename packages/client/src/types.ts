@@ -26,6 +26,16 @@ export interface ListQuery {
   q?: string;
 }
 
+/** Per-call options for `from(slug).one(id, ...)`. Mirrors the single-item
+ *  read endpoint, which accepts the same `expand`/`locale` query params as the
+ *  list endpoint. */
+export interface ItemQuery {
+  /** Inline single-hop relations (replaces the FK with the related object). */
+  expand?: string | string[];
+  /** Collapse `i18n_text` fields to one locale, or `"*"` for the full map. */
+  locale?: string;
+}
+
 /** Body for `from(slug).aggregate(...)`. A single function over one column. */
 export interface AggregateQuery {
   agg: "count" | "sum" | "avg" | "min" | "max";

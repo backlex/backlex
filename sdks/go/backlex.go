@@ -162,3 +162,22 @@ func buildSearch(q *ListQuery) string {
 	}
 	return ""
 }
+
+// buildItemSearch serializes the per-call options for One(id, ...) — a strict
+// subset of buildSearch (expand + locale).
+func buildItemSearch(q *ItemQuery) string {
+	if q == nil {
+		return ""
+	}
+	v := url.Values{}
+	if len(q.Expand) > 0 {
+		v.Set("expand", strings.Join(q.Expand, ","))
+	}
+	if q.Locale != "" {
+		v.Set("locale", q.Locale)
+	}
+	if s := v.Encode(); s != "" {
+		return "?" + s
+	}
+	return ""
+}

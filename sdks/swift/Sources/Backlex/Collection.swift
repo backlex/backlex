@@ -19,8 +19,10 @@ public struct Collection<T: Decodable> {
         try await client.send("POST", "/api/items/\(slug)/aggregate", try JSONEncoder().encode(body))
     }
 
-    public func one(_ id: String) async throws -> ItemResponse<T> {
-        try await client.send("GET", "/api/items/\(slug)/\(id)", nil)
+    /// Fetch a single item by id. Pass an ``ItemQuery`` to inline relations
+    /// (`expand`) or project `i18n_text` fields (`locale`).
+    public func one(_ id: String, query: ItemQuery? = nil) async throws -> ItemResponse<T> {
+        try await client.send("GET", "/api/items/\(slug)/\(id)\(BacklexClient.buildItemSearch(query))", nil)
     }
 
     public func create<B: Encodable>(_ data: B) async throws -> ItemResponse<T> {

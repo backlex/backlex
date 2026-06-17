@@ -158,6 +158,15 @@ class BacklexClient internal constructor(
         return if (parts.isEmpty()) "" else "?" + parts.joinToString("&")
     }
 
+    /** Serialize an [ItemQuery] — a strict subset of [buildSearch] (expand + locale). */
+    internal fun buildItemSearch(q: ItemQuery?): String {
+        if (q == null) return ""
+        val parts = mutableListOf<String>()
+        if (q.expand.isNotEmpty()) parts.add("expand=" + enc(q.expand.joinToString(",")))
+        q.locale?.let { parts.add("locale=" + enc(it)) }
+        return if (parts.isEmpty()) "" else "?" + parts.joinToString("&")
+    }
+
     private fun enc(s: String): String = URLEncoder.encode(s, StandardCharsets.UTF_8)
 
     // -- Realtime (SSE) ------------------------------------------------------

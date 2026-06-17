@@ -98,8 +98,10 @@ module Backlex
       if query[:filter] && !query[:filter].empty?
         parts << "filter=#{URI.encode_www_form_component(JSON.generate(query[:filter]))}"
       end
-      parts << "sort=#{URI.encode_www_form_component(query[:sort].join(','))}" unless query[:sort].empty?
-      parts << "fields=#{URI.encode_www_form_component(query[:fields].join(','))}" unless query[:fields].empty?
+      # sort/fields may be absent when a hand-built query (e.g. one(id, expand:)) is
+      # passed rather than a full builder-produced ListQuery — default to [].
+      parts << "sort=#{URI.encode_www_form_component(query[:sort].join(','))}" unless (query[:sort] || []).empty?
+      parts << "fields=#{URI.encode_www_form_component(query[:fields].join(','))}" unless (query[:fields] || []).empty?
       unless (query[:expand] || []).empty?
         parts << "expand=#{URI.encode_www_form_component(query[:expand].join(','))}"
       end

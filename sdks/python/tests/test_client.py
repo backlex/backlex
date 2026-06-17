@@ -119,6 +119,13 @@ def test_error_envelope_becomes_backlex_error() -> None:
     assert str(ei.value) == "no such collection"
 
 
+def test_tenant_header_is_sent() -> None:
+    rec = Recorder()
+    client = _client(rec, tenant="myapp")
+    client.from_("posts").list()
+    assert rec.last.headers.get("x-backlex-tenant") == "myapp"
+
+
 def test_control_plane_auth_does_not_capture_token() -> None:
     rec = Recorder()
     client = _client(rec)  # no workspace → control-plane mode

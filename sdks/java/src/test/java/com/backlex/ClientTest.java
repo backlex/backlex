@@ -29,6 +29,7 @@ class ClientTest {
     volatile String lastPath;
     volatile String lastQuery;
     volatile String lastAuth;
+    volatile String lastTenant;
     volatile String lastBody;
 
     @BeforeEach
@@ -39,6 +40,7 @@ class ClientTest {
             lastPath = ex.getRequestURI().getPath();
             lastQuery = ex.getRequestURI().getRawQuery();
             lastAuth = ex.getRequestHeaders().getFirst("Authorization");
+            lastTenant = ex.getRequestHeaders().getFirst("X-Backlex-Tenant");
             lastBody = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
 
             int code = 200;
@@ -94,6 +96,13 @@ class ClientTest {
         // If double percent-encoded, readTree would throw.
         var filter = M.readTree(filterParam());
         assertEquals("active", filter.get("status").get("_eq").asText());
+    }
+
+    @Test
+    void tenantHeaderIsSent() {
+        BacklexClient client = BacklexClient.builder(base).tenant("myapp").build();
+        client.from("posts", Object.class).list();
+        assertEquals("myapp", lastTenant);
     }
 
     @Test

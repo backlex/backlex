@@ -12,11 +12,12 @@ module Backlex
     attr_reader :workspace
     attr_accessor :app_token
 
-    def initialize(url, api_key: nil, workspace: nil, token: nil)
+    def initialize(url, api_key: nil, workspace: nil, token: nil, tenant: nil)
       @url = url.chomp("/")
       @api_key = api_key
       @workspace = workspace
       @app_token = token
+      @tenant = tenant
     end
 
     # CRUD handle for a collection.
@@ -85,6 +86,7 @@ module Backlex
       elsif @app_token
         req["Authorization"] = "Bearer #{@app_token}"
       end
+      req["X-Backlex-Tenant"] = @tenant if @tenant
     end
 
     # Serialize a ListQuery hash into a URL query string (mirrors buildSearch in

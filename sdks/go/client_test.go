@@ -14,6 +14,7 @@ type capture struct {
 	path   string
 	query  map[string][]string
 	auth   string
+	tenant string
 	body   []byte
 }
 
@@ -27,6 +28,7 @@ func newServer(cap *capture) *httptest.Server {
 			path:   r.URL.Path,
 			query:  r.URL.Query(),
 			auth:   r.Header.Get("Authorization"),
+			tenant: r.Header.Get("X-Backlex-Tenant"),
 			body:   body,
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -72,6 +74,19 @@ func TestQueryStringNotDoubleEncoded(t *testing.T) {
 	eq(t, filter, map[string]any{"status": map[string]any{"_eq": "active"}})
 	if cap.query["sort"][0] != "-created_at" || cap.query["limit"][0] != "5" {
 		t.Fatalf("sort/limit: %v", cap.query)
+	}
+}
+
+func TestTenantHeader(t *testing.T) {
+	var cap capture
+	srv := newServer(&cap)
+	defer srv.Close()
+	c := New(srv.URL, WithTenant("myapp"))
+	if _, err := From[map[string]any](c, "posts").List(nil); err != nil {
+		t.Fatal(err)
+	}
+	if cap.tenant != "myapp" {
+		t.Fatalf("tenant header: %q", cap.tenant)
 	}
 }
 

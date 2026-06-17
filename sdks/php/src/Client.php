@@ -19,6 +19,7 @@ final class Client
 
     private string $url;
     private ?string $apiKey;
+    private ?string $tenant;
     public ?string $workspace;
     public ?string $appToken;
     /** @var callable|null */
@@ -31,6 +32,7 @@ final class Client
     {
         $this->url = rtrim($url, '/');
         $this->apiKey = $opts['api_key'] ?? null;
+        $this->tenant = $opts['tenant'] ?? null;
         $this->workspace = $opts['workspace'] ?? null;
         $this->appToken = $opts['token'] ?? null;
         $this->transport = $opts['transport'] ?? null;
@@ -57,13 +59,16 @@ final class Client
     /** @return list<string> */
     public function authHeaders(): array
     {
+        $headers = [];
         if ($this->apiKey !== null && $this->apiKey !== '') {
-            return ['Authorization: Bearer ' . $this->apiKey];
+            $headers[] = 'Authorization: Bearer ' . $this->apiKey;
+        } elseif ($this->appToken !== null && $this->appToken !== '') {
+            $headers[] = 'Authorization: Bearer ' . $this->appToken;
         }
-        if ($this->appToken !== null && $this->appToken !== '') {
-            return ['Authorization: Bearer ' . $this->appToken];
+        if ($this->tenant !== null && $this->tenant !== '') {
+            $headers[] = 'X-Backlex-Tenant: ' . $this->tenant;
         }
-        return [];
+        return $headers;
     }
 
     /** Raw escape hatch — issues a JSON request with auth headers applied. */

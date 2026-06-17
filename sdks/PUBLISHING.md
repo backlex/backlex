@@ -1,12 +1,32 @@
 # Publishing the client SDKs
 
 All ten SDKs are licensed **Apache-2.0** (matching the repo root `LICENSE`), carry
-a `LICENSE` file in their package, and ship complete registry metadata. They are
-versioned in lockstep at `0.0.1` and have **not** been pushed to any registry yet
-— this doc is the runbook for the first (and every subsequent) release.
+a `LICENSE` file in their package, and ship complete registry metadata. This doc is
+the runbook for the first (and every subsequent) release.
+
+**Published (0.0.1):** Python (PyPI), .NET (NuGet), Ruby (RubyGems), Dart (pub.dev),
+Rust (crates.io), Go (`backlex-go`), Swift (`backlex-swift`). PHP is staged in
+`backlex-php` awaiting a Packagist submission. Java + Kotlin (Maven Central) are
+wired but await GPG + Portal secrets.
+
+### Dedicated mirror repos (Go / Swift / PHP)
+
+Go modules, SwiftPM, and Packagist all read their manifest from a **repository
+root** — they can't see `sdks/<lang>/` inside this monorepo. So those three publish
+from dedicated snapshot repos whose root *is* the SDK:
+
+| SDK | Mirror repo | Consumer reference |
+|---|---|---|
+| Go | `github.com/backlex/backlex-go` | `go get github.com/backlex/backlex-go@vX.Y.Z` |
+| Swift | `github.com/backlex/backlex-swift` | `.package(url: "https://github.com/backlex/backlex-swift", from: "X.Y.Z")` |
+| PHP | `github.com/backlex/backlex-php` | `composer require backlex/backlex` (after Packagist submit) |
+
+To cut a new version: copy `sdks/<lang>/` over the mirror repo's root, commit, and
+push a tag (`vX.Y.Z` for Go/PHP, `X.Y.Z` for Swift). A `git subtree split` or a
+sync Action can automate this later.
 
 The `.github/workflows/publish-sdks.yml` workflow automates the pack/validate step
-for every SDK and the publish step for the ones whose registry token is configured.
+for the registry-based SDKs and the publish step for the ones whose secret is set.
 It is **manual only** (`workflow_dispatch`) and defaults to a dry run — nothing is
 published unless you pass `publish: true` and the matching secret exists.
 
@@ -18,13 +38,13 @@ version where practical.
 | SDK | Manifest | Version field |
 |---|---|---|
 | Python | `python/pyproject.toml` | `[project] version` |
-| Go | git tag only | `sdks/go/vX.Y.Z` tag |
+| Go | `go/go.mod` (module path) | `vX.Y.Z` tag on backlex-go |
 | .NET | `dotnet/src/Backlex/Backlex.csproj` | `<Version>` |
 | Java | `java/pom.xml` | `<version>` |
 | Kotlin | `kotlin/pom.xml` | `<version>` |
-| Swift | git tag only | `swift-vX.Y.Z` tag |
+| Swift | `swift/Package.swift` | `X.Y.Z` tag on backlex-swift |
 | Ruby | `ruby/backlex.gemspec` | `s.version` |
-| PHP | `php/composer.json` (+ git tag) | Packagist reads the git tag |
+| PHP | `php/composer.json` | `vX.Y.Z` tag on backlex-php |
 | Dart | `dart/pubspec.yaml` | `version:` |
 | Rust | `rust/Cargo.toml` | `[package] version` |
 
@@ -35,13 +55,13 @@ Each command assumes you are in `sdks/<lang>` and the version is already bumped.
 | SDK | Registry | Publish command | Auth (CI secret) |
 |---|---|---|---|
 | Python | PyPI | `python -m build && twine upload dist/*` | `PYPI_API_TOKEN` (or Trusted Publishing) |
-| Go | pkg.go.dev | `git tag sdks/go/vX.Y.Z && git push --tags` (proxy auto-indexes) | — (no token) |
+| Go | proxy.golang.org | push `sdks/go/` to **backlex-go** root, `git tag vX.Y.Z && git push --tags` | — (no token) |
 | .NET | NuGet | `dotnet pack -c Release && dotnet nuget push *.nupkg -s nuget.org -k $KEY` | `NUGET_API_KEY` |
-| Java | Maven Central | `mvn -P release deploy` (Central Portal) | `MAVEN_CENTRAL_TOKEN` + GPG key |
-| Kotlin | Maven Central | `mvn -P release deploy` | `MAVEN_CENTRAL_TOKEN` + GPG key |
-| Swift | Swift Package Index | `git tag swift-vX.Y.Z && git push --tags` (SPI indexes from the tag) | — (no token) |
+| Java | Maven Central | `mvn -P release deploy` (Central Portal) | `MAVEN_CENTRAL_USERNAME` + `MAVEN_CENTRAL_PASSWORD` + `GPG_PRIVATE_KEY` + `MAVEN_GPG_PASSPHRASE` |
+| Kotlin | Maven Central | `mvn -P release deploy` | same as Java |
+| Swift | Swift Package Index | push `sdks/swift/` to **backlex-swift** root, `git tag X.Y.Z && git push --tags` | — (no token) |
 | Ruby | RubyGems | `gem build backlex.gemspec && gem push backlex-*.gem` | `RUBYGEMS_API_KEY` |
-| PHP | Packagist | submit the repo once, then a git tag triggers a webhook update | `PACKAGIST_TOKEN` (for the API ping) |
+| PHP | Packagist | push `sdks/php/` to **backlex-php** root + tag; submit the repo to Packagist once | `PACKAGIST_TOKEN` (for the API ping) |
 | Dart | pub.dev | `dart pub publish` | pub.dev OIDC / `PUB_TOKEN` |
 | Rust | crates.io | `cargo publish` | `CARGO_REGISTRY_TOKEN` |
 

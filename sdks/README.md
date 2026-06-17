@@ -91,14 +91,14 @@ one to run the whole client in the browser/edge from one Rust core.
 
 | SDK | Install | SDK | Install |
 |---|---|---|---|
-| Python | `pip install backlex` | Rust | `cargo add backlex` |
+| Python | `pip install backlex` | Dart | `dart pub add backlex` |
 | .NET | `dotnet add package Backlex` | Go | `go get github.com/backlex/backlex-go` |
 | Ruby | `gem install backlex` | Swift | SPM via `backlex/backlex-swift` |
-| Dart | `dart pub add backlex` | | |
 
-**Pending:** PHP is staged in [`backlex-php`](https://github.com/backlex/backlex-php)
-awaiting a Packagist submission; Java + Kotlin are wired for Maven Central
-(`mvn -P release deploy`) pending the GPG key + Portal token secrets. Go/Swift/PHP
+**Pending:** Rust (crates.io) is blocked on the account's email verification; PHP is
+staged in [`backlex-php`](https://github.com/backlex/backlex-php) awaiting a Packagist
+submission; Java + Kotlin are wired for Maven Central (`mvn -P release deploy`) pending
+the GPG key + Portal token secrets. Go/Swift/PHP
 publish from dedicated mirror repos (manifest must sit at a repo root) — see
 [`PUBLISHING.md`](./PUBLISHING.md). The [`publish-sdks.yml`](../.github/workflows/publish-sdks.yml)
 workflow packs/validates and publishes the registry-based SDKs on manual dispatch.

@@ -27,7 +27,8 @@ const rows = [
   ["Auth providers", "Email/password, OAuth, magic link, email-OTP, passkeys", "Email/password, OAuth (many), phone, magic URL, anonymous"],
   ["SSO", "SAML 2.0 + LDAP/AD (per workspace)", "OAuth / OpenID; SAML on Cloud (Enterprise)"],
   ["Audit logs", "Built-in activity trail + opt-in sensitive-read auditing + revisions", "Activity / usage logs"],
-  ["Admin UI + SDK", "Admin SPA, typed client SDK, and `backlex` CLI", "Console, SDKs (many languages), CLI"],
+  ["Client SDKs", "11 first-party SDKs, hand-written & typed (TS, Python, Go, Rust, Swift, Kotlin, Dart, Java, .NET, Ruby, PHP)", "Broad SDK matrix across many languages (code-generated)"],
+  ["Admin UI + CLI", "Admin SPA and the `backlex` CLI (migrate, gen-types)", "Console + CLI"],
 ];
 ---
 <Base
@@ -132,7 +133,7 @@ const rows = [
       <div>
         <h2 class="text-[19px] font-semibold text-foreground -tracking-[0.02em] mb-3">When Appwrite is the better fit</h2>
         <ul class="list-disc pl-5 flex flex-col gap-2">
-          <li>You want batteries-included messaging/push and a wide range of native client SDKs across languages and mobile platforms.</li>
+          <li>You want batteries-included messaging/push out of the box, or an even broader auto-generated SDK matrix across languages and mobile platforms.</li>
           <li>You prefer an all-in-one Docker Compose stack and don't need edge deployment.</li>
           <li>You're happy with an abstracted document/collection store rather than direct SQL.</li>
         </ul>

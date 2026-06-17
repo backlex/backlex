@@ -26,8 +26,12 @@ class Collection<T>(
     fun aggregate(body: Any): AggregateResponse =
         client.request("POST", "/api/items/$slug/aggregate", body, tf.constructType(AggregateResponse::class.java))
 
-    fun one(id: String): ItemResponse<T> =
-        client.request("GET", "/api/items/$slug/$id", null, itemType)
+    /**
+     * Fetch a single item by id. Pass an [ItemQuery] to inline relations
+     * (expand) or project i18n_text fields (locale).
+     */
+    fun one(id: String, q: ItemQuery? = null): ItemResponse<T> =
+        client.request("GET", "/api/items/$slug/$id${client.buildItemSearch(q)}", null, itemType)
 
     fun create(data: Any): ItemResponse<T> =
         client.request("POST", "/api/items/$slug", data, itemType)

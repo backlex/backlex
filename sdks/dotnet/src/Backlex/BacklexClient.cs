@@ -166,4 +166,19 @@ public sealed class BacklexClient
             parts.Add("q=" + Uri.EscapeDataString(q.Q));
         return parts.Count > 0 ? "?" + string.Join("&", parts) : "";
     }
+
+    /// <summary>
+    /// Serializes the per-call options for <c>OneAsync(id, ...)</c> — a strict
+    /// subset of <see cref="BuildSearch"/> (expand + locale).
+    /// </summary>
+    internal static string BuildItemSearch(ItemQuery? q)
+    {
+        if (q == null) return "";
+        var parts = new List<string>();
+        if (q.Expand.Count > 0)
+            parts.Add("expand=" + Uri.EscapeDataString(string.Join(",", q.Expand)));
+        if (!string.IsNullOrEmpty(q.Locale))
+            parts.Add("locale=" + Uri.EscapeDataString(q.Locale));
+        return parts.Count > 0 ? "?" + string.Join("&", parts) : "";
+    }
 }

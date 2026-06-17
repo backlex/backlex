@@ -25,6 +25,6 @@ pub use auth::Auth;
 pub use client::{Client, ClientBuilder, Transport};
 pub use collection::Collection;
 pub use error::BacklexError;
-pub use query::{ListQuery, QueryBuilder};
+pub use query::{ItemQuery, ListQuery, QueryBuilder};
 pub use storage::Storage;
 pub use realtime::Subscription;

@@ -34,6 +34,9 @@ internal sealed class RecordingHandler : HttpMessageHandler
             return Resp(200, "{\"ok\":true}");
         if (request.Method == HttpMethod.Post || request.Method == HttpMethod.Patch)
             return Resp(200, "{\"data\":{\"id\":\"x1\"}}");
+        // Single-item read: /api/items/<slug>/<id> — object-shaped data.
+        if (request.Method == HttpMethod.Get && path.Count(c => c == '/') == 4)
+            return Resp(200, "{\"data\":{\"id\":\"x1\"}}");
         return Resp(200, "{\"data\":[],\"limit\":50,\"offset\":0}");
     }
 }
@@ -85,6 +88,18 @@ public class ClientTests
         Assert.Contains("expand=author", query);
         Assert.Contains("locale=tr", query);
         Assert.Contains("q=hi", query);
+    }
+
+    [Fact]
+    public async Task OneForwardsExpandAndLocale()
+    {
+        var (client, h) = Make();
+        var q = new ItemQuery { Locale = "tr" };
+        q.Expand.Add("author");
+        await client.From<Dictionary<string, object?>>("posts").OneAsync("p1", q);
+        Assert.Equal("/api/items/posts/p1", h.Last!.RequestUri!.AbsolutePath);
+        Assert.Contains("expand=author", h.Last!.RequestUri!.Query);
+        Assert.Contains("locale=tr", h.Last!.RequestUri!.Query);
     }
 
     [Fact]

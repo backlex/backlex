@@ -32,6 +32,16 @@ public sealed class ListQuery
     public string? Q { get; set; } // free-text search across readable text fields
 }
 
+/// <summary>
+/// Per-call options for <c>OneAsync(id, ...)</c>. The single-item read endpoint
+/// accepts the same expand/locale params as the list endpoint.
+/// </summary>
+public sealed class ItemQuery
+{
+    public List<string> Expand { get; } = new(); // inline single-hop relations
+    public string? Locale { get; set; } // one locale, or "*" for the full i18n map
+}
+
 /// <summary>One row of an aggregate: {value} ungrouped, or {label, value} grouped.</summary>
 public sealed class AggregateRow
 {

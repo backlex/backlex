@@ -29,6 +29,7 @@ type Client struct {
 	apiKey    string
 	workspace string
 	appToken  string
+	tenant    string
 	http      *http.Client
 
 	Auth    *Auth
@@ -46,6 +47,11 @@ func WithWorkspace(slug string) Option { return func(c *Client) { c.workspace = 
 
 // WithToken restores a previously-saved workspace session token (app mode).
 func WithToken(token string) Option { return func(c *Client) { c.appToken = token } }
+
+// WithTenant scopes every request to a tenant/workspace (slug or id) via the
+// X-Backlex-Tenant header — for anonymous public reads or a pak_ key addressing a
+// tenant other than its home one. Ignored by the server for app-mode sessions.
+func WithTenant(tenant string) Option { return func(c *Client) { c.tenant = tenant } }
 
 // WithHTTPClient supplies a custom *http.Client (timeouts, proxies, testing).
 func WithHTTPClient(h *http.Client) Option { return func(c *Client) { c.http = h } }
@@ -72,6 +78,9 @@ func (c *Client) authHeader(req *http.Request) {
 		req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	case c.appToken != "":
 		req.Header.Set("Authorization", "Bearer "+c.appToken)
+	}
+	if c.tenant != "" {
+		req.Header.Set("X-Backlex-Tenant", c.tenant)
 	}
 }
 

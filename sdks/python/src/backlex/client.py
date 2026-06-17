@@ -237,12 +237,14 @@ class Client:
         api_key: Optional[str] = None,
         workspace: Optional[str] = None,
         token: Optional[str] = None,
+        tenant: Optional[str] = None,
         http: Optional[httpx.Client] = None,
     ) -> None:
         self._url = url.rstrip("/")
         self._api_key = api_key
         self._workspace = workspace
         self._app_token: Optional[str] = token
+        self._tenant = tenant
         # ``follow_redirects`` keeps cookie-session flows working; the client
         # owns a cookie jar so same-origin sessions persist across calls.
         self._http = http or httpx.Client(follow_redirects=True)
@@ -252,11 +254,16 @@ class Client:
     # -- internals -----------------------------------------------------------
 
     def _auth_header(self) -> Dict[str, str]:
+        # Auth + optional explicit tenant scoping (slug or id), used by every
+        # request path (data, storage, realtime).
+        headers: Dict[str, str] = {}
         if self._api_key:
-            return {"authorization": f"Bearer {self._api_key}"}
-        if self._app_token:
-            return {"authorization": f"Bearer {self._app_token}"}
-        return {}
+            headers["authorization"] = f"Bearer {self._api_key}"
+        elif self._app_token:
+            headers["authorization"] = f"Bearer {self._app_token}"
+        if self._tenant:
+            headers["x-backlex-tenant"] = self._tenant
+        return headers
 
     def request(
         self,
@@ -315,7 +322,10 @@ def create_client(
     api_key: Optional[str] = None,
     workspace: Optional[str] = None,
     token: Optional[str] = None,
+    tenant: Optional[str] = None,
     http: Optional[httpx.Client] = None,
 ) -> Client:
     """Construct a :class:`Client`. Mirrors the TS ``createClient(opts)`` factory."""
-    return Client(url, api_key=api_key, workspace=workspace, token=token, http=http)
+    return Client(
+        url, api_key=api_key, workspace=workspace, token=token, tenant=tenant, http=http
+    )

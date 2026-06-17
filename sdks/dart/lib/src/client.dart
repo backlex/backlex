@@ -7,13 +7,14 @@ class Client {
   final String url;
   final String? apiKey;
   final String? workspace;
+  final String? tenant;
   String? appToken;
   final HttpClient _http = HttpClient();
 
   late final Auth auth = Auth(this);
   late final Storage storage = Storage(this);
 
-  Client(String baseUrl, {this.apiKey, this.workspace, String? token})
+  Client(String baseUrl, {this.apiKey, this.workspace, String? token, this.tenant})
       : url = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl,
         appToken = token;
 
@@ -25,6 +26,9 @@ class Client {
       req.headers.set('Authorization', 'Bearer $apiKey');
     } else if (appToken != null && appToken!.isNotEmpty) {
       req.headers.set('Authorization', 'Bearer $appToken');
+    }
+    if (tenant != null && tenant!.isNotEmpty) {
+      req.headers.set('X-Backlex-Tenant', tenant!);
     }
   }
 

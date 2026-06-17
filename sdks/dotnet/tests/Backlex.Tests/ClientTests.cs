@@ -28,6 +28,8 @@ internal sealed class RecordingHandler : HttpMessageHandler
             return Resp(404, "{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"no such collection\"}}");
         if (path.EndsWith("/aggregate", StringComparison.Ordinal))
             return Resp(200, "{\"data\":[{\"value\":42}]}");
+        if (path.EndsWith("/list-sessions", StringComparison.Ordinal))
+            return Resp(200, "[{\"id\":\"s1\",\"token\":\"sess_1\"}]");
         // Workspace sign-in (email or email-otp) returns a session token.
         if (request.Method == HttpMethod.Post && path.StartsWith("/api/t/", StringComparison.Ordinal)
             && path.Contains("/sign-in/email", StringComparison.Ordinal))
@@ -84,6 +86,22 @@ public class ClientTests
         Assert.Equal("/api/t/myapp/auth/sign-in/email-otp", ha.Last!.RequestUri!.AbsolutePath);
         Assert.Equal("tok_123", res.Token);
         Assert.Equal("tok_123", app.Auth.Token);
+    }
+
+    [Fact]
+    public async Task SessionManagement()
+    {
+        var (client, h) = Make();
+        var sessions = await client.Auth.ListSessionsAsync();
+        Assert.Equal("/api/auth/list-sessions", h.Last!.RequestUri!.AbsolutePath);
+        Assert.Equal("sess_1", sessions[0]["token"]?.ToString());
+
+        await client.Auth.RevokeSessionAsync("sess_1");
+        Assert.Equal("/api/auth/revoke-session", h.Last!.RequestUri!.AbsolutePath);
+        Assert.Contains("sess_1", h.LastBody);
+
+        await client.Auth.RevokeOtherSessionsAsync();
+        Assert.Equal("/api/auth/revoke-other-sessions", h.Last!.RequestUri!.AbsolutePath);
     }
 
     [Fact]

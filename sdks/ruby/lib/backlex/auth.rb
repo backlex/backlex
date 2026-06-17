@@ -97,6 +97,26 @@ module Backlex
       @client.request("GET", "#{base}/get-session")
     end
 
+    # List the signed-in user's active sessions (one row per device/login).
+    def list_sessions
+      @client.request("GET", "#{base}/list-sessions")
+    end
+
+    # Revoke one session by its +token+ (from #list_sessions).
+    def revoke_session(token)
+      @client.request("POST", "#{base}/revoke-session", { "token" => token })
+    end
+
+    # Revoke every session except the current one (sign out other devices).
+    def revoke_other_sessions
+      @client.request("POST", "#{base}/revoke-other-sessions")
+    end
+
+    # Revoke all sessions, including the current one.
+    def revoke_sessions
+      @client.request("POST", "#{base}/revoke-sessions")
+    end
+
     # Public auth surface (provider list + policy flags).
     def providers
       @client.request("GET", "#{base}/providers")["data"]

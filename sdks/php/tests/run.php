@@ -93,6 +93,9 @@ function makeTransport(array &$last): callable
                 ? [200, '{"user":{"id":"u1","email":"a@b.c"},"token":"tok_123"}']
                 : [200, '{"user":{"id":"u1","email":"a@b.c"}}'];
         }
+        if (str_ends_with($path, '/list-sessions')) {
+            return [200, '[{"id":"s1","token":"sess_1"}]'];
+        }
         if ($method === 'DELETE') {
             return [200, '{"ok":true}'];
         }
@@ -168,6 +171,20 @@ check(
         && parse_url($last['url'], PHP_URL_PATH) === '/api/t/myapp/auth/sign-in/email-otp'
         && $otpRes['token'] === 'tok_123' && $app->auth->token() === 'tok_123',
     'email-otp: send + app-mode sign-in captures token'
+);
+
+$client = new Client('http://test', ['transport' => $transport]);
+$sessions = $client->auth->listSessions();
+$listOk = $last['method'] === 'GET'
+    && parse_url($last['url'], PHP_URL_PATH) === '/api/auth/list-sessions'
+    && $sessions[0]['token'] === 'sess_1';
+$client->auth->revokeSession('sess_1');
+$revokeOk = parse_url($last['url'], PHP_URL_PATH) === '/api/auth/revoke-session'
+    && json_decode($last['body'], true)['token'] === 'sess_1';
+$client->auth->revokeOtherSessions();
+check(
+    $listOk && $revokeOk && parse_url($last['url'], PHP_URL_PATH) === '/api/auth/revoke-other-sessions',
+    'session management: list / revoke / revoke-others'
 );
 
 $client = new Client('http://test', ['transport' => $transport]);

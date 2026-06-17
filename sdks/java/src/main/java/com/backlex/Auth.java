@@ -16,12 +16,14 @@ public final class Auth {
     private final BacklexClient client;
     private final JavaType authResultType;
     private final JavaType mapType;
+    private final JavaType mapListType;
 
     Auth(BacklexClient client) {
         this.client = client;
         TypeFactory tf = BacklexClient.MAPPER.getTypeFactory();
         this.authResultType = tf.constructType(Models.AuthResult.class);
         this.mapType = tf.constructMapType(LinkedHashMap.class, String.class, Object.class);
+        this.mapListType = tf.constructCollectionType(java.util.List.class, mapType);
     }
 
     private String base() {
@@ -149,6 +151,28 @@ public final class Auth {
     /** Current session payload, or {"user": null}. */
     public Map<String, Object> session() {
         return client.request("GET", base() + "/get-session", null, mapType);
+    }
+
+    /** List the signed-in user's active sessions (one row per device/login). */
+    public java.util.List<Map<String, Object>> listSessions() {
+        return client.request("GET", base() + "/list-sessions", null, mapListType);
+    }
+
+    /** Revoke one session by its {@code token} (from {@link #listSessions}). */
+    public Map<String, Object> revokeSession(String token) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("token", token);
+        return client.request("POST", base() + "/revoke-session", body, mapType);
+    }
+
+    /** Revoke every session except the current one (sign out other devices). */
+    public Map<String, Object> revokeOtherSessions() {
+        return client.request("POST", base() + "/revoke-other-sessions", null, mapType);
+    }
+
+    /** Revoke all sessions, including the current one. */
+    public Map<String, Object> revokeSessions() {
+        return client.request("POST", base() + "/revoke-sessions", null, mapType);
     }
 
     /** Public auth surface (provider list + policy flags). */

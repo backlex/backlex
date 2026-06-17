@@ -50,6 +50,8 @@ class ClientTest {
                 json = "{\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"no such collection\"}}";
             } else if (lastPath.endsWith("/aggregate")) {
                 json = "{\"data\":[{\"value\":42}]}";
+            } else if (lastPath.endsWith("/list-sessions")) {
+                json = "[{\"id\":\"s1\",\"token\":\"sess_1\"}]";
             } else if (lastMethod.equals("POST") && lastPath.startsWith("/api/t/")
                     && lastPath.contains("/sign-in/email")) {
                 // Workspace sign-in (email or email-otp) returns a session token.
@@ -165,6 +167,21 @@ class ClientTest {
         BacklexClient client = BacklexClient.builder(base).build();
         client.auth.changePassword("new", "old", false);
         assertEquals("/api/auth/change-password", lastPath);
+    }
+
+    @Test
+    void sessionManagement() {
+        BacklexClient client = BacklexClient.builder(base).build();
+        var sessions = client.auth.listSessions();
+        assertEquals("/api/auth/list-sessions", lastPath);
+        assertEquals("sess_1", sessions.get(0).get("token"));
+
+        client.auth.revokeSession("sess_1");
+        assertEquals("/api/auth/revoke-session", lastPath);
+        assertTrue(lastBody.contains("sess_1"));
+
+        client.auth.revokeOtherSessions();
+        assertEquals("/api/auth/revoke-other-sessions", lastPath);
     }
 
     @Test

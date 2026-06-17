@@ -143,6 +143,30 @@ final class Auth
         return $this->client->request('GET', $this->base() . '/get-session');
     }
 
+    /** List the signed-in user's active sessions (one row per device/login). */
+    public function listSessions(): array
+    {
+        return $this->client->request('GET', $this->base() . '/list-sessions');
+    }
+
+    /** Revoke one session by its $token (from listSessions()). */
+    public function revokeSession(string $token): array
+    {
+        return $this->client->request('POST', $this->base() . '/revoke-session', ['token' => $token]);
+    }
+
+    /** Revoke every session except the current one (sign out other devices). */
+    public function revokeOtherSessions(): array
+    {
+        return $this->client->request('POST', $this->base() . '/revoke-other-sessions');
+    }
+
+    /** Revoke all sessions, including the current one. */
+    public function revokeSessions(): array
+    {
+        return $this->client->request('POST', $this->base() . '/revoke-sessions');
+    }
+
     /** Public auth surface (provider list + policy flags). */
     public function providers(): array
     {

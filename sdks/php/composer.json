@@ -2,8 +2,13 @@
   "name": "backlex/backlex",
   "description": "Official PHP client for the backlex API (CRUD, query builder, auth, realtime, storage).",
   "type": "library",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "homepage": "https://backlex.com",
+  "keywords": ["backlex", "backend", "baas", "rest", "sdk"],
+  "support": {
+    "docs": "https://backlex.com/docs/client-sdks",
+    "source": "https://github.com/backlex/backlex"
+  },
   "require": {
     "php": ">=8.1",
     "ext-curl": "*",

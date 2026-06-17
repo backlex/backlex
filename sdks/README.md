@@ -5,8 +5,9 @@ Official client SDKs for the backlex API, one per ecosystem. They all wrap the
 `@backlex/client`) speaks — so an app in any language talks to backlex the same
 way, with the same wire format.
 
-> These are proof-of-concept ports. Each is a thin, hand-written ergonomic layer
-> verified with offline contract tests; none is published to a package registry yet.
+> Each is a thin, hand-written ergonomic layer verified with offline contract +
+> HTTP-layer tests. All are Apache-2.0 and **release-ready** (LICENSE + registry
+> metadata in place), but not yet pushed to a registry — see [`PUBLISHING.md`](./PUBLISHING.md).
 
 ## The SDKs
 
@@ -86,7 +87,12 @@ one to run the whole client in the browser/edge from one Rust core.
 
 ## Status
 
-Proof-of-concept. Not yet published to PyPI / crates.io / npm / Maven Central /
-pub.dev / Packagist / RubyGems / NuGet. Next steps before publishing: CI per SDK,
-package metadata/licensing pass, async Python client, and the generated-models
-codegen pipeline wired into each package.
+**Release-ready, not yet published.** Every SDK is Apache-2.0 (with a `LICENSE`
+file in the package), carries complete registry metadata, and packs cleanly. The
+[`publish-sdks.yml`](../.github/workflows/publish-sdks.yml) workflow packs/validates
+all of them on manual dispatch and publishes the ones whose registry token is set;
+the per-registry runbook is [`PUBLISHING.md`](./PUBLISHING.md).
+
+Not yet pushed to PyPI / crates.io / Maven Central / pub.dev / Packagist /
+RubyGems / NuGet (and Go / Swift release via git tag). Remaining nice-to-haves:
+an async Python client and the generated-models codegen pipeline per package.

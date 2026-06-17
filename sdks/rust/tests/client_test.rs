@@ -49,6 +49,9 @@ fn route(method: &str, path: &str) -> (u16, String) {
     if path == "/api/items/missing" {
         return (404, r#"{"error":{"code":"NOT_FOUND","message":"no such collection"}}"#.into());
     }
+    if path.ends_with("/aggregate") {
+        return (200, r#"{"data":[{"value":42}]}"#.into());
+    }
     if method == "POST" && path.ends_with("/sign-in/email") {
         return if path.starts_with("/api/t/") {
             (200, r#"{"user":{"id":"u1","email":"a@b.c"},"token":"tok_123"}"#.into())
@@ -129,6 +132,34 @@ fn change_password_hits_the_right_path() {
     let (client, last) = mk(|b| b);
     client.auth().change_password("new", "old", false).unwrap();
     assert_eq!(url_path(&last.lock().unwrap().url), "/api/auth/change-password");
+}
+
+#[test]
+fn query_extras_serialize() {
+    let (client, last) = mk(|b| b);
+    client
+        .from("posts")
+        .query()
+        .expand(&["author"])
+        .locale("tr")
+        .search("hi")
+        .list()
+        .unwrap();
+    let url = last.lock().unwrap().url.clone();
+    assert!(url.contains("expand=author"));
+    assert!(url.contains("locale=tr"));
+    assert!(url.contains("q=hi"));
+}
+
+#[test]
+fn aggregate_hits_the_right_path() {
+    let (client, last) = mk(|b| b);
+    let res = client
+        .from("orders")
+        .aggregate(&json!({ "agg": "sum", "field": "total" }))
+        .unwrap();
+    assert_eq!(url_path(&last.lock().unwrap().url), "/api/items/orders/aggregate");
+    assert_eq!(res["data"][0]["value"], json!(42));
 }
 
 #[test]

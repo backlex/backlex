@@ -210,6 +210,9 @@ pub(crate) fn build_search(q: &ListQuery) -> String {
     if !q.fields.is_empty() {
         parts.push(format!("fields={}", enc(&q.fields.join(","))));
     }
+    if !q.expand.is_empty() {
+        parts.push(format!("expand={}", enc(&q.expand.join(","))));
+    }
     if let Some(l) = q.limit {
         parts.push(format!("limit={}", l));
     }
@@ -218,6 +221,12 @@ pub(crate) fn build_search(q: &ListQuery) -> String {
     }
     if let Some(m) = &q.meta {
         parts.push(format!("meta={}", enc(m)));
+    }
+    if let Some(loc) = &q.locale {
+        parts.push(format!("locale={}", enc(loc)));
+    }
+    if let Some(text) = &q.q {
+        parts.push(format!("q={}", enc(text)));
     }
     if parts.is_empty() {
         String::new()

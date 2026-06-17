@@ -22,6 +22,12 @@ final class Collection
         return new QueryBuilder(fn ($q) => $this->list($q));
     }
 
+    /** Single-function aggregate (count/sum/avg/min/max), optionally grouped. */
+    public function aggregate(array $body): array
+    {
+        return $this->client->request('POST', "/api/items/{$this->slug}/aggregate", $body);
+    }
+
     public function one(string $id): array
     {
         return $this->client->request('GET', "/api/items/{$this->slug}/{$id}");

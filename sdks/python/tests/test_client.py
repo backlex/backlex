@@ -119,6 +119,24 @@ def test_error_envelope_becomes_backlex_error() -> None:
     assert str(ei.value) == "no such collection"
 
 
+def test_query_extras_serialize() -> None:
+    rec = Recorder()
+    client = _client(rec)
+    client.from_("posts").query().expand("author").locale("tr").search("hi").list()
+    params = dict(rec.last.url.params)
+    assert params.get("expand") == "author"
+    assert params.get("locale") == "tr"
+    assert params.get("q") == "hi"
+
+
+def test_aggregate_hits_the_right_path() -> None:
+    rec = Recorder()
+    client = _client(rec)
+    client.from_("orders").aggregate({"agg": "sum", "field": "total"})
+    assert rec.last.method == "POST"
+    assert rec.last.url.path == "/api/items/orders/aggregate"
+
+
 def test_tenant_header_is_sent() -> None:
     rec = Recorder()
     client = _client(rec, tenant="myapp")

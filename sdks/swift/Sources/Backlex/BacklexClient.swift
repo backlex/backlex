@@ -140,9 +140,12 @@ public final class BacklexClient {
         }
         if !q.sort.isEmpty { parts.append("sort=\(enc(q.sort.joined(separator: ",")))") }
         if !q.fields.isEmpty { parts.append("fields=\(enc(q.fields.joined(separator: ",")))") }
+        if !q.expand.isEmpty { parts.append("expand=\(enc(q.expand.joined(separator: ",")))") }
         if let l = q.limit { parts.append("limit=\(l)") }
         if let o = q.offset { parts.append("offset=\(o)") }
         if let m = q.meta { parts.append("meta=\(enc(m))") }
+        if let loc = q.locale { parts.append("locale=\(enc(loc))") }
+        if let qq = q.q { parts.append("q=\(enc(qq))") }
         return parts.isEmpty ? "" : "?" + parts.joined(separator: "&")
     }
 

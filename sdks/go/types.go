@@ -14,9 +14,24 @@ type ListQuery struct {
 	Filter Condition
 	Sort   []string
 	Fields []string
+	Expand []string // inline single-hop relations
 	Limit  *int
 	Offset *int
 	Meta   string // "filter_count" | "total_count" | "*"
+	Locale string // collapse i18n_text to one locale, or "*" for the full map
+	Q      string // free-text search across readable text fields
+}
+
+// AggregateRow is one row of an aggregate result: {value} ungrouped, or
+// {label, value} grouped.
+type AggregateRow struct {
+	Value float64 `json:"value"`
+	Label any     `json:"label,omitempty"`
+}
+
+// AggregateResponse is the {"data": [...]} envelope from Collection.Aggregate.
+type AggregateResponse struct {
+	Data []AggregateRow `json:"data"`
 }
 
 // ListResponse is the result of a collection list/query call. T is the row type

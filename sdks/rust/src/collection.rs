@@ -23,6 +23,12 @@ impl Collection {
         QueryBuilder::new(self.client.clone(), self.slug.clone())
     }
 
+    /// Single-function aggregate (count/sum/avg/min/max), optionally grouped.
+    /// body = json!({ "agg": "sum", "field": "price", "groupBy": "status" }).
+    pub fn aggregate(&self, body: &Value) -> Result<Value, BacklexError> {
+        self.client.request("POST", &format!("/api/items/{}/aggregate", self.slug), Some(body))
+    }
+
     pub fn one(&self, id: &str) -> Result<Value, BacklexError> {
         self.client.request("GET", &format!("/api/items/{}/{}", self.slug, id), None)
     }

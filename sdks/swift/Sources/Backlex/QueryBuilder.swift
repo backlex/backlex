@@ -34,6 +34,27 @@ public final class QueryBuilder<T: Decodable> {
         return self
     }
 
+    /// Inline single-hop relations (replaces each FK with the related object).
+    @discardableResult
+    public func expand(_ rels: String...) -> Self {
+        q.expand.append(contentsOf: rels)
+        return self
+    }
+
+    /// Project `i18n_text` fields to one locale, or `"*"` for the full map.
+    @discardableResult
+    public func locale(_ loc: String) -> Self {
+        q.locale = loc
+        return self
+    }
+
+    /// Free-text search across readable text fields.
+    @discardableResult
+    public func search(_ text: String) -> Self {
+        q.q = text
+        return self
+    }
+
     @discardableResult
     public func limit(_ n: Int) -> Self {
         q.limit = n

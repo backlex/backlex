@@ -140,6 +140,15 @@ Future<void> main() async {
   check(last['tenant'] == 'myapp', 'tenant header is sent');
 
   client = Client(base);
+  await client.from('posts').query().expand(['author']).locale('tr').search('hi').list();
+  final qp2 = last['queryParams'] as Map<String, String>;
+  check(qp2['expand'] == 'author' && qp2['locale'] == 'tr' && qp2['q'] == 'hi', 'query extras serialize');
+
+  client = Client(base);
+  await client.from('orders').aggregate({'agg': 'sum', 'field': 'total'});
+  check(last['method'] == 'POST' && last['path'] == '/api/items/orders/aggregate', 'aggregate hits the right path');
+
+  client = Client(base);
   await client.auth.requestPasswordReset('a@b.c');
   check(last['path'] == '/api/auth/request-password-reset', 'password reset hits the right path');
 

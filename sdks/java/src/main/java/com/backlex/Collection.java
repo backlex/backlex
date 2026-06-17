@@ -36,6 +36,12 @@ public final class Collection<T> {
         return new QueryBuilder<>(this::list);
     }
 
+    /** Single-function aggregate (count/sum/avg/min/max), optionally grouped. */
+    public Models.AggregateResponse aggregate(Object body) {
+        return client.request("POST", "/api/items/" + slug + "/aggregate", body,
+                BacklexClient.MAPPER.getTypeFactory().constructType(Models.AggregateResponse.class));
+    }
+
     public ItemResponse<T> one(String id) {
         return client.request("GET", "/api/items/" + slug + "/" + id, null, itemType);
     }

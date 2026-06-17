@@ -54,6 +54,7 @@ class ClientTest {
     private fun route(): Pair<Int, String> = when {
         lastPath == "/api/items/missing" ->
             404 to """{"error":{"code":"NOT_FOUND","message":"no such collection"}}"""
+        lastPath.endsWith("/aggregate") -> 200 to """{"data":[{"value":42}]}"""
         lastMethod == "POST" && lastPath.endsWith("/sign-in/email") ->
             if (lastPath.startsWith("/api/t/")) 200 to """{"user":{"id":"u1","email":"a@b.c"},"token":"tok_123"}"""
             else 200 to """{"user":{"id":"u1","email":"a@b.c"}}"""
@@ -87,6 +88,23 @@ class ClientTest {
         val client = BacklexClient.builder(base).tenant("myapp").build()
         client.from<Any>("posts").list()
         assertEquals("myapp", lastTenant)
+    }
+
+    @Test
+    fun queryExtrasSerialize() {
+        val client = BacklexClient.builder(base).build()
+        client.from<Any>("posts").query().expand("author").locale("tr").search("hi").list()
+        assertTrue(lastQuery!!.contains("expand=author"))
+        assertTrue(lastQuery!!.contains("locale=tr"))
+        assertTrue(lastQuery!!.contains("q=hi"))
+    }
+
+    @Test
+    fun aggregateHitsTheRightPath() {
+        val client = BacklexClient.builder(base).build()
+        val res = client.from<Any>("orders").aggregate(mapOf("agg" to "sum", "field" to "total"))
+        assertEquals("/api/items/orders/aggregate", lastPath)
+        assertEquals(42.0, res.data[0].value, 0.0001)
     }
 
     @Test

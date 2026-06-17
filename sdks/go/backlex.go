@@ -139,6 +139,9 @@ func buildSearch(q *ListQuery) string {
 	if len(q.Fields) > 0 {
 		v.Set("fields", strings.Join(q.Fields, ","))
 	}
+	if len(q.Expand) > 0 {
+		v.Set("expand", strings.Join(q.Expand, ","))
+	}
 	if q.Limit != nil {
 		v.Set("limit", strconv.Itoa(*q.Limit))
 	}
@@ -147,6 +150,12 @@ func buildSearch(q *ListQuery) string {
 	}
 	if q.Meta != "" {
 		v.Set("meta", q.Meta)
+	}
+	if q.Locale != "" {
+		v.Set("locale", q.Locale)
+	}
+	if q.Q != "" {
+		v.Set("q", q.Q)
 	}
 	if s := v.Encode(); s != "" {
 		return "?" + s

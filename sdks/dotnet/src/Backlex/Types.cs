@@ -24,9 +24,25 @@ public sealed class ListQuery
     public Condition? Filter { get; set; }
     public List<string> Sort { get; } = new();
     public List<string> Fields { get; } = new();
+    public List<string> Expand { get; } = new(); // inline single-hop relations
     public int? Limit { get; set; }
     public int? Offset { get; set; }
     public string? Meta { get; set; } // "filter_count" | "total_count" | "*"
+    public string? Locale { get; set; } // one locale, or "*" for the full i18n map
+    public string? Q { get; set; } // free-text search across readable text fields
+}
+
+/// <summary>One row of an aggregate: {value} ungrouped, or {label, value} grouped.</summary>
+public sealed class AggregateRow
+{
+    [JsonPropertyName("value")] public double Value { get; set; }
+    [JsonPropertyName("label")] public object? Label { get; set; }
+}
+
+/// <summary>The {"data": [...]} envelope from <c>Collection.AggregateAsync</c>.</summary>
+public sealed class AggregateResponse
+{
+    [JsonPropertyName("data")] public List<AggregateRow> Data { get; set; } = new();
 }
 
 /// <summary>Result of a collection list/query call.</summary>

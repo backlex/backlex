@@ -13,9 +13,12 @@ final class QueryBuilder
         'filter' => null,
         'sort' => [],
         'fields' => [],
+        'expand' => [],
         'limit' => null,
         'offset' => null,
         'meta' => null,
+        'locale' => null,
+        'q' => null,
     ];
 
     public function __construct(callable $listFn)
@@ -45,6 +48,27 @@ final class QueryBuilder
     public function orderBy(string ...$sorts): self
     {
         $this->q['sort'] = array_merge($this->q['sort'], $sorts);
+        return $this;
+    }
+
+    /** Inline single-hop relations (replaces each FK with the related object). */
+    public function expand(string ...$rels): self
+    {
+        $this->q['expand'] = array_merge($this->q['expand'], $rels);
+        return $this;
+    }
+
+    /** Project i18n_text fields to one locale, or "*" for the full map. */
+    public function locale(string $loc): self
+    {
+        $this->q['locale'] = $loc;
+        return $this;
+    }
+
+    /** Free-text search across readable text fields. */
+    public function search(string $text): self
+    {
+        $this->q['q'] = $text;
         return $this;
     }
 

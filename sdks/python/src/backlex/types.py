@@ -48,9 +48,12 @@ class ListQuery(TypedDict, total=False):
     filter: Condition
     sort: Any  # str | list[str]
     fields: Any  # str | list[str]
+    expand: Any  # str | list[str] — inline single-hop relations
     limit: int
     offset: int
     meta: MetaFlag
+    locale: str  # collapse i18n_text to one locale, or "*" for the full map
+    q: str  # free-text search across readable text fields
 
 
 class ItemEvent(TypedDict):

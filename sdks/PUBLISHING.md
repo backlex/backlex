@@ -5,9 +5,12 @@ a `LICENSE` file in their package, and ship complete registry metadata. This doc
 the runbook for the first (and every subsequent) release.
 
 **Published (0.0.1):** Python (PyPI), .NET (NuGet), Ruby (RubyGems), Dart (pub.dev),
-Go (`backlex-go`), Swift (`backlex-swift`). **Pending:** Rust (crates.io) — blocked on
-the account's email verification; PHP — staged in `backlex-php`, awaiting a Packagist
-submission; Java + Kotlin (Maven Central) — wired but await GPG + Portal secrets.
+Rust (crates.io), Go (`backlex-go`), Swift (`backlex-swift`), PHP (Packagist, via
+`backlex-php`). **Pending:** Java + Kotlin (Maven Central) — wired but await the GPG +
+Portal secrets.
+
+> PHP on Packagist isn't auto-updated yet — set up the **GitHub Hook** on the
+> `backlex-php` repo (or click "Update" on the Packagist page) so new tags sync.
 
 ### Dedicated mirror repos (Go / Swift / PHP)
 

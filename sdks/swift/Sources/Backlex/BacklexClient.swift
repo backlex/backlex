@@ -11,6 +11,7 @@ public final class BacklexClient {
     let url: String
     let apiKey: String?
     let workspace: String?
+    let tenant: String?
     let session: URLSession
 
     private let lock = NSLock()
@@ -29,11 +30,13 @@ public final class BacklexClient {
         apiKey: String? = nil,
         workspace: String? = nil,
         token: String? = nil,
+        tenant: String? = nil,
         session: URLSession? = nil
     ) {
         self.url = baseURL.hasSuffix("/") ? String(baseURL.dropLast()) : baseURL
         self.apiKey = apiKey
         self.workspace = workspace
+        self.tenant = tenant
         self._appToken = token
         if let session {
             self.session = session
@@ -55,6 +58,9 @@ public final class BacklexClient {
             req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         } else if let t = appToken {
             req.setValue("Bearer \(t)", forHTTPHeaderField: "Authorization")
+        }
+        if let tenant {
+            req.setValue(tenant, forHTTPHeaderField: "X-Backlex-Tenant")
         }
     }
 

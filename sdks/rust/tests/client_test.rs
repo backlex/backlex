@@ -118,6 +118,17 @@ fn query_string_filter_is_not_double_encoded() {
 }
 
 #[test]
+fn tenant_header_is_sent() {
+    let (client, last) = mk(|b| b.tenant("myapp"));
+    client.from("posts").list().unwrap();
+    assert!(last
+        .lock()
+        .unwrap()
+        .headers
+        .contains(&("X-Backlex-Tenant".to_string(), "myapp".to_string())));
+}
+
+#[test]
 fn api_key_bearer_header() {
     let (client, last) = mk(|b| b.api_key("pak_secret"));
     client.from("posts").list().unwrap();

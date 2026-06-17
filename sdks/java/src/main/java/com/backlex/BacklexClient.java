@@ -39,6 +39,7 @@ public final class BacklexClient {
     final String url;
     final String apiKey;
     final String workspace;
+    final String tenant;
     volatile String appToken;
     final HttpClient http;
 
@@ -49,6 +50,7 @@ public final class BacklexClient {
         this.url = b.url.endsWith("/") ? b.url.substring(0, b.url.length() - 1) : b.url;
         this.apiKey = b.apiKey;
         this.workspace = b.workspace;
+        this.tenant = b.tenant;
         this.appToken = b.token;
         // A cookie manager keeps same-origin cookie sessions working across calls.
         this.http = b.http != null
@@ -71,6 +73,7 @@ public final class BacklexClient {
         private String apiKey;
         private String workspace;
         private String token;
+        private String tenant;
         private HttpClient http;
 
         private Builder(String url) {
@@ -86,6 +89,11 @@ public final class BacklexClient {
         /** Restore a previously-saved workspace session token (app mode). */
         public Builder token(String token) { this.token = token; return this; }
 
+        /** Scope every request to a tenant/workspace (slug or id) via the
+         *  X-Backlex-Tenant header — for anonymous public reads or a pak_ key
+         *  addressing a tenant other than its home one. */
+        public Builder tenant(String tenant) { this.tenant = tenant; return this; }
+
         /** Custom HttpClient (timeouts, proxies, testing). */
         public Builder httpClient(HttpClient http) { this.http = http; return this; }
 
@@ -99,6 +107,9 @@ public final class BacklexClient {
             rb.header("Authorization", "Bearer " + apiKey);
         } else if (appToken != null && !appToken.isEmpty()) {
             rb.header("Authorization", "Bearer " + appToken);
+        }
+        if (tenant != null && !tenant.isEmpty()) {
+            rb.header("X-Backlex-Tenant", tenant);
         }
     }
 

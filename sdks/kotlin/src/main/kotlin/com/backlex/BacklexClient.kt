@@ -28,6 +28,7 @@ class BacklexClient internal constructor(
     private val apiKey: String?,
     internal val workspace: String?,
     token: String?,
+    private val tenant: String?,
     private val http: HttpClient,
 ) {
     internal val mapper: ObjectMapper = ObjectMapper()
@@ -53,6 +54,7 @@ class BacklexClient internal constructor(
             !apiKey.isNullOrEmpty() -> rb.header("Authorization", "Bearer $apiKey")
             !appToken.isNullOrEmpty() -> rb.header("Authorization", "Bearer $appToken")
         }
+        if (!tenant.isNullOrEmpty()) rb.header("X-Backlex-Tenant", tenant)
     }
 
     /** Raw escape hatch — issues a request with auth headers applied. */
@@ -260,6 +262,7 @@ class BacklexClient internal constructor(
         private var apiKey: String? = null
         private var workspace: String? = null
         private var token: String? = null
+        private var tenant: String? = null
         private var http: HttpClient? = null
 
         /** Static server key (pak_...) sent as a bearer on every call. */
@@ -271,6 +274,10 @@ class BacklexClient internal constructor(
         /** Restore a previously-saved workspace session token (app mode). */
         fun token(token: String?) = apply { this.token = token }
 
+        /** Scope every request to a tenant/workspace (slug or id) via the
+         *  X-Backlex-Tenant header. */
+        fun tenant(tenant: String?) = apply { this.tenant = tenant }
+
         /** Custom HttpClient (timeouts, proxies, testing). */
         fun httpClient(client: HttpClient) = apply { this.http = client }
 
@@ -279,6 +286,7 @@ class BacklexClient internal constructor(
             apiKey,
             workspace,
             token,
+            tenant,
             http ?: HttpClient.newBuilder()
                 .cookieHandler(CookieManager())
                 .followRedirects(HttpClient.Redirect.NORMAL)

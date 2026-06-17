@@ -58,6 +58,15 @@ public class ClientTests
     }
 
     [Fact]
+    public async Task TenantHeaderIsSent()
+    {
+        var (client, h) = Make(new BacklexClientOptions { Tenant = "myapp" });
+        await client.From<Dictionary<string, object?>>("posts").ListAsync();
+        Assert.True(h.Last!.Headers.TryGetValues("X-Backlex-Tenant", out var v));
+        Assert.Equal("myapp", v!.First());
+    }
+
+    [Fact]
     public async Task QueryStringFilterIsNotDoubleEncoded()
     {
         var (client, h) = Make(new BacklexClientOptions { ApiKey = "pak_x" });

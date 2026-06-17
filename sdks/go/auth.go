@@ -199,6 +199,42 @@ func (a *Auth) Session() (map[string]any, error) {
 	return out, nil
 }
 
+// ListSessions returns the signed-in user's active sessions (one per device/login).
+func (a *Auth) ListSessions() ([]map[string]any, error) {
+	var out []map[string]any
+	if err := a.client.Do("GET", a.base()+"/list-sessions", nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// RevokeSession revokes one session by its token (from ListSessions).
+func (a *Auth) RevokeSession(token string) (map[string]any, error) {
+	var out map[string]any
+	if err := a.client.Do("POST", a.base()+"/revoke-session", map[string]any{"token": token}, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// RevokeOtherSessions revokes every session except the current one.
+func (a *Auth) RevokeOtherSessions() (map[string]any, error) {
+	var out map[string]any
+	if err := a.client.Do("POST", a.base()+"/revoke-other-sessions", nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// RevokeSessions revokes all sessions, including the current one.
+func (a *Auth) RevokeSessions() (map[string]any, error) {
+	var out map[string]any
+	if err := a.client.Do("POST", a.base()+"/revoke-sessions", nil, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthProvider is one enabled sign-in method in the public auth surface.
 type AuthProvider struct {
 	ID      string `json:"id"`

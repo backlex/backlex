@@ -274,6 +274,25 @@ class Auth:
     def get_session(self) -> Dict[str, Any]:
         return cast(Dict[str, Any], self._client.request("GET", f"{self._base}/get-session"))
 
+    def list_sessions(self) -> List[Dict[str, Any]]:
+        """List the signed-in user's active sessions (one row per device/login)."""
+        return cast(List[Dict[str, Any]], self._client.request("GET", f"{self._base}/list-sessions"))
+
+    def revoke_session(self, token: str) -> Dict[str, Any]:
+        """Revoke one session by its ``token`` (from ``list_sessions``)."""
+        return cast(
+            Dict[str, Any],
+            self._client.request("POST", f"{self._base}/revoke-session", {"token": token}),
+        )
+
+    def revoke_other_sessions(self) -> Dict[str, Any]:
+        """Revoke every session except the current one (sign out other devices)."""
+        return cast(Dict[str, Any], self._client.request("POST", f"{self._base}/revoke-other-sessions"))
+
+    def revoke_sessions(self) -> Dict[str, Any]:
+        """Revoke all sessions, including the current one."""
+        return cast(Dict[str, Any], self._client.request("POST", f"{self._base}/revoke-sessions"))
+
     def providers(self) -> Dict[str, Any]:
         """Public auth surface (provider list + policy flags) — no secrets."""
         r = cast(Dict[str, Any], self._client.request("GET", f"{self._base}/providers"))

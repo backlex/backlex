@@ -11,6 +11,7 @@ class Auth(private val client: BacklexClient) {
     private val tf = client.mapper.typeFactory
     private val authType = tf.constructType(AuthResult::class.java)
     private val mapType = tf.constructMapType(LinkedHashMap::class.java, String::class.java, Any::class.java)
+    private val mapListType = tf.constructCollectionType(List::class.java, mapType)
 
     private fun base(): String =
         if (client.workspace.isNullOrEmpty()) "/api/auth"
@@ -116,6 +117,22 @@ class Auth(private val client: BacklexClient) {
 
     /** Current session payload, or `{"user": null}`. */
     fun session(): Map<String, Any?> = client.request("GET", "${base()}/get-session", null, mapType)
+
+    /** List the signed-in user's active sessions (one row per device/login). */
+    fun listSessions(): List<Map<String, Any?>> =
+        client.request("GET", "${base()}/list-sessions", null, mapListType)
+
+    /** Revoke one session by its [token] (from [listSessions]). */
+    fun revokeSession(token: String): Map<String, Any?> =
+        client.request("POST", "${base()}/revoke-session", linkedMapOf<String, Any?>("token" to token), mapType)
+
+    /** Revoke every session except the current one (sign out other devices). */
+    fun revokeOtherSessions(): Map<String, Any?> =
+        client.request("POST", "${base()}/revoke-other-sessions", null, mapType)
+
+    /** Revoke all sessions, including the current one. */
+    fun revokeSessions(): Map<String, Any?> =
+        client.request("POST", "${base()}/revoke-sessions", null, mapType)
 
     /** Public auth surface (provider list + policy flags). */
     fun providers(): AuthSurface {

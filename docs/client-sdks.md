@@ -148,6 +148,18 @@ const { user } = await client.auth.signInEmailOTP({ email: "user@acme.com", otp:
 `sendVerificationOTP` also drives the `"email-verification"` and `"forget-password"`
 flows via its `type` argument. (For the click-a-link variant, use `signInMagicLink`.)
 
+### Managing active sessions
+
+Every `auth` exposes the session list and three revoke verbs — enough to build a
+"signed-in devices" screen with a remote sign-out button:
+
+```ts
+const sessions = await client.auth.listSessions();      // one row per device/login
+await client.auth.revokeSession({ token: sessions[0].token }); // kill one
+await client.auth.revokeOtherSessions();                // sign out everywhere else
+await client.auth.revokeSessions();                     // sign out everywhere (incl. here)
+```
+
 ### Publishing versioned items
 
 Collections with draft/publish versioning expose two helpers on every collection

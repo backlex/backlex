@@ -221,6 +221,24 @@ public final class BacklexClient {
         return parts.isEmpty() ? "" : "?" + String.join("&", parts);
     }
 
+    /**
+     * Serialize an ItemQuery into a URL query string — a strict subset of
+     * {@link #buildSearch} (expand + locale).
+     */
+    static String buildItemSearch(ItemQuery q) {
+        if (q == null) {
+            return "";
+        }
+        List<String> parts = new ArrayList<>();
+        if (!q.expand.isEmpty()) {
+            parts.add("expand=" + enc(String.join(",", q.expand)));
+        }
+        if (q.locale != null && !q.locale.isEmpty()) {
+            parts.add("locale=" + enc(q.locale));
+        }
+        return parts.isEmpty() ? "" : "?" + String.join("&", parts);
+    }
+
     private static String enc(String s) {
         return URLEncoder.encode(s, StandardCharsets.UTF_8);
     }

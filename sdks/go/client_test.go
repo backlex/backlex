@@ -45,6 +45,9 @@ func newServer(cap *capture) *httptest.Server {
 			_, _ = w.Write([]byte(`{"ok":true}`))
 		case r.Method == "POST" || r.Method == "PATCH":
 			_, _ = w.Write([]byte(`{"data":{"id":"x1"}}`))
+		case r.Method == "GET" && strings.Count(r.URL.Path, "/") == 4:
+			// Single-item read: /api/items/<slug>/<id> — object-shaped data.
+			_, _ = w.Write([]byte(`{"data":{"id":"x1"}}`))
 		default:
 			_, _ = w.Write([]byte(`{"data":[],"limit":50,"offset":0}`))
 		}
@@ -90,6 +93,22 @@ func TestQueryExtrasSerialize(t *testing.T) {
 	}
 	if cap.query["expand"][0] != "author" || cap.query["locale"][0] != "tr" || cap.query["q"][0] != "hi" {
 		t.Fatalf("extras: %v", cap.query)
+	}
+}
+
+func TestOneWithQueryExtras(t *testing.T) {
+	var cap capture
+	srv := newServer(&cap)
+	defer srv.Close()
+	c := New(srv.URL)
+	if _, err := From[map[string]any](c, "posts").One("p1", &ItemQuery{Expand: []string{"author"}, Locale: "tr"}); err != nil {
+		t.Fatal(err)
+	}
+	if cap.path != "/api/items/posts/p1" {
+		t.Fatalf("one path: %s", cap.path)
+	}
+	if cap.query["expand"][0] != "author" || cap.query["locale"][0] != "tr" {
+		t.Fatalf("one extras: %v", cap.query)
 	}
 }
 

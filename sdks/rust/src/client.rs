@@ -1,7 +1,7 @@
 use crate::auth::Auth;
 use crate::collection::Collection;
 use crate::error::BacklexError;
-use crate::query::ListQuery;
+use crate::query::{ItemQuery, ListQuery};
 use crate::storage::Storage;
 use serde_json::Value;
 use std::io::Read;
@@ -227,6 +227,22 @@ pub(crate) fn build_search(q: &ListQuery) -> String {
     }
     if let Some(text) = &q.q {
         parts.push(format!("q={}", enc(text)));
+    }
+    if parts.is_empty() {
+        String::new()
+    } else {
+        format!("?{}", parts.join("&"))
+    }
+}
+
+/// Serialize an [`ItemQuery`] — a strict subset of [`build_search`] (expand + locale).
+pub(crate) fn build_item_search(q: &ItemQuery) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    if !q.expand.is_empty() {
+        parts.push(format!("expand={}", enc(&q.expand.join(","))));
+    }
+    if let Some(loc) = &q.locale {
+        parts.push(format!("locale={}", enc(loc)));
     }
     if parts.is_empty() {
         String::new()

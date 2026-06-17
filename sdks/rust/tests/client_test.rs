@@ -1,4 +1,4 @@
-use backlex::{filter as f, BacklexError, Client, Transport};
+use backlex::{filter as f, BacklexError, Client, ItemQuery, Transport};
 use serde_json::{json, Value};
 use std::sync::{Arc, Mutex};
 
@@ -160,6 +160,17 @@ fn aggregate_hits_the_right_path() {
         .unwrap();
     assert_eq!(url_path(&last.lock().unwrap().url), "/api/items/orders/aggregate");
     assert_eq!(res["data"][0]["value"], json!(42));
+}
+
+#[test]
+fn one_forwards_expand_and_locale() {
+    let (client, last) = mk(|b| b);
+    let q = ItemQuery { expand: vec!["author".to_string()], locale: Some("tr".to_string()) };
+    client.from("posts").one("p1", Some(&q)).unwrap();
+    let url = &last.lock().unwrap().url;
+    assert_eq!(url_path(url), "/api/items/posts/p1");
+    assert!(url.contains("expand=author"));
+    assert!(url.contains("locale=tr"));
 }
 
 #[test]

@@ -22,6 +22,13 @@ type ListQuery struct {
 	Q      string // free-text search across readable text fields
 }
 
+// ItemQuery holds the per-call options for One(id, ...). The single-item read
+// endpoint accepts the same expand/locale params as the list endpoint.
+type ItemQuery struct {
+	Expand []string // inline single-hop relations
+	Locale string   // collapse i18n_text to one locale, or "*" for the full map
+}
+
 // AggregateRow is one row of an aggregate result: {value} ungrouped, or
 // {label, value} grouped.
 type AggregateRow struct {

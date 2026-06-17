@@ -2,6 +2,7 @@ import {
   type AggregateQuery,
   type AggregateRow,
   type ItemEvent,
+  type ItemQuery,
   type ItemResponse,
   type ListQuery,
   type ListResponse,
@@ -12,6 +13,7 @@ export type {
   ListQuery,
   ListResponse,
   ItemResponse,
+  ItemQuery,
   ItemEvent,
   AggregateQuery,
   AggregateRow,
@@ -95,6 +97,18 @@ const buildSearch = (q: ListQuery | undefined): string => {
   return s ? `?${s}` : "";
 };
 
+// Single-item read extras — a strict subset of buildSearch (expand + locale).
+const buildItemSearch = (q: ItemQuery | undefined): string => {
+  if (!q) return "";
+  const params = new URLSearchParams();
+  if (q.expand) {
+    params.set("expand", Array.isArray(q.expand) ? q.expand.join(",") : q.expand);
+  }
+  if (q.locale) params.set("locale", q.locale);
+  const s = params.toString();
+  return s ? `?${s}` : "";
+};
+
 export const createClient = (opts: ClientOptions) => {
   const f = opts.fetch ?? globalThis.fetch.bind(globalThis);
   // App-mode workspace session token, captured from sign-in/up and replayed
@@ -152,8 +166,8 @@ export const createClient = (opts: ClientOptions) => {
       /** Run a single-function aggregate (count/sum/avg/min/max), optionally grouped. */
       aggregate: (body: AggregateQuery): Promise<{ data: AggregateRow[] }> =>
         request<{ data: AggregateRow[] }>("POST", `/api/items/${slug}/aggregate`, body),
-      one: (id: string): Promise<ItemResponse<T>> =>
-        request<ItemResponse<T>>("GET", `/api/items/${slug}/${id}`),
+      one: (id: string, opts?: ItemQuery): Promise<ItemResponse<T>> =>
+        request<ItemResponse<T>>("GET", `/api/items/${slug}/${id}${buildItemSearch(opts)}`),
       create: (data: Partial<T>): Promise<ItemResponse<T>> =>
         request<ItemResponse<T>>("POST", `/api/items/${slug}`, data),
       update: (id: string, patch: Partial<T>): Promise<ItemResponse<T>> =>

@@ -132,6 +132,15 @@ parse_str(parse_url($last['url'], PHP_URL_QUERY) ?? '', $qp);
 check(($qp['expand'] ?? '') === 'author' && ($qp['locale'] ?? '') === 'tr' && ($qp['q'] ?? '') === 'hi', 'query extras serialize');
 
 $client = new Client('http://test', ['transport' => $transport]);
+$client->from('posts')->one('p1', ['expand' => ['author'], 'locale' => 'tr']);
+parse_str(parse_url($last['url'], PHP_URL_QUERY) ?? '', $oneQp);
+check(
+    parse_url($last['url'], PHP_URL_PATH) === '/api/items/posts/p1'
+        && ($oneQp['expand'] ?? '') === 'author' && ($oneQp['locale'] ?? '') === 'tr',
+    'one() forwards expand/locale'
+);
+
+$client = new Client('http://test', ['transport' => $transport]);
 $client->from('orders')->aggregate(['agg' => 'sum', 'field' => 'total']);
 check(
     $last['method'] === 'POST' && parse_url($last['url'], PHP_URL_PATH) === '/api/items/orders/aggregate',

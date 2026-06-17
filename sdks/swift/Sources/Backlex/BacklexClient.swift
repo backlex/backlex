@@ -149,6 +149,15 @@ public final class BacklexClient {
         return parts.isEmpty ? "" : "?" + parts.joined(separator: "&")
     }
 
+    /// Serialize an `ItemQuery` — a strict subset of `buildSearch` (expand + locale).
+    static func buildItemSearch(_ q: ItemQuery?) -> String {
+        guard let q else { return "" }
+        var parts: [String] = []
+        if !q.expand.isEmpty { parts.append("expand=\(enc(q.expand.joined(separator: ",")))") }
+        if let loc = q.locale { parts.append("locale=\(enc(loc))") }
+        return parts.isEmpty ? "" : "?" + parts.joined(separator: "&")
+    }
+
     /// Percent-encode a query value, escaping everything but RFC 3986 unreserved
     /// characters — equivalent to JS `encodeURIComponent`, so no double-encoding.
     static func enc(_ s: String) -> String {

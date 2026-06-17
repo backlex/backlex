@@ -113,6 +113,14 @@ const byStatus = await client.from("orders")
 // → { data: [ { label: "paid", value: 9300 }, { label: "pending", value: 410 } ] }
 ```
 
+`expand` and `locale` also work when reading a **single** item — `one(id)` takes an
+optional query so you can inline a relation or pick a locale without dropping to the
+list endpoint:
+
+```ts
+const order = await client.from("orders").one("ord_42", { expand: "customer", locale: "en" });
+```
+
 ### Password reset & token refresh
 
 Beyond sign-in/up, every SDK's `auth` exposes:

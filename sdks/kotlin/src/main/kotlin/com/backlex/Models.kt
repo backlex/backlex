@@ -28,6 +28,15 @@ class ListQuery {
     var q: String? = null // free-text search across readable text fields
 }
 
+/**
+ * Per-call options for `one(id, ...)`. The single-item read endpoint accepts the
+ * same expand/locale params as the list endpoint.
+ */
+class ItemQuery {
+    val expand = mutableListOf<String>() // inline single-hop relations
+    var locale: String? = null // one locale, or "*" for the full i18n map
+}
+
 /** One aggregate row: {value} ungrouped, or {label, value} grouped. */
 data class AggregateRow(val value: Double = 0.0, val label: Any? = null)
 

@@ -18,7 +18,9 @@ class Collection {
   Future<dynamic> aggregate(Map<String, dynamic> body) =>
       _client.request('POST', '/api/items/$_slug/aggregate', body);
 
-  Future<dynamic> one(String id) => _client.request('GET', '/api/items/$_slug/$id');
+  /// [query] may carry expand/locale — the same params the list endpoint accepts.
+  Future<dynamic> one(String id, [Map<String, dynamic>? query]) =>
+      _client.request('GET', '/api/items/$_slug/$id${Client.buildSearch(query)}');
 
   Future<dynamic> create(Map<String, dynamic> data) =>
       _client.request('POST', '/api/items/$_slug', data);

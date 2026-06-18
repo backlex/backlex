@@ -30,10 +30,10 @@ hits the wire.
 
 :::note
 All clients are Apache-2.0, verified with offline contract + HTTP-layer tests, and
-**published** (`0.0.1`): Python (PyPI), .NET (NuGet), Ruby (RubyGems), Dart (pub.dev),
-Rust (crates.io), Go (`backlex-go`), Swift (`backlex-swift`), PHP (Packagist). Only
-Java + Kotlin remain — wired for Maven Central, pending GPG/Portal secrets. The release
-runbook lives in
+**published** (`0.0.1`) — all ten: Python (PyPI), .NET (NuGet), Ruby (RubyGems),
+Dart (pub.dev), Rust (crates.io), Go (`backlex-go`), Swift (`backlex-swift`),
+PHP (Packagist), Java + Kotlin (Maven Central, `com.backlex:backlex` /
+`com.backlex:backlex-kotlin`). The release runbook lives in
 [`sdks/PUBLISHING.md`](https://github.com/backlex/backlex/blob/main/sdks/PUBLISHING.md).
 :::
 

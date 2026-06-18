@@ -15,6 +15,7 @@ export const tableFor = (dialect: "pg" | "sqlite") =>
         tenantMembers: pg.schema.tenantMembers,
         accounts: pg.schema.accounts,
         platformExternalIdentities: pg.schema.platformExternalIdentities,
+        twoFactors: pg.schema.twoFactors,
       }
     : {
         roles: sqlite.schema.roles,
@@ -25,4 +26,5 @@ export const tableFor = (dialect: "pg" | "sqlite") =>
         tenantMembers: sqlite.schema.tenantMembers,
         accounts: sqlite.schema.accounts,
         platformExternalIdentities: sqlite.schema.platformExternalIdentities,
+        twoFactors: sqlite.schema.twoFactors,
       };

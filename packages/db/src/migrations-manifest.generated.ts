@@ -50,6 +50,8 @@ export const MIGRATION_TAGS_SQLITE: Record<string, string> = {
   "c326114aa241c6027d5f407f0bd7719f637bcfa92fd4b87eb6d01b19ba990f67": "20260604120000_passkey_aaguid",
   "65444f35a9488056f490939846584b2170b5fde2c3ceffdd38b669d1a6b6e0a8": "20260609120000_collections_audit_reads",
   "d93d41bcd01451cb680826505992b3a2fadd66c444d094e5ddbfc986b37e92ce": "20260613120000_platform_sso",
+  "699ba075e1000d1336536d67b582e058f10f4fcc6c46d334e98459513a17cf02": "20260617120000_embedding_vectors",
+  "23563c81bccbdca2b4b5ede9917450ffe01ff5e622b89608d466a84e9ced4703": "20260618120000_two_factor",
 };
 
 export const MIGRATION_TAGS_PG: Record<string, string> = {
@@ -95,4 +97,5 @@ export const MIGRATION_TAGS_PG: Record<string, string> = {
   "b34393dcb60f4a09ffb82b7f3fccbae0c2fcb63827ba17223a4d516e5a27e6ad": "20260604120000_passkey_aaguid",
   "04ac5c05abf261572224cd6912e69934118d235a39052552adddd39c6c612028": "20260609120000_collections_audit_reads",
   "117d13156cadd25d796b490f8d628409691cd19ce22d71cde2845035ecbd96e6": "20260613120000_platform_sso",
+  "00fce2fa1272c04889867ee83c68549787014d76cf1b9046d8bedf69c6fb9767": "20260618120000_two_factor",
 };

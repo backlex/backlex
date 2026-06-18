@@ -25,9 +25,9 @@ export const GLOBAL_AUTH_CONFIG_ID = "_global";
  */
 export const POLICY_DEFAULTS = {
   openSignup: false,
-  // Email verification is not wired into the auth plane yet (no verification
-  // email is sent or enforced), so default it OFF — otherwise the sign-up UI
-  // shows a "check your inbox" screen for a mail that never arrives.
+  // Email verification gates password sign-in when an instance turns it on AND
+  // has a real email transport (see context.ts). Default OFF so an instance
+  // without email — or one that hasn't opted in — never blocks new users.
   requireEmailVerification: false,
 } as const;
 
@@ -180,9 +180,44 @@ export const loadAuthConfigRow = async (
 };
 
 /**
+ * Honour the admin "enabled" toggle for `magic` / `emailOtp` at the HTTP edge.
+ *
+ * The CONTROL-PLANE better-auth instance loads its plugin set once per isolate
+ * from `env.AUTH_PLUGINS` (see context.ts) and is never rebuilt, so flipping a
+ * provider off in the admin only hides the sign-in button — the endpoint stays
+ * mounted and would still mint a session. (The workspace plane already gates
+ * correctly: tenant-auth rebuilds its plugin list from stored config and is
+ * dropped via `invalidateTenantAuth` on every config PATCH.) This closes that
+ * gap by rejecting the disabled provider's sign-in endpoints before they reach
+ * the handler.
+ *
+ * Returns the offending provider key when the request targets a magic-link /
+ * email-OTP endpoint the admin has explicitly disabled, else `null`. Only an
+ * explicit `enabled === false` blocks — an absent flag means "use the env
+ * default" (on), so this never breaks an instance that hasn't customised auth.
+ *
+ * The DB read happens only for the handful of gated paths; the hot endpoints
+ * (`/sign-in/email`, `/get-session`, …) short-circuit on the cheap path test.
+ */
+export const disabledAuthProviderForPath = async (
+  ctx: DbCtx,
+  tenantId: string | null | undefined,
+  path: string,
+): Promise<AuthProviderKey | null> => {
+  let key: AuthProviderKey | null = null;
+  if (/\/sign-in\/magic-link|\/magic-link\//.test(path)) key = "magic";
+  else if (/\/sign-in\/email-otp|\/email-otp\//.test(path)) key = "emailOtp";
+  if (!key) return null;
+  const stored = await loadAuthConfigRow(ctx, tenantId);
+  const entry = stored?.providers?.[key] as { enabled?: unknown } | undefined;
+  return entry && entry.enabled === false ? key : null;
+};
+
+/**
  * Resolve just the policy flags for a workspace (stored `auth_config.policy`
  * over {@link POLICY_DEFAULTS}). Lean alternative to {@link resolveAuthSurface}
- * for the sign-up enforcement path, which only needs `openSignup`.
+ * for the sign-up / verification enforcement paths, which only need a couple of
+ * flags (`openSignup`, `requireEmailVerification`).
  */
 export const loadPolicy = async (
   ctx: DbCtx,

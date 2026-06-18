@@ -83,6 +83,9 @@ export const users = sqliteTable(
     status: text("status").notNull().default("active"),
     suspendedAt: integer("suspended_at", { mode: "timestamp_ms" }),
     isAnonymous: integer("is_anonymous", { mode: "boolean" }).notNull().default(false),
+    /** Set once the user has verified a TOTP authenticator — see the pg schema
+     *  note. Gates the OTP challenge on the next sign-in. */
+    twoFactorEnabled: integer("two_factor_enabled", { mode: "boolean" }).notNull().default(false),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },
@@ -164,6 +167,22 @@ export const passkeys = sqliteTable(
     uniqueIndex("passkey_credential_idx").on(t.credentialID),
     index("passkey_user_idx").on(t.userId),
   ],
+);
+
+// Backs better-auth's two-factor (TOTP) plugin — see the matching block in
+// ../pg/schema.ts. The plugin also reads / writes `users.two_factor_enabled`.
+export const twoFactors = sqliteTable(
+  "twoFactor",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    verified: integer("verified", { mode: "boolean" }).notNull().default(false),
+  },
+  (t) => [index("two_factor_user_idx").on(t.userId)],
 );
 
 /* ─────────────────────────────────────────────────────────────────────

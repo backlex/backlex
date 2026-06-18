@@ -28,7 +28,7 @@ export interface AuthBranding {
 
 /** Generic result shape used by better-auth client methods. */
 export interface AuthResult {
-  error?: { message?: string } | null;
+  error?: { message?: string; status?: number; code?: string } | null;
   data?: unknown;
 }
 
@@ -72,11 +72,32 @@ export interface AuthClient {
     newPassword: string;
     token: string;
   }) => Promise<AuthResult>;
+  /** Optional — better-auth email-verification resend. Present when the server
+   *  has email verification wired; the sign-in screen calls it to re-send the
+   *  link when a login is rejected with `EMAIL_NOT_VERIFIED`. */
+  sendVerificationEmail?: (opts: {
+    email: string;
+    callbackURL?: string;
+  }) => Promise<AuthResult>;
   /** Optional — better-auth passkey plugin (enrolment). */
   passkey?: {
     addPasskey?: (opts: {
       name: string;
       authenticatorAttachment?: "platform" | "cross-platform";
+    }) => Promise<AuthResult>;
+  };
+  /** Optional — better-auth two-factor (TOTP) plugin. When a user has 2FA
+   *  enabled, `signIn.email` resolves with `data.twoFactorRedirect === true`
+   *  and no session; the sign-in screen then collects a code and calls one of
+   *  these to finish the login. */
+  twoFactor?: {
+    verifyTotp?: (opts: {
+      code: string;
+      trustDevice?: boolean;
+    }) => Promise<AuthResult>;
+    verifyBackupCode?: (opts: {
+      code: string;
+      trustDevice?: boolean;
     }) => Promise<AuthResult>;
   };
 }

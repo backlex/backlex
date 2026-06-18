@@ -162,11 +162,10 @@ function envAuthDefaults(env: any) {
       },
     } as Record<string, Record<string, unknown>>,
     policy: {
-      // Off until verification is actually wired (no email is sent/enforced).
+      // Gate password sign-in behind a verification link. Honoured only when a
+      // real email transport is configured (otherwise the instance can't
+      // deliver the link). Takes effect on the next isolate build.
       requireEmailVerification: false,
-      mfaTotp: false,
-      mfaRequiredForAdmins: false,
-      passkeys: Boolean(env.AUTH_PLUGINS?.includes("passkey")),
       // Closed by default — admins open public sign-up explicitly; the first
       // user and invited addresses are admitted regardless (see context.ts).
       openSignup: false,

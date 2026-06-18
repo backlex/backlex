@@ -123,8 +123,9 @@ export function AccountPage({ pushToast }: { pushToast: (m: string) => void }) {
         <TabsContent value="preferences">
           <PreferencesCard pushToast={pushToast} />
         </TabsContent>
-        <TabsContent value="security">
+        <TabsContent value="security" className="flex flex-col gap-4">
           <SecurityCard pushToast={pushToast} />
+          <TwoFactorCard pushToast={pushToast} refetch={() => session.refetch()} />
         </TabsContent>
         <TabsContent value="sessions">
           <SessionsCard currentToken={currentSessionToken} pushToast={pushToast} />
@@ -491,6 +492,356 @@ function SecurityCard({ pushToast }: { pushToast: (m: string) => void }) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Two-factor authentication (TOTP)
+// --------------------------------------------------------------------------
+
+/** Minimal typed view of better-auth's two-factor client methods (the OSS
+ *  client exposes them via the twoFactorClient plugin; we reach them through a
+ *  cast so this file doesn't depend on the plugin's exported types). */
+type TwoFactorApi = {
+  twoFactor: {
+    enable: (i: { password: string }) => Promise<{
+      data?: { totpURI?: string; backupCodes?: string[] } | null;
+      error?: { message?: string } | null;
+    }>;
+    verifyTotp: (i: { code: string }) => Promise<{ error?: { message?: string } | null }>;
+    disable: (i: { password: string }) => Promise<{ error?: { message?: string } | null }>;
+    generateBackupCodes: (i: { password: string }) => Promise<{
+      data?: { backupCodes?: string[] } | null;
+      error?: { message?: string } | null;
+    }>;
+  };
+};
+
+/** Pull the base32 `secret` out of an `otpauth://totp/...` URI so we can show a
+ *  manual-entry key for authenticator apps that don't scan a QR. */
+const secretFromTotpUri = (uri: string): string => {
+  try {
+    return new URL(uri).searchParams.get("secret") ?? "";
+  } catch {
+    const m = uri.match(/[?&]secret=([^&]+)/i);
+    return m?.[1] ? decodeURIComponent(m[1]) : "";
+  }
+};
+
+/** Group a secret into 4-char blocks so it's easier to type into an app. */
+const groupSecret = (secret: string): string =>
+  secret.replace(/(.{4})/g, "$1 ").trim();
+
+function TwoFactorCard({
+  pushToast,
+  refetch,
+}: {
+  pushToast: (m: string) => void;
+  refetch: () => void;
+}) {
+  const { t } = useLingui();
+  const session = auth.useSession();
+  const enabled = Boolean(
+    (session.data as { user?: { twoFactorEnabled?: boolean } } | null)?.user
+      ?.twoFactorEnabled,
+  );
+
+  // Enrolment is a two-step flow: enter password → get a secret + backup codes
+  // (pending), then verify a code from the app to actually switch 2FA on.
+  const [password, setPassword] = useState("");
+  const [pending, setPending] = useState<{ secret: string; backupCodes: string[] } | null>(null);
+  const [verifyCode, setVerifyCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  // Disable flow.
+  const [disabling, setDisabling] = useState(false);
+  const [disablePw, setDisablePw] = useState("");
+  // Backup-code regeneration flow (when 2FA is already on).
+  const [regenPw, setRegenPw] = useState("");
+  const [regenOpen, setRegenOpen] = useState(false);
+  const [freshCodes, setFreshCodes] = useState<string[] | null>(null);
+
+  const begin = async () => {
+    if (!password) {
+      pushToast(t`Enter your password to continue.`);
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await (auth as unknown as TwoFactorApi).twoFactor.enable({ password });
+      if (res.error) throw new Error(res.error.message ?? "Could not start 2FA setup");
+      const totpURI = res.data?.totpURI ?? "";
+      const secret = secretFromTotpUri(totpURI);
+      setPending({ secret, backupCodes: res.data?.backupCodes ?? [] });
+      setPassword("");
+    } catch (e) {
+      pushToast(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirm = async () => {
+    const code = verifyCode.trim();
+    if (!code) {
+      pushToast(t`Enter the 6-digit code from your authenticator app.`);
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await (auth as unknown as TwoFactorApi).twoFactor.verifyTotp({ code });
+      if (res.error) throw new Error(res.error.message ?? "Invalid code");
+      setPending(null);
+      setVerifyCode("");
+      refetch();
+      pushToast(t`Two-factor authentication is on.`);
+    } catch (e) {
+      pushToast(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const disable = async () => {
+    if (!disablePw) {
+      pushToast(t`Enter your password to turn off 2FA.`);
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await (auth as unknown as TwoFactorApi).twoFactor.disable({ password: disablePw });
+      if (res.error) throw new Error(res.error.message ?? "Could not disable 2FA");
+      setDisabling(false);
+      setDisablePw("");
+      refetch();
+      pushToast(t`Two-factor authentication is off.`);
+    } catch (e) {
+      pushToast(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copyBackupCodes = async () => {
+    if (!pending?.backupCodes.length) return;
+    try {
+      await navigator.clipboard.writeText(pending.backupCodes.join("\n"));
+      pushToast(t`Backup codes copied.`);
+    } catch {
+      pushToast(t`Couldn't copy — select and copy them manually.`);
+    }
+  };
+
+  const regenerate = async () => {
+    if (!regenPw) {
+      pushToast(t`Enter your password to regenerate codes.`);
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await (auth as unknown as TwoFactorApi).twoFactor.generateBackupCodes({ password: regenPw });
+      if (res.error) throw new Error(res.error.message ?? "Could not regenerate codes");
+      setFreshCodes(res.data?.backupCodes ?? []);
+      setRegenPw("");
+      setRegenOpen(false);
+      pushToast(t`New backup codes generated. Old codes no longer work.`);
+    } catch (e) {
+      pushToast(errMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copyFreshCodes = async () => {
+    if (!freshCodes?.length) return;
+    try {
+      await navigator.clipboard.writeText(freshCodes.join("\n"));
+      pushToast(t`Backup codes copied.`);
+    } catch {
+      pushToast(t`Couldn't copy — select and copy them manually.`);
+    }
+  };
+
+  return (
+    <Card className="max-w-3xl">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <ShieldIcon className="size-4" />
+          <Trans>Two-factor authentication</Trans>
+          {enabled && <Badge><Trans>On</Trans></Badge>}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <p className="text-sm text-muted-foreground">
+          <Trans>Add a one-time code from an authenticator app (Google Authenticator, Authy, 1Password…) as a second step when signing in.</Trans>
+        </p>
+
+        {/* Already enabled — offer to turn it off. */}
+        {enabled && !pending && (
+          disabling ? (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="2fa-disable-pw"><Trans>Confirm your password</Trans></Label>
+              <Input
+                id="2fa-disable-pw"
+                type="password"
+                autoComplete="current-password"
+                value={disablePw}
+                onChange={(e) => setDisablePw(e.target.value)}
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" size="sm" disabled={busy} onClick={() => { setDisabling(false); setDisablePw(""); }}>
+                  <Trans>Cancel</Trans>
+                </Button>
+                <Button variant="destructive" size="sm" disabled={busy} onClick={disable}>
+                  {busy ? <Trans>Turning off…</Trans> : <Trans>Turn off 2FA</Trans>}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label><Trans>Backup codes</Trans></Label>
+                <p className="text-xs text-muted-foreground">
+                  <Trans>Lost your codes or running low? Generate a fresh set — the old codes stop working immediately.</Trans>
+                </p>
+                {freshCodes && (
+                  <div className="mt-1 flex flex-col gap-1.5">
+                    <div className="grid grid-cols-2 gap-1 rounded-md bg-muted p-3 font-mono text-sm">
+                      {freshCodes.map((code) => (
+                        <span key={code} className="select-all">{code}</span>
+                      ))}
+                    </div>
+                    <div className="flex justify-end">
+                      <Button variant="ghost" size="sm" onClick={copyFreshCodes}>
+                        <Trans>Copy</Trans>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {regenOpen ? (
+                  <div className="mt-1 flex items-center gap-2">
+                    <Input
+                      type="password"
+                      autoComplete="current-password"
+                      value={regenPw}
+                      onChange={(e) => setRegenPw(e.target.value)}
+                      placeholder={t`Confirm your password`}
+                      className="flex-1"
+                    />
+                    <Button size="sm" disabled={busy} onClick={regenerate}>
+                      {busy ? <Trans>Generating…</Trans> : <Trans>Generate</Trans>}
+                    </Button>
+                    <Button variant="ghost" size="sm" disabled={busy} onClick={() => { setRegenOpen(false); setRegenPw(""); }}>
+                      <Trans>Cancel</Trans>
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="mt-1">
+                    <Button variant="outline" size="sm" onClick={() => { setRegenOpen(true); setFreshCodes(null); }}>
+                      <Trans>Regenerate backup codes</Trans>
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  <Trans>Turn off two-factor authentication.</Trans>
+                </p>
+                <Button variant="outline" size="sm" onClick={() => setDisabling(true)}>
+                  <Trans>Turn off</Trans>
+                </Button>
+              </div>
+            </div>
+          )
+        )}
+
+        {/* Not enabled, not yet started — password gate to begin enrolment. */}
+        {!enabled && !pending && (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="2fa-pw"><Trans>Confirm your password to begin</Trans></Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="2fa-pw"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={t`Your password`}
+                className="flex-1"
+              />
+              <Button size="sm" disabled={busy} onClick={begin}>
+                {busy ? <Trans>Starting…</Trans> : <Trans>Set up</Trans>}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              <Trans>Requires a password on your account. Social-only users should set one above first.</Trans>
+            </p>
+          </div>
+        )}
+
+        {/* Pending verification — show the manual key + backup codes, then verify. */}
+        {pending && (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label><Trans>1. Add this key to your authenticator app</Trans></Label>
+              <code className="select-all rounded-md bg-muted px-3 py-2 font-mono text-sm tracking-wider">
+                {groupSecret(pending.secret) || "—"}
+              </code>
+              <p className="text-xs text-muted-foreground">
+                <Trans>In Google Authenticator choose “Enter a setup key”, paste the key above, and pick “Time based”.</Trans>
+              </p>
+            </div>
+
+            {pending.backupCodes.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <Label><Trans>2. Save your backup codes</Trans></Label>
+                  <Button variant="ghost" size="sm" onClick={copyBackupCodes}>
+                    <Trans>Copy</Trans>
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-1 rounded-md bg-muted p-3 font-mono text-sm">
+                  {pending.backupCodes.map((c) => (
+                    <span key={c} className="select-all">{c}</span>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <Trans>Each code works once if you lose your authenticator. Store them somewhere safe — they won't be shown again.</Trans>
+                </p>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="2fa-verify"><Trans>3. Enter a code to confirm</Trans></Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="2fa-verify"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={verifyCode}
+                  onChange={(e) => setVerifyCode(e.target.value)}
+                  placeholder={t`123456`}
+                  className="flex-1"
+                />
+                <Button size="sm" disabled={busy} onClick={confirm}>
+                  {busy ? <Trans>Verifying…</Trans> : <Trans>Verify &amp; enable</Trans>}
+                </Button>
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => { setPending(null); setVerifyCode(""); }}
+                >
+                  <Trans>Cancel</Trans>
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

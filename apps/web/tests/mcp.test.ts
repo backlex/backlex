@@ -997,6 +997,16 @@ describe("MCP — per-key guards (allowlist + read-only)", () => {
     expect(result.content[0].text).toContain("read-only");
   });
 
+  test("backlex://me reports the read-only key's own MCP scope", async () => {
+    const { rpc } = await mcpBearer(h, readOnlyKey, {
+      jsonrpc: "2.0", id: 46, method: "resources/read", params: { uri: "backlex://me" },
+    });
+    const me = JSON.parse((rpc as RpcSuccess).result.contents[0].text) as {
+      mcp: { readOnly: boolean };
+    };
+    expect(me.mcp.readOnly).toBe(true);
+  });
+
   test("read-only key ALLOWS unusual-verb reads (collections.aggregate, ai.query)", async () => {
     // These carry explicit kind:"read"; the guard must let them through (the
     // call may still error downstream for other reasons — we only assert it is
@@ -1325,6 +1335,24 @@ describe("MCP — resources (collections as backlex:// URIs)", () => {
     const text = (r as RpcSuccess).result.contents[0].text as string;
     // System roles are seeded — at least one should appear.
     expect(text).toContain("admin");
+  });
+
+  test("resources/list + read backlex://me returns identity + MCP scope", async () => {
+    const list = await mcp(h, { jsonrpc: "2.0", id: 24, method: "resources/list" });
+    const uris = (list as RpcSuccess).result.resources.map((x: { uri: string }) => x.uri);
+    expect(uris).toContain("backlex://me");
+
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 25, method: "resources/read", params: { uri: "backlex://me" },
+    });
+    const me = JSON.parse((r as RpcSuccess).result.contents[0].text) as {
+      roles: string[]; isAdmin: boolean; mcp: { readOnly: boolean; allowlist: string[] | null };
+    };
+    expect(me.isAdmin).toBe(true); // seeded admin cookie session
+    expect(Array.isArray(me.roles)).toBe(true);
+    // Cookie session carries no per-key guards → unrestricted.
+    expect(me.mcp.readOnly).toBe(false);
+    expect(me.mcp.allowlist).toBeNull();
   });
 
   test("resources/read for an unknown URI surfaces an error", async () => {

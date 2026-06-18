@@ -443,6 +443,8 @@ const runHandler = async (
     ),
     mode: "admin",
     env,
+    // Ask AI runs as the signed-in admin; no per-key MCP guards apply here.
+    guards: { allowlist: null, readOnly: false },
   };
 
   const start = Date.now();

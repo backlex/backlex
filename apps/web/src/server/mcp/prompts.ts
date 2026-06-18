@@ -71,6 +71,17 @@ const PROMPTS: McpPromptDescriptor[] = [
     ],
   },
   {
+    name: "explain_permissions",
+    description:
+      "Explain, in plain language, what a role is allowed to do on a collection — " +
+      "translating its permission DSL conditions + field allow-lists into English. " +
+      "The inverse of permission_rule. (Reads roles; admin identity.)",
+    arguments: [
+      { name: "collection", description: "Collection slug.", required: true },
+      { name: "role", description: "Role name or id.", required: true },
+    ],
+  },
+  {
     name: "generate_sdk_code",
     description:
       "Given a collection + a plain-language task, emit ready-to-run code for an " +
@@ -212,6 +223,48 @@ export const getPrompt = async (
         `2. A \`fields\` array of field names. Use \`null\` to allow every ` +
         `field. Refer only to the fields above.\n\n` +
         `End with a one-sentence explanation of how the condition fulfils the intent.`;
+      return {
+        description: descriptor.description,
+        messages: [{ role: "user", content: { type: "text", text } }],
+      };
+    }
+
+    case "explain_permissions": {
+      const slug = requireArg(args, "collection");
+      const role = requireArg(args, "role");
+      // Resolve the role by id or (case-insensitive) name. /api/roles is
+      // admin-gated, so this prompt is an admin task; a non-admin caller's
+      // sub-fetch 403s and surfaces as a prompt error.
+      const rolesRes = await ctx.fetchInternal(`/api/roles`);
+      const roles = await readJson<{ data: Array<{ id: string; name: string }> }>(rolesRes);
+      const match = roles.data.find(
+        (r) => r.id === role || r.name.toLowerCase() === role.toLowerCase(),
+      );
+      if (!match) {
+        throw new Error(
+          `unknown role "${role}". Available: ${roles.data.map((r) => r.name).join(", ") || "(none)"}`,
+        );
+      }
+      const permRes = await ctx.fetchInternal(
+        `/api/roles/${encodeURIComponent(match.id)}/permissions`,
+      );
+      const perms = await readJson<{
+        data: Array<{ collection: string; action: string; condition: unknown; fields: unknown }>;
+      }>(permRes);
+      // Rows that apply to this collection: the slug itself, or the `*` wildcard.
+      const rules = perms.data.filter((p) => p.collection === slug || p.collection === "*");
+      const context = await renderCollectionContext(ctx, slug, false);
+      const text =
+        `${context}\n\n` +
+        `Role: "${match.name}"\n\n` +
+        `Permission rows that apply to \`${slug}\` (collection-specific or \`*\` wildcard):\n` +
+        `\`\`\`json\n${JSON.stringify(rules, null, 2)}\n\`\`\`\n\n` +
+        `Explain in plain language what the "${match.name}" role can do on \`${slug}\`. For each ` +
+        `action (create / read / update / delete): say whether it's allowed, translate any ` +
+        `\`condition\` into everyday terms (\`$user.id\` → "only their own rows", \`$tenant.id\`, ` +
+        `\`$now\` time bounds, …), and note any \`fields\` allow-list (which columns are ` +
+        `visible/writable). Treat an action with no matching row as **not permitted**. ` +
+        `Finish with a one-line summary of the role's overall access to this collection.`;
       return {
         description: descriptor.description,
         messages: [{ role: "user", content: { type: "text", text } }],

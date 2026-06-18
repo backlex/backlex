@@ -93,6 +93,10 @@ export interface ToolCtx {
    *  without going through another sub-fetch. Tools that don't need
    *  provider access ignore it. */
   env: Env;
+  /** The active key's MCP guards (allowlist + read-only), so a resource like
+   *  `backlex://me` can report the caller's own MCP scope. Shape mirrors
+   *  `KeyGuards` in guards.ts; inlined here to avoid a circular import. */
+  guards: { allowlist: string[] | null; readOnly: boolean };
 }
 
 export type McpMode = "tenant" | "admin";

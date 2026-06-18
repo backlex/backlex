@@ -375,6 +375,10 @@ describe("MCP — schema tools", () => {
     expect(desc.fields.length).toBe(2);
     expect(desc.fields[0].name).toBe("title");
     expect(desc.fields[0].required).toBe(true);
+    // Result also carries a resource_link to the collection resource, after the text.
+    expect(result.content[0].type).toBe("text"); // text/structuredContent stay at index 0
+    const link = result.content.find((c: any) => c.type === "resource_link");
+    expect(link?.uri).toBe(`backlex://collection/${slug}`);
   });
 
   test("schema.describe_collection on unknown slug surfaces upstream error", async () => {
@@ -640,6 +644,7 @@ describe("MCP — schema CRUD tools", () => {
       ],
     });
     expect(created.structuredContent.data.slug).toBe(slug);
+    expect(created.content.some((c: any) => c.type === "resource_link" && c.uri === `backlex://collection/${slug}`)).toBe(true);
 
     const described = await callTool(h, "schema.describe_collection", { collection: slug });
     expect(described.structuredContent.fields.length).toBe(2);

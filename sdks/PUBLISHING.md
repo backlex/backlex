@@ -4,10 +4,15 @@ All ten SDKs are licensed **Apache-2.0** (matching the repo root `LICENSE`), car
 a `LICENSE` file in their package, and ship complete registry metadata. This doc is
 the runbook for the first (and every subsequent) release.
 
-**Published (0.0.1):** Python (PyPI), .NET (NuGet), Ruby (RubyGems), Dart (pub.dev),
-Rust (crates.io), Go (`backlex-go`), Swift (`backlex-swift`), PHP (Packagist, via
-`backlex-php`). **Pending:** Java + Kotlin (Maven Central) — wired but await the GPG +
-Portal secrets.
+**Published (0.0.1) — all ten:** Python (PyPI), .NET (NuGet), Ruby (RubyGems),
+Dart (pub.dev), Rust (crates.io), Go (`backlex-go`), Swift (`backlex-swift`),
+PHP (Packagist, via `backlex-php`), Java + Kotlin (Maven Central —
+`com.backlex:backlex` / `com.backlex:backlex-kotlin`).
+
+> Maven Central signing uses a GPG key whose private key + passphrase live in the
+> repo secrets (`GPG_PRIVATE_KEY`, `MAVEN_GPG_PASSPHRASE`) alongside the Portal token
+> (`MAVEN_CENTRAL_USERNAME` / `MAVEN_CENTRAL_PASSWORD`). The public key is on
+> keys.openpgp.org. Future releases run via `publish-sdks.yml` (no key in a shell).
 
 > PHP on Packagist isn't auto-updated yet — set up the **GitHub Hook** on the
 > `backlex-php` repo (or click "Update" on the Packagist page) so new tags sync.

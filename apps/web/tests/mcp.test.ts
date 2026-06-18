@@ -109,13 +109,30 @@ describe("MCP — initialize + tools/list", () => {
   });
   afterAll(() => h.cleanup());
 
-  test("initialize returns the server descriptor", async () => {
+  test("initialize returns the server descriptor at our latest version", async () => {
     const r = await mcp(h, { jsonrpc: "2.0", id: 1, method: "initialize" });
     expect(isErr(r)).toBe(false);
     const result = (r as RpcSuccess).result;
-    expect(result.protocolVersion).toBe("2025-03-26");
+    // No requested version → we answer with our preferred (latest) revision.
+    expect(result.protocolVersion).toBe("2025-11-25");
     expect(result.serverInfo.name).toBe("backlex");
     expect(result.capabilities.tools).toBeDefined();
+  });
+
+  test("initialize echoes a supported requested protocol version", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 1, method: "initialize",
+      params: { protocolVersion: "2025-06-18" },
+    });
+    expect((r as RpcSuccess).result.protocolVersion).toBe("2025-06-18");
+  });
+
+  test("initialize falls back to latest for an unknown requested version", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 1, method: "initialize",
+      params: { protocolVersion: "2024-11-05" },
+    });
+    expect((r as RpcSuccess).result.protocolVersion).toBe("2025-11-25");
   });
 
   test("tools/list returns every namespace", async () => {
@@ -256,6 +273,44 @@ describe("MCP — initialize + tools/list", () => {
   test("GET /mcp is 405 (no resumable stream)", async () => {
     const res = await h.fetch("/mcp", { method: "GET" });
     expect(res.status).toBe(405);
+  });
+
+  test("unsupported MCP-Protocol-Version header is 400", async () => {
+    const res = await h.fetch("/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json", "mcp-protocol-version": "2024-11-05" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  test("supported MCP-Protocol-Version header passes through", async () => {
+    const res = await h.fetch("/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json", "mcp-protocol-version": "2025-11-25" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
+    });
+    expect(res.status).toBe(200);
+  });
+
+  test("JSON-RPC batch (array body) is rejected (batching removed)", async () => {
+    const res = await h.fetch("/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify([{ jsonrpc: "2.0", id: 1, method: "ping" }]),
+    });
+    expect(res.status).toBe(400);
+    const j = (await res.json()) as { error?: { message?: string } };
+    expect(j.error?.message).toContain("batching");
+  });
+
+  test("disallowed Origin is 403 (DNS-rebinding defense)", async () => {
+    const res = await h.fetch("/mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://evil.example.com" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "ping" }),
+    });
+    expect(res.status).toBe(403);
   });
 
   test("malformed JSON body is a parse-error JSON-RPC response", async () => {

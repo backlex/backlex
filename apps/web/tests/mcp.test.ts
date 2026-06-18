@@ -261,6 +261,20 @@ describe("MCP — initialize + tools/list", () => {
     expect(byName.get("saml.providers_delete")?.kind).toBe("destruct");
   });
 
+  test("tools/list surfaces outputSchema only where the shape is stable", async () => {
+    const r = await mcp(h, { jsonrpc: "2.0", id: 34, method: "tools/list" });
+    const byName = new Map(
+      (r as RpcSuccess).result.tools.map((t: any) => [t.name, t]),
+    );
+    // Schema-discovery + aggregate + the list envelope are schematized.
+    expect(byName.get("schema.list_collections")?.outputSchema?.required).toContain("collections");
+    expect(byName.get("schema.describe_collection")?.outputSchema?.required).toContain("fields");
+    expect(byName.get("collections.aggregate")?.outputSchema?.required).toContain("data");
+    expect(byName.get("collections.list")?.outputSchema?.required).toContain("data");
+    // Arbitrary-row passthroughs (read a single item, vector search) stay unset.
+    expect(byName.get("collections.read")?.outputSchema).toBeUndefined();
+  });
+
   test("notifications/initialized is a no-op (returns 202)", async () => {
     const res = await h.fetch("/mcp", {
       method: "POST",

@@ -11,6 +11,7 @@ import { anonymous } from "better-auth/plugins/anonymous";
 import { bearer } from "better-auth/plugins/bearer";
 import { emailOTP } from "better-auth/plugins/email-otp";
 import { magicLink } from "better-auth/plugins/magic-link";
+import { twoFactor } from "better-auth/plugins/two-factor";
 
 export interface AuthHooks {
   /** Runs before a user row is created (any sign-up path: email/password,
@@ -29,7 +30,7 @@ export interface OAuthProviderConfig {
   clientSecret: string;
 }
 
-export type AuthPlugin = "magic-link" | "email-otp" | "anonymous" | "passkey";
+export type AuthPlugin = "magic-link" | "email-otp" | "anonymous" | "passkey" | "two-factor";
 
 export interface AuthConfig {
   baseURL: string;
@@ -47,6 +48,12 @@ export interface AuthConfig {
    *  provided. `passkey` adds a `passkey` table — run migrations after
    *  enabling. */
   plugins?: ReadonlyArray<AuthPlugin>;
+  /** Require a confirmed email before password sign-in. better-auth mails a
+   *  verification link on sign-up (and blocks login until it's clicked). The
+   *  caller MUST only set this when `email` is a real transport — gating login
+   *  behind a verification mail that only logs to the console would lock every
+   *  new user out. Defaults to off. */
+  requireEmailVerification?: boolean;
 }
 
 const authSchemaFor = (provider: "pg" | "sqlite") => {
@@ -57,6 +64,7 @@ const authSchemaFor = (provider: "pg" | "sqlite") => {
     account: s.accounts,
     verification: s.verifications,
     passkey: s.passkeys,
+    twoFactor: s.twoFactors,
   };
 };
 
@@ -67,6 +75,13 @@ const buildPlugins = async (config: AuthConfig) => {
   // row is identical either way — header vs cookie is the only difference, so
   // browser cookie auth is unaffected.
   out.push(bearer() as unknown as ReturnType<typeof magicLink>);
+  // Always on: the two-factor (TOTP) plugin only adds endpoints + reads the
+  // `twoFactor` table / `users.two_factor_enabled` column. It does nothing
+  // until a user opts in from Settings, so it's safe to enable unconditionally
+  // — mirroring how `bearer` is always present.
+  out.push(
+    twoFactor({ issuer: "backlex" }) as unknown as ReturnType<typeof magicLink>,
+  );
   const enabled = new Set(config.plugins ?? []);
   if (enabled.has("magic-link") && config.email) {
     out.push(
@@ -139,6 +154,11 @@ export const createAuth = async (
       enabled: true,
       autoSignIn: true,
       minPasswordLength: 8,
+      // Only gate login behind verification when the caller opted in AND an
+      // email transport exists — see the AuthConfig doc-comment.
+      ...(config.email && config.requireEmailVerification
+        ? { requireEmailVerification: true }
+        : {}),
       ...(config.email
         ? {
             sendResetPassword: async ({
@@ -164,6 +184,37 @@ export const createAuth = async (
           }
         : {}),
     },
+    // Verification mail + auto-sign-in after confirm. Wired only when login is
+    // actually gated (real email + opt-in), so an instance without email never
+    // promises a verification link it can't deliver.
+    ...(config.email && config.requireEmailVerification
+      ? {
+          emailVerification: {
+            sendOnSignUp: true,
+            autoSignInAfterVerification: true,
+            sendVerificationEmail: async ({
+              user,
+              url,
+            }: {
+              user: { email: string };
+              url: string;
+            }) => {
+              await config.email!.send({
+                to: user.email,
+                subject: "Verify your backlex email",
+                text:
+                  `Confirm your email address to finish setting up your account.\n\n` +
+                  `Verify: ${url}\n\n` +
+                  `If you didn't create an account, you can ignore this email.`,
+                html:
+                  `<p>Confirm your email address to finish setting up your account.</p>` +
+                  `<p><a href="${url}">Verify your email</a></p>` +
+                  `<p>If you didn't create an account, you can ignore this email.</p>`,
+              });
+            },
+          },
+        }
+      : {}),
     session: {
       expiresIn: 60 * 60 * 24 * 7, // 7d
       updateAge: 60 * 60 * 24, // 1d

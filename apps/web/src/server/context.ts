@@ -341,6 +341,32 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     }
   }
 
+  // Email-verification gating is opt-in per instance (auth_config.policy on the
+  // instance-global `_global` row) AND only honoured when a real email
+  // transport exists — gating login behind a verification mail the console
+  // adapter only logs would lock every new user out. `requireEmailVerification`
+  // is a better-auth construction-time flag, so a policy change takes effect on
+  // the next isolate build (cheap on Workers; a restart on a single Bun
+  // process). Read failures degrade to "off" so a fresh/un-migrated DB can
+  // still boot and bootstrap its first admin.
+  const hasRealEmail =
+    cloudConfigured(env) || emailSpec.provider !== "console";
+  let requireEmailVerification = false;
+  if (hasRealEmail) {
+    try {
+      // Read the active workspace's policy (with the instance-global fallback
+      // baked into loadPolicy → loadAuthConfigRow), mirroring how the admin
+      // PATCH writes to `auth.tenantId ?? "_global"` and the discovery surface
+      // reads it back. `ensureDefaultTenant` is idempotent — it returns the
+      // existing default workspace, only creating one on a brand-new DB.
+      const tenantId = await ensureDefaultTenant(dbCtx);
+      const policy = await loadPolicy(dbCtx, tenantId);
+      requireEmailVerification = policy.requireEmailVerification === true;
+    } catch {
+      requireEmailVerification = false;
+    }
+  }
+
   const auth = await createAuth(db, dialect, {
     baseURL: env.APP_URL,
     secret: env.AUTH_SECRET,
@@ -349,6 +375,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     // env OAuth block used to build `social`.
     email,
     plugins: pluginList,
+    requireEmailVerification,
     hooks: {
       onBeforeUserCreated: async ({ email }) => {
         // The first user bootstraps the instance admin. On a managed cloud

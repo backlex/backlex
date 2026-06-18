@@ -77,6 +77,8 @@ export interface ApiUser {
    *  identity (`saml`/`ldap`/`cloud`). */
   provider?: string;
   lastSeenAt?: number | null;
+  /** Whether the user has an authenticator-app (TOTP) second factor enrolled. */
+  twoFactorEnabled?: boolean;
 }
 
 /** A workspace end-user (the `app_users` pool — the customers of the app
@@ -379,6 +381,10 @@ export const usersApi = {
     api<{ ok: true }>(`/api/users/${id}/activate`, { method: "PATCH" }),
   revokeAll: (id: string) =>
     api<{ ok: true }>(`/api/users/${id}/sessions/revoke-all`, { method: "POST" }),
+  /** Recover a user locked out of 2FA: clears their TOTP secret + backup
+   *  codes and revokes their sessions so they can sign in and re-enrol. */
+  resetTwoFactor: (id: string) =>
+    api<{ ok: true }>(`/api/users/${id}/reset-two-factor`, { method: "POST" }),
   remove: (id: string) =>
     api<{ ok: true }>(`/api/users/${id}`, { method: "DELETE" }),
   addRole: (userId: string, roleId: string) =>

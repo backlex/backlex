@@ -14,8 +14,9 @@ PHP (Packagist, via `backlex-php`), Java + Kotlin (Maven Central —
 > (`MAVEN_CENTRAL_USERNAME` / `MAVEN_CENTRAL_PASSWORD`). The public key is on
 > keys.openpgp.org. Future releases run via `publish-sdks.yml` (no key in a shell).
 
-> PHP on Packagist isn't auto-updated yet — set up the **GitHub Hook** on the
-> `backlex-php` repo (or click "Update" on the Packagist page) so new tags sync.
+> PHP on Packagist **auto-updates**: a GitHub webhook on `backlex-php` pings
+> Packagist on every push/tag (delivering 202). If the Packagist API token is ever
+> rotated, update that webhook's secret (repo → Settings → Webhooks).
 
 ### Dedicated mirror repos (Go / Swift / PHP)
 

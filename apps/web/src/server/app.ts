@@ -287,7 +287,7 @@ export const createApp = (env: Env) => {
         return isWorkspaceAllowedOrigin(origin, env) ? origin : env.APP_URL;
       },
       credentials: true,
-      allowHeaders: ["Content-Type", "Authorization", "X-Backlex-Tenant", "X-D1-Bookmark"],
+      allowHeaders: ["Content-Type", "Authorization", "X-Backlex-Tenant", "X-D1-Bookmark", "MCP-Protocol-Version"],
       allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
       // Expose so the browser SPA can read the bookmark off the response and
       // round-trip it on the next request (D1 Sessions API). Server-Timing is

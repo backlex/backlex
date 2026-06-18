@@ -1231,12 +1231,13 @@ describe("MCP — prompts (starter templates)", () => {
   });
   afterAll(() => h.cleanup());
 
-  test("prompts/list returns the 3 starter templates", async () => {
+  test("prompts/list returns the starter templates", async () => {
     const r = await mcp(h, { jsonrpc: "2.0", id: 1, method: "prompts/list" });
     const names = (r as RpcSuccess).result.prompts.map((p: any) => p.name);
     expect(names.sort()).toEqual([
       "describe_collection",
       "generate_queries",
+      "generate_sdk_code",
       "permission_rule",
     ].sort());
     for (const p of (r as RpcSuccess).result.prompts) {
@@ -1317,5 +1318,75 @@ describe("MCP — webhooks + flows tools", () => {
       params: { name: "flows.invoke", arguments: { id: "no-such-flow", input: {} } },
     });
     expect((r as RpcSuccess).result.isError).toBe(true);
+  });
+});
+
+describe("MCP — prompts surface", () => {
+  let h: TestHarness;
+  const slug = `mcp_prompt_${Date.now()}`;
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    const r = await h.fetch("/api/collections", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        slug,
+        fields: [
+          { name: "title", type: "text", required: true },
+          { name: "published", type: "boolean" },
+        ],
+      }),
+    });
+    expect(r.status).toBe(201);
+  });
+  afterAll(() => h.cleanup());
+
+  test("prompts/list includes generate_sdk_code with its arguments", async () => {
+    const r = await mcp(h, { jsonrpc: "2.0", id: 1, method: "prompts/list" });
+    const prompts = (r as RpcSuccess).result.prompts as Array<{ name: string; arguments: any[] }>;
+    const p = prompts.find((x) => x.name === "generate_sdk_code");
+    expect(p).toBeDefined();
+    expect(p!.arguments.map((a) => a.name).sort()).toEqual(["collection", "intent", "language"]);
+  });
+
+  test("generate_sdk_code embeds the real schema + the chosen SDK reference", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0",
+      id: 2,
+      method: "prompts/get",
+      params: {
+        name: "generate_sdk_code",
+        arguments: { collection: slug, intent: "list published posts", language: "python" },
+      },
+    });
+    const text = (r as RpcSuccess).result.messages[0].content.text as string;
+    expect(text).toContain(slug); // schema context
+    expect(text).toContain("published"); // a real field
+    expect(text).toContain("pip install backlex"); // python SDK reference
+    expect(text).toContain("client.from_"); // python idiom
+    expect(text).toContain("list published posts"); // the intent
+  });
+
+  test("generate_sdk_code normalizes aliases (ts → typescript)", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0",
+      id: 3,
+      method: "prompts/get",
+      params: { name: "generate_sdk_code", arguments: { collection: slug, intent: "x", language: "ts" } },
+    });
+    const text = (r as RpcSuccess).result.messages[0].content.text as string;
+    expect(text).toContain("@backlex/client");
+  });
+
+  test("generate_sdk_code rejects an unsupported language", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0",
+      id: 4,
+      method: "prompts/get",
+      params: { name: "generate_sdk_code", arguments: { collection: slug, intent: "x", language: "cobol" } },
+    });
+    expect(isErr(r)).toBe(true);
+    if (isErr(r)) expect(r.error.message).toContain("unsupported language");
   });
 });

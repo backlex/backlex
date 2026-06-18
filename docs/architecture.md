@@ -227,4 +227,6 @@ bun run backlex migrate
   shouldn't lose function execution; paid users shouldn't be stuck on
   WASM-slow QuickJS.
 - **passkey-first** in Phase 5.7: phishing-resistant, hardware-backed,
-  better UX than TOTP. TOTP plugin still available for compliance use.
+  better UX than TOTP. TOTP two-factor is also fully wired (enrolment,
+  login challenge, backup codes, admin reset) for compliance use — see
+  [Auth planes → Control-plane auth features](/docs/auth-planes/).

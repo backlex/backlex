@@ -32,7 +32,7 @@ request with one of two values:
 
 | Plane          | Who                          | Tables it touches                                            | Auth surface                       | Cookie / token              |
 |----------------|------------------------------|--------------------------------------------------------------|------------------------------------|------------------------------|
-| `"platform"`   | Admins running the dashboard | `users`, `sessions`, `accounts`, `verifications`, `passkeys` | `/api/auth/*` (better-auth)        | `better-auth.*` cookies + opaque session tokens; PAKs (`pak_…`) for machine-to-machine |
+| `"platform"`   | Admins running the dashboard | `users`, `sessions`, `accounts`, `verifications`, `passkeys`, `twoFactor` | `/api/auth/*` (better-auth)        | `better-auth.*` cookies + opaque session tokens; PAKs (`pak_…`) for machine-to-machine |
 | `"app"`        | Workspace customers          | `app_users`, `app_sessions`, `app_accounts`, `app_verifications`, `external_identities` | `/api/t/<slug>/auth/*` (per-workspace better-auth) | `Authorization: Bearer <access-or-refresh-token>` |
 
 Both planes share the same `tenants` table and the same role / permission
@@ -59,6 +59,7 @@ sessions                                       app_sessions       tenant_id, use
 accounts            (OAuth links)              app_accounts       tenant_id, user_id, provider_id, …
 verifications                                  app_verifications  tenant_id, identifier, value, expires_at
 passkeys
+twoFactor           (TOTP secret + backup codes; users.two_factor_enabled flag)
 
            ──────── shared by both ────────
            tenants            (workspaces — id, slug, project, env, …)
@@ -265,6 +266,48 @@ resolved for the request:
 Distinct from `/api/users`, which is the **control-plane** pool. The
 two never overlap.
 
+## Control-plane auth features
+
+The admin better-auth instance (`createAuth`,
+`packages/auth/src/index.ts`) ships a few features beyond
+email/password + social, all reached under `/api/auth/*`:
+
+- **Two-factor (TOTP).** The `twoFactor` plugin is loaded
+  *unconditionally* — it's inert until a user opts in, so it doesn't
+  ride `AUTH_PLUGINS` (like `bearer`). Users enrol from **Account →
+  Security**: `POST /api/auth/two-factor/enable` returns an `otpauth://`
+  URI + one-time backup codes; `…/verify-totp` confirms the first code
+  and flips `users.two_factor_enabled`. A 2FA-enabled account's
+  `POST /sign-in/email` then returns `{ twoFactorRedirect: true }`
+  (no session) until `…/verify-totp` or `…/verify-backup-code`
+  succeeds. `…/generate-backup-codes` re-issues the set. An admin can
+  recover a locked-out user with
+  `POST /api/users/{id}/reset-two-factor` (clears the secret + backup
+  codes, drops sessions; gated on workspace membership). **Magic-link
+  and email-OTP bypass the TOTP gate** — better-auth only gates
+  password sign-in — so the admin sign-in screen warns before enabling
+  either while 2FA is available.
+
+- **Email verification.** Opt-in via `auth_config.policy.requireEmailVerification`,
+  and honoured **only when a real email transport is configured** — the
+  console adapter would log the link instead of delivering it, so the
+  gate stays off there to avoid locking new users out
+  (`context.ts` computes `hasRealEmail`). When active, sign-up mails a
+  verification link and password sign-in is rejected with
+  `EMAIL_NOT_VERIFIED` until it's clicked; the sign-in screen offers a
+  resend. `requireEmailVerification` is a construction-time better-auth
+  flag, so a policy change takes effect on the next isolate build.
+
+- **Provider toggle enforcement.** The control-plane plugin set is
+  built once per isolate from `AUTH_PLUGINS` and never rebuilt, so an
+  admin disabling `magic` / `emailOtp` in Auth Settings can't tear the
+  plugin down. The sign-in router
+  (`apps/web/src/server/routes/auth.ts`) closes the gap at the HTTP
+  edge: a request to a magic-link / email-OTP endpoint whose provider
+  is explicitly `enabled: false` returns 403 before reaching the
+  handler. (The workspace plane already rebuilds its plugin list from
+  stored config, so it needs no edge gate.)
+
 ## Per-workspace config
 
 Two key-value tables hold per-workspace overrides for the auth
@@ -273,8 +316,8 @@ behaviour the better-auth instance picks up:
 - **`auth_config`** (`packages/db/src/pg/schema.ts:950`). PK is
   `tenant_id`, plus the `_global` sentinel for the instance-wide
   fallback. Columns: `providers` (jsonb of `{ email: { enabled }, github: { enabled, clientId, clientSecretEnc }, … }`),
-  `policy` (jsonb — `requireEmailVerification`, `openSignup`,
-  `mfaRequiredForAdmins`, …), `session_lifetime` (e.g. `30d` /
+  `policy` (jsonb — `requireEmailVerification`, `openSignup`),
+  `session_lifetime` (e.g. `30d` /
   `24h` / `90m`), `redirect_urls` (list of allowed callback origins —
   also folded into the CORS allow-list).
 - **`email_config`** (`packages/db/src/pg/schema.ts:1131`). Same

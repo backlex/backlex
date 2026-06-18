@@ -74,6 +74,17 @@ export const listItems: McpTool = {
     required: ["collection"],
     additionalProperties: false,
   },
+  // Envelope shape is fixed; the rows in `data` are arbitrary collection records.
+  outputSchema: {
+    type: "object",
+    properties: {
+      data: { type: "array", items: { type: "object" } },
+      limit: { type: "integer" },
+      offset: { type: "integer" },
+      meta: { type: "object" },
+    },
+    required: ["data"],
+  },
   handler: async (args, ctx) => {
     const slug = requireSlug(args);
     const qs = buildListQuery(args);
@@ -254,6 +265,21 @@ export const aggregateItems: McpTool = {
     },
     required: ["collection", "agg"],
     additionalProperties: false,
+  },
+  outputSchema: {
+    type: "object",
+    properties: {
+      data: {
+        type: "array",
+        items: {
+          type: "object",
+          // `{ value }` ungrouped, or `{ label, value }` when grouped.
+          properties: { value: { type: "number" }, label: {} },
+          required: ["value"],
+        },
+      },
+    },
+    required: ["data"],
   },
   handler: async (args, ctx) => {
     const slug = requireSlug(args);

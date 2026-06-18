@@ -65,6 +65,17 @@ destructive calls — plus two backlex-specific fields the
 Clients that don't know about the extra fields ignore them — both are
 additive to the standard MCP descriptor.
 
+### Structured output schemas
+
+Tools whose `structuredContent` has a stable, knowable shape declare an
+`outputSchema` (MCP 2025-06-18) so a spec-aware client can validate / type the
+result: `schema.list_collections`, `schema.describe_collection`,
+`collections.aggregate`, and `collections.list` (the `{ data, limit, offset,
+meta? }` envelope — the rows inside `data` stay open since they're arbitrary
+collection records). Data-passthrough tools that return arbitrary user rows
+(`collections.read`, `vector.search`, …) omit it rather than ship a schema that
+wouldn't match.
+
 ### Resource links in results
 
 `schema.create_collection` and `schema.describe_collection` attach a

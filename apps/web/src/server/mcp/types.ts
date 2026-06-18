@@ -109,7 +109,11 @@ export interface ToolResult {
 
 export type ToolContent =
   | { type: "text"; text: string }
-  | { type: "resource"; resource: { uri: string; mimeType?: string; text?: string } };
+  | { type: "resource"; resource: { uri: string; mimeType?: string; text?: string } }
+  // A pointer to a readable MCP resource (2025-06-18). Tools that create or name
+  // a collection attach one so the client can pull `backlex://collection/<slug>`
+  // as a follow-up without composing a `resources/read` by hand.
+  | { type: "resource_link"; uri: string; name?: string; description?: string; mimeType?: string };
 
 /** Wiring needed to dispatch a request — closes over the parent app so
  *  tools can issue internal sub-fetches without a fresh outbound HTTP hop. */

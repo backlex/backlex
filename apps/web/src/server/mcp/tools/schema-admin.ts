@@ -1,5 +1,6 @@
 import type { McpTool, ToolResult } from "../types";
 import { readJson } from "../internal-fetch";
+import { collectionLink, withLinks } from "./_links";
 
 const textResult = (value: unknown): ToolResult => ({
   content: [{ type: "text", text: JSON.stringify(value, null, 2) }],
@@ -54,7 +55,9 @@ export const createCollection: McpTool = {
       body: JSON.stringify(args),
     });
     const body = await readJson<unknown>(res);
-    return textResult(body);
+    // Link to the collection just created so the agent can inspect it next.
+    const slug = String(args.slug ?? "");
+    return slug ? withLinks(textResult(body), collectionLink(slug)) : textResult(body);
   },
 };
 

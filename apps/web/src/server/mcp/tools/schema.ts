@@ -1,5 +1,6 @@
 import type { McpTool, ToolResult } from "../types";
 import { readJson } from "../internal-fetch";
+import { collectionLink, withLinks } from "./_links";
 
 interface CollectionMeta {
   id: string;
@@ -91,18 +92,21 @@ export const describeCollection: McpTool = {
       `/api/collections/${encodeURIComponent(slug)}`,
     );
     const body = await readJson<{ data: CollectionMeta }>(res);
-    return textResult({
-      slug: body.data.slug,
-      singular: body.data.singular ?? null,
-      plural: body.data.plural ?? null,
-      note: body.data.note ?? null,
-      ownerScoped: Boolean(body.data.ownerScoped),
-      tenantScoped: body.data.tenantScoped !== false,
-      adopted: Boolean(body.data.adopted),
-      versioned: Boolean(body.data.versioned),
-      vectorize: Boolean(body.data.vectorize),
-      fields: body.data.fields,
-    });
+    return withLinks(
+      textResult({
+        slug: body.data.slug,
+        singular: body.data.singular ?? null,
+        plural: body.data.plural ?? null,
+        note: body.data.note ?? null,
+        ownerScoped: Boolean(body.data.ownerScoped),
+        tenantScoped: body.data.tenantScoped !== false,
+        adopted: Boolean(body.data.adopted),
+        versioned: Boolean(body.data.versioned),
+        vectorize: Boolean(body.data.vectorize),
+        fields: body.data.fields,
+      }),
+      collectionLink(body.data.slug),
+    );
   },
 };
 

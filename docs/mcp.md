@@ -65,6 +65,14 @@ destructive calls — plus two backlex-specific fields the
 Clients that don't know about the extra fields ignore them — both are
 additive to the standard MCP descriptor.
 
+### Resource links in results
+
+`schema.create_collection` and `schema.describe_collection` attach a
+`resource_link` content block pointing at `backlex://collection/<slug>` (after
+the text / `structuredContent`). A 2025-06-18-aware client renders it as a
+follow-up: the agent can pull the collection's full schema + sample rows as a
+resource instead of composing a separate `resources/read`.
+
 ### Schema
 
 | Tool | Description |

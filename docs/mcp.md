@@ -355,6 +355,8 @@ Beyond tools, backlex exposes **MCP resources** so attach-aware clients (Claude 
 |---|---|
 | `backlex://schema` | Every collection's slug + field list (workspace-level directory). |
 | `backlex://collection/<slug>` | The collection's full field schema + the first 5 rows of data. |
+| `backlex://openapi` | The workspace's full OpenAPI 3.1 spec — every REST endpoint, params, and schema. Handy when an agent writes code against the API. |
+| `backlex://roles` | Every role and its permission rules. **Admin mount only** (`/api/admin/mcp`), since `/api/roles` is admin-gated. |
 
 Resource reads sub-fetch the same REST surface tools use, so permissions DSL still filters what the agent sees. The per-key MCP allowlist also gates resources — an agent that can't call `collections.list` won't see the resource either.
 

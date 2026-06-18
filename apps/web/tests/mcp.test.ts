@@ -1288,6 +1288,40 @@ describe("MCP — resources (collections as backlex:// URIs)", () => {
     expect(parsed.sampleLimit).toBe(5);
   });
 
+  test("resources/list includes the OpenAPI resource; roles only on the admin mount", async () => {
+    const tenant = await mcp(h, { jsonrpc: "2.0", id: 20, method: "resources/list" });
+    const tUris = (tenant as RpcSuccess).result.resources.map((x: { uri: string }) => x.uri);
+    expect(tUris).toContain("backlex://openapi");
+    expect(tUris).not.toContain("backlex://roles"); // tenant mount
+
+    const admin = await mcp(h, { jsonrpc: "2.0", id: 21, method: "resources/list" }, "/api/admin/mcp");
+    const aUris = (admin as RpcSuccess).result.resources.map((x: { uri: string }) => x.uri);
+    expect(aUris).toContain("backlex://roles");
+  });
+
+  test("resources/read backlex://openapi returns the spec", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 22, method: "resources/read",
+      params: { uri: "backlex://openapi" },
+    });
+    const spec = JSON.parse((r as RpcSuccess).result.contents[0].text) as {
+      openapi?: string; paths?: Record<string, unknown>;
+    };
+    expect(typeof spec.openapi).toBe("string");
+    expect(spec.paths).toBeDefined();
+  });
+
+  test("resources/read backlex://roles (admin mount) returns roles", async () => {
+    const r = await mcp(
+      h,
+      { jsonrpc: "2.0", id: 23, method: "resources/read", params: { uri: "backlex://roles" } },
+      "/api/admin/mcp",
+    );
+    const text = (r as RpcSuccess).result.contents[0].text as string;
+    // System roles are seeded — at least one should appear.
+    expect(text).toContain("admin");
+  });
+
   test("resources/read for an unknown URI surfaces an error", async () => {
     const r = await mcp(h, {
       jsonrpc: "2.0", id: 5, method: "resources/read",

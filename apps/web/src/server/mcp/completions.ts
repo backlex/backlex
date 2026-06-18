@@ -10,6 +10,7 @@
 import type { ToolCtx } from "./types";
 import { listCollectionSlugs } from "./resources";
 import { SDK_LANGUAGES } from "./sdk-reference";
+import { readJson } from "./internal-fetch";
 
 /** Per the spec, a completion result returns at most 100 values, with `total`
  *  and `hasMore` describing the full set. */
@@ -56,6 +57,17 @@ export const complete = async (
       return result(prefixFilter(await listCollectionSlugs(ctx), argValue));
     } catch {
       return result([]); // e.g. no read permission — offer nothing rather than error
+    }
+  }
+
+  // explain_permissions role — role names (admin-gated; empty if not allowed).
+  if (argName === "role") {
+    try {
+      const res = await ctx.fetchInternal(`/api/roles`);
+      const body = await readJson<{ data: Array<{ name: string }> }>(res);
+      return result(prefixFilter(body.data.map((r) => r.name), argValue));
+    } catch {
+      return result([]);
     }
   }
 

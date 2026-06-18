@@ -1485,3 +1485,77 @@ describe("MCP — prompts surface", () => {
     if (isErr(r)) expect(r.error.message).toContain("unsupported language");
   });
 });
+
+describe("MCP — completions + resource templates", () => {
+  let h: TestHarness;
+  const slug = `mcp_compl_${Date.now()}`;
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    const r = await h.fetch("/api/collections", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ slug, fields: [{ name: "title", type: "text", required: true }] }),
+    });
+    expect(r.status).toBe(201);
+  });
+  afterAll(() => h.cleanup());
+
+  test("initialize advertises the completions capability", async () => {
+    const r = await mcp(h, { jsonrpc: "2.0", id: 1, method: "initialize" });
+    expect((r as RpcSuccess).result.capabilities.completions).toBeDefined();
+  });
+
+  test("resources/templates/list exposes the collection template", async () => {
+    const r = await mcp(h, { jsonrpc: "2.0", id: 2, method: "resources/templates/list" });
+    const templates = (r as RpcSuccess).result.resourceTemplates as Array<{ uriTemplate: string }>;
+    expect(templates.some((t) => t.uriTemplate === "backlex://collection/{slug}")).toBe(true);
+  });
+
+  test("completion/complete suggests collection slugs for a prompt arg", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 3, method: "completion/complete",
+      params: {
+        ref: { type: "ref/prompt", name: "describe_collection" },
+        argument: { name: "collection", value: "mcp_compl_" },
+      },
+    });
+    const values = (r as RpcSuccess).result.completion.values as string[];
+    expect(values).toContain(slug);
+  });
+
+  test("completion/complete suggests the slug arg for the resource template", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 4, method: "completion/complete",
+      params: {
+        ref: { type: "ref/resource", uri: "backlex://collection/{slug}" },
+        argument: { name: "slug", value: "" },
+      },
+    });
+    const values = (r as RpcSuccess).result.completion.values as string[];
+    expect(values).toContain(slug);
+  });
+
+  test("completion/complete suggests languages for generate_sdk_code", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 5, method: "completion/complete",
+      params: {
+        ref: { type: "ref/prompt", name: "generate_sdk_code" },
+        argument: { name: "language", value: "py" },
+      },
+    });
+    const values = (r as RpcSuccess).result.completion.values as string[];
+    expect(values).toEqual(["python"]);
+  });
+
+  test("completion/complete returns empty for a free-text argument", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 6, method: "completion/complete",
+      params: {
+        ref: { type: "ref/prompt", name: "generate_sdk_code" },
+        argument: { name: "intent", value: "anything" },
+      },
+    });
+    expect((r as RpcSuccess).result.completion.values).toEqual([]);
+  });
+});

@@ -37,9 +37,41 @@ export interface McpResourceContents {
   contents: Array<{ uri: string; mimeType: string; text: string }>;
 }
 
+export interface McpResourceTemplate {
+  uriTemplate: string;
+  name: string;
+  description?: string;
+  mimeType?: string;
+}
+
 const collectionUri = (slug: string): string => `backlex://collection/${slug}`;
 
 const SCHEMA_URI = "backlex://schema";
+
+/** Parameterised resource shape advertised at `resources/templates/list`, so a
+ *  template-aware client offers "open collection …" with the slug as a fill-in
+ *  (and its `slug` argument is completable — see completions.ts). */
+export const RESOURCE_TEMPLATES: McpResourceTemplate[] = [
+  {
+    uriTemplate: "backlex://collection/{slug}",
+    name: "Collection",
+    description: "A collection's field schema + a sample of its rows. Fill in the collection slug.",
+    mimeType: "application/json",
+  },
+];
+
+export const listResourceTemplates = (): { resourceTemplates: McpResourceTemplate[] } => ({
+  resourceTemplates: RESOURCE_TEMPLATES,
+});
+
+/** The caller's readable collection slugs — backs both `resources/list` and the
+ *  `collection` / `slug` argument completions. Permission DSL applies via the
+ *  sub-fetch, so an agent only completes collections it can actually read. */
+export const listCollectionSlugs = async (ctx: ToolCtx): Promise<string[]> => {
+  const res = await ctx.fetchInternal(`/api/collections`);
+  const body = await readJson<{ data: CollectionMeta[] }>(res);
+  return body.data.map((c) => c.slug);
+};
 
 const parseUri = (uri: string): { kind: "schema" } | { kind: "collection"; slug: string } | null => {
   if (uri === SCHEMA_URI) return { kind: "schema" };

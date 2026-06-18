@@ -90,7 +90,7 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
               roles: u.roles.map((x) => x.name),
               status: u.status ?? "active",
               provider: u.provider ?? "password",
-              mfa: false,
+              mfa: u.twoFactorEnabled === true,
               last: fmt(lastSeenAt),
               lastIso: lastSeenAt ? new Date(lastSeenAt).toISOString().slice(0, 19).replace("T", " ") : null,
               created: u.createdAt ? String(u.createdAt).slice(0, 10) : "—",
@@ -335,6 +335,17 @@ export function UsersPage({ pushToast }: { pushToast: (m: string) => void }) {
                               pushToast(t`${u.email} activated.`);
                             })();
                           }}><I.Check size={12} /><Trans>Activate</Trans></DropdownMenuItem>
+                        )}
+                        {u.mfa && (
+                          <DropdownMenuItem onSelect={() => {
+                            void (async () => {
+                              try {
+                                await usersApi.resetTwoFactor(u.id);
+                                setUsers((arr) => arr.map((x) => x.id === u.id ? { ...x, mfa: false, sessions: 0 } : x));
+                                pushToast(t`2FA reset for ${u.email}. They can re-enrol from Account → Security.`);
+                              } catch (e) { pushToast((e as Error).message); }
+                            })();
+                          }}><I.Shield size={12} /><Trans>Reset 2FA</Trans></DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem variant="destructive" onSelect={() => {

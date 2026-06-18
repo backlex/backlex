@@ -31,6 +31,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { apiOrigin, copyText, fmtRelative } from "./_shared";
 import { SamlProviderDialog } from "./saml-provider-dialog";
 import { LdapConfigCard } from "./ldap-config-card";
+import { shouldWarnTwoFactorBypass } from "./mfa-bypass";
 import { AuthSettingsSkeleton } from "../page-skeletons";
 
 type AuthProviderRow = {
@@ -63,9 +64,6 @@ const appUrlPlaceholder = "{app-url}";
 const workspacePlaceholder = "{workspace}";
 const POLICY_ROWS: { key: string; label: string; desc: string; fallback: boolean }[] = [
   { key: "requireEmailVerification", label: "Require email verification", desc: "Users must confirm their email before sign-in.", fallback: false },
-  { key: "mfaTotp", label: "Multi-factor (TOTP)", desc: "Users can enroll an authenticator app.", fallback: true },
-  { key: "mfaRequiredForAdmins", label: "Multi-factor required for admins", desc: "Force admins to enroll MFA.", fallback: false },
-  { key: "passkeys", label: "Passkeys", desc: "WebAuthn-based passwordless sign-in.", fallback: true },
   { key: "openSignup", label: "Open sign-up", desc: "Anyone can create an account. When off, only the first user and invited addresses can sign up.", fallback: false },
 ];
 
@@ -113,6 +111,8 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
   const [samlProviders, setSamlProviders] = useState<ApiSamlProvider[]>([]);
   const [samlDialog, setSamlDialog] = useState<{ mode: "create" } | { mode: "edit"; row: ApiSamlProvider } | null>(null);
   const [confirmRemoveSaml, setConfirmRemoveSaml] = useState<{ id: string } | null>(null);
+  // Pending "enable a 2FA-bypassing provider" confirmation (magic / emailOtp).
+  const [confirmBypass, setConfirmBypass] = useState<{ id: string } | null>(null);
   const [availableRoles, setAvailableRoles] = useState<{ id: string; name: string }[]>([]);
   // First-load gate — drives the page skeleton until the auth config +
   // sessions + providers have all been fetched.
@@ -229,6 +229,19 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
       pushToast?.((e as Error).message);
       setProviders((arr) => arr.map((p) => (p.id === id ? { ...p, enabled: !enabled } : p)));
     }
+  };
+
+  // Magic-link and email-OTP both bypass the TOTP second factor (better-auth
+  // only gates password sign-in). Authenticator-app 2FA is always available on
+  // the instance, so enabling one of these always weakens it — surface a
+  // warning and only proceed on confirm. Disabling, and every other provider,
+  // toggles straight through.
+  const requestToggleProvider = (id: string, enabled: boolean) => {
+    if (shouldWarnTwoFactorBypass(id, enabled)) {
+      setConfirmBypass({ id });
+      return;
+    }
+    void toggleProvider(id, enabled);
   };
 
   const saveProviderConfig = async (id: string, patch: Record<string, unknown>) => {
@@ -351,7 +364,7 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
                   checked={p.enabled}
                   disabled={lockedOff}
                   title={lockedOff ? t`Configure this provider (add a Client ID) before enabling it` : undefined}
-                  onChange={(v) => toggleProvider(p.id, v)}
+                  onChange={(v) => requestToggleProvider(p.id, v)}
                 />
               </div>
             </div>
@@ -603,6 +616,17 @@ curl ${authBase}/get-session -H 'authorization: Bearer <token>'`;
           setConfirmRemoveSaml(null);
         }}
         onCancel={() => setConfirmRemoveSaml(null)}
+      />
+      <ConfirmDialog
+        open={!!confirmBypass}
+        title={t`This weakens two-factor authentication`}
+        description={t`${AUTH_PROVIDER_NAMES[confirmBypass?.id ?? ""] ?? confirmBypass?.id ?? "This method"} signs users in without asking for their authenticator code — it bypasses TOTP two-factor for anyone who has it enabled. Their account is then only as secure as their email inbox. Enable it anyway?`}
+        actionLabel={t`Enable anyway`}
+        onConfirm={() => {
+          if (confirmBypass) void toggleProvider(confirmBypass.id, true);
+          setConfirmBypass(null);
+        }}
+        onCancel={() => setConfirmBypass(null)}
       />
     </div>
   );

@@ -374,6 +374,7 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
           email: t.users.email,
           name: t.users.name,
           createdAt: t.users.createdAt,
+          twoFactorEnabled: t.users.twoFactorEnabled,
         })
         .from(t.tenantMembers)
         .innerJoin(t.users, eq(t.tenantMembers.userId, t.users.id))
@@ -382,6 +383,7 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
         email: string;
         name: string | null;
         createdAt: unknown;
+        twoFactorEnabled: boolean | null;
       }[];
       const userIds = users.map((u) => u.id);
       const userRoles = userIds.length
@@ -467,6 +469,7 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
           roles: byUser.get(u.id) ?? [],
           lastSeenAt: lastByUser.get(u.id) ?? null,
           provider: providerByUser.get(u.id) ?? "password",
+          twoFactorEnabled: Boolean(u.twoFactorEnabled),
         })),
       });
     },
@@ -727,6 +730,50 @@ export const usersRoutes = new OpenAPIHono<AppBindings>()
       const t = tableFor(ctx.dialect);
       const { id } = c.req.valid("param");
       await assertTenantMember(ctx, tenantId, id);
+      await (ctx.db as any).delete(t.sessions).where(eq(t.sessions.userId, id));
+      return c.json({ ok: true });
+    },
+  )
+  /** Reset a user's two-factor (TOTP) enrolment — for when they've lost both
+   *  their authenticator and backup codes and can't get past the OTP prompt.
+   *  Deletes the secret + backup codes, clears the `two_factor_enabled` flag,
+   *  and force-revokes every session so the next sign-in is a clean slate.
+   *  Gated on workspace membership so a tenant admin can't reach unrelated
+   *  users. The user can re-enrol from Account → Security afterwards. */
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{id}/reset-two-factor",
+      tags: USERS_TAG,
+      summary: "Reset a user's two-factor auth",
+      description:
+        "Removes the user's TOTP secret + backup codes and clears the 2FA flag, then revokes their sessions. Use to recover a user locked out of 2FA. Gated on workspace membership.",
+      security: SECURITY,
+      middleware: [requireUser, requireAdminMw],
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: {
+          description: "Reset",
+          content: { "application/json": { schema: OkSchema } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const tenantId = requireTenant(c);
+      const t = tableFor(ctx.dialect);
+      const { id } = c.req.valid("param");
+      await assertTenantMember(ctx, tenantId, id);
+      // Drop the enrolment row(s), clear the flag, and sign the user out
+      // everywhere so a stale 2FA-gated session can't linger.
+      await (ctx.db as any)
+        .delete(t.twoFactors)
+        .where(eq(t.twoFactors.userId, id));
+      await (ctx.db as any)
+        .update(t.users)
+        .set({ twoFactorEnabled: false })
+        .where(eq(t.users.id, id));
       await (ctx.db as any).delete(t.sessions).where(eq(t.sessions.userId, id));
       return c.json({ ok: true });
     },

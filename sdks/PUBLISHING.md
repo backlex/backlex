@@ -29,9 +29,19 @@ from dedicated snapshot repos whose root *is* the SDK:
 | Swift | `github.com/backlex/backlex-swift` | `.package(url: "https://github.com/backlex/backlex-swift", from: "X.Y.Z")` |
 | PHP | `github.com/backlex/backlex-php` | `composer require backlex/backlex` (after Packagist submit) |
 
-To cut a new version: copy `sdks/<lang>/` over the mirror repo's root, commit, and
-push a tag (`vX.Y.Z` for Go/PHP, `X.Y.Z` for Swift). A `git subtree split` or a
-sync Action can automate this later.
+To cut a new version, use the sync helper instead of copying by hand — it snapshots
+`sdks/<lang>/` onto the mirror root (dropping build artifacts), pushes, and tags with
+the right prefix (`vX.Y.Z` for Go/PHP, `X.Y.Z` for Swift):
+
+```bash
+scripts/sync-sdk-mirror.sh go 0.1.0      # content + tag v0.1.0
+scripts/sync-sdk-mirror.sh swift         # content only (no tag)
+```
+
+It uses your local `git`/`gh` auth and is idempotent (skips when the mirror is already
+up to date or the tag exists). The CI equivalent is
+[`sync-sdk-mirrors.yml`](../.github/workflows/sync-sdk-mirrors.yml) (`workflow_dispatch`),
+which needs a `MIRROR_PUSH_TOKEN` PAT with `contents: write` on the three mirror repos.
 
 The `.github/workflows/publish-sdks.yml` workflow automates the pack/validate step
 for the registry-based SDKs and the publish step for the ones whose secret is set.

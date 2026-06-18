@@ -1,0 +1,49 @@
+name: Sync SDK mirror repos
+
+# Pushes sdks/{go,swift,php} to their dedicated mirror repos (backlex-go,
+# backlex-swift, backlex-php) whose root must hold the manifest. Manual only.
+#
+# Required secret:
+#   MIRROR_PUSH_TOKEN — a PAT (or fine-grained token) with `contents: write` on
+#   backlex-go, backlex-swift, and backlex-php.
+#
+# Wraps scripts/sync-sdk-mirror.sh, which is also runnable locally.
+
+on:
+  workflow_dispatch:
+    inputs:
+      lang:
+        description: "Which mirror to sync"
+        required: true
+        type: choice
+        default: all
+        options: [all, go, swift, php]
+      version:
+        description: "Version to tag (blank = content sync only)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.MIRROR_PUSH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure git + gh credential helper
+        run: |
+          git config --global user.name "backlex-bot"
+          git config --global user.email "noreply@backlex.com"
+          gh auth setup-git
+      - name: Sync mirror(s)
+        run: |
+          set -euo pipefail
+          targets="${{ inputs.lang }}"
+          [ "$targets" = "all" ] && targets="go swift php"
+          for t in $targets; do
+            bash scripts/sync-sdk-mirror.sh "$t" "${{ inputs.version }}"
+          done

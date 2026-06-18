@@ -10,8 +10,9 @@ import {
 import { makeInternalFetch } from "./internal-fetch";
 import { checkToolCall, filterByAllowlist, guardsFromAuth } from "./guards";
 import { resolveKind } from "./kind";
-import { listResources, readResource } from "./resources";
+import { listResources, listResourceTemplates, readResource } from "./resources";
 import { getPrompt, listPrompts } from "./prompts";
+import { complete } from "./completions";
 
 /** The protocol version we prefer (latest we implement). Returned from
  *  `initialize` when the client doesn't request a version we recognise. */
@@ -117,6 +118,9 @@ export const dispatch = async (
           // Prompts ship starter templates: describe_collection,
           // generate_queries, permission_rule, generate_sdk_code.
           prompts: { listChanged: false },
+          // Argument autocompletion for prompt / resource-template args
+          // (collection slugs, generate_sdk_code language).
+          completions: {},
         },
         instructions:
           "backlex MCP server — schema discovery, collection CRUD, storage, " +
@@ -218,8 +222,7 @@ export const dispatch = async (
     }
 
     case "resources/templates/list":
-      // No templates exposed — resources are enumerated directly via list.
-      return success(id!, { resourceTemplates: [] });
+      return success(id!, listResourceTemplates());
 
     case "resources/read": {
       const params = (body.params ?? {}) as { uri?: unknown };
@@ -258,6 +261,28 @@ export const dispatch = async (
       };
       try {
         return success(id!, await getPrompt(toolCtx, params.name, args));
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        return error(id ?? null, RPC_ERR.INTERNAL, message);
+      }
+    }
+
+    case "completion/complete": {
+      const params = (body.params ?? {}) as { ref?: unknown; argument?: unknown };
+      const toolCtx: ToolCtx = {
+        fetchInternal: makeInternalFetch(wiring.app, originRequest, wiring.env),
+        mode: wiring.mode,
+        env: wiring.env,
+      };
+      try {
+        return success(
+          id!,
+          await complete(
+            toolCtx,
+            params.ref as Parameters<typeof complete>[1],
+            params.argument as Parameters<typeof complete>[2],
+          ),
+        );
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         return error(id ?? null, RPC_ERR.INTERNAL, message);

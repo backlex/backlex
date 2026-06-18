@@ -11,6 +11,7 @@
  */
 import type { ToolCtx } from "./types";
 import { readJson } from "./internal-fetch";
+import { SDK_LANGUAGES, SDK_REFERENCE, type SdkLanguage } from "./sdk-reference";
 
 export interface McpPromptDescriptor {
   name: string;
@@ -65,6 +66,28 @@ const PROMPTS: McpPromptDescriptor[] = [
         name: "intent",
         description:
           "What you want the role to be able to do (`see only their own orders`, `read everything but no PII`, …).",
+        required: true,
+      },
+    ],
+  },
+  {
+    name: "generate_sdk_code",
+    description:
+      "Given a collection + a plain-language task, emit ready-to-run code for an " +
+      "official backlex client SDK — using the real schema fields and the SDK's " +
+      "actual query/CRUD/auth API.",
+    arguments: [
+      { name: "collection", description: "Collection slug.", required: true },
+      {
+        name: "intent",
+        description:
+          "What the code should do (`list active posts by a gold-tier author, newest first`, " +
+          "`create a draft then publish it`, …).",
+        required: true,
+      },
+      {
+        name: "language",
+        description: `Target SDK — one of: ${SDK_LANGUAGES.join(", ")}.`,
         required: true,
       },
     ],
@@ -189,6 +212,40 @@ export const getPrompt = async (
         `2. A \`fields\` array of field names. Use \`null\` to allow every ` +
         `field. Refer only to the fields above.\n\n` +
         `End with a one-sentence explanation of how the condition fulfils the intent.`;
+      return {
+        description: descriptor.description,
+        messages: [{ role: "user", content: { type: "text", text } }],
+      };
+    }
+
+    case "generate_sdk_code": {
+      const slug = requireArg(args, "collection");
+      const intent = requireArg(args, "intent");
+      const langRaw = requireArg(args, "language").toLowerCase().trim();
+      const lang = langRaw === "ts" ? "typescript" : langRaw === "js" ? "typescript"
+        : langRaw === "c#" || langRaw === ".net" || langRaw === "dotnet" ? "csharp"
+        : langRaw === "py" ? "python" : langRaw === "rb" ? "ruby" : langRaw;
+      if (!(SDK_LANGUAGES as readonly string[]).includes(lang)) {
+        throw new Error(
+          `unsupported language "${langRaw}". Supported: ${SDK_LANGUAGES.join(", ")}.`,
+        );
+      }
+      const context = await renderCollectionContext(ctx, slug, false);
+      const reference = SDK_REFERENCE[lang as SdkLanguage];
+      const text =
+        `${context}\n\n` +
+        `## ${lang} SDK reference\n${reference}\n\n` +
+        `## Task\n` +
+        `Write a complete, runnable ${lang} snippet using the official backlex SDK ` +
+        `above that does: "${intent}".\n\n` +
+        `Rules:\n` +
+        `- Use ONLY fields that appear in the \`${slug}\` schema above — never invent names.\n` +
+        `- Use the SDK's real methods exactly as shown in the reference (query builder, ` +
+        `CRUD, auth). Match the idiomatic naming for this language.\n` +
+        `- Replace BASE_URL with the user's backlex URL and use a \`pak_\` server key ` +
+        `(or note when a browser/session token is the right credential instead).\n` +
+        `- Keep it minimal: imports, client init, the operation, and printing/handling the result.\n` +
+        `- End with one sentence explaining what the filter/operation does.`;
       return {
         description: descriptor.description,
         messages: [{ role: "user", content: { type: "text", text } }],

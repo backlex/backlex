@@ -1370,6 +1370,7 @@ describe("MCP — prompts (starter templates)", () => {
     const names = (r as RpcSuccess).result.prompts.map((p: any) => p.name);
     expect(names.sort()).toEqual([
       "describe_collection",
+      "explain_permissions",
       "generate_queries",
       "generate_sdk_code",
       "permission_rule",
@@ -1523,6 +1524,30 @@ describe("MCP — prompts surface", () => {
     expect(isErr(r)).toBe(true);
     if (isErr(r)) expect(r.error.message).toContain("unsupported language");
   });
+
+  test("explain_permissions injects the role + its rules + schema", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0",
+      id: 7,
+      method: "prompts/get",
+      params: { name: "explain_permissions", arguments: { collection: slug, role: "admin" } },
+    });
+    const text = (r as RpcSuccess).result.messages[0].content.text as string;
+    expect(text).toContain(slug); // schema context
+    expect(text).toContain('"admin"'); // resolved role name
+    expect(text).toContain("not permitted"); // the explain framing
+  });
+
+  test("explain_permissions errors on an unknown role (lists available)", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0",
+      id: 8,
+      method: "prompts/get",
+      params: { name: "explain_permissions", arguments: { collection: slug, role: "nope-role" } },
+    });
+    expect(isErr(r)).toBe(true);
+    if (isErr(r)) expect(r.error.message).toContain("unknown role");
+  });
 });
 
 describe("MCP — completions + resource templates", () => {
@@ -1585,6 +1610,18 @@ describe("MCP — completions + resource templates", () => {
     });
     const values = (r as RpcSuccess).result.completion.values as string[];
     expect(values).toEqual(["python"]);
+  });
+
+  test("completion/complete suggests role names for explain_permissions", async () => {
+    const r = await mcp(h, {
+      jsonrpc: "2.0", id: 7, method: "completion/complete",
+      params: {
+        ref: { type: "ref/prompt", name: "explain_permissions" },
+        argument: { name: "role", value: "" },
+      },
+    });
+    const values = (r as RpcSuccess).result.completion.values as string[];
+    expect(values).toContain("admin"); // seeded system role
   });
 
   test("completion/complete returns empty for a free-text argument", async () => {

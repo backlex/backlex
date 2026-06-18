@@ -380,18 +380,20 @@ The server implements `completion/complete` (capability `completions`), so clien
 |---|---|
 | `collection` / `slug` | the caller's readable collection slugs (prefix-filtered; permission DSL applies) |
 | `language` (on `generate_sdk_code`) | the supported SDK languages (`typescript`, `python`, `go`, …) |
+| `role` (on `explain_permissions`) | the workspace's role names (admin identity; empty otherwise) |
 
 Free-text arguments (`intent`, …) return an empty completion. Results cap at 100 values with `total` / `hasMore` set.
 
 ## Prompts
 
-Four starter templates ship at `prompts/list`:
+Five starter templates ship at `prompts/list`:
 
 | Name | Arguments | Use case |
 |---|---|---|
 | `describe_collection` | `collection` | Walk through schema + 3 sample rows; produce a plain-language description of what the collection stores. |
 | `generate_queries` | `collection`, `intent?` | Propose 3-5 useful Directus-shaped `filter` queries with rationales. |
 | `permission_rule` | `collection`, `intent` | Translate "X role can do Y" into a permissions DSL `condition` + `fields` allow-list. |
+| `explain_permissions` | `collection`, `role` | The inverse of `permission_rule`: translate a role's DSL permission rows for a collection into plain English (per action, with conditions + field allow-lists). Admin identity. |
 | `generate_sdk_code` | `collection`, `intent`, `language` | Emit ready-to-run code for an official client SDK that performs the task — real schema fields + the SDK's actual query/CRUD/auth API. |
 
 Each `prompts/get` renders a single user message with the collection context pre-injected, so the LLM arrives with the schema in-window without having to call a discovery tool first.

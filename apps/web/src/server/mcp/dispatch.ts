@@ -92,6 +92,16 @@ export const dispatch = async (
     return error(id ?? null, RPC_ERR.INVALID_REQUEST, "method must be a string");
   }
 
+  // One ToolCtx for every tool / resource / prompt / completion sub-call. The
+  // internal fetch carries the caller's auth; `guards` lets a resource report
+  // the caller's own MCP scope. Cheap to build (fetchInternal is lazy).
+  const toolCtx: ToolCtx = {
+    fetchInternal: makeInternalFetch(wiring.app, originRequest, wiring.env),
+    mode: wiring.mode,
+    env: wiring.env,
+    guards,
+  };
+
   // Stateless transport: every request stands alone, so `initialize` is
   // always idempotent and `notifications/initialized` is a no-op we accept.
   switch (body.method) {
@@ -185,11 +195,6 @@ export const dispatch = async (
         params.arguments && typeof params.arguments === "object"
           ? (params.arguments as Record<string, unknown>)
           : {};
-      const toolCtx: ToolCtx = {
-        fetchInternal: makeInternalFetch(wiring.app, originRequest, wiring.env),
-        mode: wiring.mode,
-        env: wiring.env,
-      };
       try {
         const result = await tool.handler(args, toolCtx);
         return success(id!, result);
@@ -208,11 +213,6 @@ export const dispatch = async (
     }
 
     case "resources/list": {
-      const toolCtx: ToolCtx = {
-        fetchInternal: makeInternalFetch(wiring.app, originRequest, wiring.env),
-        mode: wiring.mode,
-        env: wiring.env,
-      };
       try {
         return success(id!, await listResources(toolCtx));
       } catch (e) {
@@ -229,11 +229,6 @@ export const dispatch = async (
       if (typeof params.uri !== "string") {
         return error(id ?? null, RPC_ERR.INVALID_PARAMS, "params.uri must be a string");
       }
-      const toolCtx: ToolCtx = {
-        fetchInternal: makeInternalFetch(wiring.app, originRequest, wiring.env),
-        mode: wiring.mode,
-        env: wiring.env,
-      };
       try {
         return success(id!, await readResource(toolCtx, params.uri));
       } catch (e) {
@@ -254,11 +249,6 @@ export const dispatch = async (
         params.arguments && typeof params.arguments === "object"
           ? (params.arguments as Record<string, unknown>)
           : undefined;
-      const toolCtx: ToolCtx = {
-        fetchInternal: makeInternalFetch(wiring.app, originRequest, wiring.env),
-        mode: wiring.mode,
-        env: wiring.env,
-      };
       try {
         return success(id!, await getPrompt(toolCtx, params.name, args));
       } catch (e) {
@@ -269,11 +259,6 @@ export const dispatch = async (
 
     case "completion/complete": {
       const params = (body.params ?? {}) as { ref?: unknown; argument?: unknown };
-      const toolCtx: ToolCtx = {
-        fetchInternal: makeInternalFetch(wiring.app, originRequest, wiring.env),
-        mode: wiring.mode,
-        env: wiring.env,
-      };
       try {
         return success(
           id!,

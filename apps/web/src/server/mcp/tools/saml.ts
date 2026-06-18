@@ -62,6 +62,8 @@ export const createSamlProvider: McpTool = {
 
 export const deleteSamlProvider: McpTool = {
   name: "saml.providers_delete",
+  // Destructive: the heuristic reads the leading "providers" token as a write.
+  kind: "destruct",
   description: "Remove a SAML provider by id. Sessions issued via it stay valid until expiry.",
   inputSchema: {
     type: "object",

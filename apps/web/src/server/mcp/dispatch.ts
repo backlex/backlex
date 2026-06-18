@@ -9,6 +9,7 @@ import {
 } from "./types";
 import { makeInternalFetch } from "./internal-fetch";
 import { checkToolCall, filterByAllowlist, guardsFromAuth } from "./guards";
+import { resolveKind } from "./kind";
 import { listResources, readResource } from "./resources";
 import { getPrompt, listPrompts } from "./prompts";
 
@@ -31,42 +32,27 @@ const success = (id: JsonRpcRequest["id"], result: unknown): JsonRpcResponse => 
 const findTool = (tools: McpTool[], name: string): McpTool | undefined =>
   tools.find((t) => t.name === name);
 
-/** Tool-kind heuristic from the verb token after the last dot. The
- *  matching is on the leading verb token so both `schema.list` and
- *  `schema.list_collections` resolve to `read`. Used when a tool doesn't
- *  override `kind` directly — the verb set mirrors what the planner in
- *  `apps/web/src/server/routes/ai.ts` recognises so the UI badges line
- *  up with the auto-run / require-confirmation logic. Tools that mutate
- *  state but don't match the read/destruct verbs (`*.invoke`, `*.upload`,
- *  `*.grant`, `*.test`, …) fall through to `write`. */
-const kindFromName = (name: string): "read" | "write" | "destruct" => {
-  const dot = name.lastIndexOf(".");
-  const tail = dot < 0 ? name : name.slice(dot + 1);
-  const verb = tail.split("_")[0] ?? tail;
-  if (verb === "delete" || verb === "drop" || verb === "revoke" || verb === "suspend") {
-    return "destruct";
-  }
-  if (
-    verb === "list" ||
-    verb === "read" ||
-    verb === "search" ||
-    verb === "get" ||
-    verb === "describe"
-  ) {
-    return "read";
-  }
-  return "write";
+const toolDescriptor = (t: McpTool) => {
+  const kind = resolveKind(t);
+  return {
+    name: t.name,
+    description: t.description,
+    inputSchema: t.inputSchema,
+    // Standard MCP behavioural hints (since 2025-03-26) so clients can
+    // auto-approve reads / warn on destructive calls. Derived from the same
+    // `kind` that drives the read-only guard, so badge and gate never disagree.
+    annotations: {
+      readOnlyHint: kind === "read",
+      destructiveHint: kind === "destruct",
+      idempotentHint: kind === "read",
+      openWorldHint: false,
+    },
+    // Back-compat custom hints for the Ask-AI Tools tab; clients that don't
+    // know `kind` / `adminOnly` ignore them per JSON-RPC.
+    kind,
+    ...(t.adminOnly ? { adminOnly: true as const } : {}),
+  };
 };
-
-const toolDescriptor = (t: McpTool) => ({
-  name: t.name,
-  description: t.description,
-  inputSchema: t.inputSchema,
-  // Surface UI hints alongside the standard MCP descriptor fields. Clients
-  // that don't know about `kind` / `adminOnly` ignore them per JSON-RPC.
-  kind: t.kind ?? kindFromName(t.name),
-  ...(t.adminOnly ? { adminOnly: true as const } : {}),
-});
 
 /** Dispatch a single JSON-RPC message. Notifications (no `id`) return `null`
  *  so the HTTP transport can answer 202 Accepted with an empty body.
@@ -109,7 +95,7 @@ export const dispatch = async (
           // isn't supported yet — would require resumable SSE.
           resources: { listChanged: false, subscribe: false },
           // Prompts ship starter templates: describe_collection,
-          // generate_queries, permission_rule.
+          // generate_queries, permission_rule, generate_sdk_code.
           prompts: { listChanged: false },
         },
         instructions:
@@ -160,8 +146,10 @@ export const dispatch = async (
       }
       // Per-key guards run BEFORE the upstream permission DSL — a read-only
       // key calling `collections.delete` should fail fast with a clear MCP
-      // error, not bounce around the REST layer first.
-      const guardCheck = checkToolCall(params.name, guards);
+      // error, not bounce around the REST layer first. The kind passed here is
+      // the same one the descriptor advertised, so read-only is enforced on the
+      // tool's true classification (not a separate name heuristic).
+      const guardCheck = checkToolCall(params.name, resolveKind(tool), guards);
       if (!guardCheck.ok) {
         return success(id!, {
           content: [{ type: "text", text: `${guardCheck.code}: ${guardCheck.message}` }],

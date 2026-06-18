@@ -211,6 +211,9 @@ export const deleteItem: McpTool = {
 
 export const aggregateItems: McpTool = {
   name: "collections.aggregate",
+  // Read: an aggregation query, no mutation. The name verb ("aggregate") isn't a
+  // read verb, so mark it explicitly or the read-only guard would block it.
+  kind: "read",
   description:
     "Aggregate a collection: count / sum / avg / min / max over a numeric " +
     "field, optionally grouped by a column. Use this for analytics questions " +

@@ -358,7 +358,20 @@ Beyond tools, backlex exposes **MCP resources** so attach-aware clients (Claude 
 
 Resource reads sub-fetch the same REST surface tools use, so permissions DSL still filters what the agent sees. The per-key MCP allowlist also gates resources — an agent that can't call `collections.list` won't see the resource either.
 
+`backlex://collection/{slug}` is also advertised at `resources/templates/list` as a **resource template**, so template-aware clients offer "open collection …" with the slug as a fill-in (and that slug is completable — see below).
+
 Subscriptions (`resources/subscribe`) aren't implemented — that requires a long-lived `GET /mcp` SSE stream which the stateless POST-only transport doesn't carry. Track collection changes through webhooks / flows for now.
+
+## Completions
+
+The server implements `completion/complete` (capability `completions`), so clients autocomplete prompt and resource-template arguments as the user types:
+
+| Argument | Completes to |
+|---|---|
+| `collection` / `slug` | the caller's readable collection slugs (prefix-filtered; permission DSL applies) |
+| `language` (on `generate_sdk_code`) | the supported SDK languages (`typescript`, `python`, `go`, …) |
+
+Free-text arguments (`intent`, …) return an empty completion. Results cap at 100 values with `total` / `hasMore` set.
 
 ## Prompts
 

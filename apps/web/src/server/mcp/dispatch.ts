@@ -13,7 +13,18 @@ import { resolveKind } from "./kind";
 import { listResources, readResource } from "./resources";
 import { getPrompt, listPrompts } from "./prompts";
 
-const PROTOCOL_VERSION = "2025-03-26";
+/** The protocol version we prefer (latest we implement). Returned from
+ *  `initialize` when the client doesn't request a version we recognise. */
+const PROTOCOL_VERSION = "2025-11-25";
+/** Versions we accept from a client — both at `initialize` negotiation and in
+ *  the `MCP-Protocol-Version` header on later HTTP requests. We support the
+ *  current revision plus the two prior ones (the transport is unchanged across
+ *  them aside from batching, which we no longer accept regardless). */
+export const SUPPORTED_PROTOCOL_VERSIONS = new Set([
+  "2025-11-25",
+  "2025-06-18",
+  "2025-03-26",
+]);
 const SERVER_NAME = "backlex";
 const SERVER_VERSION = "0.0.1";
 
@@ -83,9 +94,18 @@ export const dispatch = async (
   // Stateless transport: every request stands alone, so `initialize` is
   // always idempotent and `notifications/initialized` is a no-op we accept.
   switch (body.method) {
-    case "initialize":
+    case "initialize": {
+      // Version negotiation: echo the client's requested version when we
+      // support it, otherwise answer with our preferred one (per the lifecycle
+      // spec). The client then sends this back in the MCP-Protocol-Version
+      // header on subsequent HTTP requests.
+      const requested = (body.params as { protocolVersion?: unknown } | undefined)?.protocolVersion;
+      const negotiated =
+        typeof requested === "string" && SUPPORTED_PROTOCOL_VERSIONS.has(requested)
+          ? requested
+          : PROTOCOL_VERSION;
       return success(id!, {
-        protocolVersion: PROTOCOL_VERSION,
+        protocolVersion: negotiated,
         serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
         capabilities: {
           tools: { listChanged: false },
@@ -105,6 +125,7 @@ export const dispatch = async (
           "by the caller's identity (API key or session); per-key allowlist + " +
           "read-only guards may further narrow what the agent can do.",
       });
+    }
 
     case "notifications/initialized":
     case "notifications/cancelled":

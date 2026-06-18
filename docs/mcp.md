@@ -19,12 +19,23 @@ Two mounts, same tool set:
 | `POST /mcp` | Any authenticated identity (cookie session, `pak_…` API key, app-plane bearer). Permissions DSL filters results per the caller's roles. | Tenant agents (a workspace member wires Claude Desktop to their own backlex). |
 | `POST /api/admin/mcp` | Same as above **plus** the system `admin` role. | Ops bots, CI agents — fails loudly on non-admin auth instead of silently returning empty results. |
 
-Both speak the [MCP Streamable HTTP transport](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#streamable-http)
+Both speak the [MCP Streamable HTTP transport](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports#streamable-http)
 in **stateless** mode: each POST is one JSON-RPC message, the response
 is `application/json` with the result. We don't expose `GET /mcp`
 (resumable SSE) yet — long-lived streams are awkward on Cloudflare
 Workers' subrequest budget. Re-issue requests instead of relying on a
 persistent session.
+
+Protocol revision **2025-11-25** (we also accept `2025-06-18` / `2025-03-26` at
+`initialize` and echo the client's requested version when supported). Transport
+rules we enforce:
+
+- **`Origin`** — when present it must match `APP_URL` or a workspace-allowed
+  origin (DNS-rebinding defense); a missing `Origin` (non-browser client) is fine.
+- **`MCP-Protocol-Version`** header — when present it must be one of the supported
+  revisions, else `400`; when absent we assume `2025-03-26` and proceed.
+- **No JSON-RPC batching** — removed in 2025-06-18; an array body is rejected with
+  `400`. Send one message per POST.
 
 ## Tools
 

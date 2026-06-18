@@ -45,6 +45,31 @@ export const listCollections: McpTool = {
     },
     additionalProperties: false,
   },
+  outputSchema: {
+    type: "object",
+    properties: {
+      collections: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            slug: { type: "string" },
+            singular: { type: ["string", "null"] },
+            plural: { type: ["string", "null"] },
+            note: { type: ["string", "null"] },
+            fieldCount: { type: "integer" },
+            ownerScoped: { type: "boolean" },
+            tenantScoped: { type: "boolean" },
+            adopted: { type: "boolean" },
+            versioned: { type: "boolean" },
+            vectorize: { type: "boolean" },
+          },
+          required: ["slug", "fieldCount"],
+        },
+      },
+    },
+    required: ["collections"],
+  },
   handler: async (args, ctx) => {
     const includeArchived = args.includeArchived === true;
     const path = includeArchived
@@ -84,6 +109,22 @@ export const describeCollection: McpTool = {
     },
     required: ["collection"],
     additionalProperties: false,
+  },
+  outputSchema: {
+    type: "object",
+    properties: {
+      slug: { type: "string" },
+      singular: { type: ["string", "null"] },
+      plural: { type: ["string", "null"] },
+      note: { type: ["string", "null"] },
+      ownerScoped: { type: "boolean" },
+      tenantScoped: { type: "boolean" },
+      adopted: { type: "boolean" },
+      versioned: { type: "boolean" },
+      vectorize: { type: "boolean" },
+      fields: { type: "array", items: { type: "object" } },
+    },
+    required: ["slug", "fields"],
   },
   handler: async (args, ctx) => {
     const slug = String(args.collection ?? "");

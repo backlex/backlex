@@ -50,6 +50,7 @@ const toolDescriptor = (t: McpTool) => {
     name: t.name,
     description: t.description,
     inputSchema: t.inputSchema,
+    ...(t.outputSchema ? { outputSchema: t.outputSchema } : {}),
     // Standard MCP behavioural hints (since 2025-03-26) so clients can
     // auto-approve reads / warn on destructive calls. Derived from the same
     // `kind` that drives the read-only guard, so badge and gate never disagree.

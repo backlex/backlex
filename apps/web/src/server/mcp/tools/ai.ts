@@ -68,6 +68,8 @@ const renderSchemaContext = (meta: CollectionMeta): string => {
 
 export const aiQuery: McpTool = {
   name: "ai.query",
+  // Read: NL → filter, then a capped list read. No mutation.
+  kind: "read",
   description:
     "Translate a natural-language question about a collection into a " +
     "Directus-shaped `filter` (with optional `sort` and `limit`) and run " +
@@ -154,6 +156,8 @@ export const aiQuery: McpTool = {
 
 export const aiSuggestSchema: McpTool = {
   name: "ai.suggest_schema",
+  // Read: returns a draft schema only; "Does NOT auto-apply" (see description).
+  kind: "read",
   description:
     "Draft a collection schema from a prose description. Returns a `fields` " +
     "array suitable for `schema.create_collection` plus a one-line note " +

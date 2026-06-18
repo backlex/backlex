@@ -216,9 +216,14 @@ describe("MCP — initialize + tools/list", () => {
       name: string;
       kind?: string;
       adminOnly?: boolean;
+      annotations?: { readOnlyHint?: boolean; destructiveHint?: boolean; idempotentHint?: boolean };
     }>;
     for (const t of tools) {
       expect(t.kind).toMatch(/^(read|write|destruct)$/);
+      // Standard MCP annotations must be present and consistent with `kind`.
+      expect(t.annotations).toBeDefined();
+      expect(t.annotations!.readOnlyHint).toBe(t.kind === "read");
+      expect(t.annotations!.destructiveHint).toBe(t.kind === "destruct");
     }
     const kinds = new Set(tools.map((t) => t.kind));
     expect(kinds.has("read")).toBe(true);
@@ -229,6 +234,14 @@ describe("MCP — initialize + tools/list", () => {
     expect(byName.get("functions.invoke")?.adminOnly).toBe(true);
     expect(byName.get("schema.list_collections")?.kind).toBe("read");
     expect(byName.get("collections.delete")?.kind).toBe("destruct");
+    // Corrected classifications (single source of truth): graphql.execute is a
+    // write (so read-only blocks it), the unusual-verb reads are read, and the
+    // SAML provider delete is destruct.
+    expect(byName.get("graphql.execute")?.kind).toBe("write");
+    expect(byName.get("collections.aggregate")?.kind).toBe("read");
+    expect(byName.get("ai.query")?.kind).toBe("read");
+    expect(byName.get("ai.suggest_schema")?.kind).toBe("read");
+    expect(byName.get("saml.providers_delete")?.kind).toBe("destruct");
   });
 
   test("notifications/initialized is a no-op (returns 202)", async () => {
@@ -909,6 +922,33 @@ describe("MCP — per-key guards (allowlist + read-only)", () => {
       params: { name: "tenants.switch", arguments: { tenantId: "noop" } },
     });
     expect((rpc as RpcSuccess).result.isError).toBe(true);
+  });
+
+  test("read-only key blocks graphql.execute (verb 'execute' is not a read)", async () => {
+    // Regression: the old guard's write-verb denylist missed `execute`, so a
+    // read-only key could run GraphQL mutations. The kind heuristic defaults
+    // unknown verbs to write, so it's blocked now.
+    const { rpc } = await mcpBearer(h, readOnlyKey, {
+      jsonrpc: "2.0", id: 44, method: "tools/call",
+      params: { name: "graphql.execute", arguments: { query: "mutation { noop }" } },
+    });
+    const result = (rpc as RpcSuccess).result;
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("read-only");
+  });
+
+  test("read-only key ALLOWS unusual-verb reads (collections.aggregate, ai.query)", async () => {
+    // These carry explicit kind:"read"; the guard must let them through (the
+    // call may still error downstream for other reasons — we only assert it is
+    // NOT blocked by the read-only guard).
+    for (const name of ["collections.aggregate", "ai.query"]) {
+      const { rpc } = await mcpBearer(h, readOnlyKey, {
+        jsonrpc: "2.0", id: 45, method: "tools/call",
+        params: { name, arguments: { collection: "x" } },
+      });
+      const text = (rpc as RpcSuccess).result.content?.[0]?.text ?? "";
+      expect(text).not.toContain("read-only");
+    }
   });
 
   test("PATCH /api/api-keys/:id/mcp-guards updates allowlist + read-only live", async () => {

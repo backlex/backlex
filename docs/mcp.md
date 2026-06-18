@@ -30,16 +30,22 @@ persistent session.
 
 ### Tool kind metadata
 
-`tools/list` decorates every tool descriptor with two optional fields the
+`tools/list` decorates every tool descriptor with the standard MCP
+`annotations` (`readOnlyHint`, `destructiveHint`, `idempotentHint`,
+`openWorldHint`) so spec-aware clients can auto-approve reads and warn on
+destructive calls — plus two backlex-specific fields the
 [Ask AI Tools tab](/docs/ask-ai/#tools-tab) uses for at-a-glance badges:
 
-- `kind` — `"read"` / `"write"` / `"destruct"`. When a tool definition
-  doesn't set it explicitly, the dispatcher derives the value from the
-  verb token after the last dot in the name (`.list_*` / `.read*` /
-  `.search*` / `.get*` / `.describe*` → `read`; `.delete*` / `.drop*` /
-  `.revoke*` / `.suspend*` → `destruct`; everything else → `write`).
-  Override `kind` directly on the `McpTool` object only when the
-  heuristic would misclassify.
+- `kind` — `"read"` / `"write"` / `"destruct"`. This is the **single source of
+  truth**: it drives both the `annotations` above and the per-key read-only
+  guard, so the badge and the security gate can never disagree. When a tool
+  doesn't set it, `resolveKind` derives it from the verb token after the last
+  dot (`.list_*` / `.read*` / `.search*` / `.get*` / `.describe*` → `read`;
+  `.delete*` / `.drop*` / `.revoke*` / `.suspend*` → `destruct`; **everything
+  else → `write`**, a fail-safe so a new mutating tool is blocked for read-only
+  keys until reviewed). Set `kind` explicitly only when the heuristic would
+  misclassify (e.g. `collections.aggregate` / `ai.query` are reads with
+  non-read verbs).
 - `adminOnly` — `true` for tools that are only reachable through
   `/api/admin/mcp` (today: `functions.list`, `functions.invoke`). Pure
   metadata; the actual gating lives in the route's `requireAdmin`
@@ -303,9 +309,18 @@ Two extra defense-in-depth layers live on `api_keys`, independent of the permiss
 | Field | Effect |
 |---|---|
 | `mcp_tools` (JSON array, default `[]` on new keys; legacy NULL stays permissive) | When set, the dispatcher hides every tool not in the list from `tools/list` and 403s any out-of-list `tools/call`. NULL = unrestricted. The create endpoint now defaults the column to `[]` so a fresh `pak_*` can't call any tool until the owner opts in — POST a key with explicit `"mcpTools": null` (or PATCH it later) to recover the old permissive shape. |
-| `mcp_read_only` (bool, default false) | When true, every write tool — insert / update / delete / create / drop / upload / bulk_* / upsert / grant / revoke / assign / unassign / invoke / send / mark_read / test / invite / suspend / activate — returns `isError: true` before any upstream call. REST routes for the same identity are unaffected. |
+| `mcp_read_only` (bool, default false) | When true, any tool whose `kind` is not `read` (i.e. every `write` / `destruct` tool) returns `isError: true` before any upstream call. The check uses the tool's resolved `kind` — the same value `tools/list` advertises — so it tracks the tool's true behaviour, not a separate verb list that could drift. REST routes for the same identity are unaffected. |
 
-These run **before** the upstream permission DSL, so a read-only key gets a clear `tool "collections.delete" is a write operation; this API key is MCP read-only` message instead of bouncing around the REST layer. A key whose DSL allows `delete` can still be MCP-locked to read-only.
+These run **before** the upstream permission DSL, so a read-only key gets a clear `tool "collections.delete" is a destruct operation; this API key is MCP read-only` message instead of bouncing around the REST layer. A key whose DSL allows `delete` can still be MCP-locked to read-only.
+
+### Rate limiting
+
+Both MCP mounts are rate-limited at **120 requests / minute**, bucketed per
+authenticated identity (the API-key owner, falling back to IP). It runs after
+auth and is independent of the REST limiter — a single key can't drive unbounded
+`tools/call` volume into the expensive `ai.*` / `graphql.execute` fan-out. The
+counter uses the same Durable-Object-backed limiter as the rest of the app
+(in-memory fallback off Workers), and fails open if the runtime env is missing.
 
 Configure both from the admin UI (**API Keys → 🔌 button → Connect MCP**) or via the API:
 

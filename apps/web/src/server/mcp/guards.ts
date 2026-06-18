@@ -10,51 +10,7 @@
  * restrictions live entirely in the MCP layer.
  */
 
-/** Tool-name suffixes that mutate state. Matched against the part AFTER the
- *  last `.` in the dot-cased tool name (`collections.insert` → `insert`).
- *  Read-only keys reject any call whose verb is in this set.
- *
- *  When adding a new write tool, update this list — or the read-only guard
- *  becomes a leak. The tests in `tests/mcp.test.ts` cover every namespace
- *  so a forgotten entry fails loudly. */
-const WRITE_VERBS = new Set([
-  "insert",
-  "update",
-  "delete",
-  "create",
-  "create_collection",
-  "update_collection",
-  "drop_collection",
-  "drop",
-  "upload",
-  "bulk_insert",
-  "bulk_update",
-  "upsert",
-  "grant",
-  "revoke",
-  "assign",
-  "unassign",
-  "invoke",
-  "send",
-  "mark_read",
-  "test",
-  "invite",
-  "suspend",
-  "activate",
-  // Tier C additions
-  "execute_sql",
-  "switch",
-  "set_roles",
-  "providers_create",
-  "providers_delete",
-  "post",
-  "revert",
-  "patch_settings",
-  "sign_url",
-  // ai.* writes (ai.query is read-only; the other two are mutative or
-  // produce mutative artefacts).
-  "import_csv",
-]);
+import type { ToolKind } from "./kind";
 
 export interface KeyGuards {
   /** Active allowlist; `null` = unrestricted. */
@@ -87,17 +43,15 @@ export const isToolAllowed = (toolName: string, guards: KeyGuards): boolean => {
   return guards.allowlist.includes(toolName);
 };
 
-export const isWriteTool = (toolName: string): boolean => {
-  const dot = toolName.lastIndexOf(".");
-  const verb = dot < 0 ? toolName : toolName.slice(dot + 1);
-  return WRITE_VERBS.has(verb);
-};
-
-/** Decide whether a `tools/call` for `toolName` is permitted under the
- *  active guards. Returns `{ ok: true }` or `{ ok: false, code, message }`
- *  for the dispatcher to surface as a JSON-RPC error. */
+/** Decide whether a `tools/call` for `toolName` (of the given `kind`) is
+ *  permitted under the active guards. Returns `{ ok: true }` or
+ *  `{ ok: false, code, message }` for the dispatcher to surface. `kind` is the
+ *  tool's resolved classification (see `resolveKind`) — anything but `read`
+ *  counts as a mutation under the read-only guard, so the gate tracks the tool's
+ *  true behaviour rather than a separate name heuristic that could drift. */
 export const checkToolCall = (
   toolName: string,
+  kind: ToolKind,
   guards: KeyGuards,
 ): { ok: true } | { ok: false; code: "FORBIDDEN"; message: string } => {
   if (!isToolAllowed(toolName, guards)) {
@@ -107,11 +61,11 @@ export const checkToolCall = (
       message: `tool "${toolName}" is not in this API key's MCP allowlist`,
     };
   }
-  if (guards.readOnly && isWriteTool(toolName)) {
+  if (guards.readOnly && kind !== "read") {
     return {
       ok: false,
       code: "FORBIDDEN",
-      message: `tool "${toolName}" is a write operation; this API key is MCP read-only`,
+      message: `tool "${toolName}" is a ${kind} operation; this API key is MCP read-only`,
     };
   }
   return { ok: true };

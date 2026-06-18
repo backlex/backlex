@@ -6,11 +6,37 @@ import { requireUser } from "../middleware/session";
 import { handleMcpRequest } from "../mcp/http";
 import { allTools } from "../mcp/tools";
 import type { McpMode, McpServerWiring } from "../mcp/types";
+import { rateLimitOk } from "../lib/rate-limit";
 
 const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
   const auth = c.get("auth");
   if (!auth.roles.includes(SYSTEM_ROLES.admin)) {
     throw new AppError("FORBIDDEN", "Admin role required");
+  }
+  await next();
+};
+
+const MCP_WINDOW_MS = 60_000;
+const MCP_MAX_PER_MIN = 120;
+
+const ipOf = (req: Request): string =>
+  req.headers.get("cf-connecting-ip") ||
+  req.headers.get("x-real-ip") ||
+  req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+  "unknown";
+
+/** Per-identity (or per-IP) rate limit for the MCP mounts. The REST surface has
+ *  its own limiter; without this a single authenticated key could drive
+ *  unbounded `tools/call` volume, each fanning out to internal sub-fetches (and
+ *  the `ai.*` / `graphql.execute` tools are expensive). Runs after auth so it
+ *  buckets per key owner; falls back to IP. Fail-open if env is missing. */
+const mcpRateLimit: MiddlewareHandler<AppBindings> = async (c, next) => {
+  const env = (c.get("ctx") as { env?: Env } | undefined)?.env;
+  if (env) {
+    const id = c.get("auth")?.userId ?? ipOf(c.req.raw);
+    if (!(await rateLimitOk(env, `mcp:${id}`, MCP_MAX_PER_MIN, MCP_WINDOW_MS))) {
+      throw new AppError("RATE_LIMITED", "Too many MCP requests — slow down and retry shortly");
+    }
   }
   await next();
 };
@@ -33,7 +59,7 @@ const buildHandler = (app: Hono<AppBindings>, env: Env, mode: McpMode) => {
 export const tenantMcpRoutes = (app: Hono<AppBindings>, env: Env) => {
   const handler = buildHandler(app, env, "tenant");
   return new Hono<AppBindings>()
-    .post("/", requireUser, handler)
+    .post("/", requireUser, mcpRateLimit, handler)
     .all("/", (c) => handler(c));
 };
 
@@ -46,6 +72,6 @@ export const tenantMcpRoutes = (app: Hono<AppBindings>, env: Env) => {
 export const adminMcpRoutes = (app: Hono<AppBindings>, env: Env) => {
   const handler = buildHandler(app, env, "admin");
   return new Hono<AppBindings>()
-    .post("/", requireUser, requireAdmin, handler)
+    .post("/", requireUser, requireAdmin, mcpRateLimit, handler)
     .all("/", (c) => handler(c));
 };

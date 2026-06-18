@@ -49,6 +49,7 @@ const collectionUri = (slug: string): string => `backlex://collection/${slug}`;
 const SCHEMA_URI = "backlex://schema";
 const OPENAPI_URI = "backlex://openapi";
 const ROLES_URI = "backlex://roles";
+const ME_URI = "backlex://me";
 
 /** Parameterised resource shape advertised at `resources/templates/list`, so a
  *  template-aware client offers "open collection …" with the slug as a fill-in
@@ -79,12 +80,14 @@ type ParsedUri =
   | { kind: "schema" }
   | { kind: "openapi" }
   | { kind: "roles" }
+  | { kind: "me" }
   | { kind: "collection"; slug: string };
 
 const parseUri = (uri: string): ParsedUri | null => {
   if (uri === SCHEMA_URI) return { kind: "schema" };
   if (uri === OPENAPI_URI) return { kind: "openapi" };
   if (uri === ROLES_URI) return { kind: "roles" };
+  if (uri === ME_URI) return { kind: "me" };
   const m = uri.match(/^backlex:\/\/collection\/([a-z][a-z0-9_-]*)$/i);
   if (!m) return null;
   return { kind: "collection", slug: m[1]! };
@@ -115,6 +118,12 @@ export const listResources = async (ctx: ToolCtx): Promise<{ resources: McpResou
       uri: OPENAPI_URI,
       name: "REST API (OpenAPI)",
       description: "The workspace's full OpenAPI 3.1 spec — every endpoint, params, and schema.",
+      mimeType: "application/json",
+    },
+    {
+      uri: ME_URI,
+      name: "Who am I",
+      description: "The current caller's identity, roles, tenant, and active MCP guards (read-only / allowlist).",
       mimeType: "application/json",
     },
   );
@@ -162,6 +171,20 @@ export const readResource = async (
 
   if (parsed.kind === "roles") {
     return passthroughJson(ctx, uri, `/api/roles`);
+  }
+
+  if (parsed.kind === "me") {
+    // Identity + roles + tenant from /api/me, enriched with the caller's own
+    // MCP scope (read-only? allowlist?) so an agent can reason about its limits.
+    const res = await ctx.fetchInternal(`/api/me`);
+    const body = await readJson<{ data: Record<string, unknown> }>(res);
+    const me = {
+      ...body.data,
+      mcp: { readOnly: ctx.guards.readOnly, allowlist: ctx.guards.allowlist },
+    };
+    return {
+      contents: [{ uri, mimeType: "application/json", text: JSON.stringify(me, null, 2) }],
+    };
   }
 
   if (parsed.kind === "schema") {

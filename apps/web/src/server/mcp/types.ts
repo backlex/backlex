@@ -63,6 +63,17 @@ export interface McpTool {
     additionalProperties?: boolean;
   };
   handler: (args: Record<string, unknown>, ctx: ToolCtx) => Promise<ToolResult>;
+  /** Optional JSON Schema for the tool's `structuredContent` (MCP 2025-06-18).
+   *  Declared only where the output shape is stable + knowable (e.g. schema
+   *  discovery, aggregates); the data-passthrough tools whose rows are arbitrary
+   *  user records omit it. `tools/list` surfaces it so spec-aware clients can
+   *  validate / type the structured output. */
+  outputSchema?: {
+    type: "object";
+    properties?: Record<string, unknown>;
+    required?: string[];
+    additionalProperties?: boolean;
+  };
   /** Read / write / destruct classification — the single source of truth for
    *  both the `tools/list` annotations (readOnlyHint / destructiveHint) and the
    *  per-key read-only guard, so the badge and the gate never disagree. When

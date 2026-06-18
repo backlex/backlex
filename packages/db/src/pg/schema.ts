@@ -99,6 +99,10 @@ export const users = pgTable(
     /** Required by better-auth's `anonymous` plugin (AUTH_PLUGINS list).
      *  False for normal sign-ups; flips on anonymous-session promotion. */
     isAnonymous: boolean("is_anonymous").notNull().default(false),
+    /** Set once the user has verified a TOTP authenticator (better-auth's
+     *  two-factor plugin flips this on `verifyTotp`). Gates the OTP challenge
+     *  on the next sign-in. */
+    twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -188,6 +192,26 @@ export const passkeys = pgTable(
     uniqueIndex("passkey_credential_idx").on(t.credentialID),
     index("passkey_user_idx").on(t.userId),
   ],
+);
+
+// Backs better-auth's two-factor (TOTP) plugin. One row per user that has
+// enrolled an authenticator app: `secret` is the shared TOTP seed and
+// `backupCodes` is the encrypted recovery-code bundle. The plugin also reads /
+// writes `users.two_factor_enabled`.
+export const twoFactors = pgTable(
+  "twoFactor",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    // better-auth flips this to true once the user verifies a TOTP code; rows
+    // created during enrolment start unverified.
+    verified: boolean("verified").notNull().default(false),
+  },
+  (t) => [index("two_factor_user_idx").on(t.userId)],
 );
 
 /* ─────────────────────────────────────────────────────────────────────

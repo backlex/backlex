@@ -167,7 +167,9 @@ export interface Env {
   OAUTH_GITHUB_CLIENT_SECRET?: string;
   OAUTH_APPLE_CLIENT_ID?: string;
   OAUTH_APPLE_CLIENT_SECRET?: string;
-  /** Comma-separated better-auth plugin names: `magic-link,email-otp,anonymous`. */
+  /** Comma-separated better-auth plugin names: `passkey,magic-link,email-otp,anonymous`.
+   *  TOTP two-factor is NOT listed here — it's loaded unconditionally (always
+   *  available; users opt in from Account → Security). */
   AUTH_PLUGINS?: string;
   /** Control-plane (admin) SAML/LDAP SSO toggle. Enabled unless explicitly set
    *  to `"false"`/`"0"` — so self-host gets it by default. The cloud injects

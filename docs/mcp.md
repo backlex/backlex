@@ -336,15 +336,31 @@ Subscriptions (`resources/subscribe`) aren't implemented — that requires a lon
 
 ## Prompts
 
-Three starter templates ship at `prompts/list`:
+Four starter templates ship at `prompts/list`:
 
 | Name | Arguments | Use case |
 |---|---|---|
 | `describe_collection` | `collection` | Walk through schema + 3 sample rows; produce a plain-language description of what the collection stores. |
 | `generate_queries` | `collection`, `intent?` | Propose 3-5 useful Directus-shaped `filter` queries with rationales. |
 | `permission_rule` | `collection`, `intent` | Translate "X role can do Y" into a permissions DSL `condition` + `fields` allow-list. |
+| `generate_sdk_code` | `collection`, `intent`, `language` | Emit ready-to-run code for an official client SDK that performs the task — real schema fields + the SDK's actual query/CRUD/auth API. |
 
 Each `prompts/get` renders a single user message with the collection context pre-injected, so the LLM arrives with the schema in-window without having to call a discovery tool first.
+
+`generate_sdk_code` additionally injects a compact, accurate API reference for the
+chosen `language` (one of `typescript, python, go, rust, ruby, php, dart, java,
+kotlin, csharp` — common aliases like `ts`, `js`, `py`, `rb`, `.net`/`dotnet`/`c#`
+are normalized). Because every SDK shares the same canonical filter grammar, the
+generated query is portable: the JSON a `generate_queries` answer produces drops
+straight into the `filter` of the code `generate_sdk_code` writes. Example:
+
+```jsonc
+// prompts/get generate_sdk_code { collection: "orders", intent: "list paid orders over $100, newest first", language: "python" }
+// → renders an instruction whose answer is, e.g.:
+res = (client.from_("orders").query()
+       .where(lambda f: f.and_(f.eq("status", "paid"), f.gte("total", 100)))
+       .order_by("-created_at").list())
+```
 
 ## Limitations & roadmap
 

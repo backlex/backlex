@@ -175,6 +175,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Query API (REST) | `docs/querying.md` |
 | GraphQL | `docs/graphql.md` |
 | Realtime / SSE | `docs/realtime.md` |
+| Push messaging (FCM / APNs / Web Push) | `docs/push-messaging.md` |
 | Storage + transforms | `docs/storage.md` |
 | Functions sandbox | `docs/sandbox.md` |
 | Advisor rules | `docs/advisor.md` |

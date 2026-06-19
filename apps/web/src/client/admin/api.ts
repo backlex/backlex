@@ -500,6 +500,63 @@ export const emailConfigApi = {
     }),
 };
 
+export interface ApiPushConfig {
+  tenantId: string;
+  /** inherit | console | fcm | apns | web-push */
+  provider: string;
+  /** Non-secret provider params (fcm: projectId/clientEmail; apns:
+   *  keyId/teamId/bundleId/production; web-push: subject/vapidPublicKey). */
+  config: Record<string, unknown>;
+  secretsSet: { privateKey: boolean; vapidPrivateKey: boolean };
+  updatedAt: number | string | null;
+  env: { provider: string | null };
+  providerIds: readonly string[];
+}
+
+export const pushConfigApi = {
+  get: () => api<Envelope<ApiPushConfig>>(`/api/admin/push-config`),
+  put: (body: {
+    provider: string;
+    config?: Record<string, unknown>;
+    secrets?: Record<string, string | null>;
+  }) =>
+    api<{ ok: true }>(`/api/admin/push-config`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  sendTest: () =>
+    api<{ ok: true; sent: number; failed: number }>(`/api/admin/push-config/test`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
+};
+
+export interface ApiDeviceToken {
+  id: string;
+  platform: string;
+  token: string;
+  deviceName: string | null;
+  isActive: boolean;
+  createdAt: number | string;
+  lastSeenAt: number | string | null;
+}
+
+export const deviceTokensApi = {
+  list: () => api<Envelope<ApiDeviceToken[]>>(`/api/device-tokens`),
+  register: (body: {
+    platform: "fcm" | "apns" | "web-push";
+    token: string;
+    keys?: { p256dh: string; auth: string };
+    deviceName?: string;
+  }) =>
+    api<Envelope<{ id: string }>>(`/api/device-tokens`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  remove: (id: string) =>
+    api<{ ok: true }>(`/api/device-tokens/${id}`, { method: "DELETE" }),
+};
+
 export const i18nApi = {
   list: () => api<Envelope<ApiI18nString[]>>(`/api/admin/i18n`),
   matrix: () =>

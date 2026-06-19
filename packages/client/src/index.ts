@@ -1,6 +1,7 @@
 import {
   type AggregateQuery,
   type AggregateRow,
+  type DeviceToken,
   type ItemEvent,
   type ItemQuery,
   type ItemResponse,
@@ -17,6 +18,7 @@ export type {
   ItemEvent,
   AggregateQuery,
   AggregateRow,
+  DeviceToken,
 } from "./types";
 export { BacklexError } from "./types";
 export { QueryBuilder } from "./query";
@@ -373,11 +375,29 @@ export const createClient = (opts: ClientOptions) => {
       ),
   };
 
+  const messaging = {
+    /** Register (or refresh) the current user's push device. Re-registering the
+     *  same token reactivates it and updates last-seen, so call this on every
+     *  app launch. `web-push` requires `keys` (the VAPID subscription keys). */
+    registerDevice: (input: {
+      platform: "fcm" | "apns" | "web-push";
+      token: string;
+      keys?: { p256dh: string; auth: string };
+      deviceName?: string;
+    }) => request<{ data: { id: string } }>("POST", "/api/device-tokens", input),
+    /** Remove one of the caller's registered devices by id. */
+    unregister: (id: string) =>
+      request<{ ok: boolean }>("DELETE", `/api/device-tokens/${encodeURIComponent(id)}`),
+    /** List the caller's registered devices. */
+    listDevices: () => request<{ data: DeviceToken[] }>("GET", "/api/device-tokens"),
+  };
+
   return {
     from: collection,
     subscribe,
     auth,
     storage,
+    messaging,
     /** Raw escape hatch — issues a request with auth headers applied. */
     request,
   };

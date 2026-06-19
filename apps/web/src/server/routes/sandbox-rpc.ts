@@ -6,7 +6,7 @@ import { dispatchRpc } from "../services/sandbox/host-bridge";
 import type { RpcOp } from "../services/sandbox/types";
 
 const Body = z.object({
-  op: z.enum(["fetch", "db.list", "db.one", "email.send"]),
+  op: z.enum(["fetch", "db.list", "db.one", "email.send", "push.send"]),
   args: z.unknown().optional(),
   auth: z.object({
     userId: z.string().nullable(),

@@ -508,6 +508,60 @@ export const notifications = sqliteTable(
   ],
 );
 
+/* Push messaging tables (mirrors of pg schema). */
+
+export const deviceTokens = sqliteTable(
+  "device_tokens",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    userId: text("user_id").notNull(),
+    /** fcm | apns | web-push */
+    platform: text("platform").notNull(),
+    token: text("token").notNull(),
+    keys: text("keys", { mode: "json" }).$type<{ p256dh: string; auth: string }>(),
+    deviceName: text("device_name"),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: ts("created_at"),
+    lastSeenAt: integer("last_seen_at"),
+  },
+  (t) => [
+    uniqueIndex("device_tokens_unique_idx").on(t.userId, t.platform, t.token),
+    index("device_tokens_user_idx").on(t.userId),
+    index("device_tokens_tenant_idx").on(t.tenantId),
+  ],
+);
+
+export const pushConfig = sqliteTable(
+  "push_config",
+  {
+    tenantId: text("tenant_id").primaryKey(),
+    /** inherit | console | fcm | apns | web-push | cloud */
+    provider: text("provider").notNull().default("inherit"),
+    config: text("config", { mode: "json" }).$type<Record<string, unknown>>().notNull().default({}),
+    secrets: text("secrets", { mode: "json" }).$type<Record<string, string>>().notNull().default({}),
+    updatedAt: ts("updated_at"),
+  },
+);
+
+export const pushTemplates = sqliteTable(
+  "push_templates",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    url: text("url"),
+    variables: text("variables", { mode: "json" }).$type<string[]>(),
+    updatedBy: text("updated_by"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [uniqueIndex("push_templates_tenant_key_idx").on(t.tenantId, t.key)],
+);
+
 export const revisions = sqliteTable(
   "revisions",
   {

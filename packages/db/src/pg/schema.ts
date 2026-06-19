@@ -569,6 +569,78 @@ export const notifications = pgTable(
   ],
 );
 
+/* ─────────────────────────────────────────────────────────────────────
+ * Push messaging: registered device targets + per-workspace provider config
+ * + reusable templates. Mirrors the email_config / email_templates pattern;
+ * `notifications` (above) stays the in-app feed, these power native push.
+ * ───────────────────────────────────────────────────────────────────── */
+
+/**
+ * A user's registered push target. `token` is the FCM registration token, the
+ * APNs device token, or the web-push endpoint URL; `keys` holds the web-push
+ * VAPID subscription keys ({ p256dh, auth }) and is null for fcm/apns. Tokens
+ * the provider reports as permanently invalid are deactivated (`is_active`)
+ * rather than deleted, so a re-register can revive the row.
+ */
+export const deviceTokens = pgTable(
+  "device_tokens",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    userId: text("user_id").notNull(),
+    /** fcm | apns | web-push */
+    platform: text("platform").notNull(),
+    token: text("token").notNull(),
+    keys: jsonb("keys").$type<{ p256dh: string; auth: string }>(),
+    deviceName: text("device_name"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("device_tokens_unique_idx").on(t.userId, t.platform, t.token),
+    index("device_tokens_user_idx").on(t.userId),
+    index("device_tokens_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
+ * Per-workspace push provider config. Same `_global` / `inherit` fallback model
+ * as `email_config`: `provider = "inherit"` (or no usable config) falls through
+ * to the deployment's env-derived adapter. `config` holds non-secret params
+ * (e.g. fcm projectId, apns keyId/teamId/bundleId, web-push vapidPublicKey);
+ * `secrets` holds the same keys but AES-256-GCM ciphertext (see lib/crypto).
+ */
+export const pushConfig = pgTable(
+  "push_config",
+  {
+    tenantId: text("tenant_id").primaryKey(),
+    /** inherit | console | fcm | apns | web-push | cloud */
+    provider: text("provider").notNull().default("inherit"),
+    config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
+    secrets: jsonb("secrets").$type<Record<string, string>>().notNull().default({}),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+);
+
+export const pushTemplates = pgTable(
+  "push_templates",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    url: text("url"),
+    variables: jsonb("variables").$type<string[]>(),
+    updatedBy: text("updated_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("push_templates_tenant_key_idx").on(t.tenantId, t.key)],
+);
+
 export const revisions = pgTable(
   "revisions",
   {

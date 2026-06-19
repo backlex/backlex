@@ -6,9 +6,12 @@ import { type AdapterId } from "../config";
 import { Badge, Button, IconButton, PageHeader } from "../ui";
 import { Select } from "../select";
 import {
+  deviceTokensApi,
   emailConfigApi,
+  pushConfigApi,
   settingsApi,
   workspaceConfigApi,
+  type ApiDeviceToken,
   type ApiRuntime,
 } from "../api";
 import { useTheme } from "@/components/theme-provider";
@@ -176,6 +179,174 @@ function EmailSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
       ))}
       <div className="flex items-center justify-between gap-2 border-t border-border pt-2.5">
         <Button variant="outline" size="sm" disabled={testing} onClick={() => void sendTest()}>{testing ? <Trans>Sending…</Trans> : <Trans>Send test email</Trans>}</Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" disabled={!dirty || saving} onClick={() => void load()}><Trans>Discard</Trans></Button>
+          <Button variant="primary" size="sm" disabled={!dirty || saving} onClick={() => void save()}>{saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}</Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+const PUSH_PROVIDER_OPTIONS = [
+  { value: "inherit", label: "Inherit — deployment default" },
+  { value: "console", label: "Console (log to stdout)" },
+  { value: "fcm", label: "Firebase Cloud Messaging (Android / cross-platform)" },
+  { value: "apns", label: "Apple Push (iOS native)" },
+  { value: "web-push", label: "Web Push (browsers, VAPID)" },
+];
+
+const PUSH_PROVIDER_FIELDS: Record<
+  string,
+  { hint: string; config: [string, string, string, string][]; secrets: [string, string][] }
+> = {
+  inherit: { hint: "Falls through to the instance-wide override, then the deployment's PUSH_* env vars on the Worker.", config: [], secrets: [] },
+  console: { hint: "Doesn't deliver anything — writes the notification to the Worker log. Dev only.", config: [], secrets: [] },
+  fcm: { hint: "HTTP v1 API — works on every runtime. From the Firebase service-account JSON.", config: [["projectId", "Project ID", "my-app", "text"], ["clientEmail", "Client email", "firebase-adminsdk@my-app.iam.gserviceaccount.com", "text"]], secrets: [["privateKey", "Service-account private key (PEM)"]] },
+  apns: { hint: "Token-based (.p8). Direct APNs needs an HTTP/2 runtime (Cloudflare Workers); on Node/Bun route iOS through FCM.", config: [["keyId", "Key ID", "ABC123DEFG", "text"], ["teamId", "Team ID", "DEF456GHIJ", "text"], ["bundleId", "Bundle ID", "com.example.app", "text"], ["production", "Production gateway (uncheck for sandbox)", "", "checkbox"]], secrets: [["privateKey", "APNs auth key (.p8 PEM)"]] },
+  "web-push": { hint: "VAPID + aes128gcm — works on every runtime including Cloudflare Workers.", config: [["subject", "Subject (mailto: or origin URL)", "mailto:admin@example.com", "text"], ["vapidPublicKey", "VAPID public key (base64url)", "", "text"]], secrets: [["vapidPrivateKey", "VAPID private key (PEM)"]] },
+};
+
+/** Push transport config — mirrors {@link EmailSettingsCard}, minus the From
+ *  address, plus a viewer of the admin's own registered devices so "Send test"
+ *  has somewhere to land. */
+function PushSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
+  const { t } = useLingui();
+  const [cfg, setCfg] = useState<any>(null);
+  const [provider, setProvider] = useState("inherit");
+  const [config, setConfig] = useState<Record<string, any>>({});
+  const [secrets, setSecrets] = useState<Record<string, string>>({});
+  const [devices, setDevices] = useState<ApiDeviceToken[]>([]);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  const load = async () => {
+    try {
+      const r = await pushConfigApi.get();
+      const d = r.data as any;
+      setCfg(d);
+      setProvider(d.provider || "inherit");
+      setConfig({ ...(d.config || {}) });
+      setSecrets({});
+      setDirty(false);
+    } catch (e) {
+      pushToast((e as Error).message);
+    }
+  };
+  const loadDevices = async () => {
+    try {
+      const r = await deviceTokensApi.list();
+      setDevices(r.data);
+    } catch {
+      /* device list is best-effort context */
+    }
+  };
+  useEffect(() => {
+    void load();
+    void loadDevices();
+  }, []);
+
+  const fields = PUSH_PROVIDER_FIELDS[provider] ?? PUSH_PROVIDER_FIELDS.inherit!;
+  const mark = () => setDirty(true);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const cfgOut: Record<string, any> = {};
+      for (const [key, , , type] of fields.config) {
+        const v = config[key];
+        if (type === "number") cfgOut[key] = v === "" || v == null ? undefined : Number(v);
+        else if (type === "checkbox") cfgOut[key] = !!v;
+        else cfgOut[key] = v == null ? "" : String(v);
+      }
+      await pushConfigApi.put({ provider, config: cfgOut, secrets });
+      pushToast(t`Push settings saved.`);
+      await load();
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const sendTest = async () => {
+    setTesting(true);
+    try {
+      const r = await pushConfigApi.sendTest();
+      pushToast(t`Test push sent to ${r.sent} device(s).`);
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const envHint = cfg?.env?.provider ? ` · deployment env: ${cfg.env.provider}` : "";
+  const activeDevices = devices.filter((d) => d.isActive);
+
+  return (
+    <Card className="max-w-[920px] gap-4 p-[22px]">
+      <div className="flex items-start gap-2.5">
+        <I.Info size={14} className="mt-0.5" />
+        <span className="text-xs text-muted-foreground">
+          <Trans>Native push transport for <b>this workspace</b>. Resolution order: this config → the
+          instance-wide default → the deployment's <span className="font-mono">PUSH_*</span> env vars.
+          Secret values are encrypted at rest and never shown again. In-app notifications can fan out to
+          devices via the <span className="font-mono">push</span> flag.</Trans>
+        </span>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Provider</Trans></label>
+        <Select value={provider} onChange={(v: string) => { setProvider(v); mark(); }} options={PUSH_PROVIDER_OPTIONS} />
+        <span className="text-[11.5px] text-muted-foreground">{fields.hint}{envHint}</span>
+      </div>
+      {fields.config.map(([key, label, placeholder, type]) => (
+        <div className="flex flex-col gap-1.5" key={key}>
+          {type === "checkbox" ? (
+            <label className="flex cursor-pointer items-center gap-2">
+              <input type="checkbox" checked={config[key] !== false} onChange={(e) => { setConfig((c) => ({ ...c, [key]: e.target.checked })); mark(); }} />
+              <span className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{label}</span>
+            </label>
+          ) : (
+            <>
+              <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{label}</label>
+              <Input type="text" placeholder={placeholder} value={config[key] ?? ""} onChange={(e) => { setConfig((c) => ({ ...c, [key]: e.target.value })); mark(); }} />
+            </>
+          )}
+        </div>
+      ))}
+      {fields.secrets.map(([key, label]) => (
+        <div className="flex flex-col gap-1.5" key={key}>
+          <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{label}</label>
+          <Textarea
+            rows={3}
+            autoComplete="off"
+            className="font-mono text-[11px]"
+            placeholder={cfg?.secretsSet?.[key] ? t`•••••••• (stored — leave blank to keep)` : ""}
+            value={secrets[key] ?? ""}
+            onChange={(e) => { setSecrets((s) => ({ ...s, [key]: e.target.value })); mark(); }}
+          />
+          {cfg?.secretsSet?.[key] && <span className="text-[11.5px] text-muted-foreground"><Trans>A value is stored. Type a new one to replace it, or leave blank to keep it.</Trans></span>}
+        </div>
+      ))}
+      <div className="flex flex-col gap-1.5 border-t border-border pt-2.5">
+        <span className="text-[12.5px] font-medium text-foreground"><Trans>Your registered devices</Trans></span>
+        {activeDevices.length === 0 ? (
+          <span className="text-[11.5px] text-muted-foreground"><Trans>No active devices for your account. Register one from a client app to receive a test push.</Trans></span>
+        ) : (
+          <div className="flex flex-col gap-1">
+            {activeDevices.map((d) => (
+              <div key={d.id} className="flex items-center justify-between gap-2 text-[11.5px]">
+                <span className="flex items-center gap-2"><Badge>{d.platform}</Badge><span className="text-muted-foreground">{d.deviceName || d.token.slice(0, 24)}…</span></span>
+                <IconButton icon={I.Trash} title={t`Remove device`} onClick={async () => { try { await deviceTokensApi.remove(d.id); await loadDevices(); } catch (e) { pushToast((e as Error).message); } }} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="flex items-center justify-between gap-2 border-t border-border pt-2.5">
+        <Button variant="outline" size="sm" disabled={testing} onClick={() => void sendTest()}>{testing ? <Trans>Sending…</Trans> : <Trans>Send test push</Trans>}</Button>
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" disabled={!dirty || saving} onClick={() => void load()}><Trans>Discard</Trans></Button>
           <Button variant="primary" size="sm" disabled={!dirty || saving} onClick={() => void save()}>{saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}</Button>
@@ -970,6 +1141,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
             { id: "general", label: t`General` },
             { id: "appearance", label: t`Appearance` },
             { id: "email", label: t`Email` },
+            { id: "push", label: t`Push` },
             { id: "bindings", label: t`Bindings`, count: bindings.length },
             { id: "env", label: t`Environment`, count: envVars.length },
             { id: "about", label: t`About` },
@@ -1019,6 +1191,8 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
       )}
 
       {tab === "email" && <EmailSettingsCard pushToast={pushToast} />}
+
+      {tab === "push" && <PushSettingsCard pushToast={pushToast} />}
 
       {tab === "bindings" && (
         <div className="flex max-w-[920px] flex-col gap-3">

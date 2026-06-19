@@ -39,6 +39,9 @@ import { adminMcpRoutes, tenantMcpRoutes } from "./routes/mcp";
 import { meRoutes } from "./routes/me";
 import { metricsRoutes } from "./routes/metrics";
 import { notificationsRoutes } from "./routes/notifications";
+import { deviceTokensRoutes } from "./routes/device-tokens";
+import { pushConfigRoutes } from "./routes/push-config";
+import { pushTemplatesRoutes } from "./routes/push-templates";
 import { openapiRoutes } from "./routes/openapi";
 import { panelsRoutes } from "./routes/panels";
 import { realtimeRoutes } from "./routes/realtime";
@@ -350,6 +353,8 @@ export const createApp = (env: Env) => {
   app.route("/api/tenants", tenantsRoutes);
   app.route("/api/admin/email-templates", emailTemplatesRoutes);
   app.route("/api/admin/email-config", emailConfigRoutes);
+  app.route("/api/admin/push-templates", pushTemplatesRoutes);
+  app.route("/api/admin/push-config", pushConfigRoutes);
   app.route("/api/workspace-config", workspaceConfigRoutes);
   app.route("/api/admin/auth", authAdminRoutes);
   app.route("/api/admin/saml", samlAdminRoutes);
@@ -386,6 +391,7 @@ export const createApp = (env: Env) => {
   // Public, unauthenticated record-share resolution — no `requireUser`.
   app.route("/api/shared", sharedPublicRoutes);
   app.route("/api/notifications", notificationsRoutes);
+  app.route("/api/device-tokens", deviceTokensRoutes);
   app.route("/api/flows", flowsRoutes);
   app.route("/api/roles", rolesRoutes);
   app.route("/api/permissions", permissionsRoutes);

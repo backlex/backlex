@@ -160,6 +160,31 @@ export interface Env {
   SMTP_USER?: string;
   SMTP_PASSWORD?: string;
   SMTP_SECURE?: string;
+  // Push notifications. `PUSH_PROVIDER` forces a single transport (`console`,
+  // `fcm`, `apns`, `web-push`); when unset, every provider with complete
+  // credentials below is composed into one fan-out adapter (Android via fcm,
+  // iOS via apns, browsers via web-push), falling back to `console`.
+  PUSH_PROVIDER?: string;
+  // Firebase Cloud Messaging (HTTP v1) — from the service-account JSON.
+  // `FCM_PRIVATE_KEY` is the PKCS8 PEM `private_key` (newlines preserved).
+  FCM_PROJECT_ID?: string;
+  FCM_CLIENT_EMAIL?: string;
+  FCM_PRIVATE_KEY?: string;
+  // Apple Push Notification service, token-based auth. `APNS_PRIVATE_KEY` is the
+  // .p8 (EC P-256, PKCS8 PEM). Direct APNs needs an HTTP/2-capable runtime
+  // (Cloudflare Workers); on Node/Bun route iOS through FCM instead.
+  // `APNS_PRODUCTION=false` targets the sandbox gateway.
+  APNS_KEY_ID?: string;
+  APNS_TEAM_ID?: string;
+  APNS_PRIVATE_KEY?: string;
+  APNS_BUNDLE_ID?: string;
+  APNS_PRODUCTION?: string;
+  // Web Push (VAPID). `WEBPUSH_SUBJECT` is a `mailto:` or origin URL;
+  // `WEBPUSH_VAPID_PUBLIC_KEY` is base64url (raw P-256 point);
+  // `WEBPUSH_VAPID_PRIVATE_KEY` is the PKCS8 PEM (EC P-256).
+  WEBPUSH_SUBJECT?: string;
+  WEBPUSH_VAPID_PUBLIC_KEY?: string;
+  WEBPUSH_VAPID_PRIVATE_KEY?: string;
   // OAuth providers. Each provider is enabled iff both id+secret are set.
   OAUTH_GOOGLE_CLIENT_ID?: string;
   OAUTH_GOOGLE_CLIENT_SECRET?: string;

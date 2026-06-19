@@ -8,6 +8,7 @@ import {
 } from "@backlex/db";
 import type { Condition } from "@backlex/core";
 import { resolvePermission } from "../permissions";
+import { sendPushToUsers } from "../push";
 import type { Ctx } from "../../context";
 import type { RpcOp, SandboxBindings } from "./types";
 
@@ -206,6 +207,25 @@ export const dispatchRpc = async (
       args as { to: string; subject: string; text: string; html?: string },
     );
     return true;
+  }
+
+  if (op === "push.send") {
+    const a = args as {
+      userId?: string;
+      userIds?: string[];
+      title: string;
+      body: string;
+      url?: string;
+      data?: Record<string, string>;
+    };
+    const userIds = a.userIds ?? (a.userId ? [a.userId] : []);
+    return sendPushToUsers(bindings.ctx, bindings.auth.tenantId, {
+      userIds,
+      title: a.title,
+      body: a.body,
+      url: a.url,
+      data: a.data,
+    });
   }
 
   throw new Error(`unknown rpc op: ${op}`);

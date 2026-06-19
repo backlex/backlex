@@ -6,6 +6,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { sendPushToUsers } from "../services/push";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.notifications : sqlite.schema.notifications;
@@ -17,6 +18,9 @@ const NotificationInput = z
     url: z.string().optional(),
     userId: z.string().nullable().optional().openapi({
       description: "Target user. Omit (or null) for a broadcast notification.",
+    }),
+    push: z.boolean().optional().openapi({
+      description: "Also fan out to the target user's push devices (ignored for broadcasts).",
     }),
   })
   .openapi("NotificationInput");
@@ -179,6 +183,19 @@ export const notificationsRoutes = new OpenAPIHono<AppBindings>()
         readAt: null,
         createdAt: now,
       });
+      const target = body.userId ?? auth.userId ?? null;
+      if (body.push && target) {
+        try {
+          await sendPushToUsers(ctx, auth.tenantId ?? null, {
+            userIds: [target],
+            title: body.title,
+            body: body.body ?? body.title,
+            url: body.url,
+          });
+        } catch {
+          // best-effort — the in-app row already landed
+        }
+      }
       return c.json({ data: { id } }, 201);
     },
   )

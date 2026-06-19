@@ -34,7 +34,8 @@ export type RpcOp =
   | "fetch"
   | "db.list"
   | "db.one"
-  | "email.send";
+  | "email.send"
+  | "push.send";
 
 export interface RpcRequest {
   kind: "rpc";

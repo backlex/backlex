@@ -58,6 +58,16 @@ export interface ItemEvent<T = Record<string, unknown>> {
   data: T;
 }
 
+export interface DeviceToken {
+  id: string;
+  platform: "fcm" | "apns" | "web-push";
+  token: string;
+  deviceName: string | null;
+  isActive: boolean;
+  createdAt: string | number;
+  lastSeenAt: string | number | null;
+}
+
 export interface ApiError {
   code: string;
   message: string;

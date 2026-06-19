@@ -6,6 +6,7 @@ import type { AuthSubject, Condition, Operation } from "@backlex/core";
 import type { Ctx } from "../context";
 import { runFunction } from "./sandbox";
 import { sendTemplatedEmail } from "./email";
+import { sendPushToUsers } from "./push";
 import { createItem, updateItem } from "./items-helpers";
 import { enqueueTask, type ResumePayload } from "./scheduled-tasks";
 import { recordActivity } from "./activity";
@@ -263,11 +264,48 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
         readAt: null,
         createdAt: dialect === "pg" ? new Date() : Date.now(),
       });
+      // Opt-in fan-out to the target user's push devices (never for broadcasts).
+      if (op.push && userId) {
+        const tenantId =
+          ctx.authSubject.tenantId ??
+          ((ctx.data as { tenantId?: string | null } | undefined)?.tenantId ?? null);
+        try {
+          await sendPushToUsers(ctx.ctx, tenantId, {
+            userIds: [userId],
+            title,
+            body: body ?? title,
+            url: url ?? undefined,
+          });
+        } catch {
+          // push is best-effort here — the in-app row already landed
+        }
+      }
       return { sent: true, title };
     } catch (e) {
       throw new FlowOpError(
         `notification insert failed: ${(e as Error).message}`,
       );
+    }
+  }
+
+  if (op.type === "push") {
+    const title = interpolate(op.title, ctx) as string;
+    const body = interpolate(op.body, ctx) as string;
+    const url = op.url ? (interpolate(op.url, ctx) as string) : undefined;
+    const userId = interpolate(op.userId, ctx) as string;
+    const tenantId =
+      ctx.authSubject.tenantId ??
+      ((ctx.data as { tenantId?: string | null } | undefined)?.tenantId ?? null);
+    try {
+      const result = await sendPushToUsers(ctx.ctx, tenantId, {
+        userIds: userId ? [userId] : [],
+        title,
+        body,
+        url,
+      });
+      return { sent: result.sent, failed: result.failed };
+    } catch (e) {
+      throw new FlowOpError(`push send failed: ${(e as Error).message}`);
     }
   }
 

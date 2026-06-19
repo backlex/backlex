@@ -71,6 +71,21 @@ export type Operation =
       body?: string;
       url?: string;
       userId?: string | null;
+      /** Also fan out to the target user's registered push devices. Ignored
+       *  for broadcasts (`userId` null) — push needs a concrete recipient. */
+      push?: boolean;
+      onSuccess?: Operation[];
+      onError?: Operation[];
+    }
+  /** Send a native push notification to a user's registered devices. `userId`
+   *  may be a literal id or a `{{ data.author }}` template; users with no active
+   *  devices are a silent no-op. Distinct from `notification` (in-app feed). */
+  | {
+      type: "push";
+      title: string;
+      body: string;
+      url?: string;
+      userId: string;
       onSuccess?: Operation[];
       onError?: Operation[];
     }
@@ -125,6 +140,7 @@ export const OPERATION_TYPES: OperationType[] = [
   "run-script",
   "condition",
   "notification",
+  "push",
   "function",
   "item.create",
   "item.update",
@@ -212,6 +228,16 @@ export const OperationSchema: z.ZodType<Operation> = z.lazy(() =>
       body: z.string().optional(),
       url: z.string().optional(),
       userId: z.string().nullable().optional(),
+      push: z.boolean().optional(),
+      onSuccess: z.array(OperationSchema).optional(),
+      onError: z.array(OperationSchema).optional(),
+    }),
+    z.object({
+      type: z.literal("push"),
+      title: z.string().min(1),
+      body: z.string().min(1),
+      url: z.string().optional(),
+      userId: z.string().min(1),
       onSuccess: z.array(OperationSchema).optional(),
       onError: z.array(OperationSchema).optional(),
     }),

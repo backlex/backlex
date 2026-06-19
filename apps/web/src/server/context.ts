@@ -4,6 +4,7 @@ import type {
   EmailAdapter,
   EmbeddingAdapter,
   ImageAdapter,
+  PushAdapter,
   StorageAdapter,
   VectorAdapter,
 } from "@backlex/core/adapters";
@@ -12,6 +13,7 @@ import { createPgClient, type PgDb, type PgDriver } from "@backlex/db/pg";
 import { createD1Client, type SqliteDb } from "@backlex/db/sqlite";
 import { cloudEmailAdapter } from "./adapters/email.cloud";
 import { consoleEmail } from "./adapters/email.console";
+import { cloudPushAdapter } from "./adapters/push.cloud";
 import { cloudEmbeddingAdapter } from "./adapters/embedding.cloud";
 import { openaiEmbeddingAdapter } from "./adapters/embedding.openai";
 import {
@@ -37,6 +39,7 @@ import { libsqlVectorAdapter } from "./adapters/vector.libsql";
 import type { Env } from "./env";
 import { cloudConfigured } from "./lib/cloud-report";
 import { buildEmailAdapter, selectEmailSpec } from "./lib/email-select";
+import { buildPushAdapter, selectPushSpec } from "./lib/push-select";
 import {
   isCloudflareWorkers,
   isNetlify,
@@ -46,6 +49,7 @@ import {
 } from "./lib/runtime";
 import { loadPolicy } from "./services/auth-config";
 import { resolveEmailAdapter } from "./services/email-config";
+import { resolvePushAdapter } from "./services/push-config";
 import { publishEvent } from "./services/events";
 import { acceptInviteForUser, hasValidInvite } from "./services/invites";
 import { invalidateUserRoles } from "./services/permissions-cache";
@@ -78,6 +82,14 @@ export interface Ctx {
    *  → the instance `_global` row → the deployment env adapter. Memoized per
    *  request. Pass `null` for system mail with no workspace context. */
   emailFor: (tenantId: string | null | undefined) => Promise<EmailAdapter>;
+  /** Deployment-level push adapter (env-derived; a `multi` fan-out when several
+   *  providers are configured). Prefer {@link Ctx.pushFor} so a workspace's own
+   *  `push_config` is honoured. */
+  push: PushAdapter;
+  /** Resolve the push transport for a workspace: its own `push_config` row →
+   *  the instance `_global` row → the deployment env adapter. Memoized per
+   *  isolate (one entry per tenant). */
+  pushFor: (tenantId: string | null | undefined) => Promise<PushAdapter>;
   storage: StorageAdapter;
   vector: VectorAdapter;
   /** Text → vector embedding. Routes to Workers AI or OpenAI based on the
@@ -112,6 +124,20 @@ export const invalidateEmailCache = (env: Env, tenantId: string): void => {
  *  most workspaces serving the previous adapter. */
 export const invalidateAllEmailCaches = (env: Env): void => {
   emailCaches.get(env as unknown as object)?.clear();
+};
+// Per-Ctx push adapter cache — same lifecycle as the email cache above; the
+// admin push-config write path drops stale entries after an update.
+const pushCaches = new WeakMap<object, Map<string, Promise<PushAdapter>>>();
+/** Drop a single tenant's cached push adapter (plus the "" env-default key). */
+export const invalidatePushCache = (env: Env, tenantId: string): void => {
+  const m = pushCaches.get(env as unknown as object);
+  if (!m) return;
+  m.delete(tenantId);
+  m.delete("");
+};
+/** Drop every cached push adapter for this isolate (use after `_global` writes). */
+export const invalidateAllPushCaches = (env: Env): void => {
+  pushCaches.get(env as unknown as object)?.clear();
 };
 
 /** In-flight buildContext promise, deduped per `env` so concurrent first
@@ -299,6 +325,26 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     if (!p) {
       p = resolveEmailAdapter({ db, dialect, env }, email, tenantId ?? null);
       emailCache.set(key, p);
+    }
+    return p;
+  };
+
+  // Push transport — same env → cloud-fallback → per-workspace resolution as
+  // email. On a managed cloud project with no `PUSH_*` vars the spec is
+  // `console`, so route through the control-plane push gateway instead.
+  const pushSpec = selectPushSpec(env);
+  const push: PushAdapter =
+    cloudConfigured(env) && pushSpec.provider === "console"
+      ? cloudPushAdapter(env)
+      : buildPushAdapter(pushSpec);
+  const pushCache = new Map<string, Promise<PushAdapter>>();
+  pushCaches.set(env as unknown as object, pushCache);
+  const pushFor = (tenantId: string | null | undefined): Promise<PushAdapter> => {
+    const key = tenantId ?? "";
+    let p = pushCache.get(key);
+    if (!p) {
+      p = resolvePushAdapter({ db, dialect, env }, push, tenantId ?? null);
+      pushCache.set(key, p);
     }
     return p;
   };
@@ -579,6 +625,8 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     auth,
     email,
     emailFor,
+    push,
+    pushFor,
     storage,
     vector,
     embedding,

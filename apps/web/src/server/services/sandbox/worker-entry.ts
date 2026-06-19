@@ -61,6 +61,16 @@ const buildCtx = (data: unknown, user: WorkerRunMessage["user"]) => ({
       html?: string;
     }) => rpc("email.send", msg),
   },
+  push: {
+    send: (msg: {
+      userId?: string;
+      userIds?: string[];
+      title: string;
+      body: string;
+      url?: string;
+      data?: Record<string, string>;
+    }) => rpc("push.send", msg),
+  },
 });
 
 const buildConsole = () => ({

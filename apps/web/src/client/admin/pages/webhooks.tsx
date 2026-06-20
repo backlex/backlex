@@ -60,7 +60,7 @@ function formatHeaderLines(headers: Record<string, string> | null | undefined): 
 
 export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) {
   const { t } = useLingui();
-  type HookRow = { id: string; name: string; url: string; events: string[]; method: string; secret: string; headers: Record<string, string> | null; active: boolean; deliveries: number; ok: boolean; successRate: number; lastDelivery: string };
+  type HookRow = { id: string; name: string; url: string; events: string[]; method: string; secret: string; headers: Record<string, string> | null; active: boolean; consecutiveFailures: number; disabledReason: string | null; deliveries: number; ok: boolean; successRate: number; lastDelivery: string };
   const [hooks, setHooks] = useState<HookRow[]>([]);
   // First-load gate — drives the page skeleton until webhooks land.
   const [loaded, setLoaded] = useState(false);
@@ -89,8 +89,10 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
           secret: h.secret ?? "",
           headers: h.headers ?? null,
           active: !!h.active,
+          consecutiveFailures: h.consecutiveFailures ?? 0,
+          disabledReason: h.disabledReason ?? null,
           deliveries: stats[h.id]?.deliveries ?? 0,
-          ok: true,
+          ok: (h.consecutiveFailures ?? 0) === 0,
           successRate: 100,
           lastDelivery: fmtAgo(stats[h.id]?.lastDelivery ?? null),
         })),
@@ -189,9 +191,10 @@ export function WebhooksPage({ pushToast }: { pushToast: (m: string) => void }) 
                     </div>
                   </TableCell>
                   <TableCell>
-                    {!h.active ? <Badge variant="secondary"><Trans>paused</Trans></Badge>
-                      : h.ok ? <Badge variant="default"><Trans>healthy</Trans></Badge>
-                        : <Badge variant="destructive"><Trans>failing</Trans></Badge>}
+                    {h.disabledReason ? <span title={h.disabledReason}><Badge variant="destructive"><Trans>auto-disabled</Trans></Badge></span>
+                      : !h.active ? <Badge variant="secondary"><Trans>paused</Trans></Badge>
+                        : h.ok ? <Badge variant="default"><Trans>healthy</Trans></Badge>
+                          : <span title={t`${h.consecutiveFailures} consecutive failures`}><Badge variant="destructive"><Trans>failing</Trans></Badge></span>}
                   </TableCell>
                   <TableCell className="sticky right-0 bg-card text-right" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
@@ -381,7 +384,7 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
               <Button variant="outline" size="sm" icon={revealSecret ? I.X : I.Eye} onClick={() => setRevealSecret(!revealSecret)}>{revealSecret ? <Trans>Hide</Trans> : <Trans>Show</Trans>}</Button>
               <Button variant="outline" size="sm" icon={I.Refresh} onClick={() => { update("secret", "whsec_" + Math.random().toString(16).slice(2, 14)); pushToast(t`Secret rotated.`); }}><Trans>Rotate</Trans></Button>
             </div>
-            <span className="text-[11.5px] text-muted-foreground"><Trans>Sent as <span className="font-mono">X-Backlex-Signature: sha256=…</span>. Verify on the receiver.</Trans></span>
+            <span className="text-[11.5px] text-muted-foreground"><Trans>Signs every delivery: <span className="font-mono">X-Backlex-Signature</span> (HMAC of the body) plus <span className="font-mono">X-Backlex-Signature-V2</span> over <span className="font-mono">{"{timestamp}.{body}"}</span> with <span className="font-mono">X-Backlex-Timestamp</span> for replay protection.</Trans></span>
           </div>
 
           <div className="flex flex-col gap-1.5">

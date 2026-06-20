@@ -132,6 +132,12 @@ export interface FieldDef {
    * meaningful for `text` / `longtext` types — ignored otherwise.
    */
   vectorize?: boolean;
+  /**
+   * When true (and the collection has `fts: true`), this field's value is
+   * folded into the collection's full-text-search index on item write.
+   * Only meaningful for `text` / `longtext` types — ignored otherwise.
+   */
+  searchable?: boolean;
 }
 
 const PG_TYPES: Record<FieldType, string> = {
@@ -204,6 +210,16 @@ export const derivePhysicalTable = (tenantId: string, slug: string): string => {
 
 /** @deprecated Pre-tenant naming. Used only by the migration backfill. */
 export const legacyPhysicalTableFor = (slug: string): string => `c_${assertIdent(slug)}`;
+
+/**
+ * Name of the SQLite FTS5 shadow table that mirrors a collection's
+ * `searchable` text for keyword search. One per physical table; holds
+ * `(item_id, content)`. (Postgres keeps the index inline as a `_fts`
+ * tsvector column instead — no shadow table.) Always derive it from the
+ * physical table name so the items + search paths agree.
+ */
+export const ftsTableName = (physicalTable: string): string =>
+  `${assertIdent(physicalTable)}__fts`;
 
 const RESERVED = new Set([
   "id",

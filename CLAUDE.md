@@ -173,6 +173,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Permissions DSL | `docs/permissions.md` |
 | Audit logs + sensitive-read auditing | `docs/audit-logs.md` |
 | Query API (REST) | `docs/querying.md` |
+| Full-text & hybrid search | `docs/full-text-search.md` |
 | GraphQL | `docs/graphql.md` |
 | Realtime / SSE | `docs/realtime.md` |
 | Offline-first sync (changefeed + client store) | `docs/offline-sync.md` |

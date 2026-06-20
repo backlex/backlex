@@ -26,6 +26,7 @@ import {
 import { invalidateTenantPermissions } from "../services/permissions-cache";
 import { seedOwnerScopedPermissions } from "../services/seed";
 import { embedAndUpsertBatch, isVectorizable } from "../services/vectorize";
+import { indexFtsBatch, isSearchable } from "../services/fts";
 
 const FieldSchema = z
   .object({
@@ -90,6 +91,9 @@ const FieldSchema = z
     /** Include this field in the embed text when the collection has
      *  `vectorize: true`. Only meaningful on text/longtext fields. */
     vectorize: z.boolean().optional(),
+    /** Fold this field into the full-text-search index when the collection
+     *  has `fts: true`. Only meaningful on text/longtext fields. */
+    searchable: z.boolean().optional(),
   })
   .refine((f) => (f.type !== "relation" && f.type !== "relation_many") || !!f.to, {
     message: "relation / relation_many field must specify `to` (target collection slug)",
@@ -129,6 +133,10 @@ const CollectionInput = z.object({
   vectorize: z.boolean().optional().default(false),
   /** Embedding model key. Null → fall back to env.EMBEDDING_DEFAULT_MODEL. */
   vectorizeModel: ModelEnum.nullable().optional(),
+  /** Master switch — when true, item writes maintain a keyword full-text
+   *  index built from fields flagged `searchable: true`, and the bulk
+   *  `POST /:slug/fts-reindex` endpoint backfills existing rows. */
+  fts: z.boolean().optional().default(false),
   /** Comma-separated default sort (`"-published_at,name"`). Field-level
    *  validity is enforced by `parseQuery` at read time against the
    *  caller's permission allow-list; here we only constrain shape. */
@@ -509,6 +517,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       auditReads: body.auditReads,
       vectorize: body.vectorize,
       vectorizeModel: body.vectorizeModel ?? null,
+      fts: body.fts,
       defaultSort: body.defaultSort ?? null,
       adopted: body.adopted,
       pkColumn,
@@ -528,6 +537,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       hasCreatedAt,
       hasUpdatedAt,
       softDelete,
+      fts: body.fts,
       adopted: body.adopted,
     });
     if (body.ownerScoped) {
@@ -552,6 +562,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       auditReads: body.auditReads,
       vectorize: body.vectorize,
       vectorizeModel: body.vectorizeModel ?? null,
+      fts: body.fts,
       defaultSort: body.defaultSort ?? null,
       adopted: body.adopted,
       pkColumn,
@@ -631,6 +642,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       ...(body.vectorizeModel !== undefined
         ? { vectorizeModel: body.vectorizeModel ?? null }
         : {}),
+      ...(body.fts !== undefined ? { fts: body.fts } : {}),
       ...(body.defaultSort !== undefined
         ? { defaultSort: body.defaultSort ?? null }
         : {}),
@@ -660,6 +672,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
       hasCreatedAt: merged.hasCreatedAt ?? merged.has_created_at ?? true,
       hasUpdatedAt: merged.hasUpdatedAt ?? merged.has_updated_at ?? true,
       softDelete: Boolean(merged.softDelete ?? merged.soft_delete),
+      fts: Boolean(merged.fts),
       adopted: Boolean(merged.adopted),
     });
     if (merged.ownerScoped) {
@@ -808,6 +821,83 @@ export const collectionsRoutes = new Hono<AppBindings>()
       response: vectorizeResponse,
     });
     return c.json(vectorizeResponse);
+  })
+  /**
+   * Backfill: build the full-text index for every existing row in the
+   * collection's physical table. Synchronous + paginated (100 rows per
+   * batch). The collection must have `fts: true` and at least one
+   * text/longtext field flagged `searchable: true`.
+   *
+   * Returns `{ processed, total, skipped }` — `skipped` counts rows whose
+   * searchable fields are all empty (nothing to index).
+   */
+  .post("/:slug/fts-reindex", requireUser, async (c) => {
+    const slug = c.req.param("slug");
+    const ctx = c.get("ctx");
+    const { db, dialect } = ctx;
+    const tenantId = requireTenant(c);
+    const t = tableFor(dialect);
+    const rows = await (db as any)
+      .select()
+      .from(t)
+      .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)))
+      .limit(1);
+    if (!rows[0]) throw new AppError("NOT_FOUND", "Collection not found");
+    const r = rows[0] as Record<string, unknown>;
+    const physicalTable = (r.physicalTable ?? r.physical_table) as string;
+    const meta = {
+      fts: Boolean(r.fts),
+      physicalTable,
+      pkColumn: ((r.pkColumn ?? r.pk_column) as string | undefined) ?? "id",
+      fields: r.fields as FieldDef[],
+    };
+    if (!meta.fts) {
+      throw new AppError(
+        "VALIDATION",
+        `Collection "${slug}" has full-text search disabled. Enable it on the collection first.`,
+      );
+    }
+    if (!isSearchable(meta)) {
+      throw new AppError(
+        "VALIDATION",
+        "No field is flagged `searchable: true`. Mark at least one text/longtext field as searchable.",
+      );
+    }
+    const tenantWhere: SQL = sql`${sql.identifier("tenant_id")} = ${tenantId}`;
+    const totalRow = await runQuery<{ count: number | string | bigint }>(
+      ctx,
+      sql`SELECT COUNT(*) AS count FROM ${sql.identifier(physicalTable)} WHERE ${tenantWhere}`,
+    );
+    const total = Number(totalRow[0]?.count ?? 0);
+
+    let processed = 0;
+    let skipped = 0;
+    let offset = 0;
+    const batchSize = 100;
+    while (offset < total) {
+      const batch = await runQuery<Record<string, unknown>>(
+        ctx,
+        sql`SELECT * FROM ${sql.identifier(physicalTable)} WHERE ${tenantWhere} ORDER BY ${sql.identifier(meta.pkColumn)} LIMIT ${batchSize} OFFSET ${offset}`,
+      );
+      if (batch.length === 0) break;
+      const indexed = await indexFtsBatch(
+        ctx,
+        meta,
+        batch.map((row) => ({ id: row[meta.pkColumn] as string, row })),
+      );
+      processed += indexed;
+      skipped += batch.length - indexed;
+      offset += batch.length;
+    }
+    const ftsResponse = { ok: true, processed, skipped, total };
+    await logActivity(c, {
+      action: "fts-reindex",
+      collection: "system_collections",
+      itemId: slug,
+      payload: { processed, skipped, total },
+      response: ftsResponse,
+    });
+    return c.json(ftsResponse);
   });
 
 const runQuery = async <T>(

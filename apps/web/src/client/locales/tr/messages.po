@@ -725,6 +725,7 @@ msgid "Action"
 msgstr "İşlem"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/jobs.tsx
 msgid "Actions"
 msgstr "İşlemler"
 
@@ -740,6 +741,7 @@ msgid "active"
 msgstr "etkin"
 
 #: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Active"
 msgstr "Etkin"
@@ -1015,6 +1017,7 @@ msgid "alice"
 msgstr "alice"
 
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/ui.tsx
 msgid "All"
 msgstr "Tümü"
@@ -1271,6 +1274,14 @@ msgstr "En az 8 karakter."
 #: src/client/admin/pages/settings.tsx
 msgid "At least one language is required."
 msgstr "En az bir dil gereklidir."
+
+#: src/client/admin/pages/jobs.tsx
+msgid "attempts"
+msgstr "deneme"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Attempts"
+msgstr "Denemeler"
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Attribute map"
@@ -1573,6 +1584,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -1597,6 +1609,10 @@ msgstr "Temizlemeyi iptal et"
 #: src/client/admin/storage.tsx
 msgid "Cancel upload"
 msgstr "Yüklemeyi iptal et"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Cancelled"
+msgstr "İptal edildi"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Cannot delete the trigger."
@@ -1776,6 +1792,7 @@ msgstr "kapat"
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
@@ -1913,6 +1930,10 @@ msgstr "Derlenmiş kural"
 #: src/client/admin/condition-editor.tsx
 msgid "Compiled SQL"
 msgstr "Derlenmiş SQL"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Completed"
+msgstr "Tamamlandı"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "composite — not supported"
@@ -2273,6 +2294,7 @@ msgid "Create your admin account"
 msgstr "Admin hesabınızı oluşturun"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -2408,6 +2430,10 @@ msgstr "Veritabanı türü"
 msgid "DDL preview"
 msgstr "DDL önizlemesi"
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Dead-letter"
+msgstr "Ölü mektup"
+
 #: src/client/admin/item-views.tsx
 msgid "December"
 msgstr "Aralık"
@@ -2473,6 +2499,7 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/app-users.tsx
@@ -2539,6 +2566,10 @@ msgstr "Kullanıcıyı sil"
 msgid "deleted."
 msgstr "silindi."
 
+#: src/client/admin/pages/jobs.tsx
+msgid "deliver one webhook"
+msgstr "tek bir webhook gönder"
+
 #: src/client/admin/pages/webhooks.tsx
 msgid "Deliveries"
 msgstr "Teslimatlar"
@@ -2590,6 +2621,10 @@ msgstr "Açıklama"
 #: src/client/admin/parity/database.tsx
 msgid "Destination"
 msgstr "Hedef"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Details"
+msgstr "Ayrıntılar"
 
 #: src/client/pages/sign-up.tsx
 msgid "Detected an empty users table. The first account on a fresh instance is provisioned as admin automatically."
@@ -2802,6 +2837,10 @@ msgstr "Deneme çalışması — gerçek yan etki yok"
 #: src/client/admin/adopt-wizard.tsx
 msgid "Dry-run summary"
 msgstr "Deneme çalışması özeti"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Durable background queue — retries with backoff, dead-letters, and delayed/scheduled runs. Drained by the cron tick (~1 min on Workers)."
+msgstr "Dayanıklı arka plan kuyruğu — geri çekilmeli yeniden denemeler, ölü mektup ve gecikmeli/zamanlanmış çalıştırmalar. Cron tıklamasıyla boşaltılır (Workers’ta ~1 dk)."
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/logs.tsx
@@ -3029,6 +3068,22 @@ msgstr "Uç nokta URL'si"
 msgid "Endpoints"
 msgstr "Uç noktalar"
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Enqueue"
+msgstr "Kuyruğa ekle"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Enqueue a job, or migrate work onto the queue. Webhook deliveries land here automatically."
+msgstr "Bir iş kuyruğa ekleyin veya işleri kuyruğa taşıyın. Webhook teslimatları buraya otomatik olarak düşer."
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Enqueue job"
+msgstr "İş kuyruğa ekle"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Enqueuing…"
+msgstr "Kuyruğa ekleniyor…"
+
 #: src/client/pages/sign-up.tsx
 msgid "Enrol a passkey now"
 msgstr "Şimdi bir geçiş anahtarı kaydedin"
@@ -3187,6 +3242,10 @@ msgstr "Sonuçları görmek için bir sorgu çalıştırın."
 msgid "expansion"
 msgstr "genişletme"
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Expects { webhookId, channel, event, body }."
+msgstr "{ webhookId, channel, event, body } bekler."
+
 #: src/client/pages/api-keys.tsx
 msgid "expired"
 msgstr "süresi dolmuş"
@@ -3248,6 +3307,10 @@ msgstr "Akışı hata ile sonlandır"
 #: src/client/admin/storage.tsx
 msgid "failed"
 msgstr "başarısız"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Failed"
+msgstr "Başarısız"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Failed to load tables: {error}"
@@ -3584,6 +3647,14 @@ msgstr "fonksiyon başarısız oldu"
 msgid "Function failed"
 msgstr "Fonksiyon başarısız oldu"
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Function name"
+msgstr "Fonksiyon adı"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Function name is required."
+msgstr "Fonksiyon adı gereklidir."
+
 #: src/client/admin/pages/functions.tsx
 msgid "Function not found on server."
 msgstr "Fonksiyon sunucuda bulunamadı."
@@ -3895,6 +3966,10 @@ msgstr "İlk revizyon — bu öğenin kaydedilen ilk durumu."
 msgid "Input"
 msgstr "Girdi"
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Input (JSON)"
+msgstr "Girdi (JSON)"
+
 #: src/client/admin/display-template-editor.tsx
 msgid "Insert field"
 msgstr "Alan ekle"
@@ -3947,6 +4022,10 @@ msgstr "Geçersiz toplam yapılandırması."
 #: src/client/pages/sign-in.tsx
 msgid "Invalid code. Try again."
 msgstr "Geçersiz kod. Tekrar deneyin."
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Invalid JSON."
+msgstr "Geçersiz JSON."
 
 #: src/client/admin/parity/insights.tsx
 msgid "Invalid SQL."
@@ -4047,6 +4126,31 @@ msgstr "Öğeler yenilendi."
 #: src/client/admin/item-views.tsx
 msgid "January"
 msgstr "Ocak"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Job"
+msgstr "İş"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Job cancelled."
+msgstr "İş iptal edildi."
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Job deleted."
+msgstr "İş silindi."
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Job enqueued."
+msgstr "İş kuyruğa eklendi."
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Job requeued."
+msgstr "İş yeniden kuyruğa alındı."
+
+#: src/client/admin/pages/jobs.tsx
+#: src/client/admin/ui.tsx
+msgid "Jobs"
+msgstr "İşler"
 
 #. placeholder {0}: state.meta.workspaceName
 #: src/client/pages/invite.tsx
@@ -4204,6 +4308,10 @@ msgstr "Son 7 gün"
 msgid "Last active"
 msgstr "Son etkinlik"
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Last error"
+msgstr "Son hata"
+
 #. placeholder {0}: relativeTime(it.lastEventAt)
 #: src/client/admin/pages/integrations.tsx
 msgid "last event {0}"
@@ -4320,6 +4428,10 @@ msgstr "tetikleyici yükünü iletmek için boş bırakın"
 msgid "Leave empty to provision any operator your IdP authenticates. Set domains to restrict who gets a dashboard account."
 msgstr "IdP'nizin doğruladığı her operatöre hesap açmak için boş bırakın. Kimlerin pano hesabı alacağını kısıtlamak için alan girin."
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Leave empty to run on the next tick."
+msgstr "Bir sonraki tıklamada çalışması için boş bırakın."
+
 #: src/client/admin/pages/settings.tsx
 msgid "Leave to user"
 msgstr "Kullanıcıya bırak"
@@ -4425,6 +4537,7 @@ msgstr "Çalıştırmalar yükleniyor…"
 msgid "Loading tool catalog…"
 msgstr "Araç kataloğu yükleniyor…"
 
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Loading…"
 msgstr "Yükleniyor…"
@@ -4584,6 +4697,10 @@ msgstr "En fazla 500 karakter."
 msgid "Max 80 characters."
 msgstr "En fazla 80 karakter."
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Max attempts"
+msgstr "Maksimum deneme"
+
 #: src/client/admin/item-views.tsx
 msgid "May"
 msgstr "Mayıs"
@@ -4723,6 +4840,7 @@ msgstr "Seçilen HTTP yöntemini kabul etmeli ve 10 saniye içinde 2xx yanıtı 
 msgid "Must be a full http(s) URL."
 msgstr "Tam bir http(s) URL'si olmalıdır."
 
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Must be a JSON object."
 msgstr "Bir JSON nesnesi olmalıdır."
@@ -5168,6 +5286,10 @@ msgstr "Bu koleksiyonda henüz öğe yok."
 #: src/client/admin/extras.tsx
 msgid "No items yet"
 msgstr "Henüz öğe yok"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "No jobs"
+msgstr "İş yok"
 
 #: src/client/pages/rest-explorer.tsx
 msgid "No JSON content defined."
@@ -5774,12 +5896,21 @@ msgid "payload"
 msgstr "yük"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/jobs.tsx
 msgid "Payload"
 msgstr "Yük"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Payload (JSON)"
+msgstr "Yük (JSON)"
 
 #: src/client/admin/members-panel.tsx
 msgid "pending"
 msgstr "beklemede"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Pending"
+msgstr "Bekliyor"
 
 #: src/client/admin/pages/users.tsx
 msgid "Pending invites"
@@ -6162,6 +6293,10 @@ msgstr "Birincil anahtar"
 msgid "primary key {0} is unsupported"
 msgstr "birincil anahtar {0} desteklenmiyor"
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Priority"
+msgstr "Öncelik"
+
 #: src/client/admin/pages/settings.tsx
 msgid "Privacy Policy URL"
 msgstr "Gizlilik Politikası URL'si"
@@ -6296,6 +6431,14 @@ msgstr "Sorgu tamam · {0} satır · {1}ms"
 msgid "Query returned no rows."
 msgstr "Sorgu hiç satır döndürmedi."
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Queue"
+msgstr "Kuyruk"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Queue durable background work. Function jobs run a named function; jobs retry with backoff and dead-letter."
+msgstr "Dayanıklı arka plan işlerini kuyruğa alın. Fonksiyon işleri adlandırılmış bir fonksiyon çalıştırır; işler geri çekilmeyle yeniden denenir ve ölü mektuba düşer."
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Qwen flagship · 1M context · strong multilingual"
 msgstr "Qwen amiral · 1M bağlam · çok dilli güçlü"
@@ -6428,6 +6571,7 @@ msgstr "/api/openapi.json yeniden çek"
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/realtime.tsx
 #: src/client/admin/pages/schema-graph.tsx
@@ -6737,6 +6881,7 @@ msgid "Restricts the authenticated role to its own rows. Pick where ownership li
 msgstr "Kimliği doğrulanmış rolü yalnızca kendi satırlarıyla sınırlar. Sahipliğin nerede olduğunu seçin — yan tablo, alışılmış <0>owner_id</0> sütunu veya takma adlı bir sütun."
 
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Result"
 msgstr "Sonuç"
@@ -6763,6 +6908,7 @@ msgid "Retention"
 msgstr "Saklama"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Retry"
 msgstr "Yeniden dene"
@@ -6950,9 +7096,21 @@ msgstr "kurallar"
 msgid "Run"
 msgstr "Çalıştır"
 
+#: src/client/admin/pages/jobs.tsx
+msgid "run a named function"
+msgstr "adlandırılmış bir fonksiyon çalıştır"
+
 #: src/client/admin/parity/database.tsx
 msgid "Run a query to see results."
 msgstr "Sonuçları görmek için bir sorgu çalıştırın."
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Run at"
+msgstr "Çalışma zamanı"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Run at (optional)"
+msgstr "Çalışma zamanı (isteğe bağlı)"
 
 #: src/client/admin/pages/flows.tsx
 msgid "Run now"
@@ -7876,6 +8034,7 @@ msgstr "statik paneller yapılandırma nesnelerini aynen işler — panel oluşt
 
 #: src/client/admin/items.tsx
 #: src/client/admin/members-panel.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
@@ -7959,6 +8118,10 @@ msgstr "Konu zorunludur."
 #: src/client/admin/extras.tsx
 msgid "Subscribed. Waiting for events…"
 msgstr "Abone olundu. Etkinlikler bekleniyor…"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Succeeded"
+msgstr "Başarılı"
 
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/webhooks.tsx
@@ -8513,6 +8676,7 @@ msgstr "İki adımlı doğrulama kapalı."
 msgid "Two-factor authentication is on."
 msgstr "İki adımlı doğrulama açık."
 
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/storage.tsx
 msgid "Type"

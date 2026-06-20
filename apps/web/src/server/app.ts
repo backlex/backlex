@@ -45,6 +45,7 @@ import { pushTemplatesRoutes } from "./routes/push-templates";
 import { phoneNumbersRoutes } from "./routes/phone-numbers";
 import { smsConfigRoutes } from "./routes/sms-config";
 import { messagingRoutes } from "./routes/messaging";
+import { jobsRoutes } from "./routes/jobs";
 import { openapiRoutes } from "./routes/openapi";
 import { panelsRoutes } from "./routes/panels";
 import { realtimeRoutes } from "./routes/realtime";
@@ -403,6 +404,7 @@ export const createApp = (env: Env) => {
   app.route("/api/phone-numbers", phoneNumbersRoutes);
   app.route("/api/messaging", messagingRoutes);
   app.route("/api/flows", flowsRoutes);
+  app.route("/api/jobs", jobsRoutes);
   app.route("/api/roles", rolesRoutes);
   app.route("/api/permissions", permissionsRoutes);
   app.route("/api/users", usersRoutes);

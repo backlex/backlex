@@ -22,6 +22,7 @@ const parseExpression = (
   }
 ).parseExpression;
 import { claimDueTasks, deleteTask } from "./scheduled-tasks";
+import { processJobs } from "./jobs";
 import { pruneOldActivity, pruneOldActivityByPrefix } from "./activity";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -164,6 +165,15 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
       }
     }),
   );
+
+  // Durable job queue: claim + run a batch of due jobs (function handlers,
+  // webhook deliveries with retry/dead-letter). Reuses the ctx built above so
+  // we don't re-assemble adapters per tick.
+  try {
+    await processJobs(ctx);
+  } catch (e) {
+    console.error("[jobs] tick failed", e);
+  }
 
   if (now.getTime() - lastActivityPruneAt >= ACTIVITY_PRUNE_INTERVAL_MS) {
     lastActivityPruneAt = now.getTime();

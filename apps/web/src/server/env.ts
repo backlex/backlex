@@ -226,6 +226,19 @@ export interface Env {
   AUTH_LOCKOUT_WINDOW_MS?: string;
   AUTH_LOCKOUT_COOLDOWN_MS?: string;
   AUTH_LOCKOUT_MAX_COOLDOWN_MS?: string;
+  // Durable job queue. Jobs are drained by the cross-runtime cron tick
+  // (`processJobs`), retried with exponential backoff, and dead-lettered after
+  // `JOB_MAX_ATTEMPTS` tries. All optional with sane defaults.
+  /** Default max delivery attempts before a job is dead-lettered. Default 5. */
+  JOB_MAX_ATTEMPTS?: string;
+  /** Backoff base in ms; retry N waits `base * 2^(N-1)` (±10% jitter). Default 60000. */
+  JOB_BACKOFF_BASE_MS?: string;
+  /** Backoff ceiling in ms. Default 3600000 (1h). */
+  JOB_BACKOFF_MAX_MS?: string;
+  /** Max jobs claimed+run per tick. Default 25. */
+  JOB_BATCH?: string;
+  /** Lease in ms; a job stuck `active` longer than this is reclaimed. Default 300000. */
+  JOB_LEASE_MS?: string;
   /** Control-plane (admin) SAML/LDAP SSO toggle. Enabled unless explicitly set
    *  to `"false"`/`"0"` — so self-host gets it by default. The cloud injects
    *  `"false"` for projects on plans without enterprise SSO (Free/Pro). */

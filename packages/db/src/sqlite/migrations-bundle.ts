@@ -53,6 +53,7 @@ import m46 from "../../drizzle/sqlite/20260613120000_platform_sso/migration.sql"
 import m47 from "../../drizzle/sqlite/20260617120000_embedding_vectors/migration.sql" with { type: "text" };
 import m48 from "../../drizzle/sqlite/20260618120000_two_factor/migration.sql" with { type: "text" };
 import m49 from "../../drizzle/sqlite/20260620120000_push_messaging/migration.sql" with { type: "text" };
+import m50 from "../../drizzle/sqlite/20260620130000_sms_messaging/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -110,4 +111,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260617120000_embedding_vectors", sql: m47 },
   { name: "20260618120000_two_factor", sql: m48 },
   { name: "20260620120000_push_messaging", sql: m49 },
+  { name: "20260620130000_sms_messaging", sql: m50 },
 ];

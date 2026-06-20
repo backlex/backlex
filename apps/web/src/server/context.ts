@@ -5,6 +5,7 @@ import type {
   EmbeddingAdapter,
   ImageAdapter,
   PushAdapter,
+  SMSAdapter,
   StorageAdapter,
   VectorAdapter,
 } from "@backlex/core/adapters";
@@ -14,6 +15,7 @@ import { createD1Client, type SqliteDb } from "@backlex/db/sqlite";
 import { cloudEmailAdapter } from "./adapters/email.cloud";
 import { consoleEmail } from "./adapters/email.console";
 import { cloudPushAdapter } from "./adapters/push.cloud";
+import { cloudSmsAdapter } from "./adapters/sms.cloud";
 import { cloudEmbeddingAdapter } from "./adapters/embedding.cloud";
 import { openaiEmbeddingAdapter } from "./adapters/embedding.openai";
 import {
@@ -40,6 +42,7 @@ import type { Env } from "./env";
 import { cloudConfigured } from "./lib/cloud-report";
 import { buildEmailAdapter, selectEmailSpec } from "./lib/email-select";
 import { buildPushAdapter, selectPushSpec } from "./lib/push-select";
+import { buildSmsAdapter, selectSmsSpec } from "./lib/sms-select";
 import {
   isCloudflareWorkers,
   isNetlify,
@@ -50,6 +53,7 @@ import {
 import { loadPolicy } from "./services/auth-config";
 import { resolveEmailAdapter } from "./services/email-config";
 import { resolvePushAdapter } from "./services/push-config";
+import { resolveSmsAdapter } from "./services/sms-config";
 import { publishEvent } from "./services/events";
 import { acceptInviteForUser, hasValidInvite } from "./services/invites";
 import { invalidateUserRoles } from "./services/permissions-cache";
@@ -94,6 +98,12 @@ export interface Ctx {
    *  the instance `_global` row → the deployment env adapter. Memoized per
    *  isolate (one entry per tenant). */
   pushFor: (tenantId: string | null | undefined) => Promise<PushAdapter>;
+  /** Deployment-level SMS adapter (env-derived). Prefer {@link Ctx.smsFor} so a
+   *  workspace's own `sms_config` is honoured. */
+  sms: SMSAdapter;
+  /** Resolve the SMS transport for a workspace: its own `sms_config` row → the
+   *  instance `_global` row → the deployment env adapter. Memoized per isolate. */
+  smsFor: (tenantId: string | null | undefined) => Promise<SMSAdapter>;
   storage: StorageAdapter;
   vector: VectorAdapter;
   /** Text → vector embedding. Routes to Workers AI or OpenAI based on the
@@ -142,6 +152,20 @@ export const invalidatePushCache = (env: Env, tenantId: string): void => {
 /** Drop every cached push adapter for this isolate (use after `_global` writes). */
 export const invalidateAllPushCaches = (env: Env): void => {
   pushCaches.get(env as unknown as object)?.clear();
+};
+// Per-Ctx SMS adapter cache — same lifecycle as the push cache above; the
+// admin sms-config write path drops stale entries after an update.
+const smsCaches = new WeakMap<object, Map<string, Promise<SMSAdapter>>>();
+/** Drop a single tenant's cached SMS adapter (plus the "" env-default key). */
+export const invalidateSmsCache = (env: Env, tenantId: string): void => {
+  const m = smsCaches.get(env as unknown as object);
+  if (!m) return;
+  m.delete(tenantId);
+  m.delete("");
+};
+/** Drop every cached SMS adapter for this isolate (use after `_global` writes). */
+export const invalidateAllSmsCaches = (env: Env): void => {
+  smsCaches.get(env as unknown as object)?.clear();
 };
 
 /** In-flight buildContext promise, deduped per `env` so concurrent first
@@ -359,6 +383,26 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     if (!p) {
       p = resolvePushAdapter({ db, dialect, env }, push, tenantId ?? null);
       pushCache.set(key, p);
+    }
+    return p;
+  };
+
+  // SMS transport — same env → cloud-fallback → per-workspace resolution as
+  // push. On a managed cloud project with no `SMS_*` vars the spec is `console`,
+  // so route through the control-plane SMS gateway instead.
+  const smsSpec = selectSmsSpec(env);
+  const sms: SMSAdapter =
+    cloudConfigured(env) && smsSpec.provider === "console"
+      ? cloudSmsAdapter(env)
+      : buildSmsAdapter(smsSpec);
+  const smsCache = new Map<string, Promise<SMSAdapter>>();
+  smsCaches.set(env as unknown as object, smsCache);
+  const smsFor = (tenantId: string | null | undefined): Promise<SMSAdapter> => {
+    const key = tenantId ?? "";
+    let p = smsCache.get(key);
+    if (!p) {
+      p = resolveSmsAdapter({ db, dialect, env }, sms, tenantId ?? null);
+      smsCache.set(key, p);
     }
     return p;
   };
@@ -642,6 +686,8 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     emailFor,
     push,
     pushFor,
+    sms,
+    smsFor,
     storage,
     vector,
     embedding,

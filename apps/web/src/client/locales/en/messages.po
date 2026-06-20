@@ -8268,6 +8268,10 @@ msgstr "SMS settings saved."
 msgid "SMS transport for <0>this workspace</0>. Resolution order: this config → the instance-wide default → the deployment's <1>SMS_*</1> env vars. Secret values are encrypted at rest and never shown again. Send to a user via the <2>messaging.send_sms</2> tool / API once they register a phone number."
 msgstr "SMS transport for <0>this workspace</0>. Resolution order: this config → the instance-wide default → the deployment's <1>SMS_*</1> env vars. Secret values are encrypted at rest and never shown again. Send to a user via the <2>messaging.send_sms</2> tool / API once they register a phone number."
 
+#: src/client/admin/item-editor.tsx
+msgid "Snapshot"
+msgstr "Snapshot"
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Snippet copied"
 msgstr "Snippet copied"

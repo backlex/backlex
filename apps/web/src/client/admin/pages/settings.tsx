@@ -198,13 +198,30 @@ const PUSH_PROVIDER_OPTIONS = [
 
 const PUSH_PROVIDER_FIELDS: Record<
   string,
-  { hint: string; config: [string, string, string, string][]; secrets: [string, string][] }
+  {
+    hint: string;
+    config: [string, string, string, string][];
+    secrets: [string, string][];
+    link?: { href: string; label: string };
+  }
 > = {
-  inherit: { hint: "Falls through to the instance-wide override, then the deployment's PUSH_* env vars on the Worker.", config: [], secrets: [] },
+  inherit: { hint: "Falls through to the instance default, then the deployment's PUSH_* env vars (self-host only). On managed cloud there's no platform fallback — pick a provider and enter your workspace's own keys.", config: [], secrets: [] },
   console: { hint: "Doesn't deliver anything — writes the notification to the Worker log. Dev only.", config: [], secrets: [] },
-  fcm: { hint: "HTTP v1 API — works on every runtime. From the Firebase service-account JSON.", config: [["projectId", "Project ID", "my-app", "text"], ["clientEmail", "Client email", "firebase-adminsdk@my-app.iam.gserviceaccount.com", "text"]], secrets: [["privateKey", "Service-account private key (PEM)"]] },
-  apns: { hint: "Token-based (.p8). Direct APNs needs an HTTP/2 runtime (Cloudflare Workers); on Node/Bun route iOS through FCM.", config: [["keyId", "Key ID", "ABC123DEFG", "text"], ["teamId", "Team ID", "DEF456GHIJ", "text"], ["bundleId", "Bundle ID", "com.example.app", "text"], ["production", "Production gateway (uncheck for sandbox)", "", "checkbox"]], secrets: [["privateKey", "APNs auth key (.p8 PEM)"]] },
-  "web-push": { hint: "VAPID + aes128gcm — works on every runtime including Cloudflare Workers. Keys from `npx web-push generate-vapid-keys` (raw base64url).", config: [["subject", "Subject (mailto: or origin URL)", "mailto:admin@example.com", "text"], ["vapidPublicKey", "VAPID public key (base64url)", "", "text"]], secrets: [["vapidPrivateKey", "VAPID private key (base64url)"]] },
+  fcm: { hint: "HTTP v1 API — works on every runtime. From your Firebase service-account JSON (Project settings → Service accounts → Generate new private key).", config: [["projectId", "Project ID", "my-app", "text"], ["clientEmail", "Client email", "firebase-adminsdk@my-app.iam.gserviceaccount.com", "text"]], secrets: [["privateKey", "Service-account private key (PEM)"]], link: { href: "https://console.firebase.google.com/", label: "Firebase Console →" } },
+  apns: { hint: "Token-based (.p8). Direct APNs needs an HTTP/2 runtime (Cloudflare Workers); on Node/Bun route iOS through FCM. Create the key under Certificates, Identifiers & Profiles → Keys.", config: [["keyId", "Key ID", "ABC123DEFG", "text"], ["teamId", "Team ID", "DEF456GHIJ", "text"], ["bundleId", "Bundle ID", "com.example.app", "text"], ["production", "Production gateway (uncheck for sandbox)", "", "checkbox"]], secrets: [["privateKey", "APNs auth key (.p8 PEM)"]], link: { href: "https://developer.apple.com/account/resources/authkeys/list", label: "Apple Developer — Keys →" } },
+  "web-push": { hint: "VAPID + aes128gcm — works on every runtime including Cloudflare Workers. Use “Generate keypair” below, or paste your own (raw base64url, e.g. from `npx web-push generate-vapid-keys`).", config: [["subject", "Subject (mailto: or origin URL)", "mailto:admin@example.com", "text"], ["vapidPublicKey", "VAPID public key (base64url)", "", "text"]], secrets: [["vapidPrivateKey", "VAPID private key (base64url)"]] },
+};
+
+/** Generate a VAPID keypair in the browser (Web Crypto), in the exact raw
+ *  base64url format the server expects: public = raw P-256 point, private =
+ *  the JWK `d` scalar. No CLI / external account needed. */
+const generateVapidKeypair = async (): Promise<{ publicKey: string; privateKey: string }> => {
+  const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign"]);
+  const pubRaw = new Uint8Array(await crypto.subtle.exportKey("raw", kp.publicKey));
+  const jwk = (await crypto.subtle.exportKey("jwk", kp.privateKey)) as { d?: string };
+  const b64url = (b: Uint8Array) =>
+    btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return { publicKey: b64url(pubRaw), privateKey: jwk.d ?? "" };
 };
 
 /** Push transport config — mirrors {@link EmailSettingsCard}, minus the From
@@ -299,7 +316,12 @@ function PushSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
       <div className="flex flex-col gap-1.5">
         <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Provider</Trans></label>
         <Select value={provider} onChange={(v: string) => { setProvider(v); mark(); }} options={PUSH_PROVIDER_OPTIONS} />
-        <span className="text-[11.5px] text-muted-foreground">{fields.hint}{envHint}</span>
+        <span className="text-[11.5px] text-muted-foreground">
+          {fields.hint}{envHint}
+          {fields.link && (
+            <> <a href={fields.link.href} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">{fields.link.label}</a></>
+          )}
+        </span>
       </div>
       {fields.config.map(([key, label, placeholder, type]) => (
         <div className="flex flex-col gap-1.5" key={key}>
@@ -330,6 +352,24 @@ function PushSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
           {cfg?.secretsSet?.[key] && <span className="text-[11.5px] text-muted-foreground"><Trans>A value is stored. Type a new one to replace it, or leave blank to keep it.</Trans></span>}
         </div>
       ))}
+      {provider === "web-push" && (
+        <div className="flex flex-col items-start gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              const { publicKey, privateKey } = await generateVapidKeypair();
+              setConfig((c) => ({ ...c, vapidPublicKey: publicKey }));
+              setSecrets((s) => ({ ...s, vapidPrivateKey: privateKey }));
+              mark();
+              pushToast(t`VAPID keypair generated — review and Save to store it.`);
+            }}
+          >
+            <Trans>Generate keypair</Trans>
+          </Button>
+          <span className="text-[11.5px] text-muted-foreground"><Trans>Fills the public key + private key fields above with a fresh VAPID pair. Click Save to store it.</Trans></span>
+        </div>
+      )}
       <div className="flex flex-col gap-1.5 border-t border-border pt-2.5">
         <span className="text-[12.5px] font-medium text-foreground"><Trans>Your registered devices</Trans></span>
         {activeDevices.length === 0 ? (

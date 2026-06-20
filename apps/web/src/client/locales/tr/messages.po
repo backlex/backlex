@@ -8092,8 +8092,12 @@ msgid "Signing secret"
 msgstr "İmzalama gizli anahtarı"
 
 #: src/client/admin/pages/webhooks.tsx
-msgid "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>{timestamp}.{body}</2> with <3>X-Backlex-Timestamp</3> for replay protection."
-msgstr "Her teslimatı imzalar: <0>X-Backlex-Signature</0> (gövdenin HMAC'i) artı tekrar saldırısı korumasi için <3>X-Backlex-Timestamp</3> ile birlikte <2>{timestamp}.{body}</2> üzerinden <1>X-Backlex-Signature-V2</1>."
+#~ msgid "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>{timestamp}.{body}</2> with <3>X-Backlex-Timestamp</3> for replay protection."
+#~ msgstr "Her teslimatı imzalar: <0>X-Backlex-Signature</0> (gövdenin HMAC'i) artı tekrar saldırısı korumasi için <3>X-Backlex-Timestamp</3> ile birlikte <2>{timestamp}.{body}</2> üzerinden <1>X-Backlex-Signature-V2</1>."
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>timestamp.body</2> with <3>X-Backlex-Timestamp</3> for replay protection."
+msgstr "Her teslimatı imzalar: <0>X-Backlex-Signature</0> (gövdenin HMAC'i) artı tekrar saldırısı korumasi için <3>X-Backlex-Timestamp</3> ile birlikte <2>timestamp.body</2> üzerinden <1>X-Backlex-Signature-V2</1>."
 
 #: src/client/admin/parity/insights.tsx
 msgid "single scalar value"

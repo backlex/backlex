@@ -384,7 +384,7 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
               <Button variant="outline" size="sm" icon={revealSecret ? I.X : I.Eye} onClick={() => setRevealSecret(!revealSecret)}>{revealSecret ? <Trans>Hide</Trans> : <Trans>Show</Trans>}</Button>
               <Button variant="outline" size="sm" icon={I.Refresh} onClick={() => { update("secret", "whsec_" + Math.random().toString(16).slice(2, 14)); pushToast(t`Secret rotated.`); }}><Trans>Rotate</Trans></Button>
             </div>
-            <span className="text-[11.5px] text-muted-foreground"><Trans>Signs every delivery: <span className="font-mono">X-Backlex-Signature</span> (HMAC of the body) plus <span className="font-mono">X-Backlex-Signature-V2</span> over <span className="font-mono">{"{timestamp}.{body}"}</span> with <span className="font-mono">X-Backlex-Timestamp</span> for replay protection.</Trans></span>
+            <span className="text-[11.5px] text-muted-foreground"><Trans>Signs every delivery: <span className="font-mono">X-Backlex-Signature</span> (HMAC of the body) plus <span className="font-mono">X-Backlex-Signature-V2</span> over <span className="font-mono">timestamp.body</span> with <span className="font-mono">X-Backlex-Timestamp</span> for replay protection.</Trans></span>
           </div>
 
           <div className="flex flex-col gap-1.5">

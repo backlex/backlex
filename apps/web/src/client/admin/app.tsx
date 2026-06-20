@@ -640,6 +640,36 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     return true;
   };
 
+  // Publish / unpublish / schedule the open versioned item. Updates the row's
+  // `_status` / `_publish_at` in place and re-syncs the sheet.
+  const onPublish = async (
+    action: "publish" | "unpublish" | "schedule",
+    publishAt?: string | null,
+  ): Promise<void> => {
+    if (!sheetItem) return;
+    const slug = activeCollection || "posts";
+    try {
+      const res =
+        action === "publish"
+          ? await itemsApi.publish(slug, sheetItem.id)
+          : action === "unpublish"
+            ? await itemsApi.unpublish(slug, sheetItem.id)
+            : await itemsApi.schedulePublish(slug, sheetItem.id, publishAt ?? null);
+      const updated = { ...sheetItem, ...(res.data as Partial<Post>) } as Post;
+      setPosts((p) => p.map((x) => (x.id === sheetItem.id ? updated : x)));
+      setSheetItem(updated);
+      pushToast(
+        action === "publish"
+          ? t`Item published.`
+          : action === "unpublish"
+            ? t`Item reverted to draft.`
+            : t`Publish scheduled.`,
+      );
+    } catch (e) {
+      pushToast((e as Error).message, "error");
+    }
+  };
+
   const onBulkPublish = () => {
     setPosts((p) => p.map((x) => selected.has(x.id) ? { ...x, status: "published", published_at: new Date().toISOString(), updated_at: new Date().toISOString() } : x));
     pushToast(t`${selected.size} posts published.`);
@@ -1030,7 +1060,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
         </div>
       </SidebarInset>
 
-      <ItemSheet open={sheetOpen} mode={sheetMode} initial={sheetItem} schema={schemaState} onClose={() => setSheetOpen(false)} onSave={onSave} />
+      <ItemSheet open={sheetOpen} mode={sheetMode} initial={sheetItem} schema={schemaState} onClose={() => setSheetOpen(false)} onSave={onSave} versioned={schemaState.versioned} canPublish onPublish={onPublish} />
       <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onNavigate={onPaletteSelect} items={posts} collections={collections} />
       <ConfirmDialog open={!!confirm} {...(confirm || {})} onCancel={() => setConfirm(null)} />
       <NewCollectionDialog

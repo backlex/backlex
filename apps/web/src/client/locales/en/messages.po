@@ -1606,6 +1606,10 @@ msgstr "Cancel"
 msgid "Cancel clear"
 msgstr "Cancel clear"
 
+#: src/client/admin/sheet.tsx
+msgid "Cancel schedule"
+msgstr "Cancel schedule"
+
 #: src/client/admin/storage.tsx
 msgid "Cancel upload"
 msgstr "Cancel upload"
@@ -2782,6 +2786,7 @@ msgid "draft"
 msgstr "draft"
 
 #: src/client/admin/item-views.tsx
+#: src/client/admin/sheet.tsx
 msgid "Draft"
 msgstr "Draft"
 
@@ -4112,6 +4117,14 @@ msgstr "Item ID"
 #: src/client/admin/condition-editor.tsx
 msgid "Item permissions"
 msgstr "Item permissions"
+
+#: src/client/admin/app.tsx
+msgid "Item published."
+msgstr "Item published."
+
+#: src/client/admin/app.tsx
+msgid "Item reverted to draft."
+msgstr "Item reverted to draft."
 
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
@@ -6381,10 +6394,16 @@ msgid "Public read-only link"
 msgstr "Public read-only link"
 
 #: src/client/admin/items.tsx
+#: src/client/admin/sheet.tsx
 msgid "Publish"
 msgstr "Publish"
 
+#: src/client/admin/app.tsx
+msgid "Publish scheduled."
+msgstr "Publish scheduled."
+
 #: src/client/admin/item-views.tsx
+#: src/client/admin/sheet.tsx
 msgid "Published"
 msgstr "Published"
 
@@ -7291,8 +7310,17 @@ msgstr "Saving…"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/database.tsx
+#: src/client/admin/sheet.tsx
 msgid "Schedule"
 msgstr "Schedule"
+
+#: src/client/admin/sheet.tsx
+msgid "Schedule publish time"
+msgstr "Schedule publish time"
+
+#: src/client/admin/sheet.tsx
+msgid "Scheduled"
+msgstr "Scheduled"
 
 #: src/client/admin/pages/functions.tsx
 msgid "scheduled — granularity is 1 minute"
@@ -8747,6 +8775,10 @@ msgstr "Unlinked {0}."
 #: src/client/admin/account-page.tsx
 msgid "Unnamed passkey"
 msgstr "Unnamed passkey"
+
+#: src/client/admin/sheet.tsx
+msgid "Unpublish"
+msgstr "Unpublish"
 
 #: src/client/admin/ui.tsx
 msgid "Unread"

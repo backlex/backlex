@@ -1,4 +1,4 @@
-export type Action = "read" | "create" | "update" | "delete";
+export type Action = "read" | "create" | "update" | "delete" | "publish";
 
 export interface ComparisonObj {
   _eq?: unknown;

@@ -14,7 +14,7 @@ import {
 } from "@backlex/ui/components/dialog";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 
-const ACTIONS = ["read", "create", "update", "delete"] as const;
+const ACTIONS = ["read", "create", "update", "delete", "publish"] as const;
 
 export type RuleState = "all" | "none" | "auth" | "owner" | "published";
 export type RoleMatrix = Record<typeof ACTIONS[number], RuleState>;

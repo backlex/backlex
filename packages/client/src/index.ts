@@ -9,6 +9,7 @@ import {
   type ItemResponse,
   type ListQuery,
   type ListResponse,
+  type PhoneNumber,
   BacklexError,
 } from "./types";
 
@@ -23,6 +24,7 @@ export type {
   BatchOperation,
   BatchResponse,
   DeviceToken,
+  PhoneNumber,
 } from "./types";
 export { BacklexError } from "./types";
 export { QueryBuilder } from "./query";
@@ -425,6 +427,15 @@ export const createClient = (opts: ClientOptions) => {
       request<{ ok: boolean }>("DELETE", `/api/device-tokens/${encodeURIComponent(id)}`),
     /** List the caller's registered devices. */
     listDevices: () => request<{ data: DeviceToken[] }>("GET", "/api/device-tokens"),
+    /** Register (or refresh) the current user's phone number for SMS. Number
+     *  must be E.164 (e.g. "+14155552671"). Re-registering reactivates it. */
+    registerPhone: (input: { phoneNumber: string }) =>
+      request<{ data: { id: string } }>("POST", "/api/phone-numbers", input),
+    /** Remove one of the caller's registered phone numbers by id. */
+    unregisterPhone: (id: string) =>
+      request<{ ok: boolean }>("DELETE", `/api/phone-numbers/${encodeURIComponent(id)}`),
+    /** List the caller's registered phone numbers. */
+    listPhones: () => request<{ data: PhoneNumber[] }>("GET", "/api/phone-numbers"),
   };
 
   return {

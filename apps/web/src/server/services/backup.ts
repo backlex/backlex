@@ -1,7 +1,8 @@
 import { sql } from "drizzle-orm";
-import { eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
+import { applyCollection, type FieldDef } from "@backlex/db";
 import type { Ctx } from "../context";
 
 /**
@@ -235,4 +236,400 @@ export const recordAndRunBackup = async (
       })
       .where(eq(t.id, args.id));
   }
+};
+
+// ---------------------------------------------------------------------------
+// Restore
+// ---------------------------------------------------------------------------
+
+/**
+ * Order system tables so parents land before children — the only FK that
+ * actually bites on Postgres is `collections.tenant_id → tenants.id` and
+ * `user_roles → users/roles`, but a fixed topological-ish order keeps every
+ * dialect happy. Tables not listed here (the dynamic `c_*` collection tables)
+ * are restored last, after their metadata row + physical table exist.
+ */
+const RESTORE_ORDER = [
+  "tenants",
+  "users",
+  "tenant_members",
+  "roles",
+  "user_roles",
+  "permissions",
+  "api_keys",
+  "collections",
+  "folders",
+  "files",
+  "flows",
+  "functions",
+  "webhooks",
+  "comments",
+  "notifications",
+  "revisions",
+  "activity",
+  "email_templates",
+  "i18n_strings",
+  "app_settings",
+  "saved_panels",
+  "auth_config",
+  "email_config",
+];
+
+const asBool = (v: unknown): boolean =>
+  v === true || v === 1 || v === "1" || v === "true";
+
+/** JSON-encode array/object values; pass primitives through. SQLite stores
+ *  JSON columns as TEXT and Postgres binds a stringified value into `jsonb`
+ *  via the implicit assignment cast, so the same encoding works for both. */
+const bindValue = (v: unknown): unknown => {
+  if (v !== null && typeof v === "object") return JSON.stringify(v);
+  return v;
+};
+
+export interface RestoreResult {
+  /** Tables we wrote at least one row into. */
+  tableCount: number;
+  /** Rows processed (attempted). Existing rows are left untouched — restore is
+   *  additive (`ON CONFLICT DO NOTHING`), never destructive. */
+  rowCount: number;
+  /** Tables present in the dump that don't exist here and couldn't be created
+   *  (e.g. adopted tables missing from this database). */
+  skipped: number;
+}
+
+/**
+ * Restore a JSONL dump produced by {@link runBackup}. Streams the file from
+ * storage, recreates any missing managed `c_*` physical tables from the
+ * `collections` metadata in the dump, then re-inserts every row.
+ *
+ * Semantics are **additive**: rows are inserted with `ON CONFLICT DO NOTHING`,
+ * so missing/deleted rows come back while rows that already exist are left
+ * exactly as they are. This makes restore safe to run against a live database
+ * (it can only add data, never overwrite or delete it). A clean point-in-time
+ * rollback is a separate, destructive operation outside this path.
+ */
+export const restoreBackup = async (
+  ctx: Ctx,
+  options: { storageKey: string; tenantId: string | null },
+): Promise<RestoreResult> => {
+  const file = await ctx.storage.get(options.storageKey);
+  if (!file) throw new Error("Backup file missing on storage");
+  const text = await new Response(file.body).text();
+
+  // Bucket the dump by table so we can order inserts (parents first) and run
+  // the `collections` metadata before the dynamic tables it describes.
+  const buckets = new Map<string, Record<string, unknown>[]>();
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    let parsed: { table?: string; row?: Record<string, unknown> };
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      continue;
+    }
+    if (!parsed.table || !parsed.row || typeof parsed.row !== "object") continue;
+    const arr = buckets.get(parsed.table) ?? [];
+    arr.push(parsed.row);
+    buckets.set(parsed.table, arr);
+  }
+
+  let skipped = 0;
+
+  // Recreate managed physical tables from the dumped collection metadata so the
+  // `c_*` row inserts below have somewhere to land. `applyCollection` is
+  // additive + idempotent and no-ops on adopted tables.
+  for (const row of buckets.get("collections") ?? []) {
+    const cTenant = (row.tenant_id ?? row.tenantId) as string | null | undefined;
+    if (options.tenantId && cTenant && cTenant !== options.tenantId) continue;
+    const table = (row.physical_table ?? row.physicalTable) as string | undefined;
+    if (!table) continue;
+    let fields = row.fields;
+    if (typeof fields === "string") {
+      try {
+        fields = JSON.parse(fields);
+      } catch {
+        fields = [];
+      }
+    }
+    try {
+      await applyCollection(ctx.db as any, ctx.dialect, {
+        table,
+        fields: (Array.isArray(fields) ? fields : []) as FieldDef[],
+        ownerScoped: asBool(row.owner_scoped ?? row.ownerScoped),
+        tenantScoped:
+          (row.tenant_scoped ?? row.tenantScoped) === undefined
+            ? true
+            : asBool(row.tenant_scoped ?? row.tenantScoped),
+        versioned: asBool(row.versioned),
+        softDelete: asBool(row.soft_delete ?? row.softDelete),
+        hasCreatedAt:
+          (row.has_created_at ?? row.hasCreatedAt) === undefined
+            ? true
+            : asBool(row.has_created_at ?? row.hasCreatedAt),
+        hasUpdatedAt:
+          (row.has_updated_at ?? row.hasUpdatedAt) === undefined
+            ? true
+            : asBool(row.has_updated_at ?? row.hasUpdatedAt),
+        fts: asBool(row.fts),
+        adopted: asBool(row.adopted),
+      });
+    } catch {
+      // Best-effort — a table we can't recreate just means its rows get skipped.
+    }
+  }
+
+  const insertRow = async (
+    table: string,
+    row: Record<string, unknown>,
+  ): Promise<void> => {
+    const cols = Object.keys(row);
+    if (cols.length === 0) return;
+    const colSql = sql.join(
+      cols.map((c) => sql.identifier(c)),
+      sql`, `,
+    );
+    const valSql = sql.join(
+      cols.map((c) => sql`${bindValue(row[c])}`),
+      sql`, `,
+    );
+    const stmt = sql`INSERT INTO ${sql.identifier(table)} (${colSql}) VALUES (${valSql}) ON CONFLICT DO NOTHING`;
+    if (ctx.dialect === "pg") await (ctx.db as any).execute(stmt);
+    else await (ctx.db as any).run(stmt);
+  };
+
+  // Restore order: known system tables first (parents → children), then every
+  // remaining bucket (the dynamic `c_*` collection tables).
+  const ordered = [
+    ...RESTORE_ORDER.filter((n) => buckets.has(n)),
+    ...[...buckets.keys()].filter((n) => !RESTORE_ORDER.includes(n)),
+  ];
+
+  let tableCount = 0;
+  let rowCount = 0;
+  for (const table of ordered) {
+    const rows = buckets.get(table) ?? [];
+    if (rows.length === 0) continue;
+    let wrote = false;
+    let tableFailed = false;
+    for (const row of rows) {
+      try {
+        await insertRow(table, row);
+        rowCount += 1;
+        wrote = true;
+      } catch {
+        // First failure on a table usually means the table doesn't exist here
+        // (adopted + missing). Stop hammering it and mark the table skipped.
+        tableFailed = true;
+        break;
+      }
+    }
+    if (wrote) tableCount += 1;
+    if (tableFailed) skipped += 1;
+  }
+
+  return { tableCount, rowCount, skipped };
+};
+
+// ---------------------------------------------------------------------------
+// Scheduled backups + retention
+// ---------------------------------------------------------------------------
+
+export interface BackupConfig {
+  /** How often an automatic backup runs. `off` disables scheduling. */
+  schedule: "off" | "daily" | "weekly";
+  /** Keep this many newest `auto` backups; older ones (and their storage
+   *  objects) are pruned after each scheduled run. Manual backups are never
+   *  pruned. */
+  retain: number;
+}
+
+export const BACKUP_CONFIG_DEFAULT: BackupConfig = { schedule: "off", retain: 7 };
+const BACKUP_CONFIG_KEY = "backupConfig";
+
+const settingsTable = (dialect: "pg" | "sqlite") =>
+  dialect === "pg" ? pg.schema.appSettings : sqlite.schema.appSettings;
+
+const normalizeConfig = (value: unknown): BackupConfig => {
+  const v = (value ?? {}) as Partial<BackupConfig>;
+  const schedule =
+    v.schedule === "daily" || v.schedule === "weekly" ? v.schedule : "off";
+  const retain =
+    typeof v.retain === "number" && v.retain >= 1 && v.retain <= 365
+      ? Math.floor(v.retain)
+      : BACKUP_CONFIG_DEFAULT.retain;
+  return { schedule, retain };
+};
+
+/** Read the per-workspace backup schedule from `app_settings`. */
+export const loadBackupConfig = async (
+  ctx: Ctx,
+  tenantId: string | null,
+): Promise<BackupConfig> => {
+  const t = settingsTable(ctx.dialect);
+  try {
+    const rows = (await (ctx.db as any)
+      .select()
+      .from(t)
+      .where(
+        and(
+          tenantId ? eq(t.tenantId, tenantId) : isNull(t.tenantId),
+          eq(t.key, BACKUP_CONFIG_KEY),
+        ),
+      )
+      .limit(1)) as { value: unknown }[];
+    if (rows[0]) return normalizeConfig(rows[0].value);
+  } catch {
+    // Pre-migration / transient — fall back to the disabled default.
+  }
+  return { ...BACKUP_CONFIG_DEFAULT };
+};
+
+/** Upsert the per-workspace backup schedule into `app_settings`. */
+export const saveBackupConfig = async (
+  ctx: Ctx,
+  tenantId: string | null,
+  input: Partial<BackupConfig>,
+): Promise<BackupConfig> => {
+  const cfg = normalizeConfig({ ...(await loadBackupConfig(ctx, tenantId)), ...input });
+  const t = settingsTable(ctx.dialect);
+  const existing = (await (ctx.db as any)
+    .select()
+    .from(t)
+    .where(
+      and(
+        tenantId ? eq(t.tenantId, tenantId) : isNull(t.tenantId),
+        eq(t.key, BACKUP_CONFIG_KEY),
+      ),
+    )
+    .limit(1)) as { id: string }[];
+  const now = ctx.dialect === "pg" ? new Date() : Date.now();
+  if (existing[0]) {
+    await (ctx.db as any)
+      .update(t)
+      .set({ value: cfg, updatedAt: now })
+      .where(eq(t.id, existing[0].id));
+  } else {
+    await (ctx.db as any).insert(t).values({
+      id: crypto.randomUUID(),
+      tenantId: tenantId ?? null,
+      key: BACKUP_CONFIG_KEY,
+      value: cfg,
+      updatedAt: now,
+    });
+  }
+  return cfg;
+};
+
+const toMs = (v: unknown): number => {
+  if (v instanceof Date) return v.getTime();
+  if (typeof v === "number") return v;
+  if (typeof v === "string") {
+    const n = Date.parse(v);
+    return Number.isNaN(n) ? 0 : n;
+  }
+  return 0;
+};
+
+const SCHEDULE_INTERVAL_MS: Record<Exclude<BackupConfig["schedule"], "off">, number> = {
+  daily: 24 * 60 * 60 * 1000,
+  weekly: 7 * 24 * 60 * 60 * 1000,
+};
+
+/**
+ * Run any automatic backups that are due and prune old ones to the retention
+ * count. Enumerates every workspace with a non-`off` schedule (from
+ * `app_settings`), checks the most recent `auto` backup's age against the
+ * schedule interval, and runs + prunes per workspace. Designed to be called
+ * from the cron tick — cheap when nothing is due (a couple of indexed reads).
+ */
+export const maybeRunScheduledBackups = async (
+  ctx: Ctx,
+  now: Date = new Date(),
+): Promise<{ ran: number; pruned: number }> => {
+  const settings = settingsTable(ctx.dialect);
+  let configured: { tenantId: string | null; value: unknown }[];
+  try {
+    configured = (await (ctx.db as any)
+      .select({ tenantId: settings.tenantId, value: settings.value })
+      .from(settings)
+      .where(eq(settings.key, BACKUP_CONFIG_KEY))) as {
+      tenantId: string | null;
+      value: unknown;
+    }[];
+  } catch {
+    return { ran: 0, pruned: 0 };
+  }
+
+  const backupsTable =
+    ctx.dialect === "pg" ? pg.schema.backups : sqlite.schema.backups;
+  let ran = 0;
+  let pruned = 0;
+
+  for (const entry of configured) {
+    const cfg = normalizeConfig(entry.value);
+    if (cfg.schedule === "off") continue;
+    const tenantId = entry.tenantId;
+
+    const autos = (await (ctx.db as any)
+      .select()
+      .from(backupsTable)
+      .where(
+        and(
+          tenantId ? eq(backupsTable.tenantId, tenantId) : isNull(backupsTable.tenantId),
+          eq(backupsTable.kind, "auto"),
+        ),
+      )
+      .orderBy(desc(backupsTable.createdAt))) as Array<{
+        id: string;
+        storageKey: string;
+        createdAt: unknown;
+      }>;
+
+    const lastAt = autos[0] ? toMs(autos[0].createdAt) : 0;
+    const due = now.getTime() - lastAt >= SCHEDULE_INTERVAL_MS[cfg.schedule];
+
+    if (due) {
+      const id = crypto.randomUUID();
+      const stamp = now.toISOString().replace(/[:.TZ-]/g, "").slice(0, 14);
+      const storageKey = `backups/${tenantId ?? "global"}/${stamp}_${id}.jsonl`;
+      await (ctx.db as any).insert(backupsTable).values({
+        id,
+        tenantId: tenantId ?? null,
+        kind: "auto",
+        label: "Scheduled",
+        storageKey,
+        size: 0,
+        tableCount: 0,
+        status: "queued",
+        createdBy: null,
+      });
+      await recordAndRunBackup(ctx, {
+        id,
+        tenantId,
+        storageKey,
+        userId: null,
+        label: "Scheduled",
+      });
+      ran += 1;
+      autos.unshift({ id, storageKey, createdAt: now });
+    }
+
+    // Retention: drop `auto` backups beyond the newest `retain`, storage first.
+    if (autos.length > cfg.retain) {
+      for (const old of autos.slice(cfg.retain)) {
+        try {
+          await ctx.storage.delete(old.storageKey);
+        } catch {
+          // Storage object already gone — drop the tracking row anyway.
+        }
+        await (ctx.db as any)
+          .delete(backupsTable)
+          .where(eq(backupsTable.id, old.id));
+        pruned += 1;
+      }
+    }
+  }
+
+  return { ran, pruned };
 };

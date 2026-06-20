@@ -7,7 +7,12 @@ import * as sqlite from "@backlex/db/sqlite";
 import { MIGRATION_TAGS_PG, MIGRATION_TAGS_SQLITE } from "@backlex/db";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
-import { recordAndRunBackup } from "../services/backup";
+import {
+  recordAndRunBackup,
+  restoreBackup,
+  loadBackupConfig,
+  saveBackupConfig,
+} from "../services/backup";
 import { SECURITY, errorResponses } from "../lib/openapi";
 
 const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
@@ -98,6 +103,21 @@ const BackupRow = z
 const BackupNowInput = z
   .object({ label: z.string().max(80).optional() })
   .openapi("BackupNowInput");
+
+const RestoreResult = z
+  .object({
+    tableCount: z.number().int().nonnegative(),
+    rowCount: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+  })
+  .openapi("RestoreResult");
+
+const BackupConfigSchema = z
+  .object({
+    schedule: z.enum(["off", "daily", "weekly"]),
+    retain: z.number().int().min(1).max(365),
+  })
+  .openapi("BackupConfig");
 
 export const dbAdminRoutes = new OpenAPIHono<AppBindings>()
   .openapi(
@@ -455,5 +475,121 @@ export const dbAdminRoutes = new OpenAPIHono<AppBindings>()
           "content-disposition": `attachment; filename="${(row.storageKey as string).split("/").pop()}"`,
         },
       });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/backups/{id}/restore",
+      tags: [TAG],
+      summary: "Restore a backup",
+      description:
+        "Re-inserts the dump's rows additively (`ON CONFLICT DO NOTHING`) — missing/deleted rows come back, existing rows are never overwritten or removed. Destructive-by-omission only: safe to run live. Requires the `X-Backlex-Confirm: yes` header.",
+      security: SECURITY,
+      middleware: [requireUser, requireAdmin],
+      request: { params: z.object({ id: z.string() }) },
+      responses: {
+        200: {
+          description: "Restored",
+          content: {
+            "application/json": { schema: z.object({ data: RestoreResult }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    /**
+     * Restore a stored backup into the active workspace. Gated on the same
+     * confirm header the SQL-write path uses, since it mutates data. The
+     * underlying service is additive (never overwrites/deletes), so the worst
+     * case is a no-op when every row already exists.
+     */
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const { id } = c.req.valid("param");
+      if (c.req.header("x-backlex-confirm") !== "yes") {
+        throw new AppError(
+          "FORBIDDEN",
+          "Restore requires the X-Backlex-Confirm: yes header.",
+        );
+      }
+      const t = ctx.dialect === "pg" ? pg.schema.backups : sqlite.schema.backups;
+      const rows = await (ctx.db as any)
+        .select()
+        .from(t)
+        .where(eq(t.id, id))
+        .limit(1);
+      const row = rows[0];
+      if (!row) throw new AppError("NOT_FOUND", "Backup not found");
+      if (auth.tenantId && row.tenantId && row.tenantId !== auth.tenantId) {
+        throw new AppError("FORBIDDEN", "Backup belongs to a different workspace");
+      }
+      const result = await restoreBackup(ctx, {
+        storageKey: row.storageKey as string,
+        tenantId: auth.tenantId ?? null,
+      });
+      return c.json({ data: result });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/backups/config",
+      tags: [TAG],
+      summary: "Get the backup schedule",
+      description:
+        "The active workspace's automatic-backup schedule + retention count.",
+      security: SECURITY,
+      middleware: [requireUser, requireAdmin],
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": { schema: z.object({ data: BackupConfigSchema }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const cfg = await loadBackupConfig(ctx, auth.tenantId ?? null);
+      return c.json({ data: cfg });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "put",
+      path: "/backups/config",
+      tags: [TAG],
+      summary: "Set the backup schedule",
+      description:
+        "Enable/disable automatic backups (`off` | `daily` | `weekly`) and how many to retain. Auto backups run from the cron tick and prune to the retention count.",
+      security: SECURITY,
+      middleware: [requireUser, requireAdmin],
+      request: {
+        body: {
+          required: true,
+          content: { "application/json": { schema: BackupConfigSchema.partial() } },
+        },
+      },
+      responses: {
+        200: {
+          description: "Saved",
+          content: {
+            "application/json": { schema: z.object({ data: BackupConfigSchema }) },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const body = c.req.valid("json");
+      const cfg = await saveBackupConfig(ctx, auth.tenantId ?? null, body);
+      return c.json({ data: cfg });
     },
   );

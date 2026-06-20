@@ -128,8 +128,17 @@ guides; this list is everything else.
 - **Realtime admin + DB admin** (`routes/realtime-admin.ts`,
   `routes/db-admin.ts`) — subscriber counts + test-publish, and
   schema introspection + diagnostics. Both admin-only.
-- **Backup** (`services/backup.ts`) — workspace export/restore
-  primitives.
+- **Backup / restore** (`services/backup.ts`) — logical JSONL dumps
+  (`runBackup`), additive `restoreBackup` (`ON CONFLICT DO NOTHING`,
+  recreates missing `c_*` tables), and the scheduled-backup sweep +
+  retention (`maybeRunScheduledBackups`, hooked into `services/scheduler.ts`).
+  Routes in `routes/db-admin.ts`: `/backups`, `/backups/now`,
+  `/backups/{id}/download`, `/backups/{id}/restore` (confirm-gated),
+  `/backups/config` (GET/PUT schedule). See `docs/backup-restore.md`.
+- **Per-collection export / import** (`routes/items.ts` +
+  `services/items/csv.ts`) — `GET /:slug/export?format=json|csv` (reuses the
+  list read-filter stack) and `POST /:slug/import` (per-row `performCreate`,
+  system columns stripped, errors captured). SDK `exportItems`/`importItems`.
 
 ## Cross-cutting helpers worth knowing
 

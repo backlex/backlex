@@ -584,6 +584,41 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   const openCreate = () => { setSheetMode("create"); setSheetItem(null); setSheetOpen(true); };
   const openEdit = (it: Post) => { setSheetMode("edit"); setSheetItem(it); setSheetOpen(true); };
 
+  // Per-collection bulk export — streams the file straight from the API (the
+  // browser carries the session cookie, so a plain anchor download works).
+  const exportItems = (format: "json" | "csv") => {
+    if (!activeCollection) return;
+    const a = document.createElement("a");
+    a.href = `/api/items/${activeCollection}/export?format=${format}`;
+    a.download = `${activeCollection}.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+  // Per-collection bulk import — pick a .json/.csv file, POST it to the import
+  // endpoint, surface the per-row outcome, then refresh the list.
+  const importItems = () => {
+    if (!activeCollection) return;
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,.csv,application/json,text/csv";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      const format = file.name.toLowerCase().endsWith(".csv") ? "csv" : "json";
+      try {
+        const r = await itemsApi.importItems(activeCollection, text, format);
+        pushToast(t`Imported ${r.data.inserted} of ${r.data.total} rows.`);
+        if (r.data.failed) pushToast(t`${r.data.failed} rows failed — see the API response for details.`, "error");
+        refresh();
+      } catch (err) {
+        pushToast((err as Error).message, "error");
+      }
+    };
+    input.click();
+  };
+
   // Split-button save. The primary "Save" action closes the sheet on success
   // (opts.close === true, also the default for `Enter` / `Cmd+Enter` and the
   // create-mode button). The dropdown's "Save and continue" passes
@@ -849,6 +884,8 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                 actions={
                   <>
                     <Button variant="outline" icon={I.Refresh} onClick={refresh}><Trans>Refresh</Trans></Button>
+                    <Button variant="outline" icon={I.Upload} onClick={importItems}><Trans>Import</Trans></Button>
+                    <Button variant="outline" icon={I.Download} onClick={() => exportItems("csv")}><Trans>Export CSV</Trans></Button>
                     <Button variant="outline" icon={I.ExternalLink} onClick={() => navigate(`/rest-explorer?slug=${encodeURIComponent(activeCollection)}`)}>API</Button>
                     <Button variant="primary" icon={I.Plus} onClick={openCreate}><Trans>New post</Trans></Button>
                   </>

@@ -116,6 +116,9 @@ resource instead of composing a separate `resources/read`.
 | `storage.upload` | Upload a file — `text` for UTF-8, `base64` for binary. |
 | `storage.delete` | Delete a file by logical key. |
 | `storage.sign_url` | Issue a short-lived signed URL for sharing without exposing the bytes. |
+| `uploads.list` | List resumable (TUS) upload sessions, filterable by status. |
+| `uploads.get` | Inspect one upload session — declared size, committed offset (resume point), status. |
+| `uploads.abort` | Abort an in-progress resumable upload and discard its staged parts. |
 
 ### Vector / search
 

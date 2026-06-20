@@ -81,14 +81,28 @@ interface UploadJob {
   name: string;
   size: number;
   type: string;
-  /** 0–100, derived from XHR upload.onprogress event. */
+  /** 0–100, derived from XHR upload.onprogress event (or TUS chunk offset). */
   progress: number;
   status: "uploading" | "done" | "failed";
   /** Set on failure so the row can show the server's message. */
   error?: string;
-  /** Per-job XHR so the user can cancel mid-flight. */
+  /** Per-job XHR so the user can cancel mid-flight (single-PUT path). */
   xhr?: XMLHttpRequest;
+  /** Per-job aborter for the resumable (TUS) path. */
+  controller?: AbortController;
+  /** True when the file went through the resumable/chunked path. */
+  resumable?: boolean;
 }
+
+/** Files at or above this size use resumable/chunked uploads (TUS) so a dropped
+ *  connection resumes from the last committed offset instead of restarting. */
+const RESUMABLE_THRESHOLD = 50 * 1024 * 1024; // 50 MiB
+const TUS_CHUNK = 8 * 1024 * 1024; // 8 MiB (object stores need ≥5 MiB non-final parts)
+/** localStorage namespace for in-progress resumable sessions (resume-on-reload). */
+const TUS_STORE = "backlex.tus.";
+const tusKey = (f: File) => `${TUS_STORE}${f.name}:${f.size}:${f.lastModified}`;
+const tusMeta = (name: string, value: string) =>
+  `${name} ${btoa(String.fromCharCode(...new TextEncoder().encode(value)))}`;
 
 const PAGE_SIZE = 50;
 
@@ -400,21 +414,140 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
     };
   };
 
+  /** Resumable (TUS) upload for large files: POST init (or resume a stored
+   *  session), then PATCH 8 MiB chunks from the server's committed offset.
+   *  The session Location is stashed in localStorage so re-dropping the same
+   *  file after a reload continues instead of restarting. */
+  const startResumableUpload = (f: File, target: string, idx: number): UploadJob => {
+    const id = "up_" + Date.now() + "_" + idx;
+    const key = `${target}/${f.name}`;
+    const controller = new AbortController();
+    const setProgress = (pct: number) =>
+      setUploads((arr) => arr.map((u) => (u.id === id ? { ...u, progress: pct } : u)));
+    const fail = (msg: string) => {
+      localStorage.removeItem(tusKey(f));
+      setUploads((arr) => arr.map((u) => (u.id === id ? { ...u, status: "failed", error: msg, controller: undefined } : u)));
+      pushToast?.(t`${f.name}: ${msg}`);
+    };
+
+    void (async () => {
+      try {
+        const headOffset = async (loc: string): Promise<number | null> => {
+          const r = await fetch(loc, {
+            method: "HEAD",
+            credentials: "include",
+            headers: { "Tus-Resumable": "1.0.0" },
+            signal: controller.signal,
+          });
+          if (r.status === 404) return null;
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return Number(r.headers.get("Upload-Offset") ?? "0");
+        };
+
+        // Resume a stored session for this exact file, or create a new one.
+        let location = localStorage.getItem(tusKey(f));
+        let offset = 0;
+        if (location) {
+          const o = await headOffset(location);
+          if (o == null) location = null; // session expired/gone → recreate
+          else offset = o;
+        }
+        if (!location) {
+          const meta = [tusMeta("key", key)];
+          if (f.type) meta.push(tusMeta("contentType", f.type));
+          const init = await fetch("/api/uploads", {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Tus-Resumable": "1.0.0",
+              "Upload-Length": String(f.size),
+              "Upload-Metadata": meta.join(","),
+            },
+            signal: controller.signal,
+          });
+          if (!init.ok) throw new Error(`HTTP ${init.status}`);
+          location = init.headers.get("Location");
+          if (!location) throw new Error("no Location");
+          localStorage.setItem(tusKey(f), location);
+        }
+
+        let retries = 0;
+        while (offset < f.size) {
+          const end = Math.min(offset + TUS_CHUNK, f.size);
+          try {
+            const r = await fetch(location, {
+              method: "PATCH",
+              credentials: "include",
+              headers: {
+                "Tus-Resumable": "1.0.0",
+                "Upload-Offset": String(offset),
+                "content-type": "application/offset+octet-stream",
+              },
+              body: f.slice(offset, end),
+              signal: controller.signal,
+            });
+            if (r.status === 409) {
+              offset = (await headOffset(location)) ?? offset;
+              continue;
+            }
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            offset = Number(r.headers.get("Upload-Offset") ?? String(end));
+            retries = 0;
+            setProgress(Math.min(99, Math.round((offset / f.size) * 100)));
+          } catch (e) {
+            if (controller.signal.aborted) return;
+            if (++retries > 6) throw e;
+            await new Promise((res) => setTimeout(res, 250 * 2 ** (retries - 1)));
+            offset = (await headOffset(location)) ?? offset;
+          }
+        }
+
+        localStorage.removeItem(tusKey(f));
+        setUploads((arr) => arr.map((u) => (u.id === id ? { ...u, progress: 100, status: "done", controller: undefined } : u)));
+        setFiles((fs) => [
+          { key, size: f.size, type: f.type || "application/octet-stream", folder: target, folderId: null, updated: "just now", acl: "private", metadata: null },
+          ...fs,
+        ]);
+        setFilesTotal((n) => n + 1);
+        void refreshCounts();
+      } catch (e) {
+        if (controller.signal.aborted) return;
+        fail((e as Error).message || t`upload failed`);
+      }
+    })();
+
+    return {
+      id,
+      name: f.name,
+      size: f.size,
+      type: f.type || "application/octet-stream",
+      progress: 0,
+      status: "uploading",
+      controller,
+      resumable: true,
+    };
+  };
+
   const queueUploads = (list: File[]) => {
     if (list.length === 0) return;
     const target = folder || "uploads";
-    const jobs = list.map((f, i) => startUpload(f, target, i));
+    const jobs = list.map((f, i) =>
+      f.size >= RESUMABLE_THRESHOLD
+        ? startResumableUpload(f, target, i)
+        : startUpload(f, target, i),
+    );
     setUploads((arr) => [...jobs, ...arr.filter((u) => u.status === "uploading")]);
     pushToast(t`${jobs.length} ${jobs.length === 1 ? "file" : "files"} queued for ${target}/.`);
   };
 
-  /** Cancel an in-flight upload — aborts the XHR; the abort handler clears
-   *  the row. Already-done or already-failed jobs ignore. */
+  /** Cancel an in-flight upload — aborts the XHR (single PUT) or the fetch
+   *  controller (resumable). Already-done or already-failed jobs ignore. */
   const cancelUpload = (id: string) => {
     setUploads((arr) => {
       const job = arr.find((u) => u.id === id);
       if (job?.xhr) job.xhr.abort();
-      return arr;
+      job?.controller?.abort();
+      return job?.controller ? arr.filter((u) => u.id !== id) : arr;
     });
   };
 
@@ -695,7 +828,14 @@ export function StoragePage({ pushToast }: { pushToast: (msg: string) => void })
                       ? <I.AlertTriangle size={13} className="text-destructive" />
                       : <I.Upload size={13} className="text-muted-foreground" />}
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-mono text-xs">{u.name}</div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate font-mono text-xs">{u.name}</span>
+                      {u.resumable && (
+                        <span className="shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted-foreground" title={t`Chunked, resumable upload`}>
+                          <Trans>resumable</Trans>
+                        </span>
+                      )}
+                    </div>
                     <div className="mt-1 h-1 overflow-hidden rounded-sm bg-muted">
                       <div className="h-full transition-[width] duration-200" style={{ width: `${isFailed ? 100 : u.progress}%`, background: barColor }} />
                     </div>

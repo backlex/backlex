@@ -1,4 +1,5 @@
 import type { StorageAdapter, StoredObject } from "@backlex/core/adapters";
+import { s3FetchStorage } from "./storage.s3.fetch";
 
 export interface BunS3Config {
   bucket: string;
@@ -47,6 +48,11 @@ export const bunS3Storage = (cfg: BunS3Config): StorageAdapter | null => {
   const client = new S3Client(cfg);
   const toDate = (v: Date | string | number | undefined): Date =>
     v instanceof Date ? v : v === undefined ? new Date() : new Date(v);
+
+  // Bun.S3Client has no stable resume-across-requests multipart API, so the
+  // four multipart methods delegate to the cross-runtime aws4fetch adapter
+  // (identical creds). The fast single-PUT `put` stays on Bun's native client.
+  const fetchMpu = s3FetchStorage(cfg);
 
   return {
     async put({ key, body, contentType }) {
@@ -112,5 +118,11 @@ export const bunS3Storage = (cfg: BunS3Config): StorageAdapter | null => {
     async signedUrl(key, ttlSeconds) {
       return client.file(key).presign({ expiresIn: ttlSeconds });
     },
+    createMultipart: (key, opts) => fetchMpu.createMultipart!(key, opts),
+    uploadPart: (key, uploadId, partNumber, body, size) =>
+      fetchMpu.uploadPart!(key, uploadId, partNumber, body, size),
+    completeMultipart: (key, uploadId, parts) =>
+      fetchMpu.completeMultipart!(key, uploadId, parts),
+    abortMultipart: (key, uploadId) => fetchMpu.abortMultipart!(key, uploadId),
   };
 };

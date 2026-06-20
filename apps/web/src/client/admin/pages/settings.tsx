@@ -204,7 +204,7 @@ const PUSH_PROVIDER_FIELDS: Record<
   console: { hint: "Doesn't deliver anything — writes the notification to the Worker log. Dev only.", config: [], secrets: [] },
   fcm: { hint: "HTTP v1 API — works on every runtime. From the Firebase service-account JSON.", config: [["projectId", "Project ID", "my-app", "text"], ["clientEmail", "Client email", "firebase-adminsdk@my-app.iam.gserviceaccount.com", "text"]], secrets: [["privateKey", "Service-account private key (PEM)"]] },
   apns: { hint: "Token-based (.p8). Direct APNs needs an HTTP/2 runtime (Cloudflare Workers); on Node/Bun route iOS through FCM.", config: [["keyId", "Key ID", "ABC123DEFG", "text"], ["teamId", "Team ID", "DEF456GHIJ", "text"], ["bundleId", "Bundle ID", "com.example.app", "text"], ["production", "Production gateway (uncheck for sandbox)", "", "checkbox"]], secrets: [["privateKey", "APNs auth key (.p8 PEM)"]] },
-  "web-push": { hint: "VAPID + aes128gcm — works on every runtime including Cloudflare Workers.", config: [["subject", "Subject (mailto: or origin URL)", "mailto:admin@example.com", "text"], ["vapidPublicKey", "VAPID public key (base64url)", "", "text"]], secrets: [["vapidPrivateKey", "VAPID private key (PEM)"]] },
+  "web-push": { hint: "VAPID + aes128gcm — works on every runtime including Cloudflare Workers. Keys from `npx web-push generate-vapid-keys` (raw base64url).", config: [["subject", "Subject (mailto: or origin URL)", "mailto:admin@example.com", "text"], ["vapidPublicKey", "VAPID public key (base64url)", "", "text"]], secrets: [["vapidPrivateKey", "VAPID private key (base64url)"]] },
 };
 
 /** Push transport config — mirrors {@link EmailSettingsCard}, minus the From

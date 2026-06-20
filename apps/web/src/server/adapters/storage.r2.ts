@@ -41,4 +41,36 @@ export const r2Storage = (bucket: R2Bucket): StorageAdapter => ({
       uploadedAt: o.uploaded,
     }));
   },
+
+  // ── Multipart (TUS) ───────────────────────────────────────────────────────
+  // R2 multipart uploads are resumable across requests/isolates: the upload id
+  // is stable, so each PATCH re-opens the handle with `resumeMultipartUpload`.
+  async createMultipart(key, opts) {
+    const mpu = await bucket.createMultipartUpload(key, {
+      httpMetadata: opts?.contentType ? { contentType: opts.contentType } : undefined,
+    });
+    return { uploadId: mpu.uploadId };
+  },
+  async uploadPart(key, uploadId, partNumber, body, _size) {
+    const mpu = bucket.resumeMultipartUpload(key, uploadId);
+    const part = await mpu.uploadPart(partNumber, body as ReadableStream);
+    return { partNumber: part.partNumber, etag: part.etag };
+  },
+  async completeMultipart(key, uploadId, parts) {
+    const mpu = bucket.resumeMultipartUpload(key, uploadId);
+    const obj = await mpu.complete(
+      parts.map((p) => ({ partNumber: p.partNumber, etag: p.etag })),
+    );
+    return {
+      key,
+      size: obj.size,
+      contentType: obj.httpMetadata?.contentType,
+      etag: obj.etag,
+      uploadedAt: obj.uploaded,
+    };
+  },
+  async abortMultipart(key, uploadId) {
+    const mpu = bucket.resumeMultipartUpload(key, uploadId);
+    await mpu.abort();
+  },
 });

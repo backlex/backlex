@@ -239,6 +239,17 @@ export interface Env {
   JOB_BATCH?: string;
   /** Lease in ms; a job stuck `active` longer than this is reclaimed. Default 300000. */
   JOB_LEASE_MS?: string;
+  // Resumable uploads (TUS 1.0.0). Sessions are tracked in the `uploads` table,
+  // backed by native object-store multipart, and swept by the cron tick. All
+  // optional with sane defaults.
+  /** Max total bytes for a single resumable upload (TUS `Tus-Max-Size`). Default 5 GiB. */
+  UPLOAD_MAX_BYTES?: string;
+  /** Minimum non-final part size for object backends (S3/R2 require ≥5 MiB). Default 5 MiB. */
+  UPLOAD_MIN_PART_BYTES?: string;
+  /** Idle TTL in ms before an unfinished upload is aborted + swept. Default 86400000 (24h). */
+  UPLOAD_TTL_MS?: string;
+  /** Max parts per upload (S3 limit is 10000). Default 10000. */
+  UPLOAD_PART_MAX?: string;
   /** Control-plane (admin) SAML/LDAP SSO toggle. Enabled unless explicitly set
    *  to `"false"`/`"0"` — so self-host gets it by default. The cloud injects
    *  `"false"` for projects on plans without enterprise SSO (Free/Pro). */

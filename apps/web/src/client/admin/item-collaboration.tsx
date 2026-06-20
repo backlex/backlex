@@ -107,14 +107,17 @@ function ShareLinkCard({
           // Just-minted link — the only moment we can show the full URL.
           <div className={FIELD_CLS}>
             <label className={FIELD_LABEL_CLS}><Trans>Public read-only link</Trans></label>
+            {/* Input on its own full-width row so the URL stays readable in a
+                narrow sidebar; actions sit beneath it. */}
+            <Input
+              className="w-full font-mono text-[11.5px]"
+              readOnly
+              value={freshUrl}
+            />
             <div className="flex gap-1.5">
-              <Input
-                className="flex-1 font-mono text-[11.5px]"
-                readOnly
-                value={freshUrl}
-              />
               <Button
                 variant="outline"
+                className="flex-1"
                 icon={copied ? I.Check : I.Copy}
                 onClick={() => copy(freshUrl)}
               >
@@ -125,6 +128,7 @@ function ShareLinkCard({
                   list query's row once it has refetched. */}
               <Button
                 variant="outline"
+                className="flex-1"
                 icon={I.Trash}
                 onClick={() => {
                   const id = freshId ?? activeLink?.id;

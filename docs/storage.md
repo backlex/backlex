@@ -8,6 +8,10 @@ image transforms, and short-lived signed URLs. Runs on local fs (Bun
 dev), Cloudflare R2 (Workers), or any S3-compatible bucket (AWS, R2, B2,
 MinIO, DigitalOcean Spaces, Wasabi).
 
+For large files or flaky networks, use [resumable uploads](/resumable-uploads/)
+(TUS 1.0.0 at `/api/uploads`) instead of the single-shot `PUT` below — they
+chunk the transfer and resume from the committed offset after a drop.
+
 ## Adapter selection
 
 Picked by `buildContext(env)` in `apps/web/src/server/context.ts`:

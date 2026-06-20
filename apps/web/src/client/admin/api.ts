@@ -1225,6 +1225,30 @@ export const commentsApi = {
     api<{ ok: true }>(`/api/comments/${id}`, { method: "DELETE" }),
 };
 
+/** One recorded snapshot of an item (`/api/revisions/:collection/:itemId`).
+ *  `snapshot` is the full field map captured at write time; newest-first. */
+export interface ApiRevision {
+  id: string;
+  collection: string;
+  itemId: string;
+  tenantId: string | null;
+  userId: string | null;
+  snapshot: Record<string, unknown>;
+  createdAt: unknown;
+}
+
+export const revisionsApi = {
+  list: (collection: string, itemId: string) =>
+    api<Envelope<ApiRevision[]>>(
+      `/api/revisions/${encodeURIComponent(collection)}/${encodeURIComponent(itemId)}`,
+    ),
+  /** Revert the live row to a recorded revision (by revision id, not item id). */
+  revert: (revisionId: string) =>
+    api<{ ok: true }>(`/api/revisions/${encodeURIComponent(revisionId)}/revert`, {
+      method: "POST",
+    }),
+};
+
 /** A public read-only share link for a record (`/api/shared-links`).
  *  The plaintext `token` is only present on the create response. */
 export interface ApiSharedLink {

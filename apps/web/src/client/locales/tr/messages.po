@@ -64,7 +64,7 @@ msgstr " / {totalCount}"
 msgid " Required."
 msgstr " Zorunlu."
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid " Set the target collection in the field settings."
 msgstr " Hedef koleksiyonu alan ayarlarından belirleyin."
 
@@ -290,7 +290,7 @@ msgid "{0} files"
 msgstr "{0} dosya"
 
 #. placeholder {0}: f.name
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "{0} is required"
 msgstr "{0} zorunludur"
 
@@ -394,6 +394,11 @@ msgstr "{0} sistem · {1} özel"
 #: src/client/pages/rest-explorer.tsx
 msgid "{0} tags"
 msgstr "{0} etiket"
+
+#. placeholder {0}: form.errorCount
+#: src/client/admin/item-editor.tsx
+msgid "{0} to fix"
+msgstr "{0} düzeltilecek"
 
 #. placeholder {0}: allFields.length
 #. placeholder {1}: userFields.length
@@ -738,6 +743,7 @@ msgid "Action"
 msgstr "İşlem"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "Actions"
@@ -1363,7 +1369,7 @@ msgstr "<0>tenant_id</0> otomatik eklenir; veriler uygulama katmanında her çal
 msgid "auto-creates c_<slug> table"
 msgstr "c_<slug> tablosunu otomatik oluşturur"
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "Auto-derived from title until edited."
 msgstr "Düzenlenene kadar başlıktan otomatik türetilir."
 
@@ -1395,6 +1401,14 @@ msgstr "Otomatik zamanlama"
 msgid "Automation"
 msgstr "Otomasyon"
 
+#: src/client/admin/item-editor.tsx
+msgid "Autosave"
+msgstr "Otomatik kaydet"
+
+#: src/client/admin/item-editor.tsx
+msgid "Autosave drafts as you type"
+msgstr "Yazdıkça taslakları otomatik kaydet"
+
 #: src/client/admin/account-page.tsx
 msgid "Avatar"
 msgstr "Avatar"
@@ -1416,6 +1430,7 @@ msgstr "B-tree indeksi — bu sütuna göre filtreleme/sıralamayı hızlandır�
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/display-template-editor.tsx
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/pages/sign-in.tsx
 msgid "Back"
 msgstr "Geri"
@@ -1606,6 +1621,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/edit-field.tsx
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/feature-flags.tsx
@@ -2264,6 +2280,10 @@ msgstr "Oluştur"
 msgid "Create {0}"
 msgstr "{0} oluştur"
 
+#: src/client/admin/item-editor.tsx
+msgid "Create {slug}"
+msgstr "{slug} oluştur"
+
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Create a flag to gate a feature or ship remote config to your apps."
 msgstr "Bir özelliği kapılamak ya da uygulamalarınıza uzaktan yapılandırma göndermek için bayrak oluşturun."
@@ -2364,6 +2384,7 @@ msgid "Creating key"
 msgstr "Anahtar oluşturuluyor"
 
 #: src/client/admin/item-collaboration.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/translations.tsx
@@ -2548,6 +2569,7 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/functions.tsx
@@ -2609,6 +2631,10 @@ msgstr "SAML sağlayıcısı silinsin mi?"
 #: src/client/admin/collection-settings.tsx
 msgid "Delete this collection"
 msgstr "Bu koleksiyonu sil"
+
+#: src/client/admin/item-editor.tsx
+msgid "Delete this item?"
+msgstr "Bu öğe silinsin mi?"
 
 #: src/client/admin/pages/users.tsx
 msgid "Delete user"
@@ -2725,10 +2751,15 @@ msgstr "devre dışı"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/condition-editor.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/storage.tsx
 msgid "Discard"
 msgstr "Vazgeç"
+
+#: src/client/admin/item-editor.tsx
+msgid "Discard unsaved changes?"
+msgstr "Kaydedilmemiş değişiklikler atılsın mı?"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Disconnect"
@@ -2830,6 +2861,7 @@ msgstr "İndiriliyor…"
 msgid "draft"
 msgstr "taslak"
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/item-views.tsx
 #: src/client/admin/sheet.tsx
 msgid "Draft"
@@ -2892,6 +2924,10 @@ msgstr "Deneme çalışması — gerçek yan etki yok"
 msgid "Dry-run summary"
 msgstr "Deneme çalışması özeti"
 
+#: src/client/admin/item-editor.tsx
+msgid "Duplicate"
+msgstr "Çoğalt"
+
 #: src/client/admin/pages/jobs.tsx
 msgid "Durable background queue — retries with backoff, dead-letters, and delayed/scheduled runs. Drained by the cron tick (~1 min on Workers)."
 msgstr "Dayanıklı arka plan kuyruğu — geri çekilmeli yeniden denemeler, ölü mektup ve gecikmeli/zamanlanmış çalıştırmalar. Cron tıklamasıyla boşaltılır (Workers’ta ~1 dk)."
@@ -2930,6 +2966,7 @@ msgid "edit"
 msgstr "düzenle"
 
 #: src/client/admin/app.tsx
+#: src/client/admin/item-form.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/webhooks.tsx
@@ -3472,6 +3509,7 @@ msgstr "alanlar"
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/display-template-editor.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "Fields"
 msgstr "Alanlar"
@@ -3561,6 +3599,10 @@ msgstr "Sığdır"
 #: src/client/admin/pages/advisor.tsx
 msgid "Fix copied to clipboard."
 msgstr "Düzeltme panoya kopyalandı."
+
+#: src/client/admin/item-editor.tsx
+msgid "Fix the highlighted fields before saving."
+msgstr "Kaydetmeden önce işaretli alanları düzeltin."
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "fk"
@@ -3775,6 +3817,7 @@ msgstr "FUNCTIONS_EXEC_URL ayarlandı"
 msgid "Gallery"
 msgstr "Galeri"
 
+#: src/client/admin/item-form.tsx
 #: src/client/admin/pages/settings.tsx
 msgid "General"
 msgstr "Genel"
@@ -3915,6 +3958,10 @@ msgstr "Değişkenleri gizle"
 msgid "highest reasoning · slower · ~3x cost"
 msgstr "en yüksek akıl yürütme · daha yavaş · ~3x maliyet"
 
+#: src/client/admin/item-editor.tsx
+msgid "History"
+msgstr "Geçmiş"
+
 #: src/client/admin/pages/webhooks.tsx
 msgid "Hook"
 msgstr "Hook"
@@ -3941,8 +3988,12 @@ msgstr "id"
 
 #. placeholder {0}: (initial as { id?: string })?.id
 #: src/client/admin/sheet.tsx
-msgid "id <0>{0}</0>"
-msgstr "id <0>{0}</0>"
+#~ msgid "id <0>{0}</0>"
+#~ msgstr "id <0>{0}</0>"
+
+#: src/client/admin/sheet.tsx
+msgid "id <0>{itemId}</0>"
+msgstr "id <0>{itemId}</0>"
 
 #: src/client/admin/pages/overview.tsx
 #: src/client/pages/graphql.tsx
@@ -4075,7 +4126,7 @@ msgstr "Girdi (JSON)"
 msgid "Insert field"
 msgstr "Alan ekle"
 
-#. placeholder {0}: ownerScoped ? <>. Owner is set to <span className="font-mono">$user.id</span></> : null
+#. placeholder {0}: ownerScoped ? ( <> . Owner is set to <span className="font-mono">$user.id</span> </> ) : null
 #: src/client/admin/sheet.tsx
 msgid "Insert into <0>c_{slug}</0>{0}."
 msgstr "<0>c_{slug}</0>{0} tablosuna ekle."
@@ -4201,6 +4252,18 @@ msgstr "null"
 msgid "Istanbul, Turkey"
 msgstr "İstanbul, Türkiye"
 
+#: src/client/admin/item-editor.tsx
+msgid "Item created."
+msgstr "Öğe oluşturuldu."
+
+#: src/client/admin/item-editor.tsx
+msgid "Item deleted."
+msgstr "Öğe silindi."
+
+#: src/client/admin/item-editor.tsx
+msgid "Item duplicated."
+msgstr "Öğe çoğaltıldı."
+
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Item ID"
@@ -4211,10 +4274,12 @@ msgid "Item permissions"
 msgstr "Öğe izinleri"
 
 #: src/client/admin/app.tsx
+#: src/client/admin/item-editor.tsx
 msgid "Item published."
 msgstr "Öğe yayınlandı."
 
 #: src/client/admin/app.tsx
+#: src/client/admin/item-editor.tsx
 msgid "Item reverted to draft."
 msgstr "Öğe taslağa döndürüldü."
 
@@ -4651,6 +4716,7 @@ msgstr "Çalıştırmalar yükleniyor…"
 msgid "Loading tool catalog…"
 msgstr "Araç kataloğu yükleniyor…"
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/logs.tsx
@@ -4724,7 +4790,7 @@ msgstr "Küçük harf, rakam, _ veya -; bir harfle başlamalıdır."
 msgid "Lowercase letters, digits, <0>_</0> and <1>-</1>. Use <2>/</2> in the name to nest under an existing folder."
 msgstr "Küçük harf, rakam, <0>_</0> ve <1>-</1>. Mevcut bir klasörün altına yerleştirmek için adda <2>/</2> kullanın."
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "lowercase letters, digits, and dashes only"
 msgstr "yalnızca küçük harf, rakam ve tire"
 
@@ -4923,6 +4989,7 @@ msgstr "Pzt"
 msgid "more"
 msgstr "daha fazla"
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "More save options"
 msgstr "Daha fazla kaydetme seçeneği"
@@ -4972,7 +5039,7 @@ msgstr "Tam sayı veya sayı sütunu olmalıdır."
 msgid "Must be between 50 and 60000."
 msgstr "50 ile 60000 arasında olmalıdır."
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "must be valid json"
 msgstr "geçerli JSON olmalıdır"
 
@@ -5076,6 +5143,10 @@ msgstr "Yeni {0}"
 msgid "New {0} post"
 msgstr "Yeni {0} gönderisi"
 
+#: src/client/admin/item-editor.tsx
+msgid "New {slug}"
+msgstr "Yeni {slug}"
+
 #: src/client/pages/api-keys.tsx
 msgid "New API key"
 msgstr "Yeni API anahtarı"
@@ -5173,6 +5244,10 @@ msgstr "İleri"
 msgid "Next month"
 msgstr "Sonraki ay"
 
+#: src/client/admin/item-editor.tsx
+msgid "Next record"
+msgstr "Sonraki kayıt"
+
 #: src/client/admin/parity/app-users.tsx
 msgid "no"
 msgstr "hayır"
@@ -5221,7 +5296,7 @@ msgstr "Henüz API anahtarı yok"
 msgid "No channels — create a collection to get one."
 msgstr "Kanal yok — bir tane almak için koleksiyon oluşturun."
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "No choices configured."
 msgstr "Seçenek yapılandırılmamış."
 
@@ -5293,7 +5368,7 @@ msgstr "Henüz teslimat yok"
 msgid "No earlier revisions — showing the current field values."
 msgstr "Önceki revizyon yok — mevcut alan değerleri gösteriliyor."
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "No editable fields. Add columns from the Schema tab to capture data on this collection."
 msgstr "Düzenlenebilir alan yok. Bu koleksiyonda veri yakalamak için Şema sekmesinden sütun ekleyin."
 
@@ -5495,6 +5570,10 @@ msgstr "Yanıt tanımlanmamış."
 #: src/client/admin/parity/revisions.tsx
 msgid "No revision selected"
 msgstr "Sürüm seçilmedi"
+
+#: src/client/admin/item-editor.tsx
+msgid "No revisions recorded yet."
+msgstr "Henüz kayıtlı revizyon yok."
 
 #: src/client/admin/parity/revisions.tsx
 msgid "No revisions yet for this item."
@@ -6057,6 +6136,10 @@ msgstr "inceleme bekliyor"
 msgid "People"
 msgstr "Kişiler"
 
+#: src/client/admin/item-editor.tsx
+msgid "People viewing this record"
+msgstr "Bu kaydı görüntüleyenler"
+
 #: src/client/admin/condition-editor.tsx
 msgid "Per-field read / write toggles. Hidden fields are stripped from API responses; non-writable fields are rejected on insert/update for this role."
 msgstr "Alan başına okuma / yazma geçişleri. Gizli alanlar API yanıtlarından çıkarılır; bu rol için yazılamaz alanlar insert/update sırasında reddedilir."
@@ -6184,7 +6267,7 @@ msgstr "<0>c_{target}</0> tablosundan satır seçin"
 msgid "Pick a row to select it"
 msgstr "Seçmek için bir satıra tıklayın"
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "Pick a status…"
 msgstr "Durum seçin…"
 
@@ -6279,7 +6362,7 @@ msgstr "Bu ilişkinin işaret ettiği koleksiyonu seçin."
 msgid "Pick type…"
 msgstr "Tür seçin…"
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "Pick…"
 msgstr "Seçin…"
 
@@ -6383,6 +6466,7 @@ msgstr "Önceki"
 msgid "preview"
 msgstr "önizleme"
 
+#: src/client/admin/item-form.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "Preview"
 msgstr "Önizleme"
@@ -6408,6 +6492,10 @@ msgstr "Önizleme: "
 #: src/client/admin/item-views.tsx
 msgid "Previous month"
 msgstr "Önceki ay"
+
+#: src/client/admin/item-editor.tsx
+msgid "Previous record"
+msgstr "Önceki kayıt"
 
 #: src/client/admin/pages/settings.tsx
 msgid "Primary color"
@@ -6522,10 +6610,16 @@ msgstr "Herkese açık salt okunur bağlantı"
 msgid "Publish"
 msgstr "Yayınla"
 
+#: src/client/admin/item-editor.tsx
+msgid "Publish now"
+msgstr "Şimdi yayınla"
+
 #: src/client/admin/app.tsx
+#: src/client/admin/item-editor.tsx
 msgid "Publish scheduled."
 msgstr "Yayın zamanlandı."
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/item-views.tsx
 #: src/client/admin/sheet.tsx
 msgid "Published"
@@ -6808,7 +6902,7 @@ msgstr "{k} öğesini kaldır"
 msgid "Remove {l}"
 msgstr "{l} öğesini kaldır"
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "Remove {tag}"
 msgstr "{tag} etiketini kaldır"
 
@@ -7071,6 +7165,7 @@ msgstr "Sakla (otomatik)"
 msgid "Retry"
 msgstr "Yeniden dene"
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 #: src/client/admin/parity/revisions.tsx
 msgid "Revert"
@@ -7093,6 +7188,11 @@ msgstr "Geri alınsın mı?"
 msgid "Reverted — a new revision was recorded."
 msgstr "Geri alındı — yeni bir sürüm kaydedildi."
 
+#: src/client/admin/item-editor.tsx
+msgid "Reverted to earlier revision."
+msgstr "Önceki revizyona geri alındı."
+
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/parity/revisions.tsx
 msgid "Reverting…"
 msgstr "Geri alınıyor…"
@@ -7367,6 +7467,7 @@ msgstr "Cmt"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/condition-editor.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -7377,6 +7478,10 @@ msgstr "Cmt"
 #: src/client/admin/sheet.tsx
 msgid "Save"
 msgstr "Kaydet"
+
+#: src/client/admin/item-editor.tsx
+msgid "Save and close"
+msgstr "Kaydet ve kapat"
 
 #: src/client/admin/sheet.tsx
 msgid "Save and continue"
@@ -7446,11 +7551,16 @@ msgstr "<0>saved_panels</0> tablosunda satır olarak kaydedildi. Koleksiyon pane
 msgid "Saved as snippet."
 msgstr "Kod parçacığı olarak kaydedildi."
 
+#: src/client/admin/item-editor.tsx
+msgid "Saved."
+msgstr "Kaydedildi."
+
 #: src/client/components/mcp-key-modal.tsx
 msgid "Saving MCP guards"
 msgstr "MCP korumaları kaydediliyor"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/parity/app-users.tsx
@@ -7465,14 +7575,17 @@ msgid "Saving…"
 msgstr "Kaydediliyor…"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "Schedule"
 msgstr "Zamanlama"
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "Schedule publish time"
 msgstr "Yayın zamanını planla"
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "Scheduled"
 msgstr "Zamanlandı"
@@ -8240,6 +8353,7 @@ msgstr "Durumsuz Streamable HTTP. Henüz <0>GET /mcp</0> (sürdürülebilir SSE)
 msgid "static panels render their config object verbatim — set it from the API once the panel exists."
 msgstr "statik paneller yapılandırma nesnelerini aynen işler — panel oluşturulduktan sonra API'den ayarlayın."
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/jobs.tsx
@@ -8277,24 +8391,28 @@ msgstr "Adımlar"
 msgid "Storage"
 msgstr "Depolama"
 
+#: src/client/admin/item-form.tsx
+msgid "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup, then hit Preview."
+msgstr "HTML olarak saklanır. Tam WYSIWYG düzenleyici henüz bağlı değil — önceden biçimlendirilmiş HTML veya temel işaretleme yapıştırın, ardından Önizle'ye basın."
+
 #: src/client/admin/sheet.tsx
-msgid "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup."
-msgstr "HTML olarak saklanır. Tam WYSIWYG editörü henüz bağlı değil — önceden biçimlendirilmiş HTML veya temel işaretleme yapıştırın."
+#~ msgid "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup."
+#~ msgstr "HTML olarak saklanır. Tam WYSIWYG editörü henüz bağlı değil — önceden biçimlendirilmiş HTML veya temel işaretleme yapıştırın."
 
 #: src/client/admin/pages/overview.tsx
 msgid "stored objects"
 msgstr "depolanan nesneler"
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "Stores a list of storage keys. Upload new files on the <0>Storage</0> page."
 msgstr "Depolama anahtarlarının listesini saklar. Yeni dosyaları <0>Depolama</0> sayfasında yükleyin."
 
 #. placeholder {0}: target || "—"
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "Stores a row id from <0>c_{0}</0>."
 msgstr "<0>c_{0}</0> tablosundan bir satır ID'si saklar."
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "Stores the storage key. Upload new files on the <0>Storage</0> page."
 msgstr "Depolama anahtarını saklar. Yeni dosyaları <0>Depolama</0> sayfasında yükleyin."
 
@@ -8398,6 +8516,10 @@ msgstr "Sistem sütunları:"
 #: src/client/admin/sheet.tsx
 msgid "system fields"
 msgstr "sistem alanları"
+
+#: src/client/admin/item-editor.tsx
+msgid "System fields"
+msgstr "Sistem alanları"
 
 #: src/client/admin/role-editor.tsx
 msgid "System role — name is read-only; permissions still editable."
@@ -8635,6 +8757,10 @@ msgstr "Bu, fonksiyonu ve kodunu kalıcı olarak kaldırır. Ona başvuran tetik
 #: src/client/admin/parity/insights.tsx
 msgid "This removes the panel from <0>saved_panels</0> and any dashboards that reference it. The query itself isn't run again. This action can't be undone."
 msgstr "Bu, paneli <0>saved_panels</0> tablosundan ve ona başvuran tüm panolardan kaldırır. Sorgunun kendisi yeniden çalıştırılmaz. Bu işlem geri alınamaz."
+
+#: src/client/admin/item-editor.tsx
+msgid "This removes the row from <0>c_{slug}</0>. Revisions remain available."
+msgstr "Bu, satırı <0>c_{slug}</0> tablosundan kaldırır. Revizyonlar kullanılabilir kalır."
 
 #. placeholder {0}: confirmRev.v
 #. placeholder {1}: fmtRevTs(confirmRev.createdAt)
@@ -8906,7 +9032,7 @@ msgstr "Gezinmek için bir komut, koleksiyon veya öğe başlığı yazın."
 msgid "Type a command, collection, or item title…"
 msgstr "Bir komut, koleksiyon veya öğe başlığı yazın…"
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "Type and press Enter…"
 msgstr "Yazın ve Enter'a basın…"
 
@@ -8964,6 +9090,7 @@ msgstr "{0} bağlantısı kaldırıldı."
 msgid "Unnamed passkey"
 msgstr "Adsız passkey"
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "Unpublish"
 msgstr "Yayından kaldır"
@@ -8976,6 +9103,10 @@ msgstr "Okunmamış"
 #: src/client/admin/storage.tsx
 msgid "unsaved"
 msgstr "kaydedilmemiş"
+
+#: src/client/admin/item-editor.tsx
+msgid "Unsaved"
+msgstr "Kaydedilmedi"
 
 #: src/client/admin/pages/settings.tsx
 msgid "unset"
@@ -9549,6 +9680,10 @@ msgstr "xxxxx-xxxxx"
 #: src/client/admin/parity/app-users.tsx
 msgid "yes"
 msgstr "evet"
+
+#: src/client/admin/item-editor.tsx
+msgid "You have edits that haven't been saved. Leaving will lose them."
+msgstr "Kaydedilmemiş değişiklikleriniz var. Ayrılırsanız kaybolur."
 
 #: src/client/admin/account-page.tsx
 msgid "You haven't registered any passkeys yet."

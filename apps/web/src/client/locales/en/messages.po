@@ -3339,8 +3339,12 @@ msgid "expansion"
 msgstr "expansion"
 
 #: src/client/admin/pages/jobs.tsx
-msgid "Expects { webhookId, channel, event, body }."
-msgstr "Expects { webhookId, channel, event, body }."
+msgid "Expects"
+msgstr "Expects"
+
+#: src/client/admin/pages/jobs.tsx
+#~ msgid "Expects { webhookId, channel, event, body }."
+#~ msgstr "Expects { webhookId, channel, event, body }."
 
 #: src/client/pages/api-keys.tsx
 msgid "expired"
@@ -4095,6 +4099,10 @@ msgstr "in-isolate, sync only"
 #: src/client/admin/pages/realtime.tsx
 msgid "In-process pub/sub on Bun, Durable Objects on Workers. Permission filter applies on subscribe + publish."
 msgstr "In-process pub/sub on Bun, Durable Objects on Workers. Permission filter applies on subscribe + publish."
+
+#: src/client/admin/pages/jobs.tsx
+msgid "inactive"
+msgstr "inactive"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Include"
@@ -5144,10 +5152,15 @@ msgstr "New"
 msgid "New {0}"
 msgstr "New {0}"
 
+#. placeholder {0}: c.label
+#: src/client/admin/item-views.tsx
+msgid "New {0} item"
+msgstr "New {0} item"
+
 #. placeholder {0}: KANBAN_LABELS[c.id] ?? c.label
 #: src/client/admin/item-views.tsx
-msgid "New {0} post"
-msgstr "New {0} post"
+#~ msgid "New {0} post"
+#~ msgstr "New {0} post"
 
 #: src/client/admin/item-editor.tsx
 msgid "New {slug}"
@@ -5458,6 +5471,10 @@ msgstr "No function selected"
 #: src/client/admin/pages/functions.tsx
 #~ msgid "No function selected. Click <0>+ New function</0> to create one."
 #~ msgstr "No function selected. Click <0>+ New function</0> to create one."
+
+#: src/client/admin/pages/jobs.tsx
+msgid "No functions defined yet. Create a function before enqueuing a function job."
+msgstr "No functions defined yet. Create a function before enqueuing a function job."
 
 #: src/client/admin/pages/functions.tsx
 msgid "No functions yet — click + New function."
@@ -7580,8 +7597,8 @@ msgstr "Schedule"
 
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
-msgid "Schedule publish time"
-msgstr "Schedule publish time"
+#~ msgid "Schedule publish time"
+#~ msgstr "Schedule publish time"
 
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
@@ -7717,6 +7734,10 @@ msgstr "Select"
 #: src/client/admin/flow-builder.tsx
 msgid "Select a collection…"
 msgstr "Select a collection…"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Select a function"
+msgstr "Select a function"
 
 #: src/client/admin/pages/functions.tsx
 msgid "Select a function to run."

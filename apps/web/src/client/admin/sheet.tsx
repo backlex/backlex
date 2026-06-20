@@ -10,6 +10,7 @@ import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button } from "./ui";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { DatePicker } from "@/components/date-picker";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -272,13 +273,7 @@ export function ItemSheet({
                       <Button variant="primary" size="sm" onClick={() => void onPublish("publish")}>
                         <Trans>Publish</Trans>
                       </Button>
-                      <input
-                        type="datetime-local"
-                        value={scheduleAt}
-                        onChange={(e) => setScheduleAt(e.target.value)}
-                        className="h-8 rounded-xl border border-border bg-background px-2 text-xs"
-                        aria-label={t`Schedule publish time`}
-                      />
+                      <DatePicker value={scheduleAt || null} onChange={(iso) => setScheduleAt(iso ?? "")} />
                       <Button
                         variant="outline"
                         size="sm"

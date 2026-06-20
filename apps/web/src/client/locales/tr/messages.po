@@ -3339,8 +3339,12 @@ msgid "expansion"
 msgstr "genişletme"
 
 #: src/client/admin/pages/jobs.tsx
-msgid "Expects { webhookId, channel, event, body }."
-msgstr "{ webhookId, channel, event, body } bekler."
+msgid "Expects"
+msgstr "Beklenen"
+
+#: src/client/admin/pages/jobs.tsx
+#~ msgid "Expects { webhookId, channel, event, body }."
+#~ msgstr "{ webhookId, channel, event, body } bekler."
 
 #: src/client/pages/api-keys.tsx
 msgid "expired"
@@ -4095,6 +4099,10 @@ msgstr "izolasyonlu, yalnızca senkron"
 #: src/client/admin/pages/realtime.tsx
 msgid "In-process pub/sub on Bun, Durable Objects on Workers. Permission filter applies on subscribe + publish."
 msgstr "Bun üzerinde süreç içi pub/sub, Workers üzerinde Durable Objects. İzin filtresi abone olma ve yayınlama sırasında uygulanır."
+
+#: src/client/admin/pages/jobs.tsx
+msgid "inactive"
+msgstr "pasif"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Include"
@@ -5144,10 +5152,15 @@ msgstr "Yeni"
 msgid "New {0}"
 msgstr "Yeni {0}"
 
+#. placeholder {0}: c.label
+#: src/client/admin/item-views.tsx
+msgid "New {0} item"
+msgstr "Yeni {0} öğesi"
+
 #. placeholder {0}: KANBAN_LABELS[c.id] ?? c.label
 #: src/client/admin/item-views.tsx
-msgid "New {0} post"
-msgstr "Yeni {0} gönderisi"
+#~ msgid "New {0} post"
+#~ msgstr "Yeni {0} gönderisi"
 
 #: src/client/admin/item-editor.tsx
 msgid "New {slug}"
@@ -5458,6 +5471,10 @@ msgstr "Fonksiyon seçilmedi"
 #: src/client/admin/pages/functions.tsx
 #~ msgid "No function selected. Click <0>+ New function</0> to create one."
 #~ msgstr "Fonksiyon seçilmedi. Bir tane oluşturmak için <0>+ Yeni fonksiyon</0>'a tıklayın."
+
+#: src/client/admin/pages/jobs.tsx
+msgid "No functions defined yet. Create a function before enqueuing a function job."
+msgstr "Henüz tanımlı fonksiyon yok. Fonksiyon işi sıraya almadan önce bir fonksiyon oluşturun."
 
 #: src/client/admin/pages/functions.tsx
 msgid "No functions yet — click + New function."
@@ -7588,8 +7605,8 @@ msgstr "Zamanlama"
 
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
-msgid "Schedule publish time"
-msgstr "Yayın zamanını planla"
+#~ msgid "Schedule publish time"
+#~ msgstr "Yayın zamanını planla"
 
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
@@ -7725,6 +7742,10 @@ msgstr "Seç"
 #: src/client/admin/flow-builder.tsx
 msgid "Select a collection…"
 msgstr "Bir koleksiyon seçin…"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Select a function"
+msgstr "Bir fonksiyon seçin"
 
 #: src/client/admin/pages/functions.tsx
 msgid "Select a function to run."

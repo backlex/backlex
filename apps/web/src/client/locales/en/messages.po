@@ -237,6 +237,11 @@ msgstr "{0} connected · {1} optional"
 msgid "{0} connected."
 msgstr "{0} connected."
 
+#. placeholder {0}: h.consecutiveFailures
+#: src/client/admin/pages/webhooks.tsx
+msgid "{0} consecutive failures"
+msgstr "{0} consecutive failures"
+
 #. placeholder {0}: h.name
 #. placeholder {0}: u.email
 #. placeholder {0}: user.email
@@ -1365,6 +1370,10 @@ msgstr "Auto-derived from title until edited."
 #: src/client/admin/pages/settings.tsx
 msgid "Auto-detected from <0>env</0> bindings."
 msgstr "Auto-detected from <0>env</0> bindings."
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "auto-disabled"
+msgstr "auto-disabled"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "auto-run reads"
@@ -7708,8 +7717,8 @@ msgid "Sends a one-time sign-in link by email — requires a configured email ad
 msgstr "Sends a one-time sign-in link by email — requires a configured email adapter (set RESEND_API_KEY + EMAIL_FROM)."
 
 #: src/client/admin/pages/webhooks.tsx
-msgid "Sent as <0>X-Backlex-Signature: sha256=…</0>. Verify on the receiver."
-msgstr "Sent as <0>X-Backlex-Signature: sha256=…</0>. Verify on the receiver."
+#~ msgid "Sent as <0>X-Backlex-Signature: sha256=…</0>. Verify on the receiver."
+#~ msgstr "Sent as <0>X-Backlex-Signature: sha256=…</0>. Verify on the receiver."
 
 #: src/client/admin/item-views.tsx
 msgid "September"
@@ -8073,6 +8082,10 @@ msgstr "Signing in…"
 #: src/client/admin/pages/webhooks.tsx
 msgid "Signing secret"
 msgstr "Signing secret"
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>{timestamp}.{body}</2> with <3>X-Backlex-Timestamp</3> for replay protection."
+msgstr "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>{timestamp}.{body}</2> with <3>X-Backlex-Timestamp</3> for replay protection."
 
 #: src/client/admin/parity/insights.tsx
 msgid "single scalar value"

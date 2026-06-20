@@ -36,6 +36,7 @@ import {
   type FilterCondition,
 } from "./items";
 import { ConfirmDialog, ItemSheet } from "./sheet";
+import { ItemEditorPage } from "./item-editor";
 import { CalendarView, GalleryGrid, ItemsViewToggle, KanbanBoard, type ItemsViewMode } from "./item-views";
 import { AlterPreview, EmptyItems, Palette, RealtimeTail, SchemaView, type RealtimeEvent } from "./extras";
 import { AddFieldDialog } from "./add-field";
@@ -280,6 +281,16 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     (slug: string | null) => { navigate(slug ? "/collections/" + slug : "/collections"); },
     [navigate],
   );
+  // Item-detail route: /collections/:slug/items/:id (and /items/new). When set,
+  // the full-page editor renders in place of the items list. Deep-linkable so
+  // refresh / back / open-in-new-tab all work.
+  const activeItem =
+    activeNav === "collections" && activeCollection && segs[2] === "items" && segs[3]
+      ? segs[3]
+      : null;
+  // Schema must be loaded for this collection before the editor can render its
+  // fields; until then show the collection skeleton.
+  const schemaReady = schemaState.slug === activeCollection;
   // Flow detail id lives in segs[1] when activeNav === "flows" — same shape as
   // collections, so deep links / browser back preserve the selected flow.
   const activeFlow = activeNav === "flows" && segs[1] ? segs[1] : null;
@@ -581,8 +592,16 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
   const pageRows = itemsForView.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-  const openCreate = () => { setSheetMode("create"); setSheetItem(null); setSheetOpen(true); };
-  const openEdit = (it: Post) => { setSheetMode("edit"); setSheetItem(it); setSheetOpen(true); };
+  // Primary edit/create flow is the full-page editor (deep-linkable). The modal
+  // (ItemSheet) stays as a fallback for create outside a collection context.
+  const openCreate = () => {
+    if (activeCollection) navigate(`/collections/${activeCollection}/items/new`);
+    else { setSheetMode("create"); setSheetItem(null); setSheetOpen(true); }
+  };
+  const openEdit = (it: Post) => {
+    if (activeCollection) navigate(`/collections/${activeCollection}/items/${it.id}`);
+    else { setSheetMode("edit"); setSheetItem(it); setSheetOpen(true); }
+  };
 
   // Per-collection bulk export — streams the file straight from the API (the
   // browser carries the session cookie, so a plain anchor download works).
@@ -867,10 +886,33 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                 pushToast={pushToast}
               />
             )}
-            {activeNav === "collections" && activeCollection && ((collectionLoading && schemaState.slug !== activeCollection) || !itemsLoaded) && (
+            {/* Full-page item editor — replaces the items list when an item
+                (or /new) is selected. Waits only for the schema, not the list. */}
+            {activeNav === "collections" && activeCollection && activeItem && (
+              schemaReady ? (
+                <ItemEditorPage
+                  slug={activeCollection}
+                  itemId={activeItem}
+                  schema={schemaState}
+                  initialItem={posts.find((p) => p.id === activeItem) ?? null}
+                  siblingIds={itemsForView.map((p) => p.id)}
+                  versioned={schemaState.versioned}
+                  canPublish
+                  pushToast={pushToast}
+                  onSaved={(updated) => setPosts((p) => p.map((x) => (x.id === updated.id ? updated : x)))}
+                  onCreated={(created) => setPosts((p) => [created, ...p])}
+                  onDeleted={(id) => setPosts((p) => p.filter((x) => x.id !== id))}
+                  onBack={() => navigate(`/collections/${activeCollection}`)}
+                  navigateToItem={(id) => navigate(`/collections/${activeCollection}/items/${id}`)}
+                />
+              ) : (
+                <CollectionItemsSkeleton />
+              )
+            )}
+            {activeNav === "collections" && activeCollection && !activeItem && ((collectionLoading && schemaState.slug !== activeCollection) || !itemsLoaded) && (
               <CollectionItemsSkeleton />
             )}
-            {activeNav === "collections" && activeCollection && !((collectionLoading && schemaState.slug !== activeCollection) || !itemsLoaded) && <>
+            {activeNav === "collections" && activeCollection && !activeItem && !((collectionLoading && schemaState.slug !== activeCollection) || !itemsLoaded) && <>
               <Button variant="ghost" size="sm" icon={I.ChevronLeft} onClick={() => setActiveCollection(null)}><Trans>All collections</Trans></Button>
               <PageHeader
                 slug={activeCollection}

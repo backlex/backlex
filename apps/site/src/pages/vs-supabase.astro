@@ -28,6 +28,14 @@ const rows = [
   ["Webhooks", "Signed webhooks on item CRUD events", "Database webhooks"],
   ["Client SDKs", "11 first-party SDKs — TS, Python, Go, Rust, Swift, Kotlin, Dart, Java, .NET, Ruby, PHP", "supabase-js + Flutter, Swift & Python (official); Kotlin, C#, Go (community)"],
   ["Admin UI + CLI", "Admin SPA and the `backlex` CLI (migrate, gen-types)", "Studio + Supabase CLI"],
+  ["Messaging (push + SMS)", "Built in — FCM/APNs/Web Push + SMS (Twilio/Amazon SNS), per-tenant credentials, device & phone registries, templates", "No first-party messaging (Twilio for auth OTP only)"],
+  ["Batch / transactional writes", "Bulk + opt-in atomic (all-or-nothing) writes over REST and GraphQL", "SQL transactions / RPC functions"],
+  ["Background jobs", "Durable queue — retry with backoff, dead-letter, delayed/scheduled; rides the cron tick, no extra infra", "Supabase Queues (pgmq) + pg_cron extensions"],
+  ["Resumable uploads", "TUS 1.0.0 chunked/resumable, native R2 / S3 multipart", "Resumable uploads (TUS) in Storage"],
+  ["Draft / publish", "Built-in draft↔published status, dedicated publish permission, scheduled publishing", "DIY (status column + RLS)"],
+  ["Feature flags / remote config", "Built in — rollout-% and permission-DSL targeting, evaluated per caller", "Not built in"],
+  ["Offline-first sync", "Incremental changefeed + delete tombstones, client store (IndexedDB) + offline write queue", "Via PowerSync (third-party)"],
+  ["Auth hardening", "Per-IP rate-limiting + account lockout, 2FA/TOTP, email verification", "Managed rate limits on auth endpoints"],
 ];
 ---
 <Base

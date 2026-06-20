@@ -684,6 +684,43 @@ export const smsConfig = pgTable(
   },
 );
 
+/**
+ * Durable job queue. Rows are drained by the cross-runtime cron tick
+ * (`processJobs` inside `cronTick`), claimed with a `status='active' + claimedAt`
+ * lease, retried with exponential backoff, and promoted to `dead_letter` once
+ * `attempts >= maxAttempts`. `runAt` supports delayed/scheduled execution.
+ */
+export const jobs = pgTable(
+  "jobs",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    queue: text("queue").notNull().default("default"),
+    /** Handler discriminator: function | webhook.deliver */
+    type: text("type").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    /** pending | active | succeeded | failed | dead_letter | cancelled */
+    status: text("status").notNull().default("pending"),
+    /** Lower runs sooner within a due batch. */
+    priority: integer("priority").notNull().default(0),
+    runAt: timestamp("run_at", { withTimezone: true }).notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(5),
+    /** Lease marker — set when a tick claims the row; cleared on requeue. */
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    lastError: text("last_error"),
+    result: jsonb("result").$type<unknown>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("jobs_status_run_idx").on(t.status, t.runAt),
+    index("jobs_tenant_idx").on(t.tenantId),
+    index("jobs_queue_status_idx").on(t.queue, t.status),
+  ],
+);
+
 export const revisions = pgTable(
   "revisions",
   {

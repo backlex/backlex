@@ -323,6 +323,7 @@ const NAV_LABELS: Record<string, MessageDescriptor> = {
   storage: msg`Storage`,
   flows: msg`Flows`,
   functions: msg`Functions`,
+  jobs: msg`Jobs`,
   webhooks: msg`Webhooks`,
   integrations: msg`Integrations`,
   realtime: msg`Realtime`,

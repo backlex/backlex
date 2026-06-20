@@ -100,6 +100,31 @@ export interface PhoneNumber {
   lastSeenAt: string | number | null;
 }
 
+export type JobStatus =
+  | "pending"
+  | "active"
+  | "succeeded"
+  | "failed"
+  | "dead_letter"
+  | "cancelled";
+
+export interface Job {
+  id: string;
+  tenantId: string | null;
+  queue: string;
+  type: string;
+  payload: Record<string, unknown>;
+  status: JobStatus;
+  priority: number;
+  runAt: string | number;
+  attempts: number;
+  maxAttempts: number;
+  lastError: string | null;
+  result: unknown;
+  createdAt: string | number;
+  completedAt: string | number | null;
+}
+
 export interface ApiError {
   code: string;
   message: string;

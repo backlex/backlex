@@ -53,9 +53,14 @@ guides; this list is everything else.
 ## Automation
 
 - **Webhooks** (`routes/webhooks.ts`, `routes/webhook-trigger.ts`,
-  `services/webhooks.ts`) — outbound delivery with HMAC
-  `X-Backlex-Signature` + retry. The trigger route is the inbound
-  side that flows/functions hook into.
+  `services/webhooks.ts`) — outbound delivery with retry. Each delivery is
+  signed three ways: legacy `X-Backlex-Signature` (HMAC of body) plus the
+  replay-safe `X-Backlex-Signature-V2` over `{timestamp}.{body}` with
+  `X-Backlex-Timestamp`. `applyDeliveryOutcome` is the auto-disable circuit
+  breaker (15 consecutive failures → `active=false` + `disabled_reason` +
+  broadcast notification; reset on success or manual resume). SDK receiver
+  helper: `verifyWebhook` from `@backlex/client/webhook`. The trigger route is
+  the inbound side that flows/functions hook into. See `docs/webhooks.md`.
 - **Flows** (`routes/flows.ts`, `services/flows.ts`) — visual
   workflow builder. Trigger keys are `event` / `cron` / `webhook` /
   `manual`; operations are a serialized DSL evaluated server-side.

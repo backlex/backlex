@@ -89,6 +89,7 @@ export default defineConfig({
             { slug: "realtime" },
             { slug: "push-messaging" },
             { slug: "sms-messaging" },
+            { slug: "jobs" },
             { slug: "advisor" },
           ],
         },

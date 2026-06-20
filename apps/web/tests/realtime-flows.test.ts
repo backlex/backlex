@@ -16,6 +16,7 @@ import {
 } from "bun:test";
 import { createHmac } from "node:crypto";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import { processJobsWithEnv } from "../src/server/services/jobs";
 
 // --- SSE parsing -----------------------------------------------------------
 
@@ -454,6 +455,10 @@ describe("outgoing webhooks (HMAC signed)", () => {
   ): Promise<CapturedRequest | null> => {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
+      // Webhook delivery is now enqueued as a durable `webhook.deliver` job
+      // (retry + dead-letter) rather than sent inline; pump the queue each
+      // iteration so the registered receiver actually gets the POST.
+      await processJobsWithEnv(h.env);
       const hit = predicate();
       if (hit) return hit;
       await new Promise((r) => setTimeout(r, 25));

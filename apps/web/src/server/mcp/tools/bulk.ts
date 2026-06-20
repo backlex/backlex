@@ -179,4 +179,47 @@ export const bulkUpdate: McpTool = {
   },
 };
 
-export const bulkTools: McpTool[] = [bulkInsert, bulkUpdate];
+export const batchWrite: McpTool = {
+  name: "collections.batch",
+  description:
+    "Run a mixed set of create/update/delete operations on ONE collection in a " +
+    "single call. `operations` is an array of `{ op: \"create\"|\"update\"|" +
+    "\"delete\", id?, data? }` (update/delete need `id`). By default each op is " +
+    "independent (partial success). Pass `atomic: true` for all-or-nothing — " +
+    "the first failure rolls the whole set back (Postgres / self-host SQLite " +
+    "only; rejected on D1 / libSQL / neon-http). Returns `{ atomic, total, " +
+    "succeeded, failed, results }`.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      collection: { type: "string" },
+      operations: {
+        type: "array",
+        description: 'Array of `{ op, id?, data? }` (e.g. `{ "op": "create", "data": {…} }`).',
+      },
+      atomic: { type: "boolean", description: "All-or-nothing transaction (default false)." },
+    },
+    required: ["collection", "operations"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const slug = String(args.collection ?? "");
+    if (!slug) throw new Error("VALIDATION: collection is required");
+    if (!Array.isArray(args.operations))
+      throw new Error("VALIDATION: operations must be an array");
+    const res = await ctx.fetchInternal(`/api/items/${encodeURIComponent(slug)}/batch`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ operations: args.operations, atomic: args.atomic === true }),
+    });
+    const body = await readJson<{ data?: unknown; error?: unknown }>(res);
+    const payload = res.ok ? (body.data ?? body) : body;
+    return {
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload as object,
+      isError: !res.ok,
+    };
+  },
+};
+
+export const bulkTools: McpTool[] = [bulkInsert, bulkUpdate, batchWrite];

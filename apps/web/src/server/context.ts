@@ -74,6 +74,10 @@ export interface Ctx {
    *  the row may not be visible yet. Default everywhere else is `ctx.db`;
    *  routes opt in by saying `ctx.dbRead` explicitly. */
   dbRead: PgDb | SqliteDb;
+  /** True when the active DB driver supports an interactive transaction the
+   *  batch endpoint can run an atomic write set through (postgres-js / in-process
+   *  SQLite). False on D1 / libSQL / neon-http (HTTP transports). */
+  txCapable: boolean;
   auth: Auth;
   /** Deployment-level email adapter (env-derived). Most callers should prefer
    *  {@link Ctx.emailFor} so a workspace's own `email_config` is honoured. */
@@ -196,10 +200,17 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
 
   let db: PgDb | SqliteDb;
   let pgDriver: PgDriver | undefined;
+  // Whether this driver supports an interactive transaction we can replay an
+  // atomic write batch through. postgres-js (TCP) and in-process SQLite (bun /
+  // pglite-in-tests) do; D1, libSQL and neon-http (HTTP transports) do not, so
+  // the batch endpoint rejects `atomic:true` there (non-atomic batch still works).
+  let txCapable: boolean;
   if (override) {
     db = override.db;
+    txCapable = true; // bun-sqlite / pglite test backends both support tx
   } else if (env.D1) {
     db = createD1Client(env.D1);
+    txCapable = false;
   } else if (env.LIBSQL_URL) {
     // libSQL is fetch-based — works on every runtime including Vercel Edge
     // and Netlify Edge, so the import is unconditional (no bun:sqlite-style
@@ -207,6 +218,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     // top-level sqlite barrel free of @libsql/client at module init.
     const { createLibsqlClient } = await import("@backlex/db/sqlite/libsql");
     db = createLibsqlClient(env.LIBSQL_URL, env.LIBSQL_AUTH_TOKEN);
+    txCapable = false;
   } else if (pgUrl) {
     // Default driver: postgres-js. Force neon-http on Vercel Edge (no
     // node:net); allow explicit override on every runtime.
@@ -220,11 +232,13 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
       );
     }
     db = createPgClient(pgUrl, pgDriver);
+    txCapable = pgDriver === "postgres-js";
   } else {
     // SQLite + no D1 → Bun self-host. Dynamically import so the top-level
     // sqlite module stays edge-safe (no `bun:sqlite` at module init).
     const { createBunSqliteClient } = await import("@backlex/db/sqlite/bun");
     db = createBunSqliteClient(env.SQLITE_PATH);
+    txCapable = true;
   }
 
   // Read replica (pg only). HYPERDRIVE_REPLICA (Workers) wins over the raw
@@ -622,6 +636,7 @@ const assembleContext = async (env: Env): Promise<Ctx> => {
     dialect,
     db,
     dbRead,
+    txCapable,
     auth,
     email,
     emailFor,

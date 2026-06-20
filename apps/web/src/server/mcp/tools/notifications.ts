@@ -86,8 +86,45 @@ export const markRead: McpTool = {
   },
 };
 
+export const sendPush: McpTool = {
+  name: "messaging.send_push",
+  description:
+    "Send a native push notification to one user's registered devices (FCM / " +
+    "APNs / Web Push) — also drops an in-app notification. The workspace must " +
+    "have a push provider configured (Settings → Push); users with no active " +
+    "devices are a silent no-op. Provide the recipient `userId`, `title`, and " +
+    "`body`; optional `url` deep-links on tap.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      userId: { type: "string", description: "Recipient user id." },
+      title: { type: "string" },
+      body: { type: "string" },
+      url: { type: "string", description: "Optional deep-link URL." },
+    },
+    required: ["userId", "title", "body"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const res = await ctx.fetchInternal(`/api/notifications`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        userId: String(args.userId ?? ""),
+        title: args.title,
+        body: args.body,
+        url: args.url,
+        push: true,
+      }),
+    });
+    const body = await readJson<unknown>(res);
+    return textResult(body);
+  },
+};
+
 export const notificationsTools: McpTool[] = [
   listNotifications,
   sendNotification,
   markRead,
+  sendPush,
 ];

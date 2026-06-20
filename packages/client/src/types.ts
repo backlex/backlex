@@ -58,6 +58,30 @@ export interface ItemEvent<T = Record<string, unknown>> {
   data: T;
 }
 
+export type BatchOperation<T = Record<string, unknown>> =
+  | { op: "create"; data: Partial<T> }
+  | { op: "update"; id: string; data: Partial<T> }
+  | { op: "delete"; id: string };
+
+export interface BatchRowResult<T = Record<string, unknown>> {
+  index: number;
+  op: "create" | "update" | "delete";
+  ok: boolean;
+  id?: string;
+  data?: T;
+  error?: { code: string; message: string };
+}
+
+export interface BatchResponse<T = Record<string, unknown>> {
+  data: {
+    atomic: boolean;
+    total: number;
+    succeeded: number;
+    failed: number;
+    results: BatchRowResult<T>[];
+  };
+}
+
 export interface DeviceToken {
   id: string;
   platform: "fcm" | "apns" | "web-push";

@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
 import { Skeleton } from "@backlex/ui/components/skeleton";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Card } from "@backlex/ui/components/card";
-import { dbAdminApi } from "../api";
+import { dbAdminApi, type BackupConfig } from "../api";
 
 const ADMIN_TABLE_CLS =
   "[&_td]:px-3.5 [&_td]:text-[13px] [&_th]:h-9 [&_th]:px-3.5 [&_th]:text-[11px] [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-[0.06em] [&_th]:text-muted-foreground";
@@ -346,9 +346,13 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
   const { t } = useLingui();
   type Backup = { id: string; t: string; size: string; kind: string; tables: number; label: string | undefined };
   const [backups, setBackups] = useState<Backup[]>([]);
+  const [schedule, setSchedule] = useState<BackupConfig["schedule"]>("off");
+  const [retain, setRetain] = useState(7);
+  const [savingCfg, setSavingCfg] = useState(false);
+  const [restoring, setRestoring] = useState<string | null>(null);
   const reload = async () => {
     try {
-      const r = await dbAdminApi.backups();
+      const [r, cfg] = await Promise.all([dbAdminApi.backups(), dbAdminApi.backupConfig()]);
       if (Array.isArray(r.data)) {
         setBackups(
           r.data.map((b) => ({
@@ -360,6 +364,10 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
             label: b.label ?? undefined,
           })),
         );
+      }
+      if (cfg.data) {
+        setSchedule(cfg.data.schedule);
+        setRetain(cfg.data.retain);
       }
     } catch (e) {
       pushToast?.((e as Error).message);
@@ -375,12 +383,76 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
       pushToast((e as Error).message);
     }
   };
+  const saveConfig = async (next: Partial<BackupConfig>) => {
+    setSavingCfg(true);
+    try {
+      const r = await dbAdminApi.saveBackupConfig({ schedule, retain, ...next });
+      setSchedule(r.data.schedule);
+      setRetain(r.data.retain);
+      pushToast(t`Backup schedule saved.`);
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setSavingCfg(false);
+    }
+  };
+  const restore = async (id: string) => {
+    if (!window.confirm(t`Restore from this backup? Missing rows are re-inserted; existing rows are never overwritten or deleted.`)) return;
+    setRestoring(id);
+    try {
+      const r = await dbAdminApi.restoreBackup(id);
+      pushToast(t`Restored ${r.data.rowCount} rows across ${r.data.tableCount} tables.`);
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setRestoring(null);
+    }
+  };
+  const SCHEDULES: BackupConfig["schedule"][] = ["off", "daily", "weekly"];
+  const scheduleLabel: Record<BackupConfig["schedule"], string> = {
+    off: t`Off`,
+    daily: t`Daily`,
+    weekly: t`Weekly`,
+  };
   return (
     <div className="flex flex-col gap-3.5">
-      <Card className="grid grid-cols-3 gap-3 p-3.5 max-[640px]:grid-cols-1">
-        <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Schedule</Trans></div><div className="font-medium"><Trans>Daily 03:00 UTC</Trans></div></div>
-        <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Retention</Trans></div><div className="font-medium"><Trans>30 days</Trans></div></div>
-        <div><div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Destination</Trans></div><div className="font-mono text-xs font-medium">r2://backlex-backups/</div></div>
+      <Card className="flex flex-col gap-3 p-3.5">
+        <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+          <div>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Automatic schedule</Trans></div>
+            <div className="flex gap-1">
+              {SCHEDULES.map((s) => (
+                <Button
+                  key={s}
+                  size="sm"
+                  variant={schedule === s ? "primary" : "ghost"}
+                  disabled={savingCfg}
+                  onClick={() => { setSchedule(s); void saveConfig({ schedule: s }); }}
+                >
+                  {scheduleLabel[s]}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground"><Trans>Retain (auto)</Trans></div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={1}
+                max={365}
+                value={String(retain)}
+                disabled={schedule === "off" || savingCfg}
+                onChange={(e) => setRetain(Math.max(1, Math.min(365, Number(e.target.value) || 1)))}
+                className="h-8 w-20"
+              />
+              <Button size="sm" variant="outline" disabled={schedule === "off" || savingCfg} onClick={() => void saveConfig({ retain })}><Trans>Save</Trans></Button>
+            </div>
+          </div>
+        </div>
+        <div className="text-[11.5px] text-muted-foreground">
+          <Trans>Scheduled backups run from the cron tick and keep the newest {retain} automatic dumps. Manual backups are never pruned.</Trans>
+        </div>
       </Card>
       <Card className="gap-0 py-0">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3.5">
@@ -410,7 +482,7 @@ function Backups({ pushToast }: { pushToast: (m: string) => void }) {
                     a.click();
                     a.remove();
                   }}><Trans>Download</Trans></Button>
-                  <Button size="sm" variant="ghost" icon={I.History} onClick={() => pushToast(t`Restored from ${b.id} (dry-run).`)}><Trans>Restore</Trans></Button>
+                  <Button size="sm" variant="ghost" icon={I.History} disabled={restoring === b.id} onClick={() => void restore(b.id)}><Trans>Restore</Trans></Button>
                 </TableCell>
               </TableRow>
             ))}

@@ -382,6 +382,16 @@ export const itemsApi = {
       method: "POST",
       body: JSON.stringify({ publishAt }),
     }),
+  /** Bulk-import rows from a raw JSON-array or CSV string. */
+  importItems: (slug: string, raw: string, format: "json" | "csv") =>
+    api<Envelope<{ inserted: number; failed: number; total: number; errors: { row: number; error: string }[] }>>(
+      `/api/items/${slug}/import?format=${format}`,
+      {
+        method: "POST",
+        headers: { "content-type": format === "csv" ? "text/csv" : "application/json" },
+        body: raw,
+      },
+    ),
 };
 
 export interface ApiFlag {
@@ -1035,7 +1045,23 @@ export const dbAdminApi = {
       method: "POST",
       body: JSON.stringify({ label }),
     }),
+  restoreBackup: (id: string) =>
+    api<Envelope<{ tableCount: number; rowCount: number; skipped: number }>>(
+      `/api/admin/db/backups/${id}/restore`,
+      { method: "POST", headers: { "x-backlex-confirm": "yes" } },
+    ),
+  backupConfig: () => api<Envelope<BackupConfig>>(`/api/admin/db/backups/config`),
+  saveBackupConfig: (cfg: Partial<BackupConfig>) =>
+    api<Envelope<BackupConfig>>(`/api/admin/db/backups/config`, {
+      method: "PUT",
+      body: JSON.stringify(cfg),
+    }),
 };
+
+export interface BackupConfig {
+  schedule: "off" | "daily" | "weekly";
+  retain: number;
+}
 
 export interface ActivityListParams {
   limit?: number;

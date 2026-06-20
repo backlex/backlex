@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@backlex/ui/components/dropdown-menu";
 import { cn } from "@backlex/ui/lib/utils";
+import { DatePicker } from "@/components/date-picker";
 import { itemsApi, revisionsApi, type ApiRevision } from "./api";
 import { ItemCommentsPanel } from "./item-collaboration";
 import { ConfirmDialog } from "./sheet";
@@ -588,13 +589,7 @@ function PublishControls({
             <Button variant="primary" size="sm" onClick={() => void onPublish("publish")}>
               <Trans>Publish now</Trans>
             </Button>
-            <input
-              type="datetime-local"
-              value={scheduleAt}
-              onChange={(e) => setScheduleAt(e.target.value)}
-              className="h-8 rounded-xl border border-border bg-background px-2 text-xs"
-              aria-label={t`Schedule publish time`}
-            />
+            <DatePicker value={scheduleAt || null} onChange={(iso) => setScheduleAt(iso ?? "")} />
             <div className="flex gap-2">
               <Button
                 variant="outline"

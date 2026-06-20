@@ -217,10 +217,11 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   // Kanban needs a status-shaped column to group by. If the URL asks for
   // `?view=kanban` on a collection that has none, fall back to the table view
   // (the toggle already hides the Kanban button in that case).
-  const hasStatusField = useMemo(
-    () => !!resolveStatusField(schemaState as unknown as { fields?: Array<Record<string, unknown>> } | null),
+  const kanbanStatusField = useMemo(
+    () => resolveStatusField(schemaState as unknown as { fields?: Array<Record<string, unknown>> } | null),
     [schemaState],
   );
+  const hasStatusField = !!kanbanStatusField;
   const viewMode: ItemsViewMode =
     requestedView === "kanban" && !hasStatusField ? "table" : requestedView;
   // Archive lifecycle view — when on, GET /api/collections is called with
@@ -594,13 +595,31 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
 
   // Primary edit/create flow is the full-page editor (deep-linkable). The modal
   // (ItemSheet) stays as a fallback for create outside a collection context.
+  // Carry the list's query string (view / filters / sort / search) into the
+  // item editor and back, so returning via "Back" restores the chosen view
+  // (e.g. Kanban) instead of snapping to the default Table.
   const openCreate = () => {
-    if (activeCollection) navigate(`/collections/${activeCollection}/items/new`);
+    if (activeCollection) navigate(`/collections/${activeCollection}/items/new${location.search}`);
     else { setSheetMode("create"); setSheetItem(null); setSheetOpen(true); }
   };
   const openEdit = (it: Post) => {
-    if (activeCollection) navigate(`/collections/${activeCollection}/items/${it.id}`);
+    if (activeCollection) navigate(`/collections/${activeCollection}/items/${it.id}${location.search}`);
     else { setSheetMode("edit"); setSheetItem(it); setSheetOpen(true); }
+  };
+  // Kanban drag-and-drop → patch the row's status field. Optimistic: move the
+  // card immediately, revert on failure.
+  const changeItemStatus = async (it: Post, status: string) => {
+    if (!activeCollection || !kanbanStatusField) return;
+    const field = kanbanStatusField.name;
+    const prev = (it as unknown as Record<string, unknown>)[field];
+    if (prev === status) return;
+    setPosts((p) => p.map((x) => (x.id === it.id ? ({ ...x, [field]: status } as Post) : x)));
+    try {
+      await itemsApi.patch(activeCollection, it.id, { [field]: status });
+    } catch (e) {
+      setPosts((p) => p.map((x) => (x.id === it.id ? ({ ...x, [field]: prev } as Post) : x)));
+      pushToast((e as Error).message, "error");
+    }
   };
 
   // Per-collection bulk export — streams the file straight from the API (the
@@ -902,8 +921,8 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                   onSaved={(updated) => setPosts((p) => p.map((x) => (x.id === updated.id ? updated : x)))}
                   onCreated={(created) => setPosts((p) => [created, ...p])}
                   onDeleted={(id) => setPosts((p) => p.filter((x) => x.id !== id))}
-                  onBack={() => navigate(`/collections/${activeCollection}`)}
-                  navigateToItem={(id) => navigate(`/collections/${activeCollection}/items/${id}`)}
+                  onBack={() => navigate(`/collections/${activeCollection}${location.search}`)}
+                  navigateToItem={(id) => navigate(`/collections/${activeCollection}/items/${id}${location.search}`)}
                 />
               ) : (
                 <CollectionItemsSkeleton />
@@ -986,7 +1005,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                         itemsForView.length === 0 ? (
                           <EmptyItems onCreate={openCreate} slug={activeCollection ?? undefined} />
                         ) : (
-                          <KanbanBoard rows={itemsForView} onEdit={openEdit} displayTemplate={schemaState.displayTemplate} />
+                          <KanbanBoard rows={itemsForView} onEdit={openEdit} displayTemplate={schemaState.displayTemplate} statusField={kanbanStatusField} onChangeStatus={changeItemStatus} onCreate={openCreate} />
                         )
                       )}
                       {viewMode === "gallery" && (

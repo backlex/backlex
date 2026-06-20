@@ -1,5 +1,5 @@
 import type { PushAdapter, PushMessage, PushSendResult } from "@backlex/core/adapters";
-import { encryptWebPush, signJwt } from "../lib/push-crypto";
+import { encryptWebPush, importVapidKey, signJwt } from "../lib/push-crypto";
 
 /**
  * Web Push (browsers) with VAPID auth and `aes128gcm` payload encryption
@@ -21,6 +21,7 @@ interface WebPushConfig {
 /** Build the VAPID `Authorization` header for an endpoint's origin (per-origin
  *  JWT, cached for the token's ~12h lifetime). */
 const vapidCache = new Map<string, { header: string; exp: number }>();
+let vapidKey: Promise<CryptoKey> | undefined;
 
 const vapidHeader = async (cfg: WebPushConfig, endpoint: string): Promise<string> => {
   const aud = new URL(endpoint).origin;
@@ -28,12 +29,8 @@ const vapidHeader = async (cfg: WebPushConfig, endpoint: string): Promise<string
   const cached = vapidCache.get(aud);
   if (cached && cached.exp - 300 > now) return cached.header;
   const exp = now + 12 * 3600;
-  const jwt = await signJwt(
-    {},
-    { aud, exp, sub: cfg.subject },
-    cfg.vapidPrivateKey,
-    "ES256",
-  );
+  if (!vapidKey) vapidKey = importVapidKey(cfg.vapidPrivateKey, cfg.vapidPublicKey);
+  const jwt = await signJwt({}, { aud, exp, sub: cfg.subject }, await vapidKey, "ES256");
   const header = `vapid t=${jwt}, k=${cfg.vapidPublicKey}`;
   vapidCache.set(aud, { header, exp });
   return header;

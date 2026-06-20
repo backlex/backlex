@@ -3368,6 +3368,10 @@ msgstr "Files"
 msgid "Fill the required fields."
 msgstr "Fill the required fields."
 
+#: src/client/admin/pages/settings.tsx
+msgid "Fills the public key + private key fields above with a fresh VAPID pair. Click Save to store it."
+msgstr "Fills the public key + private key fields above with a fresh VAPID pair. Click Save to store it."
+
 #: src/client/admin/items.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Filter"
@@ -3621,6 +3625,10 @@ msgstr "General"
 #: src/client/admin/account-page.tsx
 msgid "Generate"
 msgstr "Generate"
+
+#: src/client/admin/pages/settings.tsx
+msgid "Generate keypair"
+msgstr "Generate keypair"
 
 #: src/client/admin/role-editor.tsx
 msgid "Generated DSL — saved to <0>role_permissions</0> on save."
@@ -8764,6 +8772,10 @@ msgstr "value · label · color (CSS)"
 #: src/client/admin/condition-editor.tsx
 msgid "value or $user.id"
 msgstr "value or $user.id"
+
+#: src/client/admin/pages/settings.tsx
+msgid "VAPID keypair generated — review and Save to store it."
+msgstr "VAPID keypair generated — review and Save to store it."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Variables"

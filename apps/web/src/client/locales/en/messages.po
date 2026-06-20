@@ -639,6 +639,10 @@ msgstr "90 days"
 msgid "A dropdown needs at least one choice."
 msgstr "A dropdown needs at least one choice."
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "A flag is on for a caller when enabled AND its targeting (condition + rollout) matches."
+msgstr "A flag is on for a caller when enabled AND its targeting (condition + rollout) matches."
+
 #: src/client/admin/pages/functions.tsx
 msgid "A function with that name already exists."
 msgstr "A function with that name already exists."
@@ -725,6 +729,7 @@ msgid "Action"
 msgstr "Action"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "Actions"
 msgstr "Actions"
@@ -1582,6 +1587,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/jobs.tsx
@@ -1951,6 +1957,14 @@ msgstr "composite — not supported"
 msgid "Composite (multi-column) FKs cannot be adopted as a backlex relation"
 msgstr "Composite (multi-column) FKs cannot be adopted as a backlex relation"
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Condition (permission DSL JSON, optional)"
+msgstr "Condition (permission DSL JSON, optional)"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Condition must be valid JSON."
+msgstr "Condition must be valid JSON."
+
 #: src/client/admin/permissions-matrix.tsx
 msgid "conditional access"
 msgstr "conditional access"
@@ -2229,6 +2243,10 @@ msgstr "Create"
 msgid "Create {0}"
 msgstr "Create {0}"
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Create a flag to gate a feature or ship remote config to your apps."
+msgstr "Create a flag to gate a feature or ship remote config to your apps."
+
 #: src/client/pages/api-keys.tsx
 msgid "Create a key to authenticate programmatic access (CI, scripts, third-party apps)."
 msgstr "Create a key to authenticate programmatic access (CI, scripts, third-party apps)."
@@ -2506,6 +2524,7 @@ msgstr "Defaults to the URL's filename"
 #: src/client/admin/app.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/items.tsx
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/users.tsx
@@ -2619,6 +2638,7 @@ msgstr "desc"
 msgid "Descending"
 msgstr "Descending"
 
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/role-editor.tsx
@@ -2886,6 +2906,7 @@ msgstr "edit"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/items.tsx
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Edit"
 msgstr "Edit"
@@ -2918,6 +2939,10 @@ msgstr "Edit field"
 #: src/client/admin/storage.tsx
 msgid "Edit file"
 msgstr "Edit file"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Edit flag"
+msgstr "Edit flag"
 
 #: src/client/admin/pages/flows.tsx
 msgid "Edit flow"
@@ -3036,6 +3061,7 @@ msgstr "Enable anyway"
 msgid "enabled"
 msgstr "enabled"
 
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Enabled"
@@ -3365,6 +3391,11 @@ msgstr "Faster, phishing-resistant sign-in. Your device will prompt for biometri
 msgid "Favicon"
 msgstr "Favicon"
 
+#: src/client/admin/pages/feature-flags.tsx
+#: src/client/admin/ui.tsx
+msgid "Feature flags"
+msgstr "Feature flags"
+
 #: src/client/admin/item-views.tsx
 msgid "February"
 msgstr "February"
@@ -3513,6 +3544,14 @@ msgstr "fk"
 #: src/client/admin/adopt-wizard.tsx
 msgid "FK conflict on {0}"
 msgstr "FK conflict on {0}"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Flag deleted."
+msgstr "Flag deleted."
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Flag saved."
+msgstr "Flag saved."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "flags + aliases — no DDL is run on the table"
@@ -3721,6 +3760,14 @@ msgstr "Generating…"
 #: src/client/admin/pages/settings.tsx
 msgid "GitHub"
 msgstr "GitHub"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Global"
+msgstr "Global"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Global default"
+msgstr "Global default"
 
 #: src/client/admin/pages/functions.tsx
 msgid "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. Sync-only in v1; runs in QuickJS-WASM sandbox."
@@ -4225,6 +4272,7 @@ msgstr "Kanban"
 msgid "key"
 msgstr "key"
 
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/translations.tsx
@@ -4239,6 +4287,10 @@ msgstr "Key \"{key}\" added with {base} value."
 #: src/client/admin/parity/translations.tsx
 msgid "Key \"{key}\" added."
 msgstr "Key \"{key}\" added."
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Key is required."
+msgstr "Key is required."
 
 #: src/client/admin/parity/translations.tsx
 msgid "Key must be 120 characters or fewer."
@@ -4554,6 +4606,7 @@ msgstr "Loading runs…"
 msgid "Loading tool catalog…"
 msgstr "Loading tool catalog…"
 
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Loading…"
@@ -4987,6 +5040,10 @@ msgstr "New backup codes generated. Old codes no longer work."
 msgid "New collection"
 msgstr "New collection"
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "New flag"
+msgstr "New flag"
+
 #: src/client/admin/pages/flows.tsx
 #: src/client/admin/pages/overview.tsx
 msgid "New flow"
@@ -5202,6 +5259,10 @@ msgstr "No errors recorded."
 #: src/client/pages/graphql.tsx
 msgid "No errors."
 msgstr "No errors."
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "No feature flags"
+msgstr "No feature flags"
 
 #. placeholder {0}: titleFor(prev)
 #: src/client/admin/parity/revisions.tsx
@@ -5591,6 +5652,10 @@ msgstr "October"
 msgid "off"
 msgstr "off"
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Off"
+msgstr "Off"
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Off keeps the provider configured but hidden from sign-in."
 msgstr "Off keeps the provider configured but hidden from sign-in."
@@ -5606,6 +5671,7 @@ msgid "on"
 msgstr "on"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/pages/feature-flags.tsx
 msgid "On"
 msgstr "On"
 
@@ -6586,6 +6652,7 @@ msgstr "Refetch /api/openapi.json"
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/realtime.tsx
@@ -7066,6 +7133,18 @@ msgstr "Roles & permissions"
 msgid "Roles come from <0>Roles & permissions</0>. The user also implicitly gets <1>authenticated</1>."
 msgstr "Roles come from <0>Roles & permissions</0>. The user also implicitly gets <1>authenticated</1>."
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Rollout"
+msgstr "Rollout"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Rollout % (0–100, optional)"
+msgstr "Rollout % (0–100, optional)"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Rollout must be 0–100."
+msgstr "Rollout must be 0–100."
+
 #: src/client/admin/pages/webhooks.tsx
 msgid "Rotate"
 msgstr "Rotate"
@@ -7249,6 +7328,10 @@ msgstr "Save changes"
 msgid "Save field"
 msgstr "Save field"
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Save flag"
+msgstr "Save flag"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Save flow"
 msgstr "Save flow"
@@ -7296,6 +7379,7 @@ msgid "Saving MCP guards"
 msgstr "Saving MCP guards"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/insights.tsx
@@ -7348,6 +7432,10 @@ msgstr "Schema graph"
 #: src/client/pages/openapi-export.tsx
 msgid "Schemas"
 msgstr "Schemas"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Scope"
+msgstr "Scope"
 
 #: src/client/pages/api-keys.tsx
 msgid "Scope to role"
@@ -8052,6 +8140,10 @@ msgstr "Start with a template"
 msgid "Starting…"
 msgstr "Starting…"
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "State"
+msgstr "State"
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Stateless Streamable HTTP. No <0>GET /mcp</0> (resumable SSE) yet."
 msgstr "Stateless Streamable HTTP. No <0>GET /mcp</0> (resumable SSE) yet."
@@ -8466,6 +8558,10 @@ msgstr "This rewrites the item to the v{0} snapshot from {1}. The current state 
 msgid "This weakens two-factor authentication"
 msgstr "This weakens two-factor authentication"
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "This workspace"
+msgstr "This workspace"
+
 #: src/client/admin/parity/app-users.tsx
 msgid "This workspace has no custom roles yet — create one under <0>Roles & permissions</0>."
 msgstr "This workspace has no custom roles yet — create one under <0>Roles & permissions</0>."
@@ -8532,6 +8628,10 @@ msgstr "to run"
 #: src/client/admin/storage.tsx
 msgid "Toggle"
 msgstr "Toggle"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Toggle features and ship remote config. Target a rollout % or a permission-DSL condition; client apps read the evaluated map at /api/flags."
+msgstr "Toggle features and ship remote config. Target a rollout % or a permission-DSL condition; client apps read the evaluated map at /api/flags."
 
 #: src/client/admin/ui.tsx
 msgid "Toggle sidebar"
@@ -9002,6 +9102,14 @@ msgstr "value · label · color"
 msgid "value · label · color (CSS)"
 msgstr "value · label · color (CSS)"
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Value (JSON, optional)"
+msgstr "Value (JSON, optional)"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Value must be valid JSON."
+msgstr "Value must be valid JSON."
+
 #: src/client/admin/condition-editor.tsx
 msgid "value or $user.id"
 msgstr "value or $user.id"
@@ -9247,9 +9355,9 @@ msgstr "worker thread + RPC"
 msgid "Working…"
 msgstr "Working…"
 
-#: src/client/admin/ui.tsx
-#~ msgid "Workspace"
-#~ msgstr "Workspace"
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Workspace"
+msgstr "Workspace"
 
 #. placeholder {0}: res.data.slug
 #: src/client/admin/ui.tsx

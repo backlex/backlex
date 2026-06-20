@@ -1177,6 +1177,34 @@ export const appSettings = pgTable(
   (t) => [uniqueIndex("app_settings_unique_idx").on(t.tenantId, t.key)],
 );
 
+/**
+ * Feature flags / remote config. A `tenantId IS NULL` row is the global
+ * default; a per-tenant row with the same `key` overrides it. `rules` carries
+ * optional targeting — a permission-DSL `condition` (resolved against the
+ * caller's `$user`/`$tenant`) and/or a `rollout` percentage (0–100, stable per
+ * user+key). Evaluated by `evaluateFlags`; served to client apps at `/api/flags`.
+ */
+export const featureFlags = pgTable(
+  "feature_flags",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    key: text("key").notNull(),
+    enabled: boolean("enabled").notNull().default(false),
+    /** Remote-config payload returned when the flag is on (any JSON). */
+    value: jsonb("value").$type<unknown>(),
+    /** Targeting: `{ condition?: Condition, rollout?: number }`. Null = everyone. */
+    rules: jsonb("rules").$type<{ condition?: unknown; rollout?: number } | null>(),
+    description: text("description"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("feature_flags_unique_idx").on(t.tenantId, t.key),
+    index("feature_flags_tenant_idx").on(t.tenantId),
+  ],
+);
+
 export const savedPanels = pgTable(
   "saved_panels",
   {

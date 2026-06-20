@@ -72,6 +72,7 @@ const AskAiPage = lazy(() => import("./pages/ask-ai").then((m) => ({ default: m.
 const FlowsPage = lazy(() => import("./pages/flows").then((m) => ({ default: m.FlowsPage })));
 const FunctionsPage = lazy(() => import("./pages/functions").then((m) => ({ default: m.FunctionsPage })));
 const JobsPage = lazy(() => import("./pages/jobs").then((m) => ({ default: m.JobsPage })));
+const FeatureFlagsPage = lazy(() => import("./pages/feature-flags").then((m) => ({ default: m.FeatureFlagsPage })));
 const WebhooksPage = lazy(() => import("./pages/webhooks").then((m) => ({ default: m.WebhooksPage })));
 const IntegrationsPage = lazy(() => import("./pages/integrations").then((m) => ({ default: m.IntegrationsPage })));
 const RealtimePage = lazy(() => import("./pages/realtime").then((m) => ({ default: m.RealtimePage })));
@@ -746,6 +747,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "flows" && <FlowsPage pushToast={pushToast} activeFlow={activeFlow} setActiveFlow={setActiveFlow} />}
             {activeNav === "functions" && <FunctionsPage pushToast={pushToast} />}
             {activeNav === "jobs" && <JobsPage pushToast={pushToast} />}
+            {activeNav === "feature-flags" && <FeatureFlagsPage pushToast={pushToast} />}
             {activeNav === "webhooks" && <WebhooksPage pushToast={pushToast} />}
             {activeNav === "integrations" && <IntegrationsPage pushToast={pushToast} />}
             {activeNav === "graphql" && <GraphqlPage />}

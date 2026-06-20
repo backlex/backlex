@@ -66,6 +66,7 @@ import { sharedPublicRoutes } from "./routes/shared-public";
 import { FILES_COLLECTION, storageRoutes } from "./routes/storage";
 import { uploadsRoutes, tusBaseHeaders } from "./routes/uploads";
 import { uploadPolicy } from "./services/uploads";
+import { flagsPublicRoutes, flagsAdminRoutes } from "./routes/feature-flags";
 import { templatesRoutes } from "./routes/templates";
 import { tenantAuthRoutes } from "./routes/tenant-auth";
 import { tenantsRoutes } from "./routes/tenants";
@@ -423,6 +424,8 @@ export const createApp = (env: Env) => {
   app.route("/api/revisions", revisionsRoutes);
   app.route("/api/storage", storageRoutes);
   app.route("/api/uploads", uploadsRoutes);
+  app.route("/api/flags", flagsPublicRoutes);
+  app.route("/api/admin/feature-flags", flagsAdminRoutes);
   app.route("/api/folders", foldersRoutes);
   app.route("/api/vector", vectorRoutes);
   app.route("/api/realtime", realtimeRoutes);

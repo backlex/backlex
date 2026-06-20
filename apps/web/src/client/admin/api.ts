@@ -384,6 +384,36 @@ export const itemsApi = {
     }),
 };
 
+export interface ApiFlag {
+  id: string;
+  tenantId: string | null;
+  key: string;
+  enabled: boolean;
+  value: unknown;
+  rules: { condition?: unknown; rollout?: number } | null;
+  description: string | null;
+  createdAt: string | number;
+  updatedAt: string | number;
+}
+
+export const flagsApi = {
+  list: () => api<Envelope<ApiFlag[]>>("/api/admin/feature-flags"),
+  upsert: (
+    key: string,
+    body: { enabled?: boolean; value?: unknown; rules?: { condition?: unknown; rollout?: number } | null; description?: string | null },
+    scope: "tenant" | "global" = "tenant",
+  ) =>
+    api<Envelope<ApiFlag>>(
+      `/api/admin/feature-flags/${encodeURIComponent(key)}${scope === "global" ? "?scope=global" : ""}`,
+      { method: "PUT", body: JSON.stringify(body) },
+    ),
+  remove: (key: string, scope: "tenant" | "global" = "tenant") =>
+    api<{ ok: true }>(
+      `/api/admin/feature-flags/${encodeURIComponent(key)}${scope === "global" ? "?scope=global" : ""}`,
+      { method: "DELETE" },
+    ),
+};
+
 export const usersApi = {
   list: () => api<Envelope<ApiUser[]>>(`/api/users`),
   invite: (email: string, role?: string) =>

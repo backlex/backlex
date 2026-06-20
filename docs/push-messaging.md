@@ -44,10 +44,10 @@ APNS_BUNDLE_ID=com.example.app
 APNS_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----"
 APNS_PRODUCTION=true      # false → sandbox gateway
 
-# Web Push (VAPID)
+# Web Push (VAPID) — straight from `npx web-push generate-vapid-keys`
 WEBPUSH_SUBJECT=mailto:admin@example.com
-WEBPUSH_VAPID_PUBLIC_KEY=BPx…        # base64url, raw P-256 point
-WEBPUSH_VAPID_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----"
+WEBPUSH_VAPID_PUBLIC_KEY=BPx…        # raw base64url public point
+WEBPUSH_VAPID_PRIVATE_KEY=0jQ…       # raw base64url 32-byte scalar (NOT a PEM)
 ```
 
 ### Per-workspace (admin UI)

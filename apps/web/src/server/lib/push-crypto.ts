@@ -58,21 +58,53 @@ const importEcKey = (pem: string): Promise<CryptoKey> =>
     ["sign"],
   );
 
-/** Sign a JWT (compact JWS). `alg` selects RS256 (FCM) or ES256 (APNs/VAPID). */
+/**
+ * Import a VAPID signing key from the standard `web-push generate-vapid-keys`
+ * format — a raw base64url 32-byte private scalar plus the base64url public
+ * point (0x04 || x || y). WebCrypto can't import a bare EC scalar, so we build
+ * a JWK from `d` (private) + `x`/`y` (sliced out of the public point). This is
+ * the format every web-push library emits — NOT a PKCS8 PEM.
+ */
+export const importVapidKey = (
+  privateKeyB64url: string,
+  publicKeyB64url: string,
+): Promise<CryptoKey> => {
+  const pub = b64urlToBytes(publicKeyB64url); // 65 bytes: 0x04 || x(32) || y(32)
+  const x = b64url(pub.slice(1, 33));
+  const y = b64url(pub.slice(33, 65));
+  return crypto.subtle.importKey(
+    "jwk",
+    { kty: "EC", crv: "P-256", d: privateKeyB64url, x, y, ext: true },
+    { name: "ECDSA", namedCurve: "P-256" },
+    false,
+    ["sign"],
+  );
+};
+
+/**
+ * Sign a JWT (compact JWS). `key` is a PEM string (RS256 = FCM service account;
+ * ES256 = APNs .p8) or a pre-imported CryptoKey (ES256 = VAPID via
+ * {@link importVapidKey}, whose key isn't a PEM).
+ */
 export const signJwt = async (
   header: Record<string, unknown>,
   claims: Record<string, unknown>,
-  privateKeyPem: string,
+  key: string | CryptoKey,
   alg: "RS256" | "ES256",
 ): Promise<string> => {
   const head = b64url(enc.encode(JSON.stringify({ ...header, alg, typ: "JWT" })));
   const body = b64url(enc.encode(JSON.stringify(claims)));
   const signingInput = `${head}.${body}`;
-  const key = alg === "RS256" ? await importRsaKey(privateKeyPem) : await importEcKey(privateKeyPem);
+  const cryptoKey =
+    typeof key === "string"
+      ? alg === "RS256"
+        ? await importRsaKey(key)
+        : await importEcKey(key)
+      : key;
   const params =
     alg === "RS256" ? { name: "RSASSA-PKCS1-v1_5" } : { name: "ECDSA", hash: "SHA-256" };
   // subtle's ECDSA output is already raw r||s (JOSE format) — no DER unwrap.
-  const sig = new Uint8Array(await crypto.subtle.sign(params, key, enc.encode(signingInput)));
+  const sig = new Uint8Array(await crypto.subtle.sign(params, cryptoKey, enc.encode(signingInput)));
   return `${signingInput}.${b64url(sig)}`;
 };
 

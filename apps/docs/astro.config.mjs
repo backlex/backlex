@@ -89,6 +89,7 @@ export default defineConfig({
             { slug: "resumable-uploads" },
             { slug: "draft-publish" },
             { slug: "realtime" },
+            { slug: "offline-sync" },
             { slug: "push-messaging" },
             { slug: "sms-messaging" },
             { slug: "jobs" },

@@ -302,9 +302,17 @@ export const performDelete = async (
   const oldRow = deserializeRow(existing[0], collection.fields, ctx.dialect, collection.ownerScoped);
 
   if (collection.softDelete) {
+    // Bump `updated_at` alongside `deleted_at` so the soft-delete surfaces in the
+    // incremental changefeed (offline sync) — a tombstone whose `updated_at`
+    // didn't move would fall before the client's cursor and never sync.
+    const now = nowFor(ctx.dialect);
+    const softSets = [sql`${sql.identifier("deleted_at")} = ${now}`];
+    if (collection.hasUpdatedAt) {
+      softSets.push(sql`${sql.identifier(collection.updatedAtColumn ?? "updated_at")} = ${now}`);
+    }
     await emit(
       env,
-      sql`UPDATE ${sql.identifier(table)} SET ${sql.identifier("deleted_at")} = ${nowFor(ctx.dialect)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)}`,
+      sql`UPDATE ${sql.identifier(table)} SET ${sql.join(softSets, sql`, `)} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)}`,
     );
   } else {
     await emit(

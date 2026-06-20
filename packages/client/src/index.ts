@@ -9,6 +9,8 @@ import {
   type ItemResponse,
   type ListQuery,
   type ListResponse,
+  type SearchQuery,
+  type SearchResponse,
   type PhoneNumber,
   type Job,
   type JobStatus,
@@ -27,6 +29,8 @@ export type {
   ItemEvent,
   AggregateQuery,
   AggregateRow,
+  SearchQuery,
+  SearchResponse,
   BatchOperation,
   BatchResponse,
   DeviceToken,
@@ -174,6 +178,10 @@ export interface CollectionClient<T extends Record<string, unknown>> {
   query(): QueryBuilder<T>;
   /** Run a single-function aggregate (count/sum/avg/min/max), optionally grouped. */
   aggregate(body: AggregateQuery): Promise<{ data: AggregateRow[] }>;
+  /** Relevance search — full-text, vector, or `hybrid` (RRF). Requires the
+   *  matching capability enabled on the collection. Rows come back best-first
+   *  with the caller's read permission + tenant scope enforced. */
+  search(body: SearchQuery): Promise<SearchResponse<T>>;
   one(id: string, opts?: ItemQuery): Promise<ItemResponse<T>>;
   create(data: Partial<T>): Promise<ItemResponse<T>>;
   update(id: string, patch: Partial<T>): Promise<ItemResponse<T>>;
@@ -249,6 +257,9 @@ export const createClient = (opts: ClientOptions) => {
       /** Run a single-function aggregate (count/sum/avg/min/max), optionally grouped. */
       aggregate: (body: AggregateQuery): Promise<{ data: AggregateRow[] }> =>
         request<{ data: AggregateRow[] }>("POST", `/api/items/${slug}/aggregate`, body),
+      /** Relevance search (full-text / vector / hybrid). */
+      search: (body: SearchQuery): Promise<SearchResponse<T>> =>
+        request<SearchResponse<T>>("POST", `/api/items/${slug}/search`, body),
       one: (id: string, opts?: ItemQuery): Promise<ItemResponse<T>> =>
         request<ItemResponse<T>>("GET", `/api/items/${slug}/${id}${buildItemSearch(opts)}`),
       create: (data: Partial<T>): Promise<ItemResponse<T>> =>

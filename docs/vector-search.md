@@ -145,3 +145,13 @@ Under `/api/vector` (see also the `vector.search` MCP tool):
 
 Vectors are isolated per collection via a `namespace` (the collection slug), so
 one index safely holds many collections.
+
+## Hybrid search
+
+Vector (semantic) search and [full-text](/full-text-search) (keyword) search are
+complementary — embeddings capture meaning, the keyword index captures exact
+terms. `POST /api/items/{slug}/search` with `mode: "hybrid"` runs both and fuses
+them with Reciprocal Rank Fusion, returning whole rows with the caller's read
+permission and tenant scope enforced. See
+[Full-text & hybrid search](/full-text-search) for the endpoint, RRF details,
+and the `fts` / `searchable` collection flags.

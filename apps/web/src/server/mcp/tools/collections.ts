@@ -297,10 +297,74 @@ export const aggregateItems: McpTool = {
   },
 };
 
+export const searchItems: McpTool = {
+  name: "collections.search",
+  // Read: a relevance query, no mutation. The verb ("search") isn't one of the
+  // read-only guard's recognised prefixes, so mark it explicitly.
+  kind: "read",
+  description:
+    "Relevance search over a collection. `mode: \"fts\"` ranks by keyword " +
+    "(full-text index), `\"vector\"` by semantic similarity (embeddings), " +
+    "`\"hybrid\"` fuses both with Reciprocal Rank Fusion. Prefer this over " +
+    "collections.list when the user asks a 'find the most relevant…' / " +
+    "'search for…' question — list only does exact filters, not ranking. The " +
+    "collection must have the matching capability enabled (`fts` and/or " +
+    "`vectorize`); omit `mode` to let the server pick (hybrid when both are " +
+    "on). Returns `{ data: [...rows], mode, limit }`, best-first, with the " +
+    "caller's read permission + tenant scope enforced.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      collection: { type: "string", description: "Collection slug." },
+      q: { type: "string", description: "The search query string." },
+      mode: {
+        type: "string",
+        enum: ["fts", "vector", "hybrid"],
+        description:
+          "Ranking backend. Omit to auto-pick (hybrid when both FTS and vector are enabled).",
+      },
+      limit: {
+        type: "number",
+        description: "Max rows (1-100, default 20).",
+      },
+      locale: {
+        type: "string",
+        description: "Collapse i18n_text fields to one locale, or `*` for the full map.",
+      },
+    },
+    required: ["collection", "q"],
+    additionalProperties: false,
+  },
+  outputSchema: {
+    type: "object",
+    properties: {
+      data: { type: "array", items: { type: "object" } },
+      mode: { type: "string", enum: ["fts", "vector", "hybrid"] },
+      limit: { type: "number" },
+    },
+    required: ["data", "mode", "limit"],
+  },
+  handler: async (args, ctx) => {
+    const slug = requireSlug(args);
+    const { collection: _c, ...body } = args;
+    const res = await ctx.fetchInternal(
+      `/api/items/${encodeURIComponent(slug)}/search`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+    const out = await readJson<unknown>(res);
+    return textResult(out);
+  },
+};
+
 export const collectionsTools: McpTool[] = [
   listItems,
   readItem,
   aggregateItems,
+  searchItems,
   insertItem,
   updateItem,
   deleteItem,

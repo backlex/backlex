@@ -77,6 +77,7 @@ export default defineConfig({
             { slug: "database-providers" },
             { slug: "sqlite-providers" },
             { slug: "vector-search" },
+            { slug: "full-text-search" },
             { slug: "ask-ai" },
           ],
         },

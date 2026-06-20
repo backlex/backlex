@@ -905,6 +905,12 @@ export const collections = pgTable(
      *  to `env.EMBEDDING_DEFAULT_MODEL`; when neither is set, vectorization
      *  is silently skipped for this collection. */
     vectorizeModel: text("vectorize_model"),
+    /** When true, item writes maintain a keyword full-text-search index
+     *  (Postgres `tsvector` column + GIN; SQLite FTS5 shadow table) built
+     *  from the fields flagged `searchable: true`. Drives the on-write hook,
+     *  the `?q=` precision filter, the `POST /:slug/search` endpoint, and the
+     *  bulk `POST /:slug/fts-reindex` backfill route. */
+    fts: boolean("fts").notNull().default(false),
     /** Default sort applied by `parseQuery` when the request omits `?sort=`.
      *  Comma-separated field list, `-` prefix = DESC (Directus-style).
      *  e.g. `"-published_at,name"`. Null falls back to `-created_at` if the

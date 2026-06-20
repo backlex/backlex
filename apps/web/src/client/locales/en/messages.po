@@ -3578,6 +3578,14 @@ msgstr "Flows"
 #~ msgid "Focal point"
 #~ msgstr "Focal point"
 
+#: src/client/admin/add-field.tsx
+msgid "Fold this field into the collection's full-text-search index (when FTS is enabled)."
+msgstr "Fold this field into the collection's full-text-search index (when FTS is enabled)."
+
+#: src/client/admin/edit-field.tsx
+msgid "Fold this field into the collection's full-text-search index (when FTS is enabled). Re-index after changing."
+msgstr "Fold this field into the collection's full-text-search index (when FTS is enabled). Re-index after changing."
+
 #: src/client/admin/storage.tsx
 msgid "Folder"
 msgstr "Folder"
@@ -3673,6 +3681,10 @@ msgstr "full access"
 #: src/client/admin/permissions-matrix.tsx
 msgid "Full access"
 msgstr "Full access"
+
+#: src/client/admin/collection-settings.tsx
+msgid "Full-text search"
+msgstr "Full-text search"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Function"
@@ -4715,6 +4727,10 @@ msgstr "Magic link"
 #: src/client/pages/magic-link.tsx
 msgid "Magic-link plugin not enabled on the server"
 msgstr "Magic-link plugin not enabled on the server"
+
+#: src/client/admin/collection-settings.tsx
+msgid "Maintain a keyword search index from the fields marked<0> searchable</0>. Upgrades<1> ?q=</1> to ranked keyword matching and enables the<2> /search</2> endpoint (full-text / vector / hybrid). After enabling on an existing collection, run a re-index to backfill."
+msgstr "Maintain a keyword search index from the fields marked<0> searchable</0>. Upgrades<1> ?q=</1> to ranked keyword matching and enables the<2> /search</2> endpoint (full-text / vector / hybrid). After enabling on an existing collection, run a re-index to backfill."
 
 #: src/client/admin/pages/settings.tsx
 msgid "Make default"
@@ -7501,6 +7517,11 @@ msgstr "Search members…"
 #: src/client/admin/flow-builder.tsx
 msgid "Search steps…"
 msgstr "Search steps…"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Searchable"
+msgstr "Searchable"
 
 #: src/client/admin/pages/settings.tsx
 msgid "secret"

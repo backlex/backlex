@@ -31,6 +31,9 @@ interface SchemaLike {
   /** Opt-in sensitive-read auditing. When on, every read of this collection
    *  (list + by-id) records an `access.read` row in the audit log. */
   auditReads?: boolean;
+  /** Maintain a keyword full-text-search index from the fields flagged
+   *  `searchable`. Powers `?q=` keyword filtering + the `/search` endpoint. */
+  fts?: boolean;
   /** True when the collection was adopted from a pre-existing physical table.
    *  Adopted collections soft-delete (archive) rather than hard-drop; managed
    *  collections hard-DROP the underlying `c_<slug>` table on delete. */
@@ -266,6 +269,19 @@ export function CollectionSettings({ schema, existingSlugs, collections, onPatch
               </div>
             </div>
             <Switch checked={!!schema.auditReads} onChange={(v) => onPatch({ auditReads: v })} />
+          </div>
+          <div className="flex items-center justify-between gap-3 pb-1">
+            <div>
+              <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Full-text search</Trans></div>
+              <div className="text-[11.5px] text-muted-foreground">
+                <Trans>Maintain a keyword search index from the fields marked
+                <span className="font-mono"> searchable</span>. Upgrades
+                <span className="font-mono"> ?q=</span> to ranked keyword matching and enables the
+                <span className="font-mono"> /search</span> endpoint (full-text / vector / hybrid).
+                After enabling on an existing collection, run a re-index to backfill.</Trans>
+              </div>
+            </div>
+            <Switch checked={!!schema.fts} onChange={(v) => onPatch({ fts: v })} />
           </div>
         </div>
       </Card>

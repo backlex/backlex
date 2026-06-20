@@ -4,6 +4,7 @@ import type { SqliteDb } from "./sqlite";
 import {
   type FieldDef,
   columnDefSql,
+  ftsTableName,
   quote,
   sqlTypeFor,
   validateFields,
@@ -53,11 +54,62 @@ interface CollectionShape {
   /** When true, the physical table gets a nullable `deleted_at` column so
    *  DELETE can soft-delete instead of removing the row. */
   softDelete?: boolean;
+  /** When true, the physical table gains a keyword full-text-search index
+   *  (Postgres: a `_fts` tsvector column + GIN; SQLite: a `<table>__fts`
+   *  FTS5 shadow table) when at least one field is flagged `searchable`. The
+   *  index content is maintained by the item-write hooks, not by the DB. */
+  fts?: boolean;
   /** When true, the table is *adopted* (already exists, not managed by us).
    *  Apply is a no-op — we never DDL someone else's table. The collections
    *  metadata is the only thing that changes for adoptions. */
   adopted?: boolean;
 }
+
+/** Whether a field contributes to the full-text index — `searchable` and a
+ *  text-like type. Mirrors the vectorize `text`/`longtext`-only rule. */
+const isFtsField = (f: FieldDef): boolean =>
+  Boolean(f.searchable) && (f.type === "text" || f.type === "longtext");
+
+/**
+ * Create the full-text-search index objects for a managed collection.
+ * Idempotent and additive — safe to call on every `applyCollection`. No-op
+ * unless the collection has `fts` enabled with at least one `searchable`
+ * text/longtext field. Postgres keeps the index inline (a `_fts` tsvector
+ * column + GIN); SQLite uses an FTS5 shadow table. The actual index *content*
+ * is written by the item-write hooks (services/fts.ts), never here.
+ */
+const ensureFtsObjects = async (
+  db: AnyDb,
+  dialect: Dialect,
+  table: string,
+  fields: FieldDef[],
+): Promise<void> => {
+  if (!fields.some(isFtsField)) return;
+  if (dialect === "pg") {
+    const existing = await introspectColumns(db, dialect, table);
+    if (!existing.has("_fts")) {
+      await exec(
+        db,
+        dialect,
+        `ALTER TABLE ${quote(table)} ADD COLUMN ${quote("_fts")} tsvector`,
+      );
+    }
+    await exec(
+      db,
+      dialect,
+      `CREATE INDEX IF NOT EXISTS ${quote(`${table}_fts_idx`)} ON ${quote(table)} USING GIN (${quote("_fts")})`,
+    );
+    return;
+  }
+  // SQLite: a contentless-ish FTS5 shadow table keyed by the item id. `item_id`
+  // is UNINDEXED (stored, not searched) so MATCH only scans `content`; bm25()
+  // ranks. The write hook keeps it in sync (delete-then-insert per row).
+  await exec(
+    db,
+    dialect,
+    `CREATE VIRTUAL TABLE IF NOT EXISTS ${quote(ftsTableName(table))} USING fts5(item_id UNINDEXED, content)`,
+  );
+};
 
 const systemColumns = (
   dialect: Dialect,
@@ -233,6 +285,7 @@ export const applyCollection = async (
       );
     }
     await ensureFieldIndexes(db, dialect, table, def.fields);
+    if (def.fts) await ensureFtsObjects(db, dialect, table, def.fields);
     return;
   }
 
@@ -306,6 +359,9 @@ export const applyCollection = async (
   // Run after column adds so a freshly-added indexed field gets its index, and
   // so a field that gained `indexed` on a later update is picked up too.
   await ensureFieldIndexes(db, dialect, table, def.fields);
+  // FTS objects are additive too — a collection that gains `fts` (or its first
+  // `searchable` field) on a later PATCH picks them up here.
+  if (def.fts) await ensureFtsObjects(db, dialect, table, def.fields);
 };
 
 export const dropField = async (
@@ -334,4 +390,10 @@ export const dropCollection = async (
   // "not planned" — is exactly the footgun we won't reproduce.)
   if (options.adopted) return;
   await exec(db, dialect, `DROP TABLE IF EXISTS ${quote(table)}`);
+  // SQLite keeps full-text content in a separate FTS5 shadow table — drop it
+  // alongside (no-op when the collection never had FTS). Postgres holds the
+  // index inline as a `_fts` column, so it goes with the table above.
+  if (dialect === "sqlite") {
+    await exec(db, dialect, `DROP TABLE IF EXISTS ${quote(ftsTableName(table))}`);
+  }
 };

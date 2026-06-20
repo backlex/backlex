@@ -117,6 +117,39 @@ export interface Collections {
 }
 ```
 
+#### Typed SDK (`--sdk`)
+
+Add `--sdk` to also emit a typed client factory, so you skip the manual
+`<T>` on every call:
+
+```bash
+bun run backlex gen-types https://api.your.app --sdk --out src/backlex.ts
+```
+
+The output adds an import of `@backlex/client` plus:
+
+```ts
+export const createTypedClient = (opts: ClientOptions): TypedClient<Collections> =>
+  typedCollections<Collections>(createClient(opts));
+```
+
+Use it — every collection is keyed by slug and fully typed:
+
+```ts
+import { createTypedClient } from "./backlex";
+
+const db = createTypedClient({ url: "https://api.your.app", apiKey: "pak_…" });
+
+const { data } = await db.collections.posts.list();   // data: Posts[]
+await db.collections.posts.create({ title: "Hello" }); // typed Partial<Posts>
+
+// The raw client surface (auth, storage, from<T>, …) is still available:
+await db.auth.signIn({ email, password });
+```
+
+`db.collections.<slug>` is a thin proxy over `db.from(slug)` — no
+per-collection runtime code is generated; the types live in `Collections`.
+
 ## `backlex` CLI
 
 Run from any project that has `@backlex/cli` (root has it as
@@ -125,8 +158,8 @@ Run from any project that has `@backlex/cli` (root has it as
 ```
 backlex help
 backlex migrate [db-path]                      apply SQLite migrations
-backlex gen-types <api-url> [--out <file>] [--key <pak_...>]
-                                                 generate TS types
+backlex gen-types <api-url> [--out <file>] [--key <pak_...>] [--sdk]
+                                                 generate TS types (+ typed client with --sdk)
 ```
 
 ### `backlex migrate`

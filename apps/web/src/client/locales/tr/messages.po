@@ -8276,6 +8276,10 @@ msgstr "SMS ayarları kaydedildi."
 msgid "SMS transport for <0>this workspace</0>. Resolution order: this config → the instance-wide default → the deployment's <1>SMS_*</1> env vars. Secret values are encrypted at rest and never shown again. Send to a user via the <2>messaging.send_sms</2> tool / API once they register a phone number."
 msgstr "<0>Bu çalışma alanı</0> için SMS taşıyıcısı. Çözümleme sırası: bu yapılandırma → örnek genelindeki varsayılan → dağıtımın <1>SMS_*</1> ortam değişkenleri. Gizli değerler şifreli saklanır ve bir daha gösterilmez. Bir kullanıcı telefon numarası kaydettikten sonra <2>messaging.send_sms</2> aracı / API ile gönderim yapın."
 
+#: src/client/admin/item-editor.tsx
+msgid "Snapshot"
+msgstr "Anlık görüntü"
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Snippet copied"
 msgstr "Parça kopyalandı"

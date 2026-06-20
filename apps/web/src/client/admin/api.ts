@@ -366,6 +366,22 @@ export const itemsApi = {
     }),
   remove: (slug: string, id: string) =>
     api<{ ok: true }>(`/api/items/${slug}/${id}`, { method: "DELETE" }),
+  /** Publish now (versioned collections). */
+  publish: (slug: string, id: string) =>
+    api<Envelope<Record<string, unknown>>>(`/api/items/${slug}/${id}/publish`, {
+      method: "POST",
+    }),
+  /** Revert to draft (clears any pending schedule). */
+  unpublish: (slug: string, id: string) =>
+    api<Envelope<Record<string, unknown>>>(`/api/items/${slug}/${id}/publish?unpublish=1`, {
+      method: "POST",
+    }),
+  /** Schedule a future publish (ISO), or pass null to cancel a pending one. */
+  schedulePublish: (slug: string, id: string, publishAt: string | null) =>
+    api<Envelope<Record<string, unknown>>>(`/api/items/${slug}/${id}/publish`, {
+      method: "POST",
+      body: JSON.stringify({ publishAt }),
+    }),
 };
 
 export const usersApi = {

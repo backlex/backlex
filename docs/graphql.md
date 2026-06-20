@@ -68,6 +68,13 @@ mutation Bulk($ops: [JSON!]!) {
 The schema is rebuilt only when collection metadata changes (cache key
 is a hash of all collection definitions).
 
+## Draft / published
+
+For [versioned collections](/draft-publish/) GraphQL applies the same
+published-only default as REST: callers without `publish`/`update` permission
+see only published rows on both `<slug>(...)` and `<slug>ById(...)`. Privileged
+callers see all and can still narrow with a `_status` filter.
+
 ## Filter
 
 The `filter` argument is the same JSON DSL as REST. Pass it as a GraphQL

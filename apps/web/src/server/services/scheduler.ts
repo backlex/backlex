@@ -24,6 +24,7 @@ const parseExpression = (
 import { claimDueTasks, deleteTask } from "./scheduled-tasks";
 import { processJobs } from "./jobs";
 import { sweepExpiredUploads } from "./uploads";
+import { publishDueItems } from "./items/scheduled-publish";
 import { pruneOldActivity, pruneOldActivityByPrefix } from "./activity";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -182,6 +183,14 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
     await sweepExpiredUploads(ctx);
   } catch (e) {
     console.error("[uploads] sweep failed", e);
+  }
+
+  // Scheduled publishing: flip versioned-collection drafts whose `_publish_at`
+  // has passed to `published`.
+  try {
+    await publishDueItems(ctx);
+  } catch (e) {
+    console.error("[scheduled-publish] tick failed", e);
   }
 
   if (now.getTime() - lastActivityPruneAt >= ACTIVITY_PRUNE_INTERVAL_MS) {

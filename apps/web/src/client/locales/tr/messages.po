@@ -7343,6 +7343,10 @@ msgid "Send test push"
 msgstr "Test push gönder"
 
 #: src/client/admin/pages/settings.tsx
+msgid "Send test SMS"
+msgstr "Test SMS gönder"
+
+#: src/client/admin/pages/settings.tsx
 msgid "Sender address for transactional email — set via <0>wrangler secret put</0> / <1>.env</1>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here."
 msgstr "İşlemsel e-posta gönderici adresi — <0>wrangler secret put</0> / <1>.env</1> üzerinden ayarlanır. Ayarlanmadığında (veya RESEND_API_KEY eksikse) e-posta stdout'a kaydedilir. Burada salt okunur."
 
@@ -7785,6 +7789,18 @@ msgstr "slug zorunludur"
 msgid "Slug: <0>{slugClean}</0>"
 msgstr "Slug: <0>{slugClean}</0>"
 
+#: src/client/admin/pages/settings.tsx
+msgid "SMS"
+msgstr "SMS"
+
+#: src/client/admin/pages/settings.tsx
+msgid "SMS settings saved."
+msgstr "SMS ayarları kaydedildi."
+
+#: src/client/admin/pages/settings.tsx
+msgid "SMS transport for <0>this workspace</0>. Resolution order: this config → the instance-wide default → the deployment's <1>SMS_*</1> env vars. Secret values are encrypted at rest and never shown again. Send to a user via the <2>messaging.send_sms</2> tool / API once they register a phone number."
+msgstr "<0>Bu çalışma alanı</0> için SMS taşıyıcısı. Çözümleme sırası: bu yapılandırma → örnek genelindeki varsayılan → dağıtımın <1>SMS_*</1> ortam değişkenleri. Gizli değerler şifreli saklanır ve bir daha gösterilmez. Bir kullanıcı telefon numarası kaydettikten sonra <2>messaging.send_sms</2> aracı / API ile gönderim yapın."
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Snippet copied"
 msgstr "Parça kopyalandı"
@@ -8128,6 +8144,10 @@ msgstr "LDAP bağlantısını test et"
 msgid "Test push sent to {0} device(s)."
 msgstr "{0} cihaza test push gönderildi."
 
+#: src/client/admin/pages/settings.tsx
+msgid "Test recipient (E.164)"
+msgstr "Test alıcısı (E.164)"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Test run"
 msgstr "Test çalışması"
@@ -8139,6 +8159,11 @@ msgstr "Test çalışması · {name}"
 #: src/client/admin/pages/flows.tsx
 msgid "Test run dispatched."
 msgstr "Test çalışması başlatıldı."
+
+#. placeholder {0}: r.sent
+#: src/client/admin/pages/settings.tsx
+msgid "Test SMS sent to {0} number(s)."
+msgstr "{0} numaraya test SMS gönderildi."
 
 #: src/client/admin/pages/logs.tsx
 msgid "The activity endpoint returned an error. Try again in a moment."
@@ -8972,6 +8997,10 @@ msgstr "Ayarlandığında, gövde çalışma zamanında depolanan şablondan iş
 #: src/client/pages/api-keys.tsx
 msgid "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
 msgstr "Ayarlandığında, bu anahtarla yapılan istekler yalnızca bu rolün izinlerini alır — ve yalnızca sahip bu role hâlâ sahip olduğu sürece."
+
+#: src/client/admin/pages/settings.tsx
+msgid "Where “Send test SMS” delivers. Leave blank to use your account's registered numbers."
+msgstr "“Test SMS gönder” işleminin nereye iletileceği. Hesabınızın kayıtlı numaralarını kullanmak için boş bırakın."
 
 #: src/client/admin/storage.tsx
 msgid "Width"

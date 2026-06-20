@@ -88,6 +88,7 @@ export default defineConfig({
             { slug: "storage" },
             { slug: "realtime" },
             { slug: "push-messaging" },
+            { slug: "sms-messaging" },
             { slug: "advisor" },
           ],
         },

@@ -10,10 +10,12 @@ Usage:
       Apply SQLite migrations to db-path (default: ./.data/backlex.sqlite,
       or $DATABASE_PATH if set).
 
-  backlex gen-types <api-url> [--out <file>] [--key <pak_...>]
+  backlex gen-types <api-url> [--out <file>] [--key <pak_...>] [--sdk]
       Fetch /api/collections from the given URL and emit a TypeScript
       module describing every collection. With --out, writes to disk;
       otherwise prints to stdout. Use --key to authenticate via API key.
+      Add --sdk to also emit a typed client factory (createTypedClient),
+      so db.collections.<slug>.list() is fully typed (needs @backlex/client).
 
   backlex mcp --url <mcp-url> --key <pak_...> [--tenant <tenant-id>]
       Run an MCP (Model Context Protocol) server over stdio that proxies
@@ -33,6 +35,8 @@ const flag = (name: string): string | undefined => {
   return i === -1 ? undefined : args[i + 1];
 };
 
+const has = (name: string): boolean => args.includes(name);
+
 const run = async () => {
   if (!cmd || cmd === "help" || cmd === "--help" || cmd === "-h") {
     process.stdout.write(HELP);
@@ -49,7 +53,7 @@ const run = async () => {
       console.error("backlex gen-types <api-url> — url required");
       process.exit(1);
     }
-    await runGenTypes(url, flag("--out"), flag("--key"));
+    await runGenTypes(url, flag("--out"), flag("--key"), has("--sdk"));
     return;
   }
   if (cmd === "mcp") {

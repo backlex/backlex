@@ -562,6 +562,39 @@ export const pushTemplates = sqliteTable(
   (t) => [uniqueIndex("push_templates_tenant_key_idx").on(t.tenantId, t.key)],
 );
 
+/* SMS messaging tables (mirrors of pg schema). */
+
+export const phoneNumbers = sqliteTable(
+  "phone_numbers",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    userId: text("user_id").notNull(),
+    /** E.164, e.g. +14155552671. */
+    phoneNumber: text("phone_number").notNull(),
+    isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+    createdAt: ts("created_at"),
+    lastSeenAt: integer("last_seen_at"),
+  },
+  (t) => [
+    uniqueIndex("phone_numbers_unique_idx").on(t.userId, t.phoneNumber),
+    index("phone_numbers_user_idx").on(t.userId),
+    index("phone_numbers_tenant_idx").on(t.tenantId),
+  ],
+);
+
+export const smsConfig = sqliteTable(
+  "sms_config",
+  {
+    tenantId: text("tenant_id").primaryKey(),
+    /** inherit | console | twilio | sns */
+    provider: text("provider").notNull().default("inherit"),
+    config: text("config", { mode: "json" }).$type<Record<string, unknown>>().notNull().default({}),
+    secrets: text("secrets", { mode: "json" }).$type<Record<string, string>>().notNull().default({}),
+    updatedAt: ts("updated_at"),
+  },
+);
+
 export const revisions = sqliteTable(
   "revisions",
   {

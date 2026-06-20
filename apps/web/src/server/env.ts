@@ -186,6 +186,24 @@ export interface Env {
   WEBPUSH_SUBJECT?: string;
   WEBPUSH_VAPID_PUBLIC_KEY?: string;
   WEBPUSH_VAPID_PRIVATE_KEY?: string;
+  // SMS. `SMS_PROVIDER` forces a single transport (`console`, `twilio`, `sns`);
+  // when unset the first provider below with complete credentials is used
+  // (twilio → sns), falling back to `console`.
+  SMS_PROVIDER?: string;
+  // Twilio Programmable Messaging — `TWILIO_FROM` is an E.164 number or approved
+  // alphanumeric sender id; alternatively set `TWILIO_MESSAGING_SERVICE_SID`
+  // (MGxxxx) to use a Messaging Service sender pool.
+  TWILIO_ACCOUNT_SID?: string;
+  TWILIO_AUTH_TOKEN?: string;
+  TWILIO_FROM?: string;
+  TWILIO_MESSAGING_SERVICE_SID?: string;
+  // Amazon SNS SMS (AWS Signature V4 over the Query API). `SMS_AWS_SENDER_ID` is
+  // an optional alphanumeric sender id (supported only in some countries). Note
+  // the `SMS_` prefix avoids clashing with any ambient AWS_* deploy vars.
+  SMS_AWS_REGION?: string;
+  SMS_AWS_ACCESS_KEY_ID?: string;
+  SMS_AWS_SECRET_ACCESS_KEY?: string;
+  SMS_AWS_SENDER_ID?: string;
   // OAuth providers. Each provider is enabled iff both id+secret are set.
   OAUTH_GOOGLE_CLIENT_ID?: string;
   OAUTH_GOOGLE_CLIENT_SECRET?: string;
@@ -197,6 +215,17 @@ export interface Env {
    *  TOTP two-factor is NOT listed here — it's loaded unconditionally (always
    *  available; users opt in from Account → Security). */
   AUTH_PLUGINS?: string;
+  // Failed-login account lockout (abuse protection). Layered on top of the
+  // per-IP auth rate limiter: tracks failed password attempts per identifier
+  // and temporarily locks that account (across IPs) after MAX_FAILS failures
+  // within WINDOW_MS, with exponential backoff (COOLDOWN_MS doubling up to
+  // MAX_COOLDOWN_MS). A successful sign-in clears the counter. On by default;
+  // set AUTH_LOCKOUT_DISABLED=true to turn it off.
+  AUTH_LOCKOUT_DISABLED?: string;
+  AUTH_LOCKOUT_MAX_FAILS?: string;
+  AUTH_LOCKOUT_WINDOW_MS?: string;
+  AUTH_LOCKOUT_COOLDOWN_MS?: string;
+  AUTH_LOCKOUT_MAX_COOLDOWN_MS?: string;
   /** Control-plane (admin) SAML/LDAP SSO toggle. Enabled unless explicitly set
    *  to `"false"`/`"0"` — so self-host gets it by default. The cloud injects
    *  `"false"` for projects on plans without enterprise SSO (Free/Pro). */

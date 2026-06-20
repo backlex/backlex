@@ -1,7 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import type { Context } from "hono";
 import { sql, type SQL } from "drizzle-orm";
-import { AppError } from "@backlex/core";
+import { AppError, type AuthSubject } from "@backlex/core";
 import {
   compileCondition,
   combineConditions,
@@ -47,6 +47,7 @@ import { runBatch, BATCH_MAX } from "../services/items/batch";
 import { localizeRow, mergeI18nPatch } from "../services/items/i18n";
 import {
   deletedFilter,
+  draftFilter,
   execute,
   fromOf,
   nowFor,
@@ -106,6 +107,25 @@ const auditRead = (
       },
     ),
   );
+};
+
+/**
+ * Whether the caller may see drafts of a versioned collection. Admins and
+ * holders of `publish` or `update` permission on the collection do; everyone
+ * else gets published-only reads. Returns false for non-versioned collections
+ * (no status filter is applied to them).
+ */
+const canSeeDraftsFor = async (
+  ctx: { db: unknown; dialect: "pg" | "sqlite" },
+  auth: AuthSubject & { tenantId?: string | null },
+  collection: CollectionRow,
+  perm: { isAdmin?: boolean },
+): Promise<boolean> => {
+  if (!collection.versioned) return false;
+  if (perm.isAdmin) return true;
+  const dbctx = { db: ctx.db as any, dialect: ctx.dialect };
+  if ((await resolvePermission(dbctx, auth, collection.slug, "publish")).allowed) return true;
+  return (await resolvePermission(dbctx, auth, collection.slug, "update")).allowed;
 };
 
 const BatchOp = z
@@ -600,7 +620,14 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         collection,
         hasJoins ? collection.physicalTable : undefined,
       );
-      const wheres = [userWhere, permWhere, tenantWhere, deletedWhere].filter(
+      // Versioned collections: hide drafts from callers without publish/update.
+      const draftWhere = draftFilter(
+        collection,
+        await canSeeDraftsFor(ctx, auth, collection, perm),
+        c.req.query("status"),
+        hasJoins ? collection.physicalTable : undefined,
+      );
+      const wheres = [userWhere, permWhere, tenantWhere, deletedWhere, draftWhere].filter(
         (x): x is SQL => x != null,
       );
       const whereClause = wheres.length
@@ -1042,9 +1069,17 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         collection,
         hasJoins ? collection.physicalTable : undefined,
       );
+      // Versioned collections: a draft fetched by id 404s for callers without
+      // publish/update permission (the filter excludes it from the result).
+      const draftWhere = draftFilter(
+        collection,
+        await canSeeDraftsFor(ctx, auth, collection, perm),
+        c.req.query("status"),
+        hasJoins ? collection.physicalTable : undefined,
+      );
       const rows = await queryAll<Record<string, unknown>>(
         ctx,
-        sql`SELECT ${selectCols} FROM ${fromClause} ${whereOf(pkWhere, perm.whereSql, tenantWhere, deletedWhere)} LIMIT 1`,
+        sql`SELECT ${selectCols} FROM ${fromClause} ${whereOf(pkWhere, perm.whereSql, tenantWhere, deletedWhere, draftWhere)} LIMIT 1`,
       );
       if (!rows[0]) throw new AppError("NOT_FOUND", "Item not found");
       const locale = c.req.query("locale") ?? null;
@@ -1268,23 +1303,36 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
     },
   )
   /**
-   * Flip a versioned-collection row from `_status='draft'` to `'published'`
-   * (or vice versa with `?unpublish=1`). Requires the caller to have
-   * `update` permission on the collection.
+   * Publish / unpublish / schedule a versioned-collection row. Requires the
+   * caller to have the `publish` permission on the collection.
+   *
+   * - default → publish now (`_status='published'`, `_published_at=now`).
+   * - `?unpublish=1` → revert to draft (clears `_published_at` + `_publish_at`).
+   * - body `{ publishAt: <future ISO> }` → schedule: stay draft, set
+   *   `_publish_at`; the cron tick flips it to published when due.
+   * - body `{ publishAt: null }` → cancel a pending schedule (stay draft).
    */
   .openapi(
     createRoute({
       method: "post",
       path: "/{slug}/{id}/publish",
       tags: TAGS,
-      summary: "Publish or unpublish a versioned item",
+      summary: "Publish, unpublish, or schedule a versioned item",
       description:
-        "Versioned-collection only. Flips `_status` between `draft` and `published`; pass `?unpublish=1` to revert.",
+        "Versioned-collection only. Publishes now by default; `?unpublish=1` reverts to draft; body `{ publishAt }` (future ISO) schedules a publish that the cron tick applies when due, `{ publishAt: null }` cancels it.",
       security: SECURITY,
-      middleware: [requirePermission(collectionFromParam, "update")],
+      middleware: [requirePermission(collectionFromParam, "publish")],
       request: {
         params: z.object({ slug: z.string(), id: z.string() }),
         query: z.object({ unpublish: z.enum(["1"]).optional() }),
+        body: {
+          required: false,
+          content: {
+            "application/json": {
+              schema: z.object({ publishAt: z.string().datetime().nullable().optional() }),
+            },
+          },
+        },
       },
       responses: {
         200: {
@@ -1311,10 +1359,27 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       const table = collection.physicalTable;
       const tenantWhere = tenantFilter(collection, auth);
       const unpublish = c.req.query("unpublish") === "1";
+      const body = (await c.req.json().catch(() => ({}))) as { publishAt?: string | null };
       const now = nowFor(ctx.dialect);
-      const setSql = unpublish
-        ? sql`${sql.identifier("_status")} = 'draft', ${sql.identifier("_published_at")} = NULL, ${sql.identifier("updated_at")} = ${now}`
-        : sql`${sql.identifier("_status")} = 'published', ${sql.identifier("_published_at")} = ${now}, ${sql.identifier("updated_at")} = ${now}`;
+      const tsOf = (d: Date): Date | number => (ctx.dialect === "pg" ? d : d.getTime());
+
+      // Decide the operation: unpublish > schedule (future publishAt) > publish-now.
+      const scheduleAt =
+        body.publishAt && new Date(body.publishAt).getTime() > Date.now()
+          ? new Date(body.publishAt)
+          : null;
+      let event: "published" | "unpublished" | "scheduled";
+      let setSql: SQL;
+      if (unpublish) {
+        event = "unpublished";
+        setSql = sql`${sql.identifier("_status")} = 'draft', ${sql.identifier("_published_at")} = NULL, ${sql.identifier("_publish_at")} = NULL, ${sql.identifier("updated_at")} = ${now}`;
+      } else if (scheduleAt) {
+        event = "scheduled";
+        setSql = sql`${sql.identifier("_status")} = 'draft', ${sql.identifier("_published_at")} = NULL, ${sql.identifier("_publish_at")} = ${tsOf(scheduleAt)}, ${sql.identifier("updated_at")} = ${now}`;
+      } else {
+        event = "published";
+        setSql = sql`${sql.identifier("_status")} = 'published', ${sql.identifier("_published_at")} = ${now}, ${sql.identifier("_publish_at")} = NULL, ${sql.identifier("updated_at")} = ${now}`;
+      }
       await execute(
         ctx,
         sql`UPDATE ${sql.identifier(table)} SET ${setSql} ${whereOf(pkEq(collection.pkColumn, id), perm.whereSql, tenantWhere)}`,
@@ -1328,7 +1393,7 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       await publishEvent(
         ctx.env,
         `items:${collection.slug}`,
-        { event: unpublish ? "unpublished" : "published", data: after },
+        { event, data: after },
         { db: ctx.db, dialect: ctx.dialect, email: ctx.email, fullCtx: ctx, tenantId: auth.tenantId ?? null },
       );
       return c.json({ data: after });

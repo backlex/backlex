@@ -59,6 +59,17 @@ export interface ItemSheetProps {
     draft: Partial<Post>,
     opts?: { close?: boolean },
   ) => void | boolean | Promise<void | boolean>;
+  /** Versioned collection — enables the draft/publish controls in edit mode. */
+  versioned?: boolean;
+  /** Whether the caller holds the `publish` permission (controls are read-only
+   *  / hidden otherwise). */
+  canPublish?: boolean;
+  /** Publish / unpublish / schedule the current item. `publishAt` is an ISO
+   *  string for `schedule`, or null to cancel a pending schedule. */
+  onPublish?: (
+    action: "publish" | "unpublish" | "schedule",
+    publishAt?: string | null,
+  ) => void | Promise<void>;
 }
 
 type SchemaField = {
@@ -104,8 +115,10 @@ const readChoices = (f: SchemaField): Array<{ value: string; label?: string; col
   return [];
 };
 
-export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: ItemSheetProps) {
+export function ItemSheet({ open, mode, initial, schema, onClose, onSave, versioned, canPublish, onPublish }: ItemSheetProps) {
   const { t } = useLingui();
+  // Local datetime-local value backing the "Schedule…" control.
+  const [scheduleAt, setScheduleAt] = useState("");
   const fields = useMemo(() => {
     const all = (schema?.fields ?? []) as SchemaField[];
     // Only render user-defined columns; system columns are surfaced read-only
@@ -960,7 +973,77 @@ export function ItemSheet({ open, mode, initial, schema, onClose, onSave }: Item
           </div>
         </ScrollArea>
 
-        <div className="flex justify-end gap-2 border-t border-border bg-card px-5 py-3">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border bg-card px-5 py-3">
+          {/* Versioned draft/publish controls (edit mode). The status badge is
+              derived from `_status` + `_publish_at`; the write controls only
+              show when the caller holds the `publish` permission. */}
+          {mode === "edit" && versioned && (() => {
+            const status = String((initial as Record<string, unknown> | null)?._status ?? "draft");
+            const rawPublishAt = (initial as Record<string, unknown> | null)?._publish_at as
+              | string
+              | number
+              | null
+              | undefined;
+            const publishAtMs = rawPublishAt
+              ? typeof rawPublishAt === "number"
+                ? rawPublishAt
+                : Date.parse(String(rawPublishAt))
+              : NaN;
+            const scheduled = status === "draft" && Number.isFinite(publishAtMs) && publishAtMs > Date.now();
+            const published = status === "published";
+            const badge = scheduled ? (
+              <span title={new Date(publishAtMs).toLocaleString()}>
+                <Badge variant="outline">
+                  <I.Clock size={11} /> <Trans>Scheduled</Trans>
+                </Badge>
+              </span>
+            ) : published ? (
+              <Badge variant="default"><Trans>Published</Trans></Badge>
+            ) : (
+              <Badge variant="secondary"><Trans>Draft</Trans></Badge>
+            );
+            return (
+              <div className="mr-auto flex flex-wrap items-center gap-2">
+                {badge}
+                {canPublish && onPublish && (
+                  published ? (
+                    <Button variant="outline" size="sm" onClick={() => void onPublish("unpublish")}>
+                      <Trans>Unpublish</Trans>
+                    </Button>
+                  ) : (
+                    <>
+                      <Button variant="primary" size="sm" onClick={() => void onPublish("publish")}>
+                        <Trans>Publish</Trans>
+                      </Button>
+                      <input
+                        type="datetime-local"
+                        value={scheduleAt}
+                        onChange={(e) => setScheduleAt(e.target.value)}
+                        className="h-8 rounded-xl border border-border bg-background px-2 text-xs"
+                        aria-label={t`Schedule publish time`}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!scheduleAt}
+                        onClick={() =>
+                          scheduleAt &&
+                          void onPublish("schedule", new Date(scheduleAt).toISOString())
+                        }
+                      >
+                        <Trans>Schedule</Trans>
+                      </Button>
+                      {scheduled && (
+                        <Button variant="ghost" size="sm" onClick={() => void onPublish("unpublish")}>
+                          <Trans>Cancel schedule</Trans>
+                        </Button>
+                      )}
+                    </>
+                  )
+                )}
+              </div>
+            );
+          })()}
           {/* "Cancel" reads as "throw away changes" — once the form is clean
               (no touched fields) we relabel to "Close" so the user knows
               dismissing the sheet won't lose anything. */}

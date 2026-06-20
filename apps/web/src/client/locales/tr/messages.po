@@ -1606,6 +1606,10 @@ msgstr "İptal"
 msgid "Cancel clear"
 msgstr "Temizlemeyi iptal et"
 
+#: src/client/admin/sheet.tsx
+msgid "Cancel schedule"
+msgstr "Zamanlamayı iptal et"
+
 #: src/client/admin/storage.tsx
 msgid "Cancel upload"
 msgstr "Yüklemeyi iptal et"
@@ -2782,6 +2786,7 @@ msgid "draft"
 msgstr "taslak"
 
 #: src/client/admin/item-views.tsx
+#: src/client/admin/sheet.tsx
 msgid "Draft"
 msgstr "Taslak"
 
@@ -4112,6 +4117,14 @@ msgstr "Öğe ID"
 #: src/client/admin/condition-editor.tsx
 msgid "Item permissions"
 msgstr "Öğe izinleri"
+
+#: src/client/admin/app.tsx
+msgid "Item published."
+msgstr "Öğe yayınlandı."
+
+#: src/client/admin/app.tsx
+msgid "Item reverted to draft."
+msgstr "Öğe taslağa döndürüldü."
 
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
@@ -6389,10 +6402,16 @@ msgid "Public read-only link"
 msgstr "Herkese açık salt okunur bağlantı"
 
 #: src/client/admin/items.tsx
+#: src/client/admin/sheet.tsx
 msgid "Publish"
 msgstr "Yayınla"
 
+#: src/client/admin/app.tsx
+msgid "Publish scheduled."
+msgstr "Yayın zamanlandı."
+
 #: src/client/admin/item-views.tsx
+#: src/client/admin/sheet.tsx
 msgid "Published"
 msgstr "Yayınlandı"
 
@@ -7299,8 +7318,17 @@ msgstr "Kaydediliyor…"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/database.tsx
+#: src/client/admin/sheet.tsx
 msgid "Schedule"
 msgstr "Zamanlama"
+
+#: src/client/admin/sheet.tsx
+msgid "Schedule publish time"
+msgstr "Yayın zamanını planla"
+
+#: src/client/admin/sheet.tsx
+msgid "Scheduled"
+msgstr "Zamanlandı"
 
 #: src/client/admin/pages/functions.tsx
 msgid "scheduled — granularity is 1 minute"
@@ -8755,6 +8783,10 @@ msgstr "{0} bağlantısı kaldırıldı."
 #: src/client/admin/account-page.tsx
 msgid "Unnamed passkey"
 msgstr "Adsız passkey"
+
+#: src/client/admin/sheet.tsx
+msgid "Unpublish"
+msgstr "Yayından kaldır"
 
 #: src/client/admin/ui.tsx
 msgid "Unread"

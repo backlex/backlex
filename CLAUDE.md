@@ -181,6 +181,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Resumable uploads (TUS) | `docs/resumable-uploads.md` |
 | Functions sandbox | `docs/sandbox.md` |
 | Durable job queue (retry / DLQ / scheduled) | `docs/jobs.md` |
+| Draft / publish + scheduled publishing | `docs/draft-publish.md` |
 | Advisor rules | `docs/advisor.md` |
 | Auth planes (admin vs workspace end-users) | `docs/auth-planes.md` |
 | SSO (SAML / LDAP) | `docs/sso.md` |

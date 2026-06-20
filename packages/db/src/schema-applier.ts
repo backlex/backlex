@@ -80,6 +80,9 @@ const systemColumns = (
       ? [
           `${quote("_status")} ${sqlTypeFor("text", dialect)} NOT NULL DEFAULT 'draft'`,
           `${quote("_published_at")} ${ts}`,
+          // Scheduled-publish time; the cron tick flips a draft → published once
+          // `_publish_at <= now`. NULL = not scheduled.
+          `${quote("_publish_at")} ${ts}`,
         ]
       : []),
   ];
@@ -216,6 +219,11 @@ export const applyCollection = async (
         dialect,
         `CREATE INDEX ${quote(`${table}_status_idx`)} ON ${quote(table)} (${quote("_status")})`,
       );
+      await exec(
+        db,
+        dialect,
+        `CREATE INDEX ${quote(`${table}_publish_at_idx`)} ON ${quote(table)} (${quote("_publish_at")})`,
+      );
     }
     if (softDelete) {
       await exec(
@@ -271,6 +279,20 @@ export const applyCollection = async (
       db,
       dialect,
       `CREATE INDEX ${quote(`${table}_status_idx`)} ON ${quote(table)} (${quote("_status")})`,
+    );
+  }
+  // Backfill `_publish_at` onto collections that were already versioned before
+  // scheduled publishing existed (separate guard — `_status` is already present).
+  if (versioned && !existing.has("_publish_at")) {
+    await exec(
+      db,
+      dialect,
+      `ALTER TABLE ${quote(table)} ADD COLUMN ${quote("_publish_at")} ${sqlTypeFor("timestamp", dialect)}`,
+    );
+    await exec(
+      db,
+      dialect,
+      `CREATE INDEX IF NOT EXISTS ${quote(`${table}_publish_at_idx`)} ON ${quote(table)} (${quote("_publish_at")})`,
     );
   }
   for (const f of def.fields) {

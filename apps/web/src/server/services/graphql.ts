@@ -40,6 +40,7 @@ interface CollectionRow {
   hasUpdatedAt: boolean;
   softDelete: boolean;
   singleton: boolean;
+  versioned: boolean;
 }
 
 interface GqlCtx {
@@ -317,6 +318,24 @@ const denyOrThrow = (auth: AuthSubject, slug: string) => {
   );
 };
 
+/** Published-only filter for versioned collections unless the caller can see
+ *  drafts (admin or holds publish/update). Mirrors the REST `draftFilter`.
+ *  GraphQL has no `?status` param, so privileged callers see all (and can still
+ *  filter on `_status` via the query filter DSL). */
+const gqlDraftWhere = async (
+  gqlCtx: GqlCtx,
+  collection: CollectionRow,
+  perm: { isAdmin?: boolean },
+): Promise<SQL | null> => {
+  if (!collection.versioned) return null;
+  if (perm.isAdmin) return null;
+  const { ctx, auth, permCache } = gqlCtx;
+  const canSee =
+    (await resolvePermission(ctx, auth, collection.slug, "publish", permCache)).allowed ||
+    (await resolvePermission(ctx, auth, collection.slug, "update", permCache)).allowed;
+  return canSee ? null : sql`${sql.identifier("_status")} = 'published'`;
+};
+
 const listResolver = async (
   gqlCtx: GqlCtx,
   collection: CollectionRow,
@@ -347,7 +366,8 @@ const listResolver = async (
   const deletedWhere = collection.softDelete
     ? sql`${sql.identifier("deleted_at")} IS NULL`
     : null;
-  const wheres = [userWhere, perm.whereSql, deletedWhere].filter(
+  const draftWhere = await gqlDraftWhere(gqlCtx, collection, perm);
+  const wheres = [userWhere, perm.whereSql, deletedWhere, draftWhere].filter(
     (x): x is SQL => x != null,
   );
   const whereClause = wheres.length
@@ -386,6 +406,8 @@ const getResolver = async (
   const wheres: SQL[] = [sql`${sql.identifier("id")} = ${id}`];
   if (perm.whereSql) wheres.push(perm.whereSql);
   if (collection.softDelete) wheres.push(sql`${sql.identifier("deleted_at")} IS NULL`);
+  const draftWhere = await gqlDraftWhere(gqlCtx, collection, perm);
+  if (draftWhere) wheres.push(draftWhere);
   const rows = await queryAll<Record<string, unknown>>(
     ctx,
     sql`SELECT * FROM ${sql.identifier(table)} WHERE ${sql.join(wheres, sql` AND `)} LIMIT 1`,
@@ -823,6 +845,7 @@ export const getSchema = async (
     hasUpdatedAt: (r.hasUpdatedAt ?? r.has_updated_at) === false ? false : true,
     softDelete: Boolean(r.softDelete ?? r.soft_delete),
     singleton: Boolean(r.singleton),
+    versioned: Boolean(r.versioned),
   }));
   const hash = hashCollections(normalized);
   const hit = cached.get(tenantId);

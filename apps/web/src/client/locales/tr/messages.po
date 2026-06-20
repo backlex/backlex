@@ -3578,6 +3578,14 @@ msgstr "Akışlar"
 #~ msgid "Focal point"
 #~ msgstr "Odak noktası"
 
+#: src/client/admin/add-field.tsx
+msgid "Fold this field into the collection's full-text-search index (when FTS is enabled)."
+msgstr "FTS açıkken bu alanı koleksiyonun tam metin arama dizinine dahil et."
+
+#: src/client/admin/edit-field.tsx
+msgid "Fold this field into the collection's full-text-search index (when FTS is enabled). Re-index after changing."
+msgstr "FTS açıkken bu alanı koleksiyonun tam metin arama dizinine dahil et. Değiştirdikten sonra yeniden dizinle."
+
 #: src/client/admin/storage.tsx
 msgid "Folder"
 msgstr "Klasör"
@@ -3673,6 +3681,10 @@ msgstr "tam erişim"
 #: src/client/admin/permissions-matrix.tsx
 msgid "Full access"
 msgstr "Tam erişim"
+
+#: src/client/admin/collection-settings.tsx
+msgid "Full-text search"
+msgstr "Tam metin arama"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Function"
@@ -4715,6 +4727,10 @@ msgstr "Sihirli bağlantı"
 #: src/client/pages/magic-link.tsx
 msgid "Magic-link plugin not enabled on the server"
 msgstr "Sunucuda sihirli bağlantı eklentisi etkin değil"
+
+#: src/client/admin/collection-settings.tsx
+msgid "Maintain a keyword search index from the fields marked<0> searchable</0>. Upgrades<1> ?q=</1> to ranked keyword matching and enables the<2> /search</2> endpoint (full-text / vector / hybrid). After enabling on an existing collection, run a re-index to backfill."
+msgstr "<0> searchable</0> olarak işaretlenen alanlardan bir anahtar kelime arama dizini tutar.<1> ?q=</1> sorgusunu sıralı anahtar kelime eşleştirmesine yükseltir ve<2> /search</2> uç noktasını (tam metin / vektör / hibrit) etkinleştirir. Mevcut bir koleksiyonda etkinleştirdikten sonra geri doldurmak için yeniden dizinleme çalıştırın."
 
 #: src/client/admin/pages/settings.tsx
 msgid "Make default"
@@ -7509,6 +7525,11 @@ msgstr "Üyeleri ara…"
 #: src/client/admin/flow-builder.tsx
 msgid "Search steps…"
 msgstr "Adımları ara…"
+
+#: src/client/admin/add-field.tsx
+#: src/client/admin/edit-field.tsx
+msgid "Searchable"
+msgstr "Aranabilir"
 
 #: src/client/admin/pages/settings.tsx
 msgid "secret"

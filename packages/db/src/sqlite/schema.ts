@@ -801,6 +801,10 @@ export const collections = sqliteTable(
     vectorize: integer("vectorize", { mode: "boolean" }).notNull().default(false),
     /** Embedding model key (e.g. `bge-m3`). Null → env default → skip. */
     vectorizeModel: text("vectorize_model"),
+    /** When true, item writes maintain a keyword full-text-search index
+     *  (SQLite FTS5 shadow table) built from the fields flagged
+     *  `searchable: true`. See the pg/schema.ts twin for the full contract. */
+    fts: integer("fts", { mode: "boolean" }).notNull().default(false),
     /** Default sort applied by `parseQuery` when the request omits `?sort=`.
      *  Comma-separated field list, `-` prefix = DESC (Directus-style).
      *  e.g. `"-published_at,name"`. */

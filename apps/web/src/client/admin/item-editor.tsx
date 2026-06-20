@@ -12,7 +12,6 @@ import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button, IconButton, Switch, relativeTime } from "./ui";
 import { authorById } from "./items";
 import { Card } from "@backlex/ui/components/card";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,6 +70,9 @@ export function ItemEditorPage({
   const [saving, setSaving] = useState(false);
   const [autosave, setAutosave] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  // Bumped after any write (save / publish) so the revision history reloads
+  // without a manual page refresh.
+  const [revisionsKey, setRevisionsKey] = useState(0);
   const [scheduleAt, setScheduleAt] = useState("");
   // Pending guarded navigation — populated when the user tries to leave with
   // unsaved changes; the ConfirmDialog runs it on confirm.
@@ -79,6 +81,14 @@ export function ItemEditorPage({
 
   const form = useItemForm({ schema, initial: item, active: mode === "create" || !loading });
   const dirty = form.dirty;
+
+  // Open each record (and prev/next) at the top — the list scroll position
+  // shouldn't carry into the detail page.
+  useEffect(() => {
+    const scroller = document.querySelector(".scrollarea");
+    if (scroller) scroller.scrollTop = 0;
+    window.scrollTo?.(0, 0);
+  }, [itemId]);
 
   // Refetch the row by id so the editor is correct on a hard refresh / deep
   // link, not only when reached via the in-memory list.
@@ -136,6 +146,7 @@ export function ItemEditorPage({
           setItem(updated);
           onSaved(updated);
           setSavedAt(Date.now());
+          setRevisionsKey((k) => k + 1);
           if (!opts?.silent) pushToast(t`Saved.`);
           if (opts?.close) onBack();
           return true;
@@ -192,6 +203,7 @@ export function ItemEditorPage({
       const updated = { ...item, ...(res.data as Partial<Post>) } as Post;
       setItem(updated);
       onSaved(updated);
+      setRevisionsKey((k) => k + 1);
       pushToast(
         action === "publish"
           ? t`Item published.`
@@ -258,11 +270,16 @@ export function ItemEditorPage({
 
   const ownerScoped = !!schema?.ownerScoped;
   const rec = (item ?? {}) as Record<string, unknown>;
+  // The items API serializes timestamps as camelCase (createdAt/updatedAt);
+  // fall back to snake_case for any adapter that emits it.
+  const createdAtVal = rec.createdAt ?? rec.created_at ?? null;
+  const updatedAtVal = rec.updatedAt ?? rec.updated_at ?? null;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
-      {/* Header bar */}
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-4 pb-4">
+      {/* Header bar — sticky so Save / prev-next stay reachable while the form
+          scrolls with the page. */}
+      <div className="sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-border bg-background pb-3">
         <Button variant="ghost" size="sm" icon={I.ChevronLeft} onClick={() => guarded(onBack)}>
           <Trans>Back</Trans>
         </Button>
@@ -345,15 +362,6 @@ export function ItemEditorPage({
                   <DropdownMenuItem onSelect={() => void persist({ close: true })}>
                     <Trans>Save and close</Trans>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => void duplicate()}>
-                    <Trans>Duplicate</Trans>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => setConfirmDelete(true)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trans>Delete</Trans>
-                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -376,21 +384,20 @@ export function ItemEditorPage({
               </span>
             )}
           </div>
-          <ScrollArea className="min-h-0" viewportClassName="max-h-[calc(100vh-15rem)]">
-            <div className="p-5">
-              {loading ? (
-                <div className="py-10 text-center text-[13px] text-muted-foreground">
-                  <Trans>Loading…</Trans>
-                </div>
-              ) : (
-                <ItemFields form={form} />
-              )}
-            </div>
-          </ScrollArea>
+          <div className="p-5">
+            {loading ? (
+              <div className="py-10 text-center text-[13px] text-muted-foreground">
+                <Trans>Loading…</Trans>
+              </div>
+            ) : (
+              <ItemFields form={form} />
+            )}
+          </div>
         </Card>
 
-        {/* Sidebar */}
-        <div className="flex flex-col gap-4">
+        {/* Sidebar — sticky on wide screens so it stays in view as the field
+            column scrolls with the page. */}
+        <div className="flex flex-col gap-4 self-start min-[1100px]:sticky min-[1100px]:top-16">
           {/* Status / publish */}
           {mode === "edit" && versioned && (
             <Card className="gap-0 py-0">
@@ -420,14 +427,14 @@ export function ItemEditorPage({
               <div className="flex flex-col gap-2 p-3.5 text-xs text-muted-foreground">
                 <SysRow label="id" value={itemId} mono />
                 {ownerScoped && (
-                  <SysRow label="owner_id" value={String(rec.owner_id ?? rec.author ?? "—")} mono />
+                  <SysRow label="owner_id" value={String(rec.ownerId ?? rec.owner_id ?? rec.author ?? "—")} mono />
                 )}
-                {rec.created_at != null && (
-                  <SysRow label="created_at" value={relativeTime(rec.created_at)} />
+                {createdAtVal != null && (
+                  <SysRow label="created_at" value={relativeTime(createdAtVal) || "—"} />
                 )}
                 <SysRow
                   label="updated_at"
-                  value={savedAt ? relativeTime(savedAt) : relativeTime(rec.updated_at)}
+                  value={savedAt ? relativeTime(savedAt) : relativeTime(updatedAtVal) || "—"}
                 />
               </div>
             </Card>
@@ -456,6 +463,7 @@ export function ItemEditorPage({
             <RevisionHistory
               slug={slug}
               itemId={item.id}
+              refreshKey={revisionsKey}
               pushToast={pushToast}
               onReverted={async () => {
                 try {
@@ -605,11 +613,14 @@ function PublishControls({
 function RevisionHistory({
   slug,
   itemId,
+  refreshKey,
   pushToast,
   onReverted,
 }: {
   slug: string;
   itemId: string;
+  /** Changes whenever the parent writes the row, forcing a reload. */
+  refreshKey: number;
   pushToast: (m: string, type?: "success" | "error") => void;
   onReverted: () => void | Promise<void>;
 }) {
@@ -634,7 +645,7 @@ function RevisionHistory({
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   const revert = async (rev: ApiRevision) => {
     setReverting(rev.id);
@@ -670,17 +681,19 @@ function RevisionHistory({
           </div>
         ) : (
           revisions.map((rev) => {
-            const author = authorById(rev.userId);
+            // Author is secondary and only shown when resolvable — avoids a
+            // bare "—" placeholder on snapshots with no recorded user.
+            const author = rev.userId ? authorById(rev.userId) : null;
             return (
               <div
                 key={rev.id}
-                className="flex items-center gap-2 border-b border-dashed border-border pb-2 last:border-b-0 last:pb-0"
+                className="flex items-center gap-2 border-b border-border pb-2 last:border-b-0 last:pb-0"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="text-[12.5px]">{author.name}</div>
-                  <div className="font-mono text-[10.5px] text-muted-foreground">
-                    {relativeTime(rev.createdAt)}
-                  </div>
+                  <div className="text-[12.5px]">{relativeTime(rev.createdAt) || t`Snapshot`}</div>
+                  {author && (
+                    <div className="text-[10.5px] text-muted-foreground">{author.name}</div>
+                  )}
                 </div>
                 <Button
                   variant="ghost"

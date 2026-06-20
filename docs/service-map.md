@@ -74,6 +74,12 @@ guides; this list is everything else.
   object-store multipart (R2/S3) or fs offset-append. The `uploads`
   table tracks session offset + parts; `sweepExpiredUploads` aborts
   stale sessions inside `cronTick`. See `docs/resumable-uploads.md`.
+- **Draft / publish** (`routes/items.ts` publish handler,
+  `services/items/scheduled-publish.ts`, `draftFilter` in
+  `services/items/sql-helpers.ts`) — versioned collections get
+  `_status`/`_published_at`/`_publish_at`; reads hide drafts from
+  callers without the `publish`/`update` permission; `publishDueItems`
+  applies scheduled publishes inside `cronTick`. See `docs/draft-publish.md`.
 - **Notifications** (`routes/notifications.ts`) — in-app
   notification feed; activity/flows write into it.
 - **Email templates** (`routes/email-templates.ts`) — per-tenant

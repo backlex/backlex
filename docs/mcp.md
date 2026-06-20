@@ -119,6 +119,9 @@ resource instead of composing a separate `resources/read`.
 | `uploads.list` | List resumable (TUS) upload sessions, filterable by status. |
 | `uploads.get` | Inspect one upload session — declared size, committed offset (resume point), status. |
 | `uploads.abort` | Abort an in-progress resumable upload and discard its staged parts. |
+| `items.publish` | Publish a versioned-collection item now (needs the `publish` permission). |
+| `items.unpublish` | Revert a versioned item to draft (clears any pending schedule). |
+| `items.schedule_publish` | Schedule (or cancel) a future publish the cron tick applies when due. |
 
 ### Vector / search
 

@@ -37,6 +37,35 @@ export const deletedFilter = (
     : sql`${sql.identifier("deleted_at")} IS NULL`;
 };
 
+/**
+ * Build the draft-visibility filter for a versioned collection's read path.
+ * Mirrors `deletedFilter`'s shape so it composes through `whereOf`.
+ *
+ * - non-versioned → `null` (no status filter).
+ * - caller WITHOUT publish/update (`canSeeDrafts=false`) → published-only;
+ *   drafts and not-yet-due scheduled items are hidden.
+ * - caller WITH publish/update → honors an explicit `?status=draft|published`,
+ *   defaulting to `all` (no filter) so editors see their drafts.
+ *
+ * The optional `qualifier` table name qualifies `_status` for JOINed queries
+ * (the list path's `item_ownership` join), same as `deletedFilter`.
+ */
+export const draftFilter = (
+  collection: CollectionRow,
+  canSeeDrafts: boolean,
+  status?: string,
+  qualifier?: string,
+): SQL | null => {
+  if (!collection.versioned) return null;
+  const col = qualifier
+    ? sql`${sql.identifier(qualifier)}.${sql.identifier("_status")}`
+    : sql`${sql.identifier("_status")}`;
+  if (!canSeeDrafts) return sql`${col} = 'published'`;
+  if (status === "draft") return sql`${col} = 'draft'`;
+  if (status === "published") return sql`${col} = 'published'`;
+  return null; // "all" — privileged default
+};
+
 // Postgres-js's prepared-statement binder calls `byteLength` on params
 // when it has no per-column type info from the schema (the dynamic
 // `c_*` / adopted tables aren't in Drizzle's type map). Date instances

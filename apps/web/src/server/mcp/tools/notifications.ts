@@ -122,9 +122,38 @@ export const sendPush: McpTool = {
   },
 };
 
+export const sendSms: McpTool = {
+  name: "messaging.send_sms",
+  description:
+    "Send an SMS to one user's registered phone number(s). The workspace must " +
+    "have an SMS provider configured (Settings → SMS); users with no registered " +
+    "number are a silent no-op. Provide the recipient `userId` and the message " +
+    "`body`. Does NOT create an in-app notification — use messaging.send_push or " +
+    "notifications.send for that.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      userId: { type: "string", description: "Recipient user id." },
+      body: { type: "string", description: "Message text." },
+    },
+    required: ["userId", "body"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const res = await ctx.fetchInternal(`/api/messaging/sms`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ userId: String(args.userId ?? ""), body: args.body }),
+    });
+    const body = await readJson<unknown>(res);
+    return textResult(body);
+  },
+};
+
 export const notificationsTools: McpTool[] = [
   listNotifications,
   sendNotification,
   markRead,
   sendPush,
+  sendSms,
 ];

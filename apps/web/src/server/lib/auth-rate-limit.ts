@@ -13,8 +13,18 @@
  */
 import type { MiddlewareHandler } from "hono";
 import { AppError } from "@backlex/core";
+import type { PgDb } from "@backlex/db/pg";
+import type { SqliteDb } from "@backlex/db/sqlite";
 import type { Env } from "../env";
 import { rateLimitOk } from "./rate-limit";
+import {
+  checkLocked,
+  clearFailures,
+  lockoutEnabled,
+  lockoutPolicy,
+  recordFailure,
+} from "./auth-lockout";
+import { recordActivity } from "../services/activity";
 
 const WINDOW_MS = 60_000;
 
@@ -27,6 +37,36 @@ const ipFromHeaders = (req: Request): string => {
     "unknown"
   );
 };
+
+const userAgentOf = (req: Request): string | null => req.headers.get("user-agent");
+
+type AuditCtx = { db: PgDb | SqliteDb; dialect: "pg" | "sqlite" };
+
+/** Best-effort security-audit row. Swallows its own errors (recordActivity
+ *  already does) so an abuse event is never able to fail the request path. */
+const auditAuth = async (
+  ctx: AuditCtx,
+  action: string,
+  meta: { ip: string; userAgent: string | null; tenantId?: string | null; payload?: unknown },
+): Promise<void> => {
+  try {
+    await recordActivity(ctx, {
+      userId: null,
+      tenantId: meta.tenantId ?? null,
+      action, // already dotted (e.g. "auth.rate_limited") → kept verbatim
+      collection: "auth",
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+      payload: meta.payload ?? null,
+    });
+  } catch {
+    /* never let auditing break auth */
+  }
+};
+
+/** Workspace slug for `/api/t/<slug>/auth/...`, else `_` for the admin plane.
+ *  Keeps the same email in different workspaces in separate lockout buckets. */
+const planeScope = (path: string): string => path.match(/^\/api\/t\/([^/]+)\//)?.[1] ?? "_";
 
 interface Rule {
   /** Path test — runs against the full request pathname, including the
@@ -92,12 +132,99 @@ export const authRateLimitMiddleware: MiddlewareHandler = async (c, next) => {
     return;
   }
   if (!(await rateLimitOk(env, key, rule.max, WINDOW_MS))) {
+    // Surface the trip in the audit log so admins can see brute-force probing
+    // (the Activity feed's `auth.*` rows). Best-effort, never blocks the 429.
+    const dbc = ctx as unknown as AuditCtx | undefined;
+    if (dbc?.db) {
+      await auditAuth(dbc, "auth.rate_limited", {
+        ip,
+        userAgent: userAgentOf(c.req.raw),
+        payload: { rule: rule.label, path },
+      });
+    }
     throw new AppError(
       "RATE_LIMITED",
       "Too many auth requests — try again in a minute",
     );
   }
   await next();
+};
+
+/**
+ * Failed-login account lockout — the per-account complement to the per-IP
+ * limiter above. Tracks failed password attempts for one identifier *across all
+ * IPs* and temporarily locks it after too many (so a distributed brute force
+ * that rotates IPs against one account is still throttled). A successful sign-in
+ * clears the counter; thresholds are env-tunable (`AUTH_LOCKOUT_*`).
+ *
+ * Only `/sign-in/email` (password auth) is gated — OAuth / magic-link / OTP have
+ * no password to brute-force. The identifier is the request's `email`; absent it
+ * we no-op and leave the IP limiter as the only guard.
+ */
+const SIGNIN_EMAIL = /\/sign-in\/email(\/|$)/i;
+
+export const authLockoutMiddleware: MiddlewareHandler = async (c, next) => {
+  if (c.req.method.toUpperCase() !== "POST") {
+    await next();
+    return;
+  }
+  const path = new URL(c.req.url).pathname;
+  if (!SIGNIN_EMAIL.test(path)) {
+    await next();
+    return;
+  }
+  const ctx = c.get("ctx") as { env: Env; db?: PgDb | SqliteDb; dialect?: "pg" | "sqlite" } | undefined;
+  const env = ctx?.env;
+  if (!env || !lockoutEnabled(env)) {
+    await next();
+    return;
+  }
+
+  // Read the identifier from a *clone* so better-auth still gets the body.
+  let email: string | undefined;
+  try {
+    const body = (await c.req.raw.clone().json()) as { email?: unknown };
+    if (typeof body.email === "string" && body.email.trim()) {
+      email = body.email.trim().toLowerCase();
+    }
+  } catch {
+    /* unparsable body — let better-auth reject it; nothing to key on */
+  }
+  if (!email) {
+    await next();
+    return;
+  }
+
+  const key = `signin:${planeScope(path)}:${email}`;
+  const audit = ctx?.db && ctx?.dialect ? ({ db: ctx.db, dialect: ctx.dialect } as AuditCtx) : null;
+  const ip = ipFromHeaders(c.req.raw);
+
+  const locked = await checkLocked(env, key);
+  if (locked.locked) {
+    throw new AppError(
+      "RATE_LIMITED",
+      `Too many failed sign-in attempts — try again in ${Math.ceil(locked.retryAfterMs / 1000)}s`,
+    );
+  }
+
+  await next();
+
+  // Inspect the outcome. 200 = success → clear. 401 = invalid credentials →
+  // count. We deliberately ignore 403 (e.g. EMAIL_NOT_VERIFIED) and 4xx
+  // validation so a known-good account isn't locked for a non-credential error.
+  const status = c.res.status;
+  if (status === 200) {
+    await clearFailures(env, key);
+  } else if (status === 401) {
+    const r = await recordFailure(env, key, lockoutPolicy(env));
+    if (r.justLocked && audit) {
+      await auditAuth(audit, "auth.login_locked", {
+        ip,
+        userAgent: userAgentOf(c.req.raw),
+        payload: { identifier: email, retryAfterMs: r.retryAfterMs },
+      });
+    }
+  }
 };
 
 /**

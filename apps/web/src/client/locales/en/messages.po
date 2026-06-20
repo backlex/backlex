@@ -64,7 +64,7 @@ msgstr " of {totalCount}"
 msgid " Required."
 msgstr " Required."
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid " Set the target collection in the field settings."
 msgstr " Set the target collection in the field settings."
 
@@ -290,7 +290,7 @@ msgid "{0} files"
 msgstr "{0} files"
 
 #. placeholder {0}: f.name
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "{0} is required"
 msgstr "{0} is required"
 
@@ -394,6 +394,11 @@ msgstr "{0} system · {1} custom"
 #: src/client/pages/rest-explorer.tsx
 msgid "{0} tags"
 msgstr "{0} tags"
+
+#. placeholder {0}: form.errorCount
+#: src/client/admin/item-editor.tsx
+msgid "{0} to fix"
+msgstr "{0} to fix"
 
 #. placeholder {0}: allFields.length
 #. placeholder {1}: userFields.length
@@ -738,6 +743,7 @@ msgid "Action"
 msgstr "Action"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "Actions"
@@ -1363,7 +1369,7 @@ msgstr "Auto-add <0>tenant_id</0>; data is isolated per workspace at the app lay
 msgid "auto-creates c_<slug> table"
 msgstr "auto-creates c_<slug> table"
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "Auto-derived from title until edited."
 msgstr "Auto-derived from title until edited."
 
@@ -1395,6 +1401,14 @@ msgstr "Automatic schedule"
 msgid "Automation"
 msgstr "Automation"
 
+#: src/client/admin/item-editor.tsx
+msgid "Autosave"
+msgstr "Autosave"
+
+#: src/client/admin/item-editor.tsx
+msgid "Autosave drafts as you type"
+msgstr "Autosave drafts as you type"
+
 #: src/client/admin/account-page.tsx
 msgid "Avatar"
 msgstr "Avatar"
@@ -1416,6 +1430,7 @@ msgstr "B-tree index — speeds up filter/sort by this column."
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/display-template-editor.tsx
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/pages/sign-in.tsx
 msgid "Back"
 msgstr "Back"
@@ -1606,6 +1621,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/edit-field.tsx
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/feature-flags.tsx
@@ -2264,6 +2280,10 @@ msgstr "Create"
 msgid "Create {0}"
 msgstr "Create {0}"
 
+#: src/client/admin/item-editor.tsx
+msgid "Create {slug}"
+msgstr "Create {slug}"
+
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Create a flag to gate a feature or ship remote config to your apps."
 msgstr "Create a flag to gate a feature or ship remote config to your apps."
@@ -2364,6 +2384,7 @@ msgid "Creating key"
 msgstr "Creating key"
 
 #: src/client/admin/item-collaboration.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/translations.tsx
@@ -2548,6 +2569,7 @@ msgstr "Defaults to the URL's filename"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/functions.tsx
@@ -2609,6 +2631,10 @@ msgstr "Delete SAML provider?"
 #: src/client/admin/collection-settings.tsx
 msgid "Delete this collection"
 msgstr "Delete this collection"
+
+#: src/client/admin/item-editor.tsx
+msgid "Delete this item?"
+msgstr "Delete this item?"
 
 #: src/client/admin/pages/users.tsx
 msgid "Delete user"
@@ -2725,10 +2751,15 @@ msgstr "disabled"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/condition-editor.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/storage.tsx
 msgid "Discard"
 msgstr "Discard"
+
+#: src/client/admin/item-editor.tsx
+msgid "Discard unsaved changes?"
+msgstr "Discard unsaved changes?"
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Disconnect"
@@ -2830,6 +2861,7 @@ msgstr "Downloading…"
 msgid "draft"
 msgstr "draft"
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/item-views.tsx
 #: src/client/admin/sheet.tsx
 msgid "Draft"
@@ -2892,6 +2924,10 @@ msgstr "Dry run — no real side-effects"
 msgid "Dry-run summary"
 msgstr "Dry-run summary"
 
+#: src/client/admin/item-editor.tsx
+msgid "Duplicate"
+msgstr "Duplicate"
+
 #: src/client/admin/pages/jobs.tsx
 msgid "Durable background queue — retries with backoff, dead-letters, and delayed/scheduled runs. Drained by the cron tick (~1 min on Workers)."
 msgstr "Durable background queue — retries with backoff, dead-letters, and delayed/scheduled runs. Drained by the cron tick (~1 min on Workers)."
@@ -2930,6 +2966,7 @@ msgid "edit"
 msgstr "edit"
 
 #: src/client/admin/app.tsx
+#: src/client/admin/item-form.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/webhooks.tsx
@@ -3472,6 +3509,7 @@ msgstr "fields"
 #: src/client/admin/adopt-wizard.tsx
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/display-template-editor.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "Fields"
 msgstr "Fields"
@@ -3561,6 +3599,10 @@ msgstr "Fit"
 #: src/client/admin/pages/advisor.tsx
 msgid "Fix copied to clipboard."
 msgstr "Fix copied to clipboard."
+
+#: src/client/admin/item-editor.tsx
+msgid "Fix the highlighted fields before saving."
+msgstr "Fix the highlighted fields before saving."
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "fk"
@@ -3775,6 +3817,7 @@ msgstr "FUNCTIONS_EXEC_URL set"
 msgid "Gallery"
 msgstr "Gallery"
 
+#: src/client/admin/item-form.tsx
 #: src/client/admin/pages/settings.tsx
 msgid "General"
 msgstr "General"
@@ -3915,6 +3958,10 @@ msgstr "Hide variables"
 msgid "highest reasoning · slower · ~3x cost"
 msgstr "highest reasoning · slower · ~3x cost"
 
+#: src/client/admin/item-editor.tsx
+msgid "History"
+msgstr "History"
+
 #: src/client/admin/pages/webhooks.tsx
 msgid "Hook"
 msgstr "Hook"
@@ -3941,8 +3988,12 @@ msgstr "id"
 
 #. placeholder {0}: (initial as { id?: string })?.id
 #: src/client/admin/sheet.tsx
-msgid "id <0>{0}</0>"
-msgstr "id <0>{0}</0>"
+#~ msgid "id <0>{0}</0>"
+#~ msgstr "id <0>{0}</0>"
+
+#: src/client/admin/sheet.tsx
+msgid "id <0>{itemId}</0>"
+msgstr "id <0>{itemId}</0>"
 
 #: src/client/admin/pages/overview.tsx
 #: src/client/pages/graphql.tsx
@@ -4075,7 +4126,7 @@ msgstr "Input (JSON)"
 msgid "Insert field"
 msgstr "Insert field"
 
-#. placeholder {0}: ownerScoped ? <>. Owner is set to <span className="font-mono">$user.id</span></> : null
+#. placeholder {0}: ownerScoped ? ( <> . Owner is set to <span className="font-mono">$user.id</span> </> ) : null
 #: src/client/admin/sheet.tsx
 msgid "Insert into <0>c_{slug}</0>{0}."
 msgstr "Insert into <0>c_{slug}</0>{0}."
@@ -4201,6 +4252,18 @@ msgstr "is null"
 msgid "Istanbul, Turkey"
 msgstr "Istanbul, Turkey"
 
+#: src/client/admin/item-editor.tsx
+msgid "Item created."
+msgstr "Item created."
+
+#: src/client/admin/item-editor.tsx
+msgid "Item deleted."
+msgstr "Item deleted."
+
+#: src/client/admin/item-editor.tsx
+msgid "Item duplicated."
+msgstr "Item duplicated."
+
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Item ID"
@@ -4211,10 +4274,12 @@ msgid "Item permissions"
 msgstr "Item permissions"
 
 #: src/client/admin/app.tsx
+#: src/client/admin/item-editor.tsx
 msgid "Item published."
 msgstr "Item published."
 
 #: src/client/admin/app.tsx
+#: src/client/admin/item-editor.tsx
 msgid "Item reverted to draft."
 msgstr "Item reverted to draft."
 
@@ -4651,6 +4716,7 @@ msgstr "Loading runs…"
 msgid "Loading tool catalog…"
 msgstr "Loading tool catalog…"
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/logs.tsx
@@ -4724,7 +4790,7 @@ msgstr "Lowercase letters, digits, _ or -; must start with a letter."
 msgid "Lowercase letters, digits, <0>_</0> and <1>-</1>. Use <2>/</2> in the name to nest under an existing folder."
 msgstr "Lowercase letters, digits, <0>_</0> and <1>-</1>. Use <2>/</2> in the name to nest under an existing folder."
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "lowercase letters, digits, and dashes only"
 msgstr "lowercase letters, digits, and dashes only"
 
@@ -4923,6 +4989,7 @@ msgstr "Mon"
 msgid "more"
 msgstr "more"
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "More save options"
 msgstr "More save options"
@@ -4972,7 +5039,7 @@ msgstr "Must be an integer or number column."
 msgid "Must be between 50 and 60000."
 msgstr "Must be between 50 and 60000."
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "must be valid json"
 msgstr "must be valid json"
 
@@ -5076,6 +5143,10 @@ msgstr "New {0}"
 msgid "New {0} post"
 msgstr "New {0} post"
 
+#: src/client/admin/item-editor.tsx
+msgid "New {slug}"
+msgstr "New {slug}"
+
 #: src/client/pages/api-keys.tsx
 msgid "New API key"
 msgstr "New API key"
@@ -5173,6 +5244,10 @@ msgstr "Next"
 msgid "Next month"
 msgstr "Next month"
 
+#: src/client/admin/item-editor.tsx
+msgid "Next record"
+msgstr "Next record"
+
 #: src/client/admin/parity/app-users.tsx
 msgid "no"
 msgstr "no"
@@ -5221,7 +5296,7 @@ msgstr "No API keys yet"
 msgid "No channels — create a collection to get one."
 msgstr "No channels — create a collection to get one."
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "No choices configured."
 msgstr "No choices configured."
 
@@ -5293,7 +5368,7 @@ msgstr "No deliveries yet"
 msgid "No earlier revisions — showing the current field values."
 msgstr "No earlier revisions — showing the current field values."
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "No editable fields. Add columns from the Schema tab to capture data on this collection."
 msgstr "No editable fields. Add columns from the Schema tab to capture data on this collection."
 
@@ -5495,6 +5570,10 @@ msgstr "No responses defined."
 #: src/client/admin/parity/revisions.tsx
 msgid "No revision selected"
 msgstr "No revision selected"
+
+#: src/client/admin/item-editor.tsx
+msgid "No revisions recorded yet."
+msgstr "No revisions recorded yet."
 
 #: src/client/admin/parity/revisions.tsx
 msgid "No revisions yet for this item."
@@ -6049,6 +6128,10 @@ msgstr "pending review"
 msgid "People"
 msgstr "People"
 
+#: src/client/admin/item-editor.tsx
+msgid "People viewing this record"
+msgstr "People viewing this record"
+
 #: src/client/admin/condition-editor.tsx
 msgid "Per-field read / write toggles. Hidden fields are stripped from API responses; non-writable fields are rejected on insert/update for this role."
 msgstr "Per-field read / write toggles. Hidden fields are stripped from API responses; non-writable fields are rejected on insert/update for this role."
@@ -6176,7 +6259,7 @@ msgstr "Pick a row from <0>c_{target}</0>"
 msgid "Pick a row to select it"
 msgstr "Pick a row to select it"
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "Pick a status…"
 msgstr "Pick a status…"
 
@@ -6271,7 +6354,7 @@ msgstr "Pick the collection this relation points to."
 msgid "Pick type…"
 msgstr "Pick type…"
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "Pick…"
 msgstr "Pick…"
 
@@ -6375,6 +6458,7 @@ msgstr "Prev"
 msgid "preview"
 msgstr "preview"
 
+#: src/client/admin/item-form.tsx
 #: src/client/admin/parity/email-templates.tsx
 msgid "Preview"
 msgstr "Preview"
@@ -6400,6 +6484,10 @@ msgstr "Preview: "
 #: src/client/admin/item-views.tsx
 msgid "Previous month"
 msgstr "Previous month"
+
+#: src/client/admin/item-editor.tsx
+msgid "Previous record"
+msgstr "Previous record"
 
 #: src/client/admin/pages/settings.tsx
 msgid "Primary color"
@@ -6514,10 +6602,16 @@ msgstr "Public read-only link"
 msgid "Publish"
 msgstr "Publish"
 
+#: src/client/admin/item-editor.tsx
+msgid "Publish now"
+msgstr "Publish now"
+
 #: src/client/admin/app.tsx
+#: src/client/admin/item-editor.tsx
 msgid "Publish scheduled."
 msgstr "Publish scheduled."
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/item-views.tsx
 #: src/client/admin/sheet.tsx
 msgid "Published"
@@ -6800,7 +6894,7 @@ msgstr "Remove {k}"
 msgid "Remove {l}"
 msgstr "Remove {l}"
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "Remove {tag}"
 msgstr "Remove {tag}"
 
@@ -7063,6 +7157,7 @@ msgstr "Retain (auto)"
 msgid "Retry"
 msgstr "Retry"
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 #: src/client/admin/parity/revisions.tsx
 msgid "Revert"
@@ -7085,6 +7180,11 @@ msgstr "Revert?"
 msgid "Reverted — a new revision was recorded."
 msgstr "Reverted — a new revision was recorded."
 
+#: src/client/admin/item-editor.tsx
+msgid "Reverted to earlier revision."
+msgstr "Reverted to earlier revision."
+
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/parity/revisions.tsx
 msgid "Reverting…"
 msgstr "Reverting…"
@@ -7359,6 +7459,7 @@ msgstr "Sat"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/condition-editor.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -7369,6 +7470,10 @@ msgstr "Sat"
 #: src/client/admin/sheet.tsx
 msgid "Save"
 msgstr "Save"
+
+#: src/client/admin/item-editor.tsx
+msgid "Save and close"
+msgstr "Save and close"
 
 #: src/client/admin/sheet.tsx
 msgid "Save and continue"
@@ -7438,11 +7543,16 @@ msgstr "Saved as a row in <0>saved_panels</0>. Collection panels aggregate one c
 msgid "Saved as snippet."
 msgstr "Saved as snippet."
 
+#: src/client/admin/item-editor.tsx
+msgid "Saved."
+msgstr "Saved."
+
 #: src/client/components/mcp-key-modal.tsx
 msgid "Saving MCP guards"
 msgstr "Saving MCP guards"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/parity/app-users.tsx
@@ -7457,14 +7567,17 @@ msgid "Saving…"
 msgstr "Saving…"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "Schedule"
 msgstr "Schedule"
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "Schedule publish time"
 msgstr "Schedule publish time"
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "Scheduled"
 msgstr "Scheduled"
@@ -8232,6 +8345,7 @@ msgstr "Stateless Streamable HTTP. No <0>GET /mcp</0> (resumable SSE) yet."
 msgid "static panels render their config object verbatim — set it from the API once the panel exists."
 msgstr "static panels render their config object verbatim — set it from the API once the panel exists."
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/jobs.tsx
@@ -8269,24 +8383,28 @@ msgstr "Steps"
 msgid "Storage"
 msgstr "Storage"
 
+#: src/client/admin/item-form.tsx
+msgid "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup, then hit Preview."
+msgstr "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup, then hit Preview."
+
 #: src/client/admin/sheet.tsx
-msgid "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup."
-msgstr "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup."
+#~ msgid "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup."
+#~ msgstr "Stored as HTML. The full WYSIWYG editor isn't wired yet — paste pre-formatted HTML or basic markup."
 
 #: src/client/admin/pages/overview.tsx
 msgid "stored objects"
 msgstr "stored objects"
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "Stores a list of storage keys. Upload new files on the <0>Storage</0> page."
 msgstr "Stores a list of storage keys. Upload new files on the <0>Storage</0> page."
 
 #. placeholder {0}: target || "—"
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "Stores a row id from <0>c_{0}</0>."
 msgstr "Stores a row id from <0>c_{0}</0>."
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "Stores the storage key. Upload new files on the <0>Storage</0> page."
 msgstr "Stores the storage key. Upload new files on the <0>Storage</0> page."
 
@@ -8390,6 +8508,10 @@ msgstr "System columns:"
 #: src/client/admin/sheet.tsx
 msgid "system fields"
 msgstr "system fields"
+
+#: src/client/admin/item-editor.tsx
+msgid "System fields"
+msgstr "System fields"
 
 #: src/client/admin/role-editor.tsx
 msgid "System role — name is read-only; permissions still editable."
@@ -8627,6 +8749,10 @@ msgstr "This permanently removes the function and its code. Triggers, flow steps
 #: src/client/admin/parity/insights.tsx
 msgid "This removes the panel from <0>saved_panels</0> and any dashboards that reference it. The query itself isn't run again. This action can't be undone."
 msgstr "This removes the panel from <0>saved_panels</0> and any dashboards that reference it. The query itself isn't run again. This action can't be undone."
+
+#: src/client/admin/item-editor.tsx
+msgid "This removes the row from <0>c_{slug}</0>. Revisions remain available."
+msgstr "This removes the row from <0>c_{slug}</0>. Revisions remain available."
 
 #. placeholder {0}: confirmRev.v
 #. placeholder {1}: fmtRevTs(confirmRev.createdAt)
@@ -8898,7 +9024,7 @@ msgstr "Type a command, collection, or item title to navigate."
 msgid "Type a command, collection, or item title…"
 msgstr "Type a command, collection, or item title…"
 
-#: src/client/admin/sheet.tsx
+#: src/client/admin/item-form.tsx
 msgid "Type and press Enter…"
 msgstr "Type and press Enter…"
 
@@ -8956,6 +9082,7 @@ msgstr "Unlinked {0}."
 msgid "Unnamed passkey"
 msgstr "Unnamed passkey"
 
+#: src/client/admin/item-editor.tsx
 #: src/client/admin/sheet.tsx
 msgid "Unpublish"
 msgstr "Unpublish"
@@ -8968,6 +9095,10 @@ msgstr "Unread"
 #: src/client/admin/storage.tsx
 msgid "unsaved"
 msgstr "unsaved"
+
+#: src/client/admin/item-editor.tsx
+msgid "Unsaved"
+msgstr "Unsaved"
 
 #: src/client/admin/pages/settings.tsx
 msgid "unset"
@@ -9537,6 +9668,10 @@ msgstr "xxxxx-xxxxx"
 #: src/client/admin/parity/app-users.tsx
 msgid "yes"
 msgstr "yes"
+
+#: src/client/admin/item-editor.tsx
+msgid "You have edits that haven't been saved. Leaving will lose them."
+msgstr "You have edits that haven't been saved. Leaving will lose them."
 
 #: src/client/admin/account-page.tsx
 msgid "You haven't registered any passkeys yet."

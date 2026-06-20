@@ -11,6 +11,7 @@ import {
   type ListResponse,
   type SearchQuery,
   type SearchResponse,
+  type ImportSummary,
   type PhoneNumber,
   type Job,
   type JobStatus,
@@ -31,6 +32,7 @@ export type {
   AggregateRow,
   SearchQuery,
   SearchResponse,
+  ImportSummary,
   BatchOperation,
   BatchResponse,
   DeviceToken,
@@ -182,6 +184,13 @@ export interface CollectionClient<T extends Record<string, unknown>> {
    *  matching capability enabled on the collection. Rows come back best-first
    *  with the caller's read permission + tenant scope enforced. */
   search(body: SearchQuery): Promise<SearchResponse<T>>;
+  /** Export every readable row as a JSON or CSV string. */
+  exportItems(format?: "json" | "csv"): Promise<string>;
+  /** Bulk-import rows from a JSON array (or a raw JSON/CSV string). */
+  importItems(
+    body: string | Partial<T>[],
+    format?: "json" | "csv",
+  ): Promise<ImportSummary>;
   one(id: string, opts?: ItemQuery): Promise<ItemResponse<T>>;
   create(data: Partial<T>): Promise<ItemResponse<T>>;
   update(id: string, patch: Partial<T>): Promise<ItemResponse<T>>;
@@ -245,6 +254,35 @@ export const createClient = (opts: ClientOptions) => {
     return (await res.json()) as T;
   };
 
+  /** Like {@link request} but for endpoints whose body/response isn't JSON —
+   *  the bulk export (returns a file) and import (takes a raw CSV/JSON upload).
+   *  Returns the raw `Response` so callers pick `.text()` or `.json()`. */
+  const requestRaw = async (
+    method: string,
+    path: string,
+    rawBody?: string,
+    contentType?: string,
+  ): Promise<Response> => {
+    const headers: Record<string, string> = {
+      ...authHeader(),
+      ...tenantHeader(),
+    };
+    if (contentType) headers["content-type"] = contentType;
+    const res = await f(`${opts.url}${path}`, {
+      method,
+      credentials: "include",
+      headers,
+      body: rawBody,
+    });
+    if (!res.ok) {
+      const errBody = (await res.json().catch(() => ({}))) as
+        | { error?: { code: string; message: string; details?: unknown } }
+        | undefined;
+      throw new BacklexError(res.status, errBody);
+    }
+    return res;
+  };
+
   const collection = <T extends Record<string, unknown>>(
     slug: string,
   ): CollectionClient<T> => {
@@ -260,6 +298,27 @@ export const createClient = (opts: ClientOptions) => {
       /** Relevance search (full-text / vector / hybrid). */
       search: (body: SearchQuery): Promise<SearchResponse<T>> =>
         request<SearchResponse<T>>("POST", `/api/items/${slug}/search`, body),
+      /** Export every readable row as a JSON or CSV string (honors the same
+       *  read filters as `list`). */
+      exportItems: (format: "json" | "csv" = "json"): Promise<string> =>
+        requestRaw("GET", `/api/items/${slug}/export?format=${format}`).then((r) =>
+          r.text(),
+        ),
+      /** Bulk-import rows from a JSON array (or raw JSON/CSV string). Each row
+       *  runs the normal create path; row-level failures land in `errors`. */
+      importItems: (
+        body: string | Partial<T>[],
+        format: "json" | "csv" = "json",
+      ): Promise<ImportSummary> => {
+        const raw = typeof body === "string" ? body : JSON.stringify(body);
+        const contentType = format === "csv" ? "text/csv" : "application/json";
+        return requestRaw(
+          "POST",
+          `/api/items/${slug}/import?format=${format}`,
+          raw,
+          contentType,
+        ).then((r) => r.json() as Promise<ImportSummary>);
+      },
       one: (id: string, opts?: ItemQuery): Promise<ItemResponse<T>> =>
         request<ItemResponse<T>>("GET", `/api/items/${slug}/${id}${buildItemSearch(opts)}`),
       create: (data: Partial<T>): Promise<ItemResponse<T>> =>

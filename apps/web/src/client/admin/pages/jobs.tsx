@@ -25,7 +25,8 @@ import {
 } from "@backlex/ui/components/dialog";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Card } from "@backlex/ui/components/card";
-import { jobsApi, type ApiJob, type ApiJobStatus } from "../api";
+import { DatePicker } from "@/components/date-picker";
+import { jobsApi, functionsApi, type ApiFunction, type ApiJob, type ApiJobStatus } from "../api";
 
 const STATUS_VARIANT: Record<ApiJobStatus, BadgeVariant> = {
   pending: "outline",
@@ -260,11 +261,25 @@ function EnqueueJobDialog({
   type JobType = "function" | "webhook.deliver";
   const [type, setType] = useState<JobType>("function");
   const [fnName, setFnName] = useState("");
+  const [functions, setFunctions] = useState<ApiFunction[]>([]);
+  const [fnLoaded, setFnLoaded] = useState(false);
   const [payloadText, setPayloadText] = useState("{}");
   const [queue, setQueue] = useState("");
   const [runAt, setRunAt] = useState("");
   const [maxAttempts, setMaxAttempts] = useState<number | "">("");
   const [busy, setBusy] = useState(false);
+
+  // Function jobs must reference an existing function, so offer a pick-list
+  // rather than free text — avoids enqueuing a name the server will reject.
+  useEffect(() => {
+    let cancelled = false;
+    functionsApi
+      .list()
+      .then((r) => { if (!cancelled) setFunctions(r.data ?? []); })
+      .catch(() => { /* leave list empty; the empty-state hint covers it */ })
+      .finally(() => { if (!cancelled) setFnLoaded(true); });
+    return () => { cancelled = true; };
+  }, []);
 
   let payloadError: string | null = null;
   let parsedPayload: Record<string, unknown> = {};
@@ -310,8 +325,8 @@ function EnqueueJobDialog({
             <Trans>Queue durable background work. Function jobs run a named function; jobs retry with backoff and dead-letter.</Trans>
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(90vh-10rem)]">
-          <div className="flex flex-col gap-4 px-5 py-[18px]">
+        <ScrollArea viewportClassName="max-h-[calc(90vh-10rem)] [&>div]:!block">
+          <div className="flex flex-col gap-4 overflow-x-clip px-5 py-[18px]">
             <div className="flex flex-col gap-1.5">
               <label className="text-[12.5px] font-medium"><Trans>Type</Trans></label>
               <Select
@@ -327,8 +342,24 @@ function EnqueueJobDialog({
             {type === "function" && (
               <div className="flex flex-col gap-1.5">
                 <label className="flex items-center gap-2 text-[12.5px] font-medium"><Trans>Function name</Trans> <span className="text-destructive">*</span></label>
-                <Input className="font-mono" aria-invalid={!!fnError} value={fnName} onChange={(e) => setFnName(e.target.value)} placeholder="my_function" />
-                {fnError && <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{fnError}</div>}
+                {fnLoaded && functions.length === 0 ? (
+                  <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-[12px] text-muted-foreground">
+                    <I.AlertTriangle size={13} />
+                    <Trans>No functions defined yet. Create a function before enqueuing a function job.</Trans>
+                  </div>
+                ) : (
+                  <Select
+                    value={fnName}
+                    onChange={setFnName}
+                    disabled={!fnLoaded}
+                    placeholder={fnLoaded ? t`Select a function` : t`Loading…`}
+                    options={functions.map((f) => ({
+                      value: f.name,
+                      label: f.name,
+                      hint: f.active ? undefined : t`inactive`,
+                    }))}
+                  />
+                )}
               </div>
             )}
 
@@ -346,7 +377,9 @@ function EnqueueJobDialog({
               {payloadError ? (
                 <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{payloadError}</div>
               ) : type === "webhook.deliver" ? (
-                <span className="text-[11.5px] text-muted-foreground"><Trans>Expects {"{ webhookId, channel, event, body }"}.</Trans></span>
+                <span className="text-[11.5px] text-muted-foreground">
+                  <Trans>Expects</Trans> <code className="font-mono">{"{ webhookId, channel, event, body }"}</code>.
+                </span>
               ) : null}
             </div>
 
@@ -370,7 +403,7 @@ function EnqueueJobDialog({
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[12.5px] font-medium"><Trans>Run at (optional)</Trans></label>
-              <Input type="datetime-local" value={runAt} onChange={(e) => setRunAt(e.target.value)} />
+              <DatePicker value={runAt || null} onChange={(iso) => setRunAt(iso ?? "")} />
               <span className="text-[11.5px] text-muted-foreground"><Trans>Leave empty to run on the next tick.</Trans></span>
             </div>
           </div>

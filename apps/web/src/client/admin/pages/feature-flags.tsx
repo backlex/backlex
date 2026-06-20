@@ -199,8 +199,8 @@ export function FeatureFlagsPage({ pushToast }: { pushToast: (m: string) => void
             </DialogDescription>
           </DialogHeader>
           {edit && (
-            <ScrollArea viewportClassName="max-h-[calc(85vh-13rem)]">
-              <div className="flex flex-col gap-3.5 px-0.5 py-1">
+            <ScrollArea viewportClassName="max-h-[calc(85vh-13rem)] [&>div]:!block">
+              <div className="flex flex-col gap-3.5 overflow-x-clip px-0.5 py-1">
                 <label className="flex flex-col gap-1 text-[12.5px] font-medium">
                   <Trans>Key</Trans>
                   <Input

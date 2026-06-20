@@ -6,7 +6,7 @@
 // Visual parity targets the design's parity-v2.jsx::{KanbanBoard, GalleryGrid,
 // CalendarView, ItemsViewToggle}. Calendar uses the current real month with
 // arrow nav (the prototype hardcoded May 2026; that wouldn't age well).
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { renderTemplate } from "@backlex/core";
 import { I, type IconComponent } from "./icons";
@@ -91,7 +91,26 @@ const KANBAN_COLS: { id: string; label: string }[] = [
   { id: "archived", label: "Archived" },
 ];
 
-export function KanbanBoard({ rows, onEdit, displayTemplate }: { rows: Post[]; onEdit: (it: Post) => void; displayTemplate?: string | null }) {
+export function KanbanBoard({
+  rows,
+  onEdit,
+  displayTemplate,
+  statusField,
+  onChangeStatus,
+  onCreate,
+}: {
+  rows: Post[];
+  onEdit: (it: Post) => void;
+  displayTemplate?: string | null;
+  // The collection's resolved status field. When present, columns come from its
+  // choices (so any status set lights up); otherwise the default lifecycle cols.
+  statusField?: { name: string; choices: { value: string; label?: string }[] } | null;
+  // Drag-and-drop a card to another column → set the row's status. Optimistic
+  // update happens in the parent; this just reports the move.
+  onChangeStatus?: (it: Post, status: string) => void;
+  // The per-column "+" button → create a new item pre-set to that status.
+  onCreate?: (status: string) => void;
+}) {
   const { t } = useLingui();
   const KANBAN_LABELS: Record<string, string> = {
     draft: t`Draft`,
@@ -99,49 +118,83 @@ export function KanbanBoard({ rows, onEdit, displayTemplate }: { rows: Post[]; o
     published: t`Published`,
     archived: t`Archived`,
   };
-  const byStatus = (s: string) => rows.filter((r) => r.status === s);
+  const statusName = statusField?.name ?? "status";
+  const cols = statusField?.choices?.length
+    ? statusField.choices.map((c) => ({ id: c.value, label: c.label ?? KANBAN_LABELS[c.value] ?? c.value }))
+    : KANBAN_COLS.map((c) => ({ id: c.id, label: KANBAN_LABELS[c.id] ?? c.label }));
+  const statusOf = (r: Post) => (r as unknown as Record<string, unknown>)[statusName];
+  const byStatus = (s: string) => rows.filter((r) => statusOf(r) === s);
+
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overCol, setOverCol] = useState<string | null>(null);
+
+  const drop = (colId: string) => {
+    const it = rows.find((x) => x.id === dragId);
+    setOverCol(null);
+    setDragId(null);
+    if (it && statusOf(it) !== colId) onChangeStatus?.(it, colId);
+  };
+
   return (
-    <div className="grid grid-cols-[repeat(4,minmax(220px,1fr))] gap-3.5 p-3.5 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1">
-      {KANBAN_COLS.map((c) => {
+    <div className="grid grid-cols-[repeat(var(--kanban-cols),minmax(220px,1fr))] gap-3.5 p-3.5 max-[900px]:grid-cols-2 max-[600px]:grid-cols-1" style={{ "--kanban-cols": cols.length } as CSSProperties}>
+      {cols.map((c) => {
         const items = byStatus(c.id);
         return (
-          <div key={c.id} className="flex min-h-[240px] flex-col rounded-xl border border-border bg-[color-mix(in_oklch,var(--muted)_40%,var(--card))]">
+          <div
+            key={c.id}
+            onDragOver={(e) => { if (dragId) { e.preventDefault(); setOverCol(c.id); } }}
+            onDragLeave={() => setOverCol((o) => (o === c.id ? null : o))}
+            onDrop={(e) => { e.preventDefault(); drop(c.id); }}
+            className={`flex min-h-[240px] flex-col rounded-xl border bg-[color-mix(in_oklch,var(--muted)_40%,var(--card))] transition-colors ${overCol === c.id && dragId ? "border-primary ring-2 ring-primary/40" : "border-border"}`}
+          >
             <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
-              <span className="text-[12.5px] font-medium capitalize">{KANBAN_LABELS[c.id] ?? c.label}</span>
+              <span className="text-[12.5px] font-medium capitalize">{c.label}</span>
               <span className="rounded-md border border-border bg-card px-1.5 py-px font-mono text-[10.5px] tabular-nums text-muted-foreground">{items.length}</span>
               <div className="flex-1" />
-              <IconButton icon={I.Plus} title={t`New ${KANBAN_LABELS[c.id] ?? c.label} post`} />
+              <IconButton icon={I.Plus} title={t`New ${c.label} item`} onClick={() => onCreate?.(c.id)} />
             </div>
-            <div className="flex flex-col gap-2 p-2.5">
+            <div className="flex flex-1 flex-col gap-2 p-2.5">
               {items.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-border py-[22px] text-center text-[11.5px] text-muted-foreground"><Trans>No items</Trans></div>
               ) : (
                 items.map((r) => {
-                  const author = authorById(r.author);
+                  const author = r.author ? authorById(r.author) : null;
                   const words = rowNumber(r.word_count);
                   const views = rowNumber(r.view_count);
                   return (
-                    <button key={r.id} type="button" className="flex cursor-pointer flex-col gap-1.5 rounded-lg border border-border bg-card px-3 py-2.5 text-left hover:border-chip-border" onClick={() => onEdit(r)}>
+                    <button
+                      key={r.id}
+                      type="button"
+                      draggable
+                      onDragStart={(e) => { setDragId(r.id); e.dataTransfer.effectAllowed = "move"; }}
+                      onDragEnd={() => { setDragId(null); setOverCol(null); }}
+                      className={`flex cursor-grab flex-col gap-1.5 rounded-lg border border-border bg-card px-3 py-2.5 text-left transition-opacity hover:border-chip-border active:cursor-grabbing ${dragId === r.id ? "opacity-40" : ""}`}
+                      onClick={() => onEdit(r)}
+                    >
                       <div className="text-[12.5px] font-medium leading-[1.3]">{rowLabel(r, displayTemplate)}</div>
                       {r.slug && (
                         <div className="text-[11px] text-muted-foreground">
                           <span className="font-mono">{r.slug}</span>
                         </div>
                       )}
-                      <div className="mt-0.5 flex items-center gap-1.5">
-                        <span className="grid size-[18px] place-items-center rounded-full bg-muted font-mono text-[9.5px] text-muted-foreground">{author.initials}</span>
-                        {words != null && (
-                          <span className="font-mono text-[10.5px] tabular-nums text-muted-foreground">
-                            {words.toLocaleString()} w
-                          </span>
-                        )}
-                        <div className="flex-1" />
-                        {views != null && views > 0 && (
-                          <span className="inline-flex items-center gap-1 font-mono text-[10.5px] tabular-nums text-muted-foreground">
-                            <I.Eye size={10} /> {views.toLocaleString()}
-                          </span>
-                        )}
-                      </div>
+                      {(author || words != null || (views != null && views > 0)) && (
+                        <div className="mt-0.5 flex items-center gap-1.5">
+                          {author && (
+                            <span className="grid size-[18px] place-items-center rounded-full bg-muted font-mono text-[9.5px] text-muted-foreground" title={author.name}>{author.initials}</span>
+                          )}
+                          {words != null && (
+                            <span className="font-mono text-[10.5px] tabular-nums text-muted-foreground">
+                              {words.toLocaleString()} w
+                            </span>
+                          )}
+                          <div className="flex-1" />
+                          {views != null && views > 0 && (
+                            <span className="inline-flex items-center gap-1 font-mono text-[10.5px] tabular-nums text-muted-foreground">
+                              <I.Eye size={10} /> {views.toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </button>
                   );
                 })

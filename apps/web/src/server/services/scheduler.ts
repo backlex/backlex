@@ -26,6 +26,7 @@ import { processJobs } from "./jobs";
 import { sweepExpiredUploads } from "./uploads";
 import { publishDueItems } from "./items/scheduled-publish";
 import { pruneOldActivity, pruneOldActivityByPrefix } from "./activity";
+import { maybeRunScheduledBackups } from "./backup";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.functions : sqlite.schema.functions;
@@ -47,6 +48,13 @@ let lastTickAt: Date | null = null;
  *  growing table is overkill on a per-minute schedule. */
 let lastActivityPruneAt: number = 0;
 const ACTIVITY_PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+/** When the scheduled-backup sweep last ran (per process). Throttled so the
+ *  per-minute tick stays cheap — the sweep itself re-checks each workspace's
+ *  schedule interval, so a coarse 15-minute cadence never misses a daily or
+ *  weekly window. */
+let lastBackupSweepAt: number = 0;
+const BACKUP_SWEEP_INTERVAL_MS = 15 * 60 * 1000;
 const DEFAULT_ACTIVITY_RETENTION_DAYS = 90;
 // Sensitive-read audit rows (`access.*`) are opt-in but higher-volume, so they
 // get a shorter default clock than the global retention.
@@ -191,6 +199,17 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
     await publishDueItems(ctx);
   } catch (e) {
     console.error("[scheduled-publish] tick failed", e);
+  }
+
+  // Scheduled backups: run + prune per workspace, throttled so the per-minute
+  // tick stays cheap (the sweep re-checks each schedule's interval itself).
+  if (now.getTime() - lastBackupSweepAt >= BACKUP_SWEEP_INTERVAL_MS) {
+    lastBackupSweepAt = now.getTime();
+    try {
+      await maybeRunScheduledBackups(ctx, now);
+    } catch (e) {
+      console.error("[scheduled-backup] sweep failed", e);
+    }
   }
 
   if (now.getTime() - lastActivityPruneAt >= ACTIVITY_PRUNE_INTERVAL_MS) {

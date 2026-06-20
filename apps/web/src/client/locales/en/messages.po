@@ -7335,6 +7335,10 @@ msgid "Send test push"
 msgstr "Send test push"
 
 #: src/client/admin/pages/settings.tsx
+msgid "Send test SMS"
+msgstr "Send test SMS"
+
+#: src/client/admin/pages/settings.tsx
 msgid "Sender address for transactional email — set via <0>wrangler secret put</0> / <1>.env</1>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here."
 msgstr "Sender address for transactional email — set via <0>wrangler secret put</0> / <1>.env</1>. When unset (or RESEND_API_KEY is missing) email is logged to stdout. Read-only here."
 
@@ -7777,6 +7781,18 @@ msgstr "slug is required"
 msgid "Slug: <0>{slugClean}</0>"
 msgstr "Slug: <0>{slugClean}</0>"
 
+#: src/client/admin/pages/settings.tsx
+msgid "SMS"
+msgstr "SMS"
+
+#: src/client/admin/pages/settings.tsx
+msgid "SMS settings saved."
+msgstr "SMS settings saved."
+
+#: src/client/admin/pages/settings.tsx
+msgid "SMS transport for <0>this workspace</0>. Resolution order: this config → the instance-wide default → the deployment's <1>SMS_*</1> env vars. Secret values are encrypted at rest and never shown again. Send to a user via the <2>messaging.send_sms</2> tool / API once they register a phone number."
+msgstr "SMS transport for <0>this workspace</0>. Resolution order: this config → the instance-wide default → the deployment's <1>SMS_*</1> env vars. Secret values are encrypted at rest and never shown again. Send to a user via the <2>messaging.send_sms</2> tool / API once they register a phone number."
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Snippet copied"
 msgstr "Snippet copied"
@@ -8120,6 +8136,10 @@ msgstr "Test LDAP connection"
 msgid "Test push sent to {0} device(s)."
 msgstr "Test push sent to {0} device(s)."
 
+#: src/client/admin/pages/settings.tsx
+msgid "Test recipient (E.164)"
+msgstr "Test recipient (E.164)"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Test run"
 msgstr "Test run"
@@ -8131,6 +8151,11 @@ msgstr "Test run · {name}"
 #: src/client/admin/pages/flows.tsx
 msgid "Test run dispatched."
 msgstr "Test run dispatched."
+
+#. placeholder {0}: r.sent
+#: src/client/admin/pages/settings.tsx
+msgid "Test SMS sent to {0} number(s)."
+msgstr "Test SMS sent to {0} number(s)."
 
 #: src/client/admin/pages/logs.tsx
 msgid "The activity endpoint returned an error. Try again in a moment."
@@ -8960,6 +8985,10 @@ msgstr "When set, body is rendered from the stored template at run time. Otherwi
 #: src/client/pages/api-keys.tsx
 msgid "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
 msgstr "When set, requests made with this key get only this role’s permissions — and only while the owner still holds it."
+
+#: src/client/admin/pages/settings.tsx
+msgid "Where “Send test SMS” delivers. Leave blank to use your account's registered numbers."
+msgstr "Where “Send test SMS” delivers. Leave blank to use your account's registered numbers."
 
 #: src/client/admin/storage.tsx
 msgid "Width"

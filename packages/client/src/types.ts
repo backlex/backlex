@@ -92,6 +92,14 @@ export interface DeviceToken {
   lastSeenAt: string | number | null;
 }
 
+export interface PhoneNumber {
+  id: string;
+  phoneNumber: string;
+  isActive: boolean;
+  createdAt: string | number;
+  lastSeenAt: string | number | null;
+}
+
 export interface ApiError {
   code: string;
   message: string;

@@ -1682,6 +1682,10 @@ msgstr "Seçenekler"
 msgid "Choose a new password"
 msgstr "Yeni parola seçin"
 
+#: src/client/admin/storage.tsx
+msgid "Chunked, resumable upload"
+msgstr "Parçalı, sürdürülebilir yükleme"
+
 #: src/client/pages/api-keys.tsx
 msgid "ci-bot (optional)"
 msgstr "ci-bot (isteğe bağlı)"
@@ -6890,6 +6894,10 @@ msgstr "Sonuç"
 msgid "Result is piped into <0>$last</0> for the next step."
 msgstr "Sonuç bir sonraki adım için <0>$last</0> değişkenine aktarılır."
 
+#: src/client/admin/storage.tsx
+msgid "resumable"
+msgstr "sürdürülebilir"
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Resumable SSE on <0>GET /mcp</0>"
 msgstr "<0>GET /mcp</0> üzerinde sürdürülebilir SSE"
@@ -8793,6 +8801,10 @@ msgstr "Güncellendi"
 #: src/client/admin/storage.tsx
 msgid "Upload"
 msgstr "Yükle"
+
+#: src/client/admin/storage.tsx
+msgid "upload failed"
+msgstr "yükleme başarısız"
 
 #: src/client/admin/relational-pickers.tsx
 msgid "uploaded"

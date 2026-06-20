@@ -125,6 +125,29 @@ export interface Job {
   completedAt: string | number | null;
 }
 
+export type UploadStatus = "pending" | "completed" | "aborted";
+
+/** A resumable (TUS) upload session, as returned by the management API. */
+export interface Upload {
+  id: string;
+  key: string;
+  size: number;
+  offset: number;
+  status: UploadStatus;
+  contentType: string | null;
+  folderId: string | null;
+  parts: number;
+  createdAt: string | number;
+  updatedAt: string | number;
+  expiresAt: string | number;
+}
+
+/** Result of a resumable upload — the final key and the TUS session location. */
+export interface ResumableUploadResult {
+  key: string;
+  location: string;
+}
+
 export interface ApiError {
   code: string;
   message: string;

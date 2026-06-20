@@ -632,6 +632,47 @@ export const jobs = sqliteTable(
   ],
 );
 
+/**
+ * Resumable upload sessions (TUS 1.0.0). One row per in-flight upload, backed
+ * by a native object-store multipart upload (`storage_upload_id`) — or an
+ * offset-append temp file on the fs backend. `offset` tracks committed bytes
+ * for resume; `parts` records the multipart part list. Finalized rows flip to
+ * `completed` and a `files` row is written; abandoned `pending` rows past
+ * `expires_at` are swept inside `cronTick`.
+ */
+export const uploads = sqliteTable(
+  "uploads",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    /** Logical key (tenant-relative); the final `files.key` is the physical one. */
+    key: text("key").notNull(),
+    physicalKey: text("physical_key").notNull(),
+    /** Native multipart upload id (null for the fs offset-append backend). */
+    storageUploadId: text("storage_upload_id"),
+    /** Total expected bytes (TUS `Upload-Length`). */
+    size: integer("size").notNull(),
+    /** Committed bytes so far (TUS `Upload-Offset`). */
+    offset: integer("offset").notNull().default(0),
+    parts: text("parts", { mode: "json" }).$type<{ partNumber: number; etag: string; size: number }[]>().notNull().default([]),
+    contentType: text("content_type"),
+    folderId: text("folder_id"),
+    ownerId: text("owner_id"),
+    /** Decoded TUS `Upload-Metadata` bag. */
+    metadata: text("metadata", { mode: "json" }).$type<Record<string, string>>().notNull().default({}),
+    /** pending | completed | aborted */
+    status: text("status").notNull().default("pending"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [
+    index("uploads_tenant_idx").on(t.tenantId),
+    index("uploads_expires_idx").on(t.expiresAt),
+    index("uploads_status_idx").on(t.status),
+  ],
+);
+
 export const revisions = sqliteTable(
   "revisions",
   {

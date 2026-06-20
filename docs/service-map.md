@@ -69,6 +69,11 @@ guides; this list is everything else.
   backoff, dead-letter, and `runAt` scheduling. `processJobs` drains
   the `jobs` table inside the same `cronTick`; webhook dispatch
   enqueues here for retry. See `docs/jobs.md`.
+- **Resumable uploads** (`routes/uploads.ts`, `services/uploads.ts`)
+  — TUS 1.0.0 chunked uploads at `/api/uploads`, backed by native
+  object-store multipart (R2/S3) or fs offset-append. The `uploads`
+  table tracks session offset + parts; `sweepExpiredUploads` aborts
+  stale sessions inside `cronTick`. See `docs/resumable-uploads.md`.
 - **Notifications** (`routes/notifications.ts`) — in-app
   notification feed; activity/flows write into it.
 - **Email templates** (`routes/email-templates.ts`) — per-tenant

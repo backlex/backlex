@@ -479,6 +479,14 @@ export const webhooks = pgTable(
     headers: jsonb("headers").$type<Record<string, string> | null>(),
     secret: text("secret"),
     active: boolean("active").notNull().default(true),
+    /** Consecutive failed deliveries since the last 2xx — drives the
+     *  auto-disable circuit breaker. Reset to 0 on any success. */
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    /** Timestamp of the most recent failed delivery (null once healthy). */
+    lastFailureAt: timestamp("last_failure_at", { withTimezone: true }),
+    /** Human-readable reason set when the breaker auto-disables this hook;
+     *  null while the hook is healthy or was paused manually. */
+    disabledReason: text("disabled_reason"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

@@ -237,6 +237,11 @@ msgstr "{0} bağlı · {1} isteğe bağlı"
 msgid "{0} connected."
 msgstr "{0} bağlandı."
 
+#. placeholder {0}: h.consecutiveFailures
+#: src/client/admin/pages/webhooks.tsx
+msgid "{0} consecutive failures"
+msgstr "{0} ardışık başarısızlık"
+
 #. placeholder {0}: h.name
 #. placeholder {0}: u.email
 #. placeholder {0}: user.email
@@ -1365,6 +1370,10 @@ msgstr "Düzenlenene kadar başlıktan otomatik türetilir."
 #: src/client/admin/pages/settings.tsx
 msgid "Auto-detected from <0>env</0> bindings."
 msgstr "<0>env</0> bağlamalarından otomatik algılandı."
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "auto-disabled"
+msgstr "otomatik kapatıldı"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "auto-run reads"
@@ -7716,8 +7725,8 @@ msgid "Sends a one-time sign-in link by email — requires a configured email ad
 msgstr "E-posta ile tek kullanımlık giriş bağlantısı gönderir — yapılandırılmış bir e-posta bağdaştırıcısı gerektirir (RESEND_API_KEY + EMAIL_FROM ayarlayın)."
 
 #: src/client/admin/pages/webhooks.tsx
-msgid "Sent as <0>X-Backlex-Signature: sha256=…</0>. Verify on the receiver."
-msgstr "<0>X-Backlex-Signature: sha256=…</0> olarak gönderilir. Alıcı tarafında doğrulayın."
+#~ msgid "Sent as <0>X-Backlex-Signature: sha256=…</0>. Verify on the receiver."
+#~ msgstr "<0>X-Backlex-Signature: sha256=…</0> olarak gönderilir. Alıcı tarafında doğrulayın."
 
 #: src/client/admin/item-views.tsx
 msgid "September"
@@ -8081,6 +8090,10 @@ msgstr "Giriş yapılıyor…"
 #: src/client/admin/pages/webhooks.tsx
 msgid "Signing secret"
 msgstr "İmzalama gizli anahtarı"
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>{timestamp}.{body}</2> with <3>X-Backlex-Timestamp</3> for replay protection."
+msgstr "Her teslimatı imzalar: <0>X-Backlex-Signature</0> (gövdenin HMAC'i) artı tekrar saldırısı korumasi için <3>X-Backlex-Timestamp</3> ile birlikte <2>{timestamp}.{body}</2> üzerinden <1>X-Backlex-Signature-V2</1>."
 
 #: src/client/admin/parity/insights.tsx
 msgid "single scalar value"

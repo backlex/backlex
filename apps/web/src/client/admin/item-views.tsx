@@ -233,7 +233,14 @@ export function CalendarView({ rows, onEdit, displayTemplate }: { rows: Post[]; 
 
     const byDay: Record<number, Post[]> = {};
     for (const r of rows) {
-      const iso = r.published_at || r.updated_at;
+      // The items API serializes timestamps camelCase (publishedAt/updatedAt);
+      // accept snake_case too. Falling back to updatedAt means freshly-created
+      // drafts (no publish date yet) still surface on the calendar.
+      const rec = r as unknown as Record<string, unknown>;
+      const iso = (rec.published_at ?? rec.publishedAt ?? rec.updated_at ?? rec.updatedAt) as
+        | string
+        | number
+        | undefined;
       if (!iso) continue;
       const d = new Date(iso);
       if (Number.isNaN(d.getTime())) continue;

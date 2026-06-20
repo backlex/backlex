@@ -743,7 +743,6 @@ msgid "Action"
 msgstr "İşlem"
 
 #: src/client/admin/extras.tsx
-#: src/client/admin/item-editor.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "Actions"
@@ -4058,8 +4057,15 @@ msgstr "İçe aktarma URL'si"
 #. placeholder {0}: r.data.inserted
 #. placeholder {1}: r.data.total
 #: src/client/admin/app.tsx
-msgid "Imported {0} of {1} rows."
-msgstr "{1} satırın {0} tanesi içe aktarıldı."
+#~ msgid "Imported {0} of {1} rows."
+#~ msgstr "{1} satırın {0} tanesi içe aktarıldı."
+
+#. placeholder {0}: r.data.total
+#. placeholder {1}: r.data.inserted
+#. placeholder {2}: r.data.updated
+#: src/client/admin/app.tsx
+msgid "Imported {0} rows — {1} new, {2} updated."
+msgstr "{0} satır içe aktarıldı — {1} yeni, {2} güncellendi."
 
 #. placeholder {0}: res.data.key.split("/").pop() ?? res.data.key
 #: src/client/admin/storage.tsx

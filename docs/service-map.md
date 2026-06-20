@@ -74,6 +74,11 @@ guides; this list is everything else.
   object-store multipart (R2/S3) or fs offset-append. The `uploads`
   table tracks session offset + parts; `sweepExpiredUploads` aborts
   stale sessions inside `cronTick`. See `docs/resumable-uploads.md`.
+- **Feature flags** (`routes/feature-flags.ts`, `services/feature-flags.ts`)
+  — per-workspace/global flags + remote config in the `feature_flags` table;
+  `evaluateFlags` resolves rollout % + permission-DSL targeting per caller;
+  public read at `/api/flags`, admin CRUD at `/api/admin/feature-flags`. See
+  `docs/feature-flags.md`.
 - **Draft / publish** (`routes/items.ts` publish handler,
   `services/items/scheduled-publish.ts`, `draftFilter` in
   `services/items/sql-helpers.ts`) — versioned collections get

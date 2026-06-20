@@ -152,6 +152,12 @@ export interface ResumableUploadResult {
   location: string;
 }
 
+/** One evaluated feature flag for the calling identity. */
+export interface FlagState {
+  enabled: boolean;
+  value: unknown;
+}
+
 export interface ApiError {
   code: string;
   message: string;

@@ -166,8 +166,11 @@ describe("Resumable uploads (TUS)", () => {
         method: "POST",
         headers: { ...TUS, "Upload-Length": "100", "Upload-Metadata": meta("stale.bin") },
       });
+      expect(init.status).toBe(201);
       const location = init.headers.get("Location")!;
-      // expiresAt = now + 1ms — already in the past by the time we sweep.
+      // expiresAt = now + 1ms; wait past it so the sweep reliably sees it as due
+      // even on a warm machine where create→sweep can fall in the same ms.
+      await new Promise((r) => setTimeout(r, 15));
       const ctx = await buildContext(short.env);
       await sweepExpiredUploads(ctx);
       const head = await short.fetch(location, { method: "HEAD", headers: TUS });

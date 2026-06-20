@@ -641,6 +641,49 @@ export const pushTemplates = pgTable(
   (t) => [uniqueIndex("push_templates_tenant_key_idx").on(t.tenantId, t.key)],
 );
 
+/**
+ * Registered phone numbers for SMS messaging. Keyed by (userId, phoneNumber);
+ * re-registering revives the row (`is_active`) and refreshes `last_seen_at`.
+ * Numbers the provider reports as permanently undeliverable are deactivated
+ * rather than deleted, so a re-register can revive the row.
+ */
+export const phoneNumbers = pgTable(
+  "phone_numbers",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    userId: text("user_id").notNull(),
+    /** E.164, e.g. +14155552671. */
+    phoneNumber: text("phone_number").notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("phone_numbers_unique_idx").on(t.userId, t.phoneNumber),
+    index("phone_numbers_user_idx").on(t.userId),
+    index("phone_numbers_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
+ * Per-workspace SMS provider config. Same `_global` / `inherit` fallback model
+ * as `push_config`. `config` holds non-secret params (twilio: accountSid /
+ * from / messagingServiceSid; sns: region / accessKeyId / senderId); `secrets`
+ * holds the AES-256-GCM ciphertext of authToken / secretAccessKey.
+ */
+export const smsConfig = pgTable(
+  "sms_config",
+  {
+    tenantId: text("tenant_id").primaryKey(),
+    /** inherit | console | twilio | sns */
+    provider: text("provider").notNull().default("inherit"),
+    config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
+    secrets: jsonb("secrets").$type<Record<string, string>>().notNull().default({}),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+);
+
 export const revisions = pgTable(
   "revisions",
   {

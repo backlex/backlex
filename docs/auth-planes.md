@@ -207,6 +207,28 @@ catch-all so they aren't shadowed by it — see the ordering at
 sign-up, password reset, magic link, OTP, 2FA) by the same middleware
 that protects the control-plane router — see `app.ts:212`.
 
+### Abuse protection: per-IP limit + per-account lockout
+
+Two layers guard both planes' auth surfaces (`lib/auth-rate-limit.ts`):
+
+1. **Per-IP rate limit** — a fixed-window cap per sensitive subpath
+   (sign-up/reset/magic/verify: 5/min; sign-in/OTP: 10/min), keyed by
+   `auth:<rule>:<ip>`. Backed by a Durable Object on Workers (authoritative
+   across isolates) and an in-memory map elsewhere. A trip is recorded to the
+   audit log as `auth.rate_limited`.
+2. **Per-account lockout** — the complement that catches a *distributed* brute
+   force rotating IPs against one account. `authLockoutMiddleware` tracks failed
+   password sign-ins (`/sign-in/email`, HTTP 401) per identifier across all IPs;
+   after `AUTH_LOCKOUT_MAX_FAILS` (default 8) within `AUTH_LOCKOUT_WINDOW_MS`
+   (default 15 min) the account is temporarily locked with exponential backoff
+   (`AUTH_LOCKOUT_COOLDOWN_MS` → `AUTH_LOCKOUT_MAX_COOLDOWN_MS`, default 1 → 15
+   min). A **successful** sign-in clears the counter, so a legitimate user is
+   never escalated; the lock affects only *new* sign-in attempts, not existing
+   sessions. The state machine (`lib/lockout-core.ts`) is shared by the DO and
+   in-memory backends. The lock edge is audited as `auth.login_locked` (with the
+   locked identifier). Set `AUTH_LOCKOUT_DISABLED=true` to turn it off; only
+   password sign-in is gated (OAuth / magic-link / OTP have no password).
+
 ## Per-workspace better-auth instance
 
 Each workspace runs its **own** better-auth instance. They are not

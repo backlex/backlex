@@ -47,6 +47,7 @@ import m40 from "../../drizzle/pg/20260609120000_collections_audit_reads/migrati
 import m41 from "../../drizzle/pg/20260613120000_platform_sso/migration.sql" with { type: "text" };
 import m42 from "../../drizzle/pg/20260618120000_two_factor/migration.sql" with { type: "text" };
 import m43 from "../../drizzle/pg/20260620120000_push_messaging/migration.sql" with { type: "text" };
+import m44 from "../../drizzle/pg/20260620130000_sms_messaging/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -98,4 +99,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260613120000_platform_sso", sql: m41 },
   { name: "20260618120000_two_factor", sql: m42 },
   { name: "20260620120000_push_messaging", sql: m43 },
+  { name: "20260620130000_sms_messaging", sql: m44 },
 ];

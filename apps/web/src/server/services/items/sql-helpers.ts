@@ -69,10 +69,11 @@ export const isFkViolation = (err: unknown): boolean => {
   return false;
 };
 
-export const execute = async (ctx: Ctx, query: unknown): Promise<unknown> => {
+export const execute = async (ctx: Ctx, query: unknown, db?: unknown): Promise<unknown> => {
+  const target = (db ?? ctx.db) as any;
   try {
-    if (ctx.dialect === "pg") return await (ctx.db as any).execute(query);
-    return await (ctx.db as any).run(query);
+    if (ctx.dialect === "pg") return await target.execute(query);
+    return await target.run(query);
   } catch (e) {
     if (isFkViolation(e)) {
       throw new AppError(
@@ -84,14 +85,15 @@ export const execute = async (ctx: Ctx, query: unknown): Promise<unknown> => {
   }
 };
 
-export const queryAll = async <T>(ctx: Ctx, query: unknown): Promise<T[]> => {
+export const queryAll = async <T>(ctx: Ctx, query: unknown, db?: unknown): Promise<T[]> => {
+  const target = (db ?? ctx.db) as any;
   if (ctx.dialect === "pg") {
-    const r = await (ctx.db as any).execute(query);
+    const r = await target.execute(query);
     if (Array.isArray(r)) return r as T[];
     if (r && typeof r === "object" && "rows" in r) return r.rows as T[];
     return r as T[];
   }
-  return (await (ctx.db as any).all(query)) as T[];
+  return (await target.all(query)) as T[];
 };
 
 export const whereOf = (...frags: (SQL | null | undefined)[]): SQL => {

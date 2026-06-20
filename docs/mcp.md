@@ -105,6 +105,7 @@ resource instead of composing a separate `resources/read`.
 | `collections.delete` | Delete an item by id. |
 | `collections.bulk_insert` | Insert many rows in one call with bounded concurrency; per-row results returned. |
 | `collections.bulk_update` | Patch many rows by id in one call; per-row results returned. |
+| `collections.batch` | Mixed create/update/delete on one collection in a single call; `atomic: true` runs it all-or-nothing (Postgres / self-host SQLite). |
 
 ### Storage
 
@@ -175,6 +176,7 @@ resource instead of composing a separate `resources/read`.
 | `notifications.list` | List notifications addressed to the active user. |
 | `notifications.send` | Send a notification to one or more users. |
 | `notifications.mark_read` | Mark one notification (or all of them) as read. |
+| `messaging.send_push` | Send a native push (FCM / APNs / Web Push) to a user's registered devices, plus an in-app row. Requires a workspace push provider (Settings → Push). |
 | `users.list` | List control-plane users (admin-only). |
 | `users.invite` | Invite a user to the workspace with a chosen role. |
 | `users.suspend` | Suspend a user. |

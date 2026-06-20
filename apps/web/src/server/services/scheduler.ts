@@ -23,6 +23,7 @@ const parseExpression = (
 ).parseExpression;
 import { claimDueTasks, deleteTask } from "./scheduled-tasks";
 import { processJobs } from "./jobs";
+import { sweepExpiredUploads } from "./uploads";
 import { pruneOldActivity, pruneOldActivityByPrefix } from "./activity";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -173,6 +174,14 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
     await processJobs(ctx);
   } catch (e) {
     console.error("[jobs] tick failed", e);
+  }
+
+  // Resumable uploads: abort + clean up sessions abandoned past their TTL so
+  // the object store doesn't accumulate dangling multipart uploads.
+  try {
+    await sweepExpiredUploads(ctx);
+  } catch (e) {
+    console.error("[uploads] sweep failed", e);
   }
 
   if (now.getTime() - lastActivityPruneAt >= ACTIVITY_PRUNE_INTERVAL_MS) {

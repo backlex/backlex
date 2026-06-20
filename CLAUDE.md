@@ -178,6 +178,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Push messaging (FCM / APNs / Web Push) | `docs/push-messaging.md` |
 | SMS messaging (Twilio / Amazon SNS) | `docs/sms-messaging.md` |
 | Storage + transforms | `docs/storage.md` |
+| Resumable uploads (TUS) | `docs/resumable-uploads.md` |
 | Functions sandbox | `docs/sandbox.md` |
 | Durable job queue (retry / DLQ / scheduled) | `docs/jobs.md` |
 | Advisor rules | `docs/advisor.md` |

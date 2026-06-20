@@ -1682,6 +1682,10 @@ msgstr "Choices"
 msgid "Choose a new password"
 msgstr "Choose a new password"
 
+#: src/client/admin/storage.tsx
+msgid "Chunked, resumable upload"
+msgstr "Chunked, resumable upload"
+
 #: src/client/pages/api-keys.tsx
 msgid "ci-bot (optional)"
 msgstr "ci-bot (optional)"
@@ -6882,6 +6886,10 @@ msgstr "Result"
 msgid "Result is piped into <0>$last</0> for the next step."
 msgstr "Result is piped into <0>$last</0> for the next step."
 
+#: src/client/admin/storage.tsx
+msgid "resumable"
+msgstr "resumable"
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Resumable SSE on <0>GET /mcp</0>"
 msgstr "Resumable SSE on <0>GET /mcp</0>"
@@ -8785,6 +8793,10 @@ msgstr "Updated"
 #: src/client/admin/storage.tsx
 msgid "Upload"
 msgstr "Upload"
+
+#: src/client/admin/storage.tsx
+msgid "upload failed"
+msgstr "upload failed"
 
 #: src/client/admin/relational-pickers.tsx
 msgid "uploaded"

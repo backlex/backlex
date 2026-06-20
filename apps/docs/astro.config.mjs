@@ -86,6 +86,7 @@ export default defineConfig({
             { slug: "deployment" },
             { slug: "testing" },
             { slug: "storage" },
+            { slug: "resumable-uploads" },
             { slug: "realtime" },
             { slug: "push-messaging" },
             { slug: "sms-messaging" },

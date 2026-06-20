@@ -64,6 +64,8 @@ import { settingsRoutes } from "./routes/settings";
 import { sharedLinksRoutes } from "./routes/shared-links";
 import { sharedPublicRoutes } from "./routes/shared-public";
 import { FILES_COLLECTION, storageRoutes } from "./routes/storage";
+import { uploadsRoutes, tusBaseHeaders } from "./routes/uploads";
+import { uploadPolicy } from "./services/uploads";
 import { templatesRoutes } from "./routes/templates";
 import { tenantAuthRoutes } from "./routes/tenant-auth";
 import { tenantsRoutes } from "./routes/tenants";
@@ -151,12 +153,17 @@ const timed =
     const st = c.get("__st");
     const start = performance.now();
     let downstream = 0;
-    await mw(c, async () => {
+    // Propagate the wrapped middleware's return value: short-circuiting
+    // middlewares (e.g. `cors` on an OPTIONS preflight) return a `Response`
+    // instead of calling `next()`. Dropping it leaves the context unfinalized
+    // ("Context is not finalized" → 500 on every OPTIONS), so we must return it.
+    const res = await mw(c, async () => {
       const d0 = performance.now();
       await next();
       downstream += performance.now() - d0;
     });
     if (st) st[name] = performance.now() - start - downstream;
+    return res;
   };
 
 export const createApp = (env: Env) => {
@@ -279,6 +286,13 @@ export const createApp = (env: Env) => {
     }
   });
 
+  // TUS discovery headers must be set BEFORE cors so they ride along on the
+  // cors-short-circuited OPTIONS response (cors builds its 204 from the
+  // accumulated `c.res.headers`). See `tusBaseHeaders`.
+  const tusHeaders = tusBaseHeaders(uploadPolicy(env).maxBytes);
+  app.use("/api/uploads", tusHeaders);
+  app.use("/api/uploads/*", tusHeaders);
+
   app.use(
     "*",
     timed("cors", cors({
@@ -294,12 +308,34 @@ export const createApp = (env: Env) => {
         return isWorkspaceAllowedOrigin(origin, env) ? origin : env.APP_URL;
       },
       credentials: true,
-      allowHeaders: ["Content-Type", "Authorization", "X-Backlex-Tenant", "X-D1-Bookmark", "MCP-Protocol-Version"],
-      allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+      allowHeaders: [
+        "Content-Type",
+        "Authorization",
+        "X-Backlex-Tenant",
+        "X-D1-Bookmark",
+        "MCP-Protocol-Version",
+        // TUS resumable-upload request headers (Uppy / tus-js-client).
+        "Tus-Resumable",
+        "Upload-Length",
+        "Upload-Offset",
+        "Upload-Metadata",
+        "Upload-Concat",
+      ],
+      allowMethods: ["GET", "HEAD", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
       // Expose so the browser SPA can read the bookmark off the response and
-      // round-trip it on the next request (D1 Sessions API). Server-Timing is
-      // NOT exposed — it's an ops-only, secret-gated diagnostic.
-      exposeHeaders: ["X-D1-Bookmark"],
+      // round-trip it on the next request (D1 Sessions API). The TUS headers let
+      // a browser client read the resume offset + session location. Server-Timing
+      // is NOT exposed — it's an ops-only, secret-gated diagnostic.
+      exposeHeaders: [
+        "X-D1-Bookmark",
+        "Location",
+        "Upload-Offset",
+        "Upload-Length",
+        "Tus-Resumable",
+        "Tus-Version",
+        "Tus-Extension",
+        "Tus-Max-Size",
+      ],
     }),
   ),
   );
@@ -386,6 +422,7 @@ export const createApp = (env: Env) => {
   app.route("/api/activity", activityRoutes);
   app.route("/api/revisions", revisionsRoutes);
   app.route("/api/storage", storageRoutes);
+  app.route("/api/uploads", uploadsRoutes);
   app.route("/api/folders", foldersRoutes);
   app.route("/api/vector", vectorRoutes);
   app.route("/api/realtime", realtimeRoutes);

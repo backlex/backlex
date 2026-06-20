@@ -413,6 +413,14 @@ export const webhooks = sqliteTable(
     headers: text("headers", { mode: "json" }).$type<Record<string, string> | null>(),
     secret: text("secret"),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
+    /** Consecutive failed deliveries since the last 2xx — drives the
+     *  auto-disable circuit breaker. Reset to 0 on any success. */
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    /** Timestamp of the most recent failed delivery (null once healthy). */
+    lastFailureAt: integer("last_failure_at", { mode: "timestamp_ms" }),
+    /** Human-readable reason set when the breaker auto-disables this hook;
+     *  null while the hook is healthy or was paused manually. */
+    disabledReason: text("disabled_reason"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },

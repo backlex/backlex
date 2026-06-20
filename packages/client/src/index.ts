@@ -828,4 +828,6 @@ export {
   type QueuedOp,
 } from "./sync";
 
+export { verifyWebhook, type VerifyWebhookOptions } from "./webhook";
+
 export type BacklexClient = ReturnType<typeof createClient>;

@@ -40,6 +40,14 @@ const WebhookRow = z
     headers: z.record(z.string(), z.string()).nullable(),
     secret: z.string().nullable(),
     active: z.boolean(),
+    consecutiveFailures: z.number().int().nullable().optional().openapi({
+      description: "Consecutive failed deliveries since the last success.",
+    }),
+    lastFailureAt: z.unknown().optional(),
+    disabledReason: z.string().nullable().optional().openapi({
+      description:
+        "Set when the breaker auto-disabled this hook after repeated failures; null otherwise.",
+    }),
   })
   .openapi("WebhookRow");
 
@@ -257,6 +265,11 @@ export const webhooksRoutes = new OpenAPIHono<AppBindings>()
           ...(body.headers !== undefined ? { headers: body.headers } : {}),
           ...(body.secret !== undefined ? { secret: body.secret } : {}),
           ...(body.active !== undefined ? { active: body.active } : {}),
+          // Re-enabling (manual resume) clears the breaker so the hook gets a
+          // clean slate instead of tripping again on the next single failure.
+          ...(body.active === true
+            ? { consecutiveFailures: 0, lastFailureAt: null, disabledReason: null }
+            : {}),
           updatedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
         })
         .where(and(eq(t.id, id), eq(t.tenantId, tenantId)));

@@ -4,6 +4,13 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { DbCtx } from "./seed";
 import type { Ctx } from "../context";
 import { enqueueJob } from "./jobs";
+import { recordActivity } from "./activity";
+
+/** Consecutive failed deliveries that trip the auto-disable circuit breaker.
+ *  Each delivery attempt (including queue retries) counts; any 2xx resets it to
+ *  0. Sized so a single flapping event can't disable a hook, but a genuinely
+ *  dead endpoint is paused before it burns the queue indefinitely. */
+const WEBHOOK_AUTODISABLE_THRESHOLD = 15;
 
 const webhooksTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.webhooks : sqlite.schema.webhooks;
@@ -22,6 +29,7 @@ interface WebhookRow {
   headers: Record<string, string> | null;
   secret: string | null;
   active: boolean | number;
+  consecutiveFailures?: number;
 }
 
 export interface WebhookDeliveryRow {
@@ -102,6 +110,103 @@ const recordDelivery = async (
   }
 };
 
+/** Broadcast an in-app notification + audit row when the breaker disables a
+ *  hook. Best-effort: a notification/activity failure must not break delivery. */
+const notifyAutoDisabled = async (
+  ctx: DbCtx,
+  hook: { id: string; name: string; tenantId: string | null },
+  reason: string,
+): Promise<void> => {
+  try {
+    const nt =
+      ctx.dialect === "pg"
+        ? pg.schema.notifications
+        : sqlite.schema.notifications;
+    await (ctx.db as any).insert(nt).values({
+      id: crypto.randomUUID(),
+      userId: null, // broadcast — surfaced to every admin
+      title: `Webhook "${hook.name}" auto-disabled`,
+      body: reason,
+      url: "/webhooks",
+      flowId: null,
+      readAt: null,
+      createdAt: ctx.dialect === "pg" ? new Date() : Date.now(),
+    });
+  } catch (e) {
+    console.error("[webhook] auto-disable notify failed", e);
+  }
+  await recordActivity(ctx, {
+    userId: null,
+    tenantId: hook.tenantId ?? null,
+    action: "auto_disabled",
+    collection: "system_webhooks",
+    itemId: hook.id,
+    payload: { reason },
+  });
+};
+
+/** Circuit breaker: fold one delivery outcome into the hook's failure counter.
+ *  A 2xx resets the counter (and clears any failure marker); a non-2xx bumps it
+ *  and, once it crosses {@link WEBHOOK_AUTODISABLE_THRESHOLD}, flips the hook
+ *  `active=false` with a reason so the queue stops re-attempting a dead endpoint
+ *  and an admin is notified. Best-effort — never throws into the delivery path. */
+const applyDeliveryOutcome = async (
+  ctx: DbCtx,
+  hook: {
+    id: string;
+    name: string;
+    tenantId: string | null;
+    consecutiveFailures?: number;
+  },
+  out: { status: number; error: string | null },
+): Promise<void> => {
+  const wt = webhooksTable(ctx.dialect);
+  const now = ctx.dialect === "pg" ? new Date() : Date.now();
+  const ok = out.status >= 200 && out.status < 300;
+  const prior = hook.consecutiveFailures ?? 0;
+  try {
+    if (ok) {
+      // Only write when there's state to clear — keeps the happy path quiet.
+      if (prior > 0) {
+        await (ctx.db as any)
+          .update(wt)
+          .set({
+            consecutiveFailures: 0,
+            lastFailureAt: null,
+            disabledReason: null,
+            updatedAt: now,
+          })
+          .where(eq(wt.id, hook.id));
+      }
+      return;
+    }
+    const next = prior + 1;
+    if (next >= WEBHOOK_AUTODISABLE_THRESHOLD) {
+      const reason = `Auto-disabled after ${next} consecutive failed deliveries (last: ${
+        out.status || out.error || "no response"
+      })`;
+      await (ctx.db as any)
+        .update(wt)
+        .set({
+          active: false,
+          consecutiveFailures: next,
+          lastFailureAt: now,
+          disabledReason: reason,
+          updatedAt: now,
+        })
+        .where(eq(wt.id, hook.id));
+      await notifyAutoDisabled(ctx, hook, reason);
+    } else {
+      await (ctx.db as any)
+        .update(wt)
+        .set({ consecutiveFailures: next, lastFailureAt: now, updatedAt: now })
+        .where(eq(wt.id, hook.id));
+    }
+  } catch (e) {
+    console.error("[webhook] breaker update failed", e);
+  }
+};
+
 const sendOne = async (
   row: WebhookRow,
   channel: string,
@@ -114,7 +219,19 @@ const sendOne = async (
     ...(row.headers ?? {}),
   };
   if (row.secret) {
+    // Replay-safe signing. `x-backlex-signature` stays the bare hex HMAC of the
+    // raw body (unchanged — existing receivers keep verifying it). The new
+    // `x-backlex-signature-v2` signs `${timestamp}.${body}`, and the timestamp
+    // travels in its own header so a receiver can reject stale deliveries
+    // (replay protection) without parsing the signature. Set last so custom
+    // headers can never override the signing headers.
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    headers["x-backlex-timestamp"] = timestamp;
     headers["x-backlex-signature"] = await hmacSha256Hex(row.secret, body);
+    headers["x-backlex-signature-v2"] = await hmacSha256Hex(
+      row.secret,
+      `${timestamp}.${body}`,
+    );
   }
   const start = Date.now();
   try {
@@ -218,6 +335,7 @@ export const deliverWebhookById = async (
     error: out.error,
     attempts: input.attempt ?? 1,
   });
+  await applyDeliveryOutcome(ctx, hook, out);
   return { status: out.status, ms: out.ms, error: out.error };
 };
 
@@ -292,6 +410,7 @@ export const dispatchWebhooks = async (
         event: `${channel}:${payload.event}`,
         ...out,
       });
+      await applyDeliveryOutcome(ctx, row, out);
     }),
   );
 };

@@ -16,7 +16,20 @@
  *
  * Falls back to in-memory on runtimes without the `RATE_LIMIT` binding (Bun,
  * Vercel, Netlify, tests) — see `lib/rate-limit.ts::rateLimitOk`.
+ *
+ * The same DO class also serves the **failed-login lockout** state machine on a
+ * separate set of paths (`/lock/check`, `/lock/fail`, `/lock/clear`). A lockout
+ * key and a rate-limit key never collide — they're distinct key strings, hence
+ * distinct DO instances — so the two states (`"w"` vs `"lk"`) live in different
+ * instances and the shared transition logic comes from `lib/lockout-core.ts`.
  */
+import {
+  applyFailure,
+  evalLock,
+  lockExpiry,
+  type LockPolicy,
+  type LockState,
+} from "../lib/lockout-core";
 
 interface Window {
   count: number;
@@ -48,6 +61,9 @@ export class RateLimitRoom {
 
   async fetch(req: Request): Promise<Response> {
     const url = new URL(req.url);
+    if (req.method === "POST" && url.pathname.startsWith("/lock/")) {
+      return this.handleLock(url.pathname.slice("/lock/".length), req);
+    }
     if (url.pathname !== "/check" || req.method !== "POST") {
       return new Response("not found", { status: 404 });
     }
@@ -97,8 +113,45 @@ export class RateLimitRoom {
     } satisfies CheckResponse);
   }
 
+  /** Failed-login lockout protocol. `op` ∈ {check, fail, clear}. `check` is
+   *  read-only; `fail` records one failure (needs `{ policy }`); `clear` wipes
+   *  the record on a successful sign-in. */
+  private async handleLock(op: string, req: Request): Promise<Response> {
+    const now = Date.now();
+    if (op === "clear") {
+      await this.state.storage.delete("lk");
+      return Response.json({ locked: false, retryAfterMs: 0, remaining: -1, justLocked: false });
+    }
+    const existing = await this.state.storage.get<LockState>("lk");
+    if (op === "check") {
+      return Response.json(evalLock(existing, now));
+    }
+    if (op === "fail") {
+      let policy: LockPolicy;
+      try {
+        policy = ((await req.json()) as { policy: LockPolicy }).policy;
+      } catch {
+        return new Response("invalid body", { status: 400 });
+      }
+      if (!policy || !Number.isFinite(policy.maxFails) || policy.maxFails <= 0) {
+        return new Response("invalid policy", { status: 400 });
+      }
+      const { state, result } = applyFailure(existing, now, policy);
+      await this.state.storage.put("lk", state);
+      await this.state.storage.setAlarm(lockExpiry(state, policy) + ALARM_LAG_MS);
+      return Response.json(result);
+    }
+    return new Response("not found", { status: 404 });
+  }
+
   /** Window expired — drop the row so storage doesn't grow with stale keys. */
   async alarm() {
+    const now = Date.now();
+    // Lockout state (separate instances, but the alarm handler is shared).
+    const lk = await this.state.storage.get<LockState>("lk");
+    if (lk && lk.lockedUntil <= now && now - lk.windowStart > 60 * 60_000) {
+      await this.state.storage.delete("lk");
+    }
     const w = await this.state.storage.get<Window>("w");
     if (!w || w.resetAt <= Date.now()) {
       await this.state.storage.delete("w");

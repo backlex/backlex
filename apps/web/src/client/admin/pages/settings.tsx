@@ -9,6 +9,7 @@ import {
   deviceTokensApi,
   emailConfigApi,
   pushConfigApi,
+  smsConfigApi,
   settingsApi,
   workspaceConfigApi,
   type ApiDeviceToken,
@@ -387,6 +388,154 @@ function PushSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
       </div>
       <div className="flex items-center justify-between gap-2 border-t border-border pt-2.5">
         <Button variant="outline" size="sm" disabled={testing} onClick={() => void sendTest()}>{testing ? <Trans>Sending…</Trans> : <Trans>Send test push</Trans>}</Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" disabled={!dirty || saving} onClick={() => void load()}><Trans>Discard</Trans></Button>
+          <Button variant="primary" size="sm" disabled={!dirty || saving} onClick={() => void save()}>{saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}</Button>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+const SMS_PROVIDER_OPTIONS = [
+  { value: "inherit", label: "Inherit — deployment default" },
+  { value: "console", label: "Console (log to stdout)" },
+  { value: "twilio", label: "Twilio (Programmable Messaging)" },
+  { value: "sns", label: "Amazon SNS (AWS SMS)" },
+];
+
+const SMS_PROVIDER_FIELDS: Record<
+  string,
+  {
+    hint: string;
+    config: [string, string, string, string][];
+    secrets: [string, string][];
+    link?: { href: string; label: string };
+  }
+> = {
+  inherit: { hint: "Falls through to the instance default, then the deployment's SMS_* / TWILIO_* env vars (self-host only). On managed cloud there's no platform fallback — pick a provider and enter your workspace's own keys.", config: [], secrets: [] },
+  console: { hint: "Doesn't deliver anything — writes the message to the Worker log. Dev only.", config: [], secrets: [] },
+  twilio: { hint: "Programmable Messaging REST API — works on every runtime. Use a From number (E.164) OR a Messaging Service SID. Credentials from the Twilio Console.", config: [["accountSid", "Account SID", "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "text"], ["from", "From number (E.164) or sender id", "+14155552671", "text"], ["messagingServiceSid", "Messaging Service SID (optional, MGxxxx)", "", "text"]], secrets: [["authToken", "Auth Token"]], link: { href: "https://console.twilio.com/", label: "Twilio Console →" } },
+  sns: { hint: "Amazon SNS SMS — signed with AWS SigV4, works on every runtime. The IAM principal needs sns:Publish. Sender ID is only honoured in supported countries.", config: [["region", "AWS region", "us-east-1", "text"], ["accessKeyId", "Access key ID", "AKIA…", "text"], ["senderId", "Sender ID (optional)", "MYAPP", "text"]], secrets: [["secretAccessKey", "Secret access key"]], link: { href: "https://console.aws.amazon.com/sns/", label: "AWS SNS Console →" } },
+};
+
+/** SMS transport config — mirrors {@link PushSettingsCard}, minus the device
+ *  viewer (SMS targets phone numbers); "Send test" takes an optional E.164 number
+ *  so an admin without a registered number can still verify delivery. */
+function SmsSettingsCard({ pushToast }: { pushToast: (m: string) => void }) {
+  const { t } = useLingui();
+  const [cfg, setCfg] = useState<any>(null);
+  const [provider, setProvider] = useState("inherit");
+  const [config, setConfig] = useState<Record<string, any>>({});
+  const [secrets, setSecrets] = useState<Record<string, string>>({});
+  const [testTo, setTestTo] = useState("");
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  const load = async () => {
+    try {
+      const r = await smsConfigApi.get();
+      const d = r.data as any;
+      setCfg(d);
+      setProvider(d.provider || "inherit");
+      setConfig({ ...(d.config || {}) });
+      setSecrets({});
+      setDirty(false);
+    } catch (e) {
+      pushToast((e as Error).message);
+    }
+  };
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const fields = SMS_PROVIDER_FIELDS[provider] ?? SMS_PROVIDER_FIELDS.inherit!;
+  const mark = () => setDirty(true);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const cfgOut: Record<string, any> = {};
+      for (const [key, , , type] of fields.config) {
+        const v = config[key];
+        if (type === "number") cfgOut[key] = v === "" || v == null ? undefined : Number(v);
+        else if (type === "checkbox") cfgOut[key] = !!v;
+        else cfgOut[key] = v == null ? "" : String(v);
+      }
+      await smsConfigApi.put({ provider, config: cfgOut, secrets });
+      pushToast(t`SMS settings saved.`);
+      await load();
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const sendTest = async () => {
+    setTesting(true);
+    try {
+      const r = await smsConfigApi.sendTest(testTo.trim() || undefined);
+      pushToast(t`Test SMS sent to ${r.sent} number(s).`);
+    } catch (e) {
+      pushToast((e as Error).message);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const envHint = cfg?.env?.provider ? ` · deployment env: ${cfg.env.provider}` : "";
+
+  return (
+    <Card className="max-w-[920px] gap-4 p-[22px]">
+      <div className="flex items-start gap-2.5">
+        <I.Info size={14} className="mt-0.5" />
+        <span className="text-xs text-muted-foreground">
+          <Trans>SMS transport for <b>this workspace</b>. Resolution order: this config → the
+          instance-wide default → the deployment's <span className="font-mono">SMS_*</span> env vars.
+          Secret values are encrypted at rest and never shown again. Send to a user via
+          the <span className="font-mono">messaging.send_sms</span> tool / API once they register a
+          phone number.</Trans>
+        </span>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Provider</Trans></label>
+        <Select value={provider} onChange={(v: string) => { setProvider(v); mark(); }} options={SMS_PROVIDER_OPTIONS} />
+        <span className="text-[11.5px] text-muted-foreground">
+          {fields.hint}{envHint}
+          {fields.link && (
+            <> <a href={fields.link.href} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">{fields.link.label}</a></>
+          )}
+        </span>
+      </div>
+      {fields.config.map(([key, label, placeholder]) => (
+        <div className="flex flex-col gap-1.5" key={key}>
+          <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{label}</label>
+          <Input type="text" placeholder={placeholder} value={config[key] ?? ""} onChange={(e) => { setConfig((c) => ({ ...c, [key]: e.target.value })); mark(); }} />
+        </div>
+      ))}
+      {fields.secrets.map(([key, label]) => (
+        <div className="flex flex-col gap-1.5" key={key}>
+          <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">{label}</label>
+          <Textarea
+            rows={2}
+            autoComplete="off"
+            className="font-mono text-[11px]"
+            placeholder={cfg?.secretsSet?.[key] ? t`•••••••• (stored — leave blank to keep)` : ""}
+            value={secrets[key] ?? ""}
+            onChange={(e) => { setSecrets((s) => ({ ...s, [key]: e.target.value })); mark(); }}
+          />
+          {cfg?.secretsSet?.[key] && <span className="text-[11.5px] text-muted-foreground"><Trans>A value is stored. Type a new one to replace it, or leave blank to keep it.</Trans></span>}
+        </div>
+      ))}
+      <div className="flex flex-col gap-1.5 border-t border-border pt-2.5">
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Test recipient (E.164)</Trans></label>
+        <Input type="text" placeholder="+14155552671" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
+        <span className="text-[11.5px] text-muted-foreground"><Trans>Where “Send test SMS” delivers. Leave blank to use your account's registered numbers.</Trans></span>
+      </div>
+      <div className="flex items-center justify-between gap-2 border-t border-border pt-2.5">
+        <Button variant="outline" size="sm" disabled={testing} onClick={() => void sendTest()}>{testing ? <Trans>Sending…</Trans> : <Trans>Send test SMS</Trans>}</Button>
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" disabled={!dirty || saving} onClick={() => void load()}><Trans>Discard</Trans></Button>
           <Button variant="primary" size="sm" disabled={!dirty || saving} onClick={() => void save()}>{saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}</Button>
@@ -1182,6 +1331,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
             { id: "appearance", label: t`Appearance` },
             { id: "email", label: t`Email` },
             { id: "push", label: t`Push` },
+            { id: "sms", label: t`SMS` },
             { id: "bindings", label: t`Bindings`, count: bindings.length },
             { id: "env", label: t`Environment`, count: envVars.length },
             { id: "about", label: t`About` },
@@ -1233,6 +1383,8 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
       {tab === "email" && <EmailSettingsCard pushToast={pushToast} />}
 
       {tab === "push" && <PushSettingsCard pushToast={pushToast} />}
+
+      {tab === "sms" && <SmsSettingsCard pushToast={pushToast} />}
 
       {tab === "bindings" && (
         <div className="flex max-w-[920px] flex-col gap-3">

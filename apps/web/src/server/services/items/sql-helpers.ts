@@ -98,6 +98,17 @@ export const isFkViolation = (err: unknown): boolean => {
   return false;
 };
 
+export const isUniqueViolation = (err: unknown): boolean => {
+  const e = err as { code?: string; message?: string; cause?: { code?: string; message?: string } } | null;
+  if (!e) return false;
+  const code = e.code ?? e.cause?.code ?? "";
+  const msg = (e.message ?? e.cause?.message ?? "").toString();
+  if (code === "23505") return true; // pg unique_violation
+  if (code === "SQLITE_CONSTRAINT_UNIQUE" || code === "SQLITE_CONSTRAINT_PRIMARYKEY") return true;
+  if (/unique constraint/i.test(msg) || /duplicate key value/i.test(msg)) return true;
+  return false;
+};
+
 export const execute = async (ctx: Ctx, query: unknown, db?: unknown): Promise<unknown> => {
   const target = (db ?? ctx.db) as any;
   try {
@@ -108,6 +119,12 @@ export const execute = async (ctx: Ctx, query: unknown, db?: unknown): Promise<u
       throw new AppError(
         "VALIDATION",
         "Foreign key violation — one of the relation values points at a row that doesn't exist or was deleted",
+      );
+    }
+    if (isUniqueViolation(e)) {
+      throw new AppError(
+        "CONFLICT",
+        "A row with these values already exists (unique constraint).",
       );
     }
     throw e;

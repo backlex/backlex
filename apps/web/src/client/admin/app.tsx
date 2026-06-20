@@ -628,7 +628,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
       const format = file.name.toLowerCase().endsWith(".csv") ? "csv" : "json";
       try {
         const r = await itemsApi.importItems(activeCollection, text, format);
-        pushToast(t`Imported ${r.data.inserted} of ${r.data.total} rows.`);
+        pushToast(t`Imported ${r.data.total} rows — ${r.data.inserted} new, ${r.data.updated} updated.`);
         if (r.data.failed) pushToast(t`${r.data.failed} rows failed — see the API response for details.`, "error");
         refresh();
       } catch (err) {

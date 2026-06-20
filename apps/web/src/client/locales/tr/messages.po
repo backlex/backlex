@@ -3368,6 +3368,10 @@ msgstr "Dosyalar"
 msgid "Fill the required fields."
 msgstr "Zorunlu alanları doldurun."
 
+#: src/client/admin/pages/settings.tsx
+msgid "Fills the public key + private key fields above with a fresh VAPID pair. Click Save to store it."
+msgstr "Yukarıdaki public ve private anahtar alanlarını taze bir VAPID çiftiyle doldurur. Saklamak için Kaydet'e basın."
+
 #: src/client/admin/items.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Filter"
@@ -3621,6 +3625,10 @@ msgstr "Genel"
 #: src/client/admin/account-page.tsx
 msgid "Generate"
 msgstr "Oluştur"
+
+#: src/client/admin/pages/settings.tsx
+msgid "Generate keypair"
+msgstr "Anahtar çifti üret"
 
 #: src/client/admin/role-editor.tsx
 msgid "Generated DSL — saved to <0>role_permissions</0> on save."
@@ -8772,6 +8780,10 @@ msgstr "değer · etiket · renk (CSS)"
 #: src/client/admin/condition-editor.tsx
 msgid "value or $user.id"
 msgstr "değer veya $user.id"
+
+#: src/client/admin/pages/settings.tsx
+msgid "VAPID keypair generated — review and Save to store it."
+msgstr "VAPID anahtar çifti üretildi — gözden geçirip Kaydet'e basın."
 
 #: src/client/admin/flow-builder.tsx
 msgid "Variables"

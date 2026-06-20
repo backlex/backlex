@@ -125,8 +125,22 @@ Push fan-out is best-effort: the in-app row always lands even if the device send
 fails, and broadcasts (`userId: null`) never push (push needs a concrete
 recipient with registered devices).
 
-## Managed cloud
+## Multi-tenant: each workspace brings its own keys
 
-On a managed cloud project with no `PUSH_*` vars, sends route through the
-control-plane push gateway (the platform's own provider credentials) — the same
-pattern as managed email. Self-hosted installs always bring their own keys.
+Unlike email, **there is no shared managed-push fallback** — and that's by
+design, not an omission. A device push token is bound to the *app's own provider
+project*: an FCM registration token only accepts sends from the same Firebase
+project that minted it, and a web-push subscription only accepts sends signed by
+the VAPID keypair the browser subscribed with. So a platform-wide key cannot
+deliver to a tenant's users — every workspace must configure **its own**
+FCM / APNs / VAPID credentials under **Settings → Push** (`push_config`).
+
+Those per-workspace credentials are resolved and used **locally on the tenant's
+worker** (secrets AES-encrypted at rest), so one workspace can never push to
+another's devices — isolation holds at the device-registry level too (a send only
+ever targets tokens from that workspace's own `device_tokens`).
+
+The control-plane push gateway (`/api/internal/push/send`) exists for a future
+*managed-push* offering where the platform provisions per-tenant credentials
+centrally; it is unused unless platform `PUSH_*` vars are set, and a shared
+platform key would only reach apps built under that same platform project.

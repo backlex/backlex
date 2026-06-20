@@ -122,6 +122,9 @@ resource instead of composing a separate `resources/read`.
 | `items.publish` | Publish a versioned-collection item now (needs the `publish` permission). |
 | `items.unpublish` | Revert a versioned item to draft (clears any pending schedule). |
 | `items.schedule_publish` | Schedule (or cancel) a future publish the cron tick applies when due. |
+| `flags.list` | List feature-flag definitions (global defaults + workspace overrides). |
+| `flags.set` | Create/update a flag — enabled, value, and targeting (condition + rollout). |
+| `flags.remove` | Delete a feature flag (workspace or `scope:"global"`). |
 
 ### Vector / search
 

@@ -4,6 +4,7 @@ import { schemaAdminTools } from "./schema-admin";
 import { collectionsTools } from "./collections";
 import { bulkTools } from "./bulk";
 import { itemsPublishTools } from "./items-publish";
+import { featureFlagsTools } from "./feature-flags";
 import { storageTools } from "./storage";
 import { uploadsTools } from "./uploads";
 import { functionsTools } from "./functions";
@@ -43,6 +44,7 @@ export const allTools: McpTool[] = [
   ...collectionsTools,
   ...bulkTools,
   ...itemsPublishTools,
+  ...featureFlagsTools,
   ...storageTools,
   ...uploadsTools,
   ...vectorTools,

@@ -57,6 +57,28 @@ export interface AggregateRow {
   label?: unknown;
 }
 
+/** Body for `from(slug).search(...)` — relevance search over a collection. */
+export interface SearchQuery {
+  /** The query string. */
+  q: string;
+  /** `fts` = keyword index, `vector` = semantic embeddings, `hybrid` = both
+   *  fused with Reciprocal Rank Fusion. Defaults server-side to `hybrid` when
+   *  both backends are enabled, else whichever single one is. */
+  mode?: "fts" | "vector" | "hybrid";
+  /** Max rows to return (1–100, default 20). */
+  limit?: number;
+  /** Collapse `i18n_text` fields to one locale, or `"*"` for the full map. */
+  locale?: string;
+}
+
+/** Response from `from(slug).search(...)` — rows ordered best-first. */
+export interface SearchResponse<T> {
+  data: T[];
+  /** The mode that actually ran (resolved from the request + collection caps). */
+  mode: "fts" | "vector" | "hybrid";
+  limit: number;
+}
+
 export interface ItemEvent<T = Record<string, unknown>> {
   event: "created" | "updated" | "deleted";
   data: T;

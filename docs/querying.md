@@ -14,7 +14,7 @@ backs the GraphQL resolver.
 | Param    | Type                              | Default                                 | What it does                                                                 |
 |----------|-----------------------------------|-----------------------------------------|------------------------------------------------------------------------------|
 | `filter` | JSON-encoded DSL condition        | `null`                                  | Row predicate; AND'd with the role's permission `whereSql`                   |
-| `q`      | string                            | none                                    | Free-text `_contains` across every readable text/longtext field              |
+| `q`      | string                            | none                                    | Free-text search: `_contains` across every readable text/longtext field — or, on a [full-text-search](/full-text-search) collection, a token-precise keyword-index filter |
 | `sort`   | comma-separated field list        | collection `default_sort`, else `-created_at` | `-` prefix = `DESC`; multi-column                                            |
 | `fields` | comma-separated field list        | all readable                            | SQL-level projection; system columns always re-added                         |
 | `expand` | comma-separated relation field list | none                                  | Inline-expand each named relation: the FK id is replaced by the target row    |

@@ -34,6 +34,8 @@ interface FieldDraft {
   type: string;
   required?: boolean;
   unique?: boolean;
+  /** Fold into the collection's full-text index (text/longtext only). */
+  searchable?: boolean;
   interface?: string;
   options?: { choices?: FieldChoice[]; values?: string[] };
 }
@@ -157,6 +159,16 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
             </div>
             <Switch checked={!!draft.unique} onChange={(v) => setDraft((d) => d ? { ...d, unique: v } : d)} />
           </div>
+
+          {(draft.type === "text" || draft.type === "longtext") && (
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Searchable</Trans></div>
+                <div className="text-[11.5px] text-muted-foreground"><Trans>Fold this field into the collection's full-text-search index (when FTS is enabled). Re-index after changing.</Trans></div>
+              </div>
+              <Switch checked={!!draft.searchable} onChange={(v) => setDraft((d) => d ? { ...d, searchable: v } : d)} />
+            </div>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Interface</Trans></label>

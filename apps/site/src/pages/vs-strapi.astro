@@ -29,6 +29,14 @@ const rows = [
   ["Audit logs", "Built-in activity trail + opt-in sensitive-read auditing + revisions", "Enterprise only"],
   ["Client SDKs", "11 first-party SDKs — TS, Python, Go, Rust, Swift, Kotlin, Dart, Java, .NET, Ruby, PHP", "Strapi client (JS/TS) + REST/GraphQL"],
   ["Admin UI + CLI", "Admin SPA and the `backlex` CLI (migrate, gen-types)", "Admin panel + CLI"],
+  ["Messaging (push + SMS)", "Built in — FCM/APNs/Web Push + SMS (Twilio/Amazon SNS), per-tenant credentials, registries & templates", "Not built in (community plugins)"],
+  ["Batch / transactional writes", "Bulk + opt-in atomic (all-or-nothing) writes over REST and GraphQL", "Limited (no atomic batch endpoint)"],
+  ["Background jobs", "Durable queue — retry with backoff, dead-letter, delayed/scheduled", "Not built in (cron plugin)"],
+  ["Resumable uploads", "TUS 1.0.0 chunked/resumable, native R2 / S3 multipart", "Not built in"],
+  ["Draft / publish", "Built-in draft↔published status, dedicated publish permission, scheduled publishing", "Draft & Publish (core)"],
+  ["Feature flags / remote config", "Built in — rollout-% + permission-DSL targeting, evaluated per caller", "Not built in"],
+  ["Offline-first sync", "Incremental changefeed + tombstones + client store (IndexedDB) + offline write queue", "Not built in"],
+  ["Auth hardening", "Per-IP rate-limiting + account lockout, 2FA/TOTP, email verification", "Basic rate limiting (plugin)"],
 ];
 ---
 <Base

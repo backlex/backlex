@@ -384,7 +384,7 @@ export const itemsApi = {
     }),
   /** Bulk-import rows from a raw JSON-array or CSV string. */
   importItems: (slug: string, raw: string, format: "json" | "csv") =>
-    api<Envelope<{ inserted: number; failed: number; total: number; errors: { row: number; error: string }[] }>>(
+    api<Envelope<{ inserted: number; updated: number; failed: number; total: number; errors: { row: number; error: string }[] }>>(
       `/api/items/${slug}/import?format=${format}`,
       {
         method: "POST",

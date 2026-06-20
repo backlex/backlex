@@ -67,6 +67,7 @@ const emit = async (env: WriteEnv, stmt: SQL): Promise<void> => {
     env.collect.push(stmt);
     return;
   }
+  // Unique/FK violations are mapped to clean 4xx inside execute().
   await execute(env.ctx, stmt, env.db);
 };
 

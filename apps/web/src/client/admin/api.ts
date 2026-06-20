@@ -439,6 +439,57 @@ export const functionsApi = {
   list: () => api<Envelope<ApiFunction[]>>(`/api/functions`),
 };
 
+export type ApiJobStatus =
+  | "pending"
+  | "active"
+  | "succeeded"
+  | "failed"
+  | "dead_letter"
+  | "cancelled";
+
+export interface ApiJob {
+  id: string;
+  tenantId: string | null;
+  queue: string;
+  type: string;
+  payload: Record<string, unknown>;
+  status: ApiJobStatus;
+  priority: number;
+  runAt: string | number;
+  attempts: number;
+  maxAttempts: number;
+  lastError: string | null;
+  result: unknown;
+  createdAt: string | number;
+  completedAt: string | number | null;
+}
+
+export const jobsApi = {
+  list: (q?: { queue?: string; status?: ApiJobStatus; limit?: number }) => {
+    const params = new URLSearchParams();
+    if (q?.queue) params.set("queue", q.queue);
+    if (q?.status) params.set("status", q.status);
+    if (q?.limit != null) params.set("limit", String(q.limit));
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    return api<{ jobs: ApiJob[] }>(`/api/jobs${suffix}`);
+  },
+  get: (id: string) => api<ApiJob>(`/api/jobs/${encodeURIComponent(id)}`),
+  enqueue: (body: {
+    type: "function" | "webhook.deliver";
+    payload?: Record<string, unknown>;
+    queue?: string;
+    runAt?: string;
+    maxAttempts?: number;
+    priority?: number;
+  }) => api<{ id: string }>(`/api/jobs`, { method: "POST", body: JSON.stringify(body) }),
+  retry: (id: string) =>
+    api<{ ok: true }>(`/api/jobs/${encodeURIComponent(id)}/retry`, { method: "POST" }),
+  cancel: (id: string) =>
+    api<{ ok: true }>(`/api/jobs/${encodeURIComponent(id)}/cancel`, { method: "POST" }),
+  remove: (id: string) =>
+    api<{ ok: true }>(`/api/jobs/${encodeURIComponent(id)}`, { method: "DELETE" }),
+};
+
 export const emailTemplatesApi = {
   list: () => api<Envelope<ApiEmailTemplate[]>>(`/api/admin/email-templates`),
   get: (id: string) => api<Envelope<ApiEmailTemplate>>(`/api/admin/email-templates/${id}`),

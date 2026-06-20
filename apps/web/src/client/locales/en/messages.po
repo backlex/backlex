@@ -725,6 +725,7 @@ msgid "Action"
 msgstr "Action"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/jobs.tsx
 msgid "Actions"
 msgstr "Actions"
 
@@ -740,6 +741,7 @@ msgid "active"
 msgstr "active"
 
 #: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Active"
 msgstr "Active"
@@ -1015,6 +1017,7 @@ msgid "alice"
 msgstr "alice"
 
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/ui.tsx
 msgid "All"
 msgstr "All"
@@ -1271,6 +1274,14 @@ msgstr "At least 8 characters."
 #: src/client/admin/pages/settings.tsx
 msgid "At least one language is required."
 msgstr "At least one language is required."
+
+#: src/client/admin/pages/jobs.tsx
+msgid "attempts"
+msgstr "attempts"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Attempts"
+msgstr "Attempts"
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Attribute map"
@@ -1573,6 +1584,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/integrations.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -1597,6 +1609,10 @@ msgstr "Cancel clear"
 #: src/client/admin/storage.tsx
 msgid "Cancel upload"
 msgstr "Cancel upload"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Cancelled"
+msgstr "Cancelled"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Cannot delete the trigger."
@@ -1776,6 +1792,7 @@ msgstr "close"
 
 #: src/client/admin/extras.tsx
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
@@ -1913,6 +1930,10 @@ msgstr "Compiled rule"
 #: src/client/admin/condition-editor.tsx
 msgid "Compiled SQL"
 msgstr "Compiled SQL"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Completed"
+msgstr "Completed"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "composite — not supported"
@@ -2273,6 +2294,7 @@ msgid "Create your admin account"
 msgstr "Create your admin account"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -2408,6 +2430,10 @@ msgstr "DB type"
 msgid "DDL preview"
 msgstr "DDL preview"
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Dead-letter"
+msgstr "Dead-letter"
+
 #: src/client/admin/item-views.tsx
 msgid "December"
 msgstr "December"
@@ -2473,6 +2499,7 @@ msgstr "Defaults to the URL's filename"
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/functions.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/app-users.tsx
@@ -2539,6 +2566,10 @@ msgstr "Delete user"
 msgid "deleted."
 msgstr "deleted."
 
+#: src/client/admin/pages/jobs.tsx
+msgid "deliver one webhook"
+msgstr "deliver one webhook"
+
 #: src/client/admin/pages/webhooks.tsx
 msgid "Deliveries"
 msgstr "Deliveries"
@@ -2590,6 +2621,10 @@ msgstr "Description"
 #: src/client/admin/parity/database.tsx
 msgid "Destination"
 msgstr "Destination"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Details"
+msgstr "Details"
 
 #: src/client/pages/sign-up.tsx
 msgid "Detected an empty users table. The first account on a fresh instance is provisioned as admin automatically."
@@ -2802,6 +2837,10 @@ msgstr "Dry run — no real side-effects"
 #: src/client/admin/adopt-wizard.tsx
 msgid "Dry-run summary"
 msgstr "Dry-run summary"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Durable background queue — retries with backoff, dead-letters, and delayed/scheduled runs. Drained by the cron tick (~1 min on Workers)."
+msgstr "Durable background queue — retries with backoff, dead-letters, and delayed/scheduled runs. Drained by the cron tick (~1 min on Workers)."
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/logs.tsx
@@ -3029,6 +3068,22 @@ msgstr "Endpoint URL"
 msgid "Endpoints"
 msgstr "Endpoints"
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Enqueue"
+msgstr "Enqueue"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Enqueue a job, or migrate work onto the queue. Webhook deliveries land here automatically."
+msgstr "Enqueue a job, or migrate work onto the queue. Webhook deliveries land here automatically."
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Enqueue job"
+msgstr "Enqueue job"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Enqueuing…"
+msgstr "Enqueuing…"
+
 #: src/client/pages/sign-up.tsx
 msgid "Enrol a passkey now"
 msgstr "Enrol a passkey now"
@@ -3187,6 +3242,10 @@ msgstr "Execute a query to see results here."
 msgid "expansion"
 msgstr "expansion"
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Expects { webhookId, channel, event, body }."
+msgstr "Expects { webhookId, channel, event, body }."
+
 #: src/client/pages/api-keys.tsx
 msgid "expired"
 msgstr "expired"
@@ -3248,6 +3307,10 @@ msgstr "Fail flow"
 #: src/client/admin/storage.tsx
 msgid "failed"
 msgstr "failed"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Failed"
+msgstr "Failed"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Failed to load tables: {error}"
@@ -3584,6 +3647,14 @@ msgstr "function failed"
 msgid "Function failed"
 msgstr "Function failed"
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Function name"
+msgstr "Function name"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Function name is required."
+msgstr "Function name is required."
+
 #: src/client/admin/pages/functions.tsx
 msgid "Function not found on server."
 msgstr "Function not found on server."
@@ -3895,6 +3966,10 @@ msgstr "Initial revision — the first recorded state of this item."
 msgid "Input"
 msgstr "Input"
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Input (JSON)"
+msgstr "Input (JSON)"
+
 #: src/client/admin/display-template-editor.tsx
 msgid "Insert field"
 msgstr "Insert field"
@@ -3947,6 +4022,10 @@ msgstr "Invalid aggregate config."
 #: src/client/pages/sign-in.tsx
 msgid "Invalid code. Try again."
 msgstr "Invalid code. Try again."
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Invalid JSON."
+msgstr "Invalid JSON."
 
 #: src/client/admin/parity/insights.tsx
 msgid "Invalid SQL."
@@ -4047,6 +4126,31 @@ msgstr "Items refreshed."
 #: src/client/admin/item-views.tsx
 msgid "January"
 msgstr "January"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Job"
+msgstr "Job"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Job cancelled."
+msgstr "Job cancelled."
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Job deleted."
+msgstr "Job deleted."
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Job enqueued."
+msgstr "Job enqueued."
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Job requeued."
+msgstr "Job requeued."
+
+#: src/client/admin/pages/jobs.tsx
+#: src/client/admin/ui.tsx
+msgid "Jobs"
+msgstr "Jobs"
 
 #. placeholder {0}: state.meta.workspaceName
 #: src/client/pages/invite.tsx
@@ -4204,6 +4308,10 @@ msgstr "Last 7 days"
 msgid "Last active"
 msgstr "Last active"
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Last error"
+msgstr "Last error"
+
 #. placeholder {0}: relativeTime(it.lastEventAt)
 #: src/client/admin/pages/integrations.tsx
 msgid "last event {0}"
@@ -4320,6 +4428,10 @@ msgstr "leave empty to pass the trigger payload"
 msgid "Leave empty to provision any operator your IdP authenticates. Set domains to restrict who gets a dashboard account."
 msgstr "Leave empty to provision any operator your IdP authenticates. Set domains to restrict who gets a dashboard account."
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Leave empty to run on the next tick."
+msgstr "Leave empty to run on the next tick."
+
 #: src/client/admin/pages/settings.tsx
 msgid "Leave to user"
 msgstr "Leave to user"
@@ -4425,6 +4537,7 @@ msgstr "Loading runs…"
 msgid "Loading tool catalog…"
 msgstr "Loading tool catalog…"
 
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Loading…"
 msgstr "Loading…"
@@ -4584,6 +4697,10 @@ msgstr "Max 500 characters."
 msgid "Max 80 characters."
 msgstr "Max 80 characters."
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Max attempts"
+msgstr "Max attempts"
+
 #: src/client/admin/item-views.tsx
 msgid "May"
 msgstr "May"
@@ -4723,6 +4840,7 @@ msgstr "Must accept the chosen HTTP method and respond with 2xx within 10s."
 msgid "Must be a full http(s) URL."
 msgstr "Must be a full http(s) URL."
 
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "Must be a JSON object."
 msgstr "Must be a JSON object."
@@ -5168,6 +5286,10 @@ msgstr "No items in this collection yet."
 #: src/client/admin/extras.tsx
 msgid "No items yet"
 msgstr "No items yet"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "No jobs"
+msgstr "No jobs"
 
 #: src/client/pages/rest-explorer.tsx
 msgid "No JSON content defined."
@@ -5766,12 +5888,21 @@ msgid "payload"
 msgstr "payload"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/jobs.tsx
 msgid "Payload"
 msgstr "Payload"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Payload (JSON)"
+msgstr "Payload (JSON)"
 
 #: src/client/admin/members-panel.tsx
 msgid "pending"
 msgstr "pending"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Pending"
+msgstr "Pending"
 
 #: src/client/admin/pages/users.tsx
 msgid "Pending invites"
@@ -6154,6 +6285,10 @@ msgstr "Primary key"
 msgid "primary key {0} is unsupported"
 msgstr "primary key {0} is unsupported"
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Priority"
+msgstr "Priority"
+
 #: src/client/admin/pages/settings.tsx
 msgid "Privacy Policy URL"
 msgstr "Privacy Policy URL"
@@ -6288,6 +6423,14 @@ msgstr "Query ok · {0} row(s) · {1}ms"
 msgid "Query returned no rows."
 msgstr "Query returned no rows."
 
+#: src/client/admin/pages/jobs.tsx
+msgid "Queue"
+msgstr "Queue"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Queue durable background work. Function jobs run a named function; jobs retry with backoff and dead-letter."
+msgstr "Queue durable background work. Function jobs run a named function; jobs retry with backoff and dead-letter."
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Qwen flagship · 1M context · strong multilingual"
 msgstr "Qwen flagship · 1M context · strong multilingual"
@@ -6420,6 +6563,7 @@ msgstr "Refetch /api/openapi.json"
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/realtime.tsx
 #: src/client/admin/pages/schema-graph.tsx
@@ -6729,6 +6873,7 @@ msgid "Restricts the authenticated role to its own rows. Pick where ownership li
 msgstr "Restricts the authenticated role to its own rows. Pick where ownership lives — a side table, the conventional <0>owner_id</0> column, or an aliased column."
 
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/parity/database.tsx
 msgid "Result"
 msgstr "Result"
@@ -6755,6 +6900,7 @@ msgid "Retention"
 msgstr "Retention"
 
 #: src/client/admin/flow-builder.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Retry"
 msgstr "Retry"
@@ -6942,9 +7088,21 @@ msgstr "rules"
 msgid "Run"
 msgstr "Run"
 
+#: src/client/admin/pages/jobs.tsx
+msgid "run a named function"
+msgstr "run a named function"
+
 #: src/client/admin/parity/database.tsx
 msgid "Run a query to see results."
 msgstr "Run a query to see results."
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Run at"
+msgstr "Run at"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Run at (optional)"
+msgstr "Run at (optional)"
 
 #: src/client/admin/pages/flows.tsx
 msgid "Run now"
@@ -7868,6 +8026,7 @@ msgstr "static panels render their config object verbatim — set it from the AP
 
 #: src/client/admin/items.tsx
 #: src/client/admin/members-panel.tsx
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
@@ -7951,6 +8110,10 @@ msgstr "Subject is required."
 #: src/client/admin/extras.tsx
 msgid "Subscribed. Waiting for events…"
 msgstr "Subscribed. Waiting for events…"
+
+#: src/client/admin/pages/jobs.tsx
+msgid "Succeeded"
+msgstr "Succeeded"
 
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/webhooks.tsx
@@ -8505,6 +8668,7 @@ msgstr "Two-factor authentication is off."
 msgid "Two-factor authentication is on."
 msgstr "Two-factor authentication is on."
 
+#: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/storage.tsx
 msgid "Type"

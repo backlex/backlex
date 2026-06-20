@@ -10,6 +10,8 @@ import {
   type ListQuery,
   type ListResponse,
   type PhoneNumber,
+  type Job,
+  type JobStatus,
   BacklexError,
 } from "./types";
 
@@ -25,6 +27,8 @@ export type {
   BatchResponse,
   DeviceToken,
   PhoneNumber,
+  Job,
+  JobStatus,
 } from "./types";
 export { BacklexError } from "./types";
 export { QueryBuilder } from "./query";
@@ -438,12 +442,48 @@ export const createClient = (opts: ClientOptions) => {
     listPhones: () => request<{ data: PhoneNumber[] }>("GET", "/api/phone-numbers"),
   };
 
+  const jobs = {
+    /** Enqueue a durable background job. `type` is `function` (run a named
+     *  function with `payload.name` + `payload.input`) or `webhook.deliver`.
+     *  Jobs retry with backoff and dead-letter after `maxAttempts`. Pass
+     *  `runAt` (ISO string) to schedule for later. Admin-scoped. */
+    enqueue: (input: {
+      type: "function" | "webhook.deliver";
+      payload?: Record<string, unknown>;
+      queue?: string;
+      runAt?: string;
+      maxAttempts?: number;
+      priority?: number;
+    }) => request<{ id: string }>("POST", "/api/jobs", input),
+    /** List jobs (newest first), optionally filtered by queue/status. */
+    list: (q?: { queue?: string; status?: JobStatus; limit?: number }) => {
+      const params = new URLSearchParams();
+      if (q?.queue) params.set("queue", q.queue);
+      if (q?.status) params.set("status", q.status);
+      if (q?.limit != null) params.set("limit", String(q.limit));
+      const suffix = params.toString() ? `?${params.toString()}` : "";
+      return request<{ jobs: Job[] }>("GET", `/api/jobs${suffix}`);
+    },
+    /** Fetch a single job by id. */
+    get: (id: string) => request<Job>("GET", `/api/jobs/${encodeURIComponent(id)}`),
+    /** Requeue a failed / dead-lettered / cancelled job to run again. */
+    retry: (id: string) =>
+      request<{ ok: boolean }>("POST", `/api/jobs/${encodeURIComponent(id)}/retry`),
+    /** Cancel a pending job. */
+    cancel: (id: string) =>
+      request<{ ok: boolean }>("POST", `/api/jobs/${encodeURIComponent(id)}/cancel`),
+    /** Delete a job row. */
+    remove: (id: string) =>
+      request<{ ok: boolean }>("DELETE", `/api/jobs/${encodeURIComponent(id)}`),
+  };
+
   return {
     from: collection,
     subscribe,
     auth,
     storage,
     messaging,
+    jobs,
     /** Raw escape hatch — issues a request with auth headers applied. */
     request,
   };

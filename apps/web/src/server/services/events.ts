@@ -313,7 +313,9 @@ export const publishEvent = async (
     "data" in payload
   ) {
     const evt = payload as ItemEventPayload;
-    void dispatchWebhooks(serverCtx, channel, evt);
+    // Pass the full Ctx when available so dispatch enqueues durable
+    // webhook.deliver jobs (retry + dead-letter); otherwise it sends inline.
+    void dispatchWebhooks(serverCtx.fullCtx ?? serverCtx, channel, evt);
     void dispatchIntegrations(env, serverCtx, channel, evt);
     if (serverCtx.fullCtx) {
       void runFlows(serverCtx.fullCtx, channel, evt);

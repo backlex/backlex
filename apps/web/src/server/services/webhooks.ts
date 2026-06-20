@@ -2,6 +2,8 @@ import { and, desc, eq } from "drizzle-orm";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { DbCtx } from "./seed";
+import type { Ctx } from "../context";
+import { enqueueJob } from "./jobs";
 
 const webhooksTable = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.webhooks : sqlite.schema.webhooks;
@@ -13,6 +15,7 @@ const deliveriesTable = (dialect: "pg" | "sqlite") =>
 
 interface WebhookRow {
   id: string;
+  tenantId: string | null;
   name: string;
   url: string;
   events: string[];
@@ -177,8 +180,55 @@ export const fireDelivery = async (
   return { status: out.status, ms: out.ms, error: out.error };
 };
 
-export const dispatchWebhooks = async (
+/**
+ * Deliver one webhook by id — the runtime behind the `webhook.deliver` job
+ * handler. Loads the hook (tenant-guarded), POSTs the pre-rendered body, and
+ * records the delivery with the queue's attempt count. A hook that no longer
+ * exists (or is inactive) is a terminal no-op (status 200, nothing recorded) so
+ * the queue doesn't keep retrying a deleted target. Returns the HTTP outcome;
+ * the handler turns a non-2xx into a throw to drive retry / dead-letter.
+ */
+export const deliverWebhookById = async (
   ctx: DbCtx,
+  input: {
+    webhookId: string;
+    tenantId?: string | null;
+    channel: string;
+    event: string;
+    body: string;
+    attempt?: number;
+  },
+): Promise<{ status: number; ms: number; error: string | null }> => {
+  const wt = webhooksTable(ctx.dialect);
+  const where = input.tenantId
+    ? and(eq(wt.id, input.webhookId), eq(wt.tenantId, input.tenantId))
+    : eq(wt.id, input.webhookId);
+  const rows = (await (ctx.db as any).select().from(wt).where(where)) as WebhookRow[];
+  const hook = rows[0];
+  if (!hook || !(hook.active === true || hook.active === 1)) {
+    return { status: 200, ms: 0, error: null };
+  }
+  const out = await sendOne(hook, input.channel, input.event, input.body);
+  await recordDelivery(ctx, {
+    webhookId: hook.id,
+    event: `${input.channel}:${input.event}`,
+    status: out.status,
+    ms: out.ms,
+    responseBody: out.responseBody,
+    error: out.error,
+    attempts: input.attempt ?? 1,
+  });
+  return { status: out.status, ms: out.ms, error: out.error };
+};
+
+/**
+ * Fan out an event to matching webhooks. When a full {@link Ctx} (with `env`) is
+ * available the deliveries are **enqueued** as `webhook.deliver` jobs so they
+ * run off the write path with retry + dead-letter; otherwise (system events with
+ * only a DbCtx) they're sent inline as a best-effort fallback.
+ */
+export const dispatchWebhooks = async (
+  ctx: DbCtx | Ctx,
   channel: string,
   payload: { event: string; data: unknown },
 ): Promise<void> => {
@@ -212,7 +262,28 @@ export const dispatchWebhooks = async (
   const matching = rows.filter((row) =>
     row.events.some((p) => matchesPattern(p, channel, payload.event)),
   );
+  if (matching.length === 0) return;
 
+  // Prefer the durable queue: one webhook.deliver job per matching hook so a
+  // 5xx/timeout from the receiver is retried with backoff and dead-lettered
+  // instead of being lost. `tenantId` is captured per-hook so the handler
+  // re-loads + tenant-guards the row at delivery time.
+  const full = "env" in ctx ? (ctx as Ctx) : null;
+  if (full) {
+    await Promise.all(
+      matching.map((row) =>
+        enqueueJob(full, {
+          type: "webhook.deliver",
+          queue: "webhooks",
+          tenantId: row.tenantId ?? tenantId ?? null,
+          payload: { webhookId: row.id, channel, event: payload.event, body },
+        }),
+      ),
+    );
+    return;
+  }
+
+  // Fallback (no env / system event): best-effort inline delivery, no retry.
   await Promise.all(
     matching.map(async (row) => {
       const out = await sendOne(row, channel, payload.event, body);

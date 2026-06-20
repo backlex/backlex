@@ -79,6 +79,15 @@ export interface SearchResponse<T> {
   limit: number;
 }
 
+/** Summary from `from(slug).importItems(...)` — per-row outcome of a bulk
+ *  import. `errors` is capped to the first 50 failures server-side. */
+export interface ImportSummary {
+  inserted: number;
+  failed: number;
+  total: number;
+  errors: { row: number; error: string }[];
+}
+
 export interface ItemEvent<T = Record<string, unknown>> {
   event: "created" | "updated" | "deleted";
   data: T;

@@ -613,3 +613,10 @@ await client.from("posts").batch([
   { op: "delete", id: "p2" },
 ], { atomic: true });
 ```
+
+## Bulk export / import
+
+To pull a whole collection out (JSON or CSV) or bulk-load rows back in, see
+[Backup, restore & export](/backup-restore#per-collection-export--import). Export
+applies the same read filters as `list`; import runs each row through the normal
+create path.

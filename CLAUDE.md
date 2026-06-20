@@ -179,6 +179,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | SMS messaging (Twilio / Amazon SNS) | `docs/sms-messaging.md` |
 | Storage + transforms | `docs/storage.md` |
 | Functions sandbox | `docs/sandbox.md` |
+| Durable job queue (retry / DLQ / scheduled) | `docs/jobs.md` |
 | Advisor rules | `docs/advisor.md` |
 | Auth planes (admin vs workspace end-users) | `docs/auth-planes.md` |
 | SSO (SAML / LDAP) | `docs/sso.md` |

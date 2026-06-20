@@ -64,6 +64,11 @@ guides; this list is everything else.
   `services/scheduled-tasks.ts`) — cron expression parsing +
   delayed-task ledger. Driven by the `scheduled` Worker entry and
   the Vercel/Netlify cron routes.
+- **Job queue** (`routes/jobs.ts`, `services/jobs.ts`) — durable
+  background jobs (`function` / `webhook.deliver`) with exponential
+  backoff, dead-letter, and `runAt` scheduling. `processJobs` drains
+  the `jobs` table inside the same `cronTick`; webhook dispatch
+  enqueues here for retry. See `docs/jobs.md`.
 - **Notifications** (`routes/notifications.ts`) — in-app
   notification feed; activity/flows write into it.
 - **Email templates** (`routes/email-templates.ts`) — per-tenant

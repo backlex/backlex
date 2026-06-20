@@ -595,6 +595,43 @@ export const smsConfig = sqliteTable(
   },
 );
 
+/**
+ * Durable job queue. Rows are drained by the cross-runtime cron tick
+ * (`processJobs` inside `cronTick`), claimed with a `status='active' + claimedAt`
+ * lease, retried with exponential backoff, and promoted to `dead_letter` once
+ * `attempts >= maxAttempts`. `runAt` supports delayed/scheduled execution.
+ */
+export const jobs = sqliteTable(
+  "jobs",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    queue: text("queue").notNull().default("default"),
+    /** Handler discriminator: function | webhook.deliver */
+    type: text("type").notNull(),
+    payload: text("payload", { mode: "json" }).$type<Record<string, unknown>>().notNull().default({}),
+    /** pending | active | succeeded | failed | dead_letter | cancelled */
+    status: text("status").notNull().default("pending"),
+    /** Lower runs sooner within a due batch. */
+    priority: integer("priority").notNull().default(0),
+    runAt: integer("run_at", { mode: "timestamp_ms" }).notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(5),
+    /** Lease marker — set when a tick claims the row; cleared on requeue. */
+    claimedAt: integer("claimed_at", { mode: "timestamp_ms" }),
+    lastError: text("last_error"),
+    result: text("result", { mode: "json" }).$type<unknown>(),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [
+    index("jobs_status_run_idx").on(t.status, t.runAt),
+    index("jobs_tenant_idx").on(t.tenantId),
+    index("jobs_queue_status_idx").on(t.queue, t.status),
+  ],
+);
+
 export const revisions = sqliteTable(
   "revisions",
   {

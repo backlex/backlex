@@ -1297,7 +1297,7 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       tags: TAGS,
       summary: "Import collection rows",
       description:
-        "Bulk-inserts rows from a JSON array (`?format=json`, default) or a CSV upload (`?format=csv`). Send the rows as the raw request body (`application/json` array, or `text/csv`). Each row runs through the normal create path; row-level failures are reported in `errors` without aborting the rest.",
+        "Bulk-imports rows from a JSON array (`?format=json`, default) or a CSV upload (`?format=csv`). Send the rows as the raw request body (`application/json` array, or `text/csv`). Rows that carry an `id` matching an existing row are UPDATED (requires `update` permission); rows with a new or absent `id` are INSERTED. This makes an exported file round-trip cleanly on re-import instead of colliding on unique columns. Row-level failures are reported in `errors` without aborting the rest.",
       security: SECURITY,
       middleware: [requirePermission(collectionFromParam, "create")],
       // No declared body schema on purpose: the import accepts either a JSON
@@ -1315,6 +1315,7 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
               schema: z.object({
                 data: z.object({
                   inserted: z.number().int(),
+                  updated: z.number().int(),
                   failed: z.number().int(),
                   total: z.number().int(),
                   errors: z.array(
@@ -1382,7 +1383,14 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         locale: null,
       };
 
+      // Rows carrying an existing id are updated (round-trip restore) rather
+      // than re-inserted — but only when the caller actually holds `update`.
+      // Without it we fall back to insert, preserving the prior behaviour
+      // (and its unique-collision error) instead of silently escalating.
+      const updatePerm = await resolvePermission(ctx, auth, collection.slug, "update");
+
       let inserted = 0;
+      let updated = 0;
       const errors: { row: number; error: string }[] = [];
       for (let i = 0; i < records.length; i += 1) {
         const record = records[i];
@@ -1390,8 +1398,25 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
           errors.push({ row: i + 1, error: "Row is not an object." });
           continue;
         }
+        const rawId = (record as Record<string, unknown>).id;
+        const id = typeof rawId === "string" && rawId ? rawId : null;
+        const body = stripSystemColumns(record);
         try {
-          const res = await performCreate(env, stripSystemColumns(record), {
+          if (id && updatePerm.allowed) {
+            try {
+              const res = await performUpdate(env, id, body, {
+                whereSql: updatePerm.whereSql,
+                fields: updatePerm.fields,
+              });
+              for (const fx of res.sideEffects) await fx();
+              updated += 1;
+              continue;
+            } catch (e) {
+              // Unknown id → fall through to insert; anything else is a real error.
+              if (!(e instanceof AppError && e.code === "NOT_FOUND")) throw e;
+            }
+          }
+          const res = await performCreate(env, body, {
             whereSql: perm.whereSql,
             fields: perm.fields,
           });
@@ -1405,6 +1430,7 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       return c.json({
         data: {
           inserted,
+          updated,
           failed: errors.length,
           total: records.length,
           errors: errors.slice(0, 50),

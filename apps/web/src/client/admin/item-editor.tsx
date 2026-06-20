@@ -219,6 +219,21 @@ export function ItemEditorPage({
   // ── Record actions ───────────────────────────────────────────────────────
   const duplicate = async () => {
     const payload = form.buildPayload() as Record<string, unknown>;
+    // A copy can't reuse the original's unique values (slug/sku/…) or it
+    // collides on insert. Suffix every unique string field, and tag the
+    // title/name so the copy is recognizable.
+    const suffix = Math.random().toString(36).slice(2, 6);
+    for (const f of (schema.fields ?? []) as Array<{ name: string; unique?: boolean }>) {
+      if (!f.unique) continue;
+      const v = payload[f.name];
+      if (typeof v === "string" && v) payload[f.name] = `${v}-copy-${suffix}`;
+    }
+    for (const key of ["title", "name"]) {
+      if (typeof payload[key] === "string" && payload[key]) {
+        payload[key] = `${payload[key] as string} (Copy)`;
+        break;
+      }
+    }
     try {
       const res = await itemsApi.create(slug, payload);
       const created = { ...(payload as unknown as Post), ...(res.data as unknown as Post) };
@@ -362,6 +377,15 @@ export function ItemEditorPage({
                   <DropdownMenuItem onSelect={() => void persist({ close: true })}>
                     <Trans>Save and close</Trans>
                   </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void duplicate()}>
+                    <Trans>Duplicate</Trans>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => setConfirmDelete(true)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trans>Delete</Trans>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -436,24 +460,6 @@ export function ItemEditorPage({
                   label="updated_at"
                   value={savedAt ? relativeTime(savedAt) : relativeTime(updatedAtVal) || "—"}
                 />
-              </div>
-            </Card>
-          )}
-
-          {/* Record actions */}
-          {mode === "edit" && item && (
-            <Card className="gap-0 py-0">
-              <div className={SECTION_TITLE_CLS}>
-                <I.Copy size={13} />
-                <Trans>Actions</Trans>
-              </div>
-              <div className="flex flex-wrap gap-2 p-3.5">
-                <Button variant="outline" size="sm" icon={I.Copy} onClick={() => void duplicate()}>
-                  <Trans>Duplicate</Trans>
-                </Button>
-                <Button variant="outline" size="sm" icon={I.Trash} onClick={() => setConfirmDelete(true)}>
-                  <Trans>Delete</Trans>
-                </Button>
               </div>
             </Card>
           )}

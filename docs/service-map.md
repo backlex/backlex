@@ -10,6 +10,12 @@ guides; this list is everything else.
 
 ## Data plane
 
+- **Full-text & hybrid search** (`services/fts.ts`, DDL in
+  `packages/db/schema-applier.ts::ensureFtsObjects`) — keyword index
+  maintained by the item-write hooks (`services/items/write.ts`); the
+  `POST /:slug/search` route + `?q=` upgrade live in `routes/items.ts`,
+  the backfill in `routes/collections.ts`. Hybrid fuses FTS + vector with
+  RRF. Managed collections only. Deep dive: `docs/full-text-search.md`.
 - **Revisions** (`routes/revisions.ts`, `services/revisions.ts`) —
   change history per item. `routes/items.ts` already snapshots
   before mutating, don't double-write.

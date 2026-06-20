@@ -32,6 +32,14 @@ export interface ParsedQuery {
   limit: number;
   offset: number;
   meta: { filterCount: boolean; totalCount: boolean };
+  /**
+   * Raw `?q=` needle when the collection has full-text search active — the
+   * list handler turns this into a keyword-index predicate (`_fts @@ …` /
+   * FTS5 `MATCH`) instead of the substring `LIKE` fallback. Null when FTS is
+   * off (the needle was already folded into `filter` as `_contains` clauses)
+   * or no `?q=` was given.
+   */
+  search: string | null;
 }
 
 const SYSTEM_COLUMNS = new Set(["id", "created_at", "updated_at"]);
@@ -127,6 +135,10 @@ export const parseQuery = (
   ownerScoped: boolean,
   permissionFields: Set<string> | null,
   defaultSort: string | null = null,
+  /** When true, the collection maintains a full-text index, so `?q=` is
+   *  surfaced as `parsed.search` (keyword ranking) instead of being expanded
+   *  into substring `_contains` clauses on the filter. */
+  ftsActive: boolean = false,
 ): ParsedQuery => {
   const valid = buildValidColumns(fields, ownerScoped);
   // Permission allow-list narrows what user fields can be filtered/sorted/projected.
@@ -164,24 +176,31 @@ export const parseQuery = (
     validateFilterFields(filter, allowedForUser, fieldsByName, allowedForUser);
   }
 
-  // `q=...` is a free-text search: `_contains` OR-ed across every readable
-  // text/longtext field. AND-combined with the explicit `filter` so the two
-  // are independent — search narrows whatever the user already filtered.
+  // `q=...` is a free-text search. When the collection has full-text search
+  // active, hand the raw needle to the list handler as `search` so it can run
+  // the keyword index (`_fts @@ …` / FTS5 `MATCH`). Otherwise fall back to the
+  // legacy behaviour: `_contains` OR-ed across every readable text/longtext
+  // field, AND-combined with the explicit `filter`.
+  let search: string | null = null;
   const qRaw = params.get("q");
   if (qRaw && qRaw.trim()) {
     const needle = qRaw.trim();
-    const searchable = fields.filter(
-      (f) =>
-        (f.type === "text" || f.type === "longtext") &&
-        allowedForUser.has(f.name),
-    );
-    if (searchable.length > 0) {
-      const orClauses = searchable.map(
-        (f) => ({ [f.name]: { _contains: needle } }) as Condition,
+    if (ftsActive) {
+      search = needle;
+    } else {
+      const searchable = fields.filter(
+        (f) =>
+          (f.type === "text" || f.type === "longtext") &&
+          allowedForUser.has(f.name),
       );
-      const searchCond: Condition =
-        orClauses.length === 1 ? orClauses[0]! : { $or: orClauses };
-      filter = filter ? { $and: [filter, searchCond] } : searchCond;
+      if (searchable.length > 0) {
+        const orClauses = searchable.map(
+          (f) => ({ [f.name]: { _contains: needle } }) as Condition,
+        );
+        const searchCond: Condition =
+          orClauses.length === 1 ? orClauses[0]! : { $or: orClauses };
+        filter = filter ? { $and: [filter, searchCond] } : searchCond;
+      }
     }
   }
 
@@ -387,7 +406,7 @@ export const parseQuery = (
     totalCount: metaParts.has("total_count") || metaParts.has("*"),
   };
 
-  return { filter, sort, fields: fieldsList, expand, expandSubs, limit, offset, meta };
+  return { filter, sort, fields: fieldsList, expand, expandSubs, limit, offset, meta, search };
 };
 
 /**

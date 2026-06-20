@@ -5,6 +5,7 @@ import { publishEvent } from "../events";
 import { recordActivity } from "../activity";
 import { recordRevision } from "../revisions";
 import { embedAndUpsert, deleteVector } from "../vectorize";
+import { indexFts, deleteFts } from "../fts";
 import { type CollectionRow, hasI18nField } from "./collection-loader";
 import { serialize, deserialize, deserializeRow, projectFields } from "./serialize";
 import { validateBody, validateRelations } from "./validate";
@@ -168,6 +169,7 @@ export const performCreate = async (
 
   const sideEffects: SideEffect[] = [
     () => embedAndUpsert(ctx, collection, env.tenantId ?? null, id, data),
+    () => indexFts(ctx, collection, id, data),
     () =>
       publishEvent(
         ctx.env,
@@ -247,6 +249,7 @@ export const performUpdate = async (
 
   const sideEffects: SideEffect[] = [
     () => embedAndUpsert(ctx, collection, env.tenantId ?? null, id, refreshedRow),
+    () => indexFts(ctx, collection, id, refreshedRow),
     () =>
       publishEvent(
         ctx.env,
@@ -331,6 +334,7 @@ export const performDelete = async (
 
   const sideEffects: SideEffect[] = [
     () => deleteVector(ctx, collection, id),
+    () => deleteFts(ctx, collection, id),
     () =>
       publishEvent(
         ctx.env,

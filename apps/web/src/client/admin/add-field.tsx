@@ -56,6 +56,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   const [choices, setChoices] = useState(DEFAULT_CHOICES);
   const [relationTarget, setRelationTarget] = useState("");
   const [indexed, setIndexed] = useState(false);
+  const [searchable, setSearchable] = useState(false);
   const [step, setStep] = useState(1);
 
   useEffect(() => {
@@ -70,6 +71,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       setRelationTarget("");
       setStep(1);
       setIndexed(false);
+      setSearchable(false);
     }
   }, [open]);
 
@@ -141,6 +143,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
       unique,
       default: defaultValue || null,
       indexed,
+      ...(searchable && (def.type === "text" || def.type === "longtext") ? { searchable: true } : {}),
       ...(def.hasChoices && cleanChoices.length ? { options: { choices: cleanChoices } } : {}),
       ...(def.hasRelation ? { to: relationTarget } : {}),
     });
@@ -309,6 +312,15 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
                 </div>
                 <Switch checked={indexed} onChange={setIndexed} />
               </div>
+              {(def.type === "text" || def.type === "longtext") && (
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Searchable</Trans></div>
+                    <div className="text-[11.5px] text-muted-foreground"><Trans>Fold this field into the collection's full-text-search index (when FTS is enabled).</Trans></div>
+                  </div>
+                  <Switch checked={searchable} onChange={setSearchable} />
+                </div>
+              )}
 
               <div className="mt-1.5">
                 <div className="mb-1.5 flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>DDL preview</Trans></div>

@@ -39,6 +39,11 @@ export interface CollectionRow {
   vectorize: boolean;
   /** Embedding model key (`EMBEDDING_MODELS` keys). Null → env default. */
   vectorizeModel: string | null;
+  /** Maintain a keyword full-text-search index on write (Postgres tsvector +
+   *  GIN; SQLite FTS5 shadow table) from the fields flagged `searchable: true`
+   *  (text/longtext only). Powers the `?q=` precision filter and the
+   *  `POST /:slug/search` endpoint. */
+  fts: boolean;
   /** Comma-separated default sort (Directus shape, `-` prefix = DESC). Null
    *  falls back to `-created_at` in `parseQuery`. */
   defaultSort: string | null;
@@ -116,6 +121,7 @@ export const loadCollection = async (
     auditReads: Boolean(r.auditReads ?? r.audit_reads),
     vectorize: Boolean(r.vectorize),
     vectorizeModel: ((r.vectorizeModel ?? r.vectorize_model) as string | null | undefined) ?? null,
+    fts: Boolean(r.fts),
     defaultSort: ((r.defaultSort ?? r.default_sort) as string | null | undefined) ?? null,
     adopted: Boolean(r.adopted),
     pkColumn: ((r.pkColumn ?? r.pk_column) as string | undefined) ?? "id",

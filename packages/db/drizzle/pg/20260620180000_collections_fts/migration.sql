@@ -1,0 +1,1 @@
+ALTER TABLE "collections" ADD COLUMN IF NOT EXISTS "fts" boolean DEFAULT false NOT NULL;

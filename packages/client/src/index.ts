@@ -166,6 +166,30 @@ const normalizeUploadData = (data: Blob | ArrayBuffer | Uint8Array): UploadSourc
   return { size: u.byteLength, slice: (s, e) => u.subarray(s, e) as unknown as BodyInit };
 };
 
+/** The per-collection data API returned by `client.from<T>(slug)`. Exported so
+ *  generated SDKs (see `backlex gen-types --sdk`) and apps can name the shape. */
+export interface CollectionClient<T extends Record<string, unknown>> {
+  list(q?: ListQuery): Promise<ListResponse<T>>;
+  /** Fluent, type-safe query builder that compiles to `ListQuery`. */
+  query(): QueryBuilder<T>;
+  /** Run a single-function aggregate (count/sum/avg/min/max), optionally grouped. */
+  aggregate(body: AggregateQuery): Promise<{ data: AggregateRow[] }>;
+  one(id: string, opts?: ItemQuery): Promise<ItemResponse<T>>;
+  create(data: Partial<T>): Promise<ItemResponse<T>>;
+  update(id: string, patch: Partial<T>): Promise<ItemResponse<T>>;
+  delete(id: string): Promise<{ ok: boolean }>;
+  createMany(rows: Partial<T>[], opts?: { atomic?: boolean }): Promise<BatchResponse<T>>;
+  updateMany(
+    updates: { id: string; data: Partial<T> }[],
+    opts?: { atomic?: boolean },
+  ): Promise<BatchResponse<T>>;
+  deleteMany(ids: string[], opts?: { atomic?: boolean }): Promise<BatchResponse<T>>;
+  batch(operations: BatchOperation<T>[], opts?: { atomic?: boolean }): Promise<BatchResponse<T>>;
+  publish(id: string): Promise<ItemResponse<T>>;
+  unpublish(id: string): Promise<ItemResponse<T>>;
+  schedulePublish(id: string, at: Date | string | null): Promise<ItemResponse<T>>;
+}
+
 export const createClient = (opts: ClientOptions) => {
   const f = opts.fetch ?? globalThis.fetch.bind(globalThis);
   // App-mode workspace session token, captured from sign-in/up and replayed
@@ -213,7 +237,9 @@ export const createClient = (opts: ClientOptions) => {
     return (await res.json()) as T;
   };
 
-  const collection = <T extends Record<string, unknown>>(slug: string) => {
+  const collection = <T extends Record<string, unknown>>(
+    slug: string,
+  ): CollectionClient<T> => {
     const list = (q?: ListQuery): Promise<ListResponse<T>> =>
       request<ListResponse<T>>("GET", `/api/items/${slug}${buildSearch(q)}`);
     return {
@@ -686,6 +712,41 @@ export const createClient = (opts: ClientOptions) => {
     /** Raw escape hatch — issues a request with auth headers applied. */
     request,
   };
+};
+
+/** A registry mapping each collection slug to its row type — the shape
+ *  `backlex gen-types --sdk` emits as `Collections`. */
+export type CollectionsMap = Record<string, Record<string, unknown>>;
+
+/** `{ [slug]: CollectionClient<Row> }` — the typed `collections` accessor. */
+export type TypedCollections<R extends CollectionsMap> = {
+  [K in keyof R]: CollectionClient<R[K]>;
+};
+
+/** A `BacklexClient` augmented with a strongly-typed `collections` accessor,
+ *  so `db.collections.<slug>.list()` returns `ListResponse<Row>`. */
+export type TypedClient<R extends CollectionsMap> = BacklexClient & {
+  collections: TypedCollections<R>;
+};
+
+/**
+ * Wrap a client with a typed `collections` accessor keyed by collection slug.
+ * Generated SDKs call this with the generated `Collections` registry:
+ *
+ *   export const createTypedClient = (opts: ClientOptions) =>
+ *     typedCollections<Collections>(createClient(opts));
+ *
+ * Access is a thin proxy over `client.from(slug)` — no per-collection runtime
+ * code is generated; all the type information lives in `R`.
+ */
+export const typedCollections = <R extends CollectionsMap>(
+  client: BacklexClient,
+): TypedClient<R> => {
+  const collections = new Proxy({} as TypedCollections<R>, {
+    get: (_target, slug) =>
+      typeof slug === "string" ? client.from(slug) : undefined,
+  });
+  return Object.assign(client, { collections });
 };
 
 export {

@@ -545,3 +545,71 @@ traversal, and `now({ add | sub })` for relative dates. Field arguments are
 typed `keyof T | (string & {})` — autocomplete for known columns, dotted
 relation paths still allowed, no codegen. `.toQuery()` returns the plain
 `ListQuery`; `from(slug).list(rawQuery)` remains for hand-built queries.
+
+## Batch & transactional writes
+
+`POST /api/items/:slug/batch` runs many create/update/delete operations on one
+collection in a single request:
+
+```http
+POST /api/items/posts/batch
+{
+  "operations": [
+    { "op": "create", "data": { "title": "A" } },
+    { "op": "update", "id": "p1", "data": { "title": "renamed" } },
+    { "op": "delete", "id": "p2" }
+  ],
+  "atomic": false
+}
+```
+
+Every operation goes through the **same** validation, permission, vectorize,
+event, audit and revision pipeline as the single-item endpoints — a batch is not
+a shortcut around them. Permissions are resolved per action (`create` / `update`
+/ `delete`); `update` and `delete` require `id`. Up to **100** operations per
+request.
+
+### Partial-success (default)
+
+Each operation is independent. The response reports per-row results; a failing
+row never blocks the others:
+
+```json
+{ "data": {
+  "atomic": false, "total": 3, "succeeded": 2, "failed": 1,
+  "results": [
+    { "index": 0, "op": "create", "ok": true, "id": "…", "data": { … } },
+    { "index": 1, "op": "create", "ok": false, "error": { "code": "VALIDATION", "message": "…" } },
+    { "index": 2, "op": "delete", "ok": true, "id": "p2" }
+  ]
+} }
+```
+
+### Atomic (`atomic: true`)
+
+All operations commit together or not at all — the first failure rolls the whole
+batch back and returns the error (e.g. `422` / `404`) naming the operation
+index; nothing is written.
+
+| Runtime | `atomic: true` |
+|---|---|
+| Postgres (postgres-js / TCP) | ✅ |
+| Self-host SQLite (Bun) | ✅ |
+| D1 / libSQL / neon-http (HTTP transports) | ❌ → `409` (use partial-success) |
+
+Atomic mode does **not** support intra-batch read-after-write: an operation
+can't see an earlier operation's write in the same batch (e.g. create a row then
+update it by id in one atomic call). Split those across two requests, or use a
+Postgres deployment where the ops are independent.
+
+### SDK
+
+```ts
+await client.from("posts").createMany([{ title: "A" }, { title: "B" }]);
+await client.from("posts").updateMany([{ id: "p1", data: { title: "x" } }], { atomic: true });
+await client.from("posts").deleteMany(["p2", "p3"]);
+await client.from("posts").batch([
+  { op: "create", data: { title: "A" } },
+  { op: "delete", id: "p2" },
+], { atomic: true });
+```

@@ -12,6 +12,7 @@ import { Badge, Button, Checkbox, Switch } from "./ui";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { Select } from "./select";
+import { DatePicker } from "@/components/date-picker";
 import { RelationPicker, FilePicker, MultiFilePicker } from "./relational-pickers";
 
 export type SchemaField = {
@@ -763,16 +764,10 @@ export function ItemFields({ form }: { form: ItemForm }) {
     }
     if (f.type === "timestamp") {
       const iso = typeof val === "string" ? val : "";
-      const localValue = iso ? iso.slice(0, 16) : "";
       return (
         <div key={f.name} className="flex flex-col gap-1.5">
           {label}
-          <Input
-            type="datetime-local"
-            value={localValue}
-            aria-invalid={!!err || undefined}
-            onChange={(e) => setField(e.target.value ? new Date(e.target.value).toISOString() : null)}
-          />
+          <DatePicker value={iso || null} onChange={(next) => setField(next)} />
           {errBlock}
         </div>
       );

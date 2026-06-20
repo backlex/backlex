@@ -3,9 +3,16 @@ import { CalendarIcon, XIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@backlex/ui/components/button";
 import { Calendar } from "@backlex/ui/components/calendar";
-import { Input } from "@backlex/ui/components/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@backlex/ui/components/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@backlex/ui/components/popover";
 import { Label } from "@backlex/ui/components/label";
+import { cn } from "@backlex/ui/lib/utils";
 
 interface DatePickerProps {
   value: string | number | null | undefined;
@@ -22,6 +29,9 @@ const toDate = (v: string | number | null | undefined): Date | undefined => {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const toTimeString = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+const HOURS = Array.from({ length: 24 }, (_, i) => pad(i));
+const MINUTES = Array.from({ length: 60 }, (_, i) => pad(i));
 
 /**
  * Calendar + Popover + optional time input. Emits ISO 8601 strings on change
@@ -61,12 +71,12 @@ export const DatePicker = ({ value, onChange, withTime = true }: DatePickerProps
   };
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button type="button" variant="outline" className="w-full justify-start">
-            <CalendarIcon className="mr-2 size-4" />
-            <span className={date ? "" : "text-muted-foreground"}>
+          <Button type="button" variant="outline" className="w-full min-w-0 justify-start">
+            <CalendarIcon className="mr-2 size-4 shrink-0" />
+            <span className={cn("truncate", date ? "" : "text-muted-foreground")}>
               {fmtLabel(date, withTime)}
             </span>
           </Button>
@@ -83,12 +93,29 @@ export const DatePicker = ({ value, onChange, withTime = true }: DatePickerProps
           {withTime && (
             <div className="flex items-center gap-2 border-t p-3">
               <Label className="text-xs text-muted-foreground"><Trans>Time</Trans></Label>
-              <Input
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="w-auto"
-              />
+              <div className="flex items-center gap-1">
+                <Select value={time.split(":")[0] ?? "00"} onValueChange={(h) => setTime(`${h}:${time.split(":")[1] ?? "00"}`)}>
+                  <SelectTrigger size="sm" className="w-[68px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HOURS.map((h) => (
+                      <SelectItem key={h} value={h}>{h}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-muted-foreground">:</span>
+                <Select value={time.split(":")[1] ?? "00"} onValueChange={(m) => setTime(`${time.split(":")[0] ?? "00"}:${m}`)}>
+                  <SelectTrigger size="sm" className="w-[68px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MINUTES.map((m) => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           )}
         </PopoverContent>

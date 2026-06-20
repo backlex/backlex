@@ -1,5 +1,42 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import { importVapidKey, signJwt } from "../src/server/lib/push-crypto";
+
+const b64url = (b: Uint8Array): string =>
+  btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const b64urlToBytes = (s: string): Uint8Array => {
+  const pad = s.length % 4 === 0 ? "" : "=".repeat(4 - (s.length % 4));
+  const bin = atob(s.replace(/-/g, "+").replace(/_/g, "/") + pad);
+  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+};
+
+describe("VAPID key import (web-push generate-vapid-keys format)", () => {
+  test("imports a raw base64url keypair and produces a verifiable ES256 JWT", async () => {
+    // Generate a keypair and export it the way `web-push generate-vapid-keys`
+    // does: private = raw base64url `d`, public = raw base64url P-256 point.
+    const kp = (await crypto.subtle.generateKey(
+      { name: "ECDSA", namedCurve: "P-256" },
+      true,
+      ["sign", "verify"],
+    )) as CryptoKeyPair;
+    const jwk = await crypto.subtle.exportKey("jwk", kp.privateKey);
+    const pubRaw = new Uint8Array(await crypto.subtle.exportKey("raw", kp.publicKey));
+    const privateKey = jwk.d as string;
+    const publicKey = b64url(pubRaw);
+
+    const key = await importVapidKey(privateKey, publicKey);
+    const jwt = await signJwt({}, { aud: "https://push.example", exp: 9999999999, sub: "mailto:a@b.c" }, key, "ES256");
+
+    const [head, body, sig] = jwt.split(".");
+    const ok = await crypto.subtle.verify(
+      { name: "ECDSA", hash: "SHA-256" },
+      kp.publicKey,
+      b64urlToBytes(sig!),
+      new TextEncoder().encode(`${head}.${body}`),
+    );
+    expect(ok).toBe(true);
+  });
+});
 
 const json = (body: unknown): RequestInit => ({
   method: "POST",

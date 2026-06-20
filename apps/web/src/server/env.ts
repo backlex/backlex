@@ -179,9 +179,10 @@ export interface Env {
   APNS_PRIVATE_KEY?: string;
   APNS_BUNDLE_ID?: string;
   APNS_PRODUCTION?: string;
-  // Web Push (VAPID). `WEBPUSH_SUBJECT` is a `mailto:` or origin URL;
-  // `WEBPUSH_VAPID_PUBLIC_KEY` is base64url (raw P-256 point);
-  // `WEBPUSH_VAPID_PRIVATE_KEY` is the PKCS8 PEM (EC P-256).
+  // Web Push (VAPID) — the standard `npx web-push generate-vapid-keys` output.
+  // `WEBPUSH_SUBJECT` is a `mailto:` or origin URL; `WEBPUSH_VAPID_PUBLIC_KEY`
+  // and `WEBPUSH_VAPID_PRIVATE_KEY` are both raw base64url (public = P-256
+  // point, private = 32-byte scalar) — NOT a PEM.
   WEBPUSH_SUBJECT?: string;
   WEBPUSH_VAPID_PUBLIC_KEY?: string;
   WEBPUSH_VAPID_PRIVATE_KEY?: string;

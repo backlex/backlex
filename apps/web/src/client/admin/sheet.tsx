@@ -375,12 +375,9 @@ export function ConfirmDialog({
           <AlertDialogCancel onClick={onCancel}>
             <Trans>Cancel</Trans>
           </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={onConfirm}
-            className={
-              destructive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : undefined
-            }
-          >
+          {/* Use the design-system destructive variant (soft red bg + red
+              text) — the same treatment used across the app and cloud. */}
+          <AlertDialogAction onClick={onConfirm} variant={destructive ? "destructive" : "default"}>
             {resolvedLabel}
           </AlertDialogAction>
         </AlertDialogFooter>

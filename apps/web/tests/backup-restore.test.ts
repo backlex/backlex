@@ -238,6 +238,64 @@ describe("per-collection export / import", () => {
     expect(summary.failed).toBe(2);
     expect(summary.errors.length).toBe(2);
   });
+
+  // Regression: a user exported a collection and re-imported the file into the
+  // SAME collection. Previously every row re-inserted and collided on unique
+  // columns (or duplicated rows). Rows carrying an existing id must UPDATE.
+  test("re-importing an export upserts by id (round-trips into the same collection)", async () => {
+    const exp = await h.fetch(`/api/items/${src}/export?format=json`);
+    const rows = (await exp.json()) as Record<string, unknown>[];
+    expect(rows.length).toBe(3);
+    expect(typeof rows[0]?.id).toBe("string");
+
+    const imp = await h.fetch(`/api/items/${src}/import?format=json`, {
+      method: "POST",
+      headers: json,
+      body: JSON.stringify(rows),
+    });
+    expect(imp.status).toBe(200);
+    const summary = ((await imp.json()) as {
+      data: { inserted: number; updated: number; failed: number };
+    }).data;
+    expect(summary.updated).toBe(3);
+    expect(summary.inserted).toBe(0);
+    expect(summary.failed).toBe(0);
+    expect(await listCount(h, src)).toBe(3); // no duplicates created
+  });
+
+  // Regression: creating a row whose unique column collides used to surface a
+  // raw 500. It must map to a clean 409 CONFLICT (drives the Duplicate action
+  // and any save with a duplicate unique value).
+  test("duplicate unique value returns 409 CONFLICT, not 500", async () => {
+    const u = `uniq_${Date.now()}`;
+    const mk = await h.fetch("/api/collections", {
+      method: "POST",
+      headers: json,
+      body: JSON.stringify({
+        slug: u,
+        fields: [
+          { name: "title", type: "text", required: true },
+          { name: "sku", type: "text", unique: true },
+        ],
+      }),
+    });
+    expect(mk.status).toBe(201);
+
+    const first = await h.fetch(`/api/items/${u}`, {
+      method: "POST",
+      headers: json,
+      body: JSON.stringify({ title: "A", sku: "X1" }),
+    });
+    expect(first.status).toBe(201);
+
+    const dup = await h.fetch(`/api/items/${u}`, {
+      method: "POST",
+      headers: json,
+      body: JSON.stringify({ title: "B", sku: "X1" }),
+    });
+    expect(dup.status).toBe(409);
+    expect(((await dup.json()) as { error: { code: string } }).error.code).toBe("CONFLICT");
+  });
 });
 
 describe("csv helpers", () => {

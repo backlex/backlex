@@ -8084,8 +8084,12 @@ msgid "Signing secret"
 msgstr "Signing secret"
 
 #: src/client/admin/pages/webhooks.tsx
-msgid "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>{timestamp}.{body}</2> with <3>X-Backlex-Timestamp</3> for replay protection."
-msgstr "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>{timestamp}.{body}</2> with <3>X-Backlex-Timestamp</3> for replay protection."
+#~ msgid "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>{timestamp}.{body}</2> with <3>X-Backlex-Timestamp</3> for replay protection."
+#~ msgstr "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>{timestamp}.{body}</2> with <3>X-Backlex-Timestamp</3> for replay protection."
+
+#: src/client/admin/pages/webhooks.tsx
+msgid "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>timestamp.body</2> with <3>X-Backlex-Timestamp</3> for replay protection."
+msgstr "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>timestamp.body</2> with <3>X-Backlex-Timestamp</3> for replay protection."
 
 #: src/client/admin/parity/insights.tsx
 msgid "single scalar value"

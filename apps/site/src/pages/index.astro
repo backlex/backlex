@@ -94,8 +94,8 @@ import Base from "../layouts/Base.astro";
           <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </summary>
         <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
-          <p class="text-[13.5px] text-muted-foreground leading-snug">Every collection auto-exposes <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">/api/items/:slug</code> with filter/sort/expand/projection. GraphQL schema synthesised from the same metadata.</p>
-          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">openapi 3.1 · graphql-yoga</span>
+          <p class="text-[13.5px] text-muted-foreground leading-snug">Every collection auto-exposes <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">/api/items/:slug</code> with filter/sort/expand/projection. GraphQL schema synthesised from the same metadata. Bulk + opt-in atomic (all-or-nothing) writes on both.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">openapi 3.1 · graphql-yoga · batch</span>
         </div>
       </details>
       <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[200px] max-sm:min-h-0">
@@ -149,8 +149,8 @@ import Base from "../layouts/Base.astro";
           <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </summary>
         <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
-          <p class="text-[13.5px] text-muted-foreground leading-snug">better-auth wrapper: email, OAuth (Google/GitHub/Apple), magic link, OTP, passkey, SAML 2.0 SSO, LDAP / AD. First user gets <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">admin</code>.</p>
-          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">better-auth · passkey-first</span>
+          <p class="text-[13.5px] text-muted-foreground leading-snug">better-auth wrapper: email, OAuth (Google/GitHub/Apple), magic link, OTP, passkey, 2FA, SAML 2.0 SSO, LDAP / AD. Per-IP rate-limiting + account lockout built in. First user gets <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">admin</code>.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">better-auth · 2fa · rate-limited</span>
         </div>
       </details>
       <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[200px] max-sm:min-h-0">
@@ -162,6 +162,72 @@ import Base from "../layouts/Base.astro";
         <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
           <p class="text-[13.5px] text-muted-foreground leading-snug">One <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">activity</code> table, dot-namespaced actions (<code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">item.update</code>, <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">auth.login</code>). Every CRUD writes a row to <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">revisions</code> — point-in-time restore included.</p>
           <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">audit log · point-in-time</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[200px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Unified messaging</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">Push (FCM, APNs, Web Push) <em>and</em> SMS (Twilio, Amazon SNS) from one API. Per-tenant credentials, device + phone registries, and templates — all built in.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">fcm · apns · web-push · sms</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[200px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Durable job queue</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">Enqueue background work that retries with exponential backoff, dead-letters after N tries, and runs on a schedule. Rides the cron tick — no Redis, no extra binding. Webhook delivery flows through it.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">retry · dead-letter · runAt</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[200px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15V6a2 2 0 0 0-2-2H9"/><path d="M3 9v9a2 2 0 0 0 2 2h9"/><path d="M12 11v6"/><path d="M9 14h6"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Resumable uploads</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">TUS 1.0.0 chunked uploads survive dropped connections and resume from the committed offset. Native R2 / S3 multipart under the hood; Uppy &amp; tus-js-client work out of the box.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">tus 1.0.0 · multipart</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[200px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Draft &amp; publish</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">First-class draft / published status: drafts hidden from readers without a dedicated <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">publish</code> permission, and scheduled publishing the cron tick applies when due.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">_status · publishAt</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[200px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="6"/><circle cx="8" cy="12" r="2"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Feature flags</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">Toggle features and ship remote config without a deploy. Per-workspace or global, with rollout-percentage and permission-DSL targeting, evaluated per caller at <code class="font-mono text-[12px] bg-muted px-1.5 py-px rounded">/api/flags</code>.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">rollout % · targeting</span>
+        </div>
+      </details>
+      <details open class="acc bg-card p-7 max-sm:px-5 max-sm:py-4 flex flex-col gap-2.5 min-h-[200px] max-sm:min-h-0">
+        <summary class="flex flex-col gap-2.5 max-sm:flex-row max-sm:items-center max-sm:gap-3 sm:pointer-events-none">
+          <div class="w-9 h-9 bg-muted rounded-xl grid place-items-center mb-1.5 max-sm:mb-0 shrink-0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg></div>
+          <h3 class="text-base font-semibold max-sm:flex-1">Offline-first sync</h3>
+          <svg class="acc-chev w-4 h-4 text-muted-foreground shrink-0 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="acc-body flex flex-col gap-2.5 flex-1 max-sm:pt-1">
+          <p class="text-[13.5px] text-muted-foreground leading-snug">Keep a local copy that works offline: an incremental changefeed with delete tombstones, SSE live updates, and an offline write queue that flushes on reconnect. Pluggable IndexedDB store in the SDK.</p>
+          <span class="mt-auto pt-2 font-mono text-[11.5px] text-muted-foreground">changefeed · indexeddb · lww</span>
         </div>
       </details>
     </div>
@@ -872,6 +938,34 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">11 languages</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">JS, Flutter, Swift, Python</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">JS / TS</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">build it</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-3 border-b border-border font-medium">Unified messaging (push + SMS)</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">auth OTP only</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">build it</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-3 border-b border-border font-medium">Durable job queue (retry + DLQ + scheduled)</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">pgmq / pg_cron</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">build it</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-3 border-b border-border font-medium">Feature flags + remote config</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">build it</td>
+          </tr>
+          <tr>
+            <td class="px-5 py-3 border-b border-border font-medium">Offline-first sync (changefeed + client store)</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">via PowerSync</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">build it</td>
           </tr>
           <tr>

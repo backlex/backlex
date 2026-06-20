@@ -43,6 +43,7 @@ export { QueryBuilder } from "./query";
 export type { FilterBuilder, FieldKey, SortKey } from "./query";
 
 import { QueryBuilder } from "./query";
+import { createSync, type SyncOptions } from "./sync";
 
 export interface ClientOptions {
   url: string;
@@ -668,6 +669,11 @@ export const createClient = (opts: ClientOptions) => {
     },
   };
 
+  /** Offline-first sync for one collection — pulls the changefeed into a local
+   *  store, stays live over SSE, and queues writes while offline. See
+   *  `createSync` in `./sync`. */
+  const sync = (options: SyncOptions) => createSync({ request, subscribe }, options);
+
   return {
     from: collection,
     subscribe,
@@ -676,9 +682,19 @@ export const createClient = (opts: ClientOptions) => {
     messaging,
     jobs,
     flags,
+    sync,
     /** Raw escape hatch — issues a request with auth headers applied. */
     request,
   };
 };
+
+export {
+  createSync,
+  memoryStore,
+  indexedDbStore,
+  type SyncStore,
+  type SyncOptions,
+  type QueuedOp,
+} from "./sync";
 
 export type BacklexClient = ReturnType<typeof createClient>;

@@ -74,6 +74,12 @@ guides; this list is everything else.
   object-store multipart (R2/S3) or fs offset-append. The `uploads`
   table tracks session offset + parts; `sweepExpiredUploads` aborts
   stale sessions inside `cronTick`. See `docs/resumable-uploads.md`.
+- **Offline sync** (`routes/items.ts` `/changes` + `/revisions`,
+  `packages/client/src/sync.ts`) — incremental changefeed (keyset on
+  `updated_at,id`, tombstones via `_deleted`) + revisions endpoint; the
+  client `sync` module pulls into a pluggable local store (memory /
+  IndexedDB), stays live over SSE, and queues offline writes (LWW). Soft-
+  delete bumps `updated_at` so deletes reach the feed. See `docs/offline-sync.md`.
 - **Feature flags** (`routes/feature-flags.ts`, `services/feature-flags.ts`)
   — per-workspace/global flags + remote config in the `feature_flags` table;
   `evaluateFlags` resolves rollout % + permission-DSL targeting per caller;

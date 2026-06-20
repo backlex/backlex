@@ -1,6 +1,8 @@
 import {
   type AggregateQuery,
   type AggregateRow,
+  type BatchOperation,
+  type BatchResponse,
   type DeviceToken,
   type ItemEvent,
   type ItemQuery,
@@ -18,6 +20,8 @@ export type {
   ItemEvent,
   AggregateQuery,
   AggregateRow,
+  BatchOperation,
+  BatchResponse,
   DeviceToken,
 } from "./types";
 export { BacklexError } from "./types";
@@ -186,6 +190,37 @@ export const createClient = (opts: ClientOptions) => {
         request<ItemResponse<T>>("PATCH", `/api/items/${slug}/${id}`, patch),
       delete: (id: string): Promise<{ ok: boolean }> =>
         request<{ ok: boolean }>("DELETE", `/api/items/${slug}/${id}`),
+      /** Bulk-create rows. `atomic` runs the whole set in one transaction
+       *  (all-or-nothing; Postgres/SQLite only). Default is partial-success. */
+      createMany: (rows: Partial<T>[], opts?: { atomic?: boolean }): Promise<BatchResponse<T>> =>
+        request<BatchResponse<T>>("POST", `/api/items/${slug}/batch`, {
+          operations: rows.map((data) => ({ op: "create", data })),
+          atomic: opts?.atomic,
+        }),
+      /** Bulk-update rows by id. */
+      updateMany: (
+        updates: { id: string; data: Partial<T> }[],
+        opts?: { atomic?: boolean },
+      ): Promise<BatchResponse<T>> =>
+        request<BatchResponse<T>>("POST", `/api/items/${slug}/batch`, {
+          operations: updates.map((u) => ({ op: "update", id: u.id, data: u.data })),
+          atomic: opts?.atomic,
+        }),
+      /** Bulk-delete rows by id. */
+      deleteMany: (ids: string[], opts?: { atomic?: boolean }): Promise<BatchResponse<T>> =>
+        request<BatchResponse<T>>("POST", `/api/items/${slug}/batch`, {
+          operations: ids.map((id) => ({ op: "delete", id })),
+          atomic: opts?.atomic,
+        }),
+      /** Mixed create/update/delete in one request. `atomic` = all-or-nothing. */
+      batch: (
+        operations: BatchOperation<T>[],
+        opts?: { atomic?: boolean },
+      ): Promise<BatchResponse<T>> =>
+        request<BatchResponse<T>>("POST", `/api/items/${slug}/batch`, {
+          operations,
+          atomic: opts?.atomic,
+        }),
       /** Flip a versioned item to published (`_status`). */
       publish: (id: string): Promise<ItemResponse<T>> =>
         request<ItemResponse<T>>("POST", `/api/items/${slug}/${id}/publish`),

@@ -38,7 +38,31 @@ type Mutation {
   create<Slug>(data: <Slug>Input!): <Slug>!
   update<Slug>(id: ID!, data: <Slug>Input!): <Slug>!
   delete<Slug>(id: ID!): Boolean!
+  batch<Slug>(operations: [JSON!]!, atomic: Boolean): BatchResult!
 }
+
+type BatchResult {
+  atomic: Boolean!
+  total: Int!
+  succeeded: Int!
+  failed: Int!
+  results: [JSON!]!   # { index, op, ok, id?, data?, error? } per operation
+}
+```
+
+`batch<Slug>` mirrors the REST `…/batch` endpoint: each operation is a JSON
+`{ op: "create"|"update"|"delete", id?, data? }`. Pass operations **as a
+variable** (the `JSON` scalar rejects inline literals). `atomic: true` runs the
+whole set all-or-nothing — see the [Batch & transactional writes](/querying/#batch--transactional-writes)
+runtime matrix; an atomic failure surfaces as a GraphQL error and commits
+nothing.
+
+```graphql
+mutation Bulk($ops: [JSON!]!) {
+  batchPosts(operations: $ops, atomic: true) { succeeded failed results }
+}
+# variables: { "ops": [ { "op": "create", "data": { "title": "A" } },
+#                       { "op": "delete", "id": "p2" } ] }
 ```
 
 The schema is rebuilt only when collection metadata changes (cache key

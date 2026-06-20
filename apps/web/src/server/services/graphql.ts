@@ -23,9 +23,11 @@ import {
   type FieldDef,
   type FieldType,
 } from "@backlex/db";
-import { type AuthSubject, type Condition, normalizeCondition } from "@backlex/core";
+import { AppError, type AuthSubject, type Condition, normalizeCondition } from "@backlex/core";
 import { resolvePermission, type PermResolveCache } from "./permissions";
 import { publishEvent } from "./events";
+import { loadCollection } from "./items/collection-loader";
+import { runBatch, type BatchOp } from "./items/batch";
 import type { Ctx } from "../context";
 
 interface CollectionRow {
@@ -611,6 +613,71 @@ const deleteResolver = async (
   return true;
 };
 
+/** Shared result type for `batch<Collection>` mutations. `results` entries are
+ *  JSON `{ index, op, ok, id?, data?, error? }` — heterogeneous, so a scalar. */
+const BatchResultType = new GraphQLObjectType({
+  name: "BatchResult",
+  fields: {
+    atomic: { type: new GraphQLNonNull(GraphQLBoolean) },
+    total: { type: new GraphQLNonNull(GraphQLInt) },
+    succeeded: { type: new GraphQLNonNull(GraphQLInt) },
+    failed: { type: new GraphQLNonNull(GraphQLInt) },
+    results: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(JSONScalar))) },
+  },
+});
+
+const normalizeBatchOps = (raw: unknown): BatchOp[] => {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    throw new GraphQLError("operations must be a non-empty array", {
+      extensions: { code: "VALIDATION" },
+    });
+  }
+  return raw.map((o, i) => {
+    const op = (o as { op?: unknown })?.op;
+    if (op !== "create" && op !== "update" && op !== "delete") {
+      throw new GraphQLError(`operation #${i}: op must be create|update|delete`, {
+        extensions: { code: "VALIDATION" },
+      });
+    }
+    const e = o as { id?: unknown; data?: unknown };
+    return {
+      op,
+      id: typeof e.id === "string" ? e.id : undefined,
+      data:
+        e.data && typeof e.data === "object" ? (e.data as Record<string, unknown>) : undefined,
+    };
+  });
+};
+
+const batchResolver = async (
+  gqlCtx: GqlCtx,
+  collection: CollectionRow,
+  args: { operations: unknown; atomic?: boolean },
+) => {
+  const { ctx, auth } = gqlCtx;
+  const ops = normalizeBatchOps(args.operations);
+  // The GraphQL CollectionRow is a subset; reload the full row the shared
+  // batch orchestrator needs (cached, so cheap).
+  const full = await loadCollection(ctx, auth.tenantId, collection.slug);
+  try {
+    return await runBatch({
+      ctx,
+      auth,
+      collection: full,
+      operations: ops,
+      atomic: args.atomic === true,
+      meta: {},
+      durationMs: () => 0,
+      locale: null,
+    });
+  } catch (e) {
+    if (e instanceof AppError) {
+      throw new GraphQLError(e.message, { extensions: { code: e.code } });
+    }
+    throw e;
+  }
+};
+
 const singularize = (plural: string): string =>
   plural.endsWith("s") ? plural.slice(0, -1) : `${plural}One`;
 
@@ -698,6 +765,19 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
       args: { id: { type: new GraphQLNonNull(GraphQLID) } },
       resolve: async (_src, rawArgs, gqlCtx) =>
         deleteResolver(gqlCtx, c, rawArgs as { id: string }),
+    };
+
+    // Bulk/transactional writes — `operations` is a JSON array of
+    // `{ op: "create"|"update"|"delete", id?, data? }`; `atomic` runs them all-
+    // or-nothing (Postgres / self-host SQLite only). Mirrors REST `…/batch`.
+    mutationFields[`batch${Pascal}`] = {
+      type: new GraphQLNonNull(BatchResultType),
+      args: {
+        operations: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(JSONScalar))) },
+        atomic: { type: GraphQLBoolean },
+      },
+      resolve: async (_src, rawArgs, gqlCtx) =>
+        batchResolver(gqlCtx, c, rawArgs as { operations: unknown; atomic?: boolean }),
     };
   }
 

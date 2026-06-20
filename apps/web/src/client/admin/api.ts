@@ -557,6 +557,37 @@ export const deviceTokensApi = {
     api<{ ok: true }>(`/api/device-tokens/${id}`, { method: "DELETE" }),
 };
 
+export interface ApiSmsConfig {
+  tenantId: string;
+  /** inherit | console | twilio | sns */
+  provider: string;
+  /** Non-secret provider params (twilio: accountSid/from/messagingServiceSid;
+   *  sns: region/accessKeyId/senderId). */
+  config: Record<string, unknown>;
+  secretsSet: { authToken: boolean; secretAccessKey: boolean };
+  updatedAt: number | string | null;
+  env: { provider: string | null };
+  providerIds: readonly string[];
+}
+
+export const smsConfigApi = {
+  get: () => api<Envelope<ApiSmsConfig>>(`/api/admin/sms-config`),
+  put: (body: {
+    provider: string;
+    config?: Record<string, unknown>;
+    secrets?: Record<string, string | null>;
+  }) =>
+    api<{ ok: true }>(`/api/admin/sms-config`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  sendTest: (to?: string) =>
+    api<{ ok: true; sent: number; failed: number }>(`/api/admin/sms-config/test`, {
+      method: "POST",
+      body: JSON.stringify(to ? { to } : {}),
+    }),
+};
+
 export const i18nApi = {
   list: () => api<Envelope<ApiI18nString[]>>(`/api/admin/i18n`),
   matrix: () =>

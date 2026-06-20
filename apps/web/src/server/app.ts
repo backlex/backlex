@@ -6,7 +6,7 @@ import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
 import { buildContext, type Ctx } from "./context";
 import type { Env } from "./env";
-import { authRateLimitMiddleware } from "./lib/auth-rate-limit";
+import { authLockoutMiddleware, authRateLimitMiddleware } from "./lib/auth-rate-limit";
 import { errorHandler } from "./middleware/error";
 import type { PermissionVar } from "./middleware/permission";
 import { sessionMiddleware } from "./middleware/session";
@@ -42,6 +42,9 @@ import { notificationsRoutes } from "./routes/notifications";
 import { deviceTokensRoutes } from "./routes/device-tokens";
 import { pushConfigRoutes } from "./routes/push-config";
 import { pushTemplatesRoutes } from "./routes/push-templates";
+import { phoneNumbersRoutes } from "./routes/phone-numbers";
+import { smsConfigRoutes } from "./routes/sms-config";
+import { messagingRoutes } from "./routes/messaging";
 import { openapiRoutes } from "./routes/openapi";
 import { panelsRoutes } from "./routes/panels";
 import { realtimeRoutes } from "./routes/realtime";
@@ -336,6 +339,10 @@ export const createApp = (env: Env) => {
   // pass through untouched (see lib/auth-rate-limit.ts).
   app.use("/api/auth/*", authRateLimitMiddleware);
   app.use("/api/t/*", authRateLimitMiddleware);
+  // Per-account failed-login lockout, layered after the per-IP limiter on the
+  // same auth surfaces. Only password sign-in is gated (see auth-lockout.ts).
+  app.use("/api/auth/*", authLockoutMiddleware);
+  app.use("/api/t/*", authLockoutMiddleware);
 
   // Public auth-surface discovery — must be registered before the better-auth
   // catch-all (`/api/auth/*`) so it isn't shadowed by it.
@@ -355,6 +362,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/email-config", emailConfigRoutes);
   app.route("/api/admin/push-templates", pushTemplatesRoutes);
   app.route("/api/admin/push-config", pushConfigRoutes);
+  app.route("/api/admin/sms-config", smsConfigRoutes);
   app.route("/api/workspace-config", workspaceConfigRoutes);
   app.route("/api/admin/auth", authAdminRoutes);
   app.route("/api/admin/saml", samlAdminRoutes);
@@ -392,6 +400,8 @@ export const createApp = (env: Env) => {
   app.route("/api/shared", sharedPublicRoutes);
   app.route("/api/notifications", notificationsRoutes);
   app.route("/api/device-tokens", deviceTokensRoutes);
+  app.route("/api/phone-numbers", phoneNumbersRoutes);
+  app.route("/api/messaging", messagingRoutes);
   app.route("/api/flows", flowsRoutes);
   app.route("/api/roles", rolesRoutes);
   app.route("/api/permissions", permissionsRoutes);

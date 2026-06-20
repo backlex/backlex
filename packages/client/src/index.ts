@@ -121,6 +121,7 @@ const buildSearch = (q: ListQuery | undefined): string => {
   if (q.meta) params.set("meta", q.meta);
   if (q.locale) params.set("locale", q.locale);
   if (q.q) params.set("q", q.q);
+  if (q.status) params.set("status", q.status);
   const s = params.toString();
   return s ? `?${s}` : "";
 };
@@ -258,12 +259,19 @@ export const createClient = (opts: ClientOptions) => {
           operations,
           atomic: opts?.atomic,
         }),
-      /** Flip a versioned item to published (`_status`). */
+      /** Flip a versioned item to published (`_status`) now. */
       publish: (id: string): Promise<ItemResponse<T>> =>
         request<ItemResponse<T>>("POST", `/api/items/${slug}/${id}/publish`),
-      /** Flip a versioned item back to draft. */
+      /** Flip a versioned item back to draft (clears any pending schedule). */
       unpublish: (id: string): Promise<ItemResponse<T>> =>
         request<ItemResponse<T>>("POST", `/api/items/${slug}/${id}/publish?unpublish=1`),
+      /** Schedule a versioned item to auto-publish at `at` (the cron tick applies
+       *  it when due). Pass `null` to cancel a pending schedule. Requires the
+       *  `publish` permission. */
+      schedulePublish: (id: string, at: Date | string | null): Promise<ItemResponse<T>> =>
+        request<ItemResponse<T>>("POST", `/api/items/${slug}/${id}/publish`, {
+          publishAt: at == null ? null : at instanceof Date ? at.toISOString() : at,
+        }),
     };
   };
 

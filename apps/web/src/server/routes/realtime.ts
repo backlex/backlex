@@ -1,11 +1,13 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 import { streamSSE } from "hono/streaming";
 import type { SSEStreamingApi } from "hono/streaming";
-import { AppError, SYSTEM_ROLES } from "@backlex/core";
+import { AppError, SYSTEM_ROLES, type Condition } from "@backlex/core";
 import type { AppBindings } from "../app";
+import type { Ctx } from "../context";
 import type { Env } from "../env";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import { resolvePermission } from "../services/permissions";
+import { loadCollection } from "../services/items/collection-loader";
 import {
   currentSeq,
   joinPresence,
@@ -66,8 +68,8 @@ const clientIp = (c: { req: { header: (n: string) => string | undefined } }): st
   "local";
 
 const gateForChannel = async (
-  ctx: Parameters<typeof resolvePermission>[0] & { dialect: "pg" | "sqlite" },
-  auth: { userId: string | null; email: string | null; roles: string[] },
+  ctx: Ctx,
+  auth: { userId: string | null; email: string | null; roles: string[]; tenantId?: string | null },
   channel: string,
   isPublish: boolean,
 ): Promise<Gate> => {
@@ -88,10 +90,34 @@ const gateForChannel = async (
           : "Sign in required",
       );
     }
+    let conditions: Condition[] | null = perm.isAdmin ? null : perm.conditions;
+    // Versioned collections: a subscriber without publish/update sees only
+    // published items, so AND a `_status='published'` clause into every
+    // permission condition (matched in-memory against each event's payload).
+    if (!perm.isAdmin && auth.tenantId) {
+      try {
+        const collection = await loadCollection(ctx, auth.tenantId, slug);
+        if (collection.versioned) {
+          const canSeeDrafts =
+            (await resolvePermission(ctx, auth, slug, "publish")).allowed ||
+            (await resolvePermission(ctx, auth, slug, "update")).allowed;
+          if (!canSeeDrafts) {
+            const pub: Condition = { _status: { _eq: "published" } } as Condition;
+            conditions =
+              conditions && conditions.length
+                ? conditions.map((c) => ({ _and: [c, pub] }) as Condition)
+                : [pub];
+          }
+        }
+      } catch {
+        // Collection metadata unavailable — leave conditions as the read perm
+        // resolved them (no extra draft gate).
+      }
+    }
     return {
       meta: {
         authSubject: auth,
-        conditions: perm.isAdmin ? null : perm.conditions,
+        conditions,
         fields: perm.fields ? [...perm.fields] : null,
       },
     };

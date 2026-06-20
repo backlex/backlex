@@ -90,6 +90,7 @@ const PM_ACTIONS = [
   { v: "read", label: "R", title: "Read" },
   { v: "update", label: "U", title: "Update" },
   { v: "delete", label: "D", title: "Delete" },
+  { v: "publish", label: "P", title: "Publish" },
 ];
 
 type CellState = "all" | "none" | "custom";

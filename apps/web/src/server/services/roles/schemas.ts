@@ -29,7 +29,7 @@ export const PermissionInput = z
   .object({
     roleId: z.string().min(1),
     collection: z.string().min(1),
-    action: z.enum(["read", "create", "update", "delete"]),
+    action: z.enum(["read", "create", "update", "delete", "publish"]),
     fields: z.array(z.string()).nullable().optional(),
     condition: z.unknown().nullable().optional(),
   })

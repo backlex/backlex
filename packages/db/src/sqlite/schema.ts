@@ -1011,6 +1011,34 @@ export const appSettings = sqliteTable(
   (t) => [uniqueIndex("app_settings_unique_idx").on(t.tenantId, t.key)],
 );
 
+/**
+ * Feature flags / remote config. A `tenantId IS NULL` row is the global
+ * default; a per-tenant row with the same `key` overrides it. `rules` carries
+ * optional targeting — a permission-DSL `condition` (resolved against the
+ * caller's `$user`/`$tenant`) and/or a `rollout` percentage (0–100, stable per
+ * user+key). Evaluated by `evaluateFlags`; served to client apps at `/api/flags`.
+ */
+export const featureFlags = sqliteTable(
+  "feature_flags",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    key: text("key").notNull(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+    /** Remote-config payload returned when the flag is on (any JSON). */
+    value: text("value", { mode: "json" }).$type<unknown>(),
+    /** Targeting: `{ condition?: Condition, rollout?: number }`. Null = everyone. */
+    rules: text("rules", { mode: "json" }).$type<{ condition?: unknown; rollout?: number } | null>(),
+    description: text("description"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("feature_flags_unique_idx").on(t.tenantId, t.key),
+    index("feature_flags_tenant_idx").on(t.tenantId),
+  ],
+);
+
 export const savedPanels = sqliteTable(
   "saved_panels",
   {

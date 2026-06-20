@@ -56,6 +56,7 @@ import m49 from "../../drizzle/sqlite/20260620120000_push_messaging/migration.sq
 import m50 from "../../drizzle/sqlite/20260620130000_sms_messaging/migration.sql" with { type: "text" };
 import m51 from "../../drizzle/sqlite/20260620150000_job_queue/migration.sql" with { type: "text" };
 import m52 from "../../drizzle/sqlite/20260620160000_uploads/migration.sql" with { type: "text" };
+import m53 from "../../drizzle/sqlite/20260620170000_feature_flags/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -116,4 +117,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260620130000_sms_messaging", sql: m50 },
   { name: "20260620150000_job_queue", sql: m51 },
   { name: "20260620160000_uploads", sql: m52 },
+  { name: "20260620170000_feature_flags", sql: m53 },
 ];

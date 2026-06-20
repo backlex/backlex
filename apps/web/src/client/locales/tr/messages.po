@@ -639,6 +639,10 @@ msgstr "90 gün"
 msgid "A dropdown needs at least one choice."
 msgstr "Açılır liste en az bir seçenek içermelidir."
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "A flag is on for a caller when enabled AND its targeting (condition + rollout) matches."
+msgstr "Bir bayrak; etkinse VE hedeflemesi (koşul + dağıtım) eşleşiyorsa çağıran için açıktır."
+
 #: src/client/admin/pages/functions.tsx
 msgid "A function with that name already exists."
 msgstr "Bu isimde bir fonksiyon zaten mevcut."
@@ -725,6 +729,7 @@ msgid "Action"
 msgstr "İşlem"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 msgid "Actions"
 msgstr "İşlemler"
@@ -1582,6 +1587,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/items.tsx
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/jobs.tsx
@@ -1951,6 +1957,14 @@ msgstr "bileşik — desteklenmiyor"
 msgid "Composite (multi-column) FKs cannot be adopted as a backlex relation"
 msgstr "Bileşik (çok sütunlu) FK'lar backlex ilişkisi olarak benimsenemez"
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Condition (permission DSL JSON, optional)"
+msgstr "Koşul (izin DSL JSON, opsiyonel)"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Condition must be valid JSON."
+msgstr "Koşul geçerli JSON olmalı."
+
 #: src/client/admin/permissions-matrix.tsx
 msgid "conditional access"
 msgstr "koşullu erişim"
@@ -2229,6 +2243,10 @@ msgstr "Oluştur"
 msgid "Create {0}"
 msgstr "{0} oluştur"
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Create a flag to gate a feature or ship remote config to your apps."
+msgstr "Bir özelliği kapılamak ya da uygulamalarınıza uzaktan yapılandırma göndermek için bayrak oluşturun."
+
 #: src/client/pages/api-keys.tsx
 msgid "Create a key to authenticate programmatic access (CI, scripts, third-party apps)."
 msgstr "Programatik erişimi (CI, betikler, üçüncü taraf uygulamalar) doğrulamak için bir anahtar oluşturun."
@@ -2506,6 +2524,7 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 #: src/client/admin/app.tsx
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/items.tsx
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/users.tsx
@@ -2619,6 +2638,7 @@ msgstr "azalan"
 msgid "Descending"
 msgstr "Azalan"
 
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/parity/insights.tsx
 #: src/client/admin/role-editor.tsx
@@ -2886,6 +2906,7 @@ msgstr "düzenle"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/items.tsx
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Edit"
 msgstr "Düzenle"
@@ -2918,6 +2939,10 @@ msgstr "Alanı düzenle"
 #: src/client/admin/storage.tsx
 msgid "Edit file"
 msgstr "Dosyayı düzenle"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Edit flag"
+msgstr "Bayrağı düzenle"
 
 #: src/client/admin/pages/flows.tsx
 msgid "Edit flow"
@@ -3036,6 +3061,7 @@ msgstr "Yine de etkinleştir"
 msgid "enabled"
 msgstr "etkin"
 
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/parity/auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Enabled"
@@ -3365,6 +3391,11 @@ msgstr "Daha hızlı, kimlik avına karşı dirençli giriş. Hesap oluşturuldu
 msgid "Favicon"
 msgstr "Favicon"
 
+#: src/client/admin/pages/feature-flags.tsx
+#: src/client/admin/ui.tsx
+msgid "Feature flags"
+msgstr "Özellik bayrakları"
+
 #: src/client/admin/item-views.tsx
 msgid "February"
 msgstr "Şubat"
@@ -3513,6 +3544,14 @@ msgstr "fk"
 #: src/client/admin/adopt-wizard.tsx
 msgid "FK conflict on {0}"
 msgstr "{0} üzerinde FK çakışması"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Flag deleted."
+msgstr "Bayrak silindi."
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Flag saved."
+msgstr "Bayrak kaydedildi."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "flags + aliases — no DDL is run on the table"
@@ -3721,6 +3760,14 @@ msgstr "Oluşturuluyor…"
 #: src/client/admin/pages/settings.tsx
 msgid "GitHub"
 msgstr "GitHub"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Global"
+msgstr "Global"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Global default"
+msgstr "Global varsayılan"
 
 #: src/client/admin/pages/functions.tsx
 msgid "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. Sync-only in v1; runs in QuickJS-WASM sandbox."
@@ -4225,6 +4272,7 @@ msgstr "Kanban"
 msgid "key"
 msgstr "anahtar"
 
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/parity/translations.tsx
@@ -4239,6 +4287,10 @@ msgstr "\"{key}\" anahtarı {base} değeriyle eklendi."
 #: src/client/admin/parity/translations.tsx
 msgid "Key \"{key}\" added."
 msgstr "\"{key}\" anahtarı eklendi."
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Key is required."
+msgstr "Anahtar gerekli."
 
 #: src/client/admin/parity/translations.tsx
 msgid "Key must be 120 characters or fewer."
@@ -4554,6 +4606,7 @@ msgstr "Çalıştırmalar yükleniyor…"
 msgid "Loading tool catalog…"
 msgstr "Araç kataloğu yükleniyor…"
 
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Loading…"
@@ -4987,6 +5040,10 @@ msgstr "Yeni yedek kodlar oluşturuldu. Eski kodlar artık çalışmıyor."
 msgid "New collection"
 msgstr "Yeni koleksiyon"
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "New flag"
+msgstr "Yeni bayrak"
+
 #: src/client/admin/pages/flows.tsx
 #: src/client/admin/pages/overview.tsx
 msgid "New flow"
@@ -5202,6 +5259,10 @@ msgstr "Hata kaydedilmedi."
 #: src/client/pages/graphql.tsx
 msgid "No errors."
 msgstr "Hata yok."
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "No feature flags"
+msgstr "Özellik bayrağı yok"
 
 #. placeholder {0}: titleFor(prev)
 #: src/client/admin/parity/revisions.tsx
@@ -5591,6 +5652,10 @@ msgstr "Ekim"
 msgid "off"
 msgstr "kapalı"
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Off"
+msgstr "Kapalı"
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Off keeps the provider configured but hidden from sign-in."
 msgstr "Kapalı, sağlayıcıyı yapılandırılmış tutar ancak girişte gizler."
@@ -5606,6 +5671,7 @@ msgid "on"
 msgstr "açık"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/pages/feature-flags.tsx
 msgid "On"
 msgstr "Açık"
 
@@ -6594,6 +6660,7 @@ msgstr "/api/openapi.json yeniden çek"
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/pages/realtime.tsx
@@ -7074,6 +7141,18 @@ msgstr "Roller ve izinler"
 msgid "Roles come from <0>Roles & permissions</0>. The user also implicitly gets <1>authenticated</1>."
 msgstr "Roller <0>Roller ve izinler</0> bölümünden gelir. Kullanıcı ayrıca örtük olarak <1>authenticated</1> rolünü alır."
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Rollout"
+msgstr "Dağıtım"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Rollout % (0–100, optional)"
+msgstr "Dağıtım % (0–100, opsiyonel)"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Rollout must be 0–100."
+msgstr "Dağıtım 0–100 olmalı."
+
 #: src/client/admin/pages/webhooks.tsx
 msgid "Rotate"
 msgstr "Döndür"
@@ -7257,6 +7336,10 @@ msgstr "Değişiklikleri kaydet"
 msgid "Save field"
 msgstr "Alanı kaydet"
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Save flag"
+msgstr "Bayrağı kaydet"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Save flow"
 msgstr "Akışı kaydet"
@@ -7304,6 +7387,7 @@ msgid "Saving MCP guards"
 msgstr "MCP korumaları kaydediliyor"
 
 #: src/client/admin/account-page.tsx
+#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/parity/insights.tsx
@@ -7356,6 +7440,10 @@ msgstr "Şema grafiği"
 #: src/client/pages/openapi-export.tsx
 msgid "Schemas"
 msgstr "Şemalar"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Scope"
+msgstr "Kapsam"
 
 #: src/client/pages/api-keys.tsx
 msgid "Scope to role"
@@ -8060,6 +8148,10 @@ msgstr "Bir şablonla başla"
 msgid "Starting…"
 msgstr "Başlatılıyor…"
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "State"
+msgstr "Durum"
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Stateless Streamable HTTP. No <0>GET /mcp</0> (resumable SSE) yet."
 msgstr "Durumsuz Streamable HTTP. Henüz <0>GET /mcp</0> (sürdürülebilir SSE) yok."
@@ -8474,6 +8566,10 @@ msgstr "Bu, öğeyi {1} tarihli v{0} anlık görüntüsüne yeniden yazar. Mevcu
 msgid "This weakens two-factor authentication"
 msgstr "Bu, iki adımlı doğrulamayı zayıflatır"
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "This workspace"
+msgstr "Bu çalışma alanı"
+
 #: src/client/admin/parity/app-users.tsx
 msgid "This workspace has no custom roles yet — create one under <0>Roles & permissions</0>."
 msgstr "Bu çalışma alanında henüz özel rol yok — <0>Roller ve izinler</0> altında bir tane oluşturun."
@@ -8540,6 +8636,10 @@ msgstr "çalıştırmak için"
 #: src/client/admin/storage.tsx
 msgid "Toggle"
 msgstr "Aç/kapat"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Toggle features and ship remote config. Target a rollout % or a permission-DSL condition; client apps read the evaluated map at /api/flags."
+msgstr "Özellikleri aç/kapat ve uzaktan yapılandırma gönder. Dağıtım % veya izin DSL koşulu ile hedefle; istemci uygulamalar değerlendirilen haritayı /api/flags üzerinden okur."
 
 #: src/client/admin/ui.tsx
 msgid "Toggle sidebar"
@@ -9010,6 +9110,14 @@ msgstr "değer · etiket · renk"
 msgid "value · label · color (CSS)"
 msgstr "değer · etiket · renk (CSS)"
 
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Value (JSON, optional)"
+msgstr "Değer (JSON, opsiyonel)"
+
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Value must be valid JSON."
+msgstr "Değer geçerli JSON olmalı."
+
 #: src/client/admin/condition-editor.tsx
 msgid "value or $user.id"
 msgstr "değer veya $user.id"
@@ -9259,9 +9367,9 @@ msgstr "worker thread + RPC"
 msgid "Working…"
 msgstr "İşleniyor…"
 
-#: src/client/admin/ui.tsx
-#~ msgid "Workspace"
-#~ msgstr "Çalışma alanı"
+#: src/client/admin/pages/feature-flags.tsx
+msgid "Workspace"
+msgstr "Çalışma alanı"
 
 #. placeholder {0}: res.data.slug
 #: src/client/admin/ui.tsx

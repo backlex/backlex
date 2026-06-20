@@ -15,6 +15,7 @@ import {
   type Upload,
   type UploadStatus,
   type ResumableUploadResult,
+  type FlagState,
   BacklexError,
 } from "./types";
 
@@ -35,6 +36,7 @@ export type {
   Upload,
   UploadStatus,
   ResumableUploadResult,
+  FlagState,
 } from "./types";
 export { BacklexError } from "./types";
 export { QueryBuilder } from "./query";
@@ -641,6 +643,31 @@ export const createClient = (opts: ClientOptions) => {
       request<{ ok: boolean }>("DELETE", `/api/jobs/${encodeURIComponent(id)}`),
   };
 
+  // Feature flags / remote config, evaluated for the current caller (targeting
+  // rules + rollout already applied server-side).
+  let flagsCache: Record<string, FlagState> | null = null;
+  const fetchFlags = async (): Promise<Record<string, FlagState>> => {
+    const res = await request<{ data: Record<string, FlagState> }>("GET", "/api/flags");
+    flagsCache = res.data ?? {};
+    return flagsCache;
+  };
+  const flags = {
+    /** Fetch + cache the evaluated flag map. */
+    all: (): Promise<Record<string, FlagState>> => fetchFlags(),
+    /** Resolved value for a flag (remote config payload), or `undefined`. Uses
+     *  the cache if `all()` was already called this session; pass
+     *  `{ refresh: true }` to force a re-fetch. */
+    get: async (key: string, opts?: { refresh?: boolean }): Promise<unknown> => {
+      const map = opts?.refresh || !flagsCache ? await fetchFlags() : flagsCache;
+      return map[key]?.value;
+    },
+    /** Whether a flag is on for the caller. */
+    isEnabled: async (key: string, opts?: { refresh?: boolean }): Promise<boolean> => {
+      const map = opts?.refresh || !flagsCache ? await fetchFlags() : flagsCache;
+      return Boolean(map[key]?.enabled);
+    },
+  };
+
   return {
     from: collection,
     subscribe,
@@ -648,6 +675,7 @@ export const createClient = (opts: ClientOptions) => {
     storage,
     messaging,
     jobs,
+    flags,
     /** Raw escape hatch — issues a request with auth headers applied. */
     request,
   };

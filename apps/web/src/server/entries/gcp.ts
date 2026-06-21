@@ -99,6 +99,11 @@ app.get("/api/_cron/tick", async (c) => {
   return c.json({ ok: true, ts: Date.now() });
 });
 
-// Register the HTTP function. Deploy with `--entry-point=api`. The Functions
-// Framework drives the Node `(req, res)` listener Hono produces from `app.fetch`.
-http("api", getRequestListener(app.fetch));
+// The Node `(req, res)` listener Hono produces from `app.fetch` — exactly what
+// the Functions Framework invokes per request. Exported so a plain Node HTTP
+// server (the runtime-smoke host) can mount the identical listener without the
+// framework CLI.
+export const nodeListener = getRequestListener(app.fetch);
+
+// Register the HTTP function. Deploy with `--entry-point=api`.
+http("api", nodeListener);

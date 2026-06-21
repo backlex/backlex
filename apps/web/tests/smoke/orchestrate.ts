@@ -9,8 +9,16 @@
  *   SMOKE_RUNTIME=netlify   → spawns `node serve-bundle.mjs` against
  *                             apps/web/netlify/functions/api.mjs with
  *                             DATABASE_URL
+ *   SMOKE_RUNTIME=cloudflare→ `wrangler dev --local` against wrangler.ci.toml
+ *   SMOKE_RUNTIME=lambda    → spawns `node serve-lambda.mjs` (APIGW v2 event
+ *                             handler) against apps/web/dist/lambda/index.mjs
+ *   SMOKE_RUNTIME=gcp       → spawns `node serve-gcp.mjs` mounting the bundle's
+ *                             exported `nodeListener` (the listener GCF drives)
+ *                             against apps/web/dist/gcp/index.mjs
+ *   SMOKE_RUNTIME=azure     → spawns `node serve-azure.mjs` (registration
+ *                             capture) against apps/web/dist/azure/index.mjs
  *
- *   PORT (default 8787), DATABASE_URL (required for vercel/netlify;
+ *   PORT (default 8787), DATABASE_URL (required for every runtime except bun;
  *     ignored for bun), SMOKE_KEEP_OPEN=1 (don't kill the server after
  *     the contract — useful for manual poking).
  *
@@ -84,58 +92,62 @@ const sqliteProfile: RuntimeProfile = {
   checkCron: false,
 };
 
-const bundleProfile = (bundlePath: string): RuntimeProfile => ({
-  setupDb: async () => {
-    const url = process.env.DATABASE_URL;
-    if (!url) {
-      throw new Error(
-        "DATABASE_URL is required for bundle smoke (vercel/netlify) — point at a Postgres with pgvector",
-      );
-    }
-    const r = await runOnce("bun", ["run", "db:migrate:pg"], REPO_ROOT, {
-      DATABASE_URL: url,
-    });
-    if (r.code !== 0) {
-      throw new Error(`pg migration failed (exit ${r.code}):\n${r.output}`);
-    }
-    return { env: { DATABASE_URL: url }, cleanup: () => {} };
-  },
-  spawnServer: (env) =>
-    spawn(
-      "node",
-      [resolve(REPO_ROOT, "apps/web/tests/smoke/serve-bundle.mjs")],
-      {
-        cwd: REPO_ROOT,
-        env: {
-          ...process.env,
-          ...env,
-          PORT: String(PORT),
-          APP_URL,
-          BUNDLE_PATH: resolve(REPO_ROOT, bundlePath),
-          // Provide CRON_SECRET so vercel/netlify entries register
-          // /api/_cron/tick with auth (the contract verifies the
-          // gate rejects unauthenticated calls).
-          CRON_SECRET: process.env.CRON_SECRET ?? "smoke-cron-secret",
-          AUTH_SECRET:
-            process.env.AUTH_SECRET ?? "smoke-secret-not-for-prod-stable",
-          // Vercel/Netlify have no persistent fs, so the storage adapter
-          // requires an S3 config — without it, assembleContext throws at
-          // boot and even /health 503s (netlify self-identifies via the
-          // __BACKLEX_NETLIFY module marker; vercel only via process.env).
-          // Provide a dummy S3 config so the (lazy) s3 adapter is selected
-          // and boot succeeds; the smoke contract never touches storage, so
-          // the fake credentials are never exercised. Mirrors how these
-          // runtimes are actually deployed (S3 required — see deployment.md).
-          S3_BUCKET: process.env.S3_BUCKET ?? "smoke-bucket",
-          S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID ?? "smoke-key",
-          S3_SECRET_ACCESS_KEY:
-            process.env.S3_SECRET_ACCESS_KEY ?? "smoke-secret",
-        },
-        stdio: "inherit",
-      },
-    ),
-  checkCron: true,
+// Shared Postgres setup for every serverless bundle profile (vercel, netlify,
+// lambda, gcp, azure) — they all run against the same Postgres + pgvector.
+const pgSetupDb: RuntimeProfile["setupDb"] = async () => {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error(
+      "DATABASE_URL is required for bundle smoke (vercel/netlify/lambda/gcp/azure) — point at a Postgres with pgvector",
+    );
+  }
+  const r = await runOnce("bun", ["run", "db:migrate:pg"], REPO_ROOT, {
+    DATABASE_URL: url,
+  });
+  if (r.code !== 0) {
+    throw new Error(`pg migration failed (exit ${r.code}):\n${r.output}`);
+  }
+  return { env: { DATABASE_URL: url }, cleanup: () => {} };
+};
+
+// Env overrides shared by every bundle host. CRON_SECRET so the entries that
+// register /api/_cron/tick gate it (the contract verifies the gate rejects
+// unauthenticated calls). The serverless runtimes have no persistent fs, so the
+// storage adapter requires an S3 config — without it assembleContext throws at
+// boot and even /health 503s. Dummy S3 creds let the (lazy) s3 adapter be
+// selected so boot succeeds; the contract never touches storage, so they're
+// never exercised. Mirrors how these runtimes deploy (S3 required — see
+// deployment.md).
+const sharedBundleEnv = (bundlePath: string): Record<string, string> => ({
+  PORT: String(PORT),
+  APP_URL,
+  BUNDLE_PATH: resolve(REPO_ROOT, bundlePath),
+  CRON_SECRET: process.env.CRON_SECRET ?? "smoke-cron-secret",
+  AUTH_SECRET: process.env.AUTH_SECRET ?? "smoke-secret-not-for-prod-stable",
+  S3_BUCKET: process.env.S3_BUCKET ?? "smoke-bucket",
+  S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID ?? "smoke-key",
+  S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY ?? "smoke-secret",
 });
+
+// Generic Node http host: runs one of the `serve-*.mjs` hosts on Node against a
+// pre-built bundle. `serve-bundle.mjs` (vercel/netlify, fetch export),
+// `serve-lambda.mjs` (APIGW v2 event handler), `serve-azure.mjs` (registration
+// capture). All exercise the real per-runtime adapter, not `app.fetch`.
+const nodeHostProfile = (
+  serveScript: string,
+  bundlePath: string,
+  checkCron: boolean,
+): RuntimeProfile => ({
+  setupDb: pgSetupDb,
+  spawnServer: (env) =>
+    spawn("node", [resolve(REPO_ROOT, `apps/web/tests/smoke/${serveScript}`)], {
+      cwd: REPO_ROOT,
+      env: { ...process.env, ...env, ...sharedBundleEnv(bundlePath) },
+      stdio: "inherit",
+    }),
+  checkCron,
+});
+
 
 // Cloudflare profile — `wrangler dev --local` against wrangler.ci.toml
 // (a sibling of wrangler.toml with the [ai] binding removed; that one
@@ -208,9 +220,29 @@ const cloudflareProfile: RuntimeProfile = {
 
 const profiles: Record<string, RuntimeProfile> = {
   bun: sqliteProfile,
-  vercel: bundleProfile(".vercel/output/functions/api/index.func/index.mjs"),
-  netlify: bundleProfile("apps/web/netlify/functions/api.mjs"),
+  vercel: nodeHostProfile(
+    "serve-bundle.mjs",
+    ".vercel/output/functions/api/index.func/index.mjs",
+    true,
+  ),
+  netlify: nodeHostProfile(
+    "serve-bundle.mjs",
+    "apps/web/netlify/functions/api.mjs",
+    true,
+  ),
   cloudflare: cloudflareProfile,
+  // AWS Lambda — APIGW v2 event handler; registers /api/_cron/tick.
+  lambda: nodeHostProfile(
+    "serve-lambda.mjs",
+    "apps/web/dist/lambda/index.mjs",
+    true,
+  ),
+  // Google Cloud Functions — mounts the exported `nodeListener` (the exact
+  // listener GCF's Functions Framework drives); registers /api/_cron/tick.
+  gcp: nodeHostProfile("serve-gcp.mjs", "apps/web/dist/gcp/index.mjs", true),
+  // Azure Functions — registration-capture host; cron is a Timer trigger, not
+  // an HTTP route, so the /api/_cron/tick gate check stays off.
+  azure: nodeHostProfile("serve-azure.mjs", "apps/web/dist/azure/index.mjs", false),
 };
 
 const profile = profiles[RUNTIME];

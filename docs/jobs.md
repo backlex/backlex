@@ -44,6 +44,17 @@ On Postgres the claim is a single `UPDATE … FOR UPDATE SKIP LOCKED … RETURNI
 (race-free across isolates). On SQLite/D1/libSQL the serial tick claims with
 guarded per-row updates.
 
+### Dead-letter alerting
+
+A dead-lettered job is recorded in the `activity` feed **and** published on the
+`system` event channel as `system:job.dead_letter` (payload: `jobId`, `type`,
+`queue`, `tenantId`, `attempts`, `error`). Subscribe an outbound webhook to
+`system:job.dead_letter` (or `system:*`) to forward it to Slack / PagerDuty /
+your on-call, or trigger a flow / event function on it — so an exhausted job
+surfaces proactively instead of sitting silently in the queue. `webhook.deliver`
+jobs are excluded from this event (their failures already show in the delivery
+log + auto-disable, and re-publishing could loop while the endpoint is down).
+
 ## Handlers
 
 - **`function`** — runs a named [function](/sandbox/) in the sandbox.

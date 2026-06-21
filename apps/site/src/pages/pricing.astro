@@ -68,7 +68,7 @@ import Base from "../layouts/Base.astro";
             <li class="flex gap-2"><span class="text-primary">✓</span>Custom domain</li>
             <li class="flex gap-2"><span class="text-primary">✓</span><span>Daily backup, 7-day PITR</span></li>
             <li class="flex gap-2"><span class="text-primary">✓</span>Preview branches</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>Slack Connect destek</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span>Slack Connect support</li>
           </ul>
         </div>
       </div>
@@ -114,13 +114,13 @@ import Base from "../layouts/Base.astro";
             <li class="flex gap-2"><span class="text-primary">✓</span>1-year audit log</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>99.95% SLA</li>
             <li class="flex gap-2"><span class="text-primary">✓</span>SCIM provisioning</li>
-            <li class="flex gap-2"><span class="text-primary">✓</span>Priority phone support</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span>Priority support</li>
           </ul>
         </div>
       </div>
     </div>
 
-    <p class="mt-6 text-[12.5px] text-muted-foreground text-center">All prices exclude VAT. TRY invoicing available for Turkey-based customers. 20% off annual plans. D1 is capped at 10&nbsp;GB per database.</p>
+    <p class="mt-6 text-[12.5px] text-muted-foreground text-center">All prices exclude VAT. 20% off annual plans. D1 is capped at 10&nbsp;GB per database.</p>
   </div>
 </section>
 
@@ -180,8 +180,8 @@ import Base from "../layouts/Base.astro";
 
           <!-- Support -->
           <tr class="bg-muted/50"><td colspan="5" class="px-5 py-2 text-[11px] uppercase tracking-wider font-mono text-muted-foreground">support · SLA</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Support channel</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">community</td><td class="px-5 py-2.5 border-b border-border font-mono">slack</td><td class="px-5 py-2.5 border-b border-border font-mono">slack · email</td><td class="px-5 py-2.5 border-b border-border font-mono">slack · email · phone</td></tr>
-          <tr><td class="px-5 py-2.5 border-b border-border font-medium">First response SLA</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border font-mono">48sa</td><td class="px-5 py-2.5 border-b border-border font-mono">8sa</td><td class="px-5 py-2.5 border-b border-border font-mono">4sa</td></tr>
+          <tr><td class="px-5 py-2.5 border-b border-border font-medium">Support channel</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">community</td><td class="px-5 py-2.5 border-b border-border font-mono">slack</td><td class="px-5 py-2.5 border-b border-border font-mono">slack · email</td><td class="px-5 py-2.5 border-b border-border font-mono">slack · email · priority</td></tr>
+          <tr><td class="px-5 py-2.5 border-b border-border font-medium">First response SLA</td><td class="px-5 py-2.5 border-b border-border text-muted-foreground">—</td><td class="px-5 py-2.5 border-b border-border font-mono">48h</td><td class="px-5 py-2.5 border-b border-border font-mono">8h</td><td class="px-5 py-2.5 border-b border-border font-mono">4h</td></tr>
           <tr><td class="px-5 py-2.5 font-medium">Uptime SLA</td><td class="px-5 py-2.5 text-muted-foreground">none</td><td class="px-5 py-2.5 text-muted-foreground">none</td><td class="px-5 py-2.5 font-mono">99.9%</td><td class="px-5 py-2.5 font-mono">99.95%</td></tr>
         </tbody>
       </table>
@@ -249,7 +249,7 @@ import Base from "../layouts/Base.astro";
   <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
     <div class="grid grid-cols-[1fr_2fr] max-[820px]:grid-cols-1 gap-12">
       <div>
-        <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>SSS · FAQ</span>
+        <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>FAQ</span>
         <h2 class="text-[clamp(24px,3vw,32px)] font-semibold -tracking-[0.022em] leading-[1.15] mt-4">Frequently asked.</h2>
         <p class="text-[14px] text-muted-foreground mt-3 max-w-[40ch]">Didn't find your answer?</p>
         <a href="mailto:hi@backlex.com" class="inline-flex items-center gap-2 h-9 px-4 mt-3 rounded-3xl border border-border bg-background hover:bg-muted text-foreground text-[13px] font-medium no-underline transition-colors">hi@backlex.com</a>
@@ -285,10 +285,10 @@ import Base from "../layouts/Base.astro";
         </details>
         <details class="faq border border-border rounded-2xl bg-card overflow-hidden">
           <summary class="px-5 py-4 flex items-center gap-3">
-            <span class="text-[14.5px] font-medium">Can I require data to stay in Turkey for KVKK?</span>
+            <span class="text-[14.5px] font-medium">Can I require data to stay in a specific region?</span>
             <svg class="chev ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </summary>
-          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">From Scale onwards you get region pinning — primary D1 and R2 bucket pinned to IST. CF PoPs cache reads at the edge; writes stay in TR. A DPA is available for data residency.</div>
+          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">From Scale onwards you get region pinning — primary D1 and R2 bucket pinned to the region you choose. CF PoPs cache reads at the edge; writes stay in-region. A DPA is available for data residency.</div>
         </details>
         <details class="faq border border-border rounded-2xl bg-card overflow-hidden">
           <summary class="px-5 py-4 flex items-center gap-3">
@@ -296,13 +296,6 @@ import Base from "../layouts/Base.astro";
             <svg class="chev ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </summary>
           <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">Often, don't. If self-host works and your team enjoys uptime/migrations/backups — stay. Cloud is for solo devs and scale-ups who don't have that role.</div>
-        </details>
-        <details class="faq border border-border rounded-2xl bg-card overflow-hidden">
-          <summary class="px-5 py-4 flex items-center gap-3">
-            <span class="text-[14.5px] font-medium">Can I get a TRY invoice?</span>
-            <svg class="chev ml-auto" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-          </summary>
-          <div class="px-5 pb-4 text-[13px] text-muted-foreground leading-relaxed">Yes. TRY invoicing is available for Turkey-based customers; bank transfer or credit card accepted. E-fatura sent automatically.</div>
         </details>
       </div>
     </div>

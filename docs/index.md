@@ -12,7 +12,8 @@ Five minutes from clone to first item.
 - Optional: Postgres 14+ for production. Dev defaults to Bun's built-in SQLite.
 
 > Bun is only required for local development. The same source **runs** on
-> Bun, Node, Deno, Cloudflare Workers, Vercel, and Netlify — see
+> Bun, Node, Deno, Cloudflare Workers, Vercel, Netlify, AWS Lambda, Google
+> Cloud Functions, and Azure Functions — see
 > [Deployment](/docs/deployment/) for the Node and Deno self-host steps.
 
 ## Install + run
@@ -109,8 +110,8 @@ so no extra config is needed:
 After the clone you still set the runtime env vars — backlex needs a
 Postgres URL (`DATABASE_DRIVER=neon-http`), S3-compatible storage, and
 `AUTH_SECRET`. Full per-platform steps + every variable:
-[Deployment](/docs/deployment/) — also covers Bun, Node, Deno, and
-Cloudflare Workers.
+[Deployment](/docs/deployment/) — also covers Bun, Node, Deno, Cloudflare
+Workers, AWS Lambda, Google Cloud Functions, and Azure Functions.
 
 **[Deno Deploy](/docs/deployment/#deno-deploy-managed)** is also supported
 (managed, experimental). There's no one-click button — it ships via the
@@ -128,5 +129,5 @@ releases — migrations apply automatically on redeploy.
 - [Auth planes](/docs/auth-planes/) — admin pool vs workspace end-user pool
 - [Sandbox functions](/docs/sandbox/) — JavaScript code that runs in a sandbox
 - [MCP server](/docs/mcp/) — expose the workspace to Claude Desktop / Cursor / IDE agents
-- [Deployment](/docs/deployment/) — push to Bun, Workers, Vercel, or Netlify
+- [Deployment](/docs/deployment/) — push to Bun, Workers, Vercel, Netlify, AWS Lambda, Google Cloud, or Azure
 - [Testing](/docs/testing/) — three-layer pyramid (bun test / build-targets / runtime-smoke)

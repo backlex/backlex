@@ -9,7 +9,7 @@ import Base from "../layouts/Base.astro";
 // existing SQL tables, and semantic/vector search is via external vector DBs.
 const rows = [
   ["License", "Apache-2.0", "BSD-3-Clause"],
-  ["Runtimes", "Cloudflare Workers, Vercel & Netlify (Node 22), self-host on Bun/Node/Deno, or Deno Deploy", "Self-host via Docker Compose, or Appwrite Cloud"],
+  ["Runtimes", "9 runtimes — Cloudflare Workers, Vercel, Netlify, AWS Lambda, Google Cloud & Azure Functions, Deno Deploy, or self-host on Bun/Node/Deno", "Self-host via Docker Compose, or Appwrite Cloud"],
   ["Edge-native", "Runs inside the edge runtime", "No — Docker / server containers"],
   ["Database", "PostgreSQL and SQLite / Cloudflare D1", "Appwrite-managed store (TablesDB)"],
   ["Data model", "Managed tables (dynamic, additive-only DDL) or adopt existing tables via a metadata row", "Appwrite-managed collections — no adopting existing SQL tables"],
@@ -41,7 +41,7 @@ const rows = [
 ---
 <Base
   title="backlex vs Appwrite — edge-deployable, relational, AI-native backend"
-  description="How backlex compares to Appwrite: an Apache-2.0 backend that deploys to the edge (Cloudflare Workers, Vercel, Netlify, Deno Deploy) or self-hosts on Bun, Node, or Deno, runs on PostgreSQL/SQLite and adopts your existing tables, ships built-in vector search, and exposes a runtime MCP server to AI agents — versus a container-based, all-in-one BaaS on its own managed store."
+  description="How backlex compares to Appwrite: an Apache-2.0 backend that deploys to the edge (Cloudflare Workers, Vercel, Netlify, AWS Lambda, Google Cloud & Azure Functions, Deno Deploy) or self-hosts on Bun, Node, or Deno, runs on PostgreSQL/SQLite and adopts your existing tables, ships built-in vector search, and exposes a runtime MCP server to AI agents — versus a container-based, all-in-one BaaS on its own managed store."
 >
   <section class="relative z-[1] max-w-[920px] mx-auto px-8 max-md:px-5 py-20">
     <div class="flex flex-col gap-3 mb-10">
@@ -70,7 +70,7 @@ const rows = [
         realtime behind broad client SDKs.
         <strong class="text-foreground font-medium">backlex</strong> covers the
         same surface but is built to run at the edge — the same codebase deploys
-        to Cloudflare Workers, Vercel, Netlify, Deno Deploy, or your own server
+        to Cloudflare Workers, Vercel, Netlify, AWS Lambda, Google Cloud & Azure Functions, Deno Deploy, or your own server
         (Bun, Node, or Deno) — sits directly on <strong class="text-foreground font-medium">your
         relational database</strong>, ships built-in semantic/vector search, and
         exposes a first-class <strong class="text-foreground font-medium">runtime

@@ -1,0 +1,12 @@
+# Security headers for the statically-served admin SPA. The Worker's
+# `run_worker_first` is limited to /api/*, /health, /mcp, so the SPA HTML +
+# assets are served by Cloudflare Static Assets and never pass through the Hono
+# secureHeaders()/CSP middleware. This file applies the same protections at the
+# asset layer. (GraphiQL lives at /api/graphql — a worker path — and gets its
+# own relaxed CSP from the middleware, so the strict policy here is safe.)
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=15552000; includeSubDomains

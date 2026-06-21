@@ -6,6 +6,7 @@ import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import { buildContext, type Ctx } from "./context";
 import type { Env } from "./env";
+import { apiRateLimitMiddleware } from "./lib/api-rate-limit";
 import { authLockoutMiddleware, authRateLimitMiddleware } from "./lib/auth-rate-limit";
 import { configureLogLevel, levelForStatus, log } from "./lib/log";
 import { errorHandler } from "./middleware/error";
@@ -428,6 +429,12 @@ export const createApp = (env: Env) => {
       // is NOT exposed — it's an ops-only, secret-gated diagnostic.
       exposeHeaders: [
         "X-Request-Id",
+        // IETF-draft rate-limit headers (global API quota) so SDK/browser
+        // clients can read their remaining budget and back off predictively.
+        "RateLimit-Limit",
+        "RateLimit-Remaining",
+        "RateLimit-Reset",
+        "Retry-After",
         "X-D1-Bookmark",
         "Location",
         "Upload-Offset",
@@ -452,6 +459,13 @@ export const createApp = (env: Env) => {
     if (st && t0 !== undefined) st.premw = performance.now() - t0;
     await next();
   });
+
+  // Global per-identity rate limit on the data API. Runs after session+tenant
+  // (so the limiter key can use the resolved API key / user / tenant) and is
+  // scoped to `/api/*`. No-ops unless enabled (off on self-host, auto-on for
+  // managed cloud) — see lib/api-rate-limit.ts. Skips `/api/auth/*` internally,
+  // which the dedicated auth limiter already covers.
+  app.use("/api/*", apiRateLimitMiddleware);
 
   // `version` is the worker-template version baked in at build time (see
   // vite.config `define`). Lets the cloud control-plane + ops verify which

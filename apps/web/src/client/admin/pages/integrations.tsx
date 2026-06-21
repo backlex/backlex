@@ -44,8 +44,20 @@ type Brand = { name: string; mark: ReactNode; markBg: string };
 const BRANDS: Record<string, Brand> = {
   slack: { name: "Slack", mark: "#", markBg: "oklch(0.55 0.16 320)" },
   discord: { name: "Discord", mark: "D", markBg: "oklch(0.5 0.16 270)" },
+  teams: { name: "Microsoft Teams", mark: "T", markBg: "oklch(0.45 0.15 285)" },
+  telegram: { name: "Telegram", mark: "✈", markBg: "oklch(0.6 0.13 230)" },
   github: { name: "GitHub", mark: <GithubMark />, markBg: "oklch(0.22 0.005 286)" },
   datadog: { name: "Datadog", mark: "DD", markBg: "oklch(0.5 0.13 280)" },
+  sentry: { name: "Sentry", mark: "S", markBg: "oklch(0.4 0.13 350)" },
+  pagerduty: { name: "PagerDuty", mark: "PD", markBg: "oklch(0.58 0.17 150)" },
+  opsgenie: { name: "Opsgenie", mark: "OG", markBg: "oklch(0.6 0.18 45)" },
+  posthog: { name: "PostHog", mark: "PH", markBg: "oklch(0.62 0.16 55)" },
+  segment: { name: "Segment", mark: "Sg", markBg: "oklch(0.55 0.14 165)" },
+  webhook: { name: "Webhook", mark: "↪", markBg: "oklch(0.45 0.02 286)" },
+  linear: { name: "Linear", mark: "L", markBg: "oklch(0.5 0.13 280)" },
+  jira: { name: "Jira", mark: "J", markBg: "oklch(0.55 0.16 250)" },
+  algolia: { name: "Algolia", mark: "A", markBg: "oklch(0.5 0.17 265)" },
+  meilisearch: { name: "Meilisearch", mark: "M", markBg: "oklch(0.55 0.15 350)" },
 };
 const brandFor = (kind: string): Brand => BRANDS[kind] ?? { name: kind, mark: kind.slice(0, 2).toUpperCase(), markBg: "oklch(0.45 0.02 286)" };
 
@@ -79,10 +91,34 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
         return t`Post data events to a Slack channel.`;
       case "discord":
         return t`Post data events to a Discord channel.`;
+      case "teams":
+        return t`Post data events to a Microsoft Teams channel.`;
+      case "telegram":
+        return t`Send data events to a Telegram chat.`;
       case "datadog":
         return t`Forward data events to the Datadog events API.`;
+      case "sentry":
+        return t`Forward data events to a Sentry project.`;
+      case "pagerduty":
+        return t`Trigger PagerDuty alerts on data events.`;
+      case "opsgenie":
+        return t`Create Opsgenie alerts on data events.`;
+      case "posthog":
+        return t`Capture data events as PostHog analytics events.`;
+      case "segment":
+        return t`Track data events through Segment.`;
       case "github":
         return t`Fire a repository_dispatch on data events.`;
+      case "webhook":
+        return t`POST data events to any HTTPS endpoint, optionally HMAC-signed.`;
+      case "linear":
+        return t`Create Linear issues from data events.`;
+      case "jira":
+        return t`Create Jira issues from data events.`;
+      case "algolia":
+        return t`Sync records to an Algolia index on data events.`;
+      case "meilisearch":
+        return t`Sync records to a Meilisearch index on data events.`;
       default:
         return "";
     }
@@ -124,7 +160,7 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
     <div className="flex flex-col gap-4.5">
       <PageHeader
         title={t`Integrations`}
-        description={t`Fan record events out to Slack, Discord, Datadog, or GitHub. Secrets are encrypted at rest.`}
+        description={t`Fan record events out to chat, alerting, analytics, search, and automation tools. Secrets are encrypted at rest.`}
       />
 
       <div className="grid grid-cols-3 max-[920px]:grid-cols-2 max-[560px]:grid-cols-1 gap-3">

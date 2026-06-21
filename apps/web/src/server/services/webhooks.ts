@@ -3,8 +3,16 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import type { DbCtx } from "./seed";
 import type { Ctx } from "../context";
+import type { Env } from "../env";
 import { enqueueJob } from "./jobs";
 import { recordActivity } from "./activity";
+import { fetchOutbound } from "./storage/hosts";
+
+/** Pull the runtime Env off a ctx when present (route/job ctx is the full Ctx);
+ *  undefined for the bare DbCtx paths (system events) where no SSRF guard
+ *  config is available, falling back to a plain fetch. */
+const envOf = (ctx: DbCtx): Env | undefined =>
+  "env" in ctx ? (ctx as Ctx).env : undefined;
 
 /** Consecutive failed deliveries that trip the auto-disable circuit breaker.
  *  Each delivery attempt (including queue retries) counts; any 2xx resets it to
@@ -212,6 +220,7 @@ const sendOne = async (
   channel: string,
   event: string,
   body: string,
+  env?: Env,
 ): Promise<{ status: number; ms: number; responseBody: string | null; error: string | null }> => {
   const headers: Record<string, string> = {
     "content-type": "application/json",
@@ -235,7 +244,12 @@ const sendOne = async (
   }
   const start = Date.now();
   try {
-    const res = await fetch(row.url, { method: "POST", headers, body });
+    // SSRF guard (managed cloud / opt-in): refuses private hosts + re-validates
+    // redirects. On self-host (guard off) this is a plain POST, preserving
+    // internal webhook receivers.
+    const res = env
+      ? await fetchOutbound(env, row.url, { method: "POST", headers, body })
+      : await fetch(row.url, { method: "POST", headers, body });
     const text = await res.text().catch(() => "");
     return {
       status: res.status,
@@ -288,6 +302,7 @@ export const fireDelivery = async (
     "test",
     event,
     body,
+    envOf(ctx),
   );
   await recordDelivery(ctx, {
     webhookId: hook.id,
@@ -325,7 +340,7 @@ export const deliverWebhookById = async (
   if (!hook || !(hook.active === true || hook.active === 1)) {
     return { status: 200, ms: 0, error: null };
   }
-  const out = await sendOne(hook, input.channel, input.event, input.body);
+  const out = await sendOne(hook, input.channel, input.event, input.body, envOf(ctx));
   await recordDelivery(ctx, {
     webhookId: hook.id,
     event: `${input.channel}:${input.event}`,
@@ -458,7 +473,7 @@ export const retryDelivery = async (
     deliveredAt: new Date().toISOString(),
   });
 
-  const out = await sendOne(hook, channel, event, body);
+  const out = await sendOne(hook, channel, event, body, envOf(ctx));
   await recordDelivery(ctx, {
     webhookId: hook.id,
     event: delivery.event,

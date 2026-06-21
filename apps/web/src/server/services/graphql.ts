@@ -41,6 +41,13 @@ interface CollectionRow {
   softDelete: boolean;
   singleton: boolean;
   versioned: boolean;
+  /** Whether the physical table carries a `tenant_id` column scoping rows per
+   *  workspace. Managed collections get a per-tenant physical table so the name
+   *  itself isolates, but adopted+tenant-scoped collections share one table and
+   *  rely ENTIRELY on `tenant_id = $auth.tenantId` for isolation — every
+   *  resolver below must AND in `gqlTenantWhere` exactly like the REST path's
+   *  `tenantFilter`. Omitting it leaks rows across workspaces. */
+  tenantScoped: boolean;
 }
 
 interface GqlCtx {
@@ -297,6 +304,17 @@ const buildOrderClause = (
     ? sql`ORDER BY ${sql.identifier("created_at")} DESC`
     : sql`ORDER BY ${sql.identifier(collection.pkColumn)} DESC`;
   if (!sortStr) return fallback;
+  // Allow-list of sortable columns: system columns + the collection's own
+  // fields. An unknown column is dropped rather than spliced into the query —
+  // this stops ORDER BY against columns outside the schema (a 500 / probing
+  // oracle) even though `sql.identifier` already prevents SQL break-out.
+  const sortable = new Set<string>([
+    "id",
+    collection.pkColumn,
+    ...(collection.hasCreatedAt ? ["created_at"] : []),
+    ...(collection.hasUpdatedAt ? ["updated_at"] : []),
+    ...collection.fields.map((f) => f.name),
+  ]);
   const parts = sortStr
     .split(",")
     .map((s) => s.trim())
@@ -304,9 +322,25 @@ const buildOrderClause = (
     .map((s) => {
       const dir: "ASC" | "DESC" = s.startsWith("-") ? "DESC" : "ASC";
       const field = s.replace(/^[-+]/, "");
+      if (!sortable.has(field)) return null;
       return sql`${sql.identifier(field)} ${sql.raw(dir)}`;
-    });
+    })
+    .filter((x): x is SQL => x != null);
   return parts.length === 0 ? fallback : sql`ORDER BY ${sql.join(parts, sql`, `)}`;
+};
+
+/** Tenant-isolation predicate, mirroring the REST `tenantFilter`. Returns null
+ *  for non-tenant-scoped collections (the physical table name already isolates,
+ *  or it's legacy/system data); `(1=0)` when scoped but the caller has no
+ *  tenant (fail-closed). Every read/write resolver AND-s this into its WHERE so
+ *  GraphQL never depends on `perm.whereSql` alone for cross-tenant isolation. */
+const gqlTenantWhere = (
+  collection: CollectionRow,
+  auth: AuthSubject,
+): SQL | null => {
+  if (!collection.tenantScoped) return null;
+  if (!auth.tenantId) return sql`(1=0)`;
+  return sql`${sql.identifier("tenant_id")} = ${auth.tenantId}`;
 };
 
 const denyOrThrow = (auth: AuthSubject, slug: string) => {
@@ -367,9 +401,13 @@ const listResolver = async (
     ? sql`${sql.identifier("deleted_at")} IS NULL`
     : null;
   const draftWhere = await gqlDraftWhere(gqlCtx, collection, perm);
-  const wheres = [userWhere, perm.whereSql, deletedWhere, draftWhere].filter(
-    (x): x is SQL => x != null,
-  );
+  const wheres = [
+    gqlTenantWhere(collection, auth),
+    userWhere,
+    perm.whereSql,
+    deletedWhere,
+    draftWhere,
+  ].filter((x): x is SQL => x != null);
   const whereClause = wheres.length
     ? sql`WHERE ${sql.join(wheres, sql` AND `)}`
     : sql``;
@@ -404,6 +442,8 @@ const getResolver = async (
 
   const table = collection.physicalTable;
   const wheres: SQL[] = [sql`${sql.identifier("id")} = ${id}`];
+  const tenantWhere = gqlTenantWhere(collection, auth);
+  if (tenantWhere) wheres.push(tenantWhere);
   if (perm.whereSql) wheres.push(perm.whereSql);
   if (collection.softDelete) wheres.push(sql`${sql.identifier("deleted_at")} IS NULL`);
   const draftWhere = await gqlDraftWhere(gqlCtx, collection, perm);
@@ -440,11 +480,11 @@ const createResolver = async (
 
   const table = collection.physicalTable;
 
-  // Singleton: reject when a live row already exists (scoped by the caller's
-  // read permission, ignoring soft-deleted rows). GraphQL has no tenant
-  // filter of its own, so isolation rides on `perm.whereSql`.
+  // Singleton: reject when a live row already exists (scoped by tenant + the
+  // caller's read permission, ignoring soft-deleted rows).
   if (collection.singleton) {
     const guardWheres = [
+      gqlTenantWhere(collection, auth),
       perm.whereSql,
       collection.softDelete ? sql`${sql.identifier("deleted_at")} IS NULL` : null,
     ].filter((x): x is SQL => x != null);
@@ -479,6 +519,18 @@ const createResolver = async (
   if (collection.ownerScoped) {
     cols.push("owner_id");
     vals.push(auth.userId);
+  }
+  // Stamp tenant_id on tenant-scoped (incl. adopted shared) tables so the row
+  // is owned by the caller's workspace — mirrors the REST write path. Without
+  // this a GraphQL-created row would be tenant-less and invisible/leaky.
+  if (collection.tenantScoped) {
+    if (!auth.tenantId) {
+      throw new GraphQLError("No tenant context for a tenant-scoped collection", {
+        extensions: { code: "FORBIDDEN" },
+      });
+    }
+    cols.push("tenant_id");
+    vals.push(auth.tenantId);
   }
   for (const f of collection.fields) {
     const v = args.data[camel(f.name)];
@@ -531,6 +583,8 @@ const updateResolver = async (
 
   const table = collection.physicalTable;
   const wheres: SQL[] = [sql`${sql.identifier("id")} = ${args.id}`];
+  const tenantWhere = gqlTenantWhere(collection, auth);
+  if (tenantWhere) wheres.push(tenantWhere);
   if (perm.whereSql) wheres.push(perm.whereSql);
   if (collection.softDelete) wheres.push(sql`${sql.identifier("deleted_at")} IS NULL`);
   const existing = await queryAll<Record<string, unknown>>(
@@ -595,6 +649,8 @@ const deleteResolver = async (
   }
   const table = collection.physicalTable;
   const wheres: SQL[] = [sql`${sql.identifier("id")} = ${args.id}`];
+  const tenantWhere = gqlTenantWhere(collection, auth);
+  if (tenantWhere) wheres.push(tenantWhere);
   if (perm.whereSql) wheres.push(perm.whereSql);
   // Already-soft-deleted rows are a clean "not found" (idempotent).
   if (collection.softDelete) wheres.push(sql`${sql.identifier("deleted_at")} IS NULL`);
@@ -846,6 +902,9 @@ export const getSchema = async (
     softDelete: Boolean(r.softDelete ?? r.soft_delete),
     singleton: Boolean(r.singleton),
     versioned: Boolean(r.versioned),
+    // Default-true, matching the REST collection-loader: a row is treated as
+    // tenant-scoped unless it explicitly opts out (legacy/system data).
+    tenantScoped: (r.tenantScoped ?? r.tenant_scoped ?? true) ? true : false,
   }));
   const hash = hashCollections(normalized);
   const hit = cached.get(tenantId);

@@ -54,6 +54,12 @@ export const makeHarness = (overrides: Partial<Env> = {}): TestHarness => {
     APP_URL: DEFAULT_APP_URL,
     AUTH_SECRET: "test-secret-not-for-prod-but-stable-across-calls",
     SQLITE_PATH: dbPath,
+    // Quiet the per-request JSON access log + expected 4xx warnings so test
+    // output stays readable (the suite deliberately drives many 401/404/409
+    // paths). The middleware still runs (its code path is exercised); only the
+    // emit is gated. Genuine 5xx still print at error. Override per-suite to
+    // assert on logs.
+    LOG_LEVEL: "error",
     ...overrides,
   };
 

@@ -1,12 +1,13 @@
 import type { AuthPlane } from "@backlex/core";
 import { createD1SessionClient } from "@backlex/db/sqlite";
+import { sql } from "drizzle-orm";
 import { Hono, type MiddlewareHandler } from "hono";
 import { cors } from "hono/cors";
-import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
 import { buildContext, type Ctx } from "./context";
 import type { Env } from "./env";
 import { authLockoutMiddleware, authRateLimitMiddleware } from "./lib/auth-rate-limit";
+import { configureLogLevel, levelForStatus, log } from "./lib/log";
 import { errorHandler } from "./middleware/error";
 import type { PermissionVar } from "./middleware/permission";
 import { sessionMiddleware } from "./middleware/session";
@@ -130,6 +131,12 @@ export type AppBindings = {
        *  customer's app never needs to send `X-Backlex-Tenant`. */
       appSessionTenantId?: string | null;
     };
+    /** Correlation id for this request. Taken from an inbound `x-request-id`
+     *  (trusted proxy / client), else `cf-ray` on Workers, else a generated
+     *  UUID. Echoed back on the `x-request-id` response header, stamped onto
+     *  every structured log line for the request, and surfaced in error
+     *  responses so support can trace a single call end-to-end. */
+    requestId: string;
     permission: PermissionVar;
     /** Per-request L1 permission cache. Lazily initialized by the first
      *  `requirePermission` (or any explicit `getRequestPermCache(c)` call)
@@ -176,6 +183,54 @@ export const createApp = (env: Env) => {
   // explicitly to build the doc.
   const app = new Hono<AppBindings>();
 
+  // Set the structured-log threshold once per isolate from env (default info).
+  configureLogLevel(env.LOG_LEVEL);
+
+  // Outermost middleware: assign a correlation id and emit one structured JSON
+  // access line per request. Runs first so `requestId` is available to every
+  // downstream layer (ctx build, error handler) and the timing wraps the whole
+  // request. Successful + directly-returned responses are logged here; THROWN
+  // errors short-circuit past the post-`next()` code and are logged instead by
+  // the global error handler (middleware/error.ts), which also carries the
+  // requestId — so every request gets exactly one structured line, no dupes.
+  app.use("*", async (c, next) => {
+    const reqId =
+      c.req.header("x-request-id") ||
+      c.req.header("cf-ray") ||
+      crypto.randomUUID();
+    c.set("requestId", reqId);
+    const start = Date.now();
+    await next();
+    c.res.headers.set("x-request-id", reqId);
+    let path: string;
+    try {
+      path = new URL(c.req.url).pathname;
+    } catch {
+      path = c.req.path;
+    }
+    // Health/readiness probes are polled constantly by uptime monitors and load
+    // balancers — log them at debug so they don't drown the access log by
+    // default (visible only under LOG_LEVEL=debug).
+    const isProbe = path === "/health" || path === "/health/ready";
+    const status = c.res.status;
+    const level = isProbe ? "debug" : levelForStatus(status);
+    let auth: { tenantId?: string | null; userId?: string | null } | undefined;
+    try {
+      auth = c.get("auth");
+    } catch {
+      auth = undefined;
+    }
+    log[level]("request", {
+      requestId: reqId,
+      method: c.req.method,
+      path,
+      status,
+      ms: Date.now() - start,
+      tenantId: auth?.tenantId ?? null,
+      userId: auth?.userId ?? null,
+    });
+  });
+
   // Per-request phase timing → `Server-Timing` response header. Gated behind a
   // secret header (`x-backlex-timing: $DEBUG_TIMING_SECRET`) so the diagnostic
   // is on-demand for ops (curl) and never publicly discloses internal phase
@@ -204,7 +259,6 @@ export const createApp = (env: Env) => {
     c.res.headers.set("Server-Timing", parts.join(", "));
   });
 
-  app.use("*", logger());
   app.use("*", secureHeaders());
 
   // Content-Security-Policy. `secureHeaders()` sets HSTS/XFO/nosniff/etc. but
@@ -373,6 +427,7 @@ export const createApp = (env: Env) => {
       // a browser client read the resume offset + session location. Server-Timing
       // is NOT exposed — it's an ops-only, secret-gated diagnostic.
       exposeHeaders: [
+        "X-Request-Id",
         "X-D1-Bookmark",
         "Location",
         "Upload-Offset",
@@ -413,6 +468,39 @@ export const createApp = (env: Env) => {
       ts: Date.now(),
     }),
   );
+
+  // Readiness probe — unlike `/health` (liveness; the isolate is up), this
+  // verifies the request path can actually reach the database with a trivial
+  // `SELECT 1`. Returns 503 when the DB is unreachable so orchestrators / load
+  // balancers (and uptime checks) can pull a broken instance out of rotation
+  // instead of routing traffic that will 500. Cheap enough to poll frequently.
+  app.get("/health/ready", async (c) => {
+    const ctx = c.get("ctx");
+    const t0 = Date.now();
+    let dbUp = false;
+    try {
+      const raw = sql.raw("SELECT 1 AS ok");
+      if (ctx.dialect === "pg") await (ctx.db as { execute: (q: unknown) => Promise<unknown> }).execute(raw);
+      else await (ctx.db as { all: (q: unknown) => Promise<unknown> }).all(raw);
+      dbUp = true;
+    } catch (e) {
+      log.error("readiness.db_probe_failed", {
+        requestId: c.get("requestId"),
+        err: (e as Error)?.message ?? String(e),
+      });
+    }
+    return c.json(
+      {
+        ok: dbUp,
+        db: dbUp ? "up" : "down",
+        dbMs: Date.now() - t0,
+        dialect: ctx.dialect,
+        version: templateVersion,
+        ts: Date.now(),
+      },
+      dbUp ? 200 : 503,
+    );
+  });
 
   // Per-IP rate limit on the sensitive auth subpaths (sign-in, sign-up,
   // password reset, magic link, OTP, 2FA). Sits in front of both the

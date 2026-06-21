@@ -49,6 +49,30 @@ The `pg-smoke.test.ts` file covers the Postgres dialect path via
 `pglite` (WASM Postgres + pgvector) so dual-dialect bugs surface in
 the same suite.
 
+### Client render tests (`tests/client/*.test.tsx`)
+
+The same `bun test` run also drives React component render tests under
+`tests/client/`. Two preloads (configured in `apps/web/bunfig.toml`) make this
+work in-process alongside the API specs:
+
+- `lingui-macro.ts` — a Bun loader that runs the Lingui compile-time macro on
+  imported `src/client` files (bun test doesn't run vite), mirroring the
+  `linguiMacro()` vite plugin. Without it, any component importing `@lingui/*`
+  throws when rendered.
+- `happydom.ts` — registers a happy-dom DOM, then restores Bun's native
+  `fetch`/`Request`/`Response`/`AbortSignal`/etc. so the ~600 API specs sharing
+  the process keep using the real networking layer.
+
+Use `renderWithProviders` from `tests/client/render.tsx` (React Query + Lingui +
+MemoryRouter) for components that need app context. Keep tests isolated: any spec
+that mutates a global (e.g. `navigator`) must restore it in `afterAll`, or it
+leaks into the render tests later in the run.
+
+**Known follow-ups:** the `@/` path alias isn't resolved under bun test yet, so
+render tests currently import components by relative path and cover components
+that don't import via `@/`. Wiring the alias (and generated row types to kill
+snake_case/camelCase drift) would widen coverage.
+
 **Layer 1 doesn't catch:** anything runtime-specific. SQLite is the
 only dialect actually exercised end-to-end (pg-smoke covers the
 schema path but not the production drivers). Edge-runtime branches

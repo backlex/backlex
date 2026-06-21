@@ -96,13 +96,21 @@ Function URL**. Build the single-file bundle (Bun does the bundling — same shi
 as the Node target):
 
 ```bash
-bun run build:lambda               # → apps/web/dist/lambda/index.mjs
+bun run build:lambda               # → apps/web/dist/lambda/ (index.mjs + client/)
 
 # Zip dist/lambda/ and upload, or wire it into SAM/CDK/Terraform.
 # Handler string:
 #   index.handler        — buffered: API Gateway / ALB / default Function URL
 #   index.streamHandler  — streaming: Function URL with InvokeMode RESPONSE_STREAM
 ```
+
+**Admin panel:** the build copies `dist/client` into `dist/lambda/client`, and the
+function serves the admin SPA itself (`mountSpa`) — so the panel is reachable at
+`/` straight from the Lambda, not just `/api`. Every static asset is then a
+function invocation; for production, front the function with **CloudFront** over
+an S3 copy of `dist/client` (SPA + assets cached at the edge) and route only
+`/api/*` + `/health` to API Gateway → Lambda. That's the same split Vercel/Netlify
+do automatically.
 
 Two handlers are exported from `apps/web/src/server/entries/lambda.ts`:
 
@@ -147,13 +155,19 @@ exactly that listener, so one registered function fronts `/api/*` with no event
 mapping. Build the deployable folder, then `gcloud functions deploy`:
 
 ```bash
-bun run build:gcp                  # → apps/web/dist/gcp/ (index.mjs + package.json)
+bun run build:gcp                  # → apps/web/dist/gcp/ (index.mjs + package.json + client/)
 
 gcloud functions deploy backlex \
   --gen2 --runtime=nodejs22 --entry-point=api --trigger-http \
   --source=apps/web/dist/gcp --allow-unauthenticated \
   --set-env-vars=APP_URL=https://your.app,DATABASE_URL=...,AUTH_SECRET=...
 ```
+
+**Admin panel:** the build copies `dist/client` into `dist/gcp/client` and the
+function serves the admin SPA itself (`mountSpa`), so the panel is reachable at
+`/`. For production, front it with **Cloud CDN** (external HTTPS Load Balancer:
+a backend bucket for `dist/client` + a serverless NEG for `/api/*`) so static
+assets are edge-cached instead of invoking the function.
 
 Entry: `apps/web/src/server/entries/gcp.ts` (registered as **`api`** —
 `--entry-point=api`). The build keeps `@google-cloud/functions-framework` +
@@ -180,7 +194,7 @@ deployable folder (with a generated `host.json` + `package.json`), then publish
 with the Azure Functions Core Tools:
 
 ```bash
-bun run build:azure                # → apps/web/dist/azure/ (index.mjs + host.json + package.json)
+bun run build:azure                # → apps/web/dist/azure/ (index.mjs + host.json + package.json + client/)
 
 cd apps/web/dist/azure
 func azure functionapp publish <APP_NAME>
@@ -190,8 +204,11 @@ func azure functionapp publish <APP_NAME>
 Entry: `apps/web/src/server/entries/azure.ts`. It registers two functions:
 
 - **`api`** — an HTTP catch-all (`route: "{*path}"`). The generated `host.json`
-  sets `extensions.http.routePrefix: ""` so this one function also serves
-  `/health`, `/docs`, and the SPA — not just the default `/api` prefix.
+  sets `extensions.http.routePrefix: ""` and the build copies `dist/client` into
+  `dist/azure/client` + the entry calls `mountSpa`, so this one function serves
+  the **admin SPA** at `/` (and `/health`, `/docs`) — not just the default `/api`
+  prefix. For edge-cached assets in production, front it with a CDN or use
+  **Azure Static Web Apps** (static SPA + integrated Functions API).
 - **`cron`** — a native **Timer trigger** (every minute) that calls the shared
   idempotent `cronTick` directly. No HTTP cron route or shared secret needed:
   Timer triggers aren't publicly reachable.

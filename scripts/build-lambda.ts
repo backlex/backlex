@@ -25,10 +25,11 @@
  *     Hono `aws-lambda` adapter maps the Lambda event ↔ `Request`/`Response`.
  */
 import { fileURLToPath } from "node:url";
-import { mkdirSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync } from "node:fs";
 
 const SOURCE = "apps/web/src/server/entries/lambda.ts";
 const OUTPUT_DIR = "apps/web/dist/lambda";
+const SPA_SRC = "apps/web/dist/client";
 const SHIM_BUN_SQLITE = fileURLToPath(
   new URL("../apps/web/src/server/shims/bun-sqlite-shim.ts", import.meta.url),
 );
@@ -62,6 +63,18 @@ const result = await Bun.build({
 if (!result.success) {
   for (const log of result.logs) console.error(log);
   process.exit(1);
+}
+
+// Copy the pre-built admin SPA next to the bundle so the function serves it
+// (entries/lambda.ts mounts `./client` relative to the bundle). `build:targets`
+// runs `vite build` first; a standalone `build:lambda` needs `bun run build`.
+if (existsSync(SPA_SRC)) {
+  cpSync(SPA_SRC, `${OUTPUT_DIR}/client`, { recursive: true });
+  console.log(`✓ Copied admin SPA → ${OUTPUT_DIR}/client`);
+} else {
+  console.warn(
+    `⚠ ${SPA_SRC} not found — run \`bun run build\` (vite) first; the admin SPA won't be served.`,
+  );
 }
 
 const out = result.outputs[0];

@@ -18,6 +18,10 @@ export interface SmokeOptions {
   /** When true, exercises `/api/_cron/tick` auth (vercel/netlify
    *  entries register it; the Bun entry doesn't). */
   checkCron: boolean;
+  /** When true, asserts the admin SPA shell is served at `/` (runtimes whose
+   *  function serves the SPA itself: bun, lambda, gcp, azure). Off where a
+   *  platform/binding serves static separately (vercel/netlify/cloudflare). */
+  checkSpa: boolean;
 }
 
 export interface SmokeResult {
@@ -160,6 +164,26 @@ export const runSmokeContract = async (
       }
     } catch (e) {
       fail(`/api/_cron/tick threw: ${String(e)}`);
+    }
+  }
+
+  // 6. Admin SPA shell — for runtimes whose function serves the SPA itself,
+  //    a non-API GET must return the built index.html (HTML with `#root`),
+  //    not the JSON 404. Proves the admin panel is reachable, not just /api.
+  if (opts.checkSpa) {
+    try {
+      const r = await call("/");
+      const body = await r.text();
+      const ct = r.headers.get("content-type") ?? "";
+      if (r.status === 200 && ct.includes("text/html") && body.includes('id="root"')) {
+        ok(`admin SPA shell served (/ → index.html)`);
+      } else {
+        fail(
+          `admin SPA expected 200 text/html with #root, got ${pretty(r, body)} (content-type: ${ct})`,
+        );
+      }
+    } catch (e) {
+      fail(`admin SPA threw: ${String(e)}`);
     }
   }
 

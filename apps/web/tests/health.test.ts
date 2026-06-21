@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { makeHarness, type TestHarness } from "./setup";
+import { makeHarness, seedAdmin, type TestHarness } from "./setup";
 
 describe("GET /health", () => {
   let h: TestHarness;
@@ -116,5 +116,78 @@ describe("request correlation id", () => {
     expect(body.error).toBeTruthy();
     expect(body.requestId).toBe("trace-err-9");
     expect(res.headers.get("x-request-id")).toBe("trace-err-9");
+  });
+});
+
+describe("structured access log", () => {
+  let h: TestHarness;
+
+  beforeAll(async () => {
+    h = makeHarness({ LOG_LEVEL: "info" });
+    await seedAdmin(h);
+  });
+
+  afterAll(() => h.cleanup());
+
+  // Regression guard: a thrown error must emit EXACTLY ONE access line (the
+  // global error handler stashes the code instead of logging its own line —
+  // otherwise every thrown error was double-logged as `request.failed` + `request`).
+  test("a thrown error logs one `request` line carrying the error code, no `request.failed`", async () => {
+    const lines: { msg?: string; code?: string; status?: number }[] = [];
+    const cap = (m: unknown) => {
+      if (typeof m === "string" && m.includes('"alog-trace-1"')) {
+        try {
+          lines.push(JSON.parse(m));
+        } catch {
+          /* not our line */
+        }
+      }
+    };
+    const ow = console.warn;
+    const oe = console.error;
+    const ol = console.log;
+    console.warn = cap;
+    console.error = cap;
+    console.log = cap;
+    try {
+      // Authenticated → unknown collection throws NOT_FOUND (a real throw,
+      // routed through onError), unlike an unauthenticated requireUser return.
+      await h.fetch("/api/items/no_such_collection_alog", {
+        headers: { "x-request-id": "alog-trace-1" },
+      });
+    } finally {
+      console.warn = ow;
+      console.error = oe;
+      console.log = ol;
+    }
+    const requestLines = lines.filter((l) => l.msg === "request");
+    expect(requestLines.length).toBe(1);
+    expect(requestLines[0]?.code).toBe("NOT_FOUND");
+    expect(requestLines[0]?.status).toBe(404);
+    // The legacy duplicate line must be gone.
+    expect(lines.filter((l) => l.msg === "request.failed").length).toBe(0);
+  });
+
+  test("a successful request logs one `request` line with no error code", async () => {
+    const lines: { msg?: string; code?: string }[] = [];
+    const cap = (m: unknown) => {
+      if (typeof m === "string" && m.includes('"alog-trace-2"')) {
+        try {
+          lines.push(JSON.parse(m));
+        } catch {
+          /* not our line */
+        }
+      }
+    };
+    const ol = console.log;
+    console.log = cap;
+    try {
+      await h.fetch("/api/me", { headers: { "x-request-id": "alog-trace-2" } });
+    } finally {
+      console.log = ol;
+    }
+    const requestLines = lines.filter((l) => l.msg === "request");
+    expect(requestLines.length).toBe(1);
+    expect(requestLines[0]?.code).toBeUndefined();
   });
 });

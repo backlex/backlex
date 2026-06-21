@@ -482,7 +482,25 @@ export const GraphqlPage = () => {
         }),
         signal: ctrl.signal,
       });
-      const body = (await res.json()) as GraphQLResponse;
+      const body = (await res.json().catch(() => null)) as
+        | (GraphQLResponse & { error?: { code?: string; message?: string } })
+        | null;
+      // A non-2xx response does NOT carry the GraphQL `{ errors: [...] }`
+      // shape — the worker's error middleware returns the AppError envelope
+      // `{ error: { code, message }, requestId }` (e.g. 401 "Active tenant
+      // required", or a 500 during a cold-start dynamic import). Surface that
+      // real message instead of falling through to the misleading
+      // "missing __schema" error below.
+      if (!res.ok) {
+        const serverMsg =
+          (typeof body?.error === "object" && body?.error?.message) ||
+          (body?.errors?.length && body.errors.map((e) => e.message).join("; ")) ||
+          `Request failed (HTTP ${res.status})`;
+        throw new Error(serverMsg);
+      }
+      if (!body) {
+        throw new Error("Introspection returned a non-JSON response.");
+      }
       if (body.errors?.length) {
         throw new Error(body.errors.map((e) => e.message).join("; "));
       }
@@ -666,7 +684,16 @@ export const GraphqlPage = () => {
         // Render whatever shape comes back — GraphQL can return 200 + errors.
         let body: GraphQLResponse;
         try {
-          body = (await res.json()) as GraphQLResponse;
+          const parsed = (await res.json()) as GraphQLResponse & {
+            error?: { code?: string; message?: string };
+          };
+          // A non-2xx carries the AppError envelope `{ error: { message } }`
+          // rather than GraphQL `{ errors: [...] }`; normalise it so the
+          // response panel shows the real message instead of a raw object.
+          body =
+            !res.ok && typeof parsed.error === "object" && !parsed.errors
+              ? { errors: [{ message: parsed.error.message ?? `HTTP ${res.status}` }] }
+              : parsed;
         } catch {
           body = {
             errors: [

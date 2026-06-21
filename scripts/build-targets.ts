@@ -117,6 +117,18 @@ const main = async (): Promise<void> => {
       ["scripts/build-lambda.ts"],
       REPO_ROOT,
     ),
+    runStep(
+      "gcp (cloud function bundle)",
+      "bun",
+      ["scripts/build-gcp.ts"],
+      REPO_ROOT,
+    ),
+    runStep(
+      "azure (function bundle)",
+      "bun",
+      ["scripts/build-azure.ts"],
+      REPO_ROOT,
+    ),
   ]);
 
   for (const r of results) printResult(r);

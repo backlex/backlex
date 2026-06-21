@@ -108,6 +108,10 @@ const logServerError = (
 
 export const errorHandler = (err: Error, c: Context) => {
   const requestId = reqIdOf(c);
+  // A thrown error short-circuits past the access-log middleware's post-`next()`
+  // header write, so stamp the correlation id onto the error response here too —
+  // every response (success or failure) then carries `x-request-id`.
+  if (requestId) c.header("x-request-id", requestId);
   if (isAppError(err)) {
     const status = err.status as 400 | 401 | 403 | 404 | 409 | 422 | 429 | 500;
     logHandledError(c, status, err.code, err.message);

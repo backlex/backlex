@@ -37,8 +37,11 @@
  *   - SAML, LDAP, SMTP all work (Node 22 raw TCP).
  *   - Image transforms run through `sharp` (native addon resolves at runtime).
  */
+import { fileURLToPath } from "node:url";
 import { app as azureApp, type HttpRequest, type HttpResponseInit } from "@azure/functions";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { createApp } from "../app";
+import { mountSpa } from "../lib/spa";
 import { cronTick } from "../services/scheduler";
 import type { Env } from "../env";
 
@@ -80,6 +83,14 @@ const buildEnv = (): Env => ({
 });
 
 const honoApp = createApp(buildEnv());
+
+// Serve the pre-built admin SPA. `build-azure.ts` copies `dist/client` next to
+// the bundle (→ `dist/azure/client`); the root resolves relative to this
+// module. The catch-all `{*path}` route + cleared routePrefix mean the SPA is
+// reachable at `/`, `/login`, etc. Mounted AFTER every /api route so the API
+// wins. (Front with a CDN / Azure Static Web Apps in production — see
+// deployment.md.)
+mountSpa(honoApp, serveStatic, fileURLToPath(new URL("./client", import.meta.url)));
 
 // Azure `HttpRequest` → Web-standard `Request`. Body is buffered to an
 // ArrayBuffer (rather than streamed with `duplex: "half"`) for portability

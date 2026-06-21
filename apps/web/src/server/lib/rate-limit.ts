@@ -21,9 +21,25 @@
  */
 import type { Env } from "../env";
 
+/** Full result of a limiter check. `remaining`/`resetAt` feed the IETF-draft
+ *  `RateLimit-*` response headers so clients can back off predictively. */
+export interface RateLimitResult {
+  allowed: boolean;
+  /** Calls left in the current window after this one (0 when rejected). */
+  remaining: number;
+  /** Epoch ms at which the current window resets. */
+  resetAt: number;
+  /** The `max` budget echoed back, for `RateLimit-Limit`. */
+  limit: number;
+}
+
 const localWindows = new Map<string, { count: number; resetAt: number }>();
 
-const checkLocal = (key: string, max: number, windowMs: number): boolean => {
+const checkLocal = (
+  key: string,
+  max: number,
+  windowMs: number,
+): RateLimitResult => {
   const now = Date.now();
   const w = localWindows.get(key);
   if (!w || w.resetAt <= now) {
@@ -31,12 +47,19 @@ const checkLocal = (key: string, max: number, windowMs: number): boolean => {
     if (localWindows.size > 5_000) {
       for (const [k, v] of localWindows) if (v.resetAt <= now) localWindows.delete(k);
     }
-    localWindows.set(key, { count: 1, resetAt: now + windowMs });
-    return true;
+    const resetAt = now + windowMs;
+    localWindows.set(key, { count: 1, resetAt });
+    return { allowed: true, remaining: Math.max(0, max - 1), resetAt, limit: max };
   }
-  if (w.count >= max) return false;
+  if (w.count >= max)
+    return { allowed: false, remaining: 0, resetAt: w.resetAt, limit: max };
   w.count += 1;
-  return true;
+  return {
+    allowed: true,
+    remaining: Math.max(0, max - w.count),
+    resetAt: w.resetAt,
+    limit: max,
+  };
 };
 
 const checkDurable = async (
@@ -44,7 +67,7 @@ const checkDurable = async (
   key: string,
   max: number,
   windowMs: number,
-): Promise<boolean> => {
+): Promise<RateLimitResult> => {
   const id = ns.idFromName(key);
   const stub = ns.get(id);
   try {
@@ -58,29 +81,51 @@ const checkDurable = async (
       // DO unhealthy — fail open. Rate limiting is a defense-in-depth layer,
       // not the only gate; better to let a brief spike through than to lock
       // every user out because the DO is misbehaving.
-      return true;
+      return { allowed: true, remaining: Math.max(0, max - 1), resetAt: Date.now() + windowMs, limit: max };
     }
-    const body = (await res.json()) as { allowed: boolean };
-    return body.allowed;
+    const body = (await res.json()) as {
+      allowed: boolean;
+      remaining: number;
+      resetAt: number;
+    };
+    return {
+      allowed: body.allowed,
+      remaining: Math.max(0, body.remaining),
+      resetAt: body.resetAt,
+      limit: max,
+    };
   } catch {
     // Network glitch / DO transient — same fail-open policy as above.
-    return true;
+    return { allowed: true, remaining: Math.max(0, max - 1), resetAt: Date.now() + windowMs, limit: max };
   }
 };
 
 /**
+ * Check the `(max, windowMs)` budget for `key` and return the full window
+ * state (allowed + remaining + resetAt). Always pass the request `env` — the DO
+ * binding is read from it on Workers. Tests + Bun runtimes use the in-memory
+ * fallback transparently.
+ */
+export const rateLimitCheck = async (
+  env: Env,
+  key: string,
+  max: number,
+  windowMs: number,
+): Promise<RateLimitResult> => {
+  if (env.RATE_LIMIT) {
+    return checkDurable(env.RATE_LIMIT, key, max, windowMs);
+  }
+  return checkLocal(key, max, windowMs);
+};
+
+/**
  * Returns true if the call is within the `(max, windowMs)` budget for `key`.
- * Always pass the request `env` — the DO binding is read from it on Workers.
- * Tests + Bun runtimes work with the in-memory fallback transparently.
+ * Thin boolean wrapper over {@link rateLimitCheck} for callers that don't need
+ * the window metadata (the auth limiter, per-route IP guards).
  */
 export const rateLimitOk = async (
   env: Env,
   key: string,
   max: number,
   windowMs: number,
-): Promise<boolean> => {
-  if (env.RATE_LIMIT) {
-    return checkDurable(env.RATE_LIMIT, key, max, windowMs);
-  }
-  return checkLocal(key, max, windowMs);
-};
+): Promise<boolean> => (await rateLimitCheck(env, key, max, windowMs)).allowed;

@@ -6503,8 +6503,8 @@ msgid "Post data events to a Slack channel."
 msgstr "Post data events to a Slack channel."
 
 #: src/client/admin/pages/integrations.tsx
-msgid "POST data events to any HTTPS endpoint, optionally HMAC-signed."
-msgstr "POST data events to any HTTPS endpoint, optionally HMAC-signed."
+#~ msgid "POST data events to any HTTPS endpoint, optionally HMAC-signed."
+#~ msgstr "POST data events to any HTTPS endpoint, optionally HMAC-signed."
 
 #: src/client/admin/app.tsx
 msgid "Post saved."

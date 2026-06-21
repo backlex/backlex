@@ -6511,8 +6511,8 @@ msgid "Post data events to a Slack channel."
 msgstr "Veri olaylarını bir Slack kanalına gönderir."
 
 #: src/client/admin/pages/integrations.tsx
-msgid "POST data events to any HTTPS endpoint, optionally HMAC-signed."
-msgstr "Veri olaylarını herhangi bir HTTPS uç noktasına POST et (isteğe bağlı HMAC imzalı)."
+#~ msgid "POST data events to any HTTPS endpoint, optionally HMAC-signed."
+#~ msgstr "Veri olaylarını herhangi bir HTTPS uç noktasına POST et (isteğe bağlı HMAC imzalı)."
 
 #: src/client/admin/app.tsx
 msgid "Post saved."

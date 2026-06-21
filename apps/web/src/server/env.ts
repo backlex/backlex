@@ -227,6 +227,16 @@ export interface Env {
    *  TOTP two-factor is NOT listed here — it's loaded unconditionally (always
    *  available; users opt in from Account → Security). */
   AUTH_PLUGINS?: string;
+  // Global per-identity rate limit on the `/api/*` data surface (abuse / runaway
+  // guard, distinct from the per-IP auth limiter). See lib/api-rate-limit.ts.
+  /** Max `/api/*` calls per identity (API key → user → IP) per window. Setting
+   *  this also ENABLES the limiter on any deploy. Default 600. */
+  API_RATE_LIMIT_MAX?: string;
+  /** Sliding window in ms for the global API limit. Default 60000 (1 min). */
+  API_RATE_LIMIT_WINDOW_MS?: string;
+  /** Force the global API limiter OFF even where it would auto-enable (managed
+   *  cloud). Truthy = disabled. Self-host is off by default regardless. */
+  API_RATE_LIMIT_DISABLED?: string;
   // Failed-login account lockout (abuse protection). Layered on top of the
   // per-IP auth rate limiter: tracks failed password attempts per identifier
   // and temporarily locks that account (across IPs) after MAX_FAILS failures

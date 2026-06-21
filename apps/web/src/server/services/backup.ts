@@ -4,6 +4,8 @@ import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { applyCollection, type FieldDef } from "@backlex/db";
 import type { Ctx } from "../context";
+import { publishEvent } from "./events";
+import { recordActivity } from "./activity";
 
 /**
  * The set of system tables we always include. Dynamic c_* tables are
@@ -206,7 +208,7 @@ export const runBackup = async (
 export const recordAndRunBackup = async (
   ctx: Ctx,
   args: { id: string; tenantId: string | null; storageKey: string; userId: string | null; label: string | null },
-): Promise<void> => {
+): Promise<{ ok: boolean; error?: string }> => {
   const t = ctx.dialect === "pg" ? pg.schema.backups : sqlite.schema.backups;
   await (ctx.db as any)
     .update(t)
@@ -226,15 +228,44 @@ export const recordAndRunBackup = async (
         completedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
       })
       .where(eq(t.id, args.id));
+    return { ok: true };
   } catch (e) {
+    const error = (e as Error).message.slice(0, 500);
     await (ctx.db as any)
       .update(t)
       .set({
         status: "failed",
-        error: (e as Error).message.slice(0, 500),
+        error,
         completedAt: ctx.dialect === "pg" ? new Date() : Date.now(),
       })
       .where(eq(t.id, args.id));
+    // A failed backup — especially an unattended scheduled one — must not pass
+    // silently. Record an audit row AND push the failure onto the `system`
+    // event channel so an operator-configured webhook / flow can alert on it.
+    await recordActivity(ctx, {
+      userId: args.userId,
+      tenantId: args.tenantId,
+      action: "backup.failed",
+      collection: "backups",
+      itemId: args.id,
+      payload: { label: args.label, storageKey: args.storageKey, error },
+    });
+    await publishEvent(
+      ctx.env,
+      "system",
+      {
+        event: "backup.failed",
+        data: {
+          backupId: args.id,
+          tenantId: args.tenantId,
+          label: args.label,
+          storageKey: args.storageKey,
+          error,
+        },
+      },
+      { db: ctx.db, dialect: ctx.dialect, fullCtx: ctx, tenantId: args.tenantId },
+    );
+    return { ok: false, error };
   }
 };
 

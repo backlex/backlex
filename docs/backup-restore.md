@@ -65,6 +65,15 @@ In the admin, this is the **Database → Backups** tab: the schedule selector
 (Off / Daily / Weekly), the retention input, **Back up now**, and per-row
 **Download** / **Restore**.
 
+### Failure alerting
+
+A backup that fails (manual or scheduled) marks its row `failed` with the error,
+writes a `backup.failed` audit row, **and** publishes `system:backup.failed` on
+the event channel (payload: `backupId`, `tenantId`, `label`, `storageKey`,
+`error`). Subscribe an outbound webhook to `system:backup.failed` (or `system:*`)
+to alert your team — an unattended scheduled backup that silently stops running
+is exactly the kind of failure you want pushed, not polled.
+
 ## Restore
 
 ```http

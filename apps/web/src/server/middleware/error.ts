@@ -3,7 +3,7 @@ import { ZodError } from "zod";
 import { isAppError } from "@backlex/core";
 import { keepAlive, recordActivity, requestMeta } from "../services/activity";
 import { reportToCloud } from "../lib/cloud-report";
-import { levelForStatus, log } from "../lib/log";
+import { log } from "../lib/log";
 import type { Env } from "../env";
 import type { DbCtx } from "../services/seed";
 
@@ -18,29 +18,19 @@ const reqIdOf = (c: Context): string | undefined => {
   }
 };
 
-/** One structured JSON log line per handled error, carrying the requestId so a
- *  failure can be correlated with its access log + any upstream trace. Distinct
- *  from `logServerError` below, which writes a durable audit row (5xx only). */
-const logHandledError = (
-  c: Context,
-  status: number,
-  code: string,
-  message: string,
-): void => {
-  let path: string;
+/** Stash the error code on the context so the access-log middleware can include
+ *  it in the single per-request line. The access log runs AFTER `onError`
+ *  returns (Hono resolves the outer `await next()` only once the error handler
+ *  has produced the response), so the value is always set by the time it reads.
+ *  We deliberately do NOT emit a separate `request.failed` line here — that
+ *  double-logged every thrown error (one line from here, one from the access
+ *  log). The access log is the single source of truth for per-request lines. */
+const markError = (c: Context, code: string): void => {
   try {
-    path = new URL(c.req.url).pathname;
+    c.set("errorCode", code);
   } catch {
-    path = c.req.path;
+    /* bare context (shouldn't happen) — nothing to mark */
   }
-  log[levelForStatus(status)]("request.failed", {
-    requestId: reqIdOf(c),
-    method: c.req.method,
-    path,
-    status,
-    code,
-    message: message.slice(0, 500),
-  });
 };
 
 /**
@@ -114,7 +104,7 @@ export const errorHandler = (err: Error, c: Context) => {
   if (requestId) c.header("x-request-id", requestId);
   if (isAppError(err)) {
     const status = err.status as 400 | 401 | 403 | 404 | 409 | 422 | 429 | 500;
-    logHandledError(c, status, err.code, err.message);
+    markError(c, err.code);
     logServerError(c, status, err.code, err.message);
     return c.json(
       {
@@ -130,7 +120,7 @@ export const errorHandler = (err: Error, c: Context) => {
     const message = path
       ? `${path}: ${first?.message ?? "invalid input"}`
       : (first?.message ?? "invalid input");
-    logHandledError(c, 422, "VALIDATION", message);
+    markError(c, "VALIDATION");
     return c.json(
       {
         error: { code: "VALIDATION", message, details: err.issues },
@@ -139,8 +129,10 @@ export const errorHandler = (err: Error, c: Context) => {
       422,
     );
   }
-  // Unhandled exception — log the full error (with stack) under the requestId,
+  // Unhandled exception — log the full error (with stack) under the requestId
+  // (the access log's single line carries status/code; this adds the stack),
   // but never leak internals to the client.
+  markError(c, "INTERNAL");
   log.error("unhandled", {
     requestId,
     message: err?.message ?? String(err),

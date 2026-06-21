@@ -19,7 +19,7 @@ import {
   folderNameFromKey,
   foldersTable,
 } from "../services/storage/folders";
-import { isPrivateHost } from "../services/storage/hosts";
+import { isPrivateHost, fetchNoSSRF } from "../services/storage/hosts";
 import {
   IMPORT_TIMEOUT_MS,
   MAX_IMPORT_BYTES,
@@ -366,12 +366,18 @@ export const storageRoutes = new OpenAPIHono<AppBindings>()
       const timer = setTimeout(() => controller.abort(), IMPORT_TIMEOUT_MS);
       let resp: Response;
       try {
-        resp = await fetch(body.url, {
+        // fetchNoSSRF follows redirects MANUALLY and re-validates every hop, so
+        // a 30x into 169.254.169.254 / localhost can't bypass the host guard
+        // above (which only sees the initial URL).
+        resp = await fetchNoSSRF(body.url, {
           signal: controller.signal,
-          redirect: "follow",
           headers: { "user-agent": "backlex-storage-import/1.0" },
         });
       } catch (e) {
+        if (e instanceof AppError) {
+          clearTimeout(timer);
+          throw e;
+        }
         clearTimeout(timer);
         throw new AppError("BAD_REQUEST", `fetch failed: ${(e as Error).message}`);
       }

@@ -96,6 +96,13 @@ export interface Env {
   CLOUD_REPORT_URL?: string;
   CLOUD_REPORT_SECRET?: string;
   CLOUD_PROJECT_ID?: string;
+  /** When set (any non-empty value), server-side fetches to admin-supplied URLs
+   *  (outbound webhooks, flow `request`/`webhook` ops) refuse private/internal/
+   *  metadata hosts and re-validate redirects — an SSRF guard. Auto-enabled on
+   *  managed cloud tenants (where `CLOUD_PROJECT_ID` is set), since a tenant
+   *  admin there is not the host operator. Self-hosted installs leave it unset
+   *  so legitimate internal webhook receivers keep working. */
+  BLOCK_PRIVATE_FETCH_HOSTS?: string;
   /** Service Binding to the control-plane worker. Preferred delivery channel on
    *  Workers for Platforms, where a tenant runs inside the dispatch namespace
    *  and a plain fetch to the public hostname loops back (HTTP 522). */

@@ -15,10 +15,8 @@ import { parseQuery, resolveProjection } from "../lib/query";
 import { resolvePermission } from "../services/permissions";
 import { publishEvent } from "../services/events";
 import { elapsedMs, keepAlive, recordActivity, requestMeta } from "../services/activity";
-import { listRevisions, recordRevision } from "../services/revisions";
+import { listRevisions, } from "../services/revisions";
 import {
-  embedAndUpsert,
-  deleteVector,
   isVectorizable,
   resolveModel,
 } from "../services/vectorize";
@@ -32,8 +30,6 @@ import {
   type CollectionRow,
 } from "../services/items/collection-loader";
 import {
-  serialize,
-  deserialize,
   deserializeRow,
   projectFields,
 } from "../services/items/serialize";
@@ -42,7 +38,6 @@ import {
   ITEMS_AGG_FUNCS,
   runItemsAggregate,
 } from "../services/items/aggregate";
-import { validateBody, validateRelations } from "../services/items/validate";
 import {
   performCreate,
   performUpdate,
@@ -51,7 +46,7 @@ import {
 } from "../services/items/write";
 import { runBatch, BATCH_MAX } from "../services/items/batch";
 import { toCsv, parseCsv } from "../services/items/csv";
-import { localizeRow, mergeI18nPatch } from "../services/items/i18n";
+import { localizeRow, } from "../services/items/i18n";
 import {
   deletedFilter,
   draftFilter,

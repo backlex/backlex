@@ -57,7 +57,7 @@ const I18nRow = z
   })
   .openapi("I18nRow");
 
-const I18nMatrix = z
+const _I18nMatrix = z
   .object({
     locales: z.array(z.string()),
     keys: z.array(z.string()),

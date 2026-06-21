@@ -29,7 +29,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@backlex/ui/components/dialog";
-import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { ConfirmAction } from "@/components/confirm-action";
 import { DatePicker } from "@/components/date-picker";
 import { EmptyState } from "@/components/empty-state";

@@ -1,7 +1,6 @@
 import type { McpTool, ToolResult } from "../types";
-import { readJson } from "../internal-fetch";
 
-const textResult = (value: unknown): ToolResult => ({
+const _textResult = (value: unknown): ToolResult => ({
   content: [{ type: "text", text: JSON.stringify(value, null, 2) }],
   structuredContent: value as object,
 });

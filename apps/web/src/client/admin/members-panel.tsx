@@ -78,7 +78,7 @@ export interface MembersPanelProps {
   pushToast: (msg: string) => void;
 }
 
-export function MembersPanel({ roles, pushToast }: MembersPanelProps) {
+export function MembersPanel({ pushToast }: MembersPanelProps) {
   const { t } = useLingui();
   /**
    * Workspace-level roles — these live on `tenant_members.role`, not on the

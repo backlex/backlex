@@ -73,6 +73,21 @@ render tests currently import components by relative path and cover components
 that don't import via `@/`. Wiring the alias (and generated row types to kill
 snake_case/camelCase drift) would widen coverage.
 
+## Lint ratchet (next targets)
+
+`biome.json` enforces the dead-code rules (`noUnusedImports` /
+`noUnusedVariables` / `noUnusedFunctionParameters` → `error`). Two rules remain
+deliberately off, each a tracked follow-up:
+
+- `useExhaustiveDependencies` — **34 existing violations** (missing/extra React
+  hook deps; some carry stale `// eslint-disable-next-line react-hooks/
+  exhaustive-deps` comments biome doesn't honor). These are real stale-closure
+  risk, but each fix is behaviour-sensitive and needs a per-component UI check —
+  not a bulk auto-apply. Triage them in a focused pass, then flip to `error`.
+- `noExplicitAny` — stays off by design: the dual-dialect Drizzle union + the
+  `noUncheckedIndexedAccess` casts make `any` a sanctioned pattern (see
+  CLAUDE.md). Not a ratchet target.
+
 **Layer 1 doesn't catch:** anything runtime-specific. SQLite is the
 only dialect actually exercised end-to-end (pg-smoke covers the
 schema path but not the production drivers). Edge-runtime branches

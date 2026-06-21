@@ -1,4 +1,4 @@
-import type { ImageAdapter, ImageTransform } from "@backlex/core";
+import type { ImageAdapter, } from "@backlex/core";
 
 /**
  * WASM image-resize adapter (Photon) — the fallback for runtimes where neither

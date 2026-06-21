@@ -10,9 +10,9 @@ import type { ImageAdapter, ImageTransform } from "@backlex/core";
  * need a signed-URL flow first; v1 only fires when `R2_PUBLIC_BASE` env is
  * set so the caller has explicitly opted into public reads.
  */
-export const cfImage = (publicBase: string): ImageAdapter => ({
+export const cfImage = (_publicBase: string): ImageAdapter => ({
   name: "cf-image",
-  async transform(body, contentType, opts) {
+  async transform(body, contentType, _opts) {
     // The Workers runtime exposes `cf.image` via the second arg to fetch.
     // We need a URL the edge can hit; the caller passes the original `key`
     // we built into a public URL by joining `publicBase`.

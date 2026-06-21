@@ -52,7 +52,7 @@ const AuthConfigRow = z
   })
   .openapi("AuthConfigRow");
 
-const SessionRow = z
+const _SessionRow = z
   .object({
     id: z.string(),
     userId: z.string(),

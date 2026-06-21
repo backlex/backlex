@@ -26,13 +26,12 @@ import {
   CommandSeparator,
 } from "@backlex/ui/components/command";
 import { I } from "./icons";
-import { Button, IconButton } from "./ui";
+import { IconButton } from "./ui";
 import {
   type Segment,
   tokenizeTemplate,
   serializeSegments,
   isNestedPath,
-  headOf,
 } from "./display-template";
 
 interface FieldLike {
@@ -131,12 +130,6 @@ export function DisplayTemplateEditor({
     }
     pendingFocus.current = null;
   });
-
-  const commit = (next: Segment[]) => {
-    const normalized = normalize(next);
-    setSegments(normalized);
-    onChange(serializeSegments(normalized));
-  };
 
   const setTextAt = (idx: number, text: string) => {
     // Keep edits local without re-normalizing every keystroke (which would

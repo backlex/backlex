@@ -89,7 +89,7 @@ const callTool = async (
   h: TestHarness,
   name: string,
   args: Record<string, unknown> = {},
-  path = "/mcp",
+  _path = "/mcp",
 ): Promise<any> => {
   const r = await mcp(h, {
     jsonrpc: "2.0",

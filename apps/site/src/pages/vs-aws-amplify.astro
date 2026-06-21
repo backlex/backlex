@@ -8,7 +8,7 @@ import Base from "../layouts/Base.astro";
 // tied to your AWS account; semantic/vector search is via OpenSearch / Bedrock.
 const rows = [
   ["License", "Apache-2.0 — runs anywhere", "Apache-2.0 libraries & CLI, but the backend is AWS-managed services"],
-  ["Runtimes", "Cloudflare Workers, Vercel & Netlify (Node 22), self-host on Bun/Node/Deno, or Deno Deploy", "AWS only (AppSync, Lambda, DynamoDB, Cognito, S3)"],
+  ["Runtimes", "9 runtimes — Cloudflare Workers, Vercel, Netlify, AWS Lambda, Google Cloud & Azure Functions, Deno Deploy, or self-host on Bun/Node/Deno", "AWS only (AppSync, Lambda, DynamoDB, Cognito, S3)"],
   ["Edge-native", "Runs inside the edge runtime", "No — AWS regional managed services"],
   ["Database", "PostgreSQL and SQLite / Cloudflare D1", "DynamoDB (NoSQL) by default; SQL via custom resolvers"],
   ["Data model", "Managed tables (dynamic, additive-only DDL) or adopt existing tables via a metadata row", "Schema-defined GraphQL models (provisions DynamoDB); existing data via custom resolvers"],
@@ -40,7 +40,7 @@ const rows = [
 ---
 <Base
   title="backlex vs AWS Amplify — edge-deployable, relational, no AWS lock-in"
-  description="How backlex compares to AWS Amplify (Gen 2): an Apache-2.0 backend that deploys to the edge (Cloudflare Workers, Vercel, Netlify, Deno Deploy) or self-hosts on Bun, Node, or Deno, runs on PostgreSQL/SQLite and adopts your existing tables, ships built-in vector search, and exposes a runtime MCP server — versus a stack tied to AWS-managed services (AppSync, DynamoDB, Cognito, Lambda, S3)."
+  description="How backlex compares to AWS Amplify (Gen 2): an Apache-2.0 backend that deploys to the edge (Cloudflare Workers, Vercel, Netlify, AWS Lambda, Google Cloud & Azure Functions, Deno Deploy) or self-hosts on Bun, Node, or Deno, runs on PostgreSQL/SQLite and adopts your existing tables, ships built-in vector search, and exposes a runtime MCP server — versus a stack tied to AWS-managed services (AppSync, DynamoDB, Cognito, Lambda, S3)."
 >
   <section class="relative z-[1] max-w-[920px] mx-auto px-8 max-md:px-5 py-20">
     <div class="flex flex-col gap-3 mb-10">
@@ -70,8 +70,9 @@ const rows = [
         lives in your AWS account.
         <strong class="text-foreground font-medium">backlex</strong> offers the
         same "define a model, get an API" flow without the lock-in — the same
-        Apache-2.0 codebase deploys to Cloudflare Workers, Vercel, Netlify, Deno
-        Deploy, or your own server (Bun, Node, or Deno), runs on
+        Apache-2.0 codebase deploys to Cloudflare Workers, Vercel, Netlify, AWS
+        Lambda, Google Cloud & Azure Functions, Deno Deploy, or your own server
+        (Bun, Node, or Deno), runs on
         <strong class="text-foreground font-medium">PostgreSQL or SQLite</strong>,
         and ships built-in vector search plus a first-class
         <strong class="text-foreground font-medium">runtime MCP server</strong>.

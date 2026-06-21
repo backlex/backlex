@@ -9,7 +9,7 @@ import Base from "../layouts/Base.astro";
 // Realtime and semantic/vector search are not built into the core.
 const rows = [
   ["License", "Apache-2.0", "MIT community core; SSO, audit logs & advanced RBAC are paid Enterprise"],
-  ["Runtimes", "Cloudflare Workers, Vercel & Netlify (Node 22), self-host on Bun/Node/Deno, or Deno Deploy", "Node.js (self-host or Strapi Cloud)"],
+  ["Runtimes", "9 runtimes — Cloudflare Workers, Vercel, Netlify, AWS Lambda, Google Cloud & Azure Functions, Deno Deploy, or self-host on Bun/Node/Deno", "Node.js (self-host or Strapi Cloud)"],
   ["Edge-native", "Runs inside the edge runtime", "No — Node server"],
   ["Database", "PostgreSQL and SQLite / Cloudflare D1", "PostgreSQL, MySQL, MariaDB, SQLite"],
   ["Data model", "Managed tables (dynamic, additive-only DDL) or adopt existing tables via a metadata row", "Strapi-owned content types — it manages its own tables"],
@@ -41,7 +41,7 @@ const rows = [
 ---
 <Base
   title="backlex vs Strapi — edge-deployable, AI-native data platform"
-  description="How backlex compares to Strapi: an Apache-2.0 backend that deploys to the edge (Cloudflare Workers, Vercel, Netlify, Deno Deploy) or self-hosts on Bun, Node, or Deno, adopts your existing tables, ships built-in vector search and realtime, and exposes a runtime MCP server to AI agents — versus a Node.js headless CMS that owns its own content tables."
+  description="How backlex compares to Strapi: an Apache-2.0 backend that deploys to the edge (Cloudflare Workers, Vercel, Netlify, AWS Lambda, Google Cloud & Azure Functions, Deno Deploy) or self-hosts on Bun, Node, or Deno, adopts your existing tables, ships built-in vector search and realtime, and exposes a runtime MCP server to AI agents — versus a Node.js headless CMS that owns its own content tables."
 >
   <section class="relative z-[1] max-w-[920px] mx-auto px-8 max-md:px-5 py-20">
     <div class="flex flex-col gap-3 mb-10">
@@ -69,8 +69,9 @@ const rows = [
         types in an admin panel and serve them over REST or GraphQL.
         <strong class="text-foreground font-medium">backlex</strong> shares the
         "instant API + admin" idea but is built as a data platform for the edge:
-        the same codebase deploys to Cloudflare Workers, Vercel, Netlify, Deno
-        Deploy, or your own server (Bun, Node, or Deno), the whole core is
+        the same codebase deploys to Cloudflare Workers, Vercel, Netlify, AWS
+        Lambda, Google Cloud & Azure Functions, Deno Deploy, or your own server
+        (Bun, Node, or Deno), the whole core is
         Apache-2.0, and it ships realtime, vector search, and a first-class
         <strong class="text-foreground font-medium">runtime MCP server</strong>
         so AI agents can use your backend as a tool.

@@ -1947,7 +1947,6 @@ function FolderPicker({ folders, value, onChange }: { folders: { id: string; nam
  * only, infinite-scroll style.
  */
 function PaginationFooter({ loaded, total, loading, onLoadMore }: { loaded: number; total: number; loading: boolean; onLoadMore: () => void }) {
-  const { t } = useLingui();
   const hasMore = loaded < total;
   if (total === 0) return null;
   if (!hasMore && !loading) return null;

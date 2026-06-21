@@ -40,7 +40,7 @@ const requireAdmin: MiddlewareHandler<AppBindings> = async (c, next) => {
 
 const AppUserRoleRef = z.object({ id: z.string(), name: z.string() });
 
-const AppUserRow = z
+const _AppUserRow = z
   .object({
     id: z.string(),
     email: z.string(),

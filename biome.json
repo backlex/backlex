@@ -42,9 +42,9 @@
         "useNodejsImportProtocol": "off"
       },
       "correctness": {
-        "noUnusedVariables": "off",
-        "noUnusedImports": "off",
-        "noUnusedFunctionParameters": "off",
+        "noUnusedVariables": "error",
+        "noUnusedImports": "error",
+        "noUnusedFunctionParameters": "error",
         "useExhaustiveDependencies": "off"
       },
       "complexity": {

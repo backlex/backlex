@@ -11,7 +11,6 @@ import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@backlex/ui/components/dialog";
@@ -246,7 +245,6 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
 }
 
 function CollectionCard({ c, onOpen, archived, onRestore, onOpenApi }: { c: CollectionListItem; onOpen: () => void; archived?: boolean; onRestore?: () => void; onOpenApi?: () => void }) {
-  const { t } = useLingui();
   const Ic = (I as Record<string, IconComponent>)[c.icon as IconKey] || I.Database;
   return (
     <Card
@@ -608,7 +606,6 @@ interface CreateChooserDialogProps {
 }
 
 function CreateChooserDialog({ open, onClose, onPickEmpty, onPickAdopt }: CreateChooserDialogProps) {
-  const { t } = useLingui();
   if (!open) return null;
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>

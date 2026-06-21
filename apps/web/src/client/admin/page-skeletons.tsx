@@ -118,12 +118,15 @@ function TableCardSkeleton({ rows = 7, cols = 5 }: { rows?: number; cols?: numbe
   );
 }
 
-/** A tab strip placeholder. */
+/** A tab strip placeholder. Clips to the column width (`max-w-full
+ *  overflow-hidden`) so the fixed-width tab blocks can't spill past the right
+ *  edge on narrow viewports — the real tab strips scroll inside their own
+ *  width rather than widening the page. */
 function TabStripSkeleton({ tabs = 3 }: { tabs?: number }) {
   return (
-    <div className="flex gap-1.5">
+    <div className="flex max-w-full gap-1.5 overflow-hidden">
       {Array.from({ length: tabs }).map((_, i) => (
-        <Skeleton key={i} className="h-8 w-24 rounded-md" />
+        <Skeleton key={i} className="h-8 w-24 shrink-0 rounded-md" />
       ))}
     </div>
   );
@@ -271,18 +274,30 @@ function LogsSkeletonImpl() {
         <Skeleton className="h-9 flex-1" />
         <Skeleton className="h-8 w-44 rounded-md" />
       </div>
-      {/* Source tabs (HTTP / Data / …) + the export button. */}
+      {/* Source tabs (HTTP / Data / …) + the export button. The lens strip
+          claims the row width and clips its own overflow (`min-w-0 flex-1
+          overflow-hidden`), so the five fixed-width tab blocks can't push the
+          export button off-screen on narrow viewports — mirroring the real
+          toolbar, where TabsList scrolls inside a flex-1 strip and the export
+          button collapses to an icon-only square under `sm`. */}
       <div className="flex items-center gap-2">
-        <TabStripSkeleton tabs={5} />
-        <div className="flex-1" />
-        <Skeleton className="h-8 w-36 rounded-md" />
+        <div className="flex min-w-0 flex-1 gap-1.5 overflow-hidden">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-8 w-24 shrink-0 rounded-md" />
+          ))}
+        </div>
+        <Skeleton className="h-8 w-9 shrink-0 rounded-md sm:w-36" />
       </div>
-      {/* Volume sparkline + level-filter summary card (info / warn / error). */}
-      <Card className="flex items-center gap-3.5 p-3.5">
-        <Skeleton className="h-11 flex-1" />
-        <Skeleton className="h-8 w-20 rounded-md" />
-        <Skeleton className="h-8 w-20 rounded-md" />
-        <Skeleton className="h-8 w-20 rounded-md" />
+      {/* Volume sparkline + level-filter summary card (info / warn / error).
+          Stacks vertically on mobile and goes side-by-side at `sm`, matching
+          the real summary card. */}
+      <Card className="flex flex-col gap-3 p-3.5 sm:flex-row sm:items-center sm:gap-3.5">
+        <Skeleton className="h-11 w-full sm:flex-1" />
+        <div className="flex flex-wrap justify-end gap-2 sm:justify-start">
+          <Skeleton className="h-8 w-20 rounded-md" />
+          <Skeleton className="h-8 w-20 rounded-md" />
+          <Skeleton className="h-8 w-20 rounded-md" />
+        </div>
       </Card>
       {/* Log-row stream. */}
       <Card className="gap-0 py-0">

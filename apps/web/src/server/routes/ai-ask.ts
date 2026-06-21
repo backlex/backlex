@@ -21,7 +21,13 @@ import { AppError, EMBEDDING_MODEL_NAMES, SYSTEM_ROLES } from "@backlex/core";
 import type { AppBindings } from "../app";
 import type { Env } from "../env";
 import { requireUser } from "../middleware/session";
+import { enforceIpRateLimit } from "../lib/auth-rate-limit";
 import { callClaude, extractJson } from "../mcp/ai-client";
+import {
+  GLOBAL_AI_CONFIG_ID,
+  applyAiOverride,
+  resolveAiOverride,
+} from "../services/ai-config";
 import { allTools } from "../mcp/tools";
 import { makeInternalFetch, readJson } from "../mcp/internal-fetch";
 import type { ToolCtx } from "../mcp/types";
@@ -324,6 +330,10 @@ const planHandler = async (
   app: Hono<AppBindings>,
   env: Env,
 ) => {
+  // Each call makes 1-2 live Claude calls (provider-paid on managed cloud).
+  // Cap per-IP so a stuck client / stolen admin session can't run up unbounded
+  // LLM cost.
+  await enforceIpRateLimit(c, "ai-plan", 20);
   const body = (await c.req.json().catch(() => ({}))) as {
     prompt?: unknown;
     model?: unknown;
@@ -342,7 +352,17 @@ const planHandler = async (
   const todayIso = new Date().toISOString().slice(0, 10);
   const system = buildPlanSystem(schemaDigest, todayIso);
 
-  const reply = await callClaude(env, {
+  // Prefer the workspace's bring-your-own AI key when set (overrides the
+  // deployment default, and on managed cloud bypasses the metered gateway).
+  const ctx = c.get("ctx");
+  const auth = c.get("auth");
+  const override = await resolveAiOverride(
+    { db: ctx.db, dialect: ctx.dialect, env },
+    auth.tenantId ?? GLOBAL_AI_CONFIG_ID,
+  );
+  const aiEnv = override ? applyAiOverride(env, override) : env;
+
+  const reply = await callClaude(aiEnv, {
     system,
     user: prompt,
     model,
@@ -376,7 +396,7 @@ const planHandler = async (
   // still-bad plan is returned annotated so the UI can warn before Run.
   const err = await dryRunPlan(fetchInternal, plan.tool, plan.args);
   if (err) {
-    const retry = await callClaude(env, {
+    const retry = await callClaude(aiEnv, {
       system,
       user:
         `${prompt}\n\nYour previous answer was:\n` +
@@ -418,6 +438,7 @@ const runHandler = async (
   app: Hono<AppBindings>,
   env: Env,
 ) => {
+  await enforceIpRateLimit(c, "ai-run", 40);
   const body = (await c.req.json().catch(() => ({}))) as {
     tool?: unknown;
     args?: unknown;

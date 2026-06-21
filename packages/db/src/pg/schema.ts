@@ -1556,6 +1556,30 @@ export const emailConfig = pgTable(
 );
 
 /**
+ * Per-workspace **bring-your-own** AI provider key. Same `tenant_id`-PK +
+ * `_global` fallback pattern as `email_config`. When a workspace stores a usable
+ * key here it overrides the deployment default for AI generation (Ask AI, the
+ * `ai.*` MCP tools, auto-translate) — including on managed cloud, where it lets
+ * a tenant opt out of the metered/capped platform gateway and bill their own
+ * provider instead. `provider = "inherit"` (or no usable key) falls through to
+ * the deployment's behaviour (cloud gateway on cloud, env keys on self-host).
+ *
+ * `provider`: `inherit` | `gateway` (Vercel AI Gateway, multi-provider) |
+ * `anthropic` (direct Anthropic). `secrets` holds the encrypted key material
+ * (`gatewayKey`, `anthropicKey`); never returned in the clear.
+ */
+export const aiConfig = pgTable(
+  "ai_config",
+  {
+    tenantId: text("tenant_id").primaryKey(),
+    provider: text("provider").notNull().default("inherit"),
+    config: jsonb("config").$type<Record<string, unknown>>().notNull().default({}),
+    secrets: jsonb("secrets").$type<Record<string, string>>().notNull().default({}),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+);
+
+/**
  * Per-workspace branding & appearance. `tenant_id` is the workspace id, or the
  * `_global` sentinel for the instance-wide override row used as a fallback
  * (same pattern as `email_config` / `auth_config`). `logo_file_key` and

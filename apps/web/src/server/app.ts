@@ -44,6 +44,7 @@ import { pushConfigRoutes } from "./routes/push-config";
 import { pushTemplatesRoutes } from "./routes/push-templates";
 import { phoneNumbersRoutes } from "./routes/phone-numbers";
 import { smsConfigRoutes } from "./routes/sms-config";
+import { aiConfigRoutes } from "./routes/ai-config";
 import { messagingRoutes } from "./routes/messaging";
 import { jobsRoutes } from "./routes/jobs";
 import { openapiRoutes } from "./routes/openapi";
@@ -401,6 +402,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/push-templates", pushTemplatesRoutes);
   app.route("/api/admin/push-config", pushConfigRoutes);
   app.route("/api/admin/sms-config", smsConfigRoutes);
+  app.route("/api/admin/ai-config", aiConfigRoutes);
   app.route("/api/workspace-config", workspaceConfigRoutes);
   app.route("/api/admin/auth", authAdminRoutes);
   app.route("/api/admin/saml", samlAdminRoutes);

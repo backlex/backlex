@@ -1024,20 +1024,20 @@ msgstr "Toplama fonksiyonu"
 
 #: src/client/admin/pages/settings.tsx
 msgid "AI"
-msgstr ""
+msgstr "AI"
 
 #. placeholder {0}: r.reply
 #: src/client/admin/pages/settings.tsx
 msgid "AI key works — model replied: {0}"
-msgstr ""
+msgstr "AI anahtarı çalışıyor — model yanıtı: {0}"
 
 #: src/client/admin/pages/settings.tsx
 msgid "AI provider key for <0>this workspace</0>. When set, it overrides the deployment default for AI generation (Ask AI, the<1> ai.*</1> tools, auto-translate) — including on managed cloud, where it lets you opt out of the metered platform AI gateway and bill your own provider. Keys are encrypted at rest and never shown again."
-msgstr ""
+msgstr "<0>Bu çalışma alanı</0> için AI sağlayıcı anahtarı. Ayarlandığında, AI üretimi için dağıtım varsayılanını geçersiz kılar (Ask AI,<1> ai.*</1> araçları, otomatik çeviri) — managed cloud dahil; burada ölçülen platform AI ağ geçidinden çıkıp kendi sağlayıcınızı kullanabilirsiniz. Anahtarlar beklerken şifrelenir ve bir daha asla gösterilmez."
 
 #: src/client/admin/pages/settings.tsx
 msgid "AI settings saved."
-msgstr ""
+msgstr "AI ayarları kaydedildi."
 
 #. placeholder {0}: aliasConflicts.map((c) => c.column).join(", ")
 #: src/client/admin/adopt-wizard.tsx
@@ -2544,7 +2544,7 @@ msgstr "Varsayılan yerel ayar"
 
 #: src/client/admin/pages/settings.tsx
 msgid "Default model (optional)"
-msgstr ""
+msgstr "Varsayılan model (isteğe bağlı)"
 
 #: src/client/admin/collection-settings.tsx
 msgid "default order when <0>?sort=</0> is omitted"
@@ -4627,7 +4627,7 @@ msgstr "Saklanan sertifikayı korumak için boş bırakın."
 
 #: src/client/admin/pages/settings.tsx
 msgid "Leave blank to use the built-in default. Callers may still override per request."
-msgstr ""
+msgstr "Yerleşik varsayılanı kullanmak için boş bırakın. Çağıranlar yine de istek bazında değiştirebilir."
 
 #. placeholder {0}: folder ? <>currently in <span className="font-mono">{folder}/</span></> : <>root by default</>
 #: src/client/admin/storage.tsx
@@ -8686,7 +8686,7 @@ msgstr "Test etkinliği {0} adresine gönderildi."
 
 #: src/client/admin/pages/settings.tsx
 msgid "Test key"
-msgstr ""
+msgstr "Anahtarı test et"
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Test LDAP connection"
@@ -8720,7 +8720,7 @@ msgstr "{0} numaraya test SMS gönderildi."
 
 #: src/client/admin/pages/settings.tsx
 msgid "Testing…"
-msgstr ""
+msgstr "Test ediliyor…"
 
 #: src/client/admin/pages/logs.tsx
 msgid "The activity endpoint returned an error. Try again in a moment."

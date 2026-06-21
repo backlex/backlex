@@ -240,31 +240,44 @@ export const recordAndRunBackup = async (
       })
       .where(eq(t.id, args.id));
     // A failed backup — especially an unattended scheduled one — must not pass
-    // silently. Record an audit row AND push the failure onto the `system`
-    // event channel so an operator-configured webhook / flow can alert on it.
-    await recordActivity(ctx, {
-      userId: args.userId,
-      tenantId: args.tenantId,
-      action: "backup.failed",
-      collection: "backups",
-      itemId: args.id,
-      payload: { label: args.label, storageKey: args.storageKey, error },
-    });
-    await publishEvent(
-      ctx.env,
-      "system",
-      {
-        event: "backup.failed",
-        data: {
-          backupId: args.id,
-          tenantId: args.tenantId,
-          label: args.label,
-          storageKey: args.storageKey,
-          error,
-        },
-      },
-      { db: ctx.db, dialect: ctx.dialect, fullCtx: ctx, tenantId: args.tenantId },
-    );
+    // silently. Record an audit row AND (for tenant-scoped backups) push the
+    // failure onto the `system` event channel so an operator-configured webhook
+    // / flow can alert on it. Both are best-effort: this runs inside a catch
+    // that already persisted `status:"failed"`, and the caller has no try/catch,
+    // so a throw here would turn a gracefully-failed backup into a 500.
+    try {
+      await recordActivity(ctx, {
+        userId: args.userId,
+        tenantId: args.tenantId,
+        action: "backup.failed",
+        collection: "backups",
+        itemId: args.id,
+        payload: { label: args.label, storageKey: args.storageKey, error },
+      });
+      // Only tenant-scoped backups publish. A null-tenant (global) backup would
+      // fan out UNSCOPED in dispatchWebhooks — to EVERY tenant's `system:*`
+      // webhook — leaking another context's failure across tenants. The failed
+      // row + activity audit remain the record for those.
+      if (args.tenantId) {
+        await publishEvent(
+          ctx.env,
+          "system",
+          {
+            event: "backup.failed",
+            data: {
+              backupId: args.id,
+              tenantId: args.tenantId,
+              label: args.label,
+              storageKey: args.storageKey,
+              error,
+            },
+          },
+          { db: ctx.db, dialect: ctx.dialect, fullCtx: ctx, tenantId: args.tenantId },
+        );
+      }
+    } catch {
+      /* notification is best-effort — the failed status + error are persisted */
+    }
     return { ok: false, error };
   }
 };

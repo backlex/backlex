@@ -322,26 +322,37 @@ export const runJob = async (
     // A dead-lettered job is otherwise only visible in the activity feed. Push
     // it onto the `system` event channel too so operators can wire a proactive
     // alert (a webhook → Slack/PagerDuty, a flow, an event function) instead of
-    // polling. `webhook.deliver` jobs are excluded: their failures already show
-    // up in the delivery log + auto-disable, and re-publishing would let a down
-    // alert endpoint feed its own dead-letter back into the channel in a loop.
-    if (exhausted && job.type !== "webhook.deliver") {
-      await publishEvent(
-        ctx.env,
-        "system",
-        {
-          event: "job.dead_letter",
-          data: {
-            jobId: job.id,
-            type: job.type,
-            queue: job.queue,
-            tenantId: job.tenantId,
-            attempts: job.attempts,
-            error: message,
+    // polling. Guards:
+    //  - `webhook.deliver` jobs are excluded: their failures already show up in
+    //    the delivery log + auto-disable, and re-publishing would let a down
+    //    alert endpoint feed its own dead-letter back into the channel in a loop.
+    //  - Only tenant-scoped jobs publish. A null-tenant (system/maintenance) job
+    //    would fan out UNSCOPED in dispatchWebhooks — i.e. to EVERY tenant's
+    //    `system:*` webhook — leaking failure metadata across tenants. Those
+    //    stay in the activity feed (+ cloud report) only.
+    //  - Best-effort: publishEvent awaits a DO fetch that can reject on Workers;
+    //    runJob's contract is "never throws", so a failed alert must not break it.
+    if (exhausted && job.type !== "webhook.deliver" && job.tenantId) {
+      try {
+        await publishEvent(
+          ctx.env,
+          "system",
+          {
+            event: "job.dead_letter",
+            data: {
+              jobId: job.id,
+              type: job.type,
+              queue: job.queue,
+              tenantId: job.tenantId,
+              attempts: job.attempts,
+              error: message,
+            },
           },
-        },
-        { db: ctx.db, dialect: ctx.dialect, fullCtx: ctx, tenantId: job.tenantId },
-      );
+          { db: ctx.db, dialect: ctx.dialect, fullCtx: ctx, tenantId: job.tenantId },
+        );
+      } catch {
+        /* alert is best-effort — the dead_letter activity row is the record */
+      }
     }
     return exhausted ? "dead_letter" : "pending";
   }

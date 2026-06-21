@@ -138,6 +138,10 @@ export type AppBindings = {
      *  every structured log line for the request, and surfaced in error
      *  responses so support can trace a single call end-to-end. */
     requestId: string;
+    /** Error code (e.g. `NOT_FOUND`, `RATE_LIMITED`, `INTERNAL`) stashed by the
+     *  global error handler so the single access-log line can carry it. Unset
+     *  for successful responses. */
+    errorCode?: string;
     permission: PermissionVar;
     /** Per-request L1 permission cache. Lazily initialized by the first
      *  `requirePermission` (or any explicit `getRequestPermCache(c)` call)
@@ -187,13 +191,14 @@ export const createApp = (env: Env) => {
   // Set the structured-log threshold once per isolate from env (default info).
   configureLogLevel(env.LOG_LEVEL);
 
-  // Outermost middleware: assign a correlation id and emit one structured JSON
-  // access line per request. Runs first so `requestId` is available to every
-  // downstream layer (ctx build, error handler) and the timing wraps the whole
-  // request. Successful + directly-returned responses are logged here; THROWN
-  // errors short-circuit past the post-`next()` code and are logged instead by
-  // the global error handler (middleware/error.ts), which also carries the
-  // requestId — so every request gets exactly one structured line, no dupes.
+  // Outermost middleware: assign a correlation id and emit the SINGLE structured
+  // JSON access line per request. Runs first so `requestId` is available to
+  // every downstream layer (ctx build, error handler) and the timing wraps the
+  // whole request. When a downstream handler throws, Hono's `onError`
+  // (middleware/error.ts) runs and the outer `await next()` below still resolves
+  // normally — so this line fires for thrown errors too. The error handler does
+  // NOT log its own line; it only stashes `errorCode` (read here) so each
+  // request produces exactly one access line, success or failure.
   app.use("*", async (c, next) => {
     const reqId =
       c.req.header("x-request-id") ||
@@ -229,6 +234,8 @@ export const createApp = (env: Env) => {
       ms: Date.now() - start,
       tenantId: auth?.tenantId ?? null,
       userId: auth?.userId ?? null,
+      // Present only on error responses (stashed by the global error handler).
+      code: c.get("errorCode"),
     });
   });
 

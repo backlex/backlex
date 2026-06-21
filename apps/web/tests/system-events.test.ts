@@ -128,6 +128,15 @@ describe("system event alerts (DLQ + backup)", () => {
     );
     expect(hook.status).toBe(201);
 
+    // The backup must be tenant-scoped for the system event to fan out to this
+    // workspace's webhook (a null-tenant backup intentionally does NOT publish —
+    // see recordAndRunBackup — to avoid cross-tenant leakage).
+    const me = (await (await h.fetch("/api/me")).json()) as {
+      data: { tenantId: string | null };
+    };
+    const tenantId = me.data.tenantId;
+    expect(tenantId).toBeTruthy();
+
     // Force a backup failure by breaking the storage write the dump relies on.
     const ctx = await buildContext(h.env);
     (ctx as unknown as { storage: { put: unknown } }).storage = {
@@ -139,8 +148,8 @@ describe("system event alerts (DLQ + backup)", () => {
 
     const r = await recordAndRunBackup(ctx, {
       id: crypto.randomUUID(),
-      tenantId: null,
-      storageKey: "backups/global/test.jsonl",
+      tenantId,
+      storageKey: `backups/${tenantId}/test.jsonl`,
       userId: null,
       label: "Test",
     });

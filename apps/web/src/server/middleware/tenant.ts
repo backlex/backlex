@@ -1,6 +1,7 @@
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { and, eq, or } from "drizzle-orm";
+import { AppError } from "@backlex/core";
 import type { MiddlewareHandler } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type { AppBindings } from "../app";
@@ -253,12 +254,27 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
   };
 
   const headerKey = c.req.header(TENANT_HEADER);
-  if (headerKey) {
+  // API keys with a home workspace are PINNED to it — a header override is
+  // ignored (and a non-matching one rejected) so a key (possibly owned by an
+  // admin) can never be pointed at another workspace via `X-Backlex-Tenant`.
+  // This mirrors the app-plane pinning below and, together with blocking the
+  // cross-tenant admin shortcut for API keys, confines every key to its tenant.
+  if (auth.apiKeyId && auth.apiKeyTenantId) {
+    if (headerKey) {
+      const requested = await resolveTenantKey(headerKey);
+      if (requested && requested !== auth.apiKeyTenantId) {
+        throw new AppError(
+          "FORBIDDEN",
+          "API key is bound to a different workspace",
+        );
+      }
+    }
+    tenantId = auth.apiKeyTenantId;
+  } else if (headerKey) {
     tenantId = await resolveTenantKey(headerKey);
   }
-  // API-key requests pin to the key's home tenant unless the caller sent an
-  // explicit override header. Cookie/user-pref are irrelevant here — the
-  // request might be a CI job with no session at all.
+  // Global (un-pinned) API keys fall back to their owner's tenant resolution
+  // below; a pinned key already set `tenantId` above.
   if (!tenantId && auth.apiKeyTenantId) {
     tenantId = auth.apiKeyTenantId;
   }
@@ -319,7 +335,12 @@ export const tenantMiddleware: MiddlewareHandler<AppBindings> = async (c, next) 
           ),
           tenantExists(db, dialect, tenantId),
         ]);
-        if (globalRoles.includes("admin") && exists) {
+        if (globalRoles.includes("admin") && exists && !auth.apiKeyId) {
+          // API keys never get the cross-tenant super-admin bypass: an
+          // admin-owned key is confined to workspaces the key is actually
+          // scoped to (its home tenant), not every workspace the owner can
+          // reach interactively. Closes the unscoped-admin-key + tenant-header
+          // escalation path.
           tenantRoles = scopedRoles; // admin keeps tenant-scoped role names
           // Cross-tenant admin shortcut: viewing only. Don't persist the
           // visit so the next request without a header drops back to the

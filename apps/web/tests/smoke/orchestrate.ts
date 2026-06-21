@@ -50,6 +50,8 @@ interface RuntimeProfile {
   spawnServer: (env: Record<string, string>) => ChildProcess;
   /** Whether to run the cron-secret gate check in the contract. */
   checkCron: boolean;
+  /** Whether to assert the admin SPA shell is served (function serves it). */
+  checkSpa: boolean;
 }
 
 const sqliteProfile: RuntimeProfile = {
@@ -90,6 +92,8 @@ const sqliteProfile: RuntimeProfile = {
       stdio: "inherit",
     }),
   checkCron: false,
+  // bun.ts calls mountSpa — the function serves the admin SPA itself.
+  checkSpa: true,
 };
 
 // Shared Postgres setup for every serverless bundle profile (vercel, netlify,
@@ -137,6 +141,7 @@ const nodeHostProfile = (
   serveScript: string,
   bundlePath: string,
   checkCron: boolean,
+  checkSpa = false,
 ): RuntimeProfile => ({
   setupDb: pgSetupDb,
   spawnServer: (env) =>
@@ -146,6 +151,7 @@ const nodeHostProfile = (
       stdio: "inherit",
     }),
   checkCron,
+  checkSpa,
 });
 
 
@@ -216,10 +222,15 @@ const cloudflareProfile: RuntimeProfile = {
       },
     ),
   checkCron: false,
+  // CF serves the SPA via the Static Assets binding; the smoke doesn't assert
+  // it here (the function itself doesn't mount it).
+  checkSpa: false,
 };
 
 const profiles: Record<string, RuntimeProfile> = {
   bun: sqliteProfile,
+  // vercel/netlify: the PLATFORM serves the static SPA, not the function, so
+  // checkSpa stays off (the bundle the smoke hosts is API-only).
   vercel: nodeHostProfile(
     "serve-bundle.mjs",
     ".vercel/output/functions/api/index.func/index.mjs",
@@ -231,18 +242,24 @@ const profiles: Record<string, RuntimeProfile> = {
     true,
   ),
   cloudflare: cloudflareProfile,
-  // AWS Lambda — APIGW v2 event handler; registers /api/_cron/tick.
+  // AWS Lambda — APIGW v2 event handler; registers /api/_cron/tick + serves SPA.
   lambda: nodeHostProfile(
     "serve-lambda.mjs",
     "apps/web/dist/lambda/index.mjs",
     true,
+    true,
   ),
   // Google Cloud Functions — mounts the exported `nodeListener` (the exact
-  // listener GCF's Functions Framework drives); registers /api/_cron/tick.
-  gcp: nodeHostProfile("serve-gcp.mjs", "apps/web/dist/gcp/index.mjs", true),
+  // listener GCF's Functions Framework drives); registers /api/_cron/tick + SPA.
+  gcp: nodeHostProfile("serve-gcp.mjs", "apps/web/dist/gcp/index.mjs", true, true),
   // Azure Functions — registration-capture host; cron is a Timer trigger, not
-  // an HTTP route, so the /api/_cron/tick gate check stays off.
-  azure: nodeHostProfile("serve-azure.mjs", "apps/web/dist/azure/index.mjs", false),
+  // an HTTP route, so the /api/_cron/tick gate check stays off. Serves the SPA.
+  azure: nodeHostProfile(
+    "serve-azure.mjs",
+    "apps/web/dist/azure/index.mjs",
+    false,
+    true,
+  ),
 };
 
 const profile = profiles[RUNTIME];
@@ -314,6 +331,7 @@ try {
   const { passes, failures } = await runSmokeContract({
     baseUrl: APP_URL,
     checkCron: profile.checkCron,
+    checkSpa: profile.checkSpa,
   });
 
   for (const p of passes) console.log(`  ✓ ${p}`);

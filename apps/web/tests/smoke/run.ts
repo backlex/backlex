@@ -4,6 +4,8 @@
  *   SMOKE_CRON   "1" / "true" to also test the cron auth gate
  *                (set this for vercel-bundle / netlify-bundle; leave
  *                unset for the Bun entry which has no cron route)
+ *   SMOKE_SPA    "1" / "true" to also assert the admin SPA shell is served
+ *                (set for runtimes whose function serves the SPA itself)
  *
  * Exits 0 on full pass, 1 on any failure.
  */
@@ -17,12 +19,17 @@ if (!url) {
 
 const checkCron =
   process.env.SMOKE_CRON === "1" || process.env.SMOKE_CRON === "true";
+const checkSpa =
+  process.env.SMOKE_SPA === "1" || process.env.SMOKE_SPA === "true";
 
-console.log(`[smoke] target: ${url} (cron check: ${checkCron})`);
+console.log(
+  `[smoke] target: ${url} (cron check: ${checkCron}, spa check: ${checkSpa})`,
+);
 
 const { passes, failures } = await runSmokeContract({
   baseUrl: url,
   checkCron,
+  checkSpa,
 });
 
 for (const p of passes) console.log(`  ✓ ${p}`);

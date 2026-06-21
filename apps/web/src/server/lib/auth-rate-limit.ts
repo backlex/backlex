@@ -96,6 +96,12 @@ const RULES: Rule[] = [
   // back-and-forth on multi-step flows.
   { match: /\/two-factor|\/otp/i, max: 10, label: "twofa" },
   { match: /\/sign-in(\/|$)/i, max: 10, label: "signin" },
+  // Token refresh + SAML ACS were previously unthrottled. The opaque refresh
+  // token is high-entropy (guessing is infeasible), so the cap is a
+  // replay-pump / resource-abuse guard rather than anti-brute-force — kept
+  // generous so shared-NAT app clients refreshing every ~15 min aren't hit.
+  { match: /\/token\/refresh(\/|$)/i, max: 60, label: "token-refresh" },
+  { match: /\/saml\/[^/]+\/acs(\/|$)/i, max: 20, label: "saml-acs" },
 ];
 
 /**

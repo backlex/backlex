@@ -28,6 +28,27 @@ export const guardLogicalKey = (key: string) => {
   if (key.startsWith(TENANT_PREFIX)) {
     throw new AppError("VALIDATION", `Key prefix "${TENANT_PREFIX}" is reserved`);
   }
+  // Reject path-traversal and absolute/backslash/null-byte keys. Without this a
+  // key like `../../../etc/passwd` escapes both the `tenants/<tid>/` isolation
+  // prefix (all adapters) AND the storage root on the fs adapter
+  // (`join(root, key)`), enabling cross-tenant or out-of-root file writes.
+  if (key.length === 0) {
+    throw new AppError("VALIDATION", "Key must not be empty");
+  }
+  if (key.includes("\0")) {
+    throw new AppError("VALIDATION", "Key must not contain null bytes");
+  }
+  if (key.startsWith("/") || key.startsWith("\\") || key.includes("\\")) {
+    throw new AppError("VALIDATION", "Key must not contain backslashes or start with a slash");
+  }
+  // Normalize separators and check every segment: no `.`/`..` traversal,
+  // no leading-slash collapse. Covers `a/../../b`, `./x`, `a//b`.
+  const segments = key.split("/");
+  for (const seg of segments) {
+    if (seg === "." || seg === "..") {
+      throw new AppError("VALIDATION", "Key must not contain path-traversal segments");
+    }
+  }
 };
 
 /** Both forms a row's `key` might take in production: the modern, tenant-

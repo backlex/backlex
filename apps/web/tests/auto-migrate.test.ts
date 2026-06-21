@@ -20,7 +20,6 @@
 import { describe, test, expect, afterEach, beforeEach } from "bun:test";
 import { Database } from "bun:sqlite";
 import { drizzle as drizzleBunSqlite } from "drizzle-orm/bun-sqlite";
-import { sql } from "drizzle-orm";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";

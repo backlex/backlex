@@ -144,7 +144,7 @@ const RecentErrorRow = z
   })
   .openapi("MetricsRecentErrorRow");
 
-const OverviewResponse = z
+const _OverviewResponse = z
   .object({
     range: z.string(),
     windowMs: z.number().int(),

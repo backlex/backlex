@@ -258,7 +258,6 @@ export function IntegrationsPage({ pushToast }: { pushToast: (m: string) => void
 
 /* ── Connect an integration: provider credentials + event subscriptions ── */
 function ConnectDialog({
-  kind,
   name,
   fields,
   existing,

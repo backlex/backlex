@@ -354,7 +354,6 @@ interface AutoTranslateDialogProps {
 }
 
 function AutoTranslateDialog({ locales, base, data, busy, onClose, onRun }: AutoTranslateDialogProps) {
-  const { t } = useLingui();
   const others = locales.filter((l) => l !== base);
   const [target, setTarget] = useState(others[0] || locales[0] || "");
   const [source, setSource] = useState(base);

@@ -481,7 +481,7 @@ interface ItemsAggregateState {
   limit: string;  // string for input control; parsed at submit
 }
 
-const DEFAULT_AGG_STATE: ItemsAggregateState = {
+const _DEFAULT_AGG_STATE: ItemsAggregateState = {
   collection: "",
   agg: "count",
   field: "",

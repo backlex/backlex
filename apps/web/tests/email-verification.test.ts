@@ -17,7 +17,7 @@ import { mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { randomUUID } from "node:crypto";
-import { makeHarness, seedAdmin, type TestHarness } from "./setup";
+import { makeHarness, seedAdmin, } from "./setup";
 
 const realFetch = globalThis.fetch;
 

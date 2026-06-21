@@ -28,7 +28,7 @@ import { deserialize } from "./serialize";
 export const buildExpandSelect = (
   dialect: "pg" | "sqlite",
   baseFkRef: SQL,
-  alias: string,
+  _alias: string,
   outputCol: string,
   cols: Array<{ key: string; ref: SQL }>,
 ): SQL => {

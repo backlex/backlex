@@ -5,7 +5,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type ReactNode,
 } from "react";
 import { useSearchParams } from "react-router-dom";
 import { RefreshCwIcon, SearchIcon, SendIcon, ChevronRightIcon } from "lucide-react";
@@ -827,7 +826,7 @@ interface TryResult {
   bodyText: string;
 }
 
-const renderToBody = (val: string, schema?: OpenApiSchema): unknown => {
+const _renderToBody = (val: string, schema?: OpenApiSchema): unknown => {
   // For path/query params: coerce based on the schema if possible.
   const t = Array.isArray(schema?.type) ? schema?.type[0] : schema?.type;
   if (val === "" && !schema?.required) return undefined;
@@ -851,7 +850,6 @@ const TryItTab = ({
   doc: OpenApiDoc | null;
   baseUrl: string;
 }) => {
-  const { t } = useLingui();
   const { path: pathParams, query, header } = splitParameters(ep);
   const body = ep.operation.requestBody;
   const json = pickJsonMedia(body?.content);

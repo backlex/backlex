@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "./icons";
 import { type CollectionSchema, type Post } from "./config";
-import { Badge, Button, Checkbox, Switch } from "./ui";
+import { Badge, Checkbox, Switch } from "./ui";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { Select } from "./select";

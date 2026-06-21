@@ -87,18 +87,6 @@ function objToPretty(obj: unknown) {
   return JSON.stringify(obj, null, 2);
 }
 
-function summarizeTree(node: TreeNode): string {
-  if (node.kind === "group") {
-    const sep = node.op === "or" ? " OR " : " AND ";
-    if (!node.children.length) return "(any)";
-    return "(" + node.children.map(summarizeTree).join(sep) + ")";
-  }
-  const op = CE_OPS.find((o) => o.v === node.op)?.label || node.op;
-  if (node.op === "_null") return `${node.field} is null`;
-  if (node.op === "_nnull") return `${node.field} is not null`;
-  return `${node.field || "?"} ${op} ${node.value || "∅"}`;
-}
-
 function newCondition(): CondNode { return { kind: "cond", field: "", op: "_eq", value: "" }; }
 function newGroup(op: "and" | "or" = "and"): GroupNode { return { kind: "group", op, children: [newCondition()] }; }
 
@@ -216,7 +204,7 @@ export interface ConditionEditorProps {
   availableFields: string[];
 }
 
-export function ConditionEditor({ role, action, collection, roles, pushToast, availableFields }: ConditionEditorProps) {
+export function ConditionEditor({ role, action, collection, pushToast, availableFields }: ConditionEditorProps) {
   const { t } = useLingui();
   const [tab, setTab] = useState<"item" | "fields" | "validation" | "presets">("item");
   const [mode, setMode] = useState<"builder" | "json">("builder");

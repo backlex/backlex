@@ -1,5 +1,18 @@
 import type { PushAdapter, PushMessage, PushSendResult } from "@backlex/core/adapters";
 import { encryptWebPush, importVapidKey, signJwt } from "../lib/push-crypto";
+import { isPrivateHost } from "../services/storage/hosts";
+
+/** Endpoint must be https + a public host. Registration already enforces this,
+ *  but re-check at send time as defense-in-depth against DNS rebinding and rows
+ *  that predate the registration guard. */
+const isSafeEndpoint = (endpoint: string): boolean => {
+  try {
+    const u = new URL(endpoint);
+    return u.protocol === "https:" && !isPrivateHost(u.hostname);
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Web Push (browsers) with VAPID auth and `aes128gcm` payload encryption
@@ -54,6 +67,13 @@ export const webPush = (cfg: WebPushConfig): PushAdapter => ({
     await Promise.all(
       targets.map(async (t) => {
         if (!t.keys?.p256dh || !t.keys?.auth) {
+          result.failed++;
+          result.invalidTokens.push(t.token);
+          return;
+        }
+        if (!isSafeEndpoint(t.token)) {
+          // Refuse to fetch a non-public/non-https endpoint (SSRF guard) and
+          // prune the offending registration.
           result.failed++;
           result.invalidTokens.push(t.token);
           return;

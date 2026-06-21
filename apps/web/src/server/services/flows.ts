@@ -10,6 +10,7 @@ import { sendPushToUsers } from "./push";
 import { createItem, updateItem } from "./items-helpers";
 import { enqueueTask, type ResumePayload } from "./scheduled-tasks";
 import { recordActivity } from "./activity";
+import { fetchOutbound } from "./storage/hosts";
 
 /** Inline-sleep cap. Anything longer is enqueued so the worker isn't
  *  blocked for minutes/hours at a time. */
@@ -157,7 +158,9 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
         signal: controller.signal,
       };
       if (body !== undefined) init.body = body;
-      const res = await fetch(url, init);
+      // SSRF guard (managed cloud / opt-in): private-host block + redirect
+      // re-validation. Plain fetch on self-host so internal endpoints work.
+      const res = await fetchOutbound(ctx.ctx.env, url, init);
       const text = await res.text();
       let parsed: unknown = text;
       try {

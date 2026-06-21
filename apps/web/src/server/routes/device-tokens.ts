@@ -6,6 +6,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { isPrivateHost } from "../services/storage/hosts";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.deviceTokens : sqlite.schema.deviceTokens;
@@ -113,8 +114,25 @@ export const deviceTokensRoutes = new OpenAPIHono<AppBindings>()
       const auth = c.get("auth");
       if (!auth.userId) throw new AppError("UNAUTHORIZED", "Sign in required");
       const body = c.req.valid("json");
-      if (body.platform === "web-push" && !body.keys) {
-        throw new AppError("VALIDATION", "web-push registration requires `keys` (p256dh, auth)");
+      if (body.platform === "web-push") {
+        if (!body.keys) {
+          throw new AppError("VALIDATION", "web-push registration requires `keys` (p256dh, auth)");
+        }
+        // The web-push token IS the endpoint URL the server later POSTs to —
+        // validate it now so a caller can't register an internal/metadata URL
+        // and turn a push send into a blind SSRF. Require https + a public host.
+        let endpoint: URL;
+        try {
+          endpoint = new URL(body.token);
+        } catch {
+          throw new AppError("VALIDATION", "web-push token must be a valid endpoint URL");
+        }
+        if (endpoint.protocol !== "https:") {
+          throw new AppError("VALIDATION", "web-push endpoint must use https");
+        }
+        if (isPrivateHost(endpoint.hostname)) {
+          throw new AppError("VALIDATION", "web-push endpoint host is not allowed");
+        }
       }
       const t = tableFor(ctx.dialect);
       const now = ctx.dialect === "pg" ? new Date() : Date.now();

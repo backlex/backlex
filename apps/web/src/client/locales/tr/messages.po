@@ -1022,6 +1022,23 @@ msgstr "sonra"
 msgid "Aggregate function"
 msgstr "Toplama fonksiyonu"
 
+#: src/client/admin/pages/settings.tsx
+msgid "AI"
+msgstr ""
+
+#. placeholder {0}: r.reply
+#: src/client/admin/pages/settings.tsx
+msgid "AI key works — model replied: {0}"
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "AI provider key for <0>this workspace</0>. When set, it overrides the deployment default for AI generation (Ask AI, the<1> ai.*</1> tools, auto-translate) — including on managed cloud, where it lets you opt out of the metered platform AI gateway and bill your own provider. Keys are encrypted at rest and never shown again."
+msgstr ""
+
+#: src/client/admin/pages/settings.tsx
+msgid "AI settings saved."
+msgstr ""
+
 #. placeholder {0}: aliasConflicts.map((c) => c.column).join(", ")
 #: src/client/admin/adopt-wizard.tsx
 msgid "alias conflict on {0}"
@@ -1673,6 +1690,10 @@ msgstr "Kaydedilemedi: {0}"
 msgid "Caps the number of grouped rows returned (default 50, max 200)."
 msgstr "Döndürülen gruplanmış satır sayısını sınırlar (varsayılan 50, maksimum 200)."
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Capture data events as PostHog analytics events."
+msgstr "Veri olaylarını PostHog analitik olayları olarak yakala."
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/relational-pickers.tsx
 msgid "Change"
@@ -2315,13 +2336,25 @@ msgstr "Klasör oluştur"
 msgid "Create function"
 msgstr "Fonksiyon oluştur"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Create Jira issues from data events."
+msgstr "Veri olaylarından Jira kayıtları (issue) oluştur."
+
 #: src/client/admin/parity/translations.tsx
 msgid "Create key"
 msgstr "Anahtar oluştur"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Create Linear issues from data events."
+msgstr "Veri olaylarından Linear kayıtları (issue) oluştur."
+
 #: src/client/admin/item-collaboration.tsx
 msgid "Create new link"
 msgstr "Yeni bağlantı oluştur"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Create Opsgenie alerts on data events."
+msgstr "Veri olaylarında Opsgenie uyarıları oluştur."
 
 #: src/client/admin/collections-index.tsx
 msgid "Create or adopt a table"
@@ -2524,6 +2557,10 @@ msgstr "Varsayılan dil"
 #: src/client/admin/parity/translations.tsx
 msgid "Default locale"
 msgstr "Varsayılan yerel ayar"
+
+#: src/client/admin/pages/settings.tsx
+msgid "Default model (optional)"
+msgstr ""
 
 #: src/client/admin/collection-settings.tsx
 msgid "default order when <0>?sort=</0> is omitted"
@@ -3438,8 +3475,12 @@ msgid "Failures (24h)"
 msgstr "Başarısızlıklar (24s)"
 
 #: src/client/admin/pages/integrations.tsx
-msgid "Fan record events out to Slack, Discord, Datadog, or GitHub. Secrets are encrypted at rest."
-msgstr "Kayıt olaylarını Slack, Discord, Datadog veya GitHub'a dağıtın. Sırlar beklemede şifrelenir."
+msgid "Fan record events out to chat, alerting, analytics, search, and automation tools. Secrets are encrypted at rest."
+msgstr "Kayıt olaylarını sohbet, uyarı, analitik, arama ve otomasyon araçlarına dağıt. Gizli bilgiler şifrelenerek saklanır."
+
+#: src/client/admin/pages/integrations.tsx
+#~ msgid "Fan record events out to Slack, Discord, Datadog, or GitHub. Secrets are encrypted at rest."
+#~ msgstr "Kayıt olaylarını Slack, Discord, Datadog veya GitHub'a dağıtın. Sırlar beklemede şifrelenir."
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "fast · cheap · routine reads"
@@ -3706,6 +3747,10 @@ msgstr "Unuttunuz mu?"
 #: src/client/admin/storage.tsx
 msgid "Format"
 msgstr "Biçim"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Forward data events to a Sentry project."
+msgstr "Veri olaylarını bir Sentry projesine ilet."
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Forward data events to the Datadog events API."
@@ -4603,6 +4648,10 @@ msgstr "mevcut değeri korumak için boş bırakın"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Leave blank to keep the stored cert."
 msgstr "Saklanan sertifikayı korumak için boş bırakın."
+
+#: src/client/admin/pages/settings.tsx
+msgid "Leave blank to use the built-in default. Callers may still override per request."
+msgstr ""
 
 #. placeholder {0}: folder ? <>currently in <span className="font-mono">{folder}/</span></> : <>root by default</>
 #: src/client/admin/storage.tsx
@@ -6454,8 +6503,16 @@ msgid "Post data events to a Discord channel."
 msgstr "Veri olaylarını bir Discord kanalına gönderir."
 
 #: src/client/admin/pages/integrations.tsx
+msgid "Post data events to a Microsoft Teams channel."
+msgstr "Veri olaylarını bir Microsoft Teams kanalına gönder."
+
+#: src/client/admin/pages/integrations.tsx
 msgid "Post data events to a Slack channel."
 msgstr "Veri olaylarını bir Slack kanalına gönderir."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "POST data events to any HTTPS endpoint, optionally HMAC-signed."
+msgstr "Veri olaylarını herhangi bir HTTPS uç noktasına POST et (isteğe bağlı HMAC imzalı)."
 
 #: src/client/admin/app.tsx
 msgid "Post saved."
@@ -7806,6 +7863,10 @@ msgstr "Bunun yerine sihirli bağlantı gönder"
 msgid "Send an email invite. The user finishes signup themselves."
 msgstr "E-posta daveti gönderin. Kullanıcı kaydı kendisi tamamlar."
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Send data events to a Telegram chat."
+msgstr "Veri olaylarını bir Telegram sohbetine gönder."
+
 #: src/client/admin/pages/users.tsx
 msgid "Send invite"
 msgstr "Davet gönder"
@@ -8523,6 +8584,14 @@ msgstr "Son kullanıcıyı askıya al"
 msgid "suspended"
 msgstr "askıya alındı"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Sync records to a Meilisearch index on data events."
+msgstr "Veri olaylarında kayıtları bir Meilisearch dizinine senkronla."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Sync records to an Algolia index on data events."
+msgstr "Veri olaylarında kayıtları bir Algolia dizinine senkronla."
+
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
 #: src/client/admin/parity/insights.tsx
@@ -8659,6 +8728,10 @@ msgstr "Test e-postası gönderildi."
 msgid "Test event sent to {0}."
 msgstr "Test etkinliği {0} adresine gönderildi."
 
+#: src/client/admin/pages/settings.tsx
+msgid "Test key"
+msgstr ""
+
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Test LDAP connection"
 msgstr "LDAP bağlantısını test et"
@@ -8688,6 +8761,10 @@ msgstr "Test çalışması başlatıldı."
 #: src/client/admin/pages/settings.tsx
 msgid "Test SMS sent to {0} number(s)."
 msgstr "{0} numaraya test SMS gönderildi."
+
+#: src/client/admin/pages/settings.tsx
+msgid "Testing…"
+msgstr ""
 
 #: src/client/admin/pages/logs.tsx
 msgid "The activity endpoint returned an error. Try again in a moment."
@@ -8945,6 +9022,10 @@ msgstr "Toplam üye"
 #~ msgid "Total users"
 #~ msgstr "Toplam kullanıcı"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Track data events through Segment."
+msgstr "Veri olaylarını Segment üzerinden izle."
+
 #: src/client/admin/storage.tsx
 msgid "Transform"
 msgstr "Dönüştür"
@@ -8999,6 +9080,10 @@ msgstr "tetikleyici → işlem grafiği"
 #: src/client/admin/flow-builder.tsx
 msgid "Trigger only fires when the row matches this filter (after the change)."
 msgstr "Tetikleyici yalnızca satır bu filtreyle eşleştiğinde (değişiklikten sonra) tetiklenir."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Trigger PagerDuty alerts on data events."
+msgstr "Veri olaylarında PagerDuty uyarıları tetikle."
 
 #: src/client/admin/pages/flows.tsx
 msgid "Triggers fire on collection events, schedules, or webhooks. Each step runs in the sandbox."

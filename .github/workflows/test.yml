@@ -112,7 +112,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runtime: [bun, vercel, netlify, cloudflare]
+        runtime: [bun, vercel, netlify, cloudflare, lambda, gcp, azure]
     services:
       postgres:
         image: pgvector/pgvector:pg16

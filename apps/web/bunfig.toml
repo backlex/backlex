@@ -1,0 +1,10 @@
+# Preloads for the React render tests under tests/client/:
+#  - lingui-macro.ts: a Bun loader that runs the Lingui compile-time macro on
+#    client files (bun test doesn't run vite), so i18n components can mount.
+#  - happydom.ts: a happy-dom DOM environment, with Bun's native fetch/Request/
+#    Response restored so the ~600 backend specs in the same process are
+#    unaffected.
+# Both are inert for the backend specs (the macro loader only fires for imported
+# src/client files; happy-dom's DOM globals are additive). See each file's header.
+[test]
+preload = ["./tests/client/lingui-macro.ts", "./tests/client/happydom.ts"]

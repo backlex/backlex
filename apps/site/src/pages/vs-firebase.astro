@@ -7,7 +7,7 @@ import Base from "../layouts/Base.astro";
 // Cloud Storage with the Resize Images extension).
 const rows = [
   ["License", "Apache-2.0 core + managed Cloud", "Proprietary (Google)"],
-  ["Self-host", "Your server (Bun/Node/Deno), Workers, Vercel, Netlify, or Deno Deploy", "No — Google-hosted only"],
+  ["Self-host", "9 runtimes — Cloudflare Workers, Vercel, Netlify, AWS Lambda, Google Cloud & Azure Functions, Deno Deploy, or self-host on Bun/Node/Deno", "No — Google-hosted only"],
   ["Data model", "Relational: PostgreSQL or SQLite / D1", "NoSQL document store (Firestore)"],
   ["Collections / schema", "Managed tables (dynamic, additive-only DDL) or adopt existing tables — relational, with relations & constraints", "Schemaless document collections"],
   ["Query API", "REST + GraphQL, SQL-backed; filter/sort/paginate, nested-relation filters, aggregation", "SDK queries against documents"],
@@ -37,7 +37,7 @@ const rows = [
 ---
 <Base
   title="backlex vs Firebase — open-source, SQL, self-hostable backend"
-  description="How backlex compares to Firebase: an open-source backend with a real SQL database, dynamic collections, built-in vector search, no vendor lock-in, self-hosting on Bun/Node/Deno, Workers/Vercel/Netlify, or Deno Deploy, and a runtime MCP server for AI agents."
+  description="How backlex compares to Firebase: an open-source backend with a real SQL database, dynamic collections, built-in vector search, no vendor lock-in, self-hosting on Bun/Node/Deno, Workers/Vercel/Netlify, AWS Lambda, Google Cloud & Azure Functions, or Deno Deploy, and a runtime MCP server for AI agents."
 >
   <section class="relative z-[1] max-w-[920px] mx-auto px-8 max-md:px-5 py-20">
     <div class="flex flex-col gap-3 mb-10">
@@ -66,7 +66,7 @@ const rows = [
         DSL, realtime, built-in vector search, and a
         <strong class="text-foreground font-medium">runtime MCP server</strong>
         for AI agents — running on your own server (Bun, Node, or Deno),
-        Cloudflare Workers, Vercel, Netlify, or Deno Deploy.
+        Cloudflare Workers, Vercel, Netlify, AWS Lambda, Google Cloud & Azure Functions, or Deno Deploy.
       </p>
 
       <div class="overflow-x-auto -mx-2">

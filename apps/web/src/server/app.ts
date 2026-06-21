@@ -206,6 +206,50 @@ export const createApp = (env: Env) => {
   app.use("*", logger());
   app.use("*", secureHeaders());
 
+  // Content-Security-Policy. `secureHeaders()` sets HSTS/XFO/nosniff/etc. but
+  // NOT a CSP, so the admin SPA shipped without one — any stored-XSS sink
+  // (collection/comment/AI-rendered content) would run with no mitigation.
+  // `script-src 'self'` (no 'unsafe-inline') is the core protection: injected
+  // inline scripts simply won't execute. Styles keep 'unsafe-inline' (React /
+  // Tailwind inject style attributes); img/connect stay broad (R2 assets,
+  // same-origin API + SSE/WS, cross-origin VITE_API_URL setups). GraphiQL
+  // (served at GET /api/graphql) bootstraps from a CDN + inline, so that one
+  // route gets a relaxed policy.
+  const STRICT_CSP = [
+    "default-src 'self'",
+    "script-src 'self'",
+    // 'unsafe-inline' for styles: React/Tailwind set style attributes. Google
+    // Fonts stylesheet host is allow-listed (the admin loads Geist from it).
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "connect-src 'self' https: wss:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'self'",
+  ].join("; ");
+  const GRAPHIQL_CSP = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net",
+    "style-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net",
+    "img-src 'self' data: https:",
+    "font-src 'self' data: https://unpkg.com https://cdn.jsdelivr.net",
+    "connect-src 'self' https:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "frame-ancestors 'self'",
+  ].join("; ");
+  app.use("*", async (c, next) => {
+    await next();
+    const path = new URL(c.req.url).pathname;
+    const isGraphiql = c.req.method === "GET" && path === "/api/graphql";
+    c.res.headers.set(
+      "content-security-policy",
+      isGraphiql ? GRAPHIQL_CSP : STRICT_CSP,
+    );
+  });
+
   // Build the per-request context *before* CORS so the CORS origin check can
   // read the active workspace set. `buildContext` is memoized per isolate
   // (createAuth + adapter setup happens once); the one-time role/seed bootstrap

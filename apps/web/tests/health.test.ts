@@ -48,3 +48,73 @@ describe("GET /health", () => {
     }
   });
 });
+
+describe("GET /health/ready (readiness probe)", () => {
+  let h: TestHarness;
+
+  beforeAll(() => {
+    h = makeHarness();
+  });
+
+  afterAll(() => {
+    h.cleanup();
+  });
+
+  test("returns 200 + db:up when the database is reachable", async () => {
+    const res = await h.fetch("/health/ready");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      ok: boolean;
+      db: string;
+      dbMs: number;
+      dialect: string;
+      version: string;
+      ts: number;
+    };
+    expect(body.ok).toBe(true);
+    expect(body.db).toBe("up");
+    expect(body.dialect).toBe("sqlite");
+    expect(typeof body.dbMs).toBe("number");
+    expect(body.dbMs).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("request correlation id", () => {
+  let h: TestHarness;
+
+  beforeAll(() => {
+    h = makeHarness();
+  });
+
+  afterAll(() => {
+    h.cleanup();
+  });
+
+  test("every response carries an x-request-id header", async () => {
+    const res = await h.fetch("/health");
+    const id = res.headers.get("x-request-id");
+    expect(id).toBeTruthy();
+    expect((id ?? "").length).toBeGreaterThan(0);
+  });
+
+  test("an inbound x-request-id is echoed back unchanged", async () => {
+    const res = await h.fetch("/health", {
+      headers: { "x-request-id": "trace-abc-123" },
+    });
+    expect(res.headers.get("x-request-id")).toBe("trace-abc-123");
+  });
+
+  test("error responses include the requestId in the body, matching the header", async () => {
+    // An unauthenticated call to an admin-only route throws AppError (requireUser
+    // → UNAUTHORIZED) → handled by the global error handler, which stamps the
+    // requestId into the envelope.
+    const res = await h.fetch("/api/admin/metrics/overview", {
+      headers: { "x-request-id": "trace-err-9" },
+    });
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    const body = (await res.json()) as { error?: unknown; requestId?: string };
+    expect(body.error).toBeTruthy();
+    expect(body.requestId).toBe("trace-err-9");
+    expect(res.headers.get("x-request-id")).toBe("trace-err-9");
+  });
+});

@@ -3,8 +3,45 @@ import { ZodError } from "zod";
 import { isAppError } from "@backlex/core";
 import { keepAlive, recordActivity, requestMeta } from "../services/activity";
 import { reportToCloud } from "../lib/cloud-report";
+import { levelForStatus, log } from "../lib/log";
 import type { Env } from "../env";
 import type { DbCtx } from "../services/seed";
+
+/** Read the request correlation id set by the outermost middleware. Wrapped
+ *  because errors that fire before that middleware ran (or in a bare context)
+ *  may not have it set. */
+const reqIdOf = (c: Context): string | undefined => {
+  try {
+    return c.get("requestId") as string | undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+/** One structured JSON log line per handled error, carrying the requestId so a
+ *  failure can be correlated with its access log + any upstream trace. Distinct
+ *  from `logServerError` below, which writes a durable audit row (5xx only). */
+const logHandledError = (
+  c: Context,
+  status: number,
+  code: string,
+  message: string,
+): void => {
+  let path: string;
+  try {
+    path = new URL(c.req.url).pathname;
+  } catch {
+    path = c.req.path;
+  }
+  log[levelForStatus(status)]("request.failed", {
+    requestId: reqIdOf(c),
+    method: c.req.method,
+    path,
+    status,
+    code,
+    message: message.slice(0, 500),
+  });
+};
 
 /**
  * Fire-and-forget audit row for server-side failures (HTTP 5xx). These feed
@@ -70,34 +107,47 @@ const logServerError = (
 };
 
 export const errorHandler = (err: Error, c: Context) => {
+  const requestId = reqIdOf(c);
   if (isAppError(err)) {
     const status = err.status as 400 | 401 | 403 | 404 | 409 | 422 | 429 | 500;
+    logHandledError(c, status, err.code, err.message);
     logServerError(c, status, err.code, err.message);
     return c.json(
-      { error: { code: err.code, message: err.message, details: err.details } },
+      {
+        error: { code: err.code, message: err.message, details: err.details },
+        requestId,
+      },
       status,
     );
   }
   if (err instanceof ZodError) {
     const first = err.issues[0];
     const path = first?.path.join(".");
+    const message = path
+      ? `${path}: ${first?.message ?? "invalid input"}`
+      : (first?.message ?? "invalid input");
+    logHandledError(c, 422, "VALIDATION", message);
     return c.json(
       {
-        error: {
-          code: "VALIDATION",
-          message: path
-            ? `${path}: ${first?.message ?? "invalid input"}`
-            : (first?.message ?? "invalid input"),
-          details: err.issues,
-        },
+        error: { code: "VALIDATION", message, details: err.issues },
+        requestId,
       },
       422,
     );
   }
-  console.error("[unhandled]", err);
+  // Unhandled exception — log the full error (with stack) under the requestId,
+  // but never leak internals to the client.
+  log.error("unhandled", {
+    requestId,
+    message: err?.message ?? String(err),
+    stack: err?.stack,
+  });
   logServerError(c, 500, "INTERNAL", err?.message ?? "Internal server error");
   return c.json(
-    { error: { code: "INTERNAL", message: "Internal server error" } },
+    {
+      error: { code: "INTERNAL", message: "Internal server error" },
+      requestId,
+    },
     500,
   );
 };

@@ -1022,6 +1022,23 @@ msgstr "after"
 msgid "Aggregate function"
 msgstr "Aggregate function"
 
+#: src/client/admin/pages/settings.tsx
+msgid "AI"
+msgstr "AI"
+
+#. placeholder {0}: r.reply
+#: src/client/admin/pages/settings.tsx
+msgid "AI key works — model replied: {0}"
+msgstr "AI key works — model replied: {0}"
+
+#: src/client/admin/pages/settings.tsx
+msgid "AI provider key for <0>this workspace</0>. When set, it overrides the deployment default for AI generation (Ask AI, the<1> ai.*</1> tools, auto-translate) — including on managed cloud, where it lets you opt out of the metered platform AI gateway and bill your own provider. Keys are encrypted at rest and never shown again."
+msgstr "AI provider key for <0>this workspace</0>. When set, it overrides the deployment default for AI generation (Ask AI, the<1> ai.*</1> tools, auto-translate) — including on managed cloud, where it lets you opt out of the metered platform AI gateway and bill your own provider. Keys are encrypted at rest and never shown again."
+
+#: src/client/admin/pages/settings.tsx
+msgid "AI settings saved."
+msgstr "AI settings saved."
+
 #. placeholder {0}: aliasConflicts.map((c) => c.column).join(", ")
 #: src/client/admin/adopt-wizard.tsx
 msgid "alias conflict on {0}"
@@ -1673,6 +1690,10 @@ msgstr "Cannot save: {0}"
 msgid "Caps the number of grouped rows returned (default 50, max 200)."
 msgstr "Caps the number of grouped rows returned (default 50, max 200)."
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Capture data events as PostHog analytics events."
+msgstr "Capture data events as PostHog analytics events."
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/relational-pickers.tsx
 msgid "Change"
@@ -2315,13 +2336,25 @@ msgstr "Create folder"
 msgid "Create function"
 msgstr "Create function"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Create Jira issues from data events."
+msgstr "Create Jira issues from data events."
+
 #: src/client/admin/parity/translations.tsx
 msgid "Create key"
 msgstr "Create key"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Create Linear issues from data events."
+msgstr "Create Linear issues from data events."
+
 #: src/client/admin/item-collaboration.tsx
 msgid "Create new link"
 msgstr "Create new link"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Create Opsgenie alerts on data events."
+msgstr "Create Opsgenie alerts on data events."
 
 #: src/client/admin/collections-index.tsx
 msgid "Create or adopt a table"
@@ -2524,6 +2557,10 @@ msgstr "Default language"
 #: src/client/admin/parity/translations.tsx
 msgid "Default locale"
 msgstr "Default locale"
+
+#: src/client/admin/pages/settings.tsx
+msgid "Default model (optional)"
+msgstr "Default model (optional)"
 
 #: src/client/admin/collection-settings.tsx
 msgid "default order when <0>?sort=</0> is omitted"
@@ -3438,8 +3475,12 @@ msgid "Failures (24h)"
 msgstr "Failures (24h)"
 
 #: src/client/admin/pages/integrations.tsx
-msgid "Fan record events out to Slack, Discord, Datadog, or GitHub. Secrets are encrypted at rest."
-msgstr "Fan record events out to Slack, Discord, Datadog, or GitHub. Secrets are encrypted at rest."
+msgid "Fan record events out to chat, alerting, analytics, search, and automation tools. Secrets are encrypted at rest."
+msgstr "Fan record events out to chat, alerting, analytics, search, and automation tools. Secrets are encrypted at rest."
+
+#: src/client/admin/pages/integrations.tsx
+#~ msgid "Fan record events out to Slack, Discord, Datadog, or GitHub. Secrets are encrypted at rest."
+#~ msgstr "Fan record events out to Slack, Discord, Datadog, or GitHub. Secrets are encrypted at rest."
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "fast · cheap · routine reads"
@@ -3706,6 +3747,10 @@ msgstr "Forgot?"
 #: src/client/admin/storage.tsx
 msgid "Format"
 msgstr "Format"
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Forward data events to a Sentry project."
+msgstr "Forward data events to a Sentry project."
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Forward data events to the Datadog events API."
@@ -4603,6 +4648,10 @@ msgstr "leave blank to keep current"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Leave blank to keep the stored cert."
 msgstr "Leave blank to keep the stored cert."
+
+#: src/client/admin/pages/settings.tsx
+msgid "Leave blank to use the built-in default. Callers may still override per request."
+msgstr "Leave blank to use the built-in default. Callers may still override per request."
 
 #. placeholder {0}: folder ? <>currently in <span className="font-mono">{folder}/</span></> : <>root by default</>
 #: src/client/admin/storage.tsx
@@ -6446,8 +6495,16 @@ msgid "Post data events to a Discord channel."
 msgstr "Post data events to a Discord channel."
 
 #: src/client/admin/pages/integrations.tsx
+msgid "Post data events to a Microsoft Teams channel."
+msgstr "Post data events to a Microsoft Teams channel."
+
+#: src/client/admin/pages/integrations.tsx
 msgid "Post data events to a Slack channel."
 msgstr "Post data events to a Slack channel."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "POST data events to any HTTPS endpoint, optionally HMAC-signed."
+msgstr "POST data events to any HTTPS endpoint, optionally HMAC-signed."
 
 #: src/client/admin/app.tsx
 msgid "Post saved."
@@ -7798,6 +7855,10 @@ msgstr "Send a magic link instead"
 msgid "Send an email invite. The user finishes signup themselves."
 msgstr "Send an email invite. The user finishes signup themselves."
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Send data events to a Telegram chat."
+msgstr "Send data events to a Telegram chat."
+
 #: src/client/admin/pages/users.tsx
 msgid "Send invite"
 msgstr "Send invite"
@@ -8515,6 +8576,14 @@ msgstr "Suspend end-user"
 msgid "suspended"
 msgstr "suspended"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Sync records to a Meilisearch index on data events."
+msgstr "Sync records to a Meilisearch index on data events."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Sync records to an Algolia index on data events."
+msgstr "Sync records to an Algolia index on data events."
+
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
 #: src/client/admin/parity/insights.tsx
@@ -8651,6 +8720,10 @@ msgstr "Test email sent."
 msgid "Test event sent to {0}."
 msgstr "Test event sent to {0}."
 
+#: src/client/admin/pages/settings.tsx
+msgid "Test key"
+msgstr "Test key"
+
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Test LDAP connection"
 msgstr "Test LDAP connection"
@@ -8680,6 +8753,10 @@ msgstr "Test run dispatched."
 #: src/client/admin/pages/settings.tsx
 msgid "Test SMS sent to {0} number(s)."
 msgstr "Test SMS sent to {0} number(s)."
+
+#: src/client/admin/pages/settings.tsx
+msgid "Testing…"
+msgstr "Testing…"
 
 #: src/client/admin/pages/logs.tsx
 msgid "The activity endpoint returned an error. Try again in a moment."
@@ -8937,6 +9014,10 @@ msgstr "Total members"
 #~ msgid "Total users"
 #~ msgstr "Total users"
 
+#: src/client/admin/pages/integrations.tsx
+msgid "Track data events through Segment."
+msgstr "Track data events through Segment."
+
 #: src/client/admin/storage.tsx
 msgid "Transform"
 msgstr "Transform"
@@ -8991,6 +9072,10 @@ msgstr "trigger → action graph"
 #: src/client/admin/flow-builder.tsx
 msgid "Trigger only fires when the row matches this filter (after the change)."
 msgstr "Trigger only fires when the row matches this filter (after the change)."
+
+#: src/client/admin/pages/integrations.tsx
+msgid "Trigger PagerDuty alerts on data events."
+msgstr "Trigger PagerDuty alerts on data events."
 
 #: src/client/admin/pages/flows.tsx
 msgid "Triggers fire on collection events, schedules, or webhooks. Each step runs in the sandbox."

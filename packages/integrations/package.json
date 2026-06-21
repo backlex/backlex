@@ -1,7 +1,7 @@
 {
   "name": "@backlex/integrations",
-  "version": "0.0.1",
-  "description": "Runtime-agnostic third-party integration adapters (Slack/Discord/Datadog/GitHub) for backlex.",
+  "version": "0.1.0",
+  "description": "Runtime-agnostic third-party integration adapters (Slack, Discord, Teams, Telegram, Datadog, Sentry, PagerDuty, Opsgenie, GitHub, and more) for backlex.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./src/index.ts",

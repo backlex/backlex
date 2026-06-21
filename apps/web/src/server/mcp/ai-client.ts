@@ -109,8 +109,17 @@ export const callClaude = async (
   env: Env,
   { system, user, model, maxTokens }: ClaudeRequest,
 ): Promise<ClaudeResponse> => {
-  // Managed cloud projects route generation through the metered/capped gateway.
-  if (cloudConfigured(env)) return callCloudGeneration(env, { system, user, model, maxTokens });
+  // A direct provider key wins over the managed cloud gateway. On self-host
+  // that's the deployment's env key; on managed cloud it only appears when a
+  // workspace brought its own key (overlaid via applyAiOverride from
+  // services/ai-config), which is exactly the opt-out from the metered/capped
+  // platform gateway. With no direct key, a cloud project falls back to the
+  // gateway; self-host with no key throws the helpful "set a key" error below.
+  const hasDirectKey = Boolean(
+    env.AI_GATEWAY_API_KEY?.trim() || env.ANTHROPIC_API_KEY?.trim(),
+  );
+  if (!hasDirectKey && cloudConfigured(env))
+    return callCloudGeneration(env, { system, user, model, maxTokens });
 
   const provider = pickProvider(env);
   const modelId = resolveModelId(provider.kind, model);

@@ -23,7 +23,6 @@ import { Card } from "@backlex/ui/components/card";
 import { Textarea } from "@backlex/ui/components/textarea";
 import {
   Tabs,
-  TabsContent,
   TabsList,
   TabsTrigger,
 } from "@backlex/ui/components/tabs";

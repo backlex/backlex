@@ -1,5 +1,5 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { and, eq, isNull, or, type SQL } from "drizzle-orm";
+import { and, eq, isNull, or, } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
 import { AppError, SYSTEM_ROLES } from "@backlex/core";
@@ -9,8 +9,6 @@ import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 import {
-  ITEMS_AGG_FUNCS,
-  ItemsAggregateConfig,
   runItemsAggregate,
 } from "../services/items/aggregate";
 

@@ -242,7 +242,7 @@ const runOnce = (
 
 const waitForHealth = async (timeoutMs = 30_000): Promise<void> => {
   const start = Date.now();
-  let lastErr: unknown = undefined;
+  let lastErr: unknown ;
   while (Date.now() - start < timeoutMs) {
     try {
       const r = await fetch(`${APP_URL}/health`);

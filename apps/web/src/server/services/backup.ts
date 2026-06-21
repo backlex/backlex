@@ -128,7 +128,7 @@ export const runBackup = async (
   // System tables. For each table, scope by tenant_id when the column exists
   // (keeps backups workspace-local). We just SELECT *; the resulting raw rows
   // already use the on-disk column names.
-  for (const [name, table] of Object.entries(sysTables)) {
+  for (const [name, _table] of Object.entries(sysTables)) {
     let rows: Record<string, unknown>[];
     try {
       // Try filtered first — works when tenant_id column exists.

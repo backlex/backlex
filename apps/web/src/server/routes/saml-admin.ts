@@ -98,7 +98,7 @@ const ImportMetadataInput = z
   })
   .openapi("SamlImportMetadataInput");
 
-const SamlProviderRow = z
+const _SamlProviderRow = z
   .object({
     id: z.string(),
     tenantId: z.string(),

@@ -17,7 +17,7 @@
  * element here is a `Button` / `Switch` / `Select` / `Badge` from
  * `@/admin/ui` (the local re-export of @backlex/ui).
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";

@@ -19,7 +19,7 @@
  * to load on Workers. If a future Workers runtime drops a primitive that
  * samlify needs, swap in the Web-Crypto-based verifier per the plan.
  */
-import { generateKeyPairSync, createPrivateKey, X509Certificate } from "node:crypto";
+import { generateKeyPairSync } from "node:crypto";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 import * as samlifyNs from "samlify";
 import { SignedXml } from "xml-crypto";

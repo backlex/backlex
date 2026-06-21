@@ -289,7 +289,10 @@ export const requireUser: MiddlewareHandler<AppBindings> = async (c, next) => {
   const auth = c.get("auth");
   if (!auth.userId)
     return c.json(
-      { error: { code: "UNAUTHORIZED", message: "Sign in required" } },
+      {
+        error: { code: "UNAUTHORIZED", message: "Sign in required" },
+        requestId: c.get("requestId"),
+      },
       401,
     );
   await next();

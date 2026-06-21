@@ -12,6 +12,11 @@ export interface Env {
    *  `Server-Timing` header (diagnostic). Unset (default) → timings are never
    *  collected or emitted, so internal phase latencies aren't disclosed. */
   DEBUG_TIMING_SECRET?: string;
+  /** Structured-log verbosity threshold: `debug` | `info` (default) | `warn` |
+   *  `error` | `silent`. Controls the per-request JSON access log + internal
+   *  diagnostic lines (see lib/log.ts). `warn` mutes the access log but keeps
+   *  warnings/errors; `debug` adds health-check lines; `silent` mutes all. */
+  LOG_LEVEL?: string;
   /** Schema-template id set by the cloud provisioner; the first workspace of a
    *  fresh install seeds the matching collections (zero-touch). */
   SEED_TEMPLATE?: string;

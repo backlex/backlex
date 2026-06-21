@@ -38,7 +38,7 @@ import {
 import { ConfirmDialog, ItemSheet } from "./sheet";
 import { ItemEditorPage } from "./item-editor";
 import { CalendarView, GalleryGrid, ItemsViewToggle, KanbanBoard, type ItemsViewMode } from "./item-views";
-import { AlterPreview, EmptyItems, Palette, RealtimeTail, SchemaView, type RealtimeEvent } from "./extras";
+import { EmptyItems, Palette, RealtimeTail, SchemaView, type RealtimeEvent } from "./extras";
 import { AddFieldDialog } from "./add-field";
 import { loadAuthors } from "./authors-cache";
 import { CollectionsIndex, NewCollectionDialog } from "./collections-index";

@@ -253,7 +253,6 @@ function describeOpShort(op: any): string {
 }
 
 function FlowPreview({ trigger, operations, onEdit }: { trigger: string; operations: any[]; onEdit: () => void }) {
-  const { t } = useLingui();
   const opKind = (op: any) => (op?.type === "condition" ? "condition" : "action");
   const visible = operations.slice(0, 3);
   const overflow = Math.max(0, operations.length - visible.length);

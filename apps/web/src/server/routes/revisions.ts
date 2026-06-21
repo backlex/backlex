@@ -56,7 +56,7 @@ const loadCollection = async (
 const collectionFromParam = (c: Context<AppBindings>) =>
   c.req.param("collection" as never) as string;
 
-const RevisionRow = z
+const _RevisionRow = z
   .object({
     id: z.string(),
     collection: z.string(),

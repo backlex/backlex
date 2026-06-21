@@ -1,5 +1,5 @@
 import { z } from "../lib/openapi";
-import { apiRegistry, SECURITY, errorResponses } from "../lib/openapi";
+import { apiRegistry, errorResponses } from "../lib/openapi";
 
 const I18nLocalesResponse = z
   .object({

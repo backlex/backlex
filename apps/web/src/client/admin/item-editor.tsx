@@ -548,7 +548,6 @@ function PublishControls({
   setScheduleAt: (v: string) => void;
   onPublish: (action: "publish" | "unpublish" | "schedule", publishAt?: string | null) => void | Promise<void>;
 }) {
-  const { t } = useLingui();
   const rec = (item ?? {}) as Record<string, unknown>;
   const status = String(rec._status ?? "draft");
   const rawPublishAt = rec._publish_at as string | number | null | undefined;

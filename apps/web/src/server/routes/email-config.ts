@@ -65,7 +65,7 @@ const PutInput = z
   })
   .openapi("EmailConfigPutInput");
 
-const EmailConfigResponse = z
+const _EmailConfigResponse = z
   .object({
     tenantId: z.string(),
     provider: z.string(),

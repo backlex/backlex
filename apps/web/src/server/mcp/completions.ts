@@ -44,7 +44,7 @@ const result = (matched: string[]) => ({
  *  arguments (free-text `intent`, etc.) return an empty completion. */
 export const complete = async (
   ctx: ToolCtx,
-  ref: CompletionRef | undefined,
+  _ref: CompletionRef | undefined,
   argument: CompletionArgument | undefined,
 ): Promise<{ completion: { values: string[]; total: number; hasMore: boolean } }> => {
   const argName = typeof argument?.name === "string" ? argument.name : "";

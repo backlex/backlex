@@ -15,8 +15,6 @@ import {
   type PhoneNumber,
   type Job,
   type JobStatus,
-  type Upload,
-  type UploadStatus,
   type ResumableUploadResult,
   type FlagState,
   BacklexError,

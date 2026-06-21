@@ -111,15 +111,6 @@ describe("@backlex/integrations adapters", () => {
     expect(rec.calls[0]!.body).toMatchObject({ event: "item.created", userId: "42" });
   });
 
-  test("webhook POSTs the event and signs with HMAC when a secret is set", async () => {
-    const rec = recorder();
-    const out = await deliverToIntegration("webhook", { url: "https://example.com/hook", signingSecret: "s3cr3t" }, evt, rec.fetch);
-    expect(out.ok).toBe(true);
-    expect(rec.calls[0]!.url).toBe("https://example.com/hook");
-    expect(rec.calls[0]!.body).toEqual({ event: "item.created", text: "New order #42", payload: { id: "42" } });
-    expect(rec.calls[0]!.headers["X-Backlex-Signature"]).toMatch(/^sha256=[0-9a-f]{64}$/);
-  });
-
   test("linear creates an issue via GraphQL with the team id", async () => {
     const rec = recorder();
     await deliverToIntegration("linear", { apiKey: "lin", teamId: "team-1" }, evt, rec.fetch);

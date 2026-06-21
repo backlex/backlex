@@ -37,10 +37,13 @@
  *     deduped, so at-least-once delivery is safe; the route 401s without the
  *     secret.
  */
+import { fileURLToPath } from "node:url";
 import { http } from "@google-cloud/functions-framework";
 import { getRequestListener } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { timingSafeEqual } from "../lib/timing";
 import { createApp } from "../app";
+import { mountSpa } from "../lib/spa";
 import { cronTick } from "../services/scheduler";
 import type { Env } from "../env";
 
@@ -98,6 +101,13 @@ app.get("/api/_cron/tick", async (c) => {
   await cronTick(env);
   return c.json({ ok: true, ts: Date.now() });
 });
+
+// Serve the pre-built admin SPA. `build-gcp.ts` copies `dist/client` next to the
+// bundle (→ `dist/gcp/client`); the root resolves relative to this module.
+// Mounted AFTER every /api route, so the API wins and unmatched GETs fall
+// through to the SPA shell. Must run BEFORE getRequestListener below, which
+// snapshots `app.fetch`. (Front with Cloud CDN in production — see deployment.md.)
+mountSpa(app, serveStatic, fileURLToPath(new URL("./client", import.meta.url)));
 
 // The Node `(req, res)` listener Hono produces from `app.fetch` — exactly what
 // the Functions Framework invokes per request. Exported so a plain Node HTTP

@@ -57,17 +57,28 @@ const server = createServer(async (nodeReq, nodeRes) => {
       for await (const chunk of nodeReq) chunks.push(chunk);
       if (chunks.length > 0) bodyBytes = new Uint8Array(Buffer.concat(chunks));
     }
-    const headers = {};
+    const headers = new Headers();
     for (const [k, v] of Object.entries(nodeReq.headers)) {
       if (v === undefined) continue;
-      headers[k] = Array.isArray(v) ? v.join(", ") : String(v);
+      headers.set(k, Array.isArray(v) ? v.join(", ") : String(v));
     }
-    const request = new az.HttpRequest({
+    // Duck-typed Azure HttpRequest: the entry's shim only reads .method, .url,
+    // .headers, and .arrayBuffer(). We avoid `new az.HttpRequest(...)` because
+    // that class isn't reliably constructable outside the Azure host — its
+    // named export hoists inconsistently across Node CJS/ESM interop versions
+    // (undefined on Node 22 in CI, defined on Node 26 locally).
+    const bodyBuf = bodyBytes
+      ? bodyBytes.buffer.slice(
+          bodyBytes.byteOffset,
+          bodyBytes.byteOffset + bodyBytes.byteLength,
+        )
+      : new ArrayBuffer(0);
+    const request = {
       method: nodeReq.method,
       url: `http://127.0.0.1:${port}${nodeReq.url}`,
       headers,
-      body: bodyBytes ? { bytes: bodyBytes } : undefined,
-    });
+      arrayBuffer: async () => bodyBuf,
+    };
 
     const res = await captured.http(request, fakeContext);
 

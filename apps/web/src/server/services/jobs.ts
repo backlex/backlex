@@ -8,6 +8,7 @@ import { buildContext } from "../context";
 import { findByName } from "./functions";
 import { runFunction } from "./sandbox";
 import { deliverWebhookById } from "./webhooks";
+import { publishEvent } from "./events";
 import { recordActivity } from "./activity";
 
 const SYSTEM_AUTH: AuthSubject = { userId: null, email: null, roles: [] };
@@ -318,6 +319,30 @@ export const runJob = async (
       itemId: job.id,
       payload: { type: job.type, queue: job.queue, attempts: job.attempts, error: message },
     });
+    // A dead-lettered job is otherwise only visible in the activity feed. Push
+    // it onto the `system` event channel too so operators can wire a proactive
+    // alert (a webhook → Slack/PagerDuty, a flow, an event function) instead of
+    // polling. `webhook.deliver` jobs are excluded: their failures already show
+    // up in the delivery log + auto-disable, and re-publishing would let a down
+    // alert endpoint feed its own dead-letter back into the channel in a loop.
+    if (exhausted && job.type !== "webhook.deliver") {
+      await publishEvent(
+        ctx.env,
+        "system",
+        {
+          event: "job.dead_letter",
+          data: {
+            jobId: job.id,
+            type: job.type,
+            queue: job.queue,
+            tenantId: job.tenantId,
+            attempts: job.attempts,
+            error: message,
+          },
+        },
+        { db: ctx.db, dialect: ctx.dialect, fullCtx: ctx, tenantId: job.tenantId },
+      );
+    }
     return exhausted ? "dead_letter" : "pending";
   }
 };

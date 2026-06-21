@@ -76,7 +76,7 @@ import Base from "../layouts/Base.astro";
         <span class="text-[12px] font-medium">Ask in natural language</span>
         <span class="ml-auto inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span><span class="font-mono">claude-haiku-4-5</span></span>
       </div>
-      <div class="px-5 py-3.5 text-[15px] text-foreground leading-snug border-b border-border">top customers by lifetime_value last month, limit 10</div>
+      <div class="px-5 py-3.5 text-[15px] text-foreground leading-snug border-b border-border">Who were our 10 most valuable customers last month?</div>
       <div class="px-5 py-2.5 flex items-center gap-2 flex-wrap border-b border-border bg-muted/30">
         <span class="text-[12px] font-semibold">Plan</span>
         <span class="font-mono text-[11.5px] text-muted-foreground">→</span>
@@ -939,6 +939,7 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
             <th class="px-5 py-3.5 text-left font-medium text-xs uppercase tracking-wider text-muted-foreground bg-muted border-b border-border">Capability</th>
             <th class="px-5 py-3.5 text-left font-medium text-xs uppercase tracking-wider text-muted-foreground bg-muted border-b border-border">backlex</th>
             <th class="px-5 py-3.5 text-left font-medium text-xs uppercase tracking-wider text-muted-foreground bg-muted border-b border-border">Supabase</th>
+            <th class="px-5 py-3.5 text-left font-medium text-xs uppercase tracking-wider text-muted-foreground bg-muted border-b border-border">Firebase</th>
             <th class="px-5 py-3.5 text-left font-medium text-xs uppercase tracking-wider text-muted-foreground bg-muted border-b border-border">Directus</th>
             <th class="px-5 py-3.5 text-left font-medium text-xs uppercase tracking-wider text-muted-foreground bg-muted border-b border-border">Roll-your-own</th>
           </tr>
@@ -948,6 +949,7 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
             <td class="px-5 py-3 border-b border-border font-medium">Self-host, Apache-2.0 licensed</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">partial</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
           </tr>
@@ -956,26 +958,30 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">if you build it</td>
           </tr>
           <tr>
-            <td class="px-5 py-3 border-b border-border font-medium">Dynamic schema (runtime DDL)</td>
+            <td class="px-5 py-3 border-b border-border font-medium">Change schema at runtime, no migrations</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">migrations only</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">schemaless</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">depends</td>
           </tr>
           <tr>
-            <td class="px-5 py-3 border-b border-border font-medium">Adopt existing tables without DDL</td>
+            <td class="px-5 py-3 border-b border-border font-medium">Adopt an existing database as-is</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">limited</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">depends</td>
           </tr>
           <tr>
-            <td class="px-5 py-3 border-b border-border font-medium">Permissions DSL that compiles to SQL</td>
+            <td class="px-5 py-3 border-b border-border font-medium">Declarative row &amp; field permissions</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">RLS</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">Security Rules</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">build it</td>
           </tr>
@@ -983,6 +989,7 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
             <td class="px-5 py-3 border-b border-border font-medium">Per-event realtime permission filter</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">RLS-based</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">rules-based</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">build it</td>
           </tr>
@@ -990,6 +997,7 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
             <td class="px-5 py-3 border-b border-border font-medium">Edge functions sandbox + host bridge</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">Cloud Functions</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">build it</td>
           </tr>
@@ -997,13 +1005,15 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
             <td class="px-5 py-3 border-b border-border font-medium">Visual flow builder</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
-            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 border-b border-border text-muted-foreground">build it</td>
           </tr>
           <tr>
             <td class="px-5 py-3 border-b border-border font-medium">Client SDKs (official)</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">11 languages</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">JS, Flutter, Swift, Python</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">JS, Swift, Kotlin, Flutter, Unity</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">JS / TS</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">build it</td>
           </tr>
@@ -1011,6 +1021,7 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
             <td class="px-5 py-3 border-b border-border font-medium">Unified messaging (push + SMS)</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">auth OTP only</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">push only (FCM)</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">build it</td>
           </tr>
@@ -1018,6 +1029,7 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
             <td class="px-5 py-3 border-b border-border font-medium">Durable job queue (retry + DLQ + scheduled)</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">pgmq / pg_cron</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">via Cloud Tasks</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">build it</td>
           </tr>
@@ -1025,6 +1037,7 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
             <td class="px-5 py-3 border-b border-border font-medium">Feature flags + remote config</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">Remote Config</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">build it</td>
           </tr>
@@ -1032,12 +1045,14 @@ r.data[<span class="c-num">0</span>].title; <span class="c-comment">// string �
             <td class="px-5 py-3 border-b border-border font-medium">Offline-first sync (changefeed + client store)</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
             <td class="px-5 py-3 border-b border-border text-[oklch(0.55_0.14_80)]">via PowerSync</td>
+            <td class="px-5 py-3 border-b border-border text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">built-in</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">no</td>
             <td class="px-5 py-3 border-b border-border text-muted-foreground">build it</td>
           </tr>
           <tr>
             <td class="px-5 py-3 font-medium">SAML 2.0 + LDAP / AD</td>
             <td class="px-5 py-3 text-[oklch(0.5_0.16_131)] dark:text-[oklch(0.78_0.18_131)]">✓</td>
+            <td class="px-5 py-3 text-[oklch(0.55_0.14_80)]">enterprise</td>
             <td class="px-5 py-3 text-[oklch(0.55_0.14_80)]">enterprise</td>
             <td class="px-5 py-3 text-[oklch(0.55_0.14_80)]">enterprise</td>
             <td class="px-5 py-3 text-muted-foreground">build it</td>

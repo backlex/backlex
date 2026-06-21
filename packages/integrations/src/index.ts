@@ -29,7 +29,6 @@ export const INTEGRATION_KINDS = [
   "segment",
   // automation / issue tracking
   "github",
-  "webhook",
   "linear",
   "jira",
   // search sync
@@ -90,10 +89,6 @@ export const INTEGRATION_FIELDS: Record<IntegrationKind, IntegrationConfigField[
     { key: "token", label: "Access token (repo scope)", placeholder: "ghp_…", secret: true },
     { key: "repo", label: "Repository", placeholder: "owner/name" },
   ],
-  webhook: [
-    { key: "url", label: "Endpoint URL", placeholder: "https://example.com/hooks/backlex", secret: true },
-    { key: "signingSecret", label: "Signing secret (optional)", placeholder: "HMAC-SHA256 secret", secret: true },
-  ],
   linear: [
     { key: "apiKey", label: "API key", placeholder: "lin_api_…", secret: true },
     { key: "teamId", label: "Team ID", placeholder: "UUID of the team" },
@@ -129,7 +124,6 @@ export const SECRET_KEYS: Record<IntegrationKind, string[]> = {
   posthog: ["apiKey"],
   segment: ["writeKey"],
   github: ["token"],
-  webhook: ["url", "signingSecret"],
   linear: ["apiKey"],
   jira: ["apiToken"],
   algolia: ["apiKey"],
@@ -180,20 +174,6 @@ export function matchesEventFilter(subscribed: readonly string[] | null | undefi
 function b64(s: string): string | null {
   try {
     return typeof btoa === "function" ? btoa(s) : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Lowercase-hex HMAC-SHA256 via Web Crypto; null if crypto is unavailable. */
-async function hmacHex(secret: string, body: string): Promise<string | null> {
-  try {
-    const subtle = globalThis.crypto?.subtle;
-    if (!subtle) return null;
-    const enc = new TextEncoder();
-    const key = await subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-    const sig = await subtle.sign("HMAC", key, enc.encode(body));
-    return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
   } catch {
     return null;
   }
@@ -340,19 +320,6 @@ export async function deliverToIntegration(
         { event: evt.event, userId: recordId(evt.payload, "backlex"), properties: evt.payload },
         { Authorization: `Basic ${auth}` },
       );
-      return { ok: r.ok, status: r.status };
-    }
-    if (kind === "webhook") {
-      const url = config.url;
-      if (typeof url !== "string" || !url.startsWith("https://")) return fail;
-      const body = JSON.stringify({ event: evt.event, text: evt.text, payload: evt.payload });
-      const headers: Record<string, string> = { "Content-Type": "application/json", "User-Agent": "backlex" };
-      const signingSecret = config.signingSecret;
-      if (typeof signingSecret === "string" && signingSecret) {
-        const sig = await hmacHex(signingSecret, body);
-        if (sig) headers["X-Backlex-Signature"] = `sha256=${sig}`;
-      }
-      const r = await doFetch(url, { method: "POST", headers, body });
       return { ok: r.ok, status: r.status };
     }
     if (kind === "linear") {

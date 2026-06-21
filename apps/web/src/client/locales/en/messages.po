@@ -1022,6 +1022,23 @@ msgstr "after"
 msgid "Aggregate function"
 msgstr "Aggregate function"
 
+#: src/client/admin/pages/settings.tsx
+msgid "AI"
+msgstr "AI"
+
+#. placeholder {0}: r.reply
+#: src/client/admin/pages/settings.tsx
+msgid "AI key works — model replied: {0}"
+msgstr "AI key works — model replied: {0}"
+
+#: src/client/admin/pages/settings.tsx
+msgid "AI provider key for <0>this workspace</0>. When set, it overrides the deployment default for AI generation (Ask AI, the<1> ai.*</1> tools, auto-translate) — including on managed cloud, where it lets you opt out of the metered platform AI gateway and bill your own provider. Keys are encrypted at rest and never shown again."
+msgstr "AI provider key for <0>this workspace</0>. When set, it overrides the deployment default for AI generation (Ask AI, the<1> ai.*</1> tools, auto-translate) — including on managed cloud, where it lets you opt out of the metered platform AI gateway and bill your own provider. Keys are encrypted at rest and never shown again."
+
+#: src/client/admin/pages/settings.tsx
+msgid "AI settings saved."
+msgstr "AI settings saved."
+
 #. placeholder {0}: aliasConflicts.map((c) => c.column).join(", ")
 #: src/client/admin/adopt-wizard.tsx
 msgid "alias conflict on {0}"
@@ -2524,6 +2541,10 @@ msgstr "Default language"
 #: src/client/admin/parity/translations.tsx
 msgid "Default locale"
 msgstr "Default locale"
+
+#: src/client/admin/pages/settings.tsx
+msgid "Default model (optional)"
+msgstr "Default model (optional)"
 
 #: src/client/admin/collection-settings.tsx
 msgid "default order when <0>?sort=</0> is omitted"
@@ -4603,6 +4624,10 @@ msgstr "leave blank to keep current"
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Leave blank to keep the stored cert."
 msgstr "Leave blank to keep the stored cert."
+
+#: src/client/admin/pages/settings.tsx
+msgid "Leave blank to use the built-in default. Callers may still override per request."
+msgstr "Leave blank to use the built-in default. Callers may still override per request."
 
 #. placeholder {0}: folder ? <>currently in <span className="font-mono">{folder}/</span></> : <>root by default</>
 #: src/client/admin/storage.tsx
@@ -8651,6 +8676,10 @@ msgstr "Test email sent."
 msgid "Test event sent to {0}."
 msgstr "Test event sent to {0}."
 
+#: src/client/admin/pages/settings.tsx
+msgid "Test key"
+msgstr "Test key"
+
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Test LDAP connection"
 msgstr "Test LDAP connection"
@@ -8680,6 +8709,10 @@ msgstr "Test run dispatched."
 #: src/client/admin/pages/settings.tsx
 msgid "Test SMS sent to {0} number(s)."
 msgstr "Test SMS sent to {0} number(s)."
+
+#: src/client/admin/pages/settings.tsx
+msgid "Testing…"
+msgstr "Testing…"
 
 #: src/client/admin/pages/logs.tsx
 msgid "The activity endpoint returned an error. Try again in a moment."

@@ -2,6 +2,44 @@ import type { Context } from "hono";
 import { dispatch, SUPPORTED_PROTOCOL_VERSIONS } from "./dispatch";
 import type { McpServerWiring } from "./types";
 import { isWorkspaceAllowedOrigin } from "../services/cors-origins";
+import {
+  GLOBAL_AI_CONFIG_ID,
+  applyAiOverride,
+  resolveAiOverride,
+} from "../services/ai-config";
+
+/**
+ * For an `ai.*` tool call, overlay the workspace's bring-your-own AI key onto
+ * the wiring env so `ctx.env` inside the tool carries it (and, via
+ * `callClaude`'s direct-key-first ordering, bypasses the managed cloud gateway).
+ * Scoped to ai.* `tools/call` so non-AI MCP requests skip the extra DB read.
+ * Degrades to the unchanged wiring on any failure — AI generation still works.
+ */
+const withAiOverride = async (
+  c: Context,
+  wiring: McpServerWiring,
+  body: { method?: unknown; params?: unknown },
+): Promise<McpServerWiring> => {
+  if (body.method !== "tools/call") return wiring;
+  const name = (body.params as { name?: unknown } | undefined)?.name;
+  if (typeof name !== "string" || !name.startsWith("ai.")) return wiring;
+  try {
+    const ctx = c.get("ctx") as
+      | { db: unknown; dialect: "pg" | "sqlite" }
+      | undefined;
+    const auth = c.get("auth") as { tenantId?: string | null } | undefined;
+    if (!ctx) return wiring;
+    const override = await resolveAiOverride(
+      { db: ctx.db, dialect: ctx.dialect, env: wiring.env },
+      auth?.tenantId ?? GLOBAL_AI_CONFIG_ID,
+    );
+    return override
+      ? { ...wiring, env: applyAiOverride(wiring.env, override) }
+      : wiring;
+  } catch {
+    return wiring;
+  }
+};
 
 /** Hono handler for the Streamable HTTP transport (POST-only).
  *
@@ -96,8 +134,13 @@ export const handleMcpRequest = async (
     );
   }
 
-  const response = await dispatch(
+  const effectiveWiring = await withAiOverride(
+    c,
     wiring,
+    body as { method?: unknown; params?: unknown },
+  );
+  const response = await dispatch(
+    effectiveWiring,
     c.req.raw,
     c,
     body as Parameters<typeof dispatch>[3],

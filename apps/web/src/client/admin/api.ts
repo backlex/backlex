@@ -695,6 +695,35 @@ export const smsConfigApi = {
     }),
 };
 
+export interface ApiAiConfig {
+  tenantId: string;
+  /** inherit | gateway | anthropic */
+  provider: string;
+  config: Record<string, unknown>;
+  secretsSet: { gatewayKey: boolean; anthropicKey: boolean };
+  updatedAt: number | string | null;
+  env: { cloud: boolean; hasGatewayKey: boolean; hasAnthropicKey: boolean };
+  providerIds: readonly string[];
+}
+
+export const aiConfigApi = {
+  get: () => api<Envelope<ApiAiConfig>>(`/api/admin/ai-config`),
+  put: (body: {
+    provider: string;
+    config?: Record<string, unknown>;
+    secrets?: Record<string, string | null>;
+  }) =>
+    api<{ ok: true }>(`/api/admin/ai-config`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  test: () =>
+    api<{ ok: true; reply: string }>(`/api/admin/ai-config/test`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
+};
+
 export const i18nApi = {
   list: () => api<Envelope<ApiI18nString[]>>(`/api/admin/i18n`),
   matrix: () =>

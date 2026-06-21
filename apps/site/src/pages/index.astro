@@ -61,11 +61,9 @@ import Base from "../layouts/Base.astro";
   style="background: radial-gradient(60% 70% at 50% 0%, color-mix(in oklch, var(--color-primary) 10%, transparent), transparent 70%);">
   <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
     <div class="flex flex-col gap-4 max-w-[760px] mb-12">
-      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>ai-native · mcp</span>
-      <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">Build it in plain language.<br/>Ship it like a pro.</h2>
-      <p class="text-[17px] text-muted-foreground max-w-[64ch]">
-        Describe what you need and let an agent build it, or write it by hand — either way you get the same backend. Natural-language prompts compile into the <strong class="text-foreground font-semibold">same query filter your client sends</strong> — every plan is reviewable, every tool call runs through your permissions DSL. A streamable MCP server ships in the box, so Claude, Cursor, or any agent can read &amp; write through the same guards.
-      </p>
+      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>ai-native</span>
+      <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">Ask your data anything,<br/>in plain language.</h2>
+      <p class="text-[17px] text-muted-foreground max-w-[64ch]">Type a question and a model turns it into a reviewable query — then runs it. Every plan passes through your permissions DSL, so each caller sees only the rows and fields their role allows.</p>
     </div>
 
     <!-- Ask demo (compact, static preview) -->
@@ -135,9 +133,20 @@ import Base from "../layouts/Base.astro";
         <span class="ml-auto font-mono">+7 more rows</span>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- ─────────────────── MCP · agents ─────────────────── -->
+<section id="mcp" class="relative z-[1] py-24 border-b border-border">
+  <div class="max-w-[1240px] mx-auto px-8 max-md:px-5">
+    <div class="flex flex-col gap-4 max-w-[760px] mb-12">
+      <span class="inline-flex items-center gap-2 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.12em] whitespace-nowrap self-start"><span class="w-1.5 h-1.5 bg-primary rounded-full"></span>mcp · agents</span>
+      <h2 class="text-[clamp(28px,3.6vw,40px)] font-semibold -tracking-[0.028em] leading-[1.1]">Build it with an agent.<br/>Ship it like a pro.</h2>
+      <p class="text-[17px] text-muted-foreground max-w-[64ch]">A streamable MCP server ships in the box — point Claude, Codex, Cursor, or any agent at it and build by talking. Every tool call runs through your permissions DSL, with a per-key tool allowlist and read-only guards.</p>
+    </div>
 
     <!-- Three-up: tools / guards / connect (minimal) -->
-    <div class="grid grid-cols-3 max-[1020px]:grid-cols-1 gap-3.5 mt-12">
+    <div class="grid grid-cols-3 max-[1020px]:grid-cols-1 gap-3.5">
       <div class="border border-border rounded-3xl bg-card p-5 flex flex-col gap-2">
         <div class="flex items-center gap-2">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
@@ -163,6 +172,49 @@ import Base from "../layouts/Base.astro";
         <p class="text-[12.5px] text-muted-foreground leading-snug">Stateless <code class="font-mono text-foreground">POST /mcp</code> for tenant agents, <code class="font-mono text-foreground">/api/admin/mcp</code> for ops bots — JSON-RPC over HTTP.</p>
       </div>
     </div>
+
+    <!-- Connect once, then drive it from your editor -->
+    <div class="mt-3.5 grid grid-cols-2 max-[1020px]:grid-cols-1 gap-3.5">
+      <!-- 1 · Connect (real command) -->
+      <div class="border border-border rounded-3xl bg-card overflow-hidden flex flex-col">
+        <div class="px-5 pt-4 pb-3 flex items-center gap-2 border-b border-border">
+          <span class="font-mono text-[10.5px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">1 · connect</span>
+          <span class="text-[12.5px] font-medium">Point your agent at the MCP server, once</span>
+        </div>
+        <div class="px-5 py-4 font-mono text-[12.5px] leading-relaxed overflow-x-auto">
+          <div class="text-muted-foreground"># Claude Code</div>
+          <div><span class="text-primary">claude</span> mcp add --transport http backlex \</div>
+          <div class="pl-4">https://acme.backlex.com/mcp \</div>
+          <div class="pl-4">--header <span class="text-foreground">"Authorization: Bearer pak_8f2a…"</span></div>
+          <div class="mt-3.5 text-muted-foreground"># Codex — ~/.codex/config.toml</div>
+          <div>[mcp_servers.backlex]</div>
+          <div>command = <span class="text-foreground">"bun"</span></div>
+          <div class="whitespace-normal break-all">args = [<span class="text-foreground">"backlex"</span>, <span class="text-foreground">"mcp"</span>, <span class="text-foreground">"--url"</span>, <span class="text-foreground">"https://acme.backlex.com/mcp"</span>, <span class="text-foreground">"--key"</span>, <span class="text-foreground">"pak_8f2a…"</span>]</div>
+        </div>
+      </div>
+      <!-- 2 · Just ask (prompt → tool calls) -->
+      <div class="border border-border rounded-3xl bg-card overflow-hidden flex flex-col">
+        <div class="px-5 pt-4 pb-3 flex items-center gap-2 border-b border-border">
+          <span class="font-mono text-[10.5px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">2 · ask</span>
+          <span class="text-[12.5px] font-medium">Then just say what you want</span>
+        </div>
+        <div class="px-5 py-4 flex flex-col gap-3 text-[13px] leading-snug">
+          <div class="flex gap-2.5">
+            <span class="font-mono text-[11px] text-primary shrink-0 mt-0.5">you ▸</span>
+            <p class="text-foreground">Add a <code class="font-mono text-[12px] bg-muted px-1 py-px rounded">campaigns</code> collection with name, budget, start_date and status — then seed 3 sample rows.</p>
+          </div>
+          <div class="flex gap-2.5">
+            <span class="font-mono text-[11px] text-muted-foreground shrink-0 mt-0.5">mcp ▸</span>
+            <div class="flex flex-col gap-1.5 min-w-0">
+              <span class="inline-flex items-center gap-2 font-mono text-[11px]"><span class="text-muted-foreground">→</span><span class="px-2 py-0.5 rounded-full border border-border text-foreground">schema.create_collection</span><span class="text-muted-foreground">campaigns</span></span>
+              <span class="inline-flex items-center gap-2 font-mono text-[11px]"><span class="text-muted-foreground">→</span><span class="px-2 py-0.5 rounded-full border border-border text-foreground">collections.create</span><span class="text-muted-foreground">campaigns ×3</span></span>
+              <span class="inline-flex items-center gap-1.5 text-[11.5px] text-muted-foreground mt-0.5"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>ran through your permissions DSL · per-key tool allowlist + read-only guards apply</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="mt-3.5 font-mono text-[11.5px] text-muted-foreground">same wiring for Cursor, Claude Desktop, or any MCP client — one URL + a <code class="font-mono">pak_…</code> key</p>
 
     <!-- Bottom CTA strip -->
     <div class="mt-10 flex items-center gap-3 flex-wrap">

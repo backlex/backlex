@@ -1,13 +1,15 @@
 ---
 title: Deployment
-description: Ship the same source to Bun, Node, Deno, AWS Lambda, Cloudflare Workers, Vercel, or Netlify.
+description: Ship the same source to Bun, Node, Deno, AWS Lambda, Google Cloud Functions, Azure Functions, Cloudflare Workers, Vercel, or Netlify.
 ---
 
-backlex runs the same source on seven runtimes — **Bun**, **Node**, and **Deno**
-self-host, plus **AWS Lambda**, **Cloudflare Workers**, **Vercel**, **Netlify**,
-and **Deno Deploy**. The matrix below compares the five managed / serverless
-targets; standalone **Node** and **Deno** self-host, plus **AWS Lambda**, get
-their own sections further down. Pick one based on the constraints you need.
+backlex runs the same source on nine runtimes — **Bun**, **Node**, and **Deno**
+self-host, plus **AWS Lambda**, **Google Cloud Functions**, **Azure Functions**,
+**Cloudflare Workers**, **Vercel**, **Netlify**, and **Deno Deploy**. The matrix
+below compares the five managed / serverless targets; standalone **Node** and
+**Deno** self-host, plus **AWS Lambda**, **Google Cloud Functions**, and **Azure
+Functions**, get their own sections further down. Pick one based on the
+constraints you need.
 
 |                    | Bun (self-host)   | Cloudflare Workers   | Vercel Functions (Node 22, Build Output API) | Netlify Functions (Node 22) | Deno Deploy (managed)⁴ |
 |--------------------|-------------------|----------------------|----------------------|------------------------------|------------------------|
@@ -135,6 +137,78 @@ Runtime constraints (same shape as the Vercel/Netlify Node functions):
   without the secret.
 
 `bun run build:targets` builds the Lambda bundle alongside the other targets.
+
+## Google Cloud Functions (2nd gen)
+
+The same app runs on **Google Cloud Functions (2nd gen)** — which is Cloud Run
+under the hood. GCF uses the **Functions Framework**, whose `http()` registers
+an Express-style `(req, res)` handler; Hono's `getRequestListener(app.fetch)` is
+exactly that listener, so one registered function fronts `/api/*` with no event
+mapping. Build the deployable folder, then `gcloud functions deploy`:
+
+```bash
+bun run build:gcp                  # → apps/web/dist/gcp/ (index.mjs + package.json)
+
+gcloud functions deploy backlex \
+  --gen2 --runtime=nodejs22 --entry-point=api --trigger-http \
+  --source=apps/web/dist/gcp --allow-unauthenticated \
+  --set-env-vars=APP_URL=https://your.app,DATABASE_URL=...,AUTH_SECRET=...
+```
+
+Entry: `apps/web/src/server/entries/gcp.ts` (registered as **`api`** —
+`--entry-point=api`). The build keeps `@google-cloud/functions-framework` +
+`sharp` external and declares them in a generated `package.json` so the GCF
+buildpack installs them on the platform. Because GCF 2nd gen is long-lived
+Cloud Run, **SSE works natively** (no `awslambda`-streaming dance). Other
+constraints match the Vercel/Netlify Node functions:
+
+- **DB** — Postgres (`DATABASE_URL`; `neon-http` avoids a cold-start TCP
+  handshake), or libSQL/Turso. No `bun:sqlite`.
+- **Storage** — set `S3_BUCKET` + `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY`
+  (points at GCS's S3-compatible XML API or any S3); the container fs is ephemeral.
+- **Realtime** — set `UPSTASH_REDIS_REST_*` (instances scale to zero / fan out).
+- **SAML / LDAP / SMTP** — all work (Node 22 raw TCP).
+- **Cron** — a **Cloud Scheduler** job hits `/api/_cron/tick` with
+  `x-cron-secret: $CRON_SECRET` (idempotent, deduped; 401s without the secret).
+
+## Azure Functions (v4)
+
+The same app runs on **Azure Functions** (v4 Node programming model). Azure has
+no official Hono adapter, so a small shim in the entry bridges Azure's
+`HttpRequest`/`HttpResponseInit` (both Fetch-shaped) to `app.fetch`. Build the
+deployable folder (with a generated `host.json` + `package.json`), then publish
+with the Azure Functions Core Tools:
+
+```bash
+bun run build:azure                # → apps/web/dist/azure/ (index.mjs + host.json + package.json)
+
+cd apps/web/dist/azure
+func azure functionapp publish <APP_NAME>
+# set app settings (env): APP_URL, DATABASE_URL, AUTH_SECRET, S3_*, UPSTASH_* …
+```
+
+Entry: `apps/web/src/server/entries/azure.ts`. It registers two functions:
+
+- **`api`** — an HTTP catch-all (`route: "{*path}"`). The generated `host.json`
+  sets `extensions.http.routePrefix: ""` so this one function also serves
+  `/health`, `/docs`, and the SPA — not just the default `/api` prefix.
+- **`cron`** — a native **Timer trigger** (every minute) that calls the shared
+  idempotent `cronTick` directly. No HTTP cron route or shared secret needed:
+  Timer triggers aren't publicly reachable.
+
+The build keeps `@azure/functions` + `sharp` external (the runtime provides the
+former; `app.http()`/`app.timer()` must register on its instance). Constraints
+match the Vercel/Netlify Node functions:
+
+- **DB** — Postgres (`DATABASE_URL`; `neon-http` recommended), or libSQL/Turso.
+- **Storage** — set `S3_BUCKET` + `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY`
+  (works against Azure Blob's S3-compatible endpoints or any S3).
+- **Realtime** — set `UPSTASH_REDIS_REST_*`. The shim buffers responses, so rely
+  on the Upstash long-poll transport rather than streamed SSE.
+- **SAML / LDAP / SMTP** — all work (Node 22 raw TCP).
+
+`bun run build:targets` builds the GCP and Azure bundles alongside the other
+targets.
 
 ## Deno (self-host, experimental)
 

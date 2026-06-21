@@ -9,6 +9,7 @@ import { requireUser } from "../middleware/session";
 import { loadMatrix } from "../services/i18n";
 import { autoTranslateBatch } from "../services/i18n-translate";
 import { loadAppSettings } from "../services/settings";
+import { GLOBAL_AI_CONFIG_ID, resolveAiOverride } from "../services/ai-config";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -307,11 +308,21 @@ export const i18nRoutes = new OpenAPIHono<AppBindings>()
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
-      const apiKey = ctx.env.ANTHROPIC_API_KEY;
+      // Auto-translate uses a direct Anthropic client. Prefer the workspace's
+      // bring-your-own Anthropic key (Settings → AI) over the deployment env —
+      // this is what makes auto-translate usable on managed cloud, where no
+      // ANTHROPIC_API_KEY is provisioned. A gateway-only BYO config can't power
+      // this Anthropic-direct path.
+      const override = await resolveAiOverride(
+        { db: ctx.db, dialect: ctx.dialect, env: ctx.env },
+        auth.tenantId ?? GLOBAL_AI_CONFIG_ID,
+      );
+      const apiKey =
+        override?.provider === "anthropic" ? override.key : ctx.env.ANTHROPIC_API_KEY;
       if (!apiKey) {
         throw new AppError(
           "INTERNAL",
-          "Set ANTHROPIC_API_KEY in env to enable AI auto-translate.",
+          "Add an Anthropic key in Settings → AI (or set ANTHROPIC_API_KEY in env) to enable AI auto-translate.",
         );
       }
       const body = c.req.valid("json");

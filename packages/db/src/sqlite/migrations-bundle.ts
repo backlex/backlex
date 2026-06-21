@@ -59,6 +59,7 @@ import m52 from "../../drizzle/sqlite/20260620160000_uploads/migration.sql" with
 import m53 from "../../drizzle/sqlite/20260620170000_feature_flags/migration.sql" with { type: "text" };
 import m54 from "../../drizzle/sqlite/20260620180000_collections_fts/migration.sql" with { type: "text" };
 import m55 from "../../drizzle/sqlite/20260620190000_managed_webhooks/migration.sql" with { type: "text" };
+import m56 from "../../drizzle/sqlite/20260621000000_ai_config/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -122,4 +123,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260620170000_feature_flags", sql: m53 },
   { name: "20260620180000_collections_fts", sql: m54 },
   { name: "20260620190000_managed_webhooks", sql: m55 },
+  { name: "20260621000000_ai_config", sql: m56 },
 ];

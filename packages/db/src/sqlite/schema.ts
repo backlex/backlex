@@ -1341,6 +1341,23 @@ export const emailConfig = sqliteTable(
 );
 
 /**
+ * Per-workspace bring-your-own AI provider key — SQLite mirror of the pg
+ * `ai_config` table. See the pg schema for the full contract. `provider`:
+ * `inherit` | `gateway` | `anthropic`; `secrets` holds encrypted key material
+ * (`gatewayKey`, `anthropicKey`).
+ */
+export const aiConfig = sqliteTable(
+  "ai_config",
+  {
+    tenantId: text("tenant_id").primaryKey(),
+    provider: text("provider").notNull().default("inherit"),
+    config: text("config", { mode: "json" }).$type<Record<string, unknown>>().notNull().default({}),
+    secrets: text("secrets", { mode: "json" }).$type<Record<string, string>>().notNull().default({}),
+    updatedAt: ts("updated_at"),
+  },
+);
+
+/**
  * Per-workspace branding & appearance. `tenant_id` is the workspace id, or the
  * `_global` sentinel for the instance-wide override row used as a fallback
  * (same pattern as `email_config` / `auth_config`). `logo_file_key` and

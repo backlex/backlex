@@ -1,6 +1,7 @@
 /**
- * Verifies that the same source tree builds cleanly for all four deploy
- * targets (Bun, Cloudflare Workers, Vercel, Netlify). Run before push to
+ * Verifies that the same source tree builds cleanly for every deploy
+ * target (Bun, Cloudflare Workers, Vercel, Netlify, standalone Node, and
+ * the AWS Lambda function bundle). Run before push to
  * catch edge-only regressions — a missing shim, a fresh node:net import,
  * or a Bun-specific API leaking into the worker bundle — that the
  * SQLite-in-process test suite can't see.
@@ -108,6 +109,12 @@ const main = async (): Promise<void> => {
       "node (standalone server)",
       "bun",
       ["scripts/build-node.ts"],
+      REPO_ROOT,
+    ),
+    runStep(
+      "lambda (aws function bundle)",
+      "bun",
+      ["scripts/build-lambda.ts"],
       REPO_ROOT,
     ),
   ]);

@@ -1,13 +1,13 @@
 ---
 title: Deployment
-description: Ship the same source to Bun, Node, Deno, Cloudflare Workers, Vercel, or Netlify.
+description: Ship the same source to Bun, Node, Deno, AWS Lambda, Cloudflare Workers, Vercel, or Netlify.
 ---
 
-backlex runs the same source on six runtimes — **Bun**, **Node**, and **Deno**
-self-host, plus **Cloudflare Workers**, **Vercel**, **Netlify**, and **Deno
-Deploy**. The matrix below compares the five managed / serverless targets;
-standalone **Node** and **Deno** self-host get their own sections further down.
-Pick one based on the constraints you need.
+backlex runs the same source on seven runtimes — **Bun**, **Node**, and **Deno**
+self-host, plus **AWS Lambda**, **Cloudflare Workers**, **Vercel**, **Netlify**,
+and **Deno Deploy**. The matrix below compares the five managed / serverless
+targets; standalone **Node** and **Deno** self-host, plus **AWS Lambda**, get
+their own sections further down. Pick one based on the constraints you need.
 
 |                    | Bun (self-host)   | Cloudflare Workers   | Vercel Functions (Node 22, Build Output API) | Netlify Functions (Node 22) | Deno Deploy (managed)⁴ |
 |--------------------|-------------------|----------------------|----------------------|------------------------------|------------------------|
@@ -84,6 +84,57 @@ libSQL/Turso URL instead. Everything else auto-selects for Node in
 SMTP/`nodemailer` or HTTP email, and the same `setInterval` cron scheduler. Entry:
 `apps/web/src/server/entries/node.ts`. `bun run build:targets` builds it alongside
 the CF/Vercel/Netlify targets.
+
+## AWS Lambda (serverless)
+
+The same app runs on **AWS Lambda** (Node 22.x) behind Hono's `aws-lambda`
+adapter — a single function fronts the whole `/api/*` surface. It works with
+**API Gateway** (REST v1 + HTTP API v2), an **ALB** target group, or a **Lambda
+Function URL**. Build the single-file bundle (Bun does the bundling — same shims
+as the Node target):
+
+```bash
+bun run build:lambda               # → apps/web/dist/lambda/index.mjs
+
+# Zip dist/lambda/ and upload, or wire it into SAM/CDK/Terraform.
+# Handler string:
+#   index.handler        — buffered: API Gateway / ALB / default Function URL
+#   index.streamHandler  — streaming: Function URL with InvokeMode RESPONSE_STREAM
+```
+
+Two handlers are exported from `apps/web/src/server/entries/lambda.ts`:
+
+- **`handler`** (buffered) — what most setups want. API Gateway / ALB / a default
+  Function URL.
+- **`streamHandler`** (response-streaming via `awslambda.streamifyResponse`) —
+  **only** behind a Lambda Function URL with `InvokeMode: RESPONSE_STREAM`, where
+  it lets SSE / long bodies flush incrementally instead of buffering. It's
+  `undefined` outside a streaming runtime (the `awslambda` global is only injected
+  there), so importing the bundle never crashes a buffered deploy.
+
+Runtime constraints (same shape as the Vercel/Netlify Node functions):
+
+- **DB** — no `bun:sqlite`; use **Postgres** (`DATABASE_URL`). Lambda is short-
+  lived, so `DATABASE_DRIVER=neon-http` (or RDS Proxy in front of postgres-js)
+  avoids a TCP handshake on every cold start. Node 22 has real TCP, so plain
+  postgres-js works too. libSQL/Turso also works.
+- **Storage** — the function fs is ephemeral; set `S3_BUCKET` +
+  `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY` (native S3 via `aws4fetch`).
+- **Realtime** — module-level pub/sub doesn't survive between invocations; set
+  `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`. The buffered `handler`
+  can't stream SSE — use `streamHandler` behind a streaming Function URL for live
+  SSE.
+- **Image** — `sharp` runs when its native addon is present in the deployment
+  package (ship the `linux-x64`/`linux-arm64` build in the zip or a layer);
+  otherwise transforms degrade to passthrough.
+- **SAML / LDAP / SMTP** — all work (Node 22 raw `node:net`/`tls`).
+- **Cron** — `setInterval` schedulers don't run on Lambda; drive an **EventBridge
+  Scheduler** rule that calls `/api/_cron/tick` with `x-cron-secret: $CRON_SECRET`
+  (or `Authorization: Bearer $CRON_SECRET`). The shared `cronTick` is idempotent
+  + deduped by `lastTickAt`, so at-least-once delivery is safe; the route 401s
+  without the secret.
+
+`bun run build:targets` builds the Lambda bundle alongside the other targets.
 
 ## Deno (self-host, experimental)
 

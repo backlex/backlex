@@ -22,10 +22,11 @@
  *     generated `package.json` for the deploy platform.
  */
 import { fileURLToPath } from "node:url";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 
 const SOURCE = "apps/web/src/server/entries/gcp.ts";
 const OUTPUT_DIR = "apps/web/dist/gcp";
+const SPA_SRC = "apps/web/dist/client";
 const SHIM_BUN_SQLITE = fileURLToPath(
   new URL("../apps/web/src/server/shims/bun-sqlite-shim.ts", import.meta.url),
 );
@@ -82,6 +83,17 @@ const pkg = {
   },
 };
 writeFileSync(`${OUTPUT_DIR}/package.json`, `${JSON.stringify(pkg, null, 2)}\n`);
+
+// Copy the pre-built admin SPA next to the bundle (entries/gcp.ts mounts
+// `./client` relative to the bundle). `build:targets` runs `vite build` first.
+if (existsSync(SPA_SRC)) {
+  cpSync(SPA_SRC, `${OUTPUT_DIR}/client`, { recursive: true });
+  console.log(`✓ Copied admin SPA → ${OUTPUT_DIR}/client`);
+} else {
+  console.warn(
+    `⚠ ${SPA_SRC} not found — run \`bun run build\` (vite) first; the admin SPA won't be served.`,
+  );
+}
 
 const out = result.outputs[0];
 const size = out ? (out.size / 1024 / 1024).toFixed(2) : "?";

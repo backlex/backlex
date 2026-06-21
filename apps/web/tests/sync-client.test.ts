@@ -4,8 +4,15 @@
  * write. Driven against an in-memory store and a scripted fake client (no
  * server), so it's deterministic.
  */
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 import { createSync, memoryStore, type SyncClientLike } from "../../../packages/client/src/sync";
+
+// `setOnline` below replaces the global `navigator` with a bare `{ onLine }`
+// stub (the sync layer only reads `navigator.onLine`). Snapshot the real one so
+// we can put it back — otherwise the stub leaks into later specs in the shared
+// bun-test process, and the React render tests (which read
+// `navigator.userAgent`) blow up.
+const ORIGINAL_NAVIGATOR = globalThis.navigator;
 
 /** A fake client whose changefeed serves scripted pages and whose batch echoes
  *  back server-assigned rows. */
@@ -36,6 +43,13 @@ const makeFake = (pages: { data: Record<string, unknown>[]; cursor: string | nul
 };
 
 describe("client sync", () => {
+  afterAll(() => {
+    Object.defineProperty(globalThis, "navigator", {
+      value: ORIGINAL_NAVIGATOR,
+      configurable: true,
+    });
+  });
+
   test("pull applies rows and drops tombstones", async () => {
     const { client } = makeFake([
       {

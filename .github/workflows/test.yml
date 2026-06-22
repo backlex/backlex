@@ -24,6 +24,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Light gate — runs on EVERY PR and every push to main. Fast + cheap
+  # (one runner, no service containers, no platform builds). This is the
+  # signal a PR waits on.
   test:
     runs-on: ubuntu-latest
     steps:
@@ -61,13 +64,15 @@ jobs:
       - name: Smoke tests
         run: bun run test
 
-  # Verifies the same source builds cleanly for all four deploy targets
-  # (Bun is covered by the typecheck above; this job exercises Cloudflare
-  # Workers, Vercel Build Output API, and Netlify Function bundling).
-  # Catches edge-only regressions the in-process SQLite test suite can't
-  # see — missing shims, raw-TCP imports leaking into the worker bundle,
-  # Bun-only APIs leaking into the Vercel/Netlify Node bundle.
-  build-targets:
+  # Heavy gate — only on push to main (the merge gate) + manual dispatch.
+  # PRs skip it; the in-process test suite above is the per-PR signal, and
+  # the four-runtime build matrix is validated once the branch lands.
+  #
+  # Builds every deploy target ONCE and publishes the output as an artifact
+  # the runtime-smoke matrix downloads — so `build:targets` runs a single
+  # time instead of being repeated in all seven smoke legs.
+  build:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -98,16 +103,39 @@ jobs:
       - name: Build all targets
         run: bun run build:targets
 
-  # Boots each runtime in-runner and exercises the same smoke contract
-  # over real HTTP. Catches runtime-specific regressions the build job
-  # can't see: bundle import-time errors, runtime-conditional adapter
-  # selection (isStatelessEdge etc.), cookie / auth round-trips on a
-  # real fetch boundary, and the cron-secret gate on Vercel/Netlify
-  # entries. No external service calls — postgres is a job-scoped
-  # service container; CF uses `wrangler dev --local` against
-  # wrangler.ci.toml (sibling of wrangler.toml minus the [ai] binding
-  # so wrangler login isn't required).
+      # Everything the runtime-smoke matrix needs to boot a server without
+      # rebuilding: the SPA bundle + each serverless function bundle.
+      #   apps/web/dist          → client/ (SPA), lambda/, gcp/, azure/, node/
+      #   .vercel/output         → Vercel Build Output API tree (hidden dir!)
+      #   apps/web/netlify/...   → pre-bundled Netlify function
+      # `include-hidden-files` is required or upload-artifact v4 silently
+      # drops the dot-prefixed `.vercel` tree.
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-targets
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+          path: |
+            apps/web/dist
+            apps/web/netlify/functions
+            .vercel/output
+
+  # Boots each runtime in-runner and exercises the same smoke contract over
+  # real HTTP. Catches runtime-specific regressions the build job can't see:
+  # bundle import-time errors, runtime-conditional adapter selection
+  # (isStatelessEdge etc.), cookie / auth round-trips on a real fetch
+  # boundary, and the cron-secret gate on the serverless entries. No external
+  # service calls — postgres is a job-scoped service container; CF uses
+  # `wrangler dev --local` against wrangler.ci.toml (sibling of wrangler.toml
+  # minus the [ai] binding so wrangler login isn't required).
+  #
+  # Consumes the `build-targets` artifact instead of rebuilding (bun + the CF
+  # `wrangler dev` leg recompile from source; the rest run the prebuilt
+  # bundle). Inherits the main-only gate transitively via `needs: build`.
   runtime-smoke:
+    needs: build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -157,8 +185,10 @@ jobs:
             echo "bun install flaked (attempt $n) — retrying in 10s"; sleep 10
           done
 
-      - name: Build all targets
-        run: bun run build:targets
+      - name: Download build output
+        uses: actions/download-artifact@v4
+        with:
+          name: build-targets
 
       - name: Run ${{ matrix.runtime }} smoke
         env:

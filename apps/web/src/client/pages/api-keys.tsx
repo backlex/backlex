@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import {
+  ChevronDownIcon,
   KeyIcon,
   PlusIcon,
   PlugIcon,
@@ -12,8 +13,13 @@ import { Button } from "@backlex/ui/components/button";
 import { Input } from "@backlex/ui/components/input";
 import { Label } from "@backlex/ui/components/label";
 import { Badge } from "@backlex/ui/components/badge";
-import { Checkbox } from "@backlex/ui/components/checkbox";
 import { Skeleton } from "@backlex/ui/components/skeleton";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@backlex/ui/components/collapsible";
 import {
   Select,
   SelectContent,
@@ -34,6 +40,7 @@ import { DatePicker } from "@/components/date-picker";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
 import { McpKeyModal } from "@/components/mcp-key-modal";
+import { McpGuardsFields, useMcpTools } from "@/components/mcp-guards-fields";
 import { notifyError } from "@/lib/error";
 import { api } from "@/lib/api";
 
@@ -99,13 +106,26 @@ export const ApiKeys = () => {
   const [roleId, setRoleId] = useState<string>(NO_ROLE);
   const [secret, setSecret] = useState<string | null>(null);
   const [mcpReadOnly, setMcpReadOnly] = useState(false);
+  /** Allowlist chosen in the create form. `null` = allow all (the default —
+   *  the key can call any MCP tool, subject to permissions). A `Set` narrows
+   *  the key to specific tools. */
+  const [mcpAllowlist, setMcpAllowlist] = useState<Set<string> | null>(null);
+  const [mcpOpen, setMcpOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  /** The freshly minted key + its plaintext secret, kept so the "Save this
+   *  secret" card can open the Connect-MCP modal on demand with the real
+   *  bearer pre-filled (rather than ambushing the user with it on create). */
+  const [createdKey, setCreatedKey] = useState<ApiKey | null>(null);
   /** The key currently being inspected in the "Connect MCP" modal. */
   const [mcpKey, setMcpKey] = useState<ApiKey | null>(null);
   /** Plaintext secret if the user just minted this key — passed to the MCP
    *  modal so the install snippet has the real bearer, not a `pak_<prefix>_…`
    *  placeholder. Cleared once the modal closes or the user navigates away. */
   const [mcpKeySecret, setMcpKeySecret] = useState<string | null>(null);
+
+  // Load the MCP tool catalog as soon as the create form opens, so the
+  // allowlist grid is ready if the user expands the "MCP access" section.
+  const { tools: mcpTools, loading: mcpToolsLoading } = useMcpTools(showForm);
 
   const refresh = () => {
     setLoading(true);
@@ -127,6 +147,8 @@ export const ApiKeys = () => {
     setCustomExpiry(null);
     setRoleId(NO_ROLE);
     setMcpReadOnly(false);
+    setMcpAllowlist(null);
+    setMcpOpen(false);
   };
 
   const submit = async (e: FormEvent) => {
@@ -139,15 +161,18 @@ export const ApiKeys = () => {
       if (iso) body.expiresAt = iso;
       if (roleId && roleId !== NO_ROLE) body.roleId = roleId;
       if (mcpReadOnly) body.mcpReadOnly = true;
+      // `null` (allow all) is the default-friendly choice; an explicit Set
+      // narrows the key. Always send a value so the server doesn't fall back
+      // to its default-deny (empty allowlist).
+      body.mcpTools = mcpAllowlist ? Array.from(mcpAllowlist) : null;
       const r = await api<{ data: ApiKey & { secret: string } }>(
         "/api/api-keys",
         { method: "POST", body: JSON.stringify(body) },
       );
       setSecret(r.data.secret);
-      // Surface the new key in the MCP modal too — the install snippet
-      // becomes immediately useful without re-entering the secret.
-      setMcpKey(r.data);
-      setMcpKeySecret(r.data.secret);
+      // Keep the new key around so the secret card can open the Connect-MCP
+      // modal on demand — but don't ambush the user by auto-popping it.
+      setCreatedKey(r.data);
       resetForm();
       setShowForm(false);
       refresh();
@@ -199,16 +224,31 @@ export const ApiKeys = () => {
               {secret}
             </code>
             <p className="mt-2 text-xs text-muted-foreground">
-              <Trans>Once you leave this page, the secret can&rsquo;t be retrieved — only revoked.</Trans>
+              <Trans>Once you leave this page, the secret can&rsquo;t be retrieved — only revoked. You can adjust MCP access anytime from the key&rsquo;s Connect MCP panel.</Trans>
             </p>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="mt-2"
-              onClick={() => setSecret(null)}
-            >
-              <Trans>Dismiss</Trans>
-            </Button>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {createdKey && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setMcpKey(createdKey);
+                    setMcpKeySecret(secret);
+                  }}
+                >
+                  <PlugIcon /> <Trans>Connect MCP</Trans>
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setSecret(null);
+                  setCreatedKey(null);
+                }}
+              >
+                <Trans>Dismiss</Trans>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -221,13 +261,14 @@ export const ApiKeys = () => {
           setShowForm(open);
         }}
       >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[88vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+          <DialogHeader className="px-6 pt-6">
             <DialogTitle><Trans>New API key</Trans></DialogTitle>
             <DialogDescription>
               <Trans>The full secret is shown once after creation — copy it somewhere safe.</Trans>
             </DialogDescription>
           </DialogHeader>
+          <ScrollArea className="min-h-0 flex-1" viewportClassName="max-h-[calc(88vh-13rem)] px-6 py-4">
           <form id="new-api-key-form" className="space-y-4" onSubmit={submit}>
             <div className="space-y-1.5">
               <Label htmlFor="name"><Trans>Name</Trans></Label>
@@ -296,26 +337,56 @@ export const ApiKeys = () => {
                 <Trans>Optional — the key stops working after this time.</Trans>
               </p>
             </div>
-            <div className="flex items-start gap-2 rounded-md border border-border/60 bg-muted/30 p-3">
-              <Checkbox
-                id="mcp-read-only"
-                checked={mcpReadOnly}
-                onCheckedChange={(v) => setMcpReadOnly(v === true)}
-                className="mt-0.5"
-              />
-              <div className="flex-1 space-y-1">
-                <Label htmlFor="mcp-read-only" className="font-medium">
-                  <Trans>MCP read-only mode</Trans>
-                </Label>
+            <Collapsible
+              open={mcpOpen}
+              onOpenChange={setMcpOpen}
+              className="rounded-md border border-border/60 bg-muted/20"
+            >
+              <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 p-3 text-left">
+                <div className="space-y-0.5">
+                  <span className="text-sm font-medium">
+                    <Trans>MCP access</Trans>
+                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    {mcpReadOnly || mcpAllowlist ? (
+                      `${mcpReadOnly ? t`Read-only` : t`Read & write`} · ${
+                        mcpAllowlist
+                          ? t`${mcpAllowlist.size} tool(s)`
+                          : t`all tools`
+                      }`
+                    ) : (
+                      <Trans>All tools, read &amp; write (default) — tap to restrict</Trans>
+                    )}
+                  </p>
+                </div>
+                <ChevronDownIcon
+                  className={`size-4 shrink-0 text-muted-foreground transition-transform ${
+                    mcpOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-3 border-t border-border/60 p-3">
                 <p className="text-xs text-muted-foreground">
                   <Trans>
-                    Block every write tool (insert / update / delete / invoke / …) when this key is used through the MCP server. REST authorization is unaffected. Allowlist can be configured per-key after creation.
+                    Controls what this key can do through the MCP server only —
+                    REST authorization is unaffected. You can change all of this
+                    later from the key&rsquo;s Connect MCP panel.
                   </Trans>
                 </p>
-              </div>
-            </div>
+                <McpGuardsFields
+                  idPrefix="new"
+                  readOnly={mcpReadOnly}
+                  onReadOnlyChange={setMcpReadOnly}
+                  allowlist={mcpAllowlist}
+                  onAllowlistChange={setMcpAllowlist}
+                  tools={mcpTools}
+                  loading={mcpToolsLoading}
+                />
+              </CollapsibleContent>
+            </Collapsible>
           </form>
-          <DialogFooter>
+          </ScrollArea>
+          <DialogFooter className="border-t px-6 py-4">
             <Button
               type="button"
               variant="outline"

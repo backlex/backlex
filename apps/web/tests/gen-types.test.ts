@@ -53,7 +53,7 @@ describe("renderModule", () => {
 
   test("--sdk mode adds the client import + typed factory", () => {
     const out = renderModule(COLLECTIONS, { apiUrl: "https://api.test", sdk: true });
-    expect(out).toContain('from "@backlex/client"');
+    expect(out).toContain('from "backlex"');
     expect(out).toContain("typedCollections<Collections>(createClient(opts))");
     expect(out).toContain("export const createTypedClient");
     // interfaces still present

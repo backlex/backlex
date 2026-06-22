@@ -501,7 +501,7 @@ export function AuthSettingsPage({ pushToast }: { pushToast: (m: string) => void
           </div>
         );
         const sdkCode =
-`import { createClient } from "@backlex/client";
+`import { createClient } from "backlex";
 
 const wk = createClient({
   url: "${base}",

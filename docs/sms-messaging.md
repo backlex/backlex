@@ -63,7 +63,7 @@ provider rejects as permanently undeliverable are deactivated automatically on
 the next send.
 
 ```ts
-import { createClient } from "@backlex/client";
+import { createClient } from "backlex";
 const client = createClient({ url: "https://api.example.com", token });
 
 await client.messaging.registerPhone({ phoneNumber: "+14155552671" }); // E.164

@@ -59,7 +59,7 @@ guides; this list is everything else.
   `X-Backlex-Timestamp`. `applyDeliveryOutcome` is the auto-disable circuit
   breaker (15 consecutive failures → `active=false` + `disabled_reason` +
   broadcast notification; reset on success or manual resume). SDK receiver
-  helper: `verifyWebhook` from `@backlex/client/webhook`. The trigger route is
+  helper: `verifyWebhook` from `backlex/webhook`. The trigger route is
   the inbound side that flows/functions hook into. See `docs/webhooks.md`.
 - **Flows** (`routes/flows.ts`, `services/flows.ts`) — visual
   workflow builder. Trigger keys are `event` / `cron` / `webhook` /

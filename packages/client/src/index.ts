@@ -1,3 +1,20 @@
+/**
+ * @module
+ *
+ * The backlex client — a typed `fetch` wrapper over the backlex API. Create one
+ * with {@link createClient}, then use `.from(slug)` for typed collection CRUD,
+ * `.auth` for sign-in/up, `.subscribe` for realtime (SSE), plus `.storage`,
+ * `.jobs`, `.flags`, and offline-first `.sync`.
+ *
+ * ```ts
+ * import { createClient } from "backlex";
+ *
+ * const backlex = createClient({ url: "https://api.your.app", workspace: "acme" });
+ * await backlex.auth.signIn({ email, password });
+ * const { data } = await backlex.from("todos").list({ sort: ["-created_at"] });
+ * const off = backlex.subscribe("items:todos", (e) => console.log(e.event, e.data));
+ * ```
+ */
 import {
   type AggregateQuery,
   type AggregateRow,
@@ -47,7 +64,7 @@ export { QueryBuilder } from "./query";
 export type { FilterBuilder, FieldKey, SortKey } from "./query";
 
 import { QueryBuilder } from "./query";
-import { createSync, type SyncOptions } from "./sync";
+import { createSync, type SyncController, type SyncOptions } from "./sync";
 
 export interface ClientOptions {
   url: string;
@@ -78,17 +95,20 @@ export interface ClientOptions {
   fetch?: typeof fetch;
 }
 
-interface AuthUser {
+/** A signed-in user as returned by the auth surface. */
+export interface AuthUser {
   id: string;
   email: string;
   name?: string | null;
   image?: string | null;
 }
-interface AuthResult {
+/** Result of a sign-in / sign-up — the user and (app mode) the session token. */
+export interface AuthResult {
   user: AuthUser;
   token?: string;
 }
-interface AuthSession {
+/** One active session (device/login) of the signed-in user. */
+export interface AuthSession {
   id: string;
   token: string;
   userId: string;
@@ -98,13 +118,15 @@ interface AuthSession {
   createdAt: string;
   updatedAt: string;
 }
-interface PublicProvider {
+/** A public sign-in provider as advertised by `auth.providers()`. */
+export interface PublicProvider {
   id: string;
   kind: "credential" | "magic-link" | "email-otp" | "passkey" | "social";
   label: string;
   enabled: boolean;
 }
-interface AuthSurface {
+/** Public description of a workspace's auth surface (provider list + policy). */
+export interface AuthSurface {
   tenantId: string | null;
   providers: PublicProvider[];
   policy: { openSignup: boolean; requireEmailVerification: boolean } & Record<string, unknown>;
@@ -205,7 +227,181 @@ export interface CollectionClient<T extends Record<string, unknown>> {
   schedulePublish(id: string, at: Date | string | null): Promise<ItemResponse<T>>;
 }
 
-export const createClient = (opts: ClientOptions) => {
+/** Auth surface for a workspace's end-users (and the admin pool). See `createClient`. */
+export interface AuthClient {
+  /** Email + password sign-up (app mode → a workspace end-user). */
+  signUp(input: { email: string; password: string; name?: string }): Promise<AuthResult>;
+  /** Email + password sign-in. */
+  signIn(input: { email: string; password: string }): Promise<AuthResult>;
+  /** Begin an OAuth sign-in; returns the provider authorize `url` to navigate to. */
+  signInSocial(
+    provider: string,
+    input?: { callbackURL?: string; errorCallbackURL?: string },
+  ): Promise<{ url: string; redirect: boolean }>;
+  /** Send a one-time sign-in link by email (magic-link provider). */
+  signInMagicLink(input: { email: string; callbackURL?: string }): Promise<{ status: boolean }>;
+  /** Email a one-time numeric code (email-otp provider). */
+  sendVerificationOTP(input: {
+    email: string;
+    type?: "sign-in" | "email-verification" | "forget-password";
+  }): Promise<{ success: boolean }>;
+  /** Complete an email-OTP sign-in with the emailed code. */
+  signInEmailOTP(input: { email: string; otp: string }): Promise<AuthResult>;
+  /** Send a password-reset email. */
+  requestPasswordReset(input: { email: string; redirectTo?: string }): Promise<{ status: boolean }>;
+  /** Complete a reset with the emailed token and a new password. */
+  resetPassword(input: { newPassword: string; token: string }): Promise<{ status: boolean }>;
+  /** Mint a fresh short-lived access JWT from the stored session token (app mode). */
+  refresh(): Promise<{ accessToken: string; refreshToken: string; expiresIn: number; tokenType: string }>;
+  /** Change the signed-in user's password. */
+  changePassword(input: {
+    newPassword: string;
+    currentPassword: string;
+    revokeOtherSessions?: boolean;
+  }): Promise<Record<string, unknown>>;
+  /** Update the signed-in user's profile (e.g. `{ name, image }`). */
+  updateUser(attributes: Record<string, unknown>): Promise<Record<string, unknown>>;
+  /** Send an email-verification link to the signed-in (or named) user. */
+  sendVerificationEmail(input: { email: string; callbackURL?: string }): Promise<{ status: boolean }>;
+  /** Sign out the current session. */
+  signOut(): Promise<{ success: boolean }>;
+  /** Current session, or `{ user: null }`. */
+  getSession(): Promise<{ user: AuthUser | null } & Record<string, unknown>>;
+  /** List the signed-in user's active sessions. */
+  listSessions(): Promise<AuthSession[]>;
+  /** Revoke one session by its token. */
+  revokeSession(input: { token: string }): Promise<{ status: boolean }>;
+  /** Revoke every session except the current one. */
+  revokeOtherSessions(): Promise<{ status: boolean }>;
+  /** Revoke all sessions, including the current one. */
+  revokeSessions(): Promise<{ status: boolean }>;
+  /** Public description of this workspace's auth surface (providers + policy). */
+  providers(): Promise<AuthSurface>;
+  /** The current workspace session token (app mode) — persist across reloads. */
+  getToken(): string | null;
+  /** Restore a workspace session token (app mode). */
+  setToken(token: string | null): void;
+}
+
+/** File storage + resumable (TUS) uploads. See `createClient`. */
+export interface StorageClient {
+  /** List stored objects, optionally under a key prefix. */
+  list(prefix?: string): Promise<{
+    data: {
+      key: string;
+      size: number;
+      contentType?: string;
+      ownerId: string | null;
+      uploadedAt: string;
+    }[];
+  }>;
+  /** Upload an object in one request. */
+  put(key: string, body: BodyInit, contentType?: string, folderId?: string): Promise<unknown>;
+  /** Download an object; returns the raw `Response`. */
+  download(key: string): Promise<Response>;
+  /** Delete an object by key. */
+  delete(key: string): Promise<{ ok: boolean }>;
+  /** Resumable upload (TUS 1.0.0) that resumes after a transient failure. */
+  uploadResumable(input: {
+    key: string;
+    data: Blob | ArrayBuffer | Uint8Array;
+    contentType?: string;
+    folderId?: string;
+    chunkSize?: number;
+    onProgress?: (sent: number, total: number) => void;
+    signal?: AbortSignal;
+  }): Promise<ResumableUploadResult>;
+  /** Resume a previously-started resumable upload at the server's offset. */
+  resumeUpload(
+    location: string,
+    data: Blob | ArrayBuffer | Uint8Array,
+    opts2?: { chunkSize?: number; onProgress?: (sent: number, total: number) => void; signal?: AbortSignal },
+  ): Promise<void>;
+}
+
+/** Push + SMS device registration for the current user. See `createClient`. */
+export interface MessagingClient {
+  /** Register (or refresh) the current user's push device. */
+  registerDevice(input: {
+    platform: "fcm" | "apns" | "web-push";
+    token: string;
+    keys?: { p256dh: string; auth: string };
+    deviceName?: string;
+  }): Promise<{ data: { id: string } }>;
+  /** Remove one of the caller's registered devices by id. */
+  unregister(id: string): Promise<{ ok: boolean }>;
+  /** List the caller's registered devices. */
+  listDevices(): Promise<{ data: DeviceToken[] }>;
+  /** Register (or refresh) the caller's E.164 phone number for SMS. */
+  registerPhone(input: { phoneNumber: string }): Promise<{ data: { id: string } }>;
+  /** Remove one of the caller's registered phone numbers by id. */
+  unregisterPhone(id: string): Promise<{ ok: boolean }>;
+  /** List the caller's registered phone numbers. */
+  listPhones(): Promise<{ data: PhoneNumber[] }>;
+}
+
+/** Durable background job queue (admin-scoped). See `createClient`. */
+export interface JobsClient {
+  /** Enqueue a durable background job. */
+  enqueue(input: {
+    type: "function" | "webhook.deliver";
+    payload?: Record<string, unknown>;
+    queue?: string;
+    runAt?: string;
+    maxAttempts?: number;
+    priority?: number;
+  }): Promise<{ id: string }>;
+  /** List jobs (newest first), optionally filtered by queue/status. */
+  list(q?: { queue?: string; status?: JobStatus; limit?: number }): Promise<{ jobs: Job[] }>;
+  /** Fetch a single job by id. */
+  get(id: string): Promise<Job>;
+  /** Requeue a failed / dead-lettered / cancelled job. */
+  retry(id: string): Promise<{ ok: boolean }>;
+  /** Cancel a pending job. */
+  cancel(id: string): Promise<{ ok: boolean }>;
+  /** Delete a job row. */
+  remove(id: string): Promise<{ ok: boolean }>;
+}
+
+/** Feature flags / remote config evaluated for the current caller. See `createClient`. */
+export interface FlagsClient {
+  /** Fetch + cache the evaluated flag map. */
+  all(): Promise<Record<string, FlagState>>;
+  /** Resolved value (remote config payload) for a flag, or `undefined`. */
+  get(key: string, opts?: { refresh?: boolean }): Promise<unknown>;
+  /** Whether a flag is on for the caller. */
+  isEnabled(key: string, opts?: { refresh?: boolean }): Promise<boolean>;
+}
+
+/** The backlex client returned by `createClient` — data, auth, storage, realtime, and more. */
+export interface BacklexClient {
+  /** Typed data API for one collection by slug. */
+  from<T extends Record<string, unknown>>(slug: string): CollectionClient<T>;
+  /** Subscribe to a realtime channel (SSE); returns an unsubscribe function. */
+  subscribe<T = Record<string, unknown>>(
+    channel: string,
+    onEvent: (e: ItemEvent<T>) => void,
+    onError?: (err: unknown) => void,
+  ): () => void;
+  /** Auth surface (sign-in/up, sessions, tokens). */
+  auth: AuthClient;
+  /** File storage + resumable uploads. */
+  storage: StorageClient;
+  /** Push + SMS device registration. */
+  messaging: MessagingClient;
+  /** Durable background job queue. */
+  jobs: JobsClient;
+  /** Feature flags / remote config. */
+  flags: FlagsClient;
+  /** Offline-first sync controller for one collection. */
+  sync(options: SyncOptions): SyncController;
+  /** Raw escape hatch — issues a request with auth headers applied. */
+  request<T>(method: string, path: string, body?: unknown, extraHeaders?: Record<string, string>): Promise<T>;
+}
+
+/** Create a backlex client. In app mode (`workspace` set) auth + data scope to
+ *  one workspace and the session token is captured + replayed as a bearer. */
+export const createClient = (opts: ClientOptions): BacklexClient => {
   const f = opts.fetch ?? globalThis.fetch.bind(globalThis);
   // App-mode workspace session token, captured from sign-in/up and replayed
   // as a bearer on later calls.
@@ -395,7 +591,7 @@ export const createClient = (opts: ClientOptions) => {
     return r;
   };
 
-  const auth = {
+  const auth: AuthClient = {
     /** Email + password sign-up. In app mode this creates a *workspace* end-
      *  user (in `app_users`), not a control-plane account. */
     signUp: (input: { email: string; password: string; name?: string }) =>
@@ -562,7 +758,7 @@ export const createClient = (opts: ClientOptions) => {
     }
   };
 
-  const storage = {
+  const storage: StorageClient = {
     list: (prefix?: string) =>
       request<{
         data: {
@@ -677,7 +873,7 @@ export const createClient = (opts: ClientOptions) => {
     },
   };
 
-  const messaging = {
+  const messaging: MessagingClient = {
     /** Register (or refresh) the current user's push device. Re-registering the
      *  same token reactivates it and updates last-seen, so call this on every
      *  app launch. `web-push` requires `keys` (the VAPID subscription keys). */
@@ -703,7 +899,7 @@ export const createClient = (opts: ClientOptions) => {
     listPhones: () => request<{ data: PhoneNumber[] }>("GET", "/api/phone-numbers"),
   };
 
-  const jobs = {
+  const jobs: JobsClient = {
     /** Enqueue a durable background job. `type` is `function` (run a named
      *  function with `payload.name` + `payload.input`) or `webhook.deliver`.
      *  Jobs retry with backoff and dead-letter after `maxAttempts`. Pass
@@ -746,7 +942,7 @@ export const createClient = (opts: ClientOptions) => {
     flagsCache = res.data ?? {};
     return flagsCache;
   };
-  const flags = {
+  const flags: FlagsClient = {
     /** Fetch + cache the evaluated flag map. */
     all: (): Promise<Record<string, FlagState>> => fetchFlags(),
     /** Resolved value for a flag (remote config payload), or `undefined`. Uses
@@ -827,5 +1023,3 @@ export {
 } from "./sync";
 
 export { verifyWebhook, type VerifyWebhookOptions } from "./webhook";
-
-export type BacklexClient = ReturnType<typeof createClient>;

@@ -52,25 +52,46 @@ const prefixKeys = (cond: Condition, head: string): Condition => {
   return out as Condition;
 };
 
+/** Fluent condition factory passed to `QueryBuilder.where(...)`. Each method
+ *  returns a canonical {@link Condition}; multiple are combined with `and`/`or`. */
 export interface FilterBuilder<T> {
+  /** `field = value`. */
   eq(field: FieldKey<T>, value: unknown): Condition;
+  /** `field != value`. */
   neq(field: FieldKey<T>, value: unknown): Condition;
+  /** `field > value`. */
   gt(field: FieldKey<T>, value: unknown): Condition;
+  /** `field >= value`. */
   gte(field: FieldKey<T>, value: unknown): Condition;
+  /** `field < value`. */
   lt(field: FieldKey<T>, value: unknown): Condition;
+  /** `field <= value`. */
   lte(field: FieldKey<T>, value: unknown): Condition;
+  /** `field IN (values)`. */
   in(field: FieldKey<T>, values: unknown[]): Condition;
+  /** `field NOT IN (values)`. */
   nin(field: FieldKey<T>, values: unknown[]): Condition;
+  /** `field BETWEEN lo AND hi` (inclusive). */
   between(field: FieldKey<T>, lo: unknown, hi: unknown): Condition;
+  /** `field IS NULL` (or `IS NOT NULL` when `isNull` is false). */
   isNull(field: FieldKey<T>, isNull?: boolean): Condition;
+  /** `field` is NULL or empty string. */
   empty(field: FieldKey<T>): Condition;
+  /** `field` is neither NULL nor empty string. */
   nempty(field: FieldKey<T>): Condition;
+  /** `field` contains the substring `value`. */
   contains(field: FieldKey<T>, value: string): Condition;
+  /** Case-insensitive {@link contains}. */
   icontains(field: FieldKey<T>, value: string): Condition;
+  /** `field` starts with `value`. */
   startsWith(field: FieldKey<T>, value: string): Condition;
+  /** `field` ends with `value`. */
   endsWith(field: FieldKey<T>, value: string): Condition;
+  /** Logical AND of the given conditions. */
   and(...conds: Condition[]): Condition;
+  /** Logical OR of the given conditions. */
   or(...conds: Condition[]): Condition;
+  /** Logical NOT of a condition. */
   not(cond: Condition): Condition;
   /** Traverse a relation: keys produced by `build` are prefixed with `head.`. */
   rel<R = Record<string, unknown>>(
@@ -110,6 +131,8 @@ const makeFilterBuilder = <T>(): FilterBuilder<T> => {
   };
 };
 
+/** Fluent, type-safe query builder returned by `from(slug).query()`. Chain
+ *  `.where`/`.select`/`.orderBy`/… and finish with `.list()` (or `.toQuery()`). */
 export class QueryBuilder<T extends Record<string, unknown>> {
   private _filter?: Condition;
   private _sort: string[] = [];
@@ -123,6 +146,7 @@ export class QueryBuilder<T extends Record<string, unknown>> {
 
   constructor(private readonly listFn: (q: ListQuery) => Promise<ListResponse<T>>) {}
 
+  /** Build the filter fluently with a {@link FilterBuilder}. */
   where(build: (f: FilterBuilder<T>) => Condition): this {
     this._filter = normalizeCondition(build(makeFilterBuilder<T>()));
     return this;
@@ -132,10 +156,12 @@ export class QueryBuilder<T extends Record<string, unknown>> {
     this._filter = normalizeCondition(cond);
     return this;
   }
+  /** Project only these fields (column allow-list). */
   select(...fields: FieldKey<T>[]): this {
     this._fields.push(...(fields as string[]));
     return this;
   }
+  /** Sort by one or more keys (`"-field"` for descending). */
   orderBy(...sorts: SortKey<T>[]): this {
     this._sort.push(...(sorts as string[]));
     return this;
@@ -155,14 +181,17 @@ export class QueryBuilder<T extends Record<string, unknown>> {
     this._q = text;
     return this;
   }
+  /** Max rows to return. */
   limit(n: number): this {
     this._limit = n;
     return this;
   }
+  /** Number of rows to skip (paging). */
   offset(n: number): this {
     this._offset = n;
     return this;
   }
+  /** Ask the server for a count alongside the page (`filter_count` / `total_count`). */
   withMeta(m: "filter_count" | "total_count" | "*"): this {
     this._meta = m;
     return this;
@@ -181,6 +210,7 @@ export class QueryBuilder<T extends Record<string, unknown>> {
     if (this._q) q.q = this._q;
     return q;
   }
+  /** Run the query and return the page of rows. */
   list(): Promise<ListResponse<T>> {
     return this.listFn(this.toQuery());
   }

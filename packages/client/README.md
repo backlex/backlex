@@ -1,14 +1,16 @@
-# @backlex/client
+# backlex
 
 Typed TypeScript client for the [backlex](https://backlex.com) API — the same
 fetch wrapper the admin SPA and the official examples use.
 
 ```bash
-npm i @backlex/client
+npm i backlex                  # npm — compiled ESM + types
+# or
+npx jsr add @backlex/backlex   # JSR — TypeScript source
 ```
 
 ```ts
-import { createClient } from "@backlex/client";
+import { createClient } from "backlex";
 
 const backlex = createClient({
   url: "https://api.your.app",
@@ -26,16 +28,15 @@ builder, batch writes, full-text/vector/hybrid search, realtime (SSE), storage +
 resumable uploads, jobs, feature flags, and offline-first sync. Full reference:
 **https://backlex.com/docs/sdk-and-cli**.
 
-## Runtime requirements
+## Distribution
 
-This package ships as **TypeScript source** (no build step) and has **zero
-dependencies**. Consume it through any bundler / TS-aware runtime:
+Published to two registries, both **zero-dependency**:
 
-- **Bundlers** — Vite, Next.js, esbuild, Rollup, webpack, Bun, Deno: work on any
-  Node version; types resolve automatically.
-- **Direct `node` execution** — Node ≥ 22.6 runs the `.ts` sources via native
-  type-stripping (`--experimental-strip-types`; unflagged from 23.6 / Node 22.18
-  LTS).
+- **npm** (`npm i backlex`) — compiled ESM JavaScript + `.d.ts`. Works in every
+  bundler (Vite, Next.js, webpack, esbuild, Rollup), in Node (any version), in
+  Deno/Bun, and for plain `tsc` consumers.
+- **JSR** (`npx jsr add @backlex/backlex`) — the TypeScript source; JSR transpiles
+  + generates types on install for Node consumers and serves source to Deno/Bun.
 
 ## License
 

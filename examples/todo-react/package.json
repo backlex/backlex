@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Minimal React + Vite app showing backlex workspace auth, collection CRUD, and realtime via @backlex/client.",
+  "description": "Minimal React + Vite app showing backlex workspace auth, collection CRUD, and realtime via backlex.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@backlex/client": "workspace:*",
+    "backlex": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

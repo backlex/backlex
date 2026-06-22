@@ -144,7 +144,7 @@ Notes:
 ## SDK
 
 ```ts
-import { createClient } from "@backlex/client";
+import { createClient } from "backlex";
 const backlex = createClient({ url, token });
 
 const csv = await backlex.collection("posts").exportItems("csv");

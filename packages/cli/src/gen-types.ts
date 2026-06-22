@@ -78,7 +78,7 @@ const renderRegistry = (collections: Collection[]): string => {
   return `export interface Collections {\n${entries}\n}`;
 };
 
-const SDK_IMPORT = `import {\n  createClient,\n  typedCollections,\n  type ClientOptions,\n  type TypedClient,\n} from "@backlex/client";\n`;
+const SDK_IMPORT = `import {\n  createClient,\n  typedCollections,\n  type ClientOptions,\n  type TypedClient,\n} from "backlex";\n`;
 
 const SDK_FACTORY = `/**
  * A strongly-typed backlex client. Access collections by slug — every method

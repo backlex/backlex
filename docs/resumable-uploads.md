@@ -84,7 +84,7 @@ wrong `Content-Type` on `PATCH`, `404` for a missing/terminated session.
 ## SDK
 
 ```ts
-import { createClient } from "@backlex/client";
+import { createClient } from "backlex";
 const backlex = createClient({ url, apiKey });
 
 // Upload a large File/Blob with progress + auto-resume on transient errors.

@@ -3,7 +3,7 @@ title: Client SDKs
 description: Official backlex clients for eleven languages — one API, one wire format, idiomatic in each.
 ---
 
-The TypeScript SDK ([`@backlex/client`](/docs/sdk-and-cli/)) is the reference
+The TypeScript SDK ([`backlex`](/docs/sdk-and-cli/)) is the reference
 client. Alongside it, backlex ships native clients for ten more languages, so an
 app in (almost) any stack talks to backlex the same way.
 

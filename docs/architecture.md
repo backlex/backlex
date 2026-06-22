@@ -17,7 +17,7 @@ backlex/
    ├─ db/                  Drizzle schemas (pg + sqlite) + dynamic-DDL applier + DSL compiler
    ├─ auth/                better-auth wrapper + plugin selection
    ├─ ui/                  shadcn radix-luma component library
-   ├─ client/              `@backlex/client` typed SDK
+   ├─ client/              `backlex` typed SDK
    └─ cli/                 `backlex` CLI
 ```
 

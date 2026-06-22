@@ -1,7 +1,7 @@
 {
-  "name": "@backlex/client",
+  "name": "backlex",
   "version": "0.0.1",
-  "description": "Typed TypeScript client for the backlex API — auth, collection CRUD, query builder, realtime, storage, jobs, flags, and offline sync. Ships as source; runs on any bundler (Vite, Next, esbuild, Bun, Deno) and on Node ≥22.6 native type-stripping.",
+  "description": "Typed TypeScript client for the backlex API — auth, collection CRUD, query builder, realtime, storage, jobs, flags, and offline sync. Zero dependencies. On npm as compiled ESM + types; on JSR (@backlex/backlex) as TypeScript source.",
   "type": "module",
   "license": "Apache-2.0",
   "homepage": "https://backlex.com",
@@ -39,9 +39,11 @@
     "provenance": true
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "tsup"
   },
   "devDependencies": {
+    "tsup": "^8.3.5",
     "typescript": "^5.6.3"
   }
 }

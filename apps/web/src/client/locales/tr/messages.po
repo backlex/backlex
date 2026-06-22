@@ -160,6 +160,12 @@ msgstr "(isimsiz)"
 msgid "(use the configured default)"
 msgstr "(yapılandırılmış varsayılanı kullan)"
 
+#. placeholder {0}: mcpReadOnly ? "Read-only" : "Read & write"
+#. placeholder {1}: mcpAllowlist ? `${mcpAllowlist.size} tool(s)` : "all tools"
+#: src/client/pages/api-keys.tsx
+#~ msgid "{0} · {1}"
+#~ msgstr ""
+
 #. placeholder {0}: s.ip
 #. placeholder {1}: s.last
 #: src/client/admin/pages/users.tsx
@@ -324,9 +330,15 @@ msgstr "{1} sütunun {0} tanesi eşlendi"
 
 #. placeholder {0}: allowlist.size
 #. placeholder {1}: tools?.length ?? 0
+#: src/client/components/mcp-guards-fields.tsx
+msgid "{0} of {1} tools allowed. Choose Allow all to remove the allowlist."
+msgstr "{1} araçtan {0} tanesine izin verildi. Listeyi kaldırmak için Tümüne izin ver'i seçin."
+
+#. placeholder {0}: allowlist.size
+#. placeholder {1}: tools?.length ?? 0
 #: src/client/components/mcp-key-modal.tsx
-msgid "{0} of {1} tools allowed. Uncheck all to remove the allowlist."
-msgstr "{1} araçtan {0} tanesi izinli. Tümünü kaldırmak için işaretleri kaldırın."
+#~ msgid "{0} of {1} tools allowed. Uncheck all to remove the allowlist."
+#~ msgstr "{1} araçtan {0} tanesi izinli. Tümünü kaldırmak için işaretleri kaldırın."
 
 #. placeholder {0}: selected.size
 #: src/client/admin/app.tsx
@@ -399,6 +411,11 @@ msgstr "{0} etiket"
 #: src/client/admin/item-editor.tsx
 msgid "{0} to fix"
 msgstr "{0} düzeltilecek"
+
+#. placeholder {0}: mcpAllowlist.size
+#: src/client/pages/api-keys.tsx
+msgid "{0} tool(s)"
+msgstr "{0} araç"
 
 #. placeholder {0}: allFields.length
 #. placeholder {1}: userFields.length
@@ -1104,8 +1121,16 @@ msgstr "Tüm roller"
 msgid "All statuses"
 msgstr "Tüm durumlar"
 
+#: src/client/pages/api-keys.tsx
+msgid "all tools"
+msgstr "tüm araçlar"
+
+#: src/client/pages/api-keys.tsx
+msgid "All tools, read & write (default) — tap to restrict"
+msgstr "Tüm araçlar, okuma ve yazma (varsayılan) — kısıtlamak için dokunun"
+
 #: src/client/admin/condition-editor.tsx
-#: src/client/components/mcp-key-modal.tsx
+#: src/client/components/mcp-guards-fields.tsx
 msgid "Allow all"
 msgstr "Tümüne izin ver"
 
@@ -1551,13 +1576,13 @@ msgstr "Bağlamalar yenilendi."
 msgid "Blank"
 msgstr "Boş"
 
-#: src/client/components/mcp-key-modal.tsx
+#: src/client/components/mcp-guards-fields.tsx
 msgid "Block all"
 msgstr "Tümünü engelle"
 
 #: src/client/pages/api-keys.tsx
-msgid "Block every write tool (insert / update / delete / invoke / …) when this key is used through the MCP server. REST authorization is unaffected. Allowlist can be configured per-key after creation."
-msgstr "Bu anahtar MCP sunucusu üzerinden kullanıldığında her yazma aracını engeller (insert / update / delete / invoke / …). REST yetkilendirmesi etkilenmez. İzin listesi oluşturulduktan sonra anahtar bazında ayarlanabilir."
+#~ msgid "Block every write tool (insert / update / delete / invoke / …) when this key is used through the MCP server. REST authorization is unaffected. Allowlist can be configured per-key after creation."
+#~ msgstr "Bu anahtar MCP sunucusu üzerinden kullanıldığında her yazma aracını engeller (insert / update / delete / invoke / …). REST yetkilendirmesi etkilenmez. İzin listesi oluşturulduktan sonra anahtar bazında ayarlanabilir."
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "blocked"
@@ -2151,6 +2176,10 @@ msgstr "Devam et"
 #: src/client/components/platform-sso.tsx
 msgid "Continue with {0}"
 msgstr "{0} ile devam et"
+
+#: src/client/pages/api-keys.tsx
+msgid "Controls what this key can do through the MCP server only — REST authorization is unaffected. You can change all of this later from the key’s Connect MCP panel."
+msgstr "Bu anahtarın yalnızca MCP sunucusu üzerinden neler yapabileceğini belirler — REST yetkilendirmesi etkilenmez. Tüm bunları daha sonra anahtarın Connect MCP panelinden değiştirebilirsiniz."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "conventional column present"
@@ -3347,9 +3376,13 @@ msgstr "Olay deseni"
 msgid "Events"
 msgstr "Olaylar"
 
+#: src/client/components/mcp-guards-fields.tsx
+msgid "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
+msgstr "İzinlere bağlı olarak her MCP aracı çağrılabilir. Bu anahtarı bir izin listesiyle daraltmak için aşağıdan bir araç işaretleyin."
+
 #: src/client/components/mcp-key-modal.tsx
-msgid "Every MCP tool is callable, subject to permissions. Toggle a tool below to switch to allowlist mode."
-msgstr "Her MCP aracı izinler dahilinde çağrılabilir. Aşağıdan bir aracı kapatarak izin listesi moduna geç."
+#~ msgid "Every MCP tool is callable, subject to permissions. Toggle a tool below to switch to allowlist mode."
+#~ msgstr "Her MCP aracı izinler dahilinde çağrılabilir. Aşağıdan bir aracı kapatarak izin listesi moduna geç."
 
 #: src/client/admin/parity/revisions.tsx
 msgid "Every write is versioned. Inspect, diff, or revert any prior state."
@@ -4766,7 +4799,7 @@ msgstr "API anahtarları yükleniyor"
 msgid "Loading keys…"
 msgstr "Anahtarlar yükleniyor…"
 
-#: src/client/components/mcp-key-modal.tsx
+#: src/client/components/mcp-guards-fields.tsx
 msgid "Loading MCP tools"
 msgstr "MCP araçları yükleniyor"
 
@@ -4775,7 +4808,7 @@ msgid "Loading runs…"
 msgstr "Çalıştırmalar yükleniyor…"
 
 #: src/client/admin/pages/ask-ai.tsx
-#: src/client/components/mcp-key-modal.tsx
+#: src/client/components/mcp-guards-fields.tsx
 msgid "Loading tool catalog…"
 msgstr "Araç kataloğu yükleniyor…"
 
@@ -4957,6 +4990,10 @@ msgstr "Mayıs"
 msgid "MCP · {MCP_TOOL_COUNT} tools"
 msgstr "MCP · {MCP_TOOL_COUNT} araç"
 
+#: src/client/pages/api-keys.tsx
+msgid "MCP access"
+msgstr "MCP erişimi"
+
 #: src/client/components/mcp-key-modal.tsx
 msgid "MCP endpoint URL"
 msgstr "MCP uç nokta URL'i"
@@ -4966,8 +5003,8 @@ msgid "MCP read-only"
 msgstr "MCP salt-okunur"
 
 #: src/client/pages/api-keys.tsx
-msgid "MCP read-only mode"
-msgstr "MCP salt-okunur modu"
+#~ msgid "MCP read-only mode"
+#~ msgstr "MCP salt-okunur modu"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "MCP tool catalog"
@@ -5885,8 +5922,12 @@ msgstr "Hata durumunda"
 #~ msgstr "Bu sayfadan ayrıldığınızda gizli anahtar geri alınamaz — yalnızca iptal edilebilir."
 
 #: src/client/pages/api-keys.tsx
-msgid "Once you leave this page, the secret can’t be retrieved — only revoked."
-msgstr "Bu sayfadan ayrıldığınızda gizli anahtar bir daha alınamaz — yalnızca iptal edilebilir."
+#~ msgid "Once you leave this page, the secret can’t be retrieved — only revoked."
+#~ msgstr "Bu sayfadan ayrıldığınızda gizli anahtar bir daha alınamaz — yalnızca iptal edilebilir."
+
+#: src/client/pages/api-keys.tsx
+msgid "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
+msgstr "Bu sayfadan ayrıldığınızda gizli anahtar bir daha alınamaz — yalnızca iptal edilebilir. MCP erişimini istediğiniz zaman anahtarın Connect MCP panelinden ayarlayabilirsiniz."
 
 #: src/client/pages/invite.tsx
 msgid "One moment."
@@ -6798,14 +6839,22 @@ msgstr "yeniden etkinleştirildi"
 msgid "Read"
 msgstr "Oku"
 
+#: src/client/pages/api-keys.tsx
+msgid "Read & write"
+msgstr "Okuma ve yazma"
+
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/pages/shared-record.tsx
 msgid "read-only"
 msgstr "salt okunur"
 
+#: src/client/pages/api-keys.tsx
+msgid "Read-only"
+msgstr "Salt okunur"
+
 #: src/client/admin/pages/ask-ai.tsx
-#: src/client/components/mcp-key-modal.tsx
+#: src/client/components/mcp-guards-fields.tsx
 msgid "Read-only mode"
 msgstr "Salt-okunur mod"
 
@@ -6910,8 +6959,12 @@ msgid "Refreshing…"
 msgstr "Yenileniyor…"
 
 #: src/client/components/mcp-key-modal.tsx
-msgid "Refuses every write tool through MCP for this key — agent can read everything its permissions allow but cannot mutate."
-msgstr "Bu anahtar üzerinden MCP'deki her yazma aracını reddeder — ajan izinlerinin tüm okumalarını yapabilir, ama mutasyon yapamaz."
+#~ msgid "Refuses every write tool through MCP for this key — agent can read everything its permissions allow but cannot mutate."
+#~ msgstr "Bu anahtar üzerinden MCP'deki her yazma aracını reddeder — ajan izinlerinin tüm okumalarını yapabilir, ama mutasyon yapamaz."
+
+#: src/client/components/mcp-guards-fields.tsx
+msgid "Refuses every write tool through MCP for this key — the agent can read everything its permissions allow but cannot mutate."
+msgstr "Bu anahtar için MCP üzerinden her yazma aracını reddeder — ajan izinlerinin izin verdiği her şeyi okuyabilir, ama değişiklik yapamaz."
 
 #: src/client/admin/account-page.tsx
 msgid "Regenerate backup codes"
@@ -8978,7 +9031,7 @@ msgid "Tool"
 msgstr "Araç"
 
 #: src/client/admin/pages/ask-ai.tsx
-#: src/client/components/mcp-key-modal.tsx
+#: src/client/components/mcp-guards-fields.tsx
 msgid "Tool allowlist"
 msgstr "Araç izin listesi"
 

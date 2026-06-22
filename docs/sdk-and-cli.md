@@ -152,8 +152,29 @@ per-collection runtime code is generated; the types live in `Collections`.
 
 ## `backlex` CLI
 
-Run from any project that has `@backlex/cli` (root has it as
-`bun run backlex ...`).
+Manage any backlex instance from your terminal or CI — same REST API as the
+SDK, authenticated with a personal API key (`pak_…`).
+
+### Installing
+
+The npm package is **`@backlex/cli`**; the installed command is **`backlex`**.
+(The bare `backlex` npm package is the SDK, not the CLI.)
+
+```bash
+# one-off, no install
+npx @backlex/cli login --url https://api.your.app --key pak_xxx
+bunx @backlex/cli login --url https://api.your.app --key pak_xxx
+
+# or globally
+npm i -g @backlex/cli
+backlex whoami
+```
+
+Inside this monorepo it runs straight from source as `bun backlex <cmd>` (the
+root maps `bun run backlex …`), no install needed.
+
+> `migrate` is Bun-only (it uses `bun:sqlite`) and meant for self-hosting; every
+> other command runs under Node, so `npx`/global installs work everywhere.
 
 ```
 backlex help

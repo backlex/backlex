@@ -160,6 +160,12 @@ msgstr "(unnamed)"
 msgid "(use the configured default)"
 msgstr "(use the configured default)"
 
+#. placeholder {0}: mcpReadOnly ? "Read-only" : "Read & write"
+#. placeholder {1}: mcpAllowlist ? `${mcpAllowlist.size} tool(s)` : "all tools"
+#: src/client/pages/api-keys.tsx
+#~ msgid "{0} · {1}"
+#~ msgstr "{0} · {1}"
+
 #. placeholder {0}: s.ip
 #. placeholder {1}: s.last
 #: src/client/admin/pages/users.tsx
@@ -324,9 +330,15 @@ msgstr "{0} of {1} columns mapped"
 
 #. placeholder {0}: allowlist.size
 #. placeholder {1}: tools?.length ?? 0
+#: src/client/components/mcp-guards-fields.tsx
+msgid "{0} of {1} tools allowed. Choose Allow all to remove the allowlist."
+msgstr "{0} of {1} tools allowed. Choose Allow all to remove the allowlist."
+
+#. placeholder {0}: allowlist.size
+#. placeholder {1}: tools?.length ?? 0
 #: src/client/components/mcp-key-modal.tsx
-msgid "{0} of {1} tools allowed. Uncheck all to remove the allowlist."
-msgstr "{0} of {1} tools allowed. Uncheck all to remove the allowlist."
+#~ msgid "{0} of {1} tools allowed. Uncheck all to remove the allowlist."
+#~ msgstr "{0} of {1} tools allowed. Uncheck all to remove the allowlist."
 
 #. placeholder {0}: selected.size
 #: src/client/admin/app.tsx
@@ -399,6 +411,11 @@ msgstr "{0} tags"
 #: src/client/admin/item-editor.tsx
 msgid "{0} to fix"
 msgstr "{0} to fix"
+
+#. placeholder {0}: mcpAllowlist.size
+#: src/client/pages/api-keys.tsx
+msgid "{0} tool(s)"
+msgstr "{0} tool(s)"
 
 #. placeholder {0}: allFields.length
 #. placeholder {1}: userFields.length
@@ -1104,8 +1121,16 @@ msgstr "All roles"
 msgid "All statuses"
 msgstr "All statuses"
 
+#: src/client/pages/api-keys.tsx
+msgid "all tools"
+msgstr "all tools"
+
+#: src/client/pages/api-keys.tsx
+msgid "All tools, read & write (default) — tap to restrict"
+msgstr "All tools, read & write (default) — tap to restrict"
+
 #: src/client/admin/condition-editor.tsx
-#: src/client/components/mcp-key-modal.tsx
+#: src/client/components/mcp-guards-fields.tsx
 msgid "Allow all"
 msgstr "Allow all"
 
@@ -1551,13 +1576,13 @@ msgstr "Bindings refreshed."
 msgid "Blank"
 msgstr "Blank"
 
-#: src/client/components/mcp-key-modal.tsx
+#: src/client/components/mcp-guards-fields.tsx
 msgid "Block all"
 msgstr "Block all"
 
 #: src/client/pages/api-keys.tsx
-msgid "Block every write tool (insert / update / delete / invoke / …) when this key is used through the MCP server. REST authorization is unaffected. Allowlist can be configured per-key after creation."
-msgstr "Block every write tool (insert / update / delete / invoke / …) when this key is used through the MCP server. REST authorization is unaffected. Allowlist can be configured per-key after creation."
+#~ msgid "Block every write tool (insert / update / delete / invoke / …) when this key is used through the MCP server. REST authorization is unaffected. Allowlist can be configured per-key after creation."
+#~ msgstr "Block every write tool (insert / update / delete / invoke / …) when this key is used through the MCP server. REST authorization is unaffected. Allowlist can be configured per-key after creation."
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "blocked"
@@ -2151,6 +2176,10 @@ msgstr "Continue"
 #: src/client/components/platform-sso.tsx
 msgid "Continue with {0}"
 msgstr "Continue with {0}"
+
+#: src/client/pages/api-keys.tsx
+msgid "Controls what this key can do through the MCP server only — REST authorization is unaffected. You can change all of this later from the key’s Connect MCP panel."
+msgstr "Controls what this key can do through the MCP server only — REST authorization is unaffected. You can change all of this later from the key’s Connect MCP panel."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "conventional column present"
@@ -3347,9 +3376,13 @@ msgstr "Event pattern"
 msgid "Events"
 msgstr "Events"
 
+#: src/client/components/mcp-guards-fields.tsx
+msgid "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
+msgstr "Every MCP tool is callable, subject to permissions. Tick a tool below to narrow this key to an allowlist."
+
 #: src/client/components/mcp-key-modal.tsx
-msgid "Every MCP tool is callable, subject to permissions. Toggle a tool below to switch to allowlist mode."
-msgstr "Every MCP tool is callable, subject to permissions. Toggle a tool below to switch to allowlist mode."
+#~ msgid "Every MCP tool is callable, subject to permissions. Toggle a tool below to switch to allowlist mode."
+#~ msgstr "Every MCP tool is callable, subject to permissions. Toggle a tool below to switch to allowlist mode."
 
 #: src/client/admin/parity/revisions.tsx
 msgid "Every write is versioned. Inspect, diff, or revert any prior state."
@@ -4766,7 +4799,7 @@ msgstr "Loading API keys"
 msgid "Loading keys…"
 msgstr "Loading keys…"
 
-#: src/client/components/mcp-key-modal.tsx
+#: src/client/components/mcp-guards-fields.tsx
 msgid "Loading MCP tools"
 msgstr "Loading MCP tools"
 
@@ -4775,7 +4808,7 @@ msgid "Loading runs…"
 msgstr "Loading runs…"
 
 #: src/client/admin/pages/ask-ai.tsx
-#: src/client/components/mcp-key-modal.tsx
+#: src/client/components/mcp-guards-fields.tsx
 msgid "Loading tool catalog…"
 msgstr "Loading tool catalog…"
 
@@ -4957,6 +4990,10 @@ msgstr "May"
 msgid "MCP · {MCP_TOOL_COUNT} tools"
 msgstr "MCP · {MCP_TOOL_COUNT} tools"
 
+#: src/client/pages/api-keys.tsx
+msgid "MCP access"
+msgstr "MCP access"
+
 #: src/client/components/mcp-key-modal.tsx
 msgid "MCP endpoint URL"
 msgstr "MCP endpoint URL"
@@ -4966,8 +5003,8 @@ msgid "MCP read-only"
 msgstr "MCP read-only"
 
 #: src/client/pages/api-keys.tsx
-msgid "MCP read-only mode"
-msgstr "MCP read-only mode"
+#~ msgid "MCP read-only mode"
+#~ msgstr "MCP read-only mode"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "MCP tool catalog"
@@ -5881,8 +5918,12 @@ msgid "On error"
 msgstr "On error"
 
 #: src/client/pages/api-keys.tsx
-msgid "Once you leave this page, the secret can’t be retrieved — only revoked."
-msgstr "Once you leave this page, the secret can’t be retrieved — only revoked."
+#~ msgid "Once you leave this page, the secret can’t be retrieved — only revoked."
+#~ msgstr "Once you leave this page, the secret can’t be retrieved — only revoked."
+
+#: src/client/pages/api-keys.tsx
+msgid "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
+msgstr "Once you leave this page, the secret can’t be retrieved — only revoked. You can adjust MCP access anytime from the key’s Connect MCP panel."
 
 #: src/client/pages/invite.tsx
 msgid "One moment."
@@ -6790,14 +6831,22 @@ msgstr "reactivated"
 msgid "Read"
 msgstr "Read"
 
+#: src/client/pages/api-keys.tsx
+msgid "Read & write"
+msgstr "Read & write"
+
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/parity/database.tsx
 #: src/client/pages/shared-record.tsx
 msgid "read-only"
 msgstr "read-only"
 
+#: src/client/pages/api-keys.tsx
+msgid "Read-only"
+msgstr "Read-only"
+
 #: src/client/admin/pages/ask-ai.tsx
-#: src/client/components/mcp-key-modal.tsx
+#: src/client/components/mcp-guards-fields.tsx
 msgid "Read-only mode"
 msgstr "Read-only mode"
 
@@ -6902,8 +6951,12 @@ msgid "Refreshing…"
 msgstr "Refreshing…"
 
 #: src/client/components/mcp-key-modal.tsx
-msgid "Refuses every write tool through MCP for this key — agent can read everything its permissions allow but cannot mutate."
-msgstr "Refuses every write tool through MCP for this key — agent can read everything its permissions allow but cannot mutate."
+#~ msgid "Refuses every write tool through MCP for this key — agent can read everything its permissions allow but cannot mutate."
+#~ msgstr "Refuses every write tool through MCP for this key — agent can read everything its permissions allow but cannot mutate."
+
+#: src/client/components/mcp-guards-fields.tsx
+msgid "Refuses every write tool through MCP for this key — the agent can read everything its permissions allow but cannot mutate."
+msgstr "Refuses every write tool through MCP for this key — the agent can read everything its permissions allow but cannot mutate."
 
 #: src/client/admin/account-page.tsx
 msgid "Regenerate backup codes"
@@ -8970,7 +9023,7 @@ msgid "Tool"
 msgstr "Tool"
 
 #: src/client/admin/pages/ask-ai.tsx
-#: src/client/components/mcp-key-modal.tsx
+#: src/client/components/mcp-guards-fields.tsx
 msgid "Tool allowlist"
 msgstr "Tool allowlist"
 

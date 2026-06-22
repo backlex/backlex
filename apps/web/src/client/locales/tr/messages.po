@@ -2746,6 +2746,10 @@ msgstr "kullanımdan kaldırıldı"
 msgid "Derive from width × source aspect"
 msgstr "Genişlik × kaynak en-boy oranından türet"
 
+#: src/client/pages/api-keys.tsx
+msgid "Derived from the {mcpDerivedFrom} role — adjust below if needed."
+msgstr "{mcpDerivedFrom} rolünden türetildi — gerekirse aşağıdan değiştirin."
+
 #: src/client/admin/collection-settings.tsx
 msgid "desc"
 msgstr "azalan"
@@ -4802,6 +4806,10 @@ msgstr "Anahtarlar yükleniyor…"
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Loading MCP tools"
 msgstr "MCP araçları yükleniyor"
+
+#: src/client/pages/api-keys.tsx
+msgid "Loading role MCP defaults"
+msgstr "Rol MCP varsayılanları yükleniyor"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Loading runs…"

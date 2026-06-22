@@ -3,7 +3,7 @@ import {
   type DurationParts,
   type RelativeNow,
   normalizeCondition,
-} from "@backlex/core";
+} from "./condition";
 import type { ListQuery, ListResponse } from "./types";
 
 /**

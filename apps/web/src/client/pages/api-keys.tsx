@@ -101,7 +101,7 @@ export const ApiKeys = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
-  const [expiryPreset, setExpiryPreset] = useState<ExpiryPreset>("never");
+  const [expiryPreset, setExpiryPreset] = useState<ExpiryPreset>("365d");
   const [customExpiry, setCustomExpiry] = useState<string | null>(null);
   const [roleId, setRoleId] = useState<string>(NO_ROLE);
   const [secret, setSecret] = useState<string | null>(null);
@@ -146,7 +146,7 @@ export const ApiKeys = () => {
 
   const resetForm = () => {
     setName("");
-    setExpiryPreset("never");
+    setExpiryPreset("365d");
     setCustomExpiry(null);
     setRoleId(NO_ROLE);
     setMcpReadOnly(false);

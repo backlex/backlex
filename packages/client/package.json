@@ -1,6 +1,6 @@
 {
   "name": "backlex",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Typed TypeScript client for the backlex API — auth, collection CRUD, query builder, realtime, storage, jobs, flags, and offline sync. Zero dependencies. On npm as compiled ESM + types; on JSR (@backlex/backlex) as TypeScript source.",
   "type": "module",
   "license": "Apache-2.0",

@@ -1,5 +1,16 @@
-// Receiver-side helper for verifying inbound backlex webhook signatures.
-// Runs anywhere Web Crypto is available (Workers, Node 18+, Bun, Deno).
+/**
+ * @module
+ *
+ * Receiver-side helper for verifying inbound backlex webhook signatures with
+ * {@link verifyWebhook}. Runs anywhere Web Crypto is available (Workers,
+ * Node 18+, Bun, Deno). Supports the V2 (timestamped, replay-protected) and
+ * legacy signature schemes.
+ *
+ * ```ts
+ * import { verifyWebhook } from "backlex/webhook";
+ * const ok = await verifyWebhook({ secret, body, signature, timestamp });
+ * ```
+ */
 
 export interface VerifyWebhookOptions {
   /** The hook's signing secret (the `secret` you configured on the webhook). */

@@ -12,11 +12,13 @@
  * persists across reloads in the browser.
  */
 
+/** A locally-queued offline write awaiting flush to the server. */
 export type QueuedOp =
   | { kind: "create"; tempId: string; data: Record<string, unknown> }
   | { kind: "update"; id: string; data: Record<string, unknown> }
   | { kind: "delete"; id: string };
 
+/** Pluggable persistence for the local sync store (rows + meta + write queue). */
 export interface SyncStore {
   get(id: string): Promise<Record<string, unknown> | undefined>;
   set(id: string, row: Record<string, unknown>): Promise<void>;
@@ -101,6 +103,7 @@ export interface SyncClientLike {
   ) => () => void;
 }
 
+/** Options for `client.sync(...)` / `createSync(...)`. */
 export interface SyncOptions {
   collection: string;
   store?: SyncStore;
@@ -123,7 +126,33 @@ const isOnline = (): boolean => {
   return nav?.onLine ?? true;
 };
 
-export const createSync = (client: SyncClientLike, options: SyncOptions) => {
+/** Live, offline-first controller for one collection, returned by `createSync`. */
+export interface SyncController {
+  /** Drain the changefeed from the saved cursor to head; returns rows applied. */
+  pull(): Promise<number>;
+  /** Flush queued offline writes through the batch endpoint. */
+  flush(): Promise<void>;
+  /** Subscribe to live SSE updates; returns an unsubscribe function. */
+  live(): () => void;
+  /** Pull, go live, and re-sync whenever connectivity returns. */
+  start(): Promise<void>;
+  /** Stop live updates and remove the online listener. */
+  stop(): void;
+  /** Every row currently in the local store. */
+  getAll(): Promise<Record<string, unknown>[]>;
+  /** One row by id from the local store. */
+  get(id: string): Promise<Record<string, unknown> | undefined>;
+  /** Optimistically create a row locally + queue the write; returns the temp id. */
+  create(data: Record<string, unknown>): Promise<string>;
+  /** Optimistically update a row locally + queue the write. */
+  update(id: string, data: Record<string, unknown>): Promise<void>;
+  /** Optimistically remove a row locally + queue the delete. */
+  remove(id: string): Promise<void>;
+  /** The underlying pluggable local store. */
+  store: SyncStore;
+}
+
+export const createSync = (client: SyncClientLike, options: SyncOptions): SyncController => {
   const store = options.store ?? memoryStore();
   const pk = options.pk ?? "id";
   const pageSize = options.pageSize ?? 200;

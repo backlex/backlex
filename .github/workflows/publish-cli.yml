@@ -1,0 +1,76 @@
+name: Publish @backlex/cli (npm)
+
+# Publishes packages/cli to npm as `@backlex/cli` (compiled, Node-runnable bin).
+# Trigger:
+#   - push a tag of the form `cli-v<semver>` (e.g. `cli-v0.1.0`)
+#   - or run manually from the Actions tab with a version override
+#
+# Required repo secret:
+#   - NPM_TOKEN   (npm automation token with publish access for the @backlex scope)
+#
+# The committed package.json runs the CLI from TypeScript source (bin → bin/backlex.ts,
+# backlex → workspace:*). This workflow bundles the bin with tsup, copies the SQLite
+# migrations into the package, rewrites the manifest to the compiled output + a pinned
+# SDK version, then `npm publish` with provenance.
+
+on:
+  push:
+    tags:
+      - "cli-v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Optional version override (e.g. 0.1.1). Leave blank to publish the version in packages/cli/package.json."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write # required for npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run --cwd packages/cli typecheck
+
+      - name: Apply manual version override
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.version != '' }}
+        working-directory: packages/cli
+        run: npm version --no-git-tag-version "${{ inputs.version }}"
+
+      - name: Build (tsup → dist)
+        run: bun run --cwd packages/cli build
+
+      - name: Bundle SQLite migrations into the package
+        run: |
+          mkdir -p packages/cli/drizzle
+          cp -R packages/db/drizzle/sqlite packages/cli/drizzle/sqlite
+
+      - name: Rewrite manifest for compiled publish
+        run: node packages/cli/scripts/npm-manifest.mjs
+
+      - name: Dry-run pack (logs tarball contents)
+        working-directory: packages/cli
+        run: npm pack --dry-run
+
+      - name: Publish to npm
+        working-directory: packages/cli
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance

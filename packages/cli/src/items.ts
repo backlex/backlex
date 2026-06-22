@@ -1,0 +1,200 @@
+/**
+ * `backlex items` — data-plane CRUD + bulk export/import + search.
+ *
+ * Thin wrappers over the SDK's `from(slug)` collection client, so the CLI and
+ * end-user apps share one code path (auth, error shape, the query DSL). Every
+ * command takes the collection slug as its first positional arg.
+ */
+import { writeFileSync } from "node:fs";
+import { BacklexError } from "backlex";
+import {
+  has,
+  flag,
+  buildListQuery,
+  makeClient,
+  printJson,
+  printKeyValues,
+  printTable,
+  resolvePayload,
+  resolveContext,
+} from "./client";
+
+const ITEMS_HELP = `backlex items <cmd> <slug> [args]
+
+  list <slug>     [--filter <json>] [--sort a,-b] [--fields a,b] [--expand …]
+                  [--limit N] [--offset N] [--meta filter_count] [--status …]
+  get <slug> <id> [--expand …] [--locale xx]
+  create <slug>   --data <json|@file|->
+  update <slug> <id> --data <json|@file|->
+  delete <slug> <id>
+  export <slug>   [--format json|csv] [--out <file>]
+  import <slug>   <file|@file|->  [--format json|csv]
+  search <slug>   -q <text> [--mode fts|vector|hybrid] [--limit N] [--locale xx]
+
+Add --json to any read for raw output.
+`;
+
+const die = (e: unknown, what: string): never => {
+  const msg = e instanceof BacklexError ? `${e.status} ${e.message}` : (e as Error).message;
+  process.stderr.write(`${what}: ${msg}\n`);
+  process.exit(1);
+};
+
+const requireSlug = (args: string[], usage: string): string => {
+  const slug = args[0];
+  if (!slug || slug.startsWith("-")) {
+    process.stderr.write(`${usage}\n`);
+    process.exit(1);
+  }
+  return slug;
+};
+
+export const runItems = async (args: string[]): Promise<void> => {
+  const sub = args[0];
+  const rest = args.slice(1);
+  const json = has(args, "--json");
+
+  if (!sub || sub === "help" || sub === "--help") {
+    process.stdout.write(ITEMS_HELP);
+    return;
+  }
+
+  const ctx = resolveContext(args);
+  const client = makeClient(ctx);
+
+  try {
+    switch (sub) {
+      case "list": {
+        const slug = requireSlug(rest, "items list <slug> [query flags]");
+        const res = await client.from(slug).list(buildListQuery(rest));
+        if (json) {
+          printJson(res);
+        } else {
+          printTable(res.data as Record<string, unknown>[]);
+          if (res.meta && Object.keys(res.meta).length) {
+            process.stdout.write(`\n${JSON.stringify(res.meta)}\n`);
+          }
+        }
+        return;
+      }
+      case "get": {
+        const slug = requireSlug(rest, "items get <slug> <id>");
+        const id = rest[1];
+        if (!id) {
+          process.stderr.write("items get <slug> <id>\n");
+          process.exit(1);
+        }
+        const expand = flag(rest, "--expand");
+        const locale = flag(rest, "--locale");
+        const res = await client.from(slug).one(id, {
+          expand: expand ? expand.split(",") : undefined,
+          locale: locale ?? undefined,
+        });
+        if (json) printJson(res);
+        else printKeyValues(res.data as Record<string, unknown>);
+        return;
+      }
+      case "create": {
+        const slug = requireSlug(rest, "items create <slug> --data <json|@file|->");
+        const data = JSON.parse(await resolvePayload(flag(rest, "--data"))) as Record<string, unknown>;
+        const res = await client.from(slug).create(data);
+        if (json) printJson(res);
+        else printKeyValues(res.data as Record<string, unknown>);
+        return;
+      }
+      case "update": {
+        const slug = requireSlug(rest, "items update <slug> <id> --data <json|@file|->");
+        const id = rest[1];
+        if (!id || id.startsWith("-")) {
+          process.stderr.write("items update <slug> <id> --data <json|@file|->\n");
+          process.exit(1);
+        }
+        const patch = JSON.parse(await resolvePayload(flag(rest, "--data"))) as Record<string, unknown>;
+        const res = await client.from(slug).update(id, patch);
+        if (json) printJson(res);
+        else printKeyValues(res.data as Record<string, unknown>);
+        return;
+      }
+      case "delete": {
+        const slug = requireSlug(rest, "items delete <slug> <id>");
+        const id = rest[1];
+        if (!id) {
+          process.stderr.write("items delete <slug> <id>\n");
+          process.exit(1);
+        }
+        const res = await client.from(slug).delete(id);
+        if (json) printJson(res);
+        else process.stdout.write(res.ok ? "deleted\n" : "not deleted\n");
+        return;
+      }
+      case "export": {
+        const slug = requireSlug(rest, "items export <slug> [--format json|csv] [--out <file>]");
+        const format = flag(rest, "--format") === "csv" ? "csv" : "json";
+        const out = await client.from(slug).exportItems(format);
+        const outPath = flag(rest, "--out");
+        if (outPath) {
+          writeFileSync(outPath, out, "utf8");
+          process.stderr.write(`✓ wrote ${slug} (${format}) → ${outPath}\n`);
+        } else {
+          process.stdout.write(out.endsWith("\n") ? out : `${out}\n`);
+        }
+        return;
+      }
+      case "import": {
+        const slug = requireSlug(rest, "items import <slug> <file|@file|->  [--format json|csv]");
+        const source = rest[1];
+        if (!source) {
+          process.stderr.write("items import <slug> <file|@file|->\n");
+          process.exit(1);
+        }
+        const format = flag(rest, "--format") === "csv" ? "csv" : "json";
+        // A bare path is treated as @path; `-` is stdin; `@path` also works.
+        const ref = source === "-" || source.startsWith("@") ? source : `@${source}`;
+        const body = await resolvePayload(ref);
+        const summary = await client.from(slug).importItems(body, format);
+        if (json) printJson(summary);
+        else {
+          printKeyValues({
+            inserted: summary.inserted,
+            failed: summary.failed,
+            total: summary.total,
+          });
+          if (summary.errors.length) {
+            process.stdout.write("\nerrors:\n");
+            printTable(summary.errors as unknown as Record<string, unknown>[]);
+          }
+        }
+        return;
+      }
+      case "search": {
+        const slug = requireSlug(rest, "items search <slug> -q <text>");
+        const q = flag(rest, "-q") ?? flag(rest, "--q");
+        if (!q) {
+          process.stderr.write("items search <slug> -q <text>\n");
+          process.exit(1);
+        }
+        const modeRaw = flag(rest, "--mode");
+        const mode =
+          modeRaw === "fts" || modeRaw === "vector" || modeRaw === "hybrid" ? modeRaw : undefined;
+        const limit = flag(rest, "--limit");
+        const res = await client.from(slug).search({
+          q,
+          mode,
+          limit: limit ? Number(limit) : undefined,
+          locale: flag(rest, "--locale") ?? undefined,
+        });
+        if (json) printJson(res);
+        else {
+          process.stderr.write(`mode=${res.mode} limit=${res.limit}\n`);
+          printTable(res.data as Record<string, unknown>[]);
+        }
+        return;
+      }
+      default:
+        process.stderr.write(`unknown items subcommand: ${sub}\n\n${ITEMS_HELP}`);
+        process.exit(1);
+    }
+  } catch (e) {
+    die(e, `items ${sub}`);
+  }
+};

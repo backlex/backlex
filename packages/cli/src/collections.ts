@@ -1,0 +1,141 @@
+/**
+ * `backlex collections` — inspect the schema of the connected instance.
+ *
+ * `list` is the dynamic "what can I reach here?" surface: it shows every
+ * collection the key can read. `export-schema` dumps the full field metadata as
+ * JSON so it can be committed and diffed (GitOps), the seed for a future
+ * `apply-schema`. All reads go through `GET /api/collections`.
+ */
+import { writeFileSync } from "node:fs";
+import { BacklexError } from "backlex";
+import {
+  has,
+  flag,
+  makeClient,
+  printJson,
+  printKeyValues,
+  printTable,
+  resolveContext,
+} from "./client";
+
+interface Field {
+  name: string;
+  type: string;
+  required?: boolean;
+}
+interface Collection {
+  slug: string;
+  singular?: string | null;
+  fields: Field[];
+  ownerScoped: boolean | number;
+  physicalTable?: string;
+  adopted?: boolean | number;
+}
+
+const COLLECTIONS_HELP = `backlex collections <list|get|export-schema>
+
+  list                              every collection the key can read
+  get <slug>                        one collection's fields
+  export-schema [--out <file>]      full schema as JSON (commit + diff for GitOps)
+`;
+
+const fetchCollections = (args: string[]): Promise<Collection[]> => {
+  const ctx = resolveContext(args);
+  return makeClient(ctx)
+    .request<{ data: Collection[] }>("GET", "/api/collections")
+    .then((r) => r.data);
+};
+
+const die = (e: unknown, what: string): never => {
+  const msg = e instanceof BacklexError ? `${e.status} ${e.message}` : (e as Error).message;
+  process.stderr.write(`${what}: ${msg}\n`);
+  process.exit(1);
+};
+
+export const runCollections = async (args: string[]): Promise<void> => {
+  const sub = args[0];
+  const json = has(args, "--json");
+
+  if (!sub || sub === "help" || sub === "--help") {
+    process.stdout.write(COLLECTIONS_HELP);
+    return;
+  }
+
+  if (sub === "list") {
+    try {
+      const cols = await fetchCollections(args.slice(1));
+      if (json) {
+        printJson(cols);
+        return;
+      }
+      printTable(
+        cols.map((c) => ({
+          slug: c.slug,
+          fields: c.fields.length,
+          ownerScoped: c.ownerScoped ? "yes" : "no",
+          adopted: c.adopted ? "yes" : "no",
+        })),
+      );
+    } catch (e) {
+      die(e, "collections list");
+    }
+    return;
+  }
+
+  if (sub === "get") {
+    const slug = args[1];
+    if (!slug) {
+      process.stderr.write("collections get <slug>\n");
+      process.exit(1);
+    }
+    try {
+      const cols = await fetchCollections(args.slice(2));
+      const col = cols.find((c) => c.slug === slug);
+      if (!col) {
+        process.stderr.write(`no such collection: ${slug}\n`);
+        process.exit(1);
+      }
+      if (json) {
+        printJson(col);
+        return;
+      }
+      printKeyValues({
+        slug: col.slug,
+        singular: col.singular ?? "—",
+        ownerScoped: col.ownerScoped ? "yes" : "no",
+        adopted: col.adopted ? "yes" : "no",
+      });
+      process.stdout.write("\nfields:\n");
+      printTable(
+        col.fields.map((f) => ({
+          name: f.name,
+          type: f.type,
+          required: f.required ? "yes" : "no",
+        })),
+      );
+    } catch (e) {
+      die(e, "collections get");
+    }
+    return;
+  }
+
+  if (sub === "export-schema") {
+    try {
+      const cols = await fetchCollections(args.slice(1));
+      const out = `${JSON.stringify(cols, null, 2)}\n`;
+      const outPath = flag(args, "--out");
+      if (outPath) {
+        writeFileSync(outPath, out, "utf8");
+        process.stderr.write(`✓ wrote ${cols.length} collection(s) → ${outPath}\n`);
+      } else {
+        process.stdout.write(out);
+      }
+    } catch (e) {
+      die(e, "collections export-schema");
+    }
+    return;
+  }
+
+  process.stderr.write(`unknown collections subcommand: ${sub}\n\n${COLLECTIONS_HELP}`);
+  process.exit(1);
+};

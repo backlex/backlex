@@ -519,7 +519,7 @@ doesn't ambiguously resolve against the joined target's `owner_id`.
 
 ## SDK fluent query builder
 
-The public SDK (`@backlex/client`) ships a chainable, type-safe builder that
+The public SDK (`backlex`) ships a chainable, type-safe builder that
 **compiles to the canonical `ListQuery` JSON** above — it's an ergonomics layer,
 not a new wire format, so permissions, AI plans, and serialization all stay on
 the one grammar.

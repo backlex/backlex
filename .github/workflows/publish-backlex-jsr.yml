@@ -1,0 +1,41 @@
+name: Publish backlex (JSR)
+
+# Publishes packages/client to JSR as `@backlex/backlex` (TypeScript source).
+# Trigger:
+#   - push a tag of the form `backlex-v<semver>` (e.g. `backlex-v0.0.1`)
+#   - or run manually from the Actions tab
+#
+# No secret needed: JSR authenticates via GitHub Actions OIDC (id-token: write).
+# Prerequisite: the `backlex` scope must exist on jsr.io and be linked to this
+# repo (jsr.io → scope settings → GitHub Actions). `--allow-slow-types` lets JSR
+# fall back to slower type inference for the SDK's inferred return types.
+
+on:
+  push:
+    tags:
+      - "backlex-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write   # required for JSR OIDC auth
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run --cwd packages/client typecheck
+
+      - name: Publish to JSR
+        working-directory: packages/client
+        run: bunx jsr publish --allow-slow-types

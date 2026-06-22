@@ -1553,7 +1553,7 @@ describe("MCP — prompts surface", () => {
       params: { name: "generate_sdk_code", arguments: { collection: slug, intent: "x", language: "ts" } },
     });
     const text = (r as RpcSuccess).result.messages[0].content.text as string;
-    expect(text).toContain("@backlex/client");
+    expect(text).toContain("backlex");
   });
 
   test("generate_sdk_code rejects an unsupported language", async () => {

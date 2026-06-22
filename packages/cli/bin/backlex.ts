@@ -15,7 +15,7 @@ Usage:
       module describing every collection. With --out, writes to disk;
       otherwise prints to stdout. Use --key to authenticate via API key.
       Add --sdk to also emit a typed client factory (createTypedClient),
-      so db.collections.<slug>.list() is fully typed (needs @backlex/client).
+      so db.collections.<slug>.list() is fully typed (needs backlex).
 
   backlex mcp --url <mcp-url> --key <pak_...> [--tenant <tenant-id>]
       Run an MCP (Model Context Protocol) server over stdio that proxies

@@ -24,9 +24,9 @@ export const SDK_LANGUAGES = [
 export type SdkLanguage = (typeof SDK_LANGUAGES)[number];
 
 export const SDK_REFERENCE: Record<SdkLanguage, string> = {
-  typescript: `Install: npm i @backlex/client
+  typescript: `Install: npm i backlex
 \`\`\`ts
-import { createClient } from "@backlex/client";
+import { createClient } from "backlex";
 const client = createClient({ url: "BASE_URL", apiKey: "pak_..." }); // browser apps omit apiKey (cookie/session)
 
 // Query builder (compiles to the canonical JSON filter):

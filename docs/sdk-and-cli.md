@@ -1,6 +1,6 @@
 ---
 title: SDK & CLI
-description: The @backlex/client typed fetch wrapper and the backlex CLI for project scaffolding.
+description: The backlex typed fetch wrapper and the backlex CLI for project scaffolding.
 ---
 
 Two packages ship for client-side and developer-side use.
@@ -9,12 +9,12 @@ Two packages ship for client-side and developer-side use.
 > Java, Kotlin, Swift, Dart/Flutter, .NET, Ruby, and PHP — same API, idiomatic in
 > each language. See [Client SDKs](/docs/client-sdks/).
 
-## `@backlex/client`
+## `backlex`
 
 Typed fetch wrapper, browser + Node.
 
 ```ts
-import { createClient } from "@backlex/client";
+import { createClient } from "backlex";
 
 const wks = createClient({
   url: "https://api.your.app",
@@ -73,7 +73,7 @@ await wks.storage.delete("avatars/me.png");
 Failed requests throw `BacklexError`:
 
 ```ts
-import { BacklexError } from "@backlex/client";
+import { BacklexError } from "backlex";
 try {
   await wks.from("posts").create({});
 } catch (e) {
@@ -126,7 +126,7 @@ Add `--sdk` to also emit a typed client factory, so you skip the manual
 bun run backlex gen-types https://api.your.app --sdk --out src/backlex.ts
 ```
 
-The output adds an import of `@backlex/client` plus:
+The output adds an import of `backlex` plus:
 
 ```ts
 export const createTypedClient = (opts: ClientOptions): TypedClient<Collections> =>
@@ -193,7 +193,7 @@ Re-run after schema changes. The output is deterministic — safe to commit.
 
 ## Adding the SDK to a separate repo
 
-The SDK is published as `@backlex/client` (workspace today; NPM package
+The SDK is published as `backlex` (workspace today; NPM package
 in a follow-up). To use locally:
 
 ```bash
@@ -203,7 +203,7 @@ bun add file:../backlex/packages/client
 Or, once published:
 
 ```bash
-bun add @backlex/client
+bun add backlex
 ```
 
 The SDK has zero dependencies beyond `@backlex/core` (types only) and

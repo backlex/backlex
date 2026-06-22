@@ -66,7 +66,7 @@ Tokens the provider rejects as permanently gone (HTTP 404/410) are deactivated
 automatically on the next send.
 
 ```ts
-import { createClient } from "@backlex/client";
+import { createClient } from "backlex";
 const client = createClient({ url: "https://api.example.com", token });
 
 // FCM / APNs — token is the registration / device token

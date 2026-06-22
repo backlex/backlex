@@ -83,10 +83,10 @@ bun run backlex gen-types http://localhost:5173 --out src/types.ts
 ```
 
 The CLI fetches `/api/collections` and emits one TypeScript interface per
-collection plus a `Collections` registry. Use with `@backlex/client`:
+collection plus a `Collections` registry. Use with `backlex`:
 
 ```ts
-import { createClient } from "@backlex/client";
+import { createClient } from "backlex";
 import type { Posts } from "./types";
 
 const wks = createClient({ url: "http://localhost:5173" });

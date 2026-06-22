@@ -1,10 +1,10 @@
 /**
- * Phase 4 — the SDK fluent query builder (@backlex/client). Asserts the builder
+ * Phase 4 — the SDK fluent query builder (backlex). Asserts the builder
  * COMPILES to the canonical `ListQuery` JSON (unit), and that a builder-produced
  * query is accepted by the real list endpoint (integration) — proving the
  * ergonomics layer stays on the one wire format.
  *
- * Imported by relative source path: @backlex/client isn't a direct dep of
+ * Imported by relative source path: backlex isn't a direct dep of
  * apps/web, but it's source-consumed and its imports (@backlex/core, ./types)
  * resolve here.
  */

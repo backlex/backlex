@@ -1,4 +1,4 @@
-import { BacklexError } from "@backlex/client";
+import { BacklexError } from "backlex";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { backlex, persistToken, type Todo, todos } from "./backlex";
 import { SetupCheck } from "./SetupCheck";

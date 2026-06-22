@@ -46,7 +46,7 @@ es.addEventListener("error", () => { /* reconnect logic */ });
 Or via the SDK:
 
 ```ts
-import { createClient } from "@backlex/client";
+import { createClient } from "backlex";
 const wks = createClient({ url: "https://api.your.app" });
 const off = wks.subscribe<Posts>("items:posts", (e) => { /* … */ });
 // later: off();

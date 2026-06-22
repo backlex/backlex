@@ -1,5 +1,5 @@
 // Vendored from `@backlex/core` (src/permission.ts + src/condition.ts) so the
-// published `@backlex/client` has ZERO workspace/runtime dependencies and can
+// published `backlex` has ZERO workspace/runtime dependencies and can
 // ship as plain TypeScript source. Keep this in sync if the canonical condition
 // shape changes upstream — it is a small, stable, dependency-free slice (the
 // query builder compiles to this exact JSON, byte-identical to what the REST

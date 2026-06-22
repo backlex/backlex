@@ -51,7 +51,7 @@ The SDK ships a constant-time verifier that runs anywhere Web Crypto is
 available (Workers, Node 18+, Bun, Deno):
 
 ```ts
-import { verifyWebhook } from "@backlex/client/webhook";
+import { verifyWebhook } from "backlex/webhook";
 
 // inside your receiver (raw body — do NOT re-stringify a parsed object):
 const body = await req.text();

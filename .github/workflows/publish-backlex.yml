@@ -1,22 +1,21 @@
-name: Publish @backlex/client
+name: Publish backlex (npm)
 
-# Manual workflow to publish packages/client to npm.
+# Publishes packages/client to npm as `backlex` (compiled ESM + types).
 # Trigger:
-#   - push a tag of the form `client-v<semver>` (e.g. `client-v0.0.1`)
+#   - push a tag of the form `backlex-v<semver>` (e.g. `backlex-v0.0.1`)
 #   - or run manually from the Actions tab with a version override
 #
 # Required repo secret:
-#   - NPM_TOKEN   (npm automation token with publish access for @backlex)
+#   - NPM_TOKEN   (npm automation token with publish access for @backlex / backlex)
 #
-# This workflow runs typecheck + a dry-run pack, then `npm publish` with
-# provenance. The package is source-consumed (no build step) so the tarball
-# ships `src/` TypeScript directly — consumers' bundlers / Node ≥22.6 strip
-# the types.
+# The committed package.json points at src/ (the monorepo consumes source with no
+# build step). This workflow builds dist/ with tsup, rewrites the manifest to the
+# compiled output, then `npm publish` with provenance.
 
 on:
   push:
     tags:
-      - "client-v*"
+      - "backlex-v*"
   workflow_dispatch:
     inputs:
       version:
@@ -46,13 +45,19 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
-      - name: Typecheck @backlex/client
+      - name: Typecheck
         run: bun run --cwd packages/client typecheck
 
       - name: Apply manual version override
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.version != '' }}
         working-directory: packages/client
         run: npm version --no-git-tag-version "${{ inputs.version }}"
+
+      - name: Build (tsup → dist)
+        run: bun run --cwd packages/client build
+
+      - name: Rewrite manifest for compiled publish
+        run: node packages/client/scripts/npm-manifest.mjs
 
       - name: Dry-run pack (logs tarball contents)
         working-directory: packages/client

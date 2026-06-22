@@ -9,7 +9,7 @@ out of the monorepo? Swap the `workspace:*` dependency for the published package
 
 | Example | Stack | Shows |
 |---|---|---|
-| [`todo-react`](./todo-react) | React 19 + Vite + `@backlex/client` | Workspace auth, collection CRUD, realtime (SSE) |
+| [`todo-react`](./todo-react) | React 19 + Vite + `backlex` | Workspace auth, collection CRUD, realtime (SSE) |
 
 More to come — mobile (Swift/Kotlin), other frameworks, and feature-focused
 demos (storage, search, offline sync). Contributions welcome: add a folder here,

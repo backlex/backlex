@@ -234,3 +234,4 @@ describe("activity: non-admin sees only their own rows", () => {
     }
   });
 });
+

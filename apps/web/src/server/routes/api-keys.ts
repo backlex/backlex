@@ -11,8 +11,16 @@ import {
   createApiKey,
   listApiKeys,
   revokeApiKey,
+  roleMcpProfile,
   updateApiKeyMcpGuards,
 } from "../services/api-keys";
+import { allTools } from "../mcp/tools";
+import { resolveKind } from "../mcp/kind";
+
+/** Tool names classified as reads — the allowlist a read-only role derives. */
+const READ_TOOL_NAMES = allTools
+  .filter((t) => resolveKind(t) === "read")
+  .map((t) => t.name);
 
 const ApiKeyInput = z
   .object({
@@ -203,6 +211,56 @@ export const apiKeysRoutes = new OpenAPIHono<AppBindings>()
       const isAdmin = auth.roles.includes(SYSTEM_ROLES.admin);
       const roles = await bindableRoles(ctx, tenantId, auth.userId!, isAdmin);
       return c.json({ data: roles });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/role-mcp-defaults",
+      tags: ["api-keys"],
+      summary: "Suggest MCP guards for a role",
+      description:
+        "Derives sensible default MCP guards for a key scoped to the given role. A read-only role (no write permissions, non-admin) yields read-only mode + an allowlist of the server's read tools; an admin or read/write role yields permissive defaults (read-only off, no allowlist). Omit `roleId` for the no-role / owner's-full-access case (also permissive).",
+      security: SECURITY,
+      middleware: [requireUser],
+      request: {
+        query: z.object({
+          roleId: z.string().min(1).optional().openapi({
+            description: "Role the key will be scoped to. Omit for no role.",
+          }),
+        }),
+      },
+      responses: {
+        200: {
+          description: "OK",
+          content: {
+            "application/json": {
+              schema: z.object({
+                data: z.object({
+                  readOnly: z.boolean(),
+                  tools: z.array(z.string()).nullable(),
+                }),
+              }),
+            },
+          },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const tenantId = requireTenant(c);
+      const { roleId } = c.req.valid("query");
+      // No role → owner's full access → permissive defaults.
+      if (!roleId) {
+        return c.json({ data: { readOnly: false, tools: null } });
+      }
+      const { admin, hasWrite } = await roleMcpProfile(ctx, tenantId, roleId);
+      if (admin || hasWrite) {
+        return c.json({ data: { readOnly: false, tools: null } });
+      }
+      // Read-only role: default the key to read-only + the read-tool allowlist.
+      return c.json({ data: { readOnly: true, tools: READ_TOOL_NAMES } });
     },
   )
   .openapi(

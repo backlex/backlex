@@ -110,6 +110,9 @@ export const ApiKeys = () => {
    *  the key can call any MCP tool, subject to permissions). A `Set` narrows
    *  the key to specific tools. */
   const [mcpAllowlist, setMcpAllowlist] = useState<Set<string> | null>(null);
+  /** Name of the role the current MCP guards were auto-derived from, for the
+   *  "derived from X" hint. Cleared once the user edits the guards by hand. */
+  const [mcpDerivedFrom, setMcpDerivedFrom] = useState<string | null>(null);
   const [mcpOpen, setMcpOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   /** The freshly minted key + its plaintext secret, kept so the "Save this
@@ -148,7 +151,34 @@ export const ApiKeys = () => {
     setRoleId(NO_ROLE);
     setMcpReadOnly(false);
     setMcpAllowlist(null);
+    setMcpDerivedFrom(null);
     setMcpOpen(false);
+  };
+
+  // Picking a role re-derives the MCP guards from that role's permissions:
+  // a read-only role pre-selects read-only mode + the read-tool allowlist; an
+  // admin / read-write role (or "no role") stays permissive. The user can
+  // still override afterwards — that clears the "derived from" hint.
+  const onRoleChange = async (value: string) => {
+    setRoleId(value);
+    try {
+      const qs =
+        value && value !== NO_ROLE
+          ? `?roleId=${encodeURIComponent(value)}`
+          : "";
+      const r = await api<{ data: { readOnly: boolean; tools: string[] | null } }>(
+        `/api/api-keys/role-mcp-defaults${qs}`,
+      );
+      setMcpReadOnly(r.data.readOnly);
+      setMcpAllowlist(r.data.tools ? new Set(r.data.tools) : null);
+      setMcpDerivedFrom(
+        value === NO_ROLE
+          ? null
+          : roles.find((x) => x.id === value)?.name ?? null,
+      );
+    } catch (e) {
+      notifyError(e, t`Loading role MCP defaults`);
+    }
   };
 
   const submit = async (e: FormEvent) => {
@@ -285,7 +315,7 @@ export const ApiKeys = () => {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="role"><Trans>Scope to role</Trans></Label>
-              <Select value={roleId} onValueChange={setRoleId}>
+              <Select value={roleId} onValueChange={onRoleChange}>
                 <SelectTrigger id="role">
                   <SelectValue />
                 </SelectTrigger>
@@ -373,12 +403,25 @@ export const ApiKeys = () => {
                     later from the key&rsquo;s Connect MCP panel.
                   </Trans>
                 </p>
+                {mcpDerivedFrom && (
+                  <p className="rounded-md border border-border/60 bg-muted/30 px-2.5 py-2 text-xs text-muted-foreground">
+                    <Trans>
+                      Derived from the {mcpDerivedFrom} role — adjust below if needed.
+                    </Trans>
+                  </p>
+                )}
                 <McpGuardsFields
                   idPrefix="new"
                   readOnly={mcpReadOnly}
-                  onReadOnlyChange={setMcpReadOnly}
+                  onReadOnlyChange={(v) => {
+                    setMcpReadOnly(v);
+                    setMcpDerivedFrom(null);
+                  }}
                   allowlist={mcpAllowlist}
-                  onAllowlistChange={setMcpAllowlist}
+                  onAllowlistChange={(next) => {
+                    setMcpAllowlist(next);
+                    setMcpDerivedFrom(null);
+                  }}
                   tools={mcpTools}
                   loading={mcpToolsLoading}
                 />

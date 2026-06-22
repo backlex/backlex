@@ -83,6 +83,34 @@ export const assertRoleBindable = async (
   }
 };
 
+/** Summarise a role's MCP-relevant shape: whether it's an admin role and
+ *  whether any of its permissions grant a write action (anything other than
+ *  `read`). Used to derive sensible default MCP guards when a key is scoped
+ *  to the role. Throws if the role isn't in the workspace. */
+export const roleMcpProfile = async (
+  ctx: DbCtx,
+  tenantId: string,
+  roleId: string,
+): Promise<{ admin: boolean; hasWrite: boolean }> => {
+  const rt = roleTablesFor(ctx.dialect);
+  const role = (await (ctx.db as any)
+    .select({ admin: rt.roles.admin })
+    .from(rt.roles)
+    .where(and(eq(rt.roles.id, roleId), eq(rt.roles.tenantId, tenantId)))
+    .limit(1)) as { admin: boolean | number }[];
+  if (!role[0]) throw new AppError("NOT_FOUND", "Role not found in this workspace");
+  const perms =
+    ctx.dialect === "pg" ? pg.schema.permissions : sqlite.schema.permissions;
+  const rows = (await (ctx.db as any)
+    .select({ action: perms.action })
+    .from(perms)
+    .where(eq(perms.roleId, roleId))) as { action: string }[];
+  return {
+    admin: Boolean(role[0].admin),
+    hasWrite: rows.some((r) => r.action !== "read"),
+  };
+};
+
 /** Roles the caller may bind to a new key, for the active workspace.
  *  Admins see every role in the workspace; everyone else sees only the
  *  roles they hold (a key can't widen its owner's access). */

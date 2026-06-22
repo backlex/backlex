@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 import { runMigrate } from "../src/migrate";
 import { runGenTypes } from "../src/gen-types";
 import { runMcp } from "../src/mcp";

@@ -1,21 +1,48 @@
 {
   "name": "@backlex/cli",
-  "version": "0.0.1",
-  "private": true,
+  "version": "0.1.0",
+  "description": "The backlex CLI — auth/profiles, collection + item CRUD, backups, users/roles, feature flags, functions/flows/webhooks/jobs, advisor, scaffolding, and type/OpenAPI generation against any backlex instance.",
   "type": "module",
+  "license": "Apache-2.0",
+  "homepage": "https://backlex.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/backlex/backlex.git",
+    "directory": "packages/cli"
+  },
+  "bugs": "https://github.com/backlex/backlex/issues",
+  "keywords": [
+    "backlex",
+    "backend-as-a-service",
+    "baas",
+    "cli",
+    "command-line",
+    "devtools"
+  ],
   "bin": {
     "backlex": "./bin/backlex.ts"
   },
+  "files": [
+    "dist",
+    "drizzle",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "tsup"
   },
   "dependencies": {
-    "@backlex/db": "workspace:*",
-    "backlex": "workspace:*",
     "drizzle-orm": "1.0.0-beta.22"
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "backlex": "workspace:*",
+    "tsup": "^8.3.5",
     "typescript": "^5.6.3"
   }
 }

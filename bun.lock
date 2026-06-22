@@ -175,10 +175,11 @@
       "name": "@backlex/cli",
       "version": "0.0.1",
       "bin": {
-        "workeros": "./bin/workeros.ts",
+        "backlex": "./bin/backlex.ts",
       },
       "dependencies": {
         "@backlex/db": "workspace:*",
+        "backlex": "workspace:*",
         "drizzle-orm": "1.0.0-beta.22",
       },
       "devDependencies": {
@@ -188,7 +189,7 @@
     },
     "packages/client": {
       "name": "backlex",
-      "version": "0.0.1",
+      "version": "0.1.1",
       "devDependencies": {
         "tsup": "^8.3.5",
         "typescript": "^5.6.3",

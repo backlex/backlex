@@ -1,0 +1,36 @@
+name: npm deprecate
+
+# Manual maintenance action: deprecate a published npm version/range with a
+# message (e.g. after a rename). Run from the Actions tab.
+#
+# Required repo secret:
+#   - NPM_TOKEN   (npm automation token with access to the package)
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Package spec to deprecate (e.g. @backlex/client@0.0.1 or '@backlex/client@<=0.0.1')."
+        required: true
+        type: string
+      message:
+        description: "Deprecation message shown on install."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deprecate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          registry-url: "https://registry.npmjs.org"
+      - name: Deprecate
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm deprecate "${{ inputs.package }}" "${{ inputs.message }}"

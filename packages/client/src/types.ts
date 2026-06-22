@@ -1,5 +1,13 @@
+/**
+ * @module
+ *
+ * Wire types for the backlex client — the request/response shapes for list,
+ * item, query, search, aggregate, batch, device tokens, jobs, uploads, and
+ * feature flags, plus the {@link BacklexError} thrown on a failed request.
+ */
 import type { Condition } from "./condition";
 
+/** Response from `from(slug).list(...)` — a page of rows + paging metadata. */
 export interface ListResponse<T> {
   data: T[];
   limit: number;
@@ -7,10 +15,12 @@ export interface ListResponse<T> {
   meta?: { filter_count?: number; total_count?: number };
 }
 
+/** Response wrapping a single row (`one` / `create` / `update`). */
 export interface ItemResponse<T> {
   data: T;
 }
 
+/** Query params for `from(slug).list(...)` — filter, sort, projection, paging. */
 export interface ListQuery {
   filter?: Condition;
   sort?: string | string[];
@@ -88,16 +98,19 @@ export interface ImportSummary {
   errors: { row: number; error: string }[];
 }
 
+/** A realtime event delivered to `subscribe(...)`. */
 export interface ItemEvent<T = Record<string, unknown>> {
   event: "created" | "updated" | "deleted";
   data: T;
 }
 
+/** One operation in a `batch(...)` request. */
 export type BatchOperation<T = Record<string, unknown>> =
   | { op: "create"; data: Partial<T> }
   | { op: "update"; id: string; data: Partial<T> }
   | { op: "delete"; id: string };
 
+/** Per-row outcome inside a {@link BatchResponse}. */
 export interface BatchRowResult<T = Record<string, unknown>> {
   index: number;
   op: "create" | "update" | "delete";
@@ -107,6 +120,7 @@ export interface BatchRowResult<T = Record<string, unknown>> {
   error?: { code: string; message: string };
 }
 
+/** Response from a bulk `createMany`/`updateMany`/`deleteMany`/`batch` call. */
 export interface BatchResponse<T = Record<string, unknown>> {
   data: {
     atomic: boolean;
@@ -117,6 +131,7 @@ export interface BatchResponse<T = Record<string, unknown>> {
   };
 }
 
+/** A registered push device (from `messaging.listDevices()`). */
 export interface DeviceToken {
   id: string;
   platform: "fcm" | "apns" | "web-push";
@@ -127,6 +142,7 @@ export interface DeviceToken {
   lastSeenAt: string | number | null;
 }
 
+/** A registered SMS phone number (from `messaging.listPhones()`). */
 export interface PhoneNumber {
   id: string;
   phoneNumber: string;
@@ -135,6 +151,7 @@ export interface PhoneNumber {
   lastSeenAt: string | number | null;
 }
 
+/** Lifecycle state of a durable {@link Job}. */
 export type JobStatus =
   | "pending"
   | "active"
@@ -143,6 +160,7 @@ export type JobStatus =
   | "dead_letter"
   | "cancelled";
 
+/** A durable background job row (from `jobs.get`/`jobs.list`). */
 export interface Job {
   id: string;
   tenantId: string | null;
@@ -160,6 +178,7 @@ export interface Job {
   completedAt: string | number | null;
 }
 
+/** Status of a resumable {@link Upload} session. */
 export type UploadStatus = "pending" | "completed" | "aborted";
 
 /** A resumable (TUS) upload session, as returned by the management API. */
@@ -189,12 +208,15 @@ export interface FlagState {
   value: unknown;
 }
 
+/** The error envelope returned by the API on a failed request. */
 export interface ApiError {
   code: string;
   message: string;
   details?: unknown;
 }
 
+/** Thrown by every client method on a non-2xx response — carries the HTTP
+ *  `status`, the API error `code`, the `message`, and any `details`. */
 export class BacklexError extends Error {
   readonly code: string;
   readonly status: number;

@@ -7,8 +7,8 @@ name: Publish backlex (JSR)
 #
 # No secret needed: JSR authenticates via GitHub Actions OIDC (id-token: write).
 # Prerequisite: the `backlex` scope must exist on jsr.io and be linked to this
-# repo (jsr.io → scope settings → GitHub Actions). `--allow-slow-types` lets JSR
-# fall back to slower type inference for the SDK's inferred return types.
+# repo (jsr.io → scope settings → GitHub Actions). The public API is free of
+# slow types, so JSR generates full .d.ts for Node consumers.
 
 on:
   push:
@@ -38,4 +38,4 @@ jobs:
 
       - name: Publish to JSR
         working-directory: packages/client
-        run: bunx jsr publish --allow-slow-types
+        run: bunx jsr publish

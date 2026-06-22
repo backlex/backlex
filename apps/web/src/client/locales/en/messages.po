@@ -2746,6 +2746,10 @@ msgstr "deprecated"
 msgid "Derive from width × source aspect"
 msgstr "Derive from width × source aspect"
 
+#: src/client/pages/api-keys.tsx
+msgid "Derived from the {mcpDerivedFrom} role — adjust below if needed."
+msgstr "Derived from the {mcpDerivedFrom} role — adjust below if needed."
+
 #: src/client/admin/collection-settings.tsx
 msgid "desc"
 msgstr "desc"
@@ -4802,6 +4806,10 @@ msgstr "Loading keys…"
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Loading MCP tools"
 msgstr "Loading MCP tools"
+
+#: src/client/pages/api-keys.tsx
+msgid "Loading role MCP defaults"
+msgstr "Loading role MCP defaults"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Loading runs…"

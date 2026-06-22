@@ -64,15 +64,47 @@ jobs:
       - name: Smoke tests
         run: bun run test
 
-  # Heavy gate — only on push to main (the merge gate) + manual dispatch.
-  # PRs skip it; the in-process test suite above is the per-PR signal, and
-  # the four-runtime build matrix is validated once the branch lands.
+  # Decide whether the heavy build + runtime-smoke matrix needs to run.
+  # It does whenever anything that feeds `build:targets` (app/server/client
+  # source, shared packages, build scripts, runtime configs, the smoke
+  # harness, or this workflow itself) changed. Pure test-only / config /
+  # tooling diffs that can't affect a deploy bundle skip the heavy path.
+  # Fails open: on the first run or an unknown base, the filter reports
+  # changed and the heavy gate runs.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      heavy: ${{ steps.filter.outputs.heavy }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            heavy:
+              - 'apps/web/src/**'
+              - 'apps/web/index.html'
+              - 'apps/web/vite.config.*'
+              - 'apps/web/wrangler*.toml'
+              - 'apps/web/vercel.ts'
+              - 'apps/web/netlify/**'
+              - 'apps/web/tests/smoke/**'
+              - 'packages/**'
+              - 'scripts/**'
+              - 'package.json'
+              - 'bun.lock'
+              - '.github/workflows/test.yml'
+
+  # Heavy gate — pre-merge. Runs on the PR (so a red check blocks the merge)
+  # and again on push to main (post-merge safety net for direct pushes),
+  # but ONLY when `changes` says a build-relevant file moved.
   #
   # Builds every deploy target ONCE and publishes the output as an artifact
   # the runtime-smoke matrix downloads — so `build:targets` runs a single
   # time instead of being repeated in all seven smoke legs.
   build:
-    if: github.event_name != 'pull_request'
+    needs: changes
+    if: needs.changes.outputs.heavy == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -133,7 +165,7 @@ jobs:
   #
   # Consumes the `build-targets` artifact instead of rebuilding (bun + the CF
   # `wrangler dev` leg recompile from source; the rest run the prebuilt
-  # bundle). Inherits the main-only gate transitively via `needs: build`.
+  # bundle). Skipped automatically when `build` is skipped (no heavy changes).
   runtime-smoke:
     needs: build
     runs-on: ubuntu-latest

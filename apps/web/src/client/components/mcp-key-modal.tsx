@@ -8,12 +8,14 @@
  * concept is tightly bound to a single key — every change happens through
  * `PATCH /api/api-keys/:id/mcp-guards`. A future "MCP Settings" page can
  * reuse this component for the per-key view.
+ *
+ * The guard editor itself (read-only toggle + allowlist grid) is the shared
+ * `McpGuardsFields`, so it stays in lockstep with the create-form version.
  */
 import { useEffect, useMemo, useState } from "react";
 import { CopyIcon, CheckIcon, TerminalSquareIcon, MonitorSmartphoneIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@backlex/ui/components/button";
-import { Checkbox } from "@backlex/ui/components/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +27,7 @@ import {
 import { Label } from "@backlex/ui/components/label";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
+import { McpGuardsFields, useMcpTools } from "@/components/mcp-guards-fields";
 import { notifyError } from "@/lib/error";
 import { api } from "@/lib/api";
 import {
@@ -48,17 +51,6 @@ interface Props {
   onSaved: () => void;
 }
 
-interface ToolDescriptor {
-  name: string;
-  description: string;
-}
-
-interface ToolsListResponse {
-  jsonrpc: "2.0";
-  id: number;
-  result?: { tools: ToolDescriptor[] };
-}
-
 const MCP_URL_PLACEHOLDER = "https://your-backlex.example.com/mcp";
 
 export const McpKeyModal = ({
@@ -73,8 +65,7 @@ export const McpKeyModal = ({
   onSaved,
 }: Props) => {
   const { t } = useLingui();
-  const [tools, setTools] = useState<ToolDescriptor[] | null>(null);
-  const [loadingTools, setLoadingTools] = useState(false);
+  const { tools, loading: loadingTools } = useMcpTools(open);
   const [allowlist, setAllowlist] = useState<Set<string> | null>(
     initialAllowlist ? new Set(initialAllowlist) : null,
   );
@@ -96,59 +87,10 @@ export const McpKeyModal = ({
     }
   }, [open, initialAllowlist, initialReadOnly]);
 
-  // Lazy-load the tool catalog from /api/admin/mcp the first time the modal
-  // opens — `tools/list` over JSON-RPC. Admin session cookie is forwarded
-  // automatically by `api()`.
-  useEffect(() => {
-    if (!open || tools) return;
-    setLoadingTools(true);
-    (async () => {
-      try {
-        const body = await api<ToolsListResponse>("/api/admin/mcp", {
-          method: "POST",
-          body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
-        });
-        setTools(body.result?.tools ?? []);
-      } catch (e) {
-        notifyError(e, t`Loading MCP tools`);
-        setTools([]);
-      } finally {
-        setLoadingTools(false);
-      }
-    })();
-  }, [open, tools, t]);
-
   const secretForSnippet = useMemo(() => {
     if (initialSecret) return initialSecret;
     return `${keyPrefix}_<paste-secret-here>`;
   }, [initialSecret, keyPrefix]);
-
-  const toggleAllowlistItem = (toolName: string) => {
-    setAllowlist((prev) => {
-      // Activating the allowlist for the first time — start with the
-      // selected tool only (a "narrow this key" gesture). Subsequent clicks
-      // toggle in/out of the set.
-      const next = new Set(prev ?? []);
-      if (next.has(toolName)) next.delete(toolName);
-      else next.add(toolName);
-      return next;
-    });
-  };
-
-  const groupedTools = useMemo(() => {
-    if (!tools) return [] as Array<{ namespace: string; tools: ToolDescriptor[] }>;
-    const groups = new Map<string, ToolDescriptor[]>();
-    for (const t of tools) {
-      const dot = t.name.indexOf(".");
-      const namespace = dot < 0 ? "other" : t.name.slice(0, dot);
-      const bucket = groups.get(namespace) ?? [];
-      bucket.push(t);
-      groups.set(namespace, bucket);
-    }
-    return [...groups.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([namespace, tools]) => ({ namespace, tools }));
-  }, [tools]);
 
   const save = async () => {
     setSaving(true);
@@ -254,108 +196,15 @@ export const McpKeyModal = ({
               </TabsContent>
             </Tabs>
 
-            <section className="space-y-3">
-              <div className="flex items-start gap-2 rounded-md border border-border/60 bg-muted/30 p-3">
-                <Checkbox
-                  id="modal-readonly"
-                  checked={readOnly}
-                  onCheckedChange={(v) => setReadOnly(v === true)}
-                  className="mt-0.5"
-                />
-                <div className="flex-1 space-y-1">
-                  <Label htmlFor="modal-readonly" className="font-medium">
-                    <Trans>Read-only mode</Trans>
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    <Trans>Refuses every write tool through MCP for this key — agent can read everything its permissions allow but cannot mutate.</Trans>
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="font-medium">
-                    <Trans>Tool allowlist</Trans>
-                  </Label>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setAllowlist(null)}
-                    >
-                      <Trans>Allow all</Trans>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setAllowlist(new Set())}
-                    >
-                      <Trans>Block all</Trans>
-                    </Button>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {allowlist === null ? (
-                    <Trans>Every MCP tool is callable, subject to permissions. Toggle a tool below to switch to allowlist mode.</Trans>
-                  ) : (
-                    <Trans>{allowlist.size} of {tools?.length ?? 0} tools allowed. Uncheck all to remove the allowlist.</Trans>
-                  )}
-                </p>
-                {loadingTools && (
-                  <div className="rounded-md border border-border/50 bg-muted/20 p-3 text-xs text-muted-foreground">
-                    <Trans>Loading tool catalog…</Trans>
-                  </div>
-                )}
-                {tools && tools.length > 0 && (
-                  <div className="space-y-4">
-                    {groupedTools.map((group) => (
-                      <div key={group.namespace} className="space-y-1.5">
-                        <div className="text-xs font-medium uppercase text-muted-foreground">
-                          {group.namespace}
-                        </div>
-                        <div className="grid grid-cols-1 gap-1 md:grid-cols-2">
-                          {group.tools.map((tool) => {
-                            const checked =
-                              allowlist === null ? true : allowlist.has(tool.name);
-                            return (
-                              <label
-                                key={tool.name}
-                                className="flex cursor-pointer items-start gap-2 rounded-md p-2 hover:bg-muted/40"
-                                onClick={(e) => {
-                                  // Bare label click — let the input handle it
-                                  if ((e.target as HTMLElement).tagName === "INPUT") return;
-                                }}
-                              >
-                                <Checkbox
-                                  checked={checked}
-                                  onCheckedChange={() => {
-                                    if (allowlist === null) {
-                                      // Transition: leaving unrestricted mode
-                                      // → start with this tool toggled OFF.
-                                      const next = new Set(tools.map((t) => t.name));
-                                      next.delete(tool.name);
-                                      setAllowlist(next);
-                                    } else {
-                                      toggleAllowlistItem(tool.name);
-                                    }
-                                  }}
-                                  className="mt-0.5"
-                                />
-                                <div className="flex-1">
-                                  <code className="font-mono text-xs">{tool.name}</code>
-                                </div>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
+            <McpGuardsFields
+              idPrefix="modal"
+              readOnly={readOnly}
+              onReadOnlyChange={setReadOnly}
+              allowlist={allowlist}
+              onAllowlistChange={setAllowlist}
+              tools={tools}
+              loading={loadingTools}
+            />
           </div>
         </ScrollArea>
         <DialogFooter className="border-t px-6 py-4">
@@ -386,9 +235,14 @@ const SnippetBlock = ({
   onCopy: () => void;
 }) => (
   <div className="relative min-w-0">
-    <ScrollArea className="min-w-0 rounded-md border border-border bg-muted/50">
-      <pre className="m-0 p-3 font-mono text-xs">{snippet}</pre>
-    </ScrollArea>
+    {/* Wrap long unbroken tokens (the full `pak_…` secret) instead of
+        scrolling horizontally — a nested horizontal scroll inside the
+        dialog's vertical ScrollArea bled the whole modal past the viewport
+        on narrow screens. `break-all` + `whitespace-pre-wrap` keeps it
+        contained. Right padding clears the copy button. */}
+    <pre className="m-0 max-w-full overflow-hidden whitespace-pre-wrap break-all rounded-md border border-border bg-muted/50 p-3 pr-20 font-mono text-xs">
+      {snippet}
+    </pre>
     <Button
       type="button"
       variant="outline"

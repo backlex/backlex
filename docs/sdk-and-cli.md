@@ -157,9 +157,226 @@ Run from any project that has `@backlex/cli` (root has it as
 
 ```
 backlex help
-backlex migrate [db-path]                      apply SQLite migrations
+backlex login [--url <url>] [--key <pak_...>|-] [--tenant <id>] [--profile <name>]
+                                                 verify a key against /api/me and save a profile
+backlex logout [--profile <name>] [--all]        clear saved credentials (--all removes the profile)
+backlex whoami [--profile <name>] [--json]       show the identity behind the resolved key
+backlex profile <list|use|add|remove>            manage saved connection profiles
+backlex collections <list|get|export-schema>     inspect the connected instance's schema
+backlex items <list|get|create|update|delete|export|import|search> <slug>
+                                                 data-plane CRUD + bulk export/import + search
+backlex backup <list|now|download|restore|config>   logical backups + restore + schedule
+backlex users <list|grant|revoke>                workspace users + role assignment
+backlex roles list                               roles in the active workspace
+backlex flags <list|set|delete>                  feature flags / remote config
+backlex settings <get|set>                       workspace settings (whitelisted keys)
+backlex functions <list|deploy|invoke|delete>    sandboxed JS functions
+backlex flows <list|get|run|create|delete>       visual workflow builder
+backlex webhooks <list|create|test|deliveries|retry|resume|delete>  outbound webhooks
+backlex jobs <list|get|retry|cancel|remove|enqueue>  durable job queue
+backlex advisor [--kind …] [--fail-on error|warn]   security/perf checks (CI gate)
+backlex init [dir] [--force]                     scaffold a TypeScript consumer starter
+backlex sdk [lang]                               discover the official native client SDKs
+backlex migrate [db-path]                        apply SQLite migrations
 backlex gen-types <api-url> [--out <file>] [--key <pak_...>] [--sdk]
                                                  generate TS types (+ typed client with --sdk)
+backlex gen-openapi [--out <file>]               fetch the live OpenAPI spec
+backlex mcp --url <mcp-url> --key <pak_...> [--tenant <id>]
+                                                 stdio MCP server proxying to a remote /mcp endpoint
+```
+
+### Connection context (`login` / `whoami` / `mcp` / `gen-types`)
+
+Commands that hit the API resolve their connection the same way, with this
+precedence per field:
+
+1. explicit flag — `--url` / `--key` / `--tenant`
+2. environment — `BACKLEX_URL` / `BACKLEX_API_KEY` / `BACKLEX_TENANT`
+3. the saved profile — `--profile <name>`, otherwise the active profile
+
+`backlex login` stores `{ url, key, tenant }` under a named profile (default
+`"default"`) in `~/.backlex/config.json` (override with `$BACKLEX_CONFIG`). The
+file holds API keys, so it's written `0600`. After that, every other command
+reads the active profile — no repeated `--url`/`--key`:
+
+```bash
+backlex login --url https://api.your.app --key pak_xxx          # prompts hidden if --key omitted on a TTY
+echo "$PAK" | backlex login --url https://api.your.app --key -  # CI-friendly: key from stdin
+backlex whoami                                                  # user, roles, tenant
+backlex profile add staging --url https://staging.your.app --key pak_yyy
+backlex profile use staging
+backlex profile list
+```
+
+Pass `--json` for machine-readable output (scripts / CI).
+
+### Discovering what you can do
+
+`backlex help` lists every command. Each command group also prints its own
+focused usage when invoked with no subcommand (or an unknown one) — so you can
+drill in without leaving the terminal:
+
+```bash
+backlex collections      # → the collections subcommands + flags
+backlex items            # → the items subcommands + flags
+```
+
+For *this instance specifically*, `backlex collections list` is the live
+"what's reachable" view — every collection the current key can read:
+
+```bash
+backlex collections list
+backlex collections get posts        # fields + flags of one collection
+```
+
+### `backlex collections`
+
+Reads `GET /api/collections`. `export-schema` dumps the full field metadata as
+JSON — commit it and diff across environments (the seed for a future
+`apply-schema`):
+
+```bash
+backlex collections export-schema --out schema.json
+```
+
+### `backlex items`
+
+Data-plane CRUD over the SDK's `from(slug)` client, so it speaks the same query
+DSL as the REST API. Payloads accept inline JSON, `@file`, or `-` (stdin):
+
+```bash
+backlex items list posts --filter '{"published":{"_eq":true}}' --sort -views --limit 10
+backlex items get posts <id> --expand author
+backlex items create posts --data '{"title":"Hello"}'
+echo '{"views":42}' | backlex items update posts <id> --data -
+backlex items delete posts <id>
+
+# Bulk export / import (JSON or CSV) — round-trips through the read filters
+backlex items export posts --format csv --out posts.csv
+backlex items import posts posts.csv --format csv
+
+# Relevance search (fts / vector / hybrid, per the collection's capabilities)
+backlex items search posts -q "launch" --mode hybrid --limit 5
+```
+
+### `backlex backup`
+
+Logical JSONL backups + restore + the auto-backup schedule (see
+`docs/backup-restore.md`). `restore` is confirm-gated server-side, so the CLI
+also demands an explicit `--confirm`:
+
+```bash
+backlex backup now --label pre-migration
+backlex backup list
+backlex backup download <id> --out backup.jsonl
+backlex backup restore <id> --confirm
+backlex backup config --schedule daily --retain 30   # omit flags to read the current schedule
+```
+
+### `backlex users` / `roles`
+
+Admin-plane user management. `users grant` is the supported replacement for the
+manual `INSERT INTO user_roles` — it resolves a role by name (or id) and
+attaches it:
+
+```bash
+backlex roles list                  # find the role id/name
+backlex users list
+backlex users grant <userId> admin  # by name; an id works too
+backlex users revoke <userId> editor
+```
+
+### `backlex flags` / `settings`
+
+Feature flags / remote config and the whitelisted workspace settings. `--global`
+targets the global flag scope instead of the active tenant:
+
+```bash
+backlex flags list
+backlex flags set new-checkout --enabled true --rollout 25
+backlex flags set api-config --value '{"maxItems":50}' --global
+backlex flags delete new-checkout
+
+backlex settings get
+backlex settings set i18nDefaultLocale en
+```
+
+The public, per-caller *evaluated* flag map (rollout + targeting applied) is
+served at `GET /api/flags` — that's what the SDK's `client.flags` reads.
+
+### `backlex functions` / `flows`
+
+Sandboxed JS functions and the visual workflow builder (see `docs/sandbox.md`,
+`docs/jobs.md`). `functions deploy` is **create-or-update by name** — the verb
+to wire into a deploy step:
+
+```bash
+backlex functions deploy resize-avatar --file ./fns/resize.js --trigger event --pattern 'items.avatars.created'
+backlex functions invoke welcome --data '{"userId":"u_1"}'
+backlex functions list
+
+backlex flows list
+backlex flows get <id> > flow.json     # export
+backlex flows create --data @flow.json # import into another env
+backlex flows run <id>
+```
+
+### `backlex webhooks` / `jobs`
+
+Outbound webhooks (`docs/webhooks.md`) and the durable job queue
+(`docs/jobs.md`). `webhooks resume` re-enables a hook the circuit breaker
+auto-disabled after repeated failures:
+
+```bash
+backlex webhooks create --name orders --url https://hooks.acme.com/x --events 'items.orders.created'
+backlex webhooks test <id>
+backlex webhooks deliveries --limit 20
+backlex webhooks retry <deliveryId>
+backlex webhooks resume <id>
+
+backlex jobs list --status failed
+backlex jobs retry <id>
+```
+
+### `backlex advisor` (CI gate)
+
+Runs the security / performance rule checks. `--fail-on` turns it into a CI
+gate — non-zero exit when a finding at or above the level is present:
+
+```bash
+backlex advisor                          # list all findings
+backlex advisor --kind security --json   # machine-readable
+backlex advisor --fail-on error          # exit 1 on any error-level finding
+```
+
+> **Deploy.** There is no `backlex deploy` command. Deployment goes through each
+> platform's native git integration (Cloudflare Workers Builds, Vercel, Netlify)
+> or the repo's `bun run deploy` (CF) — the CLI would only duplicate those. See
+> `docs/deployment.md`.
+
+### `backlex init` / `sdk`
+
+Getting a consuming app off the ground. `init` scaffolds a self-contained
+TypeScript client (non-destructive — pass `--force` to overwrite); `sdk` lists
+the official native clients (Python, Go, Rust, … — see
+[Client SDKs](/docs/client-sdks/)) with their install commands:
+
+```bash
+backlex init ./my-app          # writes backlex.ts + .env.example
+backlex sdk                    # list every SDK + install command
+backlex sdk python             # install + quickstart for one language
+```
+
+### `backlex gen-openapi`
+
+Fetches the live OpenAPI spec (`/api/openapi.json`, admin-readable) — generated
+from the collection schemas + route decorators, so it always matches the running
+instance. Use it for `openapi-generator`, Postman, or the typed-model step of a
+native SDK:
+
+```bash
+backlex gen-openapi --out openapi.json
+openapi-generator generate -g python -i openapi.json   # typed models beside the SDK
 ```
 
 ### `backlex migrate`
@@ -190,6 +407,32 @@ and emits a TypeScript module. Wire into your build:
 ```
 
 Re-run after schema changes. The output is deterministic — safe to commit.
+
+### `backlex mcp`
+
+Runs a stdio [MCP](https://modelcontextprotocol.io) server that proxies
+JSON-RPC over stdin/stdout to a remote backlex `/mcp` HTTP endpoint. This lets
+local agents (Claude Desktop, Cursor, IDE plugins) talk to a deployed backlex
+instance through a single auth path — the `pak_…` key — while permissions,
+rate-limits, activity logging, and the tenant boundary stay identical to every
+other backlex caller. The URL defaults to `http://localhost:8787/mcp`; the key
+falls back to `$BACKLEX_API_KEY`.
+
+```jsonc
+// Claude Desktop / Cursor MCP config
+{
+  "mcpServers": {
+    "backlex": {
+      "command": "bun",
+      "args": ["backlex", "mcp", "--url", "https://api.your.app/mcp", "--key", "pak_xxx"]
+    }
+  }
+}
+```
+
+The per-key MCP tool allowlist (`mcpTools`) and read-only flag (`mcpReadOnly`)
+set when the key was issued govern what the agent can call — see
+`docs/api-keys-and-email.md`.
 
 ## Adding the SDK to a separate repo
 

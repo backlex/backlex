@@ -1,4 +1,4 @@
-# Todo · React + `@backlex/client`
+# Todo · React + `backlex`
 
 A ~200-line app that shows the three things every backlex app needs:
 
@@ -8,7 +8,7 @@ A ~200-line app that shows the three things every backlex app needs:
 2. **CRUD** — `client.from<Todo>("todos")` for list / create / update / delete.
 3. **Realtime** — `client.subscribe("items:todos", …)` keeps the list live.
 
-It's intentionally dependency-light: React 19 + Vite + Tailwind, and `@backlex/client`.
+It's intentionally dependency-light: React 19 + Vite + Tailwind, and `backlex`.
 
 In dev the app talks to the API **same-origin** through a Vite proxy (see
 `vite.config.ts`) — so there's no CORS to configure locally.
@@ -80,7 +80,7 @@ it, delete it. Open a second tab to watch realtime propagate.
   so live events arrive only when the `todos` channel is readable by the request's
   cookie/anon scope. Every mutation also updates state from its direct response,
   so the UI stays correct regardless — the subscription is a cross-tab bonus.
-- **Using this outside the monorepo?** Swap the `@backlex/client` `workspace:*`
+- **Using this outside the monorepo?** Swap the `backlex` `workspace:*`
   dependency for the published package and point `VITE_BACKLEX_URL` at your
   deployed backlex.
 - **Typed collections** — in a real project, run

@@ -1,4 +1,4 @@
-import { createClient } from "@backlex/client";
+import { createClient } from "backlex";
 import { API_URL, WORKSPACE } from "./env";
 
 // ── Config (from .env — see .env.example, validated by SetupCheck.tsx) ───────

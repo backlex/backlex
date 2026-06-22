@@ -34,7 +34,7 @@ GET /api/items/{slug}/{id}/revisions   → { "data": [ …snapshots, newest firs
 ## Client: `sync`
 
 ```ts
-import { createClient, indexedDbStore } from "@backlex/client";
+import { createClient, indexedDbStore } from "backlex";
 const backlex = createClient({ url, apiKey });
 
 const notes = backlex.sync({

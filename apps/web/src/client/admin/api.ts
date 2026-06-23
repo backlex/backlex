@@ -366,6 +366,15 @@ export const itemsApi = {
     }),
   remove: (slug: string, id: string) =>
     api<{ ok: true }>(`/api/items/${slug}/${id}`, { method: "DELETE" }),
+  /** Apply one shared patch to many selected ids (only the named fields change). */
+  bulkUpdate: (slug: string, keys: string[], data: Record<string, unknown>) =>
+    api<Envelope<{ total: number; updated: number; failed: number; results: { id: string; ok: boolean; error?: { code: string; message: string } }[] }>>(
+      `/api/items/${slug}/bulk-update`,
+      {
+        method: "POST",
+        body: JSON.stringify({ keys, data }),
+      },
+    ),
   /** Publish now (versioned collections). */
   publish: (slug: string, id: string) =>
     api<Envelope<Record<string, unknown>>>(`/api/items/${slug}/${id}/publish`, {

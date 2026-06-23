@@ -36,6 +36,7 @@ import {
   type FilterCondition,
 } from "./items";
 import { ConfirmDialog, ItemSheet } from "./sheet";
+import { BulkEditDialog } from "./bulk-edit";
 import { ItemEditorPage } from "./item-editor";
 import { CalendarView, GalleryGrid, ItemsViewToggle, KanbanBoard, type ItemsViewMode } from "./item-views";
 import { EmptyItems, Palette, RealtimeTail, SchemaView, type RealtimeEvent } from "./extras";
@@ -185,6 +186,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   const [view, setView] = useUrlState("view", "table");
   const requestedView = (["table", "kanban", "gallery", "calendar"].includes(view) ? view : "table") as ItemsViewMode;
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [page, setPage] = useState(1);
   const PER_PAGE = 8;
 
@@ -744,9 +746,42 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     }
   };
 
-  const onBulkPublish = () => {
-    setPosts((p) => p.map((x) => selected.has(x.id) ? { ...x, status: "published", published_at: new Date().toISOString(), updated_at: new Date().toISOString() } : x));
-    pushToast(t`${selected.size} posts published.`);
+  const onBulkUpdate = async (data: Record<string, unknown>) => {
+    const slug = activeCollection || "posts";
+    const ids = [...selected];
+    try {
+      const res = await itemsApi.bulkUpdate(slug, ids, data);
+      const r = res.data;
+      const okIds = new Set(r.results.filter((x) => x.ok).map((x) => x.id));
+      const now = new Date().toISOString();
+      setPosts((p) =>
+        p.map((x) => (okIds.has(x.id) ? ({ ...x, ...data, updated_at: now } as Post) : x)),
+      );
+      pushToast(
+        r.failed > 0 ? t`${r.updated} updated, ${r.failed} skipped.` : t`${r.updated} updated.`,
+      );
+      setSelected(new Set());
+      setBulkEditOpen(false);
+    } catch (e) {
+      pushToast((e as Error).message, "error");
+    }
+  };
+  const onBulkPublish = async () => {
+    const slug = activeCollection || "posts";
+    const ids = [...selected];
+    const settled = await Promise.allSettled(ids.map((id) => itemsApi.publish(slug, id)));
+    const okIds = new Set(ids.filter((_, i) => settled[i]?.status === "fulfilled"));
+    const failed = ids.length - okIds.size;
+    const now = new Date().toISOString();
+    setPosts((p) =>
+      p.map((x) =>
+        okIds.has(x.id) ? { ...x, status: "published", published_at: now, updated_at: now } : x,
+      ),
+    );
+    pushToast(
+      failed > 0 ? t`${okIds.size} published, ${failed} failed.` : t`${okIds.size} published.`,
+      failed > 0 && okIds.size === 0 ? "error" : undefined,
+    );
     setSelected(new Set());
   };
   const onBulkDelete = () => {
@@ -990,6 +1025,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                         <BulkBar
                           count={selected.size}
                           onClear={() => setSelected(new Set())}
+                          onEdit={() => setBulkEditOpen(true)}
                           onPublish={onBulkPublish}
                           onDelete={onBulkDelete}
                         />
@@ -1162,6 +1198,13 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
 
       <ItemSheet open={sheetOpen} mode={sheetMode} initial={sheetItem} schema={schemaState} onClose={() => setSheetOpen(false)} onSave={onSave} versioned={schemaState.versioned} canPublish onPublish={onPublish} />
       <Palette open={paletteOpen} onClose={() => setPaletteOpen(false)} onNavigate={onPaletteSelect} items={posts} collections={collections} />
+      <BulkEditDialog
+        open={bulkEditOpen}
+        count={selected.size}
+        schema={schemaState}
+        onClose={() => setBulkEditOpen(false)}
+        onApply={onBulkUpdate}
+      />
       <ConfirmDialog open={!!confirm} {...(confirm || {})} onCancel={() => setConfirm(null)} />
       <NewCollectionDialog
         open={newCollectionOpen}

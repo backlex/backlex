@@ -347,8 +347,18 @@ msgstr "{0} posts deleted."
 
 #. placeholder {0}: selected.size
 #: src/client/admin/app.tsx
-msgid "{0} posts published."
-msgstr "{0} posts published."
+#~ msgid "{0} posts published."
+#~ msgstr "{0} posts published."
+
+#. placeholder {0}: okIds.size
+#: src/client/admin/app.tsx
+msgid "{0} published, {failed} failed."
+msgstr "{0} published, {failed} failed."
+
+#. placeholder {0}: okIds.size
+#: src/client/admin/app.tsx
+msgid "{0} published."
+msgstr "{0} published."
 
 #. placeholder {0}: collections.reduce((a, c) => a + c.count, 0).toLocaleString()
 #: src/client/admin/collections-index.tsx
@@ -423,6 +433,17 @@ msgstr "{0} tool(s)"
 msgid "{0} total · {1} editable · drag the grip to reorder"
 msgstr "{0} total · {1} editable · drag the grip to reorder"
 
+#. placeholder {0}: r.updated
+#. placeholder {1}: r.failed
+#: src/client/admin/app.tsx
+msgid "{0} updated, {1} skipped."
+msgstr "{0} updated, {1} skipped."
+
+#. placeholder {0}: r.updated
+#: src/client/admin/app.tsx
+msgid "{0} updated."
+msgstr "{0} updated."
+
 #. placeholder {0}: (page - 1) * PER_PAGE + 1
 #. placeholder {1}: Math.min(page * PER_PAGE, total)
 #: src/client/admin/app.tsx
@@ -492,6 +513,10 @@ msgstr "{allowlistSize} of {totalTools} tools enabled."
 #: src/client/admin/pages/settings.tsx
 msgid "{c} is already in the list."
 msgstr "{c} is already in the list."
+
+#: src/client/admin/bulk-edit.tsx
+msgid "{changedCount} field(s) will change."
+msgstr "{changedCount} field(s) will change."
 
 #: src/client/admin/items.tsx
 msgid "{count} selected"
@@ -1242,6 +1267,7 @@ msgid "Apply to selection:"
 msgstr "Apply to selection:"
 
 #: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/bulk-edit.tsx
 msgid "Applying…"
 msgstr "Applying…"
 
@@ -1632,6 +1658,10 @@ msgstr "built-in"
 msgid "Built-in sign-in method."
 msgstr "Built-in sign-in method."
 
+#: src/client/admin/bulk-edit.tsx
+msgid "Bulk edit {count} rows"
+msgstr "Bulk edit {count} rows"
+
 #: src/client/admin/extras.tsx
 msgid "by"
 msgstr "by"
@@ -1659,6 +1689,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/account-page.tsx
 #: src/client/admin/add-field.tsx
 #: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/bulk-edit.tsx
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/edit-field.tsx
 #: src/client/admin/flow-builder.tsx
@@ -3054,6 +3085,10 @@ msgstr "Edit {0}"
 #: src/client/admin/edit-field.tsx
 msgid "Edit <0>{0}</0> <1>{1}</1>"
 msgstr "Edit <0>{0}</0> <1>{1}</1>"
+
+#: src/client/admin/bulk-edit.tsx
+msgid "Edit a field below to include it in the update."
+msgstr "Edit a field below to include it in the update."
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Edit args"
@@ -5405,6 +5440,10 @@ msgstr "No activity recorded."
 msgid "No API keys yet"
 msgstr "No API keys yet"
 
+#: src/client/admin/bulk-edit.tsx
+msgid "No bulk-editable fields on this collection."
+msgstr "No bulk-editable fields on this collection."
+
 #: src/client/admin/pages/realtime.tsx
 msgid "No channels — create a collection to get one."
 msgstr "No channels — create a collection to get one."
@@ -5965,6 +6004,10 @@ msgstr "Only needed for self-signed LDAPS; the system trust store handles public
 #: src/client/admin/parity/revisions.tsx
 msgid "Only the current state exists — no edits recorded yet."
 msgstr "Only the current state exists — no edits recorded yet."
+
+#: src/client/admin/bulk-edit.tsx
+msgid "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
+msgstr "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
 
 #: src/client/admin/parity/translations.tsx
 msgid "Only translate missing keys"
@@ -8882,6 +8925,10 @@ msgstr "This <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> is irreversible. 
 msgid "this collection"
 msgstr "this collection"
 
+#: src/client/admin/bulk-edit.tsx
+msgid "This collection has no fields that support bulk editing. Structured (json / file / relation list / localized) and rich-text fields are edited per record."
+msgstr "This collection has no fields that support bulk editing. Structured (json / file / relation list / localized) and rich-text fields are edited per record."
+
 #: src/client/admin/parity/database.tsx
 msgid "This database has no tables."
 msgstr "This database has no tables."
@@ -9297,6 +9344,10 @@ msgstr "Until you confirm your email, sign-in won't work. Didn't get it? Check s
 #: src/client/admin/parity/app-users.tsx
 msgid "unverified"
 msgstr "unverified"
+
+#: src/client/admin/bulk-edit.tsx
+msgid "Update {count} rows"
+msgstr "Update {count} rows"
 
 #: src/client/admin/account-page.tsx
 msgid "Update password"

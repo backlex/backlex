@@ -614,6 +614,46 @@ await client.from("posts").batch([
 ], { atomic: true });
 ```
 
+## Bulk-update a selection
+
+`POST /api/items/:slug/bulk-update` applies **one shared patch** to a list of
+selected ids — the "set these fields on every selected row" case, without
+expanding it into N separate `update` operations:
+
+```http
+POST /api/items/posts/bulk-update
+{
+  "keys": ["p1", "p2", "p3"],
+  "data": { "status": "archived", "featured": false }
+}
+```
+
+Only the fields named in `data` change on each row; everything else is left
+untouched. The shared patch is validated **once** up front (a bad payload is a
+single `422`/`403`, not N identical row failures), then each key runs through the
+same permission / validation / vectorize / event / audit / revision pipeline as a
+single `PATCH`. Up to **1000** keys per call.
+
+It is **partial-success**: a key the caller can't write (filtered by the
+permission's row condition or tenant scope) is reported per-row as `NOT_FOUND`
+and counted in `failed`; the rest still commit.
+
+```json
+{ "data": {
+  "total": 3, "updated": 2, "failed": 1,
+  "results": [
+    { "id": "p1", "ok": true },
+    { "id": "p2", "ok": true },
+    { "id": "p3", "ok": false, "error": { "code": "NOT_FOUND", "message": "Item not found" } }
+  ]
+} }
+```
+
+Structured / multi-value / localized fields (`json`, `file`, `relation_many`,
+`i18n_text`) are **rejected** for bulk — edit those per record. The admin's data
+table exposes this via row-select → **Edit**, where only the fields you touch are
+sent.
+
 ## Bulk export / import
 
 To pull a whole collection out (JSON or CSV) or bulk-load rows back in, see

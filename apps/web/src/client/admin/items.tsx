@@ -516,12 +516,13 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
   );
 }
 
-export function BulkBar({ count, onClear, onPublish, onDelete }: { count: number; onClear: () => void; onPublish: () => void; onDelete: () => void }) {
+export function BulkBar({ count, onClear, onEdit, onPublish, onDelete }: { count: number; onClear: () => void; onEdit: () => void; onPublish: () => void; onDelete: () => void }) {
   if (!count) return null;
   return (
     <div className="flex items-center gap-2.5 border-b border-[color-mix(in_oklch,var(--primary)_30%,var(--border))] bg-muted px-3.5 py-2">
       <span className="text-[12.5px] font-medium"><Trans>{count} selected</Trans></span>
       <div className="flex-1" />
+      <Button variant="outline" size="sm" icon={I.Pencil} onClick={onEdit}><Trans>Edit</Trans></Button>
       <Button variant="outline" size="sm" icon={I.Check} onClick={onPublish}><Trans>Publish</Trans></Button>
       <Button variant="outline" size="sm" icon={I.Trash} onClick={onDelete}><Trans>Delete</Trans></Button>
       <Button variant="ghost" size="sm" onClick={onClear}><Trans>Clear</Trans></Button>

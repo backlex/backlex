@@ -353,12 +353,12 @@ msgstr "{0} gönderi silindi."
 #. placeholder {0}: okIds.size
 #: src/client/admin/app.tsx
 msgid "{0} published, {failed} failed."
-msgstr ""
+msgstr "{0} yayınlandı, {failed} başarısız."
 
 #. placeholder {0}: okIds.size
 #: src/client/admin/app.tsx
 msgid "{0} published."
-msgstr ""
+msgstr "{0} yayınlandı."
 
 #. placeholder {0}: collections.reduce((a, c) => a + c.count, 0).toLocaleString()
 #: src/client/admin/collections-index.tsx
@@ -437,12 +437,12 @@ msgstr "{0} toplam · {1} düzenlenebilir · yeniden sıralamak için tutacağı
 #. placeholder {1}: r.failed
 #: src/client/admin/app.tsx
 msgid "{0} updated, {1} skipped."
-msgstr ""
+msgstr "{0} güncellendi, {1} atlandı."
 
 #. placeholder {0}: r.updated
 #: src/client/admin/app.tsx
 msgid "{0} updated."
-msgstr ""
+msgstr "{0} güncellendi."
 
 #. placeholder {0}: (page - 1) * PER_PAGE + 1
 #. placeholder {1}: Math.min(page * PER_PAGE, total)
@@ -516,7 +516,7 @@ msgstr "{c} zaten listede."
 
 #: src/client/admin/bulk-edit.tsx
 msgid "{changedCount} field(s) will change."
-msgstr ""
+msgstr "{changedCount} alan değişecek."
 
 #: src/client/admin/items.tsx
 msgid "{count} selected"
@@ -1660,7 +1660,7 @@ msgstr "Yerleşik giriş yöntemi."
 
 #: src/client/admin/bulk-edit.tsx
 msgid "Bulk edit {count} rows"
-msgstr ""
+msgstr "{count} satırı toplu düzenle"
 
 #: src/client/admin/extras.tsx
 msgid "by"
@@ -3088,7 +3088,7 @@ msgstr "<0>{0}</0> <1>{1}</1> düzenle"
 
 #: src/client/admin/bulk-edit.tsx
 msgid "Edit a field below to include it in the update."
-msgstr ""
+msgstr "Güncellemeye dahil etmek için aşağıdan bir alanı düzenleyin."
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Edit args"
@@ -5442,7 +5442,7 @@ msgstr "Henüz API anahtarı yok"
 
 #: src/client/admin/bulk-edit.tsx
 msgid "No bulk-editable fields on this collection."
-msgstr ""
+msgstr "Bu koleksiyonda toplu düzenlenebilir alan yok."
 
 #: src/client/admin/pages/realtime.tsx
 msgid "No channels — create a collection to get one."
@@ -6011,7 +6011,7 @@ msgstr "Yalnızca mevcut durum var — henüz düzenleme kaydedilmedi."
 
 #: src/client/admin/bulk-edit.tsx
 msgid "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
-msgstr ""
+msgstr "Yalnızca değiştirdiğiniz alanlar <0>c_{slug}</0> içindeki seçili {count} satırın tümüne yazılır; geri kalan her şey olduğu gibi kalır."
 
 #: src/client/admin/parity/translations.tsx
 msgid "Only translate missing keys"
@@ -8935,7 +8935,7 @@ msgstr "bu koleksiyon"
 
 #: src/client/admin/bulk-edit.tsx
 msgid "This collection has no fields that support bulk editing. Structured (json / file / relation list / localized) and rich-text fields are edited per record."
-msgstr ""
+msgstr "Bu koleksiyonda toplu düzenlemeyi destekleyen alan yok. Yapısal (json / dosya / ilişki listesi / yerelleştirilmiş) ve zengin metin alanları kayıt bazında düzenlenir."
 
 #: src/client/admin/parity/database.tsx
 msgid "This database has no tables."
@@ -9355,7 +9355,7 @@ msgstr "doğrulanmamış"
 
 #: src/client/admin/bulk-edit.tsx
 msgid "Update {count} rows"
-msgstr ""
+msgstr "{count} satırı güncelle"
 
 #: src/client/admin/account-page.tsx
 msgid "Update password"

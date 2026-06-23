@@ -222,4 +222,46 @@ export const batchWrite: McpTool = {
   },
 };
 
-export const bulkTools: McpTool[] = [bulkInsert, bulkUpdate, batchWrite];
+export const bulkUpdateShared: McpTool = {
+  name: "collections.bulk_update_shared",
+  description:
+    "Set the SAME fields on MANY rows at once — one shared patch applied to a " +
+    "list of ids. `keys` selects the rows, `data` is the partial patch written " +
+    "to every one of them (only the named fields change). Differs from " +
+    "`collections.bulk_update`, which takes a distinct `{ id, data }` per row. " +
+    "Partial-success: a key you can't write (row-scope / tenant filtered) is " +
+    "reported as `NOT_FOUND` in `failed`. Structured fields " +
+    "(json / file / relation_many / i18n_text) are rejected. Returns " +
+    "`{ total, updated, failed, results }`.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      collection: { type: "string" },
+      keys: { type: "array", description: "Ids to update.", items: { type: "string" } },
+      data: { type: "object", description: "Shared partial patch (the fields to set on every id)." },
+    },
+    required: ["collection", "keys", "data"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const slug = String(args.collection ?? "");
+    if (!slug) throw new Error("VALIDATION: collection is required");
+    if (!Array.isArray(args.keys)) throw new Error("VALIDATION: keys must be an array");
+    if (!args.data || typeof args.data !== "object")
+      throw new Error("VALIDATION: data must be an object");
+    const res = await ctx.fetchInternal(`/api/items/${encodeURIComponent(slug)}/bulk-update`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ keys: args.keys, data: args.data }),
+    });
+    const body = await readJson<{ data?: unknown; error?: unknown }>(res);
+    const payload = res.ok ? (body.data ?? body) : body;
+    return {
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload as object,
+      isError: !res.ok,
+    };
+  },
+};
+
+export const bulkTools: McpTool[] = [bulkInsert, bulkUpdate, batchWrite, bulkUpdateShared];

@@ -20,6 +20,14 @@ describe("batch via GraphQL + MCP", () => {
     const r = await h.fetch(`/api/items/${slug}?meta=filter_count&limit=1`);
     return ((await r.json()) as { meta?: { filter_count?: number } }).meta?.filter_count ?? 0;
   };
+  const createOne = async (title: string): Promise<string> => {
+    const r = await h.fetch(`/api/items/${slug}`, json({ title }));
+    return ((await r.json()) as { data: { id: string } }).data.id;
+  };
+  const nOf = async (id: string): Promise<unknown> => {
+    const r = await h.fetch(`/api/items/${slug}/${id}?fields=id,n`);
+    return ((await r.json()) as { data: { n: unknown } }).data.n;
+  };
 
   beforeAll(async () => {
     h = makeHarness();
@@ -62,6 +70,19 @@ describe("batch via GraphQL + MCP", () => {
     expect(res.errors?.[0]?.extensions?.code).toBe("VALIDATION");
   });
 
+  test("GraphQL bulkUpdate mutation sets a shared field on many ids", async () => {
+    const ids = [await createOne("bu-g1"), await createOne("bu-g2")];
+    const res = await gql(
+      `mutation($keys:[String!]!,$data:JSON!){ bulkUpdateGqlbatch(keys:$keys, data:$data){ total updated failed results } }`,
+      { keys: ids, data: { n: 42 } },
+    );
+    expect(res.errors).toBeUndefined();
+    expect(res.data?.bulkUpdateGqlbatch.total).toBe(2);
+    expect(res.data?.bulkUpdateGqlbatch.updated).toBe(2);
+    expect(await nOf(ids[0]!)).toBe(42);
+    expect(await nOf(ids[1]!)).toBe(42);
+  });
+
   // ── MCP ──────────────────────────────────────────────────────────────────
   let rpcId = 1;
   const callTool = async (name: string, args: unknown) => {
@@ -85,6 +106,19 @@ describe("batch via GraphQL + MCP", () => {
     expect(r.result?.isError).toBeFalsy();
     expect(r.result?.structuredContent?.succeeded).toBe(2);
     expect(r.result?.structuredContent?.atomic).toBe(true);
+  });
+
+  test("MCP collections.bulk_update_shared patches a selection", async () => {
+    const ids = [await createOne("bu-m1"), await createOne("bu-m2")];
+    const r = await callTool("collections.bulk_update_shared", {
+      collection: slug,
+      keys: ids,
+      data: { n: 7 },
+    });
+    expect(r.error).toBeUndefined();
+    expect(r.result?.isError).toBeFalsy();
+    expect(r.result?.structuredContent?.updated).toBe(2);
+    expect(await nOf(ids[0]!)).toBe(7);
   });
 
   test("MCP messaging.send_push delivers (in-app row even with no devices)", async () => {

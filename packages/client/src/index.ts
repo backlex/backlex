@@ -20,6 +20,7 @@ import {
   type AggregateRow,
   type BatchOperation,
   type BatchResponse,
+  type BulkUpdateResponse,
   type DeviceToken,
   type ItemEvent,
   type ItemQuery,
@@ -50,6 +51,7 @@ export type {
   ImportSummary,
   BatchOperation,
   BatchResponse,
+  BulkUpdateResponse,
   DeviceToken,
   PhoneNumber,
   Job,
@@ -221,6 +223,7 @@ export interface CollectionClient<T extends Record<string, unknown>> {
     opts?: { atomic?: boolean },
   ): Promise<BatchResponse<T>>;
   deleteMany(ids: string[], opts?: { atomic?: boolean }): Promise<BatchResponse<T>>;
+  bulkUpdate(keys: string[], data: Partial<T>): Promise<BulkUpdateResponse>;
   batch(operations: BatchOperation<T>[], opts?: { atomic?: boolean }): Promise<BatchResponse<T>>;
   publish(id: string): Promise<ItemResponse<T>>;
   unpublish(id: string): Promise<ItemResponse<T>>;
@@ -542,6 +545,15 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
         request<BatchResponse<T>>("POST", `/api/items/${slug}/batch`, {
           operations: ids.map((id) => ({ op: "delete", id })),
           atomic: opts?.atomic,
+        }),
+      /** Set the SAME fields on many ids at once (one shared patch). Only the
+       *  named fields change per row; partial-success (a key the caller can't
+       *  write is reported `NOT_FOUND`). Differs from `updateMany`, which sends
+       *  a distinct patch per id. */
+      bulkUpdate: (keys: string[], data: Partial<T>): Promise<BulkUpdateResponse> =>
+        request<BulkUpdateResponse>("POST", `/api/items/${slug}/bulk-update`, {
+          keys,
+          data,
         }),
       /** Mixed create/update/delete in one request. `atomic` = all-or-nothing. */
       batch: (

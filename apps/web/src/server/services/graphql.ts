@@ -28,6 +28,7 @@ import { resolvePermission, type PermResolveCache } from "./permissions";
 import { publishEvent } from "./events";
 import { loadCollection } from "./items/collection-loader";
 import { runBatch, type BatchOp } from "./items/batch";
+import { runBulkUpdate } from "./items/bulk";
 import type { Ctx } from "../context";
 
 interface CollectionRow {
@@ -727,6 +728,59 @@ const normalizeBatchOps = (raw: unknown): BatchOp[] => {
   });
 };
 
+/** Result type for `bulkUpdate<Collection>` — `results` entries are JSON
+ *  `{ id, ok, error? }` (heterogeneous, so a scalar). Mirrors REST
+ *  `…/bulk-update`. */
+const BulkUpdateResultType = new GraphQLObjectType({
+  name: "BulkUpdateResult",
+  fields: {
+    total: { type: new GraphQLNonNull(GraphQLInt) },
+    updated: { type: new GraphQLNonNull(GraphQLInt) },
+    failed: { type: new GraphQLNonNull(GraphQLInt) },
+    results: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(JSONScalar))) },
+  },
+});
+
+const bulkUpdateResolver = async (
+  gqlCtx: GqlCtx,
+  collection: CollectionRow,
+  args: { keys: unknown; data: unknown },
+) => {
+  const { ctx, auth } = gqlCtx;
+  const keys = Array.isArray(args.keys) ? args.keys.filter((k): k is string => typeof k === "string") : [];
+  if (keys.length === 0) {
+    throw new GraphQLError("keys must be a non-empty array of ids", {
+      extensions: { code: "VALIDATION" },
+    });
+  }
+  const data = args.data && typeof args.data === "object" ? (args.data as Record<string, unknown>) : {};
+  const full = await loadCollection(ctx, auth.tenantId, collection.slug);
+  const perm = await resolvePermission(ctx, auth, collection.slug, "update");
+  if (!perm.allowed) {
+    throw new GraphQLError(`No update permission on ${collection.slug}`, {
+      extensions: { code: "FORBIDDEN" },
+    });
+  }
+  try {
+    return await runBulkUpdate({
+      ctx,
+      auth,
+      collection: full,
+      keys,
+      data,
+      perm: { whereSql: perm.whereSql, fields: perm.fields },
+      meta: {},
+      durationMs: () => 0,
+      locale: null,
+    });
+  } catch (e) {
+    if (e instanceof AppError) {
+      throw new GraphQLError(e.message, { extensions: { code: e.code } });
+    }
+    throw e;
+  }
+};
+
 const batchResolver = async (
   gqlCtx: GqlCtx,
   collection: CollectionRow,
@@ -856,6 +910,18 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
       },
       resolve: async (_src, rawArgs, gqlCtx) =>
         batchResolver(gqlCtx, c, rawArgs as { operations: unknown; atomic?: boolean }),
+    };
+
+    // Bulk-update — one shared `data` patch applied to a list of `keys` (ids).
+    // Partial-success; mirrors REST `…/bulk-update`.
+    mutationFields[`bulkUpdate${Pascal}`] = {
+      type: new GraphQLNonNull(BulkUpdateResultType),
+      args: {
+        keys: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
+        data: { type: new GraphQLNonNull(JSONScalar) },
+      },
+      resolve: async (_src, rawArgs, gqlCtx) =>
+        bulkUpdateResolver(gqlCtx, c, rawArgs as { keys: unknown; data: unknown }),
     };
   }
 

@@ -1,5 +1,5 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { and, count, desc, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, isNull, lt, sql, type SQL } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
@@ -115,7 +115,12 @@ export const storageRoutes = new OpenAPIHono<AppBindings>()
       // `tenants/<tid>/` physical prefix was introduced) would otherwise
       // never show up in the list.
       if (prefix) {
-        conds.push(sql`${sql.identifier("key")} LIKE ${`${physicalPrefix}%`}`);
+        // Prefix match as an index-friendly range scan rather than `key LIKE
+        // 'prefix%'`. D1's SQLite rejects a bound LIKE pattern with "LIKE or
+        // GLOB pattern too complex" (and the range form also hits the index
+        // instead of a full scan). The upper sentinel is the prefix with a
+        // code point above any byte a normal key contains.
+        conds.push(gte(t.key, physicalPrefix), lt(t.key, `${physicalPrefix}\u{10FFFF}`));
       }
       if (folderId === "__root__") conds.push(isNull(t.folderId));
       else if (folderId) conds.push(eq(t.folderId, folderId));

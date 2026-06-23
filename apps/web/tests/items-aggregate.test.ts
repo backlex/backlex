@@ -141,3 +141,54 @@ describe("Ask AI dry-run — collections.aggregate", () => {
     expect(err).toContain("VALIDATION");
   });
 });
+
+/**
+ * Versioned collections expose a managed `_status` lifecycle column that isn't
+ * in `fields`. Grouping a count by `_status` (draft vs published) is a textbook
+ * CMS dashboard query, so the aggregate engine must treat it as a known column
+ * on versioned collections — and keep rejecting it on non-versioned ones so a
+ * typo still gets a friendly error.
+ */
+describe("items aggregate — versioned `_status`", () => {
+  let h: TestHarness;
+  const slug = `aggv_${Date.now()}`;
+
+  beforeAll(async () => {
+    h = makeHarness();
+    await seedAdmin(h);
+    const json = (path: string, body: unknown) =>
+      h.fetch(path, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    await json("/api/collections", {
+      slug,
+      versioned: true,
+      fields: [{ name: "title", type: "text", required: true }],
+    });
+    // Three drafts; publish one so the group counts differ.
+    const ids: string[] = [];
+    for (const title of ["a", "b", "c"]) {
+      const res = await json(`/api/items/${slug}`, { title });
+      ids.push(((await res.json()) as { data: { id: string } }).data.id);
+    }
+    await json(`/api/items/${slug}/${ids[0]}/publish`, {});
+  });
+  afterAll(() => h.cleanup());
+
+  test("count grouped by `_status` returns draft + published groups", async () => {
+    const res = await h.fetch(`/api/items/${slug}/aggregate`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ agg: "count", groupBy: "_status" }),
+    });
+    expect(res.status).toBe(200);
+    const rows = (res.json ? await res.json() : { data: [] }) as {
+      data: Array<{ label: string; value: unknown }>;
+    };
+    const byLabel = Object.fromEntries(rows.data.map((r) => [r.label, Number(r.value)]));
+    expect(byLabel.published).toBe(1);
+    expect(byLabel.draft).toBe(2);
+  });
+});

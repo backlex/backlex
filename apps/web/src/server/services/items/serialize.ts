@@ -45,7 +45,19 @@ export const deserialize = (
 ): unknown => {
   if (value === null || value === undefined) return value;
   if (dialect === "sqlite") {
-    if (type === "json" || type === "relation_many" || type === "i18n_text") {
+    if (type === "i18n_text") {
+      // A column converted from plain `text` to `i18n_text` may still hold bare
+      // (non-JSON) legacy strings. Be forgiving — return the raw string rather
+      // than 500-ing the whole list; `localizeRow` passes a non-object through
+      // unchanged, so it still renders.
+      if (typeof value !== "string") return value;
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    }
+    if (type === "json" || type === "relation_many") {
       return typeof value === "string" ? JSON.parse(value) : value;
     }
     if (type === "boolean") return Boolean(value);

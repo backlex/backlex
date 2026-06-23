@@ -33,6 +33,7 @@ import {
   metricsApi,
   notificationsApi,
   rolesApi,
+  settingsApi,
   sharedLinksApi,
   tenantsApi,
 } from "./api";
@@ -48,6 +49,7 @@ export const queryKeys = {
   metricsOverview: (range: string) => ["metrics", "overview", range] as const,
   roles: () => ["roles"] as const,
   me: () => ["me"] as const,
+  settings: () => ["settings"] as const,
   notifications: () => ["notifications"] as const,
   notificationsList: () => ["notifications", "list"] as const,
   notificationsUnread: () => ["notifications", "unread-count"] as const,
@@ -123,6 +125,17 @@ export function useRoles() {
   return useQuery({
     queryKey: queryKeys.roles(),
     queryFn: () => rolesApi.list(),
+  });
+}
+
+/** Workspace settings (`/api/admin/settings`) — includes `i18nLocales` /
+ *  `i18nDefaultLocale`, which the item editor reads to render one input per
+ *  language for `i18n_text` fields. Cached generously; languages rarely change. */
+export function useSettings() {
+  return useQuery({
+    queryKey: queryKeys.settings(),
+    queryFn: () => settingsApi.load(),
+    staleTime: 5 * 60 * 1000,
   });
 }
 

@@ -80,6 +80,15 @@ export const runItemsAggregate = async (
   const tenantScoped = (cRow.tenantScoped ?? cRow.tenant_scoped ?? true) ? true : false;
   const fieldByName = new Map(fields.map((f) => [f.name, f]));
   const systemColumns = new Set(["id", "owner_id", "created_at", "updated_at"]);
+  // Versioned and soft-delete collections carry managed lifecycle columns that
+  // are absent from `fields` but are real, aggregatable columns — counting rows
+  // grouped by `_status` (draft vs published) is a textbook dashboard query. Add
+  // them only when the collection actually has them, so a non-versioned
+  // collection still gets the friendly "not in collection" error.
+  if (cRow.versioned ?? cRow.is_versioned) {
+    systemColumns.add("_status").add("_published_at").add("_publish_at");
+  }
+  if (cRow.softDelete ?? cRow.soft_delete) systemColumns.add("deleted_at");
   const isKnownColumn = (name: string) => fieldByName.has(name) || systemColumns.has(name);
   const allowed = opts.allowedFields;
   // Surface the real column names so a caller (or the AI planner's dry-run

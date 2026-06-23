@@ -45,6 +45,7 @@ import {
   type WriteEnv,
 } from "../services/items/write";
 import { runBatch, BATCH_MAX } from "../services/items/batch";
+import { runBulkUpdate, BULK_UPDATE_MAX } from "../services/items/bulk";
 import { toCsv, parseCsv } from "../services/items/csv";
 import { localizeRow, } from "../services/items/i18n";
 import {
@@ -226,6 +227,13 @@ const BatchInput = z
     atomic: z.boolean().optional(),
   })
   .openapi("BatchInput");
+
+const BulkUpdateInput = z
+  .object({
+    keys: z.array(z.string()).min(1).max(BULK_UPDATE_MAX),
+    data: z.record(z.string(), z.unknown()),
+  })
+  .openapi("BulkUpdateInput");
 
 export const itemsRoutes = new OpenAPIHono<AppBindings>()
   .openapi(
@@ -1946,6 +1954,51 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         collection,
         operations: body.operations,
         atomic: body.atomic === true,
+        meta: requestMeta(c.req.raw),
+        durationMs: () => elapsedMs(c),
+        locale: c.req.query("locale") ?? null,
+      });
+      return c.json({ data: result });
+    },
+  )
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/{slug}/bulk-update",
+      tags: TAGS,
+      summary: "Bulk-update items",
+      description:
+        "Apply ONE shared patch to a list of selected item ids. Only the named fields change on each row; everything else is left untouched. Partial-success: a key the caller can't write (row-scope / tenant filtered) is reported per-row and counted in `failed`, the rest still commit. The shared `data` is validated once up front (a bad payload is a single 422). `json` / `file` / `relation_many` / `i18n_text` fields are rejected for bulk — edit them per record. Up to " +
+        String(BULK_UPDATE_MAX) +
+        " keys per call.",
+      security: SECURITY,
+      middleware: [requirePermission(collectionFromParam, "update")],
+      request: {
+        params: z.object({ slug: z.string() }),
+        query: z.object({ locale: z.string().optional() }),
+        body: { required: true, content: { "application/json": { schema: BulkUpdateInput } } },
+      },
+      responses: {
+        200: {
+          description: "Bulk-update result",
+          content: { "application/json": { schema: z.object({ data: z.any() }) } },
+        },
+        ...errorResponses,
+      },
+    }),
+    async (c) => {
+      const ctx = c.get("ctx");
+      const auth = c.get("auth");
+      const perm = c.get("permission");
+      const collection = await loadCollection(ctx, auth.tenantId, c.req.param("slug"));
+      const body = c.req.valid("json");
+      const result = await runBulkUpdate({
+        ctx,
+        auth,
+        collection,
+        keys: body.keys,
+        data: body.data,
+        perm: { whereSql: perm.whereSql, fields: perm.fields },
         meta: requestMeta(c.req.raw),
         durationMs: () => elapsedMs(c),
         locale: c.req.query("locale") ?? null,

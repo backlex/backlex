@@ -347,8 +347,18 @@ msgstr "{0} gönderi silindi."
 
 #. placeholder {0}: selected.size
 #: src/client/admin/app.tsx
-msgid "{0} posts published."
-msgstr "{0} gönderi yayınlandı."
+#~ msgid "{0} posts published."
+#~ msgstr "{0} gönderi yayınlandı."
+
+#. placeholder {0}: okIds.size
+#: src/client/admin/app.tsx
+msgid "{0} published, {failed} failed."
+msgstr ""
+
+#. placeholder {0}: okIds.size
+#: src/client/admin/app.tsx
+msgid "{0} published."
+msgstr ""
 
 #. placeholder {0}: collections.reduce((a, c) => a + c.count, 0).toLocaleString()
 #: src/client/admin/collections-index.tsx
@@ -423,6 +433,17 @@ msgstr "{0} araç"
 msgid "{0} total · {1} editable · drag the grip to reorder"
 msgstr "{0} toplam · {1} düzenlenebilir · yeniden sıralamak için tutacağı sürükleyin"
 
+#. placeholder {0}: r.updated
+#. placeholder {1}: r.failed
+#: src/client/admin/app.tsx
+msgid "{0} updated, {1} skipped."
+msgstr ""
+
+#. placeholder {0}: r.updated
+#: src/client/admin/app.tsx
+msgid "{0} updated."
+msgstr ""
+
 #. placeholder {0}: (page - 1) * PER_PAGE + 1
 #. placeholder {1}: Math.min(page * PER_PAGE, total)
 #: src/client/admin/app.tsx
@@ -492,6 +513,10 @@ msgstr "{totalTools} aracın {allowlistSize} tanesi etkin."
 #: src/client/admin/pages/settings.tsx
 msgid "{c} is already in the list."
 msgstr "{c} zaten listede."
+
+#: src/client/admin/bulk-edit.tsx
+msgid "{changedCount} field(s) will change."
+msgstr ""
 
 #: src/client/admin/items.tsx
 msgid "{count} selected"
@@ -1242,6 +1267,7 @@ msgid "Apply to selection:"
 msgstr "Seçime uygula:"
 
 #: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/bulk-edit.tsx
 msgid "Applying…"
 msgstr "Uygulanıyor…"
 
@@ -1632,6 +1658,10 @@ msgstr "yerleşik"
 msgid "Built-in sign-in method."
 msgstr "Yerleşik giriş yöntemi."
 
+#: src/client/admin/bulk-edit.tsx
+msgid "Bulk edit {count} rows"
+msgstr ""
+
 #: src/client/admin/extras.tsx
 msgid "by"
 msgstr "tarafından"
@@ -1659,6 +1689,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/account-page.tsx
 #: src/client/admin/add-field.tsx
 #: src/client/admin/adopt-wizard.tsx
+#: src/client/admin/bulk-edit.tsx
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/edit-field.tsx
 #: src/client/admin/flow-builder.tsx
@@ -3054,6 +3085,10 @@ msgstr "{0} düzenle"
 #: src/client/admin/edit-field.tsx
 msgid "Edit <0>{0}</0> <1>{1}</1>"
 msgstr "<0>{0}</0> <1>{1}</1> düzenle"
+
+#: src/client/admin/bulk-edit.tsx
+msgid "Edit a field below to include it in the update."
+msgstr ""
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Edit args"
@@ -5405,6 +5440,10 @@ msgstr "Etkinlik kaydedilmedi."
 msgid "No API keys yet"
 msgstr "Henüz API anahtarı yok"
 
+#: src/client/admin/bulk-edit.tsx
+msgid "No bulk-editable fields on this collection."
+msgstr ""
+
 #: src/client/admin/pages/realtime.tsx
 msgid "No channels — create a collection to get one."
 msgstr "Kanal yok — bir tane almak için koleksiyon oluşturun."
@@ -5969,6 +6008,10 @@ msgstr "Yalnızca öz imzalı LDAPS için gereklidir; sistem güven deposu kamuy
 #: src/client/admin/parity/revisions.tsx
 msgid "Only the current state exists — no edits recorded yet."
 msgstr "Yalnızca mevcut durum var — henüz düzenleme kaydedilmedi."
+
+#: src/client/admin/bulk-edit.tsx
+msgid "Only the fields you change are written to all {count} selected rows in <0>c_{slug}</0>; everything else is left untouched."
+msgstr ""
 
 #: src/client/admin/parity/translations.tsx
 msgid "Only translate missing keys"
@@ -8890,6 +8933,10 @@ msgstr "Bu <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> işlemi geri alına
 msgid "this collection"
 msgstr "bu koleksiyon"
 
+#: src/client/admin/bulk-edit.tsx
+msgid "This collection has no fields that support bulk editing. Structured (json / file / relation list / localized) and rich-text fields are edited per record."
+msgstr ""
+
 #: src/client/admin/parity/database.tsx
 msgid "This database has no tables."
 msgstr "Bu veritabanında hiç tablo yok."
@@ -9305,6 +9352,10 @@ msgstr "E-postanızı onaylayana kadar giriş çalışmaz. Almadınız mı? Spam
 #: src/client/admin/parity/app-users.tsx
 msgid "unverified"
 msgstr "doğrulanmamış"
+
+#: src/client/admin/bulk-edit.tsx
+msgid "Update {count} rows"
+msgstr ""
 
 #: src/client/admin/account-page.tsx
 msgid "Update password"

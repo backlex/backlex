@@ -66,6 +66,19 @@ const res = await wks.storage.download("avatars/me.png");
 const blob = await res.blob();
 await wks.storage.list("avatars/");
 await wks.storage.delete("avatars/me.png");
+
+// Flows (visual workflows) — admin-scoped; mirrors `/api/flows`, the MCP
+// `flows.*` tools, and GraphQL `flows`/`runFlow`.
+const flow = await wks.flows.create({
+  name: "notify",
+  trigger: "manual:",
+  operations: [{ type: "log", message: "hi" }],
+});
+await wks.flows.list();
+await wks.flows.get(flow.data.id);
+await wks.flows.update(flow.data.id, { active: false });
+const run = await wks.flows.run(flow.data.id, { hello: "world" }); // { ok, error? }
+await wks.flows.delete(flow.data.id);
 ```
 
 ### Errors

@@ -131,6 +131,24 @@ export interface BatchResponse<T = Record<string, unknown>> {
   };
 }
 
+/** Per-key outcome inside a {@link BulkUpdateResponse}. */
+export interface BulkUpdateRowResult {
+  id: string;
+  ok: boolean;
+  error?: { code: string; message: string };
+}
+
+/** Response from a `bulkUpdate(keys, data)` call — one shared patch over many
+ *  ids, partial-success (a key the caller can't write is `NOT_FOUND`). */
+export interface BulkUpdateResponse {
+  data: {
+    total: number;
+    updated: number;
+    failed: number;
+    results: BulkUpdateRowResult[];
+  };
+}
+
 /** A registered push device (from `messaging.listDevices()`). */
 export interface DeviceToken {
   id: string;

@@ -39,6 +39,7 @@ type Mutation {
   update<Slug>(id: ID!, data: <Slug>Input!): <Slug>!
   delete<Slug>(id: ID!): Boolean!
   batch<Slug>(operations: [JSON!]!, atomic: Boolean): BatchResult!
+  bulkUpdate<Slug>(keys: [String!]!, data: JSON!): BulkUpdateResult!
 }
 
 type BatchResult {
@@ -47,6 +48,13 @@ type BatchResult {
   succeeded: Int!
   failed: Int!
   results: [JSON!]!   # { index, op, ok, id?, data?, error? } per operation
+}
+
+type BulkUpdateResult {
+  total: Int!
+  updated: Int!
+  failed: Int!
+  results: [JSON!]!   # { id, ok, error? } per key
 }
 ```
 
@@ -63,6 +71,18 @@ mutation Bulk($ops: [JSON!]!) {
 }
 # variables: { "ops": [ { "op": "create", "data": { "title": "A" } },
 #                       { "op": "delete", "id": "p2" } ] }
+```
+
+`bulkUpdate<Slug>` mirrors the REST `…/bulk-update` endpoint: one shared `data`
+patch applied to every id in `keys` (only the named fields change). It is
+partial-success — a key the caller can't write is reported `NOT_FOUND` in
+`failed`. See [Bulk-update a selection](/querying/#bulk-update-a-selection).
+
+```graphql
+mutation BulkSet($keys: [String!]!, $data: JSON!) {
+  bulkUpdatePosts(keys: $keys, data: $data) { total updated failed results }
+}
+# variables: { "keys": ["p1","p2","p3"], "data": { "status": "archived" } }
 ```
 
 The schema is rebuilt only when collection metadata changes (cache key

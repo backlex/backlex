@@ -280,6 +280,7 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         perm.fields,
         collection.defaultSort,
         isSearchable(collection),
+        collection.versioned,
       );
 
       // User-supplied filters and permission whereSql both reference system

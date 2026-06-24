@@ -310,6 +310,12 @@ export interface TemplateSummary {
   id: string;
   label: string;
   description: string;
+  /** Picker grouping (e.g. "Commerce", "Operations"). */
+  category: string;
+  /** Surfaced with a "Recommended" badge in the picker. */
+  recommended: boolean;
+  /** Total example rows seeded on apply across all the template's collections. */
+  sampleRows: number;
   collections: { slug: string; label: string; fieldCount: number }[];
 }
 export interface TemplateCatalog {
@@ -320,10 +326,17 @@ export interface TemplateCatalog {
 export const templatesApi = {
   list: () => api<TemplateCatalog>(`/api/admin/templates`),
   apply: (templateId: string) =>
-    api<{ data: { templateId: string; created: string[]; skipped: string[] } }>(
-      `/api/admin/templates/apply`,
-      { method: "POST", body: JSON.stringify({ templateId }) },
-    ),
+    api<{
+      data: {
+        templateId: string;
+        created: string[];
+        skipped: string[];
+        seeded: number;
+      };
+    }>(`/api/admin/templates/apply`, {
+      method: "POST",
+      body: JSON.stringify({ templateId }),
+    }),
 };
 
 export interface ItemsListResp<T = Record<string, unknown>> {

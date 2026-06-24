@@ -122,10 +122,12 @@ see [`../CAPABILITIES.md`](../CAPABILITIES.md).
 ## Bonus: react to new posts with a Flow (server-side automation)
 
 **Flows** are backlex's server-side automation engine — a *trigger* plus a list
-of *operations* that run on the server when the trigger fires. There's no SDK
-surface (you build them in the admin **Flows** page, or via `POST /api/flows`),
-so this app doesn't call them — but a flow's effect flows right back through the
-data the app reads. Here's one that fires whenever this blog creates a post.
+of *operations* that run on the server when the trigger fires. They're
+**admin-only**, so this end-user app doesn't call them — but a flow's effect
+flows right back through the data the app reads. You manage them from the admin
+**Flows** page, raw `POST /api/flows`, or — for an admin/server-side script —
+the SDK (`client.flows.create/run/list/...`) and GraphQL (`createFlow` /
+`runFlow`). Here's one that fires whenever this blog creates a post.
 
 Create it via the API (sign in as admin in the browser so the cookie is set):
 

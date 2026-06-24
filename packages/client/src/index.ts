@@ -376,6 +376,51 @@ export interface FlagsClient {
   isEnabled(key: string, opts?: { refresh?: boolean }): Promise<boolean>;
 }
 
+/** A visual workflow (flow) row. `operations` is the serialized op DSL the
+ *  builder compiles; `layout` is a purely-presentational graph snapshot. */
+export interface Flow {
+  id: string;
+  tenantId?: string | null;
+  name: string;
+  trigger: string;
+  operations: unknown[];
+  layout?: unknown;
+  active: boolean;
+}
+
+/** Create/update payload for a flow. `operations` must be non-empty on create;
+ *  `update` accepts any subset. */
+export interface FlowInput {
+  name: string;
+  trigger: string;
+  operations: unknown[];
+  layout?: unknown;
+  active?: boolean;
+}
+
+/** Outcome of a manual flow run. `ok: false` means the run halted on an
+ *  unhandled op error; `error` carries the first failure message. */
+export interface FlowRunResult {
+  ok: boolean;
+  error?: string;
+}
+
+/** Visual workflows (admin-scoped). Mirrors `/api/flows`. See `createClient`. */
+export interface FlowsClient {
+  /** List every flow in the active workspace. */
+  list(): Promise<{ data: Flow[] }>;
+  /** Fetch a single flow's full definition by id. */
+  get(id: string): Promise<{ data: Flow }>;
+  /** Create a flow scoped to the active workspace. */
+  create(input: FlowInput): Promise<{ data: Flow }>;
+  /** Partial update of a flow by id. */
+  update(id: string, patch: Partial<FlowInput>): Promise<{ ok: boolean }>;
+  /** Delete a flow by id. */
+  delete(id: string): Promise<{ ok: boolean }>;
+  /** Synchronously run a flow with an arbitrary `input` trigger payload. */
+  run(id: string, input?: Record<string, unknown>): Promise<FlowRunResult>;
+}
+
 /** The backlex client returned by `createClient` — data, auth, storage, realtime, and more. */
 export interface BacklexClient {
   /** Typed data API for one collection by slug. */
@@ -394,6 +439,8 @@ export interface BacklexClient {
   messaging: MessagingClient;
   /** Durable background job queue. */
   jobs: JobsClient;
+  /** Visual workflows (flows). */
+  flows: FlowsClient;
   /** Feature flags / remote config. */
   flags: FlagsClient;
   /** Offline-first sync controller for one collection. */
@@ -950,6 +997,27 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       request<{ ok: boolean }>("DELETE", `/api/jobs/${encodeURIComponent(id)}`),
   };
 
+  // Visual workflows. Admin-scoped CRUD over `/api/flows`; `run` triggers a
+  // synchronous execution with an arbitrary input payload.
+  const flows: FlowsClient = {
+    /** List every flow in the active workspace. */
+    list: () => request<{ data: Flow[] }>("GET", "/api/flows"),
+    /** Fetch a single flow's full definition by id. */
+    get: (id: string) =>
+      request<{ data: Flow }>("GET", `/api/flows/${encodeURIComponent(id)}`),
+    /** Create a flow scoped to the active workspace. */
+    create: (input: FlowInput) => request<{ data: Flow }>("POST", "/api/flows", input),
+    /** Partial update of a flow by id. */
+    update: (id: string, patch: Partial<FlowInput>) =>
+      request<{ ok: boolean }>("PATCH", `/api/flows/${encodeURIComponent(id)}`, patch),
+    /** Delete a flow by id. */
+    delete: (id: string) =>
+      request<{ ok: boolean }>("DELETE", `/api/flows/${encodeURIComponent(id)}`),
+    /** Run a flow synchronously with an arbitrary `input` trigger payload. */
+    run: (id: string, input?: Record<string, unknown>) =>
+      request<FlowRunResult>("POST", `/api/flows/${encodeURIComponent(id)}/run`, input ?? {}),
+  };
+
   // Feature flags / remote config, evaluated for the current caller (targeting
   // rules + rollout already applied server-side).
   let flagsCache: Record<string, FlagState> | null = null;
@@ -987,6 +1055,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     storage,
     messaging,
     jobs,
+    flows,
     flags,
     sync,
     /** Raw escape hatch — issues a request with auth headers applied. */

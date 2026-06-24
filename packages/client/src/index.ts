@@ -430,7 +430,11 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     extraHeaders?: Record<string, string>,
   ): Promise<T> => {
     const headers: Record<string, string> = {
-      "content-type": "application/json",
+      // Only advertise a JSON body when we actually send one. A bodyless POST
+      // (publish, unpublish, restore, fts-reindex, …) that still carried
+      // `content-type: application/json` made the server's body validator try to
+      // parse an empty body and fail with "Malformed JSON in request body".
+      ...(body !== undefined ? { "content-type": "application/json" } : {}),
       ...authHeader(),
       ...tenantHeader(),
       ...(extraHeaders ?? {}),

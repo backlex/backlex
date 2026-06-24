@@ -14,6 +14,7 @@ import { Textarea } from "@backlex/ui/components/textarea";
 import { Select } from "./select";
 import { DatePicker } from "@/components/date-picker";
 import { RelationPicker, FilePicker, MultiFilePicker } from "./relational-pickers";
+import { useSettings } from "./queries";
 
 export type SchemaField = {
   name: string;
@@ -61,6 +62,9 @@ const blankFor = (f: SchemaField): unknown => {
   switch (f.type) {
     case "boolean":
       return false;
+    // i18n_text holds a per-locale map `{ en, tr, … }`; start empty.
+    case "i18n_text":
+      return {};
     case "json":
       return "";
     case "integer":
@@ -174,6 +178,15 @@ export function useItemForm({
           } else base[f.name] = [];
         } else if (f.type === "json" && typeof v !== "string") {
           base[f.name] = JSON.stringify(v, null, 2);
+        } else if (f.type === "i18n_text") {
+          // Keep the per-locale map; wrap a bare legacy string (from a column
+          // converted text→i18n_text) under `en` so it stays editable.
+          base[f.name] =
+            v && typeof v === "object" && !Array.isArray(v)
+              ? v
+              : typeof v === "string" && v
+                ? { en: v }
+                : {};
         } else {
           base[f.name] = v;
         }
@@ -259,6 +272,17 @@ export function useItemForm({
           payload[f.name] = raw;
         }
         // Empty JSON string: leave the field out so PATCH doesn't clobber.
+      } else if (f.type === "i18n_text") {
+        // Send the per-locale map, dropping empty languages so we don't store
+        // `{ tr: "" }`. The API accepts the object form for i18n_text.
+        const map = raw && typeof raw === "object" && !Array.isArray(raw)
+          ? (raw as Record<string, unknown>)
+          : {};
+        const out: Record<string, string> = {};
+        for (const [loc, v] of Object.entries(map)) {
+          if (typeof v === "string" && v.trim()) out[loc] = v;
+        }
+        payload[f.name] = out;
       } else if (f.type === "integer" || f.type === "number") {
         if (raw === "" || raw === null) continue;
         const n = Number(raw);
@@ -296,6 +320,14 @@ export function ItemFields({ form }: { form: ItemForm }) {
   const { t } = useLingui();
   const { fields, draft, errors, touched } = form;
   const [previews, setPreviews] = useState<Record<string, boolean>>({});
+
+  // Workspace languages drive the per-locale inputs for `i18n_text` fields.
+  // Falls back to `["en"]` until settings load (or if none are configured).
+  const settings = useSettings();
+  const i18nLocales = useMemo<string[]>(() => {
+    const raw = (settings.data?.data as Record<string, unknown> | undefined)?.i18nLocales;
+    return Array.isArray(raw) && raw.length ? (raw as string[]) : ["en"];
+  }, [settings.data]);
 
   const renderField = (f: SchemaField): ReactNode => {
     const val = draft[f.name];
@@ -1039,6 +1071,40 @@ export function ItemFields({ form }: { form: ItemForm }) {
             onChange={(e) => setField(e.target.value)}
             autoComplete="off"
           />
+          {errBlock}
+        </div>
+      );
+    }
+
+    // ── Translatable text (i18n_text) — one input per workspace language ──
+    if (f.type === "i18n_text") {
+      const map =
+        val && typeof val === "object" && !Array.isArray(val)
+          ? (val as Record<string, string>)
+          : {};
+      // Configured languages first, then any extra locales already on the row
+      // (so existing data is never hidden).
+      const locales = [
+        ...i18nLocales,
+        ...Object.keys(map).filter((l) => !i18nLocales.includes(l)),
+      ];
+      return (
+        <div key={f.name} className="flex flex-col gap-1.5">
+          {label}
+          <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-2.5">
+            {locales.map((loc) => (
+              <div key={loc} className="flex items-center gap-2">
+                <Badge variant="outline" mono className="min-w-12 justify-center uppercase">
+                  {loc}
+                </Badge>
+                <Input
+                  value={map[loc] ?? ""}
+                  aria-invalid={!!err || undefined}
+                  onChange={(e) => setField({ ...map, [loc]: e.target.value })}
+                />
+              </div>
+            ))}
+          </div>
           {errBlock}
         </div>
       );

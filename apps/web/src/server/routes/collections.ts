@@ -42,6 +42,11 @@ const FieldSchema = z
       "uuid",
       "relation",
       "relation_many",
+      // Localized text — JSON `{en, tr, …}` collapsed by `?locale=xx` on read.
+      // Storage + read/write handling already exist (schema-applier maps it to
+      // TEXT/jsonb; items.ts localizes/merges); this enum just lets a collection
+      // declare the field. Keep in sync with `FieldType` in @backlex/db.
+      "i18n_text",
     ]),
     required: z.boolean().optional(),
     unique: z.boolean().optional(),

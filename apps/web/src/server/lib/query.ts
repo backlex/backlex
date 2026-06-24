@@ -43,6 +43,11 @@ export interface ParsedQuery {
 }
 
 const SYSTEM_COLUMNS = new Set(["id", "created_at", "updated_at"]);
+/** Extra system columns present only on versioned collections. Sortable /
+ *  filterable so a CMS can order by publish date (`-_published_at`) and filter
+ *  by `_status`. Gated on the collection actually being versioned — referencing
+ *  them on a plain table would compile to SQL against a missing column. */
+const VERSIONED_COLUMNS = ["_status", "_published_at", "_publish_at"];
 
 const buildValidColumns = (
   fields: FieldDef[],
@@ -139,12 +144,22 @@ export const parseQuery = (
    *  surfaced as `parsed.search` (keyword ranking) instead of being expanded
    *  into substring `_contains` clauses on the filter. */
   ftsActive: boolean = false,
+  /** When true, the collection has the versioned system columns
+   *  (`_status` / `_published_at` / `_publish_at`) — they become sortable and
+   *  filterable. */
+  versioned: boolean = false,
 ): ParsedQuery => {
   const valid = buildValidColumns(fields, ownerScoped);
   // Permission allow-list narrows what user fields can be filtered/sorted/projected.
   // System columns are always allowed.
   const allowedForUser = new Set<string>(SYSTEM_COLUMNS);
   if (ownerScoped) allowedForUser.add("owner_id");
+  if (versioned) {
+    for (const col of VERSIONED_COLUMNS) {
+      valid.add(col);
+      allowedForUser.add(col);
+    }
+  }
   for (const f of fields) {
     if (!permissionFields || permissionFields.has(f.name)) {
       allowedForUser.add(f.name);

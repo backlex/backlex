@@ -321,6 +321,8 @@ const buildOrderClause = (
     collection.pkColumn,
     ...(collection.hasCreatedAt ? ["created_at"] : []),
     ...(collection.hasUpdatedAt ? ["updated_at"] : []),
+    // Versioned collections can order by publish date / status (REST parity).
+    ...(collection.versioned ? ["_status", "_published_at", "_publish_at"] : []),
     ...collection.fields.map((f) => f.name),
   ]);
   const parts = sortStr

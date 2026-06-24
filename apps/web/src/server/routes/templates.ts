@@ -45,7 +45,11 @@ export const templatesRoutes = new Hono<AppBindings>()
       action: "create",
       collection: "system_collections",
       itemId: `template:${templateId}`,
-      payload: { created: result.created.length, skipped: result.skipped.length },
+      payload: {
+        created: result.created.length,
+        skipped: result.skipped.length,
+        seeded: result.seeded,
+      },
       response: { data: result },
     });
     return c.json({ data: result }, 201);

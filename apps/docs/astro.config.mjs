@@ -94,6 +94,7 @@ export default defineConfig({
             { slug: "push-messaging" },
             { slug: "sms-messaging" },
             { slug: "jobs" },
+            { slug: "flows" },
             { slug: "feature-flags" },
             { slug: "backup-restore" },
             { slug: "advisor" },

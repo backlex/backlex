@@ -221,6 +221,11 @@ msgstr "{0} active · {1} invited"
 msgid "{0} all · {1} custom · {2} none"
 msgstr "{0} all · {1} custom · {2} none"
 
+#. placeholder {0}: tpl.collections.length
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "{0} collections"
+msgstr "{0} collections"
+
 #. placeholder {0}: nodes.length
 #. placeholder {1}: edges.length
 #: src/client/admin/pages/schema-graph.tsx
@@ -2286,6 +2291,10 @@ msgstr "Copying snippet"
 msgid "corp.example.com, contractor.example.com"
 msgstr "corp.example.com, contractor.example.com"
 
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Could not apply template"
+msgstr "Could not apply template"
+
 #: src/client/admin/pages/logs.tsx
 msgid "Could not copy entry id."
 msgstr "Could not copy entry id."
@@ -2465,6 +2474,16 @@ msgstr "Created"
 #: src/client/pages/api-keys.tsx
 msgid "created {0}"
 msgstr "created {0}"
+
+#. placeholder {0}: created.length
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Created {0} collections"
+msgstr "Created {0} collections"
+
+#. placeholder {0}: created.length
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Created {0} collections with {seeded} sample rows"
+msgstr "Created {0} collections with {seeded} sample rows"
 
 #: src/client/pages/invite.tsx
 #: src/client/pages/sign-up.tsx
@@ -3213,6 +3232,10 @@ msgstr "email-only, no password"
 #: src/client/admin/pages/users.tsx
 msgid "Emails a one-time link valid for 30 minutes."
 msgstr "Emails a one-time link valid for 30 minutes."
+
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Empty"
+msgstr "Empty"
 
 #: src/client/admin/collections-index.tsx
 msgid "Empty or template"
@@ -4224,6 +4247,11 @@ msgstr "inactive"
 #: src/client/admin/adopt-wizard.tsx
 msgid "Include"
 msgstr "Include"
+
+#. placeholder {0}: current.sampleRows
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Includes {0} sample rows to explore"
+msgstr "Includes {0} sample rows to explore"
 
 #: src/client/admin/condition-editor.tsx
 msgid "Incoming data must match this rule before insert/update succeeds. Failures return <0>422 invalid_payload</0>."
@@ -5792,6 +5820,10 @@ msgstr "No tables yet."
 msgid "No tags yet."
 msgstr "No tags yet."
 
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "No templates match your search."
+msgstr "No templates match your search."
+
 #: src/client/admin/parity/email-templates.tsx
 msgid "No templates yet — use \"New template\" to add one."
 msgstr "No templates yet — use \"New template\" to add one."
@@ -6952,6 +6984,10 @@ msgstr "Recipient (userId)"
 msgid "recommended"
 msgstr "recommended"
 
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Recommended"
+msgstr "Recommended"
+
 #: src/client/admin/collection-settings.tsx
 msgid "Record every read of this collection (list + by-id) to the audit log under the <0>Access</0> lens — a \"who viewed this\" trail for sensitive data. Off by default; reads are otherwise not logged. Only request metadata is stored (who, when, query, item ids) — never row values."
 msgstr "Record every read of this collection (list + by-id) to the audit log under the <0>Access</0> lens — a \"who viewed this\" trail for sensitive data. Off by default; reads are otherwise not logged. Only request metadata is stored (who, when, query, item ids) — never row values."
@@ -7866,6 +7902,10 @@ msgstr "Search members…"
 msgid "Search steps…"
 msgstr "Search steps…"
 
+#: src/client/admin/pages/template-onboarding.tsx
+msgid "Search templates…"
+msgstr "Search templates…"
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Searchable"
@@ -7885,8 +7925,12 @@ msgid "Security"
 msgstr "Security"
 
 #: src/client/admin/pages/template-onboarding.tsx
-msgid "Seed a ready-made set of collections for your use case. You can edit or add more anytime."
-msgstr "Seed a ready-made set of collections for your use case. You can edit or add more anytime."
+msgid "Seed a ready-made set of collections — with sample data — for your use case. You can edit or add more anytime."
+msgstr "Seed a ready-made set of collections — with sample data — for your use case. You can edit or add more anytime."
+
+#: src/client/admin/pages/template-onboarding.tsx
+#~ msgid "Seed a ready-made set of collections for your use case. You can edit or add more anytime."
+#~ msgstr "Seed a ready-made set of collections for your use case. You can edit or add more anytime."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Select"

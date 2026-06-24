@@ -138,7 +138,43 @@ export interface FieldDef {
    * Only meaningful for `text` / `longtext` types — ignored otherwise.
    */
   searchable?: boolean;
+  /**
+   * Column-level default applied at the DB layer (`DEFAULT` in the DDL), so an
+   * insert that omits the field falls back to it. Only honoured for scalar
+   * types (`text` / `longtext` / `integer` / `number` / `boolean`); ignored for
+   * `computed` columns (a generated column can't also carry a default) and for
+   * relation/file/json/timestamp types (kept to literal scalars to avoid
+   * dialect-specific expression syntax).
+   */
+  default?: string | number | boolean;
+  /**
+   * Human display name for the field in the admin editor. UI only — the storage
+   * column is still keyed by `name`; falls back to `name` when unset.
+   */
+  label?: string;
+  /** Inline help text shown beneath the field in the admin editor. UI only. */
+  description?: string;
 }
+
+/** Field types that accept a literal column `DEFAULT`. */
+const DEFAULTABLE: Set<FieldType> = new Set([
+  "text",
+  "longtext",
+  "integer",
+  "number",
+  "boolean",
+]);
+
+/** Render a scalar default as a SQL literal for the given dialect. Booleans are
+ *  `true`/`false` on PG and `1`/`0` on SQLite; numbers inline; strings quoted
+ *  with `'` doubled. */
+const defaultLiteral = (value: string | number | boolean, dialect: Dialect): string => {
+  if (typeof value === "boolean") {
+    return dialect === "pg" ? String(value) : value ? "1" : "0";
+  }
+  if (typeof value === "number") return String(value);
+  return `'${String(value).replace(/'/g, "''")}'`;
+};
 
 const PG_TYPES: Record<FieldType, string> = {
   text: "varchar(255)",
@@ -344,6 +380,13 @@ export const columnDefSql = (field: FieldDef, dialect: Dialect): string => {
     // is opaque to the validator — admins should test it before saving.
     parts.push(`GENERATED ALWAYS AS (${field.computed.formula}) STORED`);
     return parts.join(" ");
+  }
+  if (
+    field.default !== undefined &&
+    field.default !== null &&
+    DEFAULTABLE.has(field.type)
+  ) {
+    parts.push(`DEFAULT ${defaultLiteral(field.default, dialect)}`);
   }
   if (field.required) parts.push("NOT NULL");
   if (field.unique) parts.push("UNIQUE");

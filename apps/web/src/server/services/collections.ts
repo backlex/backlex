@@ -21,6 +21,8 @@ export interface ManagedCollectionDef {
   versioned?: boolean;
   vectorize?: boolean;
   vectorizeModel?: string | null;
+  /** Enable keyword full-text search — pairs with `searchable` fields. */
+  fts?: boolean;
   defaultSort?: string | null;
 }
 
@@ -71,6 +73,7 @@ export async function createManagedCollection(
     versioned: def.versioned ?? false,
     vectorize: def.vectorize ?? false,
     vectorizeModel: def.vectorizeModel ?? null,
+    fts: def.fts ?? false,
     defaultSort: def.defaultSort ?? null,
     adopted: false,
     pkColumn: "id",
@@ -84,6 +87,7 @@ export async function createManagedCollection(
     ownerScoped: def.ownerScoped ?? false,
     tenantScoped,
     versioned: def.versioned ?? false,
+    fts: def.fts ?? false,
     adopted: false,
   });
 

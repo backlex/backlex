@@ -64,6 +64,9 @@ guides; this list is everything else.
 - **Flows** (`routes/flows.ts`, `services/flows.ts`) — visual
   workflow builder. Trigger keys are `event` / `cron` / `webhook` /
   `manual`; operations are a serialized DSL evaluated server-side.
+  Admin-scoped CRUD + run is mirrored across REST, the SDK
+  (`client.flows.*`), GraphQL (`runFlow` et al.), MCP (`flows.*`), and the
+  CLI. See `docs/flows.md`.
 - **Functions** (`routes/functions.ts`, `services/functions.ts`,
   `services/sandbox/*`, `routes/sandbox-rpc.ts`) — sandboxed JS
   execution. Provider picked by runtime: QuickJS on Workers, Bun

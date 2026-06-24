@@ -93,6 +93,8 @@ resource instead of composing a separate `resources/read`.
 | `schema.create_collection` | Create a managed or adopted collection from a field list. |
 | `schema.update_collection` | Patch a collection's metadata or field list (additive only). |
 | `schema.drop_collection` | Delete managed collections (destructive) or archive adopted ones. |
+| `templates.list` | List the schema-template catalog (blog, ecommerce, crm, …) with category, recommended flag and sample-row counts. |
+| `templates.apply` | Seed a vertical template's collections + sample data into the workspace (idempotent; admin). |
 
 ### Collections (data)
 

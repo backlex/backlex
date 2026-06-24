@@ -19,7 +19,8 @@ export type StorageType =
   | "timestamp"
   | "uuid"
   | "relation"
-  | "relation_many";
+  | "relation_many"
+  | "i18n_text";
 
 export type InterfaceGroup =
   | "Text & Numbers"
@@ -61,6 +62,7 @@ export const FIELD_INTERFACES: FieldInterfaceDef[] = [
   { id: "markdown", label: "Markdown", sub: "Formatted text, stored as Markdown", group: "Text & Numbers", icon: "Braces", type: "longtext", keywords: ["md", "richtext"] },
   { id: "richtext", label: "Rich Text (WYSIWYG)", sub: "Formatted text, stored as HTML", group: "Text & Numbers", icon: "Eye", type: "longtext", keywords: ["wysiwyg", "html", "editor"] },
   { id: "code", label: "Code", sub: "Syntax-highlighted source / JSON string", group: "Text & Numbers", icon: "Code", type: "longtext", keywords: ["snippet", "monaco"] },
+  { id: "translations", label: "Translatable Text", sub: "Localized text — one value per language", group: "Text & Numbers", icon: "Globe", type: "i18n_text", keywords: ["i18n", "locale", "language", "multilingual", "translation"] },
   { id: "integer", label: "Integer", sub: "Whole number", group: "Text & Numbers", icon: "Hash", type: "integer", keywords: ["int", "count"] },
   { id: "decimal", label: "Decimal", sub: "Floating-point number", group: "Text & Numbers", icon: "Hash", type: "number", keywords: ["float", "money", "price"] },
   { id: "slider", label: "Slider", sub: "Number picked on a track", group: "Text & Numbers", icon: "Sliders", type: "number", keywords: ["range"] },

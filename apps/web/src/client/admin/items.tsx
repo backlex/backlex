@@ -97,6 +97,18 @@ export function fmtDate(iso: string | null | undefined) {
   return d.toISOString().slice(0, 10);
 }
 
+/** Coerce a cell value to a display string. `i18n_text` fields arrive as a
+ *  `{ en, tr }` map when the list isn't locale-collapsed — show one language
+ *  (English first, else the first set locale) instead of "[object Object]". */
+function cellText(v: unknown): string {
+  if (v && typeof v === "object" && !Array.isArray(v)) {
+    const m = v as Record<string, unknown>;
+    const pick = m.en ?? Object.values(m).find((x) => x != null);
+    return pick != null ? String(pick) : "";
+  }
+  return String(v ?? "");
+}
+
 export function evaluateFilter(row: Record<string, unknown>, filter: Record<string, Record<string, unknown>>) {
   if (!filter || Object.keys(filter).length === 0) return true;
   for (const [k, v] of Object.entries(filter)) {
@@ -469,7 +481,7 @@ export function ItemsTable({ rows, selected, setSelected, sort, setSort, onEdit,
               </TableCell>
               <TableCell>
                 <div className="flex flex-col">
-                  <span className="font-medium text-foreground">{String(displayTitle)}</span>
+                  <span className="font-medium text-foreground">{cellText(displayTitle)}</span>
                   {displaySlug && <span className="font-mono text-[11px] text-muted-foreground">/{String(displaySlug).slice(0, 24)}</span>}
                 </div>
               </TableCell>

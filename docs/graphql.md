@@ -88,6 +88,59 @@ mutation BulkSet($keys: [String!]!, $data: JSON!) {
 The schema is rebuilt only when collection metadata changes (cache key
 is a hash of all collection definitions).
 
+## Flows
+
+Visual workflows ([flows](/flows/)) are exposed as **static** query/mutation
+fields — they don't vary with collection schema, so they're present on every
+workspace's schema (even one with zero collections). The surface mirrors REST
+`/api/flows` and the MCP `flows.*` tools one-to-one, and is **admin-only**: a
+non-admin caller gets a `FORBIDDEN` error rather than a silent empty list.
+
+```graphql
+type Flow {
+  id: ID!
+  tenantId: String
+  name: String!
+  trigger: String!
+  operations: JSON!   # serialized op DSL
+  layout: JSON        # presentational builder graph
+  active: Boolean!
+}
+
+input FlowInput {
+  name: String
+  trigger: String
+  operations: JSON
+  layout: JSON
+  active: Boolean
+}
+
+type FlowRunResult { ok: Boolean!  error: String }
+
+type Query {
+  flows: [Flow!]!
+  flow(id: ID!): Flow
+}
+
+type Mutation {
+  createFlow(data: FlowInput!): Flow      # operations must be non-empty
+  updateFlow(id: ID!, data: FlowInput!): Flow
+  deleteFlow(id: ID!): Boolean!
+  runFlow(id: ID!, input: JSON): FlowRunResult!   # synchronous manual trigger
+}
+```
+
+`runFlow` mirrors REST `…/{id}/run`: `input` is passed as the flow's trigger
+payload and the run is executed synchronously. A paused (`active: false`) flow
+returns `{ ok: false, error: "flow is paused" }`.
+
+```graphql
+mutation Run($id: ID!, $input: JSON) {
+  runFlow(id: $id, input: $input) { ok error }
+}
+# variables: { "id": "flw_…", "input": { "hello": "world" } }
+```
+
 ## Draft / published
 
 For [versioned collections](/draft-publish/) GraphQL applies the same

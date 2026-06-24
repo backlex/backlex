@@ -20,6 +20,10 @@ export type SchemaField = {
   name: string;
   type?: string;
   interface?: string;
+  /** Human display name shown in the editor; falls back to `name`. */
+  label?: string;
+  /** Inline help text rendered beneath the field. */
+  description?: string;
   required?: boolean;
   nullable?: boolean;
   unique?: boolean;
@@ -351,23 +355,30 @@ export function ItemFields({ form }: { form: ItemForm }) {
     const previewable = !!iface && PREVIEWABLE.has(iface);
     const showPreview = previewable && !!previews[f.name];
     const label = (
-      <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
-        {f.name}{" "}
-        <Badge variant="outline" mono>
-          {typeLabel}
-        </Badge>{" "}
-        {reqMark}
-        {previewable && (
-          <button
-            type="button"
-            onClick={() => setPreviews((p) => ({ ...p, [f.name]: !p[f.name] }))}
-            className="ml-auto inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
-          >
-            <I.Eye size={11} />
-            {showPreview ? <Trans>Edit</Trans> : <Trans>Preview</Trans>}
-          </button>
-        )}
-      </label>
+      <>
+        <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground">
+          {f.label ?? f.name}{" "}
+          <Badge variant="outline" mono>
+            {typeLabel}
+          </Badge>{" "}
+          {reqMark}
+          {previewable && (
+            <button
+              type="button"
+              onClick={() => setPreviews((p) => ({ ...p, [f.name]: !p[f.name] }))}
+              className="ml-auto inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              <I.Eye size={11} />
+              {showPreview ? <Trans>Edit</Trans> : <Trans>Preview</Trans>}
+            </button>
+          )}
+        </label>
+        {f.description ? (
+          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+            {f.description}
+          </p>
+        ) : null}
+      </>
     );
 
     // ── Selection: choice-bound interfaces ────────────────────────────────

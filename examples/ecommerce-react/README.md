@@ -7,7 +7,7 @@ A small storefront that shows the catalog + commerce side of backlex:
    persisted to `localStorage` and replayed as a bearer.
 2. **Storage uploads** — a seller adds products with a photo; the file is
    uploaded with `backlex.storage.put(key, file, type)` and the returned object
-   key is stored on the product's `image_key`. Images render via
+   key is stored on the product's `featured_image`. Images render via
    `backlex.storage.download(key)` → an object URL.
 3. **Fluent query builder** — the grid loads with
    `products.query().where(...).orderBy(...).limit().withMeta().list()`, with a
@@ -20,6 +20,13 @@ A small storefront that shows the catalog + commerce side of backlex:
    line in a single `orderItems.createMany([...])` call (one `/batch` request).
 6. **Realtime** — `client.subscribe("items:products", …)` keeps the grid live as
    new products are added.
+7. **Draft → publish** — `products` is a versioned collection, so a freshly
+   created product starts as a draft; the composer calls `products.publish(id)`
+   to make it live in the storefront.
+
+It runs against a subset of the built-in **E-commerce template** (`products`,
+`categories`, `orders`, `order_items`) — no manual schema setup, just apply the
+template (step 2).
 
 Dependency-light: React 19 + Vite + Tailwind, and `backlex`. In dev the app
 talks to the API **same-origin** through a Vite proxy (`vite.config.ts`) — no
@@ -38,7 +45,7 @@ First run? Create the admin account and sign in — see the repo `CLAUDE.md`
 ("Local test admin") or `docs/getting-started.md`. File storage works out of the
 box in local dev (the default storage adapter), so uploads need no extra setup.
 
-## 2. Create a workspace + the collections
+## 2. Create a workspace + apply the E-commerce template
 
 In the admin UI (`http://localhost:5173`):
 
@@ -46,21 +53,24 @@ In the admin UI (`http://localhost:5173`):
    `.env` below. (Background: [`docs/auth-planes.md`](../../docs/auth-planes.md).)
 2. **Enable open signup** for the workspace so the app can self-register users
    (Workspace → Auth → policy), or pre-create an app-user.
-3. **Collections → New collection** named `products`:
-   - **Owner-scoped: on** — auto-adds `owner_id` and seeds owner-scoped
-     read/create/update/delete for the `authenticated` role, so each seller only
-     manages their own catalog. (See [`docs/permissions.md`](../../docs/permissions.md).)
-   - Fields: `name` (**text**, required), `price` (**number / integer**,
-     required — stored in **cents**), `stock` (**number**), `category` (**text**),
-     `description` (**text**, long), `image_key` (**text** — the storage object
-     key of the photo). (`created_at` is added automatically.)
-4. **Collections → New collection** named `orders` (order headers):
-   - **Owner-scoped: on**.
-   - Fields: `total` (**number / integer**, in cents), `status` (**text**).
-5. **Collections → New collection** named `order_items` (order lines):
-   - **Owner-scoped: on**.
-   - Fields: `order_id` (**text**), `product_id` (**text**), `name` (**text**),
-     `unit_price` (**number / integer**, in cents), `qty` (**number**).
+3. **Apply the E-commerce template** — on a brand-new workspace the Overview
+   page shows a template picker; choose **E-commerce** (or it's seeded
+   automatically when the workspace is provisioned with that template). This
+   creates the full Shopify-grade schema, of which this example uses four
+   collections:
+   - `products` — `name`, `price` (**decimal dollars**, `min: 0`), `stock`,
+     `sku`, `status` (`draft`/`active`/`archived`), `category` (**relation →
+     categories**), `description`, `featured_image` (the storage object key of
+     the photo). Owner-scoped + versioned, so each seller manages — and
+     publishes — their own catalog.
+   - `categories` — `name`, `slug` (used to label + filter products).
+   - `orders` — order headers: `total`, `subtotal`, `status` (payment state),
+     `currency`, plus a separate `fulfillment_status`.
+   - `order_items` — order lines: `order`/`product` (**relations**), `title`,
+     `sku`, `unit_price`, `qty`, and a computed `line_total`.
+
+   (Prefer to build it by hand? Any subset of those fields works — the example
+   only reads/writes the columns listed in `src/backlex.ts`.)
 
 Storage needs no collection — it's a first-class capability. See
 [`docs/storage.md`](../../docs/storage.md).
@@ -88,7 +98,7 @@ realtime propagate new products.
 | `src/backlex.ts` | `createClient({ url, workspace, token })` + token persistence + the `products` / `orders` / `order_items` collection handles |
 | `src/App.tsx` (`AuthForm`) | `auth.signUp` / `auth.signIn` / `auth.getSession` / `auth.signOut` |
 | `src/App.tsx` (`Store`) | `query().where().orderBy().withMeta().list()`, `aggregate({ agg })`, `subscribe("items:products")` |
-| `src/App.tsx` (`ProductComposer`) | `storage.put(key, file, type)` then `products.create({ image_key })` |
+| `src/App.tsx` (`ProductComposer`) | `storage.put(key, file, type)` then `products.create({ featured_image })` → `products.publish(id)` |
 | `src/App.tsx` (`ProductImage`) | `storage.download(key)` → `URL.createObjectURL` |
 | `src/App.tsx` (`Store.checkout`) | `orders.create(...)` then `orderItems.createMany([...])` (batch write) |
 
@@ -97,8 +107,13 @@ see [`../CAPABILITIES.md`](../CAPABILITIES.md).
 
 ## Notes
 
-- **Money is cents.** Prices are stored as integers (cents) so arithmetic stays
-  exact; the UI converts to/from dollars at the edges via `formatPrice`.
+- **Money is dollars.** The template's `price` is a `decimal` field validated
+  `min: 0`, so prices are plain dollar numbers (e.g. `25` = $25.00); the UI just
+  formats them via `formatPrice`. (Prefer integer cents to avoid float drift?
+  Swap `price` to an `integer` column and scale at the edges.)
+- **`category` is a relation.** Products store a `categories` row id, so the app
+  loads the `categories` collection once and resolves ids → names for the filter
+  buttons and card labels.
 - **Image transforms.** `download()` + an object URL works on every runtime and
   needs no public URL. In production you'd instead point an `<img>` at a
   signed/public storage URL plus `?width=240&format=webp` to get a server-side

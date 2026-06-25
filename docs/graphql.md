@@ -141,6 +141,44 @@ mutation Run($id: ID!, $input: JSON) {
 # variables: { "id": "flw_…", "input": { "hello": "world" } }
 ```
 
+## Schema templates
+
+Like flows, the schema-template catalog is a **static, admin-only** surface
+present on every workspace schema. It mirrors REST `/api/admin/templates`, the
+MCP `templates.*` tools, and the SDK `client.templates.*` namespace. `templates`
+lists the catalog; `applyTemplate` seeds a vertical's collections **and** sample
+data into the active workspace (idempotent — collections that already exist are
+skipped, and `seeded` counts the example rows inserted).
+
+```graphql
+type TemplateCollectionSummary { slug: String!  label: String!  fieldCount: Int! }
+
+type TemplateSummary {
+  id: ID!
+  label: String!
+  description: String!
+  category: String!
+  recommended: Boolean!
+  sampleRows: Int!
+  collections: [TemplateCollectionSummary!]!
+}
+
+type ApplyTemplateResult {
+  templateId: String!
+  created: [String!]!   # collections materialized this call
+  skipped: [String!]!   # already existed
+  seeded: Int!          # sample rows inserted
+}
+
+type Query {
+  templates: [TemplateSummary!]!
+}
+
+type Mutation {
+  applyTemplate(templateId: String!): ApplyTemplateResult!   # unknown id → VALIDATION
+}
+```
+
 ## Draft / published
 
 For [versioned collections](/draft-publish/) GraphQL applies the same

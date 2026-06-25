@@ -1,6 +1,7 @@
 import type { McpTool } from "../types";
 import { schemaTools } from "./schema";
 import { schemaAdminTools } from "./schema-admin";
+import { templatesTools } from "./templates";
 import { collectionsTools } from "./collections";
 import { bulkTools } from "./bulk";
 import { itemsPublishTools } from "./items-publish";
@@ -41,6 +42,7 @@ import { aiTools } from "./ai";
 export const allTools: McpTool[] = [
   ...schemaTools,
   ...schemaAdminTools,
+  ...templatesTools,
   ...collectionsTools,
   ...bulkTools,
   ...itemsPublishTools,

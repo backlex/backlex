@@ -9,6 +9,7 @@ import { runBackup } from "../src/backup";
 import { runUsers, runRoles, runFlags, runSettings } from "../src/admin";
 import { runFunctions } from "../src/functions";
 import { runFlows } from "../src/flows";
+import { runTemplates } from "../src/templates";
 import { runWebhooks } from "../src/webhooks";
 import { runJobs } from "../src/jobs";
 import { runAdvisor } from "../src/advisor";
@@ -71,6 +72,9 @@ Usage:
 
   backlex flows <list|get|run|create|delete>
       Visual workflow builder (definitions as JSON).
+
+  backlex templates <list|apply>
+      Schema-template catalog. \`apply <id>\` seeds collections + sample data.
 
   backlex webhooks <list|create|test|deliveries|retry|resume|delete>
       Outbound webhooks + delivery ops. \`resume\` re-enables an auto-disabled hook.
@@ -174,6 +178,10 @@ const run = async () => {
     case "flows":
     case "flow":
       await runFlows(rest);
+      return;
+    case "templates":
+    case "template":
+      await runTemplates(rest);
       return;
     case "webhooks":
     case "webhook":

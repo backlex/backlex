@@ -421,6 +421,52 @@ export interface FlowsClient {
   run(id: string, input?: Record<string, unknown>): Promise<FlowRunResult>;
 }
 
+/** One collection inside a schema template (preview shape). */
+export interface TemplateCollectionSummary {
+  slug: string;
+  label: string;
+  fieldCount: number;
+}
+
+/** A schema-template catalog entry — a ready-made vertical collection set. */
+export interface TemplateSummary {
+  id: string;
+  label: string;
+  description: string;
+  category: string;
+  recommended: boolean;
+  /** Total example rows seeded on apply across the template's collections. */
+  sampleRows: number;
+  collections: TemplateCollectionSummary[];
+}
+
+/** Catalog response from `GET /api/admin/templates`. */
+export interface TemplateCatalog {
+  data: TemplateSummary[];
+  /** Cloud-preselected default (`SEED_TEMPLATE`), or `"blank"`. */
+  defaultTemplateId: string;
+  /** Whether the workspace already has managed collections. */
+  hasCollections: boolean;
+}
+
+/** Result of applying a template. Idempotent — `skipped` are collections that
+ *  already existed; `seeded` counts sample rows inserted. */
+export interface ApplyTemplateResult {
+  templateId: string;
+  created: string[];
+  skipped: string[];
+  seeded: number;
+}
+
+/** Schema templates (admin-scoped). Mirrors `/api/admin/templates`. */
+export interface TemplatesClient {
+  /** List the template catalog for the active workspace. */
+  list(): Promise<TemplateCatalog>;
+  /** Seed a template's collections (and sample data) into the active
+   *  workspace. Idempotent — existing collections are skipped. */
+  apply(templateId: string): Promise<{ data: ApplyTemplateResult }>;
+}
+
 /** The backlex client returned by `createClient` — data, auth, storage, realtime, and more. */
 export interface BacklexClient {
   /** Typed data API for one collection by slug. */
@@ -441,6 +487,8 @@ export interface BacklexClient {
   jobs: JobsClient;
   /** Visual workflows (flows). */
   flows: FlowsClient;
+  /** Schema templates (catalog + apply). */
+  templates: TemplatesClient;
   /** Feature flags / remote config. */
   flags: FlagsClient;
   /** Offline-first sync controller for one collection. */
@@ -1018,6 +1066,18 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       request<FlowRunResult>("POST", `/api/flows/${encodeURIComponent(id)}/run`, input ?? {}),
   };
 
+  // Schema templates. Admin-scoped catalog + apply over `/api/admin/templates`;
+  // `apply` is idempotent and seeds sample data for newly-created collections.
+  const templates: TemplatesClient = {
+    /** List the template catalog for the active workspace. */
+    list: () => request<TemplateCatalog>("GET", "/api/admin/templates"),
+    /** Seed a template's collections (and sample data) into the workspace. */
+    apply: (templateId: string) =>
+      request<{ data: ApplyTemplateResult }>("POST", "/api/admin/templates/apply", {
+        templateId,
+      }),
+  };
+
   // Feature flags / remote config, evaluated for the current caller (targeting
   // rules + rollout already applied server-side).
   let flagsCache: Record<string, FlagState> | null = null;
@@ -1056,6 +1116,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     messaging,
     jobs,
     flows,
+    templates,
     flags,
     sync,
     /** Raw escape hatch — issues a request with auth headers applied. */

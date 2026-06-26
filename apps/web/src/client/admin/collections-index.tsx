@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent, type IconKey } from "./icons";
 import type { CollectionListItem } from "./config";
-import { Badge, Button, IconButton, PageHeader, Switch } from "./ui";
+import { Badge, Button, EmptyState, IconButton, PageHeader, Switch } from "./ui";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@backlex/ui/components/input-group";
 import { Input } from "@backlex/ui/components/input";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
@@ -137,7 +137,45 @@ export function CollectionsIndex({ collections, onOpen, onNew, onDelete, showArc
         <Button size="sm" variant={view === "table" ? "outline" : "ghost"} icon={I.Inbox} onClick={() => setView("table")}><Trans>Table</Trans></Button>
       </div>
 
-      {view === "grid" ? (
+      {!loading && filtered.length === 0 ? (
+        // Empty state — a fresh workspace, an empty archive, or a search that
+        // matched nothing. Without this the grid/table body renders blank.
+        <EmptyState
+          icon={collections.length === 0 ? I.Database : I.Search}
+          title={
+            showArchived ? (
+              <Trans>No archived collections</Trans>
+            ) : collections.length === 0 ? (
+              <Trans>No collections yet</Trans>
+            ) : (
+              <Trans>No collections match your search</Trans>
+            )
+          }
+          description={
+            showArchived ? (
+              <Trans>Collections you archive will show up here.</Trans>
+            ) : collections.length === 0 ? (
+              <Trans>
+                Collections are physical tables created at runtime. Create one from scratch,
+                adopt an existing table, or apply a starter template from the Overview.
+              </Trans>
+            ) : (
+              <Trans>Try a different slug or group.</Trans>
+            )
+          }
+          action={
+            !showArchived && collections.length === 0 ? (
+              <Button variant="primary" icon={I.Plus} onClick={() => setChooserOpen(true)}>
+                <Trans>New collection</Trans>
+              </Button>
+            ) : !showArchived && search ? (
+              <Button variant="outline" onClick={() => setSearch("")}>
+                <Trans>Clear search</Trans>
+              </Button>
+            ) : undefined
+          }
+        />
+      ) : view === "grid" ? (
         <div className="flex flex-col gap-[22px]">
           {loading && groups.length === 0 && (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-3">

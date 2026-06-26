@@ -2,6 +2,8 @@ import { BacklexError } from "backlex";
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
   backlex,
+  type Category,
+  categories,
   type OrderItem,
   orderItems,
   orders,
@@ -141,7 +143,8 @@ type Cart = Map<string, number>;
 
 function Store({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   const [items, setItems] = useState<Product[]>([]);
-  const [category, setCategory] = useState<string | null>(null);
+  const [cats, setCats] = useState<Category[]>([]);
+  const [category, setCategory] = useState<string | null>(null); // a category id
   const [sort, setSort] = useState<Sort>("newest");
   const [minPrice, setMinPrice] = useState(0); // dollars, in the input
   const [stats, setStats] = useState<Stats>({ count: 0, avg: 0 });
@@ -149,17 +152,18 @@ function Store({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   const [confirmation, setConfirmation] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // The distinct category buttons are derived from whatever's loaded — no extra
-  // round-trip needed for this small demo.
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    for (const p of items) if (p.category) set.add(p.category);
-    return [...set].sort();
-  }, [items]);
+  // `category` is a relation on the template's products (stores a category id),
+  // so we load the `categories` collection once and resolve ids → names. The
+  // map powers both the filter buttons and the per-card category label.
+  const catName = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of cats) m.set(c.id, c.name);
+    return m;
+  }, [cats]);
 
   // Aggregates: two single-function calls power the header. `count` counts every
-  // readable product; `avg` over `price` is computed server-side (cents), so we
-  // never pull the whole table down just to total it.
+  // readable product; `avg` over `price` (dollars) is computed server-side, so
+  // we never pull the whole table down just to total it.
   const refreshStats = useCallback(async () => {
     try {
       const [countRes, avgRes] = await Promise.all([
@@ -181,15 +185,15 @@ function Store({ user, onSignOut }: { user: User; onSignOut: () => void }) {
     try {
       const orderKey =
         sort === "price-asc" ? "price" : sort === "price-desc" ? "-price" : "-created_at";
-      const minCents = Math.round(minPrice * 100);
       const res = await products
         .query()
         .where((f) => {
           // Build only the active sub-conditions, then AND them together.
           // `and()` of zero conds is a no-op match-all; of one, it's that cond.
+          // `category` filters by the related row's id; `price` is in dollars.
           const conds = [
             ...(category ? [f.eq("category", category)] : []),
-            ...(minCents > 0 ? [f.gte("price", minCents)] : []),
+            ...(minPrice > 0 ? [f.gte("price", minPrice)] : []),
           ];
           return f.and(...conds);
         })
@@ -204,10 +208,21 @@ function Store({ user, onSignOut }: { user: User; onSignOut: () => void }) {
     }
   }, [category, sort, minPrice]);
 
+  // Load the category list once (template `categories` collection).
+  const refreshCategories = useCallback(async () => {
+    try {
+      const res = await categories.query().orderBy("name").limit(100).list();
+      setCats(res.data);
+    } catch {
+      // Collection absent (template not applied yet) — non-fatal.
+    }
+  }, []);
+
   useEffect(() => {
     refresh();
     refreshStats();
-  }, [refresh, refreshStats]);
+    refreshCategories();
+  }, [refresh, refreshStats, refreshCategories]);
 
   useEffect(() => {
     // Realtime: the SSE stream replays the same create/update/delete events the
@@ -260,19 +275,26 @@ function Store({ user, onSignOut }: { user: User; onSignOut: () => void }) {
     if (cartLines.length === 0) return;
     setError(null);
     try {
-      // 1. Create the order header. The total is summed from the cart in cents.
+      // 1. Create the order header. `status` is the template's payment state
+      //    (financial_status); subtotal + total are summed from the cart in
+      //    dollars. The template also tracks `fulfillment_status` separately —
+      //    left at its `unfulfilled` default here.
       const { data: order } = await orders.create({
+        subtotal: cartTotal,
         total: cartTotal,
         status: "paid",
+        currency: "USD",
       });
       // 2. Insert every line in a SINGLE batched write. `createMany` posts one
       //    `/batch` request with an op per row, so a 10-item cart is one round
-      //    trip, not ten. We snapshot name + unit_price so later catalog edits
-      //    don't rewrite this order's history.
+      //    trip, not ten. We snapshot `title` + `sku` + `unit_price` so later
+      //    catalog edits don't rewrite this order's history. `line_total` is a
+      //    computed column — never sent. `order` / `product` carry relation ids.
       const rows: Partial<OrderItem>[] = cartLines.map((l) => ({
-        order_id: order.id,
-        product_id: l.product.id,
-        name: l.product.name,
+        order: order.id,
+        product: l.product.id,
+        title: l.product.name,
+        sku: l.product.sku,
         unit_price: l.product.price,
         qty: l.qty,
       }));
@@ -300,7 +322,7 @@ function Store({ user, onSignOut }: { user: User; onSignOut: () => void }) {
         <div>
           <h1 className="text-xl font-semibold">Storefront</h1>
           <p className="text-sm text-neutral-500">
-            {user.email} · {stats.count} products · avg {formatPrice(Math.round(stats.avg))}
+            {user.email} · {stats.count} products · avg {formatPrice(stats.avg)}
           </p>
         </div>
         <button
@@ -313,7 +335,7 @@ function Store({ user, onSignOut }: { user: User; onSignOut: () => void }) {
       </header>
 
       {/* Seller area — add a product (with a photo uploaded to backlex storage). */}
-      <ProductComposer onCreated={refreshStats} onError={setError} />
+      <ProductComposer cats={cats} onCreated={refreshStats} onError={setError} />
 
       {/* Filter + sort controls feed the query builder above. */}
       <div className="flex flex-wrap items-center gap-3">
@@ -321,9 +343,9 @@ function Store({ user, onSignOut }: { user: User; onSignOut: () => void }) {
           <CatButton active={category === null} onClick={() => setCategory(null)}>
             All
           </CatButton>
-          {categories.map((c) => (
-            <CatButton key={c} active={category === c} onClick={() => setCategory(c)}>
-              {c}
+          {cats.map((c) => (
+            <CatButton key={c.id} active={category === c.id} onClick={() => setCategory(c.id)}>
+              {c.name}
             </CatButton>
           ))}
         </div>
@@ -366,7 +388,12 @@ function Store({ user, onSignOut }: { user: User; onSignOut: () => void }) {
             </li>
           )}
           {items.map((p) => (
-            <ProductCard key={p.id} product={p} onAdd={() => addToCart(p.id)} />
+            <ProductCard
+              key={p.id}
+              product={p}
+              categoryName={p.category ? catName.get(p.category) : undefined}
+              onAdd={() => addToCart(p.id)}
+            />
           ))}
         </ul>
 
@@ -379,16 +406,18 @@ function Store({ user, onSignOut }: { user: User; onSignOut: () => void }) {
 
 // ── Product composer (seller) ─────────────────────────────────────────────
 function ProductComposer({
+  cats,
   onCreated,
   onError,
 }: {
+  cats: Category[];
   onCreated: () => void;
   onError: (m: string) => void;
 }) {
   const [name, setName] = useState("");
   const [price, setPrice] = useState(""); // dollars in the input
   const [stock, setStock] = useState("");
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState(""); // a category id (relation)
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -411,16 +440,22 @@ function ProductComposer({
         await backlex.storage.put(key, file, file.type);
         imageKey = key;
       }
-      // 2. Create the product row, storing the object key (not the bytes) on the
-      //    record. Price is converted dollars → integer cents.
-      await products.create({
+      // 2. Create the product row. Price is a decimal number of dollars
+      //    (template `price`, validated `min: 0`); `featured_image` stores the
+      //    storage object key (not the bytes); `category` is the related row id.
+      const { data: created } = await products.create({
         name: n,
-        price: Math.round(dollars * 100),
+        status: "active",
+        price: Math.max(0, Math.round(dollars * 100) / 100),
         stock: stock ? Math.max(0, Math.round(Number(stock))) : undefined,
-        category: category.trim() || undefined,
+        category: category || undefined,
         description: description.trim() || undefined,
-        image_key: imageKey,
+        featured_image: imageKey,
       });
+      // 3. The template's `products` is a versioned collection, so a new row
+      //    starts as a draft. Publish it so it's live in the storefront (this is
+      //    the SDK's draft → publish flow in one line).
+      await products.publish(created.id);
       setName("");
       setPrice("");
       setStock("");
@@ -466,12 +501,18 @@ function ProductComposer({
           onChange={(e) => setStock(e.target.value)}
           placeholder="Stock (optional)"
         />
-        <input
+        <select
           className={inputCls}
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          placeholder="Category (optional)"
-        />
+        >
+          <option value="">Category (optional)</option>
+          {cats.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
       </div>
       <textarea
         className={inputCls + " min-h-20"}
@@ -495,19 +536,36 @@ function ProductComposer({
 }
 
 // ── Product card ───────────────────────────────────────────────────────────
-function ProductCard({ product, onAdd }: { product: Product; onAdd: () => void }) {
+function ProductCard({
+  product,
+  categoryName,
+  onAdd,
+}: {
+  product: Product;
+  categoryName?: string;
+  onAdd: () => void;
+}) {
   const out = typeof product.stock === "number" && product.stock <= 0;
+  const onSale =
+    typeof product.compare_at_price === "number" && product.compare_at_price > product.price;
   return (
     <li className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-      <ProductImage imageKey={product.image_key} alt={product.name} />
+      <ProductImage imageKey={product.featured_image} alt={product.name} />
       <div className="flex flex-1 flex-col gap-1 p-3">
         <div className="flex items-start justify-between gap-2">
           <h3 className="truncate text-sm font-medium">{product.name}</h3>
-          <span className="shrink-0 text-sm font-semibold">{formatPrice(product.price)}</span>
+          <span className="flex shrink-0 items-baseline gap-1 text-sm font-semibold">
+            {onSale && (
+              <span className="text-xs font-normal text-neutral-400 line-through">
+                {formatPrice(product.compare_at_price as number)}
+              </span>
+            )}
+            {formatPrice(product.price)}
+          </span>
         </div>
-        {product.category && (
+        {categoryName && (
           <span className="w-fit rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-neutral-500">
-            {product.category}
+            {categoryName}
           </span>
         )}
         {product.description && (
@@ -623,9 +681,9 @@ function CartPanel({
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
-/** Render an integer-cents amount as `$X.XX`. */
-function formatPrice(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+/** Render a dollar amount (template `price`, a decimal) as `$X.XX`. */
+function formatPrice(dollars: number): string {
+  return `$${(dollars ?? 0).toFixed(2)}`;
 }
 
 function Centered({ children }: { children: React.ReactNode }) {

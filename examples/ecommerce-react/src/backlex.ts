@@ -31,51 +31,82 @@ export function persistToken(): void {
 }
 
 // ── Collection row types ────────────────────────────────────────────────────
-// These match the collections you create in the admin UI (see README). Money
-// is stored as an **integer number of cents** (never floats) so arithmetic is
-// exact; the UI formats it as $X.XX via `formatPrice`. The
-// `& Record<string, unknown>` satisfies the SDK's row-type constraint;
-// `backlex gen-types --sdk` can generate these for you.
+// These mirror a subset of the built-in **E-commerce template** (Overview →
+// Templates → E-commerce, or seeded automatically on a fresh workspace). No
+// manual collection creation needed — apply the template and run.
+//
+// Money is the template's `price` field: a **decimal number of dollars**
+// (interface `decimal`, validated `min: 0`). We format it as $X.XX via
+// `formatPrice`. The `& Record<string, unknown>` satisfies the SDK's row-type
+// constraint; `backlex gen-types --sdk` can generate these for you.
 
-/** A product in the catalog. `image_key` is the backlex storage object key of
- *  the uploaded photo — we resolve it to an object URL at render time. */
+/** A product in the catalog. `featured_image` is the backlex storage object key
+ *  of the uploaded photo — we resolve it to an object URL at render time.
+ *  `category` is a **relation** — it stores the id of a `categories` row. */
 export type Product = {
   id: string;
   name: string;
+  slug?: string;
   description?: string;
-  /** Price in cents (integer). */
+  /** Price in dollars (decimal). */
   price: number;
+  /** Optional "was" price, struck through in the UI when higher than `price`. */
+  compare_at_price?: number;
+  status?: "draft" | "active" | "archived";
   stock?: number;
-  /** backlex storage key of the product photo (e.g. `products/<uuid>-shoe.png`). */
-  image_key?: string;
+  sku?: string;
+  /** Relation: the id of a `categories` row (resolve via the `categories` map). */
   category?: string;
+  /** backlex storage key of the product photo (e.g. `products/<uuid>-shoe.png`). */
+  featured_image?: string;
   created_at?: string;
 } & Record<string, unknown>;
 
+/** A product category (template `categories` collection). */
+export type Category = {
+  id: string;
+  name: string;
+  slug?: string;
+} & Record<string, unknown>;
+
 /** An order header. The line items live in the child `order_items` collection,
- *  written in one batch at checkout. `total` is in cents. */
+ *  written in one batch at checkout. The template splits payment state
+ *  (`status`) from shipping state (`fulfillment_status`); `total` is in dollars. */
 export type Order = {
   id: string;
-  /** Order total in cents (integer). */
+  number?: string;
+  subtotal?: number;
+  /** Order total in dollars. */
   total: number;
+  /** Payment status — template financial_status (`pending` … `paid` … `refunded`). */
   status?: string;
   created_at?: string;
 } & Record<string, unknown>;
 
 /** One line of an order — a snapshot of the product at purchase time so later
- *  catalog edits don't rewrite history. `unit_price` is in cents. */
+ *  catalog edits don't rewrite history. `order` / `product` are relation ids.
+ *  `line_total` is a **computed** column (`qty * unit_price`) — read-only. */
 export type OrderItem = {
   id: string;
-  order_id: string;
-  product_id: string;
-  name: string;
-  /** Unit price in cents (integer), captured at checkout. */
+  /** Relation: parent `orders` row id. */
+  order: string;
+  /** Relation: `products` row id. */
+  product: string;
+  /** Snapshot of the product name at purchase time. */
+  title: string;
+  sku?: string;
+  /** Unit price in dollars, captured at checkout. */
   unit_price: number;
   qty: number;
+  /** Computed server-side as `qty * unit_price` — never written by the client. */
+  line_total?: number;
 } & Record<string, unknown>;
 
 /** The typed CRUD handle for the `products` collection. */
 export const products = backlex.from<Product>("products");
+
+/** The typed CRUD handle for the `categories` collection. */
+export const categories = backlex.from<Category>("categories");
 
 /** The typed CRUD handle for the `orders` collection (order headers). */
 export const orders = backlex.from<Order>("orders");

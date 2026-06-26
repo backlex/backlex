@@ -1858,6 +1858,10 @@ msgstr "Clear done"
 msgid "Clear filter"
 msgstr "Clear filter"
 
+#: src/client/admin/collections-index.tsx
+msgid "Clear search"
+msgstr "Clear search"
+
 #: src/client/admin/pages/users.tsx
 msgid "Clear selection"
 msgstr "Clear selection"
@@ -1988,6 +1992,14 @@ msgstr "collections"
 #: src/client/admin/ui.tsx
 msgid "Collections"
 msgstr "Collections"
+
+#: src/client/admin/collections-index.tsx
+msgid "Collections are physical tables created at runtime. Create one from scratch, adopt an existing table, or apply a starter template from the Overview."
+msgstr "Collections are physical tables created at runtime. Create one from scratch, adopt an existing table, or apply a starter template from the Overview."
+
+#: src/client/admin/collections-index.tsx
+msgid "Collections you archive will show up here."
+msgstr "Collections you archive will show up here."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Column"
@@ -5468,6 +5480,10 @@ msgstr "No activity recorded."
 msgid "No API keys yet"
 msgstr "No API keys yet"
 
+#: src/client/admin/collections-index.tsx
+msgid "No archived collections"
+msgstr "No archived collections"
+
 #: src/client/admin/bulk-edit.tsx
 msgid "No bulk-editable fields on this collection."
 msgstr "No bulk-editable fields on this collection."
@@ -5500,9 +5516,17 @@ msgstr "No collections — you'll start from scratch."
 msgid "No collections in this workspace yet — create one first, or switch <0>Kind</0> to <1>sql</1>."
 msgstr "No collections in this workspace yet — create one first, or switch <0>Kind</0> to <1>sql</1>."
 
+#: src/client/admin/collections-index.tsx
+msgid "No collections match your search"
+msgstr "No collections match your search"
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "No collections to graph — create one to populate the ERD."
 msgstr "No collections to graph — create one to populate the ERD."
+
+#: src/client/admin/collections-index.tsx
+msgid "No collections yet"
+msgstr "No collections yet"
 
 #: src/client/admin/permissions-matrix.tsx
 msgid "No collections yet — create one in the Schema tab to manage permissions here."
@@ -9236,6 +9260,10 @@ msgstr "Triggers fire on collection events, schedules, or webhooks. Each step ru
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Try"
 msgstr "Try"
+
+#: src/client/admin/collections-index.tsx
+msgid "Try a different slug or group."
+msgstr "Try a different slug or group."
 
 #: src/client/admin/pages/logs.tsx
 msgid "Try a wider time range or clear the level filter."

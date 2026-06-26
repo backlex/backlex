@@ -1858,6 +1858,10 @@ msgstr "Tamamlananları temizle"
 msgid "Clear filter"
 msgstr "Filtreyi temizle"
 
+#: src/client/admin/collections-index.tsx
+msgid "Clear search"
+msgstr "Aramayı temizle"
+
 #: src/client/admin/pages/users.tsx
 msgid "Clear selection"
 msgstr "Seçimi temizle"
@@ -1988,6 +1992,14 @@ msgstr "koleksiyonlar"
 #: src/client/admin/ui.tsx
 msgid "Collections"
 msgstr "Koleksiyonlar"
+
+#: src/client/admin/collections-index.tsx
+msgid "Collections are physical tables created at runtime. Create one from scratch, adopt an existing table, or apply a starter template from the Overview."
+msgstr "Koleksiyonlar, çalışma zamanında oluşturulan fiziksel tablolardır. Sıfırdan bir tane oluşturun, mevcut bir tabloyu benimseyin ya da Genel Bakış'tan bir başlangıç şablonu uygulayın."
+
+#: src/client/admin/collections-index.tsx
+msgid "Collections you archive will show up here."
+msgstr "Arşivlediğiniz koleksiyonlar burada görünür."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "Column"
@@ -5468,6 +5480,10 @@ msgstr "Etkinlik kaydedilmedi."
 msgid "No API keys yet"
 msgstr "Henüz API anahtarı yok"
 
+#: src/client/admin/collections-index.tsx
+msgid "No archived collections"
+msgstr "Arşivlenmiş koleksiyon yok"
+
 #: src/client/admin/bulk-edit.tsx
 msgid "No bulk-editable fields on this collection."
 msgstr "Bu koleksiyonda toplu düzenlenebilir alan yok."
@@ -5500,9 +5516,17 @@ msgstr "Koleksiyon yok — sıfırdan başlayacaksınız."
 msgid "No collections in this workspace yet — create one first, or switch <0>Kind</0> to <1>sql</1>."
 msgstr "Bu çalışma alanında henüz koleksiyon yok — önce bir tane oluşturun veya <0>Tür</0>'ü <1>sql</1> olarak değiştirin."
 
+#: src/client/admin/collections-index.tsx
+msgid "No collections match your search"
+msgstr "Aramanızla eşleşen koleksiyon yok"
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "No collections to graph — create one to populate the ERD."
 msgstr "Grafik için koleksiyon yok — ERD'yi doldurmak için bir tane oluşturun."
+
+#: src/client/admin/collections-index.tsx
+msgid "No collections yet"
+msgstr "Henüz koleksiyon yok"
 
 #: src/client/admin/permissions-matrix.tsx
 msgid "No collections yet — create one in the Schema tab to manage permissions here."
@@ -9244,6 +9268,10 @@ msgstr "Tetikleyiciler koleksiyon etkinliklerinde, zamanlamalarda veya webhook'l
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Try"
 msgstr "Dene"
+
+#: src/client/admin/collections-index.tsx
+msgid "Try a different slug or group."
+msgstr "Farklı bir slug veya grup deneyin."
 
 #: src/client/admin/pages/logs.tsx
 msgid "Try a wider time range or clear the level filter."

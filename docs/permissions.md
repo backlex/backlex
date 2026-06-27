@@ -148,3 +148,67 @@ Visibility rule: a user reads posts of teams they belong to.
 you'd use a `condition` that references stable user metadata, or
 denormalize `member_team_ids` into the user record. The DSL is
 intentionally narrow; complex flows belong in functions.
+
+## Tester / simulator
+
+Granular rules are powerful but hard to debug — *why* can't user X read
+`posts`? The **permission simulator** dry-runs the resolver for a subject
+against a `(collection, action)` and returns the full reasoning trace, without
+touching any data. It's read-only and admin-only, scoped to the active
+workspace.
+
+What it returns:
+
+- **decision** — `allowed` + `isAdmin` + a human-readable `reason`.
+- **roles** — every role the subject holds in the workspace (with the admin flag).
+- **matchedRules** — each `permissions` row that granted the action: which role,
+  the normalized `condition`, and the field allow-list.
+- **resolvedVars** — the concrete values the DSL variables bound to for this
+  subject (`$user.id`, `$user.email`, `$user.roles`, `$tenant.id`, `$now`).
+- **whereSql** — the OR-combined `WHERE` clause the REST/GraphQL layers would
+  apply, rendered to parametrized SQL (`null` = unrestricted).
+- **fields** — the union of allowed fields (`null` = all).
+- **rowMatch** — when you pass a `sampleRow`, whether that concrete row would
+  pass the combined condition (per-rule and overall).
+
+The subject is either an **existing user** (`userId` — roles read live from the
+DB) or an **ad-hoc** one (`roles` by name; with none it's anonymous — the
+`public` role). An ad-hoc subject has no `userId`, so `$user.id` resolves to
+`null` and an `owner_id _eq $user.id` clause collapses to `1=0` — pass a real
+`userId` to see owner-scoped filters compile to a real predicate.
+
+### Surfaces
+
+Admin UI lives under **Roles & permissions → Tester**. Every programmatic
+surface mirrors the same call:
+
+```bash
+# REST
+curl -X POST $API/api/permissions/simulate \
+  -H 'content-type: application/json' \
+  -d '{ "userId": "<id>", "collection": "posts", "action": "read",
+        "sampleRow": { "owner_id": "<id>" } }'
+
+# CLI
+backlex permissions simulate --collection posts --action read --user <id>
+backlex permissions simulate --collection posts --action read --roles authenticated
+
+# SDK
+await client.permissions.simulate({ userId: "<id>", collection: "posts", action: "read" });
+
+# MCP (so Ask AI / agents can answer "why can't user X read posts?")
+permissions.simulate { "userId": "<id>", "collection": "posts", "action": "read" }
+```
+
+```graphql
+query {
+  permissionSimulation(collection: "posts", action: "read", userId: "<id>") {
+    allowed
+    isAdmin
+    reason
+    matchedRules { roleName condition fields }
+    whereSql { sql params }
+    fields
+  }
+}
+```

@@ -101,8 +101,67 @@ export const revokePermission: McpTool = {
   },
 };
 
+export const simulatePermission: McpTool = {
+  name: "permissions.simulate",
+  description:
+    "Dry-run the permission resolver: would a subject be allowed to perform " +
+    "an action on a collection, and why? The subject is either an existing " +
+    "user (`userId` — roles read live from the DB) or ad-hoc role names " +
+    "(`roles`). Returns the full trace: matched roles + permission rules, the " +
+    "resolved DSL variables ($user.id, $tenant.id, …), the compiled WHERE " +
+    "clause, the field allow-list, and the allow/deny decision. Pass " +
+    "`sampleRow` to test one concrete row against the combined condition. " +
+    "Read-only — never changes state. Great for debugging 'why can't user X " +
+    "read posts?'.",
+  kind: "read",
+  inputSchema: {
+    type: "object",
+    properties: {
+      userId: { type: "string", description: "Existing user id to test as." },
+      email: {
+        type: "string",
+        description: "Override email for `$user.email` (optional).",
+      },
+      roles: {
+        type: "array",
+        description:
+          "Ad-hoc role names to test as (ignored when `userId` is set).",
+      },
+      plane: {
+        type: "string",
+        description: "`platform` (admin users, default) or `app` (end-users).",
+      },
+      collection: { type: "string", description: "Collection slug or `*`." },
+      action: {
+        type: "string",
+        description: "One of `read`, `create`, `update`, `delete`, `publish`.",
+      },
+      sampleRow: {
+        type: "object",
+        description: "Optional row to evaluate against the combined condition.",
+      },
+    },
+    required: ["collection", "action"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const collection = String(args.collection ?? "");
+    const action = String(args.action ?? "");
+    if (!collection) throw new Error("VALIDATION: collection is required");
+    if (!action) throw new Error("VALIDATION: action is required");
+    const res = await ctx.fetchInternal("/api/permissions/simulate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(args),
+    });
+    const body = await readJson<unknown>(res);
+    return textResult(body);
+  },
+};
+
 export const permissionsTools: McpTool[] = [
   listRolePermissions,
   grantPermission,
   revokePermission,
+  simulatePermission,
 ];

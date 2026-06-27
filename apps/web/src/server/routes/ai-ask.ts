@@ -59,6 +59,7 @@ const PLAN_TOOL_WHITELIST = [
   "schema.list_collections",
   "schema.describe_collection",
   "ai.suggest_schema",
+  "permissions.simulate",
 ] as const;
 
 const PLAN_TOOL_DESCRIPTIONS: Record<(typeof PLAN_TOOL_WHITELIST)[number], string> =
@@ -92,6 +93,13 @@ const PLAN_TOOL_DESCRIPTIONS: Record<(typeof PLAN_TOOL_WHITELIST)[number], strin
       "{collection: string} — full field schema for one collection.",
     "ai.suggest_schema":
       "{description: string, slug?: string} — draft a collection schema from prose.",
+    "permissions.simulate":
+      "{collection: string, action: 'read'|'create'|'update'|'delete'|'publish', " +
+      "userId?: string, roles?: string[], plane?: 'platform'|'app', sampleRow?: object} — " +
+      "dry-run the permission resolver for a subject and explain the allow/deny: " +
+      "matched roles + rules, resolved DSL vars, compiled WHERE clause, field " +
+      "allow-list. Use for \"why can't user X <action> <collection>?\" questions. " +
+      "Pass `userId` for a real user OR `roles` (names) for an ad-hoc subject.",
   };
 
 /** Shape of the collection rows GET /api/collections returns — only the

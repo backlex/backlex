@@ -791,6 +791,7 @@ msgid "ACS URL"
 msgstr "ACS URL"
 
 #: src/client/admin/pages/logs.tsx
+#: src/client/admin/permission-tester.tsx
 msgid "Action"
 msgstr "İşlem"
 
@@ -873,6 +874,10 @@ msgstr "Aktör"
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "AD defaults: <0>mail · givenName · sn · memberOf</0>. OpenLDAP commonly uses <1>mail · givenName · sn · memberOf</1> (or the <2>groupOfNames</2> overlay)."
 msgstr "AD varsayılanları: <0>mail · givenName · sn · memberOf</0>. OpenLDAP genellikle <1>mail · givenName · sn · memberOf</1> kullanır (ya da <2>groupOfNames</2> katmanı)."
+
+#: src/client/admin/permission-tester.tsx
+msgid "Ad-hoc roles"
+msgstr "Geçici roller"
 
 #: src/client/admin/pages/overview.tsx
 msgid "Adapter auto-selected from bindings/env."
@@ -1030,6 +1035,10 @@ msgstr "Filtrelerinizi ayarlayın veya yeni bir ekip üyesi davet edin."
 msgid "Admin"
 msgstr "Admin"
 
+#: src/client/admin/permission-tester.tsx
+msgid "admin bypass"
+msgstr "admin baypas"
+
 #: src/client/admin/pages/realtime.tsx
 msgid "admin role only"
 msgstr "yalnızca admin rolü"
@@ -1154,6 +1163,10 @@ msgstr "Tüm koleksiyonlar"
 msgid "All events"
 msgstr "Tüm olaylar"
 
+#: src/client/admin/permission-tester.tsx
+msgid "all fields"
+msgstr "tüm alanlar"
+
 #: src/client/admin/relational-pickers.tsx
 #: src/client/admin/storage.tsx
 msgid "All files"
@@ -1191,6 +1204,10 @@ msgstr "Tüm araçlar, okuma ve yazma (varsayılan) — kısıtlamak için dokun
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Allow all"
 msgstr "Tümüne izin ver"
+
+#: src/client/admin/permission-tester.tsx
+msgid "Allowed"
+msgstr "İzin verildi"
 
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Allowed email domains (optional, comma-separated)"
@@ -1260,6 +1277,10 @@ msgstr "API anahtarları"
 #: src/client/pages/api-keys.tsx
 msgid "API Keys"
 msgstr "API Anahtarları"
+
+#: src/client/admin/permission-tester.tsx
+msgid "app (workspace end-users)"
+msgstr "app (çalışma alanı son kullanıcıları)"
 
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/ui.tsx
@@ -1987,6 +2008,7 @@ msgstr "İşbirliği"
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/permission-tester.tsx
 msgid "Collection"
 msgstr "Koleksiyon"
 
@@ -2107,6 +2129,10 @@ msgstr "Derlenmiş kural"
 #: src/client/admin/condition-editor.tsx
 msgid "Compiled SQL"
 msgstr "Derlenmiş SQL"
+
+#: src/client/admin/permission-tester.tsx
+msgid "Compiled WHERE"
+msgstr "Derlenmiş WHERE"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Completed"
@@ -2823,6 +2849,7 @@ msgid "denied"
 msgstr "reddedildi"
 
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/permission-tester.tsx
 msgid "Denied"
 msgstr "Reddedildi"
 
@@ -3090,6 +3117,10 @@ msgstr "Deneme çalışması — gerçek yan etki yok"
 msgid "Dry-run summary"
 msgstr "Deneme çalışması özeti"
 
+#: src/client/admin/permission-tester.tsx
+msgid "Dry-run the resolver and see exactly which rule applied."
+msgstr "Çözümleyiciyi deneme amaçlı çalıştırın ve tam olarak hangi kuralın uygulandığını görün."
+
 #: src/client/admin/item-editor.tsx
 msgid "Duplicate"
 msgstr "Çoğalt"
@@ -3234,6 +3265,10 @@ msgstr "Editör"
 #: src/client/pages/sign-up.tsx
 msgid "Email"
 msgstr "E-posta"
+
+#: src/client/admin/permission-tester.tsx
+msgid "Email (for $user.email)"
+msgstr "E-posta ($user.email için)"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Email + password is always available — toggle it off to hide the form from the sign-in screen."
@@ -3518,6 +3553,10 @@ msgstr "Çalıştır"
 msgid "Execute a query to see results here."
 msgstr "Sonuçları görmek için bir sorgu çalıştırın."
 
+#: src/client/admin/permission-tester.tsx
+msgid "Existing user"
+msgstr "Mevcut kullanıcı"
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "expansion"
 msgstr "genişletme"
@@ -3701,6 +3740,7 @@ msgstr "alanlar"
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/display-template-editor.tsx
 #: src/client/admin/item-editor.tsx
+#: src/client/admin/permission-tester.tsx
 #: src/client/admin/sheet.tsx
 msgid "Fields"
 msgstr "Alanlar"
@@ -5095,6 +5135,10 @@ msgstr "Tümünü okundu işaretle"
 msgid "match {0} of the following"
 msgstr "aşağıdakilerin {0} ile eşleş"
 
+#: src/client/admin/permission-tester.tsx
+msgid "Matched rules"
+msgstr "Eşleşen kurallar"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Max 500 characters."
 msgstr "En fazla 500 karakter."
@@ -5867,6 +5911,14 @@ msgstr "Henüz kayıtlı revizyon yok."
 msgid "No revisions yet for this item."
 msgstr "Bu öğe için henüz revizyon yok."
 
+#: src/client/admin/permission-tester.tsx
+msgid "No roles found."
+msgstr "Rol bulunamadı."
+
+#: src/client/admin/permission-tester.tsx
+msgid "No roles selected = anonymous (the public role)."
+msgstr "Rol seçilmedi = anonim (public rolü)."
+
 #: src/client/admin/relational-pickers.tsx
 msgid "No row from c_{target} selected"
 msgstr "c_{target} tablosundan satır seçilmedi"
@@ -5957,6 +6009,7 @@ msgid "No webhooks yet"
 msgstr "Henüz webhook yok"
 
 #: src/client/admin/pages/users.tsx
+#: src/client/admin/permission-tester.tsx
 msgid "none"
 msgstr "yok"
 
@@ -6482,6 +6535,10 @@ msgstr "<0>{slug}</0>'a referans veren izin kuralları, webhook kalıpları, fon
 msgid "Permission saved: {role} · {action} · {collection}."
 msgstr "İzin kaydedildi: {role} · {action} · {collection}."
 
+#: src/client/admin/permission-tester.tsx
+msgid "Permission tester"
+msgstr "İzin test aracı"
+
 #: src/client/admin/collections-index.tsx
 msgid "Permissions"
 msgstr "İzinler"
@@ -6510,6 +6567,10 @@ msgstr "Fotoğrafçı, tasarımcı, kaynak…"
 #: src/client/admin/pages/overview.tsx
 msgid "physical c_<slug> tables"
 msgstr "fiziksel c_<slug> tabloları"
+
+#: src/client/admin/permission-tester.tsx
+msgid "Pick a collection"
+msgstr "Bir koleksiyon seçin"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Pick a collection and an aggregate below — no query to write."
@@ -6611,6 +6672,10 @@ msgstr "UI arayüzü seçin · {1} grupta {0} mevcut"
 msgid "Pick a unique name."
 msgstr "Benzersiz bir ad seçin."
 
+#: src/client/admin/permission-tester.tsx
+msgid "Pick a user"
+msgstr "Bir kullanıcı seçin"
+
 #: src/client/admin/pages/agents.tsx
 msgid "Pick an agent on the left, or click <0>+ New agent</0>."
 msgstr "Soldan bir ajan seçin veya <0>+ Yeni ajan</0>’a tıklayın."
@@ -6687,6 +6752,10 @@ msgstr "sade"
 msgid "Plan"
 msgstr "Plan"
 
+#: src/client/admin/permission-tester.tsx
+msgid "Plane"
+msgstr "Düzlem"
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Planning the tool call…"
 msgstr "Araç çağrısı planlanıyor…"
@@ -6694,6 +6763,10 @@ msgstr "Araç çağrısı planlanıyor…"
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Planning…"
 msgstr "Planlanıyor…"
+
+#: src/client/admin/permission-tester.tsx
+msgid "platform (admin users)"
+msgstr "platform (admin kullanıcılar)"
 
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/ui.tsx
@@ -7405,6 +7478,10 @@ msgstr "Parola sıfırlanıyor"
 msgid "Resolved schemes"
 msgstr "Çözümlenen şemalar"
 
+#: src/client/admin/permission-tester.tsx
+msgid "Resolved variables"
+msgstr "Çözümlenen değişkenler"
+
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/settings.tsx
 msgid "Resource"
@@ -7631,6 +7708,7 @@ msgstr "roller"
 
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/permission-tester.tsx
 msgid "Roles"
 msgstr "Roller"
 
@@ -7773,6 +7851,22 @@ msgstr "SAML 2.0 SSO — çalışma alanı son kullanıcıları."
 #: src/client/admin/flow-builder.tsx
 msgid "Sample event payload"
 msgstr "Örnek etkinlik yükü"
+
+#: src/client/admin/permission-tester.tsx
+msgid "Sample row (optional JSON)"
+msgstr "Örnek satır (isteğe bağlı JSON)"
+
+#: src/client/admin/permission-tester.tsx
+msgid "sample row excluded"
+msgstr "örnek satır hariç tutuldu"
+
+#: src/client/admin/permission-tester.tsx
+msgid "Sample row is not valid JSON."
+msgstr "Örnek satır geçerli bir JSON değil."
+
+#: src/client/admin/permission-tester.tsx
+msgid "sample row matches"
+msgstr "örnek satır eşleşiyor"
 
 #: src/client/admin/pages/overview.tsx
 msgid "Sandbox"
@@ -8572,6 +8666,18 @@ msgstr "İmzalama gizli anahtarı"
 msgid "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>timestamp.body</2> with <3>X-Backlex-Timestamp</3> for replay protection."
 msgstr "Her teslimatı imzalar: <0>X-Backlex-Signature</0> (gövdenin HMAC'i) artı tekrar saldırısı korumasi için <3>X-Backlex-Timestamp</3> ile birlikte <2>timestamp.body</2> üzerinden <1>X-Backlex-Signature-V2</1>."
 
+#: src/client/admin/permission-tester.tsx
+msgid "Simulate"
+msgstr "Simüle et"
+
+#: src/client/admin/permission-tester.tsx
+msgid "Simulating…"
+msgstr "Simüle ediliyor…"
+
+#: src/client/admin/permission-tester.tsx
+msgid "Simulation failed."
+msgstr "Simülasyon başarısız oldu."
+
 #: src/client/admin/parity/insights.tsx
 msgid "single scalar value"
 msgstr "tek skaler değer"
@@ -8798,6 +8904,7 @@ msgstr "abone"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/email-templates.tsx
+#: src/client/admin/permission-tester.tsx
 msgid "Subject"
 msgstr "Konu"
 
@@ -9045,6 +9152,14 @@ msgstr "Test çalışması başlatıldı."
 #: src/client/admin/pages/settings.tsx
 msgid "Test SMS sent to {0} number(s)."
 msgstr "{0} numaraya test SMS gönderildi."
+
+#: src/client/admin/permission-tester.tsx
+msgid "Test whether a concrete row passes the combined condition."
+msgstr "Somut bir satırın birleşik koşuldan geçip geçmediğini test edin."
+
+#: src/client/admin/app.tsx
+msgid "Tester"
+msgstr "Test aracı"
 
 #: src/client/admin/pages/settings.tsx
 msgid "Testing…"
@@ -9517,6 +9632,10 @@ msgstr "Yayından kaldır"
 msgid "Unread"
 msgstr "Okunmamış"
 
+#: src/client/admin/permission-tester.tsx
+msgid "Unrestricted — no row filter applies."
+msgstr "Kısıtlamasız — satır filtresi uygulanmaz."
+
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/storage.tsx
 msgid "unsaved"
@@ -9691,6 +9810,7 @@ msgstr "kullanıcı"
 
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/permission-tester.tsx
 msgid "User"
 msgstr "Kullanıcı"
 

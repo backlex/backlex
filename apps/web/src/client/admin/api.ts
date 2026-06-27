@@ -492,6 +492,58 @@ export const rolesApi = {
   list: () => api<Envelope<ApiRole[]>>(`/api/roles`),
 };
 
+export type PermissionAction = "read" | "create" | "update" | "delete" | "publish";
+
+export interface PermissionSimRule {
+  permissionId: string;
+  roleId: string;
+  roleName: string;
+  collection: string;
+  condition: unknown | null;
+  fields: string[] | null;
+  rowMatch?: boolean;
+}
+
+export interface PermissionSimulation {
+  subject: {
+    userId: string | null;
+    email: string | null;
+    roles: string[];
+    tenantId: string | null;
+    plane: "platform" | "app";
+  };
+  collection: string;
+  action: string;
+  allowed: boolean;
+  isAdmin: boolean;
+  reason: string;
+  roles: { id: string; name: string; admin: boolean }[];
+  matchedRules: PermissionSimRule[];
+  resolvedVars: Record<string, unknown>;
+  whereSql: { sql: string; params: unknown[] } | null;
+  fields: string[] | null;
+  rowMatch?: boolean;
+}
+
+export interface PermissionSimulateInput {
+  collection: string;
+  action: PermissionAction;
+  userId?: string | null;
+  email?: string | null;
+  roles?: string[] | null;
+  plane?: "platform" | "app";
+  sampleRow?: Record<string, unknown> | null;
+}
+
+export const permissionsApi = {
+  /** Dry-run the permission resolver and return the full allow/deny trace. */
+  simulate: (input: PermissionSimulateInput) =>
+    api<Envelope<PermissionSimulation>>(`/api/permissions/simulate`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+};
+
 /** Workspace end-user pool admin (the `app_users` table). All endpoints are
  *  admin-only and scoped to the active workspace. */
 export const appUsersApi = {

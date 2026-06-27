@@ -1,0 +1,135 @@
+---
+title: AI Agents
+description: Reusable AI agents that reason, call your allow-listed tools, and answer — built on backlex's MCP tool registry, vector memory, and realtime. A reason→act loop persisted as a replayable thread transcript; admin-authored and reachable over REST, the SDK, GraphQL, MCP, and the CLI.
+---
+
+Agents are reusable AI personas that **reason, call your tools, and answer** —
+built on top of everything else backlex already exposes. An agent is a named
+definition (system prompt + model + a tool allow-list); a **thread** is one
+conversation against it; sending a message runs one **turn** to completion.
+
+Under the hood a turn is a reason→act loop: the model is asked to either call
+one of the agent's allow-listed tools or finish. Each tool call is executed
+through the **MCP tool registry** (`allTools`) via an in-process sub-fetch that
+carries the caller's identity — so an agent can only ever do what the caller
+could do (the permission DSL, tenant scoping, and per-key guards all apply).
+Every step is persisted to the thread, so a thread is a complete, replayable
+transcript.
+
+## Concepts
+
+| Concept | What it is | Table |
+|---|---|---|
+| **Agent** | A definition: name, system prompt, model, tool allow-list, `maxSteps`, `memory` | `agents` |
+| **Thread** | One conversation against an agent (`idle` / `running` / `error`) | `agent_threads` |
+| **Message** | One persisted turn step — `user`, `assistant`, or `tool` | `agent_messages` |
+
+## Quick start (REST)
+
+```bash
+# 1. Create an agent with a read tool
+curl -X POST $URL/api/agents -H 'content-type: application/json' --cookie "$C" -d '{
+  "name": "Data buddy",
+  "systemPrompt": "You answer questions about the workspace data. Be concise.",
+  "tools": ["schema.list_collections", "collections.list", "collections.aggregate"],
+  "maxSteps": 6
+}'
+
+# 2. Start a thread
+curl -X POST $URL/api/agents/<agentId>/threads -d '{"title":"first chat"}' --cookie "$C"
+
+# 3. Send a message — runs one turn to completion
+curl -X POST $URL/api/agents/threads/<threadId>/messages \
+  -H 'content-type: application/json' --cookie "$C" \
+  -d '{"message":"How many orders were placed last month?"}'
+# → { "data": { "answer": "...", "steps": [...], "stoppedReason": "final" } }
+```
+
+All `/api/agents` routes are **admin-only** (platform plane), scoped to the
+active workspace.
+
+### Endpoints
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/agents` | List agents |
+| `POST` | `/api/agents` | Create an agent |
+| `GET` | `/api/agents/{id}` | Get one |
+| `PATCH` | `/api/agents/{id}` | Update |
+| `DELETE` | `/api/agents/{id}` | Delete |
+| `GET` | `/api/agents/{id}/threads` | List an agent's threads |
+| `POST` | `/api/agents/{id}/threads` | Start a thread |
+| `GET` | `/api/agents/threads/{threadId}` | Thread + full transcript |
+| `DELETE` | `/api/agents/threads/{threadId}` | Delete a thread |
+| `POST` | `/api/agents/threads/{threadId}/messages` | Send a message → run a turn |
+
+## Definition fields
+
+| Field | Default | Notes |
+|---|---|---|
+| `name` | — | Unique per workspace. |
+| `description` | `null` | Free text. |
+| `systemPrompt` | a generic helper persona | Shapes the agent's behaviour. |
+| `model` | `anthropic/claude-haiku-4-5` | Gateway-prefixed id or bare Anthropic id (resolved by `callClaude`). |
+| `tools` | `[]` | Allow-list of MCP tool names (validated against `allTools` at write time). An empty list = model-only, no data access. |
+| `maxSteps` | `8` | Hard cap on reason→act iterations per turn (1–25). |
+| `memory` | `false` | See [Memory](#memory). |
+| `active` | `true` | — |
+
+## Tools
+
+An agent may call any tool whose name appears in its `tools` list, drawn from
+the same registry the [MCP server](./mcp.md) exposes (`schema.*`,
+`collections.*`, `vector.*`, `storage.*`, `flows.*`, …). Unknown names are
+rejected when the agent is saved. Because tools run through the caller's
+identity, an agent never escalates privileges — a read-only caller's agent can
+only read.
+
+## Memory
+
+With `memory: true`, each turn's user message and final answer are embedded and
+stored under a per-thread vector namespace (`agentmem:<threadId>`); on every new
+turn the most relevant past snippets are retrieved and folded into the system
+prompt. This gives cross-turn recall beyond the raw transcript (useful once a
+thread grows long).
+
+Memory is **best-effort**: it reuses the workspace embedding provider and
+`EMBEDDING_DEFAULT_MODEL` (see [Vector search](./vector-search.md)). With no
+embedding provider configured it silently no-ops — the agent still works.
+
+## Live step streaming
+
+While a turn runs, each step is published to the realtime channel
+`agent:thread:<threadId>` as `agent.start` / `agent.step` / `agent.final` /
+`agent.error` events. Subscribe with SSE to watch an agent think in real time:
+
+```js
+new EventSource(`/api/realtime/${encodeURIComponent("agent:thread:" + threadId)}/subscribe`,
+  { withCredentials: true });
+```
+
+The admin **Agents** page uses exactly this to stream tool calls live in its
+chat playground. (Streaming is best-effort; the final transcript is always
+persisted regardless.)
+
+## Other surfaces
+
+The feature mirrors `flows` across every surface ([parity](./service-map.md)):
+
+- **SDK** — `client.agents.{list,get,create,update,delete,threads,createThread,thread,deleteThread,send,run}`. `run(agentId, message)` starts a fresh thread and runs a turn in one call.
+- **GraphQL** — `agents` / `agent` queries; `createAgent` / `updateAgent` / `deleteAgent` / `runAgent` mutations.
+- **MCP** — `agents.list`, `agents.get`, `agents.run` (so an external agent like Claude Desktop can drive a backlex agent).
+- **CLI** — `backlex agents <list|get|create|update|delete|threads|run>`. `backlex agents run <id> --message "…"` prints the answer.
+
+## Notes & limits
+
+- A turn runs **synchronously** inside the request that posts the message; the
+  whole loop is bounded by `maxSteps` and the model's per-call token cap. A
+  thread that is already `running` rejects a second concurrent turn (`409`).
+- Requires an AI provider (`AI_GATEWAY_API_KEY`, `ANTHROPIC_API_KEY`, or a
+  workspace bring-your-own key, or the managed-cloud gateway). With none
+  configured a turn returns `503 UNAVAILABLE` and the thread is marked `error`.
+- **Deferred:** a durable, job-queue-backed async run path (enqueue a turn and
+  poll/stream it) is not yet wired — the building blocks (`jobs` + the step
+  loop) are in place, but reconstructing a tool-call identity for a detached
+  worker needs more design. Synchronous runs are the supported path today.

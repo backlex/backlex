@@ -120,6 +120,7 @@ export const NAV_DATA: NavItem[] = [
 // Automation — logic that runs on top of the data.
 export const NAV_AUTOMATION: NavItem[] = [
   { id: "flows", icon: "Bolt" },
+  { id: "agents", icon: "Sparkles" },
   { id: "functions", icon: "Function" },
   { id: "jobs", icon: "Clock" },
   { id: "feature-flags", icon: "ToggleLeft" },

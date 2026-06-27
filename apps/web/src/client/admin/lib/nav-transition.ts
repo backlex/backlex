@@ -42,11 +42,16 @@ export function supportsViewTransitions(): boolean {
  * `<html data-vt="…">` so CSS can swap in a directional keyframe; the attribute
  * is removed once the transition settles (or is skipped).
  */
+let vtInFlight = false;
+
 export function withViewTransition(
   commit: () => void,
   direction?: ViewTransitionDirection,
 ): void {
-  if (!supportsViewTransitions() || prefersReducedMotion()) {
+  // Re-entrancy guard: some controls fire their change handler twice for one
+  // interaction (e.g. Radix Tabs' automatic activation, on focus + click). Run
+  // the second commit directly so we don't stack a redundant transition.
+  if (!supportsViewTransitions() || prefersReducedMotion() || vtInFlight) {
     commit();
     return;
   }
@@ -57,12 +62,14 @@ export function withViewTransition(
   const doc = document as Document & {
     startViewTransition: StartViewTransition;
   };
+  vtInFlight = true;
   const transition = doc.startViewTransition(() => {
     flushSync(commit);
   });
   transition.finished
     .catch(() => {})
     .finally(() => {
+      vtInFlight = false;
       if (direction && root.dataset.vt === direction) delete root.dataset.vt;
     });
 }

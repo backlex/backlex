@@ -1640,10 +1640,10 @@ class_name = "RealtimeRoom"`}</pre>
         <div className="flex max-w-[920px] flex-col gap-3">
           <Card className="gap-3 p-[22px]">
             {[
-              [t`Version`, "v0.9.4 (a8b2f1c)"],
-              [t`Released`, "2025-10-12"],
+              [t`Version`, `${__APP_VERSION__} (${__GIT_COMMIT__})`],
+              [t`Released`, __BUILD_DATE__],
               [t`Runtime`, adapter],
-              [t`Wrangler`, "3.78.0"],
+              [t`Wrangler`, __WRANGLER_VERSION__],
               [t`License`, "Apache-2.0"],
               [t`Repository`, "github.com/backlex/backlex"],
             ].map(([k, v]) => (
@@ -1653,15 +1653,17 @@ class_name = "RealtimeRoom"`}</pre>
               </div>
             ))}
           </Card>
-          <Card className="flex items-center gap-2.5 p-[18px]">
-            <I.Shield size={14} />
+          <Card className="flex flex-col gap-3 p-[18px] sm:flex-row sm:items-center sm:gap-2.5">
+            <I.Shield size={14} className="shrink-0" />
             <div className="flex flex-col gap-0.5">
               <span className="text-[13px] font-medium"><Trans>Open-source · Apache-2.0 licensed</Trans></span>
               <span className="text-xs text-muted-foreground"><Trans>Self-hosted on Cloudflare Workers. No telemetry, no billing — just clone, deploy, run.</Trans></span>
             </div>
-            <div className="flex-1" />
-            <Button variant="outline" size="sm" icon={I.Code}><Trans>GitHub</Trans></Button>
-            <Button variant="ghost" size="sm" icon={I.Folder}><Trans>Docs</Trans></Button>
+            <div className="hidden flex-1 sm:block" />
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" icon={I.Code}><Trans>GitHub</Trans></Button>
+              <Button variant="ghost" size="sm" icon={I.Folder}><Trans>Docs</Trans></Button>
+            </div>
           </Card>
         </div>
       )}

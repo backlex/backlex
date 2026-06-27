@@ -1,3 +1,6 @@
+import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { fileURLToPath, URL } from "node:url";
 import * as babel from "@babel/core";
 import { cloudflare } from "@cloudflare/vite-plugin";
@@ -136,6 +139,54 @@ function workerCloudflareCompat(): Plugin {
  * one port. Production: `vite build` emits the SPA into `dist/` and
  * bundles the Worker; `wrangler deploy` ships both.
  */
+/**
+ * Build-time version metadata, derived once at config eval so the running
+ * instance can report what it actually is instead of a hand-edited constant
+ * (Settings → About + GET /api/admin/settings/runtime). Everything is wrapped
+ * in try/catch so a checkout without `git`/`node_modules` (e.g. a source
+ * tarball) still builds — it just falls back to package.json / "unknown".
+ */
+function git(cmd: string, fallback: string): string {
+  try {
+    return (
+      execSync(`git ${cmd}`, {
+        stdio: ["ignore", "pipe", "ignore"],
+        cwd: fileURLToPath(new URL(".", import.meta.url)),
+      })
+        .toString()
+        .trim() || fallback
+    );
+  } catch {
+    return fallback;
+  }
+}
+const pkgVersion = (() => {
+  try {
+    return JSON.parse(
+      readFileSync(new URL("./package.json", import.meta.url), "utf8"),
+    ).version as string;
+  } catch {
+    return "0.0.0";
+  }
+})();
+// Prefer the cloud template tag (set by scripts/build-worker-template.ts),
+// then the nearest git tag, then the package.json version. Release tags are
+// `worker-vX.Y.Z` → strip the `worker-` prefix for display.
+const appVersion = (
+  process.env.TEMPLATE_VERSION ??
+  git("describe --tags --always --dirty", `v${pkgVersion}`)
+).replace(/^worker-/, "");
+const gitCommit = git("rev-parse --short HEAD", "unknown");
+const buildDate = new Date().toISOString().slice(0, 10);
+const wranglerVersion = (() => {
+  try {
+    return createRequire(import.meta.url)("wrangler/package.json")
+      .version as string;
+  } catch {
+    return "unknown";
+  }
+})();
+
 export default defineConfig({
   // `linguiMacro()` transforms the Lingui macro (must run before react()).
   // `lingui()` compiles `.po` catalog imports to runtime message objects.
@@ -154,6 +205,10 @@ export default defineConfig({
   // leaves it unset → "dev". Replaced textually at build time.
   define: {
     __TEMPLATE_VERSION__: JSON.stringify(process.env.TEMPLATE_VERSION ?? "dev"),
+    __APP_VERSION__: JSON.stringify(appVersion),
+    __GIT_COMMIT__: JSON.stringify(gitCommit),
+    __BUILD_DATE__: JSON.stringify(buildDate),
+    __WRANGLER_VERSION__: JSON.stringify(wranglerVersion),
   },
   resolve: {
     alias: {

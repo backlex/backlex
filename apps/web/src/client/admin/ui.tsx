@@ -19,6 +19,7 @@ import type { MessageDescriptor } from "@lingui/core";
 import { cn } from "@backlex/ui/lib/utils";
 import { I, type IconComponent, type IconKey } from "./icons";
 import { NAV_PRIMARY, NAV_DATA, NAV_AUTOMATION, NAV_OBSERVABILITY, NAV_SETTINGS, NAV_DEVELOPERS } from "./config";
+import { prefetchPage } from "./lib/page-prefetch";
 import { notificationsApi, tenantsApi, type ApiNotification, type ApiTenant } from "./api";
 import { useNotifications, useNotificationsUnread, queryKeys } from "./queries";
 import { useWorkspaceBranding } from "@/lib/branding";
@@ -499,6 +500,10 @@ export function Sidebar({ activeNav, setActiveNav, pushToast, collectionsCount }
                         setActiveNav(it.id);
                         if (isMobile) setOpenMobile(false);
                       }}
+                      // Warm the page's lazy chunk on intent so the click's view
+                      // transition opens instantly instead of flashing a skeleton.
+                      onMouseEnter={() => prefetchPage(it.id)}
+                      onFocus={() => prefetchPage(it.id)}
                       tooltip={i18n._(navLabel(it.id))}
                     >
                       {IconComp && <IconComp size={15} />}

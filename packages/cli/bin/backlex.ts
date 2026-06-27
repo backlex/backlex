@@ -9,6 +9,7 @@ import { runBackup } from "../src/backup";
 import { runUsers, runRoles, runFlags, runSettings } from "../src/admin";
 import { runFunctions } from "../src/functions";
 import { runFlows } from "../src/flows";
+import { runAgents } from "../src/agents";
 import { runTemplates } from "../src/templates";
 import { runWebhooks } from "../src/webhooks";
 import { runJobs } from "../src/jobs";
@@ -72,6 +73,9 @@ Usage:
 
   backlex flows <list|get|run|create|delete>
       Visual workflow builder (definitions as JSON).
+
+  backlex agents <list|get|create|update|delete|threads|run>
+      AI agents. \`run <id> --message "…"\` runs a turn and prints the answer.
 
   backlex templates <list|apply>
       Schema-template catalog. \`apply <id>\` seeds collections + sample data.
@@ -178,6 +182,10 @@ const run = async () => {
     case "flows":
     case "flow":
       await runFlows(rest);
+      return;
+    case "agents":
+    case "agent":
+      await runAgents(rest);
       return;
     case "templates":
     case "template":

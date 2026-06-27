@@ -1,6 +1,6 @@
 import { AppError } from "@backlex/core";
 import { createYoga } from "graphql-yoga";
-import type { Context } from "hono";
+import type { Context, Hono } from "hono";
 import type { AppBindings } from "../app";
 import { getRequestPermCache } from "../middleware/permission";
 import { getSchema } from "../services/graphql";
@@ -13,6 +13,7 @@ import { getSchema } from "../services/graphql";
  */
 export const handleGraphql = async (
   c: Context<AppBindings>,
+  app?: Hono,
 ): Promise<Response> => {
   const ctx = c.get("ctx");
   const auth = c.get("auth");
@@ -21,10 +22,12 @@ export const handleGraphql = async (
   }
   const schema = await getSchema(ctx, auth.tenantId);
   const permCache = getRequestPermCache(c);
+  // `app` + the raw request let the `runAgent` mutation issue identity-carrying
+  // in-process sub-fetches to run an agent's MCP tools (same as the REST route).
   const yoga = createYoga({
     schema,
     graphqlEndpoint: "/api/graphql",
-    context: () => ({ ctx, auth, permCache }),
+    context: () => ({ ctx, auth, permCache, app, rawRequest: c.req.raw }),
     landingPage: false,
     graphiql: { defaultQuery: "{ _empty }" },
   });

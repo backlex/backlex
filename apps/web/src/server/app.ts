@@ -18,6 +18,7 @@ import { activityRoutes } from "./routes/activity";
 import { adoptRoutes } from "./routes/adopt";
 import { advisorRoutes } from "./routes/advisor";
 import { aiAskRoutes } from "./routes/ai-ask";
+import { agentsRoutes } from "./routes/agents";
 import { apiKeysRoutes } from "./routes/api-keys";
 import { appUsersRoutes } from "./routes/app-users";
 import { authRoutes } from "./routes/auth";
@@ -609,7 +610,7 @@ export const createApp = (env: Env) => {
   // large slice of the bundle that most requests never touch. Dynamic-import it
   // on first hit so it stays out of the worker's cold-start eval path.
   app.all("/api/graphql", (c) =>
-    import("./routes/graphql").then((m) => m.handleGraphql(c)),
+    import("./routes/graphql").then((m) => m.handleGraphql(c, app as unknown as Hono)),
   );
   app.route("/api", openapiRoutes);
   app.route("/api/_internal/sandbox-rpc", sandboxRpcRoutes);
@@ -626,6 +627,10 @@ export const createApp = (env: Env) => {
   // the activity table). Mounted after MCP because /run reuses the same
   // tool roster via in-process sub-fetches against this same Hono app.
   app.route("/api/admin/ai", aiAskRoutes(app, env));
+  // AI agents — mounted alongside MCP / Ask-AI because the agent run loop
+  // issues in-process sub-fetches against this same Hono app (carrying the
+  // caller's identity) to execute the agent's allow-listed MCP tools.
+  app.route("/api/agents", agentsRoutes(app, env));
 
   app.onError(errorHandler);
 

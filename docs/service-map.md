@@ -67,6 +67,13 @@ guides; this list is everything else.
   Admin-scoped CRUD + run is mirrored across REST, the SDK
   (`client.flows.*`), GraphQL (`runFlow` et al.), MCP (`flows.*`), and the
   CLI. See `docs/flows.md`.
+- **AI agents** (`routes/agents.ts`, `services/agents/{store,runner,memory}.ts`)
+  — reason→act AI agents over the MCP tool registry. An agent definition +
+  threads + persisted message transcripts; a turn runs synchronously, executes
+  allow-listed tools via an identity-carrying in-process sub-fetch, and streams
+  steps over `agent:thread:<id>`. Optional per-thread vector memory. Admin-scoped
+  CRUD + run is mirrored across REST, the SDK (`client.agents.*`), GraphQL
+  (`runAgent` et al.), MCP (`agents.*`), and the CLI. See `docs/agents.md`.
 - **Functions** (`routes/functions.ts`, `services/functions.ts`,
   `services/sandbox/*`, `routes/sandbox-rpc.ts`) — sandboxed JS
   execution. Provider picked by runtime: QuickJS on Workers, Bun

@@ -405,6 +405,101 @@ export interface FlowRunResult {
   error?: string;
 }
 
+/** An AI agent definition. Mirrors `/api/agents`. */
+export interface Agent {
+  id: string;
+  tenantId?: string | null;
+  name: string;
+  description?: string | null;
+  systemPrompt?: string | null;
+  model?: string | null;
+  /** Allow-list of MCP tool names the agent may call. */
+  tools: string[];
+  maxSteps: number;
+  /** Cross-turn semantic memory (best-effort; needs an embedding provider). */
+  memory: boolean;
+  active: boolean;
+}
+
+/** Create/update payload for an agent. */
+export interface AgentInput {
+  name: string;
+  description?: string | null;
+  systemPrompt?: string | null;
+  model?: string | null;
+  tools?: string[];
+  maxSteps?: number;
+  memory?: boolean;
+  active?: boolean;
+}
+
+/** A conversation thread against an agent. */
+export interface AgentThread {
+  id: string;
+  tenantId?: string | null;
+  agentId: string;
+  title?: string | null;
+  status: "idle" | "running" | "error";
+}
+
+/** One persisted message in a thread (user / assistant / tool). */
+export interface AgentMessage {
+  id: string;
+  threadId: string;
+  role: "user" | "assistant" | "tool";
+  content: string;
+  toolName?: string | null;
+  toolArgs?: unknown;
+  toolResult?: unknown;
+}
+
+/** One reason→act step the agent took during a turn. */
+export interface AgentRunStep {
+  thought?: string;
+  tool: string;
+  args: Record<string, unknown>;
+  observation: string;
+  isError: boolean;
+}
+
+/** Outcome of a single agent turn. */
+export interface AgentRunResult {
+  answer: string;
+  steps: AgentRunStep[];
+  stoppedReason: "final" | "max_steps" | "error";
+}
+
+/** AI agents (admin-scoped). Mirrors `/api/agents`. See `createClient`. */
+export interface AgentsClient {
+  /** List every agent in the active workspace. */
+  list(): Promise<{ data: Agent[] }>;
+  /** Fetch a single agent by id. */
+  get(id: string): Promise<{ data: Agent }>;
+  /** Create an agent scoped to the active workspace. */
+  create(input: AgentInput): Promise<{ data: Agent }>;
+  /** Partial update of an agent by id. */
+  update(id: string, patch: Partial<AgentInput>): Promise<{ ok: boolean }>;
+  /** Delete an agent by id. */
+  delete(id: string): Promise<{ ok: boolean }>;
+  /** List threads for an agent (most recently active first). */
+  threads(agentId: string): Promise<{ data: AgentThread[] }>;
+  /** Start a new conversation thread for an agent. */
+  createThread(agentId: string, title?: string): Promise<{ data: AgentThread }>;
+  /** Fetch a thread and its full message transcript. */
+  thread(threadId: string): Promise<{ data: { thread: AgentThread; messages: AgentMessage[] } }>;
+  /** Delete a thread and its messages. */
+  deleteThread(threadId: string): Promise<{ ok: boolean }>;
+  /** Send a message and run one turn to completion. */
+  send(threadId: string, message: string): Promise<{ data: AgentRunResult }>;
+  /** Convenience: start a fresh thread and run one turn. Returns the result
+   *  plus the new `threadId` so you can continue the conversation. */
+  run(
+    agentId: string,
+    message: string,
+    title?: string,
+  ): Promise<{ data: AgentRunResult; threadId: string }>;
+}
+
 /** Visual workflows (admin-scoped). Mirrors `/api/flows`. See `createClient`. */
 export interface FlowsClient {
   /** List every flow in the active workspace. */
@@ -487,6 +582,8 @@ export interface BacklexClient {
   jobs: JobsClient;
   /** Visual workflows (flows). */
   flows: FlowsClient;
+  /** AI agents (definitions, threads, and running turns). */
+  agents: AgentsClient;
   /** Schema templates (catalog + apply). */
   templates: TemplatesClient;
   /** Feature flags / remote config. */
@@ -1066,6 +1163,51 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       request<FlowRunResult>("POST", `/api/flows/${encodeURIComponent(id)}/run`, input ?? {}),
   };
 
+  // AI agents. Admin-scoped CRUD + thread management over `/api/agents`; `send`
+  // runs one reason→act turn to completion, `run` is the new-thread shortcut.
+  const agents: AgentsClient = {
+    list: () => request<{ data: Agent[] }>("GET", "/api/agents"),
+    get: (id: string) =>
+      request<{ data: Agent }>("GET", `/api/agents/${encodeURIComponent(id)}`),
+    create: (input: AgentInput) => request<{ data: Agent }>("POST", "/api/agents", input),
+    update: (id: string, patch: Partial<AgentInput>) =>
+      request<{ ok: boolean }>("PATCH", `/api/agents/${encodeURIComponent(id)}`, patch),
+    delete: (id: string) =>
+      request<{ ok: boolean }>("DELETE", `/api/agents/${encodeURIComponent(id)}`),
+    threads: (agentId: string) =>
+      request<{ data: AgentThread[] }>(
+        "GET",
+        `/api/agents/${encodeURIComponent(agentId)}/threads`,
+      ),
+    createThread: (agentId: string, title?: string) =>
+      request<{ data: AgentThread }>(
+        "POST",
+        `/api/agents/${encodeURIComponent(agentId)}/threads`,
+        title ? { title } : {},
+      ),
+    thread: (threadId: string) =>
+      request<{ data: { thread: AgentThread; messages: AgentMessage[] } }>(
+        "GET",
+        `/api/agents/threads/${encodeURIComponent(threadId)}`,
+      ),
+    deleteThread: (threadId: string) =>
+      request<{ ok: boolean }>(
+        "DELETE",
+        `/api/agents/threads/${encodeURIComponent(threadId)}`,
+      ),
+    send: (threadId: string, message: string) =>
+      request<{ data: AgentRunResult }>(
+        "POST",
+        `/api/agents/threads/${encodeURIComponent(threadId)}/messages`,
+        { message },
+      ),
+    run: async (agentId: string, message: string, title?: string) => {
+      const { data: thread } = await agents.createThread(agentId, title);
+      const { data } = await agents.send(thread.id, message);
+      return { data, threadId: thread.id };
+    },
+  };
+
   // Schema templates. Admin-scoped catalog + apply over `/api/admin/templates`;
   // `apply` is idempotent and seeds sample data for newly-created collections.
   const templates: TemplatesClient = {
@@ -1116,6 +1258,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     messaging,
     jobs,
     flows,
+    agents,
     templates,
     flags,
     sync,

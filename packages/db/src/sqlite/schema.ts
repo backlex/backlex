@@ -402,6 +402,68 @@ export const flows = sqliteTable(
   ],
 );
 
+/** AI agents — see the pg schema for full column docs. Dual-dialect: keep both
+ *  in lockstep. */
+export const agents = sqliteTable(
+  "agents",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    name: text("name").notNull(),
+    description: text("description"),
+    systemPrompt: text("system_prompt"),
+    model: text("model"),
+    tools: text("tools", { mode: "json" }).$type<string[]>().notNull().default([]),
+    maxSteps: integer("max_steps").notNull().default(8),
+    memory: integer("memory", { mode: "boolean" }).notNull().default(false),
+    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    uniqueIndex("agents_tenant_name_idx").on(t.tenantId, t.name),
+    index("agents_tenant_idx").on(t.tenantId),
+  ],
+);
+
+export const agentThreads = sqliteTable(
+  "agent_threads",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    agentId: text("agent_id").notNull(),
+    title: text("title"),
+    status: text("status").notNull().default("idle"),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    index("agent_threads_tenant_agent_idx").on(t.tenantId, t.agentId),
+    index("agent_threads_agent_idx").on(t.agentId),
+  ],
+);
+
+export const agentMessages = sqliteTable(
+  "agent_messages",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    threadId: text("thread_id").notNull(),
+    role: text("role").notNull(),
+    content: text("content").notNull().default(""),
+    toolName: text("tool_name"),
+    toolArgs: text("tool_args", { mode: "json" }).$type<unknown>(),
+    toolResult: text("tool_result", { mode: "json" }).$type<unknown>(),
+    tokensIn: integer("tokens_in"),
+    tokensOut: integer("tokens_out"),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    index("agent_messages_thread_idx").on(t.threadId, t.createdAt),
+  ],
+);
+
 export const webhooks = sqliteTable(
   "webhooks",
   {

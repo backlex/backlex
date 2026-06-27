@@ -468,6 +468,89 @@ export const flows = pgTable(
   ],
 );
 
+/**
+ * AI agents — a named, reusable agent definition. `system_prompt` shapes the
+ * persona; `model` pins a default LLM (gateway-prefixed id or bare Anthropic
+ * id, resolved by callClaude); `tools` is the allow-list of MCP tool names the
+ * agent may call (a subset of `allTools`); `max_steps` caps the reason→act loop
+ * so a runaway agent can't spin forever. Scoped to a workspace like flows.
+ */
+export const agents = pgTable(
+  "agents",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    name: text("name").notNull(),
+    description: text("description"),
+    systemPrompt: text("system_prompt"),
+    model: text("model"),
+    /** Allow-list of MCP tool names this agent may invoke. */
+    tools: jsonb("tools").$type<string[]>().notNull().default([]),
+    /** Hard cap on reason→act iterations per turn (runaway-loop backstop). */
+    maxSteps: integer("max_steps").notNull().default(8),
+    /** When true, the runner stores each turn's user + final messages as
+     *  embeddings and retrieves the most relevant past context on every turn —
+     *  cross-turn semantic memory beyond the raw transcript. Best-effort: a
+     *  no-op when no embedding provider / default model is configured. */
+    memory: boolean("memory").notNull().default(false),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("agents_tenant_name_idx").on(t.tenantId, t.name),
+    index("agents_tenant_idx").on(t.tenantId),
+  ],
+);
+
+/**
+ * A conversation thread against one agent. `status` is `idle` between turns,
+ * `running` while a turn executes, `error` if the last turn threw. The thread
+ * is the durable unit a turn appends messages to.
+ */
+export const agentThreads = pgTable(
+  "agent_threads",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    agentId: text("agent_id").notNull(),
+    title: text("title"),
+    status: text("status").notNull().default("idle"),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("agent_threads_tenant_agent_idx").on(t.tenantId, t.agentId),
+    index("agent_threads_agent_idx").on(t.agentId),
+  ],
+);
+
+/**
+ * One message in a thread. `role` is user | assistant | tool. Tool steps carry
+ * `tool_name` / `tool_args` (the call the model emitted) and `tool_result`
+ * (the observation fed back). Token counts are recorded for usage display.
+ */
+export const agentMessages = pgTable(
+  "agent_messages",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    threadId: text("thread_id").notNull(),
+    role: text("role").notNull(),
+    content: text("content").notNull().default(""),
+    toolName: text("tool_name"),
+    toolArgs: jsonb("tool_args").$type<unknown>(),
+    toolResult: jsonb("tool_result").$type<unknown>(),
+    tokensIn: integer("tokens_in"),
+    tokensOut: integer("tokens_out"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("agent_messages_thread_idx").on(t.threadId, t.createdAt),
+  ],
+);
+
 export const webhooks = pgTable(
   "webhooks",
   {

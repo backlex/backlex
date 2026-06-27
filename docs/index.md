@@ -128,6 +128,7 @@ releases — migrations apply automatically on redeploy.
 - [Permissions DSL](/docs/permissions/) — granular role + condition rules
 - [Auth planes](/docs/auth-planes/) — admin pool vs workspace end-user pool
 - [Sandbox functions](/docs/sandbox/) — JavaScript code that runs in a sandbox
+- [AI agents](/docs/agents/) — reason→act agents that call your tools, with per-thread memory
 - [MCP server](/docs/mcp/) — expose the workspace to Claude Desktop / Cursor / IDE agents
 - [Deployment](/docs/deployment/) — push to Bun, Workers, Vercel, Netlify, AWS Lambda, Google Cloud, or Azure
 - [Testing](/docs/testing/) — three-layer pyramid (bun test / build-targets / runtime-smoke)

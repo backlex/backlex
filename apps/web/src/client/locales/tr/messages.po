@@ -806,11 +806,13 @@ msgid "Activate"
 msgstr "Etkinleştir"
 
 #: src/client/admin/members-panel.tsx
+#: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
 msgid "active"
 msgstr "etkin"
 
+#: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/webhooks.tsx
@@ -1070,6 +1072,23 @@ msgstr "Danışman yeniden çalıştırıldı."
 msgid "after"
 msgstr "sonra"
 
+#: src/client/admin/pages/agents.tsx
+msgid "Agent created."
+msgstr "Ajan oluşturuldu."
+
+#: src/client/admin/pages/agents.tsx
+msgid "Agent deleted."
+msgstr "Ajan silindi."
+
+#: src/client/admin/pages/agents.tsx
+msgid "Agent saved."
+msgstr "Ajan kaydedildi."
+
+#: src/client/admin/pages/agents.tsx
+#: src/client/admin/ui.tsx
+msgid "Agents"
+msgstr "Ajanlar"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Aggregate function"
 msgstr "Toplama fonksiyonu"
@@ -1077,6 +1096,10 @@ msgstr "Toplama fonksiyonu"
 #: src/client/admin/pages/settings.tsx
 msgid "AI"
 msgstr "AI"
+
+#: src/client/admin/pages/agents.tsx
+msgid "AI agents that reason, call your tools, and answer — built on your collections."
+msgstr "Akıl yürüten, araçlarınızı çağıran ve yanıt veren — koleksiyonlarınız üzerine kurulu AI ajanları."
 
 #. placeholder {0}: r.reply
 #: src/client/admin/pages/settings.tsx
@@ -1350,6 +1373,10 @@ msgstr "Bir yöneticiden yeni bir davet istemesini iste ya da zaten hesabın var
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Ask in natural language"
 msgstr "Doğal dilde sor"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Ask the agent…"
+msgstr "Ajana sorun…"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "asking {model}…"
@@ -1705,6 +1732,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/items.tsx
+#: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/functions.tsx
@@ -2703,6 +2731,7 @@ msgstr "Varsayılan olarak URL'nin dosya adını kullanır"
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/items.tsx
+#: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/jobs.tsx
@@ -2825,6 +2854,7 @@ msgstr "azalan"
 msgid "Descending"
 msgstr "Azalan"
 
+#: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/parity/insights.tsx
@@ -3104,6 +3134,7 @@ msgstr "düzenle"
 #: src/client/admin/app.tsx
 #: src/client/admin/item-form.tsx
 #: src/client/admin/items.tsx
+#: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/webhooks.tsx
 msgid "Edit"
@@ -3125,6 +3156,10 @@ msgstr "<0>{0}</0> <1>{1}</1> düzenle"
 #: src/client/admin/bulk-edit.tsx
 msgid "Edit a field below to include it in the update."
 msgstr "Güncellemeye dahil etmek için aşağıdan bir alanı düzenleyin."
+
+#: src/client/admin/pages/agents.tsx
+msgid "Edit agent"
+msgstr "Ajanı düzenle"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Edit args"
@@ -3728,6 +3763,7 @@ msgstr "Tabloları filtrele…"
 msgid "Filter tools"
 msgstr "Araçları filtrele"
 
+#: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Filter tools…"
 msgstr "Araçları filtrele…"
@@ -4901,6 +4937,7 @@ msgid "Loading tool catalog…"
 msgstr "Araç kataloğu yükleniyor…"
 
 #: src/client/admin/item-editor.tsx
+#: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/logs.tsx
@@ -5070,6 +5107,10 @@ msgstr "En fazla 80 karakter."
 msgid "Max attempts"
 msgstr "Maksimum deneme"
 
+#: src/client/admin/pages/agents.tsx
+msgid "Max steps"
+msgstr "Maksimum adım"
+
 #: src/client/admin/item-views.tsx
 msgid "May"
 msgstr "Mayıs"
@@ -5114,6 +5155,14 @@ msgstr "üyeler"
 #: src/client/admin/app.tsx
 msgid "Members"
 msgstr "Üyeler"
+
+#: src/client/admin/pages/agents.tsx
+msgid "memory"
+msgstr "hafıza"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Memory"
+msgstr "Hafıza"
 
 #: src/client/admin/flow-builder.tsx
 msgid "Message"
@@ -5165,6 +5214,7 @@ msgstr "Bu kaydı salt okunur olarak gösteren bir genel bağlantı oluşturun �
 msgid "Missing ({0})"
 msgstr "Eksik ({0})"
 
+#: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Model"
 msgstr "Model"
@@ -5262,6 +5312,7 @@ msgstr "Temam"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/add-field.tsx
+#: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/pages/users.tsx
@@ -5288,6 +5339,10 @@ msgstr "Ad mevcut bir sütunla çakışıyor."
 #: src/client/admin/pages/webhooks.tsx
 msgid "name is required"
 msgstr "ad zorunludur"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Name is required."
+msgstr "İsim gerekli."
 
 #: src/client/admin/account-page.tsx
 msgid "Name this passkey (e.g. MacBook Touch ID)"
@@ -5340,6 +5395,10 @@ msgstr "Yeni {0} öğesi"
 msgid "New {slug}"
 msgstr "Yeni {slug}"
 
+#: src/client/admin/pages/agents.tsx
+msgid "New agent"
+msgstr "Yeni ajan"
+
 #: src/client/pages/api-keys.tsx
 msgid "New API key"
 msgstr "Yeni API anahtarı"
@@ -5348,10 +5407,18 @@ msgstr "Yeni API anahtarı"
 msgid "New backup codes generated. Old codes no longer work."
 msgstr "Yeni yedek kodlar oluşturuldu. Eski kodlar artık çalışmıyor."
 
+#: src/client/admin/pages/agents.tsx
+msgid "New chat"
+msgstr "Yeni sohbet"
+
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/pages/overview.tsx
 msgid "New collection"
 msgstr "Yeni koleksiyon"
+
+#: src/client/admin/pages/agents.tsx
+msgid "New conversation"
+msgstr "Yeni konuşma"
 
 #: src/client/admin/pages/feature-flags.tsx
 msgid "New flag"
@@ -5480,6 +5547,14 @@ msgstr "Bu pencerede etkinlik yok"
 #: src/client/admin/pages/overview.tsx
 msgid "No activity recorded."
 msgstr "Etkinlik kaydedilmedi."
+
+#: src/client/admin/pages/agents.tsx
+msgid "No agent selected"
+msgstr "Ajan seçilmedi"
+
+#: src/client/admin/pages/agents.tsx
+msgid "No agents yet — click + New agent."
+msgstr "Henüz ajan yok — + Yeni ajan’a tıklayın."
 
 #: src/client/pages/api-keys.tsx
 msgid "No API keys yet"
@@ -5861,6 +5936,10 @@ msgstr "Henüz şablon yok — eklemek için \"Yeni şablon\"u kullanın."
 msgid "No tools match this filter."
 msgstr "Bu filtreyle eşleşen araç yok."
 
+#: src/client/admin/pages/agents.tsx
+msgid "No tools match."
+msgstr "Eşleşen araç yok."
+
 #: src/client/admin/edit-field.tsx
 msgid "No two rows can hold the same value (case-sensitive)."
 msgstr "İki satır aynı değeri tutamaz (büyük/küçük harfe duyarlı)."
@@ -5993,6 +6072,7 @@ msgstr "Gözlemlenebilirlik"
 msgid "October"
 msgstr "Ekim"
 
+#: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/users.tsx
 msgid "off"
 msgstr "kapalı"
@@ -6531,6 +6611,10 @@ msgstr "UI arayüzü seçin · {1} grupta {0} mevcut"
 msgid "Pick a unique name."
 msgstr "Benzersiz bir ad seçin."
 
+#: src/client/admin/pages/agents.tsx
+msgid "Pick an agent on the left, or click <0>+ New agent</0>."
+msgstr "Soldan bir ajan seçin veya <0>+ Yeni ajan</0>’a tıklayın."
+
 #: src/client/admin/relational-pickers.tsx
 msgid "Pick an existing file, or drop a new one to upload."
 msgstr "Mevcut bir dosya seçin veya yüklemek için yeni bir tane bırakın."
@@ -6991,6 +7075,10 @@ msgstr "Kaydetmeye hazır."
 #: src/client/admin/ui.tsx
 msgid "Realtime"
 msgstr "Gerçek zamanlı"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Recall relevant past turns (needs an embedding provider)."
+msgstr "İlgili geçmiş konuşmaları hatırlar (bir embedding sağlayıcısı gerekir)."
 
 #: src/client/admin/extras.tsx
 msgid "Received"
@@ -7717,6 +7805,7 @@ msgstr "Cmt"
 #: src/client/admin/account-page.tsx
 #: src/client/admin/condition-editor.tsx
 #: src/client/admin/item-editor.tsx
+#: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -7810,6 +7899,7 @@ msgstr "MCP korumaları kaydediliyor"
 
 #: src/client/admin/account-page.tsx
 #: src/client/admin/item-editor.tsx
+#: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/parity/app-users.tsx
@@ -8027,6 +8117,7 @@ msgid "Self-hosted on Cloudflare Workers. No telemetry, no billing — just clon
 msgstr "Cloudflare Workers üzerinde öz barındırılan. Telemetri yok, fatura yok — sadece klonla, dağıt, çalıştır."
 
 #: src/client/admin/item-collaboration.tsx
+#: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/pages/rest-explorer.tsx
 msgid "Send"
@@ -8035,6 +8126,10 @@ msgstr "Gönder"
 #: src/client/pages/sign-in.tsx
 msgid "Send a magic link instead"
 msgstr "Bunun yerine sihirli bağlantı gönder"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Send a message to start the conversation."
+msgstr "Konuşmayı başlatmak için bir mesaj gönderin."
 
 #: src/client/admin/pages/users.tsx
 msgid "Send an email invite. The user finishes signup themselves."
@@ -8747,6 +8842,10 @@ msgstr "Özet"
 msgid "Sun"
 msgstr "Paz"
 
+#: src/client/admin/pages/agents.tsx
+msgid "Support agent"
+msgstr "Destek ajanı"
+
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
 msgid "Suspend"
@@ -8797,6 +8896,14 @@ msgstr "sistem alanları"
 #: src/client/admin/item-editor.tsx
 msgid "System fields"
 msgstr "Sistem alanları"
+
+#: src/client/admin/pages/agents.tsx
+msgid "System prompt"
+msgstr "Sistem komutu"
+
+#: src/client/admin/pages/agents.tsx
+msgid "System prompt shapes the persona; the tool allow-list is what it can do."
+msgstr "Sistem komutu kişiliği belirler; araç izin listesi ise yapabileceklerini."
 
 #: src/client/admin/role-editor.tsx
 msgid "System role — name is read-only; permissions still editable."
@@ -8998,9 +9105,17 @@ msgstr "Paylaşım bağlantısı iptal edilmiş olabilir ya da işaret ettiği k
 msgid "These rows will be removed from c_posts. This deletes the underlying records — revisions remain available."
 msgstr "Bu satırlar c_posts tablosundan kaldırılacak. Bu temel kayıtları siler — sürümler kullanılabilir kalmaya devam eder."
 
+#: src/client/admin/pages/agents.tsx
+msgid "Thinking…"
+msgstr "Düşünüyor…"
+
 #: src/client/admin/app.tsx
 msgid "This <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> is irreversible. Existing data in the column is lost."
 msgstr "Bu <0>ALTER TABLE c_posts DROP COLUMN \"{name}\"</0> işlemi geri alınamaz. Sütundaki mevcut veriler kaybolur."
+
+#: src/client/admin/pages/agents.tsx
+msgid "This agent has no tools — it answers from the model alone. Add tools in Edit to let it read your data."
+msgstr "Bu ajanın aracı yok — yalnızca modelden yanıt verir. Verilerinizi okuyabilmesi için Düzenle’den araç ekleyin."
 
 #: src/client/admin/extras.tsx
 msgid "this collection"
@@ -9175,10 +9290,12 @@ msgstr "Araç tamam"
 msgid "Tool ok — {count} rows"
 msgstr "Araç tamam — {count} satır"
 
+#: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/ask-ai.tsx
 msgid "tools"
 msgstr "araç"
 
+#: src/client/admin/pages/agents.tsx
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Tools"
 msgstr "Araçlar"
@@ -9794,6 +9911,10 @@ msgstr "Tekrar hoş geldiniz"
 msgid "Welcome back. Pick up where you left off — content, data, and APIs all in one place."
 msgstr "Tekrar hoş geldin. Kaldığın yerden devam et — içerik, veri ve API'lar tek yerde."
 
+#: src/client/admin/pages/agents.tsx
+msgid "What this agent is for"
+msgstr "Bu ajan ne için"
+
 #: src/client/admin/storage.tsx
 msgid "What this file is about…"
 msgstr "Bu dosya hakkında…"
@@ -9985,6 +10106,10 @@ msgstr "xxxxx-xxxxx"
 #: src/client/admin/parity/app-users.tsx
 msgid "yes"
 msgstr "evet"
+
+#: src/client/admin/pages/agents.tsx
+msgid "You are a helpful assistant for our workspace…"
+msgstr "Çalışma alanımız için yardımcı bir asistansınız…"
 
 #: src/client/admin/item-editor.tsx
 msgid "You have edits that haven't been saved. Leaving will lose them."

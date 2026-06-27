@@ -60,6 +60,7 @@ export const MIGRATION_TAGS_SQLITE: Record<string, string> = {
   "4f9601d6a61bc21a6c412a119084d93b1d15129c6b1ff7edfd0dcb4b73d8931d": "20260620180000_collections_fts",
   "40eb2ffa9266f9ee24a27ce2d80cba1fb68437a4999b8c72d79045a8f136a15e": "20260620190000_managed_webhooks",
   "9cb34b00e8894c7518b182c57a0c53162572fcee0a805587d889d80446dea6db": "20260621000000_ai_config",
+  "30fc470c916398b3363120182043be4e6db61603dedc20af7709bfa0d52ffea4": "20260627000000_ai_agents",
 };
 
 export const MIGRATION_TAGS_PG: Record<string, string> = {
@@ -114,4 +115,5 @@ export const MIGRATION_TAGS_PG: Record<string, string> = {
   "e211e426181f1b72513195ff29c71b865dd41fced092b7af41cc6d703279cb40": "20260620180000_collections_fts",
   "3aa50ad1ac83cad1fad8522ba651fe779d267fd44f94f660951f2b301cfa4531": "20260620190000_managed_webhooks",
   "3b090817f803f7a5006a59751c4147493e7b12d622814fd04642643595779d96": "20260621000000_ai_config",
+  "d32eeed3e9f221104c43ecf25518d55e999edc9abb6bde4880faf86cfc83897f": "20260627000000_ai_agents",
 };

@@ -82,6 +82,7 @@ import {
 import { RoleEditor, type RoleData } from "./role-editor";
 import { MembersPanel } from "./members-panel";
 import { PermissionsMatrix } from "./permissions-matrix";
+import { PermissionTesterPanel } from "./permission-tester";
 // Each admin page is split into its own chunk so the initial admin bundle
 // stays small. The shared `<Suspense>` boundary inside the page switch below
 // renders the fallback while the page chunk streams in.
@@ -1331,14 +1332,15 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
 
 function RolesPageWithMembers({ pushToast }: { pushToast: (m: string) => void }) {
   const { t } = useLingui();
-  const [tab, setTab] = useState<"members" | "roles">("members");
+  const [tab, setTab] = useState<"members" | "roles" | "tester">("members");
   return (
     <div className="flex flex-col gap-3.5">
-      <Tabs value={tab} onValueChange={(v) => setTab(v as "members" | "roles")}>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "members" | "roles" | "tester")}>
         <TabsList>
           {[
             { id: "members" as const, label: t`Members`, icon: I.Users },
             { id: "roles" as const, label: t`Roles & permissions`, icon: I.Shield },
+            { id: "tester" as const, label: t`Tester`, icon: I.ShieldAlert },
           ].map((t) => (
             <TabsTrigger key={t.id} value={t.id}>
               <t.icon size={13} /><span>{t.label}</span>
@@ -1348,6 +1350,7 @@ function RolesPageWithMembers({ pushToast }: { pushToast: (m: string) => void })
       </Tabs>
       {tab === "members" && <MembersPanel roles={[]} pushToast={pushToast} />}
       {tab === "roles" && <PermissionsPanel pushToast={pushToast} />}
+      {tab === "tester" && <PermissionTesterPanel pushToast={pushToast} />}
     </div>
   );
 }

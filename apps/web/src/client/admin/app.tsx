@@ -1,8 +1,9 @@
 // @ts-nocheck
 // backlex admin — main app
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { withViewTransition, supportsViewTransitions, prefersReducedMotion } from "./lib/nav-transition";
+import { withViewTransition, supportsViewTransitions, prefersReducedMotion, savePaneScroll, restorePaneScroll } from "./lib/nav-transition";
+import { prefetchPage } from "./lib/page-prefetch";
 import "./admin.css";
 import "./flow-builder.css";
 import { I } from "./icons";
@@ -96,28 +97,6 @@ const SchemaGraphPage = lazy(() => import("./pages/schema-graph").then((m) => ({
 const UsersPage = lazy(() => import("./pages/users").then((m) => ({ default: m.UsersPage })));
 const SettingsPage = lazy(() => import("./pages/settings").then((m) => ({ default: m.SettingsPage })));
 
-// Chunk warmers for the lazy pages above, keyed by nav id. Used before a view
-// transition so the API captures the real page instead of the Suspense
-// skeleton (Vite dedupes these specifiers to the same chunks the `lazy()` calls
-// load). Pages not listed here are rendered inline (no lazy boundary).
-const PAGE_PREFETCH: Record<string, () => Promise<unknown>> = {
-  overview: () => import("./pages/overview"),
-  "ask-ai": () => import("./pages/ask-ai"),
-  flows: () => import("./pages/flows"),
-  functions: () => import("./pages/functions"),
-  jobs: () => import("./pages/jobs"),
-  "feature-flags": () => import("./pages/feature-flags"),
-  webhooks: () => import("./pages/webhooks"),
-  integrations: () => import("./pages/integrations"),
-  realtime: () => import("./pages/realtime"),
-  logs: () => import("./pages/logs"),
-  advisor: () => import("./pages/advisor"),
-  "schema-graph": () => import("./pages/schema-graph"),
-  users: () => import("./pages/users"),
-  settings: () => import("./pages/settings"),
-  "rest-explorer": () => import("@/pages/rest-explorer"),
-};
-
 import { PageSkeleton, CollectionItemsSkeleton } from "./page-skeletons";
 
 const TAB_COUNT_CLS =
@@ -201,16 +180,28 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   // the transition snapshots the page, not its skeleton), then commits through
   // `withViewTransition` which falls back to a plain navigate when the API is
   // unavailable or reduced-motion is on. `direction` drives the CSS slide.
+  // Current location key, kept in a ref so the memoized `vNav` can read it
+  // without re-creating on every navigation.
+  const locKeyRef = useRef("");
+  locKeyRef.current = location.pathname + location.search;
+  // Restore the destination's saved scroll (or top) after each navigation
+  // commits — runs inside the view-transition's synchronous flush, so the new
+  // snapshot reflects the restored offset.
+  useLayoutEffect(() => {
+    restorePaneScroll(location.pathname + location.search);
+  }, [location.pathname, location.search]);
   const vNav = useCallback(
     (to: string, direction?: "forward" | "back", opts?: { replace?: boolean }) => {
+      // Save where we are before leaving so a later "back" can restore it.
+      savePaneScroll(locKeyRef.current);
       const navId = to.replace(/^\/+/, "").split(/[/?]/)[0] ?? "";
       const run = () => withViewTransition(() => navigate(to, opts), direction);
-      const loader = PAGE_PREFETCH[navId];
-      if (loader && supportsViewTransitions() && !prefersReducedMotion()) {
-        loader().then(run, run);
-      } else {
-        run();
-      }
+      const pending =
+        supportsViewTransitions() && !prefersReducedMotion()
+          ? prefetchPage(navId)
+          : undefined;
+      if (pending) pending.then(run, run);
+      else run();
     },
     [navigate],
   );

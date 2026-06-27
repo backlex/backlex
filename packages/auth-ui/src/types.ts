@@ -104,7 +104,7 @@ export interface AuthClient {
 
 /**
  * Router-agnostic Link component the consumer supplies. The default in the
- * OSS admin is `react-router-dom`'s `<Link to=…>`; cloud may use Next.js's
+ * OSS admin is `react-router`'s `<Link to=…>`; cloud may use Next.js's
  * `<Link href=…>` and adapt accordingly.
  */
 export type LinkComponent = (props: {

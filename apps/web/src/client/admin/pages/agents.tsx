@@ -1,0 +1,544 @@
+// Agents page — AI agent definitions + a chat playground that streams each
+// reason→act step live over the `agent:thread:<id>` realtime channel.
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { I } from "../icons";
+import { Badge, Button, EmptyState, PageHeader, Switch } from "../ui";
+import { Card } from "@backlex/ui/components/card";
+import { ScrollArea } from "@backlex/ui/components/scroll-area";
+import { Input } from "@backlex/ui/components/input";
+import { Textarea } from "@backlex/ui/components/textarea";
+import { Label } from "@backlex/ui/components/label";
+import { Checkbox } from "@backlex/ui/components/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@backlex/ui/components/dialog";
+import { api } from "@/lib/api";
+import { fetchSafely } from "./_shared";
+
+interface Agent {
+  id: string;
+  name: string;
+  description?: string | null;
+  systemPrompt?: string | null;
+  model?: string | null;
+  tools: string[];
+  maxSteps: number;
+  memory: boolean;
+  active: boolean;
+}
+
+interface Thread {
+  id: string;
+  title?: string | null;
+  status: string;
+}
+
+interface Message {
+  id: string;
+  role: "user" | "assistant" | "tool";
+  content: string;
+  toolName?: string | null;
+}
+
+interface RunStep {
+  thought?: string;
+  tool: string;
+  observation: string;
+  isError: boolean;
+}
+
+const EMPTY_DRAFT: Agent = {
+  id: "",
+  name: "",
+  description: "",
+  systemPrompt: "",
+  model: "",
+  tools: [],
+  maxSteps: 8,
+  memory: false,
+  active: true,
+};
+
+export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "success" | "error") => void }) {
+  const { t } = useLingui();
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [active, setActive] = useState<string | null>(null);
+
+  // Editor dialog
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [draft, setDraft] = useState<Agent>(EMPTY_DRAFT);
+  const [toolCatalog, setToolCatalog] = useState<{ name: string; description: string }[]>([]);
+  const [toolFilter, setToolFilter] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const reload = useCallback(async () => {
+    const r = await fetchSafely<{ data: Agent[] }>("/api/agents");
+    setAgents(r?.data ?? []);
+    setLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const agent = agents.find((a) => a.id === active) ?? null;
+
+  // ── editor ────────────────────────────────────────────────────────────────
+  const openEditor = useCallback(async (a?: Agent) => {
+    setDraft(a ? { ...a, description: a.description ?? "", systemPrompt: a.systemPrompt ?? "", model: a.model ?? "" } : EMPTY_DRAFT);
+    setToolFilter("");
+    setEditorOpen(true);
+    // Lazy-load the MCP tool catalog the first time the editor opens.
+    if (toolCatalog.length === 0) {
+      try {
+        const body = await api<{ result?: { tools?: { name: string; description: string }[] } }>(
+          "/api/admin/mcp",
+          { method: "POST", body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) },
+        );
+        setToolCatalog(body.result?.tools ?? []);
+      } catch {
+        /* leave catalog empty — admin can still type-free via REST */
+      }
+    }
+  }, [toolCatalog.length]);
+
+  const saveDraft = useCallback(async () => {
+    if (!draft.name.trim()) {
+      pushToast(t`Name is required.`, "error");
+      return;
+    }
+    setSaving(true);
+    const payload = {
+      name: draft.name.trim(),
+      description: draft.description || null,
+      systemPrompt: draft.systemPrompt || null,
+      model: draft.model || null,
+      tools: draft.tools,
+      maxSteps: draft.maxSteps,
+      memory: draft.memory,
+      active: draft.active,
+    };
+    try {
+      if (draft.id) {
+        await api(`/api/agents/${draft.id}`, { method: "PATCH", body: JSON.stringify(payload) });
+        pushToast(t`Agent saved.`);
+      } else {
+        const res = await api<{ data: { id: string } }>("/api/agents", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        setActive(res.data.id);
+        pushToast(t`Agent created.`);
+      }
+      setEditorOpen(false);
+      await reload();
+    } catch (e) {
+      pushToast((e as Error).message, "error");
+    } finally {
+      setSaving(false);
+    }
+  }, [draft, pushToast, reload, t]);
+
+  const deleteAgent = useCallback(async (id: string) => {
+    try {
+      await api(`/api/agents/${id}`, { method: "DELETE" });
+      if (active === id) setActive(null);
+      setEditorOpen(false);
+      pushToast(t`Agent deleted.`);
+      await reload();
+    } catch (e) {
+      pushToast((e as Error).message, "error");
+    }
+  }, [active, pushToast, reload, t]);
+
+  const toggleTool = (name: string) =>
+    setDraft((d) => ({
+      ...d,
+      tools: d.tools.includes(name) ? d.tools.filter((x) => x !== name) : [...d.tools, name],
+    }));
+
+  if (!loaded) {
+    return (
+      <div className="flex flex-col gap-4.5">
+        <PageHeader title={t`Agents`} description={t`AI agents that reason, call your tools, and answer — built on your collections.`} />
+        <Card className="p-6"><EmptyState size="sm" title={<Trans>Loading…</Trans>} /></Card>
+      </div>
+    );
+  }
+
+  const filteredTools = toolCatalog.filter(
+    (tool) => !toolFilter || tool.name.toLowerCase().includes(toolFilter.toLowerCase()),
+  );
+
+  return (
+    <div className="flex flex-col gap-4.5">
+      <PageHeader
+        title={t`Agents`}
+        description={t`AI agents that reason, call your tools, and answer — built on your collections.`}
+        actions={<Button variant="primary" icon={I.Plus} onClick={() => openEditor()}><Trans>New agent</Trans></Button>}
+      />
+
+      <div className="grid grid-cols-[320px_minmax(0,1fr)] items-start gap-3.5 max-[900px]:grid-cols-[minmax(0,1fr)]">
+        <Card className="py-0 gap-0">
+          {agents.length === 0 && (
+            <EmptyState size="sm" title={<Trans>No agents yet — click + New agent.</Trans>} />
+          )}
+          {agents.map((a) => (
+            <div
+              key={a.id}
+              onClick={() => setActive(a.id)}
+              className={`grid cursor-pointer grid-cols-[24px_1fr_auto] items-center gap-3 border-b border-border px-3.5 py-[11px] text-[13px] last:border-b-0 ${active === a.id ? "bg-accent" : ""}`}
+            >
+              <span><I.Sparkles size={14} /></span>
+              <div className="flex min-w-0 flex-col">
+                <span className="truncate text-[13px] font-medium">{a.name}</span>
+                <span className="font-mono text-[11px] text-muted-foreground">{(a.tools ?? []).length} {t`tools`}{a.memory ? ` · ${t`memory`}` : ""}</span>
+              </div>
+              <Badge variant={a.active ? "default" : "secondary"}>{a.active ? t`active` : t`off`}</Badge>
+            </div>
+          ))}
+        </Card>
+
+        <Card className="gap-4.5 p-[22px]">
+          {!agent ? (
+            <EmptyState
+              bare
+              icon={I.Sparkles}
+              title={<Trans>No agent selected</Trans>}
+              description={<Trans>Pick an agent on the left, or click <strong>+ New agent</strong>.</Trans>}
+            />
+          ) : (
+            <AgentDetail
+              key={agent.id}
+              agent={agent}
+              pushToast={pushToast}
+              onEdit={() => openEditor(agent)}
+            />
+          )}
+        </Card>
+      </div>
+
+      {editorOpen && (
+        <Dialog open onOpenChange={(o) => { if (!o) setEditorOpen(false); }}>
+          <DialogContent className="flex max-h-[min(88vh,760px)] w-[680px] max-w-[92vw] flex-col overflow-hidden">
+            <DialogHeader>
+              <DialogTitle>{draft.id ? <Trans>Edit agent</Trans> : <Trans>New agent</Trans>}</DialogTitle>
+              <DialogDescription>
+                <Trans>System prompt shapes the persona; the tool allow-list is what it can do.</Trans>
+              </DialogDescription>
+            </DialogHeader>
+
+            <ScrollArea className="min-h-0 max-h-[calc(88vh-13rem)]">
+              <div className="flex flex-col gap-4 px-0.5 py-1">
+                <div className="flex flex-col gap-1.5">
+                  <Label><Trans>Name</Trans></Label>
+                  <Input autoFocus value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder={t`Support agent`} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label><Trans>Description</Trans></Label>
+                  <Input value={draft.description ?? ""} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder={t`What this agent is for`} />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label><Trans>System prompt</Trans></Label>
+                  <Textarea className="min-h-[90px] text-[13px]" value={draft.systemPrompt ?? ""} onChange={(e) => setDraft({ ...draft, systemPrompt: e.target.value })} placeholder={t`You are a helpful assistant for our workspace…`} />
+                </div>
+                <div className="grid grid-cols-2 gap-3 max-[520px]:grid-cols-1">
+                  <div className="flex flex-col gap-1.5">
+                    <Label><Trans>Model</Trans></Label>
+                    <Input className="font-mono text-[12.5px]" value={draft.model ?? ""} onChange={(e) => setDraft({ ...draft, model: e.target.value })} placeholder="anthropic/claude-haiku-4-5" />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label><Trans>Max steps</Trans></Label>
+                    <Input type="number" min={1} max={25} value={draft.maxSteps} onChange={(e) => setDraft({ ...draft, maxSteps: Math.max(1, Math.min(25, Number(e.target.value) || 1)) })} />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between rounded-md border border-border px-3 py-2.5">
+                  <div className="flex flex-col">
+                    <span className="text-[13px] font-medium"><Trans>Memory</Trans></span>
+                    <span className="text-[11.5px] text-muted-foreground"><Trans>Recall relevant past turns (needs an embedding provider).</Trans></span>
+                  </div>
+                  <Switch checked={draft.memory} onChange={(next) => setDraft({ ...draft, memory: next })} />
+                </div>
+                <div className="flex items-center justify-between rounded-md border border-border px-3 py-2.5">
+                  <span className="text-[13px] font-medium"><Trans>Active</Trans></span>
+                  <Switch checked={draft.active} onChange={(next) => setDraft({ ...draft, active: next })} />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label><Trans>Tools</Trans> <span className="text-[11px] text-muted-foreground">({draft.tools.length})</span></Label>
+                    <Input className="h-7 w-40 text-[12px]" value={toolFilter} onChange={(e) => setToolFilter(e.target.value)} placeholder={t`Filter tools…`} />
+                  </div>
+                  <div className="max-h-[200px] overflow-hidden rounded-md border border-border">
+                    <ScrollArea className="max-h-[200px]">
+                      <div className="flex flex-col">
+                        {filteredTools.length === 0 && (
+                          <span className="px-3 py-3 text-[12px] text-muted-foreground"><Trans>No tools match.</Trans></span>
+                        )}
+                        {filteredTools.map((tool) => (
+                          <label key={tool.name} className="flex cursor-pointer items-start gap-2.5 border-b border-border px-3 py-2 last:border-b-0 hover:bg-accent/50">
+                            <Checkbox checked={draft.tools.includes(tool.name)} onCheckedChange={() => toggleTool(tool.name)} className="mt-0.5" />
+                            <div className="flex min-w-0 flex-col">
+                              <span className="font-mono text-[12px]">{tool.name}</span>
+                              <span className="truncate text-[11px] text-muted-foreground">{tool.description}</span>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
+
+            <DialogFooter className="sm:justify-between">
+              {draft.id ? (
+                <Button variant="ghost" size="sm" icon={I.Trash} onClick={() => deleteAgent(draft.id)}><Trans>Delete</Trans></Button>
+              ) : <span />}
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setEditorOpen(false)}><Trans>Cancel</Trans></Button>
+                <Button variant="primary" size="sm" disabled={saving} onClick={saveDraft}>{saving ? <Trans>Saving…</Trans> : <Trans>Save</Trans>}</Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+}
+
+// ── Detail + chat playground ──────────────────────────────────────────────────
+function AgentDetail({
+  agent,
+  pushToast,
+  onEdit,
+}: {
+  agent: Agent;
+  pushToast: (m: string, type?: "success" | "error") => void;
+  onEdit: () => void;
+}) {
+  const { t } = useLingui();
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [liveSteps, setLiveSteps] = useState<RunStep[]>([]);
+  const endRef = useRef<HTMLDivElement>(null);
+
+  const loadThreads = useCallback(async () => {
+    const r = await fetchSafely<{ data: Thread[] }>(`/api/agents/${agent.id}/threads`);
+    setThreads(r?.data ?? []);
+  }, [agent.id]);
+
+  const loadMessages = useCallback(async (tid: string) => {
+    const r = await fetchSafely<{ data: { messages: Message[] } }>(`/api/agents/threads/${tid}`);
+    setMessages(r?.data?.messages ?? []);
+  }, []);
+
+  useEffect(() => {
+    void loadThreads();
+    setThreadId(null);
+    setMessages([]);
+  }, [loadThreads]);
+
+  useEffect(() => {
+    if (threadId) void loadMessages(threadId);
+  }, [threadId, loadMessages]);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: "end" });
+  }, [messages, liveSteps]);
+
+  const newThread = useCallback(async () => {
+    try {
+      const res = await api<{ data: Thread }>(`/api/agents/${agent.id}/threads`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      await loadThreads();
+      setThreadId(res.data.id);
+      setMessages([]);
+    } catch (e) {
+      pushToast((e as Error).message, "error");
+    }
+  }, [agent.id, loadThreads, pushToast]);
+
+  const send = useCallback(async () => {
+    const message = input.trim();
+    if (!message) return;
+    let tid = threadId;
+    if (!tid) {
+      try {
+        const res = await api<{ data: Thread }>(`/api/agents/${agent.id}/threads`, {
+          method: "POST",
+          body: JSON.stringify({}),
+        });
+        tid = res.data.id;
+        setThreadId(tid);
+        await loadThreads();
+      } catch (e) {
+        pushToast((e as Error).message, "error");
+        return;
+      }
+    }
+    setInput("");
+    setSending(true);
+    setLiveSteps([]);
+    // Optimistically show the user message.
+    setMessages((m) => [...m, { id: `tmp-${Date.now()}`, role: "user", content: message }]);
+
+    // Subscribe to live step events for this turn.
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource(
+        `/api/realtime/${encodeURIComponent(`agent:thread:${tid}`)}/subscribe`,
+        { withCredentials: true },
+      );
+      es.onmessage = (ev) => {
+        try {
+          const parsed = JSON.parse(ev.data) as { event?: string; data?: any };
+          if (parsed.event === "agent.step" && parsed.data) {
+            setLiveSteps((s) => [...s, parsed.data as RunStep]);
+          }
+        } catch {
+          /* ignore non-JSON frames */
+        }
+      };
+    } catch {
+      /* streaming unsupported — the final transcript refetch still works */
+    }
+
+    try {
+      await api(`/api/agents/threads/${tid}/messages`, {
+        method: "POST",
+        body: JSON.stringify({ message }),
+      });
+      await loadMessages(tid);
+    } catch (e) {
+      pushToast((e as Error).message, "error");
+      // Reload so the persisted user message + any error state is reflected.
+      await loadMessages(tid);
+    } finally {
+      es?.close();
+      setSending(false);
+      setLiveSteps([]);
+    }
+  }, [agent.id, input, threadId, loadMessages, loadThreads, pushToast]);
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2.5">
+        <span className="text-base font-semibold">{agent.name}</span>
+        <Badge variant={agent.active ? "default" : "secondary"}>{agent.active ? t`active` : t`off`}</Badge>
+        {agent.memory && <Badge variant="secondary"><Trans>memory</Trans></Badge>}
+        <span className="text-xs text-muted-foreground">· {agent.tools.length} {t`tools`}</span>
+        <div className="ml-auto flex items-center gap-2.5">
+          <select
+            className="h-8 rounded-md border border-border bg-background px-2 text-[12.5px]"
+            value={threadId ?? ""}
+            onChange={(e) => setThreadId(e.target.value || null)}
+          >
+            <option value="">{t`New conversation`}</option>
+            {threads.map((th) => (
+              <option key={th.id} value={th.id}>{th.title || th.id.slice(0, 8)}</option>
+            ))}
+          </select>
+          <Button variant="outline" size="sm" icon={I.Plus} onClick={newThread}><Trans>New chat</Trans></Button>
+          <Button variant="primary" size="sm" icon={I.Pencil} onClick={onEdit}><Trans>Edit</Trans></Button>
+        </div>
+      </div>
+
+      {agent.tools.length === 0 && (
+        <div className="rounded-md border border-dashed border-border px-3 py-2 text-[12px] text-muted-foreground">
+          <Trans>This agent has no tools — it answers from the model alone. Add tools in Edit to let it read your data.</Trans>
+        </div>
+      )}
+
+      <div className="flex h-[440px] flex-col overflow-hidden rounded-md border border-border">
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="flex flex-col gap-3 p-4">
+            {messages.length === 0 && liveSteps.length === 0 && (
+              <div className="py-10 text-center text-[13px] text-muted-foreground">
+                <Trans>Send a message to start the conversation.</Trans>
+              </div>
+            )}
+            {messages.map((m) => (
+              <MessageRow key={m.id} message={m} />
+            ))}
+            {liveSteps.map((s, i) => (
+              <div key={`live-${i}`} className="flex flex-col gap-1 rounded-md border border-border bg-muted/40 px-3 py-2 text-[12px]">
+                <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
+                  <I.Zap size={12} /> {s.tool}
+                </span>
+                {s.thought && <span className="text-muted-foreground">{s.thought}</span>}
+                <span className={`font-mono text-[11px] ${s.isError ? "text-destructive" : "text-muted-foreground"}`}>{s.observation.slice(0, 280)}</span>
+              </div>
+            ))}
+            {sending && liveSteps.length === 0 && (
+              <div className="text-[12px] text-muted-foreground"><Trans>Thinking…</Trans></div>
+            )}
+            <div ref={endRef} />
+          </div>
+        </ScrollArea>
+        <div className="flex items-end gap-2 border-t border-border p-2.5">
+          <Textarea
+            className="min-h-[40px] flex-1 resize-none text-[13px]"
+            value={input}
+            disabled={sending}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void send();
+              }
+            }}
+            placeholder={t`Ask the agent…`}
+          />
+          <Button variant="primary" size="sm" icon={I.ArrowRight} disabled={sending || !input.trim()} onClick={send}>
+            <Trans>Send</Trans>
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function MessageRow({ message }: { message: Message }) {
+  if (message.role === "tool") {
+    return (
+      <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/40 px-3 py-2 text-[12px]">
+        <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
+          <I.Zap size={12} /> {message.toolName}
+        </span>
+        <span className="font-mono text-[11px] text-muted-foreground">{message.content.slice(0, 400)}</span>
+      </div>
+    );
+  }
+  const isUser = message.role === "user";
+  // A tool-call assistant step carries a toolName — render it like a step note.
+  if (message.role === "assistant" && message.toolName) {
+    return (
+      <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/40 px-3 py-2 text-[12px]">
+        <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
+          <I.Sparkles size={12} /> {message.toolName}
+        </span>
+        {message.content && <span className="text-muted-foreground">{message.content}</span>}
+      </div>
+    );
+  }
+  return (
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+      <div className={`max-w-[80%] whitespace-pre-wrap rounded-lg px-3.5 py-2 text-[13px] ${isUser ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+        {message.content}
+      </div>
+    </div>
+  );
+}

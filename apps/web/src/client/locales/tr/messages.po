@@ -253,6 +253,11 @@ msgstr "{0} bağlandı."
 msgid "{0} consecutive failures"
 msgstr "{0} ardışık başarısızlık"
 
+#. placeholder {0}: okIds.length
+#: src/client/admin/app.tsx
+msgid "{0} deleted, {failed} failed."
+msgstr "{0} silindi, {failed} başarısız."
+
 #. placeholder {0}: h.name
 #. placeholder {0}: u.email
 #. placeholder {0}: user.email
@@ -345,7 +350,7 @@ msgstr "{1} araçtan {0} tanesine izin verildi. Listeyi kaldırmak için Tümün
 #~ msgid "{0} of {1} tools allowed. Uncheck all to remove the allowlist."
 #~ msgstr "{1} araçtan {0} tanesi izinli. Tümünü kaldırmak için işaretleri kaldırın."
 
-#. placeholder {0}: selected.size
+#. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
 msgid "{0} posts deleted."
 msgstr "{0} gönderi silindi."
@@ -355,12 +360,12 @@ msgstr "{0} gönderi silindi."
 #~ msgid "{0} posts published."
 #~ msgstr "{0} gönderi yayınlandı."
 
-#. placeholder {0}: okIds.size
+#. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
 msgid "{0} published, {failed} failed."
 msgstr "{0} yayınlandı, {failed} başarısız."
 
-#. placeholder {0}: okIds.size
+#. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
 msgid "{0} published."
 msgstr "{0} yayınlandı."

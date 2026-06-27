@@ -47,7 +47,18 @@ import { EditFieldDialog } from "./edit-field";
 import { CollectionSettings } from "./collection-settings";
 import { collectionsApi, itemsApi, settingsApi } from "./api";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCollections, useMetricsOverview } from "./queries";
+import {
+  buildItemsParams,
+  useCollections,
+  useItemCreate,
+  useItemPatch,
+  useItemPublish,
+  useItems,
+  useItemsBulkDelete,
+  useItemsBulkPublish,
+  useItemsBulkUpdate,
+  useMetricsOverview,
+} from "./queries";
 import { api } from "@/lib/api";
 import { useUrlState, useUrlStateJson } from "@/lib/use-url-state";
 import { useTheme } from "@/components/theme-provider";
@@ -173,9 +184,9 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
 
   const navTo = useCallback((id: string) => { navigate("/" + id); }, [navigate]);
   const [activeTab, setActiveTab] = useState<"items" | "schema" | "settings">("items");
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [itemsLoaded, setItemsLoaded] = useState(false);
-  // Real items load — see effect after activeCollection is declared.
+  // The item list is React Query state (`itemsQuery` below, derived from
+  // `activeCollection` + `itemsParams`). `posts` is just its current rows —
+  // mutations patch the cache through the `useItem*` hooks, never a setter.
   const [search, setSearch] = useUrlState("q", "");
   const [filters, setFilters] = useUrlStateJson<FilterCondition[]>("filter", []);
   const [statusTab, setStatusTab] = useState("all");
@@ -315,53 +326,46 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     return () => clearTimeout(t);
   }, [search, debouncedSearch]);
 
-  // Force the items skeleton back on whenever we switch collections, so the
-  // empty state can never flash before the first list fetch for the new
-  // collection has landed.
-  useEffect(() => {
-    setItemsLoaded(false);
-  }, [activeCollection]);
+  // Items list via React Query. The params memo bakes the resolved status-field
+  // name into the `filter` string, so the query key (and refetch) changes
+  // exactly when the result set should — without keying on the whole schema.
+  const itemsParams = useMemo(
+    () =>
+      buildItemsParams({
+        sort,
+        q: debouncedSearch,
+        filters,
+        statusTab,
+        statusFieldName: kanbanStatusField?.name ?? null,
+      }),
+    [sort, debouncedSearch, filters, statusTab, kanbanStatusField],
+  );
+  const itemsQuery = useItems(activeCollection, itemsParams);
+  const posts = useMemo(() => (itemsQuery.data ?? []) as Post[], [itemsQuery.data]);
+  // `isPending` is true only while data is undefined — i.e. on the first load
+  // of a collection (placeholderData drops to undefined on collection switch),
+  // never during an in-collection param refetch. That reproduces the old
+  // skeleton-on-switch / no-flash-while-typing behaviour.
+  const itemsLoaded = !itemsQuery.isPending;
 
-  // Items refetch — keyed off the active collection AND every filter input
-  // so typing / chipping / status-tabbing fires a request. Empty / missing
-  // / auth-fail falls back to whatever's currently cached.
-  useEffect(() => {
-    if (!activeCollection) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const query: Record<string, string | number> = {
-          limit: 50,
-          sort: sort || "-updated_at",
-        };
-        if (debouncedSearch.trim()) query.q = debouncedSearch.trim();
-        // Build a `$and` filter from chips (each its own clause so duplicate
-        // field+op pairs survive) plus the status quick-filter when active.
-        const clauses: Record<string, Record<string, unknown>>[] = filters.map(
-          (f) => ({ [f.field]: { [f.op]: f.value } }),
-        );
-        const statusCfg = resolveStatusField(schemaState as unknown as { fields?: Array<Record<string, unknown>> } | null);
-        if (statusTab !== "all" && statusCfg) {
-          clauses.push({ [statusCfg.name]: { _eq: statusTab } });
-        }
-        if (clauses.length === 1) {
-          query.filter = JSON.stringify(clauses[0]);
-        } else if (clauses.length > 1) {
-          query.filter = JSON.stringify({ $and: clauses });
-        }
-        const res = await itemsApi.list(activeCollection, query);
-        if (cancelled) return;
-        if (Array.isArray(res.data)) {
-          setPosts(res.data as unknown as Post[]);
-        }
-      } catch {
-        // keep whatever is currently in `posts`
-      } finally {
-        if (!cancelled) setItemsLoaded(true);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [activeCollection, debouncedSearch, filters, statusTab, sort, schemaState]);
+  // Optimistic mutation hooks — each owns its own snapshot / patch / rollback /
+  // reconcile against the shared `["items", collection]` cache prefix.
+  const itemPatch = useItemPatch(activeCollection);
+  const itemCreate = useItemCreate(activeCollection);
+  const itemPublish = useItemPublish(activeCollection);
+  const bulkUpdate = useItemsBulkUpdate(activeCollection);
+  const bulkPublish = useItemsBulkPublish(activeCollection);
+  const bulkDelete = useItemsBulkDelete(activeCollection);
+  // Patch the active collection's list cache directly — used by the full-page
+  // editor callbacks (which keep their own pessimistic transport).
+  const patchItemsCache = useCallback(
+    (fn: (rows: Post[]) => Post[]) => {
+      qc.setQueriesData<Post[]>({ queryKey: ["items", activeCollection] }, (old) =>
+        old ? fn(old) : old,
+      );
+    },
+    [qc, activeCollection],
+  );
 
   // Schema load — only re-runs when the active collection changes.
   useEffect(() => {
@@ -608,20 +612,17 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     if (activeCollection) navigate(`/collections/${activeCollection}/items/${it.id}${location.search}`);
     else { setSheetMode("edit"); setSheetItem(it); setSheetOpen(true); }
   };
-  // Kanban drag-and-drop → patch the row's status field. Optimistic: move the
-  // card immediately, revert on failure.
-  const changeItemStatus = async (it: Post, status: string) => {
+  // Kanban drag-and-drop → patch the row's status field. The hook owns the
+  // optimistic move + rollback; we just toast on error.
+  const changeItemStatus = (it: Post, status: string) => {
     if (!activeCollection || !kanbanStatusField) return;
     const field = kanbanStatusField.name;
     const prev = (it as unknown as Record<string, unknown>)[field];
     if (prev === status) return;
-    setPosts((p) => p.map((x) => (x.id === it.id ? ({ ...x, [field]: status } as Post) : x)));
-    try {
-      await itemsApi.patch(activeCollection, it.id, { [field]: status });
-    } catch (e) {
-      setPosts((p) => p.map((x) => (x.id === it.id ? ({ ...x, [field]: prev } as Post) : x)));
-      pushToast((e as Error).message, "error");
-    }
+    itemPatch.mutate(
+      { id: it.id, patch: { [field]: status } },
+      { onError: (e) => pushToast((e as Error).message, "error") },
+    );
   };
 
   // Per-collection bulk export — streams the file straight from the API (the
@@ -674,7 +675,12 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     if (sheetMode === "create") {
       let nu: Post;
       try {
-        const res = await itemsApi.create(activeCollection || "posts", draft as Record<string, unknown>);
+        // The hook prepends an optimistic row (under tempId) and swaps in the
+        // server row on success; we use the resolved row for sheet bookkeeping.
+        const res = await itemCreate.mutateAsync({
+          draft: draft as Record<string, unknown>,
+          tempId: `tmp_${crypto.randomUUID()}`,
+        });
         nu = {
           id: "",
           updated_at: new Date().toISOString(),
@@ -692,21 +698,22 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
         pushToast((e as Error).message, "error");
         return false;
       }
-      setPosts((p) => [nu, ...p]);
       pushToast(t`Post "${(nu.title ?? "").slice(0, 38)}${(nu.title ?? "").length > 38 ? "…" : ""}" created.`);
-      // Flip the sheet into edit mode on the freshly-created row so subsequent
-      // saves PATCH it rather than re-inserting.
+      // Flip the sheet into edit mode on the freshly-created row (server id) so
+      // subsequent saves PATCH it rather than re-inserting.
       setSheetMode("edit");
       setSheetItem(nu);
     } else if (sheetItem) {
       try {
-        await itemsApi.patch(activeCollection || "posts", sheetItem.id, draft as Record<string, unknown>);
+        await itemPatch.mutateAsync({
+          id: sheetItem.id,
+          patch: draft as Record<string, unknown>,
+        });
       } catch (e) {
         pushToast((e as Error).message, "error");
         return false;
       }
       const updated = { ...sheetItem, ...draft, updated_at: new Date().toISOString() } as Post;
-      setPosts((p) => p.map((x) => x.id === sheetItem.id ? updated : x));
       pushToast(t`Post saved.`);
       // Hand the sheet a new object reference so its useEffect re-syncs the
       // draft to the server-confirmed values.
@@ -723,16 +730,9 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     publishAt?: string | null,
   ): Promise<void> => {
     if (!sheetItem) return;
-    const slug = activeCollection || "posts";
     try {
-      const res =
-        action === "publish"
-          ? await itemsApi.publish(slug, sheetItem.id)
-          : action === "unpublish"
-            ? await itemsApi.unpublish(slug, sheetItem.id)
-            : await itemsApi.schedulePublish(slug, sheetItem.id, publishAt ?? null);
+      const res = await itemPublish.mutateAsync({ id: sheetItem.id, action, publishAt });
       const updated = { ...sheetItem, ...(res.data as Partial<Post>) } as Post;
-      setPosts((p) => p.map((x) => (x.id === sheetItem.id ? updated : x)));
       setSheetItem(updated);
       pushToast(
         action === "publish"
@@ -747,16 +747,12 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   };
 
   const onBulkUpdate = async (data: Record<string, unknown>) => {
-    const slug = activeCollection || "posts";
     const ids = [...selected];
     try {
-      const res = await itemsApi.bulkUpdate(slug, ids, data);
+      // The hook optimistically patches every id, then reconciles to only the
+      // server-confirmed ones; we just toast the resulting counts.
+      const res = await bulkUpdate.mutateAsync({ ids, data });
       const r = res.data;
-      const okIds = new Set(r.results.filter((x) => x.ok).map((x) => x.id));
-      const now = new Date().toISOString();
-      setPosts((p) =>
-        p.map((x) => (okIds.has(x.id) ? ({ ...x, ...data, updated_at: now } as Post) : x)),
-      );
       pushToast(
         r.failed > 0 ? t`${r.updated} updated, ${r.failed} skipped.` : t`${r.updated} updated.`,
       );
@@ -767,20 +763,11 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     }
   };
   const onBulkPublish = async () => {
-    const slug = activeCollection || "posts";
     const ids = [...selected];
-    const settled = await Promise.allSettled(ids.map((id) => itemsApi.publish(slug, id)));
-    const okIds = new Set(ids.filter((_, i) => settled[i]?.status === "fulfilled"));
-    const failed = ids.length - okIds.size;
-    const now = new Date().toISOString();
-    setPosts((p) =>
-      p.map((x) =>
-        okIds.has(x.id) ? { ...x, status: "published", published_at: now, updated_at: now } : x,
-      ),
-    );
+    const { okIds, failed } = await bulkPublish.mutateAsync({ ids });
     pushToast(
-      failed > 0 ? t`${okIds.size} published, ${failed} failed.` : t`${okIds.size} published.`,
-      failed > 0 && okIds.size === 0 ? "error" : undefined,
+      failed > 0 ? t`${okIds.length} published, ${failed} failed.` : t`${okIds.length} published.`,
+      failed > 0 && okIds.length === 0 ? "error" : undefined,
     );
     setSelected(new Set());
   };
@@ -792,16 +779,24 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
       destructive: true,
       onConfirm: async () => {
         const ids = [...selected];
-        await Promise.allSettled(ids.map((id) => itemsApi.remove(activeCollection || "posts", id)));
-        setPosts((p) => p.filter((x) => !selected.has(x.id)));
-        pushToast(t`${selected.size} posts deleted.`);
+        // The hook removes all ids optimistically, then re-inserts any the
+        // server failed to delete.
+        const { okIds, failed } = await bulkDelete.mutateAsync({ ids });
+        pushToast(
+          failed > 0 ? t`${okIds.length} deleted, ${failed} failed.` : t`${okIds.length} posts deleted.`,
+          failed > 0 && okIds.length === 0 ? "error" : undefined,
+        );
         setSelected(new Set());
         setConfirm(null);
       },
     });
   };
 
-  const refresh = () => pushToast(t`Items refreshed.`);
+  // Real refetch now — the old `refresh` only toasted and never reloaded.
+  const refresh = () => {
+    if (activeCollection) void qc.invalidateQueries({ queryKey: ["items", activeCollection] });
+    pushToast(t`Items refreshed.`);
+  };
 
   const onPaletteSelect = (sel: any) => {
     setPaletteOpen(false);
@@ -953,9 +948,9 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                   versioned={schemaState.versioned}
                   canPublish
                   pushToast={pushToast}
-                  onSaved={(updated) => setPosts((p) => p.map((x) => (x.id === updated.id ? updated : x)))}
-                  onCreated={(created) => setPosts((p) => [created, ...p])}
-                  onDeleted={(id) => setPosts((p) => p.filter((x) => x.id !== id))}
+                  onSaved={(updated) => patchItemsCache((rows) => rows.map((x) => (x.id === updated.id ? updated : x)))}
+                  onCreated={(created) => patchItemsCache((rows) => [created, ...rows])}
+                  onDeleted={(id) => patchItemsCache((rows) => rows.filter((x) => x.id !== id))}
                   onBack={() => navigate(`/collections/${activeCollection}${location.search}`)}
                   navigateToItem={(id) => navigate(`/collections/${activeCollection}/items/${id}${location.search}`)}
                 />

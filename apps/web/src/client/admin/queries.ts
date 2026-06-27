@@ -23,12 +23,19 @@
  * a callsite migrates is preferable to pre-emptively exposing all 20+ API
  * surfaces and growing dead code.
  */
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import {
+  type QueryKey,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   activityApi,
   advisorApi,
   collectionsApi,
   commentsApi,
+  itemsApi,
   meApi,
   metricsApi,
   notificationsApi,
@@ -37,6 +44,14 @@ import {
   sharedLinksApi,
   tenantsApi,
 } from "./api";
+import type { Post } from "./config";
+import { type ItemsQueryParams, reconcileBulkUpdate } from "./items-query-params";
+
+export {
+  buildItemsParams,
+  type ItemsQueryParams,
+  reconcileBulkUpdate,
+} from "./items-query-params";
 
 export const queryKeys = {
   tenants: () => ["tenants"] as const,
@@ -61,6 +76,15 @@ export const queryKeys = {
   sharedLinks: (collection: string, itemId: string) =>
     ["shared-links", collection, itemId] as const,
   advisor: () => ["advisor"] as const,
+  /** Item list for a collection. The shared `["items", collection]` prefix is
+   *  the rollback/invalidate scope for every filter/sort/search variant —
+   *  optimistic mutations patch every cached variant of a collection through
+   *  it without needing to know the exact active params. `params` (the third
+   *  segment) is RQ-hashed stably so two equal filter sets share a cache entry. */
+  items: (collection: string | null, params?: ItemsQueryParams) =>
+    params
+      ? (["items", collection, params] as const)
+      : (["items", collection] as const),
   /** Activity log rows — the unified Logs page's data source. Keyed by the
    *  server-side filters (`from`, `action`, `pageSize`) so changing the time
    *  window or the action filter is a distinct cache entry; `offset` is the
@@ -225,5 +249,294 @@ export function useActivity(filters: ActivityFilters, live = false) {
         ? lastOffset + filters.pageSize
         : undefined,
     refetchInterval: live ? 5000 : false,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Items list + optimistic mutation layer
+//
+// The admin item list used to be a hand-rolled `useState` + manual fetch in
+// app.tsx; mutations poked that array directly and `refresh()` did nothing.
+// It now lives in React Query: `useItems` owns the read, and the mutation
+// hooks below own optimistic writes — they snapshot the cache, patch it
+// immediately, roll back on error, reconcile the authoritative server row on
+// success, and invalidate on settle. Every write is scoped to the shared
+// `["items", collection]` prefix so whichever filtered variant is on screen
+// (plus any other cached one) updates together.
+// ---------------------------------------------------------------------------
+
+/** `ItemsQueryParams` is already the URL query shape — optional keys are simply
+ *  absent (never `undefined`), so it's safe to hand straight to `itemsApi.list`. */
+function paramsToQuery(params: ItemsQueryParams): Record<string, string | number> {
+  return params as unknown as Record<string, string | number>;
+}
+
+/**
+ * Item list for the active collection. The queryFn flattens the envelope to a
+ * `Post[]` so the CACHE itself holds the array — that's what the optimistic
+ * mutation helpers below snapshot and patch (a `select` would only transform
+ * the value handed to the component, leaving the cached envelope untouched, and
+ * `rows.map` would blow up inside the updaters). `placeholderData` keeps the
+ * previous rows while only the PARAMS change (typing / filtering / sorting → no
+ * skeleton flash), but drops to `undefined` when the COLLECTION changes so the
+ * items skeleton shows — this reproduces the old `setItemsLoaded(false)` on
+ * collection switch.
+ */
+export function useItems(collection: string | null, params: ItemsQueryParams) {
+  return useQuery({
+    queryKey: queryKeys.items(collection, params),
+    queryFn: async () => {
+      const res = await itemsApi.list(collection as string, paramsToQuery(params));
+      return (Array.isArray(res.data) ? res.data : []) as unknown as Post[];
+    },
+    enabled: !!collection,
+    placeholderData: (prev, prevQuery) =>
+      prevQuery && (prevQuery.queryKey as QueryKey)[1] === collection ? prev : undefined,
+    staleTime: 10_000,
+  });
+}
+
+// --- shared cache-mutation helpers (module-private) ------------------------
+
+/** Snapshot every cached list variant for a collection, for rollback. */
+type ItemsSnapshot = [QueryKey, Post[] | undefined][];
+
+function snapshotItems(qc: ReturnType<typeof useQueryClient>, collection: string): ItemsSnapshot {
+  return qc.getQueriesData<Post[]>({ queryKey: ["items", collection] }) as ItemsSnapshot;
+}
+
+function restoreItems(qc: ReturnType<typeof useQueryClient>, snap: ItemsSnapshot) {
+  for (const [key, data] of snap) qc.setQueryData(key, data);
+}
+
+/** Apply `fn` to every cached list variant for a collection. */
+function patchItemRows(
+  qc: ReturnType<typeof useQueryClient>,
+  collection: string,
+  fn: (rows: Post[]) => Post[],
+) {
+  qc.setQueriesData<Post[]>({ queryKey: ["items", collection] }, (old) =>
+    old ? fn(old) : old,
+  );
+}
+
+function invalidateItems(qc: ReturnType<typeof useQueryClient>, collection: string) {
+  void qc.invalidateQueries({ queryKey: ["items", collection] });
+}
+
+const nowIso = () => new Date().toISOString();
+
+// --- mutation hooks (one per write area) -----------------------------------
+
+/** Inline / single-field edit, toggles, Kanban status, sheet edit. Optimistic
+ *  merge; `mutateAsync` resolves the server row so callers can re-sync. */
+export function useItemPatch(collection: string | null) {
+  const qc = useQueryClient();
+  const slug = collection || "posts";
+  return useMutation({
+    mutationFn: (vars: { id: string; patch: Record<string, unknown> }) =>
+      itemsApi.patch(slug, vars.id, vars.patch),
+    onMutate: (vars) => {
+      const snap = snapshotItems(qc, slug);
+      const now = nowIso();
+      patchItemRows(qc, slug, (rows) =>
+        rows.map((r) => (r.id === vars.id ? ({ ...r, ...vars.patch, updated_at: now } as Post) : r)),
+      );
+      return { snap };
+    },
+    onError: (_e, _v, ctx) => ctx && restoreItems(qc, ctx.snap),
+    onSettled: () => invalidateItems(qc, slug),
+  });
+}
+
+/** Sheet create. Prepends an optimistic row under a temp id, then swaps in the
+ *  server row on success (temp-id reconciliation). */
+export function useItemCreate(collection: string | null) {
+  const qc = useQueryClient();
+  const slug = collection || "posts";
+  return useMutation({
+    mutationFn: (vars: { draft: Record<string, unknown>; tempId: string }) =>
+      itemsApi.create(slug, vars.draft),
+    onMutate: (vars) => {
+      const snap = snapshotItems(qc, slug);
+      const optimistic = {
+        id: vars.tempId,
+        updated_at: nowIso(),
+        view_count: 0,
+        word_count: 0,
+        published_at: null,
+        title: "",
+        slug: "",
+        status: "draft",
+        author: "u_1",
+        ...(vars.draft as Partial<Post>),
+      } as Post;
+      patchItemRows(qc, slug, (rows) => [optimistic, ...rows]);
+      return { snap };
+    },
+    onError: (_e, _v, ctx) => ctx && restoreItems(qc, ctx.snap),
+    onSuccess: (res, vars) => {
+      const serverRow = res.data as unknown as Post;
+      patchItemRows(qc, slug, (rows) =>
+        rows.map((r) => (r.id === vars.tempId ? ({ ...r, ...serverRow } as Post) : r)),
+      );
+    },
+    onSettled: () => invalidateItems(qc, slug),
+  });
+}
+
+/** Single delete (editor, or any future row action). Removes the row
+ *  immediately; restores on error. */
+export function useItemDelete(collection: string | null) {
+  const qc = useQueryClient();
+  const slug = collection || "posts";
+  return useMutation({
+    mutationFn: (vars: { id: string }) => itemsApi.remove(slug, vars.id),
+    onMutate: (vars) => {
+      const snap = snapshotItems(qc, slug);
+      patchItemRows(qc, slug, (rows) => rows.filter((r) => r.id !== vars.id));
+      return { snap };
+    },
+    onError: (_e, _v, ctx) => ctx && restoreItems(qc, ctx.snap),
+    onSettled: () => invalidateItems(qc, slug),
+  });
+}
+
+/** Publish / unpublish / schedule a versioned item. Optimistic-light flip of
+ *  the obvious display fields, then reconcile authoritative server fields. */
+export function useItemPublish(collection: string | null) {
+  const qc = useQueryClient();
+  const slug = collection || "posts";
+  return useMutation({
+    mutationFn: (vars: { id: string; action: "publish" | "unpublish" | "schedule"; publishAt?: string | null }) =>
+      vars.action === "publish"
+        ? itemsApi.publish(slug, vars.id)
+        : vars.action === "unpublish"
+          ? itemsApi.unpublish(slug, vars.id)
+          : itemsApi.schedulePublish(slug, vars.id, vars.publishAt ?? null),
+    onMutate: (vars) => {
+      const snap = snapshotItems(qc, slug);
+      const now = nowIso();
+      const flip =
+        vars.action === "publish"
+          ? { status: "published", published_at: now }
+          : vars.action === "unpublish"
+            ? { status: "draft" }
+            : {};
+      patchItemRows(qc, slug, (rows) =>
+        rows.map((r) => (r.id === vars.id ? ({ ...r, ...flip, updated_at: now } as Post) : r)),
+      );
+      return { snap };
+    },
+    onError: (_e, _v, ctx) => ctx && restoreItems(qc, ctx.snap),
+    onSuccess: (res, vars) => {
+      const serverRow = res.data as Partial<Post>;
+      patchItemRows(qc, slug, (rows) =>
+        rows.map((r) => (r.id === vars.id ? ({ ...r, ...serverRow } as Post) : r)),
+      );
+    },
+    onSettled: () => invalidateItems(qc, slug),
+  });
+}
+
+/** Bulk field update — partial-success aware. Optimistically patches every
+ *  selected id, then on success reverts to the snapshot and re-applies only
+ *  the ids the server confirmed. Resolves the server payload for toasts. */
+export function useItemsBulkUpdate(collection: string | null) {
+  const qc = useQueryClient();
+  const slug = collection || "posts";
+  return useMutation({
+    mutationFn: (vars: { ids: string[]; data: Record<string, unknown> }) =>
+      itemsApi.bulkUpdate(slug, vars.ids, vars.data),
+    onMutate: (vars) => {
+      const snap = snapshotItems(qc, slug);
+      const now = nowIso();
+      const ids = new Set(vars.ids);
+      patchItemRows(qc, slug, (rows) =>
+        rows.map((r) => (ids.has(r.id) ? ({ ...r, ...vars.data, updated_at: now } as Post) : r)),
+      );
+      return { snap };
+    },
+    onError: (_e, _v, ctx) => ctx && restoreItems(qc, ctx.snap),
+    onSuccess: (res, vars, ctx) => {
+      if (!ctx) return;
+      const okIds = new Set(res.data.results.filter((x) => x.ok).map((x) => x.id));
+      restoreItems(qc, ctx.snap);
+      const now = nowIso();
+      patchItemRows(qc, slug, (rows) => reconcileBulkUpdate(rows, okIds, vars.data, now));
+    },
+    onSettled: () => invalidateItems(qc, slug),
+  });
+}
+
+/** Bulk publish via `Promise.allSettled` — partial-success aware. Returns
+ *  `{ okIds, failed }` so callers can toast the counts. */
+export function useItemsBulkPublish(collection: string | null) {
+  const qc = useQueryClient();
+  const slug = collection || "posts";
+  return useMutation({
+    mutationFn: async (vars: { ids: string[] }) => {
+      const settled = await Promise.allSettled(vars.ids.map((id) => itemsApi.publish(slug, id)));
+      const okIds = vars.ids.filter((_, i) => settled[i]?.status === "fulfilled");
+      return { okIds, failed: vars.ids.length - okIds.length };
+    },
+    onMutate: (vars) => {
+      const snap = snapshotItems(qc, slug);
+      const now = nowIso();
+      const ids = new Set(vars.ids);
+      patchItemRows(qc, slug, (rows) =>
+        rows.map((r) =>
+          ids.has(r.id)
+            ? ({ ...r, status: "published", published_at: now, updated_at: now } as Post)
+            : r,
+        ),
+      );
+      return { snap };
+    },
+    onError: (_e, _v, ctx) => ctx && restoreItems(qc, ctx.snap),
+    onSuccess: (res, _vars, ctx) => {
+      if (!ctx) return;
+      const okIds = new Set(res.okIds);
+      restoreItems(qc, ctx.snap);
+      const now = nowIso();
+      patchItemRows(qc, slug, (rows) =>
+        rows.map((r) =>
+          okIds.has(r.id)
+            ? ({ ...r, status: "published", published_at: now, updated_at: now } as Post)
+            : r,
+        ),
+      );
+    },
+    onSettled: () => invalidateItems(qc, slug),
+  });
+}
+
+/** Bulk delete via `Promise.allSettled` — partial-success aware. Removes all
+ *  ids optimistically, then re-inserts any the server failed to delete.
+ *  Returns `{ okIds, failed }`. */
+export function useItemsBulkDelete(collection: string | null) {
+  const qc = useQueryClient();
+  const slug = collection || "posts";
+  return useMutation({
+    mutationFn: async (vars: { ids: string[] }) => {
+      const settled = await Promise.allSettled(vars.ids.map((id) => itemsApi.remove(slug, id)));
+      const okIds = vars.ids.filter((_, i) => settled[i]?.status === "fulfilled");
+      return { okIds, failed: vars.ids.length - okIds.length };
+    },
+    onMutate: (vars) => {
+      const snap = snapshotItems(qc, slug);
+      const ids = new Set(vars.ids);
+      patchItemRows(qc, slug, (rows) => rows.filter((r) => !ids.has(r.id)));
+      return { snap };
+    },
+    onError: (_e, _v, ctx) => ctx && restoreItems(qc, ctx.snap),
+    onSuccess: (res, _vars, ctx) => {
+      if (!ctx) return;
+      // Only the ids that actually failed should reappear.
+      const okIds = new Set(res.okIds);
+      restoreItems(qc, ctx.snap);
+      patchItemRows(qc, slug, (rows) => rows.filter((r) => !okIds.has(r.id)));
+    },
+    onSettled: () => invalidateItems(qc, slug),
   });
 }

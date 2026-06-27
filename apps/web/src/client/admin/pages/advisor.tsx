@@ -14,6 +14,7 @@ import { Button, PageHeader } from "../ui";
 import { useAdvisor, queryKeys } from "../queries";
 import { Card } from "@backlex/ui/components/card";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
+import { withViewTransition } from "../lib/nav-transition";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@backlex/ui/components/collapsible";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { AdvisorSkeleton } from "../page-skeletons";
@@ -76,6 +77,7 @@ function formatGeneratedAt(iso: string): string {
 export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "success" | "error") => void }) {
   const { t } = useLingui();
   const [tab, setTab] = useState<CheckKind>("security");
+  const changeTab = (v: CheckKind) => withViewTransition(() => setTab(v));
   const [dismissed, setDismissed] = useState<Set<string>>(loadDismissed);
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -183,14 +185,14 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
             <SummaryCard
               counts={counts.security}
               active={tab === "security"}
-              onClick={() => setTab("security")}
+              onClick={() => changeTab("security")}
               icon={I.ShieldAlert}
               label={t`Security`}
             />
             <SummaryCard
               counts={counts.performance}
               active={tab === "performance"}
-              onClick={() => setTab("performance")}
+              onClick={() => changeTab("performance")}
               icon={I.Cpu}
               label={t`Performance`}
             />
@@ -203,7 +205,7 @@ export function AdvisorPage({ pushToast }: { pushToast: (m: string, type?: "succ
         </div>
       </Card>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as CheckKind)}>
+      <Tabs value={tab} onValueChange={(v) => changeTab(v as CheckKind)}>
         <TabsList>
           <TabsTrigger value="security">
             <I.ShieldAlert size={13} /><Trans>Security</Trans>{" "}

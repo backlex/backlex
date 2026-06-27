@@ -12,7 +12,7 @@ import { render, type RenderResult } from "@testing-library/react";
 import { setupI18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 
 // One i18n instance for the suite; empty messages means `t` returns the source
 // string verbatim, which is what assertions match against.

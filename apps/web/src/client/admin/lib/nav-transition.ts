@@ -10,6 +10,8 @@
 // (scoped to the `main-pane` named transition; the sidebar/topbar stay static).
 
 import { flushSync } from "react-dom";
+import { useEffect } from "react";
+import { useNavigate } from "react-router";
 
 export type ViewTransitionDirection = "forward" | "back";
 
@@ -63,6 +65,56 @@ export function withViewTransition(
     .finally(() => {
       if (direction && root.dataset.vt === direction) delete root.dataset.vt;
     });
+}
+
+function isInternalLink(a: HTMLAnchorElement): boolean {
+  const href = a.getAttribute("href");
+  return (
+    !!href &&
+    href.startsWith("/") &&
+    !href.startsWith("//") &&
+    a.getAttribute("target") !== "_blank" &&
+    !a.hasAttribute("download") &&
+    // Opt-out hook for any link that should navigate without a transition.
+    a.dataset.noVt === undefined
+  );
+}
+
+/**
+ * App-wide view transitions for EVERY in-app anchor click — in-page links,
+ * breadcrumbs, route tabs — via one capture-phase listener instead of wrapping
+ * each `<Link>`. preventDefault'ing in capture makes React Router's own Link
+ * handler bail, then we navigate inside a transition. The sidebar (which uses
+ * buttons + the explicit `vNav` helper, not anchors) is unaffected, so there's
+ * no double-wrapping. `prefetch` (optional) warms a destination on hover.
+ */
+export function useLinkViewTransitions(prefetch?: (href: string) => void): void {
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const onClick = (e: MouseEvent) => {
+      // Reduced-motion / unsupported: let React Router handle it normally.
+      if (!supportsViewTransitions() || prefersReducedMotion()) return;
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as HTMLElement | null)?.closest("a");
+      if (!a || !isInternalLink(a)) return;
+      const href = a.getAttribute("href")!;
+      e.preventDefault();
+      if (href === window.location.pathname + window.location.search) return;
+      withViewTransition(() => navigate(href));
+    };
+    const onOver = (e: Event) => {
+      if (!prefetch) return;
+      const a = (e.target as HTMLElement | null)?.closest?.("a");
+      if (a && isInternalLink(a)) prefetch(a.getAttribute("href")!);
+    };
+    document.addEventListener("click", onClick, true);
+    document.addEventListener("pointerover", onOver, true);
+    return () => {
+      document.removeEventListener("click", onClick, true);
+      document.removeEventListener("pointerover", onOver, true);
+    };
+  }, [navigate, prefetch]);
 }
 
 // ─── Scroll restoration ───

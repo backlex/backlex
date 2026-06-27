@@ -7,6 +7,7 @@ import { runCollections } from "../src/collections";
 import { runItems } from "../src/items";
 import { runBackup } from "../src/backup";
 import { runUsers, runRoles, runFlags, runSettings } from "../src/admin";
+import { runPermissions } from "../src/permissions";
 import { runFunctions } from "../src/functions";
 import { runFlows } from "../src/flows";
 import { runAgents } from "../src/agents";
@@ -61,6 +62,10 @@ Usage:
 
   backlex roles list
       Roles in the active workspace (ids to use with \`users grant\`).
+
+  backlex permissions simulate --collection <slug> --action <action>
+      Dry-run the permission resolver and explain the allow/deny decision.
+      Test a real user (\`--user <id>\`) or ad-hoc roles (\`--roles a,b\`).
 
   backlex flags <list|set|delete>
       Feature flags / remote config. \`--global\` targets the global scope.
@@ -166,6 +171,11 @@ const run = async () => {
     case "roles":
     case "role":
       await runRoles(rest);
+      return;
+    case "permissions":
+    case "permission":
+    case "perms":
+      await runPermissions(rest);
       return;
     case "flags":
     case "flag":

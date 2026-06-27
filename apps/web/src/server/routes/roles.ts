@@ -16,10 +16,13 @@ import {
   requireTenant,
 } from "../services/roles/guards";
 import { ensureRoleInTenant } from "../services/roles/role-checks";
+import { simulatePermission } from "../services/permissions";
 import {
   PERMISSIONS_TAG,
   PermissionInput,
   PermissionRowSchema,
+  PermissionSimResultSchema,
+  PermissionSimulateInput,
   ROLES_TAG,
   RoleInput,
   RoleRowSchema,
@@ -335,6 +338,59 @@ export const permissionsRoutes = new OpenAPIHono<AppBindings>().openapi(
     await (ctx.db as any).delete(t.permissions).where(eq(t.permissions.id, id));
     invalidateTenantPermissions(tenantId);
     return c.json({ ok: true });
+  },
+).openapi(
+  createRoute({
+    method: "post",
+    path: "/simulate",
+    tags: PERMISSIONS_TAG,
+    summary: "Simulate a permission decision",
+    description:
+      "Dry-run the permission resolver for a subject (an existing user, or " +
+      "an ad-hoc set of role names) against a (collection, action). Returns " +
+      "the full reasoning trace: matched roles + rules, the resolved DSL " +
+      "variables, the compiled WHERE clause, the field allow-list, and the " +
+      "allow/deny decision. Pass `sampleRow` to test a concrete row against " +
+      "the combined condition. Read-only — never mutates state.",
+    security: SECURITY,
+    middleware: [requireUser, requireAdminMw],
+    request: {
+      body: {
+        required: true,
+        content: {
+          "application/json": { schema: PermissionSimulateInput },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: "Simulation result",
+        content: {
+          "application/json": {
+            schema: z.object({ data: PermissionSimResultSchema }),
+          },
+        },
+      },
+      ...errorResponses,
+    },
+  }),
+  async (c) => {
+    const ctx = c.get("ctx");
+    const tenantId = requireTenant(c);
+    const body = c.req.valid("json");
+    // Always scoped to the caller's active workspace — an admin can only
+    // simulate within the tenant they're signed into.
+    const result = await simulatePermission(ctx, {
+      userId: body.userId ?? null,
+      email: body.email ?? null,
+      roles: body.roles ?? null,
+      plane: body.plane,
+      collection: body.collection,
+      action: body.action,
+      sampleRow: body.sampleRow ?? null,
+      tenantId,
+    });
+    return c.json({ data: result });
   },
 );
 

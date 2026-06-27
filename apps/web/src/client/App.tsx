@@ -1,4 +1,4 @@
-import { Route, Routes, useNavigate } from "react-router-dom";
+import { Route, Routes, useNavigate } from "react-router";
 import { I18nProvider } from "@lingui/react";
 import { Toaster } from "@backlex/ui/components/sonner";
 import { i18n } from "@/admin/i18n";

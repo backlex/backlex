@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { ChevronRightIcon } from "lucide-react";
 import { cn } from "@backlex/ui/lib/utils";
 import { useLingui } from "@lingui/react/macro";

@@ -23,6 +23,7 @@ import { Card } from "@backlex/ui/components/card";
 import { ColorPicker } from "@backlex/ui/components/color-picker";
 import { Input } from "@backlex/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
+import { withViewTransition } from "../lib/nav-transition";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { SettingsSkeleton } from "../page-skeletons";
 import {
@@ -1480,7 +1481,7 @@ export function SettingsPage({ adapter, pushToast }: { adapter: AdapterId; pushT
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader title={t`Settings`} description={t`Self-hosted on Cloudflare Workers. Most config lives in wrangler.toml; this page is a live view + UI for runtime-mutable values.`} />
-      <Tabs value={tab} onValueChange={(v) => setTab(v)}>
+      <Tabs value={tab} onValueChange={(v) => withViewTransition(() => setTab(v))}>
         <TabsList>
           {[
             { id: "general", label: t`General` },

@@ -26,6 +26,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@backlex/ui/components/tabs";
+import { withViewTransition } from "../lib/nav-transition";
 import {
   Popover,
   PopoverContent,
@@ -787,7 +788,7 @@ export function AskAiPage({
       />
 
       <div className="-mx-1 px-1">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+        <Tabs value={tab} onValueChange={(v) => withViewTransition(() => setTab(v as typeof tab))}>
           <TabsList className="whitespace-nowrap">
             <TabsTrigger value="ask">
               <I.Sparkles size={13} />

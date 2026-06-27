@@ -2,8 +2,11 @@
 // backlex admin — main app
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { withViewTransition, supportsViewTransitions, prefersReducedMotion, savePaneScroll, restorePaneScroll } from "./lib/nav-transition";
+import { withViewTransition, supportsViewTransitions, prefersReducedMotion, savePaneScroll, restorePaneScroll, useLinkViewTransitions } from "./lib/nav-transition";
 import { prefetchPage } from "./lib/page-prefetch";
+
+// Warm the chunk for an in-page anchor href (first path segment → nav id).
+const prefetchHref = (href: string) => prefetchPage(href.replace(/^\/+/, "").split(/[/?]/)[0] ?? "");
 import "./admin.css";
 import "./flow-builder.css";
 import { I } from "./icons";
@@ -190,6 +193,9 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   useLayoutEffect(() => {
     restorePaneScroll(location.pathname + location.search);
   }, [location.pathname, location.search]);
+  // App-wide view transitions for in-page anchor nav (breadcrumbs, links, route
+  // tabs). The sidebar uses buttons + vNav, so this only adds anchor coverage.
+  useLinkViewTransitions(prefetchHref);
   const vNav = useCallback(
     (to: string, direction?: "forward" | "back", opts?: { replace?: boolean }) => {
       // Save where we are before leaving so a later "back" can restore it.

@@ -1,4 +1,4 @@
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@backlex/ui/components/button";

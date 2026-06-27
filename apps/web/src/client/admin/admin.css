@@ -163,11 +163,12 @@ body {
 }
 ::view-transition-old(main-pane),
 ::view-transition-new(main-pane) {
-  animation-duration: 180ms;
-  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  animation-duration: 260ms;
+  animation-timing-function: ease;
   animation-fill-mode: both;
 }
-/* Default (top-level sidebar nav): a quick cross-fade with a faint lift. */
+/* Default (top-level sidebar nav): a clean opacity cross-fade. No vertical
+   nudge — at this speed even a 4px shift reads as a flicker/jitter. */
 ::view-transition-old(main-pane) { animation-name: vt-fade-out; }
 ::view-transition-new(main-pane) { animation-name: vt-fade-in; }
 /* Forward (list → detail, index → collection): new pane slides in from the
@@ -178,12 +179,12 @@ html[data-vt="forward"]::view-transition-new(main-pane) { animation-name: vt-in-
 html[data-vt="back"]::view-transition-old(main-pane) { animation-name: vt-out-right; }
 html[data-vt="back"]::view-transition-new(main-pane) { animation-name: vt-in-left; }
 
-@keyframes vt-fade-out { to { opacity: 0; transform: translateY(-4px); } }
-@keyframes vt-fade-in { from { opacity: 0; transform: translateY(4px); } }
-@keyframes vt-out-left { to { opacity: 0; transform: translateX(-24px); } }
-@keyframes vt-in-right { from { opacity: 0; transform: translateX(24px); } }
-@keyframes vt-out-right { to { opacity: 0; transform: translateX(24px); } }
-@keyframes vt-in-left { from { opacity: 0; transform: translateX(-24px); } }
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-fade-in { from { opacity: 0; } }
+@keyframes vt-out-left { to { opacity: 0; transform: translateX(-16px); } }
+@keyframes vt-in-right { from { opacity: 0; transform: translateX(16px); } }
+@keyframes vt-out-right { to { opacity: 0; transform: translateX(16px); } }
+@keyframes vt-in-left { from { opacity: 0; transform: translateX(-16px); } }
 
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),

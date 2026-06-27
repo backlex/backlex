@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 
 /**
  * Two-way bind a single search-param key to React state.

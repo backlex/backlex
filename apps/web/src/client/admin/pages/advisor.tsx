@@ -6,7 +6,7 @@
 // on demand (there is no server cron/cache). Dismiss is persisted to
 // localStorage (there is no dismiss endpoint).
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { I, type IconComponent } from "../icons";

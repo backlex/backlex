@@ -1,7 +1,7 @@
 // @ts-nocheck
 // backlex admin — main app
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router";
 import "./admin.css";
 import "./flow-builder.css";
 import { I } from "./icons";

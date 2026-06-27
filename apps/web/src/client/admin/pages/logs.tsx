@@ -19,6 +19,7 @@ import { I, type IconComponent, type IconKey } from "../icons";
 import { Badge, Button, EmptyState, IconButton, JsonBlock, PageHeader } from "../ui";
 import { Input } from "@backlex/ui/components/input";
 import { Tabs, TabsList, TabsTrigger } from "@backlex/ui/components/tabs";
+import { withViewTransition } from "../lib/nav-transition";
 import {
   Dialog,
   DialogContent,
@@ -323,7 +324,7 @@ export function LogsPage({
         }
         actions={
           <>
-            <Tabs value={view} onValueChange={(v) => setView(v as ViewMode)}>
+            <Tabs value={view} onValueChange={(v) => withViewTransition(() => setView(v as ViewMode))}>
               <TabsList>
                 <TabsTrigger value="stream">
                   <I.ScrollText size={13} />

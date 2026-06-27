@@ -50,10 +50,12 @@ export function withViewTransition(
   }
   const root = document.documentElement;
   if (direction) root.dataset.vt = direction;
-  const start = (document as Document & {
+  // Must be invoked on `document` — extracting the method into a bare variable
+  // and calling it unbound throws "Illegal invocation" (native receiver check).
+  const doc = document as Document & {
     startViewTransition: StartViewTransition;
-  }).startViewTransition;
-  const transition = start(() => {
+  };
+  const transition = doc.startViewTransition(() => {
     flushSync(commit);
   });
   transition.finished
@@ -61,4 +63,34 @@ export function withViewTransition(
     .finally(() => {
       if (direction && root.dataset.vt === direction) delete root.dataset.vt;
     });
+}
+
+// ─── Scroll restoration ───
+// The admin's scroll container (`.scrollarea`) stays mounted across every
+// navigation, so its scrollTop would otherwise leak between views (e.g. an item
+// editor opening at the list's scroll offset). We keep a per-URL position map:
+// save on the way out, restore on arrival (default = top). This both fixes the
+// leak and gives free "back to list restores your place" behaviour — what
+// react-router's <ScrollRestoration> does, which only works under the data
+// router this app doesn't use.
+const PANE_SELECTOR = ".scrollarea";
+const scrollByKey = new Map<string, number>();
+
+function pane(): HTMLElement | null {
+  return typeof document !== "undefined"
+    ? document.querySelector<HTMLElement>(PANE_SELECTOR)
+    : null;
+}
+
+/** Remember the current scroll offset for `key` (the location being left). */
+export function savePaneScroll(key: string): void {
+  const el = pane();
+  if (el) scrollByKey.set(key, el.scrollTop);
+}
+
+/** Restore the saved offset for `key` (the location arrived at), or scroll to
+ *  the top when it has never been visited. */
+export function restorePaneScroll(key: string): void {
+  const el = pane();
+  if (el) el.scrollTop = scrollByKey.get(key) ?? 0;
 }

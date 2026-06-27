@@ -27,7 +27,7 @@ Each page expects:
 import "@backlex/ui/globals.css";
 import "@backlex/auth-ui/auth-shell.css";
 import { SignInPage } from "@backlex/auth-ui";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router";
 
 export const SignIn = () => {
   const navigate = useNavigate();
@@ -88,7 +88,7 @@ export const SignIn = () => {
 ## Conventions
 
 - The package is **i18n-free** — pass already-translated strings via `copy`. The OSS backlex admin wraps each call site in `useLingui()` to translate at render time; cloud / external consumers can pass plain literals.
-- The package is **router-free** — `navigate` and `Link` are injected. Use `react-router-dom`, Next.js, TanStack Router, or roll your own.
+- The package is **router-free** — `navigate` and `Link` are injected. Use `react-router`, Next.js, TanStack Router, or roll your own.
 - The package is **branding-aware** — pass `branding={{ name, logoUrl, signInHeadline?, signInTagline? }}`; the shell renders an initial-letter chip when no logo is set.
 - The visual structure (Tailwind classes, layout, animations) is identical across consumers — the same auth screen renders in OSS and cloud.
 

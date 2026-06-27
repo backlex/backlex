@@ -762,7 +762,7 @@ export const GraphqlPage = () => {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
         {/* Left: schema tree */}
-        <Card className="flex h-fit max-h-[calc(100vh-220px)] flex-col overflow-hidden lg:sticky lg:top-4">
+        <Card className="flex h-fit flex-col overflow-hidden lg:sticky lg:top-4">
           <CardHeader className="gap-2">
             <CardTitle className="flex items-center justify-between text-sm">
               <span><Trans>Schema</Trans></span>
@@ -794,8 +794,8 @@ export const GraphqlPage = () => {
               )}
             </div>
           </CardHeader>
-          <CardContent className="min-h-0 flex-1 p-0">
-            <ScrollArea className="size-full">
+          <CardContent className="p-0">
+            <ScrollArea className="w-full" viewportClassName="max-h-[calc(100vh-260px)]">
             <div className="p-2 pt-0">
             {schemaLoading && (
               <div className="flex flex-col gap-2 p-2">

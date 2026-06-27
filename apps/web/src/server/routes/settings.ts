@@ -101,6 +101,9 @@ const RuntimeInfo = z
     bindings: z.array(Binding),
     envVars: z.array(EnvVar),
     version: z.string(),
+    commit: z.string(),
+    released: z.string(),
+    wrangler: z.string(),
   })
   .openapi("RuntimeInfo");
 
@@ -307,13 +310,25 @@ export const settingsRoutes = new OpenAPIHono<AppBindings>()
                 : typeof g.Bun !== "undefined"
                   ? "bun"
                   : "node";
+      // Build-time metadata injected by Vite `define` (see vite.config.ts).
+      // The `typeof` guard keeps it safe under runtimes that don't apply Vite
+      // `define` (bun test / bun self-host) — there it reports "dev"/"unknown".
       return c.json({
         data: {
           adapter,
           dialect: ctx.dialect,
           bindings,
           envVars,
-          version: "v0.9.4",
+          version:
+            typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev",
+          commit:
+            typeof __GIT_COMMIT__ !== "undefined" ? __GIT_COMMIT__ : "unknown",
+          released:
+            typeof __BUILD_DATE__ !== "undefined" ? __BUILD_DATE__ : "unknown",
+          wrangler:
+            typeof __WRANGLER_VERSION__ !== "undefined"
+              ? __WRANGLER_VERSION__
+              : "unknown",
         },
       });
     },

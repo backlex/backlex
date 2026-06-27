@@ -226,6 +226,9 @@ export interface ApiRuntime {
   bindings: { type: string; name: string; target: string; status: string }[];
   envVars: { key: string; set: boolean; secret: boolean; source: string }[];
   version: string;
+  commit: string;
+  released: string;
+  wrangler: string;
 }
 
 export interface ApiActivity {

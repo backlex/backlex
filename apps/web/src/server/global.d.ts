@@ -10,3 +10,12 @@
 
 /** Worker-template version (e.g. "0.4.10"), or "dev" outside a template build. */
 declare const __TEMPLATE_VERSION__: string;
+
+/** App version — cloud template tag, else nearest git tag, else package version. */
+declare const __APP_VERSION__: string;
+/** Short git commit hash of the build (e.g. "a8b2f1c"), or "unknown". */
+declare const __GIT_COMMIT__: string;
+/** Build date in ISO `YYYY-MM-DD`. */
+declare const __BUILD_DATE__: string;
+/** Installed Wrangler version at build time, or "unknown". */
+declare const __WRANGLER_VERSION__: string;

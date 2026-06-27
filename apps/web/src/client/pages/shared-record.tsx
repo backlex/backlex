@@ -3,7 +3,7 @@
 // Reached via `/s/:token` — registered OUTSIDE the AuthGate so a logged-out
 // visitor can open it. The only network call is the public
 // `GET /api/shared/:token` endpoint; no authed endpoints are touched.
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { LinkIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";

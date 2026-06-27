@@ -6,7 +6,7 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 import { RefreshCwIcon, SearchIcon, SendIcon, ChevronRightIcon } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@backlex/ui/components/button";

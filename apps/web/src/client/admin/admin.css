@@ -146,6 +146,51 @@ body {
   max-width: 1440px;
   width: 100%;
   margin-inline: auto;
+  /* Lifts the content area into its own view-transition group so only it
+     animates on navigation — the sidebar/topbar fall into `root` and stay
+     static (see the View Transitions section below). */
+  view-transition-name: main-pane;
+}
+
+/* ─── View Transitions ───
+   Subtle, fast page/route animations driven by `withViewTransition`
+   (apps/web/src/client/admin/lib/nav-transition.ts). Only `main-pane` (the
+   `.page` content) animates; `root` (the persistent shell) is frozen. JS
+   already skips transitions under reduced-motion — the media query below is a
+   belt-and-suspenders guard for any path that reaches the API anyway. */
+::view-transition-group(root) {
+  animation: none;
+}
+::view-transition-old(main-pane),
+::view-transition-new(main-pane) {
+  animation-duration: 180ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  animation-fill-mode: both;
+}
+/* Default (top-level sidebar nav): a quick cross-fade with a faint lift. */
+::view-transition-old(main-pane) { animation-name: vt-fade-out; }
+::view-transition-new(main-pane) { animation-name: vt-fade-in; }
+/* Forward (list → detail, index → collection): new pane slides in from the
+   right; old pane slides out to the left. */
+html[data-vt="forward"]::view-transition-old(main-pane) { animation-name: vt-out-left; }
+html[data-vt="forward"]::view-transition-new(main-pane) { animation-name: vt-in-right; }
+/* Back (detail → list): reverse direction. */
+html[data-vt="back"]::view-transition-old(main-pane) { animation-name: vt-out-right; }
+html[data-vt="back"]::view-transition-new(main-pane) { animation-name: vt-in-left; }
+
+@keyframes vt-fade-out { to { opacity: 0; transform: translateY(-4px); } }
+@keyframes vt-fade-in { from { opacity: 0; transform: translateY(4px); } }
+@keyframes vt-out-left { to { opacity: 0; transform: translateX(-24px); } }
+@keyframes vt-in-right { from { opacity: 0; transform: translateX(24px); } }
+@keyframes vt-out-right { to { opacity: 0; transform: translateX(24px); } }
+@keyframes vt-in-left { from { opacity: 0; transform: translateX(-24px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
 }
 /* PageHeader, Button, and form input/textarea primitives moved to shadcn
    via apps/web/src/client/admin/ui.tsx + @backlex/ui/components/*. The

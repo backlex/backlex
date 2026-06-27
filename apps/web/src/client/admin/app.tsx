@@ -1,7 +1,9 @@
 // @ts-nocheck
 // backlex admin — main app
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useLocation, useNavigate } from "react-router";
+import { withViewTransition, supportsViewTransitions, prefersReducedMotion, savePaneScroll, restorePaneScroll } from "./lib/nav-transition";
+import { prefetchPage } from "./lib/page-prefetch";
 import "./admin.css";
 import "./flow-builder.css";
 import { I } from "./icons";
@@ -174,7 +176,36 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   );
   const segs = location.pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
   const activeNav = segs[0] && NAV_IDS.has(segs[0]) ? segs[0] : initialNav;
-  const setActiveNav = useCallback((id: string) => { navigate("/" + id); }, [navigate]);
+  // Navigate inside a view transition. Warms the target's lazy chunk first (so
+  // the transition snapshots the page, not its skeleton), then commits through
+  // `withViewTransition` which falls back to a plain navigate when the API is
+  // unavailable or reduced-motion is on. `direction` drives the CSS slide.
+  // Current location key, kept in a ref so the memoized `vNav` can read it
+  // without re-creating on every navigation.
+  const locKeyRef = useRef("");
+  locKeyRef.current = location.pathname + location.search;
+  // Restore the destination's saved scroll (or top) after each navigation
+  // commits — runs inside the view-transition's synchronous flush, so the new
+  // snapshot reflects the restored offset.
+  useLayoutEffect(() => {
+    restorePaneScroll(location.pathname + location.search);
+  }, [location.pathname, location.search]);
+  const vNav = useCallback(
+    (to: string, direction?: "forward" | "back", opts?: { replace?: boolean }) => {
+      // Save where we are before leaving so a later "back" can restore it.
+      savePaneScroll(locKeyRef.current);
+      const navId = to.replace(/^\/+/, "").split(/[/?]/)[0] ?? "";
+      const run = () => withViewTransition(() => navigate(to, opts), direction);
+      const pending =
+        supportsViewTransitions() && !prefersReducedMotion()
+          ? prefetchPage(navId)
+          : undefined;
+      if (pending) pending.then(run, run);
+      else run();
+    },
+    [navigate],
+  );
+  const setActiveNav = useCallback((id: string) => { vNav("/" + id); }, [vNav]);
 
   // The standalone "Activity log" page was merged into "Logs" — keep old
   // `/activity` deep links working by redirecting them to the unified page.
@@ -182,7 +213,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     if (segs[0] === "activity") navigate("/logs", { replace: true });
   }, [segs[0], navigate]);
 
-  const navTo = useCallback((id: string) => { navigate("/" + id); }, [navigate]);
+  const navTo = useCallback((id: string) => { vNav("/" + id); }, [vNav]);
   const [activeTab, setActiveTab] = useState<"items" | "schema" | "settings">("items");
   // The item list is React Query state (`itemsQuery` below, derived from
   // `activeCollection` + `itemsParams`). `posts` is just its current rows —
@@ -292,8 +323,8 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   }, [collectionsQuery.data, metricsQuery.data, showArchived]);
   const activeCollection = activeNav === "collections" && segs[1] ? segs[1] : null;
   const setActiveCollection = useCallback(
-    (slug: string | null) => { navigate(slug ? "/collections/" + slug : "/collections"); },
-    [navigate],
+    (slug: string | null) => { vNav(slug ? "/collections/" + slug : "/collections", slug ? "forward" : "back"); },
+    [vNav],
   );
   // Item-detail route: /collections/:slug/items/:id (and /items/new). When set,
   // the full-page editor renders in place of the items list. Deep-linkable so
@@ -605,11 +636,11 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
   // item editor and back, so returning via "Back" restores the chosen view
   // (e.g. Kanban) instead of snapping to the default Table.
   const openCreate = () => {
-    if (activeCollection) navigate(`/collections/${activeCollection}/items/new${location.search}`);
+    if (activeCollection) vNav(`/collections/${activeCollection}/items/new${location.search}`, "forward");
     else { setSheetMode("create"); setSheetItem(null); setSheetOpen(true); }
   };
   const openEdit = (it: Post) => {
-    if (activeCollection) navigate(`/collections/${activeCollection}/items/${it.id}${location.search}`);
+    if (activeCollection) vNav(`/collections/${activeCollection}/items/${it.id}${location.search}`, "forward");
     else { setSheetMode("edit"); setSheetItem(it); setSheetOpen(true); }
   };
   // Kanban drag-and-drop → patch the row's status field. The hook owns the
@@ -951,8 +982,8 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                   onSaved={(updated) => patchItemsCache((rows) => rows.map((x) => (x.id === updated.id ? updated : x)))}
                   onCreated={(created) => patchItemsCache((rows) => [created, ...rows])}
                   onDeleted={(id) => patchItemsCache((rows) => rows.filter((x) => x.id !== id))}
-                  onBack={() => navigate(`/collections/${activeCollection}${location.search}`)}
-                  navigateToItem={(id) => navigate(`/collections/${activeCollection}/items/${id}${location.search}`)}
+                  onBack={() => vNav(`/collections/${activeCollection}${location.search}`, "back")}
+                  navigateToItem={(id) => vNav(`/collections/${activeCollection}/items/${id}${location.search}`, "forward")}
                 />
               ) : (
                 <CollectionItemsSkeleton />

@@ -791,6 +791,7 @@ msgid "ACS URL"
 msgstr "ACS URL"
 
 #: src/client/admin/pages/logs.tsx
+#: src/client/admin/permission-tester.tsx
 msgid "Action"
 msgstr "Action"
 
@@ -873,6 +874,10 @@ msgstr "Actor"
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "AD defaults: <0>mail · givenName · sn · memberOf</0>. OpenLDAP commonly uses <1>mail · givenName · sn · memberOf</1> (or the <2>groupOfNames</2> overlay)."
 msgstr "AD defaults: <0>mail · givenName · sn · memberOf</0>. OpenLDAP commonly uses <1>mail · givenName · sn · memberOf</1> (or the <2>groupOfNames</2> overlay)."
+
+#: src/client/admin/permission-tester.tsx
+msgid "Ad-hoc roles"
+msgstr "Ad-hoc roles"
 
 #: src/client/admin/pages/overview.tsx
 msgid "Adapter auto-selected from bindings/env."
@@ -1030,6 +1035,10 @@ msgstr "Adjust your filters or invite a new teammate."
 msgid "Admin"
 msgstr "Admin"
 
+#: src/client/admin/permission-tester.tsx
+msgid "admin bypass"
+msgstr "admin bypass"
+
 #: src/client/admin/pages/realtime.tsx
 msgid "admin role only"
 msgstr "admin role only"
@@ -1154,6 +1163,10 @@ msgstr "All collections"
 msgid "All events"
 msgstr "All events"
 
+#: src/client/admin/permission-tester.tsx
+msgid "all fields"
+msgstr "all fields"
+
 #: src/client/admin/relational-pickers.tsx
 #: src/client/admin/storage.tsx
 msgid "All files"
@@ -1191,6 +1204,10 @@ msgstr "All tools, read & write (default) — tap to restrict"
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Allow all"
 msgstr "Allow all"
+
+#: src/client/admin/permission-tester.tsx
+msgid "Allowed"
+msgstr "Allowed"
 
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "Allowed email domains (optional, comma-separated)"
@@ -1260,6 +1277,10 @@ msgstr "API keys"
 #: src/client/pages/api-keys.tsx
 msgid "API Keys"
 msgstr "API Keys"
+
+#: src/client/admin/permission-tester.tsx
+msgid "app (workspace end-users)"
+msgstr "app (workspace end-users)"
 
 #: src/client/admin/parity/app-users.tsx
 #: src/client/admin/ui.tsx
@@ -1987,6 +2008,7 @@ msgstr "Collaboration"
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/parity/insights.tsx
+#: src/client/admin/permission-tester.tsx
 msgid "Collection"
 msgstr "Collection"
 
@@ -2107,6 +2129,10 @@ msgstr "Compiled rule"
 #: src/client/admin/condition-editor.tsx
 msgid "Compiled SQL"
 msgstr "Compiled SQL"
+
+#: src/client/admin/permission-tester.tsx
+msgid "Compiled WHERE"
+msgstr "Compiled WHERE"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Completed"
@@ -2823,6 +2849,7 @@ msgid "denied"
 msgstr "denied"
 
 #: src/client/admin/pages/ask-ai.tsx
+#: src/client/admin/permission-tester.tsx
 msgid "Denied"
 msgstr "Denied"
 
@@ -3090,6 +3117,10 @@ msgstr "Dry run — no real side-effects"
 msgid "Dry-run summary"
 msgstr "Dry-run summary"
 
+#: src/client/admin/permission-tester.tsx
+msgid "Dry-run the resolver and see exactly which rule applied."
+msgstr "Dry-run the resolver and see exactly which rule applied."
+
 #: src/client/admin/item-editor.tsx
 msgid "Duplicate"
 msgstr "Duplicate"
@@ -3234,6 +3265,10 @@ msgstr "Editor"
 #: src/client/pages/sign-up.tsx
 msgid "Email"
 msgstr "Email"
+
+#: src/client/admin/permission-tester.tsx
+msgid "Email (for $user.email)"
+msgstr "Email (for $user.email)"
 
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Email + password is always available — toggle it off to hide the form from the sign-in screen."
@@ -3518,6 +3553,10 @@ msgstr "Execute"
 msgid "Execute a query to see results here."
 msgstr "Execute a query to see results here."
 
+#: src/client/admin/permission-tester.tsx
+msgid "Existing user"
+msgstr "Existing user"
+
 #: src/client/admin/pages/schema-graph.tsx
 msgid "expansion"
 msgstr "expansion"
@@ -3701,6 +3740,7 @@ msgstr "fields"
 #: src/client/admin/collections-index.tsx
 #: src/client/admin/display-template-editor.tsx
 #: src/client/admin/item-editor.tsx
+#: src/client/admin/permission-tester.tsx
 #: src/client/admin/sheet.tsx
 msgid "Fields"
 msgstr "Fields"
@@ -5095,6 +5135,10 @@ msgstr "Mark all read"
 msgid "match {0} of the following"
 msgstr "match {0} of the following"
 
+#: src/client/admin/permission-tester.tsx
+msgid "Matched rules"
+msgstr "Matched rules"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Max 500 characters."
 msgstr "Max 500 characters."
@@ -5867,6 +5911,14 @@ msgstr "No revisions recorded yet."
 msgid "No revisions yet for this item."
 msgstr "No revisions yet for this item."
 
+#: src/client/admin/permission-tester.tsx
+msgid "No roles found."
+msgstr "No roles found."
+
+#: src/client/admin/permission-tester.tsx
+msgid "No roles selected = anonymous (the public role)."
+msgstr "No roles selected = anonymous (the public role)."
+
 #: src/client/admin/relational-pickers.tsx
 msgid "No row from c_{target} selected"
 msgstr "No row from c_{target} selected"
@@ -5957,6 +6009,7 @@ msgid "No webhooks yet"
 msgstr "No webhooks yet"
 
 #: src/client/admin/pages/users.tsx
+#: src/client/admin/permission-tester.tsx
 msgid "none"
 msgstr "none"
 
@@ -6474,6 +6527,10 @@ msgstr "Permission rules, webhook patterns, function triggers, flow steps, revis
 msgid "Permission saved: {role} · {action} · {collection}."
 msgstr "Permission saved: {role} · {action} · {collection}."
 
+#: src/client/admin/permission-tester.tsx
+msgid "Permission tester"
+msgstr "Permission tester"
+
 #: src/client/admin/collections-index.tsx
 msgid "Permissions"
 msgstr "Permissions"
@@ -6502,6 +6559,10 @@ msgstr "Photographer, designer, source…"
 #: src/client/admin/pages/overview.tsx
 msgid "physical c_<slug> tables"
 msgstr "physical c_<slug> tables"
+
+#: src/client/admin/permission-tester.tsx
+msgid "Pick a collection"
+msgstr "Pick a collection"
 
 #: src/client/admin/parity/insights.tsx
 msgid "Pick a collection and an aggregate below — no query to write."
@@ -6603,6 +6664,10 @@ msgstr "Pick a UI interface · {0} available across {1} groups"
 msgid "Pick a unique name."
 msgstr "Pick a unique name."
 
+#: src/client/admin/permission-tester.tsx
+msgid "Pick a user"
+msgstr "Pick a user"
+
 #: src/client/admin/pages/agents.tsx
 msgid "Pick an agent on the left, or click <0>+ New agent</0>."
 msgstr "Pick an agent on the left, or click <0>+ New agent</0>."
@@ -6679,6 +6744,10 @@ msgstr "plain"
 msgid "Plan"
 msgstr "Plan"
 
+#: src/client/admin/permission-tester.tsx
+msgid "Plane"
+msgstr "Plane"
+
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Planning the tool call…"
 msgstr "Planning the tool call…"
@@ -6686,6 +6755,10 @@ msgstr "Planning the tool call…"
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Planning…"
 msgstr "Planning…"
+
+#: src/client/admin/permission-tester.tsx
+msgid "platform (admin users)"
+msgstr "platform (admin users)"
 
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/ui.tsx
@@ -7397,6 +7470,10 @@ msgstr "Resetting password"
 msgid "Resolved schemes"
 msgstr "Resolved schemes"
 
+#: src/client/admin/permission-tester.tsx
+msgid "Resolved variables"
+msgstr "Resolved variables"
+
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/settings.tsx
 msgid "Resource"
@@ -7623,6 +7700,7 @@ msgstr "roles"
 
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/permission-tester.tsx
 msgid "Roles"
 msgstr "Roles"
 
@@ -7765,6 +7843,22 @@ msgstr "SAML 2.0 SSO — workspace end-users."
 #: src/client/admin/flow-builder.tsx
 msgid "Sample event payload"
 msgstr "Sample event payload"
+
+#: src/client/admin/permission-tester.tsx
+msgid "Sample row (optional JSON)"
+msgstr "Sample row (optional JSON)"
+
+#: src/client/admin/permission-tester.tsx
+msgid "sample row excluded"
+msgstr "sample row excluded"
+
+#: src/client/admin/permission-tester.tsx
+msgid "Sample row is not valid JSON."
+msgstr "Sample row is not valid JSON."
+
+#: src/client/admin/permission-tester.tsx
+msgid "sample row matches"
+msgstr "sample row matches"
 
 #: src/client/admin/pages/overview.tsx
 msgid "Sandbox"
@@ -8564,6 +8658,18 @@ msgstr "Signing secret"
 msgid "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>timestamp.body</2> with <3>X-Backlex-Timestamp</3> for replay protection."
 msgstr "Signs every delivery: <0>X-Backlex-Signature</0> (HMAC of the body) plus <1>X-Backlex-Signature-V2</1> over <2>timestamp.body</2> with <3>X-Backlex-Timestamp</3> for replay protection."
 
+#: src/client/admin/permission-tester.tsx
+msgid "Simulate"
+msgstr "Simulate"
+
+#: src/client/admin/permission-tester.tsx
+msgid "Simulating…"
+msgstr "Simulating…"
+
+#: src/client/admin/permission-tester.tsx
+msgid "Simulation failed."
+msgstr "Simulation failed."
+
 #: src/client/admin/parity/insights.tsx
 msgid "single scalar value"
 msgstr "single scalar value"
@@ -8790,6 +8896,7 @@ msgstr "sub"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/email-templates.tsx
+#: src/client/admin/permission-tester.tsx
 msgid "Subject"
 msgstr "Subject"
 
@@ -9037,6 +9144,14 @@ msgstr "Test run dispatched."
 #: src/client/admin/pages/settings.tsx
 msgid "Test SMS sent to {0} number(s)."
 msgstr "Test SMS sent to {0} number(s)."
+
+#: src/client/admin/permission-tester.tsx
+msgid "Test whether a concrete row passes the combined condition."
+msgstr "Test whether a concrete row passes the combined condition."
+
+#: src/client/admin/app.tsx
+msgid "Tester"
+msgstr "Tester"
 
 #: src/client/admin/pages/settings.tsx
 msgid "Testing…"
@@ -9509,6 +9624,10 @@ msgstr "Unpublish"
 msgid "Unread"
 msgstr "Unread"
 
+#: src/client/admin/permission-tester.tsx
+msgid "Unrestricted — no row filter applies."
+msgstr "Unrestricted — no row filter applies."
+
 #: src/client/admin/parity/email-templates.tsx
 #: src/client/admin/storage.tsx
 msgid "unsaved"
@@ -9683,6 +9802,7 @@ msgstr "user"
 
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/permission-tester.tsx
 msgid "User"
 msgstr "User"
 

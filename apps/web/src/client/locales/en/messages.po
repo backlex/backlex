@@ -253,6 +253,11 @@ msgstr "{0} connected."
 msgid "{0} consecutive failures"
 msgstr "{0} consecutive failures"
 
+#. placeholder {0}: okIds.length
+#: src/client/admin/app.tsx
+msgid "{0} deleted, {failed} failed."
+msgstr "{0} deleted, {failed} failed."
+
 #. placeholder {0}: h.name
 #. placeholder {0}: u.email
 #. placeholder {0}: user.email
@@ -345,7 +350,7 @@ msgstr "{0} of {1} tools allowed. Choose Allow all to remove the allowlist."
 #~ msgid "{0} of {1} tools allowed. Uncheck all to remove the allowlist."
 #~ msgstr "{0} of {1} tools allowed. Uncheck all to remove the allowlist."
 
-#. placeholder {0}: selected.size
+#. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
 msgid "{0} posts deleted."
 msgstr "{0} posts deleted."
@@ -355,12 +360,12 @@ msgstr "{0} posts deleted."
 #~ msgid "{0} posts published."
 #~ msgstr "{0} posts published."
 
-#. placeholder {0}: okIds.size
+#. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
 msgid "{0} published, {failed} failed."
 msgstr "{0} published, {failed} failed."
 
-#. placeholder {0}: okIds.size
+#. placeholder {0}: okIds.length
 #: src/client/admin/app.tsx
 msgid "{0} published."
 msgstr "{0} published."

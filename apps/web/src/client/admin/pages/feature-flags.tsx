@@ -25,6 +25,7 @@ import {
 } from "@backlex/ui/components/dialog";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Card } from "@backlex/ui/components/card";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import { flagsApi, type ApiFlag } from "../api";
 
 interface EditState {
@@ -141,7 +142,14 @@ export function FeatureFlagsPage({ pushToast }: { pushToast: (m: string) => void
 
       <Card className="py-0 gap-0">
         {!loaded ? (
-          <div className="px-4 py-10 text-center text-sm text-muted-foreground"><Trans>Loading…</Trans></div>
+          <div className="flex flex-col">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-3 border-b border-border px-4 py-3 last:border-b-0">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="ml-auto h-5 w-9 rounded-full" />
+              </div>
+            ))}
+          </div>
         ) : flags.length === 0 ? (
           <EmptyState
             size="md"

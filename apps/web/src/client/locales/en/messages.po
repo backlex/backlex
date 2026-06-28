@@ -1261,6 +1261,10 @@ msgstr "An admin has turned off public sign-up for this instance. Ask for an inv
 msgid "An invite link will be emailed; valid for 7 days."
 msgstr "An invite link will be emailed; valid for 7 days."
 
+#: src/client/admin/pages/agents.tsx
+msgid "any provider/model id"
+msgstr "any provider/model id"
+
 #: src/client/admin/role-editor.tsx
 msgid "any signed-in"
 msgstr "any signed-in"
@@ -2689,6 +2693,10 @@ msgstr "Custom roles layer additively on top of authenticated."
 #: src/client/admin/permissions-matrix.tsx
 msgid "custom rule"
 msgstr "custom rule"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Custom…"
+msgstr "Custom…"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Customize…"
@@ -5106,8 +5114,8 @@ msgid "Loading API keys"
 msgstr "Loading API keys"
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "Loading keys…"
-msgstr "Loading keys…"
+#~ msgid "Loading keys…"
+#~ msgstr "Loading keys…"
 
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Loading MCP tools"
@@ -5118,17 +5126,14 @@ msgid "Loading role MCP defaults"
 msgstr "Loading role MCP defaults"
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "Loading runs…"
-msgstr "Loading runs…"
+#~ msgid "Loading runs…"
+#~ msgstr "Loading runs…"
 
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/components/mcp-guards-fields.tsx
-msgid "Loading tool catalog…"
-msgstr "Loading tool catalog…"
+#~ msgid "Loading tool catalog…"
+#~ msgstr "Loading tool catalog…"
 
-#: src/client/admin/item-editor.tsx
-#: src/client/admin/pages/agents.tsx
-#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Loading…"
@@ -9445,6 +9450,10 @@ msgstr "The activity endpoint returned an error. Try again in a moment."
 #: src/client/admin/pages/advisor.tsx
 msgid "The advisor endpoint returned an error. Re-run to try again."
 msgstr "The advisor endpoint returned an error. Re-run to try again."
+
+#: src/client/admin/pages/agents.tsx
+msgid "The agent's standing instructions — its persona, tone, and rules. Sent to the model before every user message."
+msgstr "The agent's standing instructions — its persona, tone, and rules. Sent to the model before every user message."
 
 #. placeholder {0}: provider.id.toUpperCase()
 #. placeholder {1}: provider.id

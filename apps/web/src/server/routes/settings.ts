@@ -55,6 +55,15 @@ const SettingsInput = z
      *  must be a valid absolute URL. Also instance-global (`tenant_id IS NULL`). */
     termsUrl: z.union([z.literal(""), z.string().url().max(2048)]).optional(),
     privacyUrl: z.union([z.literal(""), z.string().url().max(2048)]).optional(),
+    /** Saved Schema-graph (ERD) node positions, keyed by collection slug.
+     *  Admin-UI convenience state only — capped at 500 collections to keep the
+     *  settings row small. */
+    erdLayout: z
+      .record(z.string(), z.object({ x: z.number(), y: z.number() }))
+      .refine((v) => Object.keys(v).length <= 500, {
+        message: "Too many collections in erdLayout",
+      })
+      .optional(),
   })
   .strict()
   .refine(

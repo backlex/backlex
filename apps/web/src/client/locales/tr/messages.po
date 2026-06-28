@@ -14,6 +14,7 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: src/client/admin/add-field.tsx
+#: src/client/admin/pages/schema-graph.tsx
 msgid " · already exists"
 msgstr " · zaten mevcut"
 
@@ -226,8 +227,8 @@ msgstr "{0} tümü · {1} özel · {2} yok"
 msgid "{0} collections"
 msgstr "{0} koleksiyon"
 
-#. placeholder {0}: nodes.length
-#. placeholder {1}: edges.length
+#. placeholder {0}: collections.length
+#. placeholder {1}: edgeRows.length
 #: src/client/admin/pages/schema-graph.tsx
 msgid "{0} collections · {1} relations"
 msgstr "{0} koleksiyon · {1} ilişki"
@@ -922,6 +923,10 @@ msgstr "Dil ekle"
 msgid "Add a one-time code from an authenticator app (Google Authenticator, Authy, 1Password…) as a second step when signing in."
 msgstr "Oturum açarken ikinci adım olarak bir doğrulayıcı uygulamadan (Google Authenticator, Authy, 1Password…) tek seferlik kod ekleyin."
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Add a relation field on <0>c_{from}</0> pointing to <1>c_{to}</1>."
+msgstr "<0>c_{from}</0> koleksiyonuna <1>c_{to}</1> öğesini gösteren bir ilişki alanı ekle."
+
 #: src/client/admin/storage.tsx
 msgid "Add a tag and press Enter…"
 msgstr "Etiket ekleyip Enter'a basın…"
@@ -943,6 +948,7 @@ msgid "Add column"
 msgstr "Sütun ekle"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/schema-graph.tsx
 msgid "Add field"
 msgstr "Alan ekle"
 
@@ -1759,6 +1765,7 @@ msgstr "Tek giriş yönteminizin bağlantısını kaldıramazsınız."
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -1808,6 +1815,10 @@ msgstr "Döndürülen gruplanmış satır sayısını sınırlar (varsayılan 50
 #: src/client/admin/pages/integrations.tsx
 msgid "Capture data events as PostHog analytics events."
 msgstr "Veri olaylarını PostHog analitik olayları olarak yakala."
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Cardinality"
+msgstr "Kardinalite"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/relational-pickers.tsx
@@ -2060,10 +2071,22 @@ msgstr "Arşivlediğiniz koleksiyonlar burada görünür."
 msgid "Column"
 msgstr "Sütun"
 
+#. placeholder {0}: (field as { name?: string }).name
+#. placeholder {1}: addSchema.slug
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Column \"{0}\" added to c_{1}."
+msgstr "\"{0}\" sütunu c_{1} koleksiyonuna eklendi."
+
 #. placeholder {0}: (field as any).name
 #: src/client/admin/app.tsx
 msgid "Column \"{0}\" added to c_{slug}."
 msgstr "\"{0}\" sütunu c_{slug} koleksiyonuna eklendi."
+
+#. placeholder {0}: dropTarget.name
+#. placeholder {1}: dropTarget.slug
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Column \"{0}\" dropped from c_{1}."
+msgstr "\"{0}\" sütunu c_{1} koleksiyonundan kaldırıldı."
 
 #: src/client/admin/app.tsx
 msgid "Column \"{name}\" dropped."
@@ -2087,6 +2110,7 @@ msgstr "Sütun:"
 
 #. placeholder {0}: safeName || "—"
 #: src/client/admin/add-field.tsx
+#: src/client/admin/pages/schema-graph.tsx
 msgid "column: <0>{0}</0>"
 msgstr "sütun: <0>{0}</0>"
 
@@ -2426,6 +2450,14 @@ msgstr "Günlükler yüklenemedi"
 msgid "Couldn't load traces"
 msgstr "İzler yüklenemedi"
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Couldn't reset layout."
+msgstr "Düzen sıfırlanamadı."
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Couldn't save layout."
+msgstr "Düzen kaydedilemedi."
+
 #: src/client/admin/parity/insights.tsx
 msgid "count / sum / average over a collection — no SQL"
 msgstr "bir koleksiyon üzerinde say / topla / ortalama — SQL gerektirmez"
@@ -2507,6 +2539,10 @@ msgstr "Tablo oluştur veya devral"
 #: src/client/admin/parity/insights.tsx
 msgid "Create panel"
 msgstr "Panel oluştur"
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Create relation"
+msgstr "İlişki oluştur"
 
 #: src/client/admin/role-editor.tsx
 msgid "Create role"
@@ -3076,6 +3112,10 @@ msgstr "support_tickets şeması taslağı"
 msgid "drafts"
 msgstr "taslaklar"
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Drag to another collection to create a relation"
+msgstr "İlişki oluşturmak için başka bir koleksiyona sürükleyin"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Drag to move"
 msgstr "Taşımak için sürükleyin"
@@ -3086,12 +3126,17 @@ msgstr "Yeniden boyutlandırmak için sürükleyin"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/schema-graph.tsx
 msgid "Drop column"
 msgstr "Sütunu sil"
 
 #: src/client/admin/app.tsx
 msgid "Drop column \"{name}\"?"
 msgstr "\"{name}\" sütunu silinsin mi?"
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Drop field"
+msgstr "Alanı sil"
 
 #: src/client/admin/storage.tsx
 msgid "Drop files anywhere on this page or use Upload."
@@ -3210,6 +3255,7 @@ msgid "edit conditions below ↓"
 msgstr "aşağıdaki koşulları düzenle ↓"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/schema-graph.tsx
 msgid "Edit field"
 msgstr "Alanı düzenle"
 
@@ -3571,8 +3617,8 @@ msgid "Existing user"
 msgstr "Mevcut kullanıcı"
 
 #: src/client/admin/pages/schema-graph.tsx
-msgid "expansion"
-msgstr "genişletme"
+#~ msgid "expansion"
+#~ msgstr "genişletme"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Expects"
@@ -3730,8 +3776,13 @@ msgstr "Alan"
 
 #. placeholder {0}: (next as { name?: string }).name
 #: src/client/admin/app.tsx
+#: src/client/admin/pages/schema-graph.tsx
 msgid "Field \"{0}\" updated."
 msgstr "\"{0}\" alanı güncellendi."
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Field name"
+msgstr "Alan adı"
 
 #: src/client/admin/condition-editor.tsx
 msgid "Field permissions"
@@ -3854,8 +3905,8 @@ msgid "Fix the highlighted fields before saving."
 msgstr "Kaydetmeden önce işaretli alanları düzeltin."
 
 #: src/client/admin/pages/schema-graph.tsx
-msgid "fk"
-msgstr "fk"
+#~ msgid "fk"
+#~ msgstr "fk"
 
 #. placeholder {0}: fkColumnConflicts.map((c) => c.column).join(", ")
 #: src/client/admin/adopt-wizard.tsx
@@ -4426,6 +4477,10 @@ msgstr "1 ile 200 arasında tam sayı."
 msgid "Integrations"
 msgstr "Entegrasyonlar"
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Interactive ERD of dynamic collections. Drag nodes to arrange · drag from a node's right handle onto another to draw a relation · add, edit, or drop fields inline."
+msgstr "Dinamik koleksiyonların etkileşimli ERD'si. Düzenlemek için düğümleri sürükleyin · ilişki çizmek için bir düğümün sağ tutamacından diğerine sürükleyin · alanları satır içinde ekleyin, düzenleyin veya silin."
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Interface"
@@ -4809,6 +4864,10 @@ msgstr "gecikme"
 msgid "Latency"
 msgstr "Gecikme"
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Layout reset to auto-arrange."
+msgstr "Düzen otomatik yerleşime sıfırlandı."
+
 #: src/client/admin/parity/ldap-config-card.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "LDAP / Active Directory"
@@ -4954,8 +5013,8 @@ msgid "Live browser for every endpoint under /api. Built from the OpenAPI doc yo
 msgstr "/api altındaki her uç nokta için canlı tarayıcı. Çalışma alanınızın /api/openapi.json'da sunduğu OpenAPI dokümanından oluşturulmuştur — koleksiyonlarınız için dinamik /api/items/{slug} rotaları dahil."
 
 #: src/client/admin/pages/schema-graph.tsx
-msgid "Live ERD of dynamic collections. Foreign keys derive from field type · relations panel below shows the join shape used by REST + GraphQL."
-msgstr "Dinamik koleksiyonların canlı ERD'si. Yabancı anahtarlar alan türünden türetilir · aşağıdaki ilişkiler paneli REST + GraphQL tarafından kullanılan birleştirme şeklini gösterir."
+#~ msgid "Live ERD of dynamic collections. Foreign keys derive from field type · relations panel below shows the join shape used by REST + GraphQL."
+#~ msgstr "Dinamik koleksiyonların canlı ERD'si. Yabancı anahtarlar alan türünden türetilir · aşağıdaki ilişkiler paneli REST + GraphQL tarafından kullanılan birleştirme şeklini gösterir."
 
 #: src/client/admin/extras.tsx
 msgid "Live tail"
@@ -5091,8 +5150,8 @@ msgid "lowercase, snake_case"
 msgstr "küçük harf, snake_case"
 
 #: src/client/admin/pages/schema-graph.tsx
-msgid "m2m"
-msgstr "m2m"
+#~ msgid "m2m"
+#~ msgstr "m2m"
 
 #: src/client/pages/openapi-export.tsx
 msgid "Machine-readable spec for every /api endpoint in this workspace — including dynamic /api/items/{slug} entries for your collections. Import into Postman, Insomnia, Swagger UI, or any code-gen tool."
@@ -5140,6 +5199,10 @@ msgstr "Manuel giriş"
 #: src/client/admin/pages/functions.tsx
 msgid "manual invoke via POST /api/functions/:name/invoke"
 msgstr "POST /api/functions/:name/invoke aracılığıyla manuel çağrı"
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Many (relation_many)"
+msgstr "Çoklu (relation_many)"
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Map →"
@@ -5535,6 +5598,10 @@ msgstr "Yeni parola en az 8 karakter olmalıdır."
 #: src/client/admin/extras.tsx
 msgid "New post"
 msgstr "Yeni gönderi"
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "New relation"
+msgstr "Yeni ilişki"
 
 #: src/client/admin/role-editor.tsx
 msgid "New role"
@@ -6031,6 +6098,10 @@ msgstr "İki satır aynı değeri tutamaz (büyük/küçük harfe duyarlı)."
 msgid "No types."
 msgstr "Tür yok."
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "No user fields yet."
+msgstr "Henüz kullanıcı alanı yok."
+
 #: src/client/admin/pages/users.tsx
 msgid "No users match"
 msgstr "Eşleşen kullanıcı yok"
@@ -6249,6 +6320,10 @@ msgstr "aç"
 #: src/client/admin/collections-index.tsx
 msgid "Open"
 msgstr "Aç"
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Open collection"
+msgstr "Koleksiyonu aç"
 
 #: src/client/admin/pages/advisor.tsx
 msgid "Open resource"
@@ -7311,9 +7386,23 @@ msgstr "Onayı IdP tarafından imzalanmamış yanıtları reddet."
 msgid "Reject unauthorized certs (recommended)"
 msgstr "Yetkisiz sertifikaları reddet (önerilen)"
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "relation"
+msgstr "ilişki"
+
+#. placeholder {0}: pendingRel.from
+#. placeholder {1}: pendingRel.to
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Relation \"{name}\" added · c_{0} → c_{1}."
+msgstr "\"{name}\" ilişkisi eklendi · c_{0} → c_{1}."
+
 #: src/client/admin/items.tsx
 msgid "Relation has no target"
 msgstr "İlişkinin hedefi yok"
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "relation_many"
+msgstr "çoklu ilişki"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "relations"
@@ -7421,6 +7510,7 @@ msgid "Requests"
 msgstr "İstekler"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/schema-graph.tsx
 #: src/client/pages/rest-explorer.tsx
 msgid "required"
 msgstr "zorunlu"
@@ -7465,6 +7555,10 @@ msgstr "Sıfırla"
 msgid "Reset 2FA"
 msgstr "2FA'yı sıfırla"
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Reset layout"
+msgstr "Düzeni sıfırla"
+
 #: src/client/pages/reset-password.tsx
 msgid "Reset link invalid"
 msgstr "Sıfırlama bağlantısı geçersiz"
@@ -7503,8 +7597,8 @@ msgid "Reset your password"
 msgstr "Parolanızı sıfırlayın"
 
 #: src/client/admin/pages/schema-graph.tsx
-msgid "Reset zoom"
-msgstr "Yakınlaştırmayı sıfırla"
+#~ msgid "Reset zoom"
+#~ msgstr "Yakınlaştırmayı sıfırla"
 
 #: src/client/pages/reset-password.tsx
 msgid "Resetting password"
@@ -8718,6 +8812,10 @@ msgstr "Simüle ediliyor…"
 msgid "Simulation failed."
 msgstr "Simülasyon başarısız oldu."
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Single (relation)"
+msgstr "Tekli (relation)"
+
 #: src/client/admin/parity/insights.tsx
 msgid "single scalar value"
 msgstr "tek skaler değer"
@@ -8926,6 +9024,14 @@ msgstr "Depolama anahtarlarının listesini saklar. Yeni dosyaları <0>Depolama<
 #: src/client/admin/item-form.tsx
 msgid "Stores a row id from <0>c_{0}</0>."
 msgstr "<0>c_{0}</0> tablosundan bir satır ID'si saklar."
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "stores an array of ids"
+msgstr "bir id dizisi saklar"
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "stores one target id"
+msgstr "tek bir hedef id saklar"
 
 #: src/client/admin/item-form.tsx
 msgid "Stores the storage key. Upload new files on the <0>Storage</0> page."
@@ -9340,6 +9446,12 @@ msgstr "Bu, satırı <0>c_{slug}</0> tablosundan kaldırır. Revizyonlar kullan�
 msgid "This rewrites the item to the v{0} snapshot from {1}. The current state is preserved as a new revision, so this is undoable."
 msgstr "Bu, öğeyi {1} tarihli v{0} anlık görüntüsüne yeniden yazar. Mevcut durum yeni bir sürüm olarak korunur, dolayısıyla geri alınabilir."
 
+#. placeholder {0}: target.name
+#. placeholder {1}: target.slug
+#: src/client/admin/pages/schema-graph.tsx
+msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column and all its data are removed. This cannot be undone."
+msgstr "<1>c_{1}</1> üzerinde <0>ALTER TABLE … DROP COLUMN {0}</0> çalıştırır. Sütun ve tüm verileri kaldırılır. Bu geri alınamaz."
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "This weakens two-factor authentication"
 msgstr "Bu, iki adımlı doğrulamayı zayıflatır"
@@ -9657,6 +9769,7 @@ msgid "Unified log explorer over the activity audit store. Switch between the St
 msgstr "Etkinlik denetim deposu üzerinde birleşik günlük gezgini. Akış görünümü (HTTP, veri, otomasyon, fonksiyonlar, depolama) ile Tablo denetim izi arasında geçiş yapın — her ikisi de aynı satırları okur."
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/schema-graph.tsx
 msgid "unique"
 msgstr "benzersiz"
 
@@ -10371,9 +10484,9 @@ msgid "Your registered devices"
 msgstr "Kayıtlı cihazlarınız"
 
 #: src/client/admin/pages/schema-graph.tsx
-msgid "Zoom in"
-msgstr "Yakınlaştır"
+#~ msgid "Zoom in"
+#~ msgstr "Yakınlaştır"
 
 #: src/client/admin/pages/schema-graph.tsx
-msgid "Zoom out"
-msgstr "Uzaklaştır"
+#~ msgid "Zoom out"
+#~ msgstr "Uzaklaştır"

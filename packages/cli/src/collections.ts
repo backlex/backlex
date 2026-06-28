@@ -32,11 +32,12 @@ interface Collection {
   adopted?: boolean | number;
 }
 
-const COLLECTIONS_HELP = `backlex collections <list|get|export-schema>
+const COLLECTIONS_HELP = `backlex collections <list|get|export-schema|drop-field>
 
   list                              every collection the key can read
   get <slug>                        one collection's fields
   export-schema [--out <file>]      full schema as JSON (commit + diff for GitOps)
+  drop-field <slug> <field>         drop a column (destructive; managed-only)
 `;
 
 const fetchCollections = (args: string[]): Promise<Collection[]> => {
@@ -132,6 +133,30 @@ export const runCollections = async (args: string[]): Promise<void> => {
       }
     } catch (e) {
       die(e, "collections export-schema");
+    }
+    return;
+  }
+
+  if (sub === "drop-field") {
+    const slug = args[1];
+    const field = args[2];
+    if (!slug || !field) {
+      process.stderr.write("collections drop-field <slug> <field>\n");
+      process.exit(1);
+    }
+    try {
+      const ctx = resolveContext(args.slice(3));
+      const res = await makeClient(ctx).request<{ ok: true; slug: string; field: string }>(
+        "DELETE",
+        `/api/collections/${encodeURIComponent(slug)}/fields/${encodeURIComponent(field)}`,
+      );
+      if (json) {
+        printJson(res);
+        return;
+      }
+      process.stderr.write(`✓ dropped ${field} from ${res.slug}\n`);
+    } catch (e) {
+      die(e, "collections drop-field");
     }
     return;
   }

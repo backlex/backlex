@@ -4,6 +4,7 @@ import {
   assertIdent,
   derivePhysicalTable,
   dropCollection,
+  dropField,
   type FieldDef,
   tableExists,
   validateFields,
@@ -697,6 +698,59 @@ export const collectionsRoutes = new Hono<AppBindings>()
       response: updateResponse,
     });
     return c.json(updateResponse);
+  })
+  /**
+   * Drop a single field (column) from a managed collection. The metadata
+   * `fields` array is the source of truth, so we remove the entry there and
+   * then `ALTER TABLE … DROP COLUMN` via the applier. Destructive and
+   * irreversible (the column's data is gone) — kept as its own endpoint, not
+   * folded into PATCH, because `applyCollection` is additive-only and never
+   * drops columns. Refused on adopted tables (we never touch the user's DDL).
+   */
+  .delete("/:slug/fields/:name", requireUser, async (c) => {
+    const slug = c.req.param("slug");
+    const fieldName = c.req.param("name");
+    const { db, dialect } = c.get("ctx");
+    const tenantId = requireTenant(c);
+    const t = tableFor(dialect);
+    const existing = await (db as any)
+      .select()
+      .from(t)
+      .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)))
+      .limit(1);
+    if (!existing[0]) throw new AppError("NOT_FOUND", "Collection not found");
+    if (existing[0].adopted) {
+      throw new AppError(
+        "VALIDATION",
+        "Cannot drop a field from an adopted collection — backlex never alters the source table.",
+      );
+    }
+    if (RESERVED_NAMES.has(fieldName)) {
+      throw new AppError("VALIDATION", `"${fieldName}" is a reserved column and cannot be dropped.`);
+    }
+    const fields = (existing[0].fields ?? []) as FieldDef[];
+    const target = fields.find((f) => f.name === fieldName);
+    if (!target) throw new AppError("NOT_FOUND", `Field "${fieldName}" not found`);
+    const nextFields = fields.filter((f) => f.name !== fieldName);
+    const physicalTable = (existing[0].physicalTable ?? existing[0].physical_table) as string;
+    // Metadata first, then the physical DROP COLUMN. If the ALTER fails the
+    // metadata write is rolled forward-compatible (the column simply still
+    // exists physically but is hidden from the API — the next apply is a no-op).
+    await (db as any)
+      .update(t)
+      .set({ fields: nextFields, updatedAt: new Date() })
+      .where(and(eq(t.tenantId, tenantId), eq(t.slug, slug)));
+    await dropField(db, dialect, physicalTable, fieldName);
+    invalidateTenantCollections(tenantId);
+    const dropResponse = { ok: true, slug, field: fieldName };
+    await logActivity(c, {
+      action: "drop_field",
+      collection: "system_collections",
+      itemId: slug,
+      payload: { field: fieldName, type: target.type },
+      response: dropResponse,
+    });
+    return c.json(dropResponse);
   })
   .delete("/:slug", requireUser, async (c) => {
     const slug = c.req.param("slug");

@@ -93,7 +93,10 @@ export function Select({
         className={cn(
           // Match the legacy admin trigger footprint a little more closely:
           // legacy was a full-width input-ish control, not a w-fit pill.
-          "w-full justify-between",
+          // `min-w-0` lets the trigger shrink inside flex/grid parents (e.g. a
+          // narrow dialog) instead of forcing the container wider than the
+          // viewport when the selected option's label+hint is long.
+          "w-full min-w-0 justify-between",
           size === "sm" && "text-xs",
           className,
         )}

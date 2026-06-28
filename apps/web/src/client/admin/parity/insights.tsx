@@ -1336,7 +1336,7 @@ function NewDashboardDialog({
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="sm:max-w-[440px]">
+      <DialogContent className="overflow-hidden sm:max-w-[440px] [&>*]:min-w-0">
         <DialogHeader>
           <DialogTitle><Trans>New dashboard</Trans></DialogTitle>
           <DialogDescription><Trans>Group panels under a named dashboard you can publish to a public embed URL.</Trans></DialogDescription>
@@ -1444,7 +1444,7 @@ function ShareDashboardDialog({
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent className="overflow-hidden sm:max-w-[520px] [&>*]:min-w-0">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <I.Globe size={15} className="text-muted-foreground" />
@@ -1478,7 +1478,7 @@ function ShareDashboardDialog({
             <div className="flex flex-col gap-1.5 rounded-md border border-[color-mix(in_oklch,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklch,var(--primary)_6%,var(--card))] p-2.5">
               <div className="flex items-center gap-1.5 text-[12px] font-medium text-foreground"><I.Link size={12} /><Trans>Embed URL — copy it now</Trans></div>
               <div className="flex items-center gap-1.5">
-                <Input readOnly value={url} className="font-mono text-[11.5px]" onFocus={(e) => e.currentTarget.select()} />
+                <Input readOnly value={url} className="min-w-0 flex-1 font-mono text-[11.5px]" onFocus={(e) => e.currentTarget.select()} />
                 <IconButton icon={I.Copy} title={t`Copy`} onClick={copy} />
                 <IconButton icon={I.ExternalLink} title={t`Open`} onClick={() => window.open(url, "_blank")} />
               </div>

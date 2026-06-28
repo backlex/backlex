@@ -4917,6 +4917,7 @@ msgstr "list & sort"
 msgid "live"
 msgstr "live"
 
+#: src/client/admin/app.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Live"
 msgstr "Live"
@@ -9256,6 +9257,10 @@ msgstr "This is the first user on this instance."
 #: src/client/pages/shared-record.tsx
 msgid "This link is no longer available"
 msgstr "This link is no longer available"
+
+#: src/client/admin/app.tsx
+msgid "This list updates in real time"
+msgstr "This list updates in real time"
 
 #: src/client/pages/reset-password.tsx
 msgid "This password reset link is missing its token or has expired. Request a new one and try again."

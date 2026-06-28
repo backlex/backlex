@@ -23,6 +23,7 @@
  * a callsite migrates is preferable to pre-emptively exposing all 20+ API
  * surfaces and growing dead code.
  */
+import { useEffect, useRef, useState } from "react";
 import {
   type QueryKey,
   useInfiniteQuery,
@@ -294,6 +295,54 @@ export function useItems(collection: string | null, params: ItemsQueryParams) {
       prevQuery && (prevQuery.queryKey as QueryKey)[1] === collection ? prev : undefined,
     staleTime: 10_000,
   });
+}
+
+/**
+ * Make the items list a *reactive query*: subscribe to the collection's
+ * realtime feed (`items:<slug>`) and refresh the cached list whenever a row
+ * changes — including writes from other tabs, other admins, the SDK, or a
+ * flow. This is the server-stateless "refetch mode" of the SDK's `liveQuery`
+ * (the SDK ships the incremental engine for app consumers); here, RQ owns the
+ * cache + optimistic writes, so an event just debounce-invalidates the active
+ * collection's queries and RQ refetches the exact, permission-filtered window.
+ *
+ * Returns a `live` flag (true while the SSE channel is connected) for a UI
+ * indicator. No-ops when realtime isn't available (the EventSource just errors
+ * and the list stays at its last fetched state — still correct, just not live).
+ */
+export function useLiveCollection(collection: string | null): { live: boolean } {
+  const qc = useQueryClient();
+  const [live, setLive] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setLive(false);
+    if (!collection) return;
+    if (typeof EventSource === "undefined") return;
+    const base = import.meta.env.VITE_API_URL ?? "";
+    const url = `${base}/api/realtime/items:${encodeURIComponent(collection)}/subscribe`;
+    const es = new EventSource(url, { withCredentials: true });
+
+    const bump = () => {
+      if (timer.current) clearTimeout(timer.current);
+      // Coalesce bursts (a batch write fires many row events) into one refetch.
+      timer.current = setTimeout(() => {
+        void qc.invalidateQueries({ queryKey: ["items", collection] });
+      }, 150);
+    };
+
+    es.addEventListener("open", () => setLive(true));
+    es.addEventListener("message", bump);
+    es.addEventListener("error", () => setLive(false));
+
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+      es.close();
+      setLive(false);
+    };
+  }, [collection, qc]);
+
+  return { live };
 }
 
 // --- shared cache-mutation helpers (module-private) ------------------------

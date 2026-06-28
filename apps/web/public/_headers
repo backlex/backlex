@@ -11,15 +11,9 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Strict-Transport-Security: max-age=15552000; includeSubDomains
 
-# Embedded BI dashboards are meant to be iframed on third-party sites. This
-# rule is more specific than /* so its values win (later/more-specific rule
-# overrides). `frame-ancestors *` allows any embedder; per the CSP spec a
-# present frame-ancestors directive causes browsers to ignore X-Frame-Options,
-# and we also unset XFO for older agents. Same SPA HTML, just framable.
-/embed/*
-  ! Content-Security-Policy
-  ! X-Frame-Options
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors *
-  X-Content-Type-Options: nosniff
-  Referrer-Policy: strict-origin-when-cross-origin
-  Strict-Transport-Security: max-age=15552000; includeSubDomains
+# NOTE: the public dashboard embed (`/embed/*`) is intentionally NOT served by
+# Static Assets — it's in `run_worker_first`, so the Worker serves the SPA shell
+# and sets a framable CSP (frame-ancestors *) itself. CF `_headers` only ever
+# APPENDS across matching rules (a `/embed/*` override here would leave the
+# strict `/*` CSP in place too, and browsers enforce the most restrictive of
+# duplicate CSPs), which is why the worker path is used instead.

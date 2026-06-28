@@ -121,19 +121,52 @@ Output:
 ```ts
 export interface Posts {
   id: string;
-  ownerId: string | null;
+  _status: string;            // only when the collection is versioned
+  _publishedAt: string | null;
+  ownerId: string | null;     // only when owner-scoped
   createdAt: string;
   updatedAt: string;
   title: string;
   body: string | null;
-  published: boolean | null;
-  views: number | null;
+  status: "draft" | "live" | null;  // dropdown fields → string-literal union
+  category: string;           // relation → FK id (expanded shape below)
+  tags: string[] | null;      // relation_many → array of FK ids
 }
 // + 1 interface per collection
 export interface Collections {
   posts: Posts;
   // ...
 }
+```
+
+> **Field names match the wire exactly.** System columns (`id`, `createdAt`,
+> `updatedAt`, `ownerId`, `_status`, `_publishedAt`) are camelCased the way the
+> REST API serializes them; **user-defined fields keep their `snake_case`
+> name** — the API never camelCases them. (Earlier codegen camelCased user
+> fields, so `row.featuredImage` type-checked but was `undefined` at runtime
+> against a `featured_image` column. Regenerating closes that bug class.)
+
+#### Typed `expand()`
+
+For every relation, codegen also emits a `<Slug>Relations` map and a
+`<Slug>Expanded` convenience type, plus a generic `Expand<>` helper — so an
+expanded read is fully typed:
+
+```ts
+export interface PostsRelations {
+  category: Categories;        // relation → the target row
+  tags: Categories[] | null;   // relation_many → an array of target rows
+}
+export type PostsExpanded = Expand<Posts, PostsRelations>;
+
+// Read with expansion — the FK fields are now the related objects:
+const { data } = await client.from<PostsExpanded>("posts")
+  .query().expand("category", "tags").list();
+data[0].category.id;     // typed: Categories
+data[0].tags?.[0].id;    // typed: Categories[]
+
+// Expand just one relation:
+type PostWithCategory = Expand<Posts, PostsRelations, "category">;
 ```
 
 #### Typed SDK (`--sdk`)

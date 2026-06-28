@@ -17,11 +17,24 @@ const COLLECTIONS = [
     fields: [
       { name: "title", type: "text" as const, required: true },
       { name: "body", type: "longtext" as const },
-      { name: "tags", type: "relation_many" as const },
+      { name: "tags", type: "relation_many" as const, to: "categories" },
+      { name: "category", type: "relation" as const, to: "categories", required: true },
       { name: "hero", type: "file" as const },
       { name: "name_i18n", type: "i18n_text" as const },
+      {
+        name: "status",
+        type: "text" as const,
+        interface: "dropdown",
+        options: { choices: [{ value: "draft" }, { value: "live" }] },
+      },
     ],
     ownerScoped: true,
+    versioned: true,
+  },
+  {
+    slug: "categories",
+    fields: [{ name: "name", type: "text" as const, required: true }],
+    ownerScoped: false,
   },
   {
     slug: "products",
@@ -39,9 +52,19 @@ describe("renderModule", () => {
     expect(out).toContain("  ownerId: string | null;");
     expect(out).toContain("  title: string;");
     expect(out).toContain("  body: string | null;");
+    // FK fields are id-typed; the wire returns ids (or expanded objects).
     expect(out).toContain("  tags: string[] | null;");
+    expect(out).toContain("  category: string;");
     expect(out).toContain("  hero: string | null;");
-    expect(out).toContain("  nameI18n: string | Record<string, string> | null;");
+    // User fields keep their snake_case wire name — NOT camelCased. This is the
+    // bug fix: `row.name_i18n` exists at runtime; `row.nameI18n` was undefined.
+    expect(out).toContain("  name_i18n: string | Record<string, string> | null;");
+    expect(out).not.toContain("nameI18n");
+    // dropdown choices → string-literal union.
+    expect(out).toContain('  status: "draft" | "live" | null;');
+    // versioned → version columns (camelCased system fields).
+    expect(out).toContain("  _status: string;");
+    expect(out).toContain("  _publishedAt: string | null;");
     // non-owner-scoped collection omits ownerId.
     expect(out).toContain("export interface Products {");
     expect(out).not.toContain("import {");
@@ -49,6 +72,20 @@ describe("renderModule", () => {
     expect(out).toContain("  posts: Posts;");
     expect(out).toContain("  products: Products;");
     expect(out).not.toContain("createTypedClient");
+  });
+
+  test("relations emit a typed expand map + Expand helper", () => {
+    const out = renderModule(COLLECTIONS, { apiUrl: "https://api.test" });
+    expect(out).toContain("export type Expand<");
+    expect(out).toContain("export interface PostsRelations {");
+    // relation → single target; relation_many → target array; nullability kept.
+    expect(out).toContain("  category: Categories;");
+    expect(out).toContain("  tags: Categories[] | null;");
+    expect(out).toContain(
+      "export type PostsExpanded = Expand<Posts, PostsRelations>;",
+    );
+    // a collection with no relations gets no relations block.
+    expect(out).not.toContain("ProductsRelations");
   });
 
   test("--sdk mode adds the client import + typed factory", () => {

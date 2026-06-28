@@ -132,6 +132,7 @@ export const NAV_AUTOMATION: NavItem[] = [
 // Observability — what happened, health, and history.
 export const NAV_OBSERVABILITY: NavItem[] = [
   { id: "logs", icon: "ScrollText" },
+  { id: "traces", icon: "Activity" },
   { id: "advisor", icon: "ShieldAlert" },
   { id: "insights", icon: "BarChart" },
   { id: "revisions", icon: "History" },

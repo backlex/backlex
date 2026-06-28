@@ -15,6 +15,7 @@ import { runTemplates } from "../src/templates";
 import { runWebhooks } from "../src/webhooks";
 import { runJobs } from "../src/jobs";
 import { runAdvisor } from "../src/advisor";
+import { runTraces } from "../src/traces";
 import { runGenOpenapi } from "../src/gen-openapi";
 import { runInit } from "../src/init";
 import { runSdk } from "../src/sdk";
@@ -93,6 +94,9 @@ Usage:
 
   backlex advisor [--kind …] [--fail-on error|warn]
       Run security/performance checks. \`--fail-on\` makes it a CI gate.
+
+  backlex traces <list|get>
+      Inspect distributed-tracing spans (request traces + waterfalls).
 
   backlex init [dir] [--force]
       Scaffold a TypeScript consumer starter (backlex.ts + .env.example).
@@ -211,6 +215,10 @@ const run = async () => {
       return;
     case "advisor":
       await runAdvisor(rest);
+      return;
+    case "traces":
+    case "trace":
+      await runTraces(rest);
       return;
     case "init":
       runInit(rest);

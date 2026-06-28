@@ -9,6 +9,11 @@ export interface SandboxBindings {
    *  RPC. Derived from the request URL by route handlers; for cron triggers
    *  falls back to `env.SELF_URL`. Other providers ignore it. */
   selfOrigin?: string;
+  /** W3C `traceparent` of the request/trigger that invoked this function.
+   *  Injected onto the function's outbound `fetch()` calls (unless the function
+   *  set its own) so a downstream service — including a call back into this API
+   *  — continues the same trace. Absent for triggers without a trace context. */
+  traceparent?: string;
 }
 
 export interface SandboxResult {

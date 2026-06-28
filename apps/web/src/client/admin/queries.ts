@@ -44,6 +44,7 @@ import {
   settingsApi,
   sharedLinksApi,
   tenantsApi,
+  tracesApi,
 } from "./api";
 import type { Post } from "./config";
 import { type ItemsQueryParams, reconcileBulkUpdate } from "./items-query-params";
@@ -91,7 +92,18 @@ export const queryKeys = {
    *  window or the action filter is a distinct cache entry; `offset` is the
    *  per-page cursor and lives in `useInfiniteQuery`'s page params, not here. */
   activity: (filters: ActivityFilters) => ["activity", filters] as const,
+  /** Recent request traces (admin Traces page). Keyed by the server filters. */
+  traces: (filters: TracesFilters) => ["traces", filters] as const,
+  /** One trace's spans (waterfall detail). */
+  trace: (traceId: string) => ["trace", traceId] as const,
 };
+
+/** Server-side filters that key the traces query. */
+export interface TracesFilters {
+  path?: string;
+  minStatus?: number;
+  limit?: number;
+}
 
 /** Server-side filters that key the activity infinite query. */
 export interface ActivityFilters {
@@ -250,6 +262,29 @@ export function useActivity(filters: ActivityFilters, live = false) {
         ? lastOffset + filters.pageSize
         : undefined,
     refetchInterval: live ? 5000 : false,
+  });
+}
+
+/** Recent request traces. `live` tails new traces on a ~5s interval. */
+export function useTraces(filters: TracesFilters, live = false) {
+  return useQuery({
+    queryKey: queryKeys.traces(filters),
+    queryFn: () =>
+      tracesApi.list({
+        path: filters.path,
+        minStatus: filters.minStatus,
+        limit: filters.limit ?? 50,
+      }),
+    refetchInterval: live ? 5000 : false,
+  });
+}
+
+/** One trace's spans for the waterfall detail. Enabled only when open. */
+export function useTrace(traceId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.trace(traceId ?? ""),
+    queryFn: () => tracesApi.get(traceId as string),
+    enabled: !!traceId,
   });
 }
 

@@ -785,6 +785,39 @@ export const activity = sqliteTable(
   ],
 );
 
+/** Distributed-tracing span rows — one per sampled HTTP request, written
+ *  fire-and-forget by the access-log middleware. Rows that share a `trace_id`
+ *  form one logical operation (SDK call → API → function callback). Pruned by
+ *  retention; safe to truncate. Powers the admin Traces panel. */
+export const spans = sqliteTable(
+  "spans",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    traceId: text("trace_id").notNull(),
+    spanId: text("span_id").notNull(),
+    parentSpanId: text("parent_span_id"),
+    name: text("name").notNull(),
+    kind: text("kind").notNull().default("server"),
+    method: text("method"),
+    path: text("path"),
+    status: integer("status"),
+    userId: text("user_id"),
+    durationMs: integer("duration_ms"),
+    attributes: text("attributes", { mode: "json" }).$type<Record<
+      string,
+      unknown
+    > | null>(),
+    startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: ts("created_at"),
+  },
+  (t) => [
+    index("spans_trace_idx").on(t.traceId),
+    index("spans_tenant_idx").on(t.tenantId),
+    index("spans_created_idx").on(t.createdAt),
+  ],
+);
+
 export const apiKeys = sqliteTable(
   "api_keys",
   {

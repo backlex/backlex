@@ -98,6 +98,7 @@ const WebhooksPage = lazy(() => import("./pages/webhooks").then((m) => ({ defaul
 const IntegrationsPage = lazy(() => import("./pages/integrations").then((m) => ({ default: m.IntegrationsPage })));
 const RealtimePage = lazy(() => import("./pages/realtime").then((m) => ({ default: m.RealtimePage })));
 const LogsPage = lazy(() => import("./pages/logs").then((m) => ({ default: m.LogsPage })));
+const TracesPage = lazy(() => import("./pages/traces").then((m) => ({ default: m.TracesPage })));
 const AdvisorPage = lazy(() => import("./pages/advisor").then((m) => ({ default: m.AdvisorPage })));
 const SchemaGraphPage = lazy(() => import("./pages/schema-graph").then((m) => ({ default: m.SchemaGraphPage })));
 const UsersPage = lazy(() => import("./pages/users").then((m) => ({ default: m.UsersPage })));
@@ -902,6 +903,7 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
             {activeNav === "openapi" && <OpenApiExportPage />}
             {activeNav === "realtime" && <RealtimePage events={events} active={realtimeChannel} onActiveChange={setRealtimeChannel} pushToast={pushToast} />}
             {activeNav === "logs" && <LogsPage pushToast={pushToast} />}
+            {activeNav === "traces" && <TracesPage pushToast={pushToast} />}
             {activeNav === "advisor" && <AdvisorPage pushToast={pushToast} />}
             {activeNav === "schema-graph" && <SchemaGraphPage pushToast={pushToast} />}
             {activeNav === "insights" && <InsightsPage pushToast={pushToast} />}

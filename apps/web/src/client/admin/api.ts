@@ -1426,3 +1426,53 @@ export interface ApiAdvisorResult {
 export const advisorApi = {
   list: () => api<ApiAdvisorResult>(`/api/admin/advisor`),
 };
+
+export interface ApiTraceSummary {
+  traceId: string;
+  name: string;
+  rootStatus: number | null;
+  spanCount: number;
+  durationMs: number;
+  startedAt: number;
+  hasError: boolean;
+}
+
+export interface ApiSpan {
+  id: string;
+  traceId: string;
+  spanId: string;
+  parentSpanId: string | null;
+  name: string;
+  method: string | null;
+  path: string | null;
+  status: number | null;
+  userId: string | null;
+  durationMs: number | null;
+  attributes: Record<string, unknown> | null;
+  startedAt: number;
+}
+
+export interface TracesListParams {
+  path?: string;
+  minStatus?: number;
+  limit?: number;
+  from?: number;
+}
+
+export const tracesApi = {
+  list: (opts?: TracesListParams) => {
+    const qs = new URLSearchParams();
+    if (opts?.path) qs.set("path", opts.path);
+    if (opts?.minStatus != null) qs.set("minStatus", String(opts.minStatus));
+    if (opts?.limit != null) qs.set("limit", String(opts.limit));
+    if (opts?.from != null) qs.set("from", String(opts.from));
+    const tail = qs.toString();
+    return api<Envelope<ApiTraceSummary[]>>(
+      `/api/admin/traces${tail ? `?${tail}` : ""}`,
+    );
+  },
+  get: (traceId: string) =>
+    api<{ traceId: string; spans: ApiSpan[] }>(
+      `/api/admin/traces/${encodeURIComponent(traceId)}`,
+    ),
+};

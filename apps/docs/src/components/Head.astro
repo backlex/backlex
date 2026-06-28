@@ -1,0 +1,10 @@
+---
+// Starlight `Head` override — renders the default head, then adds Astro's
+// ClientRouter so doc-to-doc navigation morphs smoothly (Starlight ships no
+// view transitions by default). Keeps every other head tag Starlight emits.
+import Default from "@astrojs/starlight/components/Head.astro";
+import { ClientRouter } from "astro:transitions";
+---
+
+<Default><slot /></Default>
+<ClientRouter />

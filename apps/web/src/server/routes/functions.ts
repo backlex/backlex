@@ -7,6 +7,7 @@ import * as sqlite from "@backlex/db/sqlite";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+import { formatTraceparent } from "../lib/trace";
 import {
   findByName,
   invokeFunction,
@@ -123,11 +124,12 @@ export const functionsRoutes = new OpenAPIHono<AppBindings>()
       }
       const body = await c.req.json().catch(() => ({}));
       const selfOrigin = new URL(c.req.url).origin;
+      const traceparent = formatTraceparent(c.get("trace"));
       let result;
       try {
         result = await invokeFunction(
           fn as FunctionRow,
-          { ctx, auth, selfOrigin },
+          { ctx, auth, selfOrigin, traceparent },
           body,
         );
       } catch (err) {

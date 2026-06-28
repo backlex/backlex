@@ -66,6 +66,8 @@ export { QueryBuilder } from "./query";
 export type { FilterBuilder, FieldKey, SortKey } from "./query";
 
 import { QueryBuilder } from "./query";
+import { makeTraceparent } from "./trace";
+export { makeTraceparent, newTraceId, newSpanId } from "./trace";
 import { createSync, type SyncController, type SyncOptions } from "./sync";
 import { createLiveQuery, type LiveQueryOptions } from "./live";
 export { matchesRow, isIncrementalSafe } from "./live";
@@ -98,6 +100,18 @@ export interface ClientOptions {
   tenant?: string;
   /** Optional fetch override (testing / Node polyfill). */
   fetch?: typeof fetch;
+  /**
+   * Distributed tracing. When enabled (the default), every request carries a
+   * W3C `traceparent` header so the call shows up in the admin Traces panel and
+   * stitches together with any server-side spans it triggers. Set `false` to
+   * omit the header entirely.
+   *
+   * Pass a function to control the trace context — return a `traceparent` value
+   * to continue an existing trace (e.g. one already active in the browser), or
+   * `undefined` to let the SDK start a fresh trace for that call. The default
+   * starts a new trace per request.
+   */
+  tracing?: boolean | (() => string | undefined);
 }
 
 /** A signed-in user as returned by the auth surface. */
@@ -686,6 +700,18 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
   const tenantHeader = (): Record<string, string> =>
     opts.tenant ? { "x-backlex-tenant": opts.tenant } : {};
 
+  // W3C traceparent — on by default. `tracing: false` opts out; a function lets
+  // the caller continue an existing trace (return a traceparent) or start a
+  // fresh one (return undefined).
+  const traceHeader = (): Record<string, string> => {
+    if (opts.tracing === false) return {};
+    if (typeof opts.tracing === "function") {
+      const provided = opts.tracing();
+      return { traceparent: provided ?? makeTraceparent() };
+    }
+    return { traceparent: makeTraceparent() };
+  };
+
   const request = async <T>(
     method: string,
     path: string,
@@ -700,6 +726,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       ...(body !== undefined ? { "content-type": "application/json" } : {}),
       ...authHeader(),
       ...tenantHeader(),
+      ...traceHeader(),
       ...(extraHeaders ?? {}),
     };
     const res = await f(`${opts.url}${path}`, {
@@ -730,6 +757,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     const headers: Record<string, string> = {
       ...authHeader(),
       ...tenantHeader(),
+      ...traceHeader(),
     };
     if (contentType) headers["content-type"] = contentType;
     const res = await f(`${opts.url}${path}`, {

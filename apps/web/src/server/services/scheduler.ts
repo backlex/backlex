@@ -26,6 +26,7 @@ import { processJobs } from "./jobs";
 import { sweepExpiredUploads } from "./uploads";
 import { publishDueItems } from "./items/scheduled-publish";
 import { pruneOldActivity, pruneOldActivityByPrefix } from "./activity";
+import { pruneOldSpans } from "./traces";
 import { maybeRunScheduledBackups } from "./backup";
 
 const tableFor = (dialect: "pg" | "sqlite") =>
@@ -56,6 +57,7 @@ const ACTIVITY_PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 let lastBackupSweepAt: number = 0;
 const BACKUP_SWEEP_INTERVAL_MS = 15 * 60 * 1000;
 const DEFAULT_ACTIVITY_RETENTION_DAYS = 90;
+const DEFAULT_TRACES_RETENTION_DAYS = 7;
 // Sensitive-read audit rows (`access.*`) are opt-in but higher-volume, so they
 // get a shorter default clock than the global retention.
 const DEFAULT_ACCESS_AUDIT_RETENTION_DAYS = 30;
@@ -229,6 +231,14 @@ export const cronTick = async (env: Env, now: Date = new Date()): Promise<void> 
       accessDays,
       "access.",
     );
+    // Trace spans are high-volume (one per sampled request) with a short useful
+    // life — prune on the same daily clock as activity, default 7 days.
+    const spanRaw = env.TRACES_RETENTION_DAYS;
+    const spanDays =
+      spanRaw == null || spanRaw === ""
+        ? DEFAULT_TRACES_RETENTION_DAYS
+        : Number(spanRaw);
+    await pruneOldSpans({ db: ctx.db, dialect: ctx.dialect }, spanDays);
   }
 };
 

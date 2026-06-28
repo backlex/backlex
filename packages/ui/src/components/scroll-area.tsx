@@ -23,6 +23,13 @@ function ScrollArea({
         data-slot="scroll-area-viewport"
         className={cn(
           "size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1",
+          // Radix injects a content wrapper with `display:table; min-width:100%`.
+          // Under table layout, percentage-width children (`w-full` inputs)
+          // resolve against a shrink-to-fit table and blow it far past the
+          // viewport, so form fields bleed off the right edge (esp. narrow
+          // dialogs on mobile). `block` constrains `w-full` to the viewport while
+          // still letting genuinely-wider content (tables, code) overflow+scroll.
+          "[&>div]:!block",
           viewportClassName
         )}
         style={viewportStyle}

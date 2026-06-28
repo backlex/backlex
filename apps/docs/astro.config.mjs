@@ -28,6 +28,9 @@ export default defineConfig({
       customCss: ["./src/styles/custom.css"],
       components: {
         PageTitle: "./src/components/PageTitle.astro",
+        // Override Head to inject Astro's ClientRouter — Starlight has no
+        // built-in view transitions, so this adds smooth cross-page morphs.
+        Head: "./src/components/Head.astro",
       },
       head: [
         {

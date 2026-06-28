@@ -682,7 +682,7 @@ function ProviderConfigDialog({ provider, kind, onClose, onSave }: {
             {kind === "oauth" ? <Trans>OAuth 2.0 / OIDC sign-in provider.</Trans> : kind === "custom" ? <Trans>Custom OpenID Connect provider.</Trans> : <Trans>Built-in sign-in method.</Trans>}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)]">
+        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           {(() => {
             const blocked = (kind === "oauth" || kind === "custom") && !(clientId.trim() && hasSecret);
@@ -780,7 +780,7 @@ function AddProviderDialog({ existingIds, onClose, onAdd }: {
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Add OIDC provider</Trans></DialogTitle>
           <DialogDescription className="text-[12.5px]"><Trans>Register a custom OpenID Connect identity provider.</Trans></DialogDescription>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)]">
+        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Display name</Trans></label>

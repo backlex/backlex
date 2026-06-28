@@ -327,13 +327,13 @@ function EnqueueJobDialog({
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="flex max-h-[90vh] w-[560px] max-w-[94vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
-        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+        <DialogHeader className="shrink-0 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Enqueue job</Trans></DialogTitle>
           <DialogDescription className="mt-0.5 text-[12.5px]">
             <Trans>Queue durable background work. Function jobs run a named function; jobs retry with backoff and dead-letter.</Trans>
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(90vh-10rem)] [&>div]:!block">
+        <ScrollArea viewportClassName="max-h-[calc(90vh-10rem)] max-[640px]:max-h-[calc(90vh-15rem)]">
           <div className="flex flex-col gap-4 overflow-x-clip px-5 py-[18px]">
             <div className="flex flex-col gap-1.5">
               <label className="text-[12.5px] font-medium"><Trans>Type</Trans></label>
@@ -416,7 +416,7 @@ function EnqueueJobDialog({
             </div>
           </div>
         </ScrollArea>
-        <DialogFooter className="border-t border-border bg-card px-5 py-3 sm:justify-end">
+        <DialogFooter className="shrink-0 border-t border-border bg-card px-5 py-3 sm:justify-end">
           <div className="flex-1" />
           <Button variant="ghost" onClick={onClose} disabled={busy}><Trans>Cancel</Trans></Button>
           <Button variant="primary" onClick={submit} disabled={!valid}>

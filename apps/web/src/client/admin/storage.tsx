@@ -1321,7 +1321,7 @@ function FileDetailModal({ f, onClose, ...rest }: any) {
             <DialogDescription className="mt-0.5 truncate font-mono text-xs">{f.key}</DialogDescription>
           </div>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-7rem)]">
+        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-7rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
           <FileDetail f={f} {...rest} embedded />
         </ScrollArea>
       </DialogContent>

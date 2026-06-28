@@ -341,7 +341,7 @@ function WebhookEditorDialog({ mode, hook, onClose, onSave, pushToast }: { mode:
           </div>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)]">
+        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans> <span className="text-destructive">*</span></label>

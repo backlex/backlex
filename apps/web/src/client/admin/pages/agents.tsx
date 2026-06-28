@@ -260,7 +260,7 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
               </DialogDescription>
             </DialogHeader>
 
-            <ScrollArea className="min-h-0 flex-1" viewportClassName="max-h-[calc(88vh-13rem)]">
+            <ScrollArea className="min-h-0 flex-1" viewportClassName="max-h-[calc(88vh-13rem)] max-[640px]:max-h-[calc(88vh-15rem)]">
               <div className="flex flex-col gap-4 px-0.5 py-1">
                 <div className="flex flex-col gap-1.5">
                   <Label><Trans>Name</Trans></Label>

@@ -2422,6 +2422,10 @@ msgstr "Auth yapılandırması yüklenemedi."
 msgid "Couldn't load logs"
 msgstr "Günlükler yüklenemedi"
 
+#: src/client/admin/pages/traces.tsx
+msgid "Couldn't load traces"
+msgstr "İzler yüklenemedi"
+
 #: src/client/admin/parity/insights.tsx
 msgid "count / sum / average over a collection — no SQL"
 msgstr "bir koleksiyon üzerinde say / topla / ortalama — SQL gerektirmez"
@@ -3010,6 +3014,10 @@ msgstr "Görüntü şablonu"
 msgid "Distinct users with a session in the last 24h"
 msgstr "Son 24 saatte oturumu olan benzersiz kullanıcılar"
 
+#: src/client/admin/pages/traces.tsx
+msgid "Distributed request traces. Every SDK/API call carries a W3C traceparent; a span is recorded per request and functions propagate it, so one operation stitches together across hops."
+msgstr "Dağıtık istek izleri. Her SDK/API çağrısı bir W3C traceparent taşır; her istek için bir span kaydedilir ve fonksiyonlar bunu iletir, böylece tek bir işlem tüm adımlar boyunca birbirine bağlanır."
+
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/ui.tsx
 msgid "Docs"
@@ -3131,6 +3139,7 @@ msgstr "Dayanıklı arka plan kuyruğu — geri çekilmeli yeniden denemeler, ö
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/logs.tsx
+#: src/client/admin/pages/traces.tsx
 msgid "Duration"
 msgstr "Süre"
 
@@ -3506,6 +3515,10 @@ msgstr "hatalar"
 msgid "Errors"
 msgstr "Hatalar"
 
+#: src/client/admin/pages/traces.tsx
+msgid "Errors only"
+msgstr "Yalnızca hatalar"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Evaluates against current step context. Use <0>{{ var }}</0> for interpolation."
 msgstr "Mevcut adım bağlamına göre değerlendirir. Enterpolasyon için <0>{{ var }}</0> kullanın."
@@ -3778,6 +3791,10 @@ msgstr "Filtrele"
 #: src/client/admin/parity/app-users.tsx
 msgid "Filter by email / name…"
 msgstr "E-posta / ada göre filtrele…"
+
+#: src/client/admin/pages/traces.tsx
+msgid "Filter by path…"
+msgstr "Yola göre filtrele…"
 
 #: src/client/pages/rest-explorer.tsx
 msgid "Filter endpoints…"
@@ -4089,6 +4106,10 @@ msgstr "Global varsayılan"
 #: src/client/admin/pages/functions.tsx
 msgid "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. Sync-only in v1; runs in QuickJS-WASM sandbox."
 msgstr "Globaller: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. v1'de yalnızca senkron; QuickJS-WASM sandbox içinde çalışır."
+
+#: src/client/admin/pages/traces.tsx
+msgid "Go live"
+msgstr "Canlıya geç"
 
 #: src/client/admin/extras.tsx
 msgid "goto"
@@ -4919,6 +4940,7 @@ msgstr "canlı"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/pages/logs.tsx
+#: src/client/admin/pages/traces.tsx
 msgid "Live"
 msgstr "Canlı"
 
@@ -5961,6 +5983,10 @@ msgstr "İmza sertifikası saklanmamış — giriş başarısız olacak."
 msgid "No social providers are enabled for this workspace."
 msgstr "Bu çalışma alanı için sosyal sağlayıcı etkin değil."
 
+#: src/client/admin/pages/traces.tsx
+msgid "No spans recorded for this trace."
+msgstr "Bu iz için kayıtlı span yok."
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "No tables found that can be adopted."
 msgstr "Benimsenebilecek tablo bulunamadı."
@@ -5992,6 +6018,10 @@ msgstr "Bu filtreyle eşleşen araç yok."
 #: src/client/admin/pages/agents.tsx
 msgid "No tools match."
 msgstr "Eşleşen araç yok."
+
+#: src/client/admin/pages/traces.tsx
+msgid "No traces yet"
+msgstr "Henüz iz yok"
 
 #: src/client/admin/edit-field.tsx
 msgid "No two rows can hold the same value (case-sensitive)."
@@ -6248,6 +6278,10 @@ msgstr "OpenAPI"
 #: src/client/pages/openapi-export.tsx
 msgid "OpenAPI spec refreshed."
 msgstr "OpenAPI spec yenilendi."
+
+#: src/client/admin/pages/traces.tsx
+msgid "Operation"
+msgstr "İşlem"
 
 #: src/client/pages/openapi-export.tsx
 msgid "Operations"
@@ -7217,6 +7251,7 @@ msgstr "/api/openapi.json yeniden çek"
 #: src/client/admin/pages/realtime.tsx
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/traces.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/pages/openapi-export.tsx
 msgid "Refresh"
@@ -7732,6 +7767,10 @@ msgstr "Dağıtım % (0–100, opsiyonel)"
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Rollout must be 0–100."
 msgstr "Dağıtım 0–100 olmalı."
+
+#: src/client/admin/pages/traces.tsx
+msgid "root"
+msgstr "kök"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Rotate"
@@ -8780,6 +8819,10 @@ msgstr "SP varlık ID'si"
 msgid "SP URLs <0>(paste into the IdP console)</0>"
 msgstr "SP URL'leri <0>(IdP konsoluna yapıştırın)</0>"
 
+#: src/client/admin/pages/traces.tsx
+msgid "Spans"
+msgstr "Span’ler"
+
 #: src/client/pages/openapi-export.tsx
 msgid "Spec unavailable. Try Refresh."
 msgstr "Belirtim kullanılamıyor. Yenilemeyi deneyin."
@@ -8829,6 +8872,7 @@ msgstr "statik paneller yapılandırma nesnelerini aynen işler — panel oluşt
 #: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/traces.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/app-users.tsx
@@ -9217,6 +9261,10 @@ msgstr "Sorgu aynen çalıştırılır. Yukarıdaki görselleştirme ipucu, süt
 msgid "The share link may have been revoked, or the record it pointed to was removed."
 msgstr "Paylaşım bağlantısı iptal edilmiş olabilir ya da işaret ettiği kayıt kaldırılmış olabilir."
 
+#: src/client/admin/pages/traces.tsx
+msgid "The traces endpoint returned an error. Refresh to try again."
+msgstr "İzler uç noktası hata döndürdü. Yeniden denemek için yenileyin."
+
 #: src/client/admin/app.tsx
 msgid "These rows will be removed from c_posts. This deletes the underlying records — revisions remain available."
 msgstr "Bu satırlar c_posts tablosundan kaldırılacak. Bu temel kayıtları siler — sürümler kullanılabilir kalmaya devam eder."
@@ -9309,6 +9357,7 @@ msgid "Thu"
 msgstr "Per"
 
 #: src/client/admin/pages/logs.tsx
+#: src/client/admin/pages/traces.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/components/date-picker.tsx
 msgid "Time"
@@ -9439,6 +9488,23 @@ msgstr "Toplam üye"
 #: src/client/admin/pages/users.tsx
 #~ msgid "Total users"
 #~ msgstr "Toplam kullanıcı"
+
+#: src/client/admin/pages/traces.tsx
+msgid "Trace"
+msgstr "İz"
+
+#: src/client/admin/pages/traces.tsx
+#: src/client/admin/ui.tsx
+msgid "Traces"
+msgstr "İzler"
+
+#: src/client/admin/pages/traces.tsx
+msgid "Traces appear as requests come in. Make a call with the SDK or admin UI, then refresh."
+msgstr "İstekler geldikçe izler görünür. SDK veya yönetim arayüzüyle bir çağrı yapın, sonra yenileyin."
+
+#: src/client/admin/pages/traces.tsx
+msgid "Traces refreshed."
+msgstr "İzler yenilendi."
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Track data events through Segment."

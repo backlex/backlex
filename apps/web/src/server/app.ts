@@ -9,12 +9,19 @@ import type { Env } from "./env";
 import { apiRateLimitMiddleware } from "./lib/api-rate-limit";
 import { authLockoutMiddleware, authRateLimitMiddleware } from "./lib/auth-rate-limit";
 import { configureLogLevel, levelForStatus, log } from "./lib/log";
+import {
+  type TraceContext,
+  deriveTraceContext,
+  formatTraceparent,
+} from "./lib/trace";
+import { recordSpan, traceSampleRate } from "./services/traces";
 import { errorHandler } from "./middleware/error";
 import type { PermissionVar } from "./middleware/permission";
 import { sessionMiddleware } from "./middleware/session";
 import { tenantMiddleware } from "./middleware/tenant";
 import { accountRoutes } from "./routes/account";
 import { activityRoutes } from "./routes/activity";
+import { tracesRoutes } from "./routes/traces";
 import { adoptRoutes } from "./routes/adopt";
 import { advisorRoutes } from "./routes/advisor";
 import { aiAskRoutes } from "./routes/ai-ask";
@@ -139,6 +146,14 @@ export type AppBindings = {
      *  every structured log line for the request, and surfaced in error
      *  responses so support can trace a single call end-to-end. */
     requestId: string;
+    /** W3C trace context for this request — continued from an inbound
+     *  `traceparent` (SDK / upstream service) or freshly started here. The
+     *  `traceId` is shared across every hop of one logical operation; `spanId`
+     *  identifies this request's span; `parentSpanId` is the caller's span (null
+     *  when this request started the trace). Echoed on the `traceparent`
+     *  response header, stamped on the access log, persisted as a span row, and
+     *  re-emitted on downstream calls (functions) so traces stitch together. */
+    trace: TraceContext;
     /** Error code (e.g. `NOT_FOUND`, `RATE_LIMITED`, `INTERNAL`) stashed by the
      *  global error handler so the single access-log line can carry it. Unset
      *  for successful responses. */
@@ -206,9 +221,17 @@ export const createApp = (env: Env) => {
       c.req.header("cf-ray") ||
       crypto.randomUUID();
     c.set("requestId", reqId);
+    // Continue an inbound W3C trace (SDK / upstream service) or start a fresh
+    // one. We sample 100% — the per-request span write is non-blocking and the
+    // table is pruned, so the cost is a fire-and-forget insert, not latency.
+    const trace = deriveTraceContext(c.req.header("traceparent"), true);
+    c.set("trace", trace);
     const start = Date.now();
     await next();
     c.res.headers.set("x-request-id", reqId);
+    // Re-advertise the trace so a browser/SDK can correlate its call, and so a
+    // downstream that read our response continues the same trace.
+    c.res.headers.set("traceparent", formatTraceparent(trace));
     let path: string;
     try {
       path = new URL(c.req.url).pathname;
@@ -227,17 +250,53 @@ export const createApp = (env: Env) => {
     } catch {
       auth = undefined;
     }
+    const ms = Date.now() - start;
+    const code = c.get("errorCode");
     log[level]("request", {
       requestId: reqId,
+      traceId: trace.traceId,
+      spanId: trace.spanId,
       method: c.req.method,
       path,
       status,
-      ms: Date.now() - start,
+      ms,
       tenantId: auth?.tenantId ?? null,
       userId: auth?.userId ?? null,
       // Present only on error responses (stashed by the global error handler).
-      code: c.get("errorCode"),
+      code,
     });
+    // Persist the span for the admin Traces panel. Probes are skipped, as are
+    // the traces endpoints themselves (avoid a self-referential feedback loop).
+    // Non-blocking: never add latency or fail the request over telemetry.
+    if (!isProbe && !path.startsWith("/api/admin/traces")) {
+      let ctx: Ctx | undefined;
+      try {
+        ctx = c.get("ctx");
+      } catch {
+        ctx = undefined;
+      }
+      if (ctx && Math.random() < traceSampleRate(ctx.env)) {
+        const write = recordSpan(ctx, {
+          trace,
+          name: `${c.req.method} ${path}`,
+          method: c.req.method,
+          path,
+          status,
+          durationMs: ms,
+          startedAt: start,
+          tenantId: auth?.tenantId ?? null,
+          userId: auth?.userId ?? null,
+          errorCode: code,
+        }).catch(() => {});
+        // `c.executionCtx` is a getter that THROWS on non-Workers runtimes
+        // (Bun/Vercel/Netlify) — guard it, then fall back to fire-and-forget.
+        try {
+          c.executionCtx?.waitUntil?.(write);
+        } catch {
+          void write;
+        }
+      }
+    }
   });
 
   // Per-request phase timing → `Server-Timing` response header. Gated behind a
@@ -577,6 +636,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/templates", templatesRoutes);
   app.route("/api/items", itemsRoutes);
   app.route("/api/activity", activityRoutes);
+  app.route("/api/admin/traces", tracesRoutes);
   app.route("/api/revisions", revisionsRoutes);
   app.route("/api/storage", storageRoutes);
   app.route("/api/uploads", uploadsRoutes);

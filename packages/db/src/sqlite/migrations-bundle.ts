@@ -61,6 +61,7 @@ import m54 from "../../drizzle/sqlite/20260620180000_collections_fts/migration.s
 import m55 from "../../drizzle/sqlite/20260620190000_managed_webhooks/migration.sql" with { type: "text" };
 import m56 from "../../drizzle/sqlite/20260621000000_ai_config/migration.sql" with { type: "text" };
 import m57 from "../../drizzle/sqlite/20260627000000_ai_agents/migration.sql" with { type: "text" };
+import m58 from "../../drizzle/sqlite/20260628000000_request_spans/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -126,4 +127,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260620190000_managed_webhooks", sql: m55 },
   { name: "20260621000000_ai_config", sql: m56 },
   { name: "20260627000000_ai_agents", sql: m57 },
+  { name: "20260628000000_request_spans", sql: m58 },
 ];

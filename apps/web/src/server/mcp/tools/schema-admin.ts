@@ -65,8 +65,8 @@ export const updateCollection: McpTool = {
   name: "schema.update_collection",
   description:
     "Patch a collection's metadata or field list. Field changes go through " +
-    "the additive applier — columns are added; removal goes via " +
-    "`schema.drop_field` (not exposed yet, use the REST endpoint).",
+    "the additive applier — columns are added; column removal goes via " +
+    "`schema.drop_field`.",
   inputSchema: {
     type: "object",
     properties: {
@@ -100,6 +100,37 @@ export const updateCollection: McpTool = {
   },
 };
 
+export const dropField: McpTool = {
+  name: "schema.drop_field",
+  description:
+    "Drop a single field (column) from a managed collection. Destructive — " +
+    "the column and all its data are removed (`ALTER TABLE … DROP COLUMN`). " +
+    "Refused on adopted collections (the source table is never altered) and " +
+    "on reserved columns. Returns `{ ok: true, slug, field }`.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      slug: { type: "string" },
+      name: { type: "string", description: "Field (column) name to drop." },
+    },
+    required: ["slug", "name"],
+    additionalProperties: false,
+  },
+  handler: async (args, ctx) => {
+    const slug = requireSlug(args);
+    const name = args.name;
+    if (typeof name !== "string" || name.length === 0) {
+      throw new Error("VALIDATION: name is required");
+    }
+    const res = await ctx.fetchInternal(
+      `/api/collections/${encodeURIComponent(slug)}/fields/${encodeURIComponent(name)}`,
+      { method: "DELETE" },
+    );
+    const body = await readJson<unknown>(res);
+    return withLinks(textResult(body), collectionLink(slug));
+  },
+};
+
 export const dropCollection: McpTool = {
   name: "schema.drop_collection",
   description:
@@ -129,5 +160,6 @@ export const dropCollection: McpTool = {
 export const schemaAdminTools: McpTool[] = [
   createCollection,
   updateCollection,
+  dropField,
   dropCollection,
 ];

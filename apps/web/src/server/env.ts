@@ -74,6 +74,10 @@ export interface Env {
   // Cloudflare bindings — present only when running on Workers.
   D1?: D1Database;
   R2?: R2Bucket;
+  /** Static Assets binding (CF Workers). Used to serve the SPA `index.html`
+   *  for worker-handled SPA paths like the public dashboard embed, so the
+   *  Worker controls their security headers (framable CSP). */
+  ASSETS?: Fetcher;
   /** One Vectorize index per embedding model — see packages/core/src/embedding-models.ts.
    *  `VECTORIZE_OPENAI` (1536, cosine) — OpenAI text-embedding-3-small;
    *  `VECTORIZE_OPENAI_LARGE` (3072, cosine) — OpenAI text-embedding-3-large;

@@ -329,6 +329,19 @@ export const createApp = (env: Env) => {
     c.res.headers.set("Server-Timing", parts.join(", "));
   });
 
+  // Registered BEFORE secureHeaders so its post-phase runs LAST (Hono runs
+  // post-middleware in reverse registration order) — this is the only place we
+  // can reliably strip the X-Frame-Options that secureHeaders() sets, for the
+  // framable embed surfaces. (The CSP `frame-ancestors *` set below already
+  // makes modern browsers ignore XFO, but we drop it for older agents too.)
+  app.use("*", async (c, next) => {
+    await next();
+    const path = new URL(c.req.url).pathname;
+    if (path.startsWith("/embed/") || path.startsWith("/api/public/")) {
+      c.res.headers.delete("x-frame-options");
+    }
+  });
+
   app.use("*", secureHeaders());
 
   // Content-Security-Policy. `secureHeaders()` sets HSTS/XFO/nosniff/etc. but
@@ -668,6 +681,21 @@ export const createApp = (env: Env) => {
   // Public, unauthenticated record-share resolution — no `requireUser`.
   app.route("/api/shared", sharedPublicRoutes);
   app.route("/api/public/dashboards", dashboardsPublicRoutes);
+
+  // Public dashboard embed page. `/embed/*` is in `run_worker_first`, so the
+  // Worker (not CF Static Assets) serves the SPA shell here — which lets the
+  // header middleware above apply the framable CSP (`frame-ancestors *`, no
+  // XFO). Static assets get a strict same-origin CSP via public/_headers; only
+  // this worker-served path is iframe-able. Other runtimes serve `/embed/*`
+  // through their own static SPA fallback (no ASSETS binding → route skipped).
+  if (env.ASSETS) {
+    app.get("/embed/*", async (c) => {
+      const url = new URL(c.req.url);
+      url.pathname = "/index.html";
+      const res = await env.ASSETS!.fetch(new Request(url.toString(), { headers: c.req.raw.headers }));
+      return new Response(res.body, { status: res.status, headers: new Headers(res.headers) });
+    });
+  }
   app.route("/api/notifications", notificationsRoutes);
   app.route("/api/device-tokens", deviceTokensRoutes);
   app.route("/api/phone-numbers", phoneNumbersRoutes);

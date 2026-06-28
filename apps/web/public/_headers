@@ -18,7 +18,8 @@
 # and we also unset XFO for older agents. Same SPA HTML, just framable.
 /embed/*
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors *
-  ! X-Frame-Options
+  X-Frame-Options: ALLOWALL
+  X-Backlex-Embed: 1
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Strict-Transport-Security: max-age=15552000; includeSubDomains

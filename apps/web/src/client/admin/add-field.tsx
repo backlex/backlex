@@ -152,7 +152,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="flex max-h-[92vh] w-[94vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[760px]">
-        <DialogHeader className="border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
+        <DialogHeader className="shrink-0 border-b border-border px-5 pb-3.5 pr-12 pt-[18px] text-left">
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]">
             <Trans>Add field to <span className="font-mono">c_{schema?.slug || "posts"}</span></Trans>
           </DialogTitle>
@@ -161,7 +161,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center gap-2.5 border-b border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-5 py-3 text-[12.5px]">
+        <div className="flex shrink-0 items-center gap-2.5 border-b border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-5 py-3 text-[12.5px]">
           <div className={`inline-flex items-center gap-2 font-medium ${step >= 1 ? "text-foreground" : "text-muted-foreground"}`}>
             <span className={`grid size-5 place-items-center rounded-full font-mono text-[11px] font-semibold ${step >= 1 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>1</span> <Trans>Interface</Trans>
           </div>
@@ -172,7 +172,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
         </div>
 
         {step === 1 && (
-          <ScrollArea viewportClassName="max-h-[calc(92vh-10rem)] max-[640px]:max-h-[calc(92vh-15rem)]">
+          <ScrollArea viewportClassName="max-h-[calc(92vh-13rem)] max-[640px]:max-h-[calc(92vh-16.5rem)]">
             <div className="px-5 py-[18px]">
             <InputGroup className="mb-3.5">
               <InputGroupAddon><I.Search size={14} /></InputGroupAddon>
@@ -220,7 +220,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
         )}
 
         {step === 2 && (
-          <ScrollArea viewportClassName="max-h-[calc(92vh-10rem)] max-[640px]:max-h-[calc(92vh-15rem)]">
+          <ScrollArea viewportClassName="max-h-[calc(92vh-13rem)] max-[640px]:max-h-[calc(92vh-16.5rem)]">
             <div className="grid grid-cols-2 gap-3 px-5 py-[18px] max-[640px]:grid-cols-1">
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
@@ -331,7 +331,7 @@ export function AddFieldDialog({ open, schema, collections, onClose, onCreate }:
           </ScrollArea>
         )}
 
-        <div className="flex items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-border bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))] px-4 py-3">
           <span className="text-xs text-muted-foreground">
             {step === 1
               ? <Trans>Pick a UI interface · {FIELD_INTERFACES.length} available across {INTERFACE_GROUPS.length} groups</Trans>

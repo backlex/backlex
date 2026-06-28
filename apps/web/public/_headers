@@ -10,3 +10,15 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Strict-Transport-Security: max-age=15552000; includeSubDomains
+
+# Embedded BI dashboards are meant to be iframed on third-party sites. This
+# rule is more specific than /* so its values win (later/more-specific rule
+# overrides). `frame-ancestors *` allows any embedder; per the CSP spec a
+# present frame-ancestors directive causes browsers to ignore X-Frame-Options,
+# and we also unset XFO for older agents. Same SPA HTML, just framable.
+/embed/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https: wss:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors *
+  ! X-Frame-Options
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=15552000; includeSubDomains

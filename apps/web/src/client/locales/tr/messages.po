@@ -1261,6 +1261,10 @@ msgstr "Bir admin bu örnek için genel kayıt kapatmış. Davet isteyin veya za
 msgid "An invite link will be emailed; valid for 7 days."
 msgstr "Bir davet bağlantısı e-posta ile gönderilecek; 7 gün geçerlidir."
 
+#: src/client/admin/pages/agents.tsx
+msgid "any provider/model id"
+msgstr "herhangi bir sağlayıcı/model kimliği"
+
 #: src/client/admin/role-editor.tsx
 msgid "any signed-in"
 msgstr "oturum açmış herhangi biri"
@@ -2689,6 +2693,10 @@ msgstr "Özel roller, authenticated rolünün üzerine eklenerek katmanlanır."
 #: src/client/admin/permissions-matrix.tsx
 msgid "custom rule"
 msgstr "özel kural"
+
+#: src/client/admin/pages/agents.tsx
+msgid "Custom…"
+msgstr "Özel…"
 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Customize…"
@@ -5106,8 +5114,8 @@ msgid "Loading API keys"
 msgstr "API anahtarları yükleniyor"
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "Loading keys…"
-msgstr "Anahtarlar yükleniyor…"
+#~ msgid "Loading keys…"
+#~ msgstr "Anahtarlar yükleniyor…"
 
 #: src/client/components/mcp-guards-fields.tsx
 msgid "Loading MCP tools"
@@ -5118,17 +5126,14 @@ msgid "Loading role MCP defaults"
 msgstr "Rol MCP varsayılanları yükleniyor"
 
 #: src/client/admin/pages/ask-ai.tsx
-msgid "Loading runs…"
-msgstr "Çalıştırmalar yükleniyor…"
+#~ msgid "Loading runs…"
+#~ msgstr "Çalıştırmalar yükleniyor…"
 
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/components/mcp-guards-fields.tsx
-msgid "Loading tool catalog…"
-msgstr "Araç kataloğu yükleniyor…"
+#~ msgid "Loading tool catalog…"
+#~ msgstr "Araç kataloğu yükleniyor…"
 
-#: src/client/admin/item-editor.tsx
-#: src/client/admin/pages/agents.tsx
-#: src/client/admin/pages/feature-flags.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/logs.tsx
 msgid "Loading…"
@@ -9453,6 +9458,10 @@ msgstr "Etkinlik uç noktası hata döndürdü. Bir süre sonra tekrar deneyin."
 #: src/client/admin/pages/advisor.tsx
 msgid "The advisor endpoint returned an error. Re-run to try again."
 msgstr "Danışman uç noktası hata döndürdü. Tekrar denemek için yeniden çalıştırın."
+
+#: src/client/admin/pages/agents.tsx
+msgid "The agent's standing instructions — its persona, tone, and rules. Sent to the model before every user message."
+msgstr "Ajanın kalıcı talimatları — kişiliği, üslubu ve kuralları. Her kullanıcı mesajından önce modele gönderilir."
 
 #. placeholder {0}: provider.id.toUpperCase()
 #. placeholder {1}: provider.id

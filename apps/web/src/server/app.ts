@@ -385,15 +385,25 @@ export const createApp = (env: Env) => {
   // mere presence as SAMEORIGIN/DENY would block the frame). Everything else
   // keeps the strict same-origin policy.
   const EMBED_CSP = STRICT_CSP.replace("frame-ancestors 'self'", "frame-ancestors *");
+  // In dev the embed page is served through the Worker but its HTML is Vite's
+  // transformed shell, which carries an INLINE React-refresh preamble script —
+  // a strict `script-src 'self'` would block it (preamble never installs →
+  // blank page). Prod's built shell has no inline scripts, so it keeps the
+  // strict policy. So: no CSP on the embed page in dev only.
+  const isDevServer = (import.meta as { env?: { DEV?: boolean } }).env?.DEV === true;
   app.use("*", async (c, next) => {
     await next();
     const path = new URL(c.req.url).pathname;
     const isGraphiql = c.req.method === "GET" && path === "/api/graphql";
     const isEmbed = path.startsWith("/embed/") || path.startsWith("/api/public/");
-    c.res.headers.set(
-      "content-security-policy",
-      isGraphiql ? GRAPHIQL_CSP : isEmbed ? EMBED_CSP : STRICT_CSP,
-    );
+    if (isEmbed && isDevServer && path.startsWith("/embed/")) {
+      c.res.headers.delete("content-security-policy");
+    } else {
+      c.res.headers.set(
+        "content-security-policy",
+        isGraphiql ? GRAPHIQL_CSP : isEmbed ? EMBED_CSP : STRICT_CSP,
+      );
+    }
     if (isEmbed) c.res.headers.delete("x-frame-options");
   });
 
@@ -688,12 +698,26 @@ export const createApp = (env: Env) => {
   // XFO). Static assets get a strict same-origin CSP via public/_headers; only
   // this worker-served path is iframe-able. Other runtimes serve `/embed/*`
   // through their own static SPA fallback (no ASSETS binding → route skipped).
+  //
+  // We fetch the ORIGINAL request path (not a rewritten `/index.html`) so the
+  // Static Assets SPA fallback (`not_found_handling = single-page-application`)
+  // returns the shell — and in dev `@cloudflare/vite-plugin` serves it through
+  // Vite's HTML transform (with the React-refresh preamble) instead of the raw
+  // file, which would otherwise white-screen the page.
   if (env.ASSETS) {
     app.get("/embed/*", async (c) => {
-      const url = new URL(c.req.url);
-      url.pathname = "/index.html";
-      const res = await env.ASSETS!.fetch(new Request(url.toString(), { headers: c.req.raw.headers }));
-      return new Response(res.body, { status: res.status, headers: new Headers(res.headers) });
+      const res = await env.ASSETS!.fetch(new Request(c.req.url, { headers: c.req.raw.headers }));
+      // In dev (@cloudflare/vite-plugin) return the upstream response untouched
+      // so Vite's HTML transform + React-refresh preamble stay intact; framable
+      // headers only matter in prod (and `app` runs locally, not in an iframe).
+      if (isDevServer) return res;
+      // Prod: re-stream the body with only content-type — DON'T copy
+      // content-length/encoding (a stale length truncates the HTML). The header
+      // middleware then sets the framable CSP (frame-ancestors *, no XFO).
+      return new Response(res.body, {
+        status: res.status,
+        headers: { "content-type": res.headers.get("content-type") ?? "text/html; charset=utf-8" },
+      });
     });
   }
   app.route("/api/notifications", notificationsRoutes);

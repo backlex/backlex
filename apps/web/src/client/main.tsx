@@ -11,6 +11,27 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { primeBranding } from "@/lib/branding";
 
 /**
+ * Recover from stale lazy chunks after a deploy. With a hashed build + SPA
+ * fallback, a tab opened before a deploy still references the OLD chunk hashes;
+ * navigating to a not-yet-loaded route then `import()`s a chunk the new build
+ * no longer has → CF serves the SPA index.html (text/html) for the 404 → the
+ * dynamic import fails the MIME check and the route renders a black screen.
+ * Vite fires `vite:preloadError` for exactly this; reload once to pull the
+ * fresh manifest. Guard with a short window so a genuinely-broken chunk can't
+ * loop-reload forever.
+ */
+if (typeof window !== "undefined") {
+  window.addEventListener("vite:preloadError", () => {
+    const KEY = "backlex.chunkReload";
+    const last = Number(sessionStorage.getItem(KEY) ?? 0);
+    if (Date.now() - last > 10_000) {
+      sessionStorage.setItem(KEY, String(Date.now()));
+      window.location.reload();
+    }
+  });
+}
+
+/**
  * Single QueryClient shared across the admin app. Reasonable defaults for an
  * always-online admin SPA:
  *   - staleTime 30s — same row often refetched as the user navigates pages;

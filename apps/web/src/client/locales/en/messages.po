@@ -289,8 +289,10 @@ msgid "{0} event detail"
 msgstr "{0} event detail"
 
 #. placeholder {0}: c.fields.length
+#. placeholder {0}: d.fields.length
 #. placeholder {0}: t.fields.length
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/parity/insights.tsx
 msgid "{0} fields"
 msgstr "{0} fields"
@@ -1874,6 +1876,10 @@ msgstr "Check your inbox"
 #: src/client/pages/invite.tsx
 msgid "Checking your invite…"
 msgstr "Checking your invite…"
+
+#: src/client/admin/edit-field.tsx
+msgid "Choice color"
+msgstr "Choice color"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
@@ -3861,6 +3867,7 @@ msgid "field…"
 msgstr "field…"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/schema-graph.tsx
 msgid "fields"
 msgstr "fields"
 

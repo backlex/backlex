@@ -62,6 +62,7 @@ import {
   useItemsBulkDelete,
   useItemsBulkPublish,
   useItemsBulkUpdate,
+  useLiveCollection,
   useMetricsOverview,
 } from "./queries";
 import { api } from "@/lib/api";
@@ -380,6 +381,9 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
     [sort, debouncedSearch, filters, statusTab, kanbanStatusField],
   );
   const itemsQuery = useItems(activeCollection, itemsParams);
+  // Reactive list: subscribe to the collection's realtime feed and refresh on
+  // any row change (other tabs/admins, the SDK, flows). `live` drives the dot.
+  const { live: itemsLive } = useLiveCollection(activeCollection);
   const posts = useMemo(() => (itemsQuery.data ?? []) as Post[], [itemsQuery.data]);
   // `isPending` is true only while data is undefined — i.e. on the first load
   // of a collection (placeholderData drops to undefined on collection switch),
@@ -1010,6 +1014,12 @@ export function AdminApp({ initialNav = "overview", onSignOut }: AdminAppOptions
                   <span style={{ display: "inline-flex", gap: 6, marginLeft: 4 }}>
                     {schemaState.ownerScoped && <Badge variant="default"><Trans>owner-scoped</Trans></Badge>}
                     <Badge variant="outline" mono>{ADAPTER_PROFILES[tweaks.adapter].db}</Badge>
+                    {itemsLive && (
+                      <Badge variant="outline" title={t`This list updates in real time`}>
+                        <span className="inline-block size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <Trans>Live</Trans>
+                      </Badge>
+                    )}
                   </span>
                 }
                 actions={

@@ -176,6 +176,7 @@ Long-form guides live under `docs/`. CLAUDE.md is the always-loaded summary; rea
 | Full-text & hybrid search | `docs/full-text-search.md` |
 | GraphQL | `docs/graphql.md` |
 | Realtime / SSE | `docs/realtime.md` |
+| Reactive / live queries (SDK + React `useLiveQuery`) | `docs/reactive-queries.md` |
 | Offline-first sync (changefeed + client store) | `docs/offline-sync.md` |
 | Push messaging (FCM / APNs / Web Push) | `docs/push-messaging.md` |
 | SMS messaging (Twilio / Amazon SNS) | `docs/sms-messaging.md` |

@@ -17,7 +17,7 @@ backs the GraphQL resolver.
 | `q`      | string                            | none                                    | Free-text search: `_contains` across every readable text/longtext field — or, on a [full-text-search](/full-text-search) collection, a token-precise keyword-index filter |
 | `sort`   | comma-separated field list        | collection `default_sort`, else `-created_at` | `-` prefix = `DESC`; multi-column                                            |
 | `fields` | comma-separated field list        | all readable                            | SQL-level projection; system columns always re-added                         |
-| `expand` | comma-separated relation field list | none                                  | Inline-expand each named relation: the FK id is replaced by the target row    |
+| `expand` | comma-separated relation field list | none                                  | Inline-expand each named relation: a `relation` FK → the target row, a `relation_many` array → an array of target rows |
 | `limit`  | integer 1-200                     | `50`                                    | Page size                                                                    |
 | `offset` | integer ≥ 0                       | `0`                                     | Page offset                                                                  |
 | `meta`   | `filter_count`, `total_count`, `*`| none                                    | Adds extra `SELECT COUNT(*)` to the response `meta`                          |
@@ -132,9 +132,11 @@ returns the related row inlined and trimmed: `{ id, title, customer: { id, name 
 `customer.*` inlines the whole readable related row (equivalent to
 `expand=customer`). Each requested leaf is validated against the target's
 schema + read permission (unknown leaf → `422`, no permission → `403`).
-Multi-hop projection (`a.b.c`) and `relation_many` projection return `422`
-(use `filter`/`sort` for those, or expand one hop). Under the hood this reuses
-the `expand` JOIN, sharing the alias when a filter already joined the relation.
+`relation_many` sub-field projection works too (`fields=tags.name` → each
+inlined tag trimmed to `{ id, name }`). Multi-hop projection (`a.b.c`) still
+returns `422` (use `filter`/`sort` for those, or expand one hop). Under the
+hood this reuses the `expand` path — a shared JOIN alias for to-one relations,
+the batch fetch for `relation_many`.
 
 ## Aggregation
 
@@ -451,6 +453,49 @@ The JOIN's `ON` clause pins `rel_<head>.tenant_id = $tenant` whenever
 the target is tenant-scoped — a stale cross-tenant FK never surfaces a
 related row, matching the nested-filter JOIN behavior.
 
+### Expanding a `relation_many` (to-many) field
+
+`expand=<rel_many_field>` works too — a `relation_many` field stores an
+array of foreign ids, so it inlines to an **array of target rows**:
+
+```bash
+curl '/api/items/posts?expand=tags'
+```
+
+```json
+{
+  "data": [
+    {
+      "id": "p-1",
+      "title": "Hello",
+      "tags": [
+        { "id": "t-1", "name": "Red", "color": "#f00" },
+        { "id": "t-2", "name": "Blue", "color": "#00f" }
+      ]
+    }
+  ]
+}
+```
+
+Unlike the to-one path (a LEFT JOIN, which would multiply rows for a
+to-many relation), this runs as a **single batched fetch per head**: the
+list handler collects every referenced id across the whole page, fetches
+the target rows in one `… WHERE id IN (…)` query, and substitutes each
+row's id array with the ordered array of inlined rows. A 50-row page with
+`expand=tags` is two queries total, not 51.
+
+- **Order is preserved** from the stored id array.
+- **Dangling ids are dropped** — an id with no live, tenant-visible,
+  non-soft-deleted target row is silently omitted (the array only carries
+  rows the caller could read directly). An empty array stays `[]`.
+- **Same permission + tenant gate** as the to-one path: action-level
+  `read` on the target collection (`403` otherwise) and the target's
+  `fields` allow-list trims each object's keys.
+- **Sub-field projection** works via `fields=tags.name` (routes `tags`
+  into expand and trims each object to `id` + the requested leaves). As
+  with to-one, naming the head in `expand=` too means "expand whole" and
+  wins over the trim.
+
 ### Null relations
 
 A null source FK (`customer_id IS NULL`) returns `"customer_id": null`
@@ -462,7 +507,6 @@ unset relations look the same expanded or not.
 | Situation                                                       | Status | Message                                                            |
 |-----------------------------------------------------------------|--------|--------------------------------------------------------------------|
 | `expand` chain (`a.b`)                                          | 422    | `expand chain not yet supported: <field>`                          |
-| `expand` on a `relation_many` field                             | 422    | `expand on relation_many not yet supported: <field>`               |
 | `expand` on a non-relation field                                | 422    | `expand only works on relation fields — "<field>" is <type>`       |
 | Unknown expand field                                            | 422    | `Unknown expand field: <field>`                                    |
 | Source `fields` allow-list excludes the relation field          | 403    | `No permission to read field: <field>`                             |

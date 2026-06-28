@@ -2101,8 +2101,12 @@ msgstr "Column \"{0}\" added to c_{slug}."
 #. placeholder {0}: dropTarget.name
 #. placeholder {1}: dropTarget.slug
 #: src/client/admin/pages/schema-graph.tsx
-msgid "Column \"{0}\" dropped from c_{1}."
-msgstr "Column \"{0}\" dropped from c_{1}."
+#~ msgid "Column \"{0}\" dropped from c_{1}."
+#~ msgstr "Column \"{0}\" dropped from c_{1}."
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Column \"{name}\" dropped from c_{slug}."
+msgstr "Column \"{name}\" dropped from c_{slug}."
 
 #: src/client/admin/app.tsx
 msgid "Column \"{name}\" dropped."

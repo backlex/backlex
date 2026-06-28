@@ -375,6 +375,11 @@ function ErdCanvas({
   // with the deterministic grid for any collection without a saved spot.
   const positionsRef = useRef<ErdLayout>({});
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Serialize layout saves: only one PATCH in flight at a time (concurrent
+  // settings writes race and one fails → the spurious "Couldn't save layout").
+  // If positions change while a save is in flight, mark dirty and flush after.
+  const saveInFlight = useRef(false);
+  const saveDirty = useRef(false);
 
   // Inline-edit dialog state.
   const [addFieldSlug, setAddFieldSlug] = useState<string | null>(null);
@@ -382,28 +387,54 @@ function ErdCanvas({
   const [dropTarget, setDropTarget] = useState<{ slug: string; name: string } | null>(null);
   const [pendingRel, setPendingRel] = useState<{ from: string; to: string } | null>(null);
 
+  const saveLayoutNow = useCallback(async () => {
+    if (saveInFlight.current) {
+      saveDirty.current = true; // coalesce — flush the latest after the current save
+      return;
+    }
+    saveInFlight.current = true;
+    saveDirty.current = false;
+    try {
+      await settingsApi.patch({ erdLayout: positionsRef.current });
+    } catch {
+      // One retry for transient failures before surfacing the warning.
+      try {
+        await settingsApi.patch({ erdLayout: positionsRef.current });
+      } catch {
+        pushToast(t`Couldn't save layout.`, "error");
+      }
+    } finally {
+      saveInFlight.current = false;
+      if (saveDirty.current) void saveLayoutNow();
+    }
+  }, [pushToast, t]);
+
+  // Debounce drag-stops (600ms); saveLayoutNow serializes the actual PATCH.
   const persistLayout = useCallback(() => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      void settingsApi.patch({ erdLayout: positionsRef.current }).catch(() => {
-        pushToast(t`Couldn't save layout.`, "error");
-      });
+      void saveLayoutNow();
     }, 600);
-  }, [pushToast, t]);
+  }, [saveLayoutNow]);
 
   // PATCH a collection's full field set, then re-fetch and bubble up.
   const patchFields = useCallback(
     async (slug: string, fields: ApiCollection["fields"], note: string) => {
+      // Optimistic: apply the new field set locally now so the node updates
+      // instantly, then reconcile with the server (and roll back on error).
+      const prev = collections;
+      onMutated(collections.map((c) => (c.slug === slug ? { ...c, fields } : c)));
       try {
         await collectionsApi.patch(slug, { fields });
+        pushToast(note);
         const res = await collectionsApi.list();
         if (Array.isArray(res.data)) onMutated(res.data);
-        pushToast(note);
       } catch (e) {
+        onMutated(prev);
         pushToast((e as Error).message, "error");
       }
     },
-    [onMutated, pushToast],
+    [collections, onMutated, pushToast],
   );
 
   const handleOpen = useCallback((slug: string) => navigate(`/collections/${slug}`), [navigate]);
@@ -568,15 +599,25 @@ function ErdCanvas({
         onClose={() => setDropTarget(null)}
         onConfirm={async () => {
           if (!dropTarget) return;
+          const { slug, name } = dropTarget;
+          // Optimistic: remove the column from the node immediately + close the
+          // dialog, then run the DROP and reconcile (roll back on error).
+          const prev = collections;
+          setDropTarget(null);
+          onMutated(
+            collections.map((c) =>
+              c.slug === slug ? { ...c, fields: c.fields.filter((f) => f.name !== name) } : c,
+            ),
+          );
           try {
-            await collectionsApi.dropField(dropTarget.slug, dropTarget.name);
+            await collectionsApi.dropField(slug, name);
+            pushToast(t`Column "${name}" dropped from c_${slug}.`);
             const res = await collectionsApi.list();
             if (Array.isArray(res.data)) onMutated(res.data);
-            pushToast(t`Column "${dropTarget.name}" dropped from c_${dropTarget.slug}.`);
           } catch (e) {
+            onMutated(prev);
             pushToast((e as Error).message, "error");
           }
-          setDropTarget(null);
         }}
       />
 

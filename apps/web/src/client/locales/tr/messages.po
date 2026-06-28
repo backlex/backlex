@@ -2101,8 +2101,12 @@ msgstr "\"{0}\" sütunu c_{slug} koleksiyonuna eklendi."
 #. placeholder {0}: dropTarget.name
 #. placeholder {1}: dropTarget.slug
 #: src/client/admin/pages/schema-graph.tsx
-msgid "Column \"{0}\" dropped from c_{1}."
-msgstr "\"{0}\" sütunu c_{1} koleksiyonundan kaldırıldı."
+#~ msgid "Column \"{0}\" dropped from c_{1}."
+#~ msgstr "\"{0}\" sütunu c_{1} koleksiyonundan kaldırıldı."
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Column \"{name}\" dropped from c_{slug}."
+msgstr "\"{name}\" sütunu c_{slug} tablosundan kaldırıldı."
 
 #: src/client/admin/app.tsx
 msgid "Column \"{name}\" dropped."

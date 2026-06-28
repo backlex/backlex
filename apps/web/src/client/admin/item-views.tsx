@@ -30,7 +30,12 @@ const rowLabel = (r: Post, displayTemplate?: string | null): string => {
     const rendered = renderTemplate(displayTemplate, r as unknown as Record<string, unknown>).trim();
     if (rendered) return rendered;
   }
-  return r.title || r.slug || r.id;
+  // Match the Table view's fallback chain (items.tsx) — crucially include
+  // `name`, else collections whose primary field is `name` (no `title` column)
+  // fall through to the slug/id and Gallery/Calendar show a raw UUID. `name`
+  // isn't on the Post type, so read it off the row record.
+  const name = (r as unknown as Record<string, unknown>).name;
+  return r.title || (typeof name === "string" && name) || r.slug || r.id;
 };
 const rowNumber = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
 

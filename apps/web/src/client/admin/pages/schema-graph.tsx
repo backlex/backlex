@@ -156,7 +156,12 @@ function CollectionNodeView({ data, selected }: NodeProps<CollectionNode>) {
       <div className="flex items-center gap-2 border-b border-border px-3 py-2" style={{ background: "color-mix(in oklch, var(--muted) 35%, var(--card))" }}>
         <span className="h-3.5 w-1 shrink-0 rounded-full" style={{ background: d.color }} />
         <span className="truncate font-mono text-[12.5px] font-medium">c_{d.slug}</span>
-        <span className="ml-auto shrink-0 font-mono text-[10.5px] text-muted-foreground">{d.fields.length}f</span>
+        <span
+          className="ml-auto shrink-0 text-[10.5px] text-muted-foreground"
+          title={t`${d.fields.length} fields`}
+        >
+          {d.fields.length} <Trans>fields</Trans>
+        </span>
         <button
           type="button"
           className="nodrag grid size-5 shrink-0 place-items-center rounded-[5px] text-muted-foreground hover:bg-accent hover:text-foreground"

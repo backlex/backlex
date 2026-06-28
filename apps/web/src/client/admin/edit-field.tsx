@@ -84,7 +84,9 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
       ...all.map((i) => ({
         value: i.id,
         label: `${i.label} — ${i.sub}`,
-        ...(i.hasChoices ? { badge: <Badge variant="outline">choices</Badge> } : {}),
+        // `secondary` (filled, borderless) — an `outline` badge nests a second
+        // rounded border inside the Select trigger's own border.
+        ...(i.hasChoices ? { badge: <Badge variant="secondary">choices</Badge> } : {}),
       })),
     ];
   }, [draft?.type, draft?.interface]);
@@ -215,12 +217,22 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
                       value={c.label ?? ""}
                       onChange={(e) => setChoice(i, { label: e.target.value })}
                     />
-                    <input
-                      type="color"
-                      value={c.color ?? "#A1A6B8"}
-                      onChange={(e) => setChoice(i, { color: e.target.value })}
-                      className="h-8 w-[90px] shrink-0 cursor-pointer rounded-[6px] border border-border bg-card"
-                    />
+                    {/* Clean design-system swatch — the native color input is
+                        overlaid invisibly so the control matches the other
+                        inputs instead of the browser's chunky default swatch. */}
+                    <label
+                      className="relative inline-flex h-8 w-14 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-md border border-border ring-offset-background focus-within:ring-2 focus-within:ring-ring/50"
+                      title={t`Choice color`}
+                      style={{ backgroundColor: c.color ?? "#A1A6B8" }}
+                    >
+                      <input
+                        type="color"
+                        value={c.color ?? "#A1A6B8"}
+                        onChange={(e) => setChoice(i, { color: e.target.value })}
+                        className="absolute inset-0 size-full cursor-pointer opacity-0"
+                        aria-label={t`Choice color`}
+                      />
+                    </label>
                     <IconButton icon={I.Trash} title={t`Remove choice`} onClick={() => removeChoice(i)} />
                   </div>
                 ))}

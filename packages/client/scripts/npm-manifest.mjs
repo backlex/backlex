@@ -16,6 +16,7 @@ pkg.exports = {
   ".": { types: "./dist/index.d.ts", default: "./dist/index.js" },
   "./types": { types: "./dist/types.d.ts", default: "./dist/types.js" },
   "./webhook": { types: "./dist/webhook.d.ts", default: "./dist/webhook.js" },
+  "./react": { types: "./dist/react.d.ts", default: "./dist/react.js" },
 };
 pkg.files = ["dist", "README.md", "LICENSE"];
 // Build-only tooling — consumers never need it.

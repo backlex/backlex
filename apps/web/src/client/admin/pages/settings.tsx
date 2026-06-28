@@ -1661,8 +1661,22 @@ class_name = "RealtimeRoom"`}</pre>
             </div>
             <div className="hidden flex-1 sm:block" />
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" icon={I.Code}><Trans>GitHub</Trans></Button>
-              <Button variant="ghost" size="sm" icon={I.Folder}><Trans>Docs</Trans></Button>
+              <Button
+                variant="outline"
+                size="sm"
+                icon={I.Code}
+                onClick={() => window.open("https://github.com/backlex/backlex", "_blank", "noopener,noreferrer")}
+              >
+                <Trans>GitHub</Trans>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={I.Folder}
+                onClick={() => window.open("https://backlex.com/docs", "_blank", "noopener,noreferrer")}
+              >
+                <Trans>Docs</Trans>
+              </Button>
             </div>
           </Card>
         </div>

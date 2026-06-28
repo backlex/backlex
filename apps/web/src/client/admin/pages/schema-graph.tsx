@@ -509,12 +509,23 @@ function ErdCanvas({
           className="!bg-[color-mix(in_oklch,var(--muted)_30%,var(--card))]"
         >
           <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="var(--border)" />
-          <Controls className="!shadow-none" showInteractive={false} />
+          {/* React Flow ships a light-theme stylesheet; override the controls +
+              minimap to match the dark admin so the buttons aren't white blocks
+              and the minimap isn't an oversized grey panel. */}
+          <Controls
+            showInteractive={false}
+            className="!shadow-md !overflow-hidden !rounded-lg !border !border-border [&_button]:!border-b [&_button]:!border-border [&_button]:!bg-card [&_button:hover]:!bg-muted [&_button:last-child]:!border-b-0 [&_button_svg]:!fill-foreground"
+          />
           <MiniMap
             pannable
             zoomable
             nodeColor={(n) => (n.data as CollectionNodeData)?.color ?? "var(--muted-foreground)"}
-            className="!bg-card"
+            nodeStrokeColor="var(--border)"
+            nodeBorderRadius={4}
+            bgColor="var(--card)"
+            maskColor="color-mix(in oklch, var(--background) 55%, transparent)"
+            style={{ width: 168, height: 112 }}
+            className="!bottom-3 !right-3 !m-0 overflow-hidden rounded-lg border border-border shadow-md"
           />
         </ReactFlow>
       </div>

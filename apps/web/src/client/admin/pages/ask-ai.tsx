@@ -20,6 +20,7 @@ import { activityApi, type ApiActivity } from "../api";
 import { I } from "../icons";
 import { Badge, Button, PageHeader, Switch } from "../ui";
 import { Card } from "@backlex/ui/components/card";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import { Textarea } from "@backlex/ui/components/textarea";
 import {
   Tabs,
@@ -1270,8 +1271,10 @@ function KeyPicker({
   const { t } = useLingui();
   if (keysLoading) {
     return (
-      <div className="text-[12px] text-muted-foreground">
-        <Trans>Loading keys…</Trans>
+      <div className="flex flex-col gap-2">
+        {[0, 1].map((i) => (
+          <Skeleton key={i} className="h-8 w-full" />
+        ))}
       </div>
     );
   }
@@ -1541,8 +1544,13 @@ function ToolsTab({
           </div>
           <div className="border-t border-border">
             {toolsLoading ? (
-              <div className="px-5 py-8 text-center text-[12.5px] text-muted-foreground">
-                <Trans>Loading tool catalog…</Trans>
+              <div className="flex flex-col gap-2 px-5 py-4">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Skeleton className="size-4 rounded" />
+                    <Skeleton className="h-3.5 w-48" />
+                  </div>
+                ))}
               </div>
             ) : groups.length === 0 ? (
               <div className="px-5 py-8 text-center text-[12.5px] text-muted-foreground">
@@ -1901,8 +1909,13 @@ function RunsTab({
       </div>
       <Card className="py-0 gap-0">
         {loading ? (
-          <div className="px-5 py-8 text-center text-[12.5px] text-muted-foreground">
-            <Trans>Loading runs…</Trans>
+          <div className="flex flex-col">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-3 border-b border-border px-5 py-3 last:border-b-0">
+                <Skeleton className="h-4 w-56" />
+                <Skeleton className="ml-auto h-4 w-20" />
+              </div>
+            ))}
           </div>
         ) : visible.length === 0 ? (
           <div className="px-5 py-8 text-center text-[12.5px] text-muted-foreground">

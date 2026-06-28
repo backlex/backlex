@@ -19,6 +19,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@backlex/ui/components/button";
 import { Checkbox } from "@backlex/ui/components/checkbox";
 import { Label } from "@backlex/ui/components/label";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import { notifyError } from "@/lib/error";
 import { api } from "@/lib/api";
 
@@ -168,8 +169,13 @@ export const McpGuardsFields = ({
           )}
         </p>
         {loading && (
-          <div className="rounded-md border border-border/50 bg-muted/20 p-3 text-xs text-muted-foreground">
-            <Trans>Loading tool catalog…</Trans>
+          <div className="flex flex-col gap-2 rounded-md border border-border/50 bg-muted/20 p-3">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Skeleton className="size-4 rounded" />
+                <Skeleton className="h-3.5 w-44" />
+              </div>
+            ))}
           </div>
         )}
         {tools && tools.length > 0 && (

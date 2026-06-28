@@ -5,11 +5,13 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { I } from "../icons";
 import { Badge, Button, EmptyState, PageHeader, Switch } from "../ui";
 import { Card } from "@backlex/ui/components/card";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import { ScrollArea } from "@backlex/ui/components/scroll-area";
 import { Input } from "@backlex/ui/components/input";
 import { Textarea } from "@backlex/ui/components/textarea";
 import { Label } from "@backlex/ui/components/label";
 import { Checkbox } from "@backlex/ui/components/checkbox";
+import { Select } from "../select";
 import {
   Dialog,
   DialogContent,
@@ -53,6 +55,18 @@ interface RunStep {
   isError: boolean;
 }
 
+/** Curated model dropdown. The runner accepts any `provider/model` string
+ *  (gateway / direct / managed), so "Custom…" keeps the free-text escape hatch
+ *  for models not in this list. Keep IDs in sync with the latest Claude lineup. */
+const MODEL_OPTIONS = [
+  { value: "", label: "Default", hint: "Haiku 4.5 — fast & cheap" },
+  { value: "anthropic/claude-opus-4-8", label: "Claude Opus 4.8", hint: "most capable" },
+  { value: "anthropic/claude-sonnet-4-6", label: "Claude Sonnet 4.6", hint: "balanced" },
+  { value: "anthropic/claude-haiku-4-5", label: "Claude Haiku 4.5", hint: "fast & cheap" },
+] as const;
+const MODEL_CUSTOM = "__custom__";
+const isKnownModel = (m: string) => MODEL_OPTIONS.some((o) => o.value === m);
+
 const EMPTY_DRAFT: Agent = {
   id: "",
   name: "",
@@ -77,6 +91,8 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
   const [toolCatalog, setToolCatalog] = useState<{ name: string; description: string }[]>([]);
   const [toolFilter, setToolFilter] = useState("");
   const [saving, setSaving] = useState(false);
+  // Whether the Model picker is in free-text ("Custom…") mode.
+  const [modelCustom, setModelCustom] = useState(false);
 
   const reload = useCallback(async () => {
     const r = await fetchSafely<{ data: Agent[] }>("/api/agents");
@@ -93,6 +109,7 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
   // ── editor ────────────────────────────────────────────────────────────────
   const openEditor = useCallback(async (a?: Agent) => {
     setDraft(a ? { ...a, description: a.description ?? "", systemPrompt: a.systemPrompt ?? "", model: a.model ?? "" } : EMPTY_DRAFT);
+    setModelCustom(!!(a?.model && !isKnownModel(a.model)));
     setToolFilter("");
     setEditorOpen(true);
     // Lazy-load the MCP tool catalog the first time the editor opens.
@@ -168,7 +185,15 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
     return (
       <div className="flex flex-col gap-4.5">
         <PageHeader title={t`Agents`} description={t`AI agents that reason, call your tools, and answer — built on your collections.`} />
-        <Card className="p-6"><EmptyState size="sm" title={<Trans>Loading…</Trans>} /></Card>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <Card key={i} className="flex flex-col gap-3 p-4">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-3.5 w-full" />
+              <Skeleton className="h-3.5 w-2/3" />
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -227,7 +252,7 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
 
       {editorOpen && (
         <Dialog open onOpenChange={(o) => { if (!o) setEditorOpen(false); }}>
-          <DialogContent className="flex max-h-[min(88vh,760px)] w-[680px] max-w-[92vw] flex-col overflow-hidden">
+          <DialogContent className="flex max-h-[min(88vh,760px)] w-[680px] max-w-[92vw] flex-col overflow-hidden [&>*]:min-w-0">
             <DialogHeader>
               <DialogTitle>{draft.id ? <Trans>Edit agent</Trans> : <Trans>New agent</Trans>}</DialogTitle>
               <DialogDescription>
@@ -235,7 +260,7 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
               </DialogDescription>
             </DialogHeader>
 
-            <ScrollArea className="min-h-0 max-h-[calc(88vh-13rem)]">
+            <ScrollArea className="min-h-0 flex-1" viewportClassName="max-h-[calc(88vh-13rem)]">
               <div className="flex flex-col gap-4 px-0.5 py-1">
                 <div className="flex flex-col gap-1.5">
                   <Label><Trans>Name</Trans></Label>
@@ -248,13 +273,36 @@ export function AgentsPage({ pushToast }: { pushToast: (m: string, type?: "succe
                 <div className="flex flex-col gap-1.5">
                   <Label><Trans>System prompt</Trans></Label>
                   <Textarea className="min-h-[90px] text-[13px]" value={draft.systemPrompt ?? ""} onChange={(e) => setDraft({ ...draft, systemPrompt: e.target.value })} placeholder={t`You are a helpful assistant for our workspace…`} />
+                  <span className="text-[11.5px] text-muted-foreground"><Trans>The agent's standing instructions — its persona, tone, and rules. Sent to the model before every user message.</Trans></span>
                 </div>
                 <div className="grid grid-cols-2 gap-3 max-[520px]:grid-cols-1">
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex min-w-0 flex-col gap-1.5">
                     <Label><Trans>Model</Trans></Label>
-                    <Input className="font-mono text-[12.5px]" value={draft.model ?? ""} onChange={(e) => setDraft({ ...draft, model: e.target.value })} placeholder="anthropic/claude-haiku-4-5" />
+                    <Select
+                      value={modelCustom ? MODEL_CUSTOM : (draft.model ?? "")}
+                      onChange={(v) => {
+                        if (v === MODEL_CUSTOM) {
+                          setModelCustom(true);
+                        } else {
+                          setModelCustom(false);
+                          setDraft({ ...draft, model: v });
+                        }
+                      }}
+                      options={[
+                        ...MODEL_OPTIONS.map((o) => ({ value: o.value, label: o.label, hint: o.hint })),
+                        { value: MODEL_CUSTOM, label: t`Custom…`, hint: t`any provider/model id` },
+                      ]}
+                    />
+                    {modelCustom && (
+                      <Input
+                        className="mt-1 font-mono text-[12.5px]"
+                        value={draft.model ?? ""}
+                        onChange={(e) => setDraft({ ...draft, model: e.target.value })}
+                        placeholder="anthropic/claude-haiku-4-5"
+                      />
+                    )}
                   </div>
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex min-w-0 flex-col gap-1.5">
                     <Label><Trans>Max steps</Trans></Label>
                     <Input type="number" min={1} max={25} value={draft.maxSteps} onChange={(e) => setDraft({ ...draft, maxSteps: Math.max(1, Math.min(25, Number(e.target.value) || 1)) })} />
                   </div>

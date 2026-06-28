@@ -12,6 +12,7 @@ import { type CollectionSchema, type Post } from "./config";
 import { Badge, Button, IconButton, Switch, relativeTime } from "./ui";
 import { authorById } from "./items";
 import { Card } from "@backlex/ui/components/card";
+import { Skeleton } from "@backlex/ui/components/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -411,8 +412,13 @@ export function ItemEditorPage({
           </div>
           <div className="p-5">
             {loading ? (
-              <div className="py-10 text-center text-[13px] text-muted-foreground">
-                <Trans>Loading…</Trans>
+              <div className="flex flex-col gap-5">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="flex flex-col gap-2">
+                    <Skeleton className="h-3.5 w-28" />
+                    <Skeleton className="h-9 w-full" />
+                  </div>
+                ))}
               </div>
             ) : (
               <ItemFields form={form} />
@@ -672,8 +678,13 @@ function RevisionHistory({
       </div>
       <div className="flex flex-col gap-2 p-3.5">
         {loading ? (
-          <div className="py-2 text-[12.5px] text-muted-foreground">
-            <Trans>Loading…</Trans>
+          <div className="flex flex-col gap-2.5 py-1">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Skeleton className="size-6 rounded-full" />
+                <Skeleton className="h-3 flex-1" />
+              </div>
+            ))}
           </div>
         ) : revisions.length === 0 ? (
           <div className="py-2 text-[12.5px] text-muted-foreground">

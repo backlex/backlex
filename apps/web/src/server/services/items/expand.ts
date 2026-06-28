@@ -5,6 +5,7 @@ import type { Ctx } from "../../context";
 import { resolvePermission } from "../permissions";
 import { loadCollection, type CollectionRow } from "./collection-loader";
 import { deserialize } from "./serialize";
+import { queryAll } from "./sql-helpers";
 
 /**
  * Build the SELECT expression for one `?expand=<head>` entry:
@@ -256,5 +257,201 @@ export const applyExpandToRow = (
       expanded[f.name] = deserialize(obj[f.name], f.type, dialect);
     }
     out[plan.head] = expanded;
+  }
+};
+
+// ---------------------------------------------------------------------------
+// relation_many (to-many) expand
+//
+// A to-many head holds a JSON array of foreign ids, so a LEFT JOIN would
+// multiply the base rows. Instead we batch: after the page (or single row) is
+// materialized, collect every referenced id across the page, fetch the target
+// rows in ONE `IN (...)` query, then substitute each row's id array with the
+// ordered array of inlined target rows. Missing ids (deleted / cross-tenant /
+// no longer present) are dropped, so the array only carries live, readable
+// rows. Permission gate matches the to-one path: action-level read on the
+// target collection + the target role's `fields` allow-list (row-level
+// conditions are not applied to expanded targets, same as the JOIN path).
+// ---------------------------------------------------------------------------
+
+export interface ManyExpandPlan {
+  /** Source-collection relation_many field name. */
+  head: string;
+  /** Target collection, for the fetch + value deserialization. */
+  target: CollectionRow;
+  /** Allowed fields on the target after permission projection (null = all). */
+  allowedFields: Set<string> | null;
+  /** Sub-field trim (from `fields=tags.name`); null ⇒ whole readable row. */
+  subs: Set<string> | null;
+}
+
+/**
+ * Validate + gate every `relation_many` expand head: load its target
+ * collection, require action-level read permission (403 otherwise), and
+ * validate any requested sub-fields against the target schema + the target
+ * role's `fields` allow-list. Returns one plan per head for the batch fetch.
+ */
+export const resolveManyExpands = async (
+  ctx: Ctx,
+  auth: AuthSubject,
+  collection: CollectionRow,
+  expandMany: string[],
+  subFields: Map<string, Set<string>> = new Map(),
+): Promise<ManyExpandPlan[]> => {
+  const plans: ManyExpandPlan[] = [];
+  for (const head of expandMany) {
+    const def = collection.fields.find((f) => f.name === head);
+    if (!def || def.type !== "relation_many" || !def.to) {
+      throw new AppError(
+        "VALIDATION",
+        `Cannot expand "${head}" — not a relation_many field`,
+      );
+    }
+    const target = await loadCollection(ctx, auth.tenantId, def.to).catch(() => {
+      throw new AppError("VALIDATION", `Relation target not active: ${def.to}`);
+    });
+    const targetPerm = await resolvePermission(
+      { db: ctx.db, dialect: ctx.dialect },
+      auth,
+      def.to,
+      "read",
+    );
+    if (!targetPerm.allowed) {
+      throw new AppError(
+        "FORBIDDEN",
+        `No read permission on relation target: ${def.to}`,
+      );
+    }
+    const subs = subFields.get(head) ?? null;
+    if (subs) {
+      const targetSys = new Set<string>(["id"]);
+      if (target.hasCreatedAt) targetSys.add("created_at");
+      if (target.hasUpdatedAt) targetSys.add("updated_at");
+      if (target.ownerScoped) targetSys.add("owner_id");
+      const targetFieldNames = new Set(target.fields.map((f) => f.name));
+      for (const s of subs) {
+        if (!targetSys.has(s) && !targetFieldNames.has(s)) {
+          throw new AppError("VALIDATION", `Unknown field: ${head}.${s}`);
+        }
+        if (!targetSys.has(s) && targetPerm.fields && !targetPerm.fields.has(s)) {
+          throw new AppError("FORBIDDEN", `No permission to read "${head}.${s}"`);
+        }
+      }
+    }
+    plans.push({ head, target, allowedFields: targetPerm.fields, subs });
+  }
+  return plans;
+};
+
+/**
+ * Substitute each row's `relation_many` id array with the array of inlined
+ * target rows. Runs one `IN (...)` fetch per head over the whole page (not
+ * per row), so a 50-row page with a `tags` expand is two queries total. The
+ * head value is normalized to `[]` when it has no (readable) matches.
+ */
+export const applyManyExpandsToRows = async (
+  ctx: Ctx,
+  auth: AuthSubject,
+  rows: Record<string, unknown>[],
+  plans: ManyExpandPlan[],
+): Promise<void> => {
+  for (const plan of plans) {
+    const { head, target, allowedFields, subs } = plan;
+    // Collect every referenced id across the page (deduped).
+    const idSet = new Set<string>();
+    for (const row of rows) {
+      const v = row[head];
+      if (Array.isArray(v)) {
+        for (const id of v) if (id != null) idSet.add(String(id));
+      }
+    }
+    if (idSet.size === 0) {
+      for (const row of rows) row[head] = [];
+      continue;
+    }
+
+    // Which columns to fetch: id + system + permitted user fields, trimmed by
+    // any `fields=head.sub` projection (id always included).
+    const wants = (key: string): boolean => !subs || key === "id" || subs.has(key);
+    const cols: Array<{ key: string; phys: string }> = [
+      { key: "id", phys: target.pkColumn },
+    ];
+    if (target.hasCreatedAt && wants("created_at")) {
+      cols.push({ key: "created_at", phys: target.createdAtColumn ?? "created_at" });
+    }
+    if (target.hasUpdatedAt && wants("updated_at")) {
+      cols.push({ key: "updated_at", phys: target.updatedAtColumn ?? "updated_at" });
+    }
+    if (
+      target.ownerScoped &&
+      (!target.adopted || target.ownerIdColumn) &&
+      wants("owner_id")
+    ) {
+      cols.push({ key: "owner_id", phys: target.ownerIdColumn ?? "owner_id" });
+    }
+    for (const f of target.fields) {
+      if (allowedFields && !allowedFields.has(f.name)) continue;
+      if (!wants(f.name)) continue;
+      cols.push({ key: f.name, phys: f.name });
+    }
+
+    const selectParts = cols.map((col) =>
+      col.phys === col.key
+        ? sql`${sql.identifier(col.phys)}`
+        : sql`${sql.identifier(col.phys)} AS ${sql.identifier(col.key)}`,
+    );
+    const idList = [...idSet];
+    const whereParts: SQL[] = [
+      sql`${sql.identifier(target.pkColumn)} IN (${sql.join(
+        idList.map((id) => sql`${id}`),
+        sql`, `,
+      )})`,
+    ];
+    if (target.tenantScoped && auth.tenantId) {
+      whereParts.push(sql`${sql.identifier("tenant_id")} = ${auth.tenantId}`);
+    }
+    if (target.softDelete) {
+      whereParts.push(sql`${sql.identifier("deleted_at")} IS NULL`);
+    }
+    const fetched = await queryAll<Record<string, unknown>>(
+      ctx,
+      sql`SELECT ${sql.join(selectParts, sql`, `)} FROM ${sql.identifier(
+        target.physicalTable,
+      )} WHERE ${sql.join(whereParts, sql` AND `)}`,
+    );
+
+    // id → inlined object (same camelCase + deserialize shape as the to-one path).
+    const byId = new Map<string, Record<string, unknown>>();
+    for (const r of fetched) {
+      const obj: Record<string, unknown> = { id: r.id };
+      if ("created_at" in r && r.created_at != null) {
+        obj.createdAt = deserialize(r.created_at, "timestamp", ctx.dialect);
+      }
+      if ("updated_at" in r && r.updated_at != null) {
+        obj.updatedAt = deserialize(r.updated_at, "timestamp", ctx.dialect);
+      }
+      if ("owner_id" in r) obj.ownerId = r.owner_id ?? null;
+      for (const f of target.fields) {
+        if (!(f.name in r)) continue;
+        obj[f.name] = deserialize(r[f.name], f.type, ctx.dialect);
+      }
+      byId.set(String(r.id), obj);
+    }
+
+    // Substitute, preserving the stored id order; drop ids with no live match.
+    for (const row of rows) {
+      const v = row[head];
+      if (!Array.isArray(v)) {
+        row[head] = [];
+        continue;
+      }
+      const list: Record<string, unknown>[] = [];
+      for (const id of v) {
+        if (id == null) continue;
+        const obj = byId.get(String(id));
+        if (obj) list.push(obj);
+      }
+      row[head] = list;
+    }
   }
 };

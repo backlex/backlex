@@ -12,13 +12,13 @@ export interface ParsedQuery {
   sort: SortClause[];
   fields: string[] | null;
   /**
-   * Relation field names to inline-expand in the response. Each entry must
-   * be a single-FK `relation` field on this collection that the caller has
-   * read permission on; chains (`a.b`) and `relation_many` heads are
+   * Relation field names to inline-expand in the response. Each entry is a
+   * `relation` (to-one) or `relation_many` (to-many) field on this collection
+   * that the caller has read permission on; multi-hop chains (`a.b`) are
    * rejected at parse time (see "What's not yet supported" in
-   * docs/querying.md). Validation only covers source-side rules — the
-   * target collection + per-target read permission gate is enforced by the
-   * items list/get handlers when the LEFT JOIN is materialized.
+   * docs/querying.md). Validation only covers source-side rules — the target
+   * collection + per-target read permission gate is enforced by the items
+   * list/get handlers (a LEFT JOIN for to-one, a batch fetch for to-many).
    */
   expand: string[];
   /**
@@ -316,13 +316,7 @@ export const parseQuery = (
         }
         const def = fieldDefsByName.get(head);
         if (!def) throw new AppError("VALIDATION", `Unknown field: ${head}`);
-        if (def.type === "relation_many") {
-          throw new AppError(
-            "VALIDATION",
-            `Field projection through relation_many not yet supported: ${f}`,
-          );
-        }
-        if (def.type !== "relation") {
+        if (def.type !== "relation" && def.type !== "relation_many") {
           throw new AppError(
             "VALIDATION",
             `Cannot project a sub-field of non-relation "${head}"`,
@@ -350,12 +344,13 @@ export const parseQuery = (
     fieldsList = baseFields;
   }
 
-  // `expand=<relation_field>[,<relation_field>…]` — inline the target row of
-  // each named relation field in the response. Single-hop only in this PR;
-  // chains (`a.b`) and `relation_many` heads return 422. The handler resolves
-  // the target collection, gates read perm, and materializes the JOIN — we
-  // only enforce source-side identifier shape, field existence, type, and
-  // the caller's source-side `fields` allow-list here.
+  // `expand=<relation_field>[,<relation_field>…]` — inline the target row(s) of
+  // each named relation field in the response. Both `relation` (to-one → nested
+  // object) and `relation_many` (to-many → array of nested rows) heads are
+  // accepted; multi-hop chains (`a.b`) still return 422. The handler resolves
+  // the target collection, gates read perm, and materializes the JOIN (to-one)
+  // or a batch fetch (to-many) — we only enforce source-side identifier shape,
+  // field existence, type, and the caller's source-side `fields` allow-list here.
   const expand: string[] = [];
   const expandRaw = params.get("expand");
   if (expandRaw) {
@@ -374,13 +369,7 @@ export const parseQuery = (
       if (!def) {
         throw new AppError("VALIDATION", `Unknown expand field: ${name}`);
       }
-      if (def.type === "relation_many") {
-        throw new AppError(
-          "VALIDATION",
-          `expand on relation_many not yet supported: ${name}`,
-        );
-      }
-      if (def.type !== "relation") {
+      if (def.type !== "relation" && def.type !== "relation_many") {
         throw new AppError(
           "VALIDATION",
           `expand only works on relation fields — "${name}" is ${def.type}`,

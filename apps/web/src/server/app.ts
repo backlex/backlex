@@ -59,6 +59,8 @@ import { messagingRoutes } from "./routes/messaging";
 import { jobsRoutes } from "./routes/jobs";
 import { openapiRoutes } from "./routes/openapi";
 import { panelsRoutes } from "./routes/panels";
+import { dashboardsRoutes } from "./routes/dashboards";
+import { dashboardsPublicRoutes } from "./routes/dashboards-public";
 import { realtimeRoutes } from "./routes/realtime";
 import { realtimeAdminRoutes } from "./routes/realtime-admin";
 import { revisionsRoutes } from "./routes/revisions";
@@ -363,14 +365,23 @@ export const createApp = (env: Env) => {
     "base-uri 'self'",
     "frame-ancestors 'self'",
   ].join("; ");
+  // Embedded BI dashboards are meant to be iframed on third-party sites, so the
+  // public embed page (`/embed/...`) and its data API (`/api/public/...`) must
+  // allow framing from any origin — `frame-ancestors *` plus dropping the
+  // X-Frame-Options secureHeaders() set (XFO has no allow-all value, so its
+  // mere presence as SAMEORIGIN/DENY would block the frame). Everything else
+  // keeps the strict same-origin policy.
+  const EMBED_CSP = STRICT_CSP.replace("frame-ancestors 'self'", "frame-ancestors *");
   app.use("*", async (c, next) => {
     await next();
     const path = new URL(c.req.url).pathname;
     const isGraphiql = c.req.method === "GET" && path === "/api/graphql";
+    const isEmbed = path.startsWith("/embed/") || path.startsWith("/api/public/");
     c.res.headers.set(
       "content-security-policy",
-      isGraphiql ? GRAPHIQL_CSP : STRICT_CSP,
+      isGraphiql ? GRAPHIQL_CSP : isEmbed ? EMBED_CSP : STRICT_CSP,
     );
+    if (isEmbed) c.res.headers.delete("x-frame-options");
   });
 
   // Build the per-request context *before* CORS so the CORS origin check can
@@ -624,6 +635,7 @@ export const createApp = (env: Env) => {
   app.route("/api/admin/platform-ldap-config", platformLdapAdminRoutes);
   app.route("/api/admin/adopt", adoptRoutes);
   app.route("/api/admin/panels", panelsRoutes);
+  app.route("/api/admin/dashboards", dashboardsRoutes);
   app.route("/api/admin/i18n", i18nRoutes);
   app.route("/api/i18n", i18nPublicRoutes);
   app.route("/api/admin/settings", settingsRoutes);
@@ -655,6 +667,7 @@ export const createApp = (env: Env) => {
   app.route("/api/shared-links", sharedLinksRoutes);
   // Public, unauthenticated record-share resolution — no `requireUser`.
   app.route("/api/shared", sharedPublicRoutes);
+  app.route("/api/public/dashboards", dashboardsPublicRoutes);
   app.route("/api/notifications", notificationsRoutes);
   app.route("/api/device-tokens", deviceTokensRoutes);
   app.route("/api/phone-numbers", phoneNumbersRoutes);

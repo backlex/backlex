@@ -702,6 +702,10 @@ msgstr "7 gün"
 msgid "90 days"
 msgstr "90 gün"
 
+#: src/client/admin/parity/insights.tsx
+msgid "A dashboard with that name already exists."
+msgstr "Bu adda bir pano zaten var."
+
 #: src/client/admin/add-field.tsx
 msgid "A dropdown needs at least one choice."
 msgstr "Açılır liste en az bir seçenek içermelidir."
@@ -1144,6 +1148,7 @@ msgstr "alice"
 
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/ui.tsx
 msgid "All"
 msgstr "Tümü"
@@ -1707,8 +1712,8 @@ msgid "Breadcrumb"
 msgstr "Yer imi"
 
 #: src/client/admin/parity/insights.tsx
-msgid "Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard."
-msgstr "Bir koleksiyondan (say / topla / ortalama …) veya kaydedilmiş bir SQL sorgusundan panel oluşturun. Panoyu düzenlemek için panelleri sürükleyin."
+#~ msgid "Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard."
+#~ msgstr "Bir koleksiyondan (say / topla / ortalama …) veya kaydedilmiş bir SQL sorgusundan panel oluşturun. Panoyu düzenlemek için panelleri sürükleyin."
 
 #: src/client/admin/condition-editor.tsx
 msgid "Builder"
@@ -1997,6 +2002,7 @@ msgstr "kapat"
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/sheet.tsx
 #: src/client/components/mcp-key-modal.tsx
 #: src/client/pages/openapi-export.tsx
@@ -2350,6 +2356,7 @@ msgstr "kopyala"
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 #: src/client/components/mcp-key-modal.tsx
@@ -2503,6 +2510,10 @@ msgstr "Hesap oluşturun"
 #: src/client/admin/collections-index.tsx
 msgid "Create collection"
 msgstr "Koleksiyon oluştur"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Create dashboard"
+msgstr "Pano oluştur"
 
 #: src/client/admin/storage.tsx
 msgid "Create folder"
@@ -2704,11 +2715,23 @@ msgstr "Tehlike bölgesi"
 msgid "Dark"
 msgstr "Koyu"
 
+#: src/client/admin/parity/insights.tsx
+msgid "Dashboard \"{name}\" created."
+msgstr "\"{name}\" panosu oluşturuldu."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Dashboard \"{name}\" deleted."
+msgstr "\"{name}\" panosu silindi."
+
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/ui.tsx
 #: src/client/pages/graphql.tsx
 msgid "Data"
 msgstr "Veri"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Data scope"
+msgstr "Veri kapsamı"
 
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/parity/database.tsx
@@ -2833,6 +2856,15 @@ msgstr "<0>c_{activeCollection}</0> koleksiyonu silinsin mi?"
 #: src/client/admin/app.tsx
 msgid "Delete collection <0>c_{slug}</0>?"
 msgstr "<0>c_{slug}</0> koleksiyonu silinsin mi?"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Delete dashboard"
+msgstr "Panoyu sil"
+
+#. placeholder {0}: confirmDeleteDash.name
+#: src/client/admin/parity/insights.tsx
+msgid "Delete dashboard \"{0}\"?"
+msgstr "\"{0}\" panosu silinsin mi?"
 
 #: src/client/admin/parity/app-users.tsx
 msgid "Delete end-user"
@@ -2976,6 +3008,14 @@ msgstr "Altta yatan motora doğrudan erişim. Adaptör: <0>{0}</0>. SQL editör�
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Direct Streamable HTTP — useful for CI agents and smoke tests."
 msgstr "Doğrudan Streamable HTTP — CI ajanları ve duman testleri için kullanışlı."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Disable embed"
+msgstr "Gömmeyi kapat"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Disable the embed to change the scope."
+msgstr "Kapsamı değiştirmek için gömmeyi kapatın."
 
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
@@ -3375,6 +3415,14 @@ msgstr "yalnızca e-posta, parola yok"
 msgid "Emails a one-time link valid for 30 minutes."
 msgstr "30 dakika geçerli tek kullanımlık bir bağlantı e-posta ile gönderir."
 
+#: src/client/admin/parity/insights.tsx
+msgid "Embed live"
+msgstr "Gömme aktif"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Embed URL — copy it now"
+msgstr "Gömme URL’si — şimdi kopyalayın"
+
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Empty"
 msgstr "Boş"
@@ -3386,6 +3434,10 @@ msgstr "Boş veya şablon"
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Enable anyway"
 msgstr "Yine de etkinleştir"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Enable public embed"
+msgstr "Herkese açık gömmeyi etkinleştir"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
@@ -3401,6 +3453,10 @@ msgstr "Etkin"
 #: src/client/admin/parity/auth-settings.tsx
 msgid "enabled but not configured — won't appear on sign-in"
 msgstr "etkin ama yapılandırılmadı — giriş ekranında görünmez"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Enabling…"
+msgstr "Etkinleştiriliyor…"
 
 #: src/client/admin/parity/app-users.tsx
 msgid "End-users"
@@ -4188,6 +4244,14 @@ msgstr "Grup"
 msgid "Group by"
 msgstr "Grupla"
 
+#: src/client/admin/parity/insights.tsx
+msgid "Group panels into dashboards, build them from a collection (count / sum / average …) or a saved SQL query, then publish a dashboard to a public embed URL."
+msgstr "Panelleri panolarda gruplayın; bir koleksiyondan (sayım / toplam / ortalama …) veya kayıtlı bir SQL sorgusundan oluşturun, ardından bir panoyu herkese açık gömme URL’sinde yayınlayın."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Group panels under a named dashboard you can publish to a public embed URL."
+msgstr "Panelleri, herkese açık gömme URL’sinde yayınlayabileceğiniz adlandırılmış bir panoda gruplayın."
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Groups"
 msgstr "Gruplar"
@@ -4971,6 +5035,10 @@ msgstr "Bağla"
 msgid "Link by verified email"
 msgstr "Doğrulanmış e-postayla bağla"
 
+#: src/client/admin/parity/insights.tsx
+msgid "Link copied."
+msgstr "Bağlantı kopyalandı."
+
 #: src/client/admin/account-page.tsx
 msgid "Linked — you can sign in with this provider."
 msgstr "Bağlandı — bu sağlayıcıyla giriş yapabilirsiniz."
@@ -5224,6 +5292,10 @@ msgstr "aşağıdakilerin {0} ile eşleş"
 #: src/client/admin/permission-tester.tsx
 msgid "Matched rules"
 msgstr "Eşleşen kurallar"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Max 120 characters."
+msgstr "En fazla 120 karakter."
 
 #: src/client/admin/parity/insights.tsx
 msgid "Max 500 characters."
@@ -5550,6 +5622,10 @@ msgstr "Yeni koleksiyon"
 msgid "New conversation"
 msgstr "Yeni konuşma"
 
+#: src/client/admin/parity/insights.tsx
+msgid "New dashboard"
+msgstr "Yeni pano"
+
 #: src/client/admin/pages/feature-flags.tsx
 msgid "New flag"
 msgstr "Yeni bayrak"
@@ -5769,6 +5845,10 @@ msgstr "İçerik şeması yok."
 #: src/client/admin/parity/insights.tsx
 msgid "No data yet — run the panel."
 msgstr "Henüz veri yok — paneli çalıştırın."
+
+#: src/client/pages/embed-dashboard.tsx
+msgid "No data."
+msgstr "Veri yok."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "No DDL on the table."
@@ -6318,6 +6398,7 @@ msgid "open"
 msgstr "aç"
 
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/parity/insights.tsx
 msgid "Open"
 msgstr "Aç"
 
@@ -6482,6 +6563,14 @@ msgstr "\"{name}\" paneli silindi."
 #: src/client/admin/parity/insights.tsx
 msgid "Panel \"{name}\" saved."
 msgstr "\"{name}\" paneli kaydedildi."
+
+#: src/client/admin/parity/insights.tsx
+msgid "panel data limited to this role's read permission"
+msgstr "panel verisi bu rolün okuma iznine göre sınırlanır"
+
+#: src/client/admin/parity/insights.tsx
+msgid "panels run with full read access — for fully public stats"
+msgstr "paneller tam okuma erişimiyle çalışır — tamamen herkese açık istatistikler için"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "parent not adopted"
@@ -6942,6 +7031,10 @@ msgstr "Gönderi kaydedildi."
 msgid "POST to any HTTPS endpoint when collection events fire."
 msgstr "Koleksiyon olayları tetiklendiğinde herhangi bir HTTPS uç noktasına POST gönderin."
 
+#: src/client/pages/embed-dashboard.tsx
+msgid "Powered by backlex · this embed can be revoked at any time."
+msgstr "backlex ile güçlendirilmiştir · bu gömme istediğiniz zaman iptal edilebilir."
+
 #: src/client/pages/magic-link.tsx
 msgid "Prefer a password?"
 msgstr "Parola mı tercih edersiniz?"
@@ -7089,6 +7182,18 @@ msgstr "Sağlayıcılar"
 msgid "Public"
 msgstr "Herkese açık"
 
+#: src/client/admin/parity/insights.tsx
+msgid "Public (unscoped)"
+msgstr "Herkese açık (kapsamsız)"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Public embed disabled."
+msgstr "Herkese açık gömme kapatıldı."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Public embed enabled."
+msgstr "Herkese açık gömme etkinleştirildi."
+
 #: src/client/pages/shared-record.tsx
 msgid "public link"
 msgstr "herkese açık bağlantı"
@@ -7118,6 +7223,10 @@ msgstr "Şimdi yayınla"
 #: src/client/admin/item-editor.tsx
 msgid "Publish scheduled."
 msgstr "Yayın zamanlandı."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Publish this dashboard to a public, unauthenticated embed URL. Anyone with the link can view it — embed it in an iframe on your own site."
+msgstr "Bu panoyu herkese açık, kimlik doğrulaması gerektirmeyen bir gömme URL’sinde yayınlayın. Bağlantıya sahip olan herkes görüntüleyebilir — kendi sitenizde bir iframe içine gömün."
 
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/item-views.tsx
@@ -7709,6 +7818,10 @@ msgstr "Sakla (otomatik)"
 msgid "Retry"
 msgstr "Yeniden dene"
 
+#: src/client/admin/parity/insights.tsx
+msgid "Revenue overview"
+msgstr "Gelir genel görünümü"
+
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 #: src/client/admin/parity/revisions.tsx
@@ -7869,6 +7982,10 @@ msgstr "kök"
 #: src/client/admin/pages/webhooks.tsx
 msgid "Rotate"
 msgstr "Döndür"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Rotate link"
+msgstr "Bağlantıyı yenile"
 
 #: src/client/admin/parity/insights.tsx
 msgid "row count (no field needed)"
@@ -8191,6 +8308,10 @@ msgstr "Şemalar"
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Scope"
 msgstr "Kapsam"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Scope the embed to a role so it only exposes what that role can read."
+msgstr "Gömmeyi bir role kapsayın; böylece yalnızca o rolün okuyabildiğini gösterir."
 
 #: src/client/pages/api-keys.tsx
 msgid "Scope to role"
@@ -8574,6 +8695,15 @@ msgstr "Ayarlar → MCP → Ekle. Claude Desktop ile aynı JSON şeklini kullan�
 #: src/client/admin/pages/settings.tsx
 #~ msgid "Settings saved."
 #~ msgstr "Ayarlar kaydedildi."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Share"
+msgstr "Paylaş"
+
+#. placeholder {0}: dashboard.name
+#: src/client/admin/parity/insights.tsx
+msgid "Share \"{0}\""
+msgstr "\"{0}\" paylaş"
 
 #: src/client/admin/item-collaboration.tsx
 msgid "Share link copied."
@@ -9330,6 +9460,10 @@ msgstr "Danışman uç noktası hata döndürdü. Tekrar denemek için yeniden �
 msgid "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> as the redirect URI with the provider."
 msgstr "İstemci gizli anahtarı bekleme sırasında şifrelenir. Her iki alanı da boş bırakırsanız giriş, <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> ortam değişkenlerine döner. Sağlayıcıda yönlendirme URI'si olarak <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> adresini kaydedin."
 
+#: src/client/pages/embed-dashboard.tsx
+msgid "The embed link may have been revoked, or the dashboard was removed."
+msgstr "Gömme bağlantısı iptal edilmiş ya da pano kaldırılmış olabilir."
+
 #: src/client/pages/sign-up.tsx
 msgid "The first account on a fresh instance is provisioned as <0>admin</0> automatically. You can demote yourself later."
 msgstr "Yeni bir örneğin ilk hesabı otomatik olarak <0>admin</0> olarak sağlanır. Daha sonra kendinizi düşürebilirsiniz."
@@ -9358,6 +9492,10 @@ msgstr "Fiziksel tablo ve tüm satırlar silinir. Bu geri alınamaz. Bu koleksiy
 #: src/client/admin/parity/auth-settings.tsx
 msgid "The provider is added disabled. Set its client secret server-side, then enable it here."
 msgstr "Sağlayıcı devre dışı olarak eklendi. Sunucu tarafında istemci gizli anahtarını ayarlayın, ardından burada etkinleştirin."
+
+#: src/client/admin/parity/insights.tsx
+msgid "The public embed is live. The link was shown once when it was created — rotate it below if you need the URL again."
+msgstr "Herkese açık gömme aktif. Bağlantı oluşturulduğunda yalnızca bir kez gösterildi — URL’ye tekrar ihtiyacınız olursa aşağıdan yenileyin."
 
 #: src/client/admin/parity/insights.tsx
 msgid "The query runs verbatim. The visualization hint above explains how its columns map to the chart."
@@ -9395,9 +9533,25 @@ msgstr "bu koleksiyon"
 msgid "This collection has no fields that support bulk editing. Structured (json / file / relation list / localized) and rich-text fields are edited per record."
 msgstr "Bu koleksiyonda toplu düzenlemeyi destekleyen alan yok. Yapısal (json / dosya / ilişki listesi / yerelleştirilmiş) ve zengin metin alanları kayıt bazında düzenlenir."
 
+#: src/client/admin/parity/insights.tsx
+msgid "This dashboard has no panels yet"
+msgstr "Bu panoda henüz panel yok"
+
+#: src/client/pages/embed-dashboard.tsx
+msgid "This dashboard has no panels yet."
+msgstr "Bu panoda henüz panel yok."
+
+#: src/client/pages/embed-dashboard.tsx
+msgid "This dashboard is no longer available"
+msgstr "Bu pano artık kullanılamıyor"
+
 #: src/client/admin/parity/database.tsx
 msgid "This database has no tables."
 msgstr "Bu veritabanında hiç tablo yok."
+
+#: src/client/admin/parity/insights.tsx
+msgid "This deletes the dashboard and disables its public embed. Its panels are <0>not</0> deleted — they become ungrouped. This action can't be undone."
+msgstr "Bu, panoyu siler ve herkese açık gömmesini kapatır. Panelleri <0>silinmez</0> — gruplanmamış hale gelir. Bu işlem geri alınamaz."
 
 #: src/client/pages/invite.tsx
 msgid "This invite link is invalid or has already been used."
@@ -9419,6 +9573,10 @@ msgstr "Bu örneğin ilk kullanıcısı bu."
 #: src/client/pages/shared-record.tsx
 msgid "This link is no longer available"
 msgstr "Bu bağlantı artık kullanılamıyor"
+
+#: src/client/admin/parity/insights.tsx
+msgid "This link is shown once. Rotate it to invalidate the old one."
+msgstr "Bu bağlantı bir kez gösterilir. Eskisini geçersiz kılmak için yenileyin."
 
 #: src/client/admin/app.tsx
 msgid "This list updates in real time"
@@ -9763,6 +9921,10 @@ msgstr "bağlanmamış"
 #: src/client/admin/parity/revisions.tsx
 msgid "unchanged"
 msgstr "değişmedi"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Ungrouped"
+msgstr "Gruplanmamış"
 
 #: src/client/admin/pages/logs.tsx
 msgid "Unified log explorer over the activity audit store. Switch between the Stream lens (HTTP, data, automation, functions, storage) and the Table audit trail — both read the same rows."

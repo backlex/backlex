@@ -21,11 +21,16 @@ import { ConfirmDialog } from "../sheet";
 import { ApiError } from "@/lib/api";
 import {
   collectionsApi,
+  dashboardsApi,
   dbAdminApi,
   panelsApi,
+  rolesApi,
   type ApiCollection,
+  type ApiDashboard,
   type ApiPanel,
+  type ApiRole,
 } from "../api";
+import { PanelBody, panelSubtitle } from "../panel-render";
 import { InsightsSkeleton } from "../page-skeletons";
 
 /**
@@ -265,6 +270,14 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
   const [editor, setEditor] = useState<{ mode: "create" } | { mode: "edit"; panel: ApiPanel } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ApiPanel | null>(null);
   const [editingLayout, setEditingLayout] = useState(false);
+  // Dashboards group panels. `selected` drives the picker: "" = All panels,
+  // "none" = ungrouped/loose, or a dashboard id. New panels created while a
+  // dashboard is selected are bound to it.
+  const [dashboards, setDashboards] = useState<ApiDashboard[]>([]);
+  const [selected, setSelected] = useState<string>("");
+  const [newDashOpen, setNewDashOpen] = useState(false);
+  const [shareFor, setShareFor] = useState<ApiDashboard | null>(null);
+  const [confirmDeleteDash, setConfirmDeleteDash] = useState<ApiDashboard | null>(null);
   const isMobile = useIsMobile();
   // The drag/resize layout editor needs a pointer and a wide grid — neither
   // exists on phones, where DashboardGrid falls back to a stacked column.
@@ -277,7 +290,11 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
 
   const reload = async () => {
     try {
-      const r = await panelsApi.list();
+      const [r, dr] = await Promise.all([
+        panelsApi.list(),
+        dashboardsApi.list().catch(() => ({ data: [] as ApiDashboard[] })),
+      ]);
+      setDashboards(dr.data ?? []);
       const list = r.data ?? [];
       setPanels(list);
       // Hydrate the local layouts map from the server's authoritative copy.
@@ -337,19 +354,37 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
   // First whole-page fetch — insight panels haven't landed yet.
   if (!loaded) return <InsightsSkeleton />;
 
+  const selectedDash =
+    selected && selected !== "none" ? dashboards.find((d) => d.id === selected) ?? null : null;
+  const visiblePanels =
+    selected === ""
+      ? panels
+      : selected === "none"
+        ? panels.filter((p) => !p.dashboardId)
+        : panels.filter((p) => p.dashboardId === selected);
+
   return (
     <div className="flex flex-col gap-4.5">
       <PageHeader
         title={t`Insights`}
-        description={t`Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard.`}
+        description={t`Group panels into dashboards, build them from a collection (count / sum / average …) or a saved SQL query, then publish a dashboard to a public embed URL.`}
         actions={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            {selectedDash && (
+              <Button
+                variant={selectedDash.embedEnabled ? "primary" : "outline"}
+                icon={I.Link}
+                onClick={() => setShareFor(selectedDash)}
+              >
+                {selectedDash.embedEnabled ? <Trans>Embed live</Trans> : <Trans>Share</Trans>}
+              </Button>
+            )}
             {!isMobile && (
               <Button
                 variant={editing ? "primary" : "outline"}
                 icon={editing ? I.Check : I.Pencil}
                 onClick={() => setEditingLayout((v) => !v)}
-                disabled={panels.length === 0}
+                disabled={visiblePanels.length === 0}
               >
                 {editing ? <Trans>Done</Trans> : <Trans>Edit layout</Trans>}
               </Button>
@@ -358,9 +393,37 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
           </div>
         }
       />
-      {panels.length > 0 ? (
+
+      {/* Dashboard picker — All / each dashboard / ungrouped + New. */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <PickerTab active={selected === ""} onClick={() => setSelected("")}>
+          <Trans>All</Trans>
+          <span className="ml-1.5 tabular-nums text-muted-foreground">{panels.length}</span>
+        </PickerTab>
+        {dashboards.map((d) => (
+          <PickerTab key={d.id} active={selected === d.id} onClick={() => setSelected(d.id)}>
+            {d.name}
+            {d.embedEnabled && <I.Link size={11} className="ml-1.5 text-primary" />}
+          </PickerTab>
+        ))}
+        <PickerTab active={selected === "none"} onClick={() => setSelected("none")}>
+          <Trans>Ungrouped</Trans>
+        </PickerTab>
+        <Button size="sm" variant="ghost" icon={I.Plus} onClick={() => setNewDashOpen(true)}>
+          <Trans>New dashboard</Trans>
+        </Button>
+        {selectedDash && (
+          <IconButton
+            icon={I.Trash}
+            title={t`Delete dashboard`}
+            onClick={() => setConfirmDeleteDash(selectedDash)}
+          />
+        )}
+      </div>
+
+      {visiblePanels.length > 0 ? (
         <DashboardGrid
-          panels={panels}
+          panels={visiblePanels}
           layouts={layouts}
           editing={editing}
           onLayoutChange={saveLayout}
@@ -369,7 +432,7 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
       ) : (
         <EmptyState
           icon={I.BarChart}
-          title={<Trans>No insight panels yet</Trans>}
+          title={selectedDash ? <Trans>This dashboard has no panels yet</Trans> : <Trans>No insight panels yet</Trans>}
           description={
             <Trans>Insight panels chart a collection aggregate (count / sum / average …) or a saved SQL query as a counter, sparkline, bars, donut, or table.
             Click <strong>+ New panel</strong> to build your first one — pick a collection, no SQL required.</Trans>
@@ -382,6 +445,7 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
           mode={editor.mode}
           panel={editor.mode === "edit" ? editor.panel : null}
           existing={panels.map((p) => p.name)}
+          dashboardId={editor.mode === "create" && selected && selected !== "none" ? selected : null}
           onClose={() => setEditor(null)}
           onSaved={async (name, mode) => {
             setEditor(null);
@@ -390,6 +454,58 @@ export function InsightsPage({ pushToast }: { pushToast?: (m: string) => void } 
           }}
         />
       )}
+
+      {newDashOpen && (
+        <NewDashboardDialog
+          existing={dashboards.map((d) => d.name)}
+          onClose={() => setNewDashOpen(false)}
+          onCreated={async (id, name) => {
+            setNewDashOpen(false);
+            await reload();
+            setSelected(id);
+            pushToast?.(t`Dashboard "${name}" created.`);
+          }}
+        />
+      )}
+
+      {shareFor && (
+        <ShareDashboardDialog
+          dashboard={shareFor}
+          onClose={() => setShareFor(null)}
+          onChanged={async () => {
+            await reload();
+          }}
+          pushToast={pushToast}
+        />
+      )}
+
+      <ConfirmDialog
+        open={!!confirmDeleteDash}
+        title={confirmDeleteDash ? t`Delete dashboard "${confirmDeleteDash.name}"?` : ""}
+        description={
+          <Trans>
+            This deletes the dashboard and disables its public embed. Its panels are <strong>not</strong> deleted —
+            they become ungrouped. This action can't be undone.
+          </Trans>
+        }
+        actionLabel={t`Delete dashboard`}
+        destructive
+        onCancel={() => setConfirmDeleteDash(null)}
+        onConfirm={async () => {
+          if (!confirmDeleteDash) return;
+          const name = confirmDeleteDash.name;
+          try {
+            await dashboardsApi.remove(confirmDeleteDash.id);
+            setConfirmDeleteDash(null);
+            setSelected("");
+            await reload();
+            pushToast?.(t`Dashboard "${name}" deleted.`);
+          } catch (e) {
+            setConfirmDeleteDash(null);
+            pushToast?.((e as Error).message);
+          }
+        }}
+      />
 
       <ConfirmDialog
         open={!!confirmDelete}
@@ -494,12 +610,14 @@ function PanelEditorDialog({
   mode,
   panel,
   existing,
+  dashboardId,
   onClose,
   onSaved,
 }: {
   mode: "create" | "edit";
   panel: ApiPanel | null;
   existing: string[];
+  dashboardId?: string | null;
   onClose: () => void;
   onSaved: (name: string, mode: "create" | "edit") => void;
 }) {
@@ -715,7 +833,7 @@ function PanelEditorDialog({
         layout: null,
       };
       if (mode === "create") {
-        await panelsApi.create(body);
+        await panelsApi.create({ ...body, dashboardId: dashboardId ?? null });
       } else if (panel) {
         await panelsApi.update(panel.id, body);
       }
@@ -1093,24 +1211,10 @@ function PreviewBlock({
   );
 }
 
-/** One-line summary of what a saved panel shows, used as the card subtitle when
- *  the author didn't write a description. */
-function panelSubtitle(panel: ApiPanel, rowCount: number): string {
-  if (panel.description) return panel.description;
-  if (panel.kind === "items-aggregate") {
-    const cfg = (panel.config ?? {}) as { collection?: string; agg?: string; field?: string; groupBy?: string };
-    const fn = !cfg.agg || cfg.agg === "count" ? "count" : `${cfg.agg}(${cfg.field ?? "?"})`;
-    return `${cfg.collection ?? "collection"} · ${fn}${cfg.groupBy ? ` by ${cfg.groupBy}` : ""}`;
-  }
-  if (panel.kind === "sql") return `${rowCount} row${rowCount === 1 ? "" : "s"} · sql`;
-  return panel.kind;
-}
-
 /**
- * Renders a saved panel using its viz config and the rows returned by
- * /api/admin/panels/:id/run. We pick the first numeric column for sparkline
- * /bars/counter, pair the first two columns for table/donut, and fall back
- * to JSON for anything we can't auto-detect.
+ * Renders a saved panel card — the chart body comes from the shared
+ * `PanelBody` (also used by the public embed page) so both surfaces agree on
+ * how each viz maps its rows.
  */
 function RealPanel({
   panel,
@@ -1126,83 +1230,14 @@ function RealPanel({
   onDelete?: () => void;
 }) {
   const sub = panelSubtitle(panel, rows.length);
-
-  if (error) {
-    return (
-      <Panel title={panel.name} sub={sub} onEdit={onEdit} onDelete={onDelete}>
-        <div className="flex items-start gap-2 rounded-md border border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))] px-3 py-2.5 text-xs text-destructive">
-          <I.AlertTriangle size={13} className="mt-px shrink-0" />
-          <span className="flex-1 [word-break:break-word]">{error}</span>
-        </div>
-      </Panel>
-    );
-  }
-
-  if (rows.length === 0) {
-    return (
-      <Panel title={panel.name} sub={sub} onEdit={onEdit} onDelete={onDelete}>
-        <div className="py-4 text-xs text-muted-foreground"><Trans>No data yet — run the panel.</Trans></div>
-      </Panel>
-    );
-  }
-  const cols = Object.keys(rows[0] ?? {});
-  const numericCol = cols.find((c) => typeof rows[0]![c] === "number");
-  const labelCol = cols.find((c) => c !== numericCol);
-
-  if (panel.viz === "counter") {
-    const v = numericCol ? Number(rows[0]![numericCol]) : rows.length;
-    return (
-      <Panel title={panel.name} sub={sub} onEdit={onEdit} onDelete={onDelete}>
-        <div className="py-2 text-[32px] font-semibold tabular-nums">
-          {v.toLocaleString()}
-        </div>
-      </Panel>
-    );
-  }
-
-  if (panel.viz === "sparkline" || panel.viz === "bars") {
-    const data = rows.map((r) => Number(r[numericCol ?? cols[0]!]) || 0);
-    return (
-      <Panel title={panel.name} sub={sub} onEdit={onEdit} onDelete={onDelete}>
-        <Sparkline data={data} height={160} fill={panel.viz === "sparkline"} bars={panel.viz === "bars"} />
-      </Panel>
-    );
-  }
-
-  if (panel.viz === "donut") {
-    const segs = rows.slice(0, 6).map((r, i) => ({
-      v: Number(r[numericCol ?? cols[1]!]) || 0,
-      color: ["var(--primary)", "oklch(0.7 0.18 260)", "oklch(0.78 0.16 75)", "oklch(0.6 0 0)", "oklch(0.7 0.18 22)", "oklch(0.7 0.18 320)"][i]!,
-    }));
-    return (
-      <Panel title={panel.name} sub={sub} onEdit={onEdit} onDelete={onDelete}>
-        <div className="flex items-center gap-[18px] py-3">
-          <Donut segments={segs} />
-          <div className="flex flex-1 flex-col gap-1.5 text-[12.5px]">
-            {rows.slice(0, 6).map((r, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <span className="size-2 rounded-[2px]" style={{ background: segs[i]!.color }} />
-                <span className="flex-1 font-mono">{String(r[labelCol ?? cols[0]!])}</span>
-                <span className="tabular-nums">{Number(r[numericCol ?? cols[1]!])}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Panel>
-    );
-  }
-
-  // Fallback: small table.
   return (
     <Panel title={panel.name} sub={sub} onEdit={onEdit} onDelete={onDelete}>
-      <div className="flex flex-col gap-1.5 text-xs">
-        {rows.slice(0, 8).map((r, i) => (
-          <div key={i} className={`flex justify-between pb-1 font-mono ${i < Math.min(rows.length, 8) - 1 ? "border-b border-border" : ""}`}>
-            <span>{String(r[labelCol ?? cols[0]!])}</span>
-            <span className="tabular-nums">{numericCol ? Number(r[numericCol]).toLocaleString() : ""}</span>
-          </div>
-        ))}
-      </div>
+      <PanelBody
+        viz={panel.viz}
+        rows={rows}
+        error={error}
+        emptyLabel={<Trans>No data yet — run the panel.</Trans>}
+      />
     </Panel>
   );
 }
@@ -1234,43 +1269,246 @@ function Panel({
   );
 }
 
-function Sparkline({ data, height = 60, fill, bars }: { data: number[]; height?: number; fill?: boolean; bars?: boolean }) {
-  const max = Math.max(...data, 1);
-  const w = 100, h = height;
-  if (bars) {
-    return (
-      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: "100%", height }}>
-        {data.map((v, i) => (
-          <rect key={i} x={i * (w / data.length) + 0.4} y={h - (v / max) * h} width={(w / data.length) - 0.8} height={(v / max) * h} fill="var(--primary)" rx="0.6" />
-        ))}
-      </svg>
-    );
-  }
-  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - (v / max) * h}`).join(" ");
+/** A single tab in the dashboard picker strip. */
+function PickerTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: "100%", height }}>
-      {fill && <polyline points={`0,${h} ${pts} ${w},${h}`} fill="color-mix(in oklch, var(--primary) 18%, transparent)" stroke="none" />}
-      <polyline points={pts} fill="none" stroke="var(--primary)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-    </svg>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center rounded-md border px-2.5 py-1 text-[12.5px] font-medium transition-colors ${
+        active
+          ? "border-primary bg-[color-mix(in_oklch,var(--primary)_12%,var(--card))] text-foreground"
+          : "border-border text-muted-foreground hover:bg-muted"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
-function Donut({ segments }: { segments: { v: number; color: string }[] }) {
-  const total = segments.reduce((a, s) => a + s.v, 0);
-  let acc = 0;
-  const r = 36, cx = 50, cy = 50;
+/** Minimal create-dashboard dialog — just a name. */
+function NewDashboardDialog({
+  existing,
+  onClose,
+  onCreated,
+}: {
+  existing: string[];
+  onClose: () => void;
+  onCreated: (id: string, name: string) => void;
+}) {
+  const { t } = useLingui();
+  const [name, setName] = useState("");
+  const [desc, setDesc] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const trimmed = name.trim();
+  const nameError =
+    trimmed.length === 0
+      ? null
+      : trimmed.length > 120
+        ? t`Max 120 characters.`
+        : existing.includes(trimmed)
+          ? t`A dashboard with that name already exists.`
+          : null;
+  const valid = trimmed.length > 0 && !nameError;
+
+  const submit = async () => {
+    if (!valid || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await dashboardsApi.create({ name: trimmed, description: desc.trim() || null });
+      onCreated(res.data.id, res.data.name);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <svg width="120" height="120" viewBox="0 0 100 100">
-      {segments.map((s, i) => {
-        const a0 = (acc / total) * Math.PI * 2 - Math.PI / 2;
-        acc += s.v;
-        const a1 = (acc / total) * Math.PI * 2 - Math.PI / 2;
-        const x0 = cx + Math.cos(a0) * r, y0 = cy + Math.sin(a0) * r;
-        const x1 = cx + Math.cos(a1) * r, y1 = cy + Math.sin(a1) * r;
-        const large = s.v / total > 0.5 ? 1 : 0;
-        return <path key={i} d={`M${cx},${cy} L${x0},${y0} A${r},${r} 0 ${large} 1 ${x1},${y1} Z`} fill={s.color} />;
-      })}
-      <circle cx={cx} cy={cy} r="22" fill="var(--card)" />
-    </svg>
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-[440px]">
+        <DialogHeader>
+          <DialogTitle><Trans>New dashboard</Trans></DialogTitle>
+          <DialogDescription><Trans>Group panels under a named dashboard you can publish to a public embed URL.</Trans></DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-3 py-1">
+          {error && (
+            <div className="flex items-start gap-2 rounded-md border border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))] p-2.5 text-[12.5px] text-destructive">
+              <I.AlertTriangle size={13} className="mt-px shrink-0" /><span className="flex-1">{error}</span>
+            </div>
+          )}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12.5px] font-medium" htmlFor="dash-name"><Trans>Name</Trans> <span className="text-destructive">*</span></label>
+            <Input id="dash-name" autoFocus autoComplete="off" placeholder={t`Revenue overview`} value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void submit(); }} />
+            {nameError && <div className="flex items-center gap-1 text-[11.5px] text-destructive"><I.AlertTriangle size={11} />{nameError}</div>}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12.5px] font-medium" htmlFor="dash-desc"><Trans>Description</Trans> <span className="font-normal text-muted-foreground"><Trans>· optional</Trans></span></label>
+            <Input id="dash-desc" autoComplete="off" value={desc} onChange={(e) => setDesc(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={busy}><Trans>Cancel</Trans></Button>
+          <Button variant="primary" icon={I.Plus} onClick={submit} disabled={!valid || busy}>
+            {busy ? <Trans>Creating…</Trans> : <Trans>Create dashboard</Trans>}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
+
+/**
+ * Share dialog — enable/disable the public embed and reveal the one-time link.
+ * The plaintext token is only returned by `share`, so we show the full URL
+ * right after minting; on reopen we show the live/off state + rotate/disable.
+ */
+function ShareDashboardDialog({
+  dashboard,
+  onClose,
+  onChanged,
+  pushToast,
+}: {
+  dashboard: ApiDashboard;
+  onClose: () => void;
+  onChanged: () => void | Promise<void>;
+  pushToast?: (m: string) => void;
+}) {
+  const { t } = useLingui();
+  const [roles, setRoles] = useState<ApiRole[]>([]);
+  const [roleId, setRoleId] = useState<string>(dashboard.embedRoleId ?? "");
+  const [token, setToken] = useState<string | null>(null);
+  const [enabled, setEnabled] = useState<boolean>(dashboard.embedEnabled);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await rolesApi.list();
+        if (!cancelled) setRoles(r.data ?? []);
+      } catch { /* leave empty */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const url = token ? `${window.location.origin}/embed/d/${token}` : null;
+
+  const enable = async () => {
+    setBusy(true);
+    try {
+      const res = await dashboardsApi.share(dashboard.id, { roleId: roleId || null });
+      setToken(res.token);
+      setEnabled(true);
+      await onChanged();
+      pushToast?.(t`Public embed enabled.`);
+    } catch (e) {
+      pushToast?.((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const disable = async () => {
+    setBusy(true);
+    try {
+      await dashboardsApi.revoke(dashboard.id);
+      setToken(null);
+      setEnabled(false);
+      await onChanged();
+      pushToast?.(t`Public embed disabled.`);
+    } catch (e) {
+      pushToast?.((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copy = async () => {
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      pushToast?.(t`Link copied.`);
+    } catch { /* clipboard may be blocked */ }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <I.Globe size={15} className="text-muted-foreground" />
+            <Trans>Share "{dashboard.name}"</Trans>
+          </DialogTitle>
+          <DialogDescription>
+            <Trans>Publish this dashboard to a public, unauthenticated embed URL. Anyone with the link can view it — embed it in an iframe on your own site.</Trans>
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-col gap-3.5 py-1">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12.5px] font-medium"><Trans>Data scope</Trans></label>
+            <Select
+              value={roleId}
+              onChange={(v) => setRoleId(v)}
+              disabled={enabled}
+              options={[
+                { value: "", label: t`Public (unscoped)`, hint: t`panels run with full read access — for fully public stats` },
+                ...roles.map((r) => ({ value: r.id, label: r.name, hint: t`panel data limited to this role's read permission` })),
+              ]}
+            />
+            <span className="text-[11.5px] text-muted-foreground">
+              {enabled
+                ? <Trans>Disable the embed to change the scope.</Trans>
+                : <Trans>Scope the embed to a role so it only exposes what that role can read.</Trans>}
+            </span>
+          </div>
+
+          {url && (
+            <div className="flex flex-col gap-1.5 rounded-md border border-[color-mix(in_oklch,var(--primary)_30%,var(--border))] bg-[color-mix(in_oklch,var(--primary)_6%,var(--card))] p-2.5">
+              <div className="flex items-center gap-1.5 text-[12px] font-medium text-foreground"><I.Link size={12} /><Trans>Embed URL — copy it now</Trans></div>
+              <div className="flex items-center gap-1.5">
+                <Input readOnly value={url} className="font-mono text-[11.5px]" onFocus={(e) => e.currentTarget.select()} />
+                <IconButton icon={I.Copy} title={t`Copy`} onClick={copy} />
+                <IconButton icon={I.ExternalLink} title={t`Open`} onClick={() => window.open(url, "_blank")} />
+              </div>
+              <span className="text-[11px] text-muted-foreground"><Trans>This link is shown once. Rotate it to invalidate the old one.</Trans></span>
+            </div>
+          )}
+
+          {enabled && !url && (
+            <div className="flex items-start gap-2 rounded-md bg-muted p-2.5 text-[12.5px] text-muted-foreground">
+              <I.Check size={13} className="mt-px shrink-0 text-primary" />
+              <Trans>The public embed is live. The link was shown once when it was created — rotate it below if you need the URL again.</Trans>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={busy}><Trans>Close</Trans></Button>
+          {enabled ? (
+            <>
+              <Button variant="outline" icon={I.Link} onClick={enable} disabled={busy}><Trans>Rotate link</Trans></Button>
+              <Button variant="destructive" icon={I.X} onClick={disable} disabled={busy}><Trans>Disable embed</Trans></Button>
+            </>
+          ) : (
+            <Button variant="primary" icon={I.Globe} onClick={enable} disabled={busy}>
+              {busy ? <Trans>Enabling…</Trans> : <Trans>Enable public embed</Trans>}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+

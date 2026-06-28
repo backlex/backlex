@@ -1350,11 +1350,53 @@ export const savedPanels = pgTable(
     config: jsonb("config").$type<Record<string, unknown>>(),
     /** Optional dashboard layout (x,y,w,h). */
     layout: jsonb("layout").$type<{ x: number; y: number; w: number; h: number } | null>(),
+    /** Optional parent dashboard. NULL = legacy "loose" panel rendered on the
+     *  workspace's default/ungrouped grid. */
+    dashboardId: text("dashboard_id"),
     createdBy: text("created_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("saved_panels_tenant_idx").on(t.tenantId)],
+  (t) => [
+    index("saved_panels_tenant_idx").on(t.tenantId),
+    index("saved_panels_dashboard_idx").on(t.dashboardId),
+  ],
+);
+
+/**
+ * Embedded BI dashboards — named groupings of `saved_panels` that can be
+ * published to a public, unauthenticated embed URL. The plaintext embed token
+ * (`dsh_<hex>`) is returned once on share; only its SHA-256 hash is stored
+ * (`embedTokenHash`), mirroring `shared_links`. `embedRoleId` scopes the
+ * permissions the public embed resolves data against (same idea as
+ * `api_keys.roleId`) — NULL means the embed runs unscoped (admin-equivalent
+ * read, intended for fully public stats).
+ */
+export const dashboards = pgTable(
+  "dashboards",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    name: text("name").notNull(),
+    description: text("description"),
+    /** Dashboard-level layout/display config (column count, theme, …). */
+    layout: jsonb("layout").$type<Record<string, unknown> | null>(),
+    /** When true, the public embed route serves this dashboard by token. */
+    embedEnabled: boolean("embed_enabled").notNull().default(false),
+    /** SHA-256 hash of the one-time embed token. Null = never shared / revoked. */
+    embedTokenHash: text("embed_token_hash"),
+    /** Optional role the public embed resolves panel data against. */
+    embedRoleId: text("embed_role_id").references(() => roles.id, {
+      onDelete: "set null",
+    }),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("dashboards_tenant_idx").on(t.tenantId),
+    uniqueIndex("dashboards_embed_token_idx").on(t.embedTokenHash),
+  ],
 );
 
 export const authConfig = pgTable(

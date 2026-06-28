@@ -1158,11 +1158,48 @@ export const savedPanels = sqliteTable(
     viz: text("viz").notNull().default("sparkline"),
     config: text("config", { mode: "json" }).$type<Record<string, unknown>>(),
     layout: text("layout", { mode: "json" }).$type<{ x: number; y: number; w: number; h: number } | null>(),
+    /** Optional parent dashboard. NULL = legacy "loose" panel. */
+    dashboardId: text("dashboard_id"),
     createdBy: text("created_by"),
     createdAt: ts("created_at"),
     updatedAt: ts("updated_at"),
   },
-  (t) => [index("saved_panels_tenant_idx").on(t.tenantId)],
+  (t) => [
+    index("saved_panels_tenant_idx").on(t.tenantId),
+    index("saved_panels_dashboard_idx").on(t.dashboardId),
+  ],
+);
+
+/**
+ * Embedded BI dashboards — named groupings of `saved_panels` publishable to a
+ * public, unauthenticated embed URL. The plaintext embed token (`dsh_<hex>`)
+ * is returned once on share; only its SHA-256 hash is stored. `embedRoleId`
+ * scopes the permissions the public embed resolves data against. Mirrors
+ * `shared_links` (token hash) + `api_keys.roleId` (scope).
+ */
+export const dashboards = sqliteTable(
+  "dashboards",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id"),
+    name: text("name").notNull(),
+    description: text("description"),
+    layout: text("layout", { mode: "json" }).$type<Record<string, unknown> | null>(),
+    embedEnabled: integer("embed_enabled", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    embedTokenHash: text("embed_token_hash"),
+    embedRoleId: text("embed_role_id").references(() => roles.id, {
+      onDelete: "set null",
+    }),
+    createdBy: text("created_by"),
+    createdAt: ts("created_at"),
+    updatedAt: ts("updated_at"),
+  },
+  (t) => [
+    index("dashboards_tenant_idx").on(t.tenantId),
+    uniqueIndex("dashboards_embed_token_idx").on(t.embedTokenHash),
+  ],
 );
 
 export const authConfig = sqliteTable(

@@ -10,6 +10,7 @@ import { runUsers, runRoles, runFlags, runSettings } from "../src/admin";
 import { runPermissions } from "../src/permissions";
 import { runFunctions } from "../src/functions";
 import { runFlows } from "../src/flows";
+import { runDashboards } from "../src/dashboards";
 import { runAgents } from "../src/agents";
 import { runTemplates } from "../src/templates";
 import { runWebhooks } from "../src/webhooks";
@@ -79,6 +80,9 @@ Usage:
 
   backlex flows <list|get|run|create|delete>
       Visual workflow builder (definitions as JSON).
+
+  backlex dashboards <list|get|run|create|delete|share|revoke>
+      Embedded BI dashboards. \`share <id>\` mints a public embed token.
 
   backlex agents <list|get|create|update|delete|threads|run>
       AI agents. \`run <id> --message "…"\` runs a turn and prints the answer.
@@ -196,6 +200,10 @@ const run = async () => {
     case "flows":
     case "flow":
       await runFlows(rest);
+      return;
+    case "dashboards":
+    case "dashboard":
+      await runDashboards(rest);
       return;
     case "agents":
     case "agent":

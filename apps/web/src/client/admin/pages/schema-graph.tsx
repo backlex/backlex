@@ -426,9 +426,11 @@ function ErdCanvas({
       onMutated(collections.map((c) => (c.slug === slug ? { ...c, fields } : c)));
       try {
         await collectionsApi.patch(slug, { fields });
+        // NOTE: do NOT refetch-and-overwrite on success. The optimistic state IS
+        // the new truth; an immediate list() can hit a different isolate whose
+        // collections cache is still stale (≤TTL) and resurrect the change we
+        // just made (the "drops then reappears" bug). Reconcile only on error.
         pushToast(note);
-        const res = await collectionsApi.list();
-        if (Array.isArray(res.data)) onMutated(res.data);
       } catch (e) {
         onMutated(prev);
         pushToast((e as Error).message, "error");
@@ -611,9 +613,10 @@ function ErdCanvas({
           );
           try {
             await collectionsApi.dropField(slug, name);
+            // Keep the optimistic removal — don't refetch-and-overwrite (a
+            // stale cross-isolate list() cache would resurrect the dropped
+            // column: "drops then reappears"). Reconcile only on error.
             pushToast(t`Column "${name}" dropped from c_${slug}.`);
-            const res = await collectionsApi.list();
-            if (Array.isArray(res.data)) onMutated(res.data);
           } catch (e) {
             onMutated(prev);
             pushToast((e as Error).message, "error");

@@ -33,7 +33,12 @@ import {
   deserializeRow,
   projectFields,
 } from "../services/items/serialize";
-import { resolveExpands, applyExpandToRow } from "../services/items/expand";
+import {
+  resolveExpands,
+  applyExpandToRow,
+  resolveManyExpands,
+  applyManyExpandsToRows,
+} from "../services/items/expand";
 import {
   ITEMS_AGG_FUNCS,
   runItemsAggregate,
@@ -590,11 +595,24 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       // nested-filter chain walker above (`rel_<head>` is the same alias
       // whether it came from a filter, a sort, or an expand). Resolver
       // gates per-target read permission + tenant scope on every entry.
+      // Split expand heads: to-one (`relation`) ride the JOIN resolver; to-many
+      // (`relation_many`) are batch-fetched after the page is materialized.
+      const isManyHead = (h: string) =>
+        collection.fields.find((f) => f.name === h)?.type === "relation_many";
+      const expandOne = q.expand.filter((h) => !isManyHead(h));
+      const expandManyHeads = q.expand.filter(isManyHead);
       const {
         extraJoins: expandJoins,
         selects: expandSelects,
         plans: expandPlans,
-      } = await resolveExpands(ctx, auth, collection, q.expand, joinMap, q.expandSubs);
+      } = await resolveExpands(ctx, auth, collection, expandOne, joinMap, q.expandSubs);
+      const manyPlans = await resolveManyExpands(
+        ctx,
+        auth,
+        collection,
+        expandManyHeads,
+        q.expandSubs,
+      );
       for (const j of expandJoins) extraJoins.push(j);
       const hasJoins = extraJoins.length > 0;
 
@@ -743,6 +761,15 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         perm.fields,
         { hasCreatedAt: collection.hasCreatedAt, hasUpdatedAt: collection.hasUpdatedAt },
       );
+      // A to-many expand head needs its raw id-array column SELECTed so the
+      // batch step can read the ids — force it into the projection when one is
+      // active (`?fields=...`). With no projection every column is already
+      // selected, so this is a no-op.
+      if (projection) {
+        for (const h of expandManyHeads) {
+          if (!projection.includes(h)) projection.push(h);
+        }
+      }
       // When relation joins are present the SELECT must qualify every base-
       // table column — bare `*` / bare identifiers would surface the joined
       // target's `id`/`created_at`/etc. and the wire shape would silently
@@ -926,31 +953,37 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
         count: rows.length,
         ids: rows.slice(0, 50).map((r) => r[collection.pkColumn] ?? null),
       });
-      return c.json({
-        data: rows.map((r) => {
-          const out = localizeRow(
-            deserializeRow(
-              r,
-              collection.fields,
-              ctx.dialect,
-              collection.ownerScoped,
-              projection,
-            ),
+      const data = rows.map((r) => {
+        const out = localizeRow(
+          deserializeRow(
+            r,
             collection.fields,
-            locale,
-            defaultLocale,
-          );
-          // Substitute the raw FK id with the inlined target row. The
-          // `__expand_<head>` JSON object was emitted by the SELECT; we
-          // parse + camelCase + timestamp-deserialize it here so the
-          // wire shape matches `GET /api/items/<target>/<id>`. Done
-          // AFTER localizeRow so localized i18n_text fields on the
-          // target keep their own behavior (no double-projection).
-          if (expandPlans.length > 0) {
-            applyExpandToRow(out, r, expandPlans, ctx.dialect);
-          }
-          return out;
-        }),
+            ctx.dialect,
+            collection.ownerScoped,
+            projection,
+          ),
+          collection.fields,
+          locale,
+          defaultLocale,
+        );
+        // Substitute the raw FK id with the inlined target row. The
+        // `__expand_<head>` JSON object was emitted by the SELECT; we
+        // parse + camelCase + timestamp-deserialize it here so the
+        // wire shape matches `GET /api/items/<target>/<id>`. Done
+        // AFTER localizeRow so localized i18n_text fields on the
+        // target keep their own behavior (no double-projection).
+        if (expandPlans.length > 0) {
+          applyExpandToRow(out, r, expandPlans, ctx.dialect);
+        }
+        return out;
+      });
+      // to-many (`relation_many`) expands: one batch fetch per head over the
+      // whole page, then each row's id array becomes an array of inlined rows.
+      if (manyPlans.length > 0) {
+        await applyManyExpandsToRows(ctx, auth, data, manyPlans);
+      }
+      return c.json({
+        data,
         limit: q.limit,
         offset: q.offset,
         ...(metaOut ? { meta: metaOut } : {}),
@@ -1629,13 +1662,7 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
           if (!def) {
             throw new AppError("VALIDATION", `Unknown expand field: ${name}`);
           }
-          if (def.type === "relation_many") {
-            throw new AppError(
-              "VALIDATION",
-              `expand on relation_many not yet supported: ${name}`,
-            );
-          }
-          if (def.type !== "relation") {
+          if (def.type !== "relation" && def.type !== "relation_many") {
             throw new AppError(
               "VALIDATION",
               `expand only works on relation fields — "${name}" is ${def.type}`,
@@ -1653,13 +1680,24 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
           }
         }
       }
+      // Split to-one (JOIN) from to-many (batch) heads, same as the list path.
+      const isManyHead = (h: string) =>
+        collection.fields.find((f) => f.name === h)?.type === "relation_many";
+      const expandOne = expand.filter((h) => !isManyHead(h));
+      const expandManyHeads = expand.filter(isManyHead);
 
       const joinMap = new Map<string, { alias: string; target: CollectionRow }>();
       const {
         extraJoins: expandJoins,
         selects: expandSelects,
         plans: expandPlans,
-      } = await resolveExpands(ctx, auth, collection, expand, joinMap);
+      } = await resolveExpands(ctx, auth, collection, expandOne, joinMap);
+      const manyPlans = await resolveManyExpands(
+        ctx,
+        auth,
+        collection,
+        expandManyHeads,
+      );
       const hasJoins = expandJoins.length > 0;
       // When joins are added, `*` would surface the target's columns too —
       // qualify everything to the base table the same way the list handler
@@ -1764,6 +1802,9 @@ export const itemsRoutes = new OpenAPIHono<AppBindings>()
       // above rejects that case first.
       if (expandPlans.length > 0) {
         applyExpandToRow(projected, rows[0], expandPlans, ctx.dialect);
+      }
+      if (manyPlans.length > 0) {
+        await applyManyExpandsToRows(ctx, auth, [projected], manyPlans);
       }
       // Sensitive-read audit (opt-in). Records the viewed item id + the field
       // names returned — never the field values themselves.

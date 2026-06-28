@@ -859,7 +859,7 @@ function PanelEditorDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(90vh-10rem)]">
+        <ScrollArea viewportClassName="max-h-[calc(90vh-10rem)] max-[640px]:max-h-[calc(90vh-15rem)]">
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           {topError && (
             <div className="flex items-start gap-2 rounded-md border border-[color-mix(in_oklch,var(--destructive)_35%,var(--border))] bg-[color-mix(in_oklch,var(--destructive)_8%,var(--card))] p-2.5 text-[12.5px] text-destructive">

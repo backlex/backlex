@@ -85,7 +85,7 @@ export function RoleEditor({ open, role, isNew, onClose, onSave }: RoleEditorPro
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(85vh-13rem)]">
+        <ScrollArea viewportClassName="max-h-[calc(85vh-13rem)] max-[640px]:max-h-[calc(85vh-15rem)]">
         <div className="flex min-w-0 flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Name</Trans></label>

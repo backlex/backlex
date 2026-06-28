@@ -651,7 +651,7 @@ function InviteUserDialog({ roles, onClose, onInvite }: { roles: string[]; onClo
           <DialogTitle className="text-base font-semibold tracking-[-0.01em]"><Trans>Invite user</Trans></DialogTitle>
           <DialogDescription className="mt-0.5 text-[12.5px]"><Trans>Send an email invite. The user finishes signup themselves.</Trans></DialogDescription>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)]">
+        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
         <div className="flex flex-col gap-4 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Email</Trans></label>

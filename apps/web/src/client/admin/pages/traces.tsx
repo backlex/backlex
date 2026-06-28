@@ -209,7 +209,7 @@ function TraceDetail({
         <div className="font-mono text-[11px] text-muted-foreground">
           {trace?.traceId}
         </div>
-        <ScrollArea className="min-h-0" viewportClassName="max-h-[calc(85vh-10rem)]">
+        <ScrollArea className="min-h-0" viewportClassName="max-h-[calc(85vh-10rem)] max-[640px]:max-h-[calc(85vh-15rem)]">
           <div className="flex flex-col gap-1.5 py-1">
             {spans.length === 0 ? (
               <p className="m-0 px-1 py-6 text-center text-[13px] text-muted-foreground">

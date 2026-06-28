@@ -387,7 +387,7 @@ export function PermissionsMatrix({ roles, pushToast }: PermissionsMatrixProps) 
               {sheetTarget ? `${sheetTarget.role} · ${sheetTarget.action} · ${sheetTarget.collection}` : ""}
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea viewportClassName="max-h-[calc(85vh-13rem)]">
+          <ScrollArea viewportClassName="max-h-[calc(85vh-13rem)] max-[640px]:max-h-[calc(85vh-15rem)]">
           {sheetTarget && (
             <div className="min-w-0">
               <ConditionEditor

@@ -17,6 +17,14 @@ export interface Env {
    *  diagnostic lines (see lib/log.ts). `warn` mutes the access log but keeps
    *  warnings/errors; `debug` adds health-check lines; `silent` mutes all. */
   LOG_LEVEL?: string;
+  /** Fraction (`0`..`1`) of requests whose trace span is persisted for the admin
+   *  Traces panel. Unset → `1` (record every request; the write is non-blocking
+   *  and rows are pruned). Set lower (e.g. `0.1`) on very high-traffic
+   *  instances. See services/traces.ts + docs/tracing.md. */
+  TRACES_SAMPLE_RATE?: string;
+  /** Days to keep span rows before `cronTick` prunes them. Unset → `7`. `0`
+   *  disables pruning (keep forever — bound the table yourself). */
+  TRACES_RETENTION_DAYS?: string;
   /** Schema-template id set by the cloud provisioner; the first workspace of a
    *  fresh install seeds the matching collections (zero-touch). */
   SEED_TEMPLATE?: string;

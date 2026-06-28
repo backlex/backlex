@@ -100,6 +100,7 @@ export default defineConfig({
             { slug: "feature-flags" },
             { slug: "backup-restore" },
             { slug: "advisor" },
+            { slug: "tracing" },
           ],
         },
         {

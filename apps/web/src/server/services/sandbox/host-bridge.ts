@@ -125,7 +125,16 @@ export const dispatchRpc = async (
     if (!isAllowedFetch(url, allowlist)) {
       throw new Error(`URL not in fetch allow-list: ${url}`);
     }
-    const res = await fetch(url, init);
+    // Continue the trace on outbound calls — unless the function set its own
+    // traceparent. Lets a function's HTTP hop (or a callback into this API)
+    // stitch into the same trace as the request that invoked it.
+    const fetchInit: RequestInit = { ...(init ?? {}) };
+    if (bindings.traceparent) {
+      const h = new Headers(fetchInit.headers);
+      if (!h.has("traceparent")) h.set("traceparent", bindings.traceparent);
+      fetchInit.headers = h;
+    }
+    const res = await fetch(url, fetchInit);
     const text = await res.text();
     return { status: res.status, ok: res.ok, text };
   }

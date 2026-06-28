@@ -2422,6 +2422,10 @@ msgstr "Couldn't load auth config."
 msgid "Couldn't load logs"
 msgstr "Couldn't load logs"
 
+#: src/client/admin/pages/traces.tsx
+msgid "Couldn't load traces"
+msgstr "Couldn't load traces"
+
 #: src/client/admin/parity/insights.tsx
 msgid "count / sum / average over a collection — no SQL"
 msgstr "count / sum / average over a collection — no SQL"
@@ -3010,6 +3014,10 @@ msgstr "Display template"
 msgid "Distinct users with a session in the last 24h"
 msgstr "Distinct users with a session in the last 24h"
 
+#: src/client/admin/pages/traces.tsx
+msgid "Distributed request traces. Every SDK/API call carries a W3C traceparent; a span is recorded per request and functions propagate it, so one operation stitches together across hops."
+msgstr "Distributed request traces. Every SDK/API call carries a W3C traceparent; a span is recorded per request and functions propagate it, so one operation stitches together across hops."
+
 #: src/client/admin/pages/settings.tsx
 #: src/client/admin/ui.tsx
 msgid "Docs"
@@ -3131,6 +3139,7 @@ msgstr "Durable background queue — retries with backoff, dead-letters, and del
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/pages/logs.tsx
+#: src/client/admin/pages/traces.tsx
 msgid "Duration"
 msgstr "Duration"
 
@@ -3506,6 +3515,10 @@ msgstr "errors"
 msgid "Errors"
 msgstr "Errors"
 
+#: src/client/admin/pages/traces.tsx
+msgid "Errors only"
+msgstr "Errors only"
+
 #: src/client/admin/flow-builder.tsx
 msgid "Evaluates against current step context. Use <0>{{ var }}</0> for interpolation."
 msgstr "Evaluates against current step context. Use <0>{{ var }}</0> for interpolation."
@@ -3778,6 +3791,10 @@ msgstr "Filter"
 #: src/client/admin/parity/app-users.tsx
 msgid "Filter by email / name…"
 msgstr "Filter by email / name…"
+
+#: src/client/admin/pages/traces.tsx
+msgid "Filter by path…"
+msgstr "Filter by path…"
 
 #: src/client/pages/rest-explorer.tsx
 msgid "Filter endpoints…"
@@ -4089,6 +4106,10 @@ msgstr "Global default"
 #: src/client/admin/pages/functions.tsx
 msgid "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. Sync-only in v1; runs in QuickJS-WASM sandbox."
 msgstr "Globals: <0>ctx.data</0>, <1>ctx.user</1>, <2>console.log</2>. Sync-only in v1; runs in QuickJS-WASM sandbox."
+
+#: src/client/admin/pages/traces.tsx
+msgid "Go live"
+msgstr "Go live"
 
 #: src/client/admin/extras.tsx
 msgid "goto"
@@ -4919,6 +4940,7 @@ msgstr "live"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/pages/logs.tsx
+#: src/client/admin/pages/traces.tsx
 msgid "Live"
 msgstr "Live"
 
@@ -5961,6 +5983,10 @@ msgstr "No signing cert stored — login will fail."
 msgid "No social providers are enabled for this workspace."
 msgstr "No social providers are enabled for this workspace."
 
+#: src/client/admin/pages/traces.tsx
+msgid "No spans recorded for this trace."
+msgstr "No spans recorded for this trace."
+
 #: src/client/admin/adopt-wizard.tsx
 msgid "No tables found that can be adopted."
 msgstr "No tables found that can be adopted."
@@ -5992,6 +6018,10 @@ msgstr "No tools match this filter."
 #: src/client/admin/pages/agents.tsx
 msgid "No tools match."
 msgstr "No tools match."
+
+#: src/client/admin/pages/traces.tsx
+msgid "No traces yet"
+msgstr "No traces yet"
 
 #: src/client/admin/edit-field.tsx
 msgid "No two rows can hold the same value (case-sensitive)."
@@ -6244,6 +6274,10 @@ msgstr "OpenAPI"
 #: src/client/pages/openapi-export.tsx
 msgid "OpenAPI spec refreshed."
 msgstr "OpenAPI spec refreshed."
+
+#: src/client/admin/pages/traces.tsx
+msgid "Operation"
+msgstr "Operation"
 
 #: src/client/pages/openapi-export.tsx
 msgid "Operations"
@@ -7209,6 +7243,7 @@ msgstr "Refetch /api/openapi.json"
 #: src/client/admin/pages/realtime.tsx
 #: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/traces.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/pages/openapi-export.tsx
 msgid "Refresh"
@@ -7724,6 +7759,10 @@ msgstr "Rollout % (0–100, optional)"
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Rollout must be 0–100."
 msgstr "Rollout must be 0–100."
+
+#: src/client/admin/pages/traces.tsx
+msgid "root"
+msgstr "root"
 
 #: src/client/admin/pages/webhooks.tsx
 msgid "Rotate"
@@ -8772,6 +8811,10 @@ msgstr "SP entity ID"
 msgid "SP URLs <0>(paste into the IdP console)</0>"
 msgstr "SP URLs <0>(paste into the IdP console)</0>"
 
+#: src/client/admin/pages/traces.tsx
+msgid "Spans"
+msgstr "Spans"
+
 #: src/client/pages/openapi-export.tsx
 msgid "Spec unavailable. Try Refresh."
 msgstr "Spec unavailable. Try Refresh."
@@ -8821,6 +8864,7 @@ msgstr "static panels render their config object verbatim — set it from the AP
 #: src/client/admin/members-panel.tsx
 #: src/client/admin/pages/jobs.tsx
 #: src/client/admin/pages/settings.tsx
+#: src/client/admin/pages/traces.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/app-users.tsx
@@ -9209,6 +9253,10 @@ msgstr "The query runs verbatim. The visualization hint above explains how its c
 msgid "The share link may have been revoked, or the record it pointed to was removed."
 msgstr "The share link may have been revoked, or the record it pointed to was removed."
 
+#: src/client/admin/pages/traces.tsx
+msgid "The traces endpoint returned an error. Refresh to try again."
+msgstr "The traces endpoint returned an error. Refresh to try again."
+
 #: src/client/admin/app.tsx
 msgid "These rows will be removed from c_posts. This deletes the underlying records — revisions remain available."
 msgstr "These rows will be removed from c_posts. This deletes the underlying records — revisions remain available."
@@ -9301,6 +9349,7 @@ msgid "Thu"
 msgstr "Thu"
 
 #: src/client/admin/pages/logs.tsx
+#: src/client/admin/pages/traces.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/components/date-picker.tsx
 msgid "Time"
@@ -9431,6 +9480,23 @@ msgstr "Total members"
 #: src/client/admin/pages/users.tsx
 #~ msgid "Total users"
 #~ msgstr "Total users"
+
+#: src/client/admin/pages/traces.tsx
+msgid "Trace"
+msgstr "Trace"
+
+#: src/client/admin/pages/traces.tsx
+#: src/client/admin/ui.tsx
+msgid "Traces"
+msgstr "Traces"
+
+#: src/client/admin/pages/traces.tsx
+msgid "Traces appear as requests come in. Make a call with the SDK or admin UI, then refresh."
+msgstr "Traces appear as requests come in. Make a call with the SDK or admin UI, then refresh."
+
+#: src/client/admin/pages/traces.tsx
+msgid "Traces refreshed."
+msgstr "Traces refreshed."
 
 #: src/client/admin/pages/integrations.tsx
 msgid "Track data events through Segment."

@@ -411,7 +411,7 @@ function LdapTestDialog({
         <DialogHeader className="border-b border-border px-5 py-3.5 pr-12 text-left">
           <DialogTitle className="text-[13px] font-medium"><Trans>Test LDAP connection</Trans></DialogTitle>
         </DialogHeader>
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)]">
+        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
         <div className="grid gap-3 px-5 py-[18px]">
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center gap-2 text-[12.5px] font-medium text-foreground"><Trans>Username</Trans></label>

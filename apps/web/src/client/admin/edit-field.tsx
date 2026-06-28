@@ -142,7 +142,7 @@ export function EditFieldDialog({ open, field, onClose, onSave }: EditFieldDialo
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)]">
+        <ScrollArea viewportClassName="max-h-[calc(min(86vh,720px)-10rem)] max-[640px]:max-h-[calc(min(86vh,720px)-15rem)]">
         <div className="flex flex-col gap-3.5 p-[18px]">
           <div className="flex items-center justify-between gap-3">
             <div>

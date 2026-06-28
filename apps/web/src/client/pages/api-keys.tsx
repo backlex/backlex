@@ -298,7 +298,7 @@ export const ApiKeys = () => {
               <Trans>The full secret is shown once after creation — copy it somewhere safe.</Trans>
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="min-h-0 flex-1" viewportClassName="max-h-[calc(88vh-13rem)] px-6 py-4">
+          <ScrollArea className="min-h-0 flex-1" viewportClassName="max-h-[calc(88vh-13rem)] max-[640px]:max-h-[calc(88vh-15rem)] px-6 py-4">
           <form id="new-api-key-form" className="space-y-4" onSubmit={submit}>
             <div className="space-y-1.5">
               <Label htmlFor="name"><Trans>Name</Trans></Label>

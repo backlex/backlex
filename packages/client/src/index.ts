@@ -67,6 +67,9 @@ export type { FilterBuilder, FieldKey, SortKey } from "./query";
 
 import { QueryBuilder } from "./query";
 import { createSync, type SyncController, type SyncOptions } from "./sync";
+import { createLiveQuery, type LiveQueryOptions } from "./live";
+export { matchesRow, isIncrementalSafe } from "./live";
+export type { LiveQueryOptions, LiveQueryDeps } from "./live";
 
 export interface ClientOptions {
   url: string;
@@ -626,6 +629,16 @@ export interface BacklexClient {
   subscribe<T = Record<string, unknown>>(
     channel: string,
     onEvent: (e: ItemEvent<T>) => void,
+    onError?: (err: unknown) => void,
+  ): () => void;
+  /** Reactive query — subscribe to a collection query (filter/sort/limit) and
+   *  get a fresh, consistent result array on every relevant change. Runs the
+   *  initial `list()`, then keeps the array up to date over realtime (no manual
+   *  event wiring, no stale data). Returns an unsubscribe function. */
+  liveQuery<T extends Record<string, unknown> = Record<string, unknown>>(
+    slug: string,
+    opts: LiveQueryOptions,
+    onResult: (rows: T[]) => void,
     onError?: (err: unknown) => void,
   ): () => void;
   /** Auth surface (sign-in/up, sessions, tokens). */
@@ -1319,9 +1332,24 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
    *  `createSync` in `./sync`. */
   const sync = (options: SyncOptions) => createSync({ request, subscribe }, options);
 
+  const liveQuery = <T extends Record<string, unknown> = Record<string, unknown>>(
+    slug: string,
+    opts: LiveQueryOptions,
+    onResult: (rows: T[]) => void,
+    onError?: (err: unknown) => void,
+  ): (() => void) =>
+    createLiveQuery<T>(
+      { list: (q) => collection<T>(slug).list(q), subscribe },
+      slug,
+      opts,
+      onResult,
+      onError,
+    );
+
   return {
     from: collection,
     subscribe,
+    liveQuery,
     auth,
     storage,
     messaging,

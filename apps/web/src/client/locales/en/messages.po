@@ -702,6 +702,10 @@ msgstr "7 days"
 msgid "90 days"
 msgstr "90 days"
 
+#: src/client/admin/parity/insights.tsx
+msgid "A dashboard with that name already exists."
+msgstr "A dashboard with that name already exists."
+
 #: src/client/admin/add-field.tsx
 msgid "A dropdown needs at least one choice."
 msgstr "A dropdown needs at least one choice."
@@ -1144,6 +1148,7 @@ msgstr "alice"
 
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/ui.tsx
 msgid "All"
 msgstr "All"
@@ -1707,8 +1712,8 @@ msgid "Breadcrumb"
 msgstr "Breadcrumb"
 
 #: src/client/admin/parity/insights.tsx
-msgid "Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard."
-msgstr "Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard."
+#~ msgid "Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard."
+#~ msgstr "Build a panel from a collection (count / sum / average …) or a saved SQL query. Drag panels to lay out your dashboard."
 
 #: src/client/admin/condition-editor.tsx
 msgid "Builder"
@@ -1997,6 +2002,7 @@ msgstr "close"
 #: src/client/admin/pages/logs.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/app-users.tsx
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/sheet.tsx
 #: src/client/components/mcp-key-modal.tsx
 #: src/client/pages/openapi-export.tsx
@@ -2350,6 +2356,7 @@ msgstr "copy"
 #: src/client/admin/item-collaboration.tsx
 #: src/client/admin/pages/ask-ai.tsx
 #: src/client/admin/parity/auth-settings.tsx
+#: src/client/admin/parity/insights.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 #: src/client/admin/parity/saml-provider-dialog.tsx
 #: src/client/components/mcp-key-modal.tsx
@@ -2503,6 +2510,10 @@ msgstr "Create an account"
 #: src/client/admin/collections-index.tsx
 msgid "Create collection"
 msgstr "Create collection"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Create dashboard"
+msgstr "Create dashboard"
 
 #: src/client/admin/storage.tsx
 msgid "Create folder"
@@ -2704,11 +2715,23 @@ msgstr "Danger zone"
 msgid "Dark"
 msgstr "Dark"
 
+#: src/client/admin/parity/insights.tsx
+msgid "Dashboard \"{name}\" created."
+msgstr "Dashboard \"{name}\" created."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Dashboard \"{name}\" deleted."
+msgstr "Dashboard \"{name}\" deleted."
+
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/ui.tsx
 #: src/client/pages/graphql.tsx
 msgid "Data"
 msgstr "Data"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Data scope"
+msgstr "Data scope"
 
 #: src/client/admin/pages/overview.tsx
 #: src/client/admin/parity/database.tsx
@@ -2833,6 +2856,15 @@ msgstr "Delete collection <0>c_{activeCollection}</0>?"
 #: src/client/admin/app.tsx
 msgid "Delete collection <0>c_{slug}</0>?"
 msgstr "Delete collection <0>c_{slug}</0>?"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Delete dashboard"
+msgstr "Delete dashboard"
+
+#. placeholder {0}: confirmDeleteDash.name
+#: src/client/admin/parity/insights.tsx
+msgid "Delete dashboard \"{0}\"?"
+msgstr "Delete dashboard \"{0}\"?"
 
 #: src/client/admin/parity/app-users.tsx
 msgid "Delete end-user"
@@ -2976,6 +3008,14 @@ msgstr "Direct access to the underlying engine. Adapter: <0>{0}</0>. SQL editor 
 #: src/client/admin/pages/ask-ai.tsx
 msgid "Direct Streamable HTTP — useful for CI agents and smoke tests."
 msgstr "Direct Streamable HTTP — useful for CI agents and smoke tests."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Disable embed"
+msgstr "Disable embed"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Disable the embed to change the scope."
+msgstr "Disable the embed to change the scope."
 
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
@@ -3375,6 +3415,14 @@ msgstr "email-only, no password"
 msgid "Emails a one-time link valid for 30 minutes."
 msgstr "Emails a one-time link valid for 30 minutes."
 
+#: src/client/admin/parity/insights.tsx
+msgid "Embed live"
+msgstr "Embed live"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Embed URL — copy it now"
+msgstr "Embed URL — copy it now"
+
 #: src/client/admin/pages/template-onboarding.tsx
 msgid "Empty"
 msgstr "Empty"
@@ -3386,6 +3434,10 @@ msgstr "Empty or template"
 #: src/client/admin/parity/auth-settings.tsx
 msgid "Enable anyway"
 msgstr "Enable anyway"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Enable public embed"
+msgstr "Enable public embed"
 
 #: src/client/admin/flow-builder.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
@@ -3401,6 +3453,10 @@ msgstr "Enabled"
 #: src/client/admin/parity/auth-settings.tsx
 msgid "enabled but not configured — won't appear on sign-in"
 msgstr "enabled but not configured — won't appear on sign-in"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Enabling…"
+msgstr "Enabling…"
 
 #: src/client/admin/parity/app-users.tsx
 msgid "End-users"
@@ -4188,6 +4244,14 @@ msgstr "Group"
 msgid "Group by"
 msgstr "Group by"
 
+#: src/client/admin/parity/insights.tsx
+msgid "Group panels into dashboards, build them from a collection (count / sum / average …) or a saved SQL query, then publish a dashboard to a public embed URL."
+msgstr "Group panels into dashboards, build them from a collection (count / sum / average …) or a saved SQL query, then publish a dashboard to a public embed URL."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Group panels under a named dashboard you can publish to a public embed URL."
+msgstr "Group panels under a named dashboard you can publish to a public embed URL."
+
 #: src/client/admin/parity/saml-provider-dialog.tsx
 msgid "Groups"
 msgstr "Groups"
@@ -4971,6 +5035,10 @@ msgstr "Link"
 msgid "Link by verified email"
 msgstr "Link by verified email"
 
+#: src/client/admin/parity/insights.tsx
+msgid "Link copied."
+msgstr "Link copied."
+
 #: src/client/admin/account-page.tsx
 msgid "Linked — you can sign in with this provider."
 msgstr "Linked — you can sign in with this provider."
@@ -5224,6 +5292,10 @@ msgstr "match {0} of the following"
 #: src/client/admin/permission-tester.tsx
 msgid "Matched rules"
 msgstr "Matched rules"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Max 120 characters."
+msgstr "Max 120 characters."
 
 #: src/client/admin/parity/insights.tsx
 msgid "Max 500 characters."
@@ -5550,6 +5622,10 @@ msgstr "New collection"
 msgid "New conversation"
 msgstr "New conversation"
 
+#: src/client/admin/parity/insights.tsx
+msgid "New dashboard"
+msgstr "New dashboard"
+
 #: src/client/admin/pages/feature-flags.tsx
 msgid "New flag"
 msgstr "New flag"
@@ -5769,6 +5845,10 @@ msgstr "No content schema."
 #: src/client/admin/parity/insights.tsx
 msgid "No data yet — run the panel."
 msgstr "No data yet — run the panel."
+
+#: src/client/pages/embed-dashboard.tsx
+msgid "No data."
+msgstr "No data."
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "No DDL on the table."
@@ -6314,6 +6394,7 @@ msgid "open"
 msgstr "open"
 
 #: src/client/admin/collections-index.tsx
+#: src/client/admin/parity/insights.tsx
 msgid "Open"
 msgstr "Open"
 
@@ -6474,6 +6555,14 @@ msgstr "Panel \"{name}\" deleted."
 #: src/client/admin/parity/insights.tsx
 msgid "Panel \"{name}\" saved."
 msgstr "Panel \"{name}\" saved."
+
+#: src/client/admin/parity/insights.tsx
+msgid "panel data limited to this role's read permission"
+msgstr "panel data limited to this role's read permission"
+
+#: src/client/admin/parity/insights.tsx
+msgid "panels run with full read access — for fully public stats"
+msgstr "panels run with full read access — for fully public stats"
 
 #: src/client/admin/adopt-wizard.tsx
 msgid "parent not adopted"
@@ -6934,6 +7023,10 @@ msgstr "Post saved."
 msgid "POST to any HTTPS endpoint when collection events fire."
 msgstr "POST to any HTTPS endpoint when collection events fire."
 
+#: src/client/pages/embed-dashboard.tsx
+msgid "Powered by backlex · this embed can be revoked at any time."
+msgstr "Powered by backlex · this embed can be revoked at any time."
+
 #: src/client/pages/magic-link.tsx
 msgid "Prefer a password?"
 msgstr "Prefer a password?"
@@ -7081,6 +7174,18 @@ msgstr "Providers"
 msgid "Public"
 msgstr "Public"
 
+#: src/client/admin/parity/insights.tsx
+msgid "Public (unscoped)"
+msgstr "Public (unscoped)"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Public embed disabled."
+msgstr "Public embed disabled."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Public embed enabled."
+msgstr "Public embed enabled."
+
 #: src/client/pages/shared-record.tsx
 msgid "public link"
 msgstr "public link"
@@ -7110,6 +7215,10 @@ msgstr "Publish now"
 #: src/client/admin/item-editor.tsx
 msgid "Publish scheduled."
 msgstr "Publish scheduled."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Publish this dashboard to a public, unauthenticated embed URL. Anyone with the link can view it — embed it in an iframe on your own site."
+msgstr "Publish this dashboard to a public, unauthenticated embed URL. Anyone with the link can view it — embed it in an iframe on your own site."
 
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/item-views.tsx
@@ -7701,6 +7810,10 @@ msgstr "Retain (auto)"
 msgid "Retry"
 msgstr "Retry"
 
+#: src/client/admin/parity/insights.tsx
+msgid "Revenue overview"
+msgstr "Revenue overview"
+
 #: src/client/admin/item-editor.tsx
 #: src/client/admin/parity/ldap-config-card.tsx
 #: src/client/admin/parity/revisions.tsx
@@ -7861,6 +7974,10 @@ msgstr "root"
 #: src/client/admin/pages/webhooks.tsx
 msgid "Rotate"
 msgstr "Rotate"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Rotate link"
+msgstr "Rotate link"
 
 #: src/client/admin/parity/insights.tsx
 msgid "row count (no field needed)"
@@ -8183,6 +8300,10 @@ msgstr "Schemas"
 #: src/client/admin/pages/feature-flags.tsx
 msgid "Scope"
 msgstr "Scope"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Scope the embed to a role so it only exposes what that role can read."
+msgstr "Scope the embed to a role so it only exposes what that role can read."
 
 #: src/client/pages/api-keys.tsx
 msgid "Scope to role"
@@ -8566,6 +8687,15 @@ msgstr "Settings → MCP → Add. Same JSON shape Claude Desktop uses."
 #: src/client/admin/pages/settings.tsx
 #~ msgid "Settings saved."
 #~ msgstr "Settings saved."
+
+#: src/client/admin/parity/insights.tsx
+msgid "Share"
+msgstr "Share"
+
+#. placeholder {0}: dashboard.name
+#: src/client/admin/parity/insights.tsx
+msgid "Share \"{0}\""
+msgstr "Share \"{0}\""
 
 #: src/client/admin/item-collaboration.tsx
 msgid "Share link copied."
@@ -9322,6 +9452,10 @@ msgstr "The advisor endpoint returned an error. Re-run to try again."
 msgid "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> as the redirect URI with the provider."
 msgstr "The client secret is encrypted at rest. If you leave both fields blank, sign-in falls back to the <0>OAUTH_{0}_CLIENT_ID</0> / <1>_CLIENT_SECRET</1> environment variables. Register <2>{appUrlPlaceholder}/api/t/{workspacePlaceholder}/auth/callback/{1}</2> as the redirect URI with the provider."
 
+#: src/client/pages/embed-dashboard.tsx
+msgid "The embed link may have been revoked, or the dashboard was removed."
+msgstr "The embed link may have been revoked, or the dashboard was removed."
+
 #: src/client/pages/sign-up.tsx
 msgid "The first account on a fresh instance is provisioned as <0>admin</0> automatically. You can demote yourself later."
 msgstr "The first account on a fresh instance is provisioned as <0>admin</0> automatically. You can demote yourself later."
@@ -9350,6 +9484,10 @@ msgstr "The physical table and all rows are dropped. This is irreversible. Permi
 #: src/client/admin/parity/auth-settings.tsx
 msgid "The provider is added disabled. Set its client secret server-side, then enable it here."
 msgstr "The provider is added disabled. Set its client secret server-side, then enable it here."
+
+#: src/client/admin/parity/insights.tsx
+msgid "The public embed is live. The link was shown once when it was created — rotate it below if you need the URL again."
+msgstr "The public embed is live. The link was shown once when it was created — rotate it below if you need the URL again."
 
 #: src/client/admin/parity/insights.tsx
 msgid "The query runs verbatim. The visualization hint above explains how its columns map to the chart."
@@ -9387,9 +9525,25 @@ msgstr "this collection"
 msgid "This collection has no fields that support bulk editing. Structured (json / file / relation list / localized) and rich-text fields are edited per record."
 msgstr "This collection has no fields that support bulk editing. Structured (json / file / relation list / localized) and rich-text fields are edited per record."
 
+#: src/client/admin/parity/insights.tsx
+msgid "This dashboard has no panels yet"
+msgstr "This dashboard has no panels yet"
+
+#: src/client/pages/embed-dashboard.tsx
+msgid "This dashboard has no panels yet."
+msgstr "This dashboard has no panels yet."
+
+#: src/client/pages/embed-dashboard.tsx
+msgid "This dashboard is no longer available"
+msgstr "This dashboard is no longer available"
+
 #: src/client/admin/parity/database.tsx
 msgid "This database has no tables."
 msgstr "This database has no tables."
+
+#: src/client/admin/parity/insights.tsx
+msgid "This deletes the dashboard and disables its public embed. Its panels are <0>not</0> deleted — they become ungrouped. This action can't be undone."
+msgstr "This deletes the dashboard and disables its public embed. Its panels are <0>not</0> deleted — they become ungrouped. This action can't be undone."
 
 #: src/client/pages/invite.tsx
 msgid "This invite link is invalid or has already been used."
@@ -9411,6 +9565,10 @@ msgstr "This is the first user on this instance."
 #: src/client/pages/shared-record.tsx
 msgid "This link is no longer available"
 msgstr "This link is no longer available"
+
+#: src/client/admin/parity/insights.tsx
+msgid "This link is shown once. Rotate it to invalidate the old one."
+msgstr "This link is shown once. Rotate it to invalidate the old one."
 
 #: src/client/admin/app.tsx
 msgid "This list updates in real time"
@@ -9755,6 +9913,10 @@ msgstr "unbound"
 #: src/client/admin/parity/revisions.tsx
 msgid "unchanged"
 msgstr "unchanged"
+
+#: src/client/admin/parity/insights.tsx
+msgid "Ungrouped"
+msgstr "Ungrouped"
 
 #: src/client/admin/pages/logs.tsx
 msgid "Unified log explorer over the activity audit store. Switch between the Stream lens (HTTP, data, automation, functions, storage) and the Table audit trail — both read the same rows."

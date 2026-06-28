@@ -9,6 +9,7 @@ import { Forgot } from "@/pages/forgot";
 import { ResetPassword } from "@/pages/reset-password";
 import { MagicLink } from "@/pages/magic-link";
 import { SharedRecord } from "@/pages/shared-record";
+import { EmbedDashboard } from "@/pages/embed-dashboard";
 import { SignIn } from "@/pages/sign-in";
 import { SignUp } from "@/pages/sign-up";
 import { Invite } from "@/pages/invite";
@@ -36,6 +37,8 @@ export const App = () => {
         <Route path="/invite" element={<Invite />} />
         {/* Public record-share view — outside AuthGate, no session needed. */}
         <Route path="/s/:token" element={<SharedRecord />} />
+        {/* Public BI dashboard embed — outside AuthGate; iframe-friendly. */}
+        <Route path="/embed/d/:token" element={<EmbedDashboard />} />
         <Route
           path="/*"
           element={

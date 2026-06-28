@@ -56,6 +56,7 @@ import m49 from "../../drizzle/pg/20260620190000_managed_webhooks/migration.sql"
 import m50 from "../../drizzle/pg/20260621000000_ai_config/migration.sql" with { type: "text" };
 import m51 from "../../drizzle/pg/20260627000000_ai_agents/migration.sql" with { type: "text" };
 import m52 from "../../drizzle/pg/20260628000000_request_spans/migration.sql" with { type: "text" };
+import m53 from "../../drizzle/pg/20260628100000_dashboards/migration.sql" with { type: "text" };
 
 export interface Migration {
   name: string;
@@ -116,4 +117,5 @@ export const MIGRATIONS: readonly Migration[] = [
   { name: "20260621000000_ai_config", sql: m50 },
   { name: "20260627000000_ai_agents", sql: m51 },
   { name: "20260628000000_request_spans", sql: m52 },
+  { name: "20260628100000_dashboards", sql: m53 },
 ];

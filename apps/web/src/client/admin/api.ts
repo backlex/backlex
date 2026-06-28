@@ -202,6 +202,38 @@ export interface ApiPanel {
   viz: string;
   config: Record<string, unknown> | null;
   layout: { x: number; y: number; w: number; h: number } | null;
+  /** Parent dashboard id, or null for a loose (ungrouped) panel. */
+  dashboardId?: string | null;
+}
+
+export interface ApiDashboard {
+  id: string;
+  tenantId: string | null;
+  name: string;
+  description: string | null;
+  layout: Record<string, unknown> | null;
+  embedEnabled: boolean;
+  embedRoleId: string | null;
+}
+
+/** A single panel's rendered result from a dashboard run / public embed. */
+export interface ApiDashboardPanelResult {
+  panelId: string;
+  name: string;
+  viz: string;
+  kind: string;
+  config: Record<string, unknown> | null;
+  data: Record<string, unknown>[];
+  note?: string;
+  error?: string;
+}
+
+export interface ApiPublicDashboard {
+  id: string;
+  name: string;
+  description: string | null;
+  layout: Record<string, unknown> | null;
+  panels: ApiDashboardPanelResult[];
 }
 
 export interface ApiAuthConfigProvider {
@@ -870,6 +902,39 @@ export const panelsApi = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+};
+
+export const dashboardsApi = {
+  list: () => api<Envelope<ApiDashboard[]>>(`/api/admin/dashboards`),
+  get: (id: string) => api<Envelope<ApiDashboard>>(`/api/admin/dashboards/${id}`),
+  create: (body: { name: string; description?: string | null; layout?: Record<string, unknown> | null }) =>
+    api<Envelope<ApiDashboard>>(`/api/admin/dashboards`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  update: (id: string, body: Partial<{ name: string; description: string | null; layout: Record<string, unknown> | null }>) =>
+    api<{ ok: true }>(`/api/admin/dashboards/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  remove: (id: string) =>
+    api<{ ok: true }>(`/api/admin/dashboards/${id}`, { method: "DELETE" }),
+  run: (id: string) =>
+    api<Envelope<ApiDashboardPanelResult[]> & { ms: number }>(`/api/admin/dashboards/${id}/run`, {
+      method: "POST",
+    }),
+  share: (id: string, body: { roleId?: string | null } = {}) =>
+    api<{ token: string; url: string }>(`/api/admin/dashboards/${id}/share`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  revoke: (id: string) =>
+    api<{ ok: true }>(`/api/admin/dashboards/${id}/share`, { method: "DELETE" }),
+};
+
+export const dashboardsPublicApi = {
+  get: (token: string) =>
+    api<Envelope<ApiPublicDashboard>>(`/api/public/dashboards/${encodeURIComponent(token)}`),
 };
 
 export const authAdminApi = {

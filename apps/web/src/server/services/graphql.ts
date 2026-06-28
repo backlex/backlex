@@ -42,6 +42,16 @@ import { loadCollection } from "./items/collection-loader";
 import { runBatch, type BatchOp } from "./items/batch";
 import { runBulkUpdate } from "./items/bulk";
 import { runFlowById } from "./flows";
+import {
+  createDashboard,
+  deleteDashboard,
+  getDashboard,
+  listDashboards,
+  revokeDashboardEmbed,
+  runDashboard,
+  shareDashboard,
+  updateDashboard,
+} from "./dashboards";
 import { applyTemplate } from "./templates";
 import { invalidateTenantCollections } from "./collections-cache";
 import { templateSummaries } from "../templates/catalog";
@@ -1070,6 +1080,172 @@ const flowMutationFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>> = 
   },
 };
 
+// ── Embedded BI dashboards ───────────────────────────────────────────────────
+// Static, admin-scoped surface mirroring REST `/api/admin/dashboards` + MCP
+// `dashboards.*` + SDK `client.dashboards.*`. Reuses the service layer so the
+// SQL stays in one place. Like flows, dashboards don't vary with collection
+// schema, so the fields merge into every schema.
+const DashboardType = new GraphQLObjectType({
+  name: "Dashboard",
+  fields: {
+    id: { type: new GraphQLNonNull(GraphQLID) },
+    tenantId: { type: GraphQLString },
+    name: { type: new GraphQLNonNull(GraphQLString) },
+    description: { type: GraphQLString },
+    layout: { type: JSONScalar },
+    embedEnabled: { type: new GraphQLNonNull(GraphQLBoolean) },
+    embedRoleId: { type: GraphQLString },
+  },
+});
+
+const DashboardInputType = new GraphQLInputObjectType({
+  name: "DashboardInput",
+  fields: {
+    name: { type: GraphQLString },
+    description: { type: GraphQLString },
+    layout: { type: JSONScalar },
+  },
+});
+
+const DashboardPanelResultType = new GraphQLObjectType({
+  name: "DashboardPanelResult",
+  fields: {
+    panelId: { type: new GraphQLNonNull(GraphQLID) },
+    name: { type: new GraphQLNonNull(GraphQLString) },
+    viz: { type: new GraphQLNonNull(GraphQLString) },
+    kind: { type: new GraphQLNonNull(GraphQLString) },
+    config: { type: JSONScalar },
+    data: { type: new GraphQLNonNull(JSONScalar) },
+    note: { type: GraphQLString },
+    error: { type: GraphQLString },
+  },
+});
+
+const DashboardShareResultType = new GraphQLObjectType({
+  name: "DashboardShareResult",
+  fields: {
+    token: { type: new GraphQLNonNull(GraphQLString) },
+    url: { type: new GraphQLNonNull(GraphQLString) },
+  },
+});
+
+/** Dashboards are admin-only on every other surface — reuse the flow gate. */
+const requireDashboardAdmin = requireFlowAdmin;
+
+/** Coerce sqlite 0/1 → boolean and drop the token hash for the API shape. */
+const normalizeDashboardRow = (r: any) => ({
+  id: r.id,
+  tenantId: r.tenantId,
+  name: r.name,
+  description: r.description ?? null,
+  layout: r.layout ?? null,
+  embedEnabled: Boolean(r.embedEnabled),
+  embedRoleId: r.embedRoleId ?? null,
+});
+
+const dashboardQueryFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>> = {
+  dashboards: {
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(DashboardType))),
+    description: "List BI dashboards in the active workspace (admin-only).",
+    resolve: async (_src, _args, gqlCtx) => {
+      const tenantId = requireDashboardAdmin(gqlCtx);
+      const rows = await listDashboards(gqlCtx.ctx, tenantId);
+      return rows.map((r) => normalizeDashboardRow(r));
+    },
+  },
+  dashboard: {
+    type: DashboardType,
+    description: "Fetch a single dashboard by id (admin-only).",
+    args: { id: { type: new GraphQLNonNull(GraphQLID) } },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireDashboardAdmin(gqlCtx);
+      const row = await getDashboard(gqlCtx.ctx, tenantId, (args as { id: string }).id);
+      return row ? normalizeDashboardRow(row) : null;
+    },
+  },
+};
+
+const dashboardMutationFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>> = {
+  createDashboard: {
+    type: DashboardType,
+    description: "Create a dashboard scoped to the active workspace (admin-only).",
+    args: { data: { type: new GraphQLNonNull(DashboardInputType) } },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireDashboardAdmin(gqlCtx);
+      const data = (args as { data: Record<string, unknown> }).data;
+      if (typeof data?.name !== "string" || data.name.length === 0)
+        throw new GraphQLError("name is required", { extensions: { code: "VALIDATION" } });
+      const row = await createDashboard(gqlCtx.ctx, gqlCtx.auth, tenantId, {
+        name: data.name,
+        description: (data.description as string | null) ?? null,
+        layout: (data.layout as Record<string, unknown> | null) ?? null,
+      });
+      return normalizeDashboardRow(row);
+    },
+  },
+  updateDashboard: {
+    type: DashboardType,
+    description: "Partial update of a dashboard by id (admin-only).",
+    args: {
+      id: { type: new GraphQLNonNull(GraphQLID) },
+      data: { type: new GraphQLNonNull(DashboardInputType) },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireDashboardAdmin(gqlCtx);
+      const a = args as { id: string; data: Record<string, unknown> };
+      await updateDashboard(gqlCtx.ctx, tenantId, a.id, a.data);
+      const row = await getDashboard(gqlCtx.ctx, tenantId, a.id);
+      return row ? normalizeDashboardRow(row) : null;
+    },
+  },
+  deleteDashboard: {
+    type: new GraphQLNonNull(GraphQLBoolean),
+    description: "Delete a dashboard by id (admin-only).",
+    args: { id: { type: new GraphQLNonNull(GraphQLID) } },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireDashboardAdmin(gqlCtx);
+      await deleteDashboard(gqlCtx.ctx, tenantId, (args as { id: string }).id);
+      return true;
+    },
+  },
+  runDashboard: {
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(DashboardPanelResultType))),
+    description: "Run every panel in a dashboard and return their results (admin-only).",
+    args: { id: { type: new GraphQLNonNull(GraphQLID) } },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireDashboardAdmin(gqlCtx);
+      const id = (args as { id: string }).id;
+      const dash = await getDashboard(gqlCtx.ctx, tenantId, id);
+      if (!dash)
+        throw new GraphQLError("Dashboard not found", { extensions: { code: "NOT_FOUND" } });
+      return runDashboard(gqlCtx.ctx, gqlCtx.auth, tenantId, id);
+    },
+  },
+  shareDashboard: {
+    type: new GraphQLNonNull(DashboardShareResultType),
+    description: "Enable the public embed; mints a one-time token (admin-only).",
+    args: {
+      id: { type: new GraphQLNonNull(GraphQLID) },
+      roleId: { type: GraphQLString },
+    },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireDashboardAdmin(gqlCtx);
+      const a = args as { id: string; roleId?: string | null };
+      return shareDashboard(gqlCtx.ctx, tenantId, a.id, { roleId: a.roleId ?? null });
+    },
+  },
+  revokeDashboardEmbed: {
+    type: new GraphQLNonNull(GraphQLBoolean),
+    description: "Disable the public embed and forget the token (admin-only).",
+    args: { id: { type: new GraphQLNonNull(GraphQLID) } },
+    resolve: async (_src, args, gqlCtx) => {
+      const tenantId = requireDashboardAdmin(gqlCtx);
+      await revokeDashboardEmbed(gqlCtx.ctx, tenantId, (args as { id: string }).id);
+      return true;
+    },
+  },
+};
+
 // ── AI agents ────────────────────────────────────────────────────────────────
 // Static, admin-scoped surface mirroring REST `/api/agents` + MCP `agents.*` +
 // SDK `client.agents.*`. CRUD + a `runAgent` mutation that runs one turn (same
@@ -1506,6 +1682,7 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
             resolve: () => "No collections defined yet.",
           },
           ...flowQueryFields,
+          ...dashboardQueryFields,
           ...agentQueryFields,
           ...permissionQueryFields,
           ...templateQueryFields,
@@ -1513,19 +1690,26 @@ const buildSchema = (collections: CollectionRow[]): GraphQLSchema => {
       }),
       mutation: new GraphQLObjectType({
         name: "Mutation",
-        fields: { ...flowMutationFields, ...agentMutationFields, ...templateMutationFields },
+        fields: {
+          ...flowMutationFields,
+          ...dashboardMutationFields,
+          ...agentMutationFields,
+          ...templateMutationFields,
+        },
       }),
     });
   }
 
   const queryFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>> = {
     ...flowQueryFields,
+    ...dashboardQueryFields,
     ...agentQueryFields,
     ...permissionQueryFields,
     ...templateQueryFields,
   };
   const mutationFields: Record<string, GraphQLFieldConfig<unknown, GqlCtx>> = {
     ...flowMutationFields,
+    ...dashboardMutationFields,
     ...agentMutationFields,
     ...templateMutationFields,
   };

@@ -32,6 +32,8 @@ const PanelInput = z
       })
       .nullable()
       .optional(),
+    /** Optional parent dashboard. NULL = loose panel on the default grid. */
+    dashboardId: z.string().nullable().optional(),
   })
   .openapi("PanelInput");
 
@@ -46,6 +48,7 @@ const PanelRow = z
     viz: z.string(),
     config: z.unknown().nullable(),
     layout: z.unknown().nullable(),
+    dashboardId: z.string().nullable(),
     createdBy: z.string().nullable(),
     createdAt: z.unknown().nullable(),
     updatedAt: z.unknown().nullable(),
@@ -117,9 +120,10 @@ export const panelsRoutes = new OpenAPIHono<AppBindings>()
       tags: TAGS,
       summary: "List panels",
       description:
-        "Saved panels for the active workspace plus the system-global (`tenantId IS NULL`) ones.",
+        "Saved panels for the active workspace plus the system-global (`tenantId IS NULL`) ones. Pass `?dashboardId=` to scope to one dashboard, or `?dashboardId=none` for loose (ungrouped) panels.",
       security: SECURITY,
       middleware: ADMIN_GATE,
+      request: { query: z.object({ dashboardId: z.string().optional() }) },
       responses: {
         200: {
           description: "OK",
@@ -133,11 +137,16 @@ export const panelsRoutes = new OpenAPIHono<AppBindings>()
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
+      const { dashboardId } = c.req.valid("query");
       const t = tableFor(ctx.dialect);
-      const rows = await (ctx.db as any)
-        .select()
-        .from(t)
-        .where(or(eq(t.tenantId, auth.tenantId ?? ""), isNull(t.tenantId)));
+      const tenantWhere = or(eq(t.tenantId, auth.tenantId ?? ""), isNull(t.tenantId));
+      const where =
+        dashboardId === undefined
+          ? tenantWhere
+          : dashboardId === "none"
+            ? and(tenantWhere, isNull(t.dashboardId))
+            : and(tenantWhere, eq(t.dashboardId, dashboardId));
+      const rows = await (ctx.db as any).select().from(t).where(where);
       return c.json({ data: rows });
     },
   )
@@ -182,6 +191,7 @@ export const panelsRoutes = new OpenAPIHono<AppBindings>()
         viz: body.viz,
         config: body.config ?? null,
         layout: body.layout ?? null,
+        dashboardId: body.dashboardId ?? null,
         createdBy: auth.userId,
       });
       return c.json({ data: { id, ...body } }, 201);

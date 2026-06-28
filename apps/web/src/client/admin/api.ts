@@ -55,6 +55,9 @@ export interface ApiCollection {
   softDelete?: boolean;
   /** When true, the collection is locked to a single live row. */
   singleton?: boolean;
+  /** When true, backlex only owns the metadata row — the physical table is
+   *  user-owned and never altered (no inline DDL, no field drops). */
+  adopted?: boolean;
   /** Opt-in sensitive-read auditing. When true, reads (list + by-id) record an
    *  `access.read` row in the audit log. Off by default. */
   auditReads?: boolean;
@@ -297,6 +300,13 @@ export const collectionsApi = {
     }),
   remove: (slug: string) =>
     api<{ ok: true; archived?: boolean }>(`/api/collections/${slug}`, { method: "DELETE" }),
+  /** Drop a single field (column) from a managed collection. Destructive —
+   *  the column's data is gone. Refused on adopted collections. */
+  dropField: (slug: string, name: string) =>
+    api<{ ok: true; slug: string; field: string }>(
+      `/api/collections/${slug}/fields/${encodeURIComponent(name)}`,
+      { method: "DELETE" },
+    ),
   /** Re-activate an archived (adopted) collection. No-op on already-active rows. */
   restore: (slug: string) =>
     api<{ ok: true; alreadyActive?: boolean }>(`/api/collections/${slug}/restore`, {

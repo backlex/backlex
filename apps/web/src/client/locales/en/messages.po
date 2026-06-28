@@ -14,6 +14,7 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: src/client/admin/add-field.tsx
+#: src/client/admin/pages/schema-graph.tsx
 msgid " · already exists"
 msgstr " · already exists"
 
@@ -226,8 +227,8 @@ msgstr "{0} all · {1} custom · {2} none"
 msgid "{0} collections"
 msgstr "{0} collections"
 
-#. placeholder {0}: nodes.length
-#. placeholder {1}: edges.length
+#. placeholder {0}: collections.length
+#. placeholder {1}: edgeRows.length
 #: src/client/admin/pages/schema-graph.tsx
 msgid "{0} collections · {1} relations"
 msgstr "{0} collections · {1} relations"
@@ -922,6 +923,10 @@ msgstr "Add a language"
 msgid "Add a one-time code from an authenticator app (Google Authenticator, Authy, 1Password…) as a second step when signing in."
 msgstr "Add a one-time code from an authenticator app (Google Authenticator, Authy, 1Password…) as a second step when signing in."
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Add a relation field on <0>c_{from}</0> pointing to <1>c_{to}</1>."
+msgstr "Add a relation field on <0>c_{from}</0> pointing to <1>c_{to}</1>."
+
 #: src/client/admin/storage.tsx
 msgid "Add a tag and press Enter…"
 msgstr "Add a tag and press Enter…"
@@ -943,6 +948,7 @@ msgid "Add column"
 msgstr "Add column"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/schema-graph.tsx
 msgid "Add field"
 msgstr "Add field"
 
@@ -1759,6 +1765,7 @@ msgstr "Can't unlink your only sign-in method."
 #: src/client/admin/pages/functions.tsx
 #: src/client/admin/pages/integrations.tsx
 #: src/client/admin/pages/jobs.tsx
+#: src/client/admin/pages/schema-graph.tsx
 #: src/client/admin/pages/users.tsx
 #: src/client/admin/pages/webhooks.tsx
 #: src/client/admin/parity/auth-settings.tsx
@@ -1808,6 +1815,10 @@ msgstr "Caps the number of grouped rows returned (default 50, max 200)."
 #: src/client/admin/pages/integrations.tsx
 msgid "Capture data events as PostHog analytics events."
 msgstr "Capture data events as PostHog analytics events."
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Cardinality"
+msgstr "Cardinality"
 
 #: src/client/admin/add-field.tsx
 #: src/client/admin/relational-pickers.tsx
@@ -2060,10 +2071,22 @@ msgstr "Collections you archive will show up here."
 msgid "Column"
 msgstr "Column"
 
+#. placeholder {0}: (field as { name?: string }).name
+#. placeholder {1}: addSchema.slug
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Column \"{0}\" added to c_{1}."
+msgstr "Column \"{0}\" added to c_{1}."
+
 #. placeholder {0}: (field as any).name
 #: src/client/admin/app.tsx
 msgid "Column \"{0}\" added to c_{slug}."
 msgstr "Column \"{0}\" added to c_{slug}."
+
+#. placeholder {0}: dropTarget.name
+#. placeholder {1}: dropTarget.slug
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Column \"{0}\" dropped from c_{1}."
+msgstr "Column \"{0}\" dropped from c_{1}."
 
 #: src/client/admin/app.tsx
 msgid "Column \"{name}\" dropped."
@@ -2087,6 +2110,7 @@ msgstr "Column:"
 
 #. placeholder {0}: safeName || "—"
 #: src/client/admin/add-field.tsx
+#: src/client/admin/pages/schema-graph.tsx
 msgid "column: <0>{0}</0>"
 msgstr "column: <0>{0}</0>"
 
@@ -2426,6 +2450,14 @@ msgstr "Couldn't load logs"
 msgid "Couldn't load traces"
 msgstr "Couldn't load traces"
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Couldn't reset layout."
+msgstr "Couldn't reset layout."
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Couldn't save layout."
+msgstr "Couldn't save layout."
+
 #: src/client/admin/parity/insights.tsx
 msgid "count / sum / average over a collection — no SQL"
 msgstr "count / sum / average over a collection — no SQL"
@@ -2507,6 +2539,10 @@ msgstr "Create or adopt a table"
 #: src/client/admin/parity/insights.tsx
 msgid "Create panel"
 msgstr "Create panel"
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Create relation"
+msgstr "Create relation"
 
 #: src/client/admin/role-editor.tsx
 msgid "Create role"
@@ -3076,6 +3112,10 @@ msgstr "Draft support_tickets schema"
 msgid "drafts"
 msgstr "drafts"
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Drag to another collection to create a relation"
+msgstr "Drag to another collection to create a relation"
+
 #: src/client/admin/parity/insights.tsx
 msgid "Drag to move"
 msgstr "Drag to move"
@@ -3086,12 +3126,17 @@ msgstr "Drag to resize"
 
 #: src/client/admin/app.tsx
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/schema-graph.tsx
 msgid "Drop column"
 msgstr "Drop column"
 
 #: src/client/admin/app.tsx
 msgid "Drop column \"{name}\"?"
 msgstr "Drop column \"{name}\"?"
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Drop field"
+msgstr "Drop field"
 
 #: src/client/admin/storage.tsx
 msgid "Drop files anywhere on this page or use Upload."
@@ -3210,6 +3255,7 @@ msgid "edit conditions below ↓"
 msgstr "edit conditions below ↓"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/schema-graph.tsx
 msgid "Edit field"
 msgstr "Edit field"
 
@@ -3571,8 +3617,8 @@ msgid "Existing user"
 msgstr "Existing user"
 
 #: src/client/admin/pages/schema-graph.tsx
-msgid "expansion"
-msgstr "expansion"
+#~ msgid "expansion"
+#~ msgstr "expansion"
 
 #: src/client/admin/pages/jobs.tsx
 msgid "Expects"
@@ -3730,8 +3776,13 @@ msgstr "Field"
 
 #. placeholder {0}: (next as { name?: string }).name
 #: src/client/admin/app.tsx
+#: src/client/admin/pages/schema-graph.tsx
 msgid "Field \"{0}\" updated."
 msgstr "Field \"{0}\" updated."
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Field name"
+msgstr "Field name"
 
 #: src/client/admin/condition-editor.tsx
 msgid "Field permissions"
@@ -3854,8 +3905,8 @@ msgid "Fix the highlighted fields before saving."
 msgstr "Fix the highlighted fields before saving."
 
 #: src/client/admin/pages/schema-graph.tsx
-msgid "fk"
-msgstr "fk"
+#~ msgid "fk"
+#~ msgstr "fk"
 
 #. placeholder {0}: fkColumnConflicts.map((c) => c.column).join(", ")
 #: src/client/admin/adopt-wizard.tsx
@@ -4426,6 +4477,10 @@ msgstr "Integer between 1 and 200."
 msgid "Integrations"
 msgstr "Integrations"
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Interactive ERD of dynamic collections. Drag nodes to arrange · drag from a node's right handle onto another to draw a relation · add, edit, or drop fields inline."
+msgstr "Interactive ERD of dynamic collections. Drag nodes to arrange · drag from a node's right handle onto another to draw a relation · add, edit, or drop fields inline."
+
 #: src/client/admin/add-field.tsx
 #: src/client/admin/edit-field.tsx
 msgid "Interface"
@@ -4809,6 +4864,10 @@ msgstr "latency"
 msgid "Latency"
 msgstr "Latency"
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Layout reset to auto-arrange."
+msgstr "Layout reset to auto-arrange."
+
 #: src/client/admin/parity/ldap-config-card.tsx
 #: src/client/admin/parity/platform-auth-settings.tsx
 msgid "LDAP / Active Directory"
@@ -4954,8 +5013,8 @@ msgid "Live browser for every endpoint under /api. Built from the OpenAPI doc yo
 msgstr "Live browser for every endpoint under /api. Built from the OpenAPI doc your workspace exposes at /api/openapi.json — including the dynamic /api/items/{slug} routes for your collections."
 
 #: src/client/admin/pages/schema-graph.tsx
-msgid "Live ERD of dynamic collections. Foreign keys derive from field type · relations panel below shows the join shape used by REST + GraphQL."
-msgstr "Live ERD of dynamic collections. Foreign keys derive from field type · relations panel below shows the join shape used by REST + GraphQL."
+#~ msgid "Live ERD of dynamic collections. Foreign keys derive from field type · relations panel below shows the join shape used by REST + GraphQL."
+#~ msgstr "Live ERD of dynamic collections. Foreign keys derive from field type · relations panel below shows the join shape used by REST + GraphQL."
 
 #: src/client/admin/extras.tsx
 msgid "Live tail"
@@ -5091,8 +5150,8 @@ msgid "lowercase, snake_case"
 msgstr "lowercase, snake_case"
 
 #: src/client/admin/pages/schema-graph.tsx
-msgid "m2m"
-msgstr "m2m"
+#~ msgid "m2m"
+#~ msgstr "m2m"
 
 #: src/client/pages/openapi-export.tsx
 msgid "Machine-readable spec for every /api endpoint in this workspace — including dynamic /api/items/{slug} entries for your collections. Import into Postman, Insomnia, Swagger UI, or any code-gen tool."
@@ -5140,6 +5199,10 @@ msgstr "Manual entry"
 #: src/client/admin/pages/functions.tsx
 msgid "manual invoke via POST /api/functions/:name/invoke"
 msgstr "manual invoke via POST /api/functions/:name/invoke"
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Many (relation_many)"
+msgstr "Many (relation_many)"
 
 #: src/client/admin/parity/ldap-config-card.tsx
 msgid "Map →"
@@ -5535,6 +5598,10 @@ msgstr "New password must be at least 8 characters."
 #: src/client/admin/extras.tsx
 msgid "New post"
 msgstr "New post"
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "New relation"
+msgstr "New relation"
 
 #: src/client/admin/role-editor.tsx
 msgid "New role"
@@ -6031,6 +6098,10 @@ msgstr "No two rows can hold the same value (case-sensitive)."
 msgid "No types."
 msgstr "No types."
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "No user fields yet."
+msgstr "No user fields yet."
+
 #: src/client/admin/pages/users.tsx
 msgid "No users match"
 msgstr "No users match"
@@ -6245,6 +6316,10 @@ msgstr "open"
 #: src/client/admin/collections-index.tsx
 msgid "Open"
 msgstr "Open"
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Open collection"
+msgstr "Open collection"
 
 #: src/client/admin/pages/advisor.tsx
 msgid "Open resource"
@@ -7303,9 +7378,23 @@ msgstr "Reject responses whose assertion isn't signed by the IdP."
 msgid "Reject unauthorized certs (recommended)"
 msgstr "Reject unauthorized certs (recommended)"
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "relation"
+msgstr "relation"
+
+#. placeholder {0}: pendingRel.from
+#. placeholder {1}: pendingRel.to
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Relation \"{name}\" added · c_{0} → c_{1}."
+msgstr "Relation \"{name}\" added · c_{0} → c_{1}."
+
 #: src/client/admin/items.tsx
 msgid "Relation has no target"
 msgstr "Relation has no target"
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "relation_many"
+msgstr "relation_many"
 
 #: src/client/admin/pages/schema-graph.tsx
 msgid "relations"
@@ -7413,6 +7502,7 @@ msgid "Requests"
 msgstr "Requests"
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/schema-graph.tsx
 #: src/client/pages/rest-explorer.tsx
 msgid "required"
 msgstr "required"
@@ -7457,6 +7547,10 @@ msgstr "Reset"
 msgid "Reset 2FA"
 msgstr "Reset 2FA"
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Reset layout"
+msgstr "Reset layout"
+
 #: src/client/pages/reset-password.tsx
 msgid "Reset link invalid"
 msgstr "Reset link invalid"
@@ -7495,8 +7589,8 @@ msgid "Reset your password"
 msgstr "Reset your password"
 
 #: src/client/admin/pages/schema-graph.tsx
-msgid "Reset zoom"
-msgstr "Reset zoom"
+#~ msgid "Reset zoom"
+#~ msgstr "Reset zoom"
 
 #: src/client/pages/reset-password.tsx
 msgid "Resetting password"
@@ -8710,6 +8804,10 @@ msgstr "Simulating…"
 msgid "Simulation failed."
 msgstr "Simulation failed."
 
+#: src/client/admin/pages/schema-graph.tsx
+msgid "Single (relation)"
+msgstr "Single (relation)"
+
 #: src/client/admin/parity/insights.tsx
 msgid "single scalar value"
 msgstr "single scalar value"
@@ -8918,6 +9016,14 @@ msgstr "Stores a list of storage keys. Upload new files on the <0>Storage</0> pa
 #: src/client/admin/item-form.tsx
 msgid "Stores a row id from <0>c_{0}</0>."
 msgstr "Stores a row id from <0>c_{0}</0>."
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "stores an array of ids"
+msgstr "stores an array of ids"
+
+#: src/client/admin/pages/schema-graph.tsx
+msgid "stores one target id"
+msgstr "stores one target id"
 
 #: src/client/admin/item-form.tsx
 msgid "Stores the storage key. Upload new files on the <0>Storage</0> page."
@@ -9332,6 +9438,12 @@ msgstr "This removes the row from <0>c_{slug}</0>. Revisions remain available."
 msgid "This rewrites the item to the v{0} snapshot from {1}. The current state is preserved as a new revision, so this is undoable."
 msgstr "This rewrites the item to the v{0} snapshot from {1}. The current state is preserved as a new revision, so this is undoable."
 
+#. placeholder {0}: target.name
+#. placeholder {1}: target.slug
+#: src/client/admin/pages/schema-graph.tsx
+msgid "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column and all its data are removed. This cannot be undone."
+msgstr "This runs <0>ALTER TABLE … DROP COLUMN {0}</0> on <1>c_{1}</1>. The column and all its data are removed. This cannot be undone."
+
 #: src/client/admin/parity/auth-settings.tsx
 msgid "This weakens two-factor authentication"
 msgstr "This weakens two-factor authentication"
@@ -9649,6 +9761,7 @@ msgid "Unified log explorer over the activity audit store. Switch between the St
 msgstr "Unified log explorer over the activity audit store. Switch between the Stream lens (HTTP, data, automation, functions, storage) and the Table audit trail — both read the same rows."
 
 #: src/client/admin/extras.tsx
+#: src/client/admin/pages/schema-graph.tsx
 msgid "unique"
 msgstr "unique"
 
@@ -10359,9 +10472,9 @@ msgid "Your registered devices"
 msgstr "Your registered devices"
 
 #: src/client/admin/pages/schema-graph.tsx
-msgid "Zoom in"
-msgstr "Zoom in"
+#~ msgid "Zoom in"
+#~ msgstr "Zoom in"
 
 #: src/client/admin/pages/schema-graph.tsx
-msgid "Zoom out"
-msgstr "Zoom out"
+#~ msgid "Zoom out"
+#~ msgstr "Zoom out"

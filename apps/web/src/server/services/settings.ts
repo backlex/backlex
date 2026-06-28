@@ -22,16 +22,35 @@ export interface AppSettings {
   /** Workspace default IANA time zone. Used to render dates for users who
    *  haven't set a personal one (`users.timezone`). */
   timezone: string;
+  /** Saved node positions for the Schema graph (ERD) editor, keyed by
+   *  collection slug. Admin-UI-only convenience state — never read by the
+   *  query engine. Empty object = fall back to the deterministic auto-layout. */
+  erdLayout: Record<string, { x: number; y: number }>;
 }
 
 export const APP_SETTINGS_DEFAULTS: AppSettings = {
   i18nLocales: ["en", "tr", "de", "es", "fr", "ja"],
   i18nDefaultLocale: "en",
   timezone: DEFAULT_TIMEZONE,
+  erdLayout: {},
 };
 
 const isStringArray = (v: unknown): v is string[] =>
   Array.isArray(v) && v.every((x) => typeof x === "string");
+
+const isErdLayout = (
+  v: unknown,
+): v is Record<string, { x: number; y: number }> =>
+  !!v &&
+  typeof v === "object" &&
+  !Array.isArray(v) &&
+  Object.values(v as Record<string, unknown>).every(
+    (p) =>
+      !!p &&
+      typeof p === "object" &&
+      typeof (p as { x?: unknown }).x === "number" &&
+      typeof (p as { y?: unknown }).y === "number",
+  );
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.appSettings : sqlite.schema.appSettings;
@@ -58,6 +77,8 @@ export const loadAppSettings = async (
         out.i18nDefaultLocale = r.value;
       else if (r.key === "timezone" && isValidTimeZone(r.value))
         out.timezone = r.value;
+      else if (r.key === "erdLayout" && isErdLayout(r.value))
+        out.erdLayout = r.value;
     }
     if (!out.i18nLocales.includes(out.i18nDefaultLocale)) {
       out.i18nDefaultLocale = out.i18nLocales[0] ?? "en";

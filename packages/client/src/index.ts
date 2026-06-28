@@ -422,6 +422,46 @@ export interface FlowRunResult {
   error?: string;
 }
 
+/** A BI dashboard row — a named grouping of saved panels, optionally published
+ *  to a public embed URL. Mirrors `/api/admin/dashboards`. */
+export interface Dashboard {
+  id: string;
+  tenantId?: string | null;
+  name: string;
+  description: string | null;
+  layout?: unknown;
+  /** Whether the public embed is currently live. */
+  embedEnabled: boolean;
+  /** Role the public embed scopes panel data to (null = unscoped public). */
+  embedRoleId: string | null;
+}
+
+/** Create/update payload for a dashboard. */
+export interface DashboardInput {
+  name: string;
+  description?: string | null;
+  layout?: unknown;
+}
+
+/** One panel's rendered result inside a dashboard run. */
+export interface DashboardPanelResult {
+  panelId: string;
+  name: string;
+  viz: string;
+  kind: string;
+  config: unknown;
+  data: Record<string, unknown>[];
+  note?: string;
+  error?: string;
+}
+
+/** Outcome of minting/rotating a dashboard embed token. The plaintext `token`
+ *  is shown once; `url` is the relative embed path. */
+export interface DashboardShareResult {
+  token: string;
+  url: string;
+}
+
 /** An AI agent definition. Mirrors `/api/agents`. */
 export interface Agent {
   id: string;
@@ -589,6 +629,26 @@ export interface FlowsClient {
   run(id: string, input?: Record<string, unknown>): Promise<FlowRunResult>;
 }
 
+/** Embedded BI dashboards (admin-scoped). Mirrors `/api/admin/dashboards`. */
+export interface DashboardsClient {
+  /** List every dashboard in the active workspace. */
+  list(): Promise<{ data: Dashboard[] }>;
+  /** Fetch a single dashboard by id. */
+  get(id: string): Promise<{ data: Dashboard }>;
+  /** Create a dashboard scoped to the active workspace. */
+  create(input: DashboardInput): Promise<{ data: Dashboard }>;
+  /** Partial update of a dashboard by id. */
+  update(id: string, patch: Partial<DashboardInput>): Promise<{ ok: boolean }>;
+  /** Delete a dashboard by id (panels are un-grouped, not deleted). */
+  delete(id: string): Promise<{ ok: boolean }>;
+  /** Run every panel and return their results. */
+  run(id: string): Promise<{ data: DashboardPanelResult[]; ms: number }>;
+  /** Enable the public embed; mints a one-time token (optionally role-scoped). */
+  share(id: string, opts?: { roleId?: string | null }): Promise<DashboardShareResult>;
+  /** Disable the public embed and forget the token. */
+  revoke(id: string): Promise<{ ok: boolean }>;
+}
+
 /** One collection inside a schema template (preview shape). */
 export interface TemplateCollectionSummary {
   slug: string;
@@ -665,6 +725,8 @@ export interface BacklexClient {
   jobs: JobsClient;
   /** Visual workflows (flows). */
   flows: FlowsClient;
+  /** Embedded BI dashboards. */
+  dashboards: DashboardsClient;
   /** AI agents (definitions, threads, and running turns). */
   agents: AgentsClient;
   /** Permission tooling (simulator). */
@@ -1262,6 +1324,24 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
       request<FlowRunResult>("POST", `/api/flows/${encodeURIComponent(id)}/run`, input ?? {}),
   };
 
+  // Embedded BI dashboards. Admin-scoped CRUD over `/api/admin/dashboards`;
+  // `run` executes every panel, `share`/`revoke` toggle the public embed token.
+  const dash = (id: string) => `/api/admin/dashboards/${encodeURIComponent(id)}`;
+  const dashboards: DashboardsClient = {
+    list: () => request<{ data: Dashboard[] }>("GET", "/api/admin/dashboards"),
+    get: (id: string) => request<{ data: Dashboard }>("GET", dash(id)),
+    create: (input: DashboardInput) =>
+      request<{ data: Dashboard }>("POST", "/api/admin/dashboards", input),
+    update: (id: string, patch: Partial<DashboardInput>) =>
+      request<{ ok: boolean }>("PATCH", dash(id), patch),
+    delete: (id: string) => request<{ ok: boolean }>("DELETE", dash(id)),
+    run: (id: string) =>
+      request<{ data: DashboardPanelResult[]; ms: number }>("POST", `${dash(id)}/run`, {}),
+    share: (id: string, opts?: { roleId?: string | null }) =>
+      request<DashboardShareResult>("POST", `${dash(id)}/share`, opts ?? {}),
+    revoke: (id: string) => request<{ ok: boolean }>("DELETE", `${dash(id)}/share`),
+  };
+
   // AI agents. Admin-scoped CRUD + thread management over `/api/agents`; `send`
   // runs one reason→act turn to completion, `run` is the new-thread shortcut.
   const agents: AgentsClient = {
@@ -1383,6 +1463,7 @@ export const createClient = (opts: ClientOptions): BacklexClient => {
     messaging,
     jobs,
     flows,
+    dashboards,
     agents,
     permissions,
     templates,

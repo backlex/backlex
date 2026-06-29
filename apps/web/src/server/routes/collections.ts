@@ -12,7 +12,7 @@ import {
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
 import { and, eq, type SQL, sql } from "drizzle-orm";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { z } from "zod";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
@@ -26,6 +26,7 @@ import {
   setCachedCollections,
 } from "../services/collections-cache";
 import { invalidateTenantPermissions } from "../services/permissions-cache";
+import { ifNoneMatch, weakETag } from "../lib/etag";
 import { seedOwnerScopedPermissions } from "../services/seed";
 import { embedAndUpsertBatch, isVectorizable } from "../services/vectorize";
 import { indexFtsBatch, isSearchable } from "../services/fts";
@@ -199,6 +200,27 @@ const requireTenant = (c: { get: (k: string) => any }): string => {
  *  gates so every schema-mutating surface is locked the same way. */
 const DDL_GATE = [requireUser, requirePlatformMw, requireAdminMw] as const;
 
+/** Digest of a collection set's identity + version, for a weak ETag. The schema
+ *  (read on nearly every admin page load + MCP tool) changes rarely, so the
+ *  digest is stable across requests until a create/rename/field/archive bumps
+ *  some row's `updatedAt`. */
+const schemaDigest = (
+  rows: { id?: unknown; updatedAt?: unknown }[],
+): string => rows.map((r) => `${String(r.id)}:${String(r.updatedAt)}`).join(",");
+
+/** Set the conditional-GET headers and return a 304 when the client already
+ *  holds this version. Same private/no-cache/Vary posture as the item reads. */
+const schemaEtag304 = (
+  c: Context<AppBindings>,
+  parts: (string | number)[],
+): Response | null => {
+  const etag = weakETag(parts);
+  c.header("ETag", etag);
+  c.header("Cache-Control", "private, no-cache");
+  c.header("Vary", "Authorization, Cookie");
+  return ifNoneMatch(c.req.header("if-none-match"), etag) ? c.body(null, 304) : null;
+};
+
 export const collectionsRoutes = new Hono<AppBindings>()
   .get("/", requireUser, async (c) => {
     const { db, dialect } = c.get("ctx");
@@ -209,17 +231,30 @@ export const collectionsRoutes = new Hono<AppBindings>()
     // `?include_archived=true` opts into the full set — used by the
     // "Archived" panel that exposes restore.
     const includeArchived = c.req.query("include_archived") === "true";
-    const cached = getCachedCollections({ tenantId, includeArchived });
-    if (cached) return c.json({ data: cached });
-    const rows = await (db as any)
-      .select()
-      .from(t)
-      .where(
-        includeArchived
-          ? eq(t.tenantId, tenantId)
-          : and(eq(t.tenantId, tenantId), eq(t.status, "active")),
-      );
-    setCachedCollections({ tenantId, includeArchived }, rows);
+    let rows = getCachedCollections({ tenantId, includeArchived }) as
+      | { id?: unknown; updatedAt?: unknown }[]
+      | undefined;
+    if (!rows) {
+      rows = await (db as any)
+        .select()
+        .from(t)
+        .where(
+          includeArchived
+            ? eq(t.tenantId, tenantId)
+            : and(eq(t.tenantId, tenantId), eq(t.status, "active")),
+        );
+      setCachedCollections({ tenantId, includeArchived }, rows!);
+    }
+    // Cheap revalidation on top of the per-isolate cache: a warm client that
+    // already has the current schema gets an empty 304 instead of the full
+    // (often large) collection-list payload.
+    const r304 = schemaEtag304(c, [
+      "collections",
+      tenantId,
+      includeArchived ? 1 : 0,
+      schemaDigest(rows!),
+    ]);
+    if (r304) return r304;
     return c.json({ data: rows });
   })
   .get("/:slug", requireUser, async (c) => {
@@ -236,6 +271,13 @@ export const collectionsRoutes = new Hono<AppBindings>()
     if (!includeArchived && (row[0].status ?? "active") !== "active") {
       throw new AppError("NOT_FOUND", "Collection not found");
     }
+    const r304 = schemaEtag304(c, [
+      "collection",
+      tenantId,
+      String(row[0].id),
+      String(row[0].updatedAt),
+    ]);
+    if (r304) return r304;
     return c.json({ data: row[0] });
   })
   /**

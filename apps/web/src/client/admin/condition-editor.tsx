@@ -346,7 +346,7 @@ export function ConditionEditor({ role, action, collection, pushToast, available
               type="button"
               variant="ghost"
               size="xs"
-              className={`-mb-px inline-flex shrink-0 cursor-pointer items-center gap-2 border-0 border-b-2 bg-transparent px-3.5 py-2.5 text-[12.5px] font-medium hover:text-foreground ${on ? "border-b-primary text-foreground" : "border-b-transparent text-muted-foreground"}`}
+              className={`-mb-px inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-none border-0 border-b-2 bg-transparent px-3.5 py-2.5 text-[12.5px] font-medium hover:text-foreground ${on ? "border-b-primary text-foreground" : "border-b-transparent text-muted-foreground"}`}
               aria-pressed={on}
               onClick={() => setTab(t.id as any)}
             >

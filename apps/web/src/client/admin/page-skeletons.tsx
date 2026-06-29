@@ -397,10 +397,10 @@ function AdvisorSkeletonImpl() {
       <HeaderSkeleton actions={1} />
       {/* Score card: ~140px score ring on the left + Security/Performance
           tiles, then a "Last run" line. */}
-      <Card className="grid grid-cols-[160px_1fr] items-center gap-[22px] p-5">
+      <Card className="grid grid-cols-[160px_1fr] items-center gap-[22px] p-5 max-[640px]:grid-cols-1 max-[640px]:justify-items-center">
         <Skeleton className="size-[140px] rounded-full" />
         <div className="flex flex-col gap-3.5">
-          <div className="grid grid-cols-2 gap-3.5">
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
             {Array.from({ length: 2 }).map((_, i) => (
               <CardSkeleton key={i} lines={2} />
             ))}

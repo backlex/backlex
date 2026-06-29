@@ -186,11 +186,15 @@ export const introspectColumns = async (
 };
 
 /**
- * Emit a plain B-tree index for every field flagged `indexed`. Idempotent
- * (`CREATE INDEX IF NOT EXISTS` — supported on both PG and SQLite) so it can
- * run on create AND on every subsequent `applyCollection`, picking up fields
- * that gained the flag later. `unique` fields are skipped — the UNIQUE
- * constraint already provides an index.
+ * Emit a plain B-tree index for every field flagged `indexed`, plus every
+ * to-one `relation` field — its FK column is what every `expand=`/nested
+ * filter/sort JOINs on, and an un-indexed FK turns those into a full scan of
+ * the child table per parent row. Idempotent (`CREATE INDEX IF NOT EXISTS` —
+ * supported on both PG and SQLite) so it runs on create AND on every later
+ * `applyCollection`, picking up fields that gained the flag (or relations
+ * added) later. `unique` fields are skipped — the UNIQUE constraint already
+ * provides an index. `relation_many` is skipped — it has no scalar FK column
+ * (its links live in a JSON array / junction), so a plain index buys nothing.
  */
 const ensureFieldIndexes = async (
   db: AnyDb,
@@ -199,13 +203,41 @@ const ensureFieldIndexes = async (
   fields: FieldDef[],
 ): Promise<void> => {
   for (const f of fields) {
-    if (!f.indexed || f.unique) continue;
+    const wantIndex = f.indexed || f.type === "relation";
+    if (!wantIndex || f.unique) continue;
     await exec(
       db,
       dialect,
       `CREATE INDEX IF NOT EXISTS ${quote(`${table}_${f.name}_idx`)} ON ${quote(table)} (${quote(f.name)})`,
     );
   }
+};
+
+/**
+ * Composite index that backs the default list ordering (`-created_at`) and
+ * keyset pagination's `(…, created_at, id)` seek. Leading with `tenant_id`
+ * (when tenant-scoped) lets the planner seek the tenant partition and then
+ * walk `created_at, id` in order — a plain ASC btree serves the `DESC` default
+ * sort via a backward scan on both engines. No-op when the collection has no
+ * `created_at` (the pk is already indexed, nothing left to compose).
+ */
+const ensurePaginationIndex = async (
+  db: AnyDb,
+  dialect: Dialect,
+  table: string,
+  opts: { tenantScoped: boolean; hasCreatedAt: boolean },
+): Promise<void> => {
+  if (!opts.hasCreatedAt) return;
+  const cols = [
+    ...(opts.tenantScoped ? [quote("tenant_id")] : []),
+    quote("created_at"),
+    quote("id"),
+  ].join(", ");
+  await exec(
+    db,
+    dialect,
+    `CREATE INDEX IF NOT EXISTS ${quote(`${table}_keyset_idx`)} ON ${quote(table)} (${cols})`,
+  );
 };
 
 /**
@@ -285,6 +317,7 @@ export const applyCollection = async (
       );
     }
     await ensureFieldIndexes(db, dialect, table, def.fields);
+    await ensurePaginationIndex(db, dialect, table, { tenantScoped, hasCreatedAt });
     if (def.fts) await ensureFtsObjects(db, dialect, table, def.fields);
     return;
   }
@@ -359,6 +392,9 @@ export const applyCollection = async (
   // Run after column adds so a freshly-added indexed field gets its index, and
   // so a field that gained `indexed` on a later update is picked up too.
   await ensureFieldIndexes(db, dialect, table, def.fields);
+  // Backfills the keyset/default-sort composite onto collections created
+  // before it existed (IF NOT EXISTS makes the create-branch call a no-op here).
+  await ensurePaginationIndex(db, dialect, table, { tenantScoped, hasCreatedAt });
   // FTS objects are additive too — a collection that gains `fts` (or its first
   // `searchable` field) on a later PATCH picks them up here.
   if (def.fts) await ensureFtsObjects(db, dialect, table, def.fields);

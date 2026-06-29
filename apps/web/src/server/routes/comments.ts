@@ -3,9 +3,23 @@ import { and, desc, eq } from "drizzle-orm";
 import { AppError } from "@backlex/core";
 import * as pg from "@backlex/db/pg";
 import * as sqlite from "@backlex/db/sqlite";
+import type { Context } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { getRequestPermCache, requirePermission } from "../middleware/permission";
+import { resolvePermission } from "../services/permissions";
 import { SECURITY, OkSchema, errorResponses } from "../lib/openapi";
+
+/** Comments are workspace-scoped — every query must pin the active tenant so a
+ *  signed-in user from tenant A can never read or delete tenant B's threads.
+ *  (The `comments` table carries `tenant_id`; older rows written before this
+ *  fix may have it NULL and are simply invisible — they were never reliably
+ *  attributable to a workspace anyway.) */
+const requireTenant = (c: Context<AppBindings>): string => {
+  const tenantId = c.get("auth")?.tenantId ?? null;
+  if (!tenantId) throw new AppError("UNAUTHORIZED", "Active tenant required");
+  return tenantId;
+};
 
 const tableFor = (dialect: "pg" | "sqlite") =>
   dialect === "pg" ? pg.schema.comments : sqlite.schema.comments;
@@ -36,9 +50,10 @@ const TAGS = ["comments"];
  * and stored separately from the dynamic `c_<slug>` table — admins can
  * reuse comments across migrations without ALTERing user collections.
  *
- * Permissions are deliberately loose for now: any signed-in user can read +
- * write; only authors and admins can delete. When the permission DSL gains
- * a richer "subject" notion this should fold into it.
+ * Access mirrors `revisions.ts`: every endpoint requires `read` permission on
+ * the target collection and is scoped to the active workspace (`tenant_id`).
+ * Creating/listing needs collection `read`; deleting is further restricted to
+ * the comment's author or an admin.
  */
 export const commentsRoutes = new OpenAPIHono<AppBindings>()
   .openapi(
@@ -48,9 +63,12 @@ export const commentsRoutes = new OpenAPIHono<AppBindings>()
       tags: TAGS,
       summary: "List comments on an item",
       description:
-        "Requires `collection` + `itemId` query params. Any signed-in user can read.",
+        "Requires `collection` + `itemId` query params and `read` permission on the collection.",
       security: SECURITY,
-      middleware: [requireUser],
+      middleware: [
+        requireUser,
+        requirePermission((c) => c.req.query("collection") ?? "", "read"),
+      ],
       request: {
         query: z.object({
           collection: z.string(),
@@ -69,6 +87,7 @@ export const commentsRoutes = new OpenAPIHono<AppBindings>()
     }),
     async (c) => {
       const ctx = c.get("ctx");
+      const tenantId = requireTenant(c);
       const { collection, itemId } = c.req.valid("query");
       if (!collection || !itemId) {
         throw new AppError(
@@ -80,7 +99,13 @@ export const commentsRoutes = new OpenAPIHono<AppBindings>()
       const rows = await (ctx.db as any)
         .select()
         .from(t)
-        .where(and(eq(t.collection, collection), eq(t.itemId, itemId)))
+        .where(
+          and(
+            eq(t.tenantId, tenantId),
+            eq(t.collection, collection),
+            eq(t.itemId, itemId),
+          ),
+        )
         .orderBy(desc(t.createdAt));
       return c.json({ data: rows });
     },
@@ -107,12 +132,29 @@ export const commentsRoutes = new OpenAPIHono<AppBindings>()
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
+      const tenantId = requireTenant(c);
       const body = c.req.valid("json");
+      // Commenting requires `read` on the target collection — the body carries
+      // the slug so the gate runs here rather than as route middleware.
+      const perm = await resolvePermission(
+        ctx,
+        auth,
+        body.collection,
+        "read",
+        getRequestPermCache(c),
+      );
+      if (!perm.allowed) {
+        throw new AppError(
+          "FORBIDDEN",
+          `No permission to read "${body.collection}"`,
+        );
+      }
       const t = tableFor(ctx.dialect);
       const id = crypto.randomUUID();
       const now = ctx.dialect === "pg" ? new Date() : Date.now();
       await (ctx.db as any).insert(t).values({
         id,
+        tenantId,
         collection: body.collection,
         itemId: body.itemId,
         userId: auth.userId,
@@ -146,12 +188,15 @@ export const commentsRoutes = new OpenAPIHono<AppBindings>()
     async (c) => {
       const ctx = c.get("ctx");
       const auth = c.get("auth");
+      const tenantId = requireTenant(c);
       const t = tableFor(ctx.dialect);
       const { id } = c.req.valid("param");
+      // Scope the lookup to the active workspace so a tenant-A admin can never
+      // reach a tenant-B comment by guessing its id (admin role is tenant-scoped).
       const rows = await (ctx.db as any)
         .select()
         .from(t)
-        .where(eq(t.id, id))
+        .where(and(eq(t.id, id), eq(t.tenantId, tenantId)))
         .limit(1);
       const row = rows[0];
       if (!row) throw new AppError("NOT_FOUND", "Comment not found");
@@ -159,7 +204,9 @@ export const commentsRoutes = new OpenAPIHono<AppBindings>()
       if (!isAdmin && row.userId !== auth.userId) {
         throw new AppError("FORBIDDEN", "Only the author or admin can delete");
       }
-      await (ctx.db as any).delete(t).where(eq(t.id, id));
+      await (ctx.db as any)
+        .delete(t)
+        .where(and(eq(t.id, id), eq(t.tenantId, tenantId)));
       return c.json({ ok: true });
     },
   );

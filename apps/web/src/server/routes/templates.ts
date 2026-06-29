@@ -3,6 +3,7 @@ import { z } from "zod";
 import { AppError } from "@backlex/core";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { requireAdminMw, requirePlatformMw } from "../services/roles/guards";
 import { templateSummaries } from "../templates/catalog";
 import { applyTemplate, hasNoManagedCollections } from "../services/templates";
 import { invalidateTenantCollections } from "../services/collections-cache";
@@ -32,7 +33,7 @@ export const templatesRoutes = new Hono<AppBindings>()
       hasCollections: !empty,
     });
   })
-  .post("/apply", requireUser, async (c) => {
+  .post("/apply", requireUser, requirePlatformMw, requireAdminMw, async (c) => {
     const { templateId } = ApplyInput.parse(await c.req.json());
     const { db, dialect } = c.get("ctx");
     const tenantId = requireTenant(c);

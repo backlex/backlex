@@ -334,7 +334,7 @@ export const performDelete = async (
   }
 
   const sideEffects: SideEffect[] = [
-    () => deleteVector(ctx, collection, id),
+    () => deleteVector(ctx, collection, env.tenantId ?? null, id),
     () => deleteFts(ctx, collection, id),
     () =>
       publishEvent(

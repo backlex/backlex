@@ -50,6 +50,19 @@ export const isVectorizable = (meta: VectorizeMeta, env: Pick<Env, "EMBEDDING_DE
   );
 };
 
+/**
+ * Tenant-scope the vector namespace. The store is one index per model shared
+ * across every workspace in a single-worker multi-tenant deployment, keyed
+ * `<namespace>:<id>` — so two tenants owning a same-slug collection would
+ * otherwise collide / read each other's vectors. Prefixing with the tenant id
+ * isolates them. Mirrors `scopeNs` in `routes/vector.ts`. (Cloud runs one
+ * index per tenant, so the prefix is a harmless no-op there.) Existing
+ * self-host data embedded under the bare slug must be re-indexed via
+ * `POST /api/collections/:slug/vectorize`.
+ */
+const nsFor = (meta: { slug: string }, tenantId: string | null): string =>
+  tenantId ? `${tenantId}:${meta.slug}` : meta.slug;
+
 const vectorMetadata = (
   meta: VectorizeMeta,
   tenantId: string | null,
@@ -81,7 +94,7 @@ export const embedAndUpsert = async (
   if (!text) {
     // Nothing to embed — also delete any prior vector so stale text doesn't
     // linger after a user empties every vectorized field.
-    await safeDelete(ctx, meta, [itemId]);
+    await safeDelete(ctx, meta, tenantId, [itemId]);
     return;
   }
   try {
@@ -90,7 +103,7 @@ export const embedAndUpsert = async (
       {
         id: itemId,
         values: values[0]!,
-        namespace: meta.slug,
+        namespace: nsFor(meta, tenantId),
         metadata: vectorMetadata(meta, tenantId, itemId, text, model),
       },
     ]);
@@ -125,7 +138,7 @@ export const embedAndUpsertBatch = async (
   const records = prepared.map((p, i) => ({
     id: p.id,
     values: values[i]!,
-    namespace: meta.slug,
+    namespace: nsFor(meta, tenantId),
     metadata: vectorMetadata(meta, tenantId, p.id, p.text, model),
   }));
   await ctx.vector.upsert(model, records);
@@ -135,12 +148,13 @@ export const embedAndUpsertBatch = async (
 const safeDelete = async (
   ctx: Ctx,
   meta: VectorizeMeta,
+  tenantId: string | null,
   ids: string[],
 ): Promise<void> => {
   const model = resolveModel(meta, ctx.env);
   if (!model) return;
   try {
-    await ctx.vector.delete(model, ids, meta.slug);
+    await ctx.vector.delete(model, ids, nsFor(meta, tenantId));
   } catch (e) {
     console.error(
       `[vectorize] delete failed for ${meta.slug}/${ids.join(",")}:`,
@@ -152,8 +166,9 @@ const safeDelete = async (
 export const deleteVector = async (
   ctx: Ctx,
   meta: VectorizeMeta,
+  tenantId: string | null,
   itemId: string,
 ): Promise<void> => {
   if (!meta.vectorize) return;
-  await safeDelete(ctx, meta, [itemId]);
+  await safeDelete(ctx, meta, tenantId, [itemId]);
 };

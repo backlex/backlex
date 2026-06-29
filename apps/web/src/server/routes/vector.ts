@@ -1,9 +1,29 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
-import { EMBEDDING_MODEL_NAMES, type EmbeddingModel } from "@backlex/core";
+import { AppError, EMBEDDING_MODEL_NAMES, type EmbeddingModel } from "@backlex/core";
+import type { Context } from "hono";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
 import { SECURITY, errorResponses } from "../lib/openapi";
 import { reportToCloud } from "../lib/cloud-report";
+
+/**
+ * Tenant-scope the caller-supplied namespace. In a single-worker multi-tenant
+ * deployment every tenant shares one Vectorize index (one per model), keyed
+ * `<namespace>:<id>` — so without this prefix two tenants naming the same
+ * namespace would read/delete each other's vectors. Pinning the namespace to
+ * the active workspace makes that impossible. (Cloud runs one worker+index per
+ * tenant, so the prefix is a harmless no-op there.) A caller that supplies no
+ * namespace still gets isolated under the bare tenant id.
+ *
+ * NOTE: existing self-host multi-tenant data embedded before this change lives
+ * under the un-prefixed namespace and must be re-indexed (collection
+ * `POST /:slug/vectorize`, or re-upsert for raw vectors) to be queryable again.
+ */
+const scopeNs = (c: Context<AppBindings>, ns: string | undefined): string => {
+  const tenantId = c.get("auth")?.tenantId ?? null;
+  if (!tenantId) throw new AppError("UNAUTHORIZED", "Active tenant required");
+  return ns ? `${tenantId}:${ns}` : tenantId;
+};
 
 // Build the model enum from the registry so adding a model in
 // embedding-models.ts is the only change required to expose it via the API.
@@ -116,8 +136,12 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>()
     async (c) => {
       const { vector } = c.get("ctx");
       const body = c.req.valid("json");
-      await vector.upsert(body.model, body.records);
-      return c.json({ ok: true, count: body.records.length, model: body.model });
+      const records = body.records.map((r) => ({
+        ...r,
+        namespace: scopeNs(c, r.namespace),
+      }));
+      await vector.upsert(body.model, records);
+      return c.json({ ok: true, count: records.length, model: body.model });
     },
   )
   .openapi(
@@ -128,6 +152,7 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>()
       summary: "Query by vector",
       description: "ANN search against pre-computed query vector.",
       security: SECURITY,
+      middleware: [requireUser],
       request: {
         body: { required: true, content: { "application/json": { schema: QueryInput } } },
       },
@@ -149,7 +174,7 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>()
       const matches = await vector.query(body.model, {
         values: body.values,
         topK: body.topK,
-        namespace: body.namespace,
+        namespace: scopeNs(c, body.namespace),
         filter: body.filter,
       });
       // Self-report the Vectorize query for cloud cost visibility (CF has no
@@ -186,7 +211,7 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>()
     async (c) => {
       const { vector } = c.get("ctx");
       const body = c.req.valid("json");
-      await vector.delete(body.model, body.ids, body.namespace);
+      await vector.delete(body.model, body.ids, scopeNs(c, body.namespace));
       return c.json({ ok: true, model: body.model });
     },
   )
@@ -231,7 +256,7 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>()
       const records = body.records.map((r, i) => ({
         id: r.id,
         values: values[i]!,
-        namespace: r.namespace,
+        namespace: scopeNs(c, r.namespace),
         // Auto-attach the source text + a model marker so downstream
         // consumers can audit which model produced this row.
         metadata: { ...(r.metadata ?? {}), content: r.text, model: body.model },
@@ -248,6 +273,7 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>()
       summary: "Embed and search",
       description: "Server embeds the query text, then runs ANN search.",
       security: SECURITY,
+      middleware: [requireUser],
       request: {
         body: { required: true, content: { "application/json": { schema: SearchInput } } },
       },
@@ -274,7 +300,7 @@ export const vectorRoutes = new OpenAPIHono<AppBindings>()
       const matches = await vector.query(body.model, {
         values: values[0]!,
         topK: body.topK,
-        namespace: body.namespace,
+        namespace: scopeNs(c, body.namespace),
         filter: body.filter,
       });
       // Self-report the Vectorize query for cloud cost visibility (CF has no

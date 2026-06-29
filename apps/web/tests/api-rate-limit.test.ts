@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { apiRateLimitConfig } from "../src/server/lib/api-rate-limit";
 import type { Env } from "../src/server/env";
-import { makeHarness } from "./setup";
+import { makeHarness, seedAdmin } from "./setup";
+
+// `GET /api/collections` now requires a signed-in user, so seed an admin first.
+// The sign-up call lives under `/api/auth/*` which the global limiter skips, so
+// it never consumes the budget these tests count against.
+const seedNoConsume = (h: ReturnType<typeof makeHarness>) =>
+  seedAdmin(h, undefined, undefined, { openSignup: false });
 
 const baseEnv = (over: Partial<Env> = {}): Env =>
   ({ APP_URL: "http://x", AUTH_SECRET: "s", ...over }) as Env;
@@ -47,6 +53,7 @@ describe("global API rate limit middleware", () => {
   test("does nothing when disabled (no RateLimit headers, never 429s)", async () => {
     const h = makeHarness();
     try {
+      await seedNoConsume(h);
       for (let i = 0; i < 5; i++) {
         const res = await h.fetch("/api/collections");
         expect(res.status).toBe(200);
@@ -60,6 +67,7 @@ describe("global API rate limit middleware", () => {
   test("emits RateLimit-* headers and 429s past the budget", async () => {
     const h = makeHarness({ API_RATE_LIMIT_MAX: "3" });
     try {
+      await seedNoConsume(h);
       const r1 = await h.fetch("/api/collections");
       expect(r1.status).toBe(200);
       expect(r1.headers.get("RateLimit-Limit")).toBe("3");
@@ -95,6 +103,7 @@ describe("global API rate limit middleware", () => {
   test("auto-enabled on cloud surfaces the default 600 budget on a normal call", async () => {
     const h = makeHarness({ CLOUD_PROJECT_ID: "proj_smoke" });
     try {
+      await seedNoConsume(h);
       const res = await h.fetch("/api/collections");
       expect(res.status).toBe(200);
       expect(res.headers.get("RateLimit-Limit")).toBe("600");

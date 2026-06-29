@@ -16,6 +16,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { AppBindings } from "../app";
 import { requireUser } from "../middleware/session";
+import { requireAdminMw, requirePlatformMw } from "../services/roles/guards";
 import { logActivity } from "../services/activity";
 import { inspectTable, RESERVED_NAMES } from "../services/adopt";
 import { cascadeSlugRename } from "../services/collection-rename";
@@ -193,8 +194,13 @@ const requireTenant = (c: { get: (k: string) => any }): string => {
   return tenantId;
 };
 
+/** DDL is an operator action: signed-in + platform plane (never a workspace
+ *  end-user) + admin role. Mirrors the `/api/admin/adopt` and `/api/admin/db`
+ *  gates so every schema-mutating surface is locked the same way. */
+const DDL_GATE = [requireUser, requirePlatformMw, requireAdminMw] as const;
+
 export const collectionsRoutes = new Hono<AppBindings>()
-  .get("/", async (c) => {
+  .get("/", requireUser, async (c) => {
     const { db, dialect } = c.get("ctx");
     const tenantId = requireTenant(c);
     const t = tableFor(dialect);
@@ -216,7 +222,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
     setCachedCollections({ tenantId, includeArchived }, rows);
     return c.json({ data: rows });
   })
-  .get("/:slug", async (c) => {
+  .get("/:slug", requireUser, async (c) => {
     const { db, dialect } = c.get("ctx");
     const tenantId = requireTenant(c);
     const t = tableFor(dialect);
@@ -238,7 +244,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
    * role's owner-scoped permissions are re-seeded so a restore is
    * one-shot, not "restore + re-grant permissions".
    */
-  .post("/:slug/restore", requireUser, async (c) => {
+  .post("/:slug/restore", ...DDL_GATE, async (c) => {
     const slug = c.req.param("slug");
     const { db, dialect } = c.get("ctx");
     const tenantId = requireTenant(c);
@@ -288,7 +294,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
    *       and type-compatible
    *     - applier short-circuits — never touches the user's table
    */
-  .post("/", requireUser, async (c) => {
+  .post("/", ...DDL_GATE, async (c) => {
     const body = CollectionInput.parse(await c.req.json());
     try {
       validateFields(body.fields);
@@ -587,7 +593,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
     });
     return c.json({ data: created }, 201);
   })
-  .patch("/:slug", requireUser, async (c) => {
+  .patch("/:slug", ...DDL_GATE, async (c) => {
     const slug = c.req.param("slug");
     const body = CollectionInput.partial().parse(await c.req.json());
     if (body.fields) {
@@ -707,7 +713,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
    * folded into PATCH, because `applyCollection` is additive-only and never
    * drops columns. Refused on adopted tables (we never touch the user's DDL).
    */
-  .delete("/:slug/fields/:name", requireUser, async (c) => {
+  .delete("/:slug/fields/:name", ...DDL_GATE, async (c) => {
     const slug = c.req.param("slug");
     const fieldName = c.req.param("name");
     const { db, dialect } = c.get("ctx");
@@ -752,7 +758,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
     });
     return c.json(dropResponse);
   })
-  .delete("/:slug", requireUser, async (c) => {
+  .delete("/:slug", ...DDL_GATE, async (c) => {
     const slug = c.req.param("slug");
     const { db, dialect } = c.get("ctx");
     const tenantId = requireTenant(c);
@@ -809,7 +815,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
    * Returns `{ processed, total, skipped }` — `skipped` counts rows whose
    * vectorize fields are all empty (nothing to embed).
    */
-  .post("/:slug/vectorize", requireUser, async (c) => {
+  .post("/:slug/vectorize", ...DDL_GATE, async (c) => {
     const slug = c.req.param("slug");
     const ctx = c.get("ctx");
     const { db, dialect } = ctx;
@@ -890,7 +896,7 @@ export const collectionsRoutes = new Hono<AppBindings>()
    * Returns `{ processed, total, skipped }` — `skipped` counts rows whose
    * searchable fields are all empty (nothing to index).
    */
-  .post("/:slug/fts-reindex", requireUser, async (c) => {
+  .post("/:slug/fts-reindex", ...DDL_GATE, async (c) => {
     const slug = c.req.param("slug");
     const ctx = c.get("ctx");
     const { db, dialect } = ctx;

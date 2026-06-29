@@ -256,9 +256,15 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
       dialect === "pg"
         ? pg.schema.notifications
         : sqlite.schema.notifications;
+    // Stamp the originating workspace so the row (including broadcasts) is only
+    // visible to that tenant — the notifications API filters reads by tenant_id.
+    const tenantId =
+      ctx.authSubject.tenantId ??
+      ((ctx.data as { tenantId?: string | null } | undefined)?.tenantId ?? null);
     try {
       await (ctx.ctx.db as any).insert(t).values({
         id: crypto.randomUUID(),
+        tenantId,
         userId: userId || null,
         title,
         body,
@@ -269,9 +275,6 @@ const executeOp = async (op: Operation, ctx: RunCtx): Promise<unknown> => {
       });
       // Opt-in fan-out to the target user's push devices (never for broadcasts).
       if (op.push && userId) {
-        const tenantId =
-          ctx.authSubject.tenantId ??
-          ((ctx.data as { tenantId?: string | null } | undefined)?.tenantId ?? null);
         try {
           await sendPushToUsers(ctx.ctx, tenantId, {
             userIds: [userId],

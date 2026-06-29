@@ -215,8 +215,14 @@ query GetPublished($f: JSON!) {
 ## Relations
 
 Fields with type `relation` and `to: <slug>` render as the target
-collection's GraphQL type, not the raw id. Resolution is per-row (N+1
-in v1; DataLoader batching is on the v2 list).
+collection's GraphQL type, not the raw id. Resolution is **batched** per
+request: a query that returns N parents fires one `WHERE id IN (…)` per
+target collection, not N single-row lookups — so `{ comments { post { … } } }`
+costs one extra round-trip regardless of how many comments come back. The
+loader applies the same read-permission, tenant, row-level, soft-delete, and
+draft gates as a direct fetch, and dedupes repeated foreign keys within the
+request. `relation_many` still returns the raw id array (its targets aren't
+batched yet).
 
 ```graphql
 {

@@ -2,42 +2,15 @@ import { serveStatic } from "hono/bun";
 import { createApp } from "../app";
 import { mountSpa } from "../lib/spa";
 import { startBunScheduler } from "../services/scheduler";
-import type { Env } from "../env";
+import { type Env, envFromSource } from "../env";
 
+// Map EVERY env knob (SMTP/SES/push/SMS/SSRF/OWNER_EMAIL/AI/etc.) from
+// process.env via the shared helper, then apply the local dev fallbacks the
+// required fields need so a bare `bun run` still boots.
 const env: Env = {
+  ...envFromSource(process.env),
   APP_URL: process.env.APP_URL ?? "http://localhost:5173",
   AUTH_SECRET: process.env.AUTH_SECRET ?? "dev-secret-change-me",
-  DATABASE_URL: process.env.DATABASE_URL,
-  SQLITE_PATH: process.env.SQLITE_PATH,
-  LIBSQL_URL: process.env.LIBSQL_URL,
-  LIBSQL_AUTH_TOKEN: process.env.LIBSQL_AUTH_TOKEN,
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-  RESEND_API_KEY: process.env.RESEND_API_KEY,
-  EMAIL_FROM: process.env.EMAIL_FROM,
-  OAUTH_GOOGLE_CLIENT_ID: process.env.OAUTH_GOOGLE_CLIENT_ID,
-  OAUTH_GOOGLE_CLIENT_SECRET: process.env.OAUTH_GOOGLE_CLIENT_SECRET,
-  OAUTH_GITHUB_CLIENT_ID: process.env.OAUTH_GITHUB_CLIENT_ID,
-  OAUTH_GITHUB_CLIENT_SECRET: process.env.OAUTH_GITHUB_CLIENT_SECRET,
-  OAUTH_APPLE_CLIENT_ID: process.env.OAUTH_APPLE_CLIENT_ID,
-  OAUTH_APPLE_CLIENT_SECRET: process.env.OAUTH_APPLE_CLIENT_SECRET,
-  AUTH_PLUGINS: process.env.AUTH_PLUGINS,
-  EXTRA_TRUSTED_ORIGINS: process.env.EXTRA_TRUSTED_ORIGINS,
-  FUNCTIONS_FETCH_ALLOW: process.env.FUNCTIONS_FETCH_ALLOW,
-  FUNCTIONS_EXEC_URL: process.env.FUNCTIONS_EXEC_URL,
-  SANDBOX_RPC_TOKEN: process.env.SANDBOX_RPC_TOKEN,
-  SELF_URL: process.env.SELF_URL,
-  S3_BUCKET: process.env.S3_BUCKET,
-  S3_REGION: process.env.S3_REGION,
-  S3_ENDPOINT: process.env.S3_ENDPOINT,
-  S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
-  S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
-  UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
-  UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
-  R2_PUBLIC_BASE: process.env.R2_PUBLIC_BASE,
-  LOG_LEVEL: process.env.LOG_LEVEL,
-  API_RATE_LIMIT_MAX: process.env.API_RATE_LIMIT_MAX,
-  API_RATE_LIMIT_WINDOW_MS: process.env.API_RATE_LIMIT_WINDOW_MS,
-  API_RATE_LIMIT_DISABLED: process.env.API_RATE_LIMIT_DISABLED,
 };
 
 const app = createApp(env);

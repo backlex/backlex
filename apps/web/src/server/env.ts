@@ -344,3 +344,144 @@ export interface Env {
    *  Set to `0` to disable (rows then fall back to ACTIVITY_RETENTION_DAYS). */
   ACCESS_AUDIT_RETENTION_DAYS?: string;
 }
+
+/**
+ * Every string-valued config field on {@link Env} — i.e. everything an
+ * environment-variable source (`process.env`, `Deno.env`) can supply. The
+ * Cloudflare *binding* fields (D1 / R2 / ASSETS / AI / VECTORIZE_* /
+ * HYPERDRIVE* / REALTIME / RATE_LIMIT / CLOUD_REPORT_SERVICE) are objects the
+ * Workers runtime injects and are intentionally absent here.
+ *
+ * `envFromSource` maps exactly these keys, so the non-Worker entries
+ * (bun/node/vercel/netlify/deno/gcp/lambda/azure) no longer hand-list a stale
+ * subset — historically each one mapped ~34 of ~100 keys, silently dropping
+ * SMTP/SES/push/SMS/OWNER_EMAIL/SSRF/AI-gateway/embedding/retention/job/upload
+ * knobs. `tests/env-parity.test.ts` parses the interface and fails if a new
+ * string field is added without being listed here. The `satisfies` clause
+ * guarantees every entry is a real `Env` key.
+ */
+export const STRING_ENV_KEYS = [
+  "APP_URL",
+  "AUTH_SECRET",
+  "DEBUG_TIMING_SECRET",
+  "LOG_LEVEL",
+  "TRACES_SAMPLE_RATE",
+  "TRACES_RETENTION_DAYS",
+  "SEED_TEMPLATE",
+  "OWNER_EMAIL",
+  "DATABASE_URL",
+  "DATABASE_REPLICA_URL",
+  "DATABASE_DRIVER",
+  "CRON_SECRET",
+  "SQLITE_PATH",
+  "LIBSQL_URL",
+  "LIBSQL_AUTH_TOKEN",
+  "CLOUD_REPORT_URL",
+  "CLOUD_REPORT_SECRET",
+  "CLOUD_PROJECT_ID",
+  "BLOCK_PRIVATE_FETCH_HOSTS",
+  "OPENAI_API_KEY",
+  "AI_GATEWAY_API_KEY",
+  "ANTHROPIC_API_KEY",
+  "EMBEDDING_HTTP_URL",
+  "EMBEDDING_HTTP_TOKEN",
+  "EMBEDDING_DEFAULT_MODEL",
+  "EMAIL_PROVIDER",
+  "EMAIL_FROM",
+  "RESEND_API_KEY",
+  "SENDGRID_API_KEY",
+  "MAILGUN_API_KEY",
+  "MAILGUN_DOMAIN",
+  "MAILGUN_HOST",
+  "SES_REGION",
+  "SES_ACCESS_KEY_ID",
+  "SES_SECRET_ACCESS_KEY",
+  "SMTP_HOST",
+  "SMTP_PORT",
+  "SMTP_USER",
+  "SMTP_PASSWORD",
+  "SMTP_SECURE",
+  "PUSH_PROVIDER",
+  "FCM_PROJECT_ID",
+  "FCM_CLIENT_EMAIL",
+  "FCM_PRIVATE_KEY",
+  "APNS_KEY_ID",
+  "APNS_TEAM_ID",
+  "APNS_PRIVATE_KEY",
+  "APNS_BUNDLE_ID",
+  "APNS_PRODUCTION",
+  "WEBPUSH_SUBJECT",
+  "WEBPUSH_VAPID_PUBLIC_KEY",
+  "WEBPUSH_VAPID_PRIVATE_KEY",
+  "SMS_PROVIDER",
+  "TWILIO_ACCOUNT_SID",
+  "TWILIO_AUTH_TOKEN",
+  "TWILIO_FROM",
+  "TWILIO_MESSAGING_SERVICE_SID",
+  "SMS_AWS_REGION",
+  "SMS_AWS_ACCESS_KEY_ID",
+  "SMS_AWS_SECRET_ACCESS_KEY",
+  "SMS_AWS_SENDER_ID",
+  "OAUTH_GOOGLE_CLIENT_ID",
+  "OAUTH_GOOGLE_CLIENT_SECRET",
+  "OAUTH_GITHUB_CLIENT_ID",
+  "OAUTH_GITHUB_CLIENT_SECRET",
+  "OAUTH_APPLE_CLIENT_ID",
+  "OAUTH_APPLE_CLIENT_SECRET",
+  "AUTH_PLUGINS",
+  "API_RATE_LIMIT_MAX",
+  "API_RATE_LIMIT_WINDOW_MS",
+  "API_RATE_LIMIT_DISABLED",
+  "AUTH_LOCKOUT_DISABLED",
+  "AUTH_LOCKOUT_MAX_FAILS",
+  "AUTH_LOCKOUT_WINDOW_MS",
+  "AUTH_LOCKOUT_COOLDOWN_MS",
+  "AUTH_LOCKOUT_MAX_COOLDOWN_MS",
+  "JOB_MAX_ATTEMPTS",
+  "JOB_BACKOFF_BASE_MS",
+  "JOB_BACKOFF_MAX_MS",
+  "JOB_BATCH",
+  "JOB_LEASE_MS",
+  "UPLOAD_MAX_BYTES",
+  "UPLOAD_MIN_PART_BYTES",
+  "UPLOAD_TTL_MS",
+  "UPLOAD_PART_MAX",
+  "PLATFORM_SSO_ENABLED",
+  "EXTRA_TRUSTED_ORIGINS",
+  "FUNCTIONS_FETCH_ALLOW",
+  "FUNCTIONS_EXEC_URL",
+  "SANDBOX_RPC_TOKEN",
+  "SELF_URL",
+  "R2_PUBLIC_BASE",
+  "UPSTASH_REDIS_REST_URL",
+  "UPSTASH_REDIS_REST_TOKEN",
+  "S3_BUCKET",
+  "S3_REGION",
+  "S3_ENDPOINT",
+  "S3_ACCESS_KEY_ID",
+  "S3_SECRET_ACCESS_KEY",
+  "ACTIVITY_RETENTION_DAYS",
+  "ACCESS_AUDIT_RETENTION_DAYS",
+] as const satisfies readonly (keyof Env)[];
+
+/**
+ * Build an {@link Env} from any string→string env source. Every key in
+ * {@link STRING_ENV_KEYS} that's present in `src` is copied through; the
+ * Cloudflare binding fields stay undefined (the Worker entry passes its raw
+ * bindings object straight through and never calls this). Required fields
+ * (`APP_URL`, `AUTH_SECRET`) are mapped here too but the callers still apply
+ * their own dev-fallback so a bare local boot works.
+ */
+export const envFromSource = (
+  src: Record<string, string | undefined>,
+): Partial<Env> => {
+  const out: Record<string, string | undefined> = {};
+  for (const key of STRING_ENV_KEYS) {
+    const v = src[key];
+    if (v !== undefined) out[key] = v;
+  }
+  // `out` carries plain strings; the only non-string member is the
+  // `DATABASE_DRIVER` union, which at runtime is whatever string the source
+  // held (matching the prior `as Env["DATABASE_DRIVER"]` casts the entries did).
+  return out as unknown as Partial<Env>;
+};

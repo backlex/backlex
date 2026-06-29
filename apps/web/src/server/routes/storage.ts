@@ -5,6 +5,7 @@ import type { AppBindings } from "../app";
 import { requirePermission } from "../middleware/permission";
 import { logActivity } from "../services/activity";
 import { signStorageUrl, verifyStorageUrl } from "../lib/crypto";
+import { parsePagination } from "../lib/pagination";
 import { SECURITY, OkSchema, errorResponses, apiRegistry } from "../lib/openapi";
 import {
   guardLogicalKey,
@@ -99,14 +100,7 @@ export const storageRoutes = new OpenAPIHono<AppBindings>()
       const physicalPrefix = physicalKey(tenantId, prefix);
       const folderId = c.req.query("folderId");
       const search = (c.req.query("search") ?? "").trim();
-      const rawLimit = Number(c.req.query("limit") ?? 50);
-      const rawOffset = Number(c.req.query("offset") ?? 0);
-      const limit = Number.isFinite(rawLimit)
-        ? Math.max(1, Math.min(200, Math.floor(rawLimit)))
-        : 50;
-      const offset = Number.isFinite(rawOffset)
-        ? Math.max(0, Math.floor(rawOffset))
-        : 0;
+      const { limit, offset } = parsePagination(c);
 
       const conds: SQL[] = [eq(t.tenantId, tenantId)];
       // The key-prefix filter is purely organizational: only enforced when

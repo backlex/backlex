@@ -22,7 +22,7 @@ import {
 const ITEMS_HELP = `backlex items <cmd> <slug> [args]
 
   list <slug>     [--filter <json>] [--sort a,-b] [--fields a,b] [--expand …]
-                  [--limit N] [--offset N] [--meta filter_count] [--status …]
+                  [--limit N] [--offset N | --cursor <c>] [--meta filter_count] [--status …]
   get <slug> <id> [--expand …] [--locale xx]
   create <slug>   --data <json|@file|->
   update <slug> <id> --data <json|@file|->

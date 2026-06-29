@@ -106,6 +106,10 @@ export const buildListQuery = (args: string[]): ListQuery => {
   if (limit) q.limit = Number(limit);
   const offset = flag(args, "--offset");
   if (offset) q.offset = Number(offset);
+  // `--cursor ""` opts into keyset paging (empty = first page); echo back the
+  // `next_cursor` from each response to page forward.
+  const cursor = flag(args, "--cursor");
+  if (cursor !== undefined) q.cursor = cursor;
   const meta = flag(args, "--meta");
   if (meta === "filter_count" || meta === "total_count" || meta === "*") q.meta = meta;
   const search = flag(args, "--q") ?? flag(args, "-q");
